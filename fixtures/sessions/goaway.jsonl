@@ -1,0 +1,15 @@
+{"note": "goaway（第 4 节）：先 focus 市の老爺，说一句。人物说完后 mock 推 goaway 并以 1012 关闭；断线期间这一轮判完（commit 记下来）；重连发 hello { lastSeq } 后补发，welcome.lastTurn 是 settled。"}
+{"on": ["activity_start", "text"]}
+{"when": "voice", "delayMs": 700, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "市場は、", "final": false}}
+{"on": "activity_end", "if": {"trigger.type": "activity_start"}}
+{"when": "voice", "delayMs": 150, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "市場は、もう閉まったのですか。", "final": true}}
+{"delayMs": 850, "audio": {"seconds": 1.4}}
+{"send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.old-man", "text": "とうに", "final": false}}
+{"audio": {"seconds": 1.4}}
+{"send": {"type": "turn_complete", "turnId": "{{turnId}}", "audio": true, "metrics": {"serverReleaseToFirstAudioMs": 850}}}
+{"delayMs": 200, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.old-man", "text": "とうに閉まったわい。皆、早う家に帰る。", "final": true, "source": "live"}}
+{"delayMs": 500, "send": {"type": "goaway", "reason": "deploy", "reconnectAfterMs": 1000}}
+{"delayMs": 300, "close": {"code": 1012, "reason": "deploy"}}
+{"delayMs": 1500, "send": {"type": "commit", "turnId": "{{playerTurnId}}", "events": [], "patch": {"clock": {"t": "{{t+10}}", "tLabel": "{{tLabel+10}}"}}, "memories": [], "promises": [], "narration": [], "cue": null, "reveal": null}}
+{"delayMs": 100, "send": {"type": "turn_settled", "turnId": "{{playerTurnId}}", "outcome": "no_change", "eventIds": [], "minutes": 10}}
+{"on": "hello"}

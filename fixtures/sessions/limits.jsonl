@@ -1,0 +1,2 @@
+{"note": "今天的语音还剩 5 分钟（ux-design 第 12 节）：推一次 limits。"}
+{"delayMs": 1000, "send": {"type": "limits", "voiceMinutesLeft": 5}}

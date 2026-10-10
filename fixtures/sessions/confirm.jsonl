@@ -1,0 +1,44 @@
+{"note": "意图确认（3.9）：先 focus メロス。第 1 次：人物的回答本身就是反问，按按钮回答（这一步一直等）；第 2 次：人物的回答不是反问，服务端发起一轮（turn_started reason confirm）再问，不回答 30 秒后超时。"}
+{"on": ["activity_start", "text"]}
+{"when": "voice", "delayMs": 700, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "何かあったら、", "final": false}}
+{"on": "activity_end", "if": {"trigger.type": "activity_start"}}
+{"when": "voice", "delayMs": 150, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "何かあったら、私が力になります。", "final": true}}
+{"delayMs": 850, "audio": {"seconds": 1.2}}
+{"send": {"type": "turn_complete", "turnId": "{{turnId}}", "audio": true, "metrics": {"serverReleaseToFirstAudioMs": 850}}}
+{"delayMs": 200, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.melos", "text": "……本気で言っているのか。", "final": true, "source": "live"}}
+{"delayMs": 300, "send": {"type": "confirm", "draftId": "{{id:draft:promise}}", "character": "char.melos", "prompt": "……本気で言っているのか。", "options": [{"optionId": "yes", "label": "本気だ"}, {"optionId": "no", "label": "いや、違う"}], "timeoutSec": 30}}
+{"on": "confirm_answer"}
+{"send": {"type": "confirm_closed", "draftId": "{{id:draft:promise}}", "optionId": "{{trigger.optionId}}", "by": "button"}}
+{"if": {"trigger.optionId": "yes"}, "delayMs": 1500, "send": {"type": "commit", "turnId": "{{playerTurnId}}", "events": [{"eventId": "{{id:ev:promise-melos}}", "turnId": "{{playerTurnId}}", "t": "{{t}}", "dt": 10, "tLabel": "{{tLabel}}", "type": "say", "actor": "player", "forPlayer": false, "place": "place.syracuse-square", "summary": "旅人がメロスに、力になると約束した", "causes": [], "visibleEffects": [], "promise": {"promiseId": "{{id:prm:help-melos}}", "change": "made"}, "keyMoment": false, "supersedes": null}], "patch": {"clock": {"t": "{{t+10}}", "tLabel": "{{tLabel+10}}"}}, "memories": [{"character": "char.melos", "change": "added", "memoryId": "{{id:mem:melos-2}}", "text": "力になると約束してくれた旅の人", "kind": "promise", "relationLabel": "気を許している", "relationLevel": 4}], "promises": [{"promiseId": "{{id:prm:help-melos}}", "character": "char.melos", "text": "メロスの力になる", "direction": "playerToCharacter", "status": "open"}], "narration": [], "cue": null, "reveal": null}}
+{"if": {"trigger.optionId": "yes"}, "delayMs": 100, "send": {"type": "turn_settled", "turnId": "{{playerTurnId}}", "outcome": "committed", "eventIds": ["{{id:ev:promise-melos}}"], "minutes": 10}}
+{"note": "不是：草稿丢弃，这一轮按闲聊算"}
+{"if": {"trigger.optionId": "no"}, "delayMs": 500, "send": {"type": "commit", "turnId": "{{playerTurnId}}", "events": [], "patch": {"clock": {"t": "{{t+10}}", "tLabel": "{{tLabel+10}}"}}, "memories": [], "promises": [], "narration": [], "cue": null, "reveal": null}}
+{"if": {"trigger.optionId": "no"}, "delayMs": 100, "send": {"type": "turn_settled", "turnId": "{{playerTurnId}}", "outcome": "no_change", "eventIds": [], "minutes": 10}}
+{"on": ["activity_start", "text"]}
+{"when": "voice", "delayMs": 700, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "私も、", "final": false}}
+{"on": "activity_end", "if": {"trigger.type": "activity_start"}}
+{"when": "voice", "delayMs": 150, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "私も、王城へ一緒に行きます。", "final": true}}
+{"delayMs": 850, "audio": {"seconds": 1.4}}
+{"send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.melos", "text": "旅の人を、", "final": false}}
+{"audio": {"seconds": 1.4}}
+{"send": {"type": "turn_complete", "turnId": "{{turnId}}", "audio": true, "metrics": {"serverReleaseToFirstAudioMs": 850}}}
+{"delayMs": 200, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.melos", "text": "旅の人を、巻き込むわけにはいかぬ。", "final": true, "source": "live"}}
+{"delayMs": 300, "newServerTurn": true, "send": {"type": "turn_started", "turnId": "{{turnId}}", "turnSeq": "{{turnSeq}}", "speaker": "char.melos", "reason": "confirm"}}
+{"delayMs": 600, "audio": {"seconds": 0.8}}
+{"send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.melos", "text": "……それでも、", "final": false}}
+{"audio": {"seconds": 1.0}}
+{"send": {"type": "turn_complete", "turnId": "{{turnId}}", "audio": true, "metrics": {"serverReleaseToFirstAudioMs": null}}}
+{"delayMs": 200, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.melos", "text": "……それでも、来るというのか。", "final": true, "source": "live"}}
+{"delayMs": 300, "send": {"type": "confirm", "draftId": "{{id:draft:castle}}", "character": "char.melos", "prompt": "……それでも、来るというのか。", "options": [{"optionId": "yes", "label": "行く"}, {"optionId": "no", "label": "やめておく"}], "timeoutSec": 30}}
+{"on": "confirm_answer", "timeoutMs": 30000}
+{"if": {"trigger.type": "timeout"}, "send": {"type": "confirm_closed", "draftId": "{{id:draft:castle}}", "optionId": null, "by": "timeout"}}
+{"if": {"trigger.type": "confirm_answer"}, "send": {"type": "confirm_closed", "draftId": "{{id:draft:castle}}", "optionId": "{{trigger.optionId}}", "by": "button"}}
+{"note": "是：叙事者按当前状态重查草稿，王城不让旅人进，判为 rejected，由叙事说出结果"}
+{"if": {"trigger.optionId": "yes"}, "delayMs": 1500, "send": {"type": "narration", "line": "城門の兵が、旅の者を通さなかった。", "ref": "R7-capability"}}
+{"if": {"trigger.optionId": "yes"}, "delayMs": 300, "send": {"type": "commit", "turnId": "{{playerTurnId}}", "events": [], "patch": {"clock": {"t": "{{t+10}}", "tLabel": "{{tLabel+10}}"}}, "memories": [], "promises": [], "narration": [], "cue": null, "reveal": null}}
+{"if": {"trigger.optionId": "yes"}, "delayMs": 100, "send": {"type": "turn_settled", "turnId": "{{playerTurnId}}", "outcome": "rejected", "eventIds": [], "minutes": 10}}
+{"note": "不是或超时：草稿丢弃，这一轮按闲聊算"}
+{"if": {"trigger.optionId": "no"}, "delayMs": 500, "send": {"type": "commit", "turnId": "{{playerTurnId}}", "events": [], "patch": {"clock": {"t": "{{t+10}}", "tLabel": "{{tLabel+10}}"}}, "memories": [], "promises": [], "narration": [], "cue": null, "reveal": null}}
+{"if": {"trigger.optionId": "no"}, "delayMs": 100, "send": {"type": "turn_settled", "turnId": "{{playerTurnId}}", "outcome": "no_change", "eventIds": [], "minutes": 10}}
+{"if": {"trigger.type": "timeout"}, "delayMs": 500, "send": {"type": "commit", "turnId": "{{playerTurnId}}", "events": [], "patch": {"clock": {"t": "{{t+10}}", "tLabel": "{{tLabel+10}}"}}, "memories": [], "promises": [], "narration": [], "cue": null, "reveal": null}}
+{"if": {"trigger.type": "timeout"}, "delayMs": 100, "send": {"type": "turn_settled", "turnId": "{{playerTurnId}}", "outcome": "no_change", "eventIds": [], "minutes": 10}}

@@ -1,0 +1,3 @@
+{"note": "未来的消息：发一条 Schema 里没有的 type，前端应该忽略；之后照常推一行叙事，确认连接还活着。这是唯一跳过自检的一步。"}
+{"delayMs": 500, "unchecked": true, "send": {"type": "future_feature", "detail": "新しい種類のメッセージ"}}
+{"delayMs": 500, "send": {"type": "narration", "line": "広場に、夕暮れの風が吹いた。"}}

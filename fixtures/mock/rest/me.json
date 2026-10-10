@@ -1,0 +1,11 @@
+{
+  "user": {
+    "userRef": "{{userRef}}"
+  },
+  "limits": {
+    "runsToday": 0,
+    "runsPerDay": 5,
+    "voiceMinutesLeft": 52
+  },
+  "activePlaythrough": null
+}

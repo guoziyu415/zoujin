@@ -1,0 +1,104 @@
+{
+  "playthroughId": "{{playthroughId}}",
+  "lastSeq": 0,
+  "status": "active",
+  "actId": "act.1",
+  "sceneId": "scene.syracuse-square",
+  "clock": {
+    "t": 1050,
+    "tLabel": "約束の日・夕方",
+    "deadlineT": 5460
+  },
+  "deadline": {
+    "shown": false
+  },
+  "forecast": null,
+  "player": {
+    "roleId": "role.traveler",
+    "place": "place.syracuse-square",
+    "spot": "plaza-southwest"
+  },
+  "places": [
+    {
+      "id": "place.syracuse-square",
+      "enabled": true
+    },
+    {
+      "id": "place.stonemason-workshop",
+      "enabled": true
+    },
+    {
+      "id": "place.execution-ground",
+      "enabled": true
+    }
+  ],
+  "characters": [
+    {
+      "id": "char.old-man",
+      "place": "place.syracuse-square",
+      "spot": "market-west",
+      "activity": "idle",
+      "talkable": true
+    },
+    {
+      "id": "char.melos",
+      "place": "place.syracuse-square",
+      "spot": "fountain-east",
+      "activity": "walk",
+      "talkable": true
+    }
+  ],
+  "interactables": [
+    {
+      "id": "obj.market-stall",
+      "kind": "examine",
+      "spot": "market-east",
+      "label": "露店",
+      "enabled": true,
+      "estimatedMinutes": 0
+    },
+    {
+      "id": "obj.castle-door",
+      "kind": "go",
+      "spot": "way.castle",
+      "label": "王城へ",
+      "enabled": false,
+      "estimatedMinutes": 10
+    }
+  ],
+  "actions": [
+    {
+      "actionId": "act_walk_old-man_home",
+      "kind": "help",
+      "target": "char.old-man",
+      "label": "家まで送る",
+      "estimatedMinutes": 60,
+      "melos": null,
+      "melosMinutes": null,
+      "melosInTime": null,
+      "enabled": true
+    },
+    {
+      "actionId": "act_wait_square",
+      "kind": "wait",
+      "label": "時を進める",
+      "estimatedMinutes": 30,
+      "melos": null,
+      "melosMinutes": null,
+      "melosInTime": null,
+      "enabled": true
+    }
+  ],
+  "pending": {
+    "reveal": null,
+    "confirm": null,
+    "actEnd": null,
+    "safetyPause": false,
+    "approach": null
+  },
+  "voice": {
+    "enabled": true,
+    "degraded": false,
+    "minutesLeftToday": 52
+  }
+}

@@ -1,0 +1,7 @@
+{"note": "人物没出声：turn_complete {audio: false}（首音指标 null），turn_settled no_response、0 分钟。先 focus 市の老爺。"}
+{"on": ["activity_start", "text"]}
+{"when": "voice", "delayMs": 700, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "……あの、", "final": false}}
+{"on": "activity_end", "if": {"trigger.type": "activity_start"}}
+{"when": "voice", "delayMs": 150, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "……あの。", "final": true}}
+{"delayMs": 1600, "send": {"type": "turn_complete", "turnId": "{{turnId}}", "audio": false, "metrics": {"serverReleaseToFirstAudioMs": null}}}
+{"delayMs": 1500, "send": {"type": "turn_settled", "turnId": "{{playerTurnId}}", "outcome": "no_response", "eventIds": [], "minutes": 0}}

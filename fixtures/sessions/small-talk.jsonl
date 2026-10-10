@@ -1,0 +1,13 @@
+{"note": "闲聊的一轮：先 focus 市の老爺。commit 只带时钟（events 为空），turn_settled 是 no_change、10 分钟。"}
+{"on": ["activity_start", "text"]}
+{"when": "voice", "delayMs": 700, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "もうすぐ、", "final": false}}
+{"on": "activity_end", "if": {"trigger.type": "activity_start"}}
+{"when": "voice", "delayMs": 150, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "もうすぐ日が暮れますね。", "final": true}}
+{"delayMs": 850, "audio": {"seconds": 1.4}}
+{"send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.old-man", "text": "……ああ。", "final": false}}
+{"audio": {"seconds": 1.4}}
+{"send": {"type": "turn_complete", "turnId": "{{turnId}}", "audio": true, "metrics": {"serverReleaseToFirstAudioMs": 850}}}
+{"delayMs": 200, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.old-man", "text": "……ああ。日が暮れたら、早う宿に入りなされ。", "final": true, "source": "live"}}
+{"delayMs": 1000, "send": {"type": "suggestions", "turnId": "{{turnId}}", "character": "char.old-man", "items": [{"text": "この市は静かですね", "kind": "ask"}, {"text": "ありがとう", "kind": "act"}]}}
+{"delayMs": 2500, "send": {"type": "commit", "turnId": "{{playerTurnId}}", "events": [], "patch": {"clock": {"t": "{{t+10}}", "tLabel": "{{tLabel+10}}"}}, "memories": [], "promises": [], "narration": [], "cue": null, "reveal": null}}
+{"delayMs": 100, "send": {"type": "turn_settled", "turnId": "{{playerTurnId}}", "outcome": "no_change", "eventIds": [], "minutes": 10}}

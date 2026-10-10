@@ -1,0 +1,25 @@
+{"note": "人物走过来（3.10）：mock 推 approach，前端演出走近，到了发 approach_arrived（或 approach_dismiss）。到了以后老爺先开口；回他一句（说话、文字或点候选话语），再点动作「家まで送る」→ action_result。"}
+{"delayMs": 1500, "send": {"type": "approach", "character": "char.old-man", "kind": "request"}}
+{"on": ["approach_arrived", "approach_dismiss"]}
+{"set": {"arrived": "{{trigger.type}}"}}
+{"if": {"var.arrived": "approach_arrived"}, "delayMs": 300, "newServerTurn": true, "send": {"type": "turn_started", "turnId": "{{turnId}}", "turnSeq": "{{turnSeq}}", "speaker": "char.old-man", "reason": "approach"}}
+{"if": {"var.arrived": "approach_arrived"}, "delayMs": 600, "audio": {"seconds": 1.2}}
+{"if": {"var.arrived": "approach_arrived"}, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.old-man", "text": "旅の方、", "final": false}}
+{"if": {"var.arrived": "approach_arrived"}, "audio": {"seconds": 1.6}}
+{"if": {"var.arrived": "approach_arrived"}, "send": {"type": "turn_complete", "turnId": "{{turnId}}", "audio": true, "metrics": {"serverReleaseToFirstAudioMs": null}}}
+{"if": {"var.arrived": "approach_arrived"}, "delayMs": 200, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.old-man", "text": "旅の方、暗うなる前に、すまぬが家の前まで手を貸してくだされ。", "final": true, "source": "live"}}
+{"if": {"var.arrived": "approach_arrived"}, "delayMs": 800, "send": {"type": "suggestions", "turnId": "{{turnId}}", "character": "char.old-man", "items": [{"text": "手伝います", "kind": "accept"}, {"text": "いまは、いい", "kind": "decline"}]}}
+{"on": ["activity_start", "text"], "if": {"var.arrived": "approach_arrived"}}
+{"when": "voice", "delayMs": 700, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "手伝い", "final": false}, "if": {"var.arrived": "approach_arrived"}}
+{"on": "activity_end", "if": {"trigger.type": "activity_start", "var.arrived": "approach_arrived"}}
+{"when": "voice", "delayMs": 150, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "手伝います。", "final": true}, "if": {"var.arrived": "approach_arrived"}}
+{"delayMs": 850, "audio": {"seconds": 1.4}, "if": {"var.arrived": "approach_arrived"}}
+{"send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.old-man", "text": "おお、", "final": false}, "if": {"var.arrived": "approach_arrived"}}
+{"audio": {"seconds": 1.4}, "if": {"var.arrived": "approach_arrived"}}
+{"send": {"type": "turn_complete", "turnId": "{{turnId}}", "audio": true, "metrics": {"serverReleaseToFirstAudioMs": 850}}, "if": {"var.arrived": "approach_arrived"}}
+{"delayMs": 200, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.old-man", "text": "おお、ありがたや。家は、この先の路地の奥でございます。", "final": true, "source": "live"}, "if": {"var.arrived": "approach_arrived"}}
+{"delayMs": 2500, "send": {"type": "commit", "turnId": "{{playerTurnId}}", "events": [], "patch": {"clock": {"t": "{{t+10}}", "tLabel": "{{tLabel+10}}"}}, "memories": [], "promises": [], "narration": [], "cue": null, "reveal": null}, "if": {"var.arrived": "approach_arrived"}}
+{"delayMs": 100, "send": {"type": "turn_settled", "turnId": "{{playerTurnId}}", "outcome": "no_change", "eventIds": [], "minutes": 10}, "if": {"var.arrived": "approach_arrived"}}
+{"if": {"var.arrived": "approach_arrived"}, "on": "action"}
+{"if": {"var.arrived": "approach_arrived"}, "delayMs": 1200, "send": {"type": "commit", "events": [{"eventId": "{{id:ev:walk-home}}", "t": "{{t}}", "dt": 60, "tLabel": "{{tLabel}}", "type": "action", "actor": "player", "forPlayer": false, "place": "place.syracuse-square", "summary": "旅人が老爺を家まで送った", "causes": [], "visibleEffects": [], "promise": null, "keyMoment": false, "supersedes": null}], "patch": {"clock": {"t": "{{t+60}}", "tLabel": "{{tLabel+60}}"}, "actions": {"remove": ["act_walk_old-man_home"]}, "characters": [{"id": "char.old-man", "relationLabel": "気を許している", "relationLevel": 4}]}, "memories": [{"character": "char.old-man", "change": "added", "memoryId": "{{id:mem:old-man-1}}", "text": "暗い道を、家まで送ってくれた旅の人", "kind": "help", "relationLabel": "気を許している", "relationLevel": 4}], "promises": [], "narration": ["日が落ちるころ、二人は老爺の家の前に着いた。"], "cue": null, "reveal": null}}
+{"if": {"var.arrived": "approach_arrived"}, "delayMs": 100, "send": {"type": "action_result", "clientMsgId": "{{trigger.clientMsgId}}", "status": "done", "eventIds": ["{{id:ev:walk-home}}"], "narration": "あなたは老爺の話を聞きながら、暗くなる道を家まで送っていった。", "minutes": 60}}

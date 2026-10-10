@@ -1,0 +1,33 @@
+# 本地服务（B-1）。`docker compose up mock`，然后打开 http://localhost:8787。
+# mock 和 `uv run zoujin-mock` 是同一个程序：仓库只读挂进去，虚拟环境和 uv 的缓存放在命名卷里，第一次启动要从 PyPI 装依赖。
+# 选项照 `uv run zoujin-mock --help` 改 command，例：慢一倍加 "--speed", "2"；前端开发服务器不走同源代理时加
+# "--allow-origin", "http://localhost:5173"。不需要任何凭证。
+services:
+  mock:
+    image: ghcr.io/astral-sh/uv:0.11.32-python3.13-bookworm-slim
+    working_dir: /repo
+    volumes:
+      - .:/repo:ro
+      - mock-venv:/venv
+      - mock-uv-cache:/root/.cache/uv
+    environment:
+      UV_PROJECT_ENVIRONMENT: /venv
+      UV_LINK_MODE: copy
+    command:
+      - uv
+      - run
+      - --frozen
+      - --no-dev
+      - --package
+      - zoujin-backend
+      - zoujin-mock
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8787"
+    ports:
+      - "127.0.0.1:8787:8787"
+
+volumes:
+  mock-venv:
+  mock-uv-cache:

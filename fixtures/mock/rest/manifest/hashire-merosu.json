@@ -1,0 +1,250 @@
+{
+  "manifestVersion": "hashire-merosu@1.0.0-draft+mock",
+  "book": {
+    "id": "hashire-merosu",
+    "title": "走れメロス",
+    "author": "太宰治"
+  },
+  "roles": [
+    {
+      "roleId": "role.traveler",
+      "name": "旅人",
+      "summary": "シラクスの市に着いたばかりの旅の者。",
+      "startSceneId": "scene.syracuse-square",
+      "startActId": "act.1"
+    }
+  ],
+  "scenes": [
+    {
+      "sceneId": "scene.syracuse-square",
+      "places": [
+        "place.syracuse-square",
+        "place.stonemason-workshop",
+        "place.execution-ground"
+      ],
+      "assetUrl": "/assets/scenes/syracuse-square.0001.glb",
+      "assetVersion": "0001"
+    }
+  ],
+  "characters": [
+    {
+      "id": "char.melos",
+      "name": "メロス",
+      "reading": "メロス",
+      "talkable": true,
+      "prerecorded": {
+        "aizuchi": [
+          {
+            "url": "/assets/voice/melos/aizuchi-1.0001.m4a",
+            "text": "うむ。",
+            "durationMs": 420
+          },
+          {
+            "url": "/assets/voice/melos/aizuchi-2.0001.m4a",
+            "text": "ああ。",
+            "durationMs": 380
+          },
+          {
+            "url": "/assets/voice/melos/aizuchi-3.0001.m4a",
+            "text": "なるほど。",
+            "durationMs": 610
+          }
+        ],
+        "unheard": [
+          {
+            "url": "/assets/voice/melos/unheard-1.0001.m4a",
+            "text": "……すまない、もう一度言ってくれ。",
+            "durationMs": 1300
+          },
+          {
+            "url": "/assets/voice/melos/unheard-2.0001.m4a",
+            "text": "よく聞こえなかった。",
+            "durationMs": 1100
+          }
+        ],
+        "wait": {
+          "url": "/assets/voice/melos/wait-1.0001.m4a",
+          "text": "少し待ってくれ。",
+          "durationMs": 900
+        },
+        "cues": {
+          "arrival_capped": {
+            "url": "/assets/voice/melos/arrival-capped-1.0001.m4a",
+            "text": "……これなら、間に合う。",
+            "durationMs": 2100
+          }
+        }
+      }
+    },
+    {
+      "id": "char.old-man",
+      "name": "市の老爺",
+      "reading": "いちのろうや",
+      "talkable": true,
+      "prerecorded": {
+        "aizuchi": [
+          {
+            "url": "/assets/voice/old-man/aizuchi-1.0001.m4a",
+            "text": "うむ。",
+            "durationMs": 450
+          },
+          {
+            "url": "/assets/voice/old-man/aizuchi-2.0001.m4a",
+            "text": "ほう。",
+            "durationMs": 420
+          },
+          {
+            "url": "/assets/voice/old-man/aizuchi-3.0001.m4a",
+            "text": "そうかい。",
+            "durationMs": 640
+          }
+        ],
+        "unheard": [
+          {
+            "url": "/assets/voice/old-man/unheard-1.0001.m4a",
+            "text": "……もう一度言ってくれんか。",
+            "durationMs": 1400
+          },
+          {
+            "url": "/assets/voice/old-man/unheard-2.0001.m4a",
+            "text": "耳が遠くてのう。",
+            "durationMs": 1200
+          }
+        ],
+        "wait": {
+          "url": "/assets/voice/old-man/wait-1.0001.m4a",
+          "text": "ちょっと待っておくれ。",
+          "durationMs": 1000
+        },
+        "cues": {}
+      }
+    },
+    {
+      "id": "char.philostratus",
+      "name": "フィロストラトス",
+      "reading": "フィロストラトス",
+      "talkable": true,
+      "prerecorded": {
+        "aizuchi": [
+          {
+            "url": "/assets/voice/philostratus/aizuchi-1.0001.m4a",
+            "text": "はい。",
+            "durationMs": 380
+          },
+          {
+            "url": "/assets/voice/philostratus/aizuchi-2.0001.m4a",
+            "text": "ええ。",
+            "durationMs": 360
+          },
+          {
+            "url": "/assets/voice/philostratus/aizuchi-3.0001.m4a",
+            "text": "なるほど。",
+            "durationMs": 600
+          }
+        ],
+        "unheard": [
+          {
+            "url": "/assets/voice/philostratus/unheard-1.0001.m4a",
+            "text": "……もう一度、お願いします。",
+            "durationMs": 1300
+          },
+          {
+            "url": "/assets/voice/philostratus/unheard-2.0001.m4a",
+            "text": "よく聞こえませんでした。",
+            "durationMs": 1100
+          }
+        ],
+        "wait": {
+          "url": "/assets/voice/philostratus/wait-1.0001.m4a",
+          "text": "少しお待ちください。",
+          "durationMs": 950
+        },
+        "cues": {}
+      }
+    },
+    {
+      "id": "char.king",
+      "name": "王ディオニス",
+      "reading": "おうディオニス",
+      "talkable": true
+    },
+    {
+      "id": "char.selinuntius",
+      "name": "セリヌンティウス",
+      "reading": "セリヌンティウス",
+      "talkable": true
+    },
+    {
+      "id": "char.sister",
+      "name": "メロスの妹",
+      "reading": "メロスのいもうと",
+      "talkable": true
+    },
+    {
+      "id": "char.groom",
+      "name": "花婿",
+      "reading": "はなむこ",
+      "talkable": true
+    },
+    {
+      "id": "char.crowd",
+      "name": "刑場の群衆",
+      "reading": "けいじょうのぐんしゅう",
+      "talkable": false
+    },
+    {
+      "id": "char.guards",
+      "name": "警吏（巡邏・刑吏）",
+      "reading": "けいり（じゅんら・けいり）",
+      "talkable": false
+    },
+    {
+      "id": "char.maiden",
+      "name": "緋のマントの少女",
+      "reading": "ひのまんとのしょうじょ",
+      "talkable": false
+    },
+    {
+      "id": "char.young-man",
+      "name": "市の若い衆",
+      "reading": "いちのわかいしゅ",
+      "talkable": false
+    }
+  ],
+  "acts": [
+    {
+      "actId": "act.1",
+      "title": "約束の日",
+      "sceneIds": [
+        "scene.syracuse-square"
+      ]
+    },
+    {
+      "actId": "act.4",
+      "title": "三日目",
+      "sceneIds": [
+        "scene.syracuse-square"
+      ]
+    }
+  ],
+  "clock": {
+    "deadlineT": 5460,
+    "sunsetMinuteOfDay": 1140,
+    "days": [
+      "約束の日",
+      "一日目",
+      "二日目",
+      "三日目"
+    ]
+  },
+  "ruby": [
+    {
+      "word": "邪智暴虐",
+      "reading": "じゃちぼうぎゃく"
+    },
+    {
+      "word": "老爺",
+      "reading": "ろうや"
+    }
+  ]
+}
