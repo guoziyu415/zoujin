@@ -4200,7 +4200,8 @@
     {
      "op": "relocate",
      "character": "char.maiden",
-     "place": "place.execution-ground"
+     "place": "place.execution-ground",
+     "spot": "crowd-front"
     },
     {
      "op": "relocate",
