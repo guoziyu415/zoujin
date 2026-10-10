@@ -4,9 +4,11 @@
 // but closer in landscape; pulled in when a wall is in the way; over-the-shoulder framing in a conversation. Before the
 // player first walks or turns it holds the first screen's fixed shot (rig.opening) and then glides over to the follow
 // view. With reduced motion (prefers-reduced-motion; F-1's 「画面の動きを減らす」 setting joins it) it cuts instead.
+// Cuts and entering / leaving a conversation are the moments the quality level may change (10.6.3): it tells quality.
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import { PerspectiveCamera, Raycaster, Vector3, type Object3D } from "three";
+import { quality } from "./quality/quality";
 import { rig } from "./rig";
 
 // exploring: metres behind and above the player's feet, vertical field of view; landscape keeps the angle, comes closer.
@@ -34,6 +36,7 @@ export function CameraRig({ blockers }: { blockers: Object3D[] }) {
       opening: false,
       glideUntil: 0,
       wasTalking: false,
+      lastFixed: null as unknown,
     }),
     [],
   );
@@ -49,6 +52,11 @@ export function CameraRig({ blockers }: { blockers: Object3D[] }) {
     const cam = camera as PerspectiveCamera;
     const portrait = size.height >= size.width;
     const fixed = rig.fixedView ?? rig.opening;
+    if (fixed !== tmp.lastFixed) {
+      // a fixed shot starts or ends: the test hook's views, the first screen giving way to the follow view
+      tmp.lastFixed = fixed;
+      quality.cut(performance.now());
+    }
     if (fixed) {
       cam.position.set(...fixed.from);
       cam.lookAt(...fixed.to);
@@ -68,6 +76,7 @@ export function CameraRig({ blockers }: { blockers: Object3D[] }) {
     if (rig.cutCamera) {
       tmp.first = true; // the player was put somewhere else, not walked there
       rig.cutCamera = false;
+      quality.cut(performance.now());
     }
     const gliding = performance.now() < tmp.glideUntil;
     const p = rig.player;
@@ -75,7 +84,10 @@ export function CameraRig({ blockers }: { blockers: Object3D[] }) {
     const talking = rig.talking
       ? rig.people?.getObjectByName(rig.talking)
       : undefined;
-    if (still && !!talking !== tmp.wasTalking) tmp.first = true;
+    if (!!talking !== tmp.wasTalking) {
+      if (still) tmp.first = true;
+      quality.cut(performance.now());
+    }
     tmp.wasTalking = !!talking;
     let fov: number;
     if (talking) {

@@ -1,7 +1,9 @@
 // ?dev: move the world clock, play the sunset (art-direction 10 check 2: 18:00 -> 19:10), shut the workshop, and a
-// frame-time / draw-call readout. For the team, not players; F-2c's measuring page replaces the readout.
+// frame-time / draw-call readout with the quality level. For the team, not players; the numbers for decisions come
+// from the measuring page (?measure).
 import { useEffect, useRef, useState } from "react";
 import { frameStats } from "../PostFX";
+import { useQuality } from "../quality/quality";
 import { useWorld } from "./fakeStore";
 import type { LoadStage } from "../World";
 
@@ -16,6 +18,7 @@ export function DevPanel({ stage }: { stage: LoadStage }) {
   const workshopOpen = useWorld(
     (s) => s.places["place.stonemason-workshop"]?.enabled ?? true,
   );
+  const q = useQuality();
   const [hud, setHud] = useState("");
   const anim = useRef(0);
 
@@ -72,7 +75,9 @@ export function DevPanel({ stage }: { stage: LoadStage }) {
       }}
     >
       <div>
-        {stage} · {hhmm(t)} · {place.replace("place.", "")}
+        {stage} · {hhmm(t)} · {place.replace("place.", "")} · {q.level}
+        {q.applied !== q.level ? `（${q.applied}）` : ""} {q.assetTier}
+        {q.lowPower ? " lowPower" : ""}
       </div>
       <div>{hud}</div>
       <input

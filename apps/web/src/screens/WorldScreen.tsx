@@ -5,27 +5,30 @@ import { useCallback, useState } from "react";
 import { PCFShadowMap } from "three";
 import { DevPanel } from "../three/dev/DevPanel";
 import { installTestHook } from "../three/dev/testHook";
+import { levelDpr } from "../three/quality/levels";
+import { QualityProbe } from "../three/quality/QualityProbe";
+import { useQuality } from "../three/quality/quality";
 import { World, type LoadStage } from "../three/World";
 
 const params = new URLSearchParams(location.search);
 const DEV = params.has("dev");
 if (params.has("test")) installTestHook();
 
-// standard tier (10.6.3 L1): DPR 1.5; F-2c's quality levels move it
-const DPR: [number, number] = [1, 1.5];
-
 export default function WorldScreen() {
   const [stage, setStage] = useState<LoadStage>("loading");
   const onStage = useCallback((s: LoadStage) => setStage(s), []);
+  // the pixel ratio follows the quality level at once (10.6.3): L0 1.25, L1 1.5, L2 2, L3 the screen's own
+  const level = useQuality((s) => s.level);
   return (
     <div style={{ position: "fixed", inset: 0, background: "#14110e" }}>
       <Canvas
-        dpr={DPR}
+        dpr={levelDpr(level, devicePixelRatio)}
         shadows={{ type: PCFShadowMap }}
         gl={{ antialias: false, powerPreference: "high-performance" }}
         camera={{ fov: 60, near: 0.1, far: 1500 }}
         style={{ touchAction: "none" }}
       >
+        <QualityProbe />
         <World onStage={onStage} />
       </Canvas>
       {stage === "loading" && <LoadingBar />}

@@ -1,10 +1,13 @@
 // window.__zoujin with ?test: what the Playwright checks drive and read (apps/web/tests/e2e). Not loaded otherwise.
 import { Vector3 } from "three";
+import { peek } from "../../telemetry/telemetry";
 import { lighting } from "../Lighting";
 import { frameStats } from "../PostFX";
+import type { Level } from "../quality/levels";
+import { quality, useQuality, type AssetTier } from "../quality/quality";
 import { rig } from "../rig";
 import { planToWorld, type Vec3 } from "../scene/frame";
-import { loadInfo } from "../World";
+import { highTier, loadInfo } from "../World";
 import { useWorld } from "./fakeStore";
 
 type Plan = [number, number, number]; // layout.json plan x, y and height
@@ -78,6 +81,22 @@ export function installTestHook(): void {
         };
       },
       // walk as if the ground there had been tapped (Player.tsx does the same on a tap): a spot name or plan x, y
+      // the quality level, the probe's result and the telemetry waiting to be sent
+      quality: () => ({
+        ...useQuality.getState(),
+        probe: quality.probe,
+        running: !!quality.governor,
+      }),
+      telemetry: () => peek().map((e) => ({ ...e })),
+      force: async (level: Level, tier?: AssetTier) => {
+        quality.force(level, tier);
+        await nextFrames(4);
+      },
+      fetchHigh: () => highTier.fetch(),
+      cut: async () => {
+        quality.cut(performance.now());
+        await nextFrames(2);
+      },
       walkTo: (to: string | [number, number]) => {
         const at =
           typeof to === "string"
