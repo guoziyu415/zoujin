@@ -1,0 +1,1264 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<link rel="icon" href="data:,">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>人物特写样板</title>
+<style>
+:root{color-scheme:dark;--bg:#14110e;--fg:#f1e9d8;--mut:#b9ad98;--line:#3a332b;--acc:#e0a65a;--ok:#7fbf7a;--warn:#e0b44f;--bad:#e06a50;--panel:rgba(22,19,16,.92);--btn:#2a241e;--btn2:#3a3129}
+@media (prefers-color-scheme: light){:root:not([data-theme="light"]){--bg:#14110e}}
+:root[data-theme="dark"]{--bg:#14110e}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans","Noto Sans SC",system-ui,sans-serif;overflow:hidden;-webkit-text-size-adjust:100%}
+canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+button{font:inherit;color:var(--fg);background:var(--btn);border:1px solid var(--line);border-radius:10px;padding:8px 12px;min-height:40px;cursor:pointer}
+button.on{background:var(--btn2);border-color:var(--acc);color:#fff}
+button:disabled{opacity:.45}
+.hidden{display:none!important}
+#hud{position:fixed;left:max(10px,env(safe-area-inset-left));top:max(10px,env(safe-area-inset-top));font:12px/1.35 ui-monospace,Menlo,monospace;background:rgba(0,0,0,.45);padding:6px 8px;border-radius:8px;pointer-events:none;white-space:pre}
+#bottom{position:fixed;left:0;right:0;bottom:0;padding:8px max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:6px;background:linear-gradient(transparent,rgba(0,0,0,.6))}
+#bottom .r{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+#bottom button{padding:6px 10px;min-height:38px;font-size:13px}
+#sub{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(150px + env(safe-area-inset-bottom));max-width:min(640px,92vw);background:rgba(0,0,0,.55);padding:8px 14px;border-radius:10px;font-size:16px;font-family:"Hiragino Mincho ProN","Yu Mincho",serif;pointer-events:none}
+#pairLabels{position:fixed;left:0;right:0;top:calc(env(safe-area-inset-top) + 64px);display:flex;justify-content:space-around;pointer-events:none;font-size:13px}
+#pairLabels span{background:rgba(0,0,0,.45);padding:3px 10px;border-radius:8px}
+#panel{position:fixed;right:0;top:0;bottom:0;width:min(360px,100%);background:var(--panel);overflow-y:auto;padding:14px 14px calc(80px + env(safe-area-inset-bottom));border-left:1px solid var(--line)}
+#panel h3{margin:14px 0 6px;font-size:13px;color:var(--mut);font-weight:600}
+#panel .row{display:flex;flex-wrap:wrap;gap:6px}
+#panel .row button{padding:6px 10px;min-height:36px;font-size:13px}
+#panel .note{color:var(--mut);font-size:12px;margin:4px 0 0}
+#panel input[type=range]{width:100%}
+#cover{position:fixed;inset:0;background:var(--bg);overflow-y:auto;padding:max(24px,env(safe-area-inset-top)) 18px 40px}
+#cover .in{max-width:560px;margin:0 auto}
+#cover h1{font-size:20px;margin:6px 0 4px}
+#cover p{color:var(--mut);margin:8px 0}
+#cover .go{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}
+#cover .go button{flex:1 1 200px;min-height:48px;font-size:15px}
+#prog{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin:12px 0 4px}
+#prog>div{height:100%;width:0;background:var(--acc);transition:width .2s}
+#loadmsg{font-size:12px;color:var(--mut)}
+table{border-collapse:collapse;width:100%;font-size:12px}
+td,th{border-bottom:1px solid var(--line);padding:4px 4px;text-align:left;vertical-align:top}
+th{color:var(--mut);font-weight:600}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
+.dot.ok{background:var(--ok)}.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}
+#bench{position:fixed;left:0;right:0;top:0;padding:max(10px,env(safe-area-inset-top)) 14px 10px;background:rgba(0,0,0,.6);font-size:13px}
+#bench .pb{height:4px;background:var(--line);margin-top:6px}#bench .pb>div{height:100%;width:0;background:var(--acc)}
+#results{position:fixed;inset:0;background:var(--bg);overflow-y:auto;padding:max(16px,env(safe-area-inset-top)) 14px 40px}
+#results .in{max-width:760px;margin:0 auto}
+#toast{position:fixed;left:50%;top:40%;transform:translateX(-50%);background:rgba(0,0,0,.75);padding:8px 14px;border-radius:10px;pointer-events:none;font-size:13px}
+.credit{font-size:11px;color:var(--mut);margin-top:18px}
+input[type=text]{font:inherit;width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);background:#1d1915;color:var(--fg)}
+</style>
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
+}}
+</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud" class="hidden"></div>
+<div id="sub" class="hidden"></div>
+<div id="pairLabels" class="hidden"><span>档 B</span><span>强机</span></div>
+<div id="bottom" class="hidden">
+  <div class="r" id="actRow">
+    <button data-say="s">相槌</button>
+    <button data-say="m">3 秒</button>
+    <button data-say="l">长句（11 秒）</button>
+    <button id="expr">表情：平静</button>
+    <button id="brow">眉：平</button>
+  </div>
+  <div class="r">
+    <button data-view="talk">对话（越肩）</button>
+    <button data-view="face">近看</button>
+    <button data-view="pair">并排对比</button>
+    <button data-view="explore">探索</button>
+    <button data-view="backlit">逆光</button>
+    <button id="openPanel">设置</button>
+    <button id="toBench">自动计测</button>
+  </div>
+</div>
+<div id="panel" class="hidden">
+  <div style="display:flex;justify-content:space-between;align-items:center"><b>设置</b><button id="closePanel">关闭</button></div>
+  <h3>画质档</h3>
+  <div class="row" data-key="tier"><button data-v="std">档 B（所有手机）</button><button data-v="high">强机</button></div>
+  <p class="note">档 B：对话版 2.6 万面、皮肤贴图 1024、解像度 1.5、硬阴影。强机：4.4 万面、皮肤 2048、解像度 2、软阴影。zg 的手机上强制档 B，就是 iPhone 12 会看到的样子（只是更流畅）。</p>
+  <h3>时刻</h3>
+  <div class="row" id="timeBtns"><button data-t="1050">17:30</button><button data-t="720">真昼 12:00</button><button data-t="1130">18:50 逆光</button></div>
+  <input id="time" type="range" min="600" max="1150" step="5" value="1050"><p class="note" id="timeNote"></p>
+  <h3>口型</h3>
+  <div class="row" data-key="lip"><button data-v="volume">只用音量</button><button data-v="vowel">元音 + 音量</button></div>
+  <p class="note">「只用音量」：只有张合，是设计文档 7.3 的第一版做法，A-0 要看的就是它在小脸上像不像木偶。「元音 + 音量」：从声音里分出あいうえお，嘴形跟着变，只做对比（元音模板来自另一个测试声音，对这两个声音不太准）。</p>
+  <h3>声音：Fenrir（D-025 定的梅洛斯声音，录音来自 S-1 casting）</h3>
+  <h3>口型时差（手调）</h3>
+  <input id="lipDelay" type="range" min="-150" max="250" step="10" value="0"><p class="note" id="lipNote"></p>
+  <h3>探索镜头里的梅洛斯</h3>
+  <div class="row" data-key="gait"><button data-v="run">跑</button><button data-v="walk">走</button></div>
+  <h3>视线</h3>
+  <div class="row" data-key="gaze"><button data-v="player">看玩家</button><button data-v="camera">看镜头</button><button data-v="off">不跟</button></div>
+  <h3>皮肤透光（次表面散射的近似）</h3>
+  <div class="row" data-key="skin"><button data-v="1">开</button><button data-v="0">关</button></div>
+  <h3>对话版人数（同时在画面里）</h3>
+  <div class="row" data-key="talkN"><button data-v="1">1</button><button data-v="2">2</button><button data-v="4">4</button></div>
+  <h3>后处理（泛光、调色、暗角）</h3>
+  <div class="row" data-key="post"><button data-v="1">开</button><button data-v="0">关</button></div>
+  <h3>解像度（devicePixelRatio 上限，换档时会重设）</h3>
+  <div class="row" data-key="dpr"><button data-v="1.5">1.5</button><button data-v="2">2</button><button data-v="3">设备上限</button></div>
+  <h3>这些人物的资源</h3>
+  <div id="sizes" class="note"></div>
+  <p class="credit">人物现在是<b>替身</b>：用 npm 上一份 2016 年的 MakeHuman 数据拼的（同一套人体拓扑，文件头是 AGPL），只用来打通流水线、量下载和帧时间，<b>不是正式的梅洛斯，也不进产品</b>。动作是程序生成的占位，正式的用 CC0 动作捕捉。声音：S-1 casting 时 Gemini Live 的 Fenrir 录音（D-025 定为梅洛斯的声音），剪成三句，只在这一页用；元音模板用 Open JTalk（MIT）和 HTS 音声「Mei」（CC BY 3.0，名古屋工业大学）合成的元音。广场的石材贴图：Crytek Sponza（CC BY 3.0，经 Khronos glTF Sample Assets），建筑是程序生成的临时模型。</p>
+</div>
+<div id="cover">
+  <div class="in">
+    <h1>人物特写样板（A-0）</h1>
+    <p>约束の日・17:30 的广场，和一个写实人物面对面。这一页看两件事：<b>人物在对话镜头里像不像真人</b>（眨眼、视线、嘴跟着声音动、眉、皮肤），以及<b>人物要花多少下载和帧时间</b>。</p>
+    <p id="standinNote">现在的人物是替身，脸和衣服都不是梅洛斯，只用来先把流水线和计测打通。声音是正式定下的 Fenrir。</p>
+    <div id="prog"><div></div></div>
+    <div id="loadmsg">正在加载…</div>
+    <div class="go">
+      <button id="goLook" disabled>看画面</button>
+      <button id="goBench" disabled>自动计测（约 2 分钟）</button>
+    </div>
+    <p style="font-size:12px">「说台词」会出声，听不到时看一下静音开关。自动计测时用电池就行（不要开低电量模式），测完前不要切到别的 App。每项后半段会故意让画面变卡，用来量手机还有多少余量，这是正常的。结果会自动保存，前端那边能直接读到。</p>
+    <label style="font-size:12px;color:var(--mut)">设备名称（可选，例如 iPhone 12）<input id="devname" type="text" placeholder="iPhone 12"></label>
+  </div>
+</div>
+<div id="bench" class="hidden"><div id="benchMsg"></div><div class="pb"><div></div></div></div>
+<div id="results" class="hidden"><div class="in">
+  <h2 style="font-size:18px">计测结果</h2>
+  <p id="resState" class="note"></p>
+  <table><thead><tr><th>配置</th><th>帧时间 p95</th><th>中位 fps</th><th>超 34ms</th><th>每帧实际 ms</th><th>draw</th></tr></thead><tbody id="resBody"></tbody></table>
+  <p class="note">「帧时间」受 60 帧上限限制，最快就是 17ms。「每帧实际」是把同一帧连画几遍、画到掉帧后算出来的一帧真实耗时；带 * 的表示先到上限的是 CPU。</p>
+  <h3 style="font-size:14px;margin-top:18px">首次进入</h3>
+  <div id="loadRes" class="note"></div>
+  <div class="go" style="display:flex;gap:10px;margin-top:16px"><button id="copyRes">复制结果</button><button id="backLook">回到画面</button></div>
+  <textarea id="dump" style="position:absolute;left:-9999px"></textarea>
+  <h3 style="font-size:14px;margin-top:18px">已保存的结果</h3>
+  <p id="savedState" class="note"></p>
+  <table><tbody id="savedBody"></tbody></table>
+</div></div>
+<div id="toast" class="hidden"></div>
+
+<script type="module">
+const T_MODULE = performance.now();
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import { Sky } from 'three/addons/objects/Sky.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const $ = (id) => document.getElementById(id);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const pct = (a, p) => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(p * s.length))]; };
+const toast = (t) => { const e = $('toast'); e.textContent = t; e.classList.remove('hidden'); clearTimeout(toast.h); toast.h = setTimeout(() => e.classList.add('hidden'), 1800); };
+const D2R = Math.PI / 180;
+
+// ---------------------------------------------------------------- build-time facts (filled by pack.py)
+const MANIFEST = /*MANIFEST*/{};
+const SIZES = MANIFEST.sizes || {};
+const VOICE = MANIFEST.voice || { voices: {}, vowels: [] };
+
+// ---------------------------------------------------------------- frames, sun, fog (same as S7)
+const ROT = 144 * Math.PI / 180;
+function L2W(lx, ly, lz = 0) { const c = Math.cos(ROT), s = Math.sin(ROT); const bx = c * lx - s * ly, by = s * lx + c * ly; return new THREE.Vector3(bx, lz, -by); }
+function sunAt(minute) {
+  const phi = 37 * D2R, dec = 19 * D2R, H = 15 * (minute / 60 - 12) * D2R;
+  const se = Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec) * Math.cos(H);
+  const e = Math.asin(se);
+  let A = Math.acos(THREE.MathUtils.clamp((Math.sin(dec) - se * Math.sin(phi)) / (Math.cos(e) * Math.cos(phi)), -1, 1));
+  if (H > 0) A = 2 * Math.PI - A;
+  const d = A - 294 * D2R;
+  return { dir: L2W(-Math.cos(e) * Math.cos(d), Math.cos(e) * Math.sin(d), Math.sin(e)).normalize(), elev: e / D2R, az: A / D2R };
+}
+const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(Math.round(m % 60)).padStart(2, '0')}`;
+const FOG = { sunDir: { value: sunAt(1050).dir }, sunColor: { value: new THREE.Color().setRGB(1.7, 1.02, 0.5, THREE.LinearSRGBColorSpace) } };
+THREE.ShaderChunk.fog_pars_vertex = '#ifdef USE_FOG\n varying float vFogDepth;\n varying vec3 vFogDir;\n#endif';
+THREE.ShaderChunk.fog_vertex = '#ifdef USE_FOG\n vFogDepth = - mvPosition.z;\n vFogDir = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz - cameraPosition;\n#endif';
+THREE.ShaderChunk.fog_pars_fragment = THREE.ShaderChunk.fog_pars_fragment.replace('varying float vFogDepth;', 'varying float vFogDepth;\n varying vec3 vFogDir;\n uniform vec3 fogSunDir;\n uniform vec3 fogSunColor;');
+THREE.ShaderChunk.fog_fragment = THREE.ShaderChunk.fog_fragment.replace('gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );',
+  'float fogSun = pow( max( dot( normalize( vFogDir ), fogSunDir ), 0.0 ), 5.0 );\n gl_FragColor.rgb = mix( gl_FragColor.rgb, mix( fogColor, fogSunColor, fogSun ), fogFactor );');
+const HOT_MAX = 48.0;
+THREE.ShaderChunk.opaque_fragment = THREE.ShaderChunk.opaque_fragment.replace('gl_FragColor = vec4( outgoingLight, diffuseColor.a );',
+  `gl_FragColor = vec4( min( outgoingLight, vec3( ${HOT_MAX.toFixed(1)} ) ), diffuseColor.a );`);
+const FOG_BASE = new THREE.Color().setRGB(0.31, 0.27, 0.25, THREE.LinearSRGBColorSpace), FOG_DENSITY = 0.0014;
+function fogUniforms(sh) { sh.uniforms.fogSunDir = FOG.sunDir; sh.uniforms.fogSunColor = FOG.sunColor; }
+const SUN_E = 6.0;
+function kelvinColor(K, out = new THREE.Color()) {
+  const t = K / 100;
+  const r = t <= 66 ? 255 : 329.698727446 * Math.pow(t - 60, -0.1332047592);
+  const g = t <= 66 ? 99.4708025861 * Math.log(t) - 161.1195681661 : 288.1221695283 * Math.pow(t - 60, -0.0755148492);
+  const b = t >= 66 ? 255 : t <= 19 ? 0 : 138.5177312231 * Math.log(t - 10) - 305.0447927307;
+  const c = (v) => THREE.MathUtils.clamp(v, 0, 255) / 255;
+  return out.setRGB(c(r), c(g), c(b), THREE.SRGBColorSpace);
+}
+const sunKelvin = (e) => (e >= 35 ? Math.min(5500, 4000 + (e - 35) * 60) : 2000 + 2000 * Math.pow(Math.max(0, e) / 35, 0.6));
+const sunAtten = (e) => THREE.MathUtils.lerp(0.6, 1.0, THREE.MathUtils.smoothstep(e, 2, 35));
+
+// ---------------------------------------------------------------- state
+// tier presets (frontend-design 10.6.2): std = every phone, high = strong phones
+const TIERS = { std: { dpr: 1.5, soft: 0 }, high: { dpr: 2, soft: 1 } };
+const cfg = { tier: 'std', dpr: 1.5, soft: 0, shadow: 2048, post: 1, fog: 1, skin: 1, lip: 'volume', voiceName: 'Fenrir', gait: 'run', gaze: 'player', talkN: 1, walkN: 0, face: 1 };
+const marks = { module: Math.round(T_MODULE) };
+const assetLog = [];
+let renderer, scene, camera, composer, gradePass, pmrem, sunDisc, sun, hemi, ktx2Loader, gltfLoader;
+let sky = null, skyEnvRT = null, skyScene = null;
+const env = { ground: null, arch: null, far: null, proxy: null };
+let curTexSet = null;
+const texCache = {};
+let viewMode = 'look', view = 'talk';
+let timeMin = 1050;      // 17:30, when act 1 starts
+
+// ---------------------------------------------------------------- loading helpers
+function setLoad(f, msg) { $('prog').firstElementChild.style.width = (f * 100).toFixed(0) + '%'; if (msg) $('loadmsg').textContent = msg; }
+async function b64Module(path) {
+  const t = performance.now();
+  const mod = await import(new URL(path, location.href).href);
+  const s = mod.default;
+  const bin = Uint8Array.from(atob(s), (ch) => ch.charCodeAt(0));
+  assetLog.push({ path, bytes: bin.length, b64: s.length, ms: Math.round(performance.now() - t) });
+  return bin;
+}
+function loadTex(url, srgb) {
+  if (texCache[url]) return texCache[url];
+  const t = performance.now();
+  texCache[url] = new Promise((res, rej) => new THREE.TextureLoader().load(url, (tex) => {
+    tex.flipY = false; tex.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.anisotropy = 4;
+    assetLog.push({ path: url, ms: Math.round(performance.now() - t), w: tex.image.width });
+    res(tex);
+  }, undefined, rej));
+  return texCache[url];
+}
+const MAT_TABLE = {
+  floor: { base: 'floor_base', nrm: 'floor_nrm', rough: 0.86 },
+  ashlar: { base: 'ashlar_base', nrm: 'ashlar_nrm', rough: 0.9 },
+  ashlar_warm: { base: 'ashlar2_base', nrm: 'ashlar_nrm', rough: 0.9 },
+  stone: { base: 'plain_base', nrm: 'plain_nrm', rough: 0.82 },
+  plaster: { base: 'plaster_base', nrm: 'plain_nrm', rough: 0.92 },
+  roof: { base: 'roofwarm_base', nrm: 'roof_nrm', rough: 0.8 },
+  doors: { base: 'doors_base', nrm: 'doors_nrm', rough: 0.7 },
+  cornice: { base: 'cornice_base', nrm: 'cornice_nrm', rough: 0.85 },
+  trim: { base: 'trim_base', nrm: 'trim_nrm', rough: 0.85 },
+  fabric_red: { base: 'fabric_red_base', nrm: 'fabric_red_nrm', rough: 0.95, double: true },
+  fabric_blue: { base: 'fabric_blue_base', nrm: 'fabric_red_nrm', rough: 0.95, double: true },
+  hill: { base: 'hill_base', rough: 0.95 },
+  bark: { base: 'bark_base', nrm: 'plain_nrm', rough: 0.9 },
+  cypress: { base: 'cypress_base', nrm: 'ivy_nrm', rough: 0.9 },
+  terracotta: { base: 'plain_base', nrm: 'plain_nrm', rough: 0.8, color: 0xc77a52 },
+  water: { color: 0x0e1414, rough: 0.09 },
+};
+async function texSet() {
+  const names = new Set();
+  for (const m of Object.values(MAT_TABLE)) { if (m.base) names.add(m.base); if (m.nrm) names.add(m.nrm); }
+  const out = {};
+  await Promise.all([...names].map(async (n) => { out[n] = await loadTex(`tex/${n}_hi.jpg`, n.endsWith('_base')); }));
+  return out;
+}
+async function loadAO(mesh) {
+  const tex = await loadTex(`lm/${mesh}_ao_1024.jpg`, false);
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping; tex.channel = 1; tex.anisotropy = 1;
+  return tex;
+}
+
+// ---------------------------------------------------------------- renderer + scene
+function makeRenderer() {
+  renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, cfg.dpr));
+  renderer.setSize(innerWidth, innerHeight, false);
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.toneMapping = THREE.NeutralToneMapping; renderer.toneMappingExposure = 1.0;
+  renderer.info.autoReset = false;
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.05, 1500);
+  pmrem = new THREE.PMREMGenerator(renderer);
+  sun = new THREE.DirectionalLight(0xffffff, SUN_E);
+  sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.02;
+  scene.add(sun, sun.target);
+  hemi = new THREE.HemisphereLight(0xbcd0ff, 0x8a7560, 0.0); scene.add(hemi);
+  sunDisc = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, toneMapped: true,
+    uniforms: { uColor: { value: new THREE.Color().setRGB(1.0, 0.72, 0.42, THREE.LinearSRGBColorSpace) }, uGain: { value: 1 } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: 'uniform vec3 uColor; uniform float uGain; varying vec2 vUv; void main(){ float r = length(vUv - 0.5) * 2.0; float core = (1.0 - smoothstep(0.14, 0.17, r)) * 40.0; float halo = exp(-r * 7.0) * 2.0; gl_FragColor = vec4(min(uColor * (core + halo) * uGain, vec3(60.0)), 1.0); }',
+  }));
+  sunDisc.frustumCulled = false; sunDisc.renderOrder = -1; scene.add(sunDisc);
+  ktx2Loader = new KTX2Loader().setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/libs/basis/').detectSupport(renderer);
+  gltfLoader = new GLTFLoader().setKTX2Loader(ktx2Loader).setMeshoptDecoder(MeshoptDecoder);
+  addEventListener('resize', onResize);
+}
+function onResize() {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight, false);
+  if (composer) composer.setSize(innerWidth, innerHeight);
+  if (viewMode === 'look') setView(view);
+}
+const GradeShader = {
+  uniforms: { tDiffuse: { value: null }, uVig: { value: 0.32 }, uWarm: { value: 0.06 }, uContrast: { value: 1.06 }, uSat: { value: 1.12 } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float uVig, uWarm, uContrast, uSat; varying vec2 vUv;
+    void main(){ vec4 c = texture2D(tDiffuse, vUv); vec3 col = c.rgb;
+      float l = dot(col, vec3(0.2126,0.7152,0.0722));
+      col = max(mix(vec3(l), col, uSat), 0.0);
+      col = mix(col, col * vec3(1.0 + uWarm, 1.0, 1.0 - uWarm), smoothstep(0.35, 0.9, l));
+      col = mix(col, col * vec3(1.0 - uWarm*0.6, 1.0, 1.0 + uWarm), 1.0 - smoothstep(0.05, 0.35, l));
+      col = (col - 0.5) * uContrast + 0.5;
+      vec2 d = vUv - 0.5; col *= 1.0 - uVig * dot(d, d) * 2.2;
+      gl_FragColor = vec4(clamp(col, 0.0, 1.0), c.a); }`,
+};
+function ensureComposer() {
+  if (composer) return;
+  const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
+  composer = new EffectComposer(renderer, rt);
+  composer.addPass(new RenderPass(scene, camera));
+  composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.3, 0.2, 3.0));
+  composer.addPass(new OutputPass());
+  gradePass = new ShaderPass(GradeShader); composer.addPass(gradePass);
+  composer.setPixelRatio(renderer.getPixelRatio());
+  composer.setSize(innerWidth, innerHeight);
+}
+
+// ---------------------------------------------------------------- plaza materials (S7's "AO baked + realtime sun" mode)
+function stdFrom(name, tset) {
+  const t = MAT_TABLE[name] || { rough: 0.85 };
+  const m = new THREE.MeshStandardMaterial({ roughness: t.rough, metalness: 0, color: t.color ?? 0xffffff, side: t.double ? THREE.DoubleSide : THREE.FrontSide });
+  if (t.base && tset[t.base]) m.map = tset[t.base];
+  if (t.nrm && tset[t.nrm]) { m.normalMap = tset[t.nrm]; m.normalScale.set(1, -1); }
+  m.name = name; m.onBeforeCompile = fogUniforms;
+  return m;
+}
+async function buildPlazaMaterials() {
+  const lm = { ground: await loadAO('ground'), arch: await loadAO('arch') };
+  for (const mesh of ['ground', 'arch', 'far']) {
+    env[mesh].traverse((o) => {
+      if (!o.isMesh) return;
+      const orig = Array.isArray(o.material) ? o.material.map((m) => m.name) : [o.material.name];
+      const mats = orig.map((name) => {
+        const m = stdFrom(name, curTexSet);
+        if (name === 'water') m.envMapIntensity = 1.0;
+        else if (mesh !== 'far') { m.aoMap = lm[mesh]; m.aoMapIntensity = 1.0; }
+        return m;
+      });
+      o.material = Array.isArray(o.material) ? mats : mats[0];
+      o.receiveShadow = mesh !== 'far'; o.castShadow = false;
+    });
+  }
+}
+
+// ---------------------------------------------------------------- sky and sun over the day (same as S7)
+let sunDirCur = sunAt(1050).dir.clone(), expoBase = 1, expoFace = 1, envTimer = 0;
+const _fwd = new THREE.Vector3();
+function faceExposure() {
+  if (!sunDisc?.visible) return 1;
+  camera.getWorldDirection(_fwd);
+  return 1 - 0.4 * THREE.MathUtils.smoothstep(_fwd.dot(sunDirCur), 0.4, 0.95) * THREE.MathUtils.clamp(sunDirCur.y * 20 + 0.5, 0, 1);
+}
+function setSunDir(d) { sunDirCur.copy(d).normalize(); FOG.sunDir.value.copy(sunDirCur); }
+function setTime(minute, immediate) {
+  timeMin = minute;
+  if (!sky) {
+    sky = new Sky(); sky.scale.setScalar(4000); scene.add(sky);
+    skyScene = new THREE.Scene(); const s2 = new Sky(); s2.scale.setScalar(50); skyScene.add(s2); skyScene.userData.sky = s2;
+    for (const s of [sky, s2]) {
+      s.material.uniforms.uSkyGain = { value: 1 }; s.material.uniforms.uDusk = { value: 0 }; s.material.uniforms.uBelt = { value: 0 }; s.material.uniforms.uAmber = { value: 0 };
+      s.material.fragmentShader = 'uniform float uSkyGain, uDusk, uBelt, uAmber;\n' + s.material.fragmentShader.replace('gl_FragColor = vec4( texColor, 1.0 );', `
+        float up = max( direction.y, 0.0 );
+        float side = dot( normalize( direction.xz + 1e-5 ), normalize( vSunDirection.xz + 1e-5 ) ) * 0.5 + 0.5;
+        vec3 glow = vec3( 0.55, 0.22, 0.08 ) * pow( side, 3.0 ) * exp( -up * 9.0 ) + vec3( 0.05, 0.07, 0.14 ) * ( 1.0 - up * 0.6 );
+        float nearSun = pow( max( dot( direction, vSunDirection ), 0.0 ), 12.0 );
+        texColor *= mix( vec3( 1.0 ), vec3( 1.0, 0.66, 0.38 ), clamp( pow( side, 6.0 ) * exp( -up * 2.5 ) + nearSun * 0.6, 0.0, 1.0 ) * uAmber );
+        float anti = pow( 1.0 - side, 2.0 );
+        vec3 belt = vec3( 0.55, 0.27, 0.33 ) * exp( -pow( ( up - 0.09 ) / 0.06, 2.0 ) ) * anti + vec3( 0.15, 0.2, 0.38 ) * ( 1.0 - up * 0.45 );
+        texColor = max( texColor * uSkyGain, max( glow * uDusk, belt * uBelt ) );
+        float peak = max( max( texColor.r, texColor.g ), max( texColor.b, 1e-4 ) );
+        texColor *= 1.7 * ( 1.0 - exp( -peak / 1.7 ) ) / peak;
+        gl_FragColor = vec4( texColor, 1.0 );`);
+    }
+  }
+  const sp = sunAt(minute), d = sp.dir, elevDeg = sp.elev;
+  for (const s of [sky, skyScene.userData.sky]) {
+    const u = s.material.uniforms;
+    u.turbidity.value = 4.5; u.rayleigh.value = 2.2; u.mieCoefficient.value = 0.0028; u.mieDirectionalG.value = 0.8;
+    u.sunPosition.value.copy(d); u.showSunDisc.value = 0; u.cloudCoverage.value = 0;
+    u.uSkyGain.value = THREE.MathUtils.lerp(0.62, 0.4, THREE.MathUtils.smoothstep(elevDeg, 10, 45));
+    u.uDusk.value = THREE.MathUtils.clamp((2 - elevDeg) / 3, 0, 1);
+    u.uBelt.value = (1 - THREE.MathUtils.smoothstep(elevDeg, 2, 9)) * THREE.MathUtils.smoothstep(elevDeg, -7, -2);
+    u.uAmber.value = 1 - THREE.MathUtils.smoothstep(elevDeg, 3, 28);
+  }
+  expoBase = THREE.MathUtils.lerp(1.1, 0.66, THREE.MathUtils.smoothstep(elevDeg, 8, 50));
+  setSunDir(d);
+  const k = THREE.MathUtils.clamp((elevDeg + 0.5) / 3, 0, 1);
+  kelvinColor(sunKelvin(elevDeg), sun.color);
+  sun.intensity = SUN_E * k * sunAtten(elevDeg);
+  sunDisc.material.uniforms.uGain.value = k;
+  kelvinColor(sunKelvin(elevDeg) + 300, sunDisc.material.uniforms.uColor.value);
+  const dusk = THREE.MathUtils.clamp((3 - elevDeg) / 5, 0, 1);
+  hemi.color.setRGB(0.45 + 0.3 * dusk, 0.55 + 0.1 * dusk, 0.9 - 0.15 * dusk, THREE.LinearSRGBColorSpace); hemi.groundColor.setRGB(0.12, 0.1, 0.08, THREE.LinearSRGBColorSpace);
+  hemi.intensity = dusk * 0.8;
+  if (scene.fog) scene.fog.color.copy(FOG_BASE);
+  FOG.sunColor.value.copy(sun.color).multiplyScalar(1.4 * THREE.MathUtils.clamp((elevDeg + 4) / 8, 0, 1));
+  $('timeNote').textContent = `${hhmm(minute)} · 太阳高度 ${elevDeg.toFixed(1)}°`;
+  $('time').value = minute;
+  document.querySelectorAll('#timeBtns button').forEach((b) => b.classList.toggle('on', Number(b.dataset.t) === minute));
+  const doEnv = () => {
+    if (skyEnvRT) skyEnvRT.dispose();
+    skyEnvRT = pmrem.fromScene(skyScene, 0, 0.1, 100);
+    scene.environment = skyEnvRT.texture;
+  };
+  if (immediate) { clearTimeout(envTimer); envTimer = 0; doEnv(); }
+  else if (!envTimer) envTimer = setTimeout(() => { envTimer = 0; doEnv(); }, 250);
+}
+
+// ---------------------------------------------------------------- skin: wrap lighting with a red tail, a cheap stand-in for subsurface scattering
+const SKIN_SCATTER = { value: new THREE.Color().setRGB(0.3, 0.09, 0.045, THREE.LinearSRGBColorSpace) };
+const DIFFUSE_LINE = 'reflectedLight.directDiffuse += irradiance * BRDF_Lambert( material.diffuseContribution ) * ( 1.0 - F );';
+const SKIN_CHUNK = THREE.ShaderChunk.lights_physical_pars_fragment.replace(DIFFUSE_LINE, `
+  #ifdef SKIN_WRAP
+    // light wraps past the terminator and comes back reddish, as it does through skin
+    float wrapNL = saturate( ( dot( geometryNormal, directLight.direction ) + 0.45 ) / 1.45 );
+    vec3 scatter = max( wrapNL - dotNL, 0.0 ) * directLight.color * uSkinScatter;
+    reflectedLight.directDiffuse += ( irradiance * ( 1.0 - F ) + scatter ) * BRDF_Lambert( material.diffuseContribution );
+  #else
+    ${DIFFUSE_LINE}
+  #endif`);
+const SKIN_OK = SKIN_CHUNK !== THREE.ShaderChunk.lights_physical_pars_fragment;
+function patchMaterial(m) {
+  const skin = m.name === 'skin';
+  if (m.name === 'hair') { m.alphaTest = 0.35; m.alphaToCoverage = true; }
+  m.onBeforeCompile = (sh) => {
+    fogUniforms(sh);
+    if (skin && cfg.skin && SKIN_OK) {
+      sh.uniforms.uSkinScatter = SKIN_SCATTER;
+      sh.fragmentShader = '#define SKIN_WRAP\nuniform vec3 uSkinScatter;\n' + sh.fragmentShader.replace('#include <lights_physical_pars_fragment>', SKIN_CHUNK);
+    }
+  };
+  m.customProgramCacheKey = () => (skin && cfg.skin ? 'skin1' : 'char');
+}
+
+// ---------------------------------------------------------------- characters
+// three.js strips "." from node names: eye.L -> eyeL
+const BONES = ['head', 'neck02', 'eyeL', 'eyeR'];
+const TPL = {};          // model -> Promise of the template below
+const TPLR = {};         // model -> { root, fwd, up, morphBytes, tris, meshes, bytes }
+const CLIPS = {};
+const pool = new Map();  // key -> Char
+const UP = new THREE.Vector3(0, 1, 0);
+async function loadModel(model) {
+  if (TPL[model]) return TPL[model];
+  TPL[model] = (async () => {
+    const bin = await b64Module(`data/${model}.js`);
+    const g = await gltfLoader.parseAsync(bin.buffer, '');
+    const root = g.scene;
+    const t = { root, fwd: {}, up: {}, morphBytes: 0, tris: 0, meshes: 0, bytes: bin.length };
+    root.updateMatrixWorld(true);
+    const q = new THREE.Quaternion();
+    // which local axis of each bone points forward (+Z: the character faces +Z) and up, in the rest pose
+    for (const n of BONES) {
+      const b = root.getObjectByName(n); if (!b) continue;
+      b.getWorldQuaternion(q); q.invert();
+      t.fwd[n] = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
+      t.up[n] = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
+    }
+    root.traverse((o) => {
+      if (!o.isMesh) return;
+      t.meshes++;
+      t.tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3;
+      const mp = o.geometry.morphAttributes.position;
+      // three.js keeps morph targets in one float texture per geometry: vertices x targets x (position, normal) x RGBA32F
+      if (mp?.length) t.morphBytes += o.geometry.attributes.position.count * mp.length * (o.geometry.morphAttributes.normal ? 2 : 1) * 16;
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) patchMaterial(m);
+    });
+    TPLR[model] = t;
+    return t;
+  })();
+  return TPL[model];
+}
+async function loadClips() {
+  const bin = await b64Module('data/anims.js');
+  const g = await gltfLoader.parseAsync(bin.buffer, '');
+  for (const c of g.animations) CLIPS[c.name] = c;
+}
+
+// expressions from the ARKit 52 set (art-direction 5.1: brows flat / frown / raised)
+const EXPR = [
+  ['平静', {}],
+  ['微笑', { mouthSmileLeft: 0.65, mouthSmileRight: 0.65, cheekSquintLeft: 0.35, cheekSquintRight: 0.35, eyeSquintLeft: 0.2, eyeSquintRight: 0.2 }],
+  ['生气', { browDownLeft: 0.8, browDownRight: 0.8, noseSneerLeft: 0.3, noseSneerRight: 0.3, mouthPressLeft: 0.4, mouthPressRight: 0.4, eyeSquintLeft: 0.3, eyeSquintRight: 0.3 }],
+  ['吃惊', { browInnerUp: 0.8, browOuterUpLeft: 0.7, browOuterUpRight: 0.7, eyeWideLeft: 0.6, eyeWideRight: 0.6, jawOpen: 0.15 }],
+  ['担心', { browInnerUp: 0.7, mouthFrownLeft: 0.35, mouthFrownRight: 0.35, mouthStretchLeft: 0.15, mouthStretchRight: 0.15 }],
+];
+const BROW = [
+  ['平', {}],
+  ['皱', { browDownLeft: 0.7, browDownRight: 0.7 }],
+  ['扬', { browInnerUp: 0.6, browOuterUpLeft: 0.6, browOuterUpRight: 0.6 }],
+];
+const BROW_KEYS = ['browDownLeft', 'browDownRight', 'browInnerUp', 'browOuterUpLeft', 'browOuterUpRight'];
+const VIS = { a: 'viseme_aa', i: 'viseme_I', u: 'viseme_U', e: 'viseme_E', o: 'viseme_O' };
+let exprIdx = 0, browIdx = 0;
+
+class Face {
+  constructor(root) {
+    this.meshes = [];
+    root.traverse((o) => { if (o.isMesh && o.morphTargetDictionary && Object.keys(o.morphTargetDictionary).length) this.meshes.push(o); });
+    // each mesh keeps only the targets that move it (lod_export prune_keys), so take the union
+    this.names = [...new Set(this.meshes.flatMap((m) => Object.keys(m.morphTargetDictionary)))];
+    this.cur = Object.fromEntries(this.names.map((n) => [n, 0]));
+    this.tgt = {};
+    this.nextBlink = 0.5 + Math.random() * 3; this.blinkT = -1; this.double = false;
+    this.speech = null;           // () => {a,i,u,e,o, open}
+    this.mirror = null;           // another Face to copy (the side-by-side view)
+  }
+  blinkValue(dt) {
+    this.nextBlink -= dt;
+    if (this.blinkT < 0 && this.nextBlink <= 0) { this.blinkT = 0; this.double = Math.random() < 0.15; }
+    if (this.blinkT < 0) return 0;
+    this.blinkT += dt;
+    const t = this.blinkT;
+    // 60 ms down, 20 ms closed, 90 ms up
+    const v = t < 0.06 ? t / 0.06 : t < 0.08 ? 1 : Math.max(0, 1 - (t - 0.08) / 0.09);
+    if (t > 0.17) { this.blinkT = -1; this.nextBlink = this.double ? 0.12 : 3 + Math.random() * 3; this.double = false; }
+    return v;
+  }
+  update(dt, extra) {
+    if (this.mirror) { Object.assign(this.cur, this.mirror.cur); this.apply(!cfg.face); return; }
+    const tgt = this.tgt; for (const k in tgt) tgt[k] = 0;
+    if (!cfg.face) { this.apply(true); return; }
+    for (const [k, v] of Object.entries(EXPR[exprIdx][1])) tgt[k] = v;
+    if (browIdx) { for (const k of BROW_KEYS) tgt[k] = 0; for (const [k, v] of Object.entries(BROW[browIdx][1])) tgt[k] = v; }
+    if (extra) for (const [k, v] of Object.entries(extra)) tgt[k] = Math.max(tgt[k] || 0, v);
+    const s = this.speech?.();
+    if (s) {
+      if (cfg.lip === 'volume') tgt.viseme_aa = Math.max(tgt.viseme_aa || 0, s.open * 0.8);
+      else for (const v of 'aiueo') tgt[VIS[v]] = Math.max(tgt[VIS[v]] || 0, s.open * s[v]);
+    }
+    const b = this.blinkValue(dt);
+    const mouth = 1 - Math.exp(-dt * 45), slow = 1 - Math.exp(-dt * 8);
+    for (const n of this.names) {
+      const want = n.startsWith('eyeBlink') ? Math.max(tgt[n] || 0, b) : (tgt[n] || 0);
+      const k = n.startsWith('eyeBlink') ? 1 : n.startsWith('viseme') || n.startsWith('jaw') ? mouth : slow;
+      this.cur[n] += (want - this.cur[n]) * k;
+    }
+    this.apply();
+  }
+  apply(zero) {
+    for (const m of this.meshes) {
+      const d = m.morphTargetDictionary, inf = m.morphTargetInfluences;
+      for (const n of this.names) { const i = d[n]; if (i !== undefined) inf[i] = zero ? 0 : (this.cur[n] < 0.002 ? 0 : this.cur[n]); }
+    }
+  }
+}
+
+const _p = new THREE.Vector3(), _w = new THREE.Vector3(), _c = new THREE.Vector3(), _v = new THREE.Vector3();
+const _qw = new THREE.Quaternion(), _qp = new THREE.Quaternion(), _qd = new THREE.Quaternion(), _qi = new THREE.Quaternion(), _qa = new THREE.Quaternion();
+// turn a bone so that its forward axis points at target, at most maxRad, by `amount` of the way
+function aim(bone, fwdLocal, target, maxRad, amount) {
+  bone.getWorldPosition(_p); bone.getWorldQuaternion(_qw);
+  _c.copy(fwdLocal).applyQuaternion(_qw);
+  _w.copy(target).sub(_p).normalize();
+  const ang = _c.angleTo(_w);
+  if (ang < 1e-4) return;
+  _qd.setFromUnitVectors(_c, _w);
+  _qi.identity().slerp(_qd, Math.min(1, maxRad / ang) * amount);
+  _qw.premultiply(_qi);
+  bone.parent.getWorldQuaternion(_qp);
+  bone.quaternion.copy(_qp.invert().multiply(_qw));
+  bone.updateMatrixWorld(true);
+}
+
+class Char {
+  constructor(model, tint) {
+    const t = TPLR[model];
+    this.model = model; this.t = t;
+    this.root = SkeletonUtils.clone(t.root);
+    this.root.traverse((o) => {
+      if (!o.isMesh) return;
+      // eyes and teeth sit inside the head: no shadow pass for them (keeps a talk version at 10 draw calls with the head split)
+      o.castShadow = !/^(Eyes|Teeth)/.test(o.name); o.receiveShadow = true; o.frustumCulled = false;
+      if (tint) { o.material = o.material.clone(); o.material.color.setRGB(...tint, THREE.LinearSRGBColorSpace); patchMaterial(o.material); }
+    });
+    this.bones = {}; for (const n of BONES) this.bones[n] = this.root.getObjectByName(n);
+    this.mixer = new THREE.AnimationMixer(this.root);
+    this.act = { idle: this.mixer.clipAction(CLIPS.idle), walk: this.mixer.clipAction(CLIPS.walk), run: this.mixer.clipAction(CLIPS.run) };
+    this.face = model.startsWith('talk') ? new Face(this.root) : null;
+    this.look = null; this.lookS = new THREE.Vector3(); this.lookInit = false;
+    this.sacc = new THREE.Vector3(); this.saccT = 0; this.path = null; this.anim = null;
+    this.root.visible = false;
+    scene.add(this.root);
+  }
+  play(name, offset = 0) {
+    if (this.anim === name) return;
+    for (const a of Object.values(this.act)) a.stop();
+    this.act[name].play(); this.mixer.setTime(offset); this.anim = name;
+  }
+  update(dt, t) {
+    if (!this.root.visible) return;
+    if (this.path) this.path(this, t);
+    this.mixer.update(dt);
+    if (!this.face) return;
+    this.root.updateMatrixWorld(true);
+    let extra = null;
+    const B = this.bones, T = this.t;
+    if (this.look && cfg.gaze !== 'off' && B.head && B.eyeL) {
+      // head turns a little and lags; eyes go all the way, with small saccades every 0.6-2.5 s
+      if (!this.lookInit) { this.lookS.copy(this.look); this.lookInit = true; }
+      this.lookS.lerp(this.look, 1 - Math.exp(-dt * 3));
+      aim(B.head, T.fwd.head, this.lookS, 22 * D2R, 0.45);
+      this.saccT -= dt;
+      if (this.saccT <= 0) { this.saccT = 0.6 + Math.random() * 1.9; this.sacc.set((Math.random() - 0.5) * 0.05, (Math.random() - 0.5) * 0.03, 0); }
+      _v.copy(this.look).add(this.saccOf ? this.saccOf.sacc : this.sacc);
+      aim(B.eyeL, T.fwd.eyeL, _v, 28 * D2R, 1); aim(B.eyeR, T.fwd.eyeR, _v, 28 * D2R, 1);
+      // eyelids follow the eyes: angles of the gaze in head space drive the eyeLook shapes
+      B.head.getWorldQuaternion(_qa).invert();
+      B.eyeL.getWorldQuaternion(_qw);
+      _c.copy(T.fwd.eyeL).applyQuaternion(_qw).applyQuaternion(_qa);
+      const f = T.fwd.head, u = T.up.head; _w.crossVectors(u, f);   // _w = character's left in head space
+      const yaw = Math.atan2(_c.dot(_w), _c.dot(f)), pitch = Math.asin(THREE.MathUtils.clamp(_c.dot(u), -1, 1));
+      const ky = THREE.MathUtils.clamp(yaw / (30 * D2R), -1, 1) * 0.6, kp = THREE.MathUtils.clamp(pitch / (25 * D2R), -1, 1) * 0.6;
+      extra = { eyeLookOutLeft: Math.max(0, ky), eyeLookInRight: Math.max(0, ky), eyeLookInLeft: Math.max(0, -ky), eyeLookOutRight: Math.max(0, -ky),
+        eyeLookUpLeft: Math.max(0, kp), eyeLookUpRight: Math.max(0, kp), eyeLookDownLeft: Math.max(0, -kp), eyeLookDownRight: Math.max(0, -kp) };
+    }
+    const s = this.face.speech?.();
+    if (s && B.head) {
+      // a small nod with the loudness of the voice
+      _v.crossVectors(T.up.head, T.fwd.head).normalize();
+      B.head.quaternion.multiply(_qa.setFromAxisAngle(_v, s.open * 2.5 * D2R));
+    }
+    this.face.update(dt, extra);
+  }
+}
+function inst(key, model, tint) {
+  let c = pool.get(key);
+  if (!c || c.model !== model) {
+    if (c) { scene.remove(c.root); }
+    c = new Char(model, tint); pool.set(key, c);
+  }
+  return c;
+}
+
+// ---------------------------------------------------------------- where everyone stands
+const SPOT = { melos: L2W(7.0, 0.2, 0), player: L2W(6.75, -1.3, 0), backlit: L2W(-14, 0.6, 0), backlitCam: L2W(-8.6, 0.1, 1.05) };
+const FACE_H = 0.185;     // chin to hairline, metres (art-direction 5.2 measures this)
+let melos = null, player = null;
+const talkModel = () => (cfg.tier === 'high' ? 'talk_high' : 'talk_std');
+async function setCast() {
+  for (const c of pool.values()) { c.root.visible = false; c.path = null; c.look = null; c.saccOf = null; if (c.face) { c.face.speech = null; c.face.mirror = null; } }
+  const tm = talkModel();
+  await loadModel(tm);
+  const P = SPOT.player, M = SPOT.melos;
+  player = inst('player', 'walk', [0.3, 0.38, 0.5]);
+  player.root.visible = view !== 'pair' && view !== 'backlit';
+  player.root.position.copy(P); player.root.lookAt(M.x, 0, M.z); player.play('idle', 1.3);
+  if (view === 'pair') {
+    await loadModel('talk_std'); await loadModel('talk_high');
+    // both versions stand on the same spot doing the same thing; the screen is split and each half draws one of them
+    const a = inst('pair_std', 'talk_std'), b = inst('pair_high', 'talk_high');
+    for (const c of [a, b]) { c.root.visible = true; c.root.position.copy(M); c.root.lookAt(P.x, 0, P.z); c.anim = null; c.play('idle', 0); c.look = camera.position; c.lookInit = false; }
+    melos = a; b.face.mirror = a.face; b.saccOf = a; b.face.speech = () => a.face.speech?.();
+    return;
+  }
+  if (view === 'explore') {
+    melos = inst('melos_walk', 'walk'); melos.root.visible = true; melos.anim = null; melos.play(cfg.gait, 0);
+    const speed = GAIT_SPEED[cfg.gait];
+    melos.path = (c, t) => { const r = 6.5, a = t * speed / r; const p = L2W(2 + Math.cos(a) * r, 2 + Math.sin(a) * r, 0); const q = L2W(2 + Math.cos(a + 0.05) * r, 2 + Math.sin(a + 0.05) * r, 0); c.root.position.copy(p); c.root.lookAt(q); };
+    for (let i = 0; i < cfg.walkN; i++) {
+      const c = inst('walker' + i, 'walk', [0.7 + 0.1 * (i % 3), 0.7, 0.65 + 0.1 * (i % 2)]);
+      c.root.visible = true; c.play('walk', i * 0.37);
+      const r = 5 + (i % 4) * 2.4, w = (i % 2 ? 1 : -1) * 1.25 / r, a0 = i * 2.1;
+      c.path = (cc, t) => { const a = a0 + w * t; cc.root.position.copy(L2W(2 + Math.cos(a) * r, 2 + Math.sin(a) * r, 0)); const a2 = a + Math.sign(w) * 0.05; cc.root.lookAt(L2W(2 + Math.cos(a2) * r, 2 + Math.sin(a2) * r, 0)); };
+    }
+    return;
+  }
+  melos = inst('melos', tm); melos.root.visible = true; melos.play('idle', 0);
+  if (view === 'backlit') {
+    melos.root.position.copy(SPOT.backlit); melos.root.lookAt(SPOT.backlitCam.x, 0, SPOT.backlitCam.z);
+    melos.look = camera.position;
+  } else {
+    melos.root.position.copy(M); melos.root.lookAt(P.x, 0, P.z);
+    melos.look = cfg.gaze === 'camera' ? camera.position : playerEyes;
+    // the other talk-version characters in the shot (stress: 2 or 4), standing around the speaker
+    const right = new THREE.Vector3().copy(P).sub(M).setY(0).normalize().cross(UP);
+    const back = new THREE.Vector3().copy(M).sub(P).setY(0).normalize();
+    const SLOTS = [[1.15, 0.5], [-1.2, 0.7], [2.1, 1.6]];
+    for (let i = 1; i < cfg.talkN; i++) {
+      const [s, b] = SLOTS[i - 1];
+      const c = inst('talk' + i, tm); c.root.visible = true; c.play('idle', i * 1.1);
+      c.root.position.copy(M).addScaledVector(right, s).addScaledVector(back, b); c.root.lookAt(P.x, 0, P.z);
+      c.look = playerEyes; c.face.speech = benchSpeech(i);
+    }
+  }
+}
+// metres per second that match each placeholder clip's stride (no foot sliding); re-measure with the mocap clips
+const GAIT_SPEED = { walk: 1.15, run: 3.0 };
+const playerEyes = new THREE.Vector3().copy(SPOT.player).setY(1.78);   // the stand-in is tall: eyes at about 1.87 m
+
+// ---------------------------------------------------------------- camera per view
+function eyesMid(c, out = new THREE.Vector3()) {
+  const a = c.bones.eyeL, b = c.bones.eyeR;
+  if (!a || !b) return out.copy(c.root.position).setY(1.62);
+  c.root.updateMatrixWorld(true);
+  a.getWorldPosition(out); b.getWorldPosition(_p); return out.add(_p).multiplyScalar(0.5);
+}
+function frameAt(face, nx, ny) {
+  // rotate the camera so `face` lands at (nx, ny) in normalized screen coordinates
+  camera.lookAt(face);
+  const tanH = Math.tan(camera.fov * D2R / 2);
+  camera.rotateX(-Math.atan(ny * tanH));
+  camera.rotateY(Math.atan(nx * tanH * camera.aspect));
+}
+let follow = null;
+function setView(name) {
+  view = name;
+  follow = null;
+  document.querySelectorAll('#bottom [data-view]').forEach((b) => b.classList.toggle('on', b.dataset.view === name));
+  $('pairLabels').classList.toggle('hidden', name !== 'pair' || viewMode !== 'look');
+  $('actRow').classList.toggle('hidden', name === 'explore');
+  return setCast().then(() => {
+    const portrait = innerHeight >= innerWidth;
+    camera.aspect = innerWidth / innerHeight;
+    if (name === 'talk') {
+      // over-the-shoulder two-shot (ux-design 6.3): the player's back in the lower-left foreground, the speaker in the upper third,
+      // the speaker's face 12-15% of the screen height (art-direction 5.2)
+      const M = SPOT.melos, P = SPOT.player;
+      const d = _v.copy(P).sub(M).setY(0).normalize();
+      const right = new THREE.Vector3().crossVectors(d.clone().negate(), UP);
+      camera.position.copy(P).addScaledVector(d, 1.25).addScaledVector(right, portrait ? 0.5 : 0.65); camera.position.y = 1.72;
+      const face = eyesMid(melos).add(new THREE.Vector3(0, 0.012, 0));
+      const dist = camera.position.distanceTo(face);
+      camera.fov = 2 * Math.atan(FACE_H / 2 / dist / 0.135) / D2R;
+      camera.updateProjectionMatrix();
+      frameAt(face, portrait ? 0.12 : 0.3, portrait ? 0.42 : 0.28);
+    } else if (name === 'face') {
+      const face = eyesMid(melos);
+      const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(melos.root.quaternion);
+      camera.position.copy(face).addScaledVector(fwd, 0.8).add(new THREE.Vector3(0, 0.02, 0));
+      camera.fov = portrait ? 34 : 24; camera.updateProjectionMatrix(); camera.lookAt(face);
+    } else if (name === 'pair') {
+      // each half: the face in the middle of the half, a little larger than in the talk shot (about 20% of the height)
+      const face = eyesMid(melos);
+      const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(melos.root.quaternion);
+      camera.position.copy(face).addScaledVector(fwd, 2.0);
+      camera.fov = 2 * Math.atan(FACE_H / 2 / 2.0 / 0.2) / D2R; camera.updateProjectionMatrix();
+      pairCam = camera.clone();
+      frameAt(face, -0.5, 0.15);
+      pairCam.lookAt(face); const tanH = Math.tan(pairCam.fov * D2R / 2);
+      pairCam.rotateX(-Math.atan(0.15 * tanH)); pairCam.rotateY(Math.atan(0.5 * tanH * pairCam.aspect));
+    } else if (name === 'explore') {
+      // the product's follow camera (ux-design 6.3: distance about 13.5, height about 7.6)
+      camera.fov = 50; camera.updateProjectionMatrix();
+      follow = () => { const P = SPOT.player; const back = _v.copy(P).sub(SPOT.melos).setY(0).normalize(); camera.position.copy(P).addScaledVector(back, 11.1); camera.position.y = 7.6; camera.lookAt(P.x, 1.0, P.z); };
+      follow();
+    } else if (name === 'backlit') {
+      camera.position.copy(SPOT.backlitCam); camera.fov = 38; camera.updateProjectionMatrix();
+      frameAt(eyesMid(melos), 0, portrait ? 0.12 : 0.05);
+      setTime(1130, true);   // 18:50, art-direction 5.3
+    }
+    expoFace = faceExposure();
+  });
+}
+function faceShare() {
+  if (!melos?.face || view === 'explore') return null;
+  const e = eyesMid(melos);
+  const top = _w.copy(e).addScaledVector(UP, 0.07).project(camera).y, bot = _c.copy(e).addScaledVector(UP, -0.115).project(camera).y;
+  return (top - bot) / 2;
+}
+function bodyPx(c) {
+  const a = _w.copy(c.root.position).project(camera).y, b = _c.copy(c.root.position).setY(c.root.position.y + 1.75).project(camera).y;
+  return Math.round((b - a) / 2 * innerHeight);
+}
+
+// ---------------------------------------------------------------- voice: playback + vowel analysis (MFCC templates, like uLipSync)
+const N = 1024;
+const FFT = (() => {
+  const rev = new Uint32Array(N), cos = new Float32Array(N / 2), sin = new Float32Array(N / 2);
+  for (let i = 0; i < N; i++) { let r = 0; for (let b = 1, x = i; b < N; b <<= 1, x >>= 1) r = (r << 1) | (x & 1); rev[i] = r; }
+  for (let i = 0; i < N / 2; i++) { cos[i] = Math.cos(2 * Math.PI * i / N); sin[i] = -Math.sin(2 * Math.PI * i / N); }
+  const re = new Float32Array(N), im = new Float32Array(N), win = new Float32Array(N);
+  for (let i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (N - 1));
+  return (frame) => {
+    for (let i = 0; i < N; i++) { re[rev[i]] = frame[i] * win[i]; im[rev[i]] = 0; }
+    for (let size = 2; size <= N; size <<= 1) {
+      const half = size >> 1, step = N / size;
+      for (let i = 0; i < N; i += size) for (let j = 0; j < half; j++) {
+        const k = j * step, a = i + j, b = a + half;
+        const tr = re[b] * cos[k] - im[b] * sin[k], ti = re[b] * sin[k] + im[b] * cos[k];
+        re[b] = re[a] - tr; im[b] = im[a] - ti; re[a] += tr; im[a] += ti;
+      }
+    }
+    return [re, im];
+  };
+})();
+class Vowels {
+  constructor(sr) {
+    const M = 26, lo = 80, hi = Math.min(7600, sr / 2 - 100);
+    const mel = (f) => 2595 * Math.log10(1 + f / 700), inv = (m) => 700 * (Math.pow(10, m / 2595) - 1);
+    const pts = []; for (let i = 0; i < M + 2; i++) pts.push(inv(mel(lo) + (mel(hi) - mel(lo)) * i / (M + 1)));
+    const bin = (f) => f * N / sr;
+    this.bank = [];
+    for (let m = 0; m < M; m++) {
+      const a = bin(pts[m]), b = bin(pts[m + 1]), c = bin(pts[m + 2]); const w = [];
+      for (let k = Math.floor(a); k <= Math.ceil(c) && k < N / 2; k++) { const v = k < b ? (k - a) / (b - a) : (c - k) / (c - b); if (v > 0) w.push([k, v]); }
+      this.bank.push(w);
+    }
+    this.M = M; this.C = 12; this.templates = null;
+    this.mfcc = new Float32Array(this.C); this.logE = new Float32Array(M);
+  }
+  feature(frame) {
+    let e2 = 0; for (let i = 0; i < N; i++) e2 += frame[i] * frame[i];
+    const rms = Math.sqrt(e2 / N);
+    const [re, im] = FFT(frame);
+    for (let m = 0; m < this.M; m++) { let s = 0; for (const [k, w] of this.bank[m]) s += w * (re[k] * re[k] + im[k] * im[k]); this.logE[m] = Math.log(s + 1e-9); }
+    const out = new Float32Array(this.C);
+    for (let n = 1; n <= this.C; n++) { let s = 0; for (let m = 0; m < this.M; m++) s += this.logE[m] * Math.cos(Math.PI * n * (m + 0.5) / this.M); out[n - 1] = s; }
+    return { rms, c: out };
+  }
+  calibrate(buf, segs) {
+    // average feature over the steady middle of each sustained vowel
+    const x = buf.getChannelData(0), sr = buf.sampleRate, hop = Math.round(sr * 0.01), fr = new Float32Array(N);
+    this.templates = {};
+    for (const s of segs) {
+      const acc = new Float32Array(this.C); let n = 0;
+      for (let i = Math.round(s.start * sr); i + N < Math.round(s.end * sr); i += hop) { fr.set(x.subarray(i, i + N)); const f = this.feature(fr); for (let k = 0; k < this.C; k++) acc[k] += f.c[k]; n++; }
+      for (let k = 0; k < this.C; k++) acc[k] /= Math.max(1, n);
+      this.templates[s.v] = acc;
+    }
+    // cepstral mean normalisation: sustained vowels and running speech differ in overall tilt; compare shapes, not tilt
+    // (offline on the test lines this got more of the vowels right than raw templates, see lipcheck.py)
+    this.mean = new Float32Array(this.C);
+    const ts = Object.values(this.templates);
+    for (const t of ts) for (let k = 0; k < this.C; k++) this.mean[k] += t[k] / ts.length;
+    for (const t of ts) for (let k = 0; k < this.C; k++) t[k] -= this.mean[k];
+    this.run = Float32Array.from(this.mean);
+  }
+  classify(c) {
+    for (let k = 0; k < this.C; k++) { this.run[k] += (c[k] - this.run[k]) * 0.045; c[k] -= this.run[k]; }
+    // inverse-distance weights, sharpened
+    const w = {}; let sum = 0;
+    for (const [v, t] of Object.entries(this.templates)) { let d = 0; for (let k = 0; k < this.C; k++) d += (c[k] - t[k]) ** 2; const s = 1 / (d * d + 1e-6); w[v] = s; sum += s; }
+    for (const v in w) w[v] /= sum;
+    return w;
+  }
+}
+// The mouth follows what the ear hears now. Each line is analysed once when loaded (10 ms
+// frames: loudness, vowel weights); every frame we look up the frame being heard, which is
+// the playback position minus the output latency the browser reports, plus a small lead
+// that cancels the smoothing below and one display frame. In the product the playback
+// worklet knows the same position (frontend-design 7.3), so this carries over.
+const LEAD = 0.06;
+const voice = { ctx: null, vowels: null, lines: {}, src: null, t0: 0, feat: null, cur: { a: 0, i: 0, u: 0, e: 0, o: 0, open: 0 }, speaking: false };
+function analyse(buf) {
+  const x = buf.getChannelData(0), sr = buf.sampleRate, hop = Math.round(sr * 0.01), fr = new Float32Array(N);
+  const n = Math.ceil(x.length / hop), db = new Float32Array(n), w = { a: new Float32Array(n), i: new Float32Array(n), u: new Float32Array(n), e: new Float32Array(n), o: new Float32Array(n) };
+  voice.vowels.run = Float32Array.from(voice.vowels.mean);
+  for (let j = 0; j < n; j++) {
+    const c = j * hop - N / 2; fr.fill(0);
+    for (let k = 0; k < N; k++) { const i = c + k; if (i >= 0 && i < x.length) fr[k] = x[i]; }
+    const f = voice.vowels.feature(fr);
+    db[j] = 20 * Math.log10(f.rms + 1e-9);
+    if (db[j] > -50) { const v = voice.vowels.classify(f.c); for (const k of 'aiueo') w[k][j] = v[k]; }
+  }
+  // loudness relative to this line's loud parts, so voices recorded at different levels open the mouth alike
+  const sorted = Float32Array.from(db).sort(), p95 = sorted[Math.floor(sorted.length * 0.95)];
+  return { hop: 0.01, db, w, ref: p95, dur: buf.duration };
+}
+async function loadVoice(name) {
+  if (voice.lines[name]) return voice.lines[name];
+  const ctx = voice.ctx;
+  voice.lines[name] = (async () => {
+    const out = {};
+    await Promise.all(['s', 'm', 'l'].map(async (k) => {
+      const bin = await b64Module(`data/v_${name.toLowerCase()}_${k}.js`);
+      const buf = await ctx.decodeAudioData(bin.buffer.slice(0));
+      out[k] = { buf, feat: analyse(buf) };
+    }));
+    return out;
+  })();
+  return voice.lines[name];
+}
+async function ensureAudio() {
+  if (voice.ctx) { if (voice.ctx.state !== 'running') await voice.ctx.resume(); return; }
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch { /* older iOS */ }
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  voice.ctx = ctx;
+  const resumed = ctx.resume();
+  voice.vowels = new Vowels(ctx.sampleRate);
+  const bin = await b64Module('data/vowels.js');
+  voice.vowels.calibrate(await ctx.decodeAudioData(bin.buffer.slice(0)), VOICE.vowels);
+  await resumed;
+  updateLipNote();
+}
+const outLatency = () => (voice.ctx ? (voice.ctx.outputLatency || 0) + (voice.ctx.baseLatency || 0) : 0);
+function updateLipNote() {
+  const lat = voice.ctx ? Math.round(outLatency() * 1000) : null;
+  const d = Number($('lipDelay').value);
+  $('lipNote').textContent = `嘴按「耳朵听到的那一刻」对齐` + (lat != null ? `（已扣掉浏览器报告的输出延迟 ${lat} ms）` : '') +
+    `，再提前 ${LEAD * 1000} ms 抵消平滑。手调：嘴${d >= 0 ? '再晚' : '提早'} ${Math.abs(d)} ms。蓝牙耳机的延迟浏览器常报不准，看着嘴调到对上为止。UX 的线：嘴比声音晚不超过约 90 ms。`;
+}
+$('lipDelay').addEventListener('input', updateLipNote);
+async function say(k) {
+  try { await ensureAudio(); } catch (e) { toast('声音初始化失败：' + (e?.message || e)); return; }
+  const lines = await loadVoice(cfg.voiceName);
+  if (voice.src) { try { voice.src.onended = null; voice.src.stop(); } catch { /* already stopped */ } }
+  const L = lines[k];
+  const src = voice.ctx.createBufferSource(); src.buffer = L.buf; src.connect(voice.ctx.destination);
+  src.onended = () => { if (voice.src === src) { voice.speaking = false; voice.feat = null; $('sub').classList.add('hidden'); } };
+  voice.src = src; voice.feat = L.feat; voice.speaking = true;
+  voice.t0 = voice.ctx.currentTime + 0.02; src.start(voice.t0);
+  voice.segs = VOICE.voices?.[cfg.voiceName]?.[k]?.segments || []; voice.seg = -1;
+}
+// one subtitle per sentence, switched when that sentence is heard (the product shows transcript chunks the same way)
+function subtitleFrame() {
+  if (!voice.speaking || !voice.segs?.length) return;
+  const heard = voice.ctx.currentTime - voice.t0 - outLatency();
+  let i = -1; for (let j = 0; j < voice.segs.length; j++) if (heard >= voice.segs[j][0] - 0.05) i = j;
+  if (i === voice.seg) return;
+  voice.seg = i;
+  if (i < 0) return;
+  $('sub').textContent = `メロス「${voice.segs[i][1]}」`; $('sub').classList.remove('hidden');
+}
+function voiceFrame(dt) {
+  let s = { a: 0, i: 0, u: 0, e: 0, o: 0, open: 0 };
+  const F = voice.feat;
+  if (voice.speaking && F) {
+    const heard = voice.ctx.currentTime - voice.t0 - outLatency() + LEAD - Number($('lipDelay').value) / 1000;
+    const j = Math.floor(heard / F.hop);
+    if (j >= 0 && j < F.db.length) {
+      // 20 dB of range under the line's loud parts (p95): on the casting lines the median syllable
+      // opens to ~0.7 and the quiet ones to ~0.4, so the mouth moves with the syllables instead of staying wide open
+      const open = THREE.MathUtils.clamp((F.db[j] - F.ref + 20) / 20, 0, 1);
+      s = { a: F.w.a[j], i: F.w.i[j], u: F.w.u[j], e: F.w.e[j], o: F.w.o[j], open };
+    }
+  }
+  const k = 1 - Math.exp(-dt * 40);
+  for (const key of ['a', 'i', 'u', 'e', 'o', 'open']) voice.cur[key] += (s[key] - voice.cur[key]) * k;
+  subtitleFrame();
+}
+const mainSpeech = () => voice.cur;
+// the other characters in a stress shot (and everyone during the benchmark) "talk" from a fixed pattern, no audio
+function benchSpeech(seed) {
+  const s = { a: 0, i: 0, u: 0, e: 0, o: 0, open: 0 };
+  return () => {
+    const t = simT * 7.5 + seed * 3.1, k = Math.floor(t), f = t - k;
+    const v = 'aiueo'[(k * 7 + seed) % 5];
+    for (const x of 'aiueo') s[x] = x === v ? 1 : 0;
+    s.open = Math.sin(Math.PI * f) * (0.55 + 0.35 * Math.sin(t * 0.37)) * (Math.sin(simT * 0.9 + seed) > -0.6 ? 1 : 0);
+    return s;
+  };
+}
+
+// ---------------------------------------------------------------- shadows: a tight box around the people in close views
+function applyShadows() {
+  sun.castShadow = cfg.shadow > 0;
+  renderer.shadowMap.type = cfg.soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+  if (sun.shadow.mapSize.x !== cfg.shadow) { sun.shadow.mapSize.set(cfg.shadow, cfg.shadow); sun.shadow.map?.dispose(); sun.shadow.map = null; }
+  if (env.proxy) env.proxy.castShadow = cfg.shadow > 0;
+  renderer.shadowMap.needsUpdate = true;
+  for (const c of pool.values()) c.root.traverse((o) => { if (o.material) o.material.needsUpdate = true; });
+  scene.traverse((o) => { if (o.isMesh && o.material && !Array.isArray(o.material)) o.material.needsUpdate = true; });
+}
+const _tmp = new THREE.Vector3(), _lr = new THREE.Matrix4(), _li = new THREE.Matrix4();
+function updateSun() {
+  const close = view !== 'explore';
+  const half = close ? 16 : 36;
+  const center = _tmp;
+  if (close && melos) center.copy(melos.root.position);
+  else { camera.getWorldDirection(center); center.y = 0; center.normalize().multiplyScalar(half * 0.55).add(camera.position); }
+  center.y = 0;
+  const c = sun.shadow.camera;
+  if (c.right !== half) { c.left = -half; c.right = half; c.top = half; c.bottom = -half; c.near = 1; c.far = 220; c.updateProjectionMatrix(); }
+  const texel = (2 * half) / Math.max(1, cfg.shadow || 1024);
+  _lr.lookAt(new THREE.Vector3(), _v.copy(sunDirCur).negate(), UP); _li.copy(_lr).invert();
+  center.applyMatrix4(_li); center.x = Math.round(center.x / texel) * texel; center.y = Math.round(center.y / texel) * texel; center.applyMatrix4(_lr);
+  sun.target.position.copy(center); sun.position.copy(center).addScaledVector(sunDirCur, 120);
+  sun.target.updateMatrixWorld();
+  const D = 1200;
+  sunDisc.visible = sunDirCur.y > -0.02;
+  sunDisc.position.copy(camera.position).addScaledVector(sunDirCur, D); sunDisc.scale.setScalar(2 * D * Math.tan(4 * D2R));
+  sunDisc.lookAt(camera.position);
+}
+
+// ---------------------------------------------------------------- apply cfg
+async function applyCfg(next, opts = {}) {
+  const prev = { ...cfg };
+  if (next.tier && next.tier !== cfg.tier && next.dpr === undefined) Object.assign(next, TIERS[next.tier]);
+  Object.assign(cfg, next);
+  renderer.setPixelRatio(cfg.dpr >= 3 ? devicePixelRatio : Math.min(devicePixelRatio, cfg.dpr));
+  renderer.setSize(innerWidth, innerHeight, false);
+  scene.fog = cfg.fog ? new THREE.FogExp2(FOG_BASE.clone(), FOG_DENSITY) : null;
+  if (cfg.post) { ensureComposer(); composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(innerWidth, innerHeight); }
+  if (opts.force || prev.shadow !== cfg.shadow || prev.soft !== cfg.soft || prev.skin !== cfg.skin) applyShadows();
+  if (opts.force || ['tier', 'talkN', 'walkN', 'gaze', 'gait'].some((k) => prev[k] !== cfg[k]) || opts.view) await setView(opts.view || view);
+  if (prev.voiceName !== cfg.voiceName && voice.ctx) loadVoice(cfg.voiceName).catch(() => {});
+  syncButtons(); showSizes();
+}
+function syncButtons() {
+  document.querySelectorAll('#panel .row[data-key]').forEach((row) => {
+    const k = row.dataset.key;
+    row.querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(cfg[k]) === b.dataset.v));
+  });
+}
+document.querySelectorAll('#panel .row[data-key]').forEach((row) => row.addEventListener('click', async (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  const k = row.dataset.key; let v = b.dataset.v;
+  if (['skin', 'talkN', 'post', 'dpr'].includes(k)) v = Number(v);
+  row.querySelectorAll('button').forEach((x) => (x.disabled = true));
+  try { await applyCfg({ [k]: v }); } finally { row.querySelectorAll('button').forEach((x) => (x.disabled = false)); }
+}));
+$('time').addEventListener('input', (e) => setTime(Number(e.target.value)));
+document.querySelectorAll('#timeBtns button').forEach((b) => b.addEventListener('click', () => setTime(Number(b.dataset.t), true)));
+document.querySelectorAll('#bottom [data-view]').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
+document.querySelectorAll('[data-say]').forEach((b) => (b.onclick = () => say(b.dataset.say)));
+$('expr').onclick = () => { exprIdx = (exprIdx + 1) % EXPR.length; $('expr').textContent = '表情：' + EXPR[exprIdx][0]; };
+$('brow').onclick = () => { browIdx = (browIdx + 1) % BROW.length; $('brow').textContent = '眉：' + BROW[browIdx][0]; };
+
+// ---------------------------------------------------------------- frame loop + stats
+const ft = []; let last = performance.now(), simT = 0, frameNo = 0, rec = null, stressN = 1;
+let pairCam = null;
+function drawWith(cam) {
+  if (cfg.post) { composer.passes[0].camera = cam; composer.render(); composer.passes[0].camera = camera; }
+  else renderer.render(scene, cam);
+}
+function renderOnce() {
+  if (view !== 'pair' || viewMode !== 'look') { drawWith(camera); return; }
+  // split screen: the post passes still draw full frames off screen; only the final copy to the screen is cut
+  const a = pool.get('pair_std'), b = pool.get('pair_high'), w = innerWidth, h = innerHeight;
+  renderer.setScissorTest(true);
+  a.root.visible = true; b.root.visible = false; renderer.setScissor(0, 0, Math.floor(w / 2), h); drawWith(camera);
+  a.root.visible = false; b.root.visible = true; renderer.setScissor(Math.floor(w / 2), 0, w - Math.floor(w / 2), h);
+  pairCam.position.copy(camera.position); drawWith(pairCam);
+  a.root.visible = b.root.visible = true;
+  renderer.setScissorTest(false);
+}
+function loop() {
+  requestAnimationFrame(loop);
+  const now = performance.now(); const dt = Math.min(0.05, (now - last) / 1000); const fdt = now - last; last = now;
+  simT += dt;
+  voiceFrame(dt);
+  if (melos?.face && !melos.face.speech) melos.face.speech = viewMode === 'bench' ? benchSpeech(0) : mainSpeech;
+  const c0u = performance.now();
+  for (const c of pool.values()) c.update(dt, simT);
+  const updMs = performance.now() - c0u;
+  if (follow) follow();
+  updateSun();
+  expoFace += (faceExposure() - expoFace) * Math.min(1, dt * 3);
+  renderer.toneMappingExposure = expoBase * expoFace;
+  frameNo++;
+  const reps = stressN, c0 = performance.now();
+  renderer.info.reset();
+  for (let k = 0; k < reps; k++) renderOnce();
+  if (rec) {
+    rec.ft.push(fdt); rec.cpu.push((performance.now() - c0) / reps); rec.upd.push(updMs);
+    if (reps === 1) { rec.calls = Math.max(rec.calls, renderer.info.render.calls); rec.tris = Math.max(rec.tris, renderer.info.render.triangles); }
+    if (rec.ft.length >= rec.n || now - rec.t0 >= rec.ms) { const r = rec; rec = null; r.done(r); }
+  }
+  ft.push(fdt); if (ft.length > 120) ft.shift();
+  if (frameNo % 15 === 0 && !$('hud').classList.contains('hidden') && reps === 1) {
+    const p95 = pct(ft, 0.95), p50 = pct(ft, 0.5);
+    const fs = faceShare();
+    const px = view === 'explore' && melos ? `梅洛斯高 ${bodyPx(melos)}px` : fs != null ? `脸占屏高 ${(fs * 100).toFixed(1)}%` : '';
+    $('hud').textContent = `${(1000 / p50).toFixed(0)} fps  p95 ${p95.toFixed(1)} ms\ndraw ${renderer.info.render.calls}  tri ${(renderer.info.render.triangles / 1000).toFixed(0)}k\n${cfg.tier === 'high' ? '强机' : '档 B'} · DPR ${renderer.getPixelRatio().toFixed(2)} · ${px}`;
+  }
+}
+
+// ---------------------------------------------------------------- benchmark
+// every config looks at the same over-the-shoulder shot at 17:30 (the explore one at the follow camera)
+const STD = { tier: 'std', dpr: 1.5, soft: 0, post: 1, skin: 1, face: 1, walkN: 0 };
+const HIGH = { tier: 'high', dpr: 2, soft: 1, post: 1, skin: 1, face: 1, walkN: 0 };
+const SUITE = [
+  { id: 'k1', name: '档 B：广场＋玩家背影（不放对话版）', ...STD, talkN: 0, view: 'talk' },
+  { id: 'k2', name: '档 B：1 个对话版（说话、眨眼、视线）', ...STD, talkN: 1, view: 'talk' },
+  { id: 'k3', name: '档 B：2 个对话版', ...STD, talkN: 2, view: 'talk' },
+  { id: 'k4', name: '档 B：2 个对话版，脸不动（量形变的代价）', ...STD, talkN: 2, face: 0, view: 'talk' },
+  { id: 'k5', name: '强机：4 个对话版', ...HIGH, talkN: 4, view: 'talk' },
+  { id: 'k6', name: '强机：4 个对话版，皮肤不透光', ...HIGH, talkN: 4, skin: 0, view: 'talk' },
+  { id: 'k7', name: '档 B：探索镜头，10 个走动版', ...STD, talkN: 1, walkN: 8, view: 'explore' },
+];
+let ENV = null, suiteId = null;
+const results = [];
+function envInfo() {
+  const gl = renderer.getContext(); const ext = gl.getExtension('WEBGL_debug_renderer_info');
+  return { ua: navigator.userAgent, dpr: devicePixelRatio, screen: [screen.width, screen.height], inner: [innerWidth, innerHeight], gpu: ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER), astc: !!gl.getExtension('WEBGL_compressed_texture_astc'), maxTex: gl.getParameter(gl.MAX_TEXTURE_SIZE) };
+}
+const record = (n, ms) => new Promise((done) => { rec = { ft: [], cpu: [], upd: [], calls: 0, tris: 0, n, ms, t0: performance.now(), done }; });
+const VSYNC = 1000 / 60, STRESS_STEPS = [2, 4, 8, 16, 32];
+const trimMean = (a) => { const s = [...a].sort((x, y) => x - y); const k = Math.floor(s.length * 0.05); const m = s.slice(k, s.length - k || undefined); return m.reduce((x, y) => x + y, 0) / Math.max(1, m.length); };
+async function measureCfg(c, i, n) {
+  const { id, name, view: v, ...conf } = c;
+  const msg = `${i + 1} / ${n}：${name}`; $('benchMsg').textContent = msg;
+  const talkN = conf.talkN;
+  await applyCfg({ ...conf, talkN: Math.max(1, talkN) }, { view: v });
+  if (talkN === 0 && melos) melos.root.visible = false;
+  stressN = 1;
+  const bar = $('bench').querySelector('.pb>div');
+  const prog = (f) => { bar.style.width = (((i + f) / n) * 100).toFixed(1) + '%'; };
+  await renderer.compileAsync(scene, camera);
+  await sleep(1500); prog(0.15);
+  const r = await record(300, 5500); prog(0.45);
+  const p50 = pct(r.ft, 0.5), p95 = pct(r.ft, 0.95), p99 = pct(r.ft, 0.99);
+  const steps = []; let lastStep = null;
+  for (let s = 0; s < STRESS_STEPS.length; s++) {
+    stressN = STRESS_STEPS[s];
+    $('benchMsg').textContent = `${msg}（加压 ×${stressN}）`;
+    await record(6, 600);
+    const q = await record(30, 2500);
+    lastStep = { n: stressN, tMean: +trimMean(q.ft).toFixed(1), cpu: +pct(q.cpu, 0.5).toFixed(2), frames: q.ft.length };
+    steps.push(lastStep);
+    prog(0.45 + 0.55 * (s + 1) / STRESS_STEPS.length);
+    if (lastStep.tMean >= 45) break;
+  }
+  stressN = 1;
+  const k = lastStep.n, T = lastStep.tMean;
+  const under = T < VSYNC * 1.25;
+  const gpuHi = T / k, gpuLo = Math.max(0, T - VSYNC) / k;
+  const stress = { steps, n: k, tMean: T, gpuMs: under ? null : +((gpuHi + gpuLo) / 2).toFixed(2), gpuLo: +gpuLo.toFixed(2), gpuHi: +gpuHi.toFixed(2), cpuMs: lastStep.cpu, bound: under ? 'under' : (lastStep.cpu * k >= 0.8 * T ? 'cpu' : 'gpu') };
+  return { id, name, cfg: { ...c }, frames: r.ft.length, fps50: +(1000 / p50).toFixed(1), p50: +p50.toFixed(1), p95: +p95.toFixed(1), p99: +p99.toFixed(1), jankPct: +(100 * r.ft.filter((x) => x > 34).length / Math.max(1, r.ft.length)).toFixed(1), drawCalls: r.calls, tris: r.tris, dprUsed: +renderer.getPixelRatio().toFixed(2), updMs: +pct(r.upd, 0.5).toFixed(2), submitMs: +pct(r.cpu, 0.5).toFixed(2), gpuMs: stress.gpuMs, stress, suiteVer: 1 };
+}
+const fmtGpu = (r) => (r.stress?.bound === 'under' ? '≤' + r.stress.gpuHi.toFixed(1) : r.gpuMs != null ? r.gpuMs.toFixed(1) + (r.stress.bound === 'cpu' ? '*' : '') : '—');
+const grade = (p95) => (p95 <= 20 ? 'ok' : p95 <= 34 ? 'warn' : 'bad');
+function addRow(r) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>${r.id} ${r.name}</td><td><span class="dot ${grade(r.p95)}"></span>${r.p95}</td><td>${r.fps50}</td><td>${r.jankPct}%</td><td>${fmtGpu(r)}</td><td>${r.drawCalls}</td>`;
+  $('resBody').append(tr);
+}
+async function runSuite() {
+  viewMode = 'bench';
+  ['bottom', 'panel', 'hud', 'sub', 'pairLabels'].forEach((id) => $(id).classList.add('hidden'));
+  $('cover').classList.add('hidden'); $('results').classList.add('hidden'); $('bench').classList.remove('hidden');
+  let wake = null; try { wake = await navigator.wakeLock?.request('screen'); } catch { wake = null; }
+  await loadModel('talk_high');
+  ENV = ENV || envInfo(); suiteId = Date.now().toString(36);
+  results.length = 0; $('resBody').textContent = '';
+  const prev = { ...cfg }, prevTime = timeMin, prevView = view; let saved = 0;
+  if (timeMin !== 1050) setTime(1050, true);
+  if (melos?.face) melos.face.speech = null;
+  for (let i = 0; i < SUITE.length; i++) {
+    const r = await measureCfg(SUITE[i], i, SUITE.length);
+    results.push(r); addRow(r);
+    if (await saveRun(r)) saved++;
+  }
+  try { await wake?.release(); } catch { /* released already */ }
+  $('bench').classList.add('hidden');
+  viewMode = 'results';
+  setTime(prevTime, true);
+  if (melos?.face) melos.face.speech = null;
+  await applyCfg(prev, { view: prevView });
+  $('results').classList.remove('hidden');
+  $('resState').textContent = db ? `测完了，${saved} / ${SUITE.length} 条已保存，前端能直接读到。` : '测完了。这个视图保存不了，请点「复制结果」发给前端。';
+  showLoadRes();
+}
+function showLoadRes() {
+  $('loadRes').innerHTML = `打开页面到第一帧：<b>${(marks.firstFrame / 1000).toFixed(1)} 秒</b>（three.js 加载完 ${(marks.module / 1000).toFixed(1)} 秒，着色器编译 ${marks.compileMs} ms）。<br>首次进入下载的资源：${fmtMB(marks.bootBytes)}（不含 three.js；强机人物在后台再下）。`;
+}
+const fmtMB = (b) => (b / 1048576).toFixed(2) + ' MB';
+$('copyRes').onclick = () => {
+  const text = JSON.stringify({ device: $('devname').value.trim(), env: ENV || envInfo(), load: marks, assets: assetLog, models: modelFacts(), results }, null, 1);
+  const fallback = () => { const t = $('dump'); t.value = text; t.select(); try { document.execCommand('copy'); toast('已复制'); } catch { toast('复制失败'); } };
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(() => toast('已复制'), fallback); else fallback();
+};
+$('backLook').onclick = () => enterLook();
+
+// ---------------------------------------------------------------- shared store
+let db = null;
+async function saveRun(r) {
+  if (!db) return false;
+  const row = { ...r, page: 'a0', build: MANIFEST.build || null, suiteId, device: $('devname').value.trim() || null, env: ENV, load: marks, models: modelFacts(), ts: new Date().toISOString() };
+  for (let k = 0; k < 2; k++) {
+    try { await db.collection('runs').add(row); return true; }
+    catch (e) { if (e?.code !== 'unavailable') return false; await sleep(600 + Math.random() * 900); }
+  }
+  return false;
+}
+async function saveLoadOnly() {
+  if (!db || saveLoadOnly.done) return; saveLoadOnly.done = true;
+  try { await db.collection('loads').add({ page: 'a0', build: MANIFEST.build || null, device: $('devname').value.trim() || null, env: envInfo(), load: marks, assets: assetLog, ts: new Date().toISOString() }); } catch { /* not critical */ }
+}
+(async () => {
+  try { db = await window.claude?.use?.('db'); } catch { db = null; }
+  if (!db) { $('savedState').textContent = '这个视图保存不了结果，请用「复制结果」。'; return; }
+  $('savedState').textContent = '还没有保存的结果。';
+  db.collection('runs').orderBy('ts', 'desc').limit(80).onSnapshot((snap) => {
+    const body = $('savedBody'); body.textContent = '';
+    if (snap.empty) { $('savedState').textContent = '还没有保存的结果。'; return; }
+    $('savedState').textContent = `${snap.size} 条`;
+    for (const d of snap.docs) {
+      const r = d.data(); const tr = document.createElement('tr');
+      [r.device || (r.env?.gpu || '').slice(0, 20), `${r.id || ''} ${r.name || ''}`, r.p95, fmtGpu(r)].forEach((v) => { const td = document.createElement('td'); td.textContent = String(v ?? ''); tr.append(td); });
+      body.append(tr);
+    }
+  }, () => { $('savedState').textContent = '和保存处的连接断了。'; });
+})();
+
+// ---------------------------------------------------------------- UI glue
+function enterLook() {
+  viewMode = 'look';
+  ['cover', 'results', 'bench'].forEach((id) => $(id).classList.add('hidden'));
+  ['bottom', 'hud'].forEach((id) => $(id).classList.remove('hidden'));
+  setView(view);
+}
+$('goLook').onclick = () => { saveLoadOnly(); enterLook(); };
+$('goBench').onclick = () => { saveLoadOnly(); runSuite(); };
+$('toBench').onclick = () => runSuite();
+$('openPanel').onclick = () => $('panel').classList.remove('hidden');
+$('closePanel').onclick = () => $('panel').classList.add('hidden');
+function modelFacts() {
+  const out = {};
+  for (const [k, v] of Object.entries(TPLR)) out[k] = { bytes: v.bytes, tris: Math.round(v.tris), meshes: v.meshes, morphMB: +(v.morphBytes / 1048576).toFixed(1) };
+  return out;
+}
+async function showSizes() {
+  const f = {}; for (const [k, p] of Object.entries(TPL)) f[k] = await p;
+  const row = (label, k) => { const s = SIZES[k]; const m = f[k]; return [label, `${s ? fmtMB(s) : '—'}${m ? ` · ${(m.tris / 1000).toFixed(1)}k 面 · ${m.meshes} 个网格` + (m.morphBytes ? ` · 形变占显存 ${(m.morphBytes / 1048576).toFixed(1)} MB` : '') : ''}`]; };
+  const rows = [row('对话版 档 B', 'talk_std'), row('对话版 强机', 'talk_high'), row('走动版', 'walk'), row('共用动作（待机、走、跑）', 'anims'), ['测口型的声音（只在这一页）', SIZES.voice ? fmtMB(SIZES.voice) : '—']];
+  $('sizes').innerHTML = '<table>' + rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('') + '</table><p class="note">下载大小是 glb 本身（几何 meshopt 压缩，贴图 KTX2）。形变数据在 three.js 里会展开成浮点贴图，所以显存比下载大得多。</p>';
+}
+
+// ---------------------------------------------------------------- boot
+(async () => {
+  try {
+    makeRenderer();
+    setLoad(0.1, '加载场景');
+    const geoBin = await b64Module('data/plaza_geo.js');
+    const g = await gltfLoader.parseAsync(geoBin.buffer, '');
+    for (const name of ['ground', 'arch', 'far', 'proxy']) env[name] = g.scene.getObjectByName(name);
+    scene.add(g.scene);
+    env.proxy.traverse((o) => { if (o.isMesh) { o.material = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }); o.castShadow = true; o.receiveShadow = false; } });
+    setLoad(0.35, '加载贴图');
+    curTexSet = await texSet();
+    await buildPlazaMaterials();
+    setLoad(0.6, '加载人物');
+    await Promise.all([loadModel('talk_std'), loadModel('walk'), loadClips()]);
+    setTime(timeMin, true);
+    await applyCfg({}, { force: true });
+    marks.assetsDone = Math.round(performance.now());
+    setLoad(0.9, '编译着色器');
+    const tc = performance.now(); await renderer.compileAsync(scene, camera); marks.compileMs = Math.round(performance.now() - tc);
+    renderOnce();
+    renderer.getContext().finish();
+    marks.firstFrame = Math.round(performance.now());
+    marks.bootBytes = assetLog.reduce((s, a) => s + (a.bytes || 0), 0) + bootImageBytes();
+    setLoad(1, `准备好了：打开页面到第一帧 ${(marks.firstFrame / 1000).toFixed(1)} 秒`);
+    loop();
+    $('goLook').disabled = $('goBench').disabled = false;
+    if (!SKIN_OK) toast('皮肤着色器补丁没对上 three.js 版本，透光关闭');
+    setTimeout(() => { loadModel('talk_high').then(showSizes).catch(() => { /* optional */ }); }, 1200);
+  } catch (err) {
+    console.error(err);
+    setLoad(1, '启动失败：' + (err?.message || err));
+  }
+})();
+if (location.search.includes('debug')) window.__a0 = { pool, cfg, get camera() { return camera; }, get melos() { return melos; }, THREE, setView, applyCfg, setTime, voiceCur: () => ({ ...voice.cur, speaking: voice.speaking, lat: outLatency() }) };
+function bootImageBytes() {
+  let b = 0;
+  for (const e of performance.getEntriesByType('resource')) if (/\/(tex|lm)\//.test(e.name)) b += e.encodedBodySize || e.transferSize || 0;
+  return b;
+}
+</script>
+</body>
+</html>

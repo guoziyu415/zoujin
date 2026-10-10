@@ -1,0 +1,13 @@
+import { chromium } from 'playwright';
+const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
+const logs = []; page.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') logs.push(m.text()); }); page.on('pageerror', (e) => logs.push(e.message));
+await page.goto('http://127.0.0.1:8777/index.html');
+await page.waitForFunction(() => !document.getElementById('goLook').disabled, null, { timeout: 240000 });
+console.log(await page.textContent('#loadmsg'));
+await page.screenshot({ path: '/tmp/spk/shots8/boot_cover.png' });
+await page.click('#goLook'); await page.waitForTimeout(3000);
+await page.screenshot({ path: '/tmp/spk/shots8/boot_first.png' });
+console.log('time note:', await page.textContent('#timeNote'));
+console.log(logs.join('\n') || 'no errors');
+await browser.close();
