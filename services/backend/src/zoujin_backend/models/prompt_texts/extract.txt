@@ -14,6 +14,8 @@
   - set / inc 状态变量、relocate 人物、hold 物品换手：只在这一轮里真的发生了才写。
 - needsConfirm：玩家的意思不确定、而事件会让节拍 prevented / altered 或改变人质、玩家自己的处境时写 true，否则 false。
 
+有 <action> 时，这一轮是玩家做的一个动作（kind、对象 target、物品 item），不是对话：按这个动作找候选事件，actor 是 player，type 是 action，origin 写 action。动作本身做不到的也照写成候选（例：交出手上没有的东西写 hold），由后面的检查判。
+
 不算事件的：只是说说的打算（「あした行くつもりだ」）、问题、玩家或人物的说法本身（「王は悪い人だ」不让任何事实成立）、
 人物说错了的话（不提取，叙事者会另行处理）。什么都没有就输出 {"candidates": []}。
 

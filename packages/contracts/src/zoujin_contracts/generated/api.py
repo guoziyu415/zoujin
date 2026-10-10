@@ -2968,6 +2968,10 @@ class CharacterPresencePatch(BaseModel):
     spot: Spot | None = None
     activity: Activity | None = None
     talkable: bool | None = None
+    group: Literal[True] | None = None
+    """
+    （v1.0.5）进场时和 CharacterPresence 一样带（一群人：不占位置点、没有 spot）
+    """
     relationLabel: str | None = None
     """
     由 trust 区间映射（第 4 节的表）
@@ -3246,7 +3250,10 @@ class PlanAlternative(BaseModel):
         validate_by_name=True,
         arbitrary_types_allowed=True,
     )
-    optionId: PlanOptionId
+    optionId: PlanOptionId | ExitId
+    """
+    另一个打算（plan_…），或某个给定去处的 ID（v1.0.5 放宽）。前端照旧回 act_choose { optionId }
+    """
     label: Annotated[str, Field(min_length=1)]
     sceneId: SceneId
     tLabel: TLabel
@@ -3688,9 +3695,9 @@ class ActEnd(BaseModel):
         arbitrary_types_allowed=True,
     )
     actId: ActId
-    recapLines: Annotated[list[RecapLine], Field(max_length=4, min_length=2)]
+    recapLines: Annotated[list[RecapLine], Field(max_length=4, min_length=0)]
     """
-    「この幕であなたが動かしたこと」
+    「この幕であなたが動かしたこと」。玩家这一幕什么都没动时为空，前端显示 actEnd.summary.empty（v1.0.5 放宽，原来 2〜4 条）
     """
     options: Annotated[list[ActOption], Field(min_length=1)]
     freeform: Freeform
@@ -3708,7 +3715,10 @@ class ActEndedMessage(BaseModel):
     )
     type: Literal["act_ended"] = "act_ended"
     actId: ActId
-    recapLines: Annotated[list[RecapLine], Field(max_length=4, min_length=2)]
+    recapLines: Annotated[list[RecapLine], Field(max_length=4, min_length=0)]
+    """
+    玩家这一幕什么都没动时为空（v1.0.5 放宽，原来 2〜4 条）
+    """
     options: Annotated[list[ActOption], Field(min_length=1)]
     freeform: Freeform
 

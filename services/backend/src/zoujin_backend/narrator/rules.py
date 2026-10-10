@@ -28,7 +28,7 @@ Json = Any
 RULES = ("R1-anchor", "R2-precondition", "R3-time", "R4-knowledge", "R5-persona", "R6-safety", "R7-capability")
 STEP3 = ("R1-anchor", "R2-precondition", "R3-time", "R4-knowledge", "R7-capability")  # 只由第 3 步判
 MODEL_ONLY = ("R5-persona",)  # 只由第 4 步判；R6 两步都判，R1 写在文字里的那部分也是第 4 步
-VERSION = "b2.1"  # 判法改了就加一
+VERSION = "b3.1"  # 判法改了就加一（b3.1：幕末打算的对象按「这一段能碰到」判在场）
 CHECKER = f"rules@{VERSION}"
 
 # 死了的不复活（rule.no-resurrection）：变量到了这个值就不能再改回别的
@@ -224,10 +224,13 @@ class _Judge:
             self.hits.append(Hit(rule, code, reason))
 
     def here(self, who: str | None) -> bool:
-        """在玩家身边：玩家自己；或不是不在场、和玩家同一地点或玩家正跟着他。"""
+        """在玩家身边：玩家自己；或不是不在场、和玩家同一地点或玩家正跟着他（幕末的打算见下）。"""
         if who in (None, "player"):
             return True
         assert who is not None
+        if (self.turn.act or {}).get("kind") == "plan":
+            # 幕末的打算（B-3）：说的是跳过的这段时间里要做的事，对象在玩家能去的地方就算碰得到（此刻不在场也算）
+            return self.where.get(who) in reach(self.ix, self.state, self.cur)
         if absent(self.ix, self.state, who):
             return False
         return self.where.get(who) == self.ppl or self.cur.get("var.player.companionOf") == who

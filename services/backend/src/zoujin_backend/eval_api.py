@@ -9,8 +9,9 @@
   `models/vertex.py`）。一局是测试库里真的一局：一个新账号、一局、
   起点的事件和 world_state，之后的步骤走和网关同一个叙事者（`Narrator.run`）。
 - 做了的：setup 的 `role`、`place`、`budgetTier`（只记下）、`scenario`、`checkpoint`、`events`；步骤 `say`（人物用文字
-  回答，再走叙事者整条流水线，B-2）、`advance`；`check`（第 3 步 + 按 `model_checks` 跑第 4 步，不改写、不提交）；
-  查询 `state()`、`events()`。
+  回答，再走叙事者整条流水线，B-2）、`advance`；`act`、`propose`、`choose`（B-3：和 WebSocket 同一条路，写任务、
+  叫叙事者）；`check`（第 3 步 + 按 `model_checks` 跑第 4 步，不改写、不提交）；查询 `state()`、`events()`。
+  检查点停在这一幕的收幕节拍上（例 `sc.canon@beat.07`）时，setup 之后就是幕末待选。
 - 没做的步骤和查询、带 `persona` 的 setup、带 `memory` 的布置事件抛 `EvalNotImplemented("<名字>")`；
   回放里查不到抛 `ReplayMissing`。账本到上限抛 `BudgetStop`，模型回 429 抛 `RateLimited`：这两个要整次停下，不是跳过
   这一例。运行器按类名认。
@@ -41,9 +42,10 @@ from zoujin_backend.db.tables import playthrough_metrics, playthroughs, users
 from zoujin_backend.db.tables import world_state as world_state_t
 from zoujin_backend.ids import IdGen
 from zoujin_backend.models.text import BudgetStop, RateLimited, ReplayMissing, TextModel, text_model
+from zoujin_backend.narrator import acts
 from zoujin_backend.narrator.core import Narrator, Result
 from zoujin_backend.narrator.pipeline import CallFailed, Pipeline, Spend, TurnInput
-from zoujin_backend.narrator.writer import Writer
+from zoujin_backend.narrator.writer import Writer, act_closed
 from zoujin_backend.schemas import SchemaBook
 from zoujin_backend.trace import Tracer
 from zoujin_backend.world import Book, Library
@@ -181,7 +183,7 @@ class Session:
                 await c.execute(
                     update(playthroughs)
                     .where(playthroughs.c.playthrough_id == self.pid)
-                    .values(last_seq=w.state["seq"])
+                    .values(last_seq=w.state["seq"], act_end=setup_act_end(self.book, w, self.setup_doc))
                 )
         finally:
             await engine.dispose()
@@ -227,6 +229,94 @@ class Session:
             "clockMinutes": result.minutes,
             "traceId": turn_id,
         }
+
+    def act(self, kind: str, target: str | None, params: Mapping[str, Json]) -> Json:
+        """动作（api-contract 3.8）：和 `action` 消息一样写一行任务，叙事者判定。"""
+        self.steps += 1
+        request: Json = {"clientMsgId": f"eval-{self.steps}", "kind": kind, "params": dict(params or {})}
+        if target is not None:
+            request["target"] = target
+        r, t0 = _run(self._task("action", request))
+        info = r.info
+        out: Json = {
+            "events": self._step_events(r),
+            "clockMinutes": r.minutes,
+            "traceId": r.task.turn_id,
+            "status": info.get("status"),
+            "pieces": list(r.pieces),
+            "aid": info.get("aid"),
+        }
+        for k in ("narration", "setPiece"):
+            if k in info:
+                out[k] = info[k]
+        return out
+
+    def propose(self, text: str) -> Json:
+        """幕末用文字说出打算（3.11）：原话存进 utterances，叙事者的 plan 判能不能成行。收幕以前、试过 2 次以后
+        返回 `error: "invalid_request"`、没有事件（网关这时回 invalid_request，不写任务）。"""
+        self.steps += 1
+        r, t0 = _run(self._task("plan", {"clientMsgId": f"eval-{self.steps}", "mode": "text"}, said=text))
+        info = r.info
+        moved = [e for e in r.events if e["type"] == "act-transition" and e["actor"] == "player"]
+        alt = info.get("alternative")
+        out: Json = {
+            "events": self._step_events(r),
+            "clockMinutes": r.state["t"] - t0,
+            "traceId": r.task.turn_id,
+            "accepted": bool(info.get("accepted")),
+            "plan": moved[-1].get("plan") if moved else None,
+            "alternative": alt,
+            "alternatives": [alt] if alt else [],
+            "triesLeft": info.get("triesLeft"),
+            "narration": info.get("narration", []),
+            "pieces": list(r.pieces),
+        }
+        if "error" in info:
+            out["error"] = info["error"]
+        return out
+
+    def choose(self, exit: str, en_route: int | None = None) -> Json:
+        """幕末选去处（3.11）：给定去处，或打算不成行时的替代去处（`plan_…`）。不在选项里返回
+        `error: "invalid_choice"`、没有事件（E4-103）。"""
+        self.steps += 1
+        request: Json = {"clientMsgId": f"eval-{self.steps}", "optionId": exit}
+        if en_route is not None:
+            request["enRouteChoice"] = en_route
+        r, t0 = _run(self._task("choose", request))
+        out: Json = {
+            "events": self._step_events(r),
+            "clockMinutes": r.state["t"] - t0,
+            "traceId": r.task.turn_id,
+            "pieces": list(r.pieces),
+        }
+        if "error" in r.info:
+            out["error"] = r.info["error"]
+        else:
+            out["toAct"] = r.info.get("toAct")
+        return out
+
+    async def _task(self, kind: str, request: Json, said: str | None = None) -> tuple[Result, int]:
+        """写一行任务（打算还存原话），叫叙事者做完。返回这一步的结果和之前的故事时刻。"""
+        engine = self._engine()
+        try:
+            async with engine.begin() as c:
+                st = await store.sim_state(c, self.pid)
+                assert st is not None
+                turn_id = await store.enqueue(
+                    c,
+                    self.ids,
+                    self.pid,
+                    kind=kind,
+                    input_mode="text" if kind == "plan" else None,
+                    client_msg_id=request.get("clientMsgId"),
+                    request=request,
+                )
+                if said is not None:
+                    await store.add_utterance(c, self.ids, self.pid, turn_id, speaker="player", text=said, t=st["t"])
+            done = await self._narrator(engine).run(self.pid)
+        finally:
+            await engine.dispose()
+        return self._only(done, turn_id), int(st["t"])
 
     def advance(self, minutes: int) -> Json:
         self.steps += 1
@@ -310,9 +400,6 @@ class Session:
     def _no(self, name: str) -> NoReturn:
         raise EvalNotImplemented(name)
 
-    def act(self, kind: str, target: str | None, params: Mapping[str, Json]) -> Json:
-        self._no("act")
-
     def delete_memory(self, character: str, from_step: int) -> Json:
         self._no("delete_memory")
 
@@ -327,12 +414,6 @@ class Session:
 
     def silence(self, seconds: int) -> Json:
         self._no("silence")
-
-    def propose(self, text: str) -> Json:
-        self._no("propose")
-
-    def choose(self, exit: str, en_route: int | None = None) -> Json:
-        self._no("choose")
 
     def memories(self, character: str) -> list[Json]:
         self._no("memories")
@@ -376,6 +457,20 @@ def play_setup(w: Writer, scenarios: Mapping[str, Json], setup: Mapping[str, Jso
                 check=SETUP_PASSED,
             )
         )
+
+
+def setup_act_end(book: Book, w: Writer, setup: Mapping[str, Json]) -> Json | None:
+    """检查点停在这一幕的收幕节拍上（例 `sc.canon@beat.07`）：setup 之后就是幕末待选（B-3 第 5 条），幕末的去处
+    记在局上。只认收幕节拍本身：停在更后面的节拍上的老用例（`opening()` 不换幕）照旧可以对话。"""
+    if "checkpoint" not in setup:
+        return None
+    _, until = parse_checkpoint(str(setup["checkpoint"]))
+    act = acts.current_act(book, w.state)
+    if not act.get("exits") or until is None or until[0] != "beat" or until[1] not in act["end"]["onBeats"]:
+        return None
+    if not act_closed(book, w.state):
+        return None
+    return acts.act_end(book, w.state, 0, w.events)
 
 
 def _setup_event(w: Writer, d: Opened) -> Json:

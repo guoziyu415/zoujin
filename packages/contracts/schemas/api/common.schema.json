@@ -348,6 +348,10 @@
         "talkable": {
           "type": "boolean"
         },
+        "group": {
+          "description": "（v1.0.5）进场时和 CharacterPresence 一样带（一群人：不占位置点、没有 spot）",
+          "$ref": "../data/world-model.schema.json#/$defs/Character/properties/group"
+        },
         "relationLabel": {
           "$ref": "../data/memory.schema.json#/$defs/Relationship/properties/label"
         },
@@ -1409,13 +1413,13 @@
           "$ref": "../data/common.schema.json#/$defs/ActId"
         },
         "recapLines": {
-          "description": "「この幕であなたが動かしたこと」",
+          "description": "「この幕であなたが動かしたこと」。玩家这一幕什么都没动时为空，前端显示 actEnd.summary.empty（v1.0.5 放宽，原来 2〜4 条）",
           "type": "array",
           "items": {
             "type": "string",
             "minLength": 1
           },
-          "minItems": 2,
+          "minItems": 0,
           "maxItems": 4
         },
         "options": {
@@ -1438,7 +1442,15 @@
       "required": ["optionId", "label", "sceneId", "tLabel"],
       "properties": {
         "optionId": {
-          "$ref": "#/$defs/PlanOptionId"
+          "description": "另一个打算（plan_…），或某个给定去处的 ID（v1.0.5 放宽）。前端照旧回 act_choose { optionId }",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PlanOptionId"
+            },
+            {
+              "$ref": "../data/common.schema.json#/$defs/ExitId"
+            }
+          ]
         },
         "label": {
           "type": "string",

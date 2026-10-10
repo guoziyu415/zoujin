@@ -14,6 +14,8 @@ from functools import cached_property
 from pathlib import Path
 from typing import Any
 
+from zoujin_worldsim import Sim
+
 from zoujin_backend.clock import Labels
 
 Json = Any
@@ -88,6 +90,11 @@ class Book:
 
     def label(self, t: int) -> str:
         return self.labels.label(t)
+
+    @cached_property
+    def sim(self) -> Sim:
+        """条件求值（`holds`）用的 W-1 推演器，一个版本一份。"""
+        return Sim(self.world)
 
     @cached_property
     def characters(self) -> dict[str, Json]:

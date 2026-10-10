@@ -1,9 +1,9 @@
-# 前后端接口约定（api-contract.md）v1.0.4
+# 前后端接口约定（api-contract.md）v1.0.5
 
-负责人：后端 · 状态：**v1.0.4，冻结**（v1.0 在 C-1 冻结；v1.0.1 把 C-1 评审定下的写进正文；v1.0.2 把 B-1 评审定下的几处顺序写进正文；v1.0.3 把 B-0、F-2b 评审和 S-077 ⑫ 定下的写进正文；v1.0.4 把数据契约 1.7 里前端要拿到的几样加进接口）：之后只做加法（第 0 节「版本」），每种消息和响应的 JSON Schema 在 `packages/contracts/schemas/api/`。v0.3 吸收了前端评审 17 条（`frontend/reviews/backend-v0.1.md` 和 frontend-design 第 14 节 1〜17）、数据评审 16 条（`data/reviews/backend-v0.1.md`）、ux-design 18.2 的接口要求，以及 decisions S-022〜S-053、D-012〜D-015。v0.3.2 和数据契约 v1.2 对齐。逐条对照见第 9 节。
+负责人：后端 · 状态：**v1.0.5，冻结**（v1.0 在 C-1 冻结；v1.0.1 把 C-1 评审定下的写进正文；v1.0.2 把 B-1 评审定下的几处顺序写进正文；v1.0.3 把 B-0、F-2b 评审和 S-077 ⑫ 定下的写进正文；v1.0.4 把数据契约 1.7 里前端要拿到的几样加进接口；v1.0.5 按 B-3 卡放宽三处 Schema、补一条错误说明）：之后只做加法（第 0 节「版本」），每种消息和响应的 JSON Schema 在 `packages/contracts/schemas/api/`。v0.3 吸收了前端评审 17 条（`frontend/reviews/backend-v0.1.md` 和 frontend-design 第 14 节 1〜17）、数据评审 16 条（`data/reviews/backend-v0.1.md`）、ux-design 18.2 的接口要求，以及 decisions S-022〜S-053、D-012〜D-015。v0.3.2 和数据契约 v1.2 对齐。逐条对照见第 9 节。
 数据字段以 `data/contracts.md` 为准（v1.7；标「契约 1.1」「契约 1.2」「契约 1.4」的字段是这几个小版本加的；1.3 加的随身物品不进接口，物品只出现在 `give` 类按钮上；1.6 的结局卡见 2.8；1.7 的位置点、幕末副题和落地、固定演出、可调查物见 2.3、3.8、3.11、3.14），本文只定义传输形状。字段名 camelCase；WebSocket 消息类型 snake_case。
 相关：`backend/backend-design.md` v1.0.9（为什么这么设计）· `frontend/frontend-design.md` · `ux/ux-design.md`
-最近更新：2026-10-10（v1.0.4）
+最近更新：2026-10-10（v1.0.5）
 
 ---
 
@@ -414,7 +414,7 @@
 }
 ```
 - **序号**：一局只有一个 `seq` 序列。`commit` 覆盖 `fromSeq`〜`seq` 这一段（含两端），中间不可见的事件（3.7）也算在内。前端记住上一次的 `seq`；新 `commit.fromSeq` ≠ 上次 `seq + 1` 时，用 2.4 补拉再取快照。全是不可见事件的提交（例：玩家不在场的人物打算）也推一条 `events: []` 的 `commit`，让序号接得上。
-- `patch` 的字段都是快照（2.3）字段的增量，按 id 合并；`actions` 和 `interactables` 用 `add` / `remove`，`add` 里的 id 已经有了就整条替换（例：`enabled` 变了）。`clock` 必带 `t`、`tLabel`，`deadlineT` 可省。`voice`、`status` 不走 `patch`。
+- `patch` 的字段都是快照（2.3）字段的增量，按 id 合并（人物进场时带完整的 `CharacterPresence`，`group` 的人物也带 `group: true`，v1.0.5）；`actions` 和 `interactables` 用 `add` / `remove`，`add` 里的 id 已经有了就整条替换（例：`enabled` 变了）。`clock` 必带 `t`、`tLabel`，`deadlineT` 可省。`voice`、`status` 不走 `patch`。
 - `memories[].change`：`added` / `updated` / `deleted`；記憶帳的查询失效重拉。`added`、`updated` 必带 `text` 和 `kind`，`deleted` 不带。
 - `reveal`：关键时刻（S-041 的 4 种，3.4.1），**直接带上因果链**，不用再调 `/why`（前端建议第 8 条）。链和 `/why` 一样最长 12 步，超过时中间折叠，`reveal.collapsed` 给折叠了几步；没折叠时省略。
 - `cue`：服务端在某个时刻触发的一句固定台词，没有时为 `null`。现在只有一种：`{ "kind": "arrival_capped", "speaker": "char.melos", "text": "……これなら、間に合う。" }`——这一局梅洛斯的预计到达第一次落在到达下限（17:30）的那次提交（S-066 ①，ux-design 4.3），只出一次；文字来自世界模型的 `clock.deadline.earliestArrivalCue`。梅洛斯和玩家在同一个地点时 `speaker` 是他，前端播 manifest 里他的 `cues.arrival_capped`（他正在说话就等这句说完）并显示字幕；不在时 `speaker` 为 `null`，`text` 是叙事（「この足なら、陽の沈む前に着く。」），按 `narration` 显示。断线后补发的 `commit` 里的 `cue`，前端按 `seq` 只演一次。
@@ -559,7 +559,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
   ],
   "freeform": { "allowed": true, "triesLeft": 2 } }
 ```
-- `options` 来自世界模型的 `ActExit`，按 `roles`、`requires` 过滤（例子是切片的第一幕：送过老爺回家才有第二个去处）。`recapLines` 是「この幕であなたが動かしたこと」（2〜4 行）。
+- `options` 来自世界模型的 `ActExit`，按 `roles`、`requires` 过滤（例子是切片的第一幕：送过老爺回家才有第二个去处）。`recapLines` 是「この幕であなたが動かしたこと」（0〜4 行；玩家这一幕什么都没动时为空，前端显示 `actEnd.summary.empty`，v1.0.5）。
 - **副题**（v1.0.4，ux-design 4.4）：`where` 是前半「{地点}・{日子}の{时段}」，服务端算好：地点是落点 `ActExit.place` 的 `Place.name`，日子和时段是落点时刻（和 `tLabel` 同一个时刻）在世界模型 `clock.labels` 的 `days`、`bands` 里的叫法，中间用「の」，不套 `clock.labels.format`。`sub` 是后半，世界模型的 `ActExit.sub`（≤ 16 字），没有就省略。前端照 UX 拼成一行，例「刑場・三日目の夕方　西の門が見える所で」，不按去处 ID 写死。`because` 现在一律 `null`：世界模型的 `ActExit` 没有写理由的字段，条件去处的说明写在 `sub` 里（例「老爺があなたを覚えている」）。
 - 选给定去处：`act_choose { optionId }`。
 - **过场里的二选一**〔契约 1.4，2.8.1 第 2 步，ux-design 4.5〕：去处的跳过的这段路上有一个还能改的节拍时，这个去处多带一个 `enRoute`：
@@ -583,7 +583,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
     "alternative": { "optionId": "plan_…", "label": "夜明けを待って村へ向かう", "sceneId": "scene.village", "tLabel": "一日目・朝" },
     "triesLeft": 1 }
   ```
-  `accepted: true` 时 `narration` 是「あなたは、〜ことにした。」，紧接着进入幕切换（服务端写一条玩家的 `act-transition` 事件，不带 `exitId`，带 `plan { label, toAct, place, t, with? }`，`label` 是叙事者的转述、不逐字引用玩家原话，契约 1.2 的 2.8.1；不成行不写事件，选了替代去处按成行处理）；`false` 时给最接近的替代去处，玩家可以 `act_choose { optionId: alternative.optionId }`。`triesLeft` 到 0 后 `freeform.allowed = false`，只能选给定去处（同一次幕末最多试 2 次）。用声音说的打算没有 `clientMsgId`，`act_plan_result` 改带那一轮的 `turnId`（3.3）。
+  `accepted: true` 时 `narration` 是「あなたは、〜ことにした。」，紧接着进入幕切换（服务端写一条玩家的 `act-transition` 事件，不带 `exitId`，带 `plan { label, toAct, place, t, with? }`，`label` 是叙事者的转述、不逐字引用玩家原话，契约 1.2 的 2.8.1；不成行不写事件，选了替代去处按成行处理）；`false` 时给最接近的替代去处，玩家可以 `act_choose { optionId: alternative.optionId }`；替代去处是另一个打算时 `optionId` 是 `plan_…`，是某个给定去处时就是那个去处的 ID（v1.0.5）。`triesLeft` 到 0 后 `freeform.allowed = false`，只能选给定去处（同一次幕末最多试 2 次）。用声音说的打算没有 `clientMsgId`，`act_plan_result` 改带那一轮的 `turnId`（3.3）。
 - **幕切换**：玩家选定后，服务端按 contracts 2.8.1 结算到下一幕起点之间的节拍、人物的打算、导演事件、约定的兑现，然后推：
   ```json
   { "type": "act_transition", "fromActId": "act.1", "toActId": "act.4",
@@ -677,7 +677,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 
 | code | HTTP | 说明 |
 |---|---|---|
-| `invalid_request` | 400 | 请求体、参数或 WebSocket 消息不合 Schema。是前端的毛病，`message` 不给玩家具体原因。WebSocket 上另有三种情况也回它（不断开）：`hello` 之前发了 `hello`、`ping` 以外的消息；没有 `focus` 的人物时发 `text` 或 `activity_start`（`purpose: "act_plan"` 除外，那时本来没有人物在听，3.11）；`focus` 了不在当前场景或此刻 `talkable: false` 的人物（之前的 `focus` 不变）。这时那一轮不会有 `turn_settled`，`error` 也不带 `turnId`：前端把刚发出的那一轮当作没送到 |
+| `invalid_request` | 400 | 请求体、参数或 WebSocket 消息不合 Schema。是前端的毛病，`message` 不给玩家具体原因。WebSocket 上另有四种情况也回它（不断开）：`hello` 之前发了 `hello`、`ping` 以外的消息；没有 `focus` 的人物时发 `text` 或 `activity_start`（`purpose: "act_plan"` 除外，那时本来没有人物在听，3.11）；`focus` 了不在当前场景或此刻 `talkable: false` 的人物（之前的 `focus` 不变）；收幕以后、选定去处之前发 `text`、`activity_start`（`act_plan` 除外）或 `action`（3.11，v1.0.5）。这时那一轮不会有 `turn_settled`，`error` 也不带 `turnId`：前端把刚发出的那一轮当作没送到 |
 | `unauthenticated` | 401 | 没有或过期的会话 |
 | `invalid_invite` | 401 | 登录时邀请码不对（第 1 节） |
 | `forbidden` | 403 | 不是你的局；或跨站请求（`Origin`、`Content-Type` 不对） |
@@ -686,7 +686,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 | `idempotency_conflict` | 422 | 同一个 `Idempotency-Key` 用在了不同的请求内容上 |
 | `rate_limited` / `daily_limit` | 429 | 带 `retryAfterSeconds` |
 | `voice_unavailable` | 503 | 语音服务不可用，前端改文字（同时会收到 `degraded`） |
-| `invalid_choice` | —（只在 WebSocket） | `act_choose` 的 `optionId` 不在这次 `act_ended` 里，或 `enRouteChoice` 超出范围、给了不带 `enRoute` 的去处。幕末画面不变，前端按 `pending.actEnd` 重新显示 |
+| `invalid_choice` | —（只在 WebSocket） | `act_choose` 的 `optionId` 不在这次 `act_ended` 里、也不是这次的替代去处，或 `enRouteChoice` 超出范围、给了不带 `enRoute` 的去处。幕末画面不变，前端按 `pending.actEnd` 重新显示 |
 | `internal` | 500 | `retryable: true` |
 
 `message` 是可以直接给玩家看的日语短句；前端也可以按 `code` 用自己的文案（UX 第 12 节）。
@@ -822,6 +822,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 
 ## 修订记录
 
+- v1.0.5（2026-10-10）：按 B-3 卡（#58）放宽 Schema 三处、补一条说明，前端同意以后和 B-3 的代码同一个 PR 改：`recapLines` 允许 0〜4 条（`ActEndedMessage` 和 `ActEnd` 两处；这一幕什么都没动时为空，前端显示 `actEnd.summary.empty`）；`act_plan_result.alternative.optionId` 也可以是给定去处的 ID（`PlanAlternative.optionId` 改成 `PlanOptionId` 或 `ExitId`，例：E4-106 期望的替代去处就是给定去处）；第 5 节 `invalid_request` 加一条：收幕以后、选定之前发 `text`、`activity_start`（`act_plan` 除外）、`action`；`commit.patch.characters[]` 加 `group`（`CharacterPresencePatch` 原来漏了它：群众、警吏进场的那次 `commit` 带完整的 `CharacterPresence`，含 `group: true`，生成的类型不收，B-3 的 WebSocket 测试查出来的）。
 - v1.0.4（2026-10-10）：只做加法，把数据契约 1.7（#34）里前端要拿到的几样加进接口（F-2b 的 #37 评审和 ux-design v1.0.1 4.4 提的）：幕末去处的副题 `where`（服务端按 `Place.name` 和 `clock.labels` 拼好的前半）和 `sub`（`ActExit.sub`），`because` 写明一律 `null`（3.11）；落地：`act_transition.arrival { line, opener? }`、新的客户端消息 `act_landed`、`turn_started.reason` 加 `arrival`、`pending.arrival`（3.11、第 4 节）；固定演出：新的服务端消息 `set_piece`，`action_result` 加 `setPiece`、这时不带 `narration`（两个正好给一个），manifest 加 `setPieceVoices`（3.14、2.1）；`Affordance.playerSpot` 走 `commit.patch.player { spot }`（3.8）；快照里 `group` 的人物没有 `spot`、写明 `player.spot` 和 `examine` 的来源（2.3）。Schema 跟着改：`ActOption.where` 必有；`action_result.narration` 从必有改成和 `setPiece` 二选一；`CharacterPresence.spot` 从必有改成 `group` 的人物没有。mock 的 `act-end` 剧本按这些改，加 `set-piece` 剧本。服务端在 B-3 做。
 - v1.0.3（2026-10-10）：传输形状不变，Schema 只改 `description`。把 B-0（#26）、F-2b（#32）评审和 S-077 ⑫ 定下的写进正文：期限一行和预报在玩家知道约定（契约 1.7 `knows(player, fact.promise)`）以后才出，不再跟着 beat.05 的提交出；玩家不知道约定时不出 `eta`（2.3、3.4.1）；人物一个字没说就被打断的轮没有人物定稿，被打断的轮没有 `turn_complete`、照常交给叙事者，人物说完以后按下说话不算打断（3.3）；地点关上时玩家在里面，那次 `commit` 带 `patch.player` 把人放到外面，`move` 进关着的地点回 `refused`（3.8）；`lost` 的轮不判、没有 `turn_settled`（4）；WebSocket 上 `invalid_request` 的三种情况（5）。服务端：打断、`lost`、`invalid_request` 在 B-0 做了；关地点、期限一行的条件在 B-3 做。
 - v1.0.2（2026-10-10）：只补正文，传输形状和 Schema 都不变。把 B-1（mock）评审时前端要求写明、mock 已经照做的写进来：降级为文字回答时人物定稿在 `turn_complete { audio: false }` 之前；没有人物定稿的两种轮（没出声、出戏卡停下），被打断的轮照样有定稿（3.3）；动作的 `commit` 在 `action_result` 之前（3.8）；结局还没开始时 `GET …/ending` 回 404（2.8）。

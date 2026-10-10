@@ -77,19 +77,22 @@ class Proc:
                 self.p.wait()
 
 
-def service_env(url: str, narrator_port: int, speed: str = "0") -> dict[str, str]:
+def service_env(url: str, narrator_port: int, speed: str = "0", extra: dict[str, str] | None = None) -> dict[str, str]:
     env = {k: v for k, v in os.environ.items() if not k.startswith("ZJ_")}
     env.update(DATABASE_URL=url, ZJ_DEV="1", ZJ_SPEED=speed, ZJ_NARRATOR_URL=f"http://127.0.0.1:{narrator_port}")
+    env.update(extra or {})
     return env
 
 
 class Services:
-    def __init__(self, url: str, speed: str = "0") -> None:
+    def __init__(self, url: str, speed: str = "0", extra: dict[str, str] | None = None) -> None:
+        """extra：再加的环境变量（B-3 的测试用 `ZJ_WORLD` 换切片版）。"""
         n_port, g_port = free_port(), free_port()
-        env = service_env(url, n_port, speed)
+        env = service_env(url, n_port, speed, extra)
         self.narrator = Proc("zoujin_backend.narrator.app", n_port, env)
         self.gateway = Proc("zoujin_backend.gateway.app", g_port, env)
         self.base = f"http://127.0.0.1:{g_port}"
+        self.narrator_url = f"http://127.0.0.1:{n_port}"
 
     def stop(self) -> None:
         self.gateway.stop()

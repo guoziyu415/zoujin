@@ -25,6 +25,8 @@ TEXT_MODELS: dict[str, str] = {
     "check": "gemini-3.8-flash",
     "rewrite": "gemini-3.8-flash",
     "reply": "gemini-3.8-flash",
+    "narrate": "gemini-3.8-flash",
+    "plan": "gemini-3.8-flash",
 }
 THINKING: dict[str, str | None] = {
     "triage": None,
@@ -32,9 +34,19 @@ THINKING: dict[str, str | None] = {
     "check": "MEDIUM",
     "rewrite": "LOW",
     "reply": "LOW",
+    "narrate": "LOW",
+    "plan": "LOW",
 }
 # 每次调用的时限（秒），超时取消、立刻重发一次（backend-design 2.4）。〔暂定，S-5 定〕
-DEADLINES: dict[str, float] = {"triage": 5.0, "extract": 15.0, "check": 15.0, "rewrite": 15.0, "reply": 15.0}
+DEADLINES: dict[str, float] = {
+    "triage": 5.0,
+    "extract": 15.0,
+    "check": 15.0,
+    "rewrite": 15.0,
+    "reply": 15.0,
+    "narrate": 10.0,
+    "plan": 15.0,
+}
 # 每 100 万 token 的美元（docs/data/cost/pricing-2026-10-06.md，global 端点）。按账单上的标价记：3.8 Flash 到 2026 年底
 # 的五折是事后返还，账本不扣，到上限停得比实花早，不会晚。地区端点（非 global）贵 10%
 PRICES: dict[str, dict[str, float]] = {

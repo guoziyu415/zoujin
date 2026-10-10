@@ -1,8 +1,10 @@
 """网关的总状态：数据库、世界模型、Schema、叙事者的调用、开着的连接。REST（rest.py）和 WebSocket（ws.py）都从这里拿。
 
 推给前端的东西都由数据库里的事件现算（projection.py）：
-- 快照 = world_state 缓存的 SimState 的投影；
+- 快照 = world_state 缓存的 SimState 的投影，加上局上记的位置点和待处理的（B-3，`store.Run`）；
 - commit = 同一次提交写的一段事件（幂等键前一段相同，`commit_key`），patch 是这一段前后两个快照的差。
+  玩家的位置点不进 WorldState（契约 3.1）：做完情境动作、幕切换落地的 `patch.player.spot` 按这次提交的结果给
+  （`turns.result.playerSpot`），动作（`move`、`go`）的不带（B-3 第 1 条）。
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ from zoujin_worldsim import SimState, apply, initial_state
 from zoujin_backend.config import Settings
 from zoujin_backend.db import store
 from zoujin_backend.db.events import commit_key, recorded_at
+from zoujin_backend.db.store import Run
 from zoujin_backend.db.tables import turns
 from zoujin_backend.ids import IdGen
 from zoujin_backend.models.live import LiveModel
@@ -69,6 +72,7 @@ class Pt:
     status: str
     last_seq: int
     last_active_at: Any
+    run: Run = field(default_factory=Run)
 
 
 @dataclass
@@ -100,6 +104,7 @@ class Gateway:
             status=row["status"],
             last_seq=row["last_seq"],
             last_active_at=row["last_active_at"],
+            run=Run.of(row),
         )
 
     async def snapshot(self, pid: str) -> Json | None:
@@ -111,7 +116,7 @@ class Gateway:
             if pt is None:
                 return None
             if st is not None:
-                return snapshot(pt.book, pid, pt.role_id, pt.status, st, st["seq"])
+                return snapshot(pt.book, pid, pt.role_id, pt.status, st, st["seq"], pt.run)
             if attempt == 0:
                 await self.narrator.run(pid)
         raise RuntimeError(f"{pid}：叙事者没写开局")
@@ -139,9 +144,11 @@ class Gateway:
                 return [], after_seq
             log_ = await store.event_log(c, pid, pt.book.version)
             keys = {commit_key(e["idempotencyKey"]) for e in log_ if e["seq"] > after_seq}
-            kinds = dict(
-                (await c.execute(select(turns.c.turn_id, turns.c.kind).where(turns.c.turn_id.in_(keys)))).all()
-            )
+            rows = (
+                await c.execute(select(turns.c.turn_id, turns.c.kind, turns.c.result).where(turns.c.turn_id.in_(keys)))
+            ).all()
+        kinds = {r.turn_id: r.kind for r in rows}
+        results = {r.turn_id: r.result or {} for r in rows}
         book = pt.book
         state = initial_state(book.world, pt.role_id)
         segments: list[list[Json]] = []
@@ -158,13 +165,19 @@ class Gateway:
         out = []
         sent = after_seq
         for seg in segments:
-            msg, state = self._commit(book, pt, state, seg, kinds)
+            msg, state = self._commit(book, pt, state, seg, kinds, results)
             out.append(msg)
             sent = seg[-1]["seq"]
         return out, sent
 
     def _commit(
-        self, book: Book, pt: Pt, before: SimState, seg: Sequence[Json], kinds: dict[str, str]
+        self,
+        book: Book,
+        pt: Pt,
+        before: SimState,
+        seg: Sequence[Json],
+        kinds: dict[str, str],
+        results: dict[str, Json],
     ) -> tuple[Json, SimState]:
         state = before
         visible = []
@@ -173,21 +186,33 @@ class Gateway:
                 visible.append(visible_event(book, ev))
             state = apply(book.world, state, ev)
         from_seq = seg[0]["seq"]
-        snap_before = with_locations(snapshot(book, pt.pid, pt.role_id, pt.status, before, from_seq - 1), before)
-        snap_after = with_locations(snapshot(book, pt.pid, pt.role_id, pt.status, state, seg[-1]["seq"]), state)
+        key = commit_key(seg[0]["idempotencyKey"])
+        # 人物的站位按局上现在记的位置点排；玩家的 spot 见模块说明
+        snap_before = with_locations(
+            snapshot(book, pt.pid, pt.role_id, pt.status, before, from_seq - 1, pt.run), before
+        )
+        snap_after = with_locations(snapshot(book, pt.pid, pt.role_id, pt.status, state, seg[-1]["seq"], pt.run), state)
+        diff = patch(snap_before, snap_after)
+        player = diff.pop("player", {})
+        if kinds.get(key) == "action":  # move、go 不带 spot（前端收到 spot 会把玩家直接摆过去）
+            player.pop("spot", None)
+        spot = results.get(key, {}).get("playerSpot")
+        if spot is not None:
+            player["spot"] = spot
+        if player:
+            diff["player"] = player
         msg: Json = {
             "type": "commit",
             "fromSeq": from_seq,
             "seq": seg[-1]["seq"],
             "events": visible,
-            "patch": patch(snap_before, snap_after),
+            "patch": diff,
             "memories": [],
             "promises": [],
             "narration": [],
             "cue": None,
             "reveal": None,
         }
-        key = commit_key(seg[0]["idempotencyKey"])
         if kinds.get(key) == "talk":
             msg["turnId"] = key
         return msg, state

@@ -7,8 +7,14 @@
 人物已经 `turn_complete`、定稿还没到的，不算打断，等定稿到了照常交。断线时人物还没说完的一轮记成 `lost`
 （第 4 节 `lastTurn.status`），不交给叙事者；已经说完的照常交。
 
-B-0 没有真 Live，`hello.fakeVoice` 给不给都用假 Live。不在 B-0 里的消息（`near`、`turn_retract`、`action` 等）
-忽略，只在日志里记类型名。
+B-3 加了动作和幕末（3.8、3.11）：`action`、`act_choose`、`act_propose` 各写一行任务（`turns.kind` = action / choose /
+plan）再叫叙事者；用声音说打算（`activity_start purpose: "act_plan"`）只转写、人物不回答，松开以后同样写 plan 任务。
+叙事者判完把要推的消息按顺序记在 `turns.result.push`，这里推完那次提交的 `commit` 再照着推（`_results`）。
+收了幕、还没选定时，`text`、`activity_start`（`act_plan` 除外）、`action` 回 `invalid_request`（第 5 节）。
+落地带 `opener` 的，收到 `act_landed` 才让他先开口（`turn_started reason: "arrival"`），这一句不交给叙事者。
+
+B-0 没有真 Live，`hello.fakeVoice` 给不给都用假 Live。还没做的消息（`near`、`turn_retract` 等）忽略，
+只在日志里记类型名。
 """
 
 from __future__ import annotations
@@ -22,18 +28,21 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from fastapi import WebSocket, WebSocketDisconnect
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from starlette.websockets import WebSocketState
 
 from zoujin_backend import audio
 from zoujin_backend.config import COOKIE
 from zoujin_backend.db import store
+from zoujin_backend.db.store import Run
 from zoujin_backend.db.tables import events, playthroughs, turns, utterances
 from zoujin_backend.gateway import auth
 from zoujin_backend.gateway.core import VOICE_MINUTES, Gateway
-from zoujin_backend.models.live import LiveSession
+from zoujin_backend.models.live import LiveSession, Transcriber
+from zoujin_backend.narrator.acts import PLAN_TRIES
+from zoujin_backend.narrator.plans import INVALID_REQUEST, REFUSAL_FALLBACK, narrate_fallback
 from zoujin_backend.origin import origin_allowed
-from zoujin_backend.projection import PENDING
+from zoujin_backend.projection import pending
 from zoujin_backend.schemas import SchemaError
 
 log = logging.getLogger("zoujin.gateway")
@@ -43,6 +52,8 @@ Json = Any
 SESSION_ETA_MS = 800  # 预热和切换人物（3.5 的例子）
 FRAME_MIC = 0x01
 VOICE = {"enabled": True, "degraded": False, "minutesLeftToday": VOICE_MINUTES}
+ANSWERED = ("talk", "action", "choose", "plan")  # 判完要给前端一个结果的任务（narrator/core.py 同名）
+SERVER_SEQ = 0x80000001  # 服务端发起的轮次的 turnSeq 从这里起，最高位为 1（3.1）
 
 
 def error_msg(code: str, message: str) -> Json:
@@ -56,7 +67,7 @@ class Turn:
     turn_id: str
     turn_seq: int
     character: str
-    mode: str  # voice / text
+    mode: str  # voice / text / arrival（落地时人物先开口，B-3）
     session: LiveSession
     text: str | None = None  # 文字一轮的原话
     ended: bool = False  # activity_end / text 收到了
@@ -77,6 +88,16 @@ class Turn:
 
 
 @dataclass
+class PlanTurn:
+    """幕末用声音说打算的一轮（3.11）：只转写，没有人物回答，松开以后交给叙事者的 plan。"""
+
+    turn_id: str
+    turn_seq: int
+    listener: Transcriber
+    partials: list[asyncio.Task[Any]] = field(default_factory=list)  # 推出去的半句：定稿要排在它们后面
+
+
+@dataclass
 class Conn:
     gw: Gateway
     ws: WebSocket
@@ -88,7 +109,9 @@ class Conn:
     sessions: dict[str, LiveSession] = field(default_factory=dict)
     ready_at: dict[str, float] = field(default_factory=dict)
     turn: Turn | None = None
-    settled: set[str] = field(default_factory=set)
+    plan: PlanTurn | None = None
+    served: int = 0  # 这条连接上服务端发起了几轮（turnSeq 用）
+    settled: set[str] = field(default_factory=set)  # 结果已经推过（或这条连接之前就判完了）的轮次
     closed: asyncio.Event = field(default_factory=asyncio.Event)
     push_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     send_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
@@ -130,39 +153,48 @@ class Conn:
                 if self.ws.application_state == WebSocketState.CONNECTED:
                     await self.ws.close(code, reason)
 
-    # —— 推 commit 和 turn_settled ——
+    # —— 推 commit 和每一轮的结果 ——
 
     async def push(self) -> None:
-        """把 sent_seq 之后提交了的都推出去（hello 补发、NOTIFY 都走这里），再推判完了的轮次的 turn_settled。"""
+        """把 sent_seq 之后提交了的都推出去（hello 补发、NOTIFY 都走这里），再推判完了的轮次的结果。"""
         async with self.push_lock:
             if self.sent_seq < 0:
                 return
             msgs, self.sent_seq = await self.gw.commits(self.pid, self.sent_seq)
             for m in msgs:
                 await self.send(m)
-            await self._settled()
+            await self._results()
 
-    async def _settled(self) -> None:
-        """判完的轮次推 turn_settled。这一轮的事件还有没推出去的（commit 在读事件日志之后才落地）就留到下一次，
-        保证 turn_settled 在它自己的 commit 之后（3.4）。"""
-        upto = func.max(events.c.seq).label("upto")
+    async def _results(self) -> None:
+        """判完的轮次推结果：叙事者记在 `turns.result.push` 里的消息（固定演出、turn_settled、action_result、
+        act_plan_result、act_transition、act_ended），按判完的先后。这一轮的事件还有没推出去的（commit 在读事件日志
+        之后才落地）就留到下一次，保证结果在它自己的 commit 之后（3.4、3.8）。三次都没做成的任务按种类补一个
+        （`_fallback`）。"""
+        upto = (
+            select(func.max(events.c.seq))
+            .where(events.c.playthrough_id == turns.c.playthrough_id, events.c.turn_id == turns.c.turn_id)
+            .scalar_subquery()
+            .label("upto")
+        )
         async with self.gw.engine.connect() as c:
             rows = (
                 await c.execute(
-                    select(turns.c.turn_id, turns.c.outcome, turns.c.minutes, upto)
-                    .select_from(
-                        turns.outerjoin(
-                            events,
-                            (events.c.playthrough_id == turns.c.playthrough_id) & (events.c.turn_id == turns.c.turn_id),
-                        )
+                    select(
+                        turns.c.turn_id,
+                        turns.c.kind,
+                        turns.c.outcome,
+                        turns.c.minutes,
+                        turns.c.client_msg_id,
+                        turns.c.request,
+                        turns.c.result,
+                        upto,
                     )
                     .where(
                         turns.c.playthrough_id == self.pid,
-                        turns.c.kind == "talk",
+                        turns.c.kind.in_(ANSWERED),
                         turns.c.status.in_(("done", "failed")),
                         turns.c.settled_at.is_not(None),
                     )
-                    .group_by(turns.c.turn_id, turns.c.outcome, turns.c.minutes, turns.c.settled_at)
                     .order_by(turns.c.settled_at)
                 )
             ).all()
@@ -170,16 +202,46 @@ class Conn:
             if r.turn_id in self.settled or (r.upto is not None and r.upto > self.sent_seq):
                 continue
             self.settled.add(r.turn_id)
-            ids = await self._visible_ids(r.turn_id)
+            if r.result is not None and "push" in r.result:
+                for m in r.result["push"]:
+                    await self.send(m)
+            else:
+                await self._fallback(r)
+
+    async def _fallback(self, r: Any) -> None:
+        """叙事者三次都没做成（`turns.status = "failed"`）：前端还在等这一轮，按种类给一个不改变世界的结果。"""
+        if r.kind == "talk":
             await self.send(
                 {
                     "type": "turn_settled",
                     "turnId": r.turn_id,
                     "outcome": r.outcome or "no_response",
-                    "eventIds": ids,
+                    "eventIds": await self._visible_ids(r.turn_id),
                     "minutes": int(r.minutes or 0),
                 }
             )
+        elif r.kind == "action":
+            await self.send(
+                {
+                    "type": "action_result",
+                    "clientMsgId": r.client_msg_id or r.turn_id,
+                    "status": "refused",
+                    "eventIds": [],
+                    "minutes": 0,
+                    "narration": narrate_fallback("refused"),
+                }
+            )
+        elif r.kind == "plan":
+            run = await self._run()
+            left = max(0, PLAN_TRIES - run.plan_tries)
+            to = {"turnId": r.turn_id} if (r.request or {}).get("mode") == "voice" else {"clientMsgId": r.client_msg_id}
+            await self.send(
+                {"type": "act_plan_result", **to, "accepted": False, "narration": [REFUSAL_FALLBACK], "triesLeft": left}
+            )
+        else:
+            err = error_msg("internal", "エラーが起きました。")
+            err["error"]["retryable"] = True
+            await self.send(err)
 
     async def _visible_ids(self, turn_id: str) -> list[str]:
         evs = await self.gw.visible_events(self.pid, 0, 10_000)
@@ -199,12 +261,13 @@ class Conn:
                 await c.execute(
                     select(turns.c.turn_id).where(
                         turns.c.playthrough_id == self.pid,
-                        turns.c.kind == "talk",
+                        turns.c.kind.in_(ANSWERED),
                         turns.c.status.in_(("done", "failed")),
                     )
                 )
             ).scalars()
-            self.settled = set(settled)  # 这条连接之前判完的不再推 turn_settled
+            # 这条连接之前判完的不再推结果：固定演出不补发（3.14），幕末和落地由 welcome.pending 补上（第 4 节）
+            self.settled = set(settled)
             last_turn = await self._last_turn(c)
             pt = await self.gw.pt(c, self.pid)
         if pt is not None:
@@ -215,7 +278,7 @@ class Conn:
                 "lastSeq": last_seq,
                 "voice": dict(VOICE),
                 "lastTurn": last_turn,
-                "pending": dict(PENDING),
+                "pending": pending(pt.run if pt is not None else None),
             }
         )
         async with self.push_lock:
@@ -226,7 +289,7 @@ class Conn:
         row = (
             await c.execute(
                 select(turns.c.turn_id, turns.c.character, turns.c.status)
-                .where(turns.c.playthrough_id == self.pid, turns.c.kind == "talk")
+                .where(turns.c.playthrough_id == self.pid, turns.c.kind.in_(("talk", "plan")))
                 .order_by(turns.c.created_at.desc())
                 .limit(1)
             )
@@ -295,6 +358,9 @@ class Conn:
             old.stream.cancel()
 
     def audio_in(self, frame: bytes) -> None:
+        if self.plan is not None and len(frame) >= 5 and int.from_bytes(frame[1:5], "big") == self.plan.turn_seq:
+            self._plan_audio(self.plan, frame)
+            return
         t = self.turn
         if len(frame) < 5 or frame[0] != FRAME_MIC or t is None or t.ended or t.mode != "voice":
             return
@@ -325,7 +391,8 @@ class Conn:
     async def _stream(self, t: Turn) -> None:
         """假 Live 的回答转成下行消息。被打断、断线时这个任务被取消，停在哪就是哪。"""
         released = time.monotonic()
-        async for ev in t.session.respond(t.text):
+        said = t.session.speak_first() if t.mode == "arrival" else t.session.respond(t.text)
+        async for ev in said:
             if ev.kind == "input_final":
                 t.heard = ev.text
                 await self.send(
@@ -391,10 +458,16 @@ class Conn:
             t.submitted.set()
 
     async def _submit(self, t: Turn) -> None:
-        """原话和这一轮的任务同一个事务写进去，再叫叙事者（turn_complete 之后）。lost 的只留记录，不叫叙事者。"""
+        """原话和这一轮的任务同一个事务写进去，再叫叙事者（turn_complete 之后）。lost 的只留记录，不叫叙事者。
+        落地时人物先开口的那一句只存原话（那一行任务收到 act_landed 时已经写了），不交给叙事者（3.11）。"""
         async with self.gw.engine.begin() as c:
             st = await store.sim_state(c, self.pid)
             now_t = st["t"] if st is not None else 0
+            if t.mode == "arrival":
+                await store.add_utterance(
+                    c, self.gw.ids, self.pid, t.turn_id, speaker=t.character, text=t.said, t=now_t, source="live"
+                )
+                return
             exists = await c.scalar(select(turns.c.turn_id).where(turns.c.turn_id == t.turn_id))
             if exists is not None:
                 log.info("这一轮已经交过了（%s）", t.turn_id)
@@ -431,18 +504,182 @@ class Conn:
         elif t == "unfocus":
             self.focused = None
         elif t == "activity_start":
-            await self._start(msg, "voice")
+            if msg.get("purpose") == "act_plan":
+                await self.plan_start(msg)
+            elif await self._refuse_if_ended():
+                return
+            else:
+                await self._start(msg, "voice")
         elif t == "activity_end":
+            if self.plan is not None and self.plan.turn_id == msg["turnId"]:
+                plan, self.plan = self.plan, None
+                await self.plan_end(plan)
+                return
             turn = self.turn
             if turn is not None and turn.turn_id == msg["turnId"] and not turn.ended:
                 self.respond(turn)
         elif t == "text":
+            if await self._refuse_if_ended():
+                return
             turn = await self._start(msg, "text")
             if turn is not None:
                 turn.text = msg["text"]
                 self.respond(turn)
+        elif t == "action":
+            await self.action(msg)
+        elif t == "act_choose":
+            await self.choose(msg)
+        elif t == "act_propose":
+            await self.propose(msg)
+        elif t == "act_landed":
+            await self.landed(msg)
         else:
-            log.info("B-0 不处理 %s，忽略", t)
+            log.info("还不处理 %s，忽略", t)
+
+    # —— 动作和幕末（B-3）——
+
+    async def _run(self) -> Run:
+        async with self.gw.engine.connect() as c:
+            row = await store.playthrough(c, self.pid)
+        return Run.of(row or {})
+
+    async def _refuse_if_ended(self) -> bool:
+        """收了幕、还没选定：对话和动作回 invalid_request，不带 turnId（第 5 节）。"""
+        if (await self._run()).act_end is None:
+            return False
+        await self.send(error_msg("invalid_request", INVALID_REQUEST))
+        return True
+
+    async def action(self, msg: Json) -> None:
+        """动作（3.8）：写一行任务、叫叙事者，不等。判定、commit 和 action_result 都在叙事者提交以后推。"""
+        request = {k: msg[k] for k in ("clientMsgId", "kind", "target", "params", "actionId") if k in msg}
+        async with self.gw.engine.begin() as c:
+            row = await store.playthrough(c, self.pid)
+            ended = row is None or row["act_end"] is not None
+            if not ended:
+                await store.enqueue(
+                    c, self.gw.ids, self.pid, kind="action", client_msg_id=msg["clientMsgId"], request=request
+                )
+        if ended:
+            await self.send(error_msg("invalid_request", INVALID_REQUEST))
+            return
+        self.gw.kick(self.pid)
+
+    async def choose(self, msg: Json) -> None:
+        """选去处（3.11）：叙事者核对它在不在这次的去处里，不在就回 invalid_choice，不写事件。"""
+        request = {k: msg[k] for k in ("clientMsgId", "optionId", "enRouteChoice") if k in msg}
+        async with self.gw.engine.begin() as c:
+            await store.enqueue(
+                c, self.gw.ids, self.pid, kind="choose", client_msg_id=msg["clientMsgId"], request=request
+            )
+        self.gw.kick(self.pid)
+
+    async def _plan_open(self) -> bool:
+        """说打算收不收：收了幕、还有试次（3.11）。"""
+        run = await self._run()
+        return run.act_end is not None and run.plan_tries < PLAN_TRIES
+
+    async def propose(self, msg: Json) -> None:
+        """用文字说打算：原话照常存进 utterances（这一轮只有玩家说话），写 plan 任务。"""
+        if not await self._plan_open():
+            await self.send(error_msg("invalid_request", INVALID_REQUEST))
+            return
+        await self._submit_plan(None, msg["text"], client_msg_id=msg["clientMsgId"])
+
+    async def plan_start(self, msg: Json) -> None:
+        if not await self._plan_open():
+            await self.send(error_msg("invalid_request", INVALID_REQUEST))
+            return
+        await self._cut()
+        self.plan = PlanTurn(msg["turnId"], msg["turnSeq"], self.gw.live.transcriber())
+
+    def _plan_audio(self, plan: PlanTurn, frame: bytes) -> None:
+        if frame[0] != FRAME_MIC:
+            return
+        for ev in plan.listener.audio_in(frame[5:]):
+            if ev.kind == "input_partial":
+                task = self.gw.spawn(
+                    self.send(
+                        {
+                            "type": "transcript",
+                            "turnId": plan.turn_id,
+                            "speaker": "player",
+                            "text": ev.text,
+                            "final": False,
+                        }
+                    )
+                )
+                plan.partials.append(task)
+
+    async def plan_end(self, plan: PlanTurn) -> None:
+        """用声音说打算：转写的定稿推给前端，再写 plan 任务；结果（act_plan_result）带这一轮的 turnId。"""
+        heard = await plan.listener.finish()
+        await asyncio.gather(*plan.partials, return_exceptions=True)  # 半句先到，定稿不被半句盖掉
+        await self.send(
+            {"type": "transcript", "turnId": plan.turn_id, "speaker": "player", "text": heard, "final": True}
+        )
+        await self._submit_plan(plan, heard)
+
+    async def _submit_plan(self, plan: PlanTurn | None, text: str | None, *, client_msg_id: str | None = None) -> None:
+        mode = "text" if plan is None else "voice"
+        request: Json = {"mode": mode}
+        if client_msg_id is not None:
+            request["clientMsgId"] = client_msg_id
+        async with self.gw.engine.begin() as c:
+            st = await store.sim_state(c, self.pid)
+            turn_id = await store.enqueue(
+                c,
+                self.gw.ids,
+                self.pid,
+                kind="plan",
+                turn_id=plan.turn_id if plan is not None else None,
+                input_mode=mode,
+                turn_seq=plan.turn_seq if plan is not None else None,
+                client_msg_id=client_msg_id,
+                request=request,
+            )
+            await store.add_utterance(
+                c, self.gw.ids, self.pid, turn_id, speaker="player", text=text, t=st["t"] if st is not None else 0
+            )
+        self.gw.kick(self.pid)
+
+    async def landed(self, msg: Json) -> None:
+        """落地（3.11）：这一幕的 arrival 带 opener、还没落地时，让他先开口。别的 actId、同一幕第二次的忽略。"""
+        async with self.gw.engine.begin() as c:
+            row = (
+                (
+                    await c.execute(
+                        select(playthroughs.c.arrival)
+                        .where(playthroughs.c.playthrough_id == self.pid)
+                        .with_for_update()
+                    )
+                )
+                .mappings()
+                .first()
+            )
+            arrival = row["arrival"] if row is not None else None
+            if not arrival or arrival.get("actId") != msg["actId"] or not arrival.get("opener"):
+                log.info("act_landed 不是这一幕待落地的，忽略")
+                return
+            opener = str(arrival["opener"])
+            turn_seq = SERVER_SEQ + self.served
+            self.served += 1
+            turn_id = await store.enqueue(
+                c, self.gw.ids, self.pid, kind="arrival", character=opener, turn_seq=turn_seq, status="done"
+            )
+            await c.execute(update(playthroughs).where(playthroughs.c.playthrough_id == self.pid).values(arrival=None))
+        self.settled.add(turn_id)
+        await self._cut()
+        if opener not in self.sessions:
+            self.sessions[opener] = await self.gw.live.open(opener)
+            self.ready_at[opener] = time.monotonic()
+        self.focused = opener  # arrival 的一轮服务端把 speaker 当作已经 focus 的人物（3.3）
+        await self.send(
+            {"type": "turn_started", "turnId": turn_id, "turnSeq": turn_seq, "speaker": opener, "reason": "arrival"}
+        )
+        prev = self.turn if self.turn is not None and self.turn.ended else None
+        self.turn = Turn(turn_id, turn_seq, opener, "arrival", self.sessions[opener], prev=prev)
+        self.respond(self.turn)
 
 
 async def gate(gw: Gateway, ws: WebSocket, pid: str) -> tuple[int, str | None]:
