@@ -1,6 +1,6 @@
 {
   "sceneId": "scene.syracuse-square",
-  "about": "Hand-written scene layout: where people can walk, which area belongs to which place, the named spots (api-contract 0 'spot'), where each place starts (startSpots: a role or character that starts in that place stands there) and the exits. Plan coordinates in metres as in build_plaza.py: +x towards the castle, +y towards the temple, the gate street runs to -x (azimuth 294°). pack_scene.mjs rotates by rotationDeg about the up axis and writes glTF coordinates into scene.json. Spots where people leave for another scene are named way.<slug> (the exit. prefix belongs to the world model's ExitId).",
+  "about": "Hand-written scene layout: where people can walk, which area belongs to which place, the named spots (api-contract 0 'spot'), where each place starts (startSpots: where a player whose role starts in that place stands; characters take that place's free spots in layout order, way.* excepted) and the exits. Plan coordinates in metres as in build_plaza.py: +x towards the castle, +y towards the temple, the gate street runs to -x (azimuth 294°). pack_scene.mjs rotates by rotationDeg about the up axis and writes glTF coordinates into scene.json. Spots where people leave for another scene are named way.<slug> (the exit. prefix belongs to the world model's ExitId).",
   "rotationDeg": 144,
   "defaultPlace": "place.syracuse-square",
   "playerStartSpot": "plaza-southwest",
@@ -178,6 +178,11 @@
       "at": [7.6, 0.0],
       "face": [11, 0],
       "about": "in front of the platform steps"
+    },
+    "ground-west": {
+      "at": [4.0, 0.0],
+      "face": [-31, 0],
+      "about": "west end of the execution ground, in the light corridor facing the gate: where a player who stayed in the city to wait for Melos sees him come through the gate at sunset (ux/slice/ending-shots.md, shot 2)"
     },
     "castle-steps": {
       "at": [14.3, -5.0],

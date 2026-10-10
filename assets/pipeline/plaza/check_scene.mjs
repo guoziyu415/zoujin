@@ -31,6 +31,12 @@ const layoutPath =
   [path.join(DIR, "layout.json"), path.join(DIR, "../layout.json")].find((p) =>
     fs.existsSync(p),
   );
+if (!layoutPath) {
+  console.error(
+    `no layout.json next to ${DIR}: pass it as the second argument`,
+  );
+  process.exit(1);
+}
 const layout = JSON.parse(fs.readFileSync(layoutPath, "utf8"));
 const errors = [];
 const rows = [];
@@ -160,6 +166,10 @@ for (const p of scene.places)
   if (!placeIds.has(p.id)) errors.push(`place ${p.id} is not in layout.json`);
 if (!scene.spots[layout.playerStartSpot])
   errors.push(`player start spot ${layout.playerStartSpot} missing`);
+if (layout.startSpots?.[layout.defaultPlace] !== layout.playerStartSpot)
+  errors.push(
+    `playerStartSpot ${layout.playerStartSpot} is not startSpots of the default place ${layout.defaultPlace}`,
+  );
 if (!isDeepStrictEqual(scene.startSpots, layout.startSpots))
   errors.push("startSpots differ from layout.json (rebuild)");
 for (const id of placeIds) {
@@ -204,16 +214,22 @@ for (const f of worlds) {
     }
     if (to.sceneRef === scene.sceneId)
       errors.push(`${where}: exit to ${e.place}, which is in this scene`);
-    const adjacent = mine.some(
-      (id) =>
-        byId.get(id).adjacent?.some((a) => a.place === e.place) ||
-        to.adjacent?.some((a) => a.place === id),
-    );
+    // B-0 lets a player `go` from the place they stand in: adjacency counts from the place of the exit spot
+    const from = scene.spots[e.spot]?.place;
+    if (!from) continue;
+    const adjacent =
+      byId.get(from)?.adjacent?.some((a) => a.place === e.place) ||
+      to.adjacent?.some((a) => a.place === from);
     if (!adjacent)
-      errors.push(`${where}: exit to ${e.place}, not adjacent to this scene`);
+      errors.push(
+        `${where}: exit to ${e.place} from ${e.spot}, but ${from} is not adjacent to it`,
+      );
   }
 }
 rows.push(`world models using ${scene.sceneId}: ${usedBy}`);
+// a scene in the repo that no world model uses means a renamed id somewhere, and the checks above checked nothing
+if (usedBy === 0)
+  errors.push(`no world model in worlds/ uses ${scene.sceneId}`);
 
 // ---- the committed manifest was built from the same inputs as this build
 if (MANIFEST) {
