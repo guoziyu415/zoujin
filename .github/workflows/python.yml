@@ -69,10 +69,10 @@ jobs:
       - run: uv sync --locked --all-packages
       - run: PYTHON=.venv/bin/python bash .github/scripts/check_world.sh
 
-  # B-0 打开：单事务和并发测试要真的 PostgreSQL。现在没有测试，先不跑，不花 Actions 分钟。
+  # 要真 PostgreSQL 的测试（`db` 标记，B-0）：单事务、注入失败、并发、重放、网关端到端、评测入口和 E-0 的快照。
+  # lint-test 里没有 DATABASE_URL，这些测试跳过；这里只跑它们。
   db:
     name: tests against PostgreSQL
-    if: ${{ false }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     services:

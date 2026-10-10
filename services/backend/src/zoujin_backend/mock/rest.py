@@ -12,10 +12,10 @@ from fastapi.responses import JSONResponse
 
 from zoujin_backend.mock import scripts
 from zoujin_backend.mock.core import COOKIE, INVITE_CODE, Mock
-from zoujin_backend.mock.schemas import SchemaError
 from zoujin_backend.mock.scripts import ScriptError
 from zoujin_backend.mock.state import Playthrough, Session
 from zoujin_backend.mock.ws import WsLink, rebuild
+from zoujin_backend.schemas import SchemaError
 
 log = logging.getLogger("zoujin.mock")
 

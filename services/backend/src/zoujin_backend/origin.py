@@ -8,7 +8,8 @@ SCHEMES = {"ws": "http", "wss": "https"}
 
 
 def origin_allowed(headers: Mapping[str, str], scheme: str, extra: tuple[str, ...]) -> bool:
-    """同源（Origin 等于这次请求的 scheme://Host），或在 --allow-origin 里。没有 Origin 不放行。"""
+    """同源（Origin 等于这次请求的 scheme://Host），或在 extra（mock 的 --allow-origin、网关的配置）里。
+    没有 Origin 不放行。"""
     origin = headers.get("origin")
     if not origin:
         return False

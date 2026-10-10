@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request, Response
 
 from zoujin_backend.mock import rest, ws
 from zoujin_backend.mock.core import Config, Mock
-from zoujin_backend.mock.origin import origin_allowed
+from zoujin_backend.origin import origin_allowed
 
 
 def create_app(config: Config | None = None) -> FastAPI:

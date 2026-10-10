@@ -1,7 +1,7 @@
 """命令行：CI 用的 --mode fake --deterministic-only 和预期快照逐字段相同（E-0 卡第 6 条）。
 
-B-0 或假模型改了输出，快照要在同一个 PR 里更新：
-    uv run zoujin-eval --mode fake --deterministic-only --quiet --out evals/tests/snapshots/fake
+B-0 或假模型改了输出，快照要在同一个 PR 里更新（要测试库，见 services/backend/README.md）：
+    DATABASE_URL=… uv run zoujin-eval --mode fake --deterministic-only --quiet --out evals/tests/snapshots/fake
 评审时看 report.json 的差异。trace ID 每次不一样，比的时候去掉。
 """
 
@@ -27,6 +27,7 @@ def without_traces(x: Any) -> Any:
     return x
 
 
+@pytest.mark.db  # 后端的评测入口每局写测试库（B-0）；没有 DATABASE_URL 时跳过
 def test_fake_deterministic_matches_snapshot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ZJ_MODEL", raising=False)
     assert main(["--mode", "fake", "--deterministic-only", "--quiet", "--out", str(tmp_path), *ARGS]) == 0
