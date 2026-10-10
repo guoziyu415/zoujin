@@ -2,7 +2,7 @@
 // start probe as the game runs it, then the plaza at each quality level L0-L3 with S7's method, so S4, S5 and older
 // iPhones can be measured the same way. Per level: 6.5 s walking S7's route (frame intervals), then at one fixed pose
 // the same frame drawn 2, 4, 8, 16, 32 times until the interval reaches 45 ms: one frame's GPU time ~ interval / draws
-// (frontend-design 10.6.5). Then the bloom check UX asked for (PR #46): L0 against L1 at 19:00 looking at the west gate
+// (frontend-design 10.6.5). Then the bloom check UX asked for (PR #46): L0 against L1 at 18:45 looking at the west gate
 // (the sun in the gateway) and at night by a fire, as pictures. Inside the claude.ai page a button saves the numbers
 // and the pictures into the page itself (its db and assets), so the team reads them there. For the team; the words
 // are Chinese like the dev panel.
@@ -339,21 +339,34 @@ function jpegBlob(url: string): Blob {
   return new Blob([bytes], { type: "image/jpeg" });
 }
 
-async function saveRun(result: object, shots: Shot[]): Promise<string> {
+// pictures already uploaded, by "{look}-{level}": pressing save again after a failure doesn't upload them twice
+const uploaded: Record<string, string> = {};
+
+// the run's id, and whether the pictures went too (`pictures: null` in the run when the page's assets are out of reach)
+async function saveRun(
+  result: object,
+  shots: Shot[],
+): Promise<{ id: string; pictures: boolean }> {
   const use = host()?.use;
   if (!use) throw new Error("不在 claude.ai 页面里");
   const db = (await use("db")) as Db | null;
   const assets = (await use("assets")) as Assets | null;
   if (!db) throw new Error("页面的数据库用不了");
-  const pictures: Record<string, string> = {};
   if (assets)
-    for (const s of shots)
-      pictures[`${s.look}-${s.level}`] = (
+    for (const s of shots) {
+      const key = `${s.look}-${s.level}`;
+      uploaded[key] ??= (
         await assets.upload(jpegBlob(s.url), { type: "image/jpeg" })
       ).id;
+    }
   const ref = db.collection("runs").doc();
-  await ref.set({ ...result, pictures });
-  return ref.id;
+  await ref.set({ ...result, pictures: assets ? { ...uploaded } : null });
+  return { id: ref.id, pictures: !!assets };
+}
+
+function errorText(e: unknown): string {
+  const { code, message } = (e ?? {}) as { code?: string; message?: string };
+  return code ?? message ?? String(e);
 }
 
 export default function MeasureScreen() {
@@ -412,11 +425,14 @@ export default function MeasureScreen() {
   const onSave = useCallback(() => {
     setSaved("保存中……");
     saveRun(JSON.parse(result) as object, shots).then(
-      (id) => setSaved(`已保存（runs/${id}），告诉前端跑完了就行。`),
-      (e: unknown) =>
+      ({ id, pictures }) =>
         setSaved(
-          `没存上：${(e as { code?: string; message?: string }).code ?? (e as Error).message}。请点「复制结果」发给前端。`,
+          pictures
+            ? `已保存（runs/${id}），告诉前端跑完了就行。`
+            : `数字已保存（runs/${id}），图没存上（这一页的图片存储用不了）。告诉前端跑完了就行。`,
         ),
+      (e: unknown) =>
+        setSaved(`没存上：${errorText(e)}。请点「复制结果」发给前端。`),
     );
   }, [result, shots]);
   const probe = quality.probe;

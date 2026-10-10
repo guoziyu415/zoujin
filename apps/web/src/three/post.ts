@@ -18,7 +18,13 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputShader } from "three/examples/jsm/shaders/OutputShader.js";
 
 // day-for-night after sunset, a little warmth in the highlights and cool in the shadows, contrast, saturation, vignette;
-// on the sRGB values, as the separate pass after OutputPass did before
+// on the sRGB values, as the separate pass after OutputPass did before.
+// The night's blue is the sky's light (art-direction 3.2; UX on PR #53): a fire and what it lights stay warm. The
+// tint lets go by how much warmth a pixel has, r - b itself: a fire adds that, the night sky can't, even to warm
+// colours (skin, ochre, terracotta, 緋 stay under 0.28 by sky light alone; a ratio to luminance blew them up in the
+// dark). Pale stone in a fire's dim outer ring gets little r - b, so it also counts when warm for its brightness and
+// not dark; and anything bright (a flame's core). Only deep in the night, so the afterglow and the pink belt at dusk
+// grade as before. On the way from warm to night it goes grey first and then blue, not through purple (UX on #54)
 const GRADE_UNIFORMS = "uniform float uVig, uWarm, uContrast, uNight, uSat;\n";
 const GRADE = `
   { vec3 col = gl_FragColor.rgb;
@@ -26,7 +32,12 @@ const GRADE = `
     col = max(mix(vec3(l), col, uSat), 0.0);
     col = mix(col, col * vec3(1.0 + uWarm, 1.0, 1.0 - uWarm), smoothstep(0.35, 0.9, l));
     col = mix(col, col * vec3(1.0 - uWarm*0.6, 1.0, 1.0 + uWarm), 1.0 - smoothstep(0.05, 0.35, l));
-    col = mix(col, vec3(dot(col, vec3(0.2126,0.7152,0.0722))) * vec3(0.62, 0.78, 1.18), uNight * 0.7);
+    l = dot(col, vec3(0.2126,0.7152,0.0722));
+    float w = col.r - col.b;
+    float lit = max(max(smoothstep(0.3, 0.45, w), smoothstep(0.1, 0.5, w / (l + 0.03)) * smoothstep(0.35, 0.5, l)),
+                    smoothstep(0.5, 0.9, l));
+    float k = lit * smoothstep(0.4, 0.9, uNight);
+    col = mix(col, vec3(l) * mix(vec3(1.0), vec3(0.62, 0.78, 1.18), (1.0 - k) / (1.0 + k)), uNight * 0.7 * (1.0 - k * k));
     col = (col - 0.5) * uContrast + 0.5;
     vec2 d = vUv - 0.5; col *= 1.0 - uVig * dot(d, d) * 2.2;
     gl_FragColor = vec4(clamp(col, 0.0, 1.0), gl_FragColor.a); }
