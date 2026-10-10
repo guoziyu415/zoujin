@@ -4989,7 +4989,29 @@
     }
    ],
    "inferred": true,
-   "note": "日没前の広場から、約束、メロスの出発（23:45）まで。"
+   "note": "日没前の広場から、約束、メロスの出発（23:45）まで。",
+   "plan": {
+    "toAct": "act.4",
+    "place": "place.execution-ground",
+    "t": 5370,
+    "spot": "stake-front",
+    "effects": [
+     {
+      "op": "relocate",
+      "character": "char.old-man",
+      "place": "place.execution-ground",
+      "spot": "ground-west"
+     },
+     {
+      "op": "relocate",
+      "character": "char.philostratus",
+      "place": "place.road-to-city"
+     }
+    ],
+    "arrival": {
+     "line": "三日目の夕方。あなたは、刑場の近くに来ていた。"
+    }
+   }
   },
   {
    "id": "act.2",

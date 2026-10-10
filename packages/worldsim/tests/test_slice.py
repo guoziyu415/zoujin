@@ -32,6 +32,11 @@ def jump(s: SimState, exit_id: str) -> SimState:
     t = s["t"]
     s = apply(SLICE, s, {"t": t, "dt": 0, "type": "act-transition", "actor": "player", "origin": "act",
                          "exitId": exit_id, "effects": ex["effects"]})  # fmt: skip
+    return land(s, ex)
+
+
+def land(s: SimState, ex: dict[str, Any]) -> SimState:
+    """第 3、4 步：结算到目标时间，系统事件改幕和玩家所在地。"""
     s = run_to(s, ex["t"])
     step4 = [
         {"op": "set", "var": "var.act.current", "value": ex["toAct"]},
@@ -73,6 +78,26 @@ def test_the_old_man_exit_needs_the_walk_home() -> None:
     walk = next(a for c in SLICE["characters"] for a in c.get("mutualAid", []) if a["id"] == "aid.old-man.listen")
     s = apply(SLICE, s, {"t": s["t"], "dt": 0, "origin": "turn", "effects": walk["effects"]})
     assert Sim(SLICE).holds(need, flat(s))
+
+
+def test_a_feasible_plan_lands_where_act_1_plan_says() -> None:
+    """「ほかの考えがある」成行（契约 1.7 的 Act.plan，C-19）：固定的效果加上打算自己的（群众知道约定），
+    同样跳到 17:30 的刑场。"""
+    plan = ACTS["act.1"]["plan"]
+    assert (plan["toAct"], plan["place"], plan["t"], plan["spot"]) == ("act.4", GROUND, 5370, "stake-front")
+    assert "opener" not in plan["arrival"]
+    s = act1_end()
+    told = [{"op": "learn", "character": "char.crowd", "fact": "fact.promise"}]
+    effects = plan["effects"] + told
+    assert check_effects(SLICE, s, effects, "act") == []
+    said = {"label": "町の人々にメロスの約束を話して回る", **{k: plan[k] for k in ("toAct", "place", "t")}}
+    s = apply(SLICE, s, {"t": s["t"], "dt": 0, "type": "act-transition", "actor": "player", "origin": "act",
+                         "plan": said, "effects": effects})  # fmt: skip
+    s = land(s, plan)
+    assert (s["t"], s["vars"]["var.act.current"], s["vars"]["var.player.location"]) == (5370, "act.4", GROUND)
+    assert (s["locations"]["char.old-man"], s["spots"]["char.old-man"]) == (GROUND, "ground-west")
+    assert s["locations"]["char.philostratus"] == "place.road-to-city"
+    assert classify(SLICE, run_to(s, None)) == "canon-reunion"
 
 
 @pytest.mark.parametrize(

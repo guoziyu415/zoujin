@@ -468,11 +468,15 @@ class Checker:
                     self.err(f"{dw}：act_plan 要写 accepted: true / false")
                 elif d["accepted"]:
                     ended = self.act_end.get(cp_beat)
-                    # 下一幕 = 这一幕的去处去的那一幕（切片版第一幕直接跳到 act.4，S-077 ⑤）
-                    nxt = sorted({e["toAct"] for e in ended["exits"]}) if ended else []
+                    # 下一幕 = 这一幕的去处去的那一幕（切片版第一幕直接跳到 act.4，S-077 ⑤）；
+                    # （1.7，C-19）幕上有 plan 时成行就落在它写的下一幕和地点
+                    plan = ended.get("plan") if ended else None
+                    nxt = [plan["toAct"]] if plan else sorted({e["toAct"] for e in ended["exits"]}) if ended else []
                     if d.get("toAct") not in nxt:
                         self.err(f"{dw}：成行的打算 toAct 要是下一幕 {nxt}")
-                    if d.get("place") not in self.places:
+                    if plan and d.get("place") != plan["place"]:
+                        self.err(f"{dw}：这一幕有 plan，成行的打算落在 {plan['place']}")
+                    elif d.get("place") not in self.places:
                         self.err(f"{dw}：地点不存在 {d.get('place')}")
                     elif reach is not None and d["place"] not in reach:
                         self.err(f"{dw}：{role['id']} 进不了 {d['place']}，期待成行和 R7 矛盾")

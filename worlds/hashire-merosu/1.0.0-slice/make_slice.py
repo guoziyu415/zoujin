@@ -57,6 +57,17 @@ SLICE_EXITS: list[dict[str, Any]] = [
     },
 ]
 
+# 「ほかの考えがある」成行时的落点（契约 1.7 的 Act.plan，C-19，后端 10-10 定）：同样到三日目 17:30 的刑场。玩家站起点
+# stake-front（UX「刑場（数据默认）」），老爺在西头 ground-west；打算自己的效果（例：群众 learn 约定）由叙事者提取后加上
+SLICE_PLAN: dict[str, Any] = {
+    "toAct": "act.4",
+    "place": GROUND,
+    "t": T_JUMP,
+    "spot": "stake-front",
+    "effects": [{**OLD_MAN_TO_GROUND, "spot": "ground-west"}, PHILOSTRATUS_TO_ROAD],
+    "arrival": {"line": "三日目の夕方。あなたは、刑場の近くに来ていた。"},
+}
+
 
 def by_id(xs: list[dict[str, Any]], id_: str) -> dict[str, Any]:
     return next(x for x in xs if x["id"] == id_)
@@ -103,8 +114,9 @@ def make_slice(src: dict[str, Any]) -> dict[str, Any]:
     custody["values"].remove("arrested")
     del custody["valueLabels"]["arrested"]
 
-    # ④⑤ 幕末只列市里去得了的两个去处，都跳到三日目 17:30 的刑场；「ほかの考えがある」是前端的固定选项
+    # ④⑤ 幕末只列市里去得了的两个去处，都跳到三日目 17:30 的刑场；「ほかの考えがある」是前端的固定选项，成行时落在 plan
     acts["act.1"]["exits"] = copy.deepcopy(SLICE_EXITS)
+    acts["act.1"]["plan"] = copy.deepcopy(SLICE_PLAN)
 
     # S-050：切片里只和老爺、梅洛斯说话；别的人物只有走动版，没有对话版（S-078 ①）
     for c in w["characters"]:
