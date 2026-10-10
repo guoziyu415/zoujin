@@ -637,7 +637,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 
 ```json
 { "type": "set_piece", "pieceId": "piece.gate-taken",
-  "lines": [ { "narration": "衛兵が、あなたの前に槍を下ろした。" },
+  "lines": [ { "narration": "警吏が、あなたの前に槍を下ろした。" },
              { "speaker": "char.guards", "line": "下がれ、旅の者。ここから先は、通さぬ。" },
              { "narration": "メロスは、王城の奥へ引かれていった。" } ] }
 ```
