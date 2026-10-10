@@ -9,6 +9,9 @@ __pycache__/
 .pnpm-store/
 dist/
 out/
+# Playwright（apps/web 的 e2e 截图和报告）
+test-results/
+playwright-report/
 
 # 本机设置和凭证（不要写 *.json：Schema 和 world.json 都是 .json）
 .env*
