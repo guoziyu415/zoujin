@@ -213,9 +213,9 @@
       "auto": false
     },
     "ground-south": {
-      "at": [8.0, -3.0],
+      "at": [9.5, -7.0],
       "face": [10.4, 0],
-      "about": "south-west of the platform, facing the post: where someone the act plan does not place stands to watch. Listed before castle-steps so the first one stands by the post, not up the steps; 2 m from stake-front-side, clear of the gate-to-post corridor"
+      "about": "south of the platform, facing the post: where someone the act plan does not place stands to watch. Listed before castle-steps so the first one stands by the post, not up the steps; 7 m off the gate-to-post corridor and out of both default follow shots from ground-west (portrait 48°, landscape 63° off the view axis; UX on PR #51)"
     },
     "king-west": {
       "at": [3.0, 2.0],
