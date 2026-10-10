@@ -20,5 +20,8 @@ application_default_credentials.json
 service-account*.json
 client_secret*.json
 
+# 还没用过的留出样本只放项目文件夹（CONTRIBUTING「不进仓库的」），整个拷 evals/ 时挡住
+evals/holdout/
+
 # 系统文件
 .DS_Store

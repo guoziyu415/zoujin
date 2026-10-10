@@ -1,4 +1,5 @@
 # Python：格式、类型、单元测试（禁网），世界模型和评测集的校验（dev-plan 2.4）。
+# 路径过滤要包含测试读的非 .py 输入：Schema 和例子（packages/）、回放夹具、迁移配置、两份契约文档。
 name: python
 
 on:
@@ -10,6 +11,11 @@ on:
       - ".python-version"
       - "worlds/**"
       - "evals/**"
+      - "packages/**"
+      - "services/**"
+      - "fixtures/**"
+      - "docs/backend/api-contract.md"
+      - "docs/data/contracts.md"
       - ".github/workflows/python.yml"
       - ".github/scripts/**"
   push:
@@ -21,6 +27,11 @@ on:
       - ".python-version"
       - "worlds/**"
       - "evals/**"
+      - "packages/**"
+      - "services/**"
+      - "fixtures/**"
+      - "docs/backend/api-contract.md"
+      - "docs/data/contracts.md"
       - ".github/workflows/python.yml"
       - ".github/scripts/**"
 

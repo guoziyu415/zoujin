@@ -35,3 +35,13 @@ keywords = ["iam.gserviceaccount.com"]
   [[rules.allowlists]]
   description = "后端离线测试里的假地址（spikes/backend/tests/test_s1b.py）"
   regexes = ['''(?i)@offline-test\.iam\.gserviceaccount\.com$''']
+
+[[rules]]
+id = "zoujin-macos-home-path"
+description = "macOS 家目录路径（/Users/ 加用户名）：Mac 上的用户名和路径不进仓库，从 Mac 拿回来的日志和结果最容易带进来"
+regex = '''/Users/[A-Za-z0-9._-]+'''
+keywords = ["/users/"]
+
+  [[rules.allowlists]]
+  description = "文档里的占位写法和系统共享目录"
+  regexes = ['''(?i)^/Users/(?:shared|you|your-name|username|user|name|example)$''']

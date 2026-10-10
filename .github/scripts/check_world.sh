@@ -26,8 +26,9 @@ echo "== 评测种子：check_evals"
 
 echo "== 防剧透探针：重新生成和 check_probes"
 # gen_probes.py 和 s2_check.py 按项目文件夹的旧布局找 worldsim（data/spikes/pipeline），
-# 这里用 PYTHONPATH 指到 reference/，所以这两条不加 -I（W-1 以后改成装好的包）。
-PYTHONPATH="$REF" "$PY" evals/gen_probes.py evals/probes/s3_spoiler_probes.json
+# 这里用 PYTHONPATH 指到 reference/。-I 会连 PYTHONPATH 一起忽略，所以这两条改用 -s -P
+# （不读用户目录的包、不把脚本所在目录放进搜索路径），隔离程度接近 -I（W-1 以后改成装好的包）。
+PYTHONPATH="$REF" "$PY" -s -P evals/gen_probes.py evals/probes/s3_spoiler_probes.json
 "$PY" -I "$REF/check_probes.py" --world "$W/world.json" --probes evals/probes/s3_spoiler_probes.json
 
 echo "== 安全样本：重新生成"
@@ -35,7 +36,7 @@ echo "== 安全样本：重新生成"
 "$PY" -I evals/gen_selfharm_holdout.py evals/safety/s4_selfharm_holdout.jsonl --public evals/safety/s4_selfharm.jsonl
 
 echo "== S-2 公开样例：重新生成"
-PYTHONPATH="$REF" "$PY" evals/gen_s2_dev.py evals/s2/s2_dev.jsonl
+PYTHONPATH="$REF" "$PY" -s -P evals/gen_s2_dev.py evals/s2/s2_dev.jsonl
 
 echo "== 生成物一致"
 if ! git diff --exit-code --stat -- worlds evals; then

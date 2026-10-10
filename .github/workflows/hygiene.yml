@@ -31,9 +31,9 @@ jobs:
       - name: Scan every commit
         run: /tmp/gitleaks git --config .gitleaks.toml --redact --no-banner -v .
       # 可选：zg 在仓库设置里加 Actions secret KNOWN_IDS（真实的项目 ID、项目号、账单 ID 等，一行一个），
-      # 只在推到 main 时查有没有漏进仓库；值本身不进仓库，PR 的运行用不到它。没加就跳过。
-      - name: Known IDs (main only)
-        if: github.event_name == 'push'
+      # PR 和推到 main 时都查有没有漏进仓库，在合进 main 之前就拦住。值本身不进仓库，脚本也不打印它。
+      # 仓库是私有的、没有 fork，PR 都来自项目线程，所以 PR 的运行拿这个 secret 风险不大。没加就跳过。
+      - name: Known IDs
         env:
           KNOWN_IDS: ${{ secrets.KNOWN_IDS }}
         run: python3 .github/scripts/check_known_ids.py
