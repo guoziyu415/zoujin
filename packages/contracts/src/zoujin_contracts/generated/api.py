@@ -25,6 +25,7 @@ from zoujin_contracts.generated.data import (
     RecordedAt,
     RoleId,
     SceneId,
+    SetPieceId,
     StoryTime,
     TLabel,
     TurnId,
@@ -34,9 +35,23 @@ from zoujin_contracts.generated.data import (
 type RecapLine = Annotated[str, Field(min_length=1)]
 
 
+class ActLandedMessage(BaseModel):
+    """
+    （v1.0.4）幕切换以后落地（3.11）：act_transition.arrival（或 pending.arrival）带 opener 时，前端显示完落地那一行、玩家能动的时候发一次；服务端收到才让 opener 先开口。actId 不是现在这一幕的、同一幕再发的，服务端忽略
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+    type: Literal["act_landed"] = "act_landed"
+    actId: ActId
+
+
 type Because = Annotated[str, Field(min_length=1)]
 """
-条件出现的理由，如「王があなたを覚えている」
+条件出现的理由。世界模型的 ActExit 没有写理由的字段，服务端现在一律给 null；条件去处的说明写在 sub 里（v1.0.4）
 """
 
 
@@ -122,6 +137,26 @@ class ApproachMessage(BaseModel):
     type: Literal["approach"] = "approach"
     character: CharacterId
     kind: Literal["request", "news"]
+
+
+class Arrival(BaseModel):
+    """
+    （v1.0.4）幕切换的落地（3.11）：世界模型的 ActExit.arrival 或 Act.plan.arrival 原样下发
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+    line: Annotated[str, Field(min_length=1)]
+    """
+    落地后的第一行叙事（地の文，日语），跳转之后显示
+    """
+    opener: CharacterId | None = None
+    """
+    落地后先开口的人物：服务端发起一轮，台词按人设生成，不是问句
+    """
 
 
 type AssetPath = Annotated[str, Field(min_length=1, pattern="^/[^\\s?#]*$", title="AssetPath")]
@@ -1185,6 +1220,74 @@ class SessionReadyMessage(BaseModel):
     type: Literal["session_ready"] = "session_ready"
     character: CharacterId
     voiceAvailable: bool
+
+
+class SetPieceLineOption1(BaseModel):
+    """
+    （v1.0.4）固定演出的一行（3.14）：世界模型的 SetPiece.lines 原样下发。narration = 一行地の文；speaker + line = 这个人物的一句预录，字幕就是 line
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    narration: Annotated[str, Field(min_length=1)]
+    """
+    一行地の文（日语）
+    """
+
+
+class SetPieceLineOption2(BaseModel):
+    """
+    （v1.0.4）固定演出的一行（3.14）：世界模型的 SetPiece.lines 原样下发。narration = 一行地の文；speaker + line = 这个人物的一句预录，字幕就是 line
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+    speaker: CharacterId
+    line: Annotated[str, Field(min_length=1)]
+    """
+    预录句，也是字幕（日语）
+    """
+
+
+type SetPieceLine = Annotated[SetPieceLineOption1 | SetPieceLineOption2, Field(title="SetPieceLine")]
+"""
+（v1.0.4）固定演出的一行（3.14）：世界模型的 SetPiece.lines 原样下发。narration = 一行地の文；speaker + line = 这个人物的一句预录，字幕就是 line
+"""
+
+
+class SetPieceMessage(BaseModel):
+    """
+    （v1.0.4）固定演出（3.14，契约 2.11）：写好的地の文和人物的预录句，按顺序演。不是事件，不占 seq，断线时没收到的不补发
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+    type: Literal["set_piece"] = "set_piece"
+    pieceId: SetPieceId
+    lines: Annotated[list[SetPieceLine], Field(min_length=1)]
+    """
+    人物的句子播 manifest 的 setPieceVoices["<pieceId>/<序号>"]（序号 = 在 lines 里的位置，从 1 起，地の文也算）
+    """
+
+
+type SetPieceVoiceKey = Annotated[
+    str,
+    Field(
+        pattern="^piece\\.[a-z0-9]+(?:[.-][a-z0-9]+)*/[1-9][0-9]*$",
+        title="SetPieceVoiceKey",
+    ),
+]
+"""
+（v1.0.4）manifest.setPieceVoices 的键：「{固定演出 ID}/{序号}」，序号从 1 起，例 piece.gate-taken/2
+"""
 
 
 class SituationalAction(BaseModel):
@@ -2527,7 +2630,7 @@ class TurnSettledMessage(BaseModel):
 
 class TurnStartedMessage(BaseModel):
     """
-    服务端发起的一轮：人物先开口（3.9、3.10）
+    服务端发起的一轮：人物先开口（3.9、3.10、3.11 的落地）
     """
 
     model_config = ConfigDict(
@@ -2539,7 +2642,10 @@ class TurnStartedMessage(BaseModel):
     turnId: TurnId
     turnSeq: ServerTurnSeq
     speaker: CharacterId
-    reason: Literal["approach", "leaving", "confirm"]
+    reason: Literal["approach", "leaving", "confirm", "arrival"]
+    """
+    arrival（v1.0.4）= 幕切换落地后 opener 先开口（3.11）。approach、arrival 的一轮服务端把 speaker 当作已经 focus 的人物，前端不用另发 focus
+    """
 
 
 class UnfocusMessage(BaseModel):
@@ -2760,9 +2866,13 @@ class ActionResultMessage(BaseModel):
     clientMsgId: ClientMsgId
     status: Literal["done", "refused", "partial"]
     eventIds: list[EventId]
-    narration: Annotated[str, Field(min_length=1)]
+    narration: Annotated[str | None, Field(min_length=1)] = None
     """
-    一句故事里的说明；拒绝也在故事里说
+    一句故事里的说明；拒绝也在故事里说。这个动作挂着固定演出时没有（v1.0.4），和 setPiece 正好有一个
+    """
+    setPiece: SetPieceId | None = None
+    """
+    （v1.0.4）这个动作挂着固定演出（契约 2.11 的 on.act）：它的 ID，紧接着推那条 set_piece（3.14），代替 narration
     """
     minutes: Minutes
 
@@ -2816,7 +2926,7 @@ class ActivityStartMessage(BaseModel):
 
 class CharacterPresence(BaseModel):
     """
-    当前场景在场的人物（2.3）；还没有关系的人物两个 relation 字段都省略
+    当前场景在场的人物（2.3）；还没有关系的人物两个 relation 字段都省略。group 的人物（群众、警吏）不占位置点，没有 spot（v1.0.4）
     """
 
     model_config = ConfigDict(
@@ -2826,9 +2936,13 @@ class CharacterPresence(BaseModel):
     )
     id: CharacterId
     place: PlaceId
-    spot: Spot
+    spot: Spot | None = None
     activity: Activity
     talkable: bool
+    group: Literal[True] | None = None
+    """
+    （v1.0.4）一群人（契约 1.7 的 Character.group）：不占位置点，没有 spot，前端按地点成群地放（契约 3.1）
+    """
     relationLabel: str | None = None
     """
     由 trust 区间映射（第 4 节的表）
@@ -3390,6 +3504,14 @@ class ActOption(BaseModel):
     label: Annotated[str, Field(min_length=1)]
     sceneId: SceneId
     tLabel: TLabel
+    where: Annotated[str, Field(min_length=1)]
+    """
+    （v1.0.4）副题的前半「{地点}・{日子}の{时段}」（ux-design 4.4）：服务端算好，地点是落点的 Place.name，日子和时段是落点时刻（和 tLabel 同一个时刻）在 clock.labels 的 days、bands 里的叫法，中间用「の」，不套 clock.labels.format。例「刑場・三日目の夕方」
+    """
+    sub: Annotated[str | None, Field(max_length=16, min_length=1)] = None
+    """
+    （v1.0.4）副题的后半：世界模型的 ActExit.sub（≤ 16 字），没有就省略。例「西の門が見える所で」
+    """
     with_: Annotated[list[CharacterId], Field(alias="with")]
     because: Because | None
     enRoute: ActOptionEnRoute | None = None
@@ -3436,6 +3558,7 @@ type ClientMessage = Annotated[
     | ApproachDismissMessage
     | ActChooseMessage
     | ActProposeMessage
+    | ActLandedMessage
     | SafetyResumeMessage
     | PingMessage,
     Field(discriminator="type", title="ClientMessage"),
@@ -3513,6 +3636,10 @@ class ManifestResponse(BaseModel):
     acts: list[ManifestResponseActsItem]
     clock: Annotated[ManifestResponseClock, Field(title="ManifestResponseClock")]
     ruby: list[ManifestResponseRubyItem]
+    setPieceVoices: dict[SetPieceVoiceKey, VoiceClip] | None = None
+    """
+    （v1.0.4）固定演出里人物的预录句（2.1、3.14）。键「{固定演出 ID}/{序号}」，序号 = 这一句在那条固定演出 lines 里的位置（从 1 起，地の文也算）。构建时用这个人物的声音生成，不能对话的人物（警吏）也有；声音还没生成的句子没有键。没有固定演出时省略
+    """
 
 
 class MemoriesResponse(BaseModel):
@@ -3571,7 +3698,7 @@ class ActEnd(BaseModel):
 
 class ActEndedMessage(BaseModel):
     """
-    幕结束，给出去处（3.11）；除 type 外和 ActEnd 同形
+    幕结束，给出去处（3.11）；除 type 外和 ActEnd 同形。每个去处带副题的前半 where 和后半 sub（v1.0.4）
     """
 
     model_config = ConfigDict(
@@ -3614,6 +3741,10 @@ class Pending(BaseModel):
     actEnd: ActEnd | None
     safetyPause: bool
     approach: PendingApproach | None
+    arrival: Arrival | None = None
+    """
+    （v1.0.4）幕切换以后还没落地：这一幕的 arrival 带 opener、服务端还没收到 act_landed 时给，和 act_transition.arrival 同形；没有时省略（3.11、第 4 节）
+    """
 
 
 class Snapshot(BaseModel):
@@ -3664,7 +3795,7 @@ class WelcomeMessage(BaseModel):
 
 class ActTransitionMessage(BaseModel):
     """
-    进入下一幕：「その頃」（≤ 3 件）和新场景的快照（3.11）
+    进入下一幕：「その頃」（≤ 3 件）、新场景的快照和落地（3.11）
     """
 
     model_config = ConfigDict(
@@ -3677,6 +3808,10 @@ class ActTransitionMessage(BaseModel):
     toActId: ActId
     recap: Annotated[list[RecapItem], Field(max_length=3)]
     snapshot: Snapshot
+    arrival: Arrival | None = None
+    """
+    （v1.0.4）落地：第一行地の文 line 和先开口的人物 opener；去处（或成行的打算）没写 arrival 时省略。有 opener 时前端落地后发 act_landed
+    """
 
 
 class CreatePlaythroughResponse(BaseModel):
@@ -3701,6 +3836,7 @@ type ServerMessage = Annotated[
     | TurnSettledMessage
     | CommitMessage
     | NarrationMessage
+    | SetPieceMessage
     | ConfirmMessage
     | ConfirmClosedMessage
     | ApproachMessage

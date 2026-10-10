@@ -94,5 +94,12 @@
       "word": "邪智暴虐",
       "reading": "じゃちぼうぎゃく"
     }
-  ]
+  ],
+  "setPieceVoices": {
+    "piece.gate-taken/2": {
+      "url": "/assets/voice/pieces/gate-taken-2.7d2a.m4a",
+      "text": "下がれ、旅の者。ここから先は、通さぬ。",
+      "durationMs": 2600
+    }
+  }
 }

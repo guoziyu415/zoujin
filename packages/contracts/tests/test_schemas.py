@@ -100,7 +100,7 @@ def doc_table_types(section: str) -> list[str]:
 
 def test_ws_messages_match_api_contract_tables(contracts: Contracts) -> None:
     """覆盖检查：文档 3.2、3.3 表格里的 type 和 Schema 的 const 一一对应，少一个、多一个都红。"""
-    for section, side, expected in (("3.2", "client", 17), ("3.3", "server", 30)):
+    for section, side, expected in (("3.2", "client", 18), ("3.3", "server", 31)):
         in_doc = doc_table_types(section)
         assert len(in_doc) == len(set(in_doc)), f"{section} 表里有重复的 type"
         in_schema = contracts.ws_types(side)

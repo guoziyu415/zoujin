@@ -414,6 +414,38 @@ def play_act_end(p: Player, voice: bool) -> None:
     assert landing == (("ground-west", "stake-front") if voice else ("stake-front", "stake-front-side"))
     snap = p.call("snapshot", 200, f"/v1/playthroughs/{p.pid}/snapshot")
     assert snap["actId"] == "act.4" and snap["clock"]["t"] == 5370
+    # 副题两段由服务端给（v1.0.4）；落地：去老爺家的去处带 opener，发了 act_landed 他才先开口
+    assert {o["optionId"]: o["sub"] for o in ended["options"]}["exit.1.old-man"] == "老爺があなたを覚えている"
+    assert all(o["where"] == "刑場・三日目の夕方" and o["because"] is None for o in ended["options"])
+    assert transition["arrival"]["line"]
+    if voice:
+        assert "opener" not in transition["arrival"] and "arrival" not in snap["pending"]
+        return
+    assert transition["arrival"]["opener"] == OLD and snap["pending"]["arrival"] == transition["arrival"]
+    p.send({"type": "act_landed", "actId": "act.4"})
+    started = p.expect("turn_started", reason="arrival", speaker=OLD)
+    assert started["turnSeq"] > 0x80000000
+    p.expect("transcript", turnId=started["turnId"], speaker=OLD, final=True)
+    p.expect("suggestions", turnId=started["turnId"])
+    snap = p.call("snapshot", 200, f"/v1/playthroughs/{p.pid}/snapshot")
+    assert "arrival" not in snap["pending"]
+
+
+def play_set_piece(p: Player) -> None:
+    while "interactables" not in (commit := p.expect("commit"))["patch"]:
+        pass
+    (door,) = commit["patch"]["interactables"]["add"]
+    first = p.msg_id()
+    p.send({"type": "action", "clientMsgId": first, "kind": "examine", "target": door["id"]})
+    result = p.expect("action_result", clientMsgId=first)
+    assert "narration" not in result and result["setPiece"] == "piece.workshop-knock"
+    piece = p.expect("set_piece", pieceId=result["setPiece"])
+    assert p.log.index(piece) == p.log.index(result) + 1
+    assert [line.get("speaker") for line in piece["lines"]] == ["char.selinuntius", None]
+    again = p.msg_id()
+    p.send({"type": "action", "clientMsgId": again, "kind": "examine", "target": door["id"]})
+    result = p.expect("action_result", clientMsgId=again)
+    assert result["narration"] and "setPiece" not in result
 
 
 def play_goaway(p: Player) -> None:
@@ -511,6 +543,7 @@ TOUR = [
     "full-turn",
     "small-talk",
     "approach",
+    "set-piece",
     "confirm",
     "interrupt",
     "retract",
@@ -535,6 +568,7 @@ def play(name: str, p: Player, *, in_tour: bool = False) -> None:
         "retract": lambda: play_retract(p),
         "confirm": lambda: play_confirm(p),
         "approach": lambda: play_approach(p),
+        "set-piece": lambda: play_set_piece(p),
         "act-end": lambda: play_act_end(p, voice=not in_tour),
         "goaway": lambda: play_goaway(p),
         "other-tab": lambda: play_other_tab(p),

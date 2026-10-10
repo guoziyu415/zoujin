@@ -84,6 +84,7 @@ export type ClientMessage =
   | ApproachDismissMessage
   | ActChooseMessage
   | ActProposeMessage
+  | ActLandedMessage
   | SafetyResumeMessage
   | PingMessage;
 /**
@@ -139,6 +140,7 @@ export type ServerMessage =
   | TurnSettledMessage
   | CommitMessage
   | NarrationMessage
+  | SetPieceMessage
   | ConfirmMessage
   | ConfirmClosedMessage
   | ApproachMessage
@@ -166,6 +168,27 @@ export type ServerTurnSeq = number;
  * 说话的人：玩家或人物
  */
 export type Speaker = "player" | Data.CharacterId;
+/**
+ * （v1.0.4）固定演出的一行（3.14）：世界模型的 SetPiece.lines 原样下发。narration = 一行地の文；speaker + line = 这个人物的一句预录，字幕就是 line
+ */
+export type SetPieceLine =
+  | {
+      /**
+       * 一行地の文（日语）
+       */
+      narration: string;
+    }
+  | {
+      speaker: Data.CharacterId;
+      /**
+       * 预录句，也是字幕（日语）
+       */
+      line: string;
+    };
+/**
+ * （v1.0.4）manifest.setPieceVoices 的键：「{固定演出 ID}/{序号}」，序号从 1 起，例 piece.gate-taken/2
+ */
+export type SetPieceVoiceKey = string;
 /**
  * 一条遥测事件，按 name 区分（data-design 9.3）
  */
@@ -248,6 +271,14 @@ export interface ActOption {
   label: string;
   sceneId: Data.SceneId;
   tLabel: Data.TLabel;
+  /**
+   * （v1.0.4）副题的前半「{地点}・{日子}の{时段}」（ux-design 4.4）：服务端算好，地点是落点的 Place.name，日子和时段是落点时刻（和 tLabel 同一个时刻）在 clock.labels 的 days、bands 里的叫法，中间用「の」，不套 clock.labels.format。例「刑場・三日目の夕方」
+   */
+  where: string;
+  /**
+   * （v1.0.4）副题的后半：世界模型的 ActExit.sub（≤ 16 字），没有就省略。例「西の門が見える所で」
+   */
+  sub?: string;
   with: Data.CharacterId[];
   because: string | null;
   enRoute?: ActOptionEnRoute;
@@ -286,7 +317,7 @@ export interface Freeform {
   triesLeft: number;
 }
 /**
- * 幕结束，给出去处（3.11）；除 type 外和 ActEnd 同形
+ * 幕结束，给出去处（3.11）；除 type 外和 ActEnd 同形。每个去处带副题的前半 where 和后半 sub（v1.0.4）
  */
 export interface ActEndedMessage {
   type: "act_ended";
@@ -301,6 +332,13 @@ export interface ActEndedMessage {
    */
   options: ActOption[];
   freeform: Freeform;
+}
+/**
+ * （v1.0.4）幕切换以后落地（3.11）：act_transition.arrival（或 pending.arrival）带 opener 时，前端显示完落地那一行、玩家能动的时候发一次；服务端收到才让 opener 先开口。actId 不是现在这一幕的、同一幕再发的，服务端忽略
+ */
+export interface ActLandedMessage {
+  type: "act_landed";
+  actId: Data.ActId;
 }
 /**
  * 幕末说出的打算能不能成行（3.11）
@@ -341,7 +379,7 @@ export interface ActProposeMessage {
   text: Text200;
 }
 /**
- * 进入下一幕：「その頃」（≤ 3 件）和新场景的快照（3.11）
+ * 进入下一幕：「その頃」（≤ 3 件）、新场景的快照和落地（3.11）
  */
 export interface ActTransitionMessage {
   type: "act_transition";
@@ -352,6 +390,10 @@ export interface ActTransitionMessage {
    */
   recap: RecapItem[];
   snapshot: Snapshot;
+  /**
+   * （v1.0.4）落地：第一行地の文 line 和先开口的人物 opener；去处（或成行的打算）没写 arrival 时省略。有 opener 时前端落地后发 act_landed
+   */
+  arrival?: Arrival;
 }
 /**
  * 「その頃」的一件（3.11）
@@ -426,14 +468,18 @@ export interface PlaceAccess {
   reason?: string;
 }
 /**
- * 当前场景在场的人物（2.3）；还没有关系的人物两个 relation 字段都省略
+ * 当前场景在场的人物（2.3）；还没有关系的人物两个 relation 字段都省略。group 的人物（群众、警吏）不占位置点，没有 spot（v1.0.4）
  */
 export interface CharacterPresence {
   id: Data.CharacterId;
   place: Data.PlaceId;
-  spot: Spot;
+  spot?: Spot;
   activity: Data.Activity;
   talkable: boolean;
+  /**
+   * （v1.0.4）一群人（契约 1.7 的 Character.group）：不占位置点，没有 spot，前端按地点成群地放（契约 3.1）
+   */
+  group?: true;
   /**
    * 由 trust 区间映射（第 4 节的表）
    */
@@ -495,6 +541,10 @@ export interface Pending {
   actEnd: ActEnd | null;
   safetyPause: boolean;
   approach: PendingApproach | null;
+  /**
+   * （v1.0.4）幕切换以后还没落地：这一幕的 arrival 带 opener、服务端还没收到 act_landed 时给，和 act_transition.arrival 同形；没有时省略（3.11、第 4 节）
+   */
+  arrival?: Arrival;
 }
 /**
  * 关键时刻（3.4、3.4.1），直接带因果链
@@ -561,6 +611,19 @@ export interface PendingApproach {
   kind: "request" | "news";
 }
 /**
+ * （v1.0.4）幕切换的落地（3.11）：世界模型的 ActExit.arrival 或 Act.plan.arrival 原样下发
+ */
+export interface Arrival {
+  /**
+   * 落地后的第一行叙事（地の文，日语），跳转之后显示
+   */
+  line: string;
+  /**
+   * 落地后先开口的人物：服务端发起一轮，台词按人设生成，不是问句
+   */
+  opener?: Data.CharacterId;
+}
+/**
  * 语音状态（2.3、第 4 节 welcome）
  */
 export interface Voice {
@@ -603,9 +666,13 @@ export interface ActionResultMessage {
   status: "done" | "refused" | "partial";
   eventIds: Data.EventId[];
   /**
-   * 一句故事里的说明；拒绝也在故事里说
+   * 一句故事里的说明；拒绝也在故事里说。这个动作挂着固定演出时没有（v1.0.4），和 setPiece 正好有一个
    */
-  narration: string;
+  narration?: string;
+  /**
+   * （v1.0.4）这个动作挂着固定演出（契约 2.11 的 on.act）：它的 ID，紧接着推那条 set_piece（3.14），代替 narration
+   */
+  setPiece?: Data.SetPieceId;
   minutes: Minutes;
 }
 /**
@@ -1318,6 +1385,12 @@ export interface ManifestResponse {
     word: string;
     reading: string;
   }[];
+  /**
+   * （v1.0.4）固定演出里人物的预录句（2.1、3.14）。键「{固定演出 ID}/{序号}」，序号 = 这一句在那条固定演出 lines 里的位置（从 1 起，地の文也算）。构建时用这个人物的声音生成，不能对话的人物（警吏）也有；声音还没生成的句子没有键。没有固定演出时省略
+   */
+  setPieceVoices?: {
+    [k: string]: VoiceClip | undefined;
+  };
 }
 /**
  * ux-design 16.2 的 6 句加固定台词（2.1）
@@ -1535,14 +1608,17 @@ export interface SessionReadyMessage {
   voiceAvailable: boolean;
 }
 /**
- * 服务端发起的一轮：人物先开口（3.9、3.10）
+ * 服务端发起的一轮：人物先开口（3.9、3.10、3.11 的落地）
  */
 export interface TurnStartedMessage {
   type: "turn_started";
   turnId: Data.TurnId;
   turnSeq: ServerTurnSeq;
   speaker: Data.CharacterId;
-  reason: "approach" | "leaving" | "confirm";
+  /**
+   * arrival（v1.0.4）= 幕切换落地后 opener 先开口（3.11）。approach、arrival 的一轮服务端把 speaker 当作已经 focus 的人物，前端不用另发 focus
+   */
+  reason: "approach" | "leaving" | "confirm" | "arrival";
 }
 /**
  * 字幕。人物每一轮恰好一条 final = true，没回答的轮、出戏卡停下的轮、一个字没说就被打断的轮除外；定稿可能晚于 turn_complete
@@ -1603,6 +1679,19 @@ export interface TurnSettledMessage {
   outcome: "committed" | "no_change" | "rejected" | "retracted" | "no_response" | "paused";
   eventIds: Data.EventId[];
   minutes: Minutes;
+}
+/**
+ * （v1.0.4）固定演出（3.14，契约 2.11）：写好的地の文和人物的预录句，按顺序演。不是事件，不占 seq，断线时没收到的不补发
+ */
+export interface SetPieceMessage {
+  type: "set_piece";
+  pieceId: Data.SetPieceId;
+  /**
+   * 人物的句子播 manifest 的 setPieceVoices["<pieceId>/<序号>"]（序号 = 在 lines 里的位置，从 1 起，地の文也算）
+   *
+   * @minItems 1
+   */
+  lines: SetPieceLine[];
 }
 /**
  * 「取り消す」「言い直す」的结果（3.6）

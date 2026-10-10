@@ -18,10 +18,20 @@ PKG = Path(__file__).resolve().parents[1]
 TS = PKG / "src" / "generated"
 
 
-def test_api_ts_has_no_index_signature() -> None:
-    """关死检查的 TS 一侧：接口类型里没有 `[k: string]: unknown`。"""
+def test_api_ts_index_signatures_only_for_records(contracts: Contracts) -> None:
+    """关死检查的 TS 一侧：接口类型里没有 `[k: string]: unknown`，索引签名只来自 Record
+    （additionalProperties 是一个 Schema，v1.0.4 的 manifest.setPieceVoices）。"""
+    records = sum(
+        1
+        for doc in contracts.api().values()
+        for _, node in contracts.walk(doc)
+        if isinstance(node, dict)
+        and node.get("type") == "object"
+        and isinstance(node.get("additionalProperties"), dict)
+    )
     text = (TS / "api.ts").read_text(encoding="utf-8")
-    assert "[k: string]" not in text
+    assert "[k: string]: unknown" not in text
+    assert len(re.findall(r"\[k: string\]", text)) == records
 
 
 def test_data_ts_index_signatures_only_for_records(contracts: Contracts) -> None:

@@ -64,6 +64,7 @@ class Playthrough:
     act_end: Json | None = None
     safety_pause: bool = False
     approach: Json | None = None
+    arrival: Json | None = None  # 落地后要先开口的人物还在等 act_landed（3.11）
     last_turn: LastTurn | None = None
     focused: str | None = None
     settled: set[str] = field(default_factory=set)
@@ -92,13 +93,16 @@ class Playthrough:
         if self.confirm is not None:
             left = max(0, round(self.confirm_deadline - time.monotonic()))
             confirm = {**self.confirm, "remainingSec": min(left, self.confirm["timeoutSec"])}
-        return {
+        pending: Json = {
             "reveal": None,
             "confirm": confirm,
             "actEnd": self.act_end,
             "safetyPause": self.safety_pause,
             "approach": self.approach,
         }
+        if self.arrival is not None:
+            pending["arrival"] = self.arrival
+        return pending
 
     def current_snapshot(self) -> Json:
         snap = copy.deepcopy(self.snapshot)
@@ -178,6 +182,8 @@ class Playthrough:
                 self.act_end["freeform"] = {"allowed": msg["triesLeft"] > 0, "triesLeft": msg["triesLeft"]}
         elif t == "act_transition":
             self.act_end = None
+            arrival = msg.get("arrival")
+            self.arrival = arrival if arrival is not None and "opener" in arrival else None
             self.plan_options.clear()
             self.snapshot = {k: v for k, v in msg["snapshot"].items()}
             self.touch()
@@ -235,6 +241,8 @@ class Playthrough:
             self.focused = None
         elif t in ("approach_arrived", "approach_dismiss"):
             self.approach = None
+        elif t == "act_landed" and msg["actId"] == self.snapshot.get("actId"):
+            self.arrival = None
 
 
 def _merge_by_id(items: list[Json], patches: list[Json]) -> None:
