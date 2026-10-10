@@ -382,7 +382,7 @@ def play_approach(p: Player) -> None:
         {"type": "action", "clientMsgId": msg_id, "actionId": "act_walk_old-man_home", "kind": "help", "target": OLD}
     )
     result = p.expect("action_result", clientMsgId=msg_id)
-    assert result["status"] == "done" and result["minutes"] == 60
+    assert result["status"] == "done" and result["minutes"] == 30
     commit = p.log[p.log.index(result) - 1]
     assert commit["type"] == "commit" and [e["eventId"] for e in commit["events"]] == result["eventIds"]
 

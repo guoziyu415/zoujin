@@ -102,7 +102,7 @@ class Writer:
         drafts, _ = settle(self.book.world, self.state, t2)
         out = []
         for d in drafts:
-            out.append(self.add(self._from_draft(d)))
+            out.append(self.add(self.from_draft(d)))
             if stop_after is not None and d["beat"] == stop_after:
                 break
         self.system.extend(out)
@@ -111,7 +111,8 @@ class Writer:
     def occurred(self, beat: str) -> bool:
         return self.state["beats"].get(beat) in OCCURRED
 
-    def _from_draft(self, d: Json) -> Json:
+    def from_draft(self, d: Json) -> Json:
+        """W-1 的 settle 草稿（或 `opening()` 里 source = schedule 的那些）补成完整的系统事件。"""
         e = d["event"]
         check: Json = {"status": "passed", "attempts": 1, "failedRules": [], "checker": CHECKER_SYSTEM}
         if d.get("reason"):

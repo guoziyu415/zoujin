@@ -1,4 +1,7 @@
-"""日志不记异常消息（data-design 第 8 节：日志只写 ID 和计数）；开发开关下照常记。"""
+"""日志不记异常消息（data-design 第 8 节：日志只写 ID 和计数）；开发开关下照常记。
+
+客户端消息不合 Schema 时只记字段路径和规则名。
+"""
 
 from __future__ import annotations
 
@@ -8,6 +11,8 @@ from collections.abc import Iterator
 
 import pytest
 from zoujin_backend import logs
+
+from .conftest import SCHEMAS
 
 LINE = "さっき、村の牧人だという若い男とすれ違いました。"
 MESSAGE = f"校验不过：{LINE}"
@@ -44,3 +49,14 @@ def test_exception_message_is_not_logged(restore_root: None) -> None:
 
 def test_dev_logs_everything(restore_root: None) -> None:
     assert f"ValueError: {MESSAGE}" in logged(dev=True)
+
+
+def test_schema_problems_name_the_field_not_the_value() -> None:
+    """玩家的原话可能就在出错的字段里：日志只写路径和规则名（REST 的请求体和 WebSocket 的消息都是）。"""
+    text = LINE * 10  # 超过 200 字
+    ws = SCHEMAS.client_errors(
+        {"type": "text", "turnId": "turn_" + "0" * 26, "turnSeq": 1, "text": text, "via": "typed"}
+    )
+    rest = SCHEMAS.request_errors("auth-login", "request", {"inviteCode": text})
+    assert ws == ["/text: maxLength"]
+    assert rest == ["/inviteCode: maxLength"]

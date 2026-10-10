@@ -72,7 +72,7 @@
       "kind": "help",
       "target": "char.old-man",
       "label": "家まで送る",
-      "estimatedMinutes": 60,
+      "estimatedMinutes": 30,
       "melos": null,
       "melosMinutes": null,
       "melosInTime": null,
