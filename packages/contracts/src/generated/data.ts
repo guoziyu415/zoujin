@@ -1591,7 +1591,7 @@ export interface SetPiece {
       }
   )[];
   /**
-   * 演这一条时谁知道了哪件事（S-077 ⑪）：服务端提交一条 type learn 的事件，effects = 这些 learn，actor = lines 里第一个说话的人物（只有地の文时是 system）
+   * 演这一条时谁知道了哪件事（S-077 ⑪）：服务端把这些 learn 和这一条的演出同一次提交写进事件（写在哪条事件里 B-3 定）。只给 learn，不给任意 effects：固定演出不过叙事者的 R1〜R7
    *
    * @minItems 1
    */
