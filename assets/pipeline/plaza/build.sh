@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One command for the Syracuse plaza (F-2): textures -> Blender scene -> sky -> lightmap bake -> encode -> pack -> check.
 #   assets/pipeline/plaza/build.sh [final|draft] [out_dir]
-# final (default): 2048 lightmaps, ~30 min on 4 cores; writes assets/scenes/syracuse-square/build/ and refreshes
+# final (default): 2048 lightmaps, 30-40 min on 4 cores; writes assets/scenes/syracuse-square/build/ and refreshes
 #   the committed manifest assets/scenes/syracuse-square/scene.json.
 # draft: 512 lightmaps, about 1 min of baking; writes only out_dir (CI uses this to prove the pipeline still runs).
 # Needs: BPY_PYTHON = a Python 3.13 with bpy 5.2, numpy and pillow (default python3); `pnpm install` done.

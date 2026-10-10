@@ -3,7 +3,7 @@
 从 S7 写实样板（`spikes/frontend/s7-realism/`）搬来，生成 `scene.syracuse-square` 的全部场景资源。一条命令：
 
 ```bash
-BPY_PYTHON=<装了 bpy 5.2、numpy、pillow 的 Python 3.13> pnpm assets:plaza          # 正式档，4 核约 30 分钟
+BPY_PYTHON=<装了 bpy 5.2、numpy、pillow 的 Python 3.13> pnpm assets:plaza          # 正式档，4 核约 30〜40 分钟
 BPY_PYTHON=... bash assets/pipeline/plaza/build.sh draft /tmp/plaza               # 草稿档，CI 用这个
 ```
 
@@ -36,10 +36,10 @@ Python 依赖见 `requirements.txt`（`uv venv --python 3.13 && uv pip install -
 | `place.syracuse-square`     | 默认：广场、城门大街、神殿前廊                       |
 | `place.stonemason-workshop` | 西南角的院子，北墙上的门是唯一入口                   |
 | `place.execution-ground`    | 王城门前：刑柱和台阶（S-050 同一个广场第三天变刑场） |
-| 出口 `place.road-to-city`   | 位置点 `exit.road-to-city`，城门外                   |
-| 出口 `place.castle`         | 位置点 `exit.castle`，台阶顶上的城门                 |
+| 出口 `place.road-to-city`   | 位置点 `way.road-to-city`，城门外                    |
+| 出口 `place.castle`         | 位置点 `way.castle`，台阶顶上的城门                  |
 
-位置点 21 个，名字和说明在 `layout.json`。后端和数据在 `characters[].spot`、`player.spot` 里只用这些名字；要加新的位置点，改 `layout.json` 再重新生成。
+位置点 21 个，名字和说明在 `layout.json`。通往别的场景的位置点叫 `way.<地点>`，不用 `exit.`（那是世界模型 `ExitId`，幕末去处）。后端和数据在 `characters[].spot`、`player.spot` 里只用这些名字；要加新的位置点，改 `layout.json` 再重新生成。
 
 ## 两档贴图（frontend-design 10.6.2，art-direction 9.3）
 
@@ -58,6 +58,14 @@ recast 只在生成时跑（WASM），页面用 `nav.json` 自己做 A* 和拉�
 1. **能复现**。输入只来自仓库里的文件，或者固定版本、带 sha256 的下载；下载的素材在 `assets/manifest/` 写上来源和授权（CC0 等）。同一份输入生成两次，清单里的 sha256 要一致；做不到逐字节一致的步骤写在下面「复现性」里。
 2. **CI 只在改了流水线或场景时现场生成**（`.github/workflows/assets.yml` 的 `paths`）。每次的时长写进 PR 描述，M2-0 结束时 PM 核对 Actions 分钟。
 3. **`.gitattributes` 的 LFS 规则留着**。哪个线程误加了 `.glb`、`.ktx2`，推送会在 LFS 那步失败，不会悄悄进普通 git。
+
+## 复现性
+
+在同一台机器上从零生成两次草稿档（2026-10-10），`scene.json` 和其中列出的 48 个文件逐字节一致。
+
+- 占位贴图按固定种子生成；Cycles 用固定的种子和采样数在 CPU 上烘焙，两次的光照图一致。
+- Blender 的 glTF 导出器给的三角形顺序不一定每次一样（远景柏树那一块遇到过）。所以 `pack_scene.mjs` 打包前把每块的三角形排一遍序（不改绕向），之后 meshopt 压出来就一致了。
+- 只在同一台机器上验证过。换了 CPU，Cycles 和 Basis 编码的浮点结果可能差一点，sha256 也会跟着变。所以 CI 拿现场生成的文件和它自己写的清单比，不和仓库里的 sha256 比；仓库里的清单只查预算、两档颜色和布局。依赖版本固定在 `requirements.txt` 和 `pnpm-lock.yaml`。
 
 ## 现在的限制
 

@@ -117,6 +117,25 @@ for (const m of root.listMaterials()) {
     .setMetallicRoughnessTexture(null);
 }
 for (const t of root.listTextures()) t.dispose();
+// Blender's exporter sorts vertices but not always triangles: two runs from the same input gave the far cypress
+// primitive the same triangles in a different order. Sort each primitive's triangles (winding kept) so the same input
+// packs to the same bytes (README, 复现性).
+const sortedIdx = new Set();
+for (const me of root.listMeshes())
+  for (const p of me.listPrimitives()) {
+    const acc = p.getIndices();
+    if (!acc || sortedIdx.has(acc)) continue;
+    sortedIdx.add(acc);
+    const a = acc.getArray();
+    const tri = [];
+    for (let i = 0; i < a.length; i += 3) {
+      const [x, y, z] = [a[i], a[i + 1], a[i + 2]];
+      tri.push(x <= y && x <= z ? [x, y, z] : y <= z ? [y, z, x] : [z, x, y]);
+    }
+    tri.sort((u, v) => u[0] - v[0] || u[1] - v[1] || u[2] - v[2]);
+    tri.forEach((t, k) => a.set(t, 3 * k));
+    acc.setArray(a);
+  }
 // the nav input comes from the uncompressed meshes
 const navInput = [];
 for (const n of root.listNodes()) {
