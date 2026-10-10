@@ -68,6 +68,93 @@ SLICE_PLAN: dict[str, Any] = {
     "arrival": {"line": "三日目の夕方。あなたは、刑場の近くに来ていた。"},
 }
 
+# 固定演出（契约 1.7 的 setPieces，2.11；S-080 ④，PM 10-10 定放进切片世界模型）。
+# 文字和谁说：UX `ux/slice/act1-end-and-gate.md` 第 1、2、4 节；预录句的声音（警吏 Charon、群众里的女人 Despina、
+# セリヌンティウス Iapetus）在 UX 的文案表，不写在这里。
+# 同一个时机按列表顺序取第一条条件满足的，所以有条件的写在前面
+GATE = "place.castle"  # 王城门口的场景出口通往的地点（布局 exits[].place）
+WORKSHOP = "place.stonemason-workshop"
+WORKSHOP_DOOR = "obj.workshop-door"  # 工房屋门的 interactable（examine），ID 要和后端、前端对好
+SPEAR = {"narration": "衛兵が、あなたの前に槍を下ろした。"}
+STAND_BACK = {"speaker": "char.guards", "line": "下がれ、旅の者。ここから先は、通さぬ。"}
+LIGHT_OUT = {"narration": "工房の灯は、いつのまにか消えていた。"}
+SLICE_SET_PIECES: list[dict[str, Any]] = [
+    {
+        "id": "piece.gate-taken",
+        "on": {"beat": "beat.04"},
+        "once": True,
+        "lines": [SPEAR, STAND_BACK, {"narration": "メロスは、王城の奥へ引かれていった。"}],
+        "inferred": True,
+        "note": "第 1 节：跟着梅洛斯走到王城门口。梅洛斯回头看一眼、不说话是演出，不是台词",
+    },
+    {
+        "id": "piece.gate-again",
+        "on": {"act": "go", "target": GATE, "refused": True},
+        "played": ["piece.gate-taken", "piece.gate-turned-away"],
+        "lines": [{"speaker": "char.guards", "line": "二度は言わぬ。下がれ。"}],
+        "inferred": True,
+        "note": "第 1 节第 6 步：已经被挡过一次，再走上去",
+    },
+    {
+        "id": "piece.gate-turned-away",
+        "on": {"act": "go", "target": GATE, "refused": True},
+        "lines": [SPEAR, STAND_BACK],
+        "inferred": True,
+        "note": "梅洛斯被抓之前自己走到王城门口：同一个警吏、同两句",
+    },
+    {
+        "id": "piece.workshop-door-closed",
+        "on": {"act": "move", "target": WORKSHOP},
+        "before": ["beat.06"],
+        "once": True,
+        "lines": [{"narration": "戸は閉ざされている。中から、石を刻む音が聞こえる。戸の隙間から、灯がもれている。"}],
+        "inferred": True,
+        "note": "第 4 节：23:30（beat.06，セリヌンティウス被召进王城）以前走进工房的院子",
+    },
+    {
+        "id": "piece.workshop-dark",
+        "on": {"act": "move", "target": WORKSHOP},
+        "after": ["beat.06"],
+        "once": True,
+        "lines": [LIGHT_OUT],
+        "inferred": True,
+        "note": "第 4 节：23:30 以后",
+    },
+    {
+        "id": "piece.workshop-knock",
+        "on": {"act": "examine", "target": WORKSHOP_DOOR},
+        "before": ["beat.06"],
+        "once": True,
+        "lines": [
+            {"speaker": "char.selinuntius", "line": "もう遅い。用があるなら、明日にしてくれ。"},
+            {"narration": "それきり、戸の向こうからは、石を刻む音しか聞こえなかった。"},
+        ],
+        "inferred": True,
+        "note": "第 4 节：敲门、喊人、想进去。只有声音，人不出来（S-077 ⑩）",
+    },
+    {
+        "id": "piece.workshop-knock-dark",
+        "on": {"act": "examine", "target": WORKSHOP_DOOR},
+        "after": ["beat.06"],
+        "once": True,
+        "lines": [LIGHT_OUT],
+        "inferred": True,
+        "note": "第 4 节：23:30 以后敲门",
+    },
+    {
+        "id": "piece.crowd-makes-way",
+        "on": {"beat": "beat.24"},
+        "knows": [{"character": "char.crowd", "fact": "fact.promise"}],
+        "once": True,
+        "lines": [
+            {"speaker": "char.crowd", "line": "メロスだ！　メロスが帰って来た！"},
+            {"narration": "人々が振り返り、道をあけた。"},
+        ],
+        "inferred": True,
+        "note": "第 2 节：玩家把约定告诉了城里的人（learn 群众 fact.promise），梅洛斯赶到时群众里一个女人认出他",
+    },
+]
+
 
 def by_id(xs: list[dict[str, Any]], id_: str) -> dict[str, Any]:
     return next(x for x in xs if x["id"] == id_)
@@ -117,6 +204,9 @@ def make_slice(src: dict[str, Any]) -> dict[str, Any]:
     # ④⑤ 幕末只列市里去得了的两个去处，都跳到三日目 17:30 的刑场；「ほかの考えがある」是前端的固定选项，成行时落在 plan
     acts["act.1"]["exits"] = copy.deepcopy(SLICE_EXITS)
     acts["act.1"]["plan"] = copy.deepcopy(SLICE_PLAN)
+
+    # S-080 ④：城门、工房、群众让路的固定演出
+    w["setPieces"] = copy.deepcopy(SLICE_SET_PIECES)
 
     # S-050：切片里只和老爺、梅洛斯说话；别的人物只有走动版，没有对话版（S-078 ①）
     for c in w["characters"]:

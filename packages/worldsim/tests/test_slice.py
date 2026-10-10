@@ -100,6 +100,25 @@ def test_a_feasible_plan_lands_where_act_1_plan_says() -> None:
     assert classify(SLICE, run_to(s, None)) == "canon-reunion"
 
 
+def test_set_pieces_hang_where_the_traveler_can_see_them() -> None:
+    """固定演出（契约 2.11，S-080 ④）挂的节拍在旅人去得了的地点；王城门口被拒、工房走得进；
+    工房的灯在 23:30（beat.06）灭；群众让路只在玩家把约定告诉了群众时演：群众本来不知道约定。"""
+    pieces = {p["id"]: p for p in SLICE["setPieces"]}
+    beats = {b["id"]: b for b in SLICE["beats"]}
+    access = set(SLICE["roles"][0]["access"])
+    for p in pieces.values():
+        if "beat" in p["on"]:
+            assert beats[p["on"]["beat"]]["place"] in access, p["id"]
+    assert "place.castle" not in access and "place.stonemason-workshop" in access
+    assert beats["beat.06"]["window"]["canonical"] == 1410  # 一日目前夜 23:30
+    crowd = next(c for c in SLICE["characters"] if c["id"] == "char.crowd")
+    assert "fact.promise" not in {k["fact"] for k in crowd.get("knows", [])}
+    canon = run_to(initial_state(SLICE, ROLE), None)
+    assert canon["beats"]["beat.24"] == "happened"
+    assert "fact.promise" not in canon["knowledge"].get("char.crowd", [])
+    assert pieces["piece.crowd-makes-way"]["knows"] == [{"character": "char.crowd", "fact": "fact.promise"}]
+
+
 @pytest.mark.parametrize(
     ("exit_id", "old_man_spot"), [("exit.1.city", "stake-front"), ("exit.1.old-man", "stake-front-side")]
 )

@@ -5341,5 +5341,167 @@
    "inferred": true,
    "note": "花婿が夜道のために貸してくれる（aid.groom.lend）"
   }
+ ],
+ "setPieces": [
+  {
+   "id": "piece.gate-taken",
+   "on": {
+    "beat": "beat.04"
+   },
+   "once": true,
+   "lines": [
+    {
+     "narration": "衛兵が、あなたの前に槍を下ろした。"
+    },
+    {
+     "speaker": "char.guards",
+     "line": "下がれ、旅の者。ここから先は、通さぬ。"
+    },
+    {
+     "narration": "メロスは、王城の奥へ引かれていった。"
+    }
+   ],
+   "inferred": true,
+   "note": "第 1 节：跟着梅洛斯走到王城门口。梅洛斯回头看一眼、不说话是演出，不是台词"
+  },
+  {
+   "id": "piece.gate-again",
+   "on": {
+    "act": "go",
+    "target": "place.castle",
+    "refused": true
+   },
+   "played": [
+    "piece.gate-taken",
+    "piece.gate-turned-away"
+   ],
+   "lines": [
+    {
+     "speaker": "char.guards",
+     "line": "二度は言わぬ。下がれ。"
+    }
+   ],
+   "inferred": true,
+   "note": "第 1 节第 6 步：已经被挡过一次，再走上去"
+  },
+  {
+   "id": "piece.gate-turned-away",
+   "on": {
+    "act": "go",
+    "target": "place.castle",
+    "refused": true
+   },
+   "lines": [
+    {
+     "narration": "衛兵が、あなたの前に槍を下ろした。"
+    },
+    {
+     "speaker": "char.guards",
+     "line": "下がれ、旅の者。ここから先は、通さぬ。"
+    }
+   ],
+   "inferred": true,
+   "note": "梅洛斯被抓之前自己走到王城门口：同一个警吏、同两句"
+  },
+  {
+   "id": "piece.workshop-door-closed",
+   "on": {
+    "act": "move",
+    "target": "place.stonemason-workshop"
+   },
+   "before": [
+    "beat.06"
+   ],
+   "once": true,
+   "lines": [
+    {
+     "narration": "戸は閉ざされている。中から、石を刻む音が聞こえる。戸の隙間から、灯がもれている。"
+    }
+   ],
+   "inferred": true,
+   "note": "第 4 节：23:30（beat.06，セリヌンティウス被召进王城）以前走进工房的院子"
+  },
+  {
+   "id": "piece.workshop-dark",
+   "on": {
+    "act": "move",
+    "target": "place.stonemason-workshop"
+   },
+   "after": [
+    "beat.06"
+   ],
+   "once": true,
+   "lines": [
+    {
+     "narration": "工房の灯は、いつのまにか消えていた。"
+    }
+   ],
+   "inferred": true,
+   "note": "第 4 节：23:30 以后"
+  },
+  {
+   "id": "piece.workshop-knock",
+   "on": {
+    "act": "examine",
+    "target": "obj.workshop-door"
+   },
+   "before": [
+    "beat.06"
+   ],
+   "once": true,
+   "lines": [
+    {
+     "speaker": "char.selinuntius",
+     "line": "もう遅い。用があるなら、明日にしてくれ。"
+    },
+    {
+     "narration": "それきり、戸の向こうからは、石を刻む音しか聞こえなかった。"
+    }
+   ],
+   "inferred": true,
+   "note": "第 4 节：敲门、喊人、想进去。只有声音，人不出来（S-077 ⑩）"
+  },
+  {
+   "id": "piece.workshop-knock-dark",
+   "on": {
+    "act": "examine",
+    "target": "obj.workshop-door"
+   },
+   "after": [
+    "beat.06"
+   ],
+   "once": true,
+   "lines": [
+    {
+     "narration": "工房の灯は、いつのまにか消えていた。"
+    }
+   ],
+   "inferred": true,
+   "note": "第 4 节：23:30 以后敲门"
+  },
+  {
+   "id": "piece.crowd-makes-way",
+   "on": {
+    "beat": "beat.24"
+   },
+   "knows": [
+    {
+     "character": "char.crowd",
+     "fact": "fact.promise"
+    }
+   ],
+   "once": true,
+   "lines": [
+    {
+     "speaker": "char.crowd",
+     "line": "メロスだ！　メロスが帰って来た！"
+    },
+    {
+     "narration": "人々が振り返り、道をあけた。"
+    }
+   ],
+   "inferred": true,
+   "note": "第 2 节：玩家把约定告诉了城里的人（learn 群众 fact.promise），梅洛斯赶到时群众里一个女人认出他"
+  }
  ]
 }
