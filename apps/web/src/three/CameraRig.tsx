@@ -1,19 +1,21 @@
-// Third-person camera (frontend-design 8.4, ux-design 6.3): exploring, it follows from behind and above at a fixed
-// angle (UX prototype: about 13.5 m back and 7.6 m up), sideways drags turn it, walking eases it back behind; further
-// back in portrait; pulled in when a wall is in the way; over-the-shoulder framing in a conversation. Before the player
-// first walks or turns it holds the first screen's fixed shot (rig.opening) and then glides over to the follow view.
+// Third-person camera (frontend-design 8.4, ux-design 6.3): exploring, it follows from behind and a little above at a
+// fixed angle (UX: 9 m back, 3.5 m up, aimed 1.5 m above the player's feet, about 12.5° down, so the horizon sits about a
+// third of the way down and the sky stays in view), sideways drags turn it, walking eases it back behind; the same angle
+// but closer in landscape; pulled in when a wall is in the way; over-the-shoulder framing in a conversation. Before the
+// player first walks or turns it holds the first screen's fixed shot (rig.opening) and then glides over to the follow
+// view. With reduced motion (prefers-reduced-motion; F-1's 「画面の動きを減らす」 setting joins it) it cuts instead.
 import { useFrame, useThree } from "@react-three/fiber";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { PerspectiveCamera, Raycaster, Vector3, type Object3D } from "three";
 import { rig } from "./rig";
 
-// exploring: metres behind and above the player's feet, vertical field of view; landscape keeps the angle, comes closer
+// exploring: metres behind and above the player's feet, vertical field of view; landscape keeps the angle, comes closer.
+// Portrait at 390 x 844: a 1.7 m person about 120 px tall, someone 15 m further on about 50 px (UX: 100-130 and 40-80).
+const LOOK_UP = 1.5; // aim this far above the player's feet
 const FOLLOW = {
-  portrait: { back: 13.5, up: 7.6, fov: 60 },
-  landscape: { back: 10.8, up: 6.1, fov: 50 },
+  portrait: { back: 9, up: 3.5, fov: 62 },
+  landscape: { back: 7.5, up: LOOK_UP + (2 * 7.5) / 9, fov: 50 },
 };
-const LOOK_UP = 1.0; // aim at the player's waist,
-const LOOK_AHEAD = 1.5; // a little in front, so more of the way ahead is in view
 const FOLLOW_AFTER_DRAG_MS = 2500;
 const GLIDE_MS = 1800; // from the first screen's shot to the follow view
 
@@ -31,9 +33,16 @@ export function CameraRig({ blockers }: { blockers: Object3D[] }) {
       first: true,
       opening: false,
       glideUntil: 0,
+      wasTalking: false,
     }),
     [],
   );
+  useEffect(() => {
+    rig.camera = camera as PerspectiveCamera;
+    return () => {
+      rig.camera = null;
+    };
+  }, [camera]);
 
   useFrame((_, dtRaw) => {
     const dt = Math.min(0.05, dtRaw);
@@ -50,9 +59,15 @@ export function CameraRig({ blockers }: { blockers: Object3D[] }) {
       tmp.opening = !rig.fixedView;
       return;
     }
+    const still = reducedMotion();
     if (tmp.opening) {
       tmp.opening = false;
-      tmp.glideUntil = performance.now() + GLIDE_MS;
+      if (still) tmp.first = true;
+      else tmp.glideUntil = performance.now() + GLIDE_MS;
+    }
+    if (rig.cutCamera) {
+      tmp.first = true; // the player was put somewhere else, not walked there
+      rig.cutCamera = false;
     }
     const gliding = performance.now() < tmp.glideUntil;
     const p = rig.player;
@@ -60,6 +75,8 @@ export function CameraRig({ blockers }: { blockers: Object3D[] }) {
     const talking = rig.talking
       ? rig.people?.getObjectByName(rig.talking)
       : undefined;
+    if (still && !!talking !== tmp.wasTalking) tmp.first = true;
+    tmp.wasTalking = !!talking;
     let fov: number;
     if (talking) {
       // over the shoulder: the person's face in the upper third, the player's shoulder bottom left (8.4, UX)
@@ -97,8 +114,9 @@ export function CameraRig({ blockers }: { blockers: Object3D[] }) {
       const fx = Math.sin(rig.cam.yaw);
       const fz = Math.cos(rig.cam.yaw);
       tmp.want.set(p.x - fx * f.back, p.y + f.up, p.z - fz * f.back);
-      tmp.look.set(p.x + fx * LOOK_AHEAD, p.y + LOOK_UP, p.z + fz * LOOK_AHEAD);
-      // a wall between the head and the camera: come in front of it
+      tmp.look.set(p.x, p.y + LOOK_UP, p.z);
+      // anything between the head and the camera, even the stake: come in front of it (behind a post the player would
+      // be hidden)
       tmp.dir.subVectors(tmp.want, tmp.head);
       const dist = tmp.dir.length();
       tmp.ray.set(tmp.head, tmp.dir.normalize());
@@ -125,6 +143,12 @@ export function CameraRig({ blockers }: { blockers: Object3D[] }) {
   }, -2);
   return null;
 }
+
+const motionQuery =
+  typeof window !== "undefined" && window.matchMedia
+    ? window.matchMedia("(prefers-reduced-motion: reduce)")
+    : null;
+const reducedMotion = () => motionQuery?.matches ?? false;
 
 function setFov(cam: PerspectiveCamera, fov: number) {
   if (Math.abs(cam.fov - fov) < 1e-3) return;

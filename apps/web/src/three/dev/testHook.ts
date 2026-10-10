@@ -1,4 +1,5 @@
 // window.__zoujin with ?test: what the Playwright checks drive and read (apps/web/tests/e2e). Not loaded otherwise.
+import { Vector3 } from "three";
 import { lighting } from "../Lighting";
 import { frameStats } from "../PostFX";
 import { rig } from "../rig";
@@ -49,6 +50,32 @@ export function installTestHook(): void {
           new CustomEvent("zoujin:placeat", { detail: spot }),
         );
         await nextFrames(2);
+      },
+      // turn the follow camera towards a plan point (as a sideways drag would) and cut to it
+      follow: async (towards: [number, number]) => {
+        const [x, , z] = toWorld([towards[0], towards[1], 0]);
+        rig.cam.yaw = Math.atan2(x - rig.player.x, z - rig.player.z);
+        rig.cam.lastDrag = performance.now();
+        rig.opening = null;
+        rig.fixedView = null;
+        rig.cutCamera = true;
+        await nextFrames(3);
+      },
+      // the follow camera's framing in CSS pixels: a 1.7 m person at the player and 15 m further on, and the horizon
+      onScreen: () => {
+        const cam = rig.camera;
+        if (!cam) return null;
+        const h = document.querySelector("canvas")?.clientHeight ?? innerHeight;
+        const y = (v: Vector3) => ((1 - v.clone().project(cam).y) / 2) * h;
+        const tall = (v: Vector3) => y(v) - y(v.clone().setY(v.y + 1.7));
+        const p = rig.player;
+        const fwd = cam.getWorldDirection(new Vector3()).setY(0).normalize();
+        const feet = new Vector3(p.x, p.y, p.z);
+        return {
+          playerPx: tall(feet),
+          aheadPx: tall(feet.clone().addScaledVector(fwd, 15)),
+          horizon: y(cam.position.clone().addScaledVector(fwd, 1e5)) / h,
+        };
       },
       // walk as if the ground there had been tapped (Player.tsx does the same on a tap): a spot name or plan x, y
       walkTo: (to: string | [number, number]) => {

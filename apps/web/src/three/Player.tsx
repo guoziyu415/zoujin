@@ -45,6 +45,7 @@ export function Player({ scene }: { scene: LoadedScene }) {
       if (at) Object.assign(rig.player, at, { yaw: spot.yaw });
       rig.cam.yaw = spot.yaw;
       rig.path = [];
+      rig.cutCamera = true;
       const v = withOpening ? OPENING_VIEWS[spotName] : undefined;
       const rot = manifest.sun.sceneRotationDeg;
       rig.opening = v
@@ -54,9 +55,11 @@ export function Player({ scene }: { scene: LoadedScene }) {
             fov: v.fov,
           }
         : null;
+      // putting the player on a spot is the server's word on where they are, not a move (api-contract 3.8)
       const place = at ? nav.placeOf(at.poly) : spot.place;
+      nav.setPlayerPlace(place);
       if (place && place !== useWorld.getState().player.place)
-        useWorld.getState().movePlayer(place);
+        useWorld.getState().placePlayer(place, spotName);
     };
     placeAt(useWorld.getState().player.spot ?? manifest.playerStartSpot, true);
     const onPlaceAt = (e: Event) =>
@@ -72,6 +75,11 @@ export function Player({ scene }: { scene: LoadedScene }) {
         .filter(([, p]) => !p.enabled)
         .map(([id]) => id);
       nav.setBlockedPlaces(shut);
+      // a walk planned into a place that just shut stops where it is (the player's own place stays open, navmesh.ts)
+      if (rig.path.some((pt) => !nav.isOpen(pt.poly))) {
+        rig.path = [];
+        rig.talkTo = null;
+      }
       for (const [name, n] of Object.entries(manifest.nodes)) {
         if (!n.movable || !n.place) continue;
         const node = scene.root.getObjectByName(name);
@@ -293,6 +301,7 @@ export function Player({ scene }: { scene: LoadedScene }) {
     body.rotation.y = p.yaw;
     if (moving) {
       const place = nav.placeOf(p.poly);
+      nav.setPlayerPlace(place);
       const w = useWorld.getState();
       if (place && place !== w.player.place) w.movePlayer(place);
     }

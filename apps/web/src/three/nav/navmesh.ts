@@ -39,6 +39,7 @@ export class NavMesh {
   private readonly centre: P2[];
   private readonly box: [number, number, number, number][]; // minX, minZ, maxX, maxZ
   private blocked = new Set<number>(); // place indices whose polygons are out of bounds (places[].enabled = false)
+  private here = -1; // the player's place: open even when shut, until they walk out of it
 
   constructor(data: NavData) {
     this.data = data;
@@ -96,12 +97,16 @@ export class NavMesh {
     );
   }
 
+  // the place the player stands in stays walkable while they are in it, so shutting it with them inside doesn't trap
+  // them; once they step out it is shut to them too (the server's commit that shuts it moves them out anyway)
+  setPlayerPlace(id: string): void {
+    this.here = this.data.places.indexOf(id);
+  }
+
   isOpen(poly: number): boolean {
-    return (
-      poly >= 0 &&
-      poly < this.polyCount &&
-      !this.blocked.has(this.data.place[poly] ?? 0)
-    );
+    if (poly < 0 || poly >= this.polyCount) return false;
+    const place = this.data.place[poly] ?? 0;
+    return place === this.here || !this.blocked.has(place);
   }
 
   private inside(poly: number, x: number, z: number): boolean {

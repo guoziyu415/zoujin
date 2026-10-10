@@ -29,7 +29,7 @@ pnpm --filter @zoujin/web check:bundle  # 外壳 ≤ 120 KB、3D 分块 ≤ 250 
 pnpm --filter @zoujin/web e2e           # 先 build；无头 Chromium + 软件渲染，截图在 test-results/shots/
 ```
 
-e2e 查的是 F-2 卡的验收：第一屏和 S7 第一屏构图一致，时钟从 18:00 推到 18:55 时王城墙上的影子线往上走，draw call 不超预算，走进刑场时 store 收到移动，控制台没有错误。已经装了 Chromium 的机器用 `PW_CHROMIUM=<路径>` 指过去，不用再下载。CI（`.github/workflows/web.yml`）用草稿档生成广场并缓存，截图作为构件上传。
+e2e 查的是 F-2 卡的验收：第一屏和 S7 第一屏构图一致，时钟从 18:00 推到 18:55 时王城墙上的影子线往上走，draw call 不超预算，跟随镜头的取景合 UX 的数字（人物高度、地平线位置），走进刑场时 store 正好收到一次移动，作坊在玩家还在里面时关上也走得出来，控制台没有错误。已经装了 Chromium 的机器用 `PW_CHROMIUM=<路径>` 指过去，不用再下载。CI（`.github/workflows/web.yml`）用草稿档生成广场并缓存，截图作为构件上传。
 
 ## 代码在哪
 
@@ -38,4 +38,4 @@ e2e 查的是 F-2 卡的验收：第一屏和 S7 第一屏构图一致，时钟�
 - `src/three/scene/`：场景清单、加载、平面坐标和 glTF 坐标的换算、第一屏机位。
 - `src/three/nav/navmesh.ts`：读 `nav.json`，A* 加拉直路径、贴地、沿墙滑。
 - `src/three/Lighting.tsx`、`sun.ts`、`shaderPatches.ts`、`PostFX.tsx`：S7 的「只烘遮蔽」光照（实时太阳和影子、物理天空、雾）和后处理。
-- `src/three/Player.tsx`、`CameraRig.tsx`、`rig.ts`：玩家、镜头（第一屏的固定机位，玩家第一次走动或转镜头后滑到 UX 的高位跟随；对话时越肩）和它们共用的每帧状态。
+- `src/three/Player.tsx`、`CameraRig.tsx`、`rig.ts`：玩家、镜头（第一屏的固定机位，玩家第一次走动或转镜头后滑到 UX 的跟随镜头：后 9 m、高 3.5 m、往下约 12.5°；对话时越肩；减少动态效果时直切）和它们共用的每帧状态。

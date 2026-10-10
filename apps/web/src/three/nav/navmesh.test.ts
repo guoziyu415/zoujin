@@ -103,6 +103,21 @@ describe("NavMesh", () => {
     expect(nav.locate(3, 3)?.poly).toBe(2);
   });
 
+  it("lets the player out of a place shut while they are in it, then keeps them out", () => {
+    const nav = new NavMesh(lShape());
+    nav.setBlockedPlaces(["place.yard"]);
+    nav.setPlayerPlace("place.yard");
+    const inYard = nav.locate(3, 3.5)!;
+    expect(inYard.poly).toBe(2);
+    const out = nav.findPath(inYard, nav.locate(0.5, 0.5)!);
+    expect(out).not.toBeNull();
+    expect(nav.moveBy(inYard, 0, -0.4).z).toBeCloseTo(3.1, 5);
+    // stepped out into the square: the yard is shut to them now
+    nav.setPlayerPlace("place.square");
+    expect(nav.locate(3, 3.5)).toBeNull();
+    expect(nav.moveBy(nav.locate(3, 1.9)!, 0, 0.4).z).toBeLessThanOrEqual(2);
+  });
+
   it("slides along a wall instead of stopping dead", () => {
     const nav = new NavMesh(lShape());
     const from = nav.locate(1, 0.5)!;

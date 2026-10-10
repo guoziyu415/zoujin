@@ -17,6 +17,8 @@ type Actions = {
   setPlaceEnabled: (place: string, enabled: boolean) => void;
   // the player walked into another place of this scene; F-0 sends action { kind: "move", target } (api-contract 3.8)
   movePlayer: (place: string) => void;
+  // the server put the player somewhere (entering the scene, a commit's patch.player): nothing goes back
+  placePlayer: (place: string, spot?: string) => void;
 };
 
 export type WorldStore = WorldState & Actions & { moves: string[] };
@@ -43,5 +45,9 @@ export const useWorld = create<WorldStore>()((set) => ({
     set((s) => ({
       player: { roleId: s.player.roleId, place },
       moves: [...s.moves, place],
+    })),
+  placePlayer: (place, spot) =>
+    set((s) => ({
+      player: { roleId: s.player.roleId, place, ...(spot ? { spot } : {}) },
     })),
 }));

@@ -1,6 +1,7 @@
 // World screen acceptance (F-2 card): the first screen is S7's 西南角 composition, the shadow line climbs the castle
-// wall from 18:00 to 18:55, draw calls stay in budget, the console stays clean, and walking into the execution
-// ground tells the store. Screenshots go to test-results/shots (CI uploads them for UX).
+// wall from 18:00 to 18:55, draw calls stay in budget, the follow camera keeps UX's framing (ux-design 6.3), walking
+// into the execution ground tells the store once, shutting the workshop with the player inside doesn't trap them, and
+// the console stays clean. Screenshots go to test-results/shots (CI uploads them for UX).
 import { expect, test, type Page } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
@@ -24,7 +25,10 @@ type Hook = {
   setView(from: Plan | null, to?: Plan, fov?: number): Promise<void>;
   player(): { place: string; walking: boolean };
   moves(): string[];
+  setPlaceEnabled(place: string, on: boolean): void;
   placeAt(spot: string): Promise<void>;
+  follow(towards: [number, number]): Promise<void>;
+  onScreen(): { playerPx: number; aheadPx: number; horizon: number };
   walkTo(to: string | [number, number]): void;
 };
 declare global {
@@ -147,6 +151,39 @@ test("sunset: the shadow line climbs the castle wall", async () => {
   await page.evaluate(() => window.__zoujin.setClock(1050));
 });
 
+test("follow camera: UX's framing, towards the west gate and the castle", async () => {
+  // plan points: the city gate and the castle door (layout.json way.road-to-city, way.castle). ground-west looks down
+  // the light corridor (ux/slice/ending-shots.md, shot 2); a little off its axis, since right on it the stake stands
+  // behind the player and the camera comes in front of it
+  const views: [string, string, [number, number], number][] = [
+    ["follow-west-gate", "ground-west", [-38, 3], 1050],
+    ["follow-castle", "fountain-south", [18.3, 0], 1050],
+    ["follow-west-gate-1845", "ground-west", [-38, 3], 1125],
+  ];
+  for (const [name, spot, towards, t] of views) {
+    await page.evaluate((tt) => window.__zoujin.setClock(tt), t);
+    await page.evaluate((s) => window.__zoujin.placeAt(s), spot);
+    await page.evaluate((to) => window.__zoujin.follow(to), towards);
+    const f = await page.evaluate(() => window.__zoujin.onScreen());
+    console.log(
+      `${name}: player ${f.playerPx.toFixed(0)} px, 15 m on ${f.aheadPx.toFixed(0)} px, horizon at ${f.horizon.toFixed(2)}`,
+    );
+    expect(f.playerPx).toBeGreaterThanOrEqual(100);
+    expect(f.playerPx).toBeLessThanOrEqual(130);
+    expect(f.aheadPx).toBeGreaterThanOrEqual(40);
+    expect(f.aheadPx).toBeLessThanOrEqual(80);
+    expect(f.horizon).toBeGreaterThan(0.25);
+    expect(f.horizon).toBeLessThan(0.4);
+    const png = await shot(name);
+    // looking along the gate street the sky shows above the roofs
+    if (name === "follow-west-gate") {
+      const sky = mean(png, 0.3, 0.02, 0.7, 0.12);
+      expect(lum(sky)).toBeGreaterThan(lum(mean(png, 0.3, 0.8, 0.7, 0.95)));
+    }
+  }
+  await page.evaluate(() => window.__zoujin.setClock(1050));
+});
+
 test("walking into the execution ground moves the player there", async () => {
   // a few metres from the edge, so the walk is short even at software rendering's frame rate
   await page.evaluate(() => window.__zoujin.placeAt("fountain-south"));
@@ -160,7 +197,54 @@ test("walking into the execution ground moves the player there", async () => {
       intervals: [2000],
     })
     .toContain("place.execution-ground");
+  await expect
+    .poll(() => page.evaluate(() => window.__zoujin.player().walking), {
+      timeout: 120_000,
+      intervals: [1000],
+    })
+    .toBe(false);
+  // one crossing, one move: putting the player on a spot sends none, and the walk doesn't graze the edge twice
+  expect(await page.evaluate(() => window.__zoujin.moves())).toEqual([
+    "place.execution-ground",
+  ]);
   await shot("walked-to-execution-ground");
+});
+
+test("shutting the workshop with the player inside doesn't trap them", async () => {
+  await page.evaluate(() => window.__zoujin.placeAt("workshop-yard"));
+  expect(await page.evaluate(() => window.__zoujin.player().place)).toBe(
+    "place.stonemason-workshop",
+  );
+  await page.evaluate(() =>
+    window.__zoujin.setPlaceEnabled("place.stonemason-workshop", false),
+  );
+  await page.evaluate(() => window.__zoujin.walkTo("workshop-gate"));
+  await expect
+    .poll(() => page.evaluate(() => window.__zoujin.player().place), {
+      timeout: 240_000,
+      intervals: [2000],
+    })
+    .toBe("place.syracuse-square");
+  await expect
+    .poll(() => page.evaluate(() => window.__zoujin.player().walking), {
+      timeout: 120_000,
+      intervals: [1000],
+    })
+    .toBe(false);
+  // out in the square, the shut yard keeps them out: a tap inside walks to its edge
+  await page.evaluate(() => window.__zoujin.walkTo("workshop-yard"));
+  await expect
+    .poll(() => page.evaluate(() => window.__zoujin.player().walking), {
+      timeout: 240_000,
+      intervals: [1000],
+    })
+    .toBe(false);
+  expect(await page.evaluate(() => window.__zoujin.player().place)).toBe(
+    "place.syracuse-square",
+  );
+  await page.evaluate(() =>
+    window.__zoujin.setPlaceEnabled("place.stonemason-workshop", true),
+  );
 });
 
 test("no console errors", () => {
