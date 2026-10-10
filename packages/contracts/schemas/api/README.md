@@ -20,6 +20,6 @@
 - 整个用数据类型的地方 `$ref` 到 `data/` 的 `$defs`；接口在数据类型上加减了字段的（结局、事件的可见投影、記憶帳），写成接口自己的对象，共有的字段用 JSON 指针引用数据那边的字段，加减了哪些字段在 `tests/test_alignment.py` 里列着。
 - `$defs` 的名字就是生成的类型名，和 `data/` 的不能重名。
 - 只在非生产环境有的（`hello.debug`、`fakeVoice`、`event_rejected`、`POST /v1/test/…`）照样写，`description` 里标「非生产」。
-- 文档没写清、C-1 评审时定下来的地方，`description` 末尾标「（C-1 评审定）」；api-contract 下一版把它们补进正文。
+- 文档没写清、C-1 评审时定下来的地方，`description` 末尾标「（C-1 评审定）」；api-contract v1.0.1 已把它们写进正文。
 
 改完跑 `uv run contracts-gen` 重新生成类型，再跑 `uv run pytest packages/contracts`。
