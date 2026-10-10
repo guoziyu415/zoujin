@@ -104,7 +104,7 @@ K.label(-27, 6.6, '墙高 8 m', dx=0, dy=4, size=9.5, anchor='middle', color='#f
 # courtyard, porticoes (roofed) and open part
 K.rect(-24, -10, -6, 10, C['roof'], C['ink'], 1.6)
 K.rect(-20, -6, -10, 6, C['open_'], C['mute'], 0.8, '4 3')
-K.label(-17, 3.5, '中庭（露天）', dx=0, dy=4, size=11, anchor='middle')
+K.label(-17.5, -3.2, '中庭（露天）', dx=0, dy=4, size=11, anchor='middle')
 K.label(-19.5, 9.0, '北柱廊（两排柱子）', dx=0, dy=4, size=10, anchor='middle', color=C['mute'])
 K.label(-15, -8.4, '南柱廊', dx=0, dy=4, size=10, anchor='middle', color=C['mute'])
 cols = []
@@ -155,38 +155,46 @@ K.label(19.3, 11, '塔', dx=0, dy=4, size=10.5, anchor='middle', color='#f4efe2'
 K.label(19.3, 8, '约 30 m', dx=0, dy=14, size=9.5, anchor='middle', color=C['mute'])
 # paths
 K.line([(5, 0), (-6, 0), (-12, 1.8), (-18, 1.8), (-24, 0), (-33, 0)], C['melos'], 1.3, '5 3', 0.8)
-K.line([(-5, -0.6), (4, 0.4)], C['mute'], 1.2, '3 3')
+K.line([(-5, -0.6), (3.6, 0.5)], C['mute'], 1.2, '3 3')
 # spots
 K.spot(-27, 0, 'gate-in', 'p', (1, 0), dx=-2, dy=-9)
+K.spot(-25, 0, '', 'm', (1, 0))
+K.label(-25, 0, 'melos-led-in', dx=-4, dy=18, size=9.5, color=C['melos'])
 K.cam(-29.6, 0, 1, 0)
 K.spot(5, 0, '', 'm', (1, 0))
 K.label(5, 0, 'before-king', dx=0, dy=-24, size=10, color=C['melos'], anchor='middle')
 for y in (1.6, -1.6):
     K.circle(5, y, 0, C['mute'], r_px=3)
 K.spot(13.5, 0, '', 'n', (-1, 0))
-K.label(13.5, 0, '王', dx=0, dy=22, size=10.5, color=C['ink'], anchor='middle')
+K.label(13.5, 0, 'king-throne 王', dx=0, dy=22, size=10.5, color=C['ink'], anchor='middle')
 K.spot(3.5, -4.8, 'companion-aside', 'p', (0.8, 0.6), dx=-6, dy=16)
 for x in (-1, 1.5, 4.5, 6.5, 9.5, 11):
     K.circle(x, 5.5, 0, '#ffffff', C['mute'], 1, r_px=3)
 K.label(5, 5.5, 'courtiers 群臣', dx=0, dy=-6, size=9.5, color=C['mute'], anchor='middle')
+K.circle(-5, 0, 0, C['mute'], r_px=3)
 K.label(-5, -0.6, 'selinuntius-in', dx=6, dy=14, size=9.5, color=C['mute'])
+K.spot(4, 0.6, '', 'n')
+K.label(4, 0.6, 'selinuntius-meet', dx=-6, dy=-12, size=9.5, color=C['mute'], anchor='end')
 K.spot(-12.5, 7.6, '', 'n', (0, -1))
 K.line([(-12.5, 8.4), (-12.5, 11.2)], C['ink'], 0.8)
 K.label(-12.5, 11.2, 'hostage-column 人质（北柱廊第二排）', dx=0, dy=-4, size=10, color=C['ink'], anchor='middle')
 K.spot(-8.5, 9.3, '', 'n')
 K.label(-8.5, 9.3, 'guard', dx=7, dy=4, size=9.5, color=C['mute'])
-K.spot(-12.5, 5.5, 'hostage-near', 'p', (0, 1), dx=-8, dy=8, anchor='end')
+K.spot(-12.5, 5.5, 'hostage-near', 'p', (0, 1), dx=8, dy=11)
+K.spot(-14.5, 4.5, '', 'n', (0.54, 0.84))
+K.label(-14.5, 4.5, 'hostage-visit', dx=-6, dy=14, size=9.5, color=C['mute'], anchor='end')
 K.cam(-12.5, -3.5, 0, 1)
 K.label(-33, 0, 'way.plaza', dx=0, dy=-8, size=10, color=C['mute'])
 K.compass(19, -8)
 K.sun(-27, -11.6, 268, '16:00')
 K.scalebar(6, -12.2)
-H = 70 + 29 * 14 + 120
+H = 70 + 29 * 14 + 138
 lx = 30
 ly = 70 + 29 * 14 + 34
 notes = ['坐标单位米，+x 朝东。方块 = 玩家落地点（短线是朝向），灰三角 = 落地时的镜头，褐点 = 梅洛斯，灰点 = 别的角色，白圈 = 柱子，橙点 = 火盆。',
          '浅褐 = 有顶的柱廊，虚线框 = 露天。灰影 = 三日目 16:00 西墙的影子（太阳高 35°，墙 8 m，影长约 11 m，正好到人质正前方）。',
-         '褐虚线 = 梅洛斯的路：在广场那边被抓后押进来（melos-led-in），23:45 原路出城（melos-depart）。灰虚线 = セリヌンティウス被带进来。',
+         '褐虚线 = 梅洛斯的路（示意，前端沿导航网格演）：从 melos-led-in 押到 before-king，23:45 原路出城到 way.plaza。',
+         '灰虚线 = セリヌンティウス从 selinuntius-in 走到 selinuntius-meet。能自动站的点只有 king-throne（排第一）和 hostage-visit。',
          '人质绑在北柱廊第二排的柱子上，正午也在阴影里。细节见 castle.md。']
 for i, n in enumerate(notes):
     text(lx, ly + 18 * i, n, 11.5, C['mute'])

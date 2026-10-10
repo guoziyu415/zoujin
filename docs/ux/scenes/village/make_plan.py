@@ -106,7 +106,7 @@ V.label(-29, 2, '小路', dx=0, dy=4, size=10.5, anchor='middle', color=C['mute'
 V.rect(-14, -14, 2, -0.5, C['floor'], C['wall'], 3)
 V.line([(-7.5, -0.5), (-5.5, -0.5)], C['floor'], 5)
 V.rect(-14, -14, -2, -8.5, C['house'], C['ink'], 1.5)
-V.label(-7, -10, '屋子（屋里能进：宴席）', dx=0, dy=4, size=10.5, anchor='middle')
+V.label(-7, -10, '屋子（能进：睡觉、宴席）', dx=0, dy=4, size=10.5, anchor='middle')
 V.circle(-8, -11.5, 0, '#c97b3b', r_px=4)
 V.line([(-8.6, -8.5), (-7.4, -8.5)], C['house'], 4)
 V.rect(-6.6, -4.9, -5.4, -4.1, C['rock'], C['rockedge'], 1.2)
@@ -134,7 +134,7 @@ V.line([(-21.8, 5), (-20.2, 5)], C['floor'], 5)
 V.rect(-32, 13, -20, 18, C['house'], C['ink'], 1.5)
 V.label(-26, 15.5, '花婿家', dx=0, dy=4, size=11.5, anchor='middle')
 V.rect(-30, 7, -22, 11.5, C['vine'], C['treeedge'], 1, '3 2', 0.35)
-V.label(-29.6, 11, '葡萄架', dx=0, dy=8, size=10, color=C['treeedge'])
+V.label(-29.6, 11, '葡萄架（夜谈）', dx=0, dy=8, size=10, color=C['treeedge'])
 V.rect(-27.2, 8.6, -24.8, 9.4, C['wood'], C['ink'], 0.8)
 # threshing floor
 V.circle(-26, -10, 5, '#e8e1cf', C['rockedge'], 2)
@@ -159,10 +159,16 @@ V.spot(-6, -6, 'wedding-melos', 'm', (0, 1), dx=8, dy=4)
 V.spot(-11, -12.5, '', 'm')
 V.label(-11, -12.5, 'melos-sleep', dx=-7, dy=4, size=10, color=C['melos'], anchor='end')
 V.spot(-27, 9.5, '', 'n', (1, 0)); V.spot(-24.5, 9.5, '', 'm', (-1, 0))
-V.label(-25.8, 9.5, 'groom-table · melos-groom（夜，油灯）', dx=0, dy=20, size=10, color=C['melos'], anchor='middle')
+V.label(-25.8, 9.5, 'groom-table · melos-groom', dx=0, dy=28, size=9.5, color=C['melos'], anchor='middle')
 V.spot(4.5, -12.5, '', 'm')
 V.label(4.5, -12.5, 'melos-hut', dx=0, dy=24, size=10, color=C['melos'], anchor='middle')
 V.label(36, 2, 'way.east', dx=-4, dy=18, size=10, color=C['mute'], anchor='end')
+V.spot(3, 5.4, 'well-side', 'n', (0.74, -0.67), dx=-7, dy=-6, anchor='end')
+V.spot(-10.5, -5, 'yard-fig', 'n', (1, 0), dx=0, dy=22, anchor='middle')
+V.spot(-2.5, -3.2, 'yard-east', 'n', (-1, -0.3), dx=-2, dy=17)
+V.spot(-20, 10, 'groom-work', 'n', (0, -1), dx=7, dy=4)
+V.spot(-21, 6.5, 'groom-gate', 'p', (0, 1), dx=7, dy=10)
+V.cam(-21, -2.5, 0, 1)
 V.line([(4.5, -12.5), (7, -3), (12, 1.5), (36, 1.5)], C['melos'], 1.3, '5 3', 0.8)
 V.label(20, 0, '三日目 04:30 冒雨跑出去', dx=0, dy=-2, size=9.5, color=C['melos'], anchor='middle')
 V.compass(-32, -20)
@@ -170,13 +176,14 @@ V.sun(30, -8, 116, '10:00')
 V.sun(-30, -1, 294, '19:00 日没')
 V.sun(0, -20, 180, '12:00 婚礼')
 V.scalebar(16, -24.5)
-H = 64 + 52 * 12 + 120
+H = 64 + 52 * 12 + 138
 lx = 30
 ly = 64 + 52 * 12 + 30
 notes = ['坐标单位米，+x 朝东。方块 = 玩家落地点（短线是朝向），灰三角 = 落地时默认镜头（背后 9 m），褐点 = 梅洛斯的位置点，太阳圆点 = 太阳从这边来。',
-         '屋子是这个场景唯一的室内（二日目夜的宴席）。羊舍朝北敞开，花婿家的夜谈在葡萄架下（室外）。',
+         '屋子是这个场景唯一的室内（一日目白天梅洛斯睡觉，二日目夜的宴席）。羊舍朝北敞开，花婿家的夜谈在葡萄架下（室外）。',
          '牧童从 field-edge 开始（一日目 09:00，第一屏朝西看村子，顺光）；跟梅洛斯走夜路的人一日目 10:00 到 road-arrive。',
-         '紫虚线 = place.melos-home 的多边形（含门前的路和牧场，village.md 2.1）。细节见 village.md。']
+         '紫虚线 = place.melos-home 的多边形（含门前的路和牧场，village.md 2.1）。',
+         '能自动站的点只有 well-side、sister-sheep、yard-fig、yard-east、groom-work（花婿白天在这里干活），其余都是 auto: false。细节见 village.md。']
 for i, n in enumerate(notes):
     text(lx, ly + 18 * i, n, 11.5, C['mute'])
 svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBox="0 0 {W} {H}">'

@@ -62,20 +62,26 @@
 
 ## 4. 位置点
 
+layout 里按这个顺序排。没写 spot 的人物站这个地点第一个空着、能自动站的点（数据 16:01Z，契约 3.1），所以**`king-throne` 排第一**：王开局就在王城，没有节拍给他写 spot（数据 #44 评审）。玩家的起点和落地点、演出用的点都标 `auto: false`，能自动站的只有 `king-throne` 和 `hostage-visit`。
+
 | 名字 | 位置 | 朝向 | 用途 |
 |---|---|---|---|
-| `gate-in` | (−27, 0) | +x | **从广场进来的落地点**（跟梅洛斯进城的人）。背后是城门外，镜头放在门洞里拉近 |
-| `melos-led-in` `auto: false` | 城门洞 (−27, 0) → 中庭 → 大门 → `before-king` | +x | beat.04（在广场那边被抓）以后、beat.05 以前：两个警吏押着他，双手捆在身前，穿过中庭进王座之间 |
-| `before-king` `auto: false` | (5, 0) | +x | 梅洛斯被押到台阶前，两边各一个警吏 (5, ±1.6) |
-| `king-throne` | (13.5, 0)，台上 | −x | 王 |
-| `companion-aside` | (3.5, −4.8) | +x 偏北 | 跟着被带进来的人「站在一旁」（ux-design 5.1），在南排柱子旁边。「保証する」从这里说 |
-| `courtiers` | 北排柱子外侧 x −2〜11，y 5.5，约 6 人 | 朝南 | 群臣（ux-design 10 王的「在群臣面前不揭他的短」）。和 `companion-aside` 分在两边：跟进来的人不混在群臣里 |
-| `selinuntius-in` `auto: false` | (−5, 0) → (4, 0.6) | +x | beat.06：从大门被带进来，走到梅洛斯面前，两人相拥，然后被绑上 |
-| `melos-depart` `auto: false` | 王座之间 → 中庭 → 城门洞 → `way.plaza` | −x | beat.07：他转身就走，穿过中庭，出城门，头顶满天星 |
-| `hostage-column` `auto: false` | (−12.5, 7.6)，北柱廊第二排的柱子 | 朝南（朝中庭） | 人质绑在这里，站着或靠着柱子坐下 |
-| `hostage-guard` | (−8.5, 9.3) | 朝西南 | 看守的警吏 |
-| `hostage-near` | (−12.5, 5.5) | +y（朝人质） | **「城に残り、セリヌンティウスのそばにいる」的落地点**（`exit.1.vigil`，数据在去处里写这个点）。背后 (−12.5, −3.5) 是镜头，在中庭的露天里，避开了蓄水池 |
+| `king-throne` | (13.5, 0)，台上 | −x | 王。**`place.castle` 第一个能自动站的点** |
+| `hostage-visit` | (−14.5, 4.5) | 朝北偏东（朝人质） | 中庭里人质斜前方，来看人质的人站这里。第二个能自动站的点 |
+| `gate-in` `auto: false` | (−27, 0) | +x | **从广场进来的落地点**（跟梅洛斯进城的人），`place.castle` 的 `startSpots`。背后是城门外，镜头放在门洞里拉近 |
+| `melos-led-in` `auto: false` | (−25, 0)，城门洞里 | +x | 梅洛斯被押进来时出现的起点（beat.04 在广场那边被抓以后）。目标是 `before-king`：两个警吏押着他，双手捆在身前，穿过中庭进王座之间。路上怎么走由前端沿导航网格演，不另写路线。在 `gate-in` 前面 2 m：跟进来的玩家落在他背后 |
+| `before-king` `auto: false` | (5, 0) | +x | 梅洛斯被押到台阶前，两边各一个警吏 (5, ±1.6)。beat.04 的 relocate 写这个点 |
+| `companion-aside` `auto: false` | (3.5, −4.8) | +x 偏北 | 跟着被带进来的人「站在一旁」（ux-design 5.1），在南排柱子旁边。「保証する」从这里说。是玩家站的点 |
+| `selinuntius-in` `auto: false` | (−5, 0)，大门里 | +x | beat.06 セリヌンティウス被带进来时出现的起点，走到 `selinuntius-meet` |
+| `selinuntius-meet` `auto: false` | (4, 0.6) | 朝梅洛斯 | beat.06 的 relocate 写这个点：走到梅洛斯面前，两人相拥，然后被绑上 |
+| `hostage-column` `auto: false` | (−12.5, 7.6)，北柱廊第二排的柱子 | 朝南（朝中庭） | 人质绑在这里，站着或靠着柱子坐下。beat.07 的 relocate 写这个点 |
+| `hostage-near` `auto: false` | (−12.5, 5.5) | +y（朝人质） | **「城に残り、セリヌンティウスのそばにいる」的落地点**（`exit.1.vigil`，数据在去处里写这个点）。背后 (−12.5, −3.5) 是镜头，在中庭的露天里，避开了蓄水池 |
+| `hostage-guard` `auto: false` | (−8.5, 9.3) | 朝西南 | 看守的警吏（`char.guards`）站的地方。警吏是群，不占位置点（契约 3.1、api-contract 2.3），前端按地点把他们摆在这里，数据不写这个点 |
 | `way.plaza` | (−31, 0) | | 回广场 |
+
+- 群臣（`courtiers`）不是位置点：北排柱子外侧 x −2〜11、y 5.5，约 6 人，朝南。世界模型里没有这些人，是布景（ux-design 10 王的「在群臣面前不揭他的短」）。和 `companion-aside` 分在两边：跟进来的人不混在群臣里。
+- beat.07：梅洛斯转身就走，从 `before-king` 穿过中庭、出城门，到 `way.plaza` 淡出，头顶满天星。数据让 beat.07 把他移出王城（到城外的路上），路上前端演。
+- layout 的位置点都是一个点。人物换地点时出现在起点、沿导航网格走到目标点（前端 #44 评审），所以上面写的是起点和目标点，不写路线。
 
 ## 5. 光
 
@@ -138,14 +144,18 @@
 
 **数据**（10-10 16:01Z，已改进 0 节、4 节、5.1）：
 - `place.castle` 不分，位置点就够：中庭、柱廊、王座之间的人都算 beat.05、06、07、s2 在场。王的耳语 `fact.king-whisper` 是 private，在场也听不到。
-- 节拍的 relocate：beat.04 梅洛斯 → `before-king`；beat.06 セリヌンティウス → `selinuntius-in`；beat.07 梅洛斯出发时セリヌンティウス → `hostage-column`；`exit.1.vigil` 落在 `hostage-near`。
+- 节拍的 relocate：beat.04 梅洛斯 → `before-king`；beat.06 セリヌンティウス → `selinuntius-meet`（#44 评审时从「`selinuntius-in` 的终点」改成单独的点）；beat.07 梅洛斯出发时セリヌンティウス → `hostage-column`；`exit.1.vigil` 落在 `hostage-near`。
 - beat.04 在广场那边的王城门前（`place.execution-ground`），和切片同一处；王城场景从押进城门洞开始（0 节、4 节 `melos-led-in`）。
 - 天气是全局一个值，城里也下雨（5.1）。
 
 **PM**（10-10 16:05Z）：「王城にとどまる」第一版不做，王座之间第一版只做夜里。
 
+**#44 评审**（10-10）：
+- 数据 16:26Z：王会被排到城门洞里，所以 `king-throne` 排第一，`gate-in`、`hostage-near` 标 `auto: false`（第 4 节）。`hostage-guard`、群臣不占位置点。数据自己在 M3 的世界模型里改的（这份文档不用动）：beat.07 把梅洛斯移出王城，不然 `exit.1.vigil` 一日目 0:00 落地时他还在城里。
+- 前端 16:20Z：路线不写进 layout，记成起点加目标点（第 4 节）。
+
 ---
 
 ## 修订记录
 
-- v1.0（2026-10-10）：第一版。v0.1 给前端、数据看过，答复已改进各节。去处的名字照世界模型的 `ActExit.label` 写（数据评审 #43）。
+- v1.0（2026-10-10）：第一版。v0.1 给前端、数据看过，答复已改进各节。去处的名字照世界模型的 `ActExit.label` 写（数据评审 #43）。按 #44 的评审改第 4 节：`king-throne` 排第一、加 `hostage-visit`，玩家和演出的点标 `auto: false`，路线改成起点加目标点（`melos-led-in` 挪到 (−25, 0)，加 `selinuntius-meet`，去掉 `melos-depart`）。
