@@ -16,7 +16,7 @@
    "assets/pipeline/plaza/sunpos.py": "2da6794757da0d29b482c5483577881d2098ecfd12f7d7178956da185310b03a",
    "assets/pipeline/plaza/bake.py": "1b2267b42cf6de868bd1799754b2724e73a91817ba954cfef038c4229c1a53b3",
    "assets/pipeline/plaza/encode.py": "4f4da080164bf598dff116bc28461b1bc582bb4e80a53a0ad03a5bcac9028a1b",
-   "assets/pipeline/plaza/pack_scene.mjs": "0ab2647c1be6eea957b480b91bc62d2e2a0f988e288c771475d2bbc9085719e6",
+   "assets/pipeline/plaza/pack_scene.mjs": "1b367b40d064324b0408192dd7dce28c7099602ae03b9bbf274862bc3bd36cf7",
    "assets/pipeline/plaza/nav.mjs": "0b90eab71ba36d2456f6d5acc83cc2751cb8e6b0c84359306e000ea216798b6f",
    "assets/pipeline/plaza/frame.mjs": "0a5da76ee5796a9850fb35d84b8aae3d7f826f8ecde8c8275ee131c4f658defb",
    "assets/pipeline/plaza/ktx2_decode.mjs": "3772741bf09c2898ba1a2cbe2fc64582c0b97471355be2c5272f0584991a4553"
@@ -57,12 +57,20 @@
   },
   "tools": {
    "@gltf-transform/core": "4.5.1",
+   "@gltf-transform/extensions": "4.5.1",
    "@gltf-transform/functions": "4.5.1",
    "meshoptimizer": "1.3.0",
    "ktx2-encoder": "0.6.0",
    "sharp": "0.35.5",
    "recast-navigation": "0.43.1",
    "three": "0.186.1"
+  },
+  "env": {
+   "E_SKY": "default",
+   "AEROSOL": "default",
+   "SKY_W": "default",
+   "SKY_H": "default",
+   "PLAZA_BAKE_MINUTE": "default"
   }
  },
  "sun": {

@@ -35,8 +35,11 @@ def not_pointers(paths: set[str]) -> list[str]:
     """匹配 LFS 规则、但 git 里存的不是 LFS 指针的文件（看暂存区里的内容，不看工作区）。"""
     bad = []
     for p in sorted(paths):
-        blob = subprocess.run(["git", "cat-file", "-p", f":{p}"], check=True, capture_output=True).stdout
-        if not blob.startswith(LFS_POINTER):
+        # the first bytes are enough; git-lfs stores an empty file as an empty blob, not a pointer
+        with subprocess.Popen(["git", "cat-file", "blob", f":{p}"], stdout=subprocess.PIPE) as proc:
+            head = proc.stdout.read(len(LFS_POINTER))
+            proc.kill()
+        if head and not head.startswith(LFS_POINTER):
             bad.append(p)
     return bad
 

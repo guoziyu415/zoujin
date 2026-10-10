@@ -26,7 +26,7 @@ Python 依赖：直接依赖写在 `requirements.in`，`requirements.txt` 是连
 ## 输出（`assets/scenes/syracuse-square/`）
 
 - `layout.json`（手写）：可走区域、地点边界、位置点（api-contract 的 `spot`）、每个地点的起点（`startSpots`）、出口。平面坐标，和 `build_plaza.py` 同一套。
-- `scene.json`（生成，进仓库）：页面要的全部信息，坐标已换成 glTF（米，+Y 朝上）。`spots` 的每一项有 `pos`、`yaw`（绕 +Y 把模型的 +Z 转向朝向点）、`place`；`startSpots` 是每个地点的起点：开局在这个地点的身份和人物站在那里（`playerStartSpot` 就是默认地点的起点，也是第一屏）。`files` 列出每个文件的大小和 sha256，`pack` 是 `entry`（进场包，能走之前下完）或 `hi`（高档在后台下）。`inputs` 记这份清单是从哪些输入生成的：`layout.json` 和各个脚本的 sha256、每张贴图的来源、工具版本。
+- `scene.json`（生成，进仓库）：页面要的全部信息，坐标已换成 glTF（米，+Y 朝上）。`spots` 的每一项有 `pos`、`yaw`（绕 +Y 把模型的 +Z 转向朝向点）、`place`；`startSpots` 是每个地点的起点：开局在这个地点的身份站在那里，人物按 `layout.json` 里这个地点的位置点顺序站第一个空着的（`way.*` 除外）；`playerStartSpot` 就是默认地点的起点，也是第一屏。`files` 列出每个文件的大小和 sha256，`pack` 是 `entry`（进场包，能走之前下完）或 `hi`（高档在后台下）。`inputs` 记这份清单是从哪些输入生成的：`layout.json` 和各个脚本的 sha256、每张贴图的来源（扫描图带 sha256）、工具版本、脚本读的环境变量。
 - `build/`（生成，暂不进仓库，见下）：`geo.glb`、`nav.json`、`tex/std/`、`tex/hi/`、`lm/`。
 
 地点和出口：
@@ -55,7 +55,7 @@ recast 只在生成时跑（WASM），页面用 `nav.json` 自己做 A* 和拉�
 
 项目容器推 Git LFS 时 `lfs.github.com` 被网络策略挡住（上传到存储成功，确认那一步被拒，对象不算数）。所以 `build/` 不进仓库，仓库里只有 `scene.json` 清单；页面开发、CI 和以后的部署构建都现场生成。三个条件：
 
-1. **能复现**。输入只来自仓库里的文件，或者固定版本、带 sha256 的下载；下载的素材在 `assets/manifest/` 写上来源和授权（CC0 等）。同一份输入生成两次，清单里的 sha256 要一致（CI 每次都查，见下面「复现性」）。
+1. **能复现**。输入只来自仓库里的文件，或者固定版本、带 sha256 的下载；下载的素材在 `assets/manifest/` 写上来源和授权（CC0 等）。同一份输入生成两次，清单里的 sha256 要一致（改了流水线或场景时 CI 查，见下面「复现性」）。
 2. **CI 只在改了流水线或场景时现场生成**（`.github/workflows/assets.yml` 的 `paths`）。每次的时长写进 PR 描述，M2-0 结束时 PM 核对 Actions 分钟。
 3. **`.gitattributes` 的 LFS 规则留着**。哪个线程误加了 `.glb`、`.ktx2`，装了 git-lfs 的话推送会在 LFS 那步失败；没装的话会当普通文件进 git，这时 CI 的 `check_large_files.py` 报红（匹配 LFS 规则、但进 git 的不是 LFS 指针）。
 
@@ -63,11 +63,11 @@ recast 只在生成时跑（WASM），页面用 `nav.json` 自己做 A* 和拉�
 
 ## 复现性
 
-CI 每次在两个不同的目录里从零生成两遍草稿档，用 `cmp` 比两份 `scene.json`（里面有全部文件的 sha256），不一致就红。这也顺带证明输出里没带本机路径。
+改了流水线或场景时（`assets.yml` 的 `paths`），CI 在两个不同的目录里从零生成两遍草稿档，用 `cmp` 比两份 `scene.json`（里面有全部文件的 sha256），不一致就红。这也顺带证明输出里没带本机路径。
 
 - 占位贴图按固定种子生成；Cycles 用固定的种子和采样数在 CPU 上烘焙，两次的光照图一致。
 - Blender 的 glTF 导出器给的三角形顺序不一定每次一样（远景柏树那一块遇到过）。所以 `pack_scene.mjs` 打包前把每块的三角形排一遍序（不改绕向），之后 meshopt 压出来就一致了。
-- 同一台机器上一致，换了 CPU 不保证：Cycles 和 Basis 编码的浮点结果可能差一点，sha256 也会跟着变。所以仓库里那份清单不和 CI 生成的文件比 sha256，只查预算、两档颜色和布局，再比 `inputs`：CI 生成的草稿档和仓库里的清单要是从同一份输入（`layout.json`、脚本、贴图来源、工具版本）来的，不一样就说明改了流水线或布局、却没重新跑正式档。依赖版本锁在 `requirements.txt`（带 hash）和 `pnpm-lock.yaml`。
+- 同一台机器上一致，换了 CPU 不保证：Cycles 和 Basis 编码的浮点结果可能差一点，sha256 也会跟着变。所以仓库里那份清单不和 CI 生成的文件比 sha256，只查预算、两档颜色和布局，再比 `inputs`：CI 生成的草稿档和仓库里的清单要是从同一份输入（`layout.json`、脚本、贴图来源、工具版本、环境变量）来的，不一样就说明改了流水线或布局、却没重新跑正式档。只查清单时（`node.yml`，几秒）也先比 `inputs.files` 和仓库里现在的文件，脚本或布局改了就直接报过期，不用等生成。依赖版本锁在 `requirements.txt`（带 hash）和 `pnpm-lock.yaml`。
 
 ## 现在的限制
 

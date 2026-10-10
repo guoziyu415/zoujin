@@ -3,12 +3,14 @@
 // models that use the scene (worlds/*/*/world.json: places, sceneRef, exits to adjacent places).
 // node check_scene.mjs <dir with scene.json> [layout.json] [--manifest <committed scene.json>]
 // When the packed files sit next to scene.json (a fresh build) their sizes and sha256 are checked and the colour
-// textures are decoded again; with scene.json alone (the committed manifest) the recorded numbers are checked.
+// textures are decoded again; with scene.json alone (the committed manifest) the recorded numbers are checked, and
+// the layout and scripts it was built from must still be the ones in the repo (a quick staleness check).
 // --manifest: the committed manifest must have been built from the same inputs as this fresh build (otherwise the
 // pipeline or layout changed without a new final build).
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 import { isDeepStrictEqual } from "util";
 import { decodeKTX2, meanRGB } from "./ktx2_decode.mjs";
 import { planToWorld, pointInPolygon } from "./frame.mjs";
@@ -20,7 +22,7 @@ const opt = (name) => {
 };
 const MANIFEST = opt("--manifest");
 const [DIR, LAYOUT_ARG] = args;
-const HERE = path.dirname(new URL(import.meta.url).pathname);
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "../../..");
 const budgets = JSON.parse(
   fs.readFileSync(path.join(HERE, "../../budgets.json"), "utf8"),
@@ -231,10 +233,23 @@ rows.push(`world models using ${scene.sceneId}: ${usedBy}`);
 if (usedBy === 0)
   errors.push(`no world model in worlds/ uses ${scene.sceneId}`);
 
+// ---- the committed manifest alone: the layout and scripts it was built from are still the ones in the repo
+if (!present)
+  for (const [f, want] of Object.entries(scene.inputs?.files ?? {})) {
+    const p = path.join(REPO, f);
+    const got = fs.existsSync(p)
+      ? crypto.createHash("sha256").update(fs.readFileSync(p)).digest("hex")
+      : "missing";
+    if (got !== want)
+      errors.push(
+        `scene.json is stale: ${f} changed since it was built (run the final build and commit scene.json)`,
+      );
+  }
+
 // ---- the committed manifest was built from the same inputs as this build
 if (MANIFEST) {
   const committed = JSON.parse(fs.readFileSync(MANIFEST, "utf8"));
-  for (const part of ["files", "textures", "tools"]) {
+  for (const part of ["files", "textures", "tools", "env"]) {
     const a = committed.inputs?.[part] ?? {};
     const b = scene.inputs?.[part] ?? {};
     for (const k of new Set([...Object.keys(a), ...Object.keys(b)]))

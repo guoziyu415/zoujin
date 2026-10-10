@@ -13,6 +13,7 @@ import sharp from "sharp";
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 import { buildNav } from "./nav.mjs";
 import { planToWorld } from "./frame.mjs";
 import { decodeKTX2, meanRGB } from "./ktx2_decode.mjs";
@@ -264,11 +265,12 @@ if (nav.errors.length) {
 }
 
 // ---------------------------------------------------------------- scene.json
-// What this build was made from: the layout and the scripts by sha256, where each texture came from, and the tool
-// versions. check_scene.mjs compares the committed manifest's inputs with a fresh build's, so a pipeline change that
-// was not followed by a new final build shows up in CI. Derived bytes (texture PNGs, bakes) are left out: they can
-// differ a little between machines (README, 复现性).
-const HERE = path.dirname(new URL(import.meta.url).pathname);
+// What this build was made from: the layout and the scripts by sha256, where each texture came from (a scan by its
+// sha256), the tool versions, and the environment variables the scripts read (build.sh runs every step in one
+// environment, so what this step sees is what the sky and the bake saw). check_scene.mjs compares the committed
+// manifest's inputs with a fresh build's, so a pipeline change that was not followed by a new final build shows up
+// in CI. Derived bytes (texture PNGs, bakes) are left out: they can differ a little between machines (README, 复现性).
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "../../..");
 const SCRIPTS = [
   "build.sh",
@@ -286,6 +288,7 @@ const SCRIPTS = [
 ];
 const TOOLS = [
   "@gltf-transform/core",
+  "@gltf-transform/extensions",
   "@gltf-transform/functions",
   "meshoptimizer",
   "ktx2-encoder",
@@ -293,6 +296,8 @@ const TOOLS = [
   "recast-navigation",
   "three",
 ];
+// read by sky.py, sunpos.py and encode.py; unset means the default written in those scripts
+const ENV = ["E_SKY", "AEROSOL", "SKY_W", "SKY_H", "PLAZA_BAKE_MINUTE"];
 const texSources = JSON.parse(
   fs.readFileSync(path.join(WORK, "tex/sources.json"), "utf8"),
 );
@@ -305,7 +310,10 @@ const inputs = {
   textures: Object.fromEntries(
     Object.entries(texSources)
       .sort(([a], [b]) => (a < b ? -1 : 1))
-      .map(([k, v]) => [k, v.from === "scan" ? `scan:${v.file}` : v.from]),
+      .map(([k, v]) => [
+        k,
+        v.from === "scan" ? `scan:${v.file}:${v.sha256}` : v.from,
+      ]),
   ),
   tools: Object.fromEntries(
     TOOLS.map((t) => [
@@ -318,6 +326,7 @@ const inputs = {
       ).version,
     ]),
   ),
+  env: Object.fromEntries(ENV.map((k) => [k, process.env[k] ?? "default"])),
 };
 const sum = (pred) => files.filter(pred).reduce((s, f) => s + f.bytes, 0);
 const placeholder = Object.values(textures).some((t) => t.from !== "scan");

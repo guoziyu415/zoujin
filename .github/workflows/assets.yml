@@ -55,10 +55,13 @@ jobs:
           uv venv --python 3.13 "$RUNNER_TEMP/bpy"
           uv pip install --python "$RUNNER_TEMP/bpy/bin/python" -r assets/pipeline/plaza/requirements.txt
       - name: build the plaza from scratch (draft lightmaps)
+        id: build
         run: BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/plaza/build.sh draft "$RUNNER_TEMP/plaza"
       - name: committed manifest built from the same inputs (layout, scripts, tool versions)
         run: node assets/pipeline/plaza/check_scene.mjs "$RUNNER_TEMP/plaza" assets/scenes/syracuse-square/layout.json --manifest assets/scenes/syracuse-square/scene.json
       - name: build again in other directories; the two manifests must be byte-identical (README, 复现性)
+        # runs even when the manifest above is stale, so a red stale check still tells whether the build reproduces
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: |
           BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/plaza/build.sh draft "$RUNNER_TEMP/plaza2"
           cmp "$RUNNER_TEMP/plaza/scene.json" "$RUNNER_TEMP/plaza2/scene.json"
