@@ -100,7 +100,7 @@
 | `sister-sheep` | (16, 13) | 朝南 | 妹妹在牧场放羊（一日目上午）。**layout 里排成 `melos-home` 第一个能自动站的点**：妹妹的 `initialActivity` 是 work，人物没有日程，没写 spot 的人站这个地点第一个空着的点（数据 16:01Z） |
 | `yard-fig` | (−10.5, −5) | 朝东（朝祭坛） | 院子里无花果树下。`melos-home` 第二个能自动站的点：二日目白天来帮忙、来道贺的人 |
 | `yard-east` | (−2.5, −3.2) | 朝西（朝祭坛） | 院子东边，从院门进来右手边。第三个能自动站的点 |
-| `melos-meet` `auto: false` | (12, 3) | −x | 一日目 10:00 梅洛斯走到牧场门口（beat.08） |
+| `melos-meet` `auto: false` | (12.3, 3) | −x | 一日目 10:00 梅洛斯走到牧场门口（beat.08）。x 不取 12：那是 `melos-home` 拆开后两块矩形的接缝（数据 #44 评审） |
 | `sister-meet` `auto: false` | (10.7, 3.3) | 朝东（朝梅洛斯） | 妹妹看见他，从牧场门跑到他跟前（beat.08，数据在节拍里一起写） |
 | `melos-altar` `auto: false` | (−6, −3.2) | 朝南（朝祭坛） | 一日目装饰祭坛 |
 | `melos-sleep` `auto: false` | (−11, −12.5)，屋里 | — | 一日目白天倒头睡到夜里 |
@@ -220,4 +220,4 @@
 
 ## 修订记录
 
-- v1.0（2026-10-10）：第一版。v0.1 给前端、数据看过，答复已改进各节。按 #44 的评审补：位置点排序和起点（加 `well-side`、`yard-fig`、`yard-east`、`groom-work`、`groom-gate`，玩家的点标 `auto: false`），`melos-home` 拆成凸的三块，屋里一日目白天就用、加一套白天的光。
+- v1.0（2026-10-10）：第一版。v0.1 给前端、数据看过，答复已改进各节。按 #44 的评审补：位置点排序和起点（加 `well-side`、`yard-fig`、`yard-east`、`groom-work`、`groom-gate`，玩家的点标 `auto: false`），`melos-home` 拆成凸的三块，屋里一日目白天就用、加一套白天的光；`melos-meet` 挪到 (12.3, 3)，离开矩形的接缝。

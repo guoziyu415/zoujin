@@ -151,7 +151,7 @@ V.cam(29, 2, -1, 0)
 V.spot(16, 13, 'sister-sheep 妹妹和羊', 'n', dx=7, dy=4)
 for (x, y) in ((14, 15), (17.5, 15.5), (15, 11), (18.5, 12), (13, 12.5), (19.5, 14), (16.5, 16.8)):
     V.circle(x, y, 0, '#ffffff', C['mute'], 1, r_px=3)
-V.spot(12, 3, 'melos-meet', 'm', (-1, 0), dx=6, dy=-8)
+V.spot(12.3, 3, 'melos-meet', 'm', (-1, 0), dx=6, dy=-8)
 V.spot(10.7, 3.3, 'sister-meet', 'n', (1, 0), dx=-7, dy=16, anchor='end')
 V.spot(-6, -3.2, '', 'm', (0, -1))
 V.label(-6, -3.2, 'melos-altar', dx=8, dy=-6, size=10, color=C['melos'])
