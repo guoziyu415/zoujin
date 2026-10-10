@@ -1,4 +1,4 @@
-"""knows()（R4）和 travel_minutes()（R3 的路程）：叙事者的确定性规则和评测 S-2 用同一份。"""
+"""knows()（R4）、travel_minutes()（R3 的路程）和 activity()（R7、快照）：叙事者的确定性规则和评测 S-2 用同一份。"""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from zoujin_worldsim import SimState, apply, check_effects, initial_state, knows, settle, travel_minutes
+from zoujin_worldsim import SimState, activity, apply, check_effects, initial_state, knows, settle, travel_minutes
 
 WORLD_DIR = Path(__file__).resolve().parents[3] / "worlds" / "hashire-merosu" / "1.0.0-draft"
 WORLD: dict[str, Any] = json.loads((WORLD_DIR / "world.json").read_text(encoding="utf-8"))
@@ -116,3 +116,49 @@ def test_unreachable_and_no_pacing() -> None:
     assert travel_minutes(w, "place.syracuse-square", "place.execution-ground") == 3
     del w["pacing"]
     assert travel_minutes(w, "place.syracuse-square", "place.execution-ground") == 0
+
+
+def test_activity_follows_the_beats_until_someone_is_moved() -> None:
+    """契约 2.4（1.1）：开局是 initialActivity，节拍给的 activity 持续到下一个给他的节拍或移动为止。"""
+    assert activity(WORLD, at(0), "char.sister") == "work"  # initialActivity，在 initialPlace
+    assert activity(WORLD, at(0), "char.melos") == "idle"  # 省略 = idle
+    assert activity(WORLD, at(2040), "char.sister") == "talk"  # beat.08 给的
+    assert activity(WORLD, at(1180), "char.melos") == "talk"  # beat.03
+    assert activity(WORLD, at(1200), "char.melos") == "idle"  # beat.04 把他移进王城、没给 activity
+    assert activity(WORLD, at(1230), "char.melos") == "talk"  # beat.05
+    assert activity(WORLD, at(2070), "char.melos") == "sleep"  # beat.09
+    assert activity(WORLD, at(3150), "char.melos") == "talk"  # beat.10，在花婿家
+    assert activity(WORLD, at(3600), "char.melos") == "idle"  # beat.11 把参与人物带回家、没给 activity
+    assert activity(WORLD, at(3600), "char.sister") == "talk"  # 一直在家，beat.08 给的还算
+    assert activity(WORLD, at(0), "player") == "idle"
+    assert activity(WORLD, at(0), "char.nobody") == "idle"
+
+
+def test_absent_lasts_only_while_nobody_moves_them() -> None:
+    """S-077 ⑩：absent 的人物被节拍带走（参与人物移到节拍地点，契约 3.1）以后就在场了。"""
+    assert activity(WORLD, at(5390), "char.crowd") == "absent"  # 开局 absent，还在广场
+    s = at(5400)  # beat.s1：群众是参与人物，移到刑场，节拍没给它 activity
+    assert s["locations"]["char.crowd"] == GROUND
+    assert activity(WORLD, s, "char.crowd") == "idle"
+    assert activity(WORLD, s, "char.maiden") == "idle"  # 不是参与人物，被 outcomes 的 relocate 移过去
+    assert activity(WORLD, s, "char.selinuntius") == "idle"  # beat.s1 给的
+
+
+def test_activity_ends_when_an_event_moves_someone() -> None:
+    """叙事者或人物的事件挪了人（不是节拍）：SimState 没有历史，按「此刻不在节拍让他在的地方」判，回到 idle。"""
+    s = at(2070)
+    assert activity(WORLD, s, "char.melos") == "sleep"
+    moved = {"op": "relocate", "character": "char.melos", "place": "place.village"}
+    s = apply(WORLD, s, {"t": s["t"], "dt": 0, "origin": "turn", "effects": [moved]})
+    assert activity(WORLD, s, "char.melos") == "idle"
+
+
+def test_activity_uses_the_outcomes_this_run_used() -> None:
+    """节拍被玩家事先改了（altered）：按这一局实际的结果算他该在哪，不按原作的 relocate。"""
+    canon = at(4590)  # beat.14：原作把梅洛斯移到村里
+    assert canon["locations"]["char.melos"] == "place.village"
+    assert activity(WORLD, canon, "char.melos") == "run"
+    s = at(4590, [{"op": "beat", "beat": "beat.14", "to": "altered", "outcomes": []}])  # 改成不挪他
+    assert s["beats"]["beat.14"] == "altered"
+    assert s["locations"]["char.melos"] == "place.melos-home"
+    assert activity(WORLD, s, "char.melos") == "run"
