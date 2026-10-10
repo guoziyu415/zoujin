@@ -71,19 +71,33 @@ SLICE_PLAN: dict[str, Any] = {
 # 固定演出（契约 1.7 的 setPieces，2.11；S-080 ④，PM 10-10 定放进切片世界模型）。
 # 文字和谁说：UX `ux/slice/act1-end-and-gate.md` 第 1、2、4 节；预录句的声音（警吏 Charon、群众里的女人 Despina、
 # セリヌンティウス Iapetus）在 UX 的文案表，不写在这里。
-# 同一个时机按列表顺序取第一条条件满足的，所以有条件的写在前面
-GATE = "place.castle"  # 王城门口的场景出口通往的地点（布局 exits[].place）
+# 同一个时机按列表顺序取第一条条件满足的，所以有条件的写在前面。UX 10-10 的规则：警吏的两句各说一次；
+# 抓梅洛斯那场是导演好的，不因为「一次」被跳过，玩家之前已经被「下がれ…」挡过，那场里就改说「二度は言わぬ」；
+# 两句都说过以后，再走上去交给叙事者。
+# 23:30 以后的「灯は消えていた」只出一次（走进院子和敲门共用）
+GATE = "place.castle"  # 王城门口的场景出口通往的地点（布局 exits[].place）；出口给 enabled，由判定拒掉（后端 10-10）
 WORKSHOP = "place.stonemason-workshop"
-WORKSHOP_DOOR = "obj.workshop-door"  # 工房屋门的 interactable（examine），ID 要和后端、前端对好
+WORKSHOP_DOOR = "obj.workshop-door"
 SPEAR = {"narration": "衛兵が、あなたの前に槍を下ろした。"}
 STAND_BACK = {"speaker": "char.guards", "line": "下がれ、旅の者。ここから先は、通さぬ。"}
+NOT_TWICE = {"speaker": "char.guards", "line": "二度は言わぬ。下がれ。"}
+TAKEN_IN = {"narration": "メロスは、王城の奥へ引かれていった。"}
 LIGHT_OUT = {"narration": "工房の灯は、いつのまにか消えていた。"}
 SLICE_SET_PIECES: list[dict[str, Any]] = [
+    {
+        "id": "piece.gate-taken-again",
+        "on": {"beat": "beat.04"},
+        "played": ["piece.gate-turned-away"],
+        "once": True,
+        "lines": [SPEAR, NOT_TWICE, TAKEN_IN],
+        "inferred": True,
+        "note": "第 1 节：抓梅洛斯那场，玩家之前已经被挡过一次，第 3 步的警吏改说第二句（UX 10-10）",
+    },
     {
         "id": "piece.gate-taken",
         "on": {"beat": "beat.04"},
         "once": True,
-        "lines": [SPEAR, STAND_BACK, {"narration": "メロスは、王城の奥へ引かれていった。"}],
+        "lines": [SPEAR, STAND_BACK, TAKEN_IN],
         "inferred": True,
         "note": "第 1 节：跟着梅洛斯走到王城门口。梅洛斯回头看一眼、不说话是演出，不是台词",
     },
@@ -91,16 +105,20 @@ SLICE_SET_PIECES: list[dict[str, Any]] = [
         "id": "piece.gate-again",
         "on": {"act": "go", "target": GATE, "refused": True},
         "played": ["piece.gate-taken", "piece.gate-turned-away"],
-        "lines": [{"speaker": "char.guards", "line": "二度は言わぬ。下がれ。"}],
+        "notPlayed": ["piece.gate-taken-again"],
+        "once": True,
+        "lines": [NOT_TWICE],
         "inferred": True,
         "note": "第 1 节第 6 步：已经被挡过一次，再走上去",
     },
     {
         "id": "piece.gate-turned-away",
         "on": {"act": "go", "target": GATE, "refused": True},
+        "before": ["beat.04"],
+        "once": True,
         "lines": [SPEAR, STAND_BACK],
         "inferred": True,
-        "note": "梅洛斯被抓之前自己走到王城门口：同一个警吏、同两句",
+        "note": "梅洛斯被抓之前自己走到王城门口：同一个警吏、同两句（UX 10-10 确认）",
     },
     {
         "id": "piece.workshop-door-closed",
@@ -115,6 +133,7 @@ SLICE_SET_PIECES: list[dict[str, Any]] = [
         "id": "piece.workshop-dark",
         "on": {"act": "move", "target": WORKSHOP},
         "after": ["beat.06"],
+        "notPlayed": ["piece.workshop-knock-dark"],
         "once": True,
         "lines": [LIGHT_OUT],
         "inferred": True,
@@ -136,10 +155,11 @@ SLICE_SET_PIECES: list[dict[str, Any]] = [
         "id": "piece.workshop-knock-dark",
         "on": {"act": "examine", "target": WORKSHOP_DOOR},
         "after": ["beat.06"],
+        "notPlayed": ["piece.workshop-dark"],
         "once": True,
         "lines": [LIGHT_OUT],
         "inferred": True,
-        "note": "第 4 节：23:30 以后敲门",
+        "note": "第 4 节：23:30 以后敲门（UX 10-10 确认）",
     },
     {
         "id": "piece.crowd-makes-way",
@@ -152,6 +172,16 @@ SLICE_SET_PIECES: list[dict[str, Any]] = [
         ],
         "inferred": True,
         "note": "第 2 节：玩家把约定告诉了城里的人（learn 群众 fact.promise），梅洛斯赶到时群众里一个女人认出他",
+    },
+]
+# 可调查物（契约 1.7 的 objects，2.12）：工房关着的屋门。按钮上的字 UX 10-10 定；位置点等前端在布局里加
+SLICE_OBJECTS: list[dict[str, Any]] = [
+    {
+        "id": WORKSHOP_DOOR,
+        "place": WORKSHOP,
+        "label": "戸を叩く",
+        "inferred": True,
+        "note": "第 4 节：院子里关着的屋门，里面传出凿石头的声音",
     },
 ]
 
@@ -205,8 +235,9 @@ def make_slice(src: dict[str, Any]) -> dict[str, Any]:
     acts["act.1"]["exits"] = copy.deepcopy(SLICE_EXITS)
     acts["act.1"]["plan"] = copy.deepcopy(SLICE_PLAN)
 
-    # S-080 ④：城门、工房、群众让路的固定演出
+    # S-080 ④：城门、工房、群众让路的固定演出，和工房的屋门
     w["setPieces"] = copy.deepcopy(SLICE_SET_PIECES)
+    w["objects"] = copy.deepcopy(SLICE_OBJECTS)
 
     # S-050：切片里只和老爺、梅洛斯说话；别的人物只有走动版，没有对话版（S-078 ①）
     for c in w["characters"]:

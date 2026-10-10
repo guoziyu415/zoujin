@@ -5861,6 +5861,30 @@
  ],
  "setPieces": [
   {
+   "id": "piece.gate-taken-again",
+   "on": {
+    "beat": "beat.04"
+   },
+   "played": [
+    "piece.gate-turned-away"
+   ],
+   "once": true,
+   "lines": [
+    {
+     "narration": "衛兵が、あなたの前に槍を下ろした。"
+    },
+    {
+     "speaker": "char.guards",
+     "line": "二度は言わぬ。下がれ。"
+    },
+    {
+     "narration": "メロスは、王城の奥へ引かれていった。"
+    }
+   ],
+   "inferred": true,
+   "note": "第 1 节：抓梅洛斯那场，玩家之前已经被挡过一次，第 3 步的警吏改说第二句（UX 10-10）"
+  },
+  {
    "id": "piece.gate-taken",
    "on": {
     "beat": "beat.04"
@@ -5892,6 +5916,10 @@
     "piece.gate-taken",
     "piece.gate-turned-away"
    ],
+   "notPlayed": [
+    "piece.gate-taken-again"
+   ],
+   "once": true,
    "lines": [
     {
      "speaker": "char.guards",
@@ -5908,6 +5936,10 @@
     "target": "place.castle",
     "refused": true
    },
+   "before": [
+    "beat.04"
+   ],
+   "once": true,
    "lines": [
     {
      "narration": "衛兵が、あなたの前に槍を下ろした。"
@@ -5918,7 +5950,7 @@
     }
    ],
    "inferred": true,
-   "note": "梅洛斯被抓之前自己走到王城门口：同一个警吏、同两句"
+   "note": "梅洛斯被抓之前自己走到王城门口：同一个警吏、同两句（UX 10-10 确认）"
   },
   {
    "id": "piece.workshop-door-closed",
@@ -5946,6 +5978,9 @@
    },
    "after": [
     "beat.06"
+   ],
+   "notPlayed": [
+    "piece.workshop-knock-dark"
    ],
    "once": true,
    "lines": [
@@ -5987,6 +6022,9 @@
    "after": [
     "beat.06"
    ],
+   "notPlayed": [
+    "piece.workshop-dark"
+   ],
    "once": true,
    "lines": [
     {
@@ -5994,7 +6032,7 @@
     }
    ],
    "inferred": true,
-   "note": "第 4 节：23:30 以后敲门"
+   "note": "第 4 节：23:30 以后敲门（UX 10-10 确认）"
   },
   {
    "id": "piece.crowd-makes-way",
@@ -6019,6 +6057,15 @@
    ],
    "inferred": true,
    "note": "第 2 节：玩家把约定告诉了城里的人（learn 群众 fact.promise），梅洛斯赶到时群众里一个女人认出他"
+  }
+ ],
+ "objects": [
+  {
+   "id": "obj.workshop-door",
+   "place": "place.stonemason-workshop",
+   "label": "戸を叩く",
+   "inferred": true,
+   "note": "第 4 节：院子里关着的屋门，里面传出凿石头的声音"
   }
  ]
 }

@@ -11,7 +11,18 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from zoujin_worldsim import Sim, SimState, apply, check_effects, classify, flat, initial_state, settle
+from zoujin_worldsim import (
+    Sim,
+    SimState,
+    apply,
+    check_effects,
+    classify,
+    flat,
+    initial_state,
+    knows,
+    pick_set_piece,
+    settle,
+)
 
 REPO = Path(__file__).resolve().parents[3]
 SLICE: dict[str, Any] = json.loads((REPO / "worlds/hashire-merosu/1.0.0-slice/world.json").read_text(encoding="utf-8"))
@@ -102,21 +113,74 @@ def test_a_feasible_plan_lands_where_act_1_plan_says() -> None:
 
 def test_set_pieces_hang_where_the_traveler_can_see_them() -> None:
     """固定演出（契约 2.11，S-080 ④）挂的节拍在旅人去得了的地点；王城门口被拒、工房走得进；
-    工房的灯在 23:30（beat.06）灭；群众让路只在玩家把约定告诉了群众时演：群众本来不知道约定。"""
-    pieces = {p["id"]: p for p in SLICE["setPieces"]}
+    工房的灯在 23:30（beat.06）灭；群众本来不知道约定。"""
     beats = {b["id"]: b for b in SLICE["beats"]}
     access = set(SLICE["roles"][0]["access"])
-    for p in pieces.values():
+    for p in SLICE["setPieces"]:
         if "beat" in p["on"]:
             assert beats[p["on"]["beat"]]["place"] in access, p["id"]
     assert "place.castle" not in access and "place.stonemason-workshop" in access
     assert beats["beat.06"]["window"]["canonical"] == 1410  # 一日目前夜 23:30
-    crowd = next(c for c in SLICE["characters"] if c["id"] == "char.crowd")
-    assert "fact.promise" not in {k["fact"] for k in crowd.get("knows", [])}
-    canon = run_to(initial_state(SLICE, ROLE), None)
-    assert canon["beats"]["beat.24"] == "happened"
-    assert "fact.promise" not in canon["knowledge"].get("char.crowd", [])
-    assert pieces["piece.crowd-makes-way"]["knows"] == [{"character": "char.crowd", "fact": "fact.promise"}]
+    assert [o["id"] for o in SLICE["objects"]] == ["obj.workshop-door"]
+
+
+def walk_to(place: str, t: int) -> SimState:
+    s = initial_state(SLICE, ROLE)
+    s = apply(SLICE, s, {"t": 0, "dt": 0, "origin": "turn",
+                         "effects": [{"op": "set", "var": "var.player.location", "value": place}]})  # fmt: skip
+    return run_to(s, t)
+
+
+def lines_of(steps: list[tuple[SimState, dict[str, Any]]]) -> list[list[str] | None]:
+    """按顺序问每个时机演哪一条，返回每次演的台词（没有固定演出是 None）。"""
+    played: set[str] = set()
+    out: list[list[str] | None] = []
+    for s, hook in steps:
+        p = pick_set_piece(SLICE, s, hook, played)
+        out.append(None if p is None else [x.get("line") or x["narration"] for x in p["lines"]])
+        played |= {p["id"]} if p else set()
+    return out
+
+
+GATE = {"act": "go", "target": "place.castle", "refused": True}
+STAND_BACK, NOT_TWICE = "下がれ、旅の者。ここから先は、通さぬ。", "二度は言わぬ。下がれ。"
+
+
+def guard(lines: list[str] | None) -> str | None:
+    """这一次警吏说的那句（没有固定演出是 None）。"""
+    return None if lines is None else next(x for x in lines if x in (STAND_BACK, NOT_TWICE))
+
+
+def test_the_guards_say_each_line_once_and_the_arrest_always_plays() -> None:
+    """UX 10-10：警吏的两句各说一次；抓梅洛斯那场照演，之前被挡过的话那场改说第二句；两句都说过以后交给叙事者。"""
+    before, after = walk_to(GROUND, 1100), walk_to(GROUND, 1201)
+    arrest = (after, {"beat": "beat.04"})
+    first = lines_of([arrest, (after, GATE), (after, GATE)])  # 先被抓再走上去
+    then_ = lines_of([(before, GATE), arrest, (after, GATE)])  # 先走上去再被抓
+    assert [guard(x) for x in first] == [STAND_BACK, NOT_TWICE, None]
+    assert [guard(x) for x in then_] == [STAND_BACK, NOT_TWICE, None]
+    assert then_[1] is not None and then_[1][2] == "メロスは、王城の奥へ引かれていった。"
+    assert lines_of([(walk_to("place.syracuse-square", 1201), {"beat": "beat.04"})]) == [None]  # 不在场
+
+
+def test_the_workshop_light_goes_out_once() -> None:
+    yard = {"act": "move", "target": "place.stonemason-workshop"}
+    door = {"act": "examine", "target": "obj.workshop-door"}
+    early, late = walk_to("place.stonemason-workshop", 1300), walk_to("place.stonemason-workshop", 1411)
+    got = lines_of([(early, yard), (early, door), (early, door), (late, yard), (late, door)])
+    assert got[0] and got[0][0].startswith("戸は閉ざされている")
+    assert got[1] is not None and got[1][0] == "もう遅い。用があるなら、明日にしてくれ。"
+    assert got[2:] == [None, ["工房の灯は、いつのまにか消えていた。"], None]
+
+
+def test_the_crowd_makes_way_only_if_told() -> None:
+    s = walk_to(GROUND, 5461)
+    assert s["beats"]["beat.24"] == "happened" and not knows(SLICE, s, "char.crowd", "fact.promise")
+    assert lines_of([(s, {"beat": "beat.24"})]) == [None]
+    s = apply(SLICE, s, {"t": s["t"], "dt": 0, "origin": "turn",
+                         "effects": [{"op": "learn", "character": "char.crowd", "fact": "fact.promise"}]})  # fmt: skip
+    (shout,) = lines_of([(s, {"beat": "beat.24"})])
+    assert shout == ["メロスだ！　メロスが帰って来た！", "人々が振り返り、道をあけた。"]
 
 
 @pytest.mark.parametrize(
