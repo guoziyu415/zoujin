@@ -8,6 +8,7 @@ B-0 或假模型改了输出，快照要在同一个 PR 里更新：
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +42,17 @@ def test_filters(tmp_path: Path) -> None:
     assert main(["--suite", "E5", "--case", "E5-002", "--quiet", "--out", str(tmp_path), *ARGS]) == 0
     got = json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))
     assert [c["id"] for c in got["cases"]] == ["E5-002"]
+
+
+def test_slice_runs_the_slice_cases_on_the_slice_world(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(REPO)
+    monkeypatch.delenv("ZJ_WORLD", raising=False)
+    assert main(["--slice", "--deterministic-only", "--quiet", "--out", str(tmp_path)]) == 0
+    got = json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))
+    ids = [json.loads(line)["id"] for f in sorted((REPO / "evals/slice").glob("E*.jsonl")) for line in f.open()]
+    assert "1.0.0-slice" in got["meta"]["worldModelVersion"]
+    assert sorted(c["id"] for c in got["cases"]) == sorted(ids)
+    assert Path(os.environ["ZJ_WORLD"]) == Path("worlds/hashire-merosu/1.0.0-slice/world.json")
 
 
 LIVE = ["--mode", "live", "--max-item-usd", "1", "--max-google-usd", "30", "--max-claude-usd", "10"]

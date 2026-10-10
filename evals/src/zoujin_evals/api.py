@@ -10,7 +10,8 @@
   new_playthrough() 之后查询都答新的一局；delete_playthrough() 之后 db_absent() 答被删的那局。
 - 没做的步骤和查询抛 EvalNotImplemented("名字")；回放里查不到抛 ReplayMissing。运行器按异常的类名认，
   B-0 在 zoujin_backend.eval_api 里定义这两个类。会话上没有的方法也当作没做。
-- ZJ_MODEL（fake / replay）由运行器在调 setup() 之前设，后端每次 setup() 时读。
+- ZJ_MODEL（fake / replay）和 ZJ_WORLD（world.json 的路径；`--slice` 时是 1.0.0-slice）由运行器在调 setup() 之前设，
+  后端每次 setup() 时读。
 - 模拟局（setup 带 persona + seed）：后端只按它定身份、起点和假模型的种子；AI 玩家在运行器里，按画像逐步调
   say / act / propose / choose，玩家说过的话运行器自己记（2026-10-10 和后端定）。
 - check() 不是用例的步骤：S-2 用它把一个候选事件交给叙事者第 3、4 步，不提交。

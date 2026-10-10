@@ -104,6 +104,11 @@ def make_slice(src: dict[str, Any]) -> dict[str, Any]:
     # ④⑤ 幕末只列市里去得了的两个去处，都跳到三日目 17:30 的刑场；「ほかの考えがある」是前端的固定选项
     acts["act.1"]["exits"] = copy.deepcopy(SLICE_EXITS)
 
+    # S-050：切片里只和老爺、梅洛斯说话；别的人物只有走动版，没有对话版（S-078 ①）
+    for c in w["characters"]:
+        if c["talkable"] and c["id"] not in ("char.melos", "char.old-man"):
+            c["talkable"] = False
+
     # ⑩ 石工房开着，但第一幕见不到セリヌンティウス和フィロストラトス（在屋里干活、不出来）
     for cid in ("char.selinuntius", "char.philostratus"):
         by_id(w["characters"], cid)["initialActivity"] = "absent"

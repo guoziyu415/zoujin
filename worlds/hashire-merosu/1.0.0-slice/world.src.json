@@ -774,7 +774,7 @@
     }
    ],
    "initialPlace": "place.castle",
-   "talkable": true,
+   "talkable": false,
    "cite": [
     {
      "q": "暴君ディオニスは静かに、けれども威厳を以て問いつめた。"
@@ -1074,7 +1074,7 @@
     }
    ],
    "initialPlace": "place.stonemason-workshop",
-   "talkable": true,
+   "talkable": false,
    "initialActivity": "absent",
    "cite": [
     {
@@ -1324,7 +1324,7 @@
     }
    ],
    "initialPlace": "place.melos-home",
-   "talkable": true,
+   "talkable": false,
    "initialActivity": "work",
    "cite": [
     {
@@ -1461,7 +1461,7 @@
     }
    ],
    "initialPlace": "place.groom-house",
-   "talkable": true,
+   "talkable": false,
    "initialActivity": "work",
    "cite": [
     {
@@ -1625,7 +1625,7 @@
     }
    ],
    "initialPlace": "place.stonemason-workshop",
-   "talkable": true,
+   "talkable": false,
    "initialActivity": "absent",
    "cite": [
     {

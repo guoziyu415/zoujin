@@ -874,7 +874,7 @@
     }
    ],
    "initialPlace": "place.castle",
-   "talkable": true,
+   "talkable": false,
    "cite": [
     {
      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
@@ -1206,7 +1206,7 @@
     }
    ],
    "initialPlace": "place.stonemason-workshop",
-   "talkable": true,
+   "talkable": false,
    "initialActivity": "absent",
    "cite": [
     {
@@ -1482,7 +1482,7 @@
     }
    ],
    "initialPlace": "place.melos-home",
-   "talkable": true,
+   "talkable": false,
    "initialActivity": "work",
    "cite": [
     {
@@ -1635,7 +1635,7 @@
     }
    ],
    "initialPlace": "place.groom-house",
-   "talkable": true,
+   "talkable": false,
    "initialActivity": "work",
    "cite": [
     {
@@ -1823,7 +1823,7 @@
     }
    ],
    "initialPlace": "place.stonemason-workshop",
-   "talkable": true,
+   "talkable": false,
    "initialActivity": "absent",
    "cite": [
     {

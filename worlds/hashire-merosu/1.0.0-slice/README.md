@@ -21,6 +21,9 @@ M2 竖切片（R1 试玩）用的世界模型。和完整版同一个 Schema，B
 | ② | `var.player.custody` 去掉 `arrested`：叙事者提交它会被 R2 按取值拒掉 |
 | ④⑤ | 第一幕的去处换成两个，都跳到 act.4、三日目 17:30（`t: 5370`）、刑场：`exit.1.city`「市に残り、メロスの帰りを待つ」落在 `ground-west`；`exit.1.old-man`「老爺の家に身を寄せる」要送过老爺（`var.player.walkedOldManHome`），落在 `stake-front`，老爺站旁边、先开口。两个都把老爺移到刑场、フィロストラトス移到进城的路，都带落地句（`arrival`，UX `ux/slice/jump-transition.md`）。「ほかの考えがある」是前端的固定选项，不是去处 |
 | ⑤ | 第二、三幕原样留着，跳转时在后台结算；落在归途的 `exit.3.road` 去掉（切片里不会出现） |
+| S-050 | 只有梅洛斯和老爺能对话（`talkable`），别的人物只有走动版（S-078 ①） |
 | ⑩ | セリヌンティウス、フィロストラトス开局 `initialActivity: absent`：石工房开着，第一幕见不到两人 |
+
+切片用例在 `evals/slice/`（`evals/gen_slice.py` 生成），`uv run zoujin-eval --slice` 跑。
 
 还没写进来的：「ほかの考えがある」成行时的落点（`Act.plan`，等后端定 B-0 从哪里读，契约 C-19）。
