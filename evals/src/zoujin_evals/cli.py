@@ -21,6 +21,8 @@ from .runner import Options, run_cases
 
 WORLD = Path("worlds/hashire-merosu/1.0.0-draft/world.json")
 CASES = Path("evals/seeds")
+SLICE_WORLD = Path("worlds/hashire-merosu/1.0.0-slice/world.json")
+SLICE_CASES = Path("evals/slice")
 PRICES = Path("evals/config/live-cost.json")
 
 
@@ -30,8 +32,9 @@ def parse(argv: Sequence[str]) -> argparse.Namespace:
     ap.add_argument("--deterministic-only", action="store_true", help="只跑确定性检查，不跑判分")
     ap.add_argument("--suite", action="append", default=[], help="只跑这个套件（可以给多次）")
     ap.add_argument("--case", action="append", default=[], help="只跑这个用例（可以给多次）")
-    ap.add_argument("--cases", type=Path, default=CASES, help="用例目录")
-    ap.add_argument("--world", type=Path, default=WORLD, help="世界模型 world.json")
+    ap.add_argument("--slice", action="store_true", help=f"跑切片用例 {SLICE_CASES}，世界模型用切片版（S-077 ⑨）")
+    ap.add_argument("--cases", type=Path, help=f"用例目录（默认 {CASES}）")
+    ap.add_argument("--world", type=Path, help=f"世界模型 world.json（默认 {WORLD}）")
     ap.add_argument("--out", type=Path, default=Path("evals/out"), help="报告写到哪里")
     ap.add_argument("--timeout", type=float, help="每次运行的时限（秒）；不给 = 文字 600、语音和模拟局 1800；0 = 不限")
     ap.add_argument("--quiet", action="store_true", help="不打印每次运行的进度")
@@ -41,7 +44,10 @@ def parse(argv: Sequence[str]) -> argparse.Namespace:
     g.add_argument("--max-claude-usd", type=float, help="Claude 账的总上限（美元，评审员和 AI 玩家），live 必填")
     g.add_argument("--confirm", action="store_true", help="zg 看过预计花费、同意了")
     g.add_argument("--prices", type=Path, default=PRICES, help="每步估价")
-    return ap.parse_args(argv)
+    a = ap.parse_args(argv)
+    a.cases = a.cases or (SLICE_CASES if a.slice else CASES)
+    a.world = a.world or (SLICE_WORLD if a.slice else WORLD)
+    return a
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -65,6 +71,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return code
 
     os.environ["ZJ_MODEL"] = a.mode  # B-0 按它选假模型或回放
+    os.environ["ZJ_WORLD"] = str(a.world.resolve())  # B-0 按它读世界模型（--slice 时是切片版），绝对路径
     api = load_backend()
     world = WorldIndex(json.loads(a.world.read_text(encoding="utf-8")))
     opts = Options(

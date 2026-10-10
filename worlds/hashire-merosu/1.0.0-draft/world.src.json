@@ -5130,6 +5130,11 @@
        "op": "set",
        "var": "var.player.companionOf",
        "value": "char.melos"
+      },
+      {
+       "op": "learn",
+       "character": "player",
+       "fact": "fact.promise"
       }
      ]
     },
@@ -5151,6 +5156,11 @@
        "op": "set",
        "var": "var.player.companionOf",
        "value": "char.selinuntius"
+      },
+      {
+       "op": "learn",
+       "character": "player",
+       "fact": "fact.promise"
       }
      ]
     },
@@ -5160,11 +5170,17 @@
      "toAct": "act.2",
      "place": "place.syracuse-square",
      "t": 1440,
-     "effects": []
+     "effects": [
+      {
+       "op": "learn",
+       "character": "player",
+       "fact": "fact.promise"
+      }
+     ]
     }
    ],
    "inferred": true,
-   "note": "日没前の広場から、約束、メロスの出発（23:45）まで。"
+   "note": "日没前の広場から、約束、メロスの出発（23:45）まで。幕末の去処はどれも、プレイヤーが約束を知ったことにする（learn、S-077 ⑫）。約束が成り立っていない局では事実が偽なので、知ったことにはならない"
   },
   {
    "id": "act.2",

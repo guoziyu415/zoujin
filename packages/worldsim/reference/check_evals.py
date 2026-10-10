@@ -44,7 +44,7 @@ CHECK_TYPES = REPLY_CHECKS | E7_CHECKS | SIM_CHECKS | ENDING_CHECKS | {
     "act_plan"}                                                                  # contracts 1.2：幕末说出的打算
 SETUP_KEYS = {"role", "checkpoint", "place", "events", "budgetTier", "scenario", "persona", "seed"}
 STEP_KEYS = {"to", "act", "deleteMemory", "retract", "deletePlaythrough", "newPlaythrough", "advance", "silence",
-             "propose"}
+             "propose", "choose"}
 
 
 class Checker:
@@ -306,8 +306,23 @@ class Checker:
                     self.err(f"{sw}：propose 要是非空字符串")
                 if cp_beat not in self.act_end:
                     self.err(f"{sw}：propose 只能用在幕末（检查点要是某一幕的收幕节拍 {sorted(self.act_end)}）")
+            elif k == "choose":                        # contracts 2.8.1 第 2 步（1.5）：幕末选一个推荐去处
+                ended = self.act_end.get(cp_beat)
+                ch = s["choose"] if isinstance(s["choose"], dict) else {}
+                ex = {e["id"]: e for e in ended["exits"]} if ended else {}
+                if not ended:
+                    self.err(f"{sw}：choose 只能用在幕末（检查点要是某一幕的收幕节拍 {sorted(self.act_end)}）")
+                elif ch.get("exit") not in ex:
+                    self.err(f"{sw}：{ended['id']} 没有去处 {ch.get('exit')}（有 {sorted(ex)}）")
+                else:
+                    e = ex[ch["exit"]]
+                    if "enRoute" in ch and ch["enRoute"] not in range(len(e.get("enRoute", {}).get("choices", []))):
+                        self.err(f"{sw}：enRoute 要是 {e['id']} 过场二选一的序号")
+                    moved, place = True, e["place"]
         if list(kinds.values()).count("propose") > 2:
             self.err(f"{where}：同一次幕末最多说 2 次打算（S-031 ③）")
+        if list(kinds.values()).count("choose") > 1:
+            self.err(f"{where}：一次幕末只选一个去处")
         last_to = max((i for i, k in kinds.items() if k == "to"), default=None)
 
         # ---------- 检查 ----------
@@ -453,10 +468,15 @@ class Checker:
                     self.err(f"{dw}：act_plan 要写 accepted: true / false")
                 elif d["accepted"]:
                     ended = self.act_end.get(cp_beat)
-                    nxt = [a["id"] for a in self.acts.values() if ended and a["order"] == ended["order"] + 1]
+                    # 下一幕 = 这一幕的去处去的那一幕（切片版第一幕直接跳到 act.4，S-077 ⑤）；
+                    # （1.7，C-19）幕上有 plan 时成行就落在它写的下一幕和地点
+                    plan = ended.get("plan") if ended else None
+                    nxt = [plan["toAct"]] if plan else sorted({e["toAct"] for e in ended["exits"]}) if ended else []
                     if d.get("toAct") not in nxt:
                         self.err(f"{dw}：成行的打算 toAct 要是下一幕 {nxt}")
-                    if d.get("place") not in self.places:
+                    if plan and d.get("place") != plan["place"]:
+                        self.err(f"{dw}：这一幕有 plan，成行的打算落在 {plan['place']}")
+                    elif d.get("place") not in self.places:
                         self.err(f"{dw}：地点不存在 {d.get('place')}")
                     elif reach is not None and d["place"] not in reach:
                         self.err(f"{dw}：{role['id']} 进不了 {d['place']}，期待成行和 R7 矛盾")
@@ -516,10 +536,10 @@ def main():
     ap.add_argument("--world", required=True)
     ap.add_argument("--scenarios", required=True)
     ap.add_argument("--cases", required=True)
-    ap.add_argument("--personas", required=True)
+    ap.add_argument("--personas", help="模拟局的画像；不给 = 用例里不能有模拟局（切片用例就不给）")
     a = ap.parse_args()
     load = lambda p: json.loads(Path(p).read_text(encoding="utf-8"))  # noqa: E731
-    ck = Checker(load(a.world), load(a.scenarios), load(a.personas))
+    ck = Checker(load(a.world), load(a.scenarios), load(a.personas) if a.personas else [])
 
     for pid, p in ck.personas.items():
         r = ck.roles.get(p.get("role"))

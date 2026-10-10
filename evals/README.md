@@ -10,6 +10,7 @@
 |---|---|
 | `seeds/E1.jsonl` 〜 `seeds/E8.jsonl` | 用例，一行一例（生成出来的，不要手改） |
 | `gen_seeds.py` | 用例的编写源。改用例改这里，再跑 `python3 -I evals/gen_seeds.py evals/seeds` |
+| `slice/E*.jsonl`、`gen_slice.py` | 切片用例（S-077 ⑨，世界模型 `1.0.0-slice`）：现有用例里切片玩得到的 27 例（旅人、原著路径、第一幕或跳到三日目 17:30 以后、旅人能去的地点、只和老爺和梅洛斯说话），加切片专用 12 例（编号 101 起：送老爺回家（说话和按钮）、两个去处的跳转和落点、没送过时没有那个去处、幕末打算成行和不成行、城门口进不去也不会被抓、跳过去以后照原作到日没、老爺还记得你）。生成出来的，不要手改；改了种子要重跑 `gen_slice.py` |
 | `personas.json` | 模拟局用的 AI 玩家画像，11 个（E5、E7 和后端 spike S-5 用）；（1.5）`persona.melos-helper` 一心帮梅洛斯赶上，用来看刑场一幕的演法分布 |
 | `../packages/worldsim/reference/check_evals.py` | 用例自检（不调模型） |
 | `../packages/worldsim/` | 推演规则（contracts 2.4.1、2.5.1）的包 `zoujin_worldsim`（W-1）。世界模型校验、用例自检和叙事者共用这一份，所以这里的脚本用 `uv run python` 跑 |
@@ -189,10 +190,12 @@ uv run python -I packages/worldsim/reference/check_probes.py --world worlds/hash
 ```bash
 uv run zoujin-eval --mode fake --deterministic-only          # CI 跑的就是这个（经 tests/test_cli.py 和快照比）
 uv run zoujin-eval --mode replay --suite E2 --case E2-009     # 只跑一部分；--suite、--case 可以给多次
+uv run zoujin-eval --slice --mode fake --deterministic-only   # 切片用例（evals/slice），世界模型用 1.0.0-slice
 ```
 
 报告写到 `--out`（默认 `evals/out/`，不进仓库）：`report.json` 和 `report.md`。
 
+- **世界模型**：运行器把 `--world` 的绝对路径写进 `ZJ_WORLD`，和 `ZJ_MODEL` 一起在 `setup()` 之前设，后端按它读（`--slice` 时是切片版）。
 - **模式**：`fake`（后端的假文本模型，CI 默认）、`replay`（后端的回放，查不到就记「回放缺失或过期」，不退回假模型）、`live`（见下）。运行器把模式写进 `ZJ_MODEL`，再交给 `zoujin_backend.eval_api.setup(setup, mode=…)`。
 - **后端还没有 `eval_api` 时**每例都记「跳过：后端未实现（eval_api）」，不崩。setup 或某一步抛 `EvalNotImplemented("名字")`（或会话上没有那个方法）= 整例跳过，只试一次；某个查询没实现 = 只有用到它的检查跳过。
 - **一次运行**：步骤从 1 起按顺序编号（检查里的 `step`、`fromStep` 就是这个号）。后端抛 `ReplayMissing` 或超时（文字 600 秒、语音和模拟局 1800 秒，超时重试一次）只跳过这一次；别的异常算这一次不过，报告里写出异常。

@@ -15,6 +15,13 @@ echo "== 世界模型：build_world（含 23 个情景 + 原作 = 24 次推演�
   --text worlds/hashire-merosu/sources/melos_plain.txt --out "$W/world.json" \
   --report "$W/report.md" --scenarios "$W/scenarios.json"
 
+echo "== 切片版世界模型（S-077）：从完整版生成，再 build_world（情景同完整版）"
+S=worlds/hashire-merosu/1.0.0-slice
+"$PY" -I "$S/make_slice.py"
+"$PY" -I "$REF/build_world.py" --src "$S/world.src.json" \
+  --text worlds/hashire-merosu/sources/melos_plain.txt --out "$S/world.json" \
+  --report "$S/report.md" --scenarios "$W/scenarios.json"
+
 echo "== 世界模型：评审表"
 "$PY" -I "$REF/review_sheet.py" --world "$W/world.json" --out "$W/REVIEW.md"
 
@@ -24,6 +31,10 @@ echo "== 评测种子：重新生成"
 echo "== 评测种子：check_evals"
 "$PY" -I "$REF/check_evals.py" --world "$W/world.json" --scenarios "$W/scenarios.json" \
   --cases evals/seeds --personas evals/personas.json
+
+echo "== 切片用例（S-077 ⑨）：重新生成和 check_evals（切片版世界模型，没有模拟局）"
+"$PY" -I evals/gen_slice.py evals/slice
+"$PY" -I "$REF/check_evals.py" --world "$S/world.json" --scenarios "$W/scenarios.json" --cases evals/slice
 
 echo "== 防剧透探针：重新生成和 check_probes"
 "$PY" -I evals/gen_probes.py evals/probes/s3_spoiler_probes.json

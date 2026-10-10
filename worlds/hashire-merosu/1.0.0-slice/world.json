@@ -1,0 +1,6124 @@
+{
+ "schemaVersion": "1.7",
+ "worldModelVersion": "hashire-merosu@1.0.0-slice.3",
+ "book": {
+  "id": "hashire-merosu",
+  "title": "走れメロス",
+  "author": "太宰治",
+  "year": 1940,
+  "source": {
+   "provider": "aozora",
+   "cardId": "000035/card1567",
+   "fileId": "1567_ruby_4948",
+   "url": "https://www.aozora.gr.jp/cards/000035/card1567.html",
+   "textSha256": "2a437c047d7f09857355bfefc07e466e8b8b09fd1ee9db9c54f285a6efd5e685",
+   "retrievedAt": "2026-10-06",
+   "license": "public-domain"
+  }
+ },
+ "clock": {
+  "startT": 1110,
+  "sunsetMinuteOfDay": 1140,
+  "deadline": {
+   "t": 5460,
+   "label": "三日目の日没",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 22,
+     "quote": "三日目には日没までに帰って来い。"
+    }
+   ],
+   "watchBeat": "beat.24",
+   "earliestArrival": 5370,
+   "earliestArrivalCue": {
+    "speaker": "char.melos",
+    "line": "……これなら、間に合う。",
+    "narration": "この足なら、陽の沈む前に着く。",
+    "inferred": true,
+    "note": "ux-design 4.3（S-066 ①）。本局で初めて下限に届いた提交のあとに一度だけ"
+   }
+  },
+  "onDeadline": [
+   {
+    "if": [
+     {
+      "var": "var.melos.custody",
+      "op": "!=",
+      "value": "returned"
+     },
+     {
+      "var": "var.king.disposition",
+      "op": "!=",
+      "value": "reformed"
+     }
+    ],
+    "then": [
+     {
+      "op": "set",
+      "var": "var.hostage.fate",
+      "value": "executed"
+     }
+    ],
+    "note": "期限までにメロスが戻らず、王も改心していなければ身代りは処刑される",
+    "cite": [
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 22,
+      "quote": "おくれたら、その身代りを、きっと殺すぞ。"
+     }
+    ]
+   },
+   {
+    "if": [
+     {
+      "var": "var.melos.custody",
+      "op": "!=",
+      "value": "returned"
+     },
+     {
+      "var": "var.king.disposition",
+      "op": "!=",
+      "value": "reformed"
+     },
+     {
+      "var": "var.hostage.who",
+      "op": "==",
+      "value": "player"
+     }
+    ],
+    "then": [
+     {
+      "op": "set",
+      "var": "var.player.custody",
+      "value": "executed"
+     }
+    ],
+    "note": "プレイヤーが身代わりになっていれば、そのプレイヤーが処刑される（S-007「あなたが身代わり」）",
+    "cite": [
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 22,
+      "quote": "おくれたら、その身代りを、きっと殺すぞ。"
+     }
+    ]
+   }
+  ],
+  "labels": {
+   "days": [
+    "約束の日",
+    "一日目",
+    "二日目",
+    "三日目"
+   ],
+   "bands": [
+    [
+     0,
+     "深夜"
+    ],
+    [
+     240,
+     "薄明"
+    ],
+    [
+     330,
+     "朝"
+    ],
+    [
+     540,
+     "午前"
+    ],
+    [
+     690,
+     "真昼"
+    ],
+    [
+     780,
+     "午後"
+    ],
+    [
+     960,
+     "夕方"
+    ],
+    [
+     1080,
+     "日没前"
+    ],
+    [
+     1140,
+     "日没"
+    ],
+    [
+     1170,
+     "夜"
+    ]
+   ],
+   "format": "{day}・{band}",
+   "inferred": true,
+   "note": "UX ux-design 4.2 の表（S-037）。日没前 = 日没の 1 時間前から、日没 = 日没から 29 分まで（sunsetMinuteOfDay=1140 前提）。文言は UX、境目は数据が維持",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 26,
+     "quote": "竹馬の友、セリヌンティウスは、深夜、王城に召された。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 37,
+     "quote": "眼が覚めたのは翌る日の薄明の頃である。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 27,
+     "quote": "村へ到着したのは、翌る日の午前"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 32,
+     "quote": "結婚式は、真昼に行われた。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 60,
+     "quote": "陽は、ゆらゆら地平線に没し"
+    }
+   ]
+  }
+ },
+ "globalRules": [
+  {
+   "id": "rule.no-resurrection",
+   "text": "死んだ者は生き返らない。",
+   "inferred": true
+  },
+  {
+   "id": "rule.no-magic",
+   "text": "人は神々に祈るが、超自然の力で出来事が起きることはない。流れが鎮まる、瞬間移動する、といった奇跡は起きない。",
+   "inferred": true
+  },
+  {
+   "id": "rule.time-moves-forward",
+   "text": "時間は戻らない。移動には道のりに応じた時間がかかる。",
+   "inferred": true
+  },
+  {
+   "id": "rule.no-anachronism",
+   "text": "世界には古代シチリアにない物（銃、電話、車など）は存在しない。登場人物は現代の事物を知らない。",
+   "inferred": true
+  },
+  {
+   "id": "rule.characters-decide",
+   "text": "人物は自分の性格と動機で決める。プレイヤーの言葉は説得の材料であって命令ではない。",
+   "inferred": true
+  },
+  {
+   "id": "rule.no-romance",
+   "inferred": true,
+   "text": "人物はプレイヤーの恋愛の申し出や口説きには応じない。自分の口調で軽くかわし、話を物語に戻す（メロスの妹は十六歳）。",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 1,
+     "quote": "十六の、内気な妹と二人暮しだ。"
+    }
+   ]
+  }
+ ],
+ "characters": [
+  {
+   "id": "char.melos",
+   "name": "メロス",
+   "summary": "村の牧人。政治はわからないが邪悪には人一倍敏感。妹の婚礼の買い物に市へ来て、王の暴虐を知る。",
+   "traits": [
+    {
+     "text": "政治がわからない",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 1,
+       "quote": "メロスには政治がわからぬ。"
+      }
+     ]
+    },
+    {
+     "text": "邪悪に人一倍敏感",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 1,
+       "quote": "けれども邪悪に対しては、人一倍に敏感であった。"
+      }
+     ]
+    },
+    {
+     "text": "単純で、思い立ったらすぐ動く",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 10,
+       "quote": "メロスは、単純な男であった。"
+      }
+     ]
+    },
+    {
+     "text": "呑気なところがある",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 38,
+       "quote": "持ちまえの呑気さを取り返し"
+      }
+     ]
+    },
+    {
+     "text": "人を疑う事と嘘をつく事が一番きらい",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 33,
+       "quote": "おまえの兄の、一ばんきらいなものは、人を疑う事と、それから、嘘をつく事だ。"
+      }
+     ]
+    },
+    {
+     "text": "未練の情もある",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 32,
+       "quote": "メロスほどの男にも、やはり未練の情というものは在る。"
+      }
+     ]
+    },
+    {
+     "text": "死を覚悟しても命乞いはしない",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 18,
+       "quote": "命乞いなど決してしない。"
+      }
+     ]
+    }
+   ],
+   "goals": [
+    {
+     "text": "妹に亭主を持たせる（婚礼を挙げる）",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 18,
+       "quote": "たった一人の妹に、亭主を持たせてやりたいのです。"
+      }
+     ],
+     "until": "beat.11"
+    },
+    {
+     "text": "婚礼の品を買いそろえて村へ帰る。婚礼は近いが、日取りはまだ決まっていない",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 1,
+       "quote": "結婚式も間近かなのである。"
+      },
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 1,
+       "quote": "花嫁の衣裳やら祝宴の御馳走やらを買いに"
+      }
+     ],
+     "until": "beat.08"
+    },
+    {
+     "text": "約束どおり戻り、身代りの友を救う",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 38,
+       "quote": "身代りの友を救う為に走るのだ。"
+      }
+     ],
+     "since": "beat.05",
+     "until": "beat.24"
+    },
+    {
+     "text": "王に人の信実を見せる",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 37,
+       "quote": "あの王に、人の信実の存するところを見せてやろう。"
+      }
+     ],
+     "since": "beat.05",
+     "until": "beat.26"
+    },
+    {
+     "text": "市を暴君の手から救う",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 12,
+       "quote": "市を暴君の手から救うのだ。"
+      }
+     ],
+     "since": "beat.03",
+     "until": "beat.26"
+    }
+   ],
+   "speech": {
+    "firstPerson": "私",
+    "register": "率直で激しい。古風な断定（〜ぬ、〜のだ）。目上にも物怖じしない。",
+    "sampleLines": [
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 14,
+      "quote": "人の心を疑うのは、最も恥ずべき悪徳だ。"
+     },
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 20,
+      "quote": "そうです。帰って来るのです。",
+      "since": "beat.05"
+     },
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 54,
+      "quote": "いや、まだ陽は沈まぬ。",
+      "since": "beat.23"
+     },
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 58,
+      "quote": "信じられているから走るのだ。",
+      "since": "beat.23"
+     },
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 43,
+      "quote": "私にはいのちの他には何も無い。",
+      "since": "beat.19"
+     },
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 49,
+      "quote": "私は信頼されている。私は信頼されている。",
+      "since": "beat.21"
+     },
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 63,
+      "quote": "私は、途中で一度、悪い夢を見た。",
+      "since": "beat.25",
+      "when": [
+       {
+        "var": "var.melos.doubted",
+        "op": "==",
+        "value": true
+       }
+      ]
+     }
+    ]
+   },
+   "knows": [
+    {
+     "fact": "fact.melos-shepherd",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.melos-family",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.sister-engaged",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.melos-errand",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.friendship",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.selinuntius-stonemason",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.city-silent",
+     "since": "beat.02"
+    },
+    {
+     "fact": "fact.king-killings",
+     "since": "beat.03"
+    },
+    {
+     "fact": "fact.king-distrust",
+     "since": "beat.03"
+    },
+    {
+     "fact": "fact.hostage-decree",
+     "since": "beat.03"
+    },
+    {
+     "fact": "fact.six-killed-today",
+     "since": "beat.03"
+    },
+    {
+     "fact": "fact.melos-dagger",
+     "since": "beat.04"
+    },
+    {
+     "fact": "fact.promise",
+     "since": "beat.05"
+    },
+    {
+     "fact": "fact.melos-reason",
+     "since": "beat.05"
+    },
+    {
+     "fact": "fact.king-whisper",
+     "since": "beat.05"
+    },
+    {
+     "fact": "fact.selinuntius-hostage",
+     "since": "beat.06"
+    },
+    {
+     "fact": "fact.wedding-tomorrow",
+     "since": "beat.08"
+    },
+    {
+     "fact": "fact.groom-wanted-wait",
+     "since": "beat.10"
+    },
+    {
+     "fact": "fact.wedding-held",
+     "since": "beat.11"
+    },
+    {
+     "fact": "fact.storm",
+     "since": "beat.12"
+    },
+    {
+     "fact": "fact.bridge-destroyed",
+     "since": "beat.17"
+    },
+    {
+     "fact": "fact.no-boats",
+     "since": "beat.17"
+    },
+    {
+     "fact": "fact.bandits-ambush",
+     "since": "beat.19"
+    },
+    {
+     "fact": "fact.melos-suspects-king",
+     "since": "beat.19"
+    },
+    {
+     "fact": "fact.melos-despair",
+     "since": "beat.20"
+    },
+    {
+     "fact": "fact.travelers-rumor",
+     "since": "beat.22"
+    },
+    {
+     "fact": "fact.selinuntius-steadfast",
+     "since": "beat.23"
+    },
+    {
+     "fact": "fact.selinuntius-doubted-once",
+     "since": "beat.25"
+    }
+   ],
+   "initialPlace": "place.syracuse-square",
+   "items": [
+    "item.dagger"
+   ],
+   "talkable": true,
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 1,
+     "quote": "メロスは、村の牧人である。"
+    }
+   ],
+   "mutualAid": [
+    {
+     "id": "aid.melos.tell-promise",
+     "direction": "forYou",
+     "inferred": true,
+     "text": "水をくれた牧童を覚えていて、三日のうちに戻るという約束を初めて話し、家まで連れて行く",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 18,
+       "quote": "三日のうちに"
+      }
+     ]
+    },
+    {
+     "id": "aid.melos.water",
+     "direction": "fromYou",
+     "inferred": true,
+     "text": "よろめいて村に戻ったメロスに水を一杯差し出す",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 27,
+       "quote": "よろめいて歩いて来る兄の、疲労困憊の姿を見つけて驚いた。"
+      }
+     ]
+    },
+    {
+     "id": "aid.melos.mention",
+     "direction": "forYou",
+     "major": true,
+     "inferred": true,
+     "text": "王の前で、あなたのことを口にする",
+     "when": [
+      {
+       "var": "var.melos.custody",
+       "op": "==",
+       "value": "arrested"
+      }
+     ]
+    },
+    {
+     "id": "aid.melos.companion",
+     "direction": "forYou",
+     "inferred": true,
+     "text": "同行を許す"
+    },
+    {
+     "id": "aid.melos.groom",
+     "direction": "fromYou",
+     "inferred": true,
+     "text": "花婿を説き伏せるのを手伝う",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 32,
+       "quote": "婿の牧人も頑強であった。"
+      }
+     ]
+    },
+    {
+     "id": "aid.melos.shortcut",
+     "direction": "fromYou",
+     "inferred": true,
+     "text": "近道や浅瀬を教える"
+    },
+    {
+     "id": "aid.melos.message",
+     "direction": "fromYou",
+     "inferred": true,
+     "text": "市へ先に走り、もうすぐ着くと知らせる"
+    }
+   ],
+   "promiseTemplates": [
+    {
+     "id": "promise.melos.return",
+     "by": "char.melos",
+     "text": "必ず戻る",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 18,
+       "quote": "必ず、ここへ帰って来ます"
+      }
+     ]
+    },
+    {
+     "id": "promise.melos.tell-friend",
+     "by": "player",
+     "text": "セリヌンティウスに伝える",
+     "inferred": true
+    }
+   ],
+   "plans": [
+    {
+     "act": "act.1",
+     "text": "王の暴虐を聞き、王城へ乗り込む",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 9,
+       "quote": "呆れた王だ。生かして置けぬ。"
+      }
+     ]
+    },
+    {
+     "act": "act.2",
+     "text": "夜通し村へ急ぐ",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 27,
+       "quote": "一睡もせず十里の路を急ぎに急いで"
+      }
+     ]
+    },
+    {
+     "act": "act.3",
+     "text": "婚礼を急がせ、済んだら一眠りして発つ",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 32,
+       "quote": "ちょっと一眠りして、それからすぐに出発しよう"
+      }
+     ]
+    },
+    {
+     "act": "act.4",
+     "text": "日没までに刑場へ走る",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 48,
+       "quote": "走れ！　メロス。"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "char.king",
+   "name": "王ディオニス",
+   "summary": "シラクスの王。人を信じることができず、身内や臣下を次々に殺している暴君。",
+   "traits": [
+    {
+     "text": "人を信じることができない",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 8,
+       "quote": "人を、信ずる事が出来ぬ、というのです。"
+      }
+     ],
+     "until": "beat.26"
+    },
+    {
+     "text": "静かで威厳がある。顔は蒼白で眉間の皺が深い",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 11,
+       "quote": "その王の顔は蒼白で、眉間の皺は、刻み込まれたように深かった。"
+      }
+     ]
+    },
+    {
+     "text": "孤独を抱えている",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 13,
+       "quote": "おまえには、わしの孤独がわからぬ。"
+      }
+     ]
+    },
+    {
+     "text": "残虐で、人を試して嘲る",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 21,
+       "quote": "それを聞いて王は、残虐な気持で、そっと北叟笑んだ。"
+      }
+     ],
+     "until": "beat.26"
+    },
+    {
+     "text": "本当は平和を望んでいると言う",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 15,
+       "quote": "わしだって、平和を望んでいるのだが。"
+      }
+     ]
+    },
+    {
+     "text": "人の腹の底が見えると思い込んでいる",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 17,
+       "quote": "わしには、人の腹綿の奥底が見え透いてならぬ。"
+      }
+     ]
+    }
+   ],
+   "goals": [
+    {
+     "text": "人は信じられないと世に見せつける",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 21,
+       "quote": "世の中の、正直者とかいう奴輩にうんと見せつけてやりたいものさ。"
+      }
+     ],
+     "until": "beat.26"
+    }
+   ],
+   "speech": {
+    "firstPerson": "わし",
+    "register": "低く静か。相手を「おまえ」と呼ぶ。冷笑的で、ときに嘆息する。",
+    "sampleLines": [
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 15,
+      "quote": "人の心は、あてにならない。人間は、もともと私慾のかたまりさ。信じては、ならぬ。"
+     },
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 19,
+      "quote": "逃がした小鳥が帰って来るというのか。",
+      "since": "beat.05"
+     },
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 22,
+      "quote": "ちょっとおくれて来るがいい。",
+      "since": "beat.05"
+     },
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 69,
+      "quote": "どうか、わしをも仲間に入れてくれまいか。",
+      "since": "beat.26"
+     },
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 17,
+      "quote": "だまれ、下賤の者。"
+     },
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 24,
+      "quote": "いのちが大事だったら、おくれて来い。",
+      "since": "beat.05"
+     }
+    ],
+    "designLines": [
+     {
+      "text": "ならば、おまえも人質になるか。",
+      "since": "beat.04",
+      "until": "beat.06",
+      "when": [
+       {
+        "var": "var.melos.custody",
+        "op": "==",
+        "value": "arrested"
+       }
+      ],
+      "inferred": true,
+      "note": "見知らぬ旅人がメロスを保証した時の冷笑（UX 校対 1.2）。受ければ第 1 類「あなたが身代わりになった」への道。取り返しがつかないので意図確認（S-054 ③）を通す"
+     }
+    ]
+   },
+   "knows": [
+    {
+     "fact": "fact.king-killings",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.king-distrust",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.hostage-decree",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.six-killed-today",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.melos-dagger",
+     "since": "beat.04"
+    },
+    {
+     "fact": "fact.promise",
+     "since": "beat.05"
+    },
+    {
+     "fact": "fact.melos-reason",
+     "since": "beat.05"
+    },
+    {
+     "fact": "fact.king-whisper",
+     "since": "beat.05"
+    },
+    {
+     "fact": "fact.king-intent",
+     "since": "beat.05"
+    },
+    {
+     "fact": "fact.selinuntius-hostage",
+     "since": "beat.06"
+    },
+    {
+     "fact": "fact.friendship",
+     "since": "beat.06"
+    },
+    {
+     "fact": "fact.selinuntius-steadfast",
+     "since": "beat.s1"
+    }
+   ],
+   "initialPlace": "place.castle",
+   "talkable": false,
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 11,
+     "quote": "暴君ディオニスは静かに、けれども威厳を以て問いつめた。"
+    }
+   ],
+   "mutualAid": [
+    {
+     "id": "aid.king.confide",
+     "direction": "forYou",
+     "inferred": true,
+     "text": "人を信じられなくなったわけを語る",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 13,
+       "quote": "おまえには、わしの孤独がわからぬ。"
+      }
+     ]
+    },
+    {
+     "id": "aid.king.visit",
+     "direction": "forYou",
+     "major": true,
+     "inferred": true,
+     "text": "人質に一度だけ会わせる"
+    },
+    {
+     "id": "aid.king.truth",
+     "direction": "fromYou",
+     "inferred": true,
+     "text": "本当のことを言って聞かせる",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 15,
+       "quote": "人の心は、あてにならない。"
+      }
+     ],
+     "effects": [
+      {
+       "op": "inc",
+       "var": "var.king.trust",
+       "by": 10
+      }
+     ]
+    },
+    {
+     "id": "aid.king.face",
+     "direction": "fromYou",
+     "inferred": true,
+     "text": "群臣の前で王の面目をつぶさない",
+     "effects": [
+      {
+       "op": "inc",
+       "var": "var.king.trust",
+       "by": 5
+      }
+     ]
+    }
+   ],
+   "promiseTemplates": [
+    {
+     "id": "promise.king.wager",
+     "by": "char.king",
+     "text": "あの男が戻ったら、おまえの言うことも聞いてやろう",
+     "inferred": true,
+     "note": "冷笑しながらの賭け。あの男は戻らないと確信しているから言う。軟化として演じない（UX 校対 2.4、評測 E3）"
+    }
+   ],
+   "plans": [
+    {
+     "act": "act.1",
+     "text": "メロスを試し、身代りを磔にして世の正直者に見せつけるつもりでいる",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 21,
+       "quote": "見せつけてやりたいものさ"
+      }
+     ]
+    },
+    {
+     "act": "act.2",
+     "text": "城で人質を見張らせ、眠れずにいる",
+     "inferred": true
+    },
+    {
+     "act": "act.3",
+     "text": "メロスは戻らぬと決めつけ、処刑の支度をさせる",
+     "inferred": true
+    },
+    {
+     "act": "act.4",
+     "text": "日没に刑場で身代りを処刑する",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 57,
+       "quote": "刑場に引き出されても、平気でいました。"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "char.selinuntius",
+   "name": "セリヌンティウス",
+   "summary": "メロスの竹馬の友。シラクスの市の石工。深夜に王城へ召され、メロスの身代りになる。",
+   "traits": [
+    {
+     "text": "多くを語らず、友を信じる",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 26,
+       "quote": "セリヌンティウスは無言で首肯き、メロスをひしと抱きしめた。"
+      }
+     ]
+    },
+    {
+     "text": "刑場でも動じない強い信念",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 57,
+       "quote": "メロスは来ます、とだけ答え、強い信念を持ちつづけている様子でございました。"
+      }
+     ],
+     "since": "beat.s1"
+    },
+    {
+     "text": "三日の間に一度だけ友を疑った",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 65,
+       "quote": "私はこの三日の間、たった一度だけ、ちらと君を疑った。"
+      }
+     ],
+     "since": "beat.25",
+     "when": [
+      {
+       "var": "var.selinuntius.doubted",
+       "op": "==",
+       "value": true
+      }
+     ]
+    },
+    {
+     "text": "気がきく",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 72,
+       "quote": "佳き友は、気をきかせて教えてやった。"
+      }
+     ]
+    }
+   ],
+   "goals": [
+    {
+     "text": "友を信じて待つ",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 57,
+       "quote": "あの方は、あなたを信じて居りました。"
+      }
+     ],
+     "since": "beat.06",
+     "until": "beat.24"
+    }
+   ],
+   "speech": {
+    "firstPerson": "私",
+    "register": "穏やかで簡潔。メロスを「君」と呼ぶ。",
+    "sampleLines": [
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 65,
+      "quote": "生れて、はじめて君を疑った。",
+      "since": "beat.25",
+      "when": [
+       {
+        "var": "var.selinuntius.doubted",
+        "op": "==",
+        "value": true
+       }
+      ]
+     },
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 65,
+      "quote": "君が私を殴ってくれなければ、私は君と抱擁できない。",
+      "since": "beat.25",
+      "when": [
+       {
+        "var": "var.selinuntius.doubted",
+        "op": "==",
+        "value": true
+       }
+      ]
+     },
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 73,
+      "quote": "メロス、君は、まっぱだかじゃないか。",
+      "since": "beat.27"
+     }
+    ],
+    "designLines": [
+     {
+      "text": "手を止めるな。日が落ちる前に、ここまでは刻んでおきたい。",
+      "until": "beat.02",
+      "inferred": true,
+      "note": "第一幕、日没（19:00）までの工房で弟子に（ux-design 5.1）。市は前からひっそりしているので、捕縛の前に騒がしさは口にしない（UX 校対 7.1）",
+      "cite": [
+       {
+        "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+        "para": 1,
+        "quote": "ひっそりしている。"
+       }
+      ]
+     },
+     {
+      "text": "……城の方が、やけに騒がしいな。",
+      "since": "beat.04",
+      "until": "beat.06",
+      "inferred": true,
+      "note": "メロスが捕まったあと、召される前（UX 校対 7.1）",
+      "cite": [
+       {
+        "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+        "para": 10,
+        "quote": "騒ぎが大きくなってしまった"
+       }
+      ]
+     },
+     {
+      "text": "……メロスは来る。それだけだ。",
+      "since": "beat.06",
+      "until": "beat.24",
+      "inferred": true,
+      "note": "人質の夜。多くを語らない。王や警吏に向かっては原文どおり「メロスは来ます。」（UX 校対 7.1）",
+      "cite": [
+       {
+        "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+        "para": 57,
+        "quote": "メロスは来ます、とだけ答え"
+       }
+      ]
+     },
+     {
+      "text": "……陽が、傾いてきたな。",
+      "since": "beat.s2",
+      "until": "beat.24",
+      "when": [
+       {
+        "var": "var.selinuntius.doubted",
+        "op": "==",
+        "value": true
+       }
+      ],
+      "inferred": true,
+      "note": "ちらと疑ったあと。疑ったことは口にしない（打ち明けるのは刑場で、メロスにだけ）"
+     },
+     {
+      "text": "メロス、私は一度も君を疑わなかった。……ひとりで待っていたのでは、なかったからな。",
+      "since": "beat.25",
+      "when": [
+       {
+        "var": "var.selinuntius.doubted",
+        "op": "==",
+        "value": false
+       },
+       {
+        "var": "var.selinuntius.attended",
+        "op": "==",
+        "value": true
+       }
+      ],
+      "inferred": true,
+      "note": "S-064：疑わなかった局の刑場（beat.25.v-melos-only / v-neither）。原作どおり「メロス、」で始め「私」「君」。v-melos-only で言い返しに聞こえないよう陳述にする（UX 校対 7.1）。後半が本当になるよう、弟子がそばにいた局に限る"
+     }
+    ]
+   },
+   "knows": [
+    {
+     "fact": "fact.friendship",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.selinuntius-stonemason",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.king-killings",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.king-distrust",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.hostage-decree",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.promise",
+     "since": "beat.06"
+    },
+    {
+     "fact": "fact.melos-reason",
+     "since": "beat.06"
+    },
+    {
+     "fact": "fact.selinuntius-hostage",
+     "since": "beat.06"
+    },
+    {
+     "fact": "fact.selinuntius-doubted-once",
+     "since": "beat.s2"
+    },
+    {
+     "fact": "fact.melos-despair",
+     "since": "beat.25"
+    }
+   ],
+   "initialPlace": "place.stonemason-workshop",
+   "talkable": false,
+   "initialActivity": "absent",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 1,
+     "quote": "今は此のシラクスの市で、石工をしている。"
+    }
+   ],
+   "mutualAid": [
+    {
+     "id": "aid.selinuntius.entrust",
+     "direction": "forYou",
+     "inferred": true,
+     "text": "深夜に召される前に、工房とあとのことを弟子に託す",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 26,
+       "quote": "竹馬の友、セリヌンティウスは、深夜、王城に召された。"
+      }
+     ]
+    },
+    {
+     "id": "aid.selinuntius.workshop",
+     "direction": "fromYou",
+     "inferred": true,
+     "text": "親方の留守、工房を守ると約束する"
+    },
+    {
+     "id": "aid.selinuntius.news",
+     "direction": "forYou",
+     "inferred": true,
+     "text": "城と王の様子を教える"
+    },
+    {
+     "id": "aid.selinuntius.speak-for",
+     "direction": "forYou",
+     "major": true,
+     "inferred": true,
+     "text": "第一幕の深夜、警吏が工房へ親方を召しに来て弟子（または居合わせた旅人）を問い詰めた時、前に立ってかばう",
+     "when": [
+      {
+       "var": "var.promise.made",
+       "op": "==",
+       "value": true
+      },
+      {
+       "var": "var.hostage.fate",
+       "op": "==",
+       "value": "none"
+      }
+     ]
+    },
+    {
+     "id": "aid.selinuntius.vigil",
+     "direction": "fromYou",
+     "inferred": true,
+     "text": "人質の夜、そばにいる"
+    },
+    {
+     "id": "aid.selinuntius.bring-news",
+     "direction": "fromYou",
+     "inferred": true,
+     "text": "自分の目で見た、あるいは確かに聞いたメロスの様子を届ける（根拠のない励ましは keep-faith の方）",
+     "when": [
+      {
+       "var": "var.hostage.who",
+       "op": "==",
+       "value": "char.selinuntius"
+      },
+      {
+       "var": "var.hostage.fate",
+       "op": "==",
+       "value": "held"
+      }
+     ],
+     "effects": [
+      {
+       "op": "inc",
+       "var": "var.selinuntius.faith",
+       "by": 1
+      }
+     ]
+    },
+    {
+     "id": "aid.selinuntius.keep-faith",
+     "direction": "fromYou",
+     "inferred": true,
+     "text": "メロスは必ず戻ると、親方と一緒に信じ続ける",
+     "when": [
+      {
+       "var": "var.hostage.who",
+       "op": "==",
+       "value": "char.selinuntius"
+      },
+      {
+       "var": "var.hostage.fate",
+       "op": "==",
+       "value": "held"
+      }
+     ],
+     "effects": [
+      {
+       "op": "inc",
+       "var": "var.selinuntius.faith",
+       "by": 1
+      }
+     ],
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 57,
+       "quote": "メロスは来ます、とだけ答え"
+      }
+     ]
+    }
+   ],
+   "promiseTemplates": [
+    {
+     "id": "promise.selinuntius.workshop",
+     "by": "player",
+     "text": "工房を守る",
+     "inferred": true
+    },
+    {
+     "id": "promise.selinuntius.stay",
+     "by": "player",
+     "text": "そばにいる",
+     "inferred": true
+    }
+   ],
+   "plans": [
+    {
+     "act": "act.1",
+     "text": "工房で石を刻み、召されれば黙って応じる",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 26,
+       "quote": "セリヌンティウスは無言で首肯き"
+      }
+     ]
+    },
+    {
+     "act": "act.2",
+     "text": "城で縄を打たれたまま、メロスを信じて待つ",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 57,
+       "quote": "メロスは来ます、とだけ答え"
+      }
+     ]
+    },
+    {
+     "act": "act.3",
+     "text": "城で縄を打たれたまま、メロスを信じて待つ",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 57,
+       "quote": "メロスは来ます、とだけ答え"
+      }
+     ]
+    },
+    {
+     "act": "act.4",
+     "text": "刑場に引き出されても平然としている",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 57,
+       "quote": "刑場に引き出されても、平気でいました。"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "char.sister",
+   "name": "メロスの妹",
+   "summary": "十六歳で内気。村の律気な牧人との結婚が近い。兄の代わりに羊の番をしている。",
+   "traits": [
+    {
+     "text": "十六歳、内気",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 1,
+       "quote": "十六の、内気な妹と二人暮しだ。"
+      }
+     ]
+    },
+    {
+     "text": "結婚を喜び、恥じらう",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 29,
+       "quote": "妹は頬をあからめた。"
+      }
+     ]
+    },
+    {
+     "text": "兄を心配する",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 27,
+       "quote": "そうして、うるさく兄に質問を浴びせた。"
+      }
+     ]
+    },
+    {
+     "text": "兄の言葉に夢見心地でうなずく",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 34,
+       "quote": "花嫁は、夢見心地で首肯いた。"
+      }
+     ]
+    }
+   ],
+   "goals": [
+    {
+     "text": "結婚する（推定：原文に本人の言葉はない）",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 1,
+       "quote": "花婿として迎える事になっていた。"
+      }
+     ],
+     "until": "beat.11"
+    },
+    {
+     "text": "婚礼は近いが、日取りはまだ決まっていない",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 1,
+       "quote": "結婚式も間近かなのである。"
+      }
+     ],
+     "until": "beat.08"
+    }
+   ],
+   "speech": {
+    "register": "原文に台詞なし。控えめで丁寧な話し方として設計（推定）。",
+    "sampleLines": []
+   },
+   "knows": [
+    {
+     "fact": "fact.melos-family",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.sister-engaged",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.wedding-tomorrow",
+     "since": "beat.08"
+    },
+    {
+     "fact": "fact.wedding-held",
+     "since": "beat.11"
+    },
+    {
+     "fact": "fact.storm",
+     "since": "beat.12"
+    }
+   ],
+   "initialPlace": "place.melos-home",
+   "talkable": false,
+   "initialActivity": "work",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 27,
+     "quote": "メロスの十六の妹も、きょうは兄の代りに羊群の番をしていた。"
+    }
+   ],
+   "mutualAid": [
+    {
+     "id": "aid.sister.introduce",
+     "direction": "forYou",
+     "inferred": true,
+     "text": "兄にあなたを引き合わせる"
+    },
+    {
+     "id": "aid.sister.provisions",
+     "direction": "forYou",
+     "inferred": true,
+     "text": "兄の出発のとき、あなたにも弁当を持たせる",
+     "gives": "item.provisions"
+    },
+    {
+     "id": "aid.sister.wedding",
+     "direction": "fromYou",
+     "inferred": true,
+     "text": "婚礼の支度を手伝う",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 31,
+       "quote": "神々の祭壇を飾り"
+      }
+     ]
+    },
+    {
+     "id": "aid.sister.stay",
+     "direction": "fromYou",
+     "inferred": true,
+     "text": "兄が去ったあと、そばにいる"
+    }
+   ],
+   "promiseTemplates": [
+    {
+     "id": "promise.sister.see-through",
+     "by": "player",
+     "text": "兄さんを見届ける",
+     "inferred": true
+    }
+   ],
+   "plans": [
+    {
+     "act": "act.3",
+     "text": "兄の代りに羊の番をし、婚礼の支度をする",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 27,
+       "quote": "メロスの十六の妹も、きょうは兄の代りに羊群の番をしていた。"
+      }
+     ]
+    },
+    {
+     "act": "act.4",
+     "text": "花婿と新しい暮らしを始める",
+     "inferred": true
+    }
+   ]
+  },
+  {
+   "id": "char.groom",
+   "name": "花婿",
+   "summary": "村の律気な牧人。仕度が整わないので葡萄の季節まで婚礼を待ちたいと言うが、夜通しの説得に折れる。",
+   "traits": [
+    {
+     "text": "律気",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 1,
+       "quote": "村の或る律気な一牧人"
+      }
+     ]
+    },
+    {
+     "text": "頑強に譲らない",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 32,
+       "quote": "婿の牧人も頑強であった。"
+      }
+     ],
+     "until": "beat.10"
+    },
+    {
+     "text": "照れ屋",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 36,
+       "quote": "花婿は揉み手して、てれていた。"
+      }
+     ]
+    }
+   ],
+   "goals": [
+    {
+     "text": "仕度を整え、葡萄の季節に婚礼を挙げたい",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 32,
+       "quote": "葡萄の季節まで待ってくれ"
+      }
+     ],
+     "until": "beat.10"
+    }
+   ],
+   "speech": {
+    "register": "原文は間接話法のみ。実直で慎重な話し方として設計（推定）。",
+    "sampleLines": [
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 32,
+      "quote": "こちらには未だ何の仕度も出来ていない"
+     }
+    ]
+   },
+   "knows": [
+    {
+     "fact": "fact.sister-engaged",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.melos-family",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.groom-wanted-wait",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.wedding-held",
+     "since": "beat.11"
+    },
+    {
+     "fact": "fact.storm",
+     "since": "beat.12"
+    }
+   ],
+   "initialPlace": "place.groom-house",
+   "talkable": false,
+   "initialActivity": "work",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 32,
+     "quote": "婿の牧人は驚き"
+    }
+   ],
+   "mutualAid": [
+    {
+     "id": "aid.groom.agree",
+     "direction": "forYou",
+     "major": true,
+     "inferred": true,
+     "text": "あなたが支度を手伝ったか、自分の口で頼んだから、婚礼を早めることに同意する（メロスの説得だけで承知したなら、あなたのためとは数えない）",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 32,
+       "quote": "やっと、どうにか婿をなだめ、すかして、説き伏せた。"
+      }
+     ],
+     "when": [
+      {
+       "var": "var.wedding.status",
+       "op": "==",
+       "value": "scheduled"
+      }
+     ]
+    },
+    {
+     "id": "aid.groom.lend",
+     "direction": "forYou",
+     "inferred": true,
+     "text": "灯や上着を貸す",
+     "gives": "item.lantern"
+    },
+    {
+     "id": "aid.groom.shortcut",
+     "direction": "forYou",
+     "inferred": true,
+     "text": "牧人だけが知る、峠の脇道と町へ抜ける野道を教える",
+     "effects": [
+      {
+       "op": "set",
+       "var": "var.player.knowsShortcut",
+       "value": true
+      }
+     ]
+    },
+    {
+     "id": "aid.groom.prepare",
+     "direction": "fromYou",
+     "inferred": true,
+     "text": "婚礼の支度を手伝う",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 32,
+       "quote": "こちらには未だ何の仕度も出来ていない"
+      }
+     ]
+    }
+   ],
+   "promiseTemplates": [
+    {
+     "id": "promise.groom.cherish",
+     "by": "char.groom",
+     "text": "妹さんを大切にする",
+     "inferred": true
+    }
+   ],
+   "plans": [
+    {
+     "act": "act.3",
+     "text": "支度ができるまで、葡萄の季節まで婚礼を待ちたい",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 32,
+       "quote": "葡萄の季節まで待ってくれ"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "char.philostratus",
+   "name": "フィロストラトス",
+   "summary": "セリヌンティウスの弟子の若い石工。終盤、走るメロスに「もう、駄目でございます」と告げる。",
+   "traits": [
+    {
+     "text": "セリヌンティウスの弟子の若い石工",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 53,
+       "quote": "貴方のお友達セリヌンティウス様の弟子でございます。"
+      },
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 53,
+       "quote": "その若い石工も"
+      }
+     ]
+    },
+    {
+     "text": "師を慕い、メロスを恨みつつも命を案じる",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 55,
+       "quote": "おうらみ申します。"
+      },
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 57,
+       "quote": "いまはご自分のお命が大事です。"
+      }
+     ],
+     "since": "beat.23"
+    }
+   ],
+   "goals": [
+    {
+     "text": "師を救いたかった。今はメロスの命を守りたい",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 57,
+       "quote": "いまはご自分のお命が大事です。"
+      }
+     ],
+     "since": "beat.23"
+    }
+   ],
+   "speech": {
+    "firstPerson": "（原文なし）",
+    "register": "丁寧（〜でございます、〜居りました）。取り乱しやすい。",
+    "sampleLines": [
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 53,
+      "quote": "もう、駄目でございます。",
+      "since": "beat.23"
+     },
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 55,
+      "quote": "ああ、あなたは遅かった。",
+      "since": "beat.23"
+     },
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 59,
+      "quote": "ひょっとしたら、間に合わぬものでもない。",
+      "since": "beat.23"
+     }
+    ]
+   },
+   "knows": [
+    {
+     "fact": "fact.selinuntius-stonemason",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.king-killings",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.hostage-decree",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.selinuntius-hostage",
+     "since": "beat.06"
+    },
+    {
+     "fact": "fact.promise",
+     "since": "beat.06"
+    },
+    {
+     "fact": "fact.selinuntius-steadfast",
+     "since": "beat.s1"
+    }
+   ],
+   "initialPlace": "place.stonemason-workshop",
+   "talkable": false,
+   "initialActivity": "absent",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 53,
+     "quote": "フィロストラトスでございます。"
+    }
+   ],
+   "mutualAid": [
+    {
+     "id": "aid.philostratus.report",
+     "direction": "forYou",
+     "inferred": true,
+     "text": "刑場の今の様子を教える",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 57,
+       "quote": "刑場に引き出されても、平気でいました。"
+      }
+     ]
+    },
+    {
+     "id": "aid.philostratus.run",
+     "direction": "forYou",
+     "major": true,
+     "inferred": true,
+     "text": "刑場へ先に走って伝言を届ける"
+    },
+    {
+     "id": "aid.philostratus.news",
+     "direction": "fromYou",
+     "inferred": true,
+     "text": "道中のメロスの様子を伝える"
+    }
+   ],
+   "promiseTemplates": [
+    {
+     "id": "promise.philostratus.melos-comes",
+     "by": "player",
+     "text": "メロスは来る",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 57,
+       "quote": "メロスは来ます、とだけ答え"
+      }
+     ]
+    }
+   ],
+   "plans": [
+    {
+     "act": "act.1",
+     "text": "工房で親方の帰りを待つ",
+     "inferred": true
+    },
+    {
+     "act": "act.2",
+     "text": "城の門の外で、親方の様子をうかがっている",
+     "inferred": true
+    },
+    {
+     "act": "act.3",
+     "text": "城の門の外で、親方の様子をうかがっている",
+     "inferred": true
+    },
+    {
+     "act": "act.4",
+     "text": "刑場から走り出て、メロスを止めようとする",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 53,
+       "quote": "その若い石工も、メロスの後について走りながら叫んだ。"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "char.old-man",
+   "name": "市の老爺",
+   "summary": "メロスにゆすぶられ、王の所業を低い声で教える老人。",
+   "traits": [
+    {
+     "text": "人目をはばかり、怯えている",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 1,
+       "quote": "老爺は、あたりをはばかる低声で、わずか答えた。"
+      }
+     ]
+    }
+   ],
+   "goals": [
+    {
+     "text": "目をつけられずに生き延びる（推定）",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 1,
+       "quote": "老爺は答えなかった。"
+      }
+     ]
+    }
+   ],
+   "speech": {
+    "register": "へりくだった丁寧語（〜ます、〜居りませぬ、〜ございませぬ）。年寄りらしい語尾（〜くだされ、〜ですぞ、〜なされ）も使う。",
+    "sampleLines": [
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 2,
+      "quote": "王様は、人を殺します。"
+     },
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 8,
+      "quote": "いいえ、乱心ではございませぬ。"
+     },
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 4,
+      "quote": "誰もそんな、悪心を持っては居りませぬ。"
+     }
+    ],
+    "designLines": [
+     {
+      "text": "旅の方、日が落ちますぞ。早う宿へお入りなされ。",
+      "until": "beat.07",
+      "inferred": true,
+      "note": "第一幕の夕方（ux-design 16.2 の予録台詞）"
+     },
+     {
+      "text": "旅の方、暗うなる前に、すまぬが家の前まで手を貸してくだされ。",
+      "until": "beat.07",
+      "inferred": true,
+      "note": "S-044 ② の開口例：老爺の方から旅人に頼む（aid.old-man.listen）"
+     }
+    ]
+   },
+   "knows": [
+    {
+     "fact": "fact.king-killings",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.king-distrust",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.hostage-decree",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.six-killed-today",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.city-silent",
+     "since": "pre"
+    }
+   ],
+   "initialPlace": "place.syracuse-square",
+   "talkable": true,
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 1,
+     "quote": "しばらく歩いて老爺に逢い"
+    }
+   ],
+   "mutualAid": [
+    {
+     "id": "aid.old-man.listen",
+     "direction": "fromYou",
+     "opening": "role.traveler",
+     "inferred": true,
+     "text": "怯える老爺の話を最後まで聞き、暗くなる道を家まで送る",
+     "effects": [
+      {
+       "op": "set",
+       "var": "var.player.walkedOldManHome",
+       "value": true
+      }
+     ],
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 1,
+       "quote": "老爺は、あたりをはばかる低声で、わずか答えた。"
+      }
+     ]
+    },
+    {
+     "id": "aid.old-man.tell",
+     "direction": "forYou",
+     "opening": "role.traveler",
+     "inferred": true,
+     "text": "声をひそめて王の所業を打ち明け、メロスが来たら引き合わせる",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 2,
+       "quote": "王様は、人を殺します。"
+      }
+     ]
+    },
+    {
+     "id": "aid.old-man.route",
+     "direction": "forYou",
+     "inferred": true,
+     "text": "警吏に目をつけられない道を教える"
+    },
+    {
+     "id": "aid.old-man.secret",
+     "direction": "fromYou",
+     "inferred": true,
+     "text": "聞いたことを誰にも言わない"
+    }
+   ],
+   "promiseTemplates": [
+    {
+     "id": "promise.old-man.secret",
+     "by": "player",
+     "text": "誰にも言わない",
+     "inferred": true
+    }
+   ],
+   "plans": [
+    {
+     "act": "act.1",
+     "inferred": true,
+     "text": "日が落ちる前に家へ帰り、王の噂には口をつぐむ",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 1,
+       "quote": "老爺は、あたりをはばかる低声で、わずか答えた。"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "char.young-man",
+   "name": "市の若い衆",
+   "summary": "メロスに問われても首を振って答えない若者。",
+   "traits": [
+    {
+     "text": "恐れて口を閉ざす",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 1,
+       "quote": "若い衆は、首を振って答えなかった。"
+      }
+     ]
+    }
+   ],
+   "goals": [
+    {
+     "text": "関わり合いを避ける（推定）",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 1,
+       "quote": "若い衆は、首を振って答えなかった。"
+      }
+     ]
+    }
+   ],
+   "speech": {
+    "register": "原文に台詞なし（推定）。",
+    "sampleLines": []
+   },
+   "knows": [
+    {
+     "fact": "fact.king-killings",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.hostage-decree",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.city-silent",
+     "since": "pre"
+    }
+   ],
+   "initialPlace": "place.syracuse-square",
+   "talkable": false,
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 1,
+     "quote": "路で逢った若い衆をつかまえて"
+    }
+   ]
+  },
+  {
+   "id": "char.guards",
+   "name": "警吏（巡邏・刑吏）",
+   "summary": "王城を巡邏し、メロスを捕らえる役人たち。刑場で磔を執り行う。",
+   "traits": [
+    {
+     "text": "王の命令に従う",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 10,
+       "quote": "たちまち彼は、巡邏の警吏に捕縛された。"
+      }
+     ]
+    }
+   ],
+   "goals": [
+    {
+     "text": "命令を遂行する（推定）",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 62,
+       "quote": "私だ、刑吏！"
+      }
+     ]
+    }
+   ],
+   "speech": {
+    "register": "原文に台詞なし（推定）。",
+    "sampleLines": []
+   },
+   "knows": [
+    {
+     "fact": "fact.hostage-decree",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.melos-dagger",
+     "since": "beat.04"
+    },
+    {
+     "fact": "fact.promise",
+     "since": "beat.05"
+    },
+    {
+     "fact": "fact.selinuntius-hostage",
+     "since": "beat.06"
+    }
+   ],
+   "initialPlace": "place.castle",
+   "talkable": false,
+   "group": true,
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 10,
+     "quote": "巡邏の警吏"
+    }
+   ]
+  },
+  {
+   "id": "char.bandits",
+   "name": "峠の山賊",
+   "summary": "峠でメロスの前に躍り出た一隊の山賊。棍棒を振るう。",
+   "traits": [
+    {
+     "text": "棍棒で襲う",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 46,
+       "quote": "山賊たちは、ものも言わず一斉に棍棒を振り挙げた。"
+      }
+     ]
+    }
+   ],
+   "goals": [
+    {
+     "text": "メロスの持ち物と命を奪う",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 44,
+       "quote": "その、いのちが欲しいのだ。"
+      }
+     ]
+    }
+   ],
+   "speech": {
+    "register": "粗野。",
+    "sampleLines": [
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 42,
+      "quote": "どっこい放さぬ。持ちもの全部を置いて行け。"
+     }
+    ]
+   },
+   "knows": [],
+   "initialPlace": "place.mountain-pass",
+   "talkable": false,
+   "group": true,
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 39,
+     "quote": "一隊の山賊が躍り出た。"
+    }
+   ]
+  },
+  {
+   "id": "char.travelers",
+   "name": "一団の旅人",
+   "summary": "メロスとすれちがう旅人たち。処刑の噂を口にする。",
+   "traits": [
+    {
+     "text": "噂話をする",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 50,
+       "quote": "一団の旅人と颯っとすれちがった瞬間"
+      }
+     ]
+    }
+   ],
+   "goals": [],
+   "speech": {
+    "register": "くだけた口調。",
+    "sampleLines": [
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 50,
+      "quote": "いまごろは、あの男も、磔にかかっているよ。"
+     }
+    ]
+   },
+   "knows": [
+    {
+     "fact": "fact.selinuntius-hostage",
+     "since": "beat.06"
+    }
+   ],
+   "initialPlace": "place.road-to-city",
+   "talkable": false,
+   "group": true,
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 50,
+     "quote": "一団の旅人"
+    }
+   ]
+  },
+  {
+   "id": "char.crowd",
+   "name": "刑場の群衆",
+   "summary": "刑場に集まった市の人々。最後に王を讃える。",
+   "traits": [
+    {
+     "text": "感情の振れ幅が大きい",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 62,
+       "quote": "群衆は、どよめいた。"
+      }
+     ]
+    }
+   ],
+   "goals": [],
+   "speech": {
+    "register": "叫び。",
+    "sampleLines": [
+     {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 71,
+      "quote": "万歳、王様万歳。"
+     }
+    ]
+   },
+   "knows": [
+    {
+     "fact": "fact.selinuntius-steadfast",
+     "since": "beat.s1"
+    }
+   ],
+   "initialPlace": "place.syracuse-square",
+   "talkable": false,
+   "group": true,
+   "initialActivity": "absent",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 61,
+     "quote": "刑場の群衆"
+    }
+   ]
+  },
+  {
+   "id": "char.maiden",
+   "name": "緋のマントの少女",
+   "summary": "最後にメロスへ緋のマントを捧げる少女。",
+   "traits": [
+    {
+     "text": "メロスの裸体を人に見られるのを口惜しがる",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 73,
+       "quote": "この可愛い娘さんは、メロスの裸体を、皆に見られるのが、たまらなく口惜しいのだ。"
+      }
+     ]
+    }
+   ],
+   "goals": [],
+   "speech": {
+    "register": "原文に台詞なし（推定）。",
+    "sampleLines": []
+   },
+   "knows": [],
+   "initialPlace": "place.syracuse-square",
+   "talkable": false,
+   "initialActivity": "absent",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 72,
+     "quote": "ひとりの少女が、緋のマントをメロスに捧げた。"
+    }
+   ]
+  }
+ ],
+ "places": [
+  {
+   "id": "place.village",
+   "name": "メロスの村",
+   "description": "市から十里はなれた牧人の村。",
+   "adjacent": [
+    {
+     "place": "place.melos-home",
+     "travelMinutes": 5,
+     "inferred": true
+    },
+    {
+     "place": "place.groom-house",
+     "travelMinutes": 10,
+     "inferred": true
+    },
+    {
+     "place": "place.neighbor-village",
+     "travelMinutes": 120,
+     "inferred": true
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 1,
+     "quote": "十里はなれた此のシラクスの市にやって来た。"
+    }
+   ],
+   "sceneRef": "scene.village"
+  },
+  {
+   "id": "place.melos-home",
+   "name": "メロスの家と羊小屋",
+   "description": "妹と二人暮しの家。神々の祭壇、宴席、羊小屋がある。婚礼もここで行われる。",
+   "adjacent": [
+    {
+     "place": "place.village",
+     "travelMinutes": 5,
+     "inferred": true
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 31,
+     "quote": "家へ帰って神々の祭壇を飾り、祝宴の席を調え"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 36,
+     "quote": "羊小屋にもぐり込んで、死んだように深く眠った。"
+    }
+   ],
+   "sceneRef": "scene.village"
+  },
+  {
+   "id": "place.groom-house",
+   "name": "花婿の家",
+   "description": "メロスが夜通し婚礼の繰り上げを頼んだ家。",
+   "adjacent": [
+    {
+     "place": "place.village",
+     "travelMinutes": 10,
+     "inferred": true
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 32,
+     "quote": "花婿の家を訪れた。"
+    }
+   ],
+   "sceneRef": "scene.village"
+  },
+  {
+   "id": "place.neighbor-village",
+   "name": "隣村",
+   "description": "村から野と森を抜けた先の村。",
+   "adjacent": [
+    {
+     "place": "place.village",
+     "travelMinutes": 120,
+     "inferred": true
+    },
+    {
+     "place": "place.river",
+     "travelMinutes": 180,
+     "inferred": true
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 38,
+     "quote": "村を出て、野を横切り、森をくぐり抜け、隣村に着いた頃には"
+    }
+   ],
+   "sceneRef": null,
+   "note": "第一版に場面はない。ここを通る移動と、ここで起きる節拍（beat.15、beat.16）は叙事者の語りで伝える。"
+  },
+  {
+   "id": "place.river",
+   "name": "川と橋",
+   "description": "全里程のほぼ半ば。豪雨で氾濫すると橋が流される。",
+   "adjacent": [
+    {
+     "place": "place.neighbor-village",
+     "travelMinutes": 180,
+     "inferred": true
+    },
+    {
+     "place": "place.mountain-pass",
+     "travelMinutes": 100,
+     "inferred": true
+    }
+   ],
+   "crossing": {
+    "bridgeMinutes": 10,
+    "swimMinutes": 30,
+    "boatMinutes": 20,
+    "inferred": true
+   },
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 38,
+     "quote": "そろそろ全里程の半ばに到達した頃"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 38,
+     "quote": "猛勢一挙に橋を破壊し"
+    }
+   ],
+   "sceneRef": "scene.homeward-road"
+  },
+  {
+   "id": "place.mountain-pass",
+   "name": "峠",
+   "description": "川を渡った先の峠。山賊が待ち伏せる。",
+   "adjacent": [
+    {
+     "place": "place.river",
+     "travelMinutes": 100,
+     "inferred": true
+    },
+    {
+     "place": "place.spring",
+     "travelMinutes": 45,
+     "inferred": true
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 39,
+     "quote": "ぜいぜい荒い呼吸をしながら峠をのぼり"
+    }
+   ],
+   "sceneRef": "scene.homeward-road"
+  },
+  {
+   "id": "place.spring",
+   "name": "峠下の草原と泉",
+   "description": "峠を駈け降りた先の路傍の草原。岩の裂目から清水が湧く。",
+   "adjacent": [
+    {
+     "place": "place.mountain-pass",
+     "travelMinutes": 45,
+     "inferred": true
+    },
+    {
+     "place": "place.road-to-city",
+     "travelMinutes": 120,
+     "inferred": true
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 47,
+     "quote": "路傍の草原にごろりと寝ころがった。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 48,
+     "quote": "岩の裂目から滾々と、何か小さく囁きながら清水が湧き出ているのである。"
+    }
+   ],
+   "sceneRef": "scene.homeward-road"
+  },
+  {
+   "id": "place.road-to-city",
+   "name": "市へ続く野の道",
+   "description": "野原の酒宴や旅人とすれちがう道。遠くにシラクスの塔楼が見える。",
+   "adjacent": [
+    {
+     "place": "place.spring",
+     "travelMinutes": 120,
+     "inferred": true
+    },
+    {
+     "place": "place.syracuse-square",
+     "travelMinutes": 60,
+     "inferred": true
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 50,
+     "quote": "はるか向うに小さく、シラクスの市の塔楼が見える。"
+    }
+   ],
+   "sceneRef": "scene.homeward-road"
+  },
+  {
+   "id": "place.syracuse-square",
+   "name": "シラクスの広場と大路",
+   "description": "シラクスの市の中心。原文は「市」「まち」とだけ書く。二年前は夜でも歌声で賑やかだったが、今はひっそりしている。刑場と石工の仕事場は広場の一角（S-001、S-002）。",
+   "adjacent": [
+    {
+     "place": "place.road-to-city",
+     "travelMinutes": 60,
+     "inferred": true
+    },
+    {
+     "place": "place.castle",
+     "travelMinutes": 10,
+     "inferred": true
+    },
+    {
+     "place": "place.stonemason-workshop",
+     "travelMinutes": 2,
+     "inferred": true
+    },
+    {
+     "place": "place.execution-ground",
+     "travelMinutes": 2,
+     "inferred": true
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 1,
+     "quote": "それから都の大路をぶらぶら歩いた。"
+    }
+   ],
+   "sceneRef": "scene.syracuse-square"
+  },
+  {
+   "id": "place.castle",
+   "name": "王城",
+   "description": "暴君ディオニスの居城。王の前でメロスは問答し、身代りが縄打たれる。",
+   "adjacent": [
+    {
+     "place": "place.syracuse-square",
+     "travelMinutes": 10,
+     "inferred": true
+    },
+    {
+     "place": "place.execution-ground",
+     "travelMinutes": 5,
+     "inferred": true
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 10,
+     "quote": "のそのそ王城にはいって行った。"
+    }
+   ],
+   "sceneRef": "scene.castle-throne"
+  },
+  {
+   "id": "place.execution-ground",
+   "name": "刑場",
+   "description": "磔の柱が立つ刑場。群衆が集まる。第一版では広場の一角（S-001）。",
+   "adjacent": [
+    {
+     "place": "place.castle",
+     "travelMinutes": 5,
+     "inferred": true
+    },
+    {
+     "place": "place.syracuse-square",
+     "travelMinutes": 2,
+     "inferred": true
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 60,
+     "quote": "メロスは疾風の如く刑場に突入した。"
+    }
+   ],
+   "sceneRef": "scene.syracuse-square"
+  },
+  {
+   "id": "place.stonemason-workshop",
+   "name": "セリヌンティウスの石工の仕事場",
+   "description": "原文に場面はない。石工セリヌンティウスと弟子フィロストラトスの仕事場として設計。広場の一角にある（S-002）。",
+   "adjacent": [
+    {
+     "place": "place.syracuse-square",
+     "travelMinutes": 2,
+     "inferred": true
+    }
+   ],
+   "inferred": true,
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 1,
+     "quote": "今は此のシラクスの市で、石工をしている。"
+    }
+   ],
+   "sceneRef": "scene.syracuse-square"
+  }
+ ],
+ "facts": [
+  {
+   "id": "fact.melos-shepherd",
+   "statement": "メロスは村の牧人である。",
+   "trueFrom": "pre",
+   "visibility": "public",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 1,
+     "quote": "メロスは、村の牧人である。"
+    }
+   ]
+  },
+  {
+   "id": "fact.melos-family",
+   "statement": "メロスには父母も妻もなく、十六の妹と二人暮しである。",
+   "trueFrom": "pre",
+   "visibility": "private",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 1,
+     "quote": "メロスには父も、母も無い。女房も無い。"
+    }
+   ]
+  },
+  {
+   "id": "fact.sister-engaged",
+   "statement": "妹の花婿は、村の律気な一牧人である。",
+   "trueFrom": "pre",
+   "visibility": "private",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 1,
+     "quote": "この妹は、村の或る律気な一牧人を、近々、花婿として迎える事になっていた。"
+    }
+   ]
+  },
+  {
+   "id": "fact.melos-errand",
+   "statement": "メロスは花嫁の衣裳と祝宴の御馳走を買いに市へ来た。",
+   "trueFrom": "pre",
+   "visibility": "private",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 1,
+     "quote": "花嫁の衣裳やら祝宴の御馳走やらを買いに"
+    }
+   ]
+  },
+  {
+   "id": "fact.friendship",
+   "statement": "メロスとセリヌンティウスは竹馬の友で、二年会っていなかった。",
+   "trueFrom": "pre",
+   "visibility": "private",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 1,
+     "quote": "メロスには竹馬の友があった。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 26,
+     "quote": "二年ぶりで相逢うた。"
+    }
+   ]
+  },
+  {
+   "id": "fact.selinuntius-stonemason",
+   "statement": "セリヌンティウスはシラクスの市で石工をしている。",
+   "trueFrom": "pre",
+   "visibility": "public",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 1,
+     "quote": "今は此のシラクスの市で、石工をしている。"
+    }
+   ]
+  },
+  {
+   "id": "fact.city-silent",
+   "statement": "シラクスの市は夜でもひっそりして、やけに寂しい。二年前は賑やかだった。",
+   "trueFrom": "pre",
+   "visibility": "public",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 1,
+     "quote": "市全体が、やけに寂しい。"
+    }
+   ]
+  },
+  {
+   "id": "fact.king-killings",
+   "statement": "王は妹婿、世嗣、妹、妹の子、皇后、賢臣アレキスを殺した。",
+   "trueFrom": "pre",
+   "visibility": "private",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 6,
+     "quote": "はい、はじめは王様の妹婿さまを。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 6,
+     "quote": "それから、賢臣のアレキス様を。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 4,
+     "quote": "悪心を抱いている、というのですが"
+    }
+   ],
+   "spoilerTerms": [
+    "妹婿",
+    "世嗣",
+    "皇后",
+    "アレキス"
+   ]
+  },
+  {
+   "id": "fact.king-distrust",
+   "statement": "王は乱心ではなく、人を信ずることができないのだという。",
+   "trueFrom": "pre",
+   "visibility": "private",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 8,
+     "quote": "いいえ、乱心ではございませぬ。人を、信ずる事が出来ぬ、というのです。"
+    }
+   ]
+  },
+  {
+   "id": "fact.hostage-decree",
+   "statement": "王は派手な暮しの臣下に人質を一人ずつ差し出させ、拒めば十字架にかける。",
+   "trueFrom": "pre",
+   "visibility": "private",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 8,
+     "quote": "少しく派手な暮しをしている者には、人質ひとりずつ差し出すことを命じて居ります。"
+    }
+   ],
+   "spoilerTerms": [
+    "人質ひとりずつ",
+    "人質を差し出"
+   ]
+  },
+  {
+   "id": "fact.six-killed-today",
+   "statement": "この日（Day 0）、六人が殺された。",
+   "trueFrom": "pre",
+   "visibility": "private",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 8,
+     "quote": "きょうは、六人殺されました。"
+    }
+   ],
+   "spoilerTerms": [
+    "六人"
+   ]
+  },
+  {
+   "id": "fact.melos-dagger",
+   "statement": "メロスは短剣を懐に王城へ入り、警吏に捕らえられた。",
+   "trueFrom": "beat.04",
+   "visibility": "public",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 10,
+     "quote": "メロスの懐中からは短剣が出て来たので"
+    }
+   ],
+   "spoilerTerms": [
+    "短剣"
+   ]
+  },
+  {
+   "id": "fact.melos-reason",
+   "statement": "メロスは妹に亭主を持たせるため、三日の猶予を願った。",
+   "trueFrom": "beat.05",
+   "visibility": "public",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 18,
+     "quote": "たった一人の妹に、亭主を持たせてやりたいのです。"
+    }
+   ],
+   "spoilerTerms": [
+    "妹に亭主",
+    "妹の結婚式",
+    "三日の猶予",
+    "三日間の日限"
+   ]
+  },
+  {
+   "id": "fact.promise",
+   "statement": "王はメロスに三日目の日没までに戻れと命じ、遅れたら身代りを殺すと言った。身代りはセリヌンティウス。",
+   "trueFrom": "beat.05",
+   "visibility": "public",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 22,
+     "quote": "三日目には日没までに帰って来い。おくれたら、その身代りを、きっと殺すぞ。"
+    }
+   ],
+   "spoilerTerms": [
+    "身代わり",
+    "身代り",
+    "三日目の日没",
+    "日没までに帰"
+   ]
+  },
+  {
+   "id": "fact.king-whisper",
+   "statement": "王はメロスに「ちょっとおくれて来い、そうすれば罪をゆるす」とささやいた。",
+   "trueFrom": "beat.05",
+   "visibility": "private",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 22,
+     "quote": "ちょっとおくれて来るがいい。おまえの罪は、永遠にゆるしてやろうぞ。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 47,
+     "quote": "王は私に、ちょっとおくれて来い、と耳打ちした。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 24,
+     "quote": "おまえの心は、わかっているぞ。"
+    }
+   ],
+   "spoilerTerms": [
+    "ちょっとおくれて",
+    "遅れて来い",
+    "おくれて来い",
+    "遅れて来れば",
+    "罪をゆるして",
+    "罪は許"
+   ]
+  },
+  {
+   "id": "fact.king-intent",
+   "statement": "王はメロスが帰らないと決めつけ、身代りを殺して「人は信じられぬ」と見せつけるつもりでいる。",
+   "trueFrom": "beat.05",
+   "visibility": "private",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 21,
+     "quote": "どうせ帰って来ないにきまっている。"
+    }
+   ],
+   "spoilerTerms": [
+    "見せつけ"
+   ]
+  },
+  {
+   "id": "fact.selinuntius-hostage",
+   "statement": "セリヌンティウスは深夜王城に召され、身代りとして縄打たれた。",
+   "trueFrom": "beat.06",
+   "visibility": "public",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 26,
+     "quote": "セリヌンティウスは、縄打たれた。"
+    }
+   ],
+   "spoilerTerms": [
+    "縄打たれ",
+    "人質になった",
+    "身代わりになった"
+   ]
+  },
+  {
+   "id": "fact.wedding-tomorrow",
+   "statement": "メロスは妹に、婚礼をあすにすると告げた（理由は話していない）。",
+   "trueFrom": "beat.08",
+   "visibility": "public",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 28,
+     "quote": "あす、おまえの結婚式を挙げる。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 28,
+     "quote": "「なんでも無い。」メロスは無理に笑おうと努めた。"
+    }
+   ],
+   "spoilerTerms": [
+    "あす結婚式",
+    "明日結婚式",
+    "婚礼をあす",
+    "明日の婚礼"
+   ]
+  },
+  {
+   "id": "fact.groom-wanted-wait",
+   "statement": "花婿は仕度ができていないので葡萄の季節まで待ちたかった。",
+   "trueFrom": "pre",
+   "visibility": "private",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 32,
+     "quote": "こちらには未だ何の仕度も出来ていない、葡萄の季節まで待ってくれ"
+    }
+   ]
+  },
+  {
+   "id": "fact.wedding-held",
+   "statement": "婚礼は真昼に行われた。",
+   "trueFrom": "beat.11",
+   "visibility": "public",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 32,
+     "quote": "結婚式は、真昼に行われた。"
+    }
+   ],
+   "spoilerTerms": [
+    "婚礼が挙げられ",
+    "結婚式は済ん",
+    "式を挙げた"
+   ]
+  },
+  {
+   "id": "fact.storm",
+   "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。",
+   "trueFrom": "beat.12",
+   "visibility": "public",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 32,
+     "quote": "やがて車軸を流すような大雨となった。"
+    }
+   ],
+   "spoilerTerms": [
+    "大雨",
+    "豪雨",
+    "車軸を流す"
+   ]
+  },
+  {
+   "id": "fact.bridge-destroyed",
+   "statement": "前日の豪雨で川が氾濫し、橋が流された。",
+   "trueFrom": "beat.17",
+   "visibility": "public",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 38,
+     "quote": "きのうの豪雨で山の水源地は氾濫し"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 38,
+     "quote": "猛勢一挙に橋を破壊し"
+    }
+   ],
+   "spoilerTerms": [
+    "橋が流され",
+    "橋は流され",
+    "橋を破壊",
+    "橋が落ち",
+    "橋がない",
+    "橋もない"
+   ]
+  },
+  {
+   "id": "fact.no-boats",
+   "statement": "繋ぎ舟はすべて浪にさらわれ、渡し守もいない。",
+   "trueFrom": "beat.17",
+   "visibility": "public",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 38,
+     "quote": "繋舟は残らず浪に浚われて影なく、渡守りの姿も見えない。"
+    }
+   ],
+   "spoilerTerms": [
+    "舟がない",
+    "舟もない",
+    "渡し守",
+    "繋ぎ舟",
+    "繋舟"
+   ]
+  },
+  {
+   "id": "fact.bandits-ambush",
+   "statement": "峠で一隊の山賊が待ち伏せている。",
+   "trueFrom": "beat.19",
+   "visibility": "public",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 39,
+     "quote": "突然、目の前に一隊の山賊が躍り出た。"
+    }
+   ],
+   "spoilerTerms": [
+    "山賊",
+    "盗賊",
+    "待ち伏せ"
+   ]
+  },
+  {
+   "id": "fact.melos-suspects-king",
+   "statement": "メロスは山賊を王の差し金だと考えた（原文では真偽不明。語り手は断定しない）。",
+   "trueFrom": "beat.19",
+   "visibility": "private",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 45,
+     "quote": "さては、王の命令で、ここで私を待ち伏せしていたのだな。"
+    }
+   ],
+   "spoilerTerms": [
+    "王の命令で",
+    "王の差し金"
+   ]
+  },
+  {
+   "id": "fact.melos-despair",
+   "statement": "メロスは力尽きて倒れ、一度は約束を投げ出そうと思った（「悪い夢」）。",
+   "trueFrom": "beat.20",
+   "visibility": "private",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 47,
+     "quote": "ああ、もういっそ、悪徳者として生き伸びてやろうか。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 63,
+     "quote": "私は、途中で一度、悪い夢を見た。"
+    }
+   ],
+   "spoilerTerms": [
+    "悪い夢",
+    "悪徳者"
+   ]
+  },
+  {
+   "id": "fact.travelers-rumor",
+   "statement": "旅人たちは身代りの男がいまごろ磔にかかっていると噂した。",
+   "trueFrom": "beat.22",
+   "visibility": "public",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 50,
+     "quote": "いまごろは、あの男も、磔にかかっているよ。"
+    }
+   ],
+   "spoilerTerms": [
+    "磔にかかっている"
+   ]
+  },
+  {
+   "id": "fact.selinuntius-steadfast",
+   "statement": "セリヌンティウスは刑場に引き出され、王にからかわれても「メロスは来ます」とだけ答えた。",
+   "trueFrom": "beat.s1",
+   "visibility": "public",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 57,
+     "quote": "刑場に引き出されても、平気でいました。"
+    }
+   ],
+   "spoilerTerms": [
+    "メロスは来ます"
+   ]
+  },
+  {
+   "id": "fact.selinuntius-doubted-once",
+   "statement": "セリヌンティウスは三日の間に一度だけメロスを疑った。",
+   "trueFrom": "beat.s2",
+   "visibility": "private",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 65,
+     "quote": "私はこの三日の間、たった一度だけ、ちらと君を疑った。"
+    }
+   ],
+   "spoilerTerms": [
+    "一度だけ",
+    "君を疑った"
+   ]
+  }
+ ],
+ "stateVars": [
+  {
+   "id": "var.melos.location",
+   "type": "place",
+   "default": "place.syracuse-square",
+   "description": "メロスの居場所"
+  },
+  {
+   "id": "var.melos.custody",
+   "type": "enum",
+   "values": [
+    "free",
+    "arrested",
+    "on-parole",
+    "returned",
+    "executed"
+   ],
+   "default": "free",
+   "description": "メロスの身柄。on-parole = 期限付きで放免中",
+   "keyMoment": true,
+   "visibleToPlayer": true,
+   "valueLabels": {
+    "arrested": "メロスが捕らえられた",
+    "on-parole": "メロスが放たれた",
+    "returned": "メロスが刑場に戻った"
+   }
+  },
+  {
+   "id": "var.melos.knowsTyranny",
+   "type": "bool",
+   "default": false,
+   "description": "王の暴虐を知ったか"
+  },
+  {
+   "id": "var.melos.stamina",
+   "type": "int",
+   "min": 0,
+   "max": 100,
+   "default": 70,
+   "description": "体力。徹夜の往復、泳ぎ、格闘、炎天で減り、眠りと泉で回復する（推定の数値モデル）"
+  },
+  {
+   "id": "var.melos.resolve",
+   "type": "int",
+   "min": 0,
+   "max": 100,
+   "default": 90,
+   "description": "約束を果たす意志。倒れると下がり、泉や信頼の言葉で戻る（推定）"
+  },
+  {
+   "id": "var.melos.doubted",
+   "type": "bool",
+   "default": false,
+   "description": "メロスが道中で一度、約束を投げ出しかけたか（beat.20 力尽きる で true）。刑場での殴り合い（beat.25）の演じ方が変わる"
+  },
+  {
+   "id": "var.melos.clothing",
+   "type": "enum",
+   "values": [
+    "dressed",
+    "torn",
+    "nearly-naked",
+    "scarlet-cloak"
+   ],
+   "default": "dressed",
+   "description": "身なり",
+   "visibleToPlayer": true,
+   "valueLabels": {
+    "torn": "メロスの衣服が裂けた",
+    "nearly-naked": "メロスの衣は、ほとんど裂けていた",
+    "scarlet-cloak": "メロスは緋のマントをまとった"
+   }
+  },
+  {
+   "id": "var.promise.made",
+   "type": "bool",
+   "default": false,
+   "description": "王との三日の約束が成立したか",
+   "visibleToPlayer": true,
+   "valueLabels": {
+    "true": "王とメロスの約束が交わされた"
+   }
+  },
+  {
+   "id": "var.hostage.who",
+   "type": "enum",
+   "values": [
+    "none",
+    "char.selinuntius",
+    "player"
+   ],
+   "default": "none",
+   "description": "身代り。プレイヤーが名乗り出る分岐を許す",
+   "keyMoment": true
+  },
+  {
+   "id": "var.hostage.fate",
+   "type": "enum",
+   "values": [
+    "none",
+    "held",
+    "on-cross",
+    "executed",
+    "released"
+   ],
+   "default": "none",
+   "description": "身代りの運命。executed は当場で表示しない（S-067）：結局の中で間接的に伝え、「処刑」「死」とは書かない",
+   "keyMoment": true,
+   "visibleToPlayer": true,
+   "valueLabels": {
+    "held": "身代わりが縄打たれた",
+    "on-cross": "身代わりが刑場に引き出された",
+    "released": "身代わりの縄がほどかれた"
+   }
+  },
+  {
+   "id": "var.selinuntius.faith",
+   "type": "int",
+   "min": 0,
+   "max": 4,
+   "default": 0,
+   "description": "人質の間、セリヌンティウスがメロスを信じ続ける支え（S-064、推定）。3 以上あれば三日目の「ちらと疑う」（beat.s2）が起きない。親方のそばにいる（aff.stay-by-master）+2、自分の目で見たメロスの様子を届ける（aid.selinuntius.bring-news）+1、一緒に信じ続ける（aid.selinuntius.keep-faith）+1。そばにいるだけでは 2 で足りない。メロスを疑わせることを言ったり、約束「そばにいる」を破ったりすれば、叙事者は −1 してよい"
+  },
+  {
+   "id": "var.selinuntius.attended",
+   "type": "bool",
+   "default": false,
+   "description": "弟子が人質の夜に親方のそばにいたか（aff.stay-by-master は一局に一度）"
+  },
+  {
+   "id": "var.selinuntius.doubted",
+   "type": "bool",
+   "default": false,
+   "description": "セリヌンティウスが三日の間に一度、ちらとメロスを疑ったか（beat.s2 で true）。台詞と beat.25 の演じ方が変わる"
+  },
+  {
+   "id": "var.king.trust",
+   "type": "int",
+   "min": 0,
+   "max": 100,
+   "default": 5,
+   "description": "王が人を信じる度合い（推定の数値モデル、0〜100、初期 5）。0 まで落ちると刑場でも改心しない（beat.26 の前提）。40 以上で王の心を「揺れている」（wavering）にでき、70 以上で期限前に改心（第 4 類「王が先に変わった」）できる（var.king.disposition の valueRequires）。旅人の保証（aff.vouch）は +10、本当のことを言って聞かせる（aid.king.truth）+10、群臣の前で面目をつぶさない（aid.king.face）+5：設計した手段だけでは 30 で、一度の保証で王が軟化することはない（評測 E3）"
+  },
+  {
+   "id": "var.king.disposition",
+   "type": "enum",
+   "values": [
+    "tyrant",
+    "wavering",
+    "reformed"
+   ],
+   "default": "tyrant",
+   "description": "王の心",
+   "keyMoment": true,
+   "visibleToPlayer": true,
+   "valueLabels": {
+    "wavering": "王の心が揺れている",
+    "reformed": "王が改心した"
+   },
+   "valueRequires": [
+    {
+     "value": "wavering",
+     "when": [
+      {
+       "var": "var.king.trust",
+       "op": ">=",
+       "value": 40
+      }
+     ],
+     "note": "王の心が揺れるのは、人を信じる度合いが 40 以上になってから",
+     "inferred": true
+    },
+    {
+     "value": "reformed",
+     "when": [
+      {
+       "var": "var.king.trust",
+       "op": ">=",
+       "value": 70
+      }
+     ],
+     "note": "王が改心するのは、人を信じる度合いが 70 以上になってから。刑場での改心は beat.26 の前提が決める（時刻どおりに起きる出来事はこの条件の対象外）",
+     "inferred": true
+    }
+   ]
+  },
+  {
+   "id": "var.groom.agreed",
+   "type": "bool",
+   "default": false,
+   "description": "花婿が婚礼の繰り上げに同意したか",
+   "visibleToPlayer": true,
+   "valueLabels": {
+    "true": "花婿が婚礼の繰り上げを承知した"
+   }
+  },
+  {
+   "id": "var.wedding.status",
+   "type": "enum",
+   "values": [
+    "planned",
+    "scheduled",
+    "held",
+    "postponed"
+   ],
+   "default": "planned",
+   "description": "婚礼",
+   "keyMoment": true,
+   "visibleToPlayer": true,
+   "valueLabels": {
+    "scheduled": "婚礼があすと決まった",
+    "held": "婚礼が挙げられた",
+    "postponed": "婚礼が延期された"
+   }
+  },
+  {
+   "id": "var.weather",
+   "type": "enum",
+   "values": [
+    "clear",
+    "storm",
+    "after-rain"
+   ],
+   "default": "clear",
+   "description": "天気",
+   "visibleToPlayer": true,
+   "valueLabels": {
+    "storm": "大雨になった",
+    "after-rain": "雨が上がった"
+   }
+  },
+  {
+   "id": "var.bridge",
+   "type": "enum",
+   "values": [
+    "intact",
+    "destroyed"
+   ],
+   "default": "intact",
+   "description": "川の橋",
+   "visibleToPlayer": true,
+   "valueLabels": {
+    "destroyed": "橋が流された"
+   }
+  },
+  {
+   "id": "var.river.crossing",
+   "type": "enum",
+   "values": [
+    "none",
+    "bridge",
+    "swam",
+    "boat",
+    "other"
+   ],
+   "default": "none",
+   "description": "メロスがどう川を渡ったか",
+   "valueRequires": [
+    {
+     "value": "bridge",
+     "when": [
+      {
+       "var": "var.bridge",
+       "op": "==",
+       "value": "intact"
+      }
+     ],
+     "note": "橋で渡れるのは、橋が流されていない時だけ",
+     "inferred": true
+    }
+   ]
+  },
+  {
+   "id": "var.bandits",
+   "type": "enum",
+   "values": [
+    "waiting",
+    "defeated",
+    "evaded",
+    "absent"
+   ],
+   "default": "waiting",
+   "description": "峠の山賊"
+  },
+  {
+   "id": "var.player.location",
+   "type": "place",
+   "default": "role.startPlace",
+   "description": "プレイヤーの居場所"
+  },
+  {
+   "id": "var.player.custody",
+   "type": "enum",
+   "values": [
+    "free",
+    "hostage",
+    "executed"
+   ],
+   "default": "free",
+   "description": "プレイヤーの身柄。executed は当場で表示しない（S-067）：結局の中で間接的に伝え、「処刑」「死」とは書かない",
+   "keyMoment": true,
+   "visibleToPlayer": true,
+   "valueLabels": {
+    "hostage": "あなたが人質になった",
+    "free": "あなたは自由になった"
+   }
+  },
+  {
+   "id": "var.player.companionOf",
+   "type": "enum",
+   "values": [
+    "none",
+    "char.melos",
+    "char.selinuntius",
+    "char.philostratus"
+   ],
+   "default": "none",
+   "description": "誰と行動を共にしているか"
+  },
+  {
+   "id": "var.player.knowsShortcut",
+   "type": "bool",
+   "default": false,
+   "description": "村と市のあいだの抜け道（峠の脇道、町へ抜ける野道）を知っているか。牧童は初めから知っている（aff.pass-detour、aff.road-shortcut は牧童専用）。ほかの身分は花婿から聞けば（aid.groom.shortcut）使える"
+  },
+  {
+   "id": "var.player.walkedOldManHome",
+   "type": "bool",
+   "default": false,
+   "description": "怯える老爺の話を聞き、家まで送ったか（aid.old-man.listen を果たした）。旅人の第一幕の去処「老爺の家に身を寄せる」の条件（S-077 ④）"
+  },
+  {
+   "id": "var.act.current",
+   "type": "enum",
+   "values": [
+    "act.1",
+    "act.2",
+    "act.3",
+    "act.4"
+   ],
+   "default": "act.1",
+   "description": "いまの幕。開局時は身分の startAct"
+  }
+ ],
+ "beats": [
+  {
+   "id": "beat.01",
+   "order": 1,
+   "title": "未明、村を発つ",
+   "summary": "メロスは未明に村を出て、十里の道を市へ向かう。",
+   "window": {
+    "earliest": 180,
+    "latest": 300,
+    "canonical": 240
+   },
+   "place": "place.village",
+   "participants": [
+    "char.melos"
+   ],
+   "kind": "anchor",
+   "preconditions": [],
+   "outcomes": [],
+   "activities": [
+    {
+     "character": "char.melos",
+     "activity": "walk"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 1,
+     "quote": "きょう未明メロスは村を出発し"
+    }
+   ]
+  },
+  {
+   "id": "beat.02",
+   "order": 2,
+   "title": "市の異変",
+   "summary": "買い物を終え大路を歩くうち、日が落ちた市がやけに寂しいことに気づく。",
+   "window": {
+    "earliest": 1140,
+    "latest": 1200,
+    "canonical": 1150
+   },
+   "place": "place.syracuse-square",
+   "participants": [
+    "char.melos"
+   ],
+   "kind": "anchor",
+   "preconditions": [],
+   "outcomes": [],
+   "activities": [
+    {
+     "character": "char.melos",
+     "activity": "walk"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 1,
+     "quote": "歩いているうちにメロスは、まちの様子を怪しく思った。"
+    }
+   ]
+  },
+  {
+   "id": "beat.03",
+   "order": 3,
+   "title": "王の暴虐を知る",
+   "summary": "若い衆は答えず、老爺をゆすぶって問うと、王が人を信じられず次々に殺していると聞く。メロスは激怒する。",
+   "window": {
+    "earliest": 1150,
+    "latest": 1260,
+    "canonical": 1170
+   },
+   "place": "place.syracuse-square",
+   "participants": [
+    "char.melos",
+    "char.young-man",
+    "char.old-man"
+   ],
+   "kind": "mutable",
+   "preconditions": [],
+   "outcomes": [
+    {
+     "op": "set",
+     "var": "var.melos.knowsTyranny",
+     "value": true
+    }
+   ],
+   "activities": [
+    {
+     "character": "char.melos",
+     "activity": "talk"
+    },
+    {
+     "character": "char.old-man",
+     "activity": "talk"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 2,
+     "quote": "王様は、人を殺します。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 9,
+     "quote": "聞いて、メロスは激怒した。"
+    }
+   ]
+  },
+  {
+   "id": "beat.04",
+   "order": 4,
+   "title": "王城で捕縛",
+   "summary": "買い物を背負ったまま王城へ入って行き、門の前庭で巡邏の警吏に捕らえられる。懐から短剣が出る。王城の中へ引かれてゆく。",
+   "window": {
+    "earliest": 1170,
+    "latest": 1320,
+    "canonical": 1200
+   },
+   "place": "place.execution-ground",
+   "participants": [
+    "char.melos",
+    "char.guards"
+   ],
+   "kind": "mutable",
+   "preconditions": [
+    {
+     "var": "var.melos.knowsTyranny",
+     "op": "==",
+     "value": true
+    }
+   ],
+   "outcomes": [
+    {
+     "op": "set",
+     "var": "var.melos.custody",
+     "value": "arrested"
+    },
+    {
+     "op": "relocate",
+     "character": "char.melos",
+     "place": "place.castle"
+    },
+    {
+     "op": "hold",
+     "item": "item.dagger",
+     "from": "char.melos",
+     "to": null
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 10,
+     "quote": "買い物を、背負ったままで、のそのそ王城にはいって行った。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 10,
+     "quote": "調べられて、メロスの懐中からは短剣が出て来たので、騒ぎが大きくなってしまった。"
+    }
+   ]
+  },
+  {
+   "id": "beat.05",
+   "order": 5,
+   "title": "王との問答と約束",
+   "summary": "メロスは王と言い争い、妹の婚礼のため三日の日限を乞い、セリヌンティウスを人質に差し出す。王は承諾し、遅れて来いとささやく。",
+   "window": {
+    "earliest": 1200,
+    "latest": 1380,
+    "canonical": 1230
+   },
+   "place": "place.castle",
+   "participants": [
+    "char.melos",
+    "char.king"
+   ],
+   "kind": "mutable",
+   "preconditions": [
+    {
+     "var": "var.melos.custody",
+     "op": "==",
+     "value": "arrested"
+    }
+   ],
+   "outcomes": [
+    {
+     "op": "set",
+     "var": "var.promise.made",
+     "value": true
+    },
+    {
+     "op": "set",
+     "var": "var.hostage.who",
+     "value": "char.selinuntius"
+    }
+   ],
+   "activities": [
+    {
+     "character": "char.melos",
+     "activity": "talk"
+    },
+    {
+     "character": "char.king",
+     "activity": "talk"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 18,
+     "quote": "処刑までに三日間の日限を与えて下さい。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 20,
+     "quote": "あれを、人質としてここに置いて行こう。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 22,
+     "quote": "願いを、聞いた。その身代りを呼ぶがよい。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 25,
+     "quote": "メロスは口惜しく、地団駄踏んだ。"
+    }
+   ]
+  },
+  {
+   "id": "beat.06",
+   "order": 6,
+   "title": "深夜、友が召される",
+   "summary": "セリヌンティウスが深夜王城に召され、事情を聞いて無言でうなずき、メロスを抱きしめて縄を打たれる。",
+   "window": {
+    "earliest": 1290,
+    "latest": 1500,
+    "canonical": 1410
+   },
+   "place": "place.castle",
+   "participants": [
+    "char.selinuntius",
+    "char.melos",
+    "char.king"
+   ],
+   "kind": "mutable",
+   "preconditions": [
+    {
+     "var": "var.promise.made",
+     "op": "==",
+     "value": true
+    }
+   ],
+   "outcomes": [
+    {
+     "op": "set",
+     "var": "var.hostage.fate",
+     "value": "held"
+    },
+    {
+     "op": "relocate",
+     "character": "char.selinuntius",
+     "place": "place.castle"
+    }
+   ],
+   "activities": [
+    {
+     "character": "char.selinuntius",
+     "activity": "idle"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 26,
+     "quote": "竹馬の友、セリヌンティウスは、深夜、王城に召された。"
+    }
+   ]
+  },
+  {
+   "id": "beat.07",
+   "order": 7,
+   "title": "満天の星の下を発つ",
+   "summary": "メロスはすぐに出発し、一睡もせず十里の道を村へ急ぐ。",
+   "window": {
+    "earliest": 1300,
+    "latest": 1560,
+    "canonical": 1425
+   },
+   "place": "place.castle",
+   "participants": [
+    "char.melos"
+   ],
+   "kind": "mutable",
+   "preconditions": [
+    {
+     "var": "var.hostage.fate",
+     "op": "==",
+     "value": "held"
+    }
+   ],
+   "outcomes": [
+    {
+     "op": "set",
+     "var": "var.melos.custody",
+     "value": "on-parole"
+    },
+    {
+     "op": "inc",
+     "var": "var.melos.stamina",
+     "by": -30
+    }
+   ],
+   "activities": [
+    {
+     "character": "char.melos",
+     "activity": "run"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 26,
+     "quote": "メロスは、すぐに出発した。初夏、満天の星である。"
+    }
+   ]
+  },
+  {
+   "id": "beat.08",
+   "order": 8,
+   "title": "村に着き、婚礼を告げる",
+   "summary": "翌日の午前、疲れ果てて村に着き、羊の番をしていた妹に、あす婚礼を挙げると告げる。理由は話さない。",
+   "window": {
+    "earliest": 1860,
+    "latest": 2280,
+    "canonical": 2040
+   },
+   "place": "place.melos-home",
+   "participants": [
+    "char.melos",
+    "char.sister"
+   ],
+   "kind": "mutable",
+   "preconditions": [
+    {
+     "var": "var.melos.custody",
+     "op": "==",
+     "value": "on-parole"
+    }
+   ],
+   "outcomes": [
+    {
+     "op": "relocate",
+     "character": "char.melos",
+     "place": "place.melos-home"
+    },
+    {
+     "op": "set",
+     "var": "var.wedding.status",
+     "value": "scheduled"
+    }
+   ],
+   "activities": [
+    {
+     "character": "char.melos",
+     "activity": "talk"
+    },
+    {
+     "character": "char.sister",
+     "activity": "talk"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 27,
+     "quote": "村へ到着したのは、翌る日の午前"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 28,
+     "quote": "あす、おまえの結婚式を挙げる。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 30,
+     "quote": "村の人たちに知らせて来い。結婚式は、あすだと。"
+    }
+   ]
+  },
+  {
+   "id": "beat.09",
+   "order": 9,
+   "title": "支度をして眠る",
+   "summary": "祭壇を飾り宴席を調えると、床に倒れ、夜まで深く眠る。",
+   "window": {
+    "earliest": 2040,
+    "latest": 2640,
+    "canonical": 2070
+   },
+   "place": "place.melos-home",
+   "participants": [
+    "char.melos"
+   ],
+   "kind": "mutable",
+   "preconditions": [],
+   "outcomes": [
+    {
+     "op": "inc",
+     "var": "var.melos.stamina",
+     "by": 35
+    }
+   ],
+   "activities": [
+    {
+     "character": "char.melos",
+     "activity": "sleep"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 31,
+     "quote": "間もなく床に倒れ伏し、呼吸もせぬくらいの深い眠りに落ちてしまった。"
+    }
+   ]
+  },
+  {
+   "id": "beat.10",
+   "order": 10,
+   "title": "花婿を夜通し説く",
+   "summary": "夜に目覚めて花婿の家を訪ね、葡萄の季節まで待ちたいという花婿を夜明けまでかけて説き伏せる。",
+   "window": {
+    "earliest": 2640,
+    "latest": 3360,
+    "canonical": 3150
+   },
+   "place": "place.groom-house",
+   "participants": [
+    "char.melos",
+    "char.groom"
+   ],
+   "kind": "mutable",
+   "preconditions": [
+    {
+     "var": "var.wedding.status",
+     "op": "==",
+     "value": "scheduled"
+    }
+   ],
+   "outcomes": [
+    {
+     "op": "set",
+     "var": "var.groom.agreed",
+     "value": true
+    },
+    {
+     "op": "inc",
+     "var": "var.melos.stamina",
+     "by": -10
+    }
+   ],
+   "activities": [
+    {
+     "character": "char.melos",
+     "activity": "talk"
+    },
+    {
+     "character": "char.groom",
+     "activity": "talk"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 32,
+     "quote": "眼が覚めたのは夜だった。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 32,
+     "quote": "夜明けまで議論をつづけて、やっと、どうにか婿をなだめ、すかして、説き伏せた。"
+    }
+   ]
+  },
+  {
+   "id": "beat.11",
+   "order": 11,
+   "title": "真昼の婚礼",
+   "summary": "婚礼が真昼に行われる。",
+   "window": {
+    "earliest": 3300,
+    "latest": 4000,
+    "canonical": 3600
+   },
+   "place": "place.melos-home",
+   "participants": [
+    "char.melos",
+    "char.sister",
+    "char.groom"
+   ],
+   "kind": "mutable",
+   "preconditions": [
+    {
+     "var": "var.groom.agreed",
+     "op": "==",
+     "value": true
+    }
+   ],
+   "outcomes": [
+    {
+     "op": "set",
+     "var": "var.wedding.status",
+     "value": "held"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 32,
+     "quote": "結婚式は、真昼に行われた。"
+    }
+   ]
+  },
+  {
+   "id": "beat.12",
+   "order": 12,
+   "title": "大雨",
+   "summary": "宣誓のころ黒雲が空を覆い、車軸を流すような大雨になる。雨は翌朝まで続く。",
+   "window": {
+    "earliest": 3620,
+    "latest": 3660,
+    "canonical": 3630
+   },
+   "place": "place.village",
+   "participants": [],
+   "kind": "anchor",
+   "preconditions": [],
+   "outcomes": [
+    {
+     "op": "set",
+     "var": "var.weather",
+     "value": "storm"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 32,
+     "quote": "黒雲が空を覆い、ぽつりぽつり雨が降り出し"
+    }
+   ]
+  },
+  {
+   "id": "beat.13",
+   "order": 13,
+   "title": "祝宴と別れの言葉",
+   "summary": "祝宴は夜に入って華やぎ、メロスは一生ここにいたいと願うが出発を決意し、妹と花婿に言葉を残す。",
+   "window": {
+    "earliest": 3700,
+    "latest": 4300,
+    "canonical": 4140
+   },
+   "place": "place.melos-home",
+   "participants": [
+    "char.melos",
+    "char.sister",
+    "char.groom"
+   ],
+   "kind": "mutable",
+   "preconditions": [
+    {
+     "var": "var.wedding.status",
+     "op": "==",
+     "value": "held"
+    }
+   ],
+   "outcomes": [],
+   "activities": [
+    {
+     "character": "char.melos",
+     "activity": "sleep"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 32,
+     "quote": "メロスは、一生このままここにいたい、と思った。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 35,
+     "quote": "もう一つ、メロスの弟になったことを誇ってくれ。"
+    }
+   ]
+  },
+  {
+   "id": "beat.14",
+   "order": 14,
+   "title": "薄明、雨中を走り出る",
+   "summary": "羊小屋で眠り、翌る日の薄明に跳ね起きて、雨の中を走り出る。",
+   "window": {
+    "earliest": 4400,
+    "latest": 4900,
+    "canonical": 4590
+   },
+   "place": "place.melos-home",
+   "participants": [
+    "char.melos"
+   ],
+   "kind": "mutable",
+   "preconditions": [
+    {
+     "var": "var.melos.custody",
+     "op": "==",
+     "value": "on-parole"
+    }
+   ],
+   "outcomes": [
+    {
+     "op": "inc",
+     "var": "var.melos.stamina",
+     "by": 30
+    },
+    {
+     "op": "relocate",
+     "character": "char.melos",
+     "place": "place.village"
+    }
+   ],
+   "activities": [
+    {
+     "character": "char.melos",
+     "activity": "run"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 37,
+     "quote": "眼が覚めたのは翌る日の薄明の頃である。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 37,
+     "quote": "雨中、矢の如く走り出た。"
+    }
+   ]
+  },
+  {
+   "id": "beat.15",
+   "order": 15,
+   "title": "雨が上がる",
+   "summary": "朝のうちに雨が止み、日が高く昇って暑くなる。",
+   "window": {
+    "earliest": 4800,
+    "latest": 4920,
+    "canonical": 4860
+   },
+   "place": "place.neighbor-village",
+   "participants": [],
+   "kind": "anchor",
+   "preconditions": [],
+   "outcomes": [
+    {
+     "op": "set",
+     "var": "var.weather",
+     "value": "after-rain"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 38,
+     "quote": "雨も止み、日は高く昇って、そろそろ暑くなって来た。"
+    }
+   ]
+  },
+  {
+   "id": "beat.16",
+   "order": 16,
+   "title": "気を緩めて歩く",
+   "summary": "隣村を過ぎ、故郷への未練を断ったメロスは、急ぐ必要もないと小歌を歌いながらぶらぶら歩く。",
+   "window": {
+    "earliest": 4660,
+    "latest": 5460,
+    "canonical": 4900
+   },
+   "place": "place.neighbor-village",
+   "participants": [
+    "char.melos"
+   ],
+   "kind": "mutable",
+   "preconditions": [],
+   "outcomes": [
+    {
+     "op": "inc",
+     "var": "var.melos.stamina",
+     "by": -15
+    }
+   ],
+   "activities": [
+    {
+     "character": "char.melos",
+     "activity": "walk"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 38,
+     "quote": "ゆっくり歩こう、と持ちまえの呑気さを取り返し、好きな小歌をいい声で歌い出した。"
+    }
+   ]
+  },
+  {
+   "id": "beat.17",
+   "order": 17,
+   "title": "濁流、橋が流される",
+   "summary": "前日の豪雨で水源地が氾濫し、橋は流され、繋ぎ舟もない。",
+   "window": {
+    "earliest": 4600,
+    "latest": 4800,
+    "canonical": 4680
+   },
+   "place": "place.river",
+   "participants": [],
+   "kind": "anchor",
+   "preconditions": [],
+   "outcomes": [
+    {
+     "op": "set",
+     "var": "var.bridge",
+     "value": "destroyed"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 38,
+     "quote": "猛勢一挙に橋を破壊し"
+    }
+   ]
+  },
+  {
+   "id": "beat.18",
+   "order": 18,
+   "title": "激流を泳ぎ切る",
+   "summary": "真昼、川岸でゼウスに祈ったのち、激流に飛び込み、押し流されながらも対岸の木にすがりつく。",
+   "window": {
+    "earliest": 4800,
+    "latest": 5460,
+    "canonical": 5040
+   },
+   "place": "place.river",
+   "participants": [
+    "char.melos"
+   ],
+   "kind": "mutable",
+   "preconditions": [
+    {
+     "var": "var.bridge",
+     "op": "==",
+     "value": "destroyed"
+    }
+   ],
+   "outcomes": [
+    {
+     "op": "set",
+     "var": "var.river.crossing",
+     "value": "swam"
+    },
+    {
+     "op": "inc",
+     "var": "var.melos.stamina",
+     "by": -35
+    }
+   ],
+   "activities": [
+    {
+     "character": "char.melos",
+     "activity": "run"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 38,
+     "quote": "太陽も既に真昼時です。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 39,
+     "quote": "メロスは、ざんぶと流れに飛び込み"
+    }
+   ]
+  },
+  {
+   "id": "beat.19",
+   "order": 19,
+   "title": "峠の山賊",
+   "summary": "峠をのぼり切ったところで山賊が躍り出る。メロスは棍棒を奪って三人を殴り倒し、峠を駈け降りる。",
+   "window": {
+    "earliest": 4920,
+    "latest": 5460,
+    "canonical": 5160
+   },
+   "place": "place.mountain-pass",
+   "participants": [
+    "char.melos",
+    "char.bandits"
+   ],
+   "kind": "mutable",
+   "preconditions": [],
+   "outcomes": [
+    {
+     "op": "set",
+     "var": "var.bandits",
+     "value": "defeated"
+    },
+    {
+     "op": "inc",
+     "var": "var.melos.stamina",
+     "by": -25
+    }
+   ],
+   "activities": [
+    {
+     "character": "char.melos",
+     "activity": "run"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 39,
+     "quote": "陽は既に西に傾きかけている。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 47,
+     "quote": "たちまち、三人を殴り倒し"
+    }
+   ]
+  },
+  {
+   "id": "beat.20",
+   "order": 20,
+   "title": "力尽きる",
+   "summary": "午後の灼熱の中でついに膝を折り、悪徳者として生き延びようかとまで思い、まどろむ。",
+   "window": {
+    "earliest": 4980,
+    "latest": 5460,
+    "canonical": 5220
+   },
+   "place": "place.spring",
+   "participants": [
+    "char.melos"
+   ],
+   "kind": "mutable",
+   "preconditions": [
+    {
+     "var": "var.melos.stamina",
+     "op": "<=",
+     "value": 20
+    }
+   ],
+   "outcomes": [
+    {
+     "op": "inc",
+     "var": "var.melos.resolve",
+     "by": -60
+    },
+    {
+     "op": "set",
+     "var": "var.melos.doubted",
+     "value": true
+    }
+   ],
+   "activities": [
+    {
+     "character": "char.melos",
+     "activity": "sleep"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 47,
+     "quote": "ついに、がくりと膝を折った。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 47,
+     "quote": "四肢を投げ出して、うとうと、まどろんでしまった。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 47,
+     "quote": "ああ、もういっそ、悪徳者として生き伸びてやろうか。"
+    }
+   ]
+  },
+  {
+   "id": "beat.s2",
+   "order": 20.5,
+   "title": "ちらと友を疑う",
+   "summary": "三日目の午後、日が傾いてもメロスは戻らない。城で縄を打たれたセリヌンティウスは、生れてはじめて、ちらと友を疑う（時刻は推定。原作では刑場で本人が打ち明けるだけ）。",
+   "window": {
+    "earliest": 5160,
+    "latest": 5390,
+    "canonical": 5280
+   },
+   "place": "place.castle",
+   "participants": [
+    "char.selinuntius"
+   ],
+   "kind": "mutable",
+   "preconditions": [
+    {
+     "var": "var.hostage.who",
+     "op": "==",
+     "value": "char.selinuntius"
+    },
+    {
+     "var": "var.hostage.fate",
+     "op": "==",
+     "value": "held"
+    },
+    {
+     "var": "var.selinuntius.faith",
+     "op": "<=",
+     "value": 2,
+     "inferred": true,
+     "note": "弟子が人質の夜にそばにいて、さらに言葉で支えれば（faith 3 以上）疑わない（S-064）。そばにいるだけでは足りない"
+    }
+   ],
+   "outcomes": [
+    {
+     "op": "set",
+     "var": "var.selinuntius.doubted",
+     "value": true
+    }
+   ],
+   "activities": [
+    {
+     "character": "char.selinuntius",
+     "activity": "idle"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 65,
+     "quote": "私はこの三日の間、たった一度だけ、ちらと君を疑った。"
+    }
+   ]
+  },
+  {
+   "id": "beat.21",
+   "order": 21,
+   "title": "泉",
+   "summary": "水の音に気づき、岩の裂目から湧く清水を一口飲んで甦る。「走れ！メロス」。",
+   "window": {
+    "earliest": 5070,
+    "latest": 5460,
+    "canonical": 5310
+   },
+   "place": "place.spring",
+   "participants": [
+    "char.melos"
+   ],
+   "kind": "mutable",
+   "preconditions": [],
+   "outcomes": [
+    {
+     "op": "inc",
+     "var": "var.melos.stamina",
+     "by": 30
+    },
+    {
+     "op": "set",
+     "var": "var.melos.resolve",
+     "value": 100
+    }
+   ],
+   "activities": [
+    {
+     "character": "char.melos",
+     "activity": "run"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 48,
+     "quote": "水を両手で掬って、一くち飲んだ。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 48,
+     "quote": "走れ！　メロス。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 49,
+     "quote": "先刻の、あの悪魔の囁きは、あれは夢だ。"
+    }
+   ]
+  },
+  {
+   "id": "beat.22",
+   "order": 22,
+   "title": "黒い風のように",
+   "summary": "人を押しのけ、酒宴を駈け抜け、ほとんど裸で血を吐きながら走る。旅人の噂を耳にする。",
+   "window": {
+    "earliest": 5130,
+    "latest": 5460,
+    "canonical": 5370
+   },
+   "place": "place.road-to-city",
+   "participants": [
+    "char.melos",
+    "char.travelers"
+   ],
+   "kind": "mutable",
+   "preconditions": [],
+   "outcomes": [
+    {
+     "op": "set",
+     "var": "var.melos.clothing",
+     "value": "nearly-naked"
+    }
+   ],
+   "activities": [
+    {
+     "character": "char.melos",
+     "activity": "run"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 50,
+     "quote": "メロスは黒い風のように走った。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 50,
+     "quote": "メロスは、いまは、ほとんど全裸体であった。"
+    }
+   ]
+  },
+  {
+   "id": "beat.s1",
+   "order": 22.5,
+   "title": "刑場に引き出される友",
+   "summary": "セリヌンティウスは刑場に引き出され、王にからかわれても「メロスは来ます」とだけ答える。",
+   "window": {
+    "earliest": 5340,
+    "latest": 5455,
+    "canonical": 5400
+   },
+   "place": "place.execution-ground",
+   "participants": [
+    "char.selinuntius",
+    "char.king",
+    "char.crowd",
+    "char.guards"
+   ],
+   "kind": "mutable",
+   "preconditions": [
+    {
+     "var": "var.hostage.fate",
+     "op": "==",
+     "value": "held"
+    }
+   ],
+   "outcomes": [
+    {
+     "op": "set",
+     "var": "var.hostage.fate",
+     "value": "on-cross"
+    },
+    {
+     "op": "relocate",
+     "character": "char.selinuntius",
+     "place": "place.execution-ground",
+     "spot": "stake"
+    },
+    {
+     "op": "relocate",
+     "character": "char.maiden",
+     "place": "place.execution-ground",
+     "spot": "crowd-front"
+    },
+    {
+     "op": "relocate",
+     "character": "char.king",
+     "place": "place.execution-ground",
+     "spot": "king-west"
+    }
+   ],
+   "activities": [
+    {
+     "character": "char.selinuntius",
+     "activity": "idle"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 57,
+     "quote": "王様が、さんざんあの方をからかっても、メロスは来ます、とだけ答え"
+    }
+   ]
+  },
+  {
+   "id": "beat.23",
+   "order": 23,
+   "title": "フィロストラトス",
+   "summary": "市の近くでフィロストラトスが追いすがり、もう間に合わない、走るのをやめてと訴える。メロスは信じられているから走ると答える。",
+   "window": {
+    "earliest": 5190,
+    "latest": 5460,
+    "canonical": 5430
+   },
+   "place": "place.road-to-city",
+   "participants": [
+    "char.melos",
+    "char.philostratus"
+   ],
+   "kind": "mutable",
+   "preconditions": [],
+   "outcomes": [],
+   "activities": [
+    {
+     "character": "char.melos",
+     "activity": "run"
+    },
+    {
+     "character": "char.philostratus",
+     "activity": "run"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 53,
+     "quote": "もう、駄目でございます。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 58,
+     "quote": "それだから、走るのだ。信じられているから走るのだ。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 56,
+     "quote": "いや、まだ陽は沈まぬ。"
+    }
+   ]
+  },
+  {
+   "id": "beat.24",
+   "order": 24,
+   "title": "日没、刑場へ",
+   "summary": "陽が沈み切る寸前、メロスは刑場に突入し、釣り上げられてゆく友の両足にかじりつく。群衆がどよめき、縄がほどかれる。",
+   "window": {
+    "earliest": 5280,
+    "latest": 5460,
+    "canonical": 5460
+   },
+   "place": "place.execution-ground",
+   "participants": [
+    "char.melos",
+    "char.selinuntius",
+    "char.crowd",
+    "char.guards"
+   ],
+   "kind": "mutable",
+   "preconditions": [
+    {
+     "var": "var.melos.custody",
+     "op": "==",
+     "value": "on-parole"
+    }
+   ],
+   "outcomes": [
+    {
+     "op": "set",
+     "var": "var.melos.custody",
+     "value": "returned"
+    },
+    {
+     "op": "set",
+     "var": "var.hostage.fate",
+     "value": "released"
+    },
+    {
+     "op": "relocate",
+     "character": "char.melos",
+     "place": "place.execution-ground",
+     "spot": "scaffold"
+    }
+   ],
+   "activities": [
+    {
+     "character": "char.melos",
+     "activity": "run"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 60,
+     "quote": "メロスは疾風の如く刑場に突入した。間に合った。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 62,
+     "quote": "セリヌンティウスの縄は、ほどかれたのである。"
+    }
+   ]
+  },
+  {
+   "id": "beat.25",
+   "order": 25,
+   "title": "殴り合いと抱擁",
+   "summary": "二人はそれぞれ一度だけ疑ったことを打ち明け、頬を殴り合い、抱き合って泣く。",
+   "window": {
+    "earliest": 5280,
+    "latest": 5520,
+    "canonical": 5465
+   },
+   "place": "place.execution-ground",
+   "participants": [
+    "char.melos",
+    "char.selinuntius"
+   ],
+   "kind": "mutable",
+   "preconditions": [
+    {
+     "var": "var.hostage.fate",
+     "op": "==",
+     "value": "released"
+    },
+    {
+     "var": "var.hostage.who",
+     "op": "==",
+     "value": "char.selinuntius",
+     "inferred": true,
+     "note": "身代わりがプレイヤーなら、刑場での再会はプレイヤーの結末（Ending.player）として生成する"
+    }
+   ],
+   "outcomes": [],
+   "activities": [
+    {
+     "character": "char.melos",
+     "activity": "talk"
+    },
+    {
+     "character": "char.selinuntius",
+     "activity": "talk"
+    }
+   ],
+   "variants": [
+    {
+     "id": "beat.25.v-neither",
+     "when": [
+      {
+       "var": "var.melos.doubted",
+       "op": "==",
+       "value": false
+      },
+      {
+       "var": "var.selinuntius.doubted",
+       "op": "==",
+       "value": false
+      }
+     ],
+     "summary": "どちらも相手を疑わなかった。殴り合うことはなく、二人は「ありがとう、友よ」と言って抱き合い、声を放って泣く。",
+     "outcomes": [],
+     "inferred": true,
+     "note": "メロスが道中で倒れず（beat.20 が起きない）、セリヌンティウスも疑わなかった局",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 67,
+       "quote": "「ありがとう、友よ。」二人同時に言い"
+      }
+     ]
+    },
+    {
+     "id": "beat.25.v-melos-only",
+     "when": [
+      {
+       "var": "var.selinuntius.doubted",
+       "op": "==",
+       "value": false
+      }
+     ],
+     "summary": "メロスだけが途中の悪い夢を打ち明け、セリヌンティウスに殴られる。セリヌンティウスは一度も疑わなかったと言い、殴られないまま二人は抱き合う。",
+     "outcomes": [],
+     "inferred": true,
+     "note": "S-064：弟子が支え続けた局。結局カードの「原作との違い」：原作では二人は殴り合った。あなたの世界では、殴られたのはメロスだけだった",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 63,
+       "quote": "私は、途中で一度、悪い夢を見た。"
+      }
+     ]
+    },
+    {
+     "id": "beat.25.v-selinuntius-only",
+     "when": [
+      {
+       "var": "var.melos.doubted",
+       "op": "==",
+       "value": false
+      }
+     ],
+     "summary": "メロスは道中で一度も約束を投げ出しかけなかった。セリヌンティウスだけが一度疑ったことを打ち明けて殴られ、二人は抱き合う。",
+     "outcomes": [],
+     "inferred": true,
+     "note": "プレイヤーが峠や泉でメロスを支え、倒れさせなかった局",
+     "cite": [
+      {
+       "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+       "para": 65,
+       "quote": "私はこの三日の間、たった一度だけ、ちらと君を疑った。"
+      }
+     ]
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 63,
+     "quote": "私を殴れ。ちから一ぱいに頬を殴れ。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 67,
+     "quote": "「ありがとう、友よ。」二人同時に言い"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 64,
+     "quote": "刑場一ぱいに鳴り響くほど音高くメロスの右頬を殴った。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 66,
+     "quote": "メロスは腕に唸りをつけてセリヌンティウスの頬を殴った。"
+    }
+   ]
+  },
+  {
+   "id": "beat.26",
+   "order": 26,
+   "title": "王の改心",
+   "summary": "二人を見つめていた王が近づき、信実は空虚な妄想ではなかった、仲間に入れてほしいと願う。群衆は王を讃える。",
+   "window": {
+    "earliest": 5280,
+    "latest": 5520,
+    "canonical": 5475
+   },
+   "place": "place.execution-ground",
+   "participants": [
+    "char.king",
+    "char.melos",
+    "char.selinuntius",
+    "char.crowd"
+   ],
+   "kind": "mutable",
+   "preconditions": [
+    {
+     "var": "var.hostage.fate",
+     "op": "==",
+     "value": "released"
+    },
+    {
+     "var": "var.king.trust",
+     "op": ">=",
+     "value": 1,
+     "inferred": true,
+     "note": "王の信頼（0〜100、初期 5）が 0 まで落ちていたら改心しない。プレイヤーが嘲りや欺きで王の心を閉ざした場合（推断。S-007「間に合ったが王は変わらない」への道）"
+    }
+   ],
+   "outcomes": [
+    {
+     "op": "set",
+     "var": "var.king.disposition",
+     "value": "reformed"
+    },
+    {
+     "op": "set",
+     "var": "var.king.trust",
+     "value": 80
+    }
+   ],
+   "activities": [
+    {
+     "character": "char.king",
+     "activity": "talk"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 69,
+     "quote": "信実とは、決して空虚な妄想ではなかった。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 71,
+     "quote": "万歳、王様万歳。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 70,
+     "quote": "どっと群衆の間に、歓声が起った。"
+    }
+   ]
+  },
+  {
+   "id": "beat.27",
+   "order": 27,
+   "title": "緋のマント",
+   "summary": "少女が緋のマントを捧げ、まっぱだかだと教えられたメロスはひどく赤面する。",
+   "window": {
+    "earliest": 5280,
+    "latest": 5520,
+    "canonical": 5480
+   },
+   "place": "place.execution-ground",
+   "participants": [
+    "char.maiden",
+    "char.melos",
+    "char.selinuntius"
+   ],
+   "kind": "mutable",
+   "preconditions": [
+    {
+     "var": "var.melos.custody",
+     "op": "==",
+     "value": "returned"
+    }
+   ],
+   "outcomes": [
+    {
+     "op": "set",
+     "var": "var.melos.clothing",
+     "value": "scarlet-cloak"
+    }
+   ],
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 72,
+     "quote": "ひとりの少女が、緋のマントをメロスに捧げた。"
+    },
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 74,
+     "quote": "勇者は、ひどく赤面した。"
+    }
+   ]
+  }
+ ],
+ "causal": [
+  {
+   "id": "edge.03-04",
+   "from": "beat.03",
+   "to": "beat.04",
+   "type": "enables",
+   "note": "暴虐を聞いて激怒し、単純なメロスはそのまま王城に入る",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 9,
+     "quote": "呆れた王だ。生かして置けぬ。"
+    }
+   ],
+   "inferred": false
+  },
+  {
+   "id": "edge.04-05",
+   "from": "beat.04",
+   "to": "beat.05",
+   "type": "enables",
+   "note": "捕縛されて王の前に引き出されたから問答になる",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 10,
+     "quote": "メロスは、王の前に引き出された。"
+    }
+   ],
+   "inferred": false
+  },
+  {
+   "id": "edge.05-06",
+   "from": "beat.05",
+   "to": "beat.06",
+   "type": "enables",
+   "note": "王が身代りを呼べと言ったから友が召される",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 22,
+     "quote": "その身代りを呼ぶがよい。"
+    }
+   ],
+   "inferred": false
+  },
+  {
+   "id": "edge.06-07",
+   "from": "beat.06",
+   "to": "beat.07",
+   "type": "requires",
+   "note": "身代りが縄打たれてはじめてメロスは放免される",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 26,
+     "quote": "セリヌンティウスは、縄打たれた。メロスは、すぐに出発した。"
+    }
+   ],
+   "inferred": true
+  },
+  {
+   "id": "edge.07-08",
+   "from": "beat.07",
+   "to": "beat.08",
+   "type": "enables",
+   "note": "夜通し十里を歩いて翌日午前に村に着く",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 27,
+     "quote": "メロスはその夜、一睡もせず十里の路を急ぎに急いで"
+    }
+   ],
+   "inferred": false
+  },
+  {
+   "id": "edge.08-10",
+   "from": "beat.08",
+   "to": "beat.10",
+   "type": "enables",
+   "note": "あす婚礼と決めたので花婿を説く必要がある",
+   "inferred": true
+  },
+  {
+   "id": "edge.10-11",
+   "from": "beat.10",
+   "to": "beat.11",
+   "type": "requires",
+   "note": "花婿の同意がなければ婚礼は挙げられない",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 32,
+     "quote": "説き伏せた。結婚式は、真昼に行われた。"
+    }
+   ],
+   "inferred": false
+  },
+  {
+   "id": "edge.11-13",
+   "from": "beat.11",
+   "to": "beat.13",
+   "type": "enables",
+   "note": "婚礼のあとの祝宴",
+   "inferred": false,
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 32,
+     "quote": "祝宴は、夜に入っていよいよ乱れ華やかになり"
+    }
+   ]
+  },
+  {
+   "id": "edge.13-14",
+   "from": "beat.13",
+   "to": "beat.14",
+   "type": "enables",
+   "note": "一眠りしてから発つと決める",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 32,
+     "quote": "ちょっと一眠りして、それからすぐに出発しよう、と考えた。"
+    }
+   ],
+   "inferred": false
+  },
+  {
+   "id": "edge.12-17",
+   "from": "beat.12",
+   "to": "beat.17",
+   "type": "enables",
+   "note": "前日の豪雨で川が氾濫し橋が流される",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 38,
+     "quote": "きのうの豪雨で山の水源地は氾濫し"
+    }
+   ],
+   "inferred": false
+  },
+  {
+   "id": "edge.17-18",
+   "from": "beat.17",
+   "to": "beat.18",
+   "type": "requires",
+   "timeLink": "order",
+   "note": "橋も舟もないので泳ぐしかない。洪水は朝に起きて橋はもう無い。メロスが早く着いても遅く着いても泳ぐしかないので、時間はずらさない（timeLink: order）",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 39,
+     "quote": "泳ぎ切るより他に無い。"
+    }
+   ],
+   "inferred": false
+  },
+  {
+   "id": "edge.18-20",
+   "from": "beat.18",
+   "to": "beat.20",
+   "type": "enables",
+   "note": "泳ぎと格闘と炎天で疲れ果てる。激流で体力を使ったことが倒れる原因（体力は var.melos.stamina で運ぶ）。時刻は峠（edge.19-20）だけで決まるので、この辺は先後だけ（峠で早く片づけば、そのぶん早く倒れる）",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 47,
+     "quote": "流石に疲労し"
+    }
+   ],
+   "inferred": false,
+   "timeLink": "order"
+  },
+  {
+   "id": "edge.19-20",
+   "from": "beat.19",
+   "to": "beat.20",
+   "type": "enables",
+   "note": "山賊との格闘で体力を使う",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 47,
+     "quote": "一気に峠を駈け降りたが、流石に疲労し"
+    }
+   ],
+   "inferred": false
+  },
+  {
+   "id": "edge.21-24",
+   "from": "beat.21",
+   "to": "beat.24",
+   "type": "enables",
+   "timeLink": "order",
+   "note": "泉で甦らなければ刑場に着けない。時間は泉の後の道（beat.22、beat.23）を通って伝わるので、このエッジは先後だけを決める（timeLink: order。shift のままだと、町への道で稼いだ分が泉の 0 偏移に止められて刑場まで届かない）",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 48,
+     "quote": "歩ける。行こう。"
+    }
+   ],
+   "inferred": false
+  },
+  {
+   "id": "edge.24-25",
+   "from": "beat.24",
+   "to": "beat.25",
+   "type": "requires",
+   "note": "間に合って縄がほどかれたから二人は向き合える",
+   "inferred": false,
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 62,
+     "quote": "セリヌンティウスの縄は、ほどかれたのである。"
+    }
+   ]
+  },
+  {
+   "id": "edge.25-26",
+   "from": "beat.25",
+   "to": "beat.26",
+   "type": "enables",
+   "note": "二人の様を見て王の心が動く",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 68,
+     "quote": "暴君ディオニスは、群衆の背後から二人の様を、まじまじと見つめていたが"
+    }
+   ],
+   "inferred": false
+  },
+  {
+   "id": "edge.24-27",
+   "from": "beat.24",
+   "to": "beat.27",
+   "type": "enables",
+   "note": "ほとんど裸で走り着いたから少女がマントを捧げる",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 73,
+     "quote": "メロス、君は、まっぱだかじゃないか。"
+    }
+   ],
+   "inferred": false
+  },
+  {
+   "id": "edge.14-16",
+   "from": "beat.14",
+   "to": "beat.16",
+   "type": "enables",
+   "note": "帰り道の順序（原文の記述順）。前の節拍が遅れれば、この節拍も同じだけ遅れる",
+   "inferred": true
+  },
+  {
+   "id": "edge.16-18",
+   "from": "beat.16",
+   "to": "beat.18",
+   "type": "enables",
+   "note": "帰り道の順序（原文の記述順）。前の節拍が遅れれば、この節拍も同じだけ遅れる",
+   "inferred": true
+  },
+  {
+   "id": "edge.18-19",
+   "from": "beat.18",
+   "to": "beat.19",
+   "type": "enables",
+   "note": "帰り道の順序（原文の記述順）。前の節拍が遅れれば、この節拍も同じだけ遅れる",
+   "inferred": true
+  },
+  {
+   "id": "edge.20-21",
+   "from": "beat.20",
+   "to": "beat.21",
+   "type": "enables",
+   "note": "帰り道の順序（原文の記述順）。前の節拍が遅れれば、この節拍も同じだけ遅れる",
+   "inferred": true
+  },
+  {
+   "id": "edge.21-22",
+   "from": "beat.21",
+   "to": "beat.22",
+   "type": "enables",
+   "note": "帰り道の順序（原文の記述順）。前の節拍が遅れれば、この節拍も同じだけ遅れる",
+   "inferred": true
+  },
+  {
+   "id": "edge.22-23",
+   "from": "beat.22",
+   "to": "beat.23",
+   "type": "enables",
+   "note": "帰り道の順序（原文の記述順）。前の節拍が遅れれば、この節拍も同じだけ遅れる",
+   "inferred": true
+  },
+  {
+   "id": "edge.23-24",
+   "from": "beat.23",
+   "to": "beat.24",
+   "type": "enables",
+   "note": "帰り道の順序（原文の記述順）。前の節拍が遅れれば、この節拍も同じだけ遅れる",
+   "inferred": true
+  },
+  {
+   "id": "edge.16-18-delay",
+   "from": "beat.16",
+   "to": "beat.18",
+   "type": "delays",
+   "minutes": 40,
+   "note": "のんびり歩いた分だけ川に着くのが遅れる。メロスがのんびり歩かなければ、40 分早く川に着く（分数は推断）。急いでも同じ道なので体力の消耗は変わらない",
+   "inferred": true
+  },
+  {
+   "id": "edge.20-21-delay",
+   "from": "beat.20",
+   "to": "beat.21",
+   "type": "delays",
+   "minutes": 60,
+   "inferred": true,
+   "note": "力尽きて草原にまどろんだ分だけ泉で起き上がるのが遅れる。倒れなければ 60 分早く泉に着く（分数は推定）",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 47,
+     "quote": "四肢を投げ出して、うとうと、まどろんでしまった。"
+    }
+   ]
+  }
+ ],
+ "roles": [
+  {
+   "id": "role.traveler",
+   "name": "旅人",
+   "startPlace": "place.syracuse-square",
+   "startT": 1050,
+   "knownCharacters": [],
+   "access": [
+    "place.syracuse-square",
+    "place.stonemason-workshop",
+    "place.execution-ground"
+   ],
+   "initialKnowledge": [
+    "fact.city-silent"
+   ],
+   "items": [
+    "item.waterskin",
+    "item.cloak"
+   ],
+   "inferred": true,
+   "note": "誰も知らない。切片では広場・石工房・刑場だけ（S-077 ①）。",
+   "release": 1,
+   "startAct": "act.1"
+  }
+ ],
+ "anchors": [
+  "beat.01",
+  "beat.02",
+  "beat.12",
+  "beat.15",
+  "beat.17",
+  "fact.melos-shepherd",
+  "fact.melos-family",
+  "fact.sister-engaged",
+  "fact.melos-errand",
+  "fact.friendship",
+  "fact.selinuntius-stonemason",
+  "fact.city-silent",
+  "fact.king-killings",
+  "fact.king-distrust",
+  "fact.hostage-decree",
+  "fact.six-killed-today",
+  "fact.groom-wanted-wait"
+ ],
+ "scenes": [
+  {
+   "id": "scene.syracuse-square",
+   "name": "シラクスの広場",
+   "release": 1,
+   "inferred": true,
+   "note": "市場と石工の仕事場（広場の一角）を含む。三日目の日没は同じ場面を刑場に転換する（S-001）。"
+  },
+  {
+   "id": "scene.castle-throne",
+   "name": "王城・玉座の間",
+   "release": 1,
+   "inferred": true
+  },
+  {
+   "id": "scene.village",
+   "name": "メロスの村",
+   "release": 1,
+   "inferred": true,
+   "note": "家、婚礼の祭壇、羊小屋、花婿の家。"
+  },
+  {
+   "id": "scene.homeward-road",
+   "name": "帰り道",
+   "release": 1,
+   "inferred": true,
+   "note": "川と橋、峠、泉、市へ続く道を一つの場面にまとめる。第二幕（夜）は橋が残り、第四幕は流されている。"
+  }
+ ],
+ "acts": [
+  {
+   "id": "act.1",
+   "order": 1,
+   "title": "約束の日",
+   "start": {
+    "t": 1050
+   },
+   "end": {
+    "onBeats": [
+     "beat.07"
+    ],
+    "atLatest": 1560
+   },
+   "scenes": [
+    "scene.syracuse-square"
+   ],
+   "exits": [
+    {
+     "id": "exit.1.city",
+     "label": "市に残り、メロスの帰りを待つ",
+     "sub": "西の門が見える所で",
+     "toAct": "act.4",
+     "place": "place.execution-ground",
+     "t": 5370,
+     "spot": "ground-west",
+     "effects": [
+      {
+       "op": "relocate",
+       "character": "char.old-man",
+       "place": "place.execution-ground",
+       "spot": "stake-front"
+      },
+      {
+       "op": "relocate",
+       "character": "char.philostratus",
+       "place": "place.road-to-city"
+      },
+      {
+       "op": "learn",
+       "character": "player",
+       "fact": "fact.promise"
+      }
+     ],
+     "arrival": {
+      "line": "刑場の西のはずれ。ここからなら、西の門をくぐる者が、だれより先に見える。"
+     }
+    },
+    {
+     "id": "exit.1.old-man",
+     "label": "老爺の家に身を寄せる",
+     "sub": "老爺があなたを覚えている",
+     "toAct": "act.4",
+     "place": "place.execution-ground",
+     "t": 5370,
+     "requires": [
+      {
+       "var": "var.player.walkedOldManHome",
+       "op": "==",
+       "value": true
+      }
+     ],
+     "spot": "stake-front",
+     "effects": [
+      {
+       "op": "relocate",
+       "character": "char.old-man",
+       "place": "place.execution-ground",
+       "spot": "stake-front-side"
+      },
+      {
+       "op": "relocate",
+       "character": "char.philostratus",
+       "place": "place.road-to-city"
+      },
+      {
+       "op": "learn",
+       "character": "player",
+       "fact": "fact.promise"
+      }
+     ],
+     "arrival": {
+      "line": "三日のあいだ、老爺はあなたを家に置いてくれた。いまは二人で、刑場の前に立っている。",
+      "opener": "char.old-man"
+     }
+    }
+   ],
+   "inferred": true,
+   "note": "日没前の広場から、約束、メロスの出発（23:45）まで。幕末の去処はどれも、プレイヤーが約束を知ったことにする（learn、S-077 ⑫）。約束が成り立っていない局では事実が偽なので、知ったことにはならない",
+   "plan": {
+    "toAct": "act.4",
+    "place": "place.execution-ground",
+    "t": 5370,
+    "spot": "stake-front",
+    "effects": [
+     {
+      "op": "relocate",
+      "character": "char.old-man",
+      "place": "place.execution-ground",
+      "spot": "ground-west"
+     },
+     {
+      "op": "relocate",
+      "character": "char.philostratus",
+      "place": "place.road-to-city"
+     },
+     {
+      "op": "learn",
+      "character": "player",
+      "fact": "fact.promise"
+     }
+    ],
+    "arrival": {
+     "line": "三日目の夕方。あなたは、刑場の近くに来ていた。"
+    }
+   }
+  },
+  {
+   "id": "act.2",
+   "order": 2,
+   "title": "その夜",
+   "start": {
+    "t": 1440
+   },
+   "end": {
+    "onBeats": [
+     "beat.08"
+    ],
+    "atLatest": 2280
+   },
+   "scenes": [
+    "scene.homeward-road",
+    "scene.syracuse-square",
+    "scene.castle-throne"
+   ],
+   "exits": [
+    {
+     "id": "exit.2.village",
+     "label": "メロスと村に着く",
+     "toAct": "act.3",
+     "place": "place.village",
+     "t": 2040,
+     "alignTo": "beat.08",
+     "requires": [
+      {
+       "var": "var.player.companionOf",
+       "op": "==",
+       "value": "char.melos"
+      }
+     ],
+     "effects": []
+    },
+    {
+     "id": "exit.2.city",
+     "label": "市でその時を待つ",
+     "toAct": "act.3",
+     "place": "place.syracuse-square",
+     "t": 2040,
+     "requires": [
+      {
+       "var": "var.player.location",
+       "op": "in",
+       "value": [
+        "place.syracuse-square",
+        "place.stonemason-workshop",
+        "place.execution-ground",
+        "place.castle"
+       ]
+      }
+     ],
+     "effects": []
+    }
+   ],
+   "inferred": true,
+   "note": "メロスについて行けば、星の下の帰り道（橋はまだある）。市に残れば、人質になった友と夜の城。"
+  },
+  {
+   "id": "act.3",
+   "order": 3,
+   "title": "村の二日",
+   "start": {
+    "t": 1980
+   },
+   "end": {
+    "onBeats": [
+     "beat.14"
+    ],
+    "atLatest": 4900
+   },
+   "scenes": [
+    "scene.village",
+    "scene.syracuse-square",
+    "scene.castle-throne"
+   ],
+   "exits": [
+    {
+     "id": "exit.3.city",
+     "label": "市で日没を待つ",
+     "toAct": "act.4",
+     "place": "place.syracuse-square",
+     "t": 4590,
+     "requires": [
+      {
+       "var": "var.player.location",
+       "op": "in",
+       "value": [
+        "place.syracuse-square",
+        "place.stonemason-workshop",
+        "place.execution-ground",
+        "place.castle"
+       ]
+      }
+     ],
+     "effects": []
+    }
+   ],
+   "inferred": true,
+   "note": "村では到着、妹、花婿の説得、真昼の婚礼、大雨、祝宴。市では人質の友と王の二日間。村の牧童はここから始まる。"
+  },
+  {
+   "id": "act.4",
+   "order": 4,
+   "title": "三日目",
+   "start": {
+    "t": 4590
+   },
+   "end": {
+    "onBeats": [
+     "beat.27"
+    ],
+    "atLatest": 5520
+   },
+   "scenes": [
+    "scene.syracuse-square"
+   ],
+   "exits": [],
+   "inferred": true,
+   "note": "濁流の川から峠、泉、市へ。日没に広場が刑場になる。幕が閉じたら結末へ。"
+  }
+ ],
+ "endings": {
+  "world": [
+   {
+    "id": "player-substituted",
+    "order": 1,
+    "label": "あなたが身代わりになった",
+    "when": [
+     {
+      "var": "var.hostage.who",
+      "op": "==",
+      "value": "player"
+     }
+    ],
+    "inferred": true,
+    "note": "身代わりがプレイヤー。メロスが間に合ったかどうかは「あなたの結末」側で分かれる。メロスが間に合わなかった局の文案は ux-design 11.4 B（S-067、処刑は間接に）"
+   },
+   {
+    "id": "canon-reunion",
+    "order": 2,
+    "label": "原作どおりの大団円",
+    "when": [
+     {
+      "var": "var.melos.custody",
+      "op": "==",
+      "value": "returned"
+     },
+     {
+      "var": "var.king.disposition",
+      "op": "==",
+      "value": "reformed"
+     }
+    ],
+    "inferred": true
+   },
+   {
+    "id": "in-time-king-unchanged",
+    "order": 3,
+    "label": "間に合ったが、王は変わらなかった",
+    "when": [
+     {
+      "var": "var.melos.custody",
+      "op": "==",
+      "value": "returned"
+     },
+     {
+      "var": "var.king.disposition",
+      "op": "!=",
+      "value": "reformed"
+     }
+    ],
+    "inferred": true
+   },
+   {
+    "id": "king-changed-first",
+    "order": 4,
+    "label": "王が先に変わった",
+    "when": [
+     {
+      "var": "var.king.disposition",
+      "op": "==",
+      "value": "reformed"
+     },
+     {
+      "var": "var.melos.custody",
+      "op": "!=",
+      "value": "returned"
+     }
+    ],
+    "inferred": true,
+    "note": "S-034：王が期限前に改心し、メロスは遅れた。処刑は行われない。人質がどう放たれ、遅れが何を意味するかはこの局の出来事から生成（D-014）"
+   },
+   {
+    "id": "too-late",
+    "order": 5,
+    "label": "間に合わなかった",
+    "when": [
+     {
+      "var": "var.hostage.fate",
+      "op": "==",
+      "value": "executed"
+     }
+    ],
+    "inferred": true,
+    "note": "日没までにメロスが戻らず、王も変わらなかった。プレイヤー向けの文言では「処刑」「死」「殺」「最期」を使わず、陽が沈んだことで間接に伝える（S-067。文案は ux-design 11.4 A）"
+   }
+  ],
+  "signature": {
+   "vars": [
+    "var.hostage.who",
+    "var.hostage.fate",
+    "var.king.disposition",
+    "var.melos.custody",
+    "var.player.custody",
+    "var.wedding.status"
+   ],
+   "beats": [
+    "beat.04",
+    "beat.06",
+    "beat.11",
+    "beat.19",
+    "beat.20",
+    "beat.s2",
+    "beat.24",
+    "beat.26",
+    "beat.27"
+   ],
+   "inferred": true,
+   "note": "S-031 ⑤ と S-041 の「結局が実質的に違う」の定義：この変数の最終値と、この節拍が原作どおり起きたか（happened か否か）の組。世界結局の分類（world[]）が同じでも署名が違えば「違う結局」。1.4：beat.s2（セリヌンティウスが疑ったか、S-064）を追加"
+  }
+ },
+ "pacing": {
+  "talkTurnMinutes": 10,
+  "talkTurnMinutesAct4": 15,
+  "failedTurnMinutes": 0,
+  "sceneWalkMinutes": 0,
+  "examineMinutes": 0,
+  "situationalMinMinutes": 15,
+  "situationalMaxMinutes": 120
+ },
+ "pacingNote": "S-038（UX 4.3、〔待验证〕R1 後に調整）。第四幕でメロスと並んで走りながら話すのはプレイヤーの時間だけを使い、メロスの排定時間は動かない。止める動作（levers の delayed）だけがメロスに時間を加える",
+ "affordances": [
+  {
+   "id": "aff.walk-old-man-home",
+   "kind": "help",
+   "label": "家まで送る",
+   "place": "place.syracuse-square",
+   "act": "act.1",
+   "target": "char.old-man",
+   "minutes": 30,
+   "when": [
+    {
+     "var": "var.player.walkedOldManHome",
+     "op": "==",
+     "value": false
+    }
+   ],
+   "aid": "aid.old-man.listen",
+   "effects": [
+    {
+     "op": "set",
+     "var": "var.player.walkedOldManHome",
+     "value": true
+    },
+    {
+     "op": "relocate",
+     "character": "char.old-man",
+     "place": "place.syracuse-square",
+     "spot": "old-man-house"
+    }
+   ],
+   "inferred": true,
+   "note": "旅人の開局互助（S-048）をボタンでも果たせるように（UX 10-10）。老爺はゆっくり歩き、道々話す。叙事者は道中を一、二文で語るが、王が人を殺す訳（aid.old-man.tell）はここで代わりに語らない。終わると老爺は家の前（old-man-house）、プレイヤーはその隣。一局一度"
+  }
+ ],
+ "items": [
+  {
+   "id": "item.waterskin",
+   "name": "革の水袋",
+   "at": [],
+   "portable": true,
+   "inferred": true,
+   "note": "旅人と牧童が開局から持っている（UX 5.1：旅人「革の水袋」、牧童「水の革袋」は同じ物）。水のある所で満たせば、どこでも「水を渡す」ができる"
+  },
+  {
+   "id": "item.cloak",
+   "name": "旅の外套",
+   "at": [],
+   "portable": true,
+   "inferred": true,
+   "note": "旅人が開局から持っている（UX 5.1）"
+  },
+  {
+   "id": "item.dagger",
+   "name": "短剣",
+   "at": [],
+   "portable": true,
+   "inferred": true,
+   "note": "メロスの懐の短剣。王城で捕まった時に取り上げられる（beat.04）。プレイヤーは手に入れられない（UX 5.1）",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 10,
+     "quote": "調べられて、メロスの懐中からは短剣が出て来たので、騒ぎが大きくなってしまった。"
+    }
+   ]
+  },
+  {
+   "id": "item.provisions",
+   "name": "弁当",
+   "at": [],
+   "portable": true,
+   "inferred": true,
+   "note": "妹が兄の出発の時に持たせてくれる（aid.sister.provisions）。祝宴の御馳走の残りを包んだもの（推定）",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 1,
+     "quote": "メロスは、それゆえ、花嫁の衣裳やら祝宴の御馳走やらを買いに、はるばる市にやって来たのだ。"
+    }
+   ]
+  },
+  {
+   "id": "item.lantern",
+   "name": "灯",
+   "at": [],
+   "portable": true,
+   "inferred": true,
+   "note": "花婿が夜道のために貸してくれる（aid.groom.lend）"
+  }
+ ],
+ "setPieces": [
+  {
+   "id": "piece.gate-taken-again",
+   "on": {
+    "beat": "beat.04"
+   },
+   "played": [
+    "piece.gate-turned-away"
+   ],
+   "once": true,
+   "lines": [
+    {
+     "narration": "警吏が、あなたの前に槍を下ろした。"
+    },
+    {
+     "speaker": "char.guards",
+     "line": "二度は言わぬ。下がれ。"
+    },
+    {
+     "narration": "メロスは、王城の奥へ引かれていった。"
+    }
+   ],
+   "inferred": true,
+   "note": "第 1 节：抓梅洛斯那场，玩家之前已经被挡过一次，第 3 步的警吏改说第二句（UX 10-10）"
+  },
+  {
+   "id": "piece.gate-taken",
+   "on": {
+    "beat": "beat.04"
+   },
+   "once": true,
+   "lines": [
+    {
+     "narration": "警吏が、あなたの前に槍を下ろした。"
+    },
+    {
+     "speaker": "char.guards",
+     "line": "下がれ、旅の者。ここから先は、通さぬ。"
+    },
+    {
+     "narration": "メロスは、王城の奥へ引かれていった。"
+    }
+   ],
+   "inferred": true,
+   "note": "第 1 节：跟着梅洛斯走到王城门口。梅洛斯回头看一眼、不说话是演出，不是台词"
+  },
+  {
+   "id": "piece.gate-promise",
+   "on": {
+    "act": "go",
+    "target": "place.castle",
+    "refused": true
+   },
+   "after": [
+    "beat.05"
+   ],
+   "once": true,
+   "lines": [
+    {
+     "narration": "警吏が、あなたの前に槍を下ろした。"
+    },
+    {
+     "speaker": "char.guards",
+     "line": "下がれ。メロスとかいう羊飼いなら、王と約束をした。"
+    },
+    {
+     "speaker": "char.guards",
+     "line": "三日目の日没までに戻らねば、身代わりの石工セリヌンティウスが磔だ。"
+    }
+   ],
+   "learns": [
+    {
+     "character": "player",
+     "fact": "fact.promise"
+    }
+   ],
+   "inferred": true,
+   "note": "第 1 节「约定以后」：只说约定本身（日限、晚了人质死、人质是谁），不提深夜召人质、出发、王的耳语（S-077 ⑪）"
+  },
+  {
+   "id": "piece.gate-again",
+   "on": {
+    "act": "go",
+    "target": "place.castle",
+    "refused": true
+   },
+   "played": [
+    "piece.gate-taken",
+    "piece.gate-turned-away",
+    "piece.gate-promise"
+   ],
+   "notPlayed": [
+    "piece.gate-taken-again"
+   ],
+   "once": true,
+   "lines": [
+    {
+     "speaker": "char.guards",
+     "line": "二度は言わぬ。下がれ。"
+    }
+   ],
+   "inferred": true,
+   "note": "第 1 节第 6 步：已经被挡过一次，再走上去"
+  },
+  {
+   "id": "piece.gate-turned-away",
+   "on": {
+    "act": "go",
+    "target": "place.castle",
+    "refused": true
+   },
+   "before": [
+    "beat.04"
+   ],
+   "once": true,
+   "lines": [
+    {
+     "narration": "警吏が、あなたの前に槍を下ろした。"
+    },
+    {
+     "speaker": "char.guards",
+     "line": "下がれ、旅の者。ここから先は、通さぬ。"
+    }
+   ],
+   "inferred": true,
+   "note": "梅洛斯被抓之前自己走到王城门口：同一个警吏、同两句（UX 10-10 确认）"
+  },
+  {
+   "id": "piece.workshop-door-closed",
+   "on": {
+    "act": "move",
+    "target": "place.stonemason-workshop"
+   },
+   "before": [
+    "beat.06"
+   ],
+   "once": true,
+   "lines": [
+    {
+     "narration": "戸は閉ざされている。中から、石を刻む音が聞こえる。戸の隙間から、灯がもれている。"
+    }
+   ],
+   "inferred": true,
+   "note": "第 4 节：23:30（beat.06，セリヌンティウス被召进王城）以前走进工房的院子"
+  },
+  {
+   "id": "piece.workshop-dark",
+   "on": {
+    "act": "move",
+    "target": "place.stonemason-workshop"
+   },
+   "after": [
+    "beat.06"
+   ],
+   "notPlayed": [
+    "piece.workshop-knock-dark"
+   ],
+   "once": true,
+   "lines": [
+    {
+     "narration": "工房の灯は、いつのまにか消えていた。"
+    }
+   ],
+   "inferred": true,
+   "note": "第 4 节：23:30 以后"
+  },
+  {
+   "id": "piece.workshop-knock",
+   "on": {
+    "act": "examine",
+    "target": "obj.workshop-door"
+   },
+   "before": [
+    "beat.06"
+   ],
+   "once": true,
+   "lines": [
+    {
+     "speaker": "char.selinuntius",
+     "line": "もう遅い。用があるなら、明日にしてくれ。"
+    },
+    {
+     "narration": "それきり、戸の向こうからは、石を刻む音しか聞こえなかった。"
+    }
+   ],
+   "inferred": true,
+   "note": "第 4 节：敲门、喊人、想进去。只有声音，人不出来（S-077 ⑩）"
+  },
+  {
+   "id": "piece.workshop-knock-dark",
+   "on": {
+    "act": "examine",
+    "target": "obj.workshop-door"
+   },
+   "after": [
+    "beat.06"
+   ],
+   "notPlayed": [
+    "piece.workshop-dark"
+   ],
+   "once": true,
+   "lines": [
+    {
+     "narration": "工房の灯は、いつのまにか消えていた。"
+    }
+   ],
+   "inferred": true,
+   "note": "第 4 节：23:30 以后敲门（UX 10-10 确认）"
+  },
+  {
+   "id": "piece.crowd-makes-way",
+   "on": {
+    "beat": "beat.24"
+   },
+   "knows": [
+    {
+     "character": "char.crowd",
+     "fact": "fact.promise"
+    }
+   ],
+   "once": true,
+   "lines": [
+    {
+     "speaker": "char.crowd",
+     "line": "メロスだ！　メロスが帰って来た！"
+    },
+    {
+     "narration": "人々が振り返り、道をあけた。"
+    }
+   ],
+   "inferred": true,
+   "note": "第 2 节：玩家把约定告诉了城里的人（learn 群众 fact.promise），梅洛斯赶到时群众里一个女人认出他"
+  }
+ ],
+ "objects": [
+  {
+   "id": "obj.workshop-door",
+   "place": "place.stonemason-workshop",
+   "label": "戸を叩く",
+   "inferred": true,
+   "note": "第 4 节：院子里关着的屋门，里面传出凿石头的声音"
+  }
+ ]
+}
