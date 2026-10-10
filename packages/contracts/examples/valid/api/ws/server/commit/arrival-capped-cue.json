@@ -1,0 +1,29 @@
+{
+  "type": "commit",
+  "fromSeq": 120,
+  "seq": 121,
+  "events": [],
+  "patch": {
+    "forecast": {
+      "melosEtaT": 5310,
+      "beforeDeadline": true
+    }
+  },
+  "memories": [
+    {
+      "character": "char.king",
+      "change": "deleted",
+      "memoryId": "mem_01K7AZ00000000000000000003",
+      "relationLabel": "様子を見ている",
+      "relationLevel": 3
+    }
+  ],
+  "promises": [],
+  "narration": [],
+  "cue": {
+    "kind": "arrival_capped",
+    "speaker": "char.melos",
+    "text": "……これなら、間に合う。"
+  },
+  "reveal": null
+}

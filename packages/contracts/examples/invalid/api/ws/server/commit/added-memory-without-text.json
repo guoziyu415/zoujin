@@ -1,0 +1,129 @@
+{
+  "type": "commit",
+  "fromSeq": 43,
+  "seq": 45,
+  "turnId": "turn_01K7AZ00000000000000000001",
+  "events": [
+    {
+      "eventId": "ev_01K7AZ00000000000000000044",
+      "seq": 44,
+      "turnId": "turn_01K7AZ00000000000000000001",
+      "t": 1290,
+      "dt": 10,
+      "tLabel": "約束の日・夜",
+      "type": "action",
+      "actor": "player",
+      "forPlayer": false,
+      "place": "place.castle",
+      "summary": "旅人がメロスの身元を保証した",
+      "causes": ["ev_01K7AZ00000000000000000041"],
+      "visibleEffects": [
+        {
+          "kind": "beat",
+          "beat": "beat.05",
+          "change": "altered",
+          "label": "王は旅人を覚えた"
+        }
+      ],
+      "promise": null,
+      "keyMoment": true,
+      "supersedes": null
+    }
+  ],
+  "patch": {
+    "clock": {
+      "t": 1300,
+      "tLabel": "約束の日・夜"
+    },
+    "deadline": {
+      "shown": true,
+      "line": "期限　三日目の日没／遅れれば、身代わりが死ぬ"
+    },
+    "forecast": {
+      "melosEtaT": 5460,
+      "beforeDeadline": true
+    },
+    "characters": [
+      {
+        "id": "char.melos",
+        "place": "place.castle",
+        "spot": "throne-front",
+        "activity": "talk"
+      }
+    ],
+    "places": [
+      {
+        "id": "place.stonemason-workshop",
+        "enabled": true
+      }
+    ],
+    "actions": {
+      "add": [
+        {
+          "actionId": "act_examine_castle-gate",
+          "kind": "examine",
+          "target": "char.melos",
+          "label": "様子を見る",
+          "estimatedMinutes": 15,
+          "melos": null,
+          "melosMinutes": null,
+          "melosInTime": null,
+          "enabled": true
+        }
+      ],
+      "remove": ["act_help_old-man_cart"]
+    },
+    "player": {
+      "place": "place.castle"
+    }
+  },
+  "memories": [
+    {
+      "character": "char.melos",
+      "change": "added",
+      "memoryId": "mem_01K7AZ00000000000000000002",
+      "relationLabel": "気を許している",
+      "relationLevel": 4,
+      "kind": "help"
+    }
+  ],
+  "promises": [
+    {
+      "promiseId": "prm_01K7AZ00000000000000000001",
+      "character": "char.selinuntius",
+      "text": "工房を守る",
+      "direction": "playerToCharacter",
+      "status": "open"
+    }
+  ],
+  "narration": ["メロスは、王城の方へ駆けていった。"],
+  "cue": null,
+  "reveal": {
+    "revealId": "rev_01K7AZ00000000000000000001",
+    "kind": "beat",
+    "line": "メロスは、日没に間に合わないかもしれない。",
+    "chain": [
+      {
+        "eventId": "ev_01K7AZ00000000000000000012",
+        "seq": 12,
+        "tLabel": "約束の日・夕方",
+        "summary": "旅人が老爺に王のことを尋ねた",
+        "actor": "player"
+      },
+      {
+        "eventId": "ev_01K7AZ00000000000000000030",
+        "seq": 30,
+        "tLabel": "約束の日・夜",
+        "summary": "老爺が旅人をメロスに引き合わせた",
+        "actor": "char.old-man",
+        "forPlayer": true
+      },
+      {
+        "beatId": "beat.05",
+        "tLabel": "約束の日・夜",
+        "summary": "王はメロスの願いを聞き入れた",
+        "change": "altered"
+      }
+    ]
+  }
+}

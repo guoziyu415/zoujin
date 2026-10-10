@@ -1,0 +1,5 @@
+{
+  "type": "hello",
+  "lastSeq": 0,
+  "clientVersion": "web-0.1.0"
+}

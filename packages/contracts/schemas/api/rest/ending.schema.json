@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api/rest/ending.schema.json",
+  "title": "GET /v1/playthroughs/{id}/ending",
+  "description": "结局（2.8）",
+  "x-endpoint": {
+    "method": "GET",
+    "path": "/v1/playthroughs/{id}/ending",
+    "params": "../common.schema.json#/$defs/PlaythroughPathParams",
+    "responses": {
+      "200": "#/$defs/EndingView",
+      "202": "#/$defs/EndingPending"
+    }
+  },
+  "$defs": {
+    "EndingPending": {
+      "description": "还没生成（202）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "etaSeconds"],
+      "properties": {
+        "status": {
+          "const": "pending"
+        },
+        "etaSeconds": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "title": "EndingPending"
+    },
+    "EndingWorldView": {
+      "description": "结局的世界层（2.8）。contrast 和数据契约一样可选",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcomeId", "baseline", "title", "epilogue"],
+      "properties": {
+        "outcomeId": {
+          "description": "variant?.id ?? outcome",
+          "type": "string",
+          "minLength": 1
+        },
+        "baseline": {
+          "description": "true = 5 类底线结局之一（没有 variant）",
+          "type": "boolean"
+        },
+        "title": {
+          "description": "variant?.title ?? title",
+          "$ref": "../../data/ending.schema.json#/$defs/Ending/properties/world/properties/title"
+        },
+        "epilogue": {
+          "$ref": "../../data/ending.schema.json#/$defs/Ending/properties/player/properties/epilogue"
+        },
+        "contrast": {
+          "$ref": "../../data/ending.schema.json#/$defs/Ending/properties/world/properties/contrast"
+        }
+      },
+      "title": "EndingWorldView"
+    },
+    "EndingYouView": {
+      "description": "结局的「你」层（2.8）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "fate", "didForYou", "youDid"],
+      "properties": {
+        "title": {
+          "$ref": "../../data/ending.schema.json#/$defs/Ending/properties/player/properties/title/properties/text"
+        },
+        "fate": {
+          "$ref": "../../data/ending.schema.json#/$defs/Ending/properties/player/properties/fate/properties/label"
+        },
+        "didForYou": {
+          "$ref": "../../data/ending.schema.json#/$defs/Ending/properties/player/properties/didForYou"
+        },
+        "youDid": {
+          "$ref": "../../data/ending.schema.json#/$defs/Ending/properties/player/properties/youDid"
+        }
+      },
+      "title": "EndingYouView"
+    },
+    "EndingCardView": {
+      "description": "结局卡（2.8）：Ending.card 加 fallbackImageUrl",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "subtitle",
+        "characterLines",
+        "contrast",
+        "fallbackImageUrl"
+      ],
+      "properties": {
+        "title": {
+          "$ref": "../../data/ending.schema.json#/$defs/Ending/properties/card/properties/title"
+        },
+        "subtitle": {
+          "$ref": "../../data/ending.schema.json#/$defs/Ending/properties/card/properties/subtitle"
+        },
+        "characterLines": {
+          "$ref": "../../data/ending.schema.json#/$defs/Ending/properties/card/properties/characterLines"
+        },
+        "contrast": {
+          "$ref": "../../data/ending.schema.json#/$defs/Ending/properties/card/properties/contrast"
+        },
+        "fallbackImageUrl": {
+          "description": "截帧失败时用的预画插画（每类底线结局一张）",
+          "$ref": "../common.schema.json#/$defs/AssetPath"
+        }
+      },
+      "title": "EndingCardView"
+    },
+    "EndingView": {
+      "description": "结局（2.8）：world → you → characters 三层",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["endingId", "world", "you", "characters"],
+      "properties": {
+        "endingId": {
+          "$ref": "../../data/ending.schema.json#/$defs/Ending/properties/endingId"
+        },
+        "world": {
+          "$ref": "#/$defs/EndingWorldView"
+        },
+        "you": {
+          "$ref": "#/$defs/EndingYouView"
+        },
+        "characters": {
+          "$ref": "../../data/ending.schema.json#/$defs/Ending/properties/characters"
+        },
+        "card": {
+          "description": "TODO(C-1 评审)：数据契约里 card 可选（校验两次不过时不生成结局卡），文档的例子总有；这里可选",
+          "$ref": "#/$defs/EndingCardView"
+        }
+      },
+      "title": "EndingView"
+    }
+  }
+}

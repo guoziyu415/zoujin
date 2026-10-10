@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "invalid_invite",
+    "message": "招待コードが違います",
+    "retryable": false,
+    "retryAfterSeconds": null
+  }
+}

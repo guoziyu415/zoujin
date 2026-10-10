@@ -1,9 +1,9 @@
-# 前后端接口约定（api-contract.md）v0.3.9
+# 前后端接口约定（api-contract.md）v1.0
 
-负责人：后端 · 状态：**v0.3**：吸收了前端评审 17 条（`frontend/reviews/backend-v0.1.md` 和 frontend-design 第 14 节 1〜17）、数据评审 16 条（`data/reviews/backend-v0.1.md`）、ux-design 18.2 的接口要求，以及 decisions S-022〜S-053、D-012〜D-015。v0.3.2 和数据契约 v1.2 对齐。逐条对照见第 9 节。
+负责人：后端 · 状态：**v1.0，冻结**（C-1）：之后只做加法（第 0 节「版本」），每种消息和响应的 JSON Schema 在 `packages/contracts/schemas/api/`。v0.3 吸收了前端评审 17 条（`frontend/reviews/backend-v0.1.md` 和 frontend-design 第 14 节 1〜17）、数据评审 16 条（`data/reviews/backend-v0.1.md`）、ux-design 18.2 的接口要求，以及 decisions S-022〜S-053、D-012〜D-015。v0.3.2 和数据契约 v1.2 对齐。逐条对照见第 9 节。
 数据字段以 `data/contracts.md` 为准（v1.5；标「契约 1.1」「契约 1.2」「契约 1.4」的字段是这几个小版本加的；1.3 加的随身物品不进接口，物品只出现在 `give` 类按钮上），本文只定义传输形状。字段名 camelCase；WebSocket 消息类型 snake_case。
 相关：`backend/backend-design.md` v1.0.9（为什么这么设计）· `frontend/frontend-design.md` · `ux/ux-design.md`
-最近更新：2026-10-10
+最近更新：2026-10-10（v1.0）
 
 ---
 
@@ -643,7 +643,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 
 | 项 | 后端 | 前端 |
 |---|---|---|
-| 松手到出声（S-017） | 收到 `activity_end` → 发出第一个音频分片：中位数 ≤ 1.2〜1.3 s，在 `turn_complete.metrics` 回报；S-1 实测后定稿 | 前端两段合计 ≤ 170 ms（S-014）；300 ms 内出等待演出；上报 `clientReleaseToAudibleMs`（带 `turnId`） |
+| 松手到出声（S-017） | 服务端：收到 `activity_end` → 发出第一个音频分片，中位 ≤ 1.2 s、p95 ≤ 1.6 s，在 `turn_complete.metrics` 回报。S-1b 4G 实测服务端中位 0.92 s（`spikes/backend/results-s1.md` 8.5）；M2 带完整人设后复核（S-073 ①） | 前端两段合计 ≤ 170 ms（S-014）；300 ms 内出等待演出；上报 `clientReleaseToAudibleMs`（带 `turnId`） |
 | 打断（S-014） | 收到 `activity_start` 后不再转发旧轮次分片，同时让 Live 停止生成 | 本地停播 ≤ 0.2 s |
 | 切换人物、重建会话 | 预热命中时 `session_ready` 立即返回；未命中、重建 ≤ 1 s〔S-1 的 `session_setup_ms`〕 | `session_preparing` 期间演出；点人物时就发 `focus` |
 | 世界反应 | `turn_complete` 后 3〜5 s 内 `turn_settled`（叙事者判定） | 轻反馈只在 `commit` 后出现 |
@@ -656,7 +656,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 ## 7. 测试支持
 
 - **本地 mock 服务**：`uv run zoujin-mock` 一条命令启动（也提供 `docker compose up`）；同样的 REST 和 WebSocket 消息，回放录制好的会话并保留真实的时间间隔，覆盖：一整轮对话、闲聊轮、打断、作废和识别改正、意图确认、人物走过来、幕末自由说、`goaway`、`4009`、出戏卡、结局。前端可以离线开发和做契约测试（前端建议第 12 条）。
-- **JSON Schema**：3.2、3.3 的每种消息和第 2 节的每个响应都有 Schema，放在代码仓库 `contracts/api/`，前端直接生成 TypeScript 类型；CI 用它校验 mock 和真实服务。
+- **JSON Schema**：3.2、3.3 的每种消息和第 2 节的每个响应都有 Schema，放在代码仓库 `packages/contracts/schemas/api/`，前端直接生成 TypeScript 类型；CI 用它校验 mock 和真实服务。
 - **非生产环境**：`POST /v1/test/playthroughs/{id}/advance`（快进故事时间）；`fakeVoice` 模式（`hello { debug: true, fakeVoice: true }`：服务端用录好的音频回答，不调用 Live），联调和前端 CI 的端到端测试不花钱；`event_rejected` 调试消息。生产环境没有这些。
 - **评测入口** `backend.eval_api`（给数据工程的评测运行器；Python 包内调用，不开 HTTP，生产环境没有）。用例格式以 `data/evals/README.md` 为准，这里只列后端提供什么：
   - `setup`：`role`、`place`、`budgetTier`（`normal` / `saving`，数据评审第 14 条）；起点三选一：`checkpoint`（`"<情景 ID>@<节拍 ID>"` = 推演到该节拍刚发生之后；`"<情景 ID>@t=<分钟>"` = 推演到该时刻，含那一刻的期限规则）、`scenario`（只推演，不调用模型）、`persona` + `seed`（跑一整局模拟局）。`events`：起点之后追加的事件（可带 `memory` 种一条记忆），直接写入、不经叙事者，trace 里标成评测布置；只给了 `effects`（和 `note`）的，写入时补成完整的事件：`actor: "system"`、`type: "action"`、`t` = 起点时刻、`dt: 0`、`place` = 玩家所在地、`summary` = `note`、`check.status: "passed"`、`check.checker: "eval-setup"`。`sc.canon` 指原著路径（不在 `scenarios.json` 里）。
@@ -683,7 +683,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 
 | 问题 | 等谁 |
 |---|---|
-| 群像插话 `npc_line { character, text, audioUrl }`（P1） | P1 时定 |
+| 群像插话 `npc_line { character, text, audioUrl }`（P1） | 留到 P1，不在 v1.0；到时按第 0 节只做加法 |
 
 ---
 
@@ -765,6 +765,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 
 ## 修订记录
 
+- v1.0（2026-10-10）：冻结（C-1）。每种消息和响应写成 JSON Schema（`packages/contracts/schemas/api/`），生成前后端类型；第 6 节松手到出声定为服务端中位 ≤ 1.2 s、p95 ≤ 1.6 s；第 7 节写 Schema 的位置；第 8 节 `npc_line` 留到 P1。传输形状不变。
 - v0.3.9（2026-10-10）：第 7 节评测入口加 `check`（S-2：候选事件直接进第 3、4 步，不提交）；写明 `setup.events` 只给 `effects` 时怎么补成完整事件，`sc.canon` 是原著路径。只改评测入口（Python 包内），不改传输形状。
 - v0.3.8（2026-10-07）：按 UX 对核对 U-2、U-3 的决定改文字，不改字段：`too_late` 那句改为叙事一行（地の文），不播声音，manifest 不加 `cues.too_late`；`voided` 的约定記憶帳不显示（前端过滤），「その頃」和结局里也不提（结局见 backend-design 2.9）。
 - v0.3.7（2026-10-07）：按接口一致性核对（`consistency/contract-check-2026-10-07.md` B-1〜B-5）改文字，不改字段，按 v0.3.6 写的代码不用动：按钮例子改用半角数字（「10分早まる」「30分遅れる」「1時間ほど」「1時間遅れる」，ux-design 4.3）；幕末例子 `exit.1.vigil` 的 `tLabel` 改为「一日目・深夜」（t=1440）；2.5 写明节拍 `canon` = 契约的 `happened`；`too_late` 那句现在只出字幕、不播声音，等 UX 定要不要每个人物各录一句（U-3）；文件头的设计版本和日期。

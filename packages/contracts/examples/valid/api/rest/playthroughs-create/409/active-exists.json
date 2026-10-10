@@ -1,0 +1,16 @@
+{
+  "error": {
+    "code": "active_playthrough_exists",
+    "message": "進行中の物語があります",
+    "retryable": false,
+    "retryAfterSeconds": null
+  },
+  "activePlaythrough": {
+    "playthroughId": "pt_01K7AZ00000000000000000001",
+    "roleId": "role.traveler",
+    "roleName": "旅人",
+    "actId": "act.2",
+    "tLabel": "約束の日・夜",
+    "updatedAt": "2026-10-06T12:00:00Z"
+  }
+}

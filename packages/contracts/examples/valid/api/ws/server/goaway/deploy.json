@@ -1,0 +1,5 @@
+{
+  "type": "goaway",
+  "reason": "deploy",
+  "reconnectAfterMs": 2000
+}

@@ -1,0 +1,9 @@
+{
+  "common": {
+    "deviceClass": "a",
+    "os": "b",
+    "browser": "c",
+    "appVersion": "d"
+  },
+  "events": []
+}

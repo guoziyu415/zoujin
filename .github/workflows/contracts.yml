@@ -1,0 +1,56 @@
+# 契约的生成物和 Schema 一致（C-1）：重新跑 `uv run contracts-gen`，仓库里的生成物不能有差异。
+# 生成要 Python（datamodel-code-generator）和 Node（json-schema-to-typescript）两边，所以单独一个 workflow。
+# Schema 的校验、例子和契约测试在 python.yml 的 pytest 里，TypeScript 类型检查在 node.yml 的 tsc 里。
+name: contracts
+
+on:
+  pull_request:
+    paths:
+      - "packages/contracts/**"
+      - "uv.lock"
+      - "pnpm-lock.yaml"
+      - "pyproject.toml"
+      - ".nvmrc"
+      - ".python-version"
+      - ".github/workflows/contracts.yml"
+  push:
+    branches: [main]
+    paths:
+      - "packages/contracts/**"
+      - "uv.lock"
+      - "pnpm-lock.yaml"
+      - "pyproject.toml"
+      - ".nvmrc"
+      - ".python-version"
+      - ".github/workflows/contracts.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generated:
+    name: generated types are up to date
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --locked --all-packages
+      - run: uv run contracts-gen
+      - name: 生成物和仓库里的一样
+        run: |
+          git status --porcelain
+          git diff --exit-code
+          test -z "$(git status --porcelain)"

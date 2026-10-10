@@ -1,0 +1,429 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api/ws/client.schema.json",
+  "title": "ClientMessage",
+  "description": "WebSocket 客户端 → 服务端的 JSON 消息（api-contract 3.2），按 type 区分",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/HelloMessage"
+    },
+    {
+      "$ref": "#/$defs/NearMessage"
+    },
+    {
+      "$ref": "#/$defs/FarMessage"
+    },
+    {
+      "$ref": "#/$defs/FocusMessage"
+    },
+    {
+      "$ref": "#/$defs/UnfocusMessage"
+    },
+    {
+      "$ref": "#/$defs/ActivityStartMessage"
+    },
+    {
+      "$ref": "#/$defs/ActivityEndMessage"
+    },
+    {
+      "$ref": "#/$defs/TextMessage"
+    },
+    {
+      "$ref": "#/$defs/TurnRetractMessage"
+    },
+    {
+      "$ref": "#/$defs/ActionMessage"
+    },
+    {
+      "$ref": "#/$defs/ConfirmAnswerMessage"
+    },
+    {
+      "$ref": "#/$defs/ApproachArrivedMessage"
+    },
+    {
+      "$ref": "#/$defs/ApproachDismissMessage"
+    },
+    {
+      "$ref": "#/$defs/ActChooseMessage"
+    },
+    {
+      "$ref": "#/$defs/ActProposeMessage"
+    },
+    {
+      "$ref": "#/$defs/SafetyResumeMessage"
+    },
+    {
+      "$ref": "#/$defs/PingMessage"
+    }
+  ],
+  "$defs": {
+    "HelloMessage": {
+      "description": "连接后第一条；服务端补发 lastSeq 之后的 commit",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "lastSeq", "clientVersion"],
+      "properties": {
+        "type": {
+          "const": "hello"
+        },
+        "lastSeq": {
+          "$ref": "../common.schema.json#/$defs/LastSeq"
+        },
+        "clientVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "debug": {
+          "description": "非生产：打开 event_rejected 调试消息",
+          "type": "boolean"
+        },
+        "fakeVoice": {
+          "description": "非生产：服务端用录好的音频回答，不调用 Live（第 7 节）",
+          "type": "boolean"
+        }
+      },
+      "title": "HelloMessage"
+    },
+    "NearMessage": {
+      "description": "玩家进入某个可对话人物 8 m 内：服务端预热会话",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "character"],
+      "properties": {
+        "type": {
+          "const": "near"
+        },
+        "character": {
+          "$ref": "../../data/common.schema.json#/$defs/CharacterId"
+        }
+      },
+      "title": "NearMessage"
+    },
+    "FarMessage": {
+      "description": "离开 12 m",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "character"],
+      "properties": {
+        "type": {
+          "const": "far"
+        },
+        "character": {
+          "$ref": "../../data/common.schema.json#/$defs/CharacterId"
+        }
+      },
+      "title": "FarMessage"
+    },
+    "FocusMessage": {
+      "description": "玩家点了这个人物",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "character"],
+      "properties": {
+        "type": {
+          "const": "focus"
+        },
+        "character": {
+          "$ref": "../../data/common.schema.json#/$defs/CharacterId"
+        }
+      },
+      "title": "FocusMessage"
+    },
+    "UnfocusMessage": {
+      "description": "离开对话",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "reason"],
+      "properties": {
+        "type": {
+          "const": "unfocus"
+        },
+        "reason": {
+          "type": "string",
+          "enum": ["walk_away", "silence", "menu", "dismiss"]
+        }
+      },
+      "title": "UnfocusMessage"
+    },
+    "ActivityStartMessage": {
+      "description": "按下说话；人物正在说话时也是打断",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "turnId", "turnSeq"],
+      "properties": {
+        "type": {
+          "const": "activity_start"
+        },
+        "turnId": {
+          "$ref": "../../data/common.schema.json#/$defs/TurnId"
+        },
+        "turnSeq": {
+          "$ref": "../common.schema.json#/$defs/ClientTurnSeq"
+        },
+        "purpose": {
+          "description": "幕末说出打算（3.11）时给，其他情况省略",
+          "type": "string",
+          "enum": ["act_plan"]
+        }
+      },
+      "title": "ActivityStartMessage"
+    },
+    "ActivityEndMessage": {
+      "description": "松开",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "turnId", "turnSeq"],
+      "properties": {
+        "type": {
+          "const": "activity_end"
+        },
+        "turnId": {
+          "$ref": "../../data/common.schema.json#/$defs/TurnId"
+        },
+        "turnSeq": {
+          "$ref": "../common.schema.json#/$defs/ClientTurnSeq"
+        }
+      },
+      "title": "ActivityEndMessage"
+    },
+    "TextMessage": {
+      "description": "文字输入，代替一轮语音",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "turnId", "turnSeq", "text", "via"],
+      "properties": {
+        "type": {
+          "const": "text"
+        },
+        "turnId": {
+          "$ref": "../../data/common.schema.json#/$defs/TurnId"
+        },
+        "turnSeq": {
+          "$ref": "../common.schema.json#/$defs/ClientTurnSeq"
+        },
+        "text": {
+          "$ref": "../common.schema.json#/$defs/Text200"
+        },
+        "via": {
+          "type": "string",
+          "enum": ["typed", "chip", "correction"]
+        },
+        "replaces": {
+          "description": "识别改正时被改正的那一轮（3.6）；只在 via = correction 时给",
+          "$ref": "../../data/common.schema.json#/$defs/TurnId"
+        }
+      },
+      "if": {
+        "properties": {
+          "via": {
+            "const": "correction"
+          }
+        }
+      },
+      "then": {
+        "required": ["replaces"]
+      },
+      "else": {
+        "not": {
+          "required": ["replaces"]
+        }
+      },
+      "title": "TextMessage"
+    },
+    "TurnRetractMessage": {
+      "description": "作废一轮（3.6）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "turnId"],
+      "properties": {
+        "type": {
+          "const": "turn_retract"
+        },
+        "turnId": {
+          "$ref": "../../data/common.schema.json#/$defs/TurnId"
+        }
+      },
+      "title": "TurnRetractMessage"
+    },
+    "ActionMessage": {
+      "description": "身体动作，先判后演（3.8）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "clientMsgId", "kind", "target"],
+      "properties": {
+        "type": {
+          "const": "action"
+        },
+        "clientMsgId": {
+          "$ref": "../common.schema.json#/$defs/ClientMsgId"
+        },
+        "actionId": {
+          "description": "快照 actions 里的动作带它；move 和「調べる」不带",
+          "$ref": "../common.schema.json#/$defs/ActionId"
+        },
+        "kind": {
+          "description": "3.8 的清单：世界模型 Affordance.kind 加上 move",
+          "type": "string",
+          "enum": [
+            "examine",
+            "give",
+            "follow",
+            "block",
+            "help",
+            "wait",
+            "go",
+            "shortcut",
+            "run-together",
+            "hasten",
+            "move"
+          ]
+        },
+        "target": {
+          "description": "对象：人物 ID、地点 ID（move）或 interactable 的 ID",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "params": {
+          "description": "give 时 params.item 是交出的物品",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "item": {
+              "$ref": "../../data/common.schema.json#/$defs/ItemId"
+            }
+          }
+        }
+      },
+      "title": "ActionMessage"
+    },
+    "ConfirmAnswerMessage": {
+      "description": "回答意图确认（3.9）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "draftId", "optionId"],
+      "properties": {
+        "type": {
+          "const": "confirm_answer"
+        },
+        "draftId": {
+          "$ref": "../common.schema.json#/$defs/DraftId"
+        },
+        "optionId": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "title": "ConfirmAnswerMessage"
+    },
+    "ApproachArrivedMessage": {
+      "description": "走过来的人物到了 2.5 m 内（3.10）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "character"],
+      "properties": {
+        "type": {
+          "const": "approach_arrived"
+        },
+        "character": {
+          "$ref": "../../data/common.schema.json#/$defs/CharacterId"
+        }
+      },
+      "title": "ApproachArrivedMessage"
+    },
+    "ApproachDismissMessage": {
+      "description": "「いまは、いい」、走开，或等了 20 秒（3.10）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "character", "reason"],
+      "properties": {
+        "type": {
+          "const": "approach_dismiss"
+        },
+        "character": {
+          "$ref": "../../data/common.schema.json#/$defs/CharacterId"
+        },
+        "reason": {
+          "type": "string",
+          "enum": ["dismissed", "walked_away", "timeout"]
+        }
+      },
+      "title": "ApproachDismissMessage"
+    },
+    "ActChooseMessage": {
+      "description": "幕末选给定的去处（3.11）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "clientMsgId", "optionId"],
+      "properties": {
+        "type": {
+          "const": "act_choose"
+        },
+        "clientMsgId": {
+          "$ref": "../common.schema.json#/$defs/ClientMsgId"
+        },
+        "optionId": {
+          "description": "act_ended 的去处，或 act_plan_result 的替代去处",
+          "anyOf": [
+            {
+              "$ref": "../../data/common.schema.json#/$defs/ExitId"
+            },
+            {
+              "$ref": "../common.schema.json#/$defs/PlanOptionId"
+            }
+          ]
+        },
+        "enRouteChoice": {
+          "description": "过场二选一选的那一项的 index；不带 = 选最后一个（照原作）",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "title": "ActChooseMessage"
+    },
+    "ActProposeMessage": {
+      "description": "幕末用文字说出自己的打算（3.11）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "clientMsgId", "text"],
+      "properties": {
+        "type": {
+          "const": "act_propose"
+        },
+        "clientMsgId": {
+          "$ref": "../common.schema.json#/$defs/ClientMsgId"
+        },
+        "text": {
+          "$ref": "../common.schema.json#/$defs/Text200"
+        }
+      },
+      "title": "ActProposeMessage"
+    },
+    "SafetyResumeMessage": {
+      "description": "玩家在出戏卡上选了「物語に戻る」（3.12）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "safety_resume"
+        }
+      },
+      "title": "SafetyResumeMessage"
+    },
+    "PingMessage": {
+      "description": "每 20 秒一次",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "ping"
+        }
+      },
+      "title": "PingMessage"
+    }
+  }
+}

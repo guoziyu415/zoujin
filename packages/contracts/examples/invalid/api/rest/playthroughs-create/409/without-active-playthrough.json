@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "active_playthrough_exists",
+    "message": "今日はここまでです",
+    "retryable": false,
+    "retryAfterSeconds": null
+  }
+}

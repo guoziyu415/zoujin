@@ -28,6 +28,11 @@ extend-exclude = ["spikes", "packages/worldsim/reference", "evals", "assets/pipe
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP"]
 
+[tool.ruff.lint.per-file-ignores]
+# 生成的 pydantic 模型（C-1）：Schema 里的说明和长联合类型写在一行里；
+# 只有值类型的字典（additionalProperties）生成器写成 TypeAliasType(...)，和 `type` 语句等价。
+"packages/contracts/src/zoujin_contracts/generated/*" = ["E501", "UP040"]
+
 [tool.mypy]
 python_version = "3.13"
 strict = true

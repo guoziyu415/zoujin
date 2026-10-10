@@ -1,0 +1,49 @@
+{
+  "events": [
+    {
+      "eventId": "ev_01K7AZ00000000000000000046",
+      "seq": 46,
+      "turnId": "turn_01K7AZ00000000000000000001",
+      "t": 1290,
+      "dt": 10,
+      "tLabel": "約束の日・夜",
+      "type": "correction",
+      "actor": "narrator",
+      "forPlayer": false,
+      "place": "place.castle",
+      "summary": "衛兵は旅人を城門で止めていた",
+      "causes": ["ev_01K7AZ00000000000000000044"],
+      "visibleEffects": [
+        {
+          "kind": "var",
+          "var": "var.castle.gate",
+          "label": "城門が閉ざされた"
+        }
+      ],
+      "promise": null,
+      "keyMoment": false,
+      "supersedes": "ev_01K7AZ00000000000000000044"
+    },
+    {
+      "eventId": "ev_01K7AZ00000000000000000047",
+      "seq": 47,
+      "t": 1320,
+      "dt": 0,
+      "tLabel": "約束の日・夜",
+      "type": "action",
+      "actor": "char.selinuntius",
+      "forPlayer": true,
+      "place": "place.castle",
+      "summary": "セリヌンティウスが旅人の願いを引き受けた",
+      "causes": ["ev_01K7AZ00000000000000000041"],
+      "visibleEffects": [],
+      "promise": {
+        "promiseId": "prm_01K7AZ00000000000000000002",
+        "change": "made"
+      },
+      "keyMoment": false,
+      "supersedes": null
+    }
+  ],
+  "lastSeq": 47
+}

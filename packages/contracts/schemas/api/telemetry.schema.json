@@ -1,0 +1,1376 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api/telemetry.schema.json",
+  "title": "api/telemetry",
+  "description": "前端遥测（data-design 9.3，数据工程定字段）",
+  "$defs": {
+    "QualityLevel": {
+      "description": "画质级（D-019）",
+      "type": "string",
+      "enum": ["L0", "L1", "L2", "L3"],
+      "title": "QualityLevel"
+    },
+    "InputMode": {
+      "type": "string",
+      "enum": ["voice", "text"],
+      "title": "InputMode"
+    },
+    "TelemetryCommon": {
+      "description": "公共属性（data-design 9.3），只有粗粒度的设备信息。TODO(C-1 评审)：文档没说公共属性每条带还是一批带一次；这里一批带一次",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deviceClass", "os", "browser", "appVersion"],
+      "properties": {
+        "deviceClass": {
+          "description": "屏幕尺寸类：逻辑像素加 DPR，如 ios-390x844@3",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "os": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "browser": {
+          "description": "含 App 内浏览器名",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "appVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "title": "TelemetryCommon"
+    },
+    "TelemetryAppOpen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "app_open"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["entry", "inAppBrowser"],
+          "properties": {
+            "entry": {
+              "type": "string",
+              "enum": ["direct", "line", "other"]
+            },
+            "inAppBrowser": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "title": "TelemetryAppOpen"
+    },
+    "TelemetryMicPermission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "mic_permission"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["result", "afterPrimer"],
+          "properties": {
+            "result": {
+              "type": "string",
+              "enum": ["granted", "denied", "unavailable"]
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "afterPrimer": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "title": "TelemetryMicPermission"
+    },
+    "TelemetryRoleSelected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "role_selected"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["roleId"],
+          "properties": {
+            "roleId": {
+              "$ref": "../data/common.schema.json#/$defs/RoleId"
+            }
+          }
+        }
+      },
+      "title": "TelemetryRoleSelected"
+    },
+    "TelemetrySceneReady": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "scene_ready"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sceneId", "loadMs"],
+          "properties": {
+            "sceneId": {
+              "$ref": "../data/common.schema.json#/$defs/SceneId"
+            },
+            "loadMs": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "fromTap": {
+              "description": "点「はじめる」到能走（毫秒）",
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      },
+      "title": "TelemetrySceneReady"
+    },
+    "TelemetryWebVitals": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "web_vitals"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "lcp": {
+              "type": "number",
+              "minimum": 0
+            },
+            "inp": {
+              "type": "number",
+              "minimum": 0
+            },
+            "cls": {
+              "type": "number",
+              "minimum": 0
+            },
+            "inpTarget": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "loafScript": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          }
+        }
+      },
+      "title": "TelemetryWebVitals"
+    },
+    "TelemetryPerfSample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "perf_sample"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "frameTimeHistogram",
+            "longTasks",
+            "renderer",
+            "qualityLevel",
+            "assetTier",
+            "dpr",
+            "drawCalls",
+            "lowPower"
+          ],
+          "properties": {
+            "frameTimeHistogram": {
+              "description": "10 秒的帧时间直方图（每格的帧数）",
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "maxItems": 32
+            },
+            "longTasks": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "jsHeapMb": {
+              "type": "number",
+              "minimum": 0
+            },
+            "renderer": {
+              "type": "string",
+              "enum": ["webgl", "webgpu"]
+            },
+            "qualityLevel": {
+              "$ref": "#/$defs/QualityLevel"
+            },
+            "assetTier": {
+              "type": "string",
+              "enum": ["standard", "high"]
+            },
+            "dpr": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "drawCalls": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "lowPower": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "title": "TelemetryPerfSample"
+    },
+    "TelemetryQualityChanged": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "quality_changed"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["to", "reason"],
+          "properties": {
+            "from": {
+              "$ref": "#/$defs/QualityLevel"
+            },
+            "to": {
+              "$ref": "#/$defs/QualityLevel"
+            },
+            "reason": {
+              "type": "string",
+              "enum": ["start", "down", "up", "lowPower", "locked"]
+            },
+            "probeGpuMs": {
+              "type": "number",
+              "minimum": 0
+            },
+            "assetMbps": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      },
+      "title": "TelemetryQualityChanged"
+    },
+    "TelemetryGlContextLost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "gl_context_lost"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["restored"],
+          "properties": {
+            "restored": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "title": "TelemetryGlContextLost"
+    },
+    "TelemetryTalkTurn": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "talk_turn"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "turnId",
+            "character",
+            "inputMode",
+            "interrupted",
+            "noResponse"
+          ],
+          "properties": {
+            "turnId": {
+              "$ref": "../data/common.schema.json#/$defs/TurnId"
+            },
+            "character": {
+              "$ref": "../data/common.schema.json#/$defs/CharacterId"
+            },
+            "inputMode": {
+              "$ref": "#/$defs/InputMode"
+            },
+            "clientReleaseToAudibleMs": {
+              "description": "松手到听到声音（毫秒），和 turn_complete.metrics 按 turnId 对齐",
+              "type": "integer",
+              "minimum": 0
+            },
+            "interrupted": {
+              "type": "boolean"
+            },
+            "noResponse": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "title": "TelemetryTalkTurn"
+    },
+    "TelemetryTurnRetracted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "turn_retracted"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["turnId", "kind", "result"],
+          "properties": {
+            "turnId": {
+              "$ref": "../data/common.schema.json#/$defs/TurnId"
+            },
+            "kind": {
+              "type": "string",
+              "enum": ["cancel", "redo", "timeout", "correction"]
+            },
+            "result": {
+              "type": "string",
+              "enum": ["retracted", "too_late"]
+            }
+          }
+        }
+      },
+      "title": "TelemetryTurnRetracted"
+    },
+    "TelemetryTranscriptCorrected": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "transcript_corrected"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["turnId"],
+          "properties": {
+            "turnId": {
+              "$ref": "../data/common.schema.json#/$defs/TurnId"
+            }
+          }
+        }
+      },
+      "title": "TelemetryTranscriptCorrected"
+    },
+    "TelemetryConfirmAnswered": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "confirm_answered"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["answer"],
+          "properties": {
+            "answer": {
+              "type": "string",
+              "enum": ["yes", "no", "timeout"]
+            }
+          }
+        }
+      },
+      "title": "TelemetryConfirmAnswered"
+    },
+    "TelemetryApproachShown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "approach_shown"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["character"],
+          "properties": {
+            "character": {
+              "$ref": "../data/common.schema.json#/$defs/CharacterId"
+            }
+          }
+        }
+      },
+      "title": "TelemetryApproachShown"
+    },
+    "TelemetryApproachEnded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "approach_ended"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["character", "result"],
+          "properties": {
+            "character": {
+              "$ref": "../data/common.schema.json#/$defs/CharacterId"
+            },
+            "result": {
+              "type": "string",
+              "enum": ["talked", "dismissed", "walked_away"]
+            }
+          }
+        }
+      },
+      "title": "TelemetryApproachEnded"
+    },
+    "TelemetryActPlanResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "act_plan_result"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["actId", "accepted", "try", "inputMode"],
+          "properties": {
+            "actId": {
+              "$ref": "../data/common.schema.json#/$defs/ActId"
+            },
+            "accepted": {
+              "type": "boolean"
+            },
+            "try": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2
+            },
+            "inputMode": {
+              "$ref": "#/$defs/InputMode"
+            }
+          }
+        }
+      },
+      "title": "TelemetryActPlanResult"
+    },
+    "TelemetrySonokoroViewed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "sonokoro_viewed"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["count", "tappedMap"],
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3
+            },
+            "tappedMap": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "title": "TelemetrySonokoroViewed"
+    },
+    "TelemetryMapOpened": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "map_opened"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["from"],
+          "properties": {
+            "from": {
+              "type": "string",
+              "enum": ["hud", "sonokoro", "ending"]
+            }
+          }
+        }
+      },
+      "title": "TelemetryMapOpened"
+    },
+    "TelemetryWhyOpened": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "why_opened"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["target", "fromKeyMoment"],
+          "properties": {
+            "target": {
+              "type": "string",
+              "enum": ["event", "beat"]
+            },
+            "fromKeyMoment": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "title": "TelemetryWhyOpened"
+    },
+    "TelemetryMemoryBookOpened": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "memory_book_opened"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {}
+        }
+      },
+      "title": "TelemetryMemoryBookOpened"
+    },
+    "TelemetryMemorySectionViewed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "memory_section_viewed"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["section"],
+          "properties": {
+            "section": {
+              "type": "string",
+              "enum": ["promises", "didForYou", "youDid", "memories"]
+            }
+          }
+        }
+      },
+      "title": "TelemetryMemorySectionViewed"
+    },
+    "TelemetryMemoryDeleted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "memory_deleted"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["character"],
+          "properties": {
+            "character": {
+              "$ref": "../data/common.schema.json#/$defs/CharacterId"
+            }
+          }
+        }
+      },
+      "title": "TelemetryMemoryDeleted"
+    },
+    "TelemetryAppResumed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "app_resumed"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["awayMs", "discarded", "resumeMs", "contextLost"],
+          "properties": {
+            "awayMs": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "discarded": {
+              "type": "boolean"
+            },
+            "resumeMs": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "contextLost": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "title": "TelemetryAppResumed"
+    },
+    "TelemetryContinueStarted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "continue_started"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["awayMs"],
+          "properties": {
+            "awayMs": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      },
+      "title": "TelemetryContinueStarted"
+    },
+    "TelemetryConnectionLost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "connection_lost"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["reason"],
+          "properties": {
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        }
+      },
+      "title": "TelemetryConnectionLost"
+    },
+    "TelemetryConnectionRestored": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "connection_restored"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["downMs"],
+          "properties": {
+            "downMs": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      },
+      "title": "TelemetryConnectionRestored"
+    },
+    "TelemetryEndingViewed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "ending_viewed"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["endingId", "outcome"],
+          "properties": {
+            "endingId": {
+              "$ref": "../data/common.schema.json#/$defs/EndingId"
+            },
+            "outcome": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          }
+        }
+      },
+      "title": "TelemetryEndingViewed"
+    },
+    "TelemetryEndingClosed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "ending_closed"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["endingId", "dwellMs"],
+          "properties": {
+            "endingId": {
+              "$ref": "../data/common.schema.json#/$defs/EndingId"
+            },
+            "dwellMs": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      },
+      "title": "TelemetryEndingClosed"
+    },
+    "TelemetryEndingCardSaved": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "ending_card_saved"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["endingId"],
+          "properties": {
+            "endingId": {
+              "$ref": "../data/common.schema.json#/$defs/EndingId"
+            }
+          }
+        }
+      },
+      "title": "TelemetryEndingCardSaved"
+    },
+    "TelemetryEndingShared": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "ending_shared"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["endingId"],
+          "properties": {
+            "endingId": {
+              "$ref": "../data/common.schema.json#/$defs/EndingId"
+            },
+            "completed": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "title": "TelemetryEndingShared"
+    },
+    "TelemetryReplayStarted": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "replay_started"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fromEndingId", "roleId"],
+          "properties": {
+            "fromEndingId": {
+              "$ref": "../data/common.schema.json#/$defs/EndingId"
+            },
+            "roleId": {
+              "$ref": "../data/common.schema.json#/$defs/RoleId"
+            }
+          }
+        }
+      },
+      "title": "TelemetryReplayStarted"
+    },
+    "TelemetryDegradedShown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "degraded_shown"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["reason"],
+          "properties": {
+            "reason": {
+              "type": "string",
+              "enum": ["budget", "service", "daily"]
+            }
+          }
+        }
+      },
+      "title": "TelemetryDegradedShown"
+    },
+    "TelemetryEvent": {
+      "description": "一条遥测事件，按 name 区分（data-design 9.3）",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/TelemetryAppOpen"
+        },
+        {
+          "$ref": "#/$defs/TelemetryMicPermission"
+        },
+        {
+          "$ref": "#/$defs/TelemetryRoleSelected"
+        },
+        {
+          "$ref": "#/$defs/TelemetrySceneReady"
+        },
+        {
+          "$ref": "#/$defs/TelemetryWebVitals"
+        },
+        {
+          "$ref": "#/$defs/TelemetryPerfSample"
+        },
+        {
+          "$ref": "#/$defs/TelemetryQualityChanged"
+        },
+        {
+          "$ref": "#/$defs/TelemetryGlContextLost"
+        },
+        {
+          "$ref": "#/$defs/TelemetryTalkTurn"
+        },
+        {
+          "$ref": "#/$defs/TelemetryTurnRetracted"
+        },
+        {
+          "$ref": "#/$defs/TelemetryTranscriptCorrected"
+        },
+        {
+          "$ref": "#/$defs/TelemetryConfirmAnswered"
+        },
+        {
+          "$ref": "#/$defs/TelemetryApproachShown"
+        },
+        {
+          "$ref": "#/$defs/TelemetryApproachEnded"
+        },
+        {
+          "$ref": "#/$defs/TelemetryActPlanResult"
+        },
+        {
+          "$ref": "#/$defs/TelemetrySonokoroViewed"
+        },
+        {
+          "$ref": "#/$defs/TelemetryMapOpened"
+        },
+        {
+          "$ref": "#/$defs/TelemetryWhyOpened"
+        },
+        {
+          "$ref": "#/$defs/TelemetryMemoryBookOpened"
+        },
+        {
+          "$ref": "#/$defs/TelemetryMemorySectionViewed"
+        },
+        {
+          "$ref": "#/$defs/TelemetryMemoryDeleted"
+        },
+        {
+          "$ref": "#/$defs/TelemetryAppResumed"
+        },
+        {
+          "$ref": "#/$defs/TelemetryContinueStarted"
+        },
+        {
+          "$ref": "#/$defs/TelemetryConnectionLost"
+        },
+        {
+          "$ref": "#/$defs/TelemetryConnectionRestored"
+        },
+        {
+          "$ref": "#/$defs/TelemetryEndingViewed"
+        },
+        {
+          "$ref": "#/$defs/TelemetryEndingClosed"
+        },
+        {
+          "$ref": "#/$defs/TelemetryEndingCardSaved"
+        },
+        {
+          "$ref": "#/$defs/TelemetryEndingShared"
+        },
+        {
+          "$ref": "#/$defs/TelemetryReplayStarted"
+        },
+        {
+          "$ref": "#/$defs/TelemetryDegradedShown"
+        }
+      ],
+      "title": "TelemetryEvent"
+    },
+    "TelemetryBatch": {
+      "description": "POST /v1/telemetry 的请求体：一批 ≤ 50 条。不含音频、原话、记忆文本",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["common", "events"],
+      "properties": {
+        "common": {
+          "$ref": "#/$defs/TelemetryCommon"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TelemetryEvent"
+          },
+          "minItems": 1,
+          "maxItems": 50
+        }
+      },
+      "title": "TelemetryBatch"
+    }
+  }
+}

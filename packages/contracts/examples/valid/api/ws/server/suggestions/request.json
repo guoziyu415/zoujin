@@ -1,0 +1,15 @@
+{
+  "type": "suggestions",
+  "turnId": "turn_01K7AZ00000000000000000001",
+  "character": "char.old-man",
+  "items": [
+    {
+      "text": "手伝います",
+      "kind": "accept"
+    },
+    {
+      "text": "いまは、いい",
+      "kind": "decline"
+    }
+  ]
+}

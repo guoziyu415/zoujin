@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api/rest/test-advance.schema.json",
+  "title": "POST /v1/test/playthroughs/{id}/advance",
+  "description": "非生产：快进故事时间（第 7 节）。TODO(C-1 评审)：请求和响应文档没写，这里请求给分钟数、响应给快照",
+  "x-endpoint": {
+    "method": "POST",
+    "path": "/v1/test/playthroughs/{id}/advance",
+    "params": "../common.schema.json#/$defs/PlaythroughPathParams",
+    "request": "#/$defs/TestAdvanceRequest",
+    "responses": {
+      "200": "../common.schema.json#/$defs/Snapshot"
+    }
+  },
+  "$defs": {
+    "TestAdvanceRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minutes"],
+      "properties": {
+        "minutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5460
+        }
+      },
+      "title": "TestAdvanceRequest"
+    }
+  }
+}

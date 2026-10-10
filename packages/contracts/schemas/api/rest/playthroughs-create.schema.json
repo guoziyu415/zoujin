@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api/rest/playthroughs-create.schema.json",
+  "title": "POST /v1/playthroughs",
+  "description": "开局（2.2）",
+  "x-endpoint": {
+    "method": "POST",
+    "path": "/v1/playthroughs",
+    "idempotencyKey": true,
+    "request": "#/$defs/CreatePlaythroughRequest",
+    "responses": {
+      "201": "#/$defs/CreatePlaythroughResponse",
+      "409": "../error.schema.json#/$defs/ErrorResponse",
+      "429": "../error.schema.json#/$defs/ErrorResponse"
+    }
+  },
+  "$defs": {
+    "CreatePlaythroughRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bookId", "roleId"],
+      "properties": {
+        "bookId": {
+          "$ref": "../common.schema.json#/$defs/BookId"
+        },
+        "roleId": {
+          "$ref": "../../data/common.schema.json#/$defs/RoleId"
+        }
+      },
+      "title": "CreatePlaythroughRequest"
+    },
+    "CreatePlaythroughResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["playthroughId", "snapshot"],
+      "properties": {
+        "playthroughId": {
+          "$ref": "../../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "snapshot": {
+          "$ref": "../common.schema.json#/$defs/Snapshot"
+        }
+      },
+      "title": "CreatePlaythroughResponse"
+    }
+  }
+}

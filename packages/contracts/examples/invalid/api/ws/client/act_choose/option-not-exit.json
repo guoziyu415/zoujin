@@ -1,0 +1,5 @@
+{
+  "type": "act_choose",
+  "clientMsgId": "x-2",
+  "optionId": "scene.village"
+}

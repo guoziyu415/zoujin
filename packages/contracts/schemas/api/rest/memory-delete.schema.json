@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api/rest/memory-delete.schema.json",
+  "title": "DELETE /v1/playthroughs/{id}/memories/{memoryId}",
+  "description": "删除一条记忆，立即生效（2.7）",
+  "x-endpoint": {
+    "method": "DELETE",
+    "path": "/v1/playthroughs/{id}/memories/{memoryId}",
+    "idempotencyKey": true,
+    "params": "../common.schema.json#/$defs/MemoryPathParams",
+    "responses": {
+      "200": "#/$defs/MemoryDeleteResponse"
+    }
+  },
+  "$defs": {
+    "MemoryDeleteResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "memoryId",
+        "deleted",
+        "character",
+        "relationLabel",
+        "relationLevel",
+        "promiseVoided",
+        "sessionRebuilt"
+      ],
+      "properties": {
+        "memoryId": {
+          "$ref": "../../data/common.schema.json#/$defs/MemoryId"
+        },
+        "deleted": {
+          "const": true
+        },
+        "character": {
+          "$ref": "../../data/common.schema.json#/$defs/CharacterId"
+        },
+        "relationLabel": {
+          "$ref": "../../data/memory.schema.json#/$defs/Relationship/properties/label"
+        },
+        "relationLevel": {
+          "$ref": "../../data/memory.schema.json#/$defs/Relationship/properties/level"
+        },
+        "promiseVoided": {
+          "description": "作废了约定时给它的 ID",
+          "anyOf": [
+            {
+              "$ref": "../../data/common.schema.json#/$defs/PromiseId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sessionRebuilt": {
+          "type": "boolean"
+        }
+      },
+      "title": "MemoryDeleteResponse"
+    }
+  }
+}

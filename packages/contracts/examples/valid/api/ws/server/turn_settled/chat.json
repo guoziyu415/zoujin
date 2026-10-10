@@ -1,0 +1,7 @@
+{
+  "type": "turn_settled",
+  "turnId": "turn_01K7AZ00000000000000000001",
+  "outcome": "no_change",
+  "eventIds": [],
+  "minutes": 10
+}

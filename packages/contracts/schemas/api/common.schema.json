@@ -1,0 +1,1578 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api/common.schema.json",
+  "title": "api/common",
+  "description": "接口的公共类型（api-contract 第 0、2、3 节共用的形状）",
+  "$defs": {
+    "BookId": {
+      "description": "书的 ID（manifest 路径里的 bookId），例 hashire-merosu",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "title": "BookId"
+    },
+    "DraftId": {
+      "description": "待确认的举动（3.9），draft_ 加 ULID",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^draft_[0-9A-HJKMNP-TV-Z]{26}$",
+      "title": "DraftId"
+    },
+    "RevealId": {
+      "description": "关键时刻（3.4），rev_ 加 ULID",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
+      "title": "RevealId"
+    },
+    "PlanOptionId": {
+      "description": "幕末说出打算后的替代去处（3.11 alternative.optionId），例 plan_…。文档只给了前缀",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^plan_[A-Za-z0-9_-]+$",
+      "title": "PlanOptionId"
+    },
+    "ClientMsgId": {
+      "description": "前端生成的动作 ID（第 0 节「幂等」），例 UUID",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "title": "ClientMsgId"
+    },
+    "ActionId": {
+      "description": "快照里情境动作的 ID（2.3），例 act_help_old-man_cart；服务端生成，前端原样回传",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "title": "ActionId"
+    },
+    "InteractableId": {
+      "description": "场景里可「調べる」的东西或场景出口（2.3），例 obj.market-stall",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "title": "InteractableId"
+    },
+    "Spot": {
+      "description": "场景里的位置点（第 0 节），前端在 3D 场景里定义，例 fountain-east",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "title": "Spot"
+    },
+    "AssetPath": {
+      "description": "同源的静态资源路径（第 0 节「来源」），以 / 开头，文件名带 hash",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^/[^\\s?#]*$",
+      "title": "AssetPath"
+    },
+    "ClientTurnSeq": {
+      "description": "前端分配的 turnSeq（3.1）：每条连接从 1 起，最高位为 0",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2147483647,
+      "title": "ClientTurnSeq"
+    },
+    "ServerTurnSeq": {
+      "description": "服务端发起的轮次的 turnSeq（3.1）：最高位为 1，从 0x80000001 起",
+      "type": "integer",
+      "minimum": 2147483649,
+      "maximum": 4294967295,
+      "title": "ServerTurnSeq"
+    },
+    "TurnSeq": {
+      "description": "二进制帧和 turn 消息里的 turnSeq：uint32，前端分配的或服务端分配的",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4294967295,
+      "title": "TurnSeq"
+    },
+    "Seq": {
+      "description": "一局里的事件序号（2.4）",
+      "type": "integer",
+      "minimum": 1,
+      "title": "Seq"
+    },
+    "LastSeq": {
+      "description": "前端已应用的最后一个序号；还没有事件时为 0",
+      "type": "integer",
+      "minimum": 0,
+      "title": "LastSeq"
+    },
+    "Minutes": {
+      "description": "故事分钟数",
+      "type": "integer",
+      "minimum": 0,
+      "title": "Minutes"
+    },
+    "Speaker": {
+      "description": "说话的人：玩家或人物",
+      "anyOf": [
+        {
+          "const": "player"
+        },
+        {
+          "$ref": "../data/common.schema.json#/$defs/CharacterId"
+        }
+      ],
+      "title": "Speaker"
+    },
+    "Text200": {
+      "description": "玩家输入的文字，≤ 200 字（3.2）",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "title": "Text200"
+    },
+    "Voice": {
+      "description": "语音状态（2.3、第 4 节 welcome）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "degraded", "minutesLeftToday"],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "degraded": {
+          "type": "boolean"
+        },
+        "minutesLeftToday": {
+          "$ref": "#/$defs/Minutes"
+        }
+      },
+      "title": "Voice"
+    },
+    "SnapshotClock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["t", "tLabel", "deadlineT"],
+      "properties": {
+        "t": {
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "tLabel": {
+          "$ref": "../data/common.schema.json#/$defs/TLabel"
+        },
+        "deadlineT": {
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        }
+      },
+      "title": "SnapshotClock"
+    },
+    "ClockPatch": {
+      "description": "commit.patch.clock（3.4）。TODO(C-1 评审)：文档的例子只有 t 和 tLabel；这里 t、tLabel 必填，deadlineT 可选",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["t", "tLabel"],
+      "properties": {
+        "t": {
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "tLabel": {
+          "$ref": "../data/common.schema.json#/$defs/TLabel"
+        },
+        "deadlineT": {
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        }
+      },
+      "title": "ClockPatch"
+    },
+    "Deadline": {
+      "description": "期限（2.3）：约定（beat.05）之前 shown = false、没有 line；之后一直 shown = true、带 line",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["shown"],
+      "properties": {
+        "shown": {
+          "type": "boolean"
+        },
+        "line": {
+          "description": "期限那一行，例「期限　三日目の日没／遅れれば、身代わりが死ぬ」",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "if": {
+        "properties": {
+          "shown": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "required": ["line"]
+      },
+      "else": {
+        "not": {
+          "required": ["line"]
+        }
+      },
+      "title": "Deadline"
+    },
+    "Forecast": {
+      "description": "梅洛斯预计到达刑场的时刻（2.3）；约定之前整个为 null（防剧透）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["melosEtaT", "beforeDeadline"],
+      "properties": {
+        "melosEtaT": {
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "beforeDeadline": {
+          "description": "false 时地图顶部写「このままでは、日没に間に合わない」",
+          "type": "boolean"
+        }
+      },
+      "title": "Forecast"
+    },
+    "PlayerPosition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["roleId", "place", "spot"],
+      "properties": {
+        "roleId": {
+          "$ref": "../data/common.schema.json#/$defs/RoleId"
+        },
+        "place": {
+          "$ref": "../data/common.schema.json#/$defs/PlaceId"
+        },
+        "spot": {
+          "$ref": "#/$defs/Spot"
+        }
+      },
+      "title": "PlayerPosition"
+    },
+    "PlayerPositionPatch": {
+      "description": "commit.patch.player（3.4）：只给变了的字段",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "place": {
+          "$ref": "../data/common.schema.json#/$defs/PlaceId"
+        },
+        "spot": {
+          "$ref": "#/$defs/Spot"
+        }
+      },
+      "minProperties": 1,
+      "title": "PlayerPositionPatch"
+    },
+    "PlaceAccess": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "enabled"],
+      "properties": {
+        "id": {
+          "$ref": "../data/common.schema.json#/$defs/PlaceId"
+        },
+        "enabled": {
+          "description": "false 时前端提前把那条路挡住",
+          "type": "boolean"
+        },
+        "reason": {
+          "description": "进不去的理由，一句故事里的说明；只在 enabled = false 时给",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "title": "PlaceAccess"
+    },
+    "CharacterPresence": {
+      "description": "当前场景在场的人物（2.3）；还没有关系的人物两个 relation 字段都省略",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "place", "spot", "activity", "talkable"],
+      "properties": {
+        "id": {
+          "$ref": "../data/common.schema.json#/$defs/CharacterId"
+        },
+        "place": {
+          "$ref": "../data/common.schema.json#/$defs/PlaceId"
+        },
+        "spot": {
+          "$ref": "#/$defs/Spot"
+        },
+        "activity": {
+          "$ref": "../data/world-model.schema.json#/$defs/Activity"
+        },
+        "talkable": {
+          "type": "boolean"
+        },
+        "relationLabel": {
+          "$ref": "../data/memory.schema.json#/$defs/Relationship/properties/label"
+        },
+        "relationLevel": {
+          "$ref": "../data/memory.schema.json#/$defs/Relationship/properties/level"
+        }
+      },
+      "dependentRequired": {
+        "relationLabel": ["relationLevel"],
+        "relationLevel": ["relationLabel"]
+      },
+      "title": "CharacterPresence"
+    },
+    "CharacterPresencePatch": {
+      "description": "commit.patch.characters[]（3.4）：按 id 合并，只给变了的字段",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "$ref": "../data/common.schema.json#/$defs/CharacterId"
+        },
+        "place": {
+          "$ref": "../data/common.schema.json#/$defs/PlaceId"
+        },
+        "spot": {
+          "$ref": "#/$defs/Spot"
+        },
+        "activity": {
+          "$ref": "../data/world-model.schema.json#/$defs/Activity"
+        },
+        "talkable": {
+          "type": "boolean"
+        },
+        "relationLabel": {
+          "$ref": "../data/memory.schema.json#/$defs/Relationship/properties/label"
+        },
+        "relationLevel": {
+          "$ref": "../data/memory.schema.json#/$defs/Relationship/properties/level"
+        }
+      },
+      "dependentRequired": {
+        "relationLabel": ["relationLevel"],
+        "relationLevel": ["relationLabel"]
+      },
+      "title": "CharacterPresencePatch"
+    },
+    "Interactable": {
+      "description": "场景里可「調べる」的东西（2.3，estimatedMinutes 为 0）和场景出口（3.8）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "kind",
+        "spot",
+        "label",
+        "enabled",
+        "estimatedMinutes"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/InteractableId"
+        },
+        "kind": {
+          "description": "examine = 調べる；go = 场景出口（3.8）",
+          "type": "string",
+          "enum": ["examine", "go"]
+        },
+        "spot": {
+          "$ref": "#/$defs/Spot"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "estimatedMinutes": {
+          "$ref": "#/$defs/Minutes"
+        }
+      },
+      "title": "Interactable"
+    },
+    "SituationalAction": {
+      "description": "此刻能做的情境动作（2.3、3.8）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actionId",
+        "kind",
+        "label",
+        "estimatedMinutes",
+        "melos",
+        "melosMinutes",
+        "melosInTime",
+        "enabled"
+      ],
+      "properties": {
+        "actionId": {
+          "$ref": "#/$defs/ActionId"
+        },
+        "kind": {
+          "$ref": "../data/world-model.schema.json#/$defs/Affordance/properties/kind"
+        },
+        "target": {
+          "description": "对象人物。TODO(C-1 评审)：文档的例子都有 target，世界模型的 Affordance.target 可选（wait 这类没有对象）；这里没有对象时省略",
+          "$ref": "../data/common.schema.json#/$defs/CharacterId"
+        },
+        "label": {
+          "$ref": "../data/world-model.schema.json#/$defs/Affordance/properties/label"
+        },
+        "estimatedMinutes": {
+          "$ref": "#/$defs/Minutes"
+        },
+        "melos": {
+          "description": "第四幕对梅洛斯的影响（S-036、S-038）；没有为 null",
+          "anyOf": [
+            {
+              "$ref": "../data/world-model.schema.json#/$defs/Affordance/properties/melos"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "melosMinutes": {
+          "description": "没有 melos 的动作为 null",
+          "anyOf": [
+            {
+              "description": "做了以后梅洛斯到刑场的时刻按本局此刻的排程变多少分钟：正数晚到、负数早到（S-066 ①）",
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "melosInTime": {
+          "description": "没有 melos 的动作为 null",
+          "anyOf": [
+            {
+              "description": "做了以后这一局还赶不赶得上日没",
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "if": {
+        "properties": {
+          "melos": {
+            "type": "null"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "melosMinutes": {
+            "type": "null"
+          },
+          "melosInTime": {
+            "type": "null"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "melosMinutes": {
+            "type": "integer"
+          },
+          "melosInTime": {
+            "type": "boolean"
+          }
+        }
+      },
+      "title": "SituationalAction"
+    },
+    "ActionsPatch": {
+      "description": "commit.patch.actions（3.4）",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "add": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SituationalAction"
+          }
+        },
+        "remove": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ActionId"
+          }
+        }
+      },
+      "minProperties": 1,
+      "title": "ActionsPatch"
+    },
+    "ConfirmOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["optionId", "label"],
+      "properties": {
+        "optionId": {
+          "description": "例 yes、no",
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "title": "ConfirmOption"
+    },
+    "PendingConfirm": {
+      "description": "续玩时还没回答的意图确认：confirm（3.9）的字段加剩余秒数（第 4 节「含剩余秒数」）。TODO(C-1 评审)：文档没给剩余秒数的字段名，这里叫 remainingSec",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "draftId",
+        "character",
+        "prompt",
+        "options",
+        "timeoutSec",
+        "remainingSec"
+      ],
+      "properties": {
+        "draftId": {
+          "$ref": "#/$defs/DraftId"
+        },
+        "character": {
+          "$ref": "../data/common.schema.json#/$defs/CharacterId"
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ConfirmOption"
+          },
+          "minItems": 2
+        },
+        "timeoutSec": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "remainingSec": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "title": "PendingConfirm"
+    },
+    "PendingApproach": {
+      "description": "续玩时正走过来的人物：和 approach（3.10）同形",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["character", "kind"],
+      "properties": {
+        "character": {
+          "$ref": "../data/common.schema.json#/$defs/CharacterId"
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["request", "news"]
+        }
+      },
+      "title": "PendingApproach"
+    },
+    "Pending": {
+      "description": "续玩时还没处理完的东西（第 4 节）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reveal", "confirm", "actEnd", "safetyPause", "approach"],
+      "properties": {
+        "reveal": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Reveal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "confirm": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PendingConfirm"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "actEnd": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActEnd"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "safetyPause": {
+          "type": "boolean"
+        },
+        "approach": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PendingApproach"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "title": "Pending"
+    },
+    "Snapshot": {
+      "description": "当前场景的世界投影（2.3），≤ 10 KB",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "playthroughId",
+        "lastSeq",
+        "status",
+        "actId",
+        "sceneId",
+        "clock",
+        "deadline",
+        "forecast",
+        "player",
+        "places",
+        "characters",
+        "interactables",
+        "actions",
+        "pending",
+        "voice"
+      ],
+      "properties": {
+        "playthroughId": {
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "lastSeq": {
+          "$ref": "#/$defs/LastSeq"
+        },
+        "status": {
+          "$ref": "../data/playthrough.schema.json#/$defs/Playthrough/properties/status"
+        },
+        "actId": {
+          "$ref": "../data/common.schema.json#/$defs/ActId"
+        },
+        "sceneId": {
+          "$ref": "../data/common.schema.json#/$defs/SceneId"
+        },
+        "clock": {
+          "$ref": "#/$defs/SnapshotClock"
+        },
+        "deadline": {
+          "$ref": "#/$defs/Deadline"
+        },
+        "forecast": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Forecast"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "player": {
+          "$ref": "#/$defs/PlayerPosition"
+        },
+        "places": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlaceAccess"
+          }
+        },
+        "characters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CharacterPresence"
+          }
+        },
+        "interactables": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Interactable"
+          }
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SituationalAction"
+          }
+        },
+        "pending": {
+          "$ref": "#/$defs/Pending"
+        },
+        "voice": {
+          "$ref": "#/$defs/Voice"
+        }
+      },
+      "title": "Snapshot"
+    },
+    "SnapshotPatch": {
+      "description": "commit.patch（3.4）：快照字段的增量，按 id 合并。TODO(C-1 评审)：文档只举了这 7 个字段；interactables、voice、status 变了怎么给没写，这里不收",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "clock": {
+          "$ref": "#/$defs/ClockPatch"
+        },
+        "deadline": {
+          "$ref": "#/$defs/Deadline"
+        },
+        "forecast": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Forecast"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "characters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CharacterPresencePatch"
+          }
+        },
+        "places": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlaceAccess"
+          }
+        },
+        "actions": {
+          "$ref": "#/$defs/ActionsPatch"
+        },
+        "player": {
+          "$ref": "#/$defs/PlayerPositionPatch"
+        }
+      },
+      "title": "SnapshotPatch"
+    },
+    "BeatChange": {
+      "description": "节拍的走向，和数据契约 Effect（op = beat）的 to 同一组值",
+      "type": "string",
+      "enum": ["happened", "prevented", "delayed", "hastened", "altered"],
+      "title": "BeatChange"
+    },
+    "VisibleBeatEffect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "beat", "change", "label"],
+      "properties": {
+        "kind": {
+          "const": "beat"
+        },
+        "beat": {
+          "$ref": "../data/common.schema.json#/$defs/BeatId"
+        },
+        "change": {
+          "$ref": "#/$defs/BeatChange"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "title": "VisibleBeatEffect"
+    },
+    "VisibleVarEffect": {
+      "description": "TODO(C-1 评审)：文档只举了 beat 的形状；变量这一种按「只给标签不给原值」（第 0 节）写成 kind、var、label",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "var", "label"],
+      "properties": {
+        "kind": {
+          "const": "var"
+        },
+        "var": {
+          "$ref": "../data/common.schema.json#/$defs/VarId"
+        },
+        "label": {
+          "description": "StateVar.valueLabels 里这个取值的文字",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "title": "VisibleVarEffect"
+    },
+    "VisibleEffect": {
+      "description": "玩家可见的变化（2.4）：StateVar.visibleToPlayer 的变量和节拍走向，label 可直接显示",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/VisibleBeatEffect"
+        },
+        {
+          "$ref": "#/$defs/VisibleVarEffect"
+        }
+      ],
+      "title": "VisibleEffect"
+    },
+    "PromiseChange": {
+      "description": "这个事件让一个约定成立、兑现、违背或作废（2.4）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["promiseId", "change"],
+      "properties": {
+        "promiseId": {
+          "$ref": "../data/common.schema.json#/$defs/PromiseId"
+        },
+        "change": {
+          "description": "和数据契约 Effect（op = promise）的 change 同一组值",
+          "type": "string",
+          "enum": ["made", "kept", "broken", "voided"]
+        }
+      },
+      "title": "PromiseChange"
+    },
+    "VisibleEvent": {
+      "description": "推给前端的事件：数据契约 Event 的玩家可见投影（2.4）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eventId",
+        "seq",
+        "t",
+        "dt",
+        "tLabel",
+        "type",
+        "actor",
+        "forPlayer",
+        "place",
+        "summary",
+        "causes",
+        "visibleEffects",
+        "promise",
+        "keyMoment",
+        "supersedes"
+      ],
+      "properties": {
+        "eventId": {
+          "$ref": "../data/event.schema.json#/$defs/Event/properties/eventId"
+        },
+        "seq": {
+          "$ref": "../data/event.schema.json#/$defs/Event/properties/seq"
+        },
+        "turnId": {
+          "description": "来自哪一轮；到点的节拍、人物的打算这类事件没有。TODO(C-1 评审)：文档的例子都有 turnId；这里照数据契约 Event.turnId 写成可选",
+          "$ref": "../data/event.schema.json#/$defs/Event/properties/turnId"
+        },
+        "t": {
+          "$ref": "../data/event.schema.json#/$defs/Event/properties/t"
+        },
+        "dt": {
+          "$ref": "../data/event.schema.json#/$defs/Event/properties/dt"
+        },
+        "tLabel": {
+          "$ref": "../data/common.schema.json#/$defs/TLabel"
+        },
+        "type": {
+          "$ref": "../data/event.schema.json#/$defs/Event/properties/type"
+        },
+        "actor": {
+          "$ref": "../data/event.schema.json#/$defs/Event/properties/actor"
+        },
+        "forPlayer": {
+          "description": "角色为玩家做的事（Event.beneficiary = player）",
+          "type": "boolean"
+        },
+        "place": {
+          "$ref": "../data/event.schema.json#/$defs/Event/properties/place"
+        },
+        "summary": {
+          "$ref": "../data/event.schema.json#/$defs/Event/properties/summary"
+        },
+        "causes": {
+          "$ref": "../data/event.schema.json#/$defs/Event/properties/causes"
+        },
+        "visibleEffects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/VisibleEffect"
+          }
+        },
+        "promise": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PromiseChange"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "keyMoment": {
+          "$ref": "../data/event.schema.json#/$defs/Event/properties/keyMoment"
+        },
+        "supersedes": {
+          "description": "只有 type = correction 时有",
+          "anyOf": [
+            {
+              "$ref": "../data/event.schema.json#/$defs/Event/properties/supersedes"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "title": "VisibleEvent"
+    },
+    "WhyEventStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["eventId", "seq", "tLabel", "summary", "actor"],
+      "properties": {
+        "eventId": {
+          "$ref": "../data/common.schema.json#/$defs/EventId"
+        },
+        "seq": {
+          "$ref": "#/$defs/Seq"
+        },
+        "tLabel": {
+          "$ref": "../data/common.schema.json#/$defs/TLabel"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "actor": {
+          "$ref": "../data/common.schema.json#/$defs/Actor"
+        },
+        "forPlayer": {
+          "description": "角色为玩家做的事；文档的例子只在 true 时给",
+          "type": "boolean"
+        }
+      },
+      "title": "WhyEventStep"
+    },
+    "WhyBeatStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["beatId", "tLabel", "summary", "change"],
+      "properties": {
+        "beatId": {
+          "$ref": "../data/common.schema.json#/$defs/BeatId"
+        },
+        "tLabel": {
+          "$ref": "../data/common.schema.json#/$defs/TLabel"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "change": {
+          "$ref": "#/$defs/BeatChange"
+        }
+      },
+      "title": "WhyBeatStep"
+    },
+    "WhyStep": {
+      "description": "因果链的一步：事件或节拍（2.6）",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/WhyEventStep"
+        },
+        {
+          "$ref": "#/$defs/WhyBeatStep"
+        }
+      ],
+      "title": "WhyStep"
+    },
+    "Reveal": {
+      "description": "关键时刻（3.4、3.4.1），直接带因果链",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revealId", "kind", "line", "chain"],
+      "properties": {
+        "revealId": {
+          "$ref": "#/$defs/RevealId"
+        },
+        "kind": {
+          "description": "3.4.1 的四种",
+          "type": "string",
+          "enum": ["beat", "eta", "ending", "favor"]
+        },
+        "line": {
+          "type": "string",
+          "minLength": 1
+        },
+        "chain": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WhyStep"
+          },
+          "maxItems": 12
+        }
+      },
+      "title": "Reveal"
+    },
+    "PromiseDirection": {
+      "description": "playerToCharacter = Promise.from 是 player；characterToPlayer = Promise.to 是 player",
+      "type": "string",
+      "enum": ["playerToCharacter", "characterToPlayer"],
+      "title": "PromiseDirection"
+    },
+    "PromiseView": {
+      "description": "記憶帳里的一条约定（2.7）。voided 照给，前端不显示",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["promiseId", "text", "direction", "status", "eventId"],
+      "properties": {
+        "promiseId": {
+          "$ref": "../data/memory.schema.json#/$defs/Promise/properties/promiseId"
+        },
+        "text": {
+          "$ref": "../data/memory.schema.json#/$defs/Promise/properties/text"
+        },
+        "direction": {
+          "$ref": "#/$defs/PromiseDirection"
+        },
+        "status": {
+          "$ref": "../data/memory.schema.json#/$defs/Promise/properties/status"
+        },
+        "eventId": {
+          "description": "约定成立的事件（Promise.madeBy）",
+          "$ref": "../data/common.schema.json#/$defs/EventId"
+        }
+      },
+      "title": "PromiseView"
+    },
+    "PromiseUpdate": {
+      "description": "commit.promises[]（3.4）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["promiseId", "character", "text", "direction", "status"],
+      "properties": {
+        "promiseId": {
+          "$ref": "../data/memory.schema.json#/$defs/Promise/properties/promiseId"
+        },
+        "character": {
+          "$ref": "../data/common.schema.json#/$defs/CharacterId"
+        },
+        "text": {
+          "$ref": "../data/memory.schema.json#/$defs/Promise/properties/text"
+        },
+        "direction": {
+          "$ref": "#/$defs/PromiseDirection"
+        },
+        "status": {
+          "$ref": "../data/memory.schema.json#/$defs/Promise/properties/status"
+        }
+      },
+      "title": "PromiseUpdate"
+    },
+    "MemoryView": {
+      "description": "記憶帳里的一条记忆（2.7）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "memoryId",
+        "kind",
+        "text",
+        "t",
+        "tLabel",
+        "via",
+        "promiseId"
+      ],
+      "properties": {
+        "memoryId": {
+          "$ref": "../data/memory.schema.json#/$defs/MemoryItem/properties/memoryId"
+        },
+        "kind": {
+          "$ref": "../data/memory.schema.json#/$defs/MemoryItem/properties/kind"
+        },
+        "text": {
+          "$ref": "../data/memory.schema.json#/$defs/MemoryItem/properties/text"
+        },
+        "t": {
+          "$ref": "../data/memory.schema.json#/$defs/MemoryItem/properties/t"
+        },
+        "tLabel": {
+          "$ref": "../data/common.schema.json#/$defs/TLabel"
+        },
+        "via": {
+          "$ref": "../data/memory.schema.json#/$defs/MemoryItem/properties/via"
+        },
+        "promiseId": {
+          "anyOf": [
+            {
+              "$ref": "../data/memory.schema.json#/$defs/MemoryItem/properties/promiseId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "title": "MemoryView"
+    },
+    "MemoryChange": {
+      "description": "commit.memories[]（3.4）；前端据此让記憶帳的查询失效重拉。TODO(C-1 评审)：文档只举了 added；这里 added、updated 必带 text 和 kind，deleted 不带",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "character",
+        "change",
+        "memoryId",
+        "relationLabel",
+        "relationLevel"
+      ],
+      "properties": {
+        "character": {
+          "$ref": "../data/common.schema.json#/$defs/CharacterId"
+        },
+        "change": {
+          "type": "string",
+          "enum": ["added", "updated", "deleted"]
+        },
+        "memoryId": {
+          "$ref": "../data/common.schema.json#/$defs/MemoryId"
+        },
+        "text": {
+          "$ref": "../data/memory.schema.json#/$defs/MemoryItem/properties/text"
+        },
+        "kind": {
+          "$ref": "../data/memory.schema.json#/$defs/MemoryItem/properties/kind"
+        },
+        "relationLabel": {
+          "$ref": "../data/memory.schema.json#/$defs/Relationship/properties/label"
+        },
+        "relationLevel": {
+          "$ref": "../data/memory.schema.json#/$defs/Relationship/properties/level"
+        }
+      },
+      "if": {
+        "properties": {
+          "change": {
+            "const": "deleted"
+          }
+        }
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": ["text"]
+            },
+            {
+              "required": ["kind"]
+            }
+          ]
+        }
+      },
+      "else": {
+        "required": ["text", "kind"]
+      },
+      "title": "MemoryChange"
+    },
+    "Cue": {
+      "description": "服务端在某个时刻触发的一句固定台词（3.4）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "speaker", "text"],
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/CueKind"
+        },
+        "speaker": {
+          "description": "梅洛斯和玩家在同一个地点时是他；不在时为 null，text 按 narration 显示",
+          "anyOf": [
+            {
+              "$ref": "../data/common.schema.json#/$defs/CharacterId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "title": "Cue"
+    },
+    "CueKind": {
+      "description": "固定台词的种类；也是 manifest 里 prerecorded.cues 的键",
+      "type": "string",
+      "enum": ["arrival_capped"],
+      "title": "CueKind"
+    },
+    "EnRouteOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "label", "melosMinutes", "afterLine"],
+      "properties": {
+        "index": {
+          "description": "在 choices 里的序号",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "melosMinutes": {
+          "description": "最后一项（照原作）为 null",
+          "anyOf": [
+            {
+              "description": "选这一项对梅洛斯到刑场的实际影响（分钟）",
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "afterLine": {
+          "description": "不加时为 null",
+          "anyOf": [
+            {
+              "description": "选了以后过场页多显示的一句",
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "title": "EnRouteOption"
+    },
+    "ActOptionEnRoute": {
+      "description": "过场里的二选一（3.11，契约 1.4）：choices 正好两个，最后一个是「照原作」",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["line", "choices"],
+      "properties": {
+        "line": {
+          "type": "string",
+          "minLength": 1
+        },
+        "choices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EnRouteOption"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        }
+      },
+      "title": "ActOptionEnRoute"
+    },
+    "ActOption": {
+      "description": "幕末的一个去处（3.11，来自世界模型的 ActExit）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["optionId", "label", "sceneId", "tLabel", "with", "because"],
+      "properties": {
+        "optionId": {
+          "$ref": "../data/common.schema.json#/$defs/ExitId"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sceneId": {
+          "$ref": "../data/common.schema.json#/$defs/SceneId"
+        },
+        "tLabel": {
+          "$ref": "../data/common.schema.json#/$defs/TLabel"
+        },
+        "with": {
+          "type": "array",
+          "items": {
+            "$ref": "../data/common.schema.json#/$defs/CharacterId"
+          }
+        },
+        "because": {
+          "anyOf": [
+            {
+              "description": "条件出现的理由，如「王があなたを覚えている」",
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "enRoute": {
+          "$ref": "#/$defs/ActOptionEnRoute"
+        }
+      },
+      "title": "ActOption"
+    },
+    "Freeform": {
+      "description": "幕末能不能自己说打算（3.11），同一次幕末最多试 2 次",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allowed", "triesLeft"],
+      "properties": {
+        "allowed": {
+          "type": "boolean"
+        },
+        "triesLeft": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        }
+      },
+      "title": "Freeform"
+    },
+    "ActEnd": {
+      "description": "幕末的去处（3.11）；act_ended 和 pending.actEnd 同形",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actId", "recapLines", "options", "freeform"],
+      "properties": {
+        "actId": {
+          "$ref": "../data/common.schema.json#/$defs/ActId"
+        },
+        "recapLines": {
+          "description": "「この幕であなたが動かしたこと」",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ActOption"
+          },
+          "minItems": 1
+        },
+        "freeform": {
+          "$ref": "#/$defs/Freeform"
+        }
+      },
+      "title": "ActEnd"
+    },
+    "PlanAlternative": {
+      "description": "说出的打算不成行时最接近的替代去处（3.11）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["optionId", "label", "sceneId", "tLabel"],
+      "properties": {
+        "optionId": {
+          "$ref": "#/$defs/PlanOptionId"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sceneId": {
+          "$ref": "../data/common.schema.json#/$defs/SceneId"
+        },
+        "tLabel": {
+          "$ref": "../data/common.schema.json#/$defs/TLabel"
+        }
+      },
+      "title": "PlanAlternative"
+    },
+    "RecapItem": {
+      "description": "「その頃」的一件（3.11）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["eventId", "line"],
+      "properties": {
+        "eventId": {
+          "$ref": "../data/common.schema.json#/$defs/EventId"
+        },
+        "line": {
+          "type": "string",
+          "minLength": 1
+        },
+        "promise": {
+          "description": "这件事是一个约定的兑现或违背时给",
+          "type": "string",
+          "enum": ["kept", "broken"]
+        }
+      },
+      "title": "RecapItem"
+    },
+    "StagingState": {
+      "description": "ux-design 11.1 的 8 个状态；前端遇到不认识的按 present 演",
+      "type": "string",
+      "enum": [
+        "present",
+        "in-crowd",
+        "on-cross",
+        "freed",
+        "arriving",
+        "approaching",
+        "collapsed",
+        "absent"
+      ],
+      "title": "StagingState"
+    },
+    "StagingCharacter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "state"],
+      "properties": {
+        "id": {
+          "description": "人物 ID，或 player（玩家也在里面）",
+          "anyOf": [
+            {
+              "const": "player"
+            },
+            {
+              "$ref": "../data/common.schema.json#/$defs/CharacterId"
+            }
+          ]
+        },
+        "state": {
+          "$ref": "#/$defs/StagingState"
+        }
+      },
+      "title": "StagingCharacter"
+    },
+    "Staging": {
+      "description": "结局演出里谁在哪、什么状态（3.13）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["place", "characters"],
+      "properties": {
+        "place": {
+          "$ref": "../data/common.schema.json#/$defs/PlaceId"
+        },
+        "characters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StagingCharacter"
+          },
+          "minItems": 1
+        }
+      },
+      "title": "Staging"
+    },
+    "LastTurn": {
+      "description": "断线前的最后一轮（第 4 节）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "turnId",
+        "character",
+        "status",
+        "playerText",
+        "characterText"
+      ],
+      "properties": {
+        "turnId": {
+          "$ref": "../data/common.schema.json#/$defs/TurnId"
+        },
+        "character": {
+          "$ref": "../data/common.schema.json#/$defs/CharacterId"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["settled", "pending", "lost"]
+        },
+        "playerText": {
+          "description": "原话已清空的轮次为 null",
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "characterText": {
+          "description": "原话已清空、或人物的文字没收到时为 null",
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "title": "LastTurn"
+    },
+    "ActivePlaythrough": {
+      "description": "进行中的局（1、2.2 的 409）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "playthroughId",
+        "roleId",
+        "roleName",
+        "actId",
+        "tLabel",
+        "updatedAt"
+      ],
+      "properties": {
+        "playthroughId": {
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "roleId": {
+          "$ref": "../data/common.schema.json#/$defs/RoleId"
+        },
+        "roleName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "actId": {
+          "$ref": "../data/common.schema.json#/$defs/ActId"
+        },
+        "tLabel": {
+          "$ref": "../data/common.schema.json#/$defs/TLabel"
+        },
+        "updatedAt": {
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        }
+      },
+      "title": "ActivePlaythrough"
+    },
+    "PlaythroughPathParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        }
+      },
+      "title": "PlaythroughPathParams"
+    },
+    "MemoryPathParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "memoryId"],
+      "properties": {
+        "id": {
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "memoryId": {
+          "$ref": "../data/common.schema.json#/$defs/MemoryId"
+        }
+      },
+      "title": "MemoryPathParams"
+    }
+  }
+}

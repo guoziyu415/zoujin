@@ -1,0 +1,25 @@
+{
+  "type": "ending_started",
+  "trigger": "deadline",
+  "staging": {
+    "place": "place.execution-ground",
+    "characters": [
+      {
+        "id": "char.selinuntius",
+        "state": "on-cross"
+      },
+      {
+        "id": "char.melos",
+        "state": "arriving"
+      },
+      {
+        "id": "char.king",
+        "state": "present"
+      },
+      {
+        "id": "player",
+        "state": "in-crowd"
+      }
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "rate_limited",
+    "message": "少し待ってから試してください",
+    "retryable": true,
+    "retryAfterSeconds": 30
+  }
+}

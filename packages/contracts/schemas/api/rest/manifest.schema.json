@@ -1,0 +1,284 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api/rest/manifest.schema.json",
+  "title": "GET /v1/books/{bookId}/manifest",
+  "description": "静态内容（2.1），URL 带版本，长期缓存",
+  "x-endpoint": {
+    "method": "GET",
+    "path": "/v1/books/{bookId}/manifest",
+    "params": "#/$defs/ManifestParams",
+    "responses": {
+      "200": "#/$defs/ManifestResponse"
+    }
+  },
+  "$defs": {
+    "ManifestParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bookId"],
+      "properties": {
+        "bookId": {
+          "$ref": "../common.schema.json#/$defs/BookId"
+        }
+      },
+      "title": "ManifestParams"
+    },
+    "VoiceClip": {
+      "description": "一句预录台词（2.1）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "text", "durationMs"],
+      "properties": {
+        "url": {
+          "$ref": "../common.schema.json#/$defs/AssetPath"
+        },
+        "text": {
+          "description": "剧本原文，字幕用它（source = script）",
+          "type": "string",
+          "minLength": 1
+        },
+        "durationMs": {
+          "description": "实际音频长度",
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "title": "VoiceClip"
+    },
+    "Prerecorded": {
+      "description": "ux-design 16.2 的 6 句加固定台词（2.1）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["aizuchi", "unheard", "wait", "cues"],
+      "properties": {
+        "aizuchi": {
+          "description": "相槌 3 句",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/VoiceClip"
+          },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "unheard": {
+          "description": "听不清 2 句",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/VoiceClip"
+          },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "wait": {
+          "$ref": "#/$defs/VoiceClip"
+        },
+        "cues": {
+          "description": "服务端在某个时刻触发的固定台词，键是 commit.cue.kind；没有就是空对象",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "arrival_capped": {
+              "$ref": "#/$defs/VoiceClip"
+            }
+          }
+        }
+      },
+      "title": "Prerecorded"
+    },
+    "ManifestResponse": {
+      "description": "不变的内容（2.1），构建时由世界模型和资源清单生成",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifestVersion",
+        "book",
+        "roles",
+        "scenes",
+        "characters",
+        "acts",
+        "clock",
+        "ruby"
+      ],
+      "properties": {
+        "manifestVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "book": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["id", "title", "author"],
+          "properties": {
+            "id": {
+              "$ref": "../common.schema.json#/$defs/BookId"
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "author": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "roleId",
+              "name",
+              "summary",
+              "startSceneId",
+              "startActId"
+            ],
+            "properties": {
+              "roleId": {
+                "$ref": "../../data/common.schema.json#/$defs/RoleId"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "summary": {
+                "type": "string",
+                "minLength": 1
+              },
+              "startSceneId": {
+                "$ref": "../../data/common.schema.json#/$defs/SceneId"
+              },
+              "startActId": {
+                "$ref": "../../data/common.schema.json#/$defs/ActId"
+              }
+            }
+          },
+          "minItems": 1
+        },
+        "scenes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sceneId", "places", "assetUrl", "assetVersion"],
+            "properties": {
+              "sceneId": {
+                "$ref": "../../data/common.schema.json#/$defs/SceneId"
+              },
+              "places": {
+                "type": "array",
+                "items": {
+                  "$ref": "../../data/common.schema.json#/$defs/PlaceId"
+                },
+                "minItems": 1
+              },
+              "assetUrl": {
+                "$ref": "../common.schema.json#/$defs/AssetPath"
+              },
+              "assetVersion": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "minItems": 1
+        },
+        "characters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "name", "reading", "talkable"],
+            "properties": {
+              "id": {
+                "$ref": "../../data/common.schema.json#/$defs/CharacterId"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "reading": {
+                "type": "string",
+                "minLength": 1
+              },
+              "talkable": {
+                "type": "boolean"
+              },
+              "prerecorded": {
+                "description": "声音定了以后才有（Q-004）；不能对话的人物没有",
+                "$ref": "#/$defs/Prerecorded"
+              }
+            }
+          }
+        },
+        "acts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["actId", "title", "sceneIds"],
+            "properties": {
+              "actId": {
+                "$ref": "../../data/common.schema.json#/$defs/ActId"
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1
+              },
+              "sceneIds": {
+                "type": "array",
+                "items": {
+                  "$ref": "../../data/common.schema.json#/$defs/SceneId"
+                },
+                "minItems": 1
+              }
+            }
+          }
+        },
+        "clock": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["deadlineT", "sunsetMinuteOfDay", "days"],
+          "properties": {
+            "deadlineT": {
+              "$ref": "../../data/common.schema.json#/$defs/StoryTime"
+            },
+            "sunsetMinuteOfDay": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1439
+            },
+            "days": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "minItems": 1
+            }
+          }
+        },
+        "ruby": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["word", "reading"],
+            "properties": {
+              "word": {
+                "type": "string",
+                "minLength": 1
+              },
+              "reading": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      },
+      "title": "ManifestResponse"
+    }
+  }
+}

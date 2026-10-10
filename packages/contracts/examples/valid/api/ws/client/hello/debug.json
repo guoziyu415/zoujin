@@ -1,0 +1,7 @@
+{
+  "type": "hello",
+  "lastSeq": 45,
+  "clientVersion": "web-0.1.0",
+  "debug": true,
+  "fakeVoice": true
+}

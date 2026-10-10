@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api/rest/snapshot.schema.json",
+  "title": "GET /v1/playthroughs/{id}/snapshot",
+  "description": "当前场景的世界投影（2.3）",
+  "x-endpoint": {
+    "method": "GET",
+    "path": "/v1/playthroughs/{id}/snapshot",
+    "params": "../common.schema.json#/$defs/PlaythroughPathParams",
+    "responses": {
+      "200": "../common.schema.json#/$defs/Snapshot"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "type": "act_ended",
+  "actId": "act.3",
+  "recapLines": [
+    "あなたは、妹の婚礼の支度を手伝った。",
+    "花婿は、あなたに村の脇道を教えた。"
+  ],
+  "options": [
+    {
+      "optionId": "exit.3.road",
+      "label": "雨の中、メロスと走り出る",
+      "sceneId": "scene.homeward-road",
+      "tLabel": "三日目・午前",
+      "with": ["char.melos"],
+      "because": null,
+      "enRoute": {
+        "line": "隣村で、メロスは歩をゆるめた。",
+        "choices": [
+          {
+            "index": 0,
+            "label": "急かす",
+            "melosMinutes": -40,
+            "afterLine": "メロスは足を速めた。河原には、思ったより早く着いた。"
+          },
+          {
+            "index": 1,
+            "label": "好きにさせる",
+            "melosMinutes": null,
+            "afterLine": null
+          }
+        ]
+      }
+    }
+  ],
+  "freeform": {
+    "allowed": true,
+    "triesLeft": 2
+  }
+}

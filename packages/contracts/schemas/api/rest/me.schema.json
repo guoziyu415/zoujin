@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api/rest/me.schema.json",
+  "title": "GET /v1/me",
+  "description": "当前账号、今天的额度和进行中的局（第 1 节）",
+  "x-endpoint": {
+    "method": "GET",
+    "path": "/v1/me",
+    "responses": {
+      "200": "#/$defs/MeResponse",
+      "401": "../error.schema.json#/$defs/ErrorResponse"
+    }
+  },
+  "$defs": {
+    "MeResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["user", "limits", "activePlaythrough"],
+      "properties": {
+        "user": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["userRef"],
+          "properties": {
+            "userRef": {
+              "$ref": "../../data/playthrough.schema.json#/$defs/Playthrough/properties/userRef"
+            }
+          }
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["runsToday", "runsPerDay", "voiceMinutesLeft"],
+          "properties": {
+            "runsToday": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "runsPerDay": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "voiceMinutesLeft": {
+              "$ref": "../common.schema.json#/$defs/Minutes"
+            }
+          }
+        },
+        "activePlaythrough": {
+          "description": "没有进行中的局时为 null",
+          "anyOf": [
+            {
+              "$ref": "../common.schema.json#/$defs/ActivePlaythrough"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "title": "MeResponse"
+    }
+  }
+}
