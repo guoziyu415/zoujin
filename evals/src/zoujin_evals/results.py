@@ -38,6 +38,7 @@ class CaseResult(TypedDict):
     title: str
     mode: str
     runs: int
+    deletes: NotRequired[bool]  # 有删除步骤（deleteMemory / deletePlaythrough）：E6 的硬指标只算这些例
     skip: NotRequired[Skip]  # 整例跳过：setup 或某一步后端没做（每次都一样，只试第一次）
     results: NotRequired[list[RunResult]]
 
