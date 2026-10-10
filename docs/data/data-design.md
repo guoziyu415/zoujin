@@ -78,7 +78,7 @@ memory_items(memory_id PK, playthrough_id FK CASCADE, character, kind, text, fro
 endings(ending_id PK, playthrough_id FK CASCADE, body jsonb, decided_at)
 ```
 
-- 每局费用 = `playthrough_metrics` 四项费用之和（9.1「成本可持续吗」、第 10 节）。9.1 还要的问句结尾计数、导演事件数、结局演出开始时间，由做这些功能的卡加列（第 12 节）。
+- 每局费用 = `playthrough_metrics` 里所有 `cost_*_usd` 列之和（9.1「成本可持续吗」、第 10 节）。B-0 建了四列：提取、检查、回答、Live。安全分类器、结局生成、记忆整理、人物简报的费用，由做这些功能的卡各加一列 `cost_<项>_usd`，不并进已有的列。9.1 还要的问句结尾计数、导演事件数、结局演出开始时间，也由做这些功能的卡加列（第 12 节）。
 - 分析会读后端 `turns` 表的 `status`：pending / leased / done / retracted / failed / lost。`lost` 是断线时人物还没说完的一轮：叙事者不处理，不判、不花时间、没有 `turn_settled`（api-contract v1.0.3 第 4 节），也不算进 `playthrough_metrics.turns`。算「一局几轮」用 `playthrough_metrics.turns`，`lost` 的轮数单独看（9.1「续玩」的断线）。
 
 `events` 不允许 UPDATE / DELETE：narrator 角色只有 INSERT、SELECT；只有「删除整局」走单独的特权流程（backend-design 2.1）。
@@ -484,7 +484,7 @@ BigQuery 每天一个定时查询，用 `EXTERNAL_QUERY` 直接读 Cloud SQL，�
 
 修订记录：
 
-- **v1.2.1（2026-10-10）**：第 3 节的表对齐 B-0（#26）建的表：`playthroughs` 加 `book_id` 和每账号同时 1 局，`events` 加 `schema_version`、`origin`、`extra`，`utterances` 加 `source`，`playthrough_metrics` 按后端分成四项费用和进出两项语音秒数；`memory_items`、`endings` 注明由用到的 M2 卡建；写明分析怎么读 `turns.status`（含 `lost`，api-contract v1.0.3）。契约跟到 1.7。
+- **v1.2.1（2026-10-10）**：第 3 节的表对齐 B-0（#26）建的表：`playthroughs` 加 `book_id` 和每账号同时 1 局，`events` 加 `schema_version`、`origin`、`extra`，`utterances` 加 `source`，`playthrough_metrics` 按后端分成四项费用（每局费用是所有 `cost_*_usd` 列之和，以后的功能各加一列）和进出两项语音秒数；`memory_items`、`endings` 注明由用到的 M2 卡建；写明分析怎么读 `turns.status`（含 `lost`，api-contract v1.0.3）。契约跟到 1.7。
 - v0.1（2026-10-06）：初稿。
 - 2026-10-07：加自伤分类器的留出验证样本 25 条（`evals/safety/s4_selfharm_holdout.jsonl`），只用来验已定稿的 v3。
 - 2026-10-06（D-019）：遥测 9.3 跟上前端 10.6.3 的画质四级：`perf_sample` 加 `qualityLevel`、`assetTier`、`lowPower`；`quality_changed` 加 `reason`、`probeGpuMs`、`assetMbps`；9.1「手机体验」加每局的起始级和升降次数；`deviceClass` 改为屏幕尺寸类，报表不再按机型切。
