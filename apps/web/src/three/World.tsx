@@ -33,6 +33,9 @@ export const loadInfo = {
   spots: {} as Record<string, [number, number, number]>, // world positions, for the test hook
 };
 
+// the test hook fetches the high tier this way whatever the entry pack's speed (the e2e server's reads low)
+export const highTier = { fetch: (): Promise<void> => Promise.resolve() };
+
 export function World({ onStage }: { onStage: (s: LoadStage) => void }) {
   const { gl, scene: three, camera } = useThree();
   const sceneId = useWorld((s) => s.sceneId);
@@ -106,6 +109,8 @@ export function World({ onStage }: { onStage: (s: LoadStage) => void }) {
         .catch((e: unknown) => console.warn("high tier textures", e));
     };
     checkHigh.current = check;
+    highTier.fetch = () =>
+      loadHigh(scene, gl).then(() => quality.hiDownloaded());
     check();
     const offLevel = useQuality.subscribe((q, prev) => {
       if (q.applied !== prev.applied) check();

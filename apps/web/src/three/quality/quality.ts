@@ -163,14 +163,15 @@ export const quality = {
     if (!probing) startGovernor(now);
   },
 
-  // every frame, from PostFX: how many times to draw this frame (2 during the governor's stress)
-  frame(now: number, calls: number, pixelRatio: number): number {
+  // every frame, from PostFX: how many times to draw this frame (2 during the governor's stress). `still`: the
+  // camera has not moved since the last frame (the governor's stress runs only then)
+  frame(now: number, calls: number, pixelRatio: number, still = false): number {
     drawCalls = calls;
     dpr = pixelRatio;
     if (lastFrame >= 0 && sampleStart > 0) {
       const dt = now - lastFrame;
       hist.add(dt);
-      gov?.frame(dt, now);
+      gov?.frame(dt, now, still);
       if (now - sampleStart >= SAMPLE_EVERY_MS) {
         sampleStart = now;
         samplePerf();

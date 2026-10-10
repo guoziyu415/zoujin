@@ -1,7 +1,8 @@
 // Quality levels (F-2 card, F-2c): with ?quality=auto the start probe runs while the plaza loads, picks a level, the
 // governor starts once the scene is ready, and quality_changed / perf_sample wait in the telemetry queue in the shape
-// data-design 9.3 gives. Then the same first screen at L0, L1 and L2: the colours must not change with the level
-// (UX art-direction 9.5; L0 turns bloom and MSAA off, L2 softens the shadows). Shots in test-results/shots/quality-*.
+// data-design 9.3 gives. Then the same first screen at L0, L1 and L2, and at L2 with the high tier's textures: the
+// colours must not change with the level or the tier (UX art-direction 9.5; L0 turns bloom and MSAA off, L2 softens
+// the shadows, the high tier swaps 11 of the plaza's textures for 2048 ones). Shots in test-results/shots/quality-*.
 import { expect, test, type Page } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
@@ -20,17 +21,23 @@ type QHook = {
     applied: string;
     probe: { gpuMs: number; bound: string; reps: number } | null;
     running: boolean;
+    hiReady: boolean;
+    assetTier: string;
   };
   telemetry(): Event[];
-  force(level: string): Promise<void>;
+  force(level: string, tier?: string): Promise<void>;
+  fetchHigh(): Promise<void>;
 };
 const hook = (p: Page) =>
   ({
     q: () => p.evaluate(() => (window.__zoujin as unknown as QHook).quality()),
     events: () =>
       p.evaluate(() => (window.__zoujin as unknown as QHook).telemetry()),
-    force: (l: string) =>
-      p.evaluate((l) => (window.__zoujin as unknown as QHook).force(l), l),
+    force: (l: string, tier?: string) =>
+      p.evaluate(
+        ([l, t]) => (window.__zoujin as unknown as QHook).force(l!, t),
+        [l, tier] as const,
+      ),
     frames: (n: number) =>
       p.evaluate((n) => (window.__zoujin as unknown as QHook).frames(n), n),
   }) as const;
@@ -116,31 +123,50 @@ function mean(png: PNG, x0: number, y0: number, x1: number, y1: number) {
   return c.map((v) => v / n);
 }
 
-test("the colours stay the same at L0, L1 and L2", async () => {
-  const regions: Record<string, [number, number, number, number]> = {
-    sky: [0.05, 0.02, 0.45, 0.25],
-    castle: [0.55, 0.4, 0.95, 0.6],
-    ground: [0.4, 0.75, 0.95, 0.95],
-    shade: [0.0, 0.55, 0.35, 0.75],
-  };
-  const means: Record<string, Record<string, number[]>> = {};
-  for (const l of ["L1", "L0", "L2"]) {
-    await hook(page).force(l);
-    await hook(page).frames(3);
-    const buf = await page.screenshot({
-      path: path.join(SHOTS, `quality-${l}.png`),
-    });
-    const png = PNG.sync.read(buf);
-    means[l] = Object.fromEntries(
-      Object.entries(regions).map(([k, r]) => [k, mean(png, ...r)]),
+const regions: Record<string, [number, number, number, number]> = {
+  sky: [0.05, 0.02, 0.45, 0.25],
+  castle: [0.55, 0.4, 0.95, 0.6],
+  ground: [0.4, 0.75, 0.95, 0.95],
+  shade: [0.0, 0.55, 0.35, 0.75],
+};
+const means: Record<string, Record<string, number[]>> = {};
+
+async function shoot(name: string, level: string, tier?: string) {
+  await hook(page).force(level, tier);
+  await hook(page).frames(3);
+  const buf = await page.screenshot({
+    path: path.join(SHOTS, `quality-${name}.png`),
+  });
+  const png = PNG.sync.read(buf);
+  means[name] = Object.fromEntries(
+    Object.entries(regions).map(([k, r]) => [k, mean(png, ...r)]),
+  );
+}
+
+function expectSame(name: string, ref: string) {
+  for (const k of Object.keys(regions)) {
+    const d = means[name]![k]!.map((v, i) => Math.abs(v - means[ref]![k]![i]!));
+    console.log(
+      `${name} vs ${ref} ${k}: ${d.map((x) => x.toFixed(1)).join(" ")}`,
     );
+    expect(Math.max(...d)).toBeLessThanOrEqual(6);
   }
-  for (const l of ["L0", "L2"])
-    for (const k of Object.keys(regions)) {
-      const d = means[l]![k]!.map((v, i) => Math.abs(v - means.L1![k]![i]!));
-      console.log(`${l} ${k}: ${d.map((x) => x.toFixed(1)).join(" ")}`);
-      expect(Math.max(...d)).toBeLessThanOrEqual(6);
-    }
+}
+
+test("the colours stay the same at L0, L1 and L2", async () => {
+  for (const l of ["L1", "L0", "L2"]) await shoot(l, l);
+  expectSame("L0", "L1");
+  expectSame("L2", "L1");
+});
+
+test("the high tier's textures keep the colours at L2", async () => {
+  // the game fetches them at L2 once the entry pack came in fast enough; here at once, then the same frame on each tier
+  await page.evaluate(() => (window.__zoujin as unknown as QHook).fetchHigh());
+  expect((await hook(page).q()).hiReady).toBe(true);
+  await shoot("L2-high", "L2", "high");
+  expect((await hook(page).q()).assetTier).toBe("high");
+  await shoot("L2-standard", "L2", "standard");
+  expectSame("L2-high", "L2-standard");
 });
 
 test("no console errors", () => {

@@ -1,7 +1,7 @@
 // The level rules of frontend-design 10.6.3, driven with made-up frame times (F-2 card acceptance: when and how often
 // the level goes up and down).
 import { describe, expect, it } from "vitest";
-import { Governor, STRESS_FRAMES, type Change } from "./governor";
+import { Governor, STILL_FRAMES, STRESS_FRAMES, type Change } from "./governor";
 import { estimateMs, levelDpr, pickStartLevel, type Level } from "./levels";
 
 const VSYNC = 1000 / 60;
@@ -13,10 +13,11 @@ function run(start: Level, gpu: (l: Level) => number | null = () => null) {
   const api = {
     g,
     changes,
+    stressFrames: 0, // frames drawn twice so far
     get now() {
       return now;
     },
-    // frames at a fixed interval (or a repeating pattern) for this many ms
+    // frames at a fixed interval (or a repeating pattern) for this many ms, the camera moving
     play(ms: number, interval: number | number[]) {
       const seq = Array.isArray(interval) ? interval : [interval];
       const end = now + ms;
@@ -27,13 +28,19 @@ function run(start: Level, gpu: (l: Level) => number | null = () => null) {
       }
       return api;
     },
-    // a camera cut; if it starts the 2x stress, draw those frames at `stressed` ms each
-    cut(stressed = VSYNC) {
-      g.cut(now);
-      while (g.stressing > 0) {
-        now += stressed;
-        g.frame(stressed, now);
+    // the camera still for this many ms at 60 fps; if the 2x stress starts, its frames take `stressed` ms each
+    hold(ms = 1000, stressed = VSYNC) {
+      const end = now + ms;
+      while (now < end) {
+        const dt = g.stressing > 0 ? stressed : VSYNC;
+        if (g.stressing > 0) api.stressFrames++;
+        now += dt;
+        g.frame(dt, now, true);
       }
+      return api;
+    },
+    cut() {
+      g.cut(now);
       return api;
     },
     reasons: () => changes.map((c) => c.reason),
@@ -80,10 +87,12 @@ describe("quality governor", () => {
   });
 
   it("rises only at a cut, after 30 s in budget and a 2x stress at about 60 fps, one level at the next cut", () => {
-    const r = run("L1").play(20_000, VSYNC).cut();
-    expect(r.g.stressing).toBe(0);
-    expect(r.g.level).toBe("L1"); // only 20 s in budget: no stress yet
-    r.play(10_000, VSYNC).cut(); // 30 s: the stress runs and passes
+    const r = run("L1").play(20_000, VSYNC).hold();
+    expect(r.stressFrames).toBe(0); // only 21 s in budget: no stress yet
+    r.play(10_000, VSYNC).cut();
+    expect(r.g.level).toBe("L1"); // 31 s, but the camera was moving: no stress, no rise
+    r.hold(); // still: the stress runs and passes
+    expect(r.stressFrames).toBe(STRESS_FRAMES + 1);
     expect(r.g.level).toBe("L1");
     r.play(2_000, VSYNC);
     expect(r.g.level).toBe("L1"); // never between cuts
@@ -91,22 +100,47 @@ describe("quality governor", () => {
     expect(r.g.level).toBe("L2");
     expect(r.g.applied).toBe("L2");
     expect(r.changes.at(-1)).toEqual({ from: "L1", to: "L2", reason: "up" });
-    r.cut();
+    r.hold().cut();
     expect(r.g.level).toBe("L2"); // the next rise needs another 30 s at L2
   });
 
-  it("does not rise when the 2x stress drops to 30 fps", () => {
+  it("stresses only once the camera has been still a few frames, and stops when it moves", () => {
+    const r = run("L1").play(30_000, VSYNC);
+    r.hold(((STILL_FRAMES - 1) * VSYNC) | 0);
+    expect(r.g.stressing).toBe(0); // the camera just stopped: not yet
+    r.hold(10 * VSYNC);
+    expect(r.g.stressing).toBeGreaterThan(0);
+    r.play(VSYNC, VSYNC); // the player walks off: the stress stops, and it isn't a failure
+    expect(r.g.stressing).toBe(0);
+    r.cut();
+    expect(r.g.level).toBe("L1");
+    r.hold().cut();
+    expect(r.g.level).toBe("L2");
+  });
+
+  it("does not rise when the 2x stress drops to 30 fps, and waits longer after each failure", () => {
     const r = run("L1")
       .play(30_000, VSYNC)
-      .cut(2 * VSYNC)
+      .hold(1500, 2 * VSYNC)
       .cut();
     expect(r.g.level).toBe("L1");
+    expect(r.stressFrames).toBe(STRESS_FRAMES + 1);
+    r.hold(20_000).cut(); // not again at once: 30 s in budget first, then 60 s after one failure
+    expect(r.stressFrames).toBe(STRESS_FRAMES + 1);
+    r.play(40_000, VSYNC)
+      .hold(1500, 2 * VSYNC)
+      .cut(); // 61 s: the second try, failed too
+    expect(r.stressFrames).toBe(2 * (STRESS_FRAMES + 1));
+    r.play(100_000, VSYNC).hold().cut(); // 101 s: under the 120 s after two failures
+    expect(r.stressFrames).toBe(2 * (STRESS_FRAMES + 1));
+    r.play(20_000, VSYNC).hold().cut(); // 122 s, passes
+    expect(r.g.level).toBe("L2");
   });
 
   it("does not count the stress frames as the level's own", () => {
     const r = run("L1")
       .play(30_000, VSYNC)
-      .cut(2 * VSYNC);
+      .hold(1500, 2 * VSYNC);
     expect(r.g.stressing).toBe(0);
     r.play(10_000, VSYNC);
     expect(r.g.level).toBe("L1");
@@ -117,11 +151,11 @@ describe("quality governor", () => {
   it("waits 60 s after a drop before rising again", () => {
     const r = run("L2").play(10_000, janky(25));
     expect(r.g.level).toBe("L1");
-    r.play(40_000, VSYNC).cut().cut();
+    r.play(40_000, VSYNC).hold().cut();
     expect(r.g.level).toBe("L1"); // in budget for 40 s, but the drop was 40 s ago
-    r.play(15_000, VSYNC).cut().cut();
-    expect(r.g.level).toBe("L1"); // 55 s
-    r.play(10_000, VSYNC).cut().cut();
+    r.play(14_000, VSYNC).hold().cut();
+    expect(r.g.level).toBe("L1"); // 56 s
+    r.play(10_000, VSYNC).hold().cut();
     expect(r.g.level).toBe("L2");
   });
 
@@ -136,7 +170,7 @@ describe("quality governor", () => {
       to: "L1",
       reason: "locked",
     });
-    for (let i = 0; i < 10; i++) r.play(30_000, VSYNC).cut().cut();
+    for (let i = 0; i < 10; i++) r.play(30_000, VSYNC).hold().cut();
     expect(r.g.level).toBe("L1");
     r.play(10_000, janky(50));
     expect(r.g.level).toBe("L0"); // dropping is still allowed
@@ -153,10 +187,11 @@ describe("quality governor", () => {
     expect(r.g.applied).toBe("L0");
     r.play(70_000, VSYNC);
     r.g.busy = true;
-    r.cut().cut();
+    r.hold().cut();
+    expect(r.stressFrames).toBe(0); // no stress mid-line either
     expect(r.g.level).toBe("L0");
     r.g.busy = false;
-    r.cut().cut();
+    r.hold().cut();
     expect(r.g.level).toBe("L1");
   });
 
@@ -180,7 +215,7 @@ describe("quality governor", () => {
       expect(r.reasons()).toEqual(["start", "lowPower"]);
       for (let i = 0; i < 4; i++)
         r.play(30_000, 2 * VSYNC)
-          .cut()
+          .hold()
           .cut();
       expect(r.g.level).toBe("L2");
       // plugged in: back at 60 fps, the normal budgets again

@@ -4,10 +4,10 @@ import { peek } from "../../telemetry/telemetry";
 import { lighting } from "../Lighting";
 import { frameStats } from "../PostFX";
 import type { Level } from "../quality/levels";
-import { quality, useQuality } from "../quality/quality";
+import { quality, useQuality, type AssetTier } from "../quality/quality";
 import { rig } from "../rig";
 import { planToWorld, type Vec3 } from "../scene/frame";
-import { loadInfo } from "../World";
+import { highTier, loadInfo } from "../World";
 import { useWorld } from "./fakeStore";
 
 type Plan = [number, number, number]; // layout.json plan x, y and height
@@ -88,10 +88,11 @@ export function installTestHook(): void {
         running: !!quality.governor,
       }),
       telemetry: () => peek().map((e) => ({ ...e })),
-      force: async (level: Level) => {
-        quality.force(level);
+      force: async (level: Level, tier?: AssetTier) => {
+        quality.force(level, tier);
         await nextFrames(4);
       },
+      fetchHigh: () => highTier.fetch(),
       cut: async () => {
         quality.cut(performance.now());
         await nextFrames(2);
