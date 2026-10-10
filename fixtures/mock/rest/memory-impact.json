@@ -8,7 +8,7 @@
     "voidsPromise": true
   },
   "old-man-1": {
-    "keeps": "荷車を運んだことは、そのまま残ります。",
+    "keeps": "家まで送ったことは、そのまま残ります。",
     "voidsPromise": false
   }
 }

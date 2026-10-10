@@ -379,7 +379,7 @@ def play_approach(p: Player) -> None:
     p.expect("turn_settled", turnId=answer)
     msg_id = p.msg_id()
     p.send(
-        {"type": "action", "clientMsgId": msg_id, "actionId": "act_help_old-man_cart", "kind": "help", "target": OLD}
+        {"type": "action", "clientMsgId": msg_id, "actionId": "act_walk_old-man_home", "kind": "help", "target": OLD}
     )
     result = p.expect("action_result", clientMsgId=msg_id)
     assert result["status"] == "done" and result["minutes"] == 60
@@ -403,10 +403,15 @@ def play_act_end(p: Player, voice: bool) -> None:
         plan = p.expect("act_plan_result", clientMsgId=msg_id)
     assert not plan["accepted"] and plan["triesLeft"] == 1
     assert ended["options"] and plan["alternative"]["optionId"].startswith("plan_")
-    p.send({"type": "act_choose", "clientMsgId": p.msg_id(), "optionId": plan["alternative"]["optionId"]})
+    # 语音那次选替代去处，文字那次选老爺家：落点不同（前端 10-10 定）
+    choice = plan["alternative"]["optionId"] if voice else "exit.1.old-man"
+    p.send({"type": "act_choose", "clientMsgId": p.msg_id(), "optionId": choice})
     transition = p.expect("act_transition", fromActId="act.1", toActId="act.4")
     assert transition["snapshot"]["lastSeq"] == p.last_seq
     assert transition["snapshot"]["pending"]["actEnd"] is None
+    spots = {c["id"]: c["spot"] for c in transition["snapshot"]["characters"]}
+    landing = (transition["snapshot"]["player"]["spot"], spots[OLD])
+    assert landing == (("ground-west", "stake-front") if voice else ("stake-front", "stake-front-side"))
     snap = p.call("snapshot", 200, f"/v1/playthroughs/{p.pid}/snapshot")
     assert snap["actId"] == "act.4" and snap["clock"]["t"] == 5370
 
@@ -651,6 +656,12 @@ def test_rest_endpoints(fast: Server) -> None:
         assert p.call("memory-impact", 200, f"{base}/memories/{mid}/impact")["voidsPromise"]
         deleted = p.call("memory-delete", 200, f"{base}/memories/{mid}", key=True)
         assert deleted["memoryId"] == mid and deleted["promiseVoided"] == promise_memory["promiseId"]
+        # 删约定类的记忆：追加一条 forget 事件，约定变 voided（2.7）
+        forget = p.expect("commit")
+        (ev,) = forget["events"]
+        assert ev["type"] == "forget" and ev["actor"] == "player" and ev["dt"] == 0
+        assert ev["promise"] == {"promiseId": promise_memory["promiseId"], "change": "voided"}
+        assert [(x["promiseId"], x["status"]) for x in forget["promises"]] == [(promise_memory["promiseId"], "voided")]
         p.expect("session_preparing", character=MELOS, reason="rebuild")
         book = p.call("memories", 200, f"{base}/memories")
         (melos,) = [c for c in book["characters"] if c["character"] == MELOS]
@@ -667,13 +678,20 @@ def test_rest_endpoints(fast: Server) -> None:
         assert p.call("me", 200, "/v1/me")["activePlaythrough"] is None
         # 删除之后可以重新开局（F-0 的「新しく始める」）；这一局用结局剧本，取结局
         p.pid = p.call("playthroughs-create", 201, "/v1/playthroughs", create, key=True)["playthroughId"]
+        # 删过梅洛斯的记忆：结局卡上不出他那一行（contracts 第 4 节删除语义第 2 条）
+        book = p.call("memories", 200, f"/v1/playthroughs/{p.pid}/memories")
+        (melos,) = [c for c in book["characters"] if c["character"] == MELOS]
+        plain = next(m["memoryId"] for m in melos["memories"] if m["promiseId"] is None)
+        p.call("memory-delete", 200, f"/v1/playthroughs/{p.pid}/memories/{plain}", key=True)
         assert p.http.post("/__mock/scenario", json={"name": "ending"}).status_code == 200
         p.last_seq = 0
         p.connect()
         p.expect("ending_ready")
-        p.call("ending", 200, f"/v1/playthroughs/{p.pid}/ending")
+        ending = p.call("ending", 200, f"/v1/playthroughs/{p.pid}/ending")
+        assert [x["character"] for x in ending["card"]["characterLines"]] == [OLD]
         events = p.call("events", 200, f"/v1/playthroughs/{p.pid}/events?afterSeq=0&limit=50")
-        commits = [c for c in p.log[p.log.index(p.find("welcome")[-1]) :] if c["type"] == "commit"]
+        last_welcome = max(i for i, x in enumerate(p.log) if x["type"] == "welcome")  # 内容相同的 welcome 不止一条
+        commits = [c for c in p.log[last_welcome:] if c["type"] == "commit"]
         assert [e["eventId"] for e in events["events"]] == [e["eventId"] for c in commits for e in c["events"]]
         assert events["lastSeq"] == p.last_seq
         p.call("auth-logout", 204, "/v1/auth/logout")

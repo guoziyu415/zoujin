@@ -17,7 +17,7 @@ api-contract 第 7 节的 11 种，B-1 卡的 5 种边角情况，加一个「�
 | `interrupt` | 打断：`interrupted`，剩下的音频不发 | メロス | 说一句；他说话的 6 秒里再按下说话或发文字 |
 | `retract` | 作废（`retracted`、`too_late`）和识别改正 | 市の老爺 | 第 1 轮人物回答后约 4 秒内「言い直す」；第 2 轮判完后再作废；第 3 轮字幕识别错了，`turn_retract` 加 `text { via: "correction" }` |
 | `confirm` | 意图确认：按按钮回答、超时 | メロス | 说两句。第 1 次按按钮（一直等）；第 2 次服务端发起一轮（`turn_started reason: confirm`）再问，不回答，30 秒后超时 |
-| `approach` | 人物走过来，接着一个动作 | 市の老爺 | 收到 `approach` 后发 `approach_arrived`（或 `approach_dismiss`）；他开口后回一句；再点动作「手伝う」 |
+| `approach` | 人物走过来，接着一个动作 | 市の老爺 | 收到 `approach` 后发 `approach_arrived`（或 `approach_dismiss`）；他开口后回一句；再点动作「家まで送る」 |
 | `act-end` | 幕末：`leaving` 的一轮、`act_ended`、说出打算、`act_transition` | — | 可以直接 `act_choose`；也可以先 `act_propose` 或用声音（`activity_start purpose: "act_plan"`），拿到不成行和替代去处（只演一次）后再 `act_choose` |
 | `goaway` | `goaway` 后 1012 关闭，断线期间判完，重连补发 | 市の老爺 | 说一句；被关掉后按第 4 节重连 |
 | `other-tab` | 4009 | 市の老爺 | 同一局再开一条连接，旧的以 4009 关闭；在新连接上说一句 |

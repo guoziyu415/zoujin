@@ -5,8 +5,8 @@
   "actId": "act.1",
   "sceneId": "scene.syracuse-square",
   "clock": {
-    "t": 1080,
-    "tLabel": "約束の日・日没前",
+    "t": 1050,
+    "tLabel": "約束の日・夕方",
     "deadlineT": 5460
   },
   "deadline": {
@@ -25,8 +25,7 @@
     },
     {
       "id": "place.stonemason-workshop",
-      "enabled": false,
-      "reason": "戸が閉ざされている"
+      "enabled": true
     },
     {
       "id": "place.execution-ground",
@@ -69,10 +68,10 @@
   ],
   "actions": [
     {
-      "actionId": "act_help_old-man_cart",
+      "actionId": "act_walk_old-man_home",
       "kind": "help",
       "target": "char.old-man",
-      "label": "手伝う",
+      "label": "家まで送る",
       "estimatedMinutes": 60,
       "melos": null,
       "melosMinutes": null,

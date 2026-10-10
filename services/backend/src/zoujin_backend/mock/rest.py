@@ -344,9 +344,67 @@ async def memory_delete(request: Request, pid: str, memory_id: str) -> Response:
     doc = memory_fixture(m, pt, "memory-delete.json", memory_id)
     resp = ok(m, "memory-delete", 200, doc)
     pt.deleted_memories[memory_id] = doc
+    if doc["promiseVoided"]:
+        await m.live(pt).emit(forget_commit(m, pt, memory_id, doc), source="memory-delete")
     if doc["sessionRebuilt"]:
         await rebuild(m, pt, doc["character"])
     return remember(m, slot, request, raw, resp)
+
+
+FORGET_SUMMARY = "{name}は、その約束を覚えていない"
+
+
+def forget_commit(m: Mock, pt: Playthrough, memory_id: str, doc: Json) -> Json:
+    """删掉约定类的记忆：追加一条 forget 事件，约定变 voided，经 commit 推送（2.7；contracts 第 4 节删除语义第 4 条）。
+    这条事件不进 /timeline，也不进「その頃」；前端收到后什么也不显示。"""
+    promise_id = doc["promiseVoided"]
+    promise = next(
+        (
+            {"promiseId": p["promiseId"], "character": ch["character"], "text": p["text"], "direction": p["direction"]}
+            for ch in m.rendered("memories.json", pt)["characters"]
+            for p in ch["promises"]
+            if p["promiseId"] == promise_id
+        ),
+        None,
+    )
+    if promise is None:
+        raise ValueError(f"memories.json 里没有约定 {promise_id}")
+    names = {c["id"]: c["name"] for c in (m.manifest("hashire-merosu") or {"characters": []})["characters"]}
+    clock = pt.snapshot["clock"]
+    event = {
+        "eventId": pt.named_id("ev", f"forget-{memory_id}"),
+        "t": clock["t"],
+        "dt": 0,
+        "tLabel": clock["tLabel"],
+        "type": "forget",
+        "actor": "player",
+        "forPlayer": False,
+        "place": pt.snapshot["player"]["place"],
+        "summary": FORGET_SUMMARY.format(name=names.get(doc["character"], doc["character"])),
+        "causes": [],
+        "visibleEffects": [],
+        "promise": {"promiseId": promise_id, "change": "voided"},
+        "keyMoment": False,
+        "supersedes": None,
+    }
+    return {
+        "type": "commit",
+        "events": [event],
+        "patch": {"clock": {"t": clock["t"], "tLabel": clock["tLabel"]}},
+        "memories": [
+            {
+                "character": doc["character"],
+                "change": "deleted",
+                "memoryId": memory_id,
+                "relationLabel": doc["relationLabel"],
+                "relationLevel": doc["relationLevel"],
+            }
+        ],
+        "promises": [{**promise, "status": "voided"}],
+        "narration": [],
+        "cue": None,
+        "reveal": None,
+    }
 
 
 @router.get("/v1/playthroughs/{pid}/ending")
@@ -357,7 +415,11 @@ async def ending(request: Request, pid: str) -> Response:
         raise Fail("not_found")
     if not pt.ending_ready:
         return ok(m, "ending", 202, {"status": "pending", "etaSeconds": 10})
-    return ok(m, "ending", 200, m.rendered("ending.json", pt))
+    doc = m.rendered("ending.json", pt)
+    # 删过记忆的人物，结局里不写「他记得你」（contracts 第 4 节删除语义第 2 条）：卡片上去掉他那一行
+    forgot = {d["character"] for d in pt.deleted_memories.values()}
+    doc["card"]["characterLines"] = [x for x in doc["card"]["characterLines"] if x["character"] not in forgot]
+    return ok(m, "ending", 200, doc)
 
 
 @router.delete("/v1/playthroughs/{pid}")

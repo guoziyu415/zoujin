@@ -191,6 +191,24 @@
       "name": "刑場の群衆",
       "reading": "けいじょうのぐんしゅう",
       "talkable": false
+    },
+    {
+      "id": "char.guards",
+      "name": "警吏（巡邏・刑吏）",
+      "reading": "けいり（じゅんら・けいり）",
+      "talkable": false
+    },
+    {
+      "id": "char.maiden",
+      "name": "緋のマントの少女",
+      "reading": "ひのまんとのしょうじょ",
+      "talkable": false
+    },
+    {
+      "id": "char.young-man",
+      "name": "市の若い衆",
+      "reading": "いちのわかいしゅ",
+      "talkable": false
     }
   ],
   "acts": [
