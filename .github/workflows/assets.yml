@@ -1,5 +1,6 @@
-# 场景资产（F-2）：查进仓库的清单（预算、两档颜色、位置点和布局一致），再在干净环境里用草稿档从头生成一遍广场，
-# 证明「一条命令跑通」。正式档的光照图要约半小时，不在 CI 里烘。
+# 场景资产（F-2）：查进仓库的清单（预算、两档颜色、位置点和布局、世界模型），再在干净环境里用草稿档从头生成广场，
+# 证明「一条命令跑通」；仓库里的清单要和这次是同一份输入；在另一个目录再生成一遍，两份清单逐字节一致（能复现）。
+# 正式档的光照图要约半小时，不在 CI 里烘。
 name: assets
 
 on:
@@ -55,3 +56,9 @@ jobs:
           uv pip install --python "$RUNNER_TEMP/bpy/bin/python" -r assets/pipeline/plaza/requirements.txt
       - name: build the plaza from scratch (draft lightmaps)
         run: BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/plaza/build.sh draft "$RUNNER_TEMP/plaza"
+      - name: committed manifest built from the same inputs (layout, scripts, tool versions)
+        run: node assets/pipeline/plaza/check_scene.mjs "$RUNNER_TEMP/plaza" --manifest assets/scenes/syracuse-square/scene.json
+      - name: build again in other directories; the two manifests must be byte-identical (README, 复现性)
+        run: |
+          BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/plaza/build.sh draft "$RUNNER_TEMP/plaza2"
+          cmp "$RUNNER_TEMP/plaza/scene.json" "$RUNNER_TEMP/plaza2/scene.json"

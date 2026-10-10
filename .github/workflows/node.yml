@@ -1,4 +1,4 @@
-# Node：eslint、prettier、tsc、预算文件（dev-plan 2.4）。
+# Node：eslint、prettier、tsc、预算文件（dev-plan 2.4）；场景清单对照布局和世界模型（改了 world.json 也查，F-2）。
 name: node
 
 on:
@@ -19,6 +19,7 @@ on:
       - "services/**/*.md"
       - "packages/**/*.md"
       - "infra/**"
+      - "worlds/*/*/world.json"
   push:
     branches: [main]
     paths:
@@ -37,6 +38,7 @@ on:
       - "services/**/*.md"
       - "packages/**/*.md"
       - "infra/**"
+      - "worlds/*/*/world.json"
 
 permissions:
   contents: read
@@ -63,3 +65,5 @@ jobs:
       - run: pnpm typecheck
       # F-0（首屏 JS）、F-2（场景、人物）接上真正的预算检查；现在只确认文件能读。
       - run: node -e "JSON.parse(require('fs').readFileSync('assets/budgets.json','utf8'))"
+      # 进仓库的场景清单：预算、位置点和 layout.json、用到这个场景的世界模型（地点、sceneRef、出口）。不生成，几秒钟
+      - run: node assets/pipeline/plaza/check_scene.mjs assets/scenes/syracuse-square

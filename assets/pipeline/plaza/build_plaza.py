@@ -310,8 +310,18 @@ def castle():
                 box(f'tower_merlon{side}{i}', xx, xx + 0.9, yy - 0.45, yy + 0.45, th, th + 1.2, M_ASHLAR2, tile=2.0, caster=True)
     for k, z in enumerate((z0 + 17.0, z0 + 22.5)):
         quad_uv(f'tower_slit{k}', (tx0 - 0.03, 5.15, z), (0, 1, 0), (0, 0, 1), 0.7, 1.8, SHUTTER, M_DOORS)
-    # the post in front of the castle steps (S-050: the plaza doubles as the execution ground)
-    cyl('post', 11.0, 0.0, 0, 4.6, 0.16, 0.14, 8, M_BARK, caster=True)
+
+def scaffold():
+    # the post on a low platform in front of the castle steps (S-050: the plaza doubles as the execution ground).
+    # Original text: 「ついに磔台に昇り、釣り上げられてゆく友の両足に、齧りついた」 (ux/art-direction 4.1): the platform
+    # is climbed from the square (steps on the west), someone standing on it reaches the feet of the person hoisted up
+    # the post, and that person's head is well above the crowd.
+    x0, x1, y0, y1, h = 9.6, 12.4, -1.5, 1.5, 1.2
+    box('scaffold', x0, x1, y0, y1, 0, h, M_BARK, tile=1.5, caster=True)
+    box('scaffold_kerb', x0 - 0.06, x1 + 0.06, y0 - 0.06, y1 + 0.06, 0, 0.25, M_PLAIN, tile=2.0)
+    for k in range(3):                          # three 0.3 m steps, the platform is the fourth
+        box(f'scaffold_step{k}', x0 - 0.35 * (4 - k), x0, -0.9, 0.9, 0, 0.3 * (k + 1), M_PLAIN, tile=2.0, caster=True)
+    cyl('post', 11.0, 0.0, 0, 6.0, 0.17, 0.14, 8, M_BARK, caster=True)
 
 def stoa():
     # back building
@@ -363,13 +373,15 @@ def temple():
     box('temple_frieze', -9.75, 9.75, 19.25, 33.75, z0 + 1.0, z0 + 1.55, M_CORNICE, tile=4.0, caster=True)
     gable_roof('temple', -9.75, 9.75, 19.25, 33.75, z0 + 1.55, pitch_deg=14, over=0.5, ridge_axis='y')
 
+FY = 7.5   # fountain centre: north of the gate-to-post line so the sunset corridor stays clear (art-direction 4.1)
+
 def fountain():
-    cyl('fountain_plat', 0, 2, 0, 0.18, 3.4, 3.4, 40, M_PLAIN, tile=2.0, caster=True)
+    cyl('fountain_plat', 0, FY, 0, 0.18, 3.4, 3.4, 40, M_PLAIN, tile=2.0, caster=True)
     # basin ring
     bm = bmesh.new(); uvl = bm.loops.layers.uv.new('UVMap')
     seg = 40; ro, ri, z0, z1 = 2.5, 2.15, 0.18, 0.92
     def ring(r, z):
-        return [bm.verts.new((r * math.cos(2 * math.pi * i / seg), 2 + r * math.sin(2 * math.pi * i / seg), z)) for i in range(seg)]
+        return [bm.verts.new((r * math.cos(2 * math.pi * i / seg), FY + r * math.sin(2 * math.pi * i / seg), z)) for i in range(seg)]
     ob, ot, it, ib = ring(ro, z0), ring(ro, z1), ring(ri, z1), ring(ri, z0 + 0.4)
     for A, B in [(ob, ot), (ot, it), (it, ib)]:
         for i in range(seg):
@@ -377,13 +389,13 @@ def fountain():
             f = bm.faces.new((A[i], A[j], B[j], B[i]))
             for l in f.loops:
                 co = l.vert.co
-                ang = math.atan2(co.y - 2, co.x)
+                ang = math.atan2(co.y - FY, co.x)
                 l[uvl].uv = (ang * 2.4 / 2.0, co.z / 2.0 + (0.3 if B is it else 0))
     bm.normal_update()
     obj_from_bm('fountain_basin', bm, [M_PLAIN], 'arch', True)
-    cyl('fountain_water', 0, 2, 0.5, 0.75, 2.16, 2.16, 40, M_WATER, cap=True)
-    cyl('fountain_pillar', 0, 2, 0.5, 2.3, 0.32, 0.26, 16, M_PLAIN, caster=True)
-    cyl('fountain_bowl', 0, 2, 2.3, 2.55, 0.35, 0.85, 20, M_PLAIN, caster=True)
+    cyl('fountain_water', 0, FY, 0.5, 0.75, 2.16, 2.16, 40, M_WATER, cap=True)
+    cyl('fountain_pillar', 0, FY, 0.5, 2.3, 0.32, 0.26, 16, M_PLAIN, caster=True)
+    cyl('fountain_bowl', 0, FY, 2.3, 2.55, 0.35, 0.85, 20, M_PLAIN, caster=True)
 
 def stall(name, x, y, rot_fab):
     for dx in (0, 3.0):
@@ -546,8 +558,9 @@ building('NW', -26, -12, 20.5, 30, 9, ['-y', '+x'])
 temple()
 building('NE', 12.5, 25, 20, 31, 10, ['-y', '-x'], warm=True)
 castle()
+scaffold()
 building('S1', -18, -6.5, -28, -23, 9, ['+y'])   # the stonemason's house; his yard is in front (workshop())
-building('S2', -3.5, 6, -26, -16, 7.5, ['+y'], warm=True)
+building('S2', -3.5, 6, -26, -16, 7.5, ['+y'], warm=True)   # the old man's house; its door (x ≈ 3.6) faces the square
 building('S3', 8.5, 18, -28, -16, 10, ['+y'])
 fountain()
 workshop()

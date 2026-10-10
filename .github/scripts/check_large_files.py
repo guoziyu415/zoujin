@@ -1,6 +1,7 @@
 """不在 LFS 里的文件超过 1 MB 就红（dev-plan 2.4）。锁文件除外。
 
 美术大文件按 .gitattributes 走 LFS；有人绕过 LFS 直接提交大文件时，这里拦住。
+匹配 LFS 规则的路径，进 git 的必须是 LFS 指针：没装 git-lfs 的地方提交 glb，会当普通文件进 git（S-075 ③）。
 """
 
 import subprocess
@@ -27,9 +28,25 @@ def lfs_paths(paths: list[str]) -> set[str]:
     return {parts[i] for i in range(0, len(parts) - 2, 3) if parts[i + 2] == "lfs"}
 
 
+LFS_POINTER = b"version https://git-lfs.github.com/spec/v1"
+
+
+def not_pointers(paths: set[str]) -> list[str]:
+    """匹配 LFS 规则、但 git 里存的不是 LFS 指针的文件（看暂存区里的内容，不看工作区）。"""
+    bad = []
+    for p in sorted(paths):
+        blob = subprocess.run(["git", "cat-file", "-p", f":{p}"], check=True, capture_output=True).stdout
+        if not blob.startswith(LFS_POINTER):
+            bad.append(p)
+    return bad
+
+
 def main() -> int:
     paths = tracked_files()
     lfs = lfs_paths(paths)
+    raw = not_pointers(lfs)
+    for p in raw:
+        print(f"{p}：匹配 LFS 规则，但进 git 的不是 LFS 指针（没装 git-lfs？生成物不进仓库，S-075）")
     big = []
     for p in paths:
         if p in lfs or Path(p).name in EXEMPT:
@@ -39,7 +56,7 @@ def main() -> int:
             big.append((p, size))
     for p, size in big:
         print(f"{p}: {size / LIMIT:.1f} MB，不在 LFS 里（超过 1 MB 的美术和音频文件要按 .gitattributes 走 LFS）")
-    if big:
+    if big or raw:
         return 1
     print(f"{len(paths)} 个文件，LFS 之外没有超过 1 MB 的")
     return 0

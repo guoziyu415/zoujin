@@ -1,16 +1,27 @@
 // CI gate for a packed scene (F-2): download budgets (frontend-design 10.6.2), texture memory, the two tiers keeping
-// the same colour (ux/art-direction 9.5), and scene.json agreeing with layout.json.
-// node check_scene.mjs <dir with scene.json> [layout.json]
+// the same colour (ux/art-direction 9.5), scene.json agreeing with layout.json, and both agreeing with the world
+// models that use the scene (worlds/*/*/world.json: places, sceneRef, exits to adjacent places).
+// node check_scene.mjs <dir with scene.json> [layout.json] [--manifest <committed scene.json>]
 // When the packed files sit next to scene.json (a fresh build) their sizes and sha256 are checked and the colour
 // textures are decoded again; with scene.json alone (the committed manifest) the recorded numbers are checked.
+// --manifest: the committed manifest must have been built from the same inputs as this fresh build (otherwise the
+// pipeline or layout changed without a new final build).
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
+import { isDeepStrictEqual } from "util";
 import { decodeKTX2, meanRGB } from "./ktx2_decode.mjs";
 import { planToWorld, pointInPolygon } from "./frame.mjs";
 
-const [, , DIR, LAYOUT_ARG] = process.argv;
+const args = process.argv.slice(2);
+const opt = (name) => {
+  const i = args.indexOf(name);
+  return i < 0 ? undefined : args.splice(i, 2)[1];
+};
+const MANIFEST = opt("--manifest");
+const [DIR, LAYOUT_ARG] = args;
 const HERE = path.dirname(new URL(import.meta.url).pathname);
+const REPO = path.resolve(HERE, "../../..");
 const budgets = JSON.parse(
   fs.readFileSync(path.join(HERE, "../../budgets.json"), "utf8"),
 ).scene;
@@ -149,6 +160,74 @@ for (const p of scene.places)
   if (!placeIds.has(p.id)) errors.push(`place ${p.id} is not in layout.json`);
 if (!scene.spots[layout.playerStartSpot])
   errors.push(`player start spot ${layout.playerStartSpot} missing`);
+if (!isDeepStrictEqual(scene.startSpots, layout.startSpots))
+  errors.push("startSpots differ from layout.json (rebuild)");
+for (const id of placeIds) {
+  const s = scene.startSpots?.[id];
+  if (!s || scene.spots[s]?.place !== id)
+    errors.push(`place ${id}: start spot ${s} missing or not in that place`);
+}
+
+// ---- the world models that use this scene: worlds/<book>/<version>/world.json
+const subdirs = (d) =>
+  fs.existsSync(d)
+    ? fs
+        .readdirSync(d, { withFileTypes: true })
+        .filter((e) => e.isDirectory())
+        .map((e) => path.join(d, e.name))
+    : [];
+const worlds = subdirs(path.join(REPO, "worlds"))
+  .flatMap(subdirs)
+  .map((v) => path.join(v, "world.json"))
+  .filter((f) => fs.existsSync(f));
+let usedBy = 0;
+for (const f of worlds) {
+  const w = JSON.parse(fs.readFileSync(f, "utf8"));
+  if (!w.scenes?.some((sc) => sc.id === scene.sceneId)) continue;
+  usedBy++;
+  const where = path.relative(REPO, f);
+  const byId = new Map(w.places.map((p) => [p.id, p]));
+  const mine = w.places
+    .filter((p) => p.sceneRef === scene.sceneId)
+    .map((p) => p.id);
+  for (const id of mine)
+    if (!placeIds.has(id))
+      errors.push(`${where}: ${id} is in this scene, layout.json lacks it`);
+  for (const id of placeIds)
+    if (!mine.includes(id))
+      errors.push(`${where}: layout place ${id} is not in this scene there`);
+  for (const e of layout.exits) {
+    const to = byId.get(e.place);
+    if (!to) {
+      errors.push(`${where}: exit to unknown place ${e.place}`);
+      continue;
+    }
+    if (to.sceneRef === scene.sceneId)
+      errors.push(`${where}: exit to ${e.place}, which is in this scene`);
+    const adjacent = mine.some(
+      (id) =>
+        byId.get(id).adjacent?.some((a) => a.place === e.place) ||
+        to.adjacent?.some((a) => a.place === id),
+    );
+    if (!adjacent)
+      errors.push(`${where}: exit to ${e.place}, not adjacent to this scene`);
+  }
+}
+rows.push(`world models using ${scene.sceneId}: ${usedBy}`);
+
+// ---- the committed manifest was built from the same inputs as this build
+if (MANIFEST) {
+  const committed = JSON.parse(fs.readFileSync(MANIFEST, "utf8"));
+  for (const part of ["files", "textures", "tools"]) {
+    const a = committed.inputs?.[part] ?? {};
+    const b = scene.inputs?.[part] ?? {};
+    for (const k of new Set([...Object.keys(a), ...Object.keys(b)]))
+      if (a[k] !== b[k])
+        errors.push(
+          `${MANIFEST} is stale: ${part} ${k} differs from this build (run the final build and commit scene.json)`,
+        );
+  }
+}
 if (!byPath.has(scene.nav.file))
   errors.push("navmesh file missing from the file list");
 
