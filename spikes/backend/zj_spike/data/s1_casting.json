@@ -1,0 +1,58 @@
+{
+  "_note": "候选声音来自 ux-design §16 和 ux/casting-fallback.md（后备接在后面，首选不动），UX 可以直接改这个文件。own = 角色自己的 3 句（听合不合人物）；neutral = 所有角色读同样的句子（盲听只靠声音分辨，不靠台词内容）；ref = 盲听前先放给听的人的参考句。",
+  "characters": {
+    "melos": {
+      "name": "メロス",
+      "direction": "若い村の牧人。まっすぐで激しやすく、息が上がりやすい。明るく力強く、少し早口で。",
+      "candidates": ["Puck", "Fenrir", "Alnilam", "Sadachbia"],
+      "own": ["人の心を疑うのは、最も恥ずべき悪徳だ。", "いや、まだ陽は沈まぬ。", "信じられているから走るのだ。"]
+    },
+    "king": {
+      "name": "王ディオニス",
+      "direction": "人を信じられなくなった王。冷たく、疲れている。低く、ゆっくり、少しかすれた声で。",
+      "candidates": ["Algenib", "Charon", "Orus", "Algieba"],
+      "own": ["人の心は、あてにならない。人間は、もともと私慾のかたまりさ。", "逃がした小鳥が帰って来るというのか。", "だまれ、下賤の者。"]
+    },
+    "selinuntius": {
+      "name": "セリヌンティウス",
+      "direction": "町の石工。落ち着いていて温かく、口数が少ない。平らで穏やかに。",
+      "candidates": ["Iapetus", "Achird", "Umbriel", "Schedar"],
+      "own": ["生れて、はじめて君を疑った。", "君が私を殴ってくれなければ、私は君と抱擁できない。", "メロス、君は、まっぱだかじゃないか。"]
+    },
+    "sister": {
+      "name": "妹",
+      "direction": "十六歳の内気な娘。やわらかく、軽い声で、少し恥ずかしそうに。語尾を少し弱く。",
+      "candidates": ["Leda", "Achernar", "Despina", "Erinome"],
+      "own": ["兄さん、おかえりなさい。", "明日、ですか……。はい、うれしいです。", "どうか、気をつけて行ってきてくださいね。"]
+    },
+    "groom": {
+      "name": "花婿",
+      "direction": "実直でまじめな若い牧人。平らに、誠実に。",
+      "candidates": ["Schedar", "Sadachbia"],
+      "own": ["こちらには未だ何の仕度も出来ていない。", "葡萄の季節まで、待ってはもらえまいか。", "……わかった。明日、式を挙げよう。"]
+    },
+    "philostratus": {
+      "name": "フィロストラトス",
+      "direction": "セリヌンティウスの弟子の若者。悲痛で、うやうやしい。息まじりに。",
+      "candidates": ["Enceladus", "Rasalgethi"],
+      "own": ["もう、駄目でございます。", "ああ、あなたは遅かった。", "ひょっとしたら、間に合わぬものでもない。"]
+    },
+    "old-man": {
+      "name": "町の老爺",
+      "direction": "町の老人。年老いて、王を恐れている。低く、ゆっくり、弱々しく、ささやくように。言葉の間に短い間を置く。",
+      "candidates": ["Sadaltager", "Rasalgethi", "Zubenelgenubi", "Algieba"],
+      "own": ["王様は、人を殺します。", "いいえ、乱心ではございませぬ。", "誰もそんな、悪心を持っては居りませぬ。"]
+    }
+  },
+  "neutral": ["わかりました。すぐに参ります。", "それは、本当の話ですか。", "今日は、風が強いですね。"],
+  "ref": "私は、ここで待っています。",
+  "pairs": [
+    {"scene": "広場", "a": "old-man", "b": "melos"},
+    {"scene": "王城", "a": "king", "b": "melos"},
+    {"scene": "王城", "a": "king", "b": "selinuntius"},
+    {"scene": "王城", "a": "melos", "b": "selinuntius"},
+    {"scene": "村", "a": "sister", "b": "groom"},
+    {"scene": "帰り道", "a": "philostratus", "b": "melos"},
+    {"scene": "刑場", "a": "old-man", "b": "king"}
+  ]
+}

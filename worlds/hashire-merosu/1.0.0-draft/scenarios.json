@@ -1,0 +1,562 @@
+[
+ {
+  "id": "sc.king-hardened",
+  "note": "約束の場でプレイヤーが王を嘲り、王の信頼が負になる",
+  "events": [
+   {
+    "t": 1235,
+    "effects": [
+     {
+      "op": "inc",
+      "var": "var.king.trust",
+      "by": -20
+     }
+    ]
+   }
+  ],
+  "expect": "in-time-king-unchanged"
+ },
+ {
+  "id": "sc.river-delay",
+  "note": "川岸でプレイヤーがメロスを 4 時間引き留める",
+  "beats": {
+   "beat.18": {
+    "to": "delayed",
+    "minutes": 240
+   }
+  },
+  "expect": "too-late",
+  "expectVars": {
+   "var.hostage.fate": "executed"
+  }
+ },
+ {
+  "id": "sc.river-delay-short",
+  "note": "川岸で 20 分だけ引き留める。原著のメロスは日没ちょうどに着くので、余裕はゼロ",
+  "beats": {
+   "beat.18": {
+    "to": "delayed",
+    "minutes": 20
+   }
+  },
+  "expect": "too-late"
+ },
+ {
+  "id": "sc.delay-offset",
+  "note": "過場で「急かす」を選び（40 分稼ぐ）、川岸で 20 分引き留める",
+  "beats": {
+   "beat.16": {
+    "to": "prevented"
+   },
+   "beat.18": {
+    "to": "delayed",
+    "minutes": 20
+   }
+  },
+  "expect": "canon-reunion",
+  "events": [
+   {
+    "t": 4590,
+    "effects": [
+     {
+      "op": "inc",
+      "var": "var.melos.stamina",
+      "by": -15
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "sc.no-dawdle",
+  "note": "第三幕末の過場で「急かす」を選ぶ（exit.3.road の enRoute）。のんびり歩かないので川に 40 分早く着く（体力の消耗は同じ）",
+  "beats": {
+   "beat.16": {
+    "to": "prevented"
+   }
+  },
+  "expect": "canon-reunion",
+  "events": [
+   {
+    "t": 4590,
+    "effects": [
+     {
+      "op": "inc",
+      "var": "var.melos.stamina",
+      "by": -15
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "sc.player-hostage",
+  "note": "プレイヤーがセリヌンティウスの代わりに人質になる",
+  "beats": {
+   "beat.06": {
+    "to": "altered",
+    "outcomes": [
+     {
+      "op": "set",
+      "var": "var.hostage.who",
+      "value": "player"
+     },
+     {
+      "op": "set",
+      "var": "var.hostage.fate",
+      "value": "held"
+     },
+     {
+      "op": "set",
+      "var": "var.player.custody",
+      "value": "hostage"
+     }
+    ]
+   }
+  },
+  "expect": "player-substituted",
+  "expectVars": {
+   "var.hostage.fate": "released"
+  }
+ },
+ {
+  "id": "sc.player-hostage-late",
+  "note": "プレイヤーが人質になり、メロスが遅れる",
+  "beats": {
+   "beat.06": {
+    "to": "altered",
+    "outcomes": [
+     {
+      "op": "set",
+      "var": "var.hostage.who",
+      "value": "player"
+     },
+     {
+      "op": "set",
+      "var": "var.hostage.fate",
+      "value": "held"
+     },
+     {
+      "op": "set",
+      "var": "var.player.custody",
+      "value": "hostage"
+     }
+    ]
+   },
+   "beat.18": {
+    "to": "delayed",
+    "minutes": 240
+   }
+  },
+  "expect": "player-substituted",
+  "expectVars": {
+   "var.player.custody": "executed"
+  }
+ },
+ {
+  "id": "sc.king-relents-early",
+  "note": "二日目にプレイヤーが王の心を先に開かせ、メロスは遅れる（S-034 第 5 類）",
+  "events": [
+   {
+    "t": 3000,
+    "effects": [
+     {
+      "op": "set",
+      "var": "var.king.disposition",
+      "value": "reformed"
+     }
+    ]
+   }
+  ],
+  "beats": {
+   "beat.18": {
+    "to": "delayed",
+    "minutes": 240
+   }
+  },
+  "expect": "king-changed-first"
+ },
+ {
+  "id": "sc.water-at-spring",
+  "note": "峠を降りたメロスに水を渡し、力尽きさせない（60 分早い）",
+  "beats": {
+   "beat.20": {
+    "to": "prevented"
+   }
+  },
+  "expect": "canon-reunion"
+ },
+ {
+  "id": "sc.hold-then-help",
+  "note": "川岸で 30 分引き止め、その後で水を渡す（差し引き 30 分早い）",
+  "beats": {
+   "beat.18": {
+    "to": "delayed",
+    "minutes": 30
+   },
+   "beat.20": {
+    "to": "prevented"
+   }
+  },
+  "expect": "canon-reunion"
+ },
+ {
+  "id": "sc.detour",
+  "note": "牧童（または花婿から抜け道を聞いた人）が峠の脇道へ案内する。待ち伏せの峠を通らず格闘しないので体力が残り、その先で倒れない（60 分早い）。メロスは疑わず、刑場で殴られるのはセリヌンティウスだけ",
+  "beats": {
+   "beat.19": {
+    "to": "prevented"
+   }
+  },
+  "expect": "canon-reunion",
+  "events": [
+   {
+    "t": 5100,
+    "effects": [
+     {
+      "op": "set",
+      "var": "var.bandits",
+      "value": "evaded"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "id": "sc.pass-scout",
+  "note": "誰でもできる峠の「帮他快」：あなたが先に登って待ち伏せに気づき、知らせる。片づくのが 10 分早いだけで、三人と戦い、その先で力尽き、刑場では原作どおり殴り合う（UX 校対 7.4）",
+  "beats": {
+   "beat.19": {
+    "to": "hastened",
+    "minutes": 10
+   }
+  },
+  "expect": "canon-reunion",
+  "expectBeats": {
+   "beat.19": "happened",
+   "beat.20": "happened",
+   "beat.s2": "happened",
+   "beat.25": "happened"
+  },
+  "expectTimes": {
+   "beat.24": 5450
+  }
+ },
+ {
+  "id": "sc.hold-no-help",
+  "note": "川岸で 30 分引き止め、何も補わない",
+  "beats": {
+   "beat.18": {
+    "to": "delayed",
+    "minutes": 30
+   }
+  },
+  "expect": "too-late"
+ },
+ {
+  "id": "sc.wake-early",
+  "note": "第三幕、祝宴のあと夜明け前にメロスを起こして急かす（aff.wake-melos、出発が 60 分早まる）",
+  "beats": {
+   "beat.14": {
+    "to": "hastened",
+    "minutes": 60
+   }
+  },
+  "expect": "canon-reunion"
+ },
+ {
+  "id": "sc.wake-early-then-hold",
+  "note": "夜明け前に起こしたうえで、川岸で 30 分引き止める（第三幕で稼いだ時間を第四幕で使う）",
+  "beats": {
+   "beat.14": {
+    "to": "hastened",
+    "minutes": 60
+   },
+   "beat.18": {
+    "to": "delayed",
+    "minutes": 30
+   }
+  },
+  "expect": "canon-reunion"
+ },
+ {
+  "id": "sc.groom-prep",
+  "note": "花婿の支度を手伝い、夜明けを待たずに承知させる（beat.10 が変わる）。婚礼は真昼のままで、出発も到着も原作どおり",
+  "beats": {
+   "beat.10": {
+    "to": "altered",
+    "outcomes": [
+     {
+      "op": "set",
+      "var": "var.groom.agreed",
+      "value": true
+     },
+     {
+      "op": "inc",
+      "var": "var.melos.stamina",
+      "by": -10
+     }
+    ]
+   }
+  },
+  "expect": "canon-reunion",
+  "expectBeats": {
+   "beat.10": "altered",
+   "beat.11": "happened"
+  }
+ },
+ {
+  "id": "sc.apprentice-faith",
+  "note": "S-064：弟子が人質の夜に親方のそばにいて（+2）、二日目に「メロスは必ず戻る」と一緒に信じ続ける（+1）。親方は一度も疑わず、刑場で殴られるのはメロスだけ",
+  "events": [
+   {
+    "t": 1500,
+    "effects": [
+     {
+      "op": "set",
+      "var": "var.selinuntius.attended",
+      "value": true
+     },
+     {
+      "op": "inc",
+      "var": "var.selinuntius.faith",
+      "by": 2
+     }
+    ]
+   },
+   {
+    "t": 3000,
+    "effects": [
+     {
+      "op": "inc",
+      "var": "var.selinuntius.faith",
+      "by": 1
+     }
+    ]
+   }
+  ],
+  "expect": "canon-reunion",
+  "expectVars": {
+   "var.selinuntius.doubted": false
+  },
+  "expectBeats": {
+   "beat.s2": "not-happened",
+   "beat.25": "altered"
+  },
+  "expectVariant": {
+   "beat.25": "beat.25.v-melos-only"
+  }
+ },
+ {
+  "id": "sc.apprentice-vigil-only",
+  "note": "S-064：そばにいるだけ（+2）。言葉で支えなかったので、三日目の午後に親方はちらと疑う（原作どおり）",
+  "events": [
+   {
+    "t": 1500,
+    "effects": [
+     {
+      "op": "set",
+      "var": "var.selinuntius.attended",
+      "value": true
+     },
+     {
+      "op": "inc",
+      "var": "var.selinuntius.faith",
+      "by": 2
+     }
+    ]
+   }
+  ],
+  "expect": "canon-reunion",
+  "expectVars": {
+   "var.selinuntius.doubted": true
+  },
+  "expectBeats": {
+   "beat.s2": "happened",
+   "beat.25": "happened"
+  }
+ },
+ {
+  "id": "sc.no-doubt-at-all",
+  "note": "弟子が親方を支え（+2、+1）、旅の途中では泉で水を渡してメロスも倒れない。どちらも疑わず、殴り合わずに抱き合う",
+  "events": [
+   {
+    "t": 1500,
+    "effects": [
+     {
+      "op": "set",
+      "var": "var.selinuntius.attended",
+      "value": true
+     },
+     {
+      "op": "inc",
+      "var": "var.selinuntius.faith",
+      "by": 2
+     }
+    ]
+   },
+   {
+    "t": 3000,
+    "effects": [
+     {
+      "op": "inc",
+      "var": "var.selinuntius.faith",
+      "by": 1
+     }
+    ]
+   }
+  ],
+  "beats": {
+   "beat.20": {
+    "to": "prevented"
+   }
+  },
+  "expect": "canon-reunion",
+  "expectBeats": {
+   "beat.s2": "not-happened",
+   "beat.20": "not-happened",
+   "beat.25": "altered"
+  },
+  "expectVariant": {
+   "beat.25": "beat.25.v-neither"
+  }
+ },
+ {
+  "id": "sc.all-help",
+  "note": "第三、四幕の「帮他快」を全部やる（夜明け前に起こす、過場で急かす、浅瀬、脇道、泉で水、近道、先に知らせる）。上限なしなら 190 分早い 16:10 着。到着の下限 17:30（clock.deadline.earliestArrival、S-066）で止まる",
+  "beats": {
+   "beat.14": {
+    "to": "hastened",
+    "minutes": 60
+   },
+   "beat.16": {
+    "to": "prevented"
+   },
+   "beat.18": {
+    "to": "hastened",
+    "minutes": 10
+   },
+   "beat.19": {
+    "to": "prevented"
+   },
+   "beat.20": {
+    "to": "prevented"
+   },
+   "beat.22": {
+    "to": "hastened",
+    "minutes": 15
+   },
+   "beat.24": {
+    "to": "hastened",
+    "minutes": 5
+   }
+  },
+  "expect": "canon-reunion",
+  "events": [
+   {
+    "t": 4590,
+    "effects": [
+     {
+      "op": "inc",
+      "var": "var.melos.stamina",
+      "by": -15
+     }
+    ]
+   }
+  ],
+  "expectTimes": {
+   "beat.24": 5370
+  }
+ },
+ {
+  "id": "sc.all-help-then-hold",
+  "note": "第三幕の「帮他快」（夜明け前に起こす、過場で急かす）で下限 17:30 に届いたあと、川岸で 30 分引き止め、その後は何もしない。下限より早い分は作廃なので 30 分そのまま遅れて 18:00（S-066 ②：拖慢不受上限影响）",
+  "beats": {
+   "beat.14": {
+    "to": "hastened",
+    "minutes": 60
+   },
+   "beat.16": {
+    "to": "prevented"
+   },
+   "beat.18": {
+    "to": "delayed",
+    "minutes": 30
+   }
+  },
+  "expect": "canon-reunion",
+  "events": [
+   {
+    "t": 4590,
+    "effects": [
+     {
+      "op": "inc",
+      "var": "var.melos.stamina",
+      "by": -15
+     }
+    ]
+   }
+  ],
+  "expectTimes": {
+   "beat.24": 5400
+  }
+ },
+ {
+  "id": "sc.capped-hold-then-water",
+  "note": "sc.all-help-then-hold のあと、泉で水を渡す。下限を離れていたので「帮他快」がまた効き、17:30 に戻る（それより早くはならない。ux-design 4.3）",
+  "beats": {
+   "beat.14": {
+    "to": "hastened",
+    "minutes": 60
+   },
+   "beat.16": {
+    "to": "prevented"
+   },
+   "beat.18": {
+    "to": "delayed",
+    "minutes": 30
+   },
+   "beat.20": {
+    "to": "prevented"
+   }
+  },
+  "expect": "canon-reunion",
+  "events": [
+   {
+    "t": 4590,
+    "effects": [
+     {
+      "op": "inc",
+      "var": "var.melos.stamina",
+      "by": -15
+     }
+    ]
+   }
+  ],
+  "expectTimes": {
+   "beat.24": 5370
+  }
+ },
+ {
+  "id": "sc.act4-help",
+  "note": "第四幕だけで「帮他快」を全部やる（浅瀬、脇道、近道、先に知らせる）。90 分早い",
+  "beats": {
+   "beat.18": {
+    "to": "hastened",
+    "minutes": 10
+   },
+   "beat.19": {
+    "to": "prevented"
+   },
+   "beat.22": {
+    "to": "hastened",
+    "minutes": 15
+   },
+   "beat.24": {
+    "to": "hastened",
+    "minutes": 5
+   }
+  },
+  "expect": "canon-reunion"
+ }
+]

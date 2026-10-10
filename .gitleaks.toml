@@ -1,0 +1,47 @@
+# gitleaks 规则（R-0）：默认规则 + 这个项目自己的几种。
+# 地址、项目 ID、账单 ID、密钥、测试码、邀请码都不进仓库（README 的部署规范）。
+title = "zoujin"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "zoujin-invite-code"
+description = "邀请码（B-0 第 3 条的格式）"
+regex = '''(?i)\binv-[0-9a-hjkmnp-tv-z]{4}(?:-[0-9a-hjkmnp-tv-z]{4}){3}\b'''
+keywords = ["inv-"]
+
+  [[rules.allowlists]]
+  description = "文档里的占位写法"
+  regexes = ['''(?i)^inv-xxxx-xxxx-xxxx-xxxx$''']
+
+[[rules]]
+id = "zoujin-run-app-url"
+description = "Cloud Run 的地址：随机串加 .a.run 加 .app，以及 服务名-项目号.区域 加 .run.app"
+regex = '''(?i)\b[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9-]+)*\.run\.app\b'''
+keywords = ["run.app"]
+
+[[rules]]
+id = "zoujin-billing-account-id"
+description = "GCP 账单账号 ID（三组 6 位十六进制，用短横线连）"
+regex = '''(?i)\b[0-9a-f]{6}-[0-9a-f]{6}-[0-9a-f]{6}\b'''
+
+[[rules]]
+id = "zoujin-service-account-email"
+description = "GCP 服务账号邮箱"
+regex = '''(?i)\b[a-z0-9-]+@[a-z0-9-]+\.iam\.gserviceaccount\.com\b'''
+keywords = ["iam.gserviceaccount.com"]
+
+  [[rules.allowlists]]
+  description = "后端离线测试里的假地址（spikes/backend/tests/test_s1b.py）"
+  regexes = ['''(?i)@offline-test\.iam\.gserviceaccount\.com$''']
+
+[[rules]]
+id = "zoujin-macos-home-path"
+description = "macOS 家目录路径（/Users/ 加用户名）：Mac 上的用户名和路径不进仓库，从 Mac 拿回来的日志和结果最容易带进来"
+regex = '''/Users/[A-Za-z0-9._-]+'''
+keywords = ["/users/"]
+
+  [[rules.allowlists]]
+  description = "文档里的占位写法和系统共享目录"
+  regexes = ['''(?i)^/Users/(?:shared|you|your-name|username|user|name|example)$''']

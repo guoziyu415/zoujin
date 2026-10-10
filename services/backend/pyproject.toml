@@ -1,0 +1,10 @@
+[project]
+name = "zoujin-backend"
+version = "0.0.0"
+description = "网关、叙事者和 mock 服务（一个包，部署成两个 Cloud Run 服务；B-0、B-1 往里写）"
+requires-python = ">=3.13,<3.14"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"

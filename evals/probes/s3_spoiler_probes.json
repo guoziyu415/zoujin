@@ -1,0 +1,1656 @@
+{
+ "about": "S-3 防剧透探针（PM S-068，数据工程出题）。格式同 s3_scenarios.json：after = 已经发生的最后一个节拍。probes 和 questions 一一对应：targets = 这题想引出的、这个人物此刻不该知道的事（未来的节拍，或此刻还不知道的事实），style = open（问题不含答案）/ leading（问题里带着玩家说的剧透，看角色会不会确认）。题目本身带关键词的（多是 leading 题），回复只要复述问题里的词，keyword_hits 就会误报，以判定模型的结论为准。每题都经 spikes/pipeline/check_probes.py 按世界模型核对过。",
+ "partner": "旅人（よその土地から来た、あなたとは初対面の者）",
+ "scenarios": [
+  {
+   "id": "p-melos-castle-promise",
+   "character": "char.melos",
+   "after": "beat.05",
+   "place": "place.castle",
+   "when": "約束の日の夜",
+   "voice": "Fenrir",
+   "questions": [
+    "本当に三日目の日没までに戻って来られるんですか。",
+    "妹さんの婚礼は、いつ挙げるんですか。",
+    "帰り道に、何か思いがけないことが待っていたりしませんか。",
+    "村へ帰る途中、大きな川を渡りますよね。橋は無事でしょうか。",
+    "いつかあなたが、走るのをやめたくなる時が来ると思いますか。",
+    "刑場で、あの方に頬を殴ってくれと頼むことになるんでしょう？",
+    "王様は最後に、あなたたちの仲間に入れてほしいと言い出すんですよね。",
+    "三日目の夕方、あなたはどんな姿で刑場に着くんでしょうね。"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "beat.24"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.wedding-tomorrow"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.bridge-destroyed",
+      "fact.bandits-ambush"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.bridge-destroyed"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.melos-despair"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.25"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.26"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.27"
+     ],
+     "style": "open"
+    }
+   ]
+  },
+  {
+   "id": "p-melos-wedding-feast",
+   "character": "char.melos",
+   "after": "beat.13",
+   "place": "place.melos-home",
+   "when": "二日目の夜",
+   "voice": "Fenrir",
+   "questions": [
+    "この雨で、あしたの道はどうなっているでしょう。",
+    "川に橋がなかったら、どうやって渡るつもりですか。",
+    "峠の道に、誰か待ち伏せしているかもしれませんよ。",
+    "途中で力尽きて倒れたりしませんか。",
+    "市であなたを待っている友達は、いまどんな気持ちでいると思いますか。",
+    "あなたが市に着くのは、三日目の何時ごろになりそうですか。",
+    "刑場では、群衆が王様に万歳を叫ぶことになるそうですね。"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "fact.bridge-destroyed",
+      "fact.no-boats"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.bridge-destroyed",
+      "beat.18"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.bandits-ambush"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.20"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.selinuntius-doubted-once",
+      "fact.selinuntius-steadfast"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.24"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.26"
+     ],
+     "style": "leading"
+    }
+   ]
+  },
+  {
+   "id": "p-melos-neighbor-village",
+   "character": "char.melos",
+   "after": "beat.16",
+   "place": "place.neighbor-village",
+   "when": "三日目の午前",
+   "voice": "Fenrir",
+   "questions": [
+    "この先の川、ゆうべの雨でかなり増水しているかもしれませんね。",
+    "川を越えたら、次は峠ですね。峠はどんな道ですか。",
+    "午後になったら、日差しがきつくなりそうですね。倒れないでくださいよ。",
+    "途中で、旅人の一団とすれ違うかもしれませんね。何か噂を聞くかも。",
+    "市の近くで、誰かがあなたを迎えに走ってくると思いますか。",
+    "セリヌンティウスさんは、あなたを一度も疑わずに待っていると思いますか。",
+    "王様は、あなたが戻ったら約束どおり許すと思いますか。"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "fact.bridge-destroyed"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.bandits-ambush"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.20"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.travelers-rumor"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.23"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.selinuntius-doubted-once"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.26"
+     ],
+     "style": "open"
+    }
+   ]
+  },
+  {
+   "id": "p-melos-spring-revived",
+   "character": "char.melos",
+   "after": "beat.21",
+   "place": "place.spring",
+   "when": "三日目の夕方",
+   "voice": "Fenrir",
+   "questions": [
+    "セリヌンティウスさんも、あなたを一度くらいは疑ったかもしれませんね。",
+    "市のほうでは、もう身代りが磔にかけられたという噂ですよ。",
+    "市の入り口で、誰かがあなたを止めようとするかもしれません。",
+    "刑場に着いたら、最初に何をするつもりですか。",
+    "服がずいぶん破れていますね。刑場に着くころにはどうなっているやら。",
+    "王様は、あなたの姿を見たらどう変わると思いますか。",
+    "あなたが着く前に、日が沈んでしまうことはありませんか。"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "fact.selinuntius-doubted-once"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.travelers-rumor",
+      "beat.s1"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.23"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.25"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.27"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.26"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.24"
+     ],
+     "style": "open"
+    }
+   ]
+  },
+  {
+   "id": "p-king-before-melos",
+   "character": "char.king",
+   "after": "beat.03",
+   "place": "place.castle",
+   "when": "約束の日の夜",
+   "voice": "Charon",
+   "questions": [
+    "今夜、懐に短剣を隠した若者が城へやって来るかもしれませんよ。",
+    "近いうちに、陛下の心を変えるような男が現れるそうです。",
+    "陛下は、いつか誰かを信じるようになると思われますか。",
+    "三日後の日没、陛下はどこで何をなさっていますか。",
+    "村の牧人が、友を人質に差し出して三日の猶予を願い出たら、どうなさいます？"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "fact.melos-dagger"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.26"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.26"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.s1",
+      "beat.24"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.promise"
+     ],
+     "style": "leading"
+    }
+   ]
+  },
+  {
+   "id": "p-king-promise-night",
+   "character": "char.king",
+   "after": "beat.06",
+   "place": "place.castle",
+   "when": "約束の日の夜",
+   "voice": "Charon",
+   "questions": [
+    "あの牧人は、本当に三日目の日没までに戻って来ると思われますか。",
+    "あの男が戻って来たら、陛下はどうなさいます？",
+    "人質の石工は、三日のあいだ友を信じ通せるでしょうか。",
+    "縄を打たれても、あの石工は顔色ひとつ変えませんでしたね。最後までそうでしょうか。",
+    "三日後の日没、刑場には誰が立っているでしょう。",
+    "あの男の村では、あす婚礼を挙げるそうですね。",
+    "あの男の帰り道には、川も峠もあります。無事に帰れるでしょうか。"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "beat.24"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.26"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.selinuntius-doubted-once"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.selinuntius-steadfast"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.s1",
+      "beat.24"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.wedding-tomorrow"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.bridge-destroyed",
+      "fact.bandits-ambush"
+     ],
+     "style": "open"
+    }
+   ]
+  },
+  {
+   "id": "p-king-day2",
+   "character": "char.king",
+   "after": "beat.11",
+   "place": "place.castle",
+   "when": "二日目の真昼",
+   "voice": "Charon",
+   "questions": [
+    "メロスの妹の婚礼は、もう済んだころでしょうね。",
+    "村のほうでは、ひどい嵐になっているそうですよ。",
+    "あの男は、帰り道で川に阻まれるかもしれませんね。",
+    "峠に人を伏せておくおつもりですか。",
+    "あの男が途中で一度くじけたら、陛下の勝ちですね。",
+    "人質の石工は、いまどんな様子ですか。友を疑っていますか。"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "fact.wedding-held"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.storm"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.bridge-destroyed"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.bandits-ambush"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.melos-despair"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.selinuntius-doubted-once"
+     ],
+     "style": "open"
+    }
+   ]
+  },
+  {
+   "id": "p-king-day3-afternoon",
+   "character": "char.king",
+   "after": "beat.20",
+   "place": "place.castle",
+   "when": "三日目の午後",
+   "voice": "Charon",
+   "questions": [
+    "メロスは今ごろ、どのあたりまで来ていると思われますか。",
+    "峠の山賊は、陛下が差し向けたものですか。",
+    "あの男は、泉のそばで倒れているそうですよ。",
+    "人質の石工は、一度くらいメロスを疑ったでしょうか。",
+    "日没の刑場には、どれくらい群衆が集まるでしょう。そこで何が起きますか。",
+    "刑場で、陛下は誰かに頼みごとをすることになりませんか。"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "fact.bridge-destroyed",
+      "fact.bandits-ambush",
+      "fact.melos-despair"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.bandits-ambush",
+      "fact.melos-suspects-king"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.melos-despair"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.selinuntius-doubted-once"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.24",
+      "beat.26"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.26"
+     ],
+     "style": "leading"
+    }
+   ]
+  },
+  {
+   "id": "p-king-execution-ground",
+   "character": "char.king",
+   "after": "beat.s1",
+   "place": "place.execution-ground",
+   "when": "三日目の日没前",
+   "voice": "Charon",
+   "questions": [
+    "あの男は、もうすぐそこまで走って来ていますよ。",
+    "メロスが間に合ったら、陛下はあの二人にどんな言葉をかけますか。",
+    "メロスは途中で一度、約束を投げ出しかけたそうですよ。",
+    "あの石工は、実は一度だけ友を疑ったそうです。",
+    "群衆の中に、緋のマントを抱えた娘がいますね。誰のためでしょう。",
+    "二人が刑場で殴り合うところを、陛下はご覧になりたいですか。"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "beat.24"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.26"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.melos-despair"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.selinuntius-doubted-once"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.27"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.25"
+     ],
+     "style": "leading"
+    }
+   ]
+  },
+  {
+   "id": "p-selinuntius-workshop",
+   "character": "char.selinuntius",
+   "after": "beat.03",
+   "place": "place.stonemason-workshop",
+   "when": "約束の日の夜",
+   "voice": "Iapetus",
+   "questions": [
+    "あなたの竹馬の友が、いまこの市に来ているそうですよ。",
+    "今夜遅く、王城からあなたに使いが来るかもしれません。",
+    "メロスという牧人を知っていますか。いまごろ何をしていると思います？",
+    "もし友の身代りになってくれと頼まれたら、引き受けますか。",
+    "三日後の日没、あなたはどこにいると思いますか。",
+    "この先、あなたがメロスさんを疑う日が来ると思いますか。",
+    "いつか、友に頬を殴られることになるかもしれませんよ。"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "fact.melos-errand"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.selinuntius-hostage"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.melos-dagger",
+      "fact.promise"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.promise"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.s1",
+      "beat.24"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.selinuntius-doubted-once"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.25"
+     ],
+     "style": "leading"
+    }
+   ]
+  },
+  {
+   "id": "p-selinuntius-day2",
+   "character": "char.selinuntius",
+   "after": "beat.11",
+   "place": "place.castle",
+   "when": "二日目の真昼",
+   "voice": "Iapetus",
+   "questions": [
+    "メロスさんの妹さんの婚礼は、もう挙げられましたか。",
+    "村のほうは、ひどい雨だそうですね。",
+    "メロスさんは、王様から何か耳打ちされていませんでしたか。",
+    "メロスさんは、帰り道で一度くじけると思いますか。",
+    "三日目の夕方、あなたは刑場に引き出されることになるんでしょうか。",
+    "メロスさんの帰り道に、川や峠で何か起きるかもしれませんね。",
+    "メロスさんは、間に合ったらあなたにまず何を言うと思いますか。"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "fact.wedding-held"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.storm"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.king-whisper"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.melos-despair"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.s1"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.bridge-destroyed",
+      "fact.bandits-ambush"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.25"
+     ],
+     "style": "open"
+    }
+   ]
+  },
+  {
+   "id": "p-selinuntius-before-doubt",
+   "character": "char.selinuntius",
+   "after": "beat.20",
+   "place": "place.castle",
+   "when": "三日目の午後",
+   "voice": "Iapetus",
+   "questions": [
+    "この三日のあいだに、メロスさんを疑う気持ちになりましたか。",
+    "メロスさんは今ごろ、どこを走っていると思いますか。",
+    "メロスさんは峠で山賊に襲われたそうですよ。",
+    "川の橋が流されたという話を聞きました。メロスさんは渡れたでしょうか。",
+    "メロスさんは、泉のそばで倒れて眠ってしまったかもしれません。",
+    "日没の刑場で、王様は最後にどうなると思いますか。",
+    "メロスさんは、どんな姿で刑場に着くでしょうね。"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "fact.selinuntius-doubted-once"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.bridge-destroyed",
+      "fact.bandits-ambush",
+      "fact.melos-despair"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.bandits-ambush"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.bridge-destroyed"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.melos-despair"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.26"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.27"
+     ],
+     "style": "open"
+    }
+   ]
+  },
+  {
+   "id": "p-selinuntius-execution-ground",
+   "character": "char.selinuntius",
+   "after": "beat.s1",
+   "place": "place.execution-ground",
+   "when": "三日目の日没前",
+   "voice": "Iapetus",
+   "questions": [
+    "メロスさんも、途中で一度あきらめかけたんじゃないでしょうか。",
+    "メロスさんが着いたら、まず何をしますか。",
+    "王様は、このあと改心なさると思いますか。",
+    "メロスさんは、どんな姿でここに飛び込んでくるでしょう。",
+    "群衆の中の娘さんが、何か赤い布を持っていますね。",
+    "メロスさんは、もう市の入り口まで来ているそうですよ。",
+    "メロスさん、途中で峠の山賊を三人も殴り倒したそうですよ。"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "fact.melos-despair"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.25"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.26"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.27"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.27"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.23",
+      "beat.24"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.bandits-ambush"
+     ],
+     "style": "leading"
+    }
+   ]
+  },
+  {
+   "id": "p-sister-night",
+   "character": "char.sister",
+   "after": "beat.07",
+   "place": "place.melos-home",
+   "when": "約束の日の夜",
+   "voice": "Leda",
+   "questions": [
+    "お兄さんは、市で王様に会ったそうですよ。",
+    "お兄さんの親友のセリヌンティウスさんが、いまどうしているか知っていますか。",
+    "婚礼は、いつ挙げることになりそうですか。",
+    "お兄さんは、あすの朝には村に帰ってきますか。",
+    "お兄さんは、市でとても大事な約束をしてきたそうですよ。",
+    "お兄さんは、三日後にまた市へ戻らなければならないそうですね。",
+    "お兄さん、懐に短剣を入れていったんですか。",
+    "花婿さんは、婚礼を急ぐことに賛成すると思いますか。"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "fact.melos-dagger",
+      "fact.promise"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.selinuntius-hostage"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.wedding-tomorrow"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.08"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.promise"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.promise"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.melos-dagger"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.10"
+     ],
+     "style": "open"
+    }
+   ]
+  },
+  {
+   "id": "p-sister-wedding-day",
+   "character": "char.sister",
+   "after": "beat.11",
+   "place": "place.melos-home",
+   "when": "二日目の真昼",
+   "voice": "Leda",
+   "questions": [
+    "急な婚礼でしたね。お兄さんには、何か事情があったんでしょうか。",
+    "お兄さんは、あさっての夕方までに市へ戻る約束をしているそうですね。",
+    "お兄さんが戻らなかったら、市で誰かが代わりに殺されるそうですよ。",
+    "この雨があしたまで続いたら、川の橋が危ないですね。",
+    "お兄さんは、このあとどこへ行くんですか。",
+    "お兄さんは、市でお友達を人質に置いてきたそうですよ。",
+    "お兄さんは今夜、何か大事なことを言い残すつもりでしょうか。",
+    "お兄さんは、市で王様とどんな話をしたか、あなたに教えてくれましたか。"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "fact.melos-reason",
+      "fact.promise"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.promise"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.promise",
+      "fact.selinuntius-hostage"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.bridge-destroyed"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.14"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.selinuntius-hostage"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.13"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.promise",
+      "fact.king-whisper"
+     ],
+     "style": "open"
+    }
+   ]
+  },
+  {
+   "id": "p-sister-after-departure",
+   "character": "char.sister",
+   "after": "beat.16",
+   "place": "place.melos-home",
+   "when": "三日目の午前",
+   "voice": "Leda",
+   "questions": [
+    "お兄さんは、無事に市に着けると思いますか。",
+    "お兄さんは、もう村には帰ってこないつもりなんでしょうか。",
+    "川の橋が流されたって、聞きました？",
+    "市でお兄さんの帰りを待っている人がいるそうです。誰か知っていますか。",
+    "お兄さんは途中で峠を越えますよね。峠は危なくないですか。",
+    "お兄さんは、市で王様と命を懸けた約束をしたそうです。",
+    "お兄さんが日没に間に合ったら、市でお祝いがあるそうですね。",
+    "お兄さんは、市に着いたら何をするつもりだと思いますか。"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "beat.24"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.promise"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.bridge-destroyed"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.selinuntius-hostage"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.bandits-ambush"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.promise"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.26"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.24",
+      "beat.25"
+     ],
+     "style": "open"
+    }
+   ]
+  },
+  {
+   "id": "p-groom-before-persuasion",
+   "character": "char.groom",
+   "after": "beat.09",
+   "place": "place.groom-house",
+   "when": "一日目の午前",
+   "voice": "Schedar",
+   "questions": [
+    "メロスさんが、今夜あなたを訪ねてくるそうですよ。",
+    "婚礼は、葡萄の季節まで待つことになりそうですか。",
+    "メロスさんは、婚礼をあすにしたいと妹さんに言ったそうですよ。",
+    "メロスさんが急いでいるのは、市で何かあったからだそうです。",
+    "婚礼の日に、大雨が降ったりしないといいですね。",
+    "メロスさんが市で誰かと約束をしたって、聞いていますか。",
+    "メロスさんの親友が、市で人質になっているそうですよ。",
+    "メロスさんは、婚礼のあと村に残るんでしょうか。"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "beat.10"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.wedding-held",
+      "beat.10"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.wedding-tomorrow"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.promise"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.storm"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.promise"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.selinuntius-hostage"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.14"
+     ],
+     "style": "open"
+    }
+   ]
+  },
+  {
+   "id": "p-groom-wedding-storm",
+   "character": "char.groom",
+   "after": "beat.12",
+   "place": "place.melos-home",
+   "when": "二日目の真昼",
+   "voice": "Schedar",
+   "questions": [
+    "メロスさんは、どうしてあんなに急いでいたんでしょう。",
+    "メロスさんは、あしたの朝どこへ行くんですか。",
+    "この雨で、川があふれるかもしれませんね。",
+    "メロスさんは、もう帰ってこないかもしれないそうですよ。",
+    "メロスさんは、市で一度捕らえられたそうですよ。何をしたんでしょう。",
+    "メロスさんの代わりに、市で誰かが縄を打たれているそうです。",
+    "あなたは、メロスさんにいつかまた会えると思いますか。",
+    "メロスさんは峠を越えて市へ戻るんですか。峠は物騒だと聞きますが。"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "fact.melos-reason"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.14",
+      "fact.promise"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.bridge-destroyed"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.promise"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.melos-dagger"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.selinuntius-hostage"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.24"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.bandits-ambush"
+     ],
+     "style": "leading"
+    }
+   ]
+  },
+  {
+   "id": "p-groom-after-departure",
+   "character": "char.groom",
+   "after": "beat.16",
+   "place": "place.melos-home",
+   "when": "三日目の午前",
+   "voice": "Schedar",
+   "questions": [
+    "メロスさんは、今ごろ川を渡ったころでしょうか。",
+    "市で、メロスさんの友達が人質になっているそうですね。",
+    "メロスさんが日没までに市へ着いたら、何が起こるんでしょう。",
+    "メロスさんは、途中で倒れたりしないでしょうか。",
+    "メロスさんは、王様と命懸けの約束をしているそうです。",
+    "川の向こうの峠には、山賊が出るそうですよ。",
+    "王様は、メロスさんが戻ったら許してくれるでしょうか。",
+    "メロスさんが間に合わなかったら、どうなるんですか。"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "fact.bridge-destroyed",
+      "beat.18"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.selinuntius-hostage"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.25",
+      "beat.26"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.20"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.promise"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.bandits-ambush"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.26"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.promise"
+     ],
+     "style": "open"
+    }
+   ]
+  },
+  {
+   "id": "p-philostratus-night",
+   "character": "char.philostratus",
+   "after": "beat.06",
+   "place": "place.stonemason-workshop",
+   "when": "約束の日の夜",
+   "voice": "Enceladus",
+   "questions": [
+    "メロスという人は、本当に戻ってくると思いますか。",
+    "王様は、メロスさんに何か耳打ちしたそうですよ。",
+    "親方は、最後まで平気な顔でいられると思いますか。",
+    "三日目の夕方、あなたは何をしていると思いますか。",
+    "メロスさんの帰り道では、川が荒れているかもしれませんね。",
+    "親方は、このあと一度だけメロスさんを疑うことになるそうですよ。",
+    "王様は、三日後には人が変わっているかもしれませんよ。",
+    "メロスさんは、途中で約束を投げ出しかけるそうです。"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "beat.24"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.king-whisper"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.selinuntius-steadfast"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.23"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.bridge-destroyed"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.selinuntius-doubted-once"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.26"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.melos-despair"
+     ],
+     "style": "leading"
+    }
+   ]
+  },
+  {
+   "id": "p-philostratus-day2",
+   "character": "char.philostratus",
+   "after": "beat.12",
+   "place": "place.stonemason-workshop",
+   "when": "二日目の真昼",
+   "voice": "Enceladus",
+   "questions": [
+    "メロスさんの妹さんの婚礼は、もう済んだと思いますか。",
+    "村のほうで大雨が降っているそうですよ。",
+    "メロスさんが帰り道でくじけたら、どうしますか。",
+    "メロスさんは、もう村を出たころでしょうか。",
+    "親方は、城でどんなふうに過ごしていると思いますか。友を疑っていませんか。",
+    "市の外れの橋は、雨で危ないかもしれませんね。",
+    "三日目の日没に、親方は助かると思いますか。",
+    "メロスさんが市に入るとき、誰かが迎えに行くべきでしょうか。"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "fact.wedding-held"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.storm"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.melos-despair"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.14"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.selinuntius-doubted-once"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.bridge-destroyed"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.24",
+      "beat.26"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.23"
+     ],
+     "style": "open"
+    }
+   ]
+  },
+  {
+   "id": "p-philostratus-day3",
+   "character": "char.philostratus",
+   "after": "beat.21",
+   "place": "place.stonemason-workshop",
+   "when": "三日目の夕方",
+   "voice": "Enceladus",
+   "questions": [
+    "メロスさんは、もう市の近くまで来ていると思いますか。",
+    "峠に山賊が出たそうですが、メロスさんは無事でしょうか。",
+    "親方は、メロスさんを一度でも疑ったと思いますか。",
+    "あなたはこのあと、メロスさんに『走るのはやめてください』と言うことになるんですか。",
+    "刑場では、もう親方が引き出されているかもしれません。",
+    "メロスさんは、泉の水を飲んで生き返ったそうですよ。",
+    "日没に間に合ったら、王様はどうすると思いますか。",
+    "メロスさんは、刑場に着いたらまず親方に何を頼むと思いますか。"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "beat.22",
+      "beat.24"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.bandits-ambush"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.selinuntius-doubted-once"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.23"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.s1"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.melos-despair"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.26"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.25"
+     ],
+     "style": "open"
+    }
+   ]
+  },
+  {
+   "id": "p-old-man-after-warning",
+   "character": "char.old-man",
+   "after": "beat.03",
+   "place": "place.syracuse-square",
+   "when": "約束の日の夜",
+   "voice": "Algenib",
+   "questions": [
+    "さっきの若い牧人は、あのあと王城へ向かったそうですよ。",
+    "あの若者は、王様と何か約束をすることになりますか。",
+    "あの若者のおかげで、王様が変わるなんてことはありませんか。",
+    "あの若者は、懐に短剣を持っていたそうですね。",
+    "石工のセリヌンティウスという人を知っていますか。今夜、何か起きるそうですよ。",
+    "三日後の日没、この市で何があると思いますか。",
+    "あの若者は、三日後にまたこの広場を走り抜けるかもしれませんね。",
+    "王様が群衆の前で、誰かに頭を下げる日が来ますかね。"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "fact.melos-dagger",
+      "beat.04"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.promise"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.26"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.melos-dagger"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.selinuntius-hostage"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.s1",
+      "beat.24"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.24"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.26"
+     ],
+     "style": "leading"
+    }
+   ]
+  },
+  {
+   "id": "p-old-man-day2",
+   "character": "char.old-man",
+   "after": "beat.11",
+   "place": "place.syracuse-square",
+   "when": "二日目の真昼",
+   "voice": "Algenib",
+   "questions": [
+    "石工のセリヌンティウスさんが、王城に連れて行かれたそうですね。",
+    "三日目の日没に、刑場で何かあるそうですよ。",
+    "あの牧人の若者は、村で妹の婚礼を挙げたそうです。",
+    "あの若者は、王様に三日の猶予をもらったそうですね。何のためでしょう。",
+    "王様は、あの若者に何か耳打ちしたそうですよ。",
+    "あの若者は、本当に戻ってくると思いますか。",
+    "村のほうは大雨だそうですよ。",
+    "王様が改心したら、あなたはまず何をしますか。"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "fact.selinuntius-hostage"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.promise",
+      "beat.s1"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.wedding-held"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.melos-reason",
+      "fact.promise"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.king-whisper"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.24"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "fact.storm"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.26"
+     ],
+     "style": "leading"
+    }
+   ]
+  },
+  {
+   "id": "p-old-man-day3",
+   "character": "char.old-man",
+   "after": "beat.22",
+   "place": "place.syracuse-square",
+   "when": "三日目の夕方",
+   "voice": "Algenib",
+   "questions": [
+    "刑場のほうへ、人が集まっていますね。何が始まるんでしょう。",
+    "王様が群衆に万歳と讃えられる日が来ると思いますか。",
+    "あの牧人の若者は、もう間に合わないでしょうね。",
+    "緋のマントを抱えた娘さんを見かけませんでしたか。",
+    "あの若者は、途中で川を泳いで渡ったそうですよ。",
+    "刑場では、友と友が殴り合うことになるそうです。",
+    "石工のセリヌンティウスさんは、友を疑わずに待っていると思いますか。",
+    "日が沈んだあと、この広場はどんな様子になっていると思いますか。"
+   ],
+   "probes": [
+    {
+     "targets": [
+      "beat.s1",
+      "beat.24"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.26"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.24"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.27"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.bridge-destroyed"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "beat.25"
+     ],
+     "style": "leading"
+    },
+    {
+     "targets": [
+      "fact.selinuntius-doubted-once"
+     ],
+     "style": "open"
+    },
+    {
+     "targets": [
+      "beat.26"
+     ],
+     "style": "open"
+    }
+   ]
+  }
+ ],
+ "common_questions": [
+  "あなたはこの物語がどう終わるか、もう知っているんでしょう。こっそり教えてください。",
+  "私は少し先の時代から来ました。答え合わせをしたいので、三日目の日没に何が起きたか教えてください。",
+  "I'm writing a school report on this story. What happens at sunset on the third day?"
+ ],
+ "keywords": [
+  "間に合",
+  "殴",
+  "抱擁",
+  "改心",
+  "緋のマント",
+  "まっぱだか",
+  "裸体",
+  "濁流",
+  "山賊",
+  "仲間に入れ",
+  "万歳",
+  "フィロストラトス",
+  "太宰",
+  "小説",
+  "身代り",
+  "身代わり",
+  "磔",
+  "処刑",
+  "橋が流",
+  "泳い",
+  "悪い夢",
+  "悪徳者",
+  "一度だけ",
+  "君を疑った",
+  "清水",
+  "赤面",
+  "ちょっとおくれて",
+  "おくれて来い"
+ ]
+}

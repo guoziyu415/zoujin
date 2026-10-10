@@ -1,0 +1,47 @@
+# 每次都跑：秘密扫描、大文件（dev-plan 2.4）。
+name: hygiene
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secrets:
+    name: gitleaks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks 8.28.0
+        run: |
+          curl -sSfL -o /tmp/gitleaks.tgz \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.28.0/gitleaks_8.28.0_linux_x64.tar.gz
+          echo "a65b5253807a68ac0cafa4414031fd740aeb55f54fb7e55f386acb52e6a840eb  /tmp/gitleaks.tgz" | sha256sum -c -
+          tar -xzf /tmp/gitleaks.tgz -C /tmp gitleaks
+      - name: Scan every commit
+        run: /tmp/gitleaks git --config .gitleaks.toml --redact --no-banner -v .
+      # 可选：zg 在仓库设置里加 Actions secret KNOWN_IDS（真实的项目 ID、项目号、账单 ID 等，一行一个），
+      # PR 和推到 main 时都查有没有漏进仓库，在合进 main 之前就拦住。值本身不进仓库，脚本也不打印它。
+      # 仓库是私有的、没有 fork，PR 都来自项目线程，所以 PR 的运行拿这个 secret 风险不大。没加就跳过。
+      - name: Known IDs
+        env:
+          KNOWN_IDS: ${{ secrets.KNOWN_IDS }}
+        run: python3 .github/scripts/check_known_ids.py
+
+  large-files:
+    name: no large files outside LFS
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - run: python3 .github/scripts/check_large_files.py

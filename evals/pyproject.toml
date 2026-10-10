@@ -1,0 +1,9 @@
+# 评测集的生成器和自检脚本（数据负责）。现在都是只用标准库的独立脚本，不打包；E-0 加评测运行器时再定。
+[project]
+name = "zoujin-evals"
+version = "0.0.0"
+requires-python = ">=3.13,<3.14"
+dependencies = []
+
+[tool.uv]
+package = false

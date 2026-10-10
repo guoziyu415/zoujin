@@ -1,0 +1,972 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<link rel="icon" href="data:,">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>S7 写实广场</title>
+<style>
+:root{--bg:#14110e;--fg:#f1e9d8;--mut:#b9ad98;--line:#3a332b;--acc:#e0a65a;--ok:#7fbf7a;--warn:#e0b44f;--bad:#e06a50;--panel:rgba(22,19,16,.9);--btn:#2a241e;--btn2:#3a3129}
+@media (prefers-color-scheme: light){:root:not([data-theme="light"]){--bg:#14110e}}
+:root[data-theme="dark"]{--bg:#14110e}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:14px/1.5 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans","Noto Sans SC",system-ui,sans-serif;overflow:hidden;-webkit-text-size-adjust:100%}
+canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+button{font:inherit;color:var(--fg);background:var(--btn);border:1px solid var(--line);border-radius:10px;padding:8px 12px;min-height:40px;cursor:pointer}
+button.on{background:var(--btn2);border-color:var(--acc);color:#fff}
+button:disabled{opacity:.45}
+.hidden{display:none!important}
+#hud{position:fixed;left:max(10px,env(safe-area-inset-left));top:max(10px,env(safe-area-inset-top));font:12px/1.35 ui-monospace,Menlo,monospace;background:rgba(0,0,0,.45);padding:6px 8px;border-radius:8px;pointer-events:none;white-space:pre}
+#bar{position:fixed;left:0;right:0;bottom:0;padding:8px max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));display:flex;gap:6px;flex-wrap:wrap;justify-content:center;background:linear-gradient(transparent,rgba(0,0,0,.55))}
+#bar button{padding:6px 10px;min-height:38px;font-size:13px}
+#lods{position:fixed;right:max(10px,env(safe-area-inset-right));top:max(10px,env(safe-area-inset-top));display:flex;flex-direction:column;gap:6px}
+#lods button{min-width:84px;font-size:12px}
+#panel{position:fixed;right:0;top:0;bottom:0;width:min(360px,100%);background:var(--panel);overflow-y:auto;padding:14px 14px calc(80px + env(safe-area-inset-bottom));border-left:1px solid var(--line)}
+#panel h3{margin:14px 0 6px;font-size:13px;color:var(--mut);font-weight:600}
+#panel .row{display:flex;flex-wrap:wrap;gap:6px}
+#panel .row button{padding:6px 10px;min-height:36px;font-size:13px}
+#panel .note{color:var(--mut);font-size:12px;margin:4px 0 0}
+#panel input[type=range]{width:100%}
+#cover{position:fixed;inset:0;background:var(--bg);overflow-y:auto;padding:max(24px,env(safe-area-inset-top)) 18px 40px}
+#cover .in{max-width:560px;margin:0 auto}
+#cover h1{font-size:20px;margin:6px 0 4px}
+#cover p{color:var(--mut);margin:8px 0}
+#cover .go{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}
+#cover .go button{flex:1 1 200px;min-height:48px;font-size:15px}
+#prog{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin:12px 0 4px}
+#prog>div{height:100%;width:0;background:var(--acc);transition:width .2s}
+#loadmsg{font-size:12px;color:var(--mut)}
+table{border-collapse:collapse;width:100%;font-size:12px}
+td,th{border-bottom:1px solid var(--line);padding:4px 4px;text-align:left;vertical-align:top}
+th{color:var(--mut);font-weight:600}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
+.dot.ok{background:var(--ok)}.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}
+#bench{position:fixed;left:0;right:0;top:0;padding:max(10px,env(safe-area-inset-top)) 14px 10px;background:rgba(0,0,0,.6);font-size:13px}
+#bench .pb{height:4px;background:var(--line);margin-top:6px}#bench .pb>div{height:100%;width:0;background:var(--acc)}
+#results{position:fixed;inset:0;background:var(--bg);overflow-y:auto;padding:max(16px,env(safe-area-inset-top)) 14px 40px}
+#results .in{max-width:760px;margin:0 auto}
+#joy{position:fixed;left:max(18px,env(safe-area-inset-left));bottom:calc(70px + env(safe-area-inset-bottom));width:110px;height:110px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.18);touch-action:none}
+#joy>div{position:absolute;left:35px;top:35px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.35)}
+#toast{position:fixed;left:50%;top:40%;transform:translateX(-50%);background:rgba(0,0,0,.75);padding:8px 14px;border-radius:10px;pointer-events:none;font-size:13px}
+.credit{font-size:11px;color:var(--mut);margin-top:18px}
+input[type=text]{font:inherit;width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);background:#1d1915;color:var(--fg)}
+</style>
+<script type="importmap">
+{"imports":{
+  "three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js",
+  "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"
+}}
+</script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud" class="hidden"></div>
+<div id="lods" class="hidden"></div>
+<div id="joy" class="hidden"><div></div></div>
+<div id="bar" class="hidden">
+  <button data-view="corner">西南角</button>
+  <button data-view="entry">入口</button>
+  <button data-view="sun">城门</button>
+  <button data-view="east">王城</button>
+  <button data-view="temple">神殿</button>
+  <button data-view="talk">对话特写</button>
+  <button id="sunset">等日没</button>
+  <button id="openPanel">设置</button>
+  <button id="toBench">自动计测</button>
+</div>
+<div id="panel" class="hidden">
+  <div style="display:flex;justify-content:space-between;align-items:center"><b>设置</b><button id="closePanel">关闭</button></div>
+  <h3>光照</h3>
+  <div class="row" data-key="light">
+    <button data-v="full">全烘焙</button><button data-v="indirect">烘间接光＋实时太阳</button><button data-v="ao">只烘遮蔽＋实时太阳</button><button data-v="none">基线（无烘焙）</button>
+  </div>
+  <p class="note">全烘焙最便宜，但时刻固定；后两种太阳是实时的。</p>
+  <div id="timeRow" class="hidden"><h3>时刻（只在「只烘遮蔽」下可调；太阳按锡拉库萨初夏的真实轨迹走）</h3><input id="time" type="range" min="270" max="1230" step="5" value="1050"><p class="note" id="timeNote"></p></div>
+  <h3>天空和环境光</h3>
+  <div class="row" data-key="ibl"><button data-v="1">HDR 环境光</button><button data-v="0">关（半球光）</button></div>
+  <h3>阴影贴图</h3>
+  <div class="row" data-key="shadow"><button data-v="0">关</button><button data-v="1024">1024</button><button data-v="2048">2048</button></div>
+  <h3>材质细节（法线贴图）</h3>
+  <div class="row" data-key="pbr"><button data-v="1">开</button><button data-v="0">关</button></div>
+  <h3>后处理（泛光、暗角、调色）</h3>
+  <div class="row" data-key="post"><button data-v="0">关</button><button data-v="1">开</button></div>
+  <h3>雾（远景空气感）</h3>
+  <div class="row" data-key="fog"><button data-v="1">开</button><button data-v="0">关</button></div>
+  <h3>解像度（devicePixelRatio 上限）</h3>
+  <div class="row" data-key="dpr"><button data-v="1">1</button><button data-v="1.5">1.5</button><button data-v="2">2</button><button data-v="3">设备上限</button></div>
+  <h3>走动的人物</h3>
+  <div class="row" data-key="chars"><button data-v="0">0</button><button data-v="3">3</button><button data-v="7">7</button></div>
+  <div class="row" data-key="lod" style="margin-top:6px"><button data-v="8k">8k 面</button><button data-v="12k">12k 面</button><button data-v="28k">28k 面</button></div>
+  <h3>场景贴图</h3>
+  <div class="row" data-key="tex"><button data-v="lo">512（省）</button><button data-v="hi">1024（清晰）</button><button data-v="ktx2">1024 KTX2</button></div>
+  <p class="note" id="texNote"></p>
+  <h3>色调映射</h3>
+  <div class="row" data-key="tone"><button data-v="agx">AgX</button><button data-v="aces">ACES</button><button data-v="neutral">Neutral</button></div>
+  <h3>这个场景的资源</h3>
+  <div id="sizes" class="note"></div>
+  <p class="credit">石材贴图：Crytek Sponza（CC BY 3.0，Frank Meinl / Crytek，经 Khronos glTF Sample Assets）。天空：Blender 的物理天空模型生成。人物是 Mixamo 的 X Bot 假人，只用来测不同面数的代价，不代表写实人物的样子，也不进正式产品。建筑造型是程序生成的临时模型。</p>
+</div>
+<div id="cover">
+  <div class="in">
+    <h1>S7 · 写实广场（技术样板）</h1>
+    <p>约束の日・夕方的锡拉库萨广场。这一页看两件事：<b>写实的光照、材质和人物在手机上能做到什么样</b>，以及<b>每种手段要花多少帧时间、下载和加载时间</b>。</p>
+    <p>建筑造型是临时的程序模型；人物是灰色假人，只用来测人物面数的代价，<b>不代表写实人物的样子</b>，写实人物要正式美术另做。请看光、影、石头和天空的质感；按「等日没」看夕阳的光沿王城的墙往上爬。</p>
+    <div id="prog"><div></div></div>
+    <div id="loadmsg">正在加载…</div>
+    <div class="go">
+      <button id="goLook" disabled>看画面</button>
+      <button id="goBench" disabled>自动计测（约 4 分钟）</button>
+    </div>
+    <p style="font-size:12px">自动计测时用电池就行（不要开低电量模式），亮度调到平时的程度，测完前不要切到别的 App。每项后半段会故意让画面变卡，用来量手机还有多少余量，这是正常的。结果会自动保存，前端那边能直接读到。</p>
+    <label style="font-size:12px;color:var(--mut)">设备名称（可选，例如 iPhone 12）<input id="devname" type="text" placeholder="iPhone 12"></label>
+  </div>
+</div>
+<div id="bench" class="hidden"><div id="benchMsg"></div><div class="pb"><div></div></div></div>
+<div id="results" class="hidden"><div class="in">
+  <h2 style="font-size:18px">计测结果</h2>
+  <p id="resState" class="note"></p>
+  <table><thead><tr><th>配置</th><th>帧时间 p95</th><th>中位 fps</th><th>超 34ms</th><th>每帧实际 ms</th><th>draw</th></tr></thead><tbody id="resBody"></tbody></table>
+  <p class="note">「帧时间」受 60 帧上限限制，最快就是 17ms。「每帧实际」是把同一帧连画几遍、画到掉帧后算出来的一帧真实耗时，能看出离上限还有多少余量；带 * 的表示先到上限的是 CPU。</p>
+  <h3 style="font-size:14px;margin-top:18px">首次进入</h3>
+  <div id="loadRes" class="note"></div>
+  <div class="go" style="display:flex;gap:10px;margin-top:16px"><button id="copyRes">复制结果</button><button id="backLook">回到画面</button></div>
+  <textarea id="dump" style="position:absolute;left:-9999px"></textarea>
+  <h3 style="font-size:14px;margin-top:18px">已保存的结果</h3>
+  <p id="savedState" class="note"></p>
+  <table><tbody id="savedBody"></tbody></table>
+</div></div>
+<div id="toast" class="hidden"></div>
+
+<script type="module">
+const T_MODULE = performance.now();
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
+import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import { Sky } from 'three/addons/objects/Sky.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const $ = (id) => document.getElementById(id);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const pct = (a, p) => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(p * s.length))]; };
+const toast = (t) => { const e = $('toast'); e.textContent = t; e.classList.remove('hidden'); clearTimeout(toast.h); toast.h = setTimeout(() => e.classList.add('hidden'), 1800); };
+
+// ---------------------------------------------------------------- build-time facts (filled by the build script)
+const MANIFEST = /*MANIFEST*/{"lightmaps": {"ground": {"K_full": 0.6767925576290799, "K_indirect": 0.5344114959025235, "res": 2048}, "arch": {"K_full": 1.9697770176309128, "K_indirect": 0.570179369826197, "res": 2048}}, "groundLocalBounds": [-40, 34, -32, 36], "sizes": {"sky": 1062860, "geo": 966428, "geoMeshopt": 474140, "chr8k": 72636, "chr8kq": 169308, "chr12k": 98952, "chr12kq": 241620, "chr28k": 199936, "chr28kq": 529984, "anims": 149660, "texKtx2": 5532053, "texLo": 1492887, "texHi": 6268148, "lm1024": 344997, "lm2048": 1089752}};
+const LM = MANIFEST.lightmaps || {};          // K factors per mesh
+const SIZES = MANIFEST.sizes || {};
+
+// ---------------------------------------------------------------- frames: Blender local plaza frame -> three world
+const ROT = 144 * Math.PI / 180;
+function L2W(lx, ly, lz = 0) { const c = Math.cos(ROT), s = Math.sin(ROT); const bx = c * lx - s * ly, by = s * lx + c * ly; return new THREE.Vector3(bx, lz, -by); }
+function W2L(v) { const bx = v.x, by = -v.z; const c = Math.cos(-ROT), s = Math.sin(-ROT); return [c * bx - s * by, s * bx + c * by]; }
+// sun position (ux/art-direction.md 3.1): latitude 37°, declination +19°, solar noon 12:00, so it sets at 19:00;
+// local −X is the gate street, azimuth 294°. The Blender bake and sky use the same formula (s7build/sunpos.py).
+function sunAt(minute) {
+  const D = Math.PI / 180, phi = 37 * D, dec = 19 * D, H = 15 * (minute / 60 - 12) * D;
+  const se = Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec) * Math.cos(H);
+  const e = Math.asin(se);
+  let A = Math.acos(THREE.MathUtils.clamp((Math.sin(dec) - se * Math.sin(phi)) / (Math.cos(e) * Math.cos(phi)), -1, 1));
+  if (H > 0) A = 2 * Math.PI - A;
+  const d = A - 294 * D;
+  return { dir: L2W(-Math.cos(e) * Math.cos(d), Math.cos(e) * Math.sin(d), Math.sin(e)).normalize(), elev: e / D, az: A / D };
+}
+const BAKE_MINUTE = 1110;                       // 18:30: the time the lightmaps and the HDR sky were made for
+const SUN_DIR = sunAt(BAKE_MINUTE).dir;
+const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(Math.round(m % 60)).padStart(2, '0')}`;
+// fog: horizon colour of the sky, warming toward the sun; patched into every material we create
+const FOG = { sunDir: { value: SUN_DIR.clone() }, sunColor: { value: new THREE.Color().setRGB(1.7, 1.02, 0.5, THREE.LinearSRGBColorSpace) } };
+THREE.ShaderChunk.fog_pars_vertex = '#ifdef USE_FOG\n varying float vFogDepth;\n varying vec3 vFogDir;\n#endif';
+THREE.ShaderChunk.fog_vertex = '#ifdef USE_FOG\n vFogDepth = - mvPosition.z;\n vFogDir = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz - cameraPosition;\n#endif';
+THREE.ShaderChunk.fog_pars_fragment = THREE.ShaderChunk.fog_pars_fragment.replace('varying float vFogDepth;', 'varying float vFogDepth;\n varying vec3 vFogDir;\n uniform vec3 fogSunDir;\n uniform vec3 fogSunColor;');
+THREE.ShaderChunk.fog_fragment = THREE.ShaderChunk.fog_fragment.replace('gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );',
+  'float fogSun = pow( max( dot( normalize( vFogDir ), fogSunDir ), 0.0 ), 5.0 );\n gl_FragColor.rgb = mix( gl_FragColor.rgb, mix( fogColor, fogSunColor, fogSun ), fogFactor );');
+// a sun glint on the near-mirror water can exceed half-float range (Inf, and the bloom then spreads it over the whole frame);
+// even below that, a few very hot pixels feed the bloom more than the whole sky does. Highlights stay well above white.
+const HOT_MAX = 48.0;
+THREE.ShaderChunk.opaque_fragment = THREE.ShaderChunk.opaque_fragment.replace('gl_FragColor = vec4( outgoingLight, diffuseColor.a );',
+  `gl_FragColor = vec4( min( outgoingLight, vec3( ${HOT_MAX.toFixed(1)} ) ), diffuseColor.a );`);
+const FOG_BASE = new THREE.Color().setRGB(0.31, 0.27, 0.25, THREE.LinearSRGBColorSpace), FOG_DENSITY = 0.0014;
+function fogUniforms(sh) { sh.uniforms.fogSunDir = FOG.sunDir; sh.uniforms.fogSunColor = FOG.sunColor; }
+const SUN_E = 6.0;
+// blackbody colour (Tanner Helland's fit), brightest channel = 1
+function kelvinColor(K, out = new THREE.Color()) {
+  const t = K / 100;
+  const r = t <= 66 ? 255 : 329.698727446 * Math.pow(t - 60, -0.1332047592);
+  const g = t <= 66 ? 99.4708025861 * Math.log(t) - 161.1195681661 : 288.1221695283 * Math.pow(t - 60, -0.0755148492);
+  const b = t >= 66 ? 255 : t <= 19 ? 0 : 138.5177312231 * Math.log(t - 10) - 305.0447927307;
+  const c = (v) => THREE.MathUtils.clamp(v, 0, 255) / 255;
+  return out.setRGB(c(r), c(g), c(b), THREE.SRGBColorSpace);
+}
+// direct sunlight: about 2000K on the horizon, 4000K at 35°, near white (5500K) at midday
+const sunKelvin = (e) => (e >= 35 ? Math.min(5500, 4000 + (e - 35) * 60) : 2000 + 2000 * Math.pow(Math.max(0, e) / 35, 0.6));
+// more air to cross when the sun is low: dimmer as well as redder
+const sunAtten = (e) => THREE.MathUtils.lerp(0.6, 1.0, THREE.MathUtils.smoothstep(e, 2, 35));
+const SUN_COLOR = kelvinColor(sunKelvin(sunAt(BAKE_MINUTE).elev));
+
+// ---------------------------------------------------------------- state
+const cfg = { light: 'ao', ibl: 1, shadow: 2048, pbr: 1, post: 1, fog: 1, dpr: 1.5, chars: 3, lod: '12k', tex: 'hi', tone: 'neutral' };
+const marks = { module: Math.round(T_MODULE) };
+const assetLog = [];
+let sunDisc, renderer, scene, camera, composer, bloomPass, gradePass, pmrem;
+let hdrTex = null, envHDR = null, sky = null, skyEnvRT = null, skyScene = null;
+let sun, hemi, shadowPlane;
+const env = { ground: null, arch: null, far: null, proxy: null };
+const matSets = {};       // per light mode: Map(original material -> new material) for ground/arch
+let baseMats = {};        // material name -> {map, normalMap, roughness, color}
+const texCache = {};      // url -> texture
+let lightmaps = {};       // `${mesh}_${kind}` -> texture
+let sunMask = null;       // {w,h,data}
+const chars = [];         // {root, mixer, sunVis, path}
+let talker = null;
+let clips = {};
+const charTemplates = {};
+let viewMode = 'look';
+let timeMin = 1050;      // 17:30, when act 1 starts (the bake is 18:30)
+
+// ---------------------------------------------------------------- loading helpers
+function setLoad(f, msg) { $('prog').firstElementChild.style.width = (f * 100).toFixed(0) + '%'; if (msg) $('loadmsg').textContent = msg; }
+async function b64Module(path) {
+  const t = performance.now();
+  const mod = await import(new URL(path, location.href).href);
+  const s = mod.default;
+  const bin = Uint8Array.from(atob(s), (ch) => ch.charCodeAt(0));
+  const ms = performance.now() - t;
+  assetLog.push({ path, bytes: bin.length, b64: s.length, ms: Math.round(ms) });
+  return bin;
+}
+function loadTex(url, srgb) {
+  if (texCache[url]) return texCache[url];
+  const t = performance.now();
+  texCache[url] = new Promise((res, rej) => new THREE.TextureLoader().load(url, (tex) => {
+    tex.flipY = false; tex.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.anisotropy = 4;
+    assetLog.push({ path: url, ms: Math.round(performance.now() - t), w: tex.image.width });
+    res(tex);
+  }, undefined, rej));
+  return texCache[url];
+}
+
+// material table: plaza material name -> textures (base/normal) and roughness
+const MAT_TABLE = {
+  floor: { base: 'floor_base', nrm: 'floor_nrm', rough: 0.86 },
+  ashlar: { base: 'ashlar_base', nrm: 'ashlar_nrm', rough: 0.9 },
+  ashlar_warm: { base: 'ashlar2_base', nrm: 'ashlar_nrm', rough: 0.9 },
+  stone: { base: 'plain_base', nrm: 'plain_nrm', rough: 0.82 },
+  plaster: { base: 'plaster_base', nrm: 'plain_nrm', rough: 0.92 },
+  roof: { base: 'roofwarm_base', nrm: 'roof_nrm', rough: 0.8 },
+  doors: { base: 'doors_base', nrm: 'doors_nrm', rough: 0.7 },
+  cornice: { base: 'cornice_base', nrm: 'cornice_nrm', rough: 0.85 },
+  trim: { base: 'trim_base', nrm: 'trim_nrm', rough: 0.85 },
+  fabric_red: { base: 'fabric_red_base', nrm: 'fabric_red_nrm', rough: 0.95, double: true },
+  fabric_blue: { base: 'fabric_blue_base', nrm: 'fabric_red_nrm', rough: 0.95, double: true },
+  hill: { base: 'hill_base', rough: 0.95 },
+  bark: { base: 'bark_base', nrm: 'plain_nrm', rough: 0.9 },
+  cypress: { base: 'cypress_base', nrm: 'ivy_nrm', rough: 0.9 },
+  terracotta: { base: 'plain_base', nrm: 'plain_nrm', rough: 0.8, color: 0xc77a52 },
+  water: { color: 0x0e1414, rough: 0.09 },
+};
+let ktx2Loader = null, ktx2Map = null;
+async function texSet(which) {
+  // returns name -> {base, nrm} textures for 'lo' | 'hi' | 'ktx2'
+  const names = new Set();
+  for (const m of Object.values(MAT_TABLE)) { if (m.base) names.add(m.base); if (m.nrm) names.add(m.nrm); }
+  const out = {};
+  if (which === 'ktx2') {
+    if (!ktx2Loader) {
+      ktx2Loader = new KTX2Loader().setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/libs/basis/').detectSupport(renderer);
+      const t = performance.now();
+      const mod = await import(new URL('data/ktx2.js', location.href).href);
+      ktx2Map = mod.default; assetLog.push({ path: 'data/ktx2.js', ms: Math.round(performance.now() - t), b64: Object.values(ktx2Map).reduce((s, x) => s + x.length, 0) });
+    }
+    await Promise.all([...names].map(async (n) => {
+      const key = ktx2Map[n] ? n : null; if (!key) return;
+      const bin = Uint8Array.from(atob(ktx2Map[key]), (ch) => ch.charCodeAt(0));
+      const url = URL.createObjectURL(new Blob([bin]));
+      const tex = await ktx2Loader.loadAsync(url); URL.revokeObjectURL(url);
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.anisotropy = 4;
+      if (n.endsWith('_base')) tex.colorSpace = THREE.SRGBColorSpace; else tex.colorSpace = THREE.NoColorSpace;
+      out[n] = tex;
+    }));
+    return out;
+  }
+  await Promise.all([...names].map(async (n) => { out[n] = await loadTex(`tex/${n}_${which}.jpg`, n.endsWith('_base')); }));
+  return out;
+}
+async function loadLightmap(mesh, kind, res) {
+  const key = `${mesh}_${kind}`;
+  if (lightmaps[key]) return lightmaps[key];
+  const r = kind === 'ao' ? '1024' : res;
+  const tex = await loadTex(`lm/${mesh}_${kind}_${r}.jpg`, kind !== 'ao');
+  tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping; tex.channel = 1; tex.anisotropy = 1;
+  lightmaps[key] = tex; return tex;
+}
+async function loadSunMask() {
+  const img = new Image(); img.src = 'lm/ground_sunmask.png'; await img.decode();
+  const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+  const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+  sunMask = { w: img.width, h: img.height, data: g.getImageData(0, 0, img.width, img.height).data, b: MANIFEST.groundLocalBounds };
+}
+function sunVisAt(pos) {
+  if (!sunMask) return 1;
+  const [lx, ly] = W2L(pos); const [x0, x1, y0, y1] = sunMask.b;
+  const u = (lx - x0) / (x1 - x0), v = (ly - y0) / (y1 - y0);
+  if (u < 0 || u > 1 || v < 0 || v > 1) return 1;
+  const px = Math.min(sunMask.w - 1, Math.floor(u * sunMask.w)), py = Math.min(sunMask.h - 1, Math.floor((1 - v) * sunMask.h));
+  return sunMask.data[(py * sunMask.w + px) * 4] / 255;
+}
+
+// ---------------------------------------------------------------- renderer + scene
+function makeRenderer() {
+  renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, cfg.dpr));
+  renderer.setSize(innerWidth, innerHeight, false);
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.toneMapping = THREE.AgXToneMapping; renderer.toneMappingExposure = 1.0;
+  renderer.info.autoReset = false;
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 1500);
+  pmrem = new THREE.PMREMGenerator(renderer);
+  sun = new THREE.DirectionalLight(SUN_COLOR, SUN_E);
+  sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.05;
+  scene.add(sun, sun.target);
+  hemi = new THREE.HemisphereLight(0xbcd0ff, 0x8a7560, 0.0); scene.add(hemi);
+  shadowPlane = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShadowMaterial({ opacity: 0.55 }));
+  shadowPlane.rotation.x = -Math.PI / 2; shadowPlane.position.y = 0.012; shadowPlane.receiveShadow = true; shadowPlane.visible = false;
+  scene.add(shadowPlane);
+  // the sun itself (the HDR sky has no disc, so the lamp and the sky don't light things twice)
+  sunDisc = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, toneMapped: true,
+    uniforms: { uColor: { value: new THREE.Color().setRGB(1.0, 0.72, 0.42, THREE.LinearSRGBColorSpace) }, uGain: { value: 1 } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: 'uniform vec3 uColor; uniform float uGain; varying vec2 vUv; void main(){ float r = length(vUv - 0.5) * 2.0; float core = (1.0 - smoothstep(0.14, 0.17, r)) * 40.0; float halo = exp(-r * 7.0) * 2.0; gl_FragColor = vec4(min(uColor * (core + halo) * uGain, vec3(60.0)), 1.0); }',
+  }));
+  sunDisc.frustumCulled = false; sunDisc.renderOrder = -1; scene.add(sunDisc);
+  addEventListener('resize', onResize);
+}
+function onResize() {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight, false);
+  if (composer) composer.setSize(innerWidth, innerHeight);
+}
+
+const GradeShader = {
+  uniforms: { tDiffuse: { value: null }, uVig: { value: 0.32 }, uWarm: { value: 0.06 }, uContrast: { value: 1.06 }, uNight: { value: 0 }, uSat: { value: 1.12 } },
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float uVig, uWarm, uContrast, uNight, uSat; varying vec2 vUv;
+    void main(){ vec4 c = texture2D(tDiffuse, vUv); vec3 col = c.rgb;
+      float l = dot(col, vec3(0.2126,0.7152,0.0722));
+      col = max(mix(vec3(l), col, uSat), 0.0);
+      col = mix(col, col * vec3(1.0 + uWarm, 1.0, 1.0 - uWarm), smoothstep(0.35, 0.9, l));      // warm highlights
+      col = mix(col, col * vec3(1.0 - uWarm*0.6, 1.0, 1.0 + uWarm), 1.0 - smoothstep(0.05, 0.35, l)); // cool shadows
+      col = mix(col, vec3(dot(col, vec3(0.2126,0.7152,0.0722))) * vec3(0.62, 0.78, 1.18), uNight * 0.7);   // day for night
+      col = (col - 0.5) * uContrast + 0.5;
+      vec2 d = vUv - 0.5; col *= 1.0 - uVig * dot(d, d) * 2.2;
+      gl_FragColor = vec4(clamp(col, 0.0, 1.0), c.a); }`,
+};
+function ensureComposer() {
+  if (composer) return;
+  const rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 });
+  composer = new EffectComposer(renderer, rt);
+  composer.addPass(new RenderPass(scene, camera));
+  bloomPass = new UnrealBloomPass(new THREE.Vector2(innerWidth / 2, innerHeight / 2), 0.3, 0.2, 3.0);
+  composer.addPass(bloomPass);
+  composer.addPass(new OutputPass());
+  gradePass = new ShaderPass(GradeShader); composer.addPass(gradePass);
+  composer.setPixelRatio(renderer.getPixelRatio());
+  composer.setSize(innerWidth, innerHeight);
+}
+
+// ---------------------------------------------------------------- materials per lighting mode
+function stdFrom(name, tset, opt = {}) {
+  const t = MAT_TABLE[name] || { rough: 0.85 };
+  const m = new THREE.MeshStandardMaterial({ roughness: t.rough, metalness: 0, color: t.color ?? 0xffffff, side: t.double ? THREE.DoubleSide : THREE.FrontSide });
+  if (t.base && tset[t.base]) m.map = tset[t.base];
+  if (opt.pbr && t.nrm && tset[t.nrm]) { m.normalMap = tset[t.nrm]; m.normalScale.set(1, -1); }
+  m.name = name; m.onBeforeCompile = fogUniforms;
+  return m;
+}
+function basicFrom(name, tset) {
+  const t = MAT_TABLE[name] || {};
+  const m = new THREE.MeshBasicMaterial({ color: t.color ?? 0xffffff, side: t.double ? THREE.DoubleSide : THREE.FrontSide });
+  if (t.base && tset[t.base]) m.map = tset[t.base];
+  m.name = name; m.onBeforeCompile = fogUniforms; return m;
+}
+let curTexSet = null;
+async function buildMaterials() {
+  const tset = curTexSet;
+  const res = cfg.tex === 'lo' ? '1024' : '2048';
+  const need = cfg.light === 'full' ? 'full' : cfg.light === 'indirect' ? 'indirect' : cfg.light === 'ao' ? 'ao' : null;
+  const lm = {};
+  if (need) for (const mesh of ['ground', 'arch']) lm[mesh] = await loadLightmap(mesh, need, res);
+  if (cfg.light === 'full' && !sunMask) await loadSunMask();
+  for (const mesh of ['ground', 'arch', 'far']) {
+    const root = env[mesh]; if (!root) continue;
+    root.traverse((o) => {
+      if (!o.isMesh) return;
+      const orig = o.userData.origMats || (o.userData.origMats = Array.isArray(o.material) ? o.material.map((m) => m.name) : [o.material.name]);
+      const mats = orig.map((name) => {
+        if (mesh === 'far' || name === 'water') {
+          const m = stdFrom(name, tset, { pbr: cfg.pbr });
+          if (name === 'water') m.envMapIntensity = 1.0;
+          return m;
+        }
+        if (cfg.light === 'full') {
+          const m = basicFrom(name, tset); m.lightMap = lm[mesh]; m.lightMapIntensity = Math.PI * LM[mesh].K_full; return m;
+        }
+        const m = stdFrom(name, tset, { pbr: cfg.pbr });
+        if (cfg.light === 'indirect') { m.lightMap = lm[mesh]; m.lightMapIntensity = Math.PI * LM[mesh].K_indirect; m.envMapIntensity = 0.12; }
+        else if (cfg.light === 'ao') { m.aoMap = lm[mesh]; m.aoMapIntensity = 1.0; }
+        return m;
+      });
+      const old = Array.isArray(o.material) ? o.material : [o.material];
+      o.material = Array.isArray(o.material) ? mats : mats[0];
+      for (const m of old) m.dispose?.();
+      o.receiveShadow = cfg.light !== 'full' && mesh !== 'far';
+      o.castShadow = false;
+    });
+  }
+}
+
+// ---------------------------------------------------------------- environment light
+async function applyEnvironment() {
+  const timeMode = cfg.light === 'ao';
+  $('timeRow').classList.toggle('hidden', !timeMode);
+  if (timeMode) { setTime(timeMin, true); return; }
+  setNight(0); if (scene.fog) scene.fog.color.copy(FOG_BASE); FOG.sunColor.value.copy(SUN_COLOR).multiplyScalar(1.4); expoBase = 1;
+  sunDisc.material.uniforms.uGain.value = 1; sunDisc.material.uniforms.uColor.value.setRGB(1.0, 0.72, 0.42, THREE.LinearSRGBColorSpace);
+  if (sky) sky.visible = false;
+  scene.background = hdrTex; scene.backgroundIntensity = 1;
+  scene.environment = cfg.ibl ? envHDR : null;
+  hemi.intensity = cfg.ibl ? 0 : 1.6;
+  sun.color.copy(SUN_COLOR); sun.intensity = SUN_E * sunAtten(sunAt(BAKE_MINUTE).elev) * 1.25;
+  setSunDir(SUN_DIR);
+}
+let sunDirCur = SUN_DIR.clone(), expoBase = 1, expoFace = 1;
+// looking into a sun that is still up: stop down a little (adapts over about a second; a camera cut snaps)
+const _fwd = new THREE.Vector3();
+function faceExposure() {
+  if (!sunDisc?.visible) return 1;
+  camera.getWorldDirection(_fwd);
+  return 1 - 0.4 * THREE.MathUtils.smoothstep(_fwd.dot(sunDirCur), 0.4, 0.95) * THREE.MathUtils.clamp(sunDirCur.y * 20 + 0.5, 0, 1);
+}
+function setSunDir(d) { sunDirCur.copy(d).normalize(); FOG.sunDir.value.copy(sunDirCur); }
+function setNight(n) { if (gradePass) gradePass.uniforms.uNight.value = n; }
+let envTimer = 0;
+function setTime(minute, immediate) {
+  timeMin = minute;
+  if (!sky) {
+    sky = new Sky(); sky.scale.setScalar(4000); scene.add(sky);
+    skyScene = new THREE.Scene(); const s2 = new Sky(); s2.scale.setScalar(50); skyScene.add(s2); skyScene.userData.sky = s2;
+    // Sky.js's forward scattering near a low sun runs far above the baked sky (whose brightest texel is 3.6); cap it near that
+    for (const s of [sky, s2]) {
+      s.material.uniforms.uSkyGain = { value: 1 }; s.material.uniforms.uDusk = { value: 0 }; s.material.uniforms.uNightSky = { value: 0 }; s.material.uniforms.uBelt = { value: 0 }; s.material.uniforms.uAmber = { value: 0 };
+      // Sky.js goes black as soon as the sun is down; keep an afterglow on the sunset side, then a dark blue night sky
+      s.material.fragmentShader = 'uniform float uSkyGain, uDusk, uNightSky, uBelt, uAmber;\n' + s.material.fragmentShader.replace('gl_FragColor = vec4( texColor, 1.0 );', `
+        float up = max( direction.y, 0.0 );
+        float side = dot( normalize( direction.xz + 1e-5 ), normalize( vSunDirection.xz + 1e-5 ) ) * 0.5 + 0.5;
+        vec3 glow = mix( vec3( 0.0, 0.0, 0.0 ), vec3( 0.55, 0.22, 0.08 ), pow( side, 3.0 ) ) * exp( -up * 9.0 ) + vec3( 0.05, 0.07, 0.14 ) * ( 1.0 - up * 0.6 );
+        vec3 nightSky = vec3( 0.012, 0.02, 0.05 ) * ( 1.0 - up * 0.5 );
+        // low sun: the sky around it turns amber instead of a white haze
+        float nearSun = pow( max( dot( direction, vSunDirection ), 0.0 ), 12.0 );
+        texColor *= mix( vec3( 1.0 ), vec3( 1.0, 0.66, 0.38 ), clamp( pow( side, 6.0 ) * exp( -up * 2.5 ) + nearSun * 0.6, 0.0, 1.0 ) * uAmber );
+        // around sunset: a pink band (Venus belt) a few degrees up on the side away from the sun, and the whole sky stays a lighter blue until about 19:30
+        float anti = pow( 1.0 - side, 2.0 );
+        vec3 belt = vec3( 0.55, 0.27, 0.33 ) * exp( -pow( ( up - 0.09 ) / 0.06, 2.0 ) ) * anti + vec3( 0.15, 0.2, 0.38 ) * ( 1.0 - up * 0.45 );
+        texColor = max( texColor * uSkyGain, max( max( glow * uDusk, nightSky * uNightSky ), belt * uBelt ) );
+        // soft knee on the brightest channel: keeps the hue (a per-channel clamp turned the sunset side white)
+        float peak = max( max( texColor.r, texColor.g ), max( texColor.b, 1e-4 ) );
+        texColor *= 1.7 * ( 1.0 - exp( -peak / 1.7 ) ) / peak;
+        gl_FragColor = vec4( texColor, 1.0 );`);
+    }
+  }
+  sky.visible = true; scene.background = null;
+  const sp = sunAt(minute), d = sp.dir, elevDeg = sp.elev;
+  for (const s of [sky, skyScene.userData.sky]) {
+    const u = s.material.uniforms;
+    u.turbidity.value = 4.5; u.rayleigh.value = 2.2; u.mieCoefficient.value = 0.0028; u.mieDirectionalG.value = 0.8;
+    u.sunPosition.value.copy(d);
+    u.showSunDisc.value = 0; u.cloudCoverage.value = 0;
+    // the low sun's forward scattering is far brighter than the rest of the sky: hold it down so the sunset side keeps its colour
+    u.uSkyGain.value = THREE.MathUtils.lerp(0.62, 0.4, THREE.MathUtils.smoothstep(elevDeg, 10, 45));
+  }
+  // a camera stops down in the midday sun, and opens up a little as the light goes
+  expoBase = THREE.MathUtils.lerp(1.1, 0.66, THREE.MathUtils.smoothstep(elevDeg, 8, 50));
+  setSunDir(d);
+  const k = THREE.MathUtils.clamp((elevDeg + 0.5) / 3, 0, 1);      // direct light goes as the disc touches the horizon
+  kelvinColor(sunKelvin(elevDeg), sun.color);
+  sun.intensity = SUN_E * k * sunAtten(elevDeg);
+  sunDisc.material.uniforms.uGain.value = k;
+  kelvinColor(sunKelvin(elevDeg) + 300, sunDisc.material.uniforms.uColor.value);
+  // night: "day for night" (art-direction 3.2): blue, less saturated, still readable
+  const night = THREE.MathUtils.clamp((-elevDeg - 1) / 8, 0, 1);
+  hemi.color.setRGB(0.45, 0.55, 0.9, THREE.LinearSRGBColorSpace); hemi.groundColor.setRGB(0.12, 0.1, 0.08, THREE.LinearSRGBColorSpace);
+  const dusk = THREE.MathUtils.clamp((3 - elevDeg) / 5, 0, 1) * (1 - night);   // from 3° above to 2° below the horizon
+  for (const s of [sky, skyScene.userData.sky]) { s.material.uniforms.uDusk.value = THREE.MathUtils.clamp((2 - elevDeg) / 3, 0, 1) * (1 - night); s.material.uniforms.uNightSky.value = THREE.MathUtils.clamp((-elevDeg - 2) / 6, 0, 1); s.material.uniforms.uBelt.value = (1 - THREE.MathUtils.smoothstep(elevDeg, 2, 9)) * THREE.MathUtils.smoothstep(elevDeg, -7, -2); s.material.uniforms.uAmber.value = 1 - THREE.MathUtils.smoothstep(elevDeg, 3, 28); }
+  hemi.color.setRGB(0.45 + 0.3 * dusk, 0.55 + 0.1 * dusk, 0.9 - 0.15 * dusk, THREE.LinearSRGBColorSpace);
+  hemi.intensity = (cfg.ibl ? 0 : 1.4) + Math.max(night * 0.9, dusk * 0.8);
+  setNight(night);
+  expoBase *= 1 + 0.75 * night;          // Neutral tone mapping has no lifted toe (AgX had): open up for day-for-night
+  if (scene.fog) scene.fog.color.copy(FOG_BASE).multiplyScalar(1 - 0.85 * night);
+  FOG.sunColor.value.copy(sun.color).multiplyScalar(1.4 * THREE.MathUtils.clamp((elevDeg + 4) / 8, 0, 1));
+  const band = elevDeg < -6 ? '夜' : elevDeg < 0 ? '日没后的残照' : minute < 720 ? (elevDeg < 15 ? '朝' : '午前') : elevDeg > 40 ? '真昼・午後' : '夕方';
+  $('timeNote').textContent = `${hhmm(minute)} · 太阳高度 ${elevDeg.toFixed(1)}° · ${band}`;
+  const doEnv = () => {
+    const t = performance.now();
+    if (skyEnvRT) skyEnvRT.dispose();
+    skyEnvRT = pmrem.fromScene(skyScene, 0, 0.1, 100);
+    scene.environment = cfg.ibl ? skyEnvRT.texture : null;
+    marks.pmremSkyMs = Math.round(performance.now() - t);
+  };
+  // regenerate the environment light at most every 250 ms while the slider moves or the sunset plays
+  if (immediate) { clearTimeout(envTimer); envTimer = 0; doEnv(); }
+  else if (!envTimer) envTimer = setTimeout(() => { envTimer = 0; doEnv(); }, 250);
+}
+
+// ---------------------------------------------------------------- characters
+function patchSunVis(mat, holder) {
+  mat.onBeforeCompile = (sh) => {
+    fogUniforms(sh);
+    sh.uniforms.uSunVis = holder;
+    sh.fragmentShader = 'uniform float uSunVis;\n' + sh.fragmentShader.replace('#include <lights_fragment_begin>',
+      THREE.ShaderChunk.lights_fragment_begin.replace('getDirectionalLightInfo( directionalLight, directLight );', 'getDirectionalLightInfo( directionalLight, directLight ); directLight.color *= uSunVis;'));
+  };
+  mat.customProgramCacheKey = () => 'sunvis';
+}
+async function loadCharTemplate(lod) {
+  if (charTemplates[lod]) return charTemplates[lod];
+  charTemplates[lod] = (async () => {
+    const bin = await b64Module(`data/person_${lod}.js`);
+    const g = await new GLTFLoader().parseAsync(bin.buffer, '');
+    const root = g.scene;
+    const box = new THREE.Box3().setFromObject(root); const h = box.max.y - box.min.y;
+    root.scale.multiplyScalar(1.68 / h);
+    root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; if (o.material.roughnessMap) { o.material.roughnessMap = null; o.material.metalnessMap = null; } o.material.roughness = 0.62; o.material.metalness = 0;
+      o.material.map = null; o.material.color.setRGB(/Joint/i.test(o.material.name) ? 0.06 : 0.32, /Joint/i.test(o.material.name) ? 0.06 : 0.32, /Joint/i.test(o.material.name) ? 0.065 : 0.33, THREE.LinearSRGBColorSpace); } });
+    const box2 = new THREE.Box3().setFromObject(root); root.position.y -= box2.min.y;
+    const wrap = new THREE.Group(); wrap.add(root);
+    return wrap;
+  })();
+  return charTemplates[lod];
+}
+async function loadClips() {
+  const bin = await b64Module('data/anims.js');
+  const g = await new GLTFLoader().parseAsync(bin.buffer, '');
+  for (const c of g.animations) clips[c.name] = c;     // idle, walk (same skeleton as the stand-in)
+}
+function makeChar(tpl) {
+  const root = SkeletonUtils.clone(tpl);
+  const holder = { value: 1 };
+  root.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); patchSunVis(o.material, holder); } });
+  const mixer = new THREE.AnimationMixer(root);
+  scene.add(root);
+  return { root, mixer, holder };
+}
+async function setChars() {
+  for (const c of chars) { scene.remove(c.root); c.mixer.stopAllAction(); c.root.traverse((o) => { if (o.isMesh) o.material.dispose(); }); }
+  chars.length = 0;
+  if (talker) { scene.remove(talker.root); talker = null; }
+  const tpl = await loadCharTemplate(cfg.lod);
+  talker = makeChar(tpl);
+  talker.root.position.copy(L2W(7.0, 0.2, 0));
+  talker.root.lookAt(L2W(6.6, -2.0, 0));
+  talker.mixer.clipAction(clips.idle).play();
+  for (let i = 0; i < cfg.chars; i++) {
+    const c = makeChar(tpl);
+    c.path = { r: 6 + (i % 4) * 2.2, w: (i % 2 ? 1 : -1) * 1.25 / (6 + (i % 4) * 2.2), a0: i * 2.1 };
+    c.mixer.clipAction(clips.walk).play();
+    c.mixer.setTime(i * 0.37);
+    chars.push(c);
+  }
+}
+function updateChars(dt, t) {
+  for (const c of chars) {
+    const a = c.path.a0 + c.path.w * t; const r = c.path.r;
+    const lx = Math.cos(a) * r, ly = 2 + Math.sin(a) * r;
+    const p = L2W(lx, ly, 0);
+    const a2 = a + Math.sign(c.path.w) * 0.05; const q = L2W(Math.cos(a2) * r, 2 + Math.sin(a2) * r, 0);
+    c.root.position.copy(p); c.root.lookAt(q);
+    c.mixer.update(dt);
+  }
+  if (talker) talker.mixer.update(dt);
+  const all = talker ? [...chars, talker] : chars;
+  for (const c of all) c.holder.value = cfg.light === 'full' ? THREE.MathUtils.lerp(0.08, 1, sunVisAt(c.root.position)) : 1;
+}
+
+// ---------------------------------------------------------------- shadows
+function applyShadows() {
+  const on = cfg.shadow > 0;
+  sun.castShadow = on;
+  if (on) {
+    if (sun.shadow.mapSize.x !== cfg.shadow) { sun.shadow.mapSize.set(cfg.shadow, cfg.shadow); sun.shadow.map?.dispose(); sun.shadow.map = null; }
+    const half = cfg.light === 'full' ? 14 : 36;
+    const c = sun.shadow.camera; c.left = -half; c.right = half; c.top = half; c.bottom = -half; c.near = 1; c.far = 220; c.updateProjectionMatrix();
+  }
+  if (env.proxy) env.proxy.castShadow = on && cfg.light !== 'full';
+  shadowPlane.visible = on && cfg.light === 'full';
+}
+const _tmp = new THREE.Vector3();
+function updateSun() {
+  // shadow box follows the camera; snapped to texels so edges don't crawl
+  camera.getWorldDirection(_tmp); _tmp.y = 0; _tmp.normalize();
+  const half = cfg.light === 'full' ? 14 : 36;
+  const center = camera.position.clone().addScaledVector(_tmp, half * 0.55); center.y = 0;
+  const texel = (2 * half) / Math.max(1, cfg.shadow || 1024);
+  const lightRot = new THREE.Matrix4().lookAt(new THREE.Vector3(), sunDirCur.clone().negate(), new THREE.Vector3(0, 1, 0));
+  const inv = lightRot.clone().invert();
+  const lc = center.clone().applyMatrix4(inv); lc.x = Math.round(lc.x / texel) * texel; lc.y = Math.round(lc.y / texel) * texel; center.copy(lc.applyMatrix4(lightRot));
+  sun.target.position.copy(center); sun.position.copy(center).addScaledVector(sunDirCur, 120);
+  sun.target.updateMatrixWorld();
+  shadowPlane.position.set(center.x, 0.012, center.z); shadowPlane.scale.setScalar(half * 2.2);
+  const D = 1200;   // angular radius of the glow ~4°, the disc ~0.7°
+  sunDisc.visible = sunDirCur.y > -0.02;   // Sky.js's own disc is off (its 760x peak blew out the bloom), so this one is used in every mode
+  sunDisc.position.copy(camera.position).addScaledVector(sunDirCur, D); sunDisc.scale.setScalar(2 * D * Math.tan(THREE.MathUtils.degToRad(4)));
+  sunDisc.lookAt(camera.position);
+}
+
+// ---------------------------------------------------------------- apply cfg
+async function applyCfg(next, opts = {}) {
+  const prev = { ...cfg }; Object.assign(cfg, next);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, cfg.dpr >= 3 ? devicePixelRatio : cfg.dpr));
+  renderer.setSize(innerWidth, innerHeight, false);
+  renderer.toneMapping = { agx: THREE.AgXToneMapping, aces: THREE.ACESFilmicToneMapping, neutral: THREE.NeutralToneMapping }[cfg.tone];
+  scene.fog = cfg.fog ? new THREE.FogExp2(FOG_BASE.clone(), FOG_DENSITY) : null;
+  if (cfg.post) { ensureComposer(); composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(innerWidth, innerHeight); }
+  if (!curTexSet || prev.tex !== cfg.tex) {
+    try { curTexSet = await texSet(cfg.tex); }
+    catch (e) { toast('KTX2 加载失败：' + (e?.message || e)); cfg.tex = 'hi'; curTexSet = await texSet('hi'); }
+  }
+  if (opts.force || ['light', 'pbr', 'tex'].some((k) => prev[k] !== cfg[k])) await buildMaterials();
+  if (opts.force || prev.lod !== cfg.lod || prev.chars !== cfg.chars) await setChars();
+  await applyEnvironment();
+  applyShadows();
+  syncButtons();
+  $('texNote').textContent = cfg.tex === 'ktx2' ? '显存约为 JPEG 的 1/4～1/8，下载大小相近。' : '';
+}
+function syncButtons() {
+  document.querySelectorAll('#panel .row[data-key]').forEach((row) => {
+    const k = row.dataset.key;
+    row.querySelectorAll('button').forEach((b) => b.classList.toggle('on', String(cfg[k]) === b.dataset.v));
+  });
+}
+document.querySelectorAll('#panel .row[data-key]').forEach((row) => row.addEventListener('click', async (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  const k = row.dataset.key; let v = b.dataset.v;
+  if (['ibl', 'shadow', 'pbr', 'post', 'fog', 'chars'].includes(k)) v = Number(v);
+  if (k === 'dpr') v = Number(v);
+  row.querySelectorAll('button').forEach((x) => (x.disabled = true));
+  try { await applyCfg({ [k]: v }); } finally { row.querySelectorAll('button').forEach((x) => (x.disabled = false)); }
+}));
+$('time').addEventListener('input', (e) => { stopSunset(); setTime(Number(e.target.value)); });
+// "wait for sunset" (art-direction 10, check 2): 18:00 -> 19:10 in 40 s, watching the light climb the castle wall
+let sunsetAnim = 0;
+function stopSunset() { cancelAnimationFrame(sunsetAnim); sunsetAnim = 0; $('sunset').textContent = '等日没'; }
+$('sunset').addEventListener('click', async () => {
+  if (sunsetAnim) { stopSunset(); return; }
+  if (cfg.light !== 'ao') await applyCfg({ light: 'ao' });
+  setView('east');
+  const t0 = performance.now(), from = 1080, to = 1150, dur = 40000;
+  $('sunset').textContent = '停';
+  const step = () => {
+    const f = Math.min(1, (performance.now() - t0) / dur), m = from + (to - from) * f;
+    $('time').value = m; setTime(m);
+    sunsetAnim = f < 1 ? requestAnimationFrame(step) : 0;
+    if (!sunsetAnim) stopSunset();
+  };
+  step();
+});
+
+// ---------------------------------------------------------------- camera / views / movement
+const VIEWS = {
+  corner: { p: [-16.5, -13.5, 1.65], t: [14, 6, 7.5], fov: 60 },
+  entry: { p: [-24, -0.5, 1.65], t: [10, 1.5, 5.0], fov: 58 },
+  sun: { p: [8, 1.0, 1.65], t: [-40, -1.0, 3.6], fov: 55 },
+  east: { p: [-10, -6, 1.65], t: [20, 2, 10.0], fov: 60 },
+  temple: { p: [2, 5, 1.65], t: [0, 22, 5.5], fov: 62 },
+  talk: { p: [6.6, -1.55, 1.52], t: [7.0, 0.2, 1.45], fov: 34 },
+};
+let yaw = 0, pitch = 0;
+function setView(name) {
+  const v = VIEWS[name]; const p = L2W(...v.p), t = L2W(...v.t);
+  camera.position.copy(p); camera.fov = v.fov; camera.updateProjectionMatrix();
+  const d = t.clone().sub(p).normalize(); yaw = Math.atan2(d.x, d.z); pitch = Math.asin(d.y);
+  applyLook(); expoFace = faceExposure();
+  $('lods').classList.toggle('hidden', name !== 'talk');
+  document.querySelectorAll('#bar [data-view]').forEach((b) => b.classList.toggle('on', b.dataset.view === name));
+}
+function applyLook() { const d = new THREE.Vector3(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)); camera.lookAt(camera.position.clone().add(d)); }
+document.querySelectorAll('#bar [data-view]').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
+// LOD quick switch on the talk view
+['8k', '12k', '28k'].forEach((l) => { const b = document.createElement('button'); b.textContent = `人物 ${l} 面`; b.dataset.v = l; b.onclick = async () => { await applyCfg({ lod: l }); $('lods').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x.dataset.v === cfg.lod)); }; $('lods').append(b); });
+// drag to look
+let drag = null;
+$('c').addEventListener('pointerdown', (e) => { if (viewMode !== 'look') return; drag = { id: e.pointerId, x: e.clientX, y: e.clientY }; $('c').setPointerCapture(e.pointerId); });
+$('c').addEventListener('pointermove', (e) => { if (!drag || e.pointerId !== drag.id) return; yaw -= (e.clientX - drag.x) * 0.005; pitch = THREE.MathUtils.clamp(pitch - (e.clientY - drag.y) * 0.004, -1.2, 1.2); drag.x = e.clientX; drag.y = e.clientY; applyLook(); });
+$('c').addEventListener('pointerup', () => (drag = null)); $('c').addEventListener('pointercancel', () => (drag = null));
+const joy = { x: 0, y: 0, id: null };
+$('joy').addEventListener('pointerdown', (e) => { joy.id = e.pointerId; $('joy').setPointerCapture(e.pointerId); joyMove(e); });
+$('joy').addEventListener('pointermove', (e) => { if (e.pointerId === joy.id) joyMove(e); });
+const joyEnd = () => { joy.id = null; joy.x = joy.y = 0; $('joy').firstElementChild.style.transform = ''; };
+$('joy').addEventListener('pointerup', joyEnd); $('joy').addEventListener('pointercancel', joyEnd);
+function joyMove(e) { const r = $('joy').getBoundingClientRect(); let x = (e.clientX - r.left - r.width / 2) / (r.width / 2), y = (e.clientY - r.top - r.height / 2) / (r.height / 2); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } joy.x = x; joy.y = y; $('joy').firstElementChild.style.transform = `translate(${x * 35}px,${y * 35}px)`; }
+const keys = {}; addEventListener('keydown', (e) => (keys[e.code] = true)); addEventListener('keyup', (e) => (keys[e.code] = false));
+function moveCam(dt) {
+  let f = -joy.y + ((keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0)), s = joy.x + ((keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0));
+  if (!f && !s) return;
+  const sp = 3.2 * dt; const fw = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw)); const rt = new THREE.Vector3(-fw.z, 0, fw.x);
+  camera.position.addScaledVector(fw, f * sp).addScaledVector(rt, s * sp); camera.position.y = 1.65;
+  // stay on the plaza and the gate street (local coordinates)
+  const [lx, ly] = W2L(camera.position);
+  const cx = THREE.MathUtils.clamp(lx, -37, 12.5), cy = cx < -18.3 ? THREE.MathUtils.clamp(ly, -2.6, 2.6) : THREE.MathUtils.clamp(ly, -15.2, 18.6);
+  camera.position.copy(L2W(cx, cy, 1.65));
+  applyLook();
+}
+
+// ---------------------------------------------------------------- frame loop + stats
+const ft = []; let last = performance.now(), simT = 0, frameNo = 0, rec = null, stressN = 1;
+function renderOnce() { if (cfg.post) composer.render(); else renderer.render(scene, camera); }
+function loop() {
+  requestAnimationFrame(loop);
+  const now = performance.now(); const dt = Math.min(0.05, (now - last) / 1000); const fdt = now - last; last = now;
+  simT += dt;
+  if (viewMode === 'look') moveCam(dt);
+  if (viewMode === 'bench' && bench) bench.step(dt);
+  updateChars(dt, simT);
+  updateSun();
+  expoFace += (faceExposure() - expoFace) * Math.min(1, dt * 3);
+  renderer.toneMappingExposure = expoBase * expoFace;
+  frameNo++;
+  // stress test: the same frame is drawn stressN times, so the GPU is the limit, not the 60 fps cap
+  const reps = stressN, c0 = performance.now();
+  renderer.info.reset();
+  for (let k = 0; k < reps; k++) renderOnce();
+  if (rec) {
+    rec.ft.push(fdt); rec.cpu.push((performance.now() - c0) / reps);
+    if (reps === 1) { rec.calls = Math.max(rec.calls, renderer.info.render.calls); rec.tris = Math.max(rec.tris, renderer.info.render.triangles); }
+    if (rec.ft.length >= rec.n || now - rec.t0 >= rec.ms) { const r = rec; rec = null; r.done(r); }
+  }
+  ft.push(fdt); if (ft.length > 120) ft.shift();
+  if (frameNo % 15 === 0 && !$('hud').classList.contains('hidden') && reps === 1) {
+    const p95 = pct(ft, 0.95), p50 = pct(ft, 0.5);
+    $('hud').textContent = `${(1000 / p50).toFixed(0)} fps  p95 ${p95.toFixed(1)} ms\ndraw ${renderer.info.render.calls}  tri ${(renderer.info.render.triangles / 1000).toFixed(0)}k\n${lightLabel(cfg.light)} · 阴影 ${cfg.shadow || '关'} · 后处理 ${cfg.post ? '开' : '关'} · DPR ${renderer.getPixelRatio().toFixed(2)}`;
+  }
+}
+const lightLabel = (l) => ({ full: '全烘焙', indirect: '烘间接光', ao: '只烘遮蔽', none: '无烘焙' })[l];
+
+// ---------------------------------------------------------------- benchmark
+const BASE = { ibl: 1, pbr: 1, fog: 1, tone: 'agx', dpr: 1.5, chars: 3, lod: '12k', tex: 'hi' };
+const SUITE = [
+  { id: 'b1', name: '基线：无烘焙、半球光、无法线贴图、无阴影', ...BASE, light: 'none', ibl: 0, pbr: 0, shadow: 0, post: 0 },
+  { id: 'b2', name: '＋HDR 环境光＋法线贴图（只烘遮蔽）', ...BASE, light: 'ao', shadow: 0, post: 0 },
+  { id: 'b3', name: '＋实时太阳阴影 2048', ...BASE, light: 'ao', shadow: 2048, post: 0 },
+  { id: 'b4', name: '烘间接光＋实时阴影 2048', ...BASE, light: 'indirect', shadow: 2048, post: 0 },
+  { id: 'b5', name: '全烘焙（只有人物实时阴影 1024）', ...BASE, light: 'full', shadow: 1024, post: 0 },
+  { id: 'b6', name: '全烘焙＋后处理', ...BASE, light: 'full', shadow: 1024, post: 1 },
+  { id: 'b7', name: '烘间接光＋阴影＋后处理', ...BASE, light: 'indirect', shadow: 2048, post: 1 },
+  { id: 'b8', name: 'b7，解像度上限 2', ...BASE, light: 'indirect', shadow: 2048, post: 1, dpr: 2 },
+  { id: 'b9', name: 'b7，解像度 1', ...BASE, light: 'indirect', shadow: 2048, post: 1, dpr: 1 },
+  { id: 'b10', name: 'b7＋7 个人物（12k 面）', ...BASE, light: 'indirect', shadow: 2048, post: 1, chars: 7 },
+  { id: 'b11', name: 'b7＋7 个人物（28k 面）', ...BASE, light: 'indirect', shadow: 2048, post: 1, chars: 7, lod: '28k' },
+  { id: 'b12', name: '全烘焙＋7 个人物（8k 面）', ...BASE, light: 'full', shadow: 1024, post: 0, chars: 7, lod: '8k' },
+];
+let bench = null, ENV = null, suiteId = null;
+const results = [];
+function envInfo() {
+  const gl = renderer.getContext(); const ext = gl.getExtension('WEBGL_debug_renderer_info');
+  return { ua: navigator.userAgent, dpr: devicePixelRatio, screen: [screen.width, screen.height], inner: [innerWidth, innerHeight], gpu: ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER), astc: !!gl.getExtension('WEBGL_compressed_texture_astc'), maxTex: gl.getParameter(gl.MAX_TEXTURE_SIZE) };
+}
+// the camera walks the same path in every configuration
+function benchPose(t) {
+  const a = -1.9 + t * 0.075; const r = 10.5;
+  const p = L2W(Math.cos(a) * r, 2 + Math.sin(a) * r, 1.65);
+  const look = L2W(Math.cos(a + 0.9) * 22, 2 + Math.sin(a + 0.9) * 22, 3.2);
+  camera.position.copy(p); camera.fov = 58; camera.updateProjectionMatrix(); camera.lookAt(look);
+}
+// records frames until n frames or ms have passed (whichever first); the first frame starts the clock
+const record = (n, ms) => new Promise((done) => { rec = { ft: [], cpu: [], calls: 0, tris: 0, n, ms, t0: performance.now(), done }; });
+const VSYNC = 1000 / 60, STRESS_T = 5, STRESS_STEPS = [2, 4, 8, 16, 32];
+// mean frame interval without the slowest and fastest 5%
+const trimMean = (a) => { const s = [...a].sort((x, y) => x - y); const k = Math.floor(s.length * 0.05); const m = s.slice(k, s.length - k || undefined); return m.reduce((x, y) => x + y, 0) / Math.max(1, m.length); };
+async function measureCfg(c, i, n) {
+  const { id, name, ...conf } = c;
+  const msg = `${i + 1} / ${n}：${name}`; $('benchMsg').textContent = msg;
+  await applyCfg(conf);
+  stressN = 1; renderer.info.reset();
+  const bar = $('bench').querySelector('.pb>div');
+  const prog = (f) => { bar.style.width = (((i + f) / n) * 100).toFixed(1) + '%'; };
+  let t = -2;
+  bench = { step: (dt) => { t += dt; benchPose(Math.max(0, t)); simT = 100 + t; prog(Math.min(0.45, (t + 2) / 8 * 0.45)); } };   // characters replay the same motion
+  await sleep(2000);
+  const r = await record(360, 6500);
+  const p50 = pct(r.ft, 0.5), p95 = pct(r.ft, 0.95), p99 = pct(r.ft, 0.99);
+  // stress ramp at one fixed pose (looking across the plaza at the castle side)
+  bench = { step: () => { benchPose(STRESS_T); simT = 100 + STRESS_T; } };
+  const steps = []; let lastStep = null;
+  for (let s = 0; s < STRESS_STEPS.length; s++) {
+    stressN = STRESS_STEPS[s];
+    $('benchMsg').textContent = `${msg}（加压 ×${stressN}）`;
+    await record(6, 600);                                 // settle
+    const q = await record(30, 2500);
+    lastStep = { n: stressN, tMean: +trimMean(q.ft).toFixed(1), t50: +pct(q.ft, 0.5).toFixed(1), cpu: +pct(q.cpu, 0.5).toFixed(2), frames: q.ft.length };
+    steps.push(lastStep);
+    prog(0.45 + 0.55 * (s + 1) / STRESS_STEPS.length);
+    if (lastStep.tMean >= 45) break;
+  }
+  stressN = 1; bench = null;
+  // GPU-bound: N·g lies between (T − one vsync) and T, so take the middle and keep both ends
+  const k = lastStep.n, T = lastStep.tMean;
+  const under = T < VSYNC * 1.25;                        // still at the 60 fps cap even with 32 draws
+  const gpuHi = T / k, gpuLo = Math.max(0, T - VSYNC) / k;
+  const stress = { pose: STRESS_T, steps, n: k, tMean: T, gpuMs: under ? null : +((gpuHi + gpuLo) / 2).toFixed(2), gpuLo: +gpuLo.toFixed(2), gpuHi: +gpuHi.toFixed(2), cpuMs: lastStep.cpu, bound: under ? 'under' : (lastStep.cpu * k >= 0.8 * T ? 'cpu' : 'gpu') };
+  return { id: c.id, name: c.name, cfg: { ...c }, frames: r.ft.length, fps50: +(1000 / p50).toFixed(1), p50: +p50.toFixed(1), p95: +p95.toFixed(1), p99: +p99.toFixed(1), jankPct: +(100 * r.ft.filter((x) => x > 34).length / Math.max(1, r.ft.length)).toFixed(1), drawCalls: r.calls, tris: r.tris, dprUsed: +renderer.getPixelRatio().toFixed(2), gpuMs: stress.gpuMs, stress, suiteVer: 2 };
+}
+const fmtGpu = (r) => (r.stress?.bound === 'under' ? '≤' + r.stress.gpuHi.toFixed(1) : r.gpuMs != null ? r.gpuMs.toFixed(1) + (r.stress.bound === 'cpu' ? '*' : '') : '—');
+const grade = (p95) => (p95 <= 20 ? 'ok' : p95 <= 34 ? 'warn' : 'bad');
+function addRow(r) {
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>${r.id} ${r.name}</td><td><span class="dot ${grade(r.p95)}"></span>${r.p95}</td><td>${r.fps50}</td><td>${r.jankPct}%</td><td>${fmtGpu(r)}</td><td>${r.drawCalls}</td>`;
+  $('resBody').append(tr);
+}
+async function runSuite() {
+  viewMode = 'bench';
+  ['bar', 'panel', 'joy', 'lods', 'hud'].forEach((id) => $(id).classList.add('hidden'));
+  $('cover').classList.add('hidden'); $('results').classList.add('hidden'); $('bench').classList.remove('hidden');
+  let wake = null; try { wake = await navigator.wakeLock?.request('screen'); } catch { wake = null; }
+  ENV = ENV || envInfo(); suiteId = Date.now().toString(36);
+  results.length = 0; $('resBody').textContent = '';
+  const prev = { ...cfg }, prevTime = timeMin; let saved = 0;
+  timeMin = BAKE_MINUTE;                                  // the realtime-sun configs always measure 18:30
+  for (let i = 0; i < SUITE.length; i++) {
+    const r = await measureCfg(SUITE[i], i, SUITE.length);
+    results.push(r); addRow(r);
+    if (await saveRun(r)) saved++;
+  }
+  try { await wake?.release(); } catch { /* released already */ }
+  $('bench').classList.add('hidden');
+  timeMin = prevTime;
+  await applyCfg(prev);
+  viewMode = 'results';
+  $('results').classList.remove('hidden');
+  $('resState').textContent = db ? `测完了，${saved} / ${SUITE.length} 条已保存，前端能直接读到。` : '测完了。这个视图保存不了，请点「复制结果」发给前端。';
+  showLoadRes();
+}
+function showLoadRes() {
+  $('loadRes').innerHTML = `打开页面到第一帧：<b>${(marks.firstFrame / 1000).toFixed(1)} 秒</b>（three.js 加载完 ${(marks.module / 1000).toFixed(1)} 秒，资源 ${(marks.assetsDone / 1000).toFixed(1)} 秒，着色器编译 ${marks.compileMs} ms）。<br>首次进入需要下载的资源：${fmtMB(marks.bootBytes)}（不含 three.js）。`;
+}
+const fmtMB = (b) => (b / 1048576).toFixed(2) + ' MB';
+$('copyRes').onclick = () => {
+  const text = JSON.stringify({ device: $('devname').value.trim(), env: ENV || envInfo(), load: marks, assets: assetLog, results }, null, 1);
+  const fallback = () => { const t = $('dump'); t.value = text; t.select(); try { document.execCommand('copy'); toast('已复制'); } catch { toast('复制失败'); } };
+  if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(() => toast('已复制'), fallback); else fallback();
+};
+$('backLook').onclick = () => enterLook();
+
+// ---------------------------------------------------------------- shared store
+let db = null;
+async function saveRun(r) {
+  if (!db) return false;
+  const row = { ...r, page: 's7', suiteId, device: $('devname').value.trim() || null, env: ENV, load: marks, ts: new Date().toISOString() };
+  for (let k = 0; k < 2; k++) {
+    try { await db.collection('runs').add(row); return true; }
+    catch (e) { if (e?.code !== 'unavailable') return false; await sleep(600 + Math.random() * 900); }
+  }
+  return false;
+}
+async function saveLoadOnly() {
+  if (!db || saveLoadOnly.done) return; saveLoadOnly.done = true;
+  try { await db.collection('loads').add({ page: 's7', device: $('devname').value.trim() || null, env: envInfo(), load: marks, assets: assetLog, ts: new Date().toISOString() }); } catch { /* not critical */ }
+}
+(async () => {
+  try { db = await window.claude?.use?.('db'); } catch { db = null; }
+  if (!db) { $('savedState').textContent = '这个视图保存不了结果，请用「复制结果」。'; return; }
+  $('savedState').textContent = '还没有保存的结果。';
+  db.collection('runs').orderBy('ts', 'desc').limit(80).onSnapshot((snap) => {
+    const body = $('savedBody'); body.textContent = '';
+    if (snap.empty) { $('savedState').textContent = '还没有保存的结果。'; return; }
+    $('savedState').textContent = `${snap.size} 条`;
+    for (const d of snap.docs) {
+      const r = d.data(); const tr = document.createElement('tr');
+      [r.device || (r.env?.gpu || '').slice(0, 20), `${r.id || ''} ${r.name || ''}`, r.p95, r.fps50].forEach((v) => { const td = document.createElement('td'); td.textContent = String(v ?? ''); tr.append(td); });
+      body.append(tr);
+    }
+  }, () => { $('savedState').textContent = '和保存处的连接断了。'; });
+})();
+
+// ---------------------------------------------------------------- UI glue
+function enterLook() {
+  viewMode = 'look';
+  ['cover', 'results', 'bench'].forEach((id) => $(id).classList.add('hidden'));
+  ['bar', 'joy', 'hud'].forEach((id) => $(id).classList.remove('hidden'));
+  setView('corner');
+}
+$('goLook').onclick = () => { saveLoadOnly(); enterLook(); };
+$('goBench').onclick = () => { saveLoadOnly(); runSuite(); };
+$('toBench').onclick = () => runSuite();
+$('openPanel').onclick = () => $('panel').classList.remove('hidden');
+$('closePanel').onclick = () => $('panel').classList.add('hidden');
+function showSizes() {
+  const s = SIZES; if (!s.geo) return;
+  const rows = [
+    ['场景几何（压缩前 / meshopt 后）', `${fmtMB(s.geo)} / ${fmtMB(s.geoMeshopt)}`],
+    ['场景贴图 512 / 1024 / 1024 KTX2', `${fmtMB(s.texLo)} / ${fmtMB(s.texHi)} / ${fmtMB(s.texKtx2)}`],
+    ['光照贴图（每种光照，1024 / 2048）', `${fmtMB(s.lm1024)} / ${fmtMB(s.lm2048)}`],
+    ['天空 HDR', fmtMB(s.sky)],
+    ['人物占位 8k / 12k / 28k（meshopt 后，无贴图）', `${fmtMB(s.chr8k)} / ${fmtMB(s.chr12k)} / ${fmtMB(s.chr28k)}`],
+    ['动作（3 个）', fmtMB(s.anims)],
+  ];
+  $('sizes').innerHTML = '<table>' + rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('') + '</table>';
+}
+
+// ---------------------------------------------------------------- boot
+(async () => {
+  try {
+    makeRenderer();
+    setLoad(0.08, '加载天空');
+    const [skyBin, geoBin] = await Promise.all([b64Module('data/sky.js'), b64Module('data/plaza_geo.js')]);
+    setLoad(0.3, '加载场景');
+    const hdrData = new HDRLoader().parse(skyBin.buffer);
+    hdrTex = new THREE.DataTexture(hdrData.data, hdrData.width, hdrData.height, THREE.RGBAFormat, hdrData.type);
+    hdrTex.colorSpace = THREE.LinearSRGBColorSpace; hdrTex.flipY = true; hdrTex.magFilter = hdrTex.minFilter = THREE.LinearFilter; hdrTex.generateMipmaps = false;
+    hdrTex.mapping = THREE.EquirectangularReflectionMapping; hdrTex.needsUpdate = true;
+    const tp = performance.now(); envHDR = pmrem.fromEquirectangular(hdrTex).texture; marks.pmremHdrMs = Math.round(performance.now() - tp);
+    const g = await new GLTFLoader().parseAsync(geoBin.buffer, '');
+    for (const name of ['ground', 'arch', 'far', 'proxy']) env[name] = g.scene.getObjectByName(name);
+    scene.add(g.scene);
+    env.proxy.traverse((o) => { if (o.isMesh) { o.material = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }); o.castShadow = true; o.receiveShadow = false; } });
+    setLoad(0.5, '加载贴图和光照贴图');
+    curTexSet = await texSet(cfg.tex);
+    setLoad(0.7, '加载人物');
+    await loadClips();
+    await applyCfg({}, { force: true });
+    marks.assetsDone = Math.round(performance.now());
+    setLoad(0.9, '编译着色器');
+    setView('corner');
+    const tc = performance.now(); await renderer.compileAsync(scene, camera); marks.compileMs = Math.round(performance.now() - tc);
+    renderOnce();
+    renderer.getContext().finish();
+    marks.firstFrame = Math.round(performance.now());
+    marks.bootBytes = assetLog.reduce((s, a) => s + (a.bytes || 0), 0) + bootImageBytes();
+    setLoad(1, `准备好了：打开页面到第一帧 ${(marks.firstFrame / 1000).toFixed(1)} 秒`);
+    showSizes();
+    loop();
+    $('goLook').disabled = $('goBench').disabled = false;
+    // warm the other lighting modes in the background so switching is instant
+    setTimeout(async () => { for (const k of ['full', 'ao']) for (const m of ['ground', 'arch']) { try { await loadLightmap(m, k, '2048'); } catch { /* optional */ } } try { await loadSunMask(); } catch { /* optional */ } }, 1500);
+  } catch (err) {
+    console.error(err);
+    setLoad(1, '启动失败：' + (err?.message || err));
+  }
+})();
+function bootImageBytes() {
+  let b = 0;
+  for (const e of performance.getEntriesByType('resource')) if (/\/(tex|lm)\//.test(e.name)) b += e.encodedBodySize || e.transferSize || 0;
+  return b;
+}
+</script>
+</body>
+</html>

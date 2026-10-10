@@ -1,0 +1,468 @@
+"""Make the three character versions from one built character and export glTF.
+
+/tmp/bpyenv/bin/python lod_export.py out/standin.blend out/glb
+
+Versions (frontend-design 10.6.2, art-direction 9.2):
+  talk_high  ~40k tris, all parts, 52 ARKit + 15 viseme morphs
+  talk_std   20-30k tris: body under the clothes removed, body and teeth decimated
+             with the face protected; morphs carried over with Surface Deform
+  walk       8k tris, no morphs, everything baked into one 1024 atlas, 1 material
+plus anims.glb (rig + clips, shared by every character).
+Works on any character with the object names used by build_standin.py; the MPFB
+build on the Mac will be renamed to match.
+"""
+import os
+import sys
+
+import bpy
+import bmesh  # noqa: E402  (only importable after bpy)
+import numpy as np
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import anims  # noqa: E402
+
+blend, outdir = sys.argv[1], sys.argv[2]
+os.makedirs(outdir, exist_ok=True)
+bpy.ops.wm.open_mainfile(filepath=blend)
+scene = bpy.context.scene
+rig = bpy.data.objects['Rig']
+FACE_PARTS = ['Body', 'Brows', 'Lashes', 'Teeth', 'Tongue']
+TALK = ['Body', 'Eyes', 'Brows', 'Lashes', 'Teeth', 'Tongue', 'Hair', 'Tunic']
+report = {}
+
+
+def tris(ob):
+    return sum(len(p.vertices) - 2 for p in ob.data.polygons)
+
+
+def dup(ob, name, keys=True):
+    o = bpy.data.objects.new(name, ob.data.copy())
+    scene.collection.objects.link(o)
+    o.parent = rig
+    o.matrix_parent_inverse = ob.matrix_parent_inverse.copy()
+    for m in ob.modifiers:
+        if m.type == 'ARMATURE':
+            mm = o.modifiers.new('Armature', 'ARMATURE')
+            mm.object = rig
+    if not keys and o.data.shape_keys:
+        o.shape_key_clear()
+    return o
+
+
+def ctx(ob):
+    return bpy.context.temp_override(object=ob, active_object=ob, selected_objects=[ob],
+                                     selected_editable_objects=[ob])
+
+
+def apply_first(ob, mod):
+    with ctx(ob):
+        bpy.ops.object.modifier_move_to_index(modifier=mod.name, index=0)
+        bpy.ops.object.modifier_apply(modifier=mod.name)
+
+
+def delete_group(ob, gname):
+    g = ob.vertex_groups.get(gname)
+    if g is None:
+        return 0
+    gi = g.index
+    bm = bmesh.new()
+    bm.from_mesh(ob.data)
+    dl = bm.verts.layers.deform.active
+    kill = [v for v in bm.verts if dl and gi in v[dl] and v[dl][gi] > 0.5]
+    bmesh.ops.delete(bm, geom=kill, context='VERTS')
+    bm.to_mesh(ob.data)
+    bm.free()
+    ob.data.update()
+    return len(kill)
+
+
+def face_group(ob, name='__face', eps=2e-5, grow=2):
+    """Vertices any shape key moves, grown by a few rings: protected from decimation."""
+    kb = ob.data.shape_keys.key_blocks
+    base = np.empty(len(ob.data.vertices) * 3)
+    kb[0].data.foreach_get('co', base)
+    moved = np.zeros(len(ob.data.vertices), bool)
+    tmp = np.empty_like(base)
+    for k in kb[1:]:
+        k.data.foreach_get('co', tmp)
+        moved |= (np.abs(tmp - base).reshape(-1, 3).max(1) > eps)
+    adj = [[] for _ in ob.data.vertices]
+    for e in ob.data.edges:
+        a, b = e.vertices
+        adj[a].append(b)
+        adj[b].append(a)
+    for _ in range(grow):
+        nxt = moved.copy()
+        for i in np.nonzero(moved)[0]:
+            nxt[adj[i]] = True
+        moved = nxt
+    g = ob.vertex_groups.new(name=name)
+    g.add([int(i) for i in np.nonzero(moved)[0]], 1.0, 'REPLACE')
+    return int(moved.sum())
+
+
+def decimate_keep_keys(src, target_tris, protect=None):
+    """Decimate a copy without shape keys, then rebuild every shape key on the copy by
+    binding it to the original with Surface Deform and evaluating each key."""
+    d = dup(src, src.name + '_dec', keys=False)
+    m = d.modifiers.new('Dec', 'DECIMATE')
+    m.ratio = min(1.0, target_tris / max(1, tris(d)))
+    if protect:
+        m.vertex_group = protect
+        m.invert_vertex_group = True
+        m.vertex_group_factor = 0.9
+    apply_first(d, m)
+    sk = src.data.shape_keys
+    if sk:
+        # bind and evaluate in the rest pose: the source is skinned to the rig, and whatever
+        # clip the NLA puts on frame 1 would otherwise pose it away from the unskinned copy
+        rig.data.pose_position = 'REST'
+        sd = d.modifiers.new('SD', 'SURFACE_DEFORM')
+        sd.target = src
+        with ctx(d):
+            bpy.ops.object.modifier_move_to_index(modifier='SD', index=0)
+            bpy.ops.object.surfacedeform_bind(modifier='SD')
+        d.shape_key_add(name='Basis', from_mix=False)
+        dg = bpy.context.evaluated_depsgraph_get()
+        arm = d.modifiers.get('Armature')
+        if arm:
+            arm.show_viewport = False
+        for kb in sk.key_blocks:
+            kb.value = 0.0
+        n = len(d.data.vertices)
+        co = np.empty(n * 3)
+        rest = np.empty(n * 3)
+        d.data.vertices.foreach_get('co', rest)
+        for kb in sk.key_blocks[1:]:
+            kb.value = 1.0
+            dg.update()
+            ev = d.evaluated_get(dg)
+            ev.data.vertices.foreach_get('co', co)
+            # Surface Deform leaves ~1e-6 m noise everywhere; zero it so the exporter can
+            # write sparse morph targets (only the vertices a key really moves)
+            dl = (co - rest).reshape(-1, 3)
+            dl[np.abs(dl).max(1) < 1e-4] = 0
+            co = (rest.reshape(-1, 3) + dl).ravel()
+            nk = d.shape_key_add(name=kb.name, from_mix=False)
+            nk.data.foreach_set('co', co)
+            kb.value = 0.0
+        dg.update()
+        d.modifiers.remove(sd)
+        if arm:
+            arm.show_viewport = True
+        rig.data.pose_position = 'POSE'
+    return d
+
+
+def moved_verts(ob, eps=1e-4):
+    """Boolean per vertex: does any shape key move it (by more than eps metres)?"""
+    n = len(ob.data.vertices)
+    moved = np.zeros(n, bool)
+    sk = ob.data.shape_keys
+    if not sk:
+        return moved
+    kb = sk.key_blocks
+    base = np.empty(n * 3)
+    kb[0].data.foreach_get('co', base)
+    tmp = np.empty_like(base)
+    for k in kb[1:]:
+        k.data.foreach_get('co', tmp)
+        moved |= np.abs(tmp - base).reshape(-1, 3).max(1) > eps
+    return moved
+
+
+def prune_keys(ob, eps=1e-4):
+    """Remove shape keys that move nothing on this mesh. three.js keeps every morph target
+    of a mesh in one float texture (vertices x targets), so empty ones still cost memory."""
+    sk = ob.data.shape_keys
+    if not sk:
+        return 0
+    kb = sk.key_blocks
+    n = len(ob.data.vertices)
+    base = np.empty(n * 3)
+    kb[0].data.foreach_get('co', base)
+    tmp = np.empty_like(base)
+    dead = []
+    for k in kb[1:]:
+        k.data.foreach_get('co', tmp)
+        if np.abs(tmp - base).max() <= eps:
+            dead.append(k.name)
+    for name in dead:
+        ob.shape_key_remove(kb[name])
+    if len(ob.data.shape_keys.key_blocks) == 1:
+        ob.shape_key_clear()
+    return len(dead)
+
+
+def split_head(ob, margin=0.02):
+    """Cut the skin mesh in two along a horizontal plane under the lowest vertex any shape
+    key moves: a small head that keeps the morphs and a body without any. Normals are
+    frozen as custom normals first so the cut does not show as a lighting seam.
+    Costs one extra mesh (2 draw calls with its shadow) and saves most of the morph memory."""
+    me = ob.data
+    moved = moved_verts(ob)
+    if not moved.any():
+        return ob, None
+    co = np.empty(len(me.vertices) * 3)
+    me.vertices.foreach_get('co', co)
+    z = co.reshape(-1, 3)[:, 2]
+    zcut = float(z[moved].min()) - margin
+    vn = np.empty(len(me.vertices) * 3)
+    me.vertices.foreach_get('normal', vn)
+    vn = [tuple(v) for v in vn.reshape(-1, 3)]
+    head = dup(ob, ob.name + '_head')
+    body = dup(ob, ob.name + '_body', keys=False)
+    for part, keep_head in ((head, True), (body, False)):
+        part.data.normals_split_custom_set_from_vertices(vn)   # on the copies: the source is used again
+        bm = bmesh.new()
+        bm.from_mesh(part.data)
+        kill = [f for f in bm.faces if (f.calc_center_median().z > zcut) != keep_head]
+        bmesh.ops.delete(bm, geom=kill, context='FACES')
+        bm.to_mesh(part.data)
+        bm.free()
+        part.data.update()
+    stray = moved_verts(body).sum() if body.data.shape_keys else 0
+    head.name, body.name = 'Head', 'Body'
+    prune_keys(head)
+    report.setdefault('head_split', {})[ob.name] = {
+        'zcut': round(zcut, 3), 'head_verts': len(head.data.vertices),
+        'body_verts': len(body.data.vertices), 'stray_moved_in_body': int(stray)}
+    return body, head
+
+
+def select_only(objs):
+    for o in scene.objects:
+        o.select_set(False)
+    for o in objs:
+        o.hide_set(False)
+        o.select_set(True)
+    rig.select_set(True)
+    bpy.context.view_layer.objects.active = rig
+
+
+def export(objs, path, morph=True, morph_normal=True, anim=False):
+    select_only(objs)
+    bpy.ops.export_scene.gltf(
+        filepath=path, use_selection=True, export_format='GLB',
+        export_skins=True, export_def_bones=True, export_rest_position_armature=True,
+        export_influence_nb=4, export_all_influences=False,
+        export_morph=morph, export_morph_normal=morph_normal, export_morph_tangent=False,
+        export_try_sparse_sk=True, export_try_omit_sparse_sk=True,
+        export_animations=anim, export_animation_mode='NLA_TRACKS',
+        export_yup=True, export_apply=False, export_tangents=True,   # gltf-transform prunes them where no normal map
+        export_texcoords=True, export_normals=True, export_materials='EXPORT',
+        export_image_format='AUTO', export_cameras=False, export_lights=False)
+    return os.path.getsize(path)
+
+
+def atlas_bake(ob, size=1024):
+    """Bake every material's base colour into one atlas on a fresh UV layout."""
+    me = ob.data
+    src_uv = me.uv_layers[0].name
+    atlas_uv = me.uv_layers.new(name='atlas')
+    me.uv_layers.active = atlas_uv
+    for x in scene.objects:
+        x.select_set(False)
+    ob.hide_set(False)
+    ob.select_set(True)
+    bpy.context.view_layer.objects.active = ob
+    bpy.ops.object.mode_set(mode='EDIT')
+    bpy.ops.mesh.select_all(action='SELECT')
+    bpy.ops.uv.smart_project(angle_limit=1.15, island_margin=0.004)
+    bpy.ops.object.mode_set(mode='OBJECT')
+    img = bpy.data.images.new(ob.name + '_atlas', size, size)
+    for mat in me.materials:
+        nt = mat.node_tree
+        for n in nt.nodes:
+            if n.type == 'TEX_IMAGE' and n.image is not img:
+                uvn = nt.nodes.new('ShaderNodeUVMap')
+                uvn.uv_map = src_uv
+                nt.links.new(uvn.outputs['UV'], n.inputs['Vector'])
+        tn = nt.nodes.new('ShaderNodeTexImage')
+        tn.image = img
+        nt.nodes.active = tn
+    scene.render.engine = 'CYCLES'
+    scene.cycles.device = 'CPU'
+    scene.cycles.samples = 4
+    scene.render.bake.use_pass_direct = False
+    scene.render.bake.use_pass_indirect = False
+    scene.render.bake.margin = 4
+    bpy.ops.object.bake(type='DIFFUSE', pass_filter={'COLOR'}, margin=4)
+    path = os.path.join(outdir, ob.name + '_atlas.png')
+    img.filepath_raw = path
+    img.file_format = 'PNG'
+    img.save()
+    mat = bpy.data.materials.new('walk')
+    mat.use_nodes = True
+    nt = mat.node_tree
+    t = nt.nodes.new('ShaderNodeTexImage')
+    t.image = img
+    nt.links.new(t.outputs['Color'], nt.nodes['Principled BSDF'].inputs['Base Color'])
+    nt.nodes['Principled BSDF'].inputs['Roughness'].default_value = 0.75
+    me.materials.clear()
+    me.materials.append(mat)
+    me.uv_layers.remove(me.uv_layers[src_uv])
+    me.uv_layers.active = me.uv_layers['atlas']
+
+
+def _srgb_to_lin(c):
+    return np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
+
+
+def _lin_to_srgb(c):
+    return np.where(c <= 0.0031308, c * 12.92, 1.055 * np.power(np.maximum(c, 0), 1 / 2.4) - 0.055)
+
+
+def _base_rgba(ob):
+    """The material's base colour image with its tint (Mix multiply) baked in; float RGBA, rows bottom-up."""
+    nt = ob.data.materials[0].node_tree
+    img = next(n.image for n in nt.nodes if n.type == 'TEX_IMAGE' and n.image
+               and n.image.colorspace_settings.name != 'Non-Color')
+    w, h = img.size
+    px = np.empty(w * h * 4, np.float32)
+    img.pixels.foreach_get(px)
+    px = px.reshape(h, w, 4)
+    for n in nt.nodes:
+        if n.type == 'MIX' and n.data_type == 'RGBA':
+            tint = np.array(n.inputs[7].default_value[:3], np.float32)   # the colour B socket
+            px[..., :3] = _lin_to_srgb(_srgb_to_lin(px[..., :3]) * tint)
+    return px, nt.nodes['Principled BSDF'].inputs['Roughness'].default_value
+
+
+def _resized(px, s):
+    h, w = px.shape[:2]
+    tmp = bpy.data.images.new('__tmp', w, h, alpha=True)
+    tmp.pixels.foreach_set(px.ravel())
+    tmp.scale(s, s)
+    out = np.empty(s * s * 4, np.float32)
+    tmp.pixels.foreach_get(out)
+    bpy.data.images.remove(tmp)
+    return out.reshape(s, s, 4)
+
+
+def merge_parts(objs, name, layout, size, alpha):
+    """Join several small parts into one mesh with one material: their base colour images
+    (tints baked in) go into one atlas and the UVs are moved into each part's square.
+    layout: (x0, y0, side) in atlas pixels, origin bottom-left, one per object.
+    Shape keys survive the join (matched by name; parts without keys get the basis)."""
+    W, H = size
+    atlas = np.zeros((H, W, 4), np.float32)
+    rough = []
+    parts = [dup(ob, ob.name + '_m') for ob in objs]
+    for ob, (x0, y0, s) in zip(parts, layout):
+        px, r = _base_rgba(ob)
+        rough.append(r)
+        atlas[y0:y0 + s, x0:x0 + s] = _resized(px, s)
+        uvl = ob.data.uv_layers[0]
+        uv = np.empty(len(uvl.data) * 2)
+        uvl.data.foreach_get('uv', uv)
+        uv = uv.reshape(-1, 2)
+        uv[:, 0] = (x0 + uv[:, 0] * s) / W
+        uv[:, 1] = (y0 + uv[:, 1] * s) / H
+        uvl.data.foreach_set('uv', uv.ravel())
+    if not alpha:
+        atlas[..., 3] = 1.0
+    img = bpy.data.images.new(name + '_atlas', W, H, alpha=True)
+    img.pixels.foreach_set(atlas.ravel())
+    img.filepath_raw = os.path.join(outdir, name + '_atlas.png')
+    img.file_format = 'PNG'
+    img.save()
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nt = mat.node_tree
+    bsdf = nt.nodes['Principled BSDF']
+    t = nt.nodes.new('ShaderNodeTexImage')
+    t.image = img
+    nt.links.new(t.outputs['Color'], bsdf.inputs['Base Color'])
+    if alpha:
+        nt.links.new(t.outputs['Alpha'], bsdf.inputs['Alpha'])
+        try:
+            mat.blend_method = 'CLIP'
+        except Exception:
+            pass
+    bsdf.inputs['Roughness'].default_value = float(np.mean(rough))
+    for ob in parts:
+        ob.data.materials.clear()
+        ob.data.materials.append(mat)
+    keyed = [p for p in parts if p.data.shape_keys] or parts
+    active = keyed[0]
+    with bpy.context.temp_override(object=active, active_object=active, selected_objects=parts,
+                                   selected_editable_objects=parts):
+        bpy.ops.object.join()
+    active.name = name.capitalize()
+    return active
+
+
+# hair cards: hair 752 + brows and lashes 240 each, 16 px gutters; mouth: teeth and tongue side by side
+HAIR_LAYOUT = ((1024, 1024), [(0, 0, 752), (768, 0, 240), (768, 272, 240)])
+MOUTH_LAYOUT = ((1024, 512), [(0, 0, 496), (512, 0, 496)])
+
+
+def main():
+    anims.build(rig)
+    o = {n: bpy.data.objects[n] for n in TALK + ['EyesLow']}
+
+    # 8 parts -> 5 materials (skin, eyes, hair cards, clothes, teeth): art-direction 9.2
+    hair = merge_parts([o['Hair'], o['Brows'], o['Lashes']], 'hair', HAIR_LAYOUT[1], HAIR_LAYOUT[0], True)
+    mouth = merge_parts([o['Teeth'], o['Tongue']], 'teeth', MOUTH_LAYOUT[1], MOUTH_LAYOUT[0], False)
+    report['merged'] = {'hair': tris(hair), 'teeth': tris(mouth)}
+
+    for part in (hair, mouth):
+        report.setdefault('pruned_keys', {})[part.name] = prune_keys(part)
+
+    # ---------- high: the build as is, skin cut into head (morphs) + body (none)
+    body_h, head_h = split_head(o['Body'])
+    high = [body_h, head_h, o['Eyes'], hair, mouth, o['Tunic']]
+    report['talk_high'] = {'tris': sum(tris(x) for x in high), 'parts': {x.name: tris(x) for x in high}}
+    report['talk_high']['bytes'] = export(high, os.path.join(outdir, 'talk_high.glb'))
+    report['talk_high']['bytes_no_morph_normals'] = export(
+        high, os.path.join(outdir, 'talk_high_nomn.glb'), morph_normal=False)
+
+    # ---------- standard
+    body = dup(o['Body'], 'Body_std')
+    report['under_tunic_deleted'] = delete_group(body, '__under_tunic')
+    report['face_verts'] = face_group(body)
+    body_s = decimate_keep_keys(body, 15500, protect='__face')
+    teeth_s = decimate_keep_keys(o['Teeth'], 2000)
+    tunic_s = decimate_keep_keys(o['Tunic'], 3000)
+    mouth_s = merge_parts([teeth_s, o['Tongue']], 'teeth', MOUTH_LAYOUT[1], MOUTH_LAYOUT[0], False)
+    report['pruned_keys']['teeth_std'] = prune_keys(mouth_s)
+    body_ss, head_s = split_head(body_s)
+    std = [body_ss, head_s, o['Eyes'], hair, mouth_s, tunic_s]
+    report['talk_std'] = {'tris': sum(tris(x) for x in std), 'parts': {x.name: tris(x) for x in std}}
+    report['talk_std']['bytes'] = export(std, os.path.join(outdir, 'talk_std.glb'))
+    report['talk_std']['bytes_no_morph_normals'] = export(
+        std, os.path.join(outdir, 'talk_std_nomn.glb'), morph_normal=False)
+
+    # ---------- walk: one mesh, 8k, one material
+    parts = [dup(body, 'w_body', keys=False), dup(o['Tunic'], 'w_tunic', keys=False),
+             dup(o['Hair'], 'w_hair', keys=False), dup(o['EyesLow'], 'w_eyes', keys=False)]
+    for p in parts:
+        for g in list(p.vertex_groups):
+            if g.name.startswith('__'):
+                p.vertex_groups.remove(g)
+    with bpy.context.temp_override(object=parts[0], active_object=parts[0], selected_objects=parts,
+                                   selected_editable_objects=parts):
+        bpy.ops.object.join()
+    walk = parts[0]
+    walk.name = 'Walk'
+    m = walk.modifiers.new('Dec', 'DECIMATE')
+    m.ratio = 8000 / tris(walk)
+    apply_first(walk, m)
+    atlas_bake(walk)
+    report['walk'] = {'tris': tris(walk), 'materials': len(walk.data.materials)}
+    report['walk']['bytes'] = export([walk], os.path.join(outdir, 'walk.glb'), morph=False)
+
+    # ---------- shared clips
+    report['anims'] = {'bytes': export([], os.path.join(outdir, 'anims.glb'), morph=False, anim=True),
+                       'bones': len(rig.data.bones)}
+    report['morphs'] = len(o['Body'].data.shape_keys.key_blocks) - 1
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(outdir, 'lods.blend'))
+    import json
+    with open(os.path.join(outdir, 'lod_report.json'), 'w') as f:
+        json.dump(report, f, indent=1)
+    print(json.dumps(report, indent=1))
+
+
+main()
