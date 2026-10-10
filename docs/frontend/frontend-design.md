@@ -2,11 +2,11 @@
 
 | 项 | 内容 |
 |---|---|
-| 版本 | **v1.0.2**（设计阶段定稿：吸收了后端、UX 两份评审，接口对齐 api-contract v0.3.6，写实画风按 D-019 定档，语音按 S-1b 实测；还要实测的列在第 16 节，见文末修订记录） |
+| 版本 | **v1.0.3**（设计阶段定稿：吸收了后端、UX 两份评审，接口对齐 api-contract v0.3.6，写实画风按 D-019 定档，语音按 S-1b 实测；还要实测的列在第 16 节，见文末修订记录） |
 | 作者 | 前端 |
 | 评审 | UX、后端 |
 | 依据 | `brief/handoff.md`、`pm/prd.md` v1.0、`pm/decisions.md`（到 S-073、D-022）、`data/contracts.md` v1.5、`data/data-design.md` v1.2（9.3）、`backend/api-contract.md` v0.3.6、`backend/backend-design.md` v1.0.6、`backend/spikes/results-s1.md`（8.5 S-1b）、`backend/reviews/frontend-v0.1.md`、`ux/ux-design.md` v1.0 和原型 v8、`ux/art-direction.md` v1.1、`ux/reviews/frontend-v0.8.md`、前端 spike S1、S2、S7 |
-| 最近更新 | 2026-10-07 |
+| 最近更新 | 2026-10-10 |
 
 标注：**〔实测〕** 有数据；**〔待真机〕** 等 S1 真机数据；**〔待 spike〕** 要做实验确认；**〔待 X〕** 等某个角色的决定。
 
@@ -129,7 +129,7 @@ PRD 7.1 的「iPhone 12 级为底线、Pixel 6 级」我同意，补一条：日
 | 封面 | `BookCover`、`StartButton`、`ContinueButton`、`MicPrimer` | 翻开书的开场；有进行中的局时显示「続きから」（S-024）。点「書をひらく」时：解锁音频（iOS 必须在点击里做），`navigator.audioSession.type = "playback"`（静音键开着也能听到），同时开始下载 3D 分块。麦克风说明 `MicPrimer` 不在封面，在第一次按说话键时出现（UX 7.3；文案说明不保存音频、「学習には使いません」：服务条款已核对可以写，S-059、api-contract 第 9 节） |
 | 选身份 | `RoleList`、`RoleCard` | 3 个身份（S-002）。玩家看介绍时，后台继续下载该身份起点场景 |
 | 世界 | 见下 | 主体 |
-| 结局 | `EndingStage`（3D 场景内演出）、`EndingCard`、`SaveCardButton`、`WorldEnding`、`CharacterEndings`、`YourEnding`、`ReplayAsOtherRole`、`BranchTree`（P1） | 结局三层（D-015）：世界的结局、7 个角色各自的结局（没被波及的只显示「原作どおり」）、你自己的结局。世界结局由这一局生成，不是固定几种（S-031），所以标题长短不定，版式要能自适应。结局卡（称号、去向、影响最深的 2〜3 个角色的结局、一行「和原作的不同」、插画）用 DOM 显示；「保存图片」是 P0（S-026），做法见 10.5。不登录也能看的分享链接是 P1，邀请码阶段不开放，第一版不做 |
+| 结局 | `EndingStage`（3D 场景内演出）、`EndingCard`、`SaveCardButton`、`WorldEnding`、`CharacterEndings`、`YourEnding`、`ReplayAsOtherRole`、`BranchTree`（P1） | 结局三层（D-015）：世界的结局、7 个角色各自的结局（没被波及的只显示「原作どおり」）、你自己的结局。世界结局由这一局生成，不是固定几种（S-031），所以标题长短不定，版式要能自适应。结局卡（称号、去向、影响最深的 1〜3 个角色的结局（S-076）、一行「和原作的不同」、插画）用 DOM 显示；「保存图片」是 P0（S-026），做法见 10.5。不登录也能看的分享链接是 P1，邀请码阶段不开放，第一版不做 |
 
 世界屏幕的组件树（草案，名字以 UX 线框为准）：
 
@@ -552,14 +552,15 @@ CI 里卡：打包体积（超了构建失败）、场景资源体积、Lighthou
 
 ### 10.5 结局卡保存为图片（S-026、S-032，P0）
 
-- 卡面内容：称号；世界的去向（一行）；**影响最深的 2〜3 个角色的结局**，每人一行「あなたの世界では…」（S-032，完整的 1〜3 句在结局页展开）；一行「和原作的不同」（例：原作では日没に間に合った。あなたの世界では――）；结局插画；书名和身份。不含玩家原话和记忆（和 P1 分享链接的边界一致）。这些字段由数据工程在 contracts 1.1 的 Ending 里加，「哪 2〜3 人」由服务端按影响程度排好，前端不自己挑。
+- 卡面内容：称号；世界的去向（一行）；**影响最深的 1〜3 个角色的结局**（S-076，原来是 2〜3 个），每人一行「あなたの世界では…」（S-032，完整的 1〜3 句在结局页展开）；一行「和原作的不同」（例：原作では日没に間に合った。あなたの世界では――）；结局插画；书名和身份。不含玩家原话和记忆（和 P1 分享链接的边界一致）。这些字段由数据工程在 contracts 1.1 的 Ending 里加，「哪 1〜3 人」由服务端按影响程度排好，前端不自己挑。
+- **每一局都出卡**（S-076、contracts 1.6 第 5 节）：只排得上 1 个人物时也出，人物区高度不变、行在区域里上下居中；一个也排不上时服务端放梅洛斯一句，所以卡上至少 1 行，前端不另做空的版式。结局校验两次都不过、改用模板尾声的局（S-065 降级）也出卡，句子全是预写的，版式一样。
 - 比例：**4:5（1080×1350）**，UX 和前端已定（UX 评审：X、Instagram 帖子、LINE 都完整显示，放进 9:16 的快拍会自动补边），第一版只做这一个。卡上不放链接或二维码（邀请码阶段不开放公开页面，S-026、S-042）。区域：
 
   | 区域 | 高度 | 内容 |
   |---|---|---|
   | 插画 | 640px | 这一局结局演出里定格的一帧 3D 画面（见下） |
   | 标题 | 约 160px | 称号 + 世界的去向 |
-  | 角色 | 约 330px | 2〜3 行：角色名 + 一句话 |
+  | 角色 | 约 330px | 1〜3 行：角色名 + 一句话；不满 3 行时上下居中 |
   | 和原作的不同 | 约 130px | 一行，左侧标「原作との違い」 |
   | 页脚 | 约 90px | 『走れメロス』· 身份 · 产品名 |
 
@@ -850,7 +851,7 @@ zg 问「不同 iPhone 不同配置不同效果，17 Pro Max 可以高一点」�
 | F-16 | 识别改正怎么送回模型 | **已对齐**：窗口内 `turn_retract` + `text { via: "correction", replaces }`，会话重建（api-contract 3.6） | 后端 |
 | F-17 | 结局数据加「和原作的不同」 | **已对齐**：`world.contrast`、`card.contrast`（contracts 第 5 节，api-contract 2.8） | 数据、后端 |
 | F-18 | 角色走过来搭话的消息、角色先开口的 turnSeq、走动中的角色算在哪 | **已对齐**：`approach` / `approach_arrived` / `turn_started`，服务端 turnSeq 最高位为 1；走动中的人物算玩家所在的地点（api-contract 3.1、3.8、3.10） | 后端 |
-| F-20 | 结局卡字段的长度上限、「哪 2〜3 个角色」由服务端排序 | **已对齐**：卡面字数上限按 S-051，`characterLines` 取 `rank` 最前的 2〜3 人（contracts 第 5 节） | 数据 |
+| F-20 | 结局卡字段的长度上限、「哪 1〜3 个角色」由服务端排序 | **已对齐**：卡面字数上限按 S-051，`characterLines` 取 `rank` 最前的 1〜3 人（contracts 1.6 第 5 节，S-076） | 数据 |
 | F-21 | 幕末自由说出打算的消息（第 14 节第 14 条） | **已对齐**：`act_propose` / `activity_start { purpose: "act_plan" }` → `act_plan_result`（api-contract 3.11） | 后端 |
 | F-22 | 结局卡比例和内容 | **已对齐**：4:5，内容按 S-042、S-049，尺寸和字数按 S-051；插画用结局定格的一帧（10.5） | UX、PM |
 | F-23 | 作废按钮叫什么 | **已对齐**：人物还没开口时叫「取り消す」，人物回答之后叫「言い直す」（UX 和前端一致，UX 已发后端确认） | UX、后端 |
@@ -902,6 +903,7 @@ zg 问「不同 iPhone 不同配置不同效果，17 Pro Max 可以高一点」�
 
 ## 修订记录
 
+- v1.0.3（2026-10-10）：结局卡的人物从 2〜3 个改成 1〜3 个，每一局都出卡（S-076、contracts 1.6）：第 5 节结局一行、10.5 卡面内容和角色区（不满 3 行上下居中，至少 1 行）、F-20。
 - v1.0.2（2026-10-10）：场景出口的位置点从 `exit.*` 改名 `way.*`，避开世界模型 `ExitId` 的 `exit.` 前缀（F-2a，C-2 评审时发现）。
 - v1.0.1（2026-10-07）：`too_late` 那句按 ux-design 7.6 显示一行地の文、不播声音；`melosInTime` 按 ux-design 4.3 只在会翻转时作为按钮第二行显示；記憶帳不显示 `voided` 的约定（ux-design 10.1）；第 14 节引用改为 v0.3.7（只改文字，字段同 v0.3.6）。按协调的接口一致性核对（`consistency/contract-check-2026-10-07.md` 前端表 F-1〜F-9）：`relationLabel` 改成契约第 4 节的 5 档并加 `relationLevel`；`WorldStore` 补快照字段（`deadline`、`forecast`、`player`、`places`、`actions`、`pending`、`interactables[].estimatedMinutes`）；「言い直す」窗口到 `turn_settled` 为止；六处「等后端」改成已定并指向 api-contract；事件投影字段按 2.4；人物走过来时走开发 `approach_dismiss`；CSP 注释的插画路径；`409` 的「新しく始める」；结局按 api-contract 2.8 的形状；引用 3.5 → 3.6；麦克风说明的条款已由 S-059 确认。
 - **v1.0**（2026-10-07）：设计阶段定稿。第 14 节改为以 api-contract v0.3.6 为准，前端以前提的 17 条要求后端都已采纳（对照 api-contract 第 9 节），只留画面和接口的对应表和三项不挡开发的开着的事；正文里的旧消息名按 v0.3 起的接口改（`world_patch` / `event_committed` / `chain_reveal` / `memory_updated` → `commit`，`turn_retract_rejected` → `turn_retract_result`，`activePlaythroughId` → `activePlaythrough`，turnSeq 每条连接从 1 数，「言い直す」按钮跟 `turn_settled` 收起）；15 的 F-10、F-13、F-15〜F-18、F-20、F-21 改为已对齐；第 0 节和依据按现在的文档版本更新。S2 测试页按 S-073 ② 把「出声 / 网络 / 麦克风」改成必选。
