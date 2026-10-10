@@ -18,11 +18,14 @@ $BPY melos_prep.py <melos.blend> <tex_dir from melos_tex.py> <out.blend>
   the colour map's own detail (a band-pass of its luminance). No pores (art-direction 5.1).
 - Ambient occlusion baked with Cycles (rest pose, the whole figure as occluder) and multiplied into the skin and
   tunic colour maps: contact shadow under the rope, the bands, the bundle and the tunic's edges, and in the folds.
+  Not on the bands, rope and sandals themselves: their pieces share UV space, so one bake would land on another.
 - Roughness per part (MPFB sets 0.7 everywhere); materials renamed as on the stand-in (skin, eyes, hair, ...):
   compress.mjs and the test page find the skin and the alpha-tested parts by material name.
-- Tunic: tunic_base.png and tunic_nrm.png from melos_tex.py (UV regions of melos_clothes_v2), packed into the file;
-  triangulated (the sole hulls are
-  n-gons, and the exporter cannot compute tangents for the normal map on those).
+- Tunic: the wool (torso and skirt) unwrapped again, angle-based with a seam down his right side, and fitted into its
+  UV region: it came from the MPFB helper garments, whose UVs sit in a sliver of the body atlas, so v1 and v2 showed
+  one flat texel of the wool texture (no weave, no fading, no AO). Then tunic_base.png and tunic_nrm.png from
+  melos_tex.py (UV regions of melos_clothes_v2), packed into the file; triangulated (the sole hulls are n-gons, and
+  the exporter cannot compute tangents for the normal map on those).
 - Image paths cut down to the file name (the Mac build recorded absolute paths with the user name; the pixels are
   packed), then unused data purged.
 """
@@ -35,7 +38,7 @@ import bmesh  # noqa: I001  (only importable after bpy)
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
-from melos_clothes_v2 import HEM_Z, KNEE_Z, NEW_UV
+from melos_clothes_v2 import AXIS_Y, HEM_Z, KNEE_Z, NEW_UV, UV_MARGIN
 
 src, tex_dir, out = sys.argv[-3:]
 bpy.ops.wm.open_mainfile(filepath=src)
@@ -47,7 +50,7 @@ ROUGH = {
     "EyesLow": 0.12,
     "Teeth": 0.3,
     "Tongue": 0.35,
-    "Hair": 0.5,
+    "Hair": 0.7,  # dark cards at 0.5 mirrored the blue sky in patches
     "Brows": 0.6,
     "Lashes": 0.6,
     "Tunic": 0.92,
@@ -275,6 +278,51 @@ def scalp_tint(ob, skin, hair, amount=0.85, soft=10):
     return faces
 
 
+def wool_uv(ob):
+    """Unwrap the torso and skirt (the faces in the wool region) and fit them into it at one texel density."""
+    vl = bpy.context.view_layer
+    for o in vl.objects:
+        o.select_set(False)
+    ob.select_set(True)
+    vl.objects.active = ob
+    bm = bmesh.new()
+    bm.from_mesh(ob.data)
+    uvl = bm.loops.layers.uv.active
+
+    def wool(f):
+        return bool(in_region(np.mean([lp[uvl].uv[:] for lp in f.loops], axis=0), "wool"))
+
+    faces = [f for f in bm.faces if wool(f)]
+    geom = list({v for f in faces for v in f.verts}) + list({e for f in faces for e in f.edges}) + faces
+    # seam down his right side, where the skirt's slit already is (the torso is a closed tube until cut there)
+    bmesh.ops.bisect_plane(bm, geom=geom, plane_co=(0, AXIS_Y, 0), plane_no=(0, 1, 0), dist=1e-5)
+    for e in bm.edges:
+        e.seam = all(v.co.x < 0 and abs(v.co.y - AXIS_Y) < 1e-4 for v in e.verts) and any(map(wool, e.link_faces))
+    for f in bm.faces:
+        f.select_set(wool(f))
+    bm.to_mesh(ob.data)
+    bm.free()
+    with bpy.context.temp_override(object=ob, active_object=ob, selected_objects=[ob]):
+        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.uv.unwrap(method="ANGLE_BASED", margin=0.02)
+        bpy.ops.object.mode_set(mode="OBJECT")
+    loops = [i for p in ob.data.polygons if p.select for i in p.loop_indices]
+    uv = ob.data.uv_layers.active.data
+    xy = np.array([uv[i].uv[:] for i in loops])
+    lo, span = xy.min(0), np.ptp(xy, axis=0)
+    u0, u1, v0, v1 = NEW_UV["wool"]
+    k = min((u1 - u0 - 2 * UV_MARGIN) / span[0], (v1 - v0 - 2 * UV_MARGIN) / span[1])
+    for i, (x, y) in zip(loops, (xy - lo) * k + (u0 + UV_MARGIN, v0 + UV_MARGIN)):
+        uv[i].uv = (x, y)
+    sel = [p for p in ob.data.polygons if p.select]
+    uv_area = sum(_shoelace(np.array([uv[i].uv[:] for i in p.loop_indices])) for p in sel)
+    return {"faces": len(faces), "px_per_cm": round(float(1024 * np.sqrt(uv_area / sum(p.area for p in sel)) / 100), 1)}
+
+
+def _shoelace(q):
+    return abs(np.dot(q[:, 0], np.roll(q[:, 1], -1)) - np.dot(q[:, 1], np.roll(q[:, 0], -1))) / 2
+
+
 def tunic_textures(ob):
     nt = ob.data.materials[0].node_tree
     bsdf = nt.nodes["Principled BSDF"]
@@ -298,7 +346,15 @@ def tunic_textures(ob):
 
     mix_towards(base, face_mask(ob, base, sun, 6), SUN_FADED)
     mix_towards(base, face_mask(ob, base, dust, 4), DUST)
-    darken(base, bake_ao(ob, base.size[0], AO["Tunic"][1]), AO["Tunic"][0])
+    # AO only where every texel belongs to one surface: the two bands and the knot share their region, as do the rope
+    # and its ends and the two sandals, so their bakes overwrite each other (a band's inside showed on its outside)
+    size = base.size[0]
+    v, u = (np.mgrid[0:size, 0:size] + 0.5) / size  # rows bottom-up, like image_pixels
+    own = np.zeros((size, size), np.float32)
+    for name in ("wool", "bundle"):
+        u0, u1, v0, v1 = NEW_UV[name]
+        own[(u >= u0) & (u < u1) & (v >= v0) & (v < v1)] = 1
+    darken(base, bake_ao(ob, size, AO["Tunic"][1]), AO["Tunic"][0] * own)
     for img in (base, nrm):
         img.pack()
     nt.nodes["tunic_tex"].image = base
@@ -342,6 +398,7 @@ OBJ["EyesLow"].hide_render = True  # the low eyes sit in the same place as the h
 darken(skin, bake_ao(body, min(2048, skin.size[0]), AO["Body"][1]), AO["Body"][0])
 OBJ["EyesLow"].hide_render = False
 skin.pack()
+report["wool_uv"] = wool_uv(OBJ["Tunic"])
 tunic_textures(OBJ["Tunic"])
 for name, mat_name in MAT_NAME.items():
     OBJ[name].data.materials[0].name = mat_name

@@ -80,7 +80,7 @@
 ## Mac 上要做的（经协调给 zg 看命令后再跑）
 
 1. 装 MPFB 2（Blender 扩展站），下官方 CC0 系统素材：皮肤、眼、眉、睫毛、牙、舌、短发；`faceunits01`（ARKit 52）和 `visemes02`（15 个口型）。
-2. 下 CC0 动作：Quaternius Universal Animation Library 免费部分（或 CMU）。
+2. 下 CC0 动作：Quaternius Universal Animation Library 免费部分（CMU 动作捕捉不是 CC0，不用）。
 3. 建梅洛斯（20 多岁、瘦长有肌肉、晒黑的牧人；exomis 露一侧肩，皮凉鞋，赭和未染羊毛色，短发），改名成脚本用的对象名（Body / Eyes / Brows / Lashes / Teeth / Tongue / Hair / Tunic / EyesLow / Rig），存 .blend。
 4. 把 .blend 和动作文件传回容器：`assets/pipeline/lod_export.py` → `assets/pipeline/compress.mjs` → `build/pack.py` → 更新测试页。
 5. 做法 PM 定了 (b)：前端线程里开 Remote Control（zg 10-10 已允许），Mac 上的会话只在新建的 `~/Developer/zoujin-art/` 里装 MPFB、下素材、开 Blender；建模由前端线程通过设备连接操作 Mac 上的 Blender MCP。不碰 `~/Developer/zoujin-spike`、gcloud 和凭证；装和下载之前先给 zg 看清单和命令。
@@ -102,4 +102,4 @@
 | 元音模板用的测试声音 | Open JTalk（pyopenjtalk-plus 0.4.1，MIT）＋ HTS 音声 Mei | MIT / CC BY 3.0 | 不进 |
 | 广场石材贴图 | Crytek Sponza（经 Khronos glTF Sample Assets） | CC BY 3.0 | 不进（正式版用 CC0 扫描） |
 | three.js 0.186.1、gltf-transform、meshoptimizer、ktx2-encoder | npm / jsDelivr | MIT 等 | 工具 |
-| 正式梅洛斯（待做） | MPFB 2 系统素材、Quaternius / CMU | CC0 | 进 |
+| 正式梅洛斯 | MPFB 2 系统素材（皮肤、眼、眉 eyebrow009、睫毛、牙、舌、头发 afro01）；动作待 Quaternius | CC0 | 进 |

@@ -72,10 +72,11 @@ def main(out):
     base = np.zeros((S, S, 3), np.float32)
     shade = np.ones((S, S), np.float32)
 
-    # tunic: ochre wool, faded in patches towards a paler, greyer ochre
+    # tunic: ochre wool, washed out all over and more in patches, towards a paler, greyer ochre
     m, _, _ = region("wool")
-    paler = lin(O1) * 0.75 + lin((190, 172, 140)) * 0.25
-    base[m] = lin(O1)[None] * (1 - 0.35 * fade[m, None]) + paler[None] * 0.35 * fade[m, None]
+    paler = lin(O1) * 0.6 + lin((196, 182, 155)) * 0.4
+    wash = 0.1 + 0.4 * fade[m, None]
+    base[m] = lin(O1)[None] * (1 - wash) + paler[None] * wash
     h[m] = (0.35 * weave + 0.8 * slub + 2.5 * folds)[m]
     shade[m] = (1 + 0.03 * weave + 0.05 * mott - 0.10 * slub)[m]
 
