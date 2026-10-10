@@ -447,6 +447,15 @@ class SetPieceLinesItemOption2(BaseModel):
     """
 
 
+class SetPieceLearnsItem(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    character: Literal["player"] | CharacterId
+    fact: FactId
+
+
 type SetPieceId = Annotated[str, Field(pattern="^piece\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="SetPieceId")]
 """
 （1.7）固定演出：`piece.` 加小写 slug（可以有 `.` 和 `-`）
@@ -1581,7 +1590,7 @@ class Scene(BaseModel):
 
 class SetPiece(BaseModel):
     """
-    （1.7）固定演出（2.11，S-080 ④）：每局一样、写好的地の文和人物的预录句，挂在节拍或玩家的动作上，由服务端在对的时机下发。只是演出：不是事件，不改世界状态
+    （1.7）固定演出（2.11，S-080 ④）：每局一样、写好的地の文和人物的预录句，挂在节拍或玩家的动作上，由服务端在对的时机下发。只是演出：不是事件，不改世界状态；例外是 learns（演出里说出的事，听的人就知道了）
     """
 
     model_config = ConfigDict(
@@ -1624,6 +1633,10 @@ class SetPiece(BaseModel):
     lines: Annotated[list[SetPieceLinesItemOption1 | SetPieceLinesItemOption2], Field(min_length=1)]
     """
     按顺序演：narration = 地の文；speaker + line = 这个人物的一句预录（构建时生成，ux-design 16.2）
+    """
+    learns: Annotated[list[SetPieceLearnsItem] | None, Field(min_length=1)] = None
+    """
+    演这一条时谁知道了哪件事（S-077 ⑪）：服务端提交一条 type learn 的事件，effects = 这些 learn，actor = lines 里第一个说话的人物（只有地の文时是 system）
     """
     inferred: Literal[True] = True
     note: str | None = None

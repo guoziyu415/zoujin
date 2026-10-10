@@ -285,7 +285,7 @@
 | 性格 | 王の命令に従う | 「たちまち彼は、巡邏の警吏に捕縛された。」(10) | |
 | 动机 | 命令を遂行する（推定） | 「私だ、刑吏！」(62) | |
 | 说话 | 一人称「—」；原文に台詞なし（推定）。；开局在做：idle | — | |
-| 知道 | hostage-decree@pre、melos-dagger@beat.04、selinuntius-hostage@beat.06 | — | |
+| 知道 | hostage-decree@pre、melos-dagger@beat.04、promise@beat.05、selinuntius-hostage@beat.06 | — | |
 
 ### 峠の山賊（char.bandits）
 

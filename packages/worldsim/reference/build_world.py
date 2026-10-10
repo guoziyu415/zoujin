@@ -694,6 +694,7 @@ def main():
 
     # ---------- 固定演出（contracts 2.11，1.7，S-080 ④） ----------
     piece_ids = {x["id"] for x in world.get("setPieces", [])}
+    cmap = {c["id"]: c for c in world["characters"]}
     unconditional = {}  # 时机 → 这个时机上第一条什么条件都没有的固定演出：排在它后面的永远轮不到
     for sg in world.get("setPieces", []):
         w2, on = sg["id"], sg.get("on", {})
@@ -738,6 +739,21 @@ def main():
         for ln in sg.get("lines", []):
             if "speaker" in ln and ln["speaker"] not in chars:
                 err(f"{w2}: speaker 不存在 {ln['speaker']}")
+        sure = {"pre", *sg.get("after", [])}  # 演的时候一定已经发生的
+        speakers = {ln["speaker"] for ln in sg.get("lines", []) if ln.get("speaker") in chars}
+        for ln in sg.get("learns", []):  # S-077 ⑪：说出来的事，演的时候一定成立、说的人一定知道
+            if ln["character"] != "player" and ln["character"] not in chars:
+                err(f"{w2}: learns 的人物不存在 {ln['character']}")
+            f = facts.get(ln["fact"])
+            if f is None:
+                err(f"{w2}: learns 的事实不存在 {ln['fact']}")
+                continue
+            if f["trueFrom"] not in sure:
+                err(f"{w2}: learns {ln['fact']} 从 {f['trueFrom']} 起才成立，after 要写上它")
+            if speakers and not any(
+                k["fact"] == ln["fact"] and k["since"] in sure for c in speakers for k in cmap[c].get("knows", [])
+            ):
+                err(f"{w2}: learns {ln['fact']}：说话的 {sorted(speakers)} 演的时候不一定知道（knows 的 since 要在 after 里）")
         if hook in unconditional:
             err(f"{w2}: 同一个时机上 {unconditional[hook]} 排在前面、没有条件，这条永远轮不到")
         elif not any(sg.get(k) for k in ("after", "before", "knows", "played", "notPlayed", "when", "once")):

@@ -566,7 +566,7 @@ type Item = {
 
 ### 2.11 SetPiece（1.7，固定演出，S-080 ④）
 
-有些地の文和人物的话是写好的、每局都一样（切片：城门的警吏、工房关着的门、群众让路）。它们写在世界模型里，由服务端在对的时机下发，前端不按 ID 写死，也不判断条件。它们只是演出：不是事件，不改世界状态，叙事者不改写。
+有些地の文和人物的话是写好的、每局都一样（切片：城门的警吏、工房关着的门、群众让路）。它们写在世界模型里，由服务端在对的时机下发，前端不按 ID 写死，也不判断条件。它们只是演出：不是事件，不改世界状态，叙事者不改写。唯一的例外是 `learns`：演出里说出了一件事，听的人就知道了（S-077 ⑪：城门的警吏顺口说出约定）。
 
 ```ts
 type SetPiece = {
@@ -587,6 +587,9 @@ type SetPiece = {
                                    // 按顺序演：narration = 一行地の文（服务端推 narration { line, ref }，ref = 这条的 id）；
                                    // speaker + line = 这个人物的一句预录（构建时生成，ux-design 16.2，声音按 UX 的文案表），字幕就是 line。
                                    // 预录句怎么下发（manifest 的 cues 那样，或别的）由后端定（B-2）
+  learns?: { character: string; fact: string }[];
+                                   // 演这一条时谁知道了哪件事（character 可以是 "player"，2.1）。服务端演的时候提交一条 type: "learn" 的事件，
+                                   // effects = 这些 learn，actor = lines 里第一个说话的人物（只有地の文时是 system）
   inferred: true; note?: string;
 };
 ```
@@ -594,7 +597,7 @@ type SetPiece = {
 - 同一个时机（同一个节拍，或同一种动作和对象、同样的 `refused`）有几条时，按列表顺序取第一条条件全满足、而且（`once` 的）这一局还没演过的，只演这一条。都不满足就不演，照常由叙事者说。
 - `on.act` 的那一条在这个动作的 `action_result` 之后演，代替叙事者对这个动作的叙事（不再另说一遍）；`on.beat` 的演在节拍的那次提交之后。玩家不在场的节拍不演。
 - 选哪一条和条件怎么算只有一份：共享规则库 `zoujin_worldsim.pick_set_piece(world, state, hook, played)`（`played` 是这一局演过的固定演出 ID，由服务端记）。`knows` 用同一个库的 `knows(world, state, character, fact)`。
-- 校验工具查：ID 唯一；引用的节拍、人物、事实、地点存在；`target` 按动作是存在的人物或地点，`examine` 的是 `objects` 里的可调查物；`played`、`notPlayed` 引用别的固定演出；同一个时机上，排在一条没有任何条件的条目后面的永远轮不到，算错。`act` 是不是 api-contract 3.8 的动作、`lines` 的形状由 Schema 查。
+- 校验工具查：ID 唯一；引用的节拍、人物、事实、地点存在；`target` 按动作是存在的人物或地点，`examine` 的是 `objects` 里的可调查物；`played`、`notPlayed` 引用别的固定演出；`learns` 的事实在演的时候一定成立、说的人一定知道（事实的 `trueFrom` 和说话人物 `knows` 的 `since` 都是 `pre` 或写在 `after` 里；只有地の文时只查前一半）；同一个时机上，排在一条没有任何条件的条目后面的永远轮不到，算错。`act` 是不是 api-contract 3.8 的动作、`lines` 的形状由 Schema 查。
 
 ### 2.12 WorldObject（1.7，可调查物）
 
@@ -1044,8 +1047,8 @@ type CharacterEnding = {           // （1.1）
   - R2 加上 `valueRequires`（第 3 节规则表）。只有到点的节拍和期限（`origin: "schedule"`）不判；导演事件的 `actor` 也是 `system`，照样判（后端评审）。
   - 写清（后端评审 W-1，2026-10-10）：同一个节拍的几次改动怎么合（第 3 节 `Effect` 的注释；以前共享规则换方向时整条替换，先拖慢 30 再帮快 10 成了帮快 10）；`origin: "schedule"` 只用于到点的节拍和期限（第 3 节）。
 - **v1.7（2026-10-10）**：只做加法（C-18）。M2 切片要的位置点和落地。
-  - WorldModel：`Character.group`；`ActExit.spot`、`ActExit.arrival`（2.8、2.8.1 第 4 步）；`ActExit.sub`（幕末页副题的后半，以前写在 UX 的文案表里、前端按去处 ID 对）；`Affordance.playerSpot`（做完以后玩家站哪，后端 10-10 提）；`Act.plan`（打算成行时的落点，2.8.1 第 2 步，C-19）；`WorldModel.setPieces`（固定演出：节拍或玩家的动作上写好的地の文和预录句，2.11，S-080 ④，PM 10-10 定放进切片世界模型）；`WorldModel.objects`（可调查物，2.12，后端 10-10 提：服务端按它出快照的 interactables）。
+  - WorldModel：`Character.group`；`ActExit.spot`、`ActExit.arrival`（2.8、2.8.1 第 4 步）；`ActExit.sub`（幕末页副题的后半，以前写在 UX 的文案表里、前端按去处 ID 对）；`Affordance.playerSpot`（做完以后玩家站哪，后端 10-10 提）；`Act.plan`（打算成行时的落点，2.8.1 第 2 步，C-19）；`WorldModel.setPieces`（固定演出：节拍或玩家的动作上写好的地の文和预录句，2.11，S-080 ④，PM 10-10 定放进切片世界模型）；`WorldModel.objects`（可调查物，2.12，后端 10-10 提：服务端按它出快照的 interactables）；`SetPiece.learns`（演出里说出的事，听的人就知道了，S-077 ⑪，PM 10-10 定：城门的警吏立约以后赶人时说出约定）。
   - Event：`relocate` 效果的 `spot`。WorldState：`spots`。站位规则和校验写在 3.1。
   - 玩家知道什么（2.1，PM、后端 10-10 评审 #33 时提）：`learn` 的 `character` 可以是 `"player"`；人物告诉玩家时叙事者提取，玩家在节拍的地点时共享规则库给 public 事实写进节拍的系统事件；R4 对玩家 = 身份的 `initialKnowledge` + 学到的。
   - 第 7 节新增 C-18、C-19（已定：打算成行时的落点用 `Act.plan`）。
-  - 『走れメロス』（draft.3）：群众、警吏、山贼、一团旅人 `group: true`；beat.s1 セリヌンティウス站 `stake`、王站 `king-west`，beat.24 梅洛斯站 `scaffold`（布局见前端 #22）。同一个 PR 里的世界模型修正：群众、少女第一幕在广场的家里（`absent`），beat.s1 到刑场；beat.04（捕缚）挪到王城前庭（`place.execution-ground`）；送老爺回家记 `var.player.walkedOldManHome`（说话兑现，或第一幕的情境动作「家まで送る」`aff.walk-old-man-home`，30 分，UX 10-10）。
+  - 『走れメロス』（draft.3）：群众、警吏、山贼、一团旅人 `group: true`；beat.s1 セリヌンティウス站 `stake`、王站 `king-west`，beat.24 梅洛斯站 `scaffold`（布局见前端 #22）。同一个 PR 里的世界模型修正：群众、少女第一幕在广场的家里（`absent`），beat.s1 到刑场；beat.04（捕缚）挪到王城前庭（`place.execution-ground`）；送老爺回家记 `var.player.walkedOldManHome`（说话兑现，或第一幕的情境动作「家まで送る」`aff.walk-old-man-home`，30 分，UX 10-10）；警吏从 beat.05 起知道约定（`knows`，PM 10-10：警吏在殿上，城门的固定演出靠它说出约定，S-077 ⑪）。

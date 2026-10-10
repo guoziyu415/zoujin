@@ -1503,7 +1503,7 @@ export interface Scene {
   note?: string;
 }
 /**
- * （1.7）固定演出（2.11，S-080 ④）：每局一样、写好的地の文和人物的预录句，挂在节拍或玩家的动作上，由服务端在对的时机下发。只是演出：不是事件，不改世界状态
+ * （1.7）固定演出（2.11，S-080 ④）：每局一样、写好的地の文和人物的预录句，挂在节拍或玩家的动作上，由服务端在对的时机下发。只是演出：不是事件，不改世界状态；例外是 learns（演出里说出的事，听的人就知道了）
  */
 export interface SetPiece {
   id: SetPieceId;
@@ -1590,6 +1590,15 @@ export interface SetPiece {
         line: string;
       }
   )[];
+  /**
+   * 演这一条时谁知道了哪件事（S-077 ⑪）：服务端提交一条 type learn 的事件，effects = 这些 learn，actor = lines 里第一个说话的人物（只有地の文时是 system）
+   *
+   * @minItems 1
+   */
+  learns?: {
+    character: "player" | CharacterId;
+    fact: FactId;
+  }[];
   inferred: true;
   note?: string;
 }

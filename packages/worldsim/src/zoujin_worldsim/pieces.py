@@ -3,6 +3,7 @@
 pick_set_piece()：一个时机（节拍发生，或玩家的动作判定之后）上演哪一条固定演出。同一个时机按列表顺序取第一条
 条件全满足、`once` 的还没演过的；都不满足返回 None，照常由叙事者说。这一局演过哪些（`played`）由服务端记，
 它不是事件，不在 SimState 里。`knows` 条件用 primitives.knows()，和叙事者的 R4 同一份。
+带 `learns` 的那条（1.7，S-077 ⑪），服务端演的时候另提交一条 type learn 的事件（契约 2.11），这里只负责选。
 """
 
 from __future__ import annotations

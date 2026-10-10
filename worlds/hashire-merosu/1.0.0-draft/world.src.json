@@ -1936,6 +1936,10 @@
      "since": "beat.04"
     },
     {
+     "fact": "fact.promise",
+     "since": "beat.05"
+    },
+    {
      "fact": "fact.selinuntius-hostage",
      "since": "beat.06"
     }

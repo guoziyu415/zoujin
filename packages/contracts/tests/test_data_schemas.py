@@ -311,6 +311,7 @@ INVALID_BECAUSE: dict[str, tuple[str, str]] = {
     "MemoryItem/from-events-empty.json": ("minItems", "fromEvents"),
     "MemoryItem/trust-delta-25.json": ("maximum", "trustDelta"),
     "Relationship/level-6.json": ("enum", "level"),
+    "SetPiece/learns-run-fact.json": ("pattern", "learns/0/fact"),
     "SetPiece/line-with-both.json": ("additionalProperties", "lines/0"),
     "SetPiece/lines-empty.json": ("minItems", "lines"),
     "SetPiece/on-act-push.json": ("enum", "on/act"),
