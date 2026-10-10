@@ -1632,7 +1632,7 @@ class SetPiece(BaseModel):
     """
     lines: Annotated[list[SetPieceLinesItemOption1 | SetPieceLinesItemOption2], Field(min_length=1)]
     """
-    按顺序演：narration = 地の文；speaker + line = 这个人物的一句预录（构建时生成，ux-design 16.2）
+    按顺序演，整条放在一条 set_piece 消息里下发（api-contract 3.14）：narration = 地の文；speaker + line = 这个人物的一句预录（构建时生成，ux-design 16.2），录音是 manifest 的 setPieceVoices["{id}/{序号}"]，序号从 1 起、地の文也算
     """
     learns: Annotated[list[SetPieceLearnsItem] | None, Field(min_length=1)] = None
     """
