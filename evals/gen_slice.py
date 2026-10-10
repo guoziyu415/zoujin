@@ -97,6 +97,16 @@ SLICE = [
           var("var.player.walkedOldManHome", True)],
          J("老爺は恐縮しながら申し出を受け、怯えた様子のまま短く礼を言う。5=老爺らしい口調で自然に受ける／1=断る・礼がない・口調が違う"),
          note="aid.old-man.listen の effects（contracts 1.4）。「老爺の家に身を寄せる」はこれをやった時だけ出る（S-077 ④）"),
+    case("E4-108", "按「家まで送る」：30 分，老爷到家门口", {"role": TRAV, "checkpoint": "sc.canon@beat.02"},
+         [{"act": {"kind": "help", "target": "char.old-man"}}],
+         [{"type": "event", "match": {"actor": "player", "effects": [
+             {"op": "set", "var": "var.player.walkedOldManHome", "value": True},
+             relocate("char.old-man", "place.syracuse-square", "old-man-house")]}, "statusIn": ["passed"], "step": 1},
+          {"type": "clock_advanced", "min": 30, "max": 30, "step": 1},
+          var("var.player.walkedOldManHome", True)],
+         J("道中を一、二文で語る（老爺はゆっくり歩き、道々話す）。王が人を殺す訳はここで語らない（それは老爺との会話で聞く）。"
+           "5=短く自然／1=長い・王の訳を語ってしまう・システムの口調"),
+         note="aff.walk-old-man-home（UX 10-10）：話して果たすのと同じ互助 aid.old-man.listen。一局一度"),
     case("E4-102", "选「老爺の家に身を寄せる」：跳到三日目 17:30 的刑场，老爷在旁边", {**END1, "events": [WALKED]},
          [{"choose": {"exit": "exit.1.old-man"}}],
          [{"type": "event", "match": {"type": "act-transition", "actor": "player",

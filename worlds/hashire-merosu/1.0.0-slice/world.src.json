@@ -5234,7 +5234,40 @@
   "situationalMaxMinutes": 120
  },
  "pacingNote": "S-038（UX 4.3、〔待验证〕R1 後に調整）。第四幕でメロスと並んで走りながら話すのはプレイヤーの時間だけを使い、メロスの排定時間は動かない。止める動作（levers の delayed）だけがメロスに時間を加える",
- "affordances": [],
+ "affordances": [
+  {
+   "id": "aff.walk-old-man-home",
+   "kind": "help",
+   "label": "家まで送る",
+   "place": "place.syracuse-square",
+   "act": "act.1",
+   "target": "char.old-man",
+   "minutes": 30,
+   "when": [
+    {
+     "var": "var.player.walkedOldManHome",
+     "op": "==",
+     "value": false
+    }
+   ],
+   "aid": "aid.old-man.listen",
+   "effects": [
+    {
+     "op": "set",
+     "var": "var.player.walkedOldManHome",
+     "value": true
+    },
+    {
+     "op": "relocate",
+     "character": "char.old-man",
+     "place": "place.syracuse-square",
+     "spot": "old-man-house"
+    }
+   ],
+   "inferred": true,
+   "note": "旅人の開局互助（S-048）をボタンでも果たせるように（UX 10-10）。老爺はゆっくり歩き、道々話す。叙事者は道中を一、二文で語るが、王が人を殺す訳（aid.old-man.tell）はここで代わりに語らない。終わると老爺は家の前（old-man-house）、プレイヤーはその隣。一局一度"
+  }
+ ],
  "items": [
   {
    "id": "item.waterskin",
