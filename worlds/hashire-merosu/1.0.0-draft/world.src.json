@@ -1789,6 +1789,13 @@
      "opening": "role.traveler",
      "inferred": true,
      "text": "怯える老爺の話を最後まで聞き、暗くなる道を家まで送る",
+     "effects": [
+      {
+       "op": "set",
+       "var": "var.player.walkedOldManHome",
+       "value": true
+      }
+     ],
      "cite": [
       {
        "q": "老爺は、あたりをはばかる低声で、わずか答えた。"
@@ -2048,8 +2055,9 @@
      "since": "beat.s1"
     }
    ],
-   "initialPlace": "place.execution-ground",
+   "initialPlace": "place.syracuse-square",
    "talkable": false,
+   "initialActivity": "absent",
    "cite": [
     {
      "q": "刑場の群衆"
@@ -2076,8 +2084,9 @@
     "sampleLines": []
    },
    "knows": [],
-   "initialPlace": "place.execution-ground",
+   "initialPlace": "place.syracuse-square",
    "talkable": false,
+   "initialActivity": "absent",
    "cite": [
     {
      "q": "ひとりの少女が、緋のマントをメロスに捧げた。"
@@ -3151,6 +3160,12 @@
    "description": "村と市のあいだの抜け道（峠の脇道、町へ抜ける野道）を知っているか。牧童は初めから知っている（aff.pass-detour、aff.road-shortcut は牧童専用）。ほかの身分は花婿から聞けば（aid.groom.shortcut）使える"
   },
   {
+   "id": "var.player.walkedOldManHome",
+   "type": "bool",
+   "default": false,
+   "description": "怯える老爺の話を聞き、家まで送ったか（aid.old-man.listen を果たした）。旅人の第一幕の去処「老爺の家に身を寄せる」の条件（S-077 ④）"
+  },
+  {
    "id": "var.act.current",
    "type": "enum",
    "values": [
@@ -3270,13 +3285,13 @@
    "id": "beat.04",
    "order": 4,
    "title": "王城で捕縛",
-   "summary": "買い物を背負ったまま王城に入り、巡邏の警吏に捕らえられる。懐から短剣が出る。",
+   "summary": "買い物を背負ったまま王城へ入って行き、門の前庭で巡邏の警吏に捕らえられる。懐から短剣が出る。王城の中へ引かれてゆく。",
    "window": {
     "earliest": 1170,
     "latest": 1320,
     "canonical": 1200
    },
-   "place": "place.castle",
+   "place": "place.execution-ground",
    "participants": [
     "char.melos",
     "char.guards"
@@ -4175,6 +4190,11 @@
     {
      "op": "relocate",
      "character": "char.selinuntius",
+     "place": "place.execution-ground"
+    },
+    {
+     "op": "relocate",
+     "character": "char.maiden",
      "place": "place.execution-ground"
     }
    ],

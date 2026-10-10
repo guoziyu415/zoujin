@@ -20,8 +20,8 @@
     "char.guards": "place.castle",
     "char.bandits": "place.mountain-pass",
     "char.travelers": "place.road-to-city",
-    "char.crowd": "place.execution-ground",
-    "char.maiden": "place.execution-ground"
+    "char.crowd": "place.syracuse-square",
+    "char.maiden": "place.syracuse-square"
    }
   },
   "beat.02": {
@@ -39,8 +39,8 @@
     "char.guards": "place.castle",
     "char.bandits": "place.mountain-pass",
     "char.travelers": "place.road-to-city",
-    "char.crowd": "place.execution-ground",
-    "char.maiden": "place.execution-ground"
+    "char.crowd": "place.syracuse-square",
+    "char.maiden": "place.syracuse-square"
    }
   },
   "beat.03": {
@@ -58,8 +58,8 @@
     "char.guards": "place.castle",
     "char.bandits": "place.mountain-pass",
     "char.travelers": "place.road-to-city",
-    "char.crowd": "place.execution-ground",
-    "char.maiden": "place.execution-ground"
+    "char.crowd": "place.syracuse-square",
+    "char.maiden": "place.syracuse-square"
    }
   },
   "beat.04": {
@@ -74,11 +74,11 @@
     "char.philostratus": "place.stonemason-workshop",
     "char.old-man": "place.syracuse-square",
     "char.young-man": "place.syracuse-square",
-    "char.guards": "place.castle",
+    "char.guards": "place.execution-ground",
     "char.bandits": "place.mountain-pass",
     "char.travelers": "place.road-to-city",
-    "char.crowd": "place.execution-ground",
-    "char.maiden": "place.execution-ground"
+    "char.crowd": "place.syracuse-square",
+    "char.maiden": "place.syracuse-square"
    }
   },
   "beat.05": {
@@ -93,11 +93,11 @@
     "char.philostratus": "place.stonemason-workshop",
     "char.old-man": "place.syracuse-square",
     "char.young-man": "place.syracuse-square",
-    "char.guards": "place.castle",
+    "char.guards": "place.execution-ground",
     "char.bandits": "place.mountain-pass",
     "char.travelers": "place.road-to-city",
-    "char.crowd": "place.execution-ground",
-    "char.maiden": "place.execution-ground"
+    "char.crowd": "place.syracuse-square",
+    "char.maiden": "place.syracuse-square"
    }
   },
   "beat.06": {
@@ -112,11 +112,11 @@
     "char.philostratus": "place.stonemason-workshop",
     "char.old-man": "place.syracuse-square",
     "char.young-man": "place.syracuse-square",
-    "char.guards": "place.castle",
+    "char.guards": "place.execution-ground",
     "char.bandits": "place.mountain-pass",
     "char.travelers": "place.road-to-city",
-    "char.crowd": "place.execution-ground",
-    "char.maiden": "place.execution-ground"
+    "char.crowd": "place.syracuse-square",
+    "char.maiden": "place.syracuse-square"
    }
   },
   "beat.07": {
@@ -131,11 +131,11 @@
     "char.philostratus": "place.stonemason-workshop",
     "char.old-man": "place.syracuse-square",
     "char.young-man": "place.syracuse-square",
-    "char.guards": "place.castle",
+    "char.guards": "place.execution-ground",
     "char.bandits": "place.mountain-pass",
     "char.travelers": "place.road-to-city",
-    "char.crowd": "place.execution-ground",
-    "char.maiden": "place.execution-ground"
+    "char.crowd": "place.syracuse-square",
+    "char.maiden": "place.syracuse-square"
    }
   },
   "beat.08": {
@@ -150,11 +150,11 @@
     "char.philostratus": "place.stonemason-workshop",
     "char.old-man": "place.syracuse-square",
     "char.young-man": "place.syracuse-square",
-    "char.guards": "place.castle",
+    "char.guards": "place.execution-ground",
     "char.bandits": "place.mountain-pass",
     "char.travelers": "place.road-to-city",
-    "char.crowd": "place.execution-ground",
-    "char.maiden": "place.execution-ground"
+    "char.crowd": "place.syracuse-square",
+    "char.maiden": "place.syracuse-square"
    }
   },
   "beat.09": {
@@ -169,11 +169,11 @@
     "char.philostratus": "place.stonemason-workshop",
     "char.old-man": "place.syracuse-square",
     "char.young-man": "place.syracuse-square",
-    "char.guards": "place.castle",
+    "char.guards": "place.execution-ground",
     "char.bandits": "place.mountain-pass",
     "char.travelers": "place.road-to-city",
-    "char.crowd": "place.execution-ground",
-    "char.maiden": "place.execution-ground"
+    "char.crowd": "place.syracuse-square",
+    "char.maiden": "place.syracuse-square"
    }
   },
   "beat.10": {
@@ -188,11 +188,11 @@
     "char.philostratus": "place.stonemason-workshop",
     "char.old-man": "place.syracuse-square",
     "char.young-man": "place.syracuse-square",
-    "char.guards": "place.castle",
+    "char.guards": "place.execution-ground",
     "char.bandits": "place.mountain-pass",
     "char.travelers": "place.road-to-city",
-    "char.crowd": "place.execution-ground",
-    "char.maiden": "place.execution-ground"
+    "char.crowd": "place.syracuse-square",
+    "char.maiden": "place.syracuse-square"
    }
   },
   "beat.11": {
@@ -207,11 +207,11 @@
     "char.philostratus": "place.stonemason-workshop",
     "char.old-man": "place.syracuse-square",
     "char.young-man": "place.syracuse-square",
-    "char.guards": "place.castle",
+    "char.guards": "place.execution-ground",
     "char.bandits": "place.mountain-pass",
     "char.travelers": "place.road-to-city",
-    "char.crowd": "place.execution-ground",
-    "char.maiden": "place.execution-ground"
+    "char.crowd": "place.syracuse-square",
+    "char.maiden": "place.syracuse-square"
    }
   },
   "beat.12": {
@@ -226,11 +226,11 @@
     "char.philostratus": "place.stonemason-workshop",
     "char.old-man": "place.syracuse-square",
     "char.young-man": "place.syracuse-square",
-    "char.guards": "place.castle",
+    "char.guards": "place.execution-ground",
     "char.bandits": "place.mountain-pass",
     "char.travelers": "place.road-to-city",
-    "char.crowd": "place.execution-ground",
-    "char.maiden": "place.execution-ground"
+    "char.crowd": "place.syracuse-square",
+    "char.maiden": "place.syracuse-square"
    }
   },
   "beat.13": {
@@ -245,11 +245,11 @@
     "char.philostratus": "place.stonemason-workshop",
     "char.old-man": "place.syracuse-square",
     "char.young-man": "place.syracuse-square",
-    "char.guards": "place.castle",
+    "char.guards": "place.execution-ground",
     "char.bandits": "place.mountain-pass",
     "char.travelers": "place.road-to-city",
-    "char.crowd": "place.execution-ground",
-    "char.maiden": "place.execution-ground"
+    "char.crowd": "place.syracuse-square",
+    "char.maiden": "place.syracuse-square"
    }
   },
   "beat.14": {
@@ -264,11 +264,11 @@
     "char.philostratus": "place.stonemason-workshop",
     "char.old-man": "place.syracuse-square",
     "char.young-man": "place.syracuse-square",
-    "char.guards": "place.castle",
+    "char.guards": "place.execution-ground",
     "char.bandits": "place.mountain-pass",
     "char.travelers": "place.road-to-city",
-    "char.crowd": "place.execution-ground",
-    "char.maiden": "place.execution-ground"
+    "char.crowd": "place.syracuse-square",
+    "char.maiden": "place.syracuse-square"
    }
   },
   "beat.15": {
@@ -283,11 +283,11 @@
     "char.philostratus": "place.stonemason-workshop",
     "char.old-man": "place.syracuse-square",
     "char.young-man": "place.syracuse-square",
-    "char.guards": "place.castle",
+    "char.guards": "place.execution-ground",
     "char.bandits": "place.mountain-pass",
     "char.travelers": "place.road-to-city",
-    "char.crowd": "place.execution-ground",
-    "char.maiden": "place.execution-ground"
+    "char.crowd": "place.syracuse-square",
+    "char.maiden": "place.syracuse-square"
    }
   },
   "beat.16": {
@@ -302,11 +302,11 @@
     "char.philostratus": "place.stonemason-workshop",
     "char.old-man": "place.syracuse-square",
     "char.young-man": "place.syracuse-square",
-    "char.guards": "place.castle",
+    "char.guards": "place.execution-ground",
     "char.bandits": "place.mountain-pass",
     "char.travelers": "place.road-to-city",
-    "char.crowd": "place.execution-ground",
-    "char.maiden": "place.execution-ground"
+    "char.crowd": "place.syracuse-square",
+    "char.maiden": "place.syracuse-square"
    }
   },
   "beat.17": {
@@ -321,11 +321,11 @@
     "char.philostratus": "place.stonemason-workshop",
     "char.old-man": "place.syracuse-square",
     "char.young-man": "place.syracuse-square",
-    "char.guards": "place.castle",
+    "char.guards": "place.execution-ground",
     "char.bandits": "place.mountain-pass",
     "char.travelers": "place.road-to-city",
-    "char.crowd": "place.execution-ground",
-    "char.maiden": "place.execution-ground"
+    "char.crowd": "place.syracuse-square",
+    "char.maiden": "place.syracuse-square"
    }
   },
   "beat.18": {
@@ -340,11 +340,11 @@
     "char.philostratus": "place.stonemason-workshop",
     "char.old-man": "place.syracuse-square",
     "char.young-man": "place.syracuse-square",
-    "char.guards": "place.castle",
+    "char.guards": "place.execution-ground",
     "char.bandits": "place.mountain-pass",
     "char.travelers": "place.road-to-city",
-    "char.crowd": "place.execution-ground",
-    "char.maiden": "place.execution-ground"
+    "char.crowd": "place.syracuse-square",
+    "char.maiden": "place.syracuse-square"
    }
   },
   "beat.19": {
@@ -359,11 +359,11 @@
     "char.philostratus": "place.stonemason-workshop",
     "char.old-man": "place.syracuse-square",
     "char.young-man": "place.syracuse-square",
-    "char.guards": "place.castle",
+    "char.guards": "place.execution-ground",
     "char.bandits": "place.mountain-pass",
     "char.travelers": "place.road-to-city",
-    "char.crowd": "place.execution-ground",
-    "char.maiden": "place.execution-ground"
+    "char.crowd": "place.syracuse-square",
+    "char.maiden": "place.syracuse-square"
    }
   },
   "beat.20": {
@@ -378,11 +378,11 @@
     "char.philostratus": "place.stonemason-workshop",
     "char.old-man": "place.syracuse-square",
     "char.young-man": "place.syracuse-square",
-    "char.guards": "place.castle",
+    "char.guards": "place.execution-ground",
     "char.bandits": "place.mountain-pass",
     "char.travelers": "place.road-to-city",
-    "char.crowd": "place.execution-ground",
-    "char.maiden": "place.execution-ground"
+    "char.crowd": "place.syracuse-square",
+    "char.maiden": "place.syracuse-square"
    }
   },
   "beat.s2": {
@@ -397,11 +397,11 @@
     "char.philostratus": "place.stonemason-workshop",
     "char.old-man": "place.syracuse-square",
     "char.young-man": "place.syracuse-square",
-    "char.guards": "place.castle",
+    "char.guards": "place.execution-ground",
     "char.bandits": "place.mountain-pass",
     "char.travelers": "place.road-to-city",
-    "char.crowd": "place.execution-ground",
-    "char.maiden": "place.execution-ground"
+    "char.crowd": "place.syracuse-square",
+    "char.maiden": "place.syracuse-square"
    }
   },
   "beat.21": {
@@ -416,11 +416,11 @@
     "char.philostratus": "place.stonemason-workshop",
     "char.old-man": "place.syracuse-square",
     "char.young-man": "place.syracuse-square",
-    "char.guards": "place.castle",
+    "char.guards": "place.execution-ground",
     "char.bandits": "place.mountain-pass",
     "char.travelers": "place.road-to-city",
-    "char.crowd": "place.execution-ground",
-    "char.maiden": "place.execution-ground"
+    "char.crowd": "place.syracuse-square",
+    "char.maiden": "place.syracuse-square"
    }
   },
   "beat.22": {
@@ -435,11 +435,11 @@
     "char.philostratus": "place.stonemason-workshop",
     "char.old-man": "place.syracuse-square",
     "char.young-man": "place.syracuse-square",
-    "char.guards": "place.castle",
+    "char.guards": "place.execution-ground",
     "char.bandits": "place.mountain-pass",
     "char.travelers": "place.road-to-city",
-    "char.crowd": "place.execution-ground",
-    "char.maiden": "place.execution-ground"
+    "char.crowd": "place.syracuse-square",
+    "char.maiden": "place.syracuse-square"
    }
   },
   "beat.s1": {
