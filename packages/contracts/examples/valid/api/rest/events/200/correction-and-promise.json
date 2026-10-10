@@ -11,7 +11,7 @@
       "actor": "narrator",
       "forPlayer": false,
       "place": "place.castle",
-      "summary": "衛兵は旅人を城門で止めていた",
+      "summary": "警吏は旅人を城門で止めていた",
       "causes": ["ev_01K7AZ00000000000000000044"],
       "visibleEffects": [
         {

@@ -24,10 +24,10 @@
       "status": "rejected",
       "attempts": 1,
       "failedRules": ["R7-capability"],
-      "reason": "メロスは衛兵に囲まれていて動けない",
+      "reason": "メロスは警吏に囲まれていて動けない",
       "checker": "rules-0.1"
     }
   },
   "failedRules": ["R7-capability"],
-  "reason": "メロスは衛兵に囲まれていて動けない"
+  "reason": "メロスは警吏に囲まれていて動けない"
 }

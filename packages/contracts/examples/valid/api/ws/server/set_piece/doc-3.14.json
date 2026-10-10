@@ -3,7 +3,7 @@
   "pieceId": "piece.gate-taken",
   "lines": [
     {
-      "narration": "衛兵が、あなたの前に槍を下ろした。"
+      "narration": "警吏が、あなたの前に槍を下ろした。"
     },
     {
       "speaker": "char.guards",
