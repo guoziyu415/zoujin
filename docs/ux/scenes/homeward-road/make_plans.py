@@ -293,7 +293,7 @@ svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBo
        '<defs><marker id="ah" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#2b2a26"/></marker>'
        '<marker id="sh" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#c99700"/></marker></defs>'
        f'<rect width="{W}" height="{H}" fill="{C["bg"]}"/>'
-       f'<text x="30" y="28" font-size="19" font-weight="bold" fill="{C["ink"]}" {FONT}>归途的停留点平面（UX v0.1，2026-10-10）</text>'
+       f'<text x="30" y="28" font-size="19" font-weight="bold" fill="{C["ink"]}" {FONT}>归途的停留点平面（v1.0，2026-10-10）</text>'
        + ''.join(parts) + '</svg>')
 open(out, 'w', encoding='utf-8').write(svg)
 print('ok', W, H)
