@@ -18,7 +18,10 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputShader } from "three/examples/jsm/shaders/OutputShader.js";
 
 // day-for-night after sunset, a little warmth in the highlights and cool in the shadows, contrast, saturation, vignette;
-// on the sRGB values, as the separate pass after OutputPass did before
+// on the sRGB values, as the separate pass after OutputPass did before.
+// The night's blue is the sky's light (art-direction 3.2; UX on PR #53): a fire and what it lights stay warm. Nothing
+// the night sky lights is warm or bright, so the tint lets go where a colour is warmer than grey or bright (a flame's
+// core); only deep in the night, so the afterglow and the pink belt at dusk grade as before
 const GRADE_UNIFORMS = "uniform float uVig, uWarm, uContrast, uNight, uSat;\n";
 const GRADE = `
   { vec3 col = gl_FragColor.rgb;
@@ -26,7 +29,9 @@ const GRADE = `
     col = max(mix(vec3(l), col, uSat), 0.0);
     col = mix(col, col * vec3(1.0 + uWarm, 1.0, 1.0 - uWarm), smoothstep(0.35, 0.9, l));
     col = mix(col, col * vec3(1.0 - uWarm*0.6, 1.0, 1.0 + uWarm), 1.0 - smoothstep(0.05, 0.35, l));
-    col = mix(col, vec3(dot(col, vec3(0.2126,0.7152,0.0722))) * vec3(0.62, 0.78, 1.18), uNight * 0.7);
+    l = dot(col, vec3(0.2126,0.7152,0.0722));
+    float lit = max(smoothstep(0.5, 1.0, (col.r - col.b) / (l + 0.03)), smoothstep(0.5, 0.9, l));
+    col = mix(col, vec3(l) * vec3(0.62, 0.78, 1.18), uNight * 0.7 * (1.0 - lit * smoothstep(0.4, 0.9, uNight)));
     col = (col - 0.5) * uContrast + 0.5;
     vec2 d = vUv - 0.5; col *= 1.0 - uVig * dot(d, d) * 2.2;
     gl_FragColor = vec4(clamp(col, 0.0, 1.0), gl_FragColor.a); }
