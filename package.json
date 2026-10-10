@@ -6,7 +6,8 @@
   "scripts": {
     "lint": "eslint .",
     "format:check": "prettier --check .",
-    "typecheck": "pnpm -r --if-present typecheck"
+    "typecheck": "pnpm -r --if-present typecheck",
+    "assets:plaza": "bash assets/pipeline/plaza/build.sh"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

@@ -1,0 +1,148 @@
+{
+  "sceneId": "scene.syracuse-square",
+  "about": "Hand-written scene layout: where people can walk, which area belongs to which place, the named spots (api-contract 0 'spot') and the exits. Plan coordinates in metres as in build_plaza.py: +x towards the castle, +y towards the temple, the gate street runs to -x (azimuth 294°). pack_scene.mjs rotates by rotationDeg about the up axis and writes glTF coordinates into scene.json. Spots where people leave for another scene are named way.<slug> (the exit. prefix belongs to the world model's ExitId).",
+  "rotationDeg": 144,
+  "defaultPlace": "place.syracuse-square",
+  "playerStartSpot": "plaza-southwest",
+  "walkable": [
+    {
+      "name": "plaza, gate street, castle steps, temple porch",
+      "polygon": [
+        [-39, -2.9],
+        [-18.1, -2.9],
+        [-18.1, -15.9],
+        [12.9, -15.9],
+        [12.9, -15.0],
+        [18.85, -15.0],
+        [18.85, 15.0],
+        [12.9, 15.0],
+        [12.9, 17.7],
+        [10.4, 17.7],
+        [10.4, 22.35],
+        [-10.4, 22.35],
+        [-10.4, 17.7],
+        [-18.1, 17.7],
+        [-18.1, 2.9],
+        [-39, 2.9]
+      ]
+    },
+    {
+      "name": "stonemason's yard and its gateway",
+      "polygon": [
+        [-17.75, -22.75],
+        [-6.75, -22.75],
+        [-6.75, -16.6],
+        [-10.65, -16.6],
+        [-10.65, -15.8],
+        [-12.55, -15.8],
+        [-12.55, -16.6],
+        [-17.75, -16.6]
+      ]
+    }
+  ],
+  "places": [
+    {
+      "id": "place.stonemason-workshop",
+      "about": "the walled yard south-west of the fountain; the gate in its north wall is the way in",
+      "polygon": [
+        [-18.0, -23.0],
+        [-6.5, -23.0],
+        [-6.5, -16.35],
+        [-18.0, -16.35]
+      ]
+    },
+    {
+      "id": "place.execution-ground",
+      "about": "the forecourt of the castle with the post (S-050: the same square becomes the execution ground)",
+      "polygon": [
+        [8.0, -9.0],
+        [19.0, -9.0],
+        [19.0, 9.0],
+        [8.0, 9.0]
+      ]
+    }
+  ],
+  "exits": [
+    {
+      "place": "place.road-to-city",
+      "spot": "way.road-to-city",
+      "about": "out through the city gate"
+    },
+    {
+      "place": "place.castle",
+      "spot": "way.castle",
+      "about": "the castle door at the top of the steps"
+    }
+  ],
+  "spots": {
+    "plaza-southwest": {
+      "at": [-14.5, -11.5],
+      "face": [14, 6],
+      "about": "first screen: south-west corner looking at the castle"
+    },
+    "gate-inside": {
+      "at": [-31.0, 0.0],
+      "face": [0, 0],
+      "about": "just inside the city gate"
+    },
+    "gate-street": { "at": [-24.0, 1.2], "face": [0, 0] },
+    "way.road-to-city": {
+      "at": [-38.0, 0.0],
+      "face": [-60, 0],
+      "about": "outside the gate; people leaving fade out here"
+    },
+    "fountain-east": { "at": [4.3, 2.0], "face": [0, 2] },
+    "fountain-west": { "at": [-4.3, 2.0], "face": [0, 2] },
+    "fountain-north": { "at": [0.0, 6.3], "face": [0, 2] },
+    "fountain-south": { "at": [0.0, -2.3], "face": [0, 2] },
+    "market-west": {
+      "at": [-6.5, -9.7],
+      "face": [-6.5, -12],
+      "about": "in front of the west stall"
+    },
+    "market-east": {
+      "at": [-1.1, -9.7],
+      "face": [-1.1, -12],
+      "about": "in front of the east stall"
+    },
+    "plaza-north": { "at": [-8.0, 13.0], "face": [0, 2] },
+    "plaza-east": { "at": [6.0, -8.0], "face": [0, 0] },
+    "temple-steps": {
+      "at": [-3.0, 18.2],
+      "face": [-3, 0],
+      "about": "on the lowest temple step"
+    },
+    "temple-porch": {
+      "at": [0.0, 21.4],
+      "face": [0, 0],
+      "about": "between the front columns and the temple door"
+    },
+    "workshop-gate": {
+      "at": [-11.6, -15.0],
+      "face": [-11.6, -20],
+      "about": "outside the yard gate, still in the square"
+    },
+    "workshop-yard": { "at": [-14.0, -19.0], "face": [-11.6, -16.4] },
+    "workshop-bench": {
+      "at": [-9.0, -20.4],
+      "face": [-9, -22],
+      "about": "at the stonemason's bench"
+    },
+    "stake": {
+      "at": [11.45, 0.0],
+      "face": [0, 0],
+      "about": "at the post, facing the square"
+    },
+    "stake-front": { "at": [8.2, 0.0], "face": [11, 0] },
+    "castle-steps": {
+      "at": [14.3, -5.0],
+      "face": [0, 0],
+      "about": "on the castle steps"
+    },
+    "way.castle": {
+      "at": [18.3, 0.0],
+      "face": [19, 0],
+      "about": "at the castle door; people going in fade out here"
+    }
+  }
+}

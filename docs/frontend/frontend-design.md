@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 版本 | **v1.0.1**（设计阶段定稿：吸收了后端、UX 两份评审，接口对齐 api-contract v0.3.6，写实画风按 D-019 定档，语音按 S-1b 实测；还要实测的列在第 16 节，见文末修订记录） |
+| 版本 | **v1.0.2**（设计阶段定稿：吸收了后端、UX 两份评审，接口对齐 api-contract v0.3.6，写实画风按 D-019 定档，语音按 S-1b 实测；还要实测的列在第 16 节，见文末修订记录） |
 | 作者 | 前端 |
 | 评审 | UX、后端 |
 | 依据 | `brief/handoff.md`、`pm/prd.md` v1.0、`pm/decisions.md`（到 S-073、D-022）、`data/contracts.md` v1.5、`data/data-design.md` v1.2（9.3）、`backend/api-contract.md` v0.3.6、`backend/backend-design.md` v1.0.6、`backend/spikes/results-s1.md`（8.5 S-1b）、`backend/reviews/frontend-v0.1.md`、`ux/ux-design.md` v1.0 和原型 v8、`ux/art-direction.md` v1.1、`ux/reviews/frontend-v0.8.md`、前端 spike S1、S2、S7 |
@@ -404,7 +404,7 @@ REST 数据（記憶帳列表、结局详情、书的清单）用 TanStack Query
 **故事走动怎么演**
 
 1. 收到 `commit.patch` 里某个角色的新 `spot`：在导航网格上从他现在的位置算路径（A* + 拉直，一次不到 1ms），按 `activity` 用走或跑的速度沿路径移动；行走动画的播放速度跟移动速度匹配（不滑步），转向按最大角速度平滑转过去，到了切成新的 `activity`（idle、work……）。
-2. 目标地点在别的场景（例：离开广场去王城）：走到场景出口的位置点（`exit.*`，美术在场景里放，对应世界模型 `adjacent`），然后淡出。从别的场景进来的角色在入口出现再走进来。
+2. 目标地点在别的场景（例：离开广场去王城）：走到场景出口的位置点（`way.*`，美术在场景里放，对应世界模型 `adjacent`；不用 `exit.`，那是世界模型 `ExitId` 的前缀），然后淡出。从别的场景进来的角色在入口出现再走进来。
 3. 去找另一个角色：走到对方旁边，两人面对面，播「说话」动作，第一版没有声音。**如果这次交谈在故事里算事件、而且对玩家可见**（contracts 2.6：玩家在场），玩家在 8m 内时显示一行灰色的旁白式字幕，内容取事件的 `summary`（例：「（メロスが老爺に、王のことを尋ねている）」），不另外生成台词、没有额外成本；真的出声（`npc_line`）是 P1（UX 评审）。
 4. 走在路上被玩家点了：前端让他停下、转向玩家。这次对话在故事里算在玩家所在的地点（api-contract 3.8）。
 
@@ -431,7 +431,7 @@ S1 测试页里的「路人 6 / 12 / 24 人闲逛」测的正是这件事（示�
 **美术和 UX 要多准备的**
 
 - 动画：除了 idle / walk / talk，加 run（メロス 赶路）、原地转身、招手 / 呼喊（走过来搭话）、头部看向目标（用骨骼朝向，不用 IK 库）。共用骨架，动画跨角色复用。
-- 场景：出口位置点 `exit.*`；每个角色常待位置点附近的表演走动范围。
+- 场景：出口位置点 `way.*`；每个角色常待位置点附近的表演走动范围。
 - UX（已回答，见上面各条）：走过来的提示、对话中别人等的样子、两个角色交谈时玩家能看到多少。玩家不在时发生的事放在幕切换的「その頃」里（最多 3 件，优先级：和玩家的约定 > keyMoment > 其他，`SonoKoro` 组件）；内容范围由 UX 和数据定（contracts 2.8）。
 
 ### 8.4 镜头与操作（已和 UX 对齐）
@@ -902,6 +902,7 @@ zg 问「不同 iPhone 不同配置不同效果，17 Pro Max 可以高一点」�
 
 ## 修订记录
 
+- v1.0.2（2026-10-10）：场景出口的位置点从 `exit.*` 改名 `way.*`，避开世界模型 `ExitId` 的 `exit.` 前缀（F-2a，C-2 评审时发现）。
 - v1.0.1（2026-10-07）：`too_late` 那句按 ux-design 7.6 显示一行地の文、不播声音；`melosInTime` 按 ux-design 4.3 只在会翻转时作为按钮第二行显示；記憶帳不显示 `voided` 的约定（ux-design 10.1）；第 14 节引用改为 v0.3.7（只改文字，字段同 v0.3.6）。按协调的接口一致性核对（`consistency/contract-check-2026-10-07.md` 前端表 F-1〜F-9）：`relationLabel` 改成契约第 4 节的 5 档并加 `relationLevel`；`WorldStore` 补快照字段（`deadline`、`forecast`、`player`、`places`、`actions`、`pending`、`interactables[].estimatedMinutes`）；「言い直す」窗口到 `turn_settled` 为止；六处「等后端」改成已定并指向 api-contract；事件投影字段按 2.4；人物走过来时走开发 `approach_dismiss`；CSP 注释的插画路径；`409` 的「新しく始める」；结局按 api-contract 2.8 的形状；引用 3.5 → 3.6；麦克风说明的条款已由 S-059 确认。
 - **v1.0**（2026-10-07）：设计阶段定稿。第 14 节改为以 api-contract v0.3.6 为准，前端以前提的 17 条要求后端都已采纳（对照 api-contract 第 9 节），只留画面和接口的对应表和三项不挡开发的开着的事；正文里的旧消息名按 v0.3 起的接口改（`world_patch` / `event_committed` / `chain_reveal` / `memory_updated` → `commit`，`turn_retract_rejected` → `turn_retract_result`，`activePlaythroughId` → `activePlaythrough`，turnSeq 每条连接从 1 数，「言い直す」按钮跟 `turn_settled` 收起）；15 的 F-10、F-13、F-15〜F-18、F-20、F-21 改为已对齐；第 0 节和依据按现在的文档版本更新。S2 测试页按 S-073 ② 把「出声 / 网络 / 麦克风」改成必选。
 - v0.9.6（2026-10-07）：收 S-1b 的 iPhone 4G 实测（results-s1.md 8.5）：2.2 语音验收改为〔实测〕通过（中位 1031ms、p95 1342ms）；7.7 各段填实测数，加「被打断的那一轮也要记」（按下打断时就发上一轮的 `talk_turn`）；16 的 S2 写明测了什么、没测什么；F-3 没有新数字，维持暂定。S2 测试页修了打断时上一轮不出记录的缺口，加 `extMicCount`。

@@ -1,0 +1,57 @@
+# 场景资产（F-2）：查进仓库的清单（预算、两档颜色、位置点和布局一致），再在干净环境里用草稿档从头生成一遍广场，
+# 证明「一条命令跑通」。正式档的光照图要约半小时，不在 CI 里烘。
+name: assets
+
+on:
+  pull_request:
+    paths:
+      - "assets/pipeline/plaza/**"
+      - "assets/scenes/**"
+      - "assets/budgets.json"
+      - "assets/pipeline/package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/assets.yml"
+  push:
+    branches: [main]
+    paths:
+      - "assets/pipeline/plaza/**"
+      - "assets/scenes/**"
+      - "assets/budgets.json"
+      - "assets/pipeline/package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/assets.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  plaza:
+    name: plaza manifest, draft build from scratch
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: committed manifest (budgets, two-tier colour, spots against layout.json)
+        run: node assets/pipeline/plaza/check_scene.mjs assets/scenes/syracuse-square
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: assets/pipeline/plaza/requirements.txt
+      - name: Blender as a Python module (bpy) and the X11/GL libraries it links
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1
+          uv venv --python 3.13 "$RUNNER_TEMP/bpy"
+          uv pip install --python "$RUNNER_TEMP/bpy/bin/python" -r assets/pipeline/plaza/requirements.txt
+      - name: build the plaza from scratch (draft lightmaps)
+        run: BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/plaza/build.sh draft "$RUNNER_TEMP/plaza"
