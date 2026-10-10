@@ -1,0 +1,11 @@
+# 原样搬进来的文件不按 prettier 改格式（R-0）。
+docs/
+worlds/
+evals/
+spikes/
+fixtures/
+packages/worldsim/reference/
+packages/contracts/**/generated/
+assets/**/reports/
+pnpm-lock.yaml
+uv.lock

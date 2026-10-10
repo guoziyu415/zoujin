@@ -1,0 +1,41 @@
+# uv workspace 根（R-0）。成员见 [tool.uv.workspace]；spikes/backend 有自己的 pyproject 和 uv.lock，不进 workspace。
+[project]
+name = "zoujin"
+version = "0.0.0"
+requires-python = ">=3.13,<3.14"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.18",
+    "pytest>=8.4",
+    "pytest-socket>=0.7",
+    "ruff>=0.16",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["services/backend", "packages/worldsim", "packages/contracts", "evals"]
+exclude = ["spikes/*"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 120
+# evals/ 是数据的脚本（规则由数据定），assets/pipeline/ 是前端原样搬来的 Blender 脚本（前端整理时纳入）。
+extend-exclude = ["spikes", "packages/worldsim/reference", "evals", "assets/pipeline", "worlds", "docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+files = ["services/backend/src", "services/backend/tests", "packages/worldsim/src", "packages/contracts/src"]
+exclude = ["^spikes/", "^packages/worldsim/reference/"]
+
+[tool.pytest.ini_options]
+testpaths = ["services", "packages", "evals"]
+norecursedirs = ["reference", ".venv", "node_modules"]
+# 测试禁网（dev-plan 2.4）：只放行本机，PostgreSQL 服务容器连得上，真模型连不上。
+addopts = "--import-mode=importlib --disable-socket --allow-unix-socket --allow-hosts=127.0.0.1,::1,localhost"

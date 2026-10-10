@@ -1,0 +1,6 @@
+# pnpm workspace（R-0）。spikes/ 下的页面和脚本不进 workspace。
+packages:
+  - apps/web
+  - packages/contracts
+  - assets/pipeline
+  - "!spikes/**"

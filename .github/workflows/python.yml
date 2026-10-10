@@ -1,0 +1,87 @@
+# Python：格式、类型、单元测试（禁网），世界模型和评测集的校验（dev-plan 2.4）。
+name: python
+
+on:
+  pull_request:
+    paths:
+      - "**.py"
+      - "**/pyproject.toml"
+      - "uv.lock"
+      - ".python-version"
+      - "worlds/**"
+      - "evals/**"
+      - ".github/workflows/python.yml"
+      - ".github/scripts/**"
+  push:
+    branches: [main]
+    paths:
+      - "**.py"
+      - "**/pyproject.toml"
+      - "uv.lock"
+      - ".python-version"
+      - "worlds/**"
+      - "evals/**"
+      - ".github/workflows/python.yml"
+      - ".github/scripts/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-test:
+    name: ruff, mypy, pytest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --locked --all-packages
+      - run: uv run ruff check
+      - run: uv run ruff format --check
+      - run: uv run mypy
+      - run: uv run pytest
+
+  world:
+    name: world model, 24 simulations, eval seeds, generated files
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+      - run: uv python install 3.13
+      - run: PYTHON="$(uv python find 3.13)" bash .github/scripts/check_world.sh
+
+  # B-0 打开：单事务和并发测试要真的 PostgreSQL。现在没有测试，先不跑，不花 Actions 分钟。
+  db:
+    name: tests against PostgreSQL
+    if: ${{ false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: zoujin
+          POSTGRES_PASSWORD: zoujin
+          POSTGRES_DB: zoujin_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U zoujin"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --locked --all-packages
+      - run: uv run pytest -m db
+        env:
+          DATABASE_URL: postgresql://zoujin:zoujin@127.0.0.1:5432/zoujin_test

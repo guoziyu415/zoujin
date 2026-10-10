@@ -1,0 +1,65 @@
+# Node：eslint、prettier、tsc、预算文件（dev-plan 2.4）。
+name: node
+
+on:
+  pull_request:
+    paths:
+      - "apps/**"
+      - "packages/contracts/**"
+      - "assets/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "tsconfig.base.json"
+      - "eslint.config.js"
+      - ".prettierignore"
+      - ".nvmrc"
+      - ".github/**"
+      - "*.md"
+      - "services/**/*.md"
+      - "packages/**/*.md"
+      - "infra/**"
+  push:
+    branches: [main]
+    paths:
+      - "apps/**"
+      - "packages/contracts/**"
+      - "assets/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "tsconfig.base.json"
+      - "eslint.config.js"
+      - ".prettierignore"
+      - ".nvmrc"
+      - ".github/**"
+      - "*.md"
+      - "services/**/*.md"
+      - "packages/**/*.md"
+      - "infra/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-typecheck:
+    name: eslint, prettier, tsc, budgets
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      # F-0（首屏 JS）、F-2（场景、人物）接上真正的预算检查；现在只确认文件能读。
+      - run: node -e "JSON.parse(require('fs').readFileSync('assets/budgets.json','utf8'))"

@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "source": "docs/frontend/frontend-design.md 10.1, 10.6.2 (D-019)",
+  "web": {
+    "firstScreenJsKbBrotli": 120,
+    "threeChunkKb": 250,
+    "threeChunkWebgpuKb": 380
+  },
+  "scene": {
+    "entryPackMb": 8,
+    "envTotalMb": 10,
+    "envTotalHighMb": 19,
+    "firstEntryTotalMb": 10,
+    "maxDrawCalls": 120,
+    "textureVramMb": 150
+  },
+  "character": {
+    "talkStd": {
+      "maxMb": 4,
+      "tris": [20000, 30000],
+      "materials": 5,
+      "drawCalls": 10,
+      "texture": 1024
+    },
+    "talkHigh": {
+      "maxMb": 6.5,
+      "maxTris": 40000,
+      "materials": 5,
+      "drawCalls": 10,
+      "skinTexture": 2048,
+      "texture": 1024
+    },
+    "walk": {
+      "maxMb": 0.5,
+      "maxTris": 8000,
+      "materials": 2,
+      "maxBones": 60,
+      "texture": 1024
+    },
+    "sharedAnimsMb": 0.3
+  }
+}
