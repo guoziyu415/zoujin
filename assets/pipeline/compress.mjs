@@ -1,6 +1,6 @@
 // Phone formats for the character glbs: KTX2 textures, quantized + meshopt geometry.
 // node compress.mjs <in_dir> <out_dir>
-// Tiers (frontend-design 10.6.2): std = all colour 1024, normals 512 (longer side);
+// Tiers (frontend-design 10.6.2): std = all colour 1024, normals 512 (longer side) except the skin's 1024;
 // high = skin colour (+normal) 2048, the rest as std; walk = one 1024 atlas.
 import { NodeIO, PropertyType } from "@gltf-transform/core";
 import { ALL_EXTENSIONS, KHRTextureBasisu } from "@gltf-transform/extensions";
@@ -125,6 +125,8 @@ async function run(file, tier) {
       if (tier === "high" && (skin || name === "tunic"))
         size = isNormal ? 1024 : 2048;
       if (tier === "high" && skin) size = 2048;
+      // skin relief on std too (UX, art-direction 9.5: the high tier only gets sharper, it doesn't add things)
+      if (tier === "std" && skin && isNormal) size = 1024;
       const [n, encoded] = await encodeTexture(tex, size, isNormal);
       rep.textures[`${name}.${slot}`] = {
         size: encoded,
