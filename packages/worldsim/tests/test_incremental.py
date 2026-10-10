@@ -321,13 +321,95 @@ def test_apply_rejects() -> None:
         apply({**WORLD, "worldModelVersion": "other"}, s, ev(1050))
 
 
-def test_beat_changes_add_up_like_arrival_delta() -> None:
+AFF = {a["id"]: a["effects"] for a in WORLD["affordances"]}
+
+
+def test_beat_changes_net_out() -> None:
+    """契约第 3 节（1.6 写清，后端评审 W-1）：一个还没结果的节拍只有一种改动，推迟、提前按带符号的分钟相加。"""
     s = at(1050)
     delay = {"op": "beat", "beat": "beat.18", "to": "delayed", "minutes": 30}
     s = apply(WORLD, s, ev(1050, delay, delay))
     assert s["overrides"]["beat.18"] == {"to": "delayed", "minutes": 60}
     s = apply(WORLD, s, ev(1050, {"op": "beat", "beat": "beat.18", "to": "hastened", "minutes": 10}))
+    assert s["overrides"]["beat.18"] == {"to": "delayed", "minutes": 50}
+    s = apply(WORLD, s, ev(1050, {"op": "beat", "beat": "beat.18", "to": "hastened", "minutes": 50}))
+    assert "beat.18" not in s["overrides"]  # 净值 0：没有改动
+    s = apply(WORLD, s, ev(1050, {"op": "beat", "beat": "beat.18", "to": "hastened", "minutes": 10}))
     assert s["overrides"]["beat.18"] == {"to": "hastened", "minutes": 10}
+    s = apply(WORLD, s, ev(1050, {"op": "beat", "beat": "beat.18", "to": "prevented"}))
+    assert s["overrides"]["beat.18"] == {"to": "prevented"}  # prevented 顶掉之前的
+    for change in (delay, {"op": "beat", "beat": "beat.18", "to": "prevented"}):
+        with pytest.raises(ValueError, match="prevented"):
+            apply(WORLD, s, ev(1050, change))
+
+
+def test_altered_does_not_mix() -> None:
+    s = at(1050)
+    altered = {"op": "beat", "beat": "beat.18", "to": "altered", "outcomes": []}
+    delay = {"op": "beat", "beat": "beat.18", "to": "delayed", "minutes": 30}
+    for first, second in ((altered, delay), (delay, altered), (altered, altered)):
+        with pytest.raises(ValueError, match="不能再登记"):
+            apply(WORLD, s, ev(1050, first, second))
+        assert codes(check_effects(WORLD, s, [first, second], "action")) == [(1, "bad-state")]
+    s = apply(WORLD, s, ev(1050, altered, {"op": "beat", "beat": "beat.18", "to": "prevented"}))
+    assert s["overrides"]["beat.18"] == {"to": "prevented"}
+
+
+def test_hold_then_help_at_the_river_nets_out() -> None:
+    """后端的实测（旅人，4980）：先「引き止める」再「浅瀬を探す」= 净推迟 20，来不及；顺序反过来一样。
+    拖住以后浅瀬按钮的实际值是 −10（以前是 −40）。"""
+    s = at(4980)
+    hold, shallows = AFF["aff.river-hold"], AFF["aff.river-shallows"]
+    assert arrival_delta(WORLD, apply(WORLD, s, ev(4980, *hold)), shallows, 4980)["minutes"] == -10
+    net = apply(WORLD, s, ev(4980, {"op": "beat", "beat": "beat.18", "to": "delayed", "minutes": 20}))
+    want = settle(WORLD, net, None)[1]
+    assert want["beats"]["beat.24"] == "prevented"
+    for first, second in ((hold, shallows), (shallows, hold)):
+        both = apply(WORLD, apply(WORLD, s, ev(4980, *first)), ev(4980, *second))
+        assert both["overrides"] == net["overrides"]
+        assert settle(WORLD, both, None)[1]["beats"] == want["beats"]
+
+
+def test_nothing_after_a_detour_changes_the_bandits() -> None:
+    """后端的实测：先走脇道（beat.19 prevented），再「引き止める」（beat.19 delayed 30），山贼不能回来。"""
+    s = at(4980)
+    detour, hold = AFF["aff.pass-detour-told"], AFF["aff.pass-hold"]
+    assert codes(check_effects(WORLD, s, [*detour, *hold], "action")) == [(len(detour), "bad-state")]
+    s = apply(WORLD, s, ev(4980, *detour))
+    assert codes(check_effects(WORLD, s, hold, "action")) == [(0, "bad-state")]
+    with pytest.raises(ValueError, match="prevented"):
+        apply(WORLD, s, ev(4980, *hold))
+    with pytest.raises(ValueError, match="prevented"):
+        arrival_delta(WORLD, s, hold, 4980)
+    assert settle(WORLD, s, None)[1]["beats"]["beat.19"] == "prevented"
+
+
+def test_schedule_origin_is_only_for_beats_and_the_deadline() -> None:
+    """后端评审第 2 条：钟声之类的系统事件写成 schedule / action，期限就再也不结算了。现在抛 ValueError。"""
+    dl = WORLD["clock"]["deadline"]["t"]
+    s = at(1050)
+    with pytest.raises(ValueError, match="早于期限"):
+        apply(WORLD, s, ev(1050, origin="schedule", type="action"))
+    with pytest.raises(ValueError, match="只用于"):
+        apply(WORLD, s, ev(1050, origin="schedule", type="say"))
+    two = [{"op": "beat", "beat": b, "to": "prevented"} for b in ("beat.18", "beat.19")]
+    with pytest.raises(ValueError, match="只有一条"):
+        apply(WORLD, s, ev(1050, *two, origin="schedule", type="beat"))
+    s = at(dl)
+    assert s["deadline"]
+    with pytest.raises(ValueError, match="结算过"):
+        apply(WORLD, s, ev(dl, origin="schedule", type="action"))
+
+
+def test_apply_checks_seq_and_that_the_clock_was_settled() -> None:
+    s = at(1050)
+    s = apply(WORLD, s, ev(1050, seq=s["seq"] + 1))
+    with pytest.raises(ValueError, match="seq"):
+        apply(WORLD, s, ev(1050, seq=s["seq"] + 2))
+    with pytest.raises(ValueError, match="先 settle"):
+        apply(WORLD, s, ev(4980))  # 中间的节拍没结算
+    with pytest.raises(ValueError, match="先 settle"):
+        apply(WORLD, initial_state(WORLD, ROLE), ev(1050))
 
 
 def codes(problems: list[Any]) -> list[tuple[int, str]]:

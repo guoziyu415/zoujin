@@ -2,7 +2,7 @@
 
 负责人：数据工程 · 状态：**v1.6**（1.5 在 M2-0 冻结（C-2），以后只做加法；1.6 是冻结后第一个加法版本）。v1.0 是基线（S-033），v1.1 是 PM 接受的新基线（S-061〜S-063），已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改。1.1 只做加法：加进 D-012〜D-015 的落地（S-029〜S-032：互助、约定、打算、即兴设定、导演事件、生成的结局、角色结局）、S-034〜S-053 里和数据有关的决定、后端设计 v1.0 第 12 节的 13 条提案和 UX 设计 v1.0 第 18.3 节的要求。1.2 也只做加法：幕末说出的打算（S-031 ③）、作废和出戏的一轮怎么落数据（S-054、S-057）。1.3 加随身的东西（UX 5.1，C-14）。1.4 按 UX 对世界模型的校对和 S-064 加：有条件的台词和设计台词、互助的效果、节拍的变体、过场里的二选一、第四幕按钮上「对梅洛斯的影响」。1.5 给过场的选项也加上「对梅洛斯的影响」和选后的一句（UX 校对 7.3、ux-design 4.5）。1.6 把两条只写在说明文字里的取值条件写成数据（`StateVar.valueRequires`，C-16），结局卡改成 1〜3 人、每一局都出（C-17）。跨角色决定见 `pm/decisions.md`。还在等别人定的事列在第 7 节。
 UX、前端请看第 2.8 节（幕）、第 4 节（记忆）、第 5 节（结局）。1.1 新增或写清的地方都标了「（1.1）」，文末变更记录有汇总。
-最近更新：2026-10-10（1.6：`StateVar.valueRequires`（C-16）；结局卡 1〜3 人、模板尾声的局也出卡，1.6 起写入的结局哪些字段必写（C-17）；写清变量 ID 的驼峰和 promise 效果的 `promiseId?`）
+最近更新：2026-10-10（1.6：`StateVar.valueRequires`（C-16）；结局卡 1〜3 人、模板尾声的局也出卡，1.6 起写入的结局哪些字段必写（C-17）；写清变量 ID 的驼峰和 promise 效果的 `promiseId?`；同一个节拍几次改动怎么合、`origin: "schedule"` 只用于节拍和期限）
 
 四个契约：**WorldModel**（世界模型，静态、按书版本化）、**Event**（运行时事件，只追加）、**Memory**（角色对玩家的记忆，可删除）、**Ending**（结局）。另有两个支撑结构：**Playthrough**（一局游戏）和 **WorldState**（由事件推出的当前状态）。
 
@@ -569,6 +569,8 @@ type Event = {
   origin?: "turn" | "action" | "schedule" | "plan" | "director" | "act" | "memory";
                                    // （1.1）事件从哪来：玩家一轮对话 / 玩家的动作 / 到点的节拍和期限 / 人物的打算 /
                                    // 导演（S-031 ②）/ 幕切换 / 記憶帳删除。只给评测、Trace 和「その頃」排序，不推前端
+                                   // （1.6 写清，W-1 评审）schedule 只用于到点的节拍（type = "beat"，只有一条 beat 结果）和期限
+                                   // （type = "action"，每局一条，t 不早于 clock.deadline.t）；幕的开始、钟声、天色等别的系统事件不用它
   beneficiary?: "player" | string; // （1.1）这件事是为谁做的；人物为玩家做的事 = "player"（記憶帳「してくれたこと」、结局）
   confirmed?: true;                // （1.1）提交前经过故事里的意图确认（S-040），一局 0〜3 次
   place: string;
@@ -593,6 +595,9 @@ type Effect =
   | { op: "inc"; var: string; by: number }
   | { op: "beat"; beat: string; to: "happened" | "prevented" | "delayed" | "hastened" | "altered"; minutes?: number; outcomes?: Effect[]; note?: string }
                                    // altered 时 outcomes = 改变后的结果（代替世界模型里的 outcomes）
+                                   // （1.6 写清，W-1 评审）本局对一个还没结果的节拍只有一种改动，玩家先后做的几件事这样合：
+                                   //   delayed、hastened 按带符号的分钟相加（推迟为正），净值 0 = 没有改动；prevented 顶掉之前的推迟、提前、改写；
+                                   //   别的组合（已登记 prevented 之后再改、altered 和推迟或提前混用、第二次 altered）自检不过（共享规则报 bad-state）
   | { op: "learn"; character: string; fact: string }   // 某角色知道了某事实；（1.1）fact 也可以是 rf_…（别人的即兴设定）
   | { op: "relocate"; character: string; place: string }
   | { op: "promise"; promiseId?: string; change: "made" | "kept" | "broken" | "voided";  // （1.1）约定，见 3.1 的 Promise；
@@ -640,7 +645,7 @@ type CheckResult = {
 **被否决和被修正是两回事（后端评审第 1 条）：**
 
 - **角色说了做不到的话**（例：答应陪你去王城，但他正被看守）：这句话不是事件，不需要修正。这一轮提取出的候选事件按规则写一条 `check.status = "rejected"`（`effects` 为空，`dt = 0`，`reason` 写原因），后端在给这个角色的下一次局势说明里加「圆回提示」（后端内部，不进契约）。
-- **叙事者撤回自己已提交的事件**（例：事后发现某事件违背了一个当时没检查到的前提）：追加 `type: "correction"`、`actor: "narrator"`、`supersedes` 指向旧事件，`effects` 写抵消和修正后的效果。旧事件不改。
+- **叙事者撤回自己已提交的事件**（例：事后发现某事件违背了一个当时没检查到的前提）：追加 `type: "correction"`、`actor: "narrator"`、`supersedes` 指向旧事件，`effects` 写抵消和修正后的效果。旧事件不改。（1.6 写清）抵消一次推迟或提前 = 同一个节拍反方向的同样分钟数（按上面 `Effect` 的注释相加）。
 
 ```ts
 type Utterance = {                 // 玩家和角色的原话，单独存放，可删除
@@ -961,3 +966,4 @@ type CharacterEnding = {           // （1.1）
   - Ending：`card.characterLines` 放宽到 1〜3 人，一个也没排上名时放梅洛斯；模板尾声的局也出卡；1.6 起写入的结局 `world.title`、`player.didForYou` / `youDid`、`characters`、`card` 必写（第 5 节，C-17）。读的一方要能排 1 行。
   - 写清（C-2 评审定的两件事）：状态变量 ID 的段里可以用驼峰（第 0 节）；`Effect.promise` 的 `promiseId` 在类型里可选，提交的事件必带（第 3 节）。
   - R2 加上 `valueRequires`（第 3 节规则表）。只有到点的节拍和期限（`origin: "schedule"`）不判；导演事件的 `actor` 也是 `system`，照样判（后端评审）。
+  - 写清（后端评审 W-1，2026-10-10）：同一个节拍的几次改动怎么合（第 3 节 `Effect` 的注释；以前共享规则换方向时整条替换，先拖慢 30 再帮快 10 成了帮快 10）；`origin: "schedule"` 只用于到点的节拍和期限（第 3 节）。

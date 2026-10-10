@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import copy
 from collections import defaultdict
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any
@@ -27,6 +28,39 @@ OPS: dict[str, Callable[[Any, Any], bool]] = {
     "in": lambda x, y: x in y,
 }
 BIG = 10**9
+SIGN = {"delayed": 1, "hastened": -1}  # 推迟的分钟为正，提前为负
+
+
+def change_conflict(old: Override | None, new: Mapping[str, Any]) -> str | None:
+    """contracts 第 3 节（1.6 写清）：本局对一个还没结果的节拍只有一种改动。old 是已登记的改动（没有是 None），
+    new 是新的 {to, minutes?, outcomes?, note?}。能合返回 None，不能合返回原因（自检报 bad-state）。"""
+    if old is None or (new["to"] == "prevented" and old["to"] != "prevented"):
+        return None
+    if old["to"] == "prevented":
+        return "已经登记了 prevented，不能再改"
+    if old["to"] in SIGN and new["to"] in SIGN:
+        return None
+    return f"已经登记了 {old['to']}，不能再登记 {new['to']}（altered 不和推迟、提前混用，也只登记一次）"
+
+
+def merge_change(over: dict[str, Override], e: Effect) -> None:
+    """把一条 {op: beat} 改动合进 over（节拍 ID → 改动，就地改）：
+    - delayed、hastened 按带符号的分钟相加，净值 0 就去掉这条改动；
+    - prevented 顶掉之前的推迟、提前、改写；
+    - 其他组合（已登记 prevented 之后再改；altered 和推迟、提前混用；第二次 altered）抛 ValueError。"""
+    bid = e["beat"]
+    new: Override = {k: copy.deepcopy(v) for k, v in e.items() if k not in ("op", "beat")}
+    old = over.get(bid)
+    why = change_conflict(old, new)
+    if why:
+        raise ValueError(f"{bid}：{why}")
+    if new["to"] in SIGN:
+        net = SIGN[new["to"]] * new["minutes"] + (SIGN[old["to"]] * old["minutes"] if old else 0)
+        if net == 0:
+            over.pop(bid, None)
+            return
+        new = {**new, "to": "delayed" if net > 0 else "hastened", "minutes": abs(net)}
+    over[bid] = new
 
 
 def role_of(world: World, role_id: str) -> Mapping[str, Any]:
@@ -262,17 +296,13 @@ class Sim:
         self, sc: Scenario, effects: Sequence[Effect], t: int, *, role: str, place: str | None = None
     ) -> dict[str, Any]:
         """S-066 ①：本局到此为止是情景 sc，在时刻 t 再提交 effects，梅洛斯到刑场（watchBeat）会晚（+）或早（−）几分钟。
-        返回 {"minutes": 分钟数（含到达下限）, "inTime": 做了以后还赶不赶得上}。分钟数用去掉 window.latest 的副本算。"""
+        返回 {"minutes": 分钟数（含到达下限）, "inTime": 做了以后还赶不赶得上}。分钟数用去掉 window.latest 的副本算。
+        effects 里的节拍改动按 merge_change() 合进 sc 已有的改动；合不了（自检的 bad-state）抛 ValueError。"""
         wb = self.world["clock"]["deadline"].get("watchBeat")
         beats: dict[str, Override] = {b: dict(o) for b, o in sc.get("beats", {}).items()}
         for e in effects:
-            if e.get("op") != "beat":
-                continue
-            o, new = beats.get(e["beat"]), {k: v for k, v in e.items() if k not in ("op", "beat")}
-            if o and o.get("to") == new.get("to") and new.get("to") in ("delayed", "hastened"):
-                o["minutes"] += new["minutes"]
-            else:
-                beats[e["beat"]] = new
+            if e.get("op") == "beat":
+                merge_change(beats, e)
         rest = [x for x in effects if x.get("op") != "beat"]
         after = {
             **sc,

@@ -15,6 +15,10 @@ settle() 写出的系统事件）都用 apply() 应用。settle() 自己也是�
 - 期限：时钟到 clock.deadline.t 时，按那一刻的状态判 onDeadline，成立的规则写成一个系统事件。
   没有规则成立也写一个 effects 为空的系统事件：状态只由事件推出，靠它记下「期限已经结算过」。
 
+- 本局对一个还没结果的节拍只有一种改动（契约第 3 节，1.6 写清）：推迟、提前按带符号的分钟相加，净值 0 就去掉；
+  prevented 顶掉之前的改动；别的组合 check_effects() 报 bad-state，apply() 抛 ValueError（sim.merge_change）。
+- origin = "schedule" 只用于到点的节拍（type beat，一条 beat 结果）和期限（type action，每局一条，不早于期限）。
+
 一口气推演没有、这里才有的两处，24 次推演都不受影响：
 ① 玩家在 t 时登记的改动让某个还没结果的节拍的排定时间提前到 t 之前，这个节拍在 t 判
   （一口气推演是从头就知道全部改动）；
@@ -28,7 +32,7 @@ import json
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any, NotRequired, TypedDict
 
-from .sim import BIG, OCCURRED, Effect, Override, Sim, World, role_of
+from .sim import BIG, OCCURRED, Effect, Override, Sim, World, change_conflict, merge_change, role_of
 
 SCHEDULE = "schedule"  # Event.origin：到点的节拍和期限
 
@@ -141,12 +145,21 @@ def flat(state: SimState) -> dict[str, Any]:
 
 
 def apply(world: World, state: SimState, event: Mapping[str, Any]) -> SimState:
-    """应用一个事件，返回新的状态（不改传进来的）。用到 event 的 t、dt、origin、type、effects，有的话还有 eventId。
+    """应用一个事件，返回新的状态（不改传进来的）。用到 event 的 t、dt、origin、type、effects，有的话还有 eventId、seq。
 
     origin = "schedule" 的系统事件里，beat 效果是节拍的结果；其他事件里是本局的改动（delayed / hastened /
-    prevented / altered），to = "happened" 契约没定义，抛 ValueError。别的不合法的地方也抛 ValueError，
-    叙事者应该先用 check_effects() 挡掉。"""
+    prevented / altered，按 sim.merge_change 合），to = "happened" 契约没定义，抛 ValueError。
+    别的不合法的地方也抛 ValueError，叙事者应该先用 check_effects() 挡掉：
+    - 不是 schedule 的事件之前还有没结算的节拍或期限（没先 settle 到它的 t；同一时刻的上一个事件之后也要再 settle，
+      它可能让在等前提的节拍成立）。重放事件日志时这条能抓到漏写的系统事件；
+    - 带 seq 的事件，seq 不是上一个 + 1；
+    - schedule 事件不是到点的节拍或期限，或期限写了第二次、早于期限。"""
     _same_world(world, state)
+    if event.get("origin") != SCHEDULE and (state["cursor"] is None or event["t"] >= state["cursor"]):
+        due = settle(world, state, event["t"])[0]
+        if due:
+            what = "、".join(d["beat"] or "期限" for d in due)
+            raise ValueError(f"t={event['t']} 之前还有没结算的 {what}：先 settle 到 {event['t']} 再 apply")
     return _apply(_Sim(world), state, event)
 
 
@@ -154,8 +167,12 @@ def _apply(sim: Sim, state: SimState, event: Mapping[str, Any]) -> SimState:
     t, dt = event["t"], event.get("dt", 0)
     if state["cursor"] is not None and t < state["cursor"]:
         raise ValueError(f"事件的 t 倒退：{t} < {state['cursor']}")
-    s = copy.deepcopy(state)
+    if "seq" in event and event["seq"] != state["seq"] + 1:
+        raise ValueError(f"seq 不连续：{event['seq']}，上一个是 {state['seq']}")
     system = event.get("origin") == SCHEDULE
+    if system:
+        _check_schedule_event(sim, state, event)
+    s = copy.deepcopy(state)
     eid = event.get("eventId")
     for e in event["effects"]:
         _apply_effect(sim, s, e, t, system, eid)
@@ -165,6 +182,23 @@ def _apply(sim: Sim, state: SimState, event: Mapping[str, Any]) -> SimState:
     s["cursor"] = t
     s["seq"] += 1
     return s
+
+
+def _check_schedule_event(sim: Sim, state: SimState, event: Mapping[str, Any]) -> None:
+    """契约第 3 节（1.6 写清）：origin = "schedule" 只用于到点的节拍和期限，别的系统事件不用它。"""
+    ty = event.get("type")
+    if ty == "beat":
+        n = sum(1 for e in event["effects"] if e["op"] == "beat")
+        if n != 1:
+            raise ValueError(f"到点的节拍事件要有且只有一条 beat 效果，这里 {n} 条")
+    elif ty == "action":
+        dl = sim.world["clock"]["deadline"]["t"]
+        if state["deadline"]:
+            raise ValueError("期限已经结算过：每局只有一条期限事件")
+        if event["t"] < dl:
+            raise ValueError(f"期限事件的 t={event['t']} 早于期限 {dl}")
+    else:
+        raise ValueError(f"origin = schedule 只用于到点的节拍（type beat）和期限（type action），不能是 {ty!r}")
 
 
 def _apply_effect(sim: Sim, s: SimState, e: Effect, t: int, system: bool, eid: str | None) -> None:
@@ -249,11 +283,7 @@ def _apply_beat_change(s: SimState, e: Effect) -> None:
         raise ValueError(f"非系统事件里的 {{op: beat, to: happened}} 契约没定义：{bid}")
     if bid in s["beats"]:
         raise ValueError(f"{bid} 已经有结果（{s['beats'][bid]}），不能再改")
-    o, new = s["overrides"].get(bid), {k: copy.deepcopy(v) for k, v in e.items() if k not in ("op", "beat")}
-    if o and o.get("to") == new.get("to") and new.get("to") in ("delayed", "hastened"):
-        o["minutes"] += new["minutes"]  # 同一个节拍再推迟或再提前，分钟相加（参考实现 arrival_delta 的写法）
-    else:
-        s["overrides"][bid] = new
+    merge_change(s["overrides"], e)
 
 
 def settle(world: World, state: SimState, t2: int | None) -> tuple[list[Draft], SimState]:
@@ -480,7 +510,7 @@ def predict(world: World, state: SimState) -> str | None:
 def arrival_delta(world: World, state: SimState, effects: Sequence[Effect], t: int) -> dict[str, Any]:
     """S-066 ①，契约 2.10：在 t 提交 effects，梅洛斯到刑场（watchBeat）会晚（+）或早（−）几分钟，做了以后还赶不赶得上。
     和 Sim.arrival_delta 同一个算法：分钟数在去掉 window.latest 的世界里，做和不做各结算到底再比排定时间。
-    state 要先 settle 到 t。"""
+    state 要先 settle 到 t。effects 和已登记的改动合不了（check_effects 的 bad-state）时抛 ValueError。"""
     wb = world["clock"]["deadline"].get("watchBeat")
     loose = {**world, "beats": [{**b, "window": {**b["window"], "latest": BIG}} for b in world["beats"]]}
     event = {"t": t, "dt": 0, "origin": "action", "effects": list(effects)}
@@ -505,6 +535,7 @@ def check_effects(world: World, state: SimState, effects: Iterable[Effect], orig
     templates = {x["id"] for c in world["characters"] for x in c.get("promiseTemplates", [])}
     run_facts = set(state["runFacts"])
     promises = {k: p["status"] for k, p in state["promises"].items()}
+    over = copy.deepcopy(state["overrides"])  # 同一批里前面的改动也算（merge_change）
     system = origin == SCHEDULE
     out: list[Problem] = []
 
@@ -552,7 +583,7 @@ def check_effects(world: World, state: SimState, effects: Iterable[Effect], orig
         elif op == "promise":
             _check_promise(i, e, who, sim, templates, promises, bad)
         elif op == "beat":
-            _check_beat(i, e, sim, state, system, bad)
+            _check_beat(i, e, sim, state, over, system, bad)
         else:
             bad(i, "bad-op", f"未知的效果 {op}")
     if not system and not out:  # 形状都对了再按 valueRequires 判，规则照 Sim.value_requires（按每个 effect 之前的状态）
@@ -611,7 +642,9 @@ def _check_promise(
         bad(i, "bad-value", f"promise.change 不认识：{change!r}")
 
 
-def _check_beat(i: int, e: Effect, sim: Sim, state: SimState, system: bool, bad: Bad) -> None:
+def _check_beat(
+    i: int, e: Effect, sim: Sim, state: SimState, over: dict[str, Override], system: bool, bad: Bad
+) -> None:
     bid, to = e.get("beat"), e.get("to")
     if bid not in sim.beats:
         bad(i, "unknown-id", f"节拍不存在：{bid}")
@@ -619,18 +652,27 @@ def _check_beat(i: int, e: Effect, sim: Sim, state: SimState, system: bool, bad:
     if to not in ("happened", "prevented", "delayed", "hastened", "altered"):
         bad(i, "bad-value", f"beat.to 不认识：{to!r}")
         return
+    ok = True
     if to in ("delayed", "hastened"):
         m = e.get("minutes")
         if not isinstance(m, int) or isinstance(m, bool) or m < 0:
             bad(i, "bad-value", f"{to} 要写 minutes（≥ 0 的整数）：{m!r}")
+            ok = False
     if to == "altered" and not system and not isinstance(e.get("outcomes"), list):
         bad(i, "bad-value", "altered 要写 outcomes（改变后的结果）")
+        ok = False
     if bid in state["beats"]:
         bad(i, "beat-has-result", f"{bid} 已经有结果（{state['beats'][bid]}）")
     elif not system and to == "happened":
         bad(i, "beat-happened", f"候选事件不能让 {bid} 直接发生（节拍到点由系统结算）")
     elif system and to in ("delayed", "hastened"):
         bad(i, "bad-value", f"系统事件里的 beat 只能是 happened / altered / prevented：{to}")
+    elif not system and ok:
+        why = change_conflict(over.get(bid), e)
+        if why:
+            bad(i, "bad-state", f"{bid}：{why}")
+        else:
+            merge_change(over, e)
 
 
 def _same_world(world: World, state: SimState) -> None:
