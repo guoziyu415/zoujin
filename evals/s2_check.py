@@ -17,7 +17,6 @@
 只用标准库。
 """
 import argparse
-import heapq
 import json
 import re
 import sys
@@ -25,7 +24,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 DATA = HERE.parent
-from zoujin_worldsim import OCCURRED, Sim  # 共享规则（W-1 的包）
+from zoujin_worldsim import OCCURRED, Sim, travel_minutes  # 共享规则（W-1 的包）
 sys.path.insert(0, str(DATA / "packages" / "worldsim" / "reference"))
 from check_evals import Checker  # noqa: E402  效果的格式检查沿用评测用例自检
 
@@ -135,21 +134,9 @@ class S2:
         return any(k["fact"] == fact and self.occurred(k["since"], res) for k in self.chars[actor]["knows"])
 
     def dist(self, a, b):
-        if a == b:
-            return 0
-        best, q = {a: 0}, [(0, a)]
-        while q:
-            d, p = heapq.heappop(q)
-            if p == b:
-                return d
-            if d > best.get(p, 10 ** 9):
-                continue
-            for e in self.places[p]["adjacent"]:
-                nd = d + e["travelMinutes"]
-                if nd < best.get(e["place"], 10 ** 9):
-                    best[e["place"]] = nd
-                    heapq.heappush(q, (nd, e["place"]))
-        return 10 ** 9
+        """R3 的路程用共享规则库的 travel_minutes（同一场景里走动 0 分，S-038）；走不到当作无穷远。"""
+        d = travel_minutes(self.w, a, b)
+        return 10 ** 9 if d is None else d
 
     def anchor_locked(self, res):
         """已发生的锚点节拍写下、之后没有别的节拍改过的变量 → 值（推翻它 = R1）。"""
