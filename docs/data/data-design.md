@@ -1,8 +1,8 @@
-# 数据设计（data-design.md）v1.2
+# 数据设计（data-design.md）v1.2.1
 
-负责人：数据工程 · 状态：**v1.2**。v1.0 已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改；1.1 跟上契约 1.1、PM 的 S-022〜S-053 和世界模型 draft.3；1.2 跟上契约 1.2 和 S-054〜S-063，补齐前端、UX 要的埋点（9.3）和市场调研要的试玩导出（9.5）。跨角色决定见 `pm/decisions.md`。待别人定的事见第 13 节。
-相关：[contracts.md](contracts.md) v1.6（四个数据契约，本文所有字段以它为准）· `backend/backend-design.md` · `pm/prd.md`
-最近更新：2026-10-10（9.3 按 C-1、C-2 评审写清：公共属性每批带一次、帧时间直方图固定 9 格、`why_opened.target` 和 `/why` 的 target 一一对应；6.3 跟上契约 1.6 的取值条件）
+负责人：数据工程 · 状态：**v1.2.1**。v1.0 已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改；1.1 跟上契约 1.1、PM 的 S-022〜S-053 和世界模型 draft.3；1.2 跟上契约 1.2 和 S-054〜S-063，补齐前端、UX 要的埋点（9.3）和市场调研要的试玩导出（9.5）。跨角色决定见 `pm/decisions.md`。待别人定的事见第 13 节。
+相关：[contracts.md](contracts.md) v1.7（四个数据契约，本文所有字段以它为准）· `backend/backend-design.md` · `pm/prd.md`
+最近更新：2026-10-10（v1.2.1：第 3 节的表对齐 B-0 建的表，含 `turns.status` 的 `lost`）
 
 数据工程负责六件事：世界模型（含『走れメロス』v1）、新增一本书的流水线、事件日志与世界状态、記憶帳与删除、评测与可观测数据、分析与成本测算。
 
@@ -52,21 +52,34 @@
 
 运行时只用一个 Cloud SQL for PostgreSQL。理由：一次提交要原子地写事件、状态、记忆、幂等键；`UNIQUE` 约束兜底 seq 和幂等；按局加行锁就是按局串行；删除整局一条级联语句；分析导出方便。
 
-表结构（数据侧需要的列；后端的 `turns`、`briefs` 表和数据库角色见 backend-design 2.1、3.3）：
+表结构（数据侧需要的列）。前五张 B-0（#26，`services/backend/.../db/migrations/versions/0001_b0_tables.py`）已经建了，列以它为准；后端自己的表（`users`、`invite_codes`、`sessions`、`idempotency_keys`、`turns`、`briefs`）和数据库角色见 backend-design 2.1、3.3〜3.5、5.2：
 
 ```sql
-playthroughs(playthrough_id PK, user_ref, world_model_version, role_id, status,
-             started_at, ended_at, last_active_at, last_seq)
-events(event_id PK, playthrough_id FK ON DELETE CASCADE, seq, turn_id, idempotency_key, t, dt, actor, type, place,
-       summary, causes jsonb, effects jsonb, key_moment bool, check_result jsonb, supersedes, exit_id, recorded_at,
-       UNIQUE (playthrough_id, seq), UNIQUE (playthrough_id, idempotency_key))
-utterances(utterance_id PK, playthrough_id FK CASCADE, turn_id, speaker, text, t, recorded_at, deleted_at)
+playthroughs(playthrough_id PK, user_ref FK users ON DELETE CASCADE, book_id, world_model_version, role_id,
+             status,                          -- active / ended / abandoned；删除的局整行删掉，不留 deleted
+             started_at, ended_at, last_active_at, last_seq,
+             UNIQUE (user_ref) WHERE status = 'active')   -- 每账号同时 1 局
+events(event_id PK, playthrough_id FK ON DELETE CASCADE, seq, turn_id, idempotency_key, schema_version,
+       t, dt, actor, type, origin, place, summary, causes jsonb, effects jsonb, key_moment bool, check_result jsonb,
+       supersedes, exit_id,
+       extra jsonb,                           -- 契约 Event 里其余的可选字段（beneficiary、confirmed 等）
+       recorded_at, UNIQUE (playthrough_id, seq), UNIQUE (playthrough_id, idempotency_key))
+utterances(utterance_id PK, playthrough_id FK CASCADE, turn_id FK turns CASCADE, speaker, text,
+           source,                            -- 人物的话：live / script / fallback
+           t, recorded_at, deleted_at)        -- 作废、删除时清空 text，行留着（5.2）
+world_state(playthrough_id PK FK CASCADE, as_of_seq, state jsonb)      -- W-1 的 SimState，缓存，可从事件重放（4.4）
+playthrough_metrics(playthrough_id PK FK CASCADE, turns, turns_retracted,
+                    cost_extract_usd, cost_check_usd, cost_reply_usd, cost_live_usd,
+                    voice_in_seconds, voice_out_seconds, degraded_at)  -- 后端写，分析用，不含文字
+
+-- 用到它们的 M2 卡再建
 memory_items(memory_id PK, playthrough_id FK CASCADE, character, kind, text, from_events jsonb, t,
              trust_delta, salience, created_at, deleted_at)
-world_state(playthrough_id PK FK CASCADE, as_of_seq, state jsonb)      -- 缓存，可重建
 endings(ending_id PK, playthrough_id FK CASCADE, body jsonb, decided_at)
-playthrough_metrics(playthrough_id PK FK CASCADE, cost_usd, degraded_at, voice_seconds, turns)  -- 后端写，分析用
 ```
+
+- 每局费用 = `playthrough_metrics` 四项费用之和（9.1「成本可持续吗」、第 10 节）。9.1 还要的问句结尾计数、导演事件数、结局演出开始时间，由做这些功能的卡加列（第 12 节）。
+- 分析会读后端 `turns` 表的 `status`：pending / leased / done / retracted / failed / lost。`lost` 是断线时人物还没说完的一轮：叙事者不处理，不判、不花时间、没有 `turn_settled`（api-contract v1.0.3 第 4 节），也不算进 `playthrough_metrics.turns`。算「一局几轮」用 `playthrough_metrics.turns`，`lost` 的轮数单独看（9.1「续玩」的断线）。
 
 `events` 不允许 UPDATE / DELETE：narrator 角色只有 INSERT、SELECT；只有「删除整局」走单独的特权流程（backend-design 2.1）。
 
@@ -471,6 +484,7 @@ BigQuery 每天一个定时查询，用 `EXTERNAL_QUERY` 直接读 Cloud SQL，�
 
 修订记录：
 
+- **v1.2.1（2026-10-10）**：第 3 节的表对齐 B-0（#26）建的表：`playthroughs` 加 `book_id` 和每账号同时 1 局，`events` 加 `schema_version`、`origin`、`extra`，`utterances` 加 `source`，`playthrough_metrics` 按后端分成四项费用和进出两项语音秒数；`memory_items`、`endings` 注明由用到的 M2 卡建；写明分析怎么读 `turns.status`（含 `lost`，api-contract v1.0.3）。契约跟到 1.7。
 - v0.1（2026-10-06）：初稿。
 - 2026-10-07：加自伤分类器的留出验证样本 25 条（`evals/safety/s4_selfharm_holdout.jsonl`），只用来验已定稿的 v3。
 - 2026-10-06（D-019）：遥测 9.3 跟上前端 10.6.3 的画质四级：`perf_sample` 加 `qualityLevel`、`assetTier`、`lowPower`；`quality_changed` 加 `reason`、`probeGpuMs`、`assetMbps`；9.1「手机体验」加每局的起始级和升降次数；`deviceClass` 改为屏幕尺寸类，报表不再按机型切。
