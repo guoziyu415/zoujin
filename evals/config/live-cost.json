@@ -1,0 +1,6 @@
+{
+  "about": "live 模式的预计花费（E-0 卡第 3 条），单价按 docs/data/cost/m2-model-budget.md（2026-10-10），全部是推算；M2 第一批跑完后用账本的实数替换",
+  "turnUsd": 0.03,
+  "judgeUsd": 0.015,
+  "simulatedPlaythroughUsd": 0.6
+}
