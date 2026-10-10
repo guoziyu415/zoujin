@@ -36,9 +36,9 @@ jobs:
     name: unit tests, bundle budget, world screen e2e
     runs-on: ubuntu-24.04
     timeout-minutes: 45
-    env:
-      ZOUJIN_SCENE_ROOT: ${{ runner.temp }}/scenes
     steps:
+      # where the plaza gets built and the web app reads it (scene-dir.ts); the runner context isn't available in job env
+      - run: echo "ZOUJIN_SCENE_ROOT=$RUNNER_TEMP/scenes" >> "$GITHUB_ENV"
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v5
