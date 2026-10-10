@@ -190,6 +190,15 @@ playthrough_metrics = Table(
     Column("voice_in_seconds", Numeric(10, 1), nullable=False, server_default="0"),
     Column("voice_out_seconds", Numeric(10, 1), nullable=False, server_default="0"),
     _ts("degraded_at"),
+    # B-2（0002）：分流和改写的花费；流水线的计数（分流跳过、超时降级的轮，改写、降级、拒绝、因要确认而丢弃的候选）
+    Column("cost_triage_usd", Numeric(12, 6), nullable=False, server_default="0"),
+    Column("cost_rewrite_usd", Numeric(12, 6), nullable=False, server_default="0"),
+    Column("turns_triage_skipped", Integer, nullable=False, server_default="0"),
+    Column("turns_timed_out", Integer, nullable=False, server_default="0"),
+    Column("candidates_rewritten", Integer, nullable=False, server_default="0"),
+    Column("candidates_downgraded", Integer, nullable=False, server_default="0"),
+    Column("candidates_rejected", Integer, nullable=False, server_default="0"),
+    Column("candidates_confirm_dropped", Integer, nullable=False, server_default="0"),
 )
 
 # data-design 5.3 的删除清单里，B-0 建了的表（eval_api 的 db_absent 查这些）

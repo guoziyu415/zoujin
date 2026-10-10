@@ -2,34 +2,39 @@
 
 任务就是 turns 表的一行（backend-design 3.4）：
 - open：开局。W-1 的 initial_state，settle 到身份的 startT，开局前到点的节拍写成系统事件。
-- talk：一轮对话。提取（假文本模型 / 回放）→ 第 3 步（W-1 check_effects）→ 提交候选事件（被否决的也写，effects 为空）、
-  这一轮的时间（一条只推进时钟的 say 事件）和这段时间里到点的节拍。
+- talk：一轮对话。流水线（`narrator/pipeline.py`：分流 → 提取 → 第 3 步规则 → 第 4 步模型检查 → 改写、降级或拒绝）→
+  提交候选事件（被否决的也写，effects 为空）、这一轮的时间（一条只推进时钟的 say 事件）和这段时间里到点的节拍。
+  提取或检查两次都超时：只提交时钟事件，候选丢弃，`playthrough_metrics` 记一次。
 - advance：快进（只给测试和评测）。
 
 同一局严格串行：取任务时锁住这一局的行，有没过期的租约就不取。提交时再锁一次、校验 lastSeq 没变；变了就丢弃，
-用新状态从第 3 步重来。任何一步失败整轮回滚，任务放回队列，用同一个幂等键重试，三次都失败记 no_response。
+用新状态从第 3 步重来（不重新提取）。任何一步失败整轮回滚，任务放回队列，用同一个幂等键重试，三次都失败记 no_response。
+账本到上限（`BudgetStop`）、第一个 429（`RateLimited`）、回放缺失（`ReplayMissing`）不重试：任务放回队列，异常往上抛。
 """
 
 from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Any, cast
 
 from sqlalchemy import and_, func, insert, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
+from zoujin_backend.config import DEADLINES
 from zoujin_backend.db.events import recorded_at, to_row
 from zoujin_backend.db.tables import events as events_t
 from zoujin_backend.db.tables import playthrough_metrics, playthroughs, turns, utterances, world_state
 from zoujin_backend.ids import IdGen
-from zoujin_backend.models.text import TextModel, TextResult
-from zoujin_backend.narrator.rules import Checked, check_candidates
+from zoujin_backend.models.text import ReplayMissing, Stop, TextModel
+from zoujin_backend.narrator.pipeline import Counts, Pipeline, Spend, TurnInput, Verified
+from zoujin_backend.narrator.rules import Checked
 from zoujin_backend.narrator.writer import Writer
 from zoujin_backend.projection import is_visible
 from zoujin_backend.schemas import SchemaBook
+from zoujin_backend.trace import Tracer
 from zoujin_backend.world import Book, Library
 from zoujin_worldsim import SimState, initial_state, role_of
 
@@ -104,6 +109,11 @@ class Narrator:
     fault: Callable[[str], None] = field(default=lambda step: None)
     # 测试用：检查完、提交前调用（模拟中间有别的提交）
     before_commit: Callable[[Task], Awaitable[None]] | None = None
+    tracer: Tracer = field(default_factory=Tracer)
+    deadlines: Mapping[str, float] = field(default_factory=lambda: dict(DEADLINES))
+
+    def __post_init__(self) -> None:
+        self.pipeline = Pipeline(self.text, self.schemas, self.ids, self.tracer, self.deadlines)
 
     # —— 取任务 ——
 
@@ -118,6 +128,10 @@ class Narrator:
                 done.append(await self.process(task))
             except Gone:
                 log.info("任务 %s 已经不用做了", task.turn_id)
+            except (Stop, ReplayMissing) as e:  # 不重试：放回队列，整次停下
+                log.warning("任务 %s 停下：%s", task.turn_id, type(e).__name__)
+                await self.release(task, failed=False)
+                raise
             except Exception:
                 log.exception("任务 %s 第 %d 次失败", task.turn_id, task.attempts)
                 await self.release(task, failed=task.attempts >= MAX_ATTEMPTS)
@@ -217,22 +231,27 @@ class Narrator:
         pt, state = await self.read(task.pid)
         book = self.library.version(pt["world_model_version"])
         lines = await self._lines(task.turn_id)
-        request = {
-            "role": pt["role_id"],
-            "place": state["vars"]["var.player.location"],
-            "t": state["t"],
-            "character": task.character,
-            "mode": task.input_mode,
-            "player": lines.get("player"),
-            "reply": lines.get("character"),
-        }
-        extracted = await self.text.call("extract", request)
+        turn = TurnInput(
+            character=task.character,
+            player=lines.get("player"),
+            reply=lines.get("character"),
+            mode=task.input_mode or "voice",
+        )
+        spend = Spend()
+        span = {"playthrough_id": task.pid, "turn_id": task.turn_id}
+        extracted = await self.pipeline.extract(book, state, turn, spend, span)
         for _ in range(MAX_STALE):
-            checked = check_candidates(book.world, state, extracted.output.get("candidates", []), self.ids)
+            if extracted.timed_out:
+                verified = Verified([], Counts())
+            else:
+                minutes = talk_minutes(book, state)
+                verified = await self.pipeline.verify(book, state, extracted.candidates, turn, minutes, spend, span)
             if self.before_commit is not None:
                 await self.before_commit(task)
             try:
-                return await self._commit(task, pt["last_seq"], self._talk_plan(task, checked), costs=[extracted])
+                plan = self._talk_plan(task, verified.checked)
+                counts = extracted.counts + verified.counts
+                return await self._commit(task, pt["last_seq"], plan, spend=spend, counts=counts)
             except Stale:
                 log.info("lastSeq 变了，%s 从检查重来", task.turn_id)
                 pt, state = await self.read(task.pid)
@@ -352,7 +371,8 @@ class Narrator:
         read_seq: int | None,
         plan: Callable[[Writer, Book], Planned],
         *,
-        costs: list[TextResult] | None = None,
+        spend: Spend | None = None,
+        counts: Counts | None = None,
     ) -> Result:
         async with self.engine.begin() as c:
             self.fault("lock")
@@ -432,14 +452,10 @@ class Narrator:
                 )
             )
             self.fault("metrics")
-            spent = sum(r.cost_usd for r in costs or [])
             await c.execute(
                 update(playthrough_metrics)
                 .where(playthrough_metrics.c.playthrough_id == task.pid)
-                .values(
-                    turns=playthrough_metrics.c.turns + (1 if task.kind == "talk" else 0),
-                    cost_extract_usd=playthrough_metrics.c.cost_extract_usd + spent,
-                )
+                .values(metrics(task, spend or Spend(), counts or Counts()))
             )
             self.fault("notify")
             await self._notify(c, task, seq=w.state["seq"], outcome=result.outcome)
@@ -457,3 +473,34 @@ class Narrator:
     async def _notify(self, c: AsyncConnection, task: Task, *, seq: int, outcome: str | None) -> None:
         payload = {"pid": task.pid, "seq": seq, "kind": task.kind, "turnId": task.turn_id, "outcome": outcome}
         await c.execute(select(func.pg_notify(CHANNEL, json.dumps(payload))))
+
+
+# 一轮写进 playthrough_metrics 的：轮数、各类提示的花费（data-design 第 3 节：每局费用 = 所有 cost_*_usd 之和）、计数
+COST_COLUMNS = {
+    "triage": "cost_triage_usd",
+    "extract": "cost_extract_usd",
+    "check": "cost_check_usd",
+    "rewrite": "cost_rewrite_usd",
+    "reply": "cost_reply_usd",
+}
+COUNT_COLUMNS = {
+    "triage_skipped": "turns_triage_skipped",
+    "timeouts": "turns_timed_out",
+    "rewritten": "candidates_rewritten",
+    "downgraded": "candidates_downgraded",
+    "rejected": "candidates_rejected",
+    "confirm_dropped": "candidates_confirm_dropped",
+}
+
+
+def metrics(task: Task, spend: Spend, counts: Counts) -> dict[str, Any]:
+    m = playthrough_metrics.c
+    out: dict[str, Any] = {"turns": m.turns + (1 if task.kind == "talk" else 0)}
+    for kind, usd in spend.usd.items():
+        col = COST_COLUMNS[kind]
+        out[col] = m[col] + usd
+    for k, col in COUNT_COLUMNS.items():
+        n = getattr(counts, k)
+        if n:
+            out[col] = m[col] + n
+    return out

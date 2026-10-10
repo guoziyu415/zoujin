@@ -96,6 +96,10 @@ class SchemaBook:
         """数据契约的 Event（叙事者写库前）。"""
         return self.build(EVENT, "#/$defs/Event", doc)
 
+    def effect_errors(self, effect: Json) -> list[str]:
+        """一个效果合不合契约的 Effect（叙事者第 3 步：模型提出的效果形状不对，按 R7 否决，不让提交时才出错）。"""
+        return self.errors(EVENT, "#/$defs/Effect", effect)
+
     def client_errors(self, doc: Json) -> list[str]:
         return self.spots(CLIENT, "#", doc)
 

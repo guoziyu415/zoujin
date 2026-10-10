@@ -31,8 +31,9 @@ def build(settings: Settings) -> Narrator:
     return Narrator(
         engine=engine,
         library=Library(settings.worlds, settings.scenes, settings.world),
-        text=text_model(settings.model, fake_rules=settings.fake_text, replays=settings.replays),
+        text=text_model(settings.model, fake_rules=settings.fake_text, replays=settings.replays, settings=settings),
         schemas=SchemaBook(settings.schemas),
+        deadlines=settings.deadlines,
     )
 
 

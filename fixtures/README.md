@@ -8,7 +8,7 @@
 |---|---|---|
 | `mock/rest/`、`sessions/` | `zoujin-mock`（B-1） | mock 的 REST 回答和 WebSocket 剧本，见各自的 README |
 | `fake-voice/lines.json` | 假 Live（B-0，`models/live.py`） | 每个人物一串「玩家说的话 + 人物的回答」，按轮次依次用，用完从头再来。语音一轮的玩家字幕就是 `player`（假的没有语音识别），文字一轮只用 `reply`。人物的音频按回答的字数合成，不是录的。没列的人物用 `default` |
-| `fake-text/*.json` | 假文本模型（`ZJ_MODEL=fake`，默认） | 每种提示（`reply`、`extract`）有一个过 Schema 的默认输出；这里的 `rules` 按提示类型和条件覆盖它。条件 `when` 现在有 `character`（对谁说）和 `playerContains`（玩家这句含某个词），第一条对上的生效。剧本要的特定输出放这里 |
+| `fake-text/*.json` | 假文本模型（`ZJ_MODEL=fake`，默认） | 每种提示（`triage`、`extract`、`check`、`rewrite`、`reply`）有一个过 Schema 的默认输出：分流判「可能」、提取没有候选、检查全过、改写原样（降级做不到）、回答一句「……そうか。」。这里的 `rules` 按提示类型和条件 `when` 覆盖它，第一条对上的生效。条件：`character`（对谁说）、`playerContains` / `replyContains`（这一轮的原话含某几个字）、`summaryContains`（候选的摘要），其他键要等于请求里同名的值（例：`mode`）。规则还能写 `output`（整个输出）、`fail`（只给 `check`：`{rule, reason}`，对上的候选这条规则判不过，其余全过）、`error`（`rate-limit` / `invalid` / `unavailable`）、`latencyMs`（先等这么久，测时限）、`times`（最多用几次）。剧本要的特定输出放这里 |
 | `model-replays/*.jsonl` | 回放（`ZJ_MODEL=replay`） | 一行一次调用：`key`、`kind`、`provider`、`model`、`promptVersion`、`request`、`response`、`usage`、`costUsd`、`recordedAt`。`key` = `<模型>\|<提示版本>\|<规范化请求的 sha256>`，读的时候重算，对不上就报错。查不到的请求抛 `ReplayMissing`（「回放缺失或过期」），不退回假模型 |
 
 ## 改了以后
@@ -19,6 +19,6 @@
   ZJ_UPDATE_REPLAYS=1 DATABASE_URL=… uv run pytest services/backend/tests/test_eval_api.py -k fixture
   ```
 
-  它跑一遍最小剧本那一轮（旅人在广场对老爺说一句），把假模型的两次调用按回放格式写下来。评审时看差异。
-- 真模型录的回放在 M2 只在 zg 的 Mac 上录（G-7），格式和上面一样，`request` 里只有合成的输入。
+  它跑一遍最小剧本那一轮（旅人在广场对老爺说一句），把假模型的各次调用（回答、分流、提取、检查、改写）按回放格式写下来。评审时看差异。
+- 真模型录的回放在 M2 只在 zg 的 Mac 上录（G-7）：设 `ZJ_RECORD_REPLAYS=<目录>`，格式和上面一样，`request` 里只有合成的输入。留出集的回放不进仓库，用 `ZJ_REPLAYS` 指过去读。
 - 改了假模型的输出也会改 E-0 的报告：同一个 PR 里更新 `evals/tests/snapshots/fake`（命令在 `evals/tests/test_cli.py` 开头）。
