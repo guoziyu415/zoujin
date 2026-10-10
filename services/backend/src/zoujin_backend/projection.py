@@ -142,12 +142,12 @@ def snapshot(book: Book, pid: str, role_id: str, status: str, state: SimState, l
     promised = state["beats"].get(PROMISE_BEAT) in OCCURRED
 
     present = [(c, state["locations"][c]) for c in book.characters if state["locations"].get(c) in scene_places]
-    player_spot = scene.player_spot(player_place) if scene else player_place.removeprefix("place.")
-    spots = (
-        scene.character_spots(present, {player_spot}) if scene else {c: p.removeprefix("place.") for c, p in present}
-    )
     ix = index(book.world)
     away = {c for c, _ in present if absent(ix, state, c)}
+    player_spot = scene.player_spot(player_place) if scene else player_place.removeprefix("place.")
+    # 看得见的人先排位置点，不在场的排在最后：前端不画他们，别让他们挤掉看得见的人的点
+    order = [x for x in present if x[0] not in away] + [x for x in present if x[0] in away]
+    spots = scene.character_spots(order, {player_spot}) if scene else {c: p.removeprefix("place.") for c, p in present}
     characters = [
         {
             "id": c,

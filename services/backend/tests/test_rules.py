@@ -10,6 +10,7 @@ import json
 import random
 import sys
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from functools import cache
 from types import ModuleType
 from typing import Any
@@ -314,6 +315,20 @@ def test_absent_characters_cannot_act_or_be_told() -> None:
     shown = {c["id"]: c for c in snapshot(BOOK, "pt_test", "role.traveler", "active", s, 0)["characters"]}
     assert (shown["char.crowd"]["activity"], shown["char.crowd"]["talkable"]) == ("absent", False)  # 快照照样列出
     assert shown[OLD]["activity"] == "idle"
+
+
+def test_absent_characters_take_spots_last() -> None:
+    """看得见的人先排位置点，不在场的排在最后（前端 #47）：不在场的人排在前面，也不挤掉看得见的人的点。"""
+    s = at()
+    chars = W["characters"]
+    away = [c for c in chars if c["id"] in ("char.crowd", "char.maiden")]
+    first = replace(BOOK, world={**W, "characters": away + [c for c in chars if c not in away]})
+    shown = {c["id"]: c for c in snapshot(first, "pt_test", "role.traveler", "active", s, 0)["characters"]}
+    sq = BOOK.scenes[BOOK.scene_of("place.syracuse-square", BOOK.act_of(s["vars"]))]
+    seen = [(c["id"], c["place"]) for c in shown.values() if c["activity"] != "absent"]
+    assert (OLD, "place.syracuse-square") in seen and len(seen) < len(shown)
+    alone = sq.character_spots(seen, {sq.player_spot("place.syracuse-square")})
+    assert {c: shown[c]["spot"] for c, _ in seen} == alone
 
 
 def test_candidates_in_one_turn_see_the_ones_before() -> None:
