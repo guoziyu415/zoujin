@@ -1,6 +1,6 @@
 {
   "sceneId": "scene.syracuse-square",
-  "about": "Hand-written scene layout: where people can walk, which area belongs to which place, the named spots (api-contract 0 'spot'), where each place starts (startSpots: where a player whose role starts in that place stands; characters take that place's free spots in layout order, way.* excepted) and the exits. Plan coordinates in metres as in build_plaza.py: +x towards the castle, +y towards the temple, the gate street runs to -x (azimuth 294°). pack_scene.mjs rotates by rotationDeg about the up axis and writes glTF coordinates into scene.json. Spots where people leave for another scene are named way.<slug> (the exit. prefix belongs to the world model's ExitId).",
+  "about": "Hand-written scene layout: where people can walk, which area belongs to which place, the named spots (api-contract 0 'spot'), where each place starts (startSpots: where a player whose role starts in that place stands; characters take that place's free spots in layout order, except way.* and spots marked auto: false, which only an explicit placement uses; the player's spot counts as taken, characters with group: true take none) and the exits. Plan coordinates in metres as in build_plaza.py: +x towards the castle, +y towards the temple, the gate street runs to -x (azimuth 294°). pack_scene.mjs rotates by rotationDeg about the up axis and writes glTF coordinates into scene.json. Spots where people leave for another scene are named way.<slug> (the exit. prefix belongs to the world model's ExitId).",
   "rotationDeg": 144,
   "defaultPlace": "place.syracuse-square",
   "playerStartSpot": "plaza-southwest",
@@ -167,22 +167,42 @@
     "stake": {
       "at": [10.4, 0.0],
       "face": [0, 0],
-      "about": "on the platform with the back to the post, facing the square: the one tied to the post and hoisted up"
+      "about": "on the platform with the back to the post, facing the square: the one tied to the post and hoisted up",
+      "auto": false
     },
     "scaffold": {
       "at": [10.1, 0.65],
       "face": [10.4, 0],
-      "about": "on the platform beside the post, close enough to reach the hoisted one's feet"
+      "about": "on the platform beside the post, close enough to reach the hoisted one's feet",
+      "auto": false
     },
     "stake-front": {
       "at": [7.6, 0.0],
       "face": [11, 0],
       "about": "in front of the platform steps"
     },
+    "stake-front-side": {
+      "at": [7.7, -1.0],
+      "face": [10.4, 0],
+      "about": "beside stake-front, facing the platform: the old man stands here next to a player at stake-front (slice, 'stay at the old man's house')",
+      "auto": false
+    },
+    "crowd-front": {
+      "at": [8.6, 1.6],
+      "face": [11, 0],
+      "about": "front row of the crowd, by the north-west corner of the platform, facing the post: the maiden with the scarlet cloak, close enough to hand it to Melos on the platform",
+      "auto": false
+    },
     "ground-west": {
       "at": [4.0, 0.0],
       "face": [-31, 0],
       "about": "west end of the execution ground, in the light corridor facing the gate: where a player who stayed in the city to wait for Melos sees him come through the gate at sunset (ux/slice/ending-shots.md, shot 2)"
+    },
+    "king-west": {
+      "at": [3.0, -2.0],
+      "face": [10.4, 0],
+      "about": "west end of the execution ground, behind the crowd, facing the post: where the king first stands at sunset; about 2.2 m from ground-west, so a player there does not block him",
+      "auto": false
     },
     "castle-steps": {
       "at": [14.3, -5.0],

@@ -1,7 +1,7 @@
 """开局到起点：eval_api 的 setup（api-contract 第 7 节）里只靠推演的那几种起点，B-0 和评测运行器共用。
 
 - `checkpoint`：`"<情景 ID>@<节拍 ID>"` = 推演到该节拍刚发生之后；
-  `"<情景 ID>@t=<分钟>"` = 推演到该时刻，含那一刻到点的节拍和期限规则；
+  `"<情景 ID>@t=<分钟>"` = 推演到该时刻，含那一刻到点的节拍和期限规则，不含情景里正好在那一刻的事件；
 - `scenario`：推演到底（不调用模型）；
 - `place`：开局换个地点。
 
@@ -27,7 +27,7 @@ class Opened(Draft):
     """开局写出的一个事件。settle 写的照原样（source = schedule），其余 beat、variant、reason 都是 None。"""
 
     source: Literal["place", "scenario", "schedule", "clock"]  # 开局地点、情景、到点的节拍和期限、只推进时钟
-    note: NotRequired[str]  # 给 B-0 写 summary 的一句（日语）
+    note: NotRequired[str]  # 给 B-0 写 summary 的一句（日语）；情景事件写了 note 就是它
 
 
 NOTES = {"place": "開始地点", "scenario": "シナリオの設定", "clock": "時刻を進める"}
@@ -67,7 +67,8 @@ def opening(
         if run.settle_until(t, until):
             return run.out, run.s
         if i > 0:
-            run.write("scenario", {"t": t, "effects": next(events)["effects"]})
+            e = next(events)
+            run.write("scenario", {"t": t, "effects": e["effects"]}, e.get("note"))
     if until is None:
         run.settle_to(None)
     elif not run.settle_until(None, until):
@@ -82,12 +83,15 @@ class _Run:
         self.s = s
         self.out: list[Opened] = []
 
-    def write(self, source: Literal["place", "scenario", "clock"], e: Mapping[str, Any]) -> None:
+    def write(
+        self, source: Literal["place", "scenario", "clock"], e: Mapping[str, Any], note: str | None = None
+    ) -> None:
+        """note：情景事件自己写了 note 就用它，没写用 NOTES 里的。"""
         loc = self.s["vars"]["var.player.location"]
         event = {"actor": "system", "type": "action", "origin": "action", "dt": 0, "place": loc, **e}
         self._apply(
             {"event": event, "beat": None, "variant": None, "reason": None, "reasonCode": None, "source": source},
-            NOTES[source],
+            note or NOTES[source],
         )
 
     def _apply(self, d: Opened, note: str | None = None) -> None:
