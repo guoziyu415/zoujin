@@ -94,9 +94,21 @@ def walk(node: Any, path: str = "") -> Iterator[tuple[str, Any]]:
             yield from walk(v, f"{path}/{i}")
 
 
+def _explain(e: ValidationError) -> list[ValidationError]:
+    """Effect 是按 op 区分的 oneOf，jsonschema 只说「哪个分支都不合」。
+    改报 op 对上的那个分支里的错；op 不认识就报 op。"""
+    if e.validator != "oneOf" or not isinstance(e.instance, dict) or "op" not in e.instance:
+        return [e]
+    branches = [b.get("properties", {}).get("op", {}).get("const") for b in e.validator_value]
+    same_op = [c for c in e.context or [] if branches[c.relative_schema_path[0]] == e.instance["op"]]
+    if same_op:
+        return same_op
+    return [ValidationError(f"op {e.instance['op']!r} 不是 {branches} 之一", validator="enum", path=[*e.path, "op"])]
+
+
 def show(errors: list[ValidationError], where: str, limit: int = 20) -> str:
-    lines = [f"{where} {e.json_path}: {e.validator} {e.message[:200]}" for e in errors[:limit]]
-    return "\n".join(lines)
+    shown = [x for e in errors for x in _explain(e)][:limit]
+    return "\n".join(f"{where} {e.json_path}: {e.validator} {e.message[:200]}" for e in shown)
 
 
 # —— 1. Schema 本身 ——
