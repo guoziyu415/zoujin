@@ -3566,7 +3566,7 @@
     "char.young-man",
     "char.old-man"
    ],
-   "kind": "fixed",
+   "kind": "mutable",
    "preconditions": [],
    "outcomes": [
     {
