@@ -88,6 +88,8 @@ def run_case(api: EvalApi | None, case: Mapping[str, Json], world: WorldIndex, o
         "mode": case.get("mode", "text"),
         "runs": runs,
     }
+    if any("deleteMemory" in s or "deletePlaythrough" in s for s in case.get("steps", [])):
+        out["deletes"] = True
     if api is None:
         out["skip"] = {"code": "not-implemented", "name": "eval_api"}
         opts.progress(f"{case['id']} 跳过：没有后端的评测入口")

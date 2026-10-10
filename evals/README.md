@@ -226,7 +226,8 @@ uv run zoujin-eval --mode replay --suite E2 --case E2-009     # 只跑一部分�
 
 - 不过的检查带 `reason`（为什么不过）；后端报错的那一次带 `error`；整次跳过的那一次带 `skip`。
 - 通过率 = 过的次数 /（过 + 不过的次数），跳过的不进分母，跳过的次数按原因写在同一行。`passRate` 和 `mergeMet` / `releaseMet` 在一次都没判的时候是 `null`（「判不了」）。
-- 门槛按上面「门槛」（data-design 7.3）；`hard` 是门槛之外的硬指标（必须 100% 的确定性检查），`checked` 是实际判了的检查条数。
+- 门槛按上面「门槛」（data-design 7.3）；`hard` 是门槛之外的硬指标（必须 100% 的确定性检查），`checked` 是实际判了的检查条数。E6 的硬指标只算带删除步骤（`deleteMemory`、`deletePlaythrough`）的用例，这些例在 `cases[]` 里带 `deletes: true`；E6 里「要记得」的 `memory` 检查照常进通过率，不算硬指标。
+- `infra`：超时、无原话各几次、占真跑次数的多少（整例跳过的没跑，不进分母；一次里有一条检查因为没有人物原话跳过，这一次就算无原话）。按 data-design 7.3：超时超过 5% 时这一次不出分，每个套件 `noScore: true`、`passRate` 和门槛都是 `null`，`report.md` 顶上写明，报给后端；无原话超过 5% 时 `report.md` 顶上写明、报给后端，分数照出。
 - `report.md` 按套件汇总这些数，再列整例跳过的用例和每一条不过的检查。
 
 ### 快照
