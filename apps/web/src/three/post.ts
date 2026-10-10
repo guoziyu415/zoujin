@@ -1,0 +1,104 @@
+// The post-processing chain (frontend-design 10.6.1-10.6.3; S7): the scene into a half-float target with MSAA 4x,
+// bloom, then one pass that does Neutral tone mapping, sRGB and the grade and vignette together. L0 turns bloom and
+// MSAA off; the last pass is the same at every level, so the colours don't change with the level. Used by PostFX
+// for the screen and by the start probe for its off-screen test scene.
+import {
+  HalfFloatType,
+  NeutralToneMapping,
+  Vector2,
+  WebGLRenderTarget,
+  type Camera,
+  type Scene,
+  type WebGLRenderer,
+} from "three";
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
+import { OutputShader } from "three/examples/jsm/shaders/OutputShader.js";
+
+// day-for-night after sunset, a little warmth in the highlights and cool in the shadows, contrast, saturation, vignette;
+// on the sRGB values, as the separate pass after OutputPass did before
+const GRADE_UNIFORMS = "uniform float uVig, uWarm, uContrast, uNight, uSat;\n";
+const GRADE = `
+  { vec3 col = gl_FragColor.rgb;
+    float l = dot(col, vec3(0.2126,0.7152,0.0722));
+    col = max(mix(vec3(l), col, uSat), 0.0);
+    col = mix(col, col * vec3(1.0 + uWarm, 1.0, 1.0 - uWarm), smoothstep(0.35, 0.9, l));
+    col = mix(col, col * vec3(1.0 - uWarm*0.6, 1.0, 1.0 + uWarm), 1.0 - smoothstep(0.05, 0.35, l));
+    col = mix(col, vec3(dot(col, vec3(0.2126,0.7152,0.0722))) * vec3(0.62, 0.78, 1.18), uNight * 0.7);
+    col = (col - 0.5) * uContrast + 0.5;
+    vec2 d = vUv - 0.5; col *= 1.0 - uVig * dot(d, d) * 2.2;
+    gl_FragColor = vec4(clamp(col, 0.0, 1.0), gl_FragColor.a); }
+`;
+
+class OutputGradePass extends OutputPass {
+  constructor() {
+    super();
+    Object.assign(this.uniforms, {
+      uVig: { value: 0.32 },
+      uWarm: { value: 0.06 },
+      uContrast: { value: 1.06 },
+      uNight: { value: 0 },
+      uSat: { value: 1.12 },
+    });
+    const src = OutputShader.fragmentShader;
+    const end = src.lastIndexOf("}");
+    this.material.fragmentShader = src
+      .slice(0, end)
+      .replace("varying vec2 vUv;", GRADE_UNIFORMS + "varying vec2 vUv;")
+      .concat(GRADE, "}");
+    this.material.needsUpdate = true;
+  }
+}
+
+export type Post = {
+  composer: EffectComposer;
+  bloom: UnrealBloomPass;
+  out: OutputGradePass;
+  setMsaa: (samples: number) => void;
+  setSize: (w: number, h: number, dpr: number) => void;
+  dispose: () => void;
+};
+
+export function makePost(
+  gl: WebGLRenderer,
+  scene: Scene,
+  camera: Camera,
+  { msaa = 4, bloom = true } = {},
+): Post {
+  gl.toneMapping = NeutralToneMapping;
+  const rt = new WebGLRenderTarget(1, 1, {
+    type: HalfFloatType,
+    samples: msaa,
+  });
+  const composer = new EffectComposer(gl, rt);
+  composer.addPass(new RenderPass(scene, camera));
+  const bloomPass = new UnrealBloomPass(new Vector2(256, 256), 0.3, 0.2, 3.0);
+  bloomPass.enabled = bloom;
+  composer.addPass(bloomPass);
+  const out = new OutputGradePass();
+  composer.addPass(out);
+  return {
+    composer,
+    bloom: bloomPass,
+    out,
+    setMsaa: (samples) => {
+      for (const t of [composer.renderTarget1, composer.renderTarget2]) {
+        if (t.samples === samples) continue;
+        t.samples = samples;
+        t.dispose(); // rebuilt with the new sample count on next use
+      }
+    },
+    setSize: (w, h, dpr) => {
+      composer.setPixelRatio(dpr);
+      composer.setSize(w, h);
+      bloomPass.resolution.set(w / 2, h / 2);
+    },
+    dispose: () => {
+      composer.dispose();
+      bloomPass.dispose();
+      out.dispose();
+    },
+  };
+}

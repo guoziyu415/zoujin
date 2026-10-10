@@ -22,6 +22,8 @@ import {
 } from "three";
 import { Sky } from "three/examples/jsm/objects/Sky.js";
 import { useWorld } from "./dev/fakeStore";
+import { SETTINGS } from "./quality/levels";
+import { useQuality } from "./quality/quality";
 import { minuteOfDay } from "./scene/frame";
 import { FOG } from "./shaderPatches";
 import { kelvinRGB, sunAt, sunLook, type SunParams } from "./sun";
@@ -39,7 +41,6 @@ export const lightState = {
 export const lighting = { settle: () => {} };
 
 const SHADOW_HALF = 36; // metres either side of the shadow box (S7)
-const SHADOW_MAP = 2048; // L1 (10.6.3); F-2c lowers it at L0
 
 // Sky.js goes black as soon as the sun is down and its forward scattering near a low sun runs far above the baked sky:
 // afterglow on the sunset side, a dark blue night, an amber low sun, the pink belt, a soft knee on the brightest channel
@@ -110,7 +111,9 @@ export function Lighting({ sun: params }: { sun: SunParams }) {
   const parts = useMemo(() => {
     const sun = new DirectionalLight(0xffffff, 1);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(SHADOW_MAP, SHADOW_MAP);
+    const q = SETTINGS[useQuality.getState().applied]; // the effect below follows later changes
+    sun.shadow.mapSize.set(q.shadowMap, q.shadowMap);
+    sun.shadow.radius = q.shadowRadius;
     sun.shadow.bias = -0.0004;
     sun.shadow.normalBias = 0.05;
     const c = sun.shadow.camera;
@@ -136,6 +139,7 @@ export function Lighting({ sun: params }: { sun: SunParams }) {
       pmrem: new PMREMGenerator(gl),
     };
   }, [gl]);
+  const applied = useQuality((s) => s.applied);
   const envRT = useRef<WebGLRenderTarget | null>(null);
   const envTimer = useRef<number>(0);
 
@@ -153,6 +157,18 @@ export function Lighting({ sun: params }: { sun: SunParams }) {
       pmrem.dispose();
     };
   }, [parts, scene]);
+
+  // the quality level (10.6.3): 1024 at L0, 2048 above; soft edges (a wider PCF radius) at L2 / L3
+  useEffect(() => {
+    const { shadow } = parts.sun;
+    const s = SETTINGS[applied];
+    if (shadow.mapSize.x !== s.shadowMap) {
+      shadow.mapSize.set(s.shadowMap, s.shadowMap);
+      shadow.map?.dispose();
+      shadow.map = null; // made again at the new size on the next frame
+    }
+    shadow.radius = s.shadowRadius;
+  }, [parts, applied]);
 
   // the clock moves the sun
   useEffect(() => {
@@ -236,7 +252,7 @@ export function Lighting({ sun: params }: { sun: SunParams }) {
       .copy(camera.position)
       .addScaledVector(tmp.fwd, SHADOW_HALF * 0.55);
     tmp.centre.y = 0;
-    const texel = (2 * SHADOW_HALF) / SHADOW_MAP;
+    const texel = (2 * SHADOW_HALF) / sun.shadow.mapSize.x;
     tmp.rot.lookAt(tmp.o, tmp.fwd.copy(d).negate(), tmp.up);
     tmp.inv.copy(tmp.rot).invert();
     tmp.centre.applyMatrix4(tmp.inv);

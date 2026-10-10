@@ -16,20 +16,39 @@ pnpm --filter @zoujin/web dev      # http://127.0.0.1:5173/
 场景在别的目录时设 `ZOUJIN_SCENE_ROOT=<目录>`（读 `<目录>/syracuse-square/`）。
 
 - `?dev`：拖时钟、放一遍日落（18:00 → 19:10）、开关石匠作坊、看帧时间和 draw call。给团队用，不给玩家。
-- `?test`：挂上 `window.__zoujin`（`src/three/dev/testHook.ts`），Playwright 用它定时钟、摆固定机位、让玩家走到某处。
+- `?test`：挂上 `window.__zoujin`（`src/three/dev/testHook.ts`），Playwright 用它定时钟、摆固定机位、让玩家走到某处。画质固定在 L1，每次画面一样；`?test&quality=auto` 照玩家那样跑起始档自测和升降档。
+- `?quality=L0`〜`L3`：固定一级画质，不自测、不升降。
+- `?measure`：计测页（见下面「画质」）。
 
 操作：点地面走、点人走到他面前；横向拖动转镜头；桌面上 WASD / 方向键走，按住 Shift 跑。
+
+## 画质（F-2c，frontend-design 10.6.3）
+
+四级：L0 兜底（解像度 1.25，关泛光和 MSAA，阴影 1024）、L1 标准（1.5，全开，阴影 2048）、L2 高（2，软阴影，后台下 2048 贴图）、L3 最高（设备原生，最多 3）。调色和暗角每级都在同一遍里做，换级颜色不变。
+
+- 起始档：进场时在屏幕外画一个固定的测试场景（PBR、天空、雾、2048 阴影、泛光、MSAA），按 S7 的加压法测一帧 GPU 耗时，按像素比推到每一级，取「L1 ≤ 25 ms、L2 / L3 ≤ 12 ms」里最高的一级；测不出就从 L1 开始（`src/three/quality/probe.ts`、`levels.ts`）。
+- 升降档（`governor.ts`，单元测试喂假的帧时间）：每 5 秒看 p95，连续两次超过本级预算（L0 / L1 34 ms，L2 / L3 20 ms，和遥测直方图的边界一致）降一级，解像度马上变，其余等下一次镜头切换。升档只在镜头切换和进出对话时：本级 30 秒都在预算内、降档后过了 60 秒，切换时做 30 帧的 2 倍加压还在 60 帧左右，就在下一次切换时升一级。一局降两次锁住上限。低电量模式（Safari 锁 30 帧、自测说 GPU 很空）按 30 帧的预算算，不升。
+- 遥测（`src/telemetry/telemetry.ts` 先排队，F-0 的网络层批量发）：`quality_changed`（起始级带 `probeGpuMs`，到 L2 / L3 带 `assetMbps`；`lowPower`、`locked` 两种不换级，`from` = `to`），每 10 秒一条 `perf_sample`（9 格直方图）。
+
+**计测页**：`?measure`，或者发成 claude.ai 私有页面在手机上开（不用部署）。先显示进场时自测的结果和它选的档，点「开始计测」后每一级沿 S7 的路线走 6.5 秒记帧时间，再停在 S7 的加压机位把同一帧画 2、4、8…32 遍，算一帧的 GPU 耗时；最后给一张表和一段 JSON，复制给前端。发成私有页面：
+
+```sh
+ZOUJIN_SCENE_ROOT=<场景目录> pnpm --filter @zoujin/web exec vite build --base ./ --outDir <临时目录>/dist
+node apps/web/scripts/measure_artifact.mjs <临时目录>/dist <临时目录>/page   # 再把 page/index.html 连同其余文件发布
+```
+
+页面托管只认常见的网页类型，所以 `.glb`、`.ktx2`、`.wasm` 以 base64 放在脚本里，由一个小的 fetch 垫片交给加载器；这个页面上的加载时间含解码，只看帧时间和 GPU 耗时。
 
 ## 检查
 
 ```sh
-pnpm --filter @zoujin/web test          # 单元测试（导航网格、太阳）；有场景生成物时也查每个位置点都走得到
+pnpm --filter @zoujin/web test          # 单元测试（导航网格、太阳、升降档、直方图）；有场景生成物时也查每个位置点都走得到
 pnpm --filter @zoujin/web build
 pnpm --filter @zoujin/web check:bundle  # 外壳 ≤ 120 KB、3D 分块 ≤ 250 KB（brotli，assets/budgets.json）
 pnpm --filter @zoujin/web e2e           # 先 build；无头 Chromium + 软件渲染，截图在 test-results/shots/
 ```
 
-e2e 查的是 F-2 卡的验收：第一屏和 S7 第一屏构图一致，时钟从 18:00 推到 18:55 时王城墙上的影子线往上走，draw call 不超预算，跟随镜头的取景合 UX 的数字（人物高度、地平线位置），走进刑场时 store 正好收到一次移动，作坊在玩家还在里面时关上也走得出来，控制台没有错误。已经装了 Chromium 的机器用 `PW_CHROMIUM=<路径>` 指过去，不用再下载。CI（`.github/workflows/web.yml`）用草稿档生成广场并缓存，截图作为构件上传。
+e2e 查的是 F-2 卡的验收（`world.spec.ts`）和画质（`quality.spec.ts`：自测选了档、升降档开始工作、遥测的形状对，L0 / L1 / L2 第一屏几块区域的平均颜色差 ≤ 6/255）。`world.spec.ts` 查的是：第一屏和 S7 第一屏构图一致，时钟从 18:00 推到 18:55 时王城墙上的影子线往上走，draw call 不超预算，跟随镜头的取景合 UX 的数字（人物高度、地平线位置），走进刑场时 store 正好收到一次移动，作坊在玩家还在里面时关上也走得出来，控制台没有错误。已经装了 Chromium 的机器用 `PW_CHROMIUM=<路径>` 指过去，不用再下载。CI（`.github/workflows/web.yml`）用草稿档生成广场并缓存，截图作为构件上传。
 
 ## 代码在哪
 
@@ -38,4 +57,5 @@ e2e 查的是 F-2 卡的验收：第一屏和 S7 第一屏构图一致，时钟�
 - `src/three/scene/`：场景清单、加载、平面坐标和 glTF 坐标的换算、第一屏机位。
 - `src/three/nav/navmesh.ts`：读 `nav.json`，A* 加拉直路径、贴地、沿墙滑。
 - `src/three/Lighting.tsx`、`sun.ts`、`shaderPatches.ts`、`PostFX.tsx`：S7 的「只烘遮蔽」光照（实时太阳和影子、物理天空、雾）和后处理。
+- `src/three/quality/`：画质四级、起始档自测、升降档、帧时间直方图；`src/three/post.ts`：后处理链（PostFX 和自测共用）；`src/screens/MeasureScreen.tsx`：计测页。
 - `src/three/Player.tsx`、`CameraRig.tsx`、`rig.ts`：玩家、镜头（第一屏的固定机位，玩家第一次走动或转镜头后滑到 UX 的跟随镜头：后 9 m、高 3.5 m、往下约 12.5°；对话时越肩；减少动态效果时直切）和它们共用的每帧状态。
