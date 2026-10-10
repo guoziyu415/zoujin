@@ -586,7 +586,7 @@ type SetPiece = {
   lines: ({ narration: string } | { speaker: string; line: string })[];
                                    // 按顺序演：narration = 一行地の文（服务端推 narration { line, ref }，ref = 这条的 id）；
                                    // speaker + line = 这个人物的一句预录（构建时生成，ux-design 16.2，声音按 UX 的文案表），字幕就是 line。
-                                   // 预录句怎么下发（manifest 的 cues 那样，或别的）由后端定（B-2）
+                                   // 预录句怎么下发（manifest 的 cues 那样，或别的）由后端定（B-3）
   learns?: { character: string; fact: string }[];
                                    // 演这一条时谁知道了哪件事（character 可以是 "player"，2.1）。服务端把这些 learn 和这一条的演出同一次提交
                                    // 写进事件（写在动作的事件里还是另写一条，B-3 定）。只给 learn、不给任意 effects：固定演出不过叙事者的
