@@ -1,8 +1,8 @@
 # 数据契约（contracts.md）v1.7
 
-负责人：数据工程 · 状态：**v1.7**（1.5 在 M2-0 冻结（C-2），以后只做加法；1.6 是冻结后第一个加法版本）。v1.0 是基线（S-033），v1.1 是 PM 接受的新基线（S-061〜S-063），已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改。1.1 只做加法：加进 D-012〜D-015 的落地（S-029〜S-032：互助、约定、打算、即兴设定、导演事件、生成的结局、角色结局）、S-034〜S-053 里和数据有关的决定、后端设计 v1.0 第 12 节的 13 条提案和 UX 设计 v1.0 第 18.3 节的要求。1.2 也只做加法：幕末说出的打算（S-031 ③）、作废和出戏的一轮怎么落数据（S-054、S-057）。1.3 加随身的东西（UX 5.1，C-14）。1.4 按 UX 对世界模型的校对和 S-064 加：有条件的台词和设计台词、互助的效果、节拍的变体、过场里的二选一、第四幕按钮上「对梅洛斯的影响」。1.5 给过场的选项也加上「对梅洛斯的影响」和选后的一句（UX 校对 7.3、ux-design 4.5）。1.6 把两条只写在说明文字里的取值条件写成数据（`StateVar.valueRequires`，C-16），结局卡改成 1〜3 人、每一局都出（C-17）。1.7 加位置点（谁站在布局的哪个点）、成群的人物和幕末去处的落地（M2 切片，C-18），以及打算成行时的落点（C-19）和固定演出（S-080 ④）。跨角色决定见 `pm/decisions.md`。还在等别人定的事列在第 7 节。
+负责人：数据工程 · 状态：**v1.7**（1.5 在 M2-0 冻结（C-2），以后只做加法；1.6 是冻结后第一个加法版本）。v1.0 是基线（S-033），v1.1 是 PM 接受的新基线（S-061〜S-063），已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改。1.1 只做加法：加进 D-012〜D-015 的落地（S-029〜S-032：互助、约定、打算、即兴设定、导演事件、生成的结局、角色结局）、S-034〜S-053 里和数据有关的决定、后端设计 v1.0 第 12 节的 13 条提案和 UX 设计 v1.0 第 18.3 节的要求。1.2 也只做加法：幕末说出的打算（S-031 ③）、作废和出戏的一轮怎么落数据（S-054、S-057）。1.3 加随身的东西（UX 5.1，C-14）。1.4 按 UX 对世界模型的校对和 S-064 加：有条件的台词和设计台词、互助的效果、节拍的变体、过场里的二选一、第四幕按钮上「对梅洛斯的影响」。1.5 给过场的选项也加上「对梅洛斯的影响」和选后的一句（UX 校对 7.3、ux-design 4.5）。1.6 把两条只写在说明文字里的取值条件写成数据（`StateVar.valueRequires`，C-16），结局卡改成 1〜3 人、每一局都出（C-17）。1.7 加位置点（谁站在布局的哪个点）、成群的人物和幕末去处的落地（M2 切片，C-18），以及打算成行时的落点（C-19）、固定演出（S-080 ④）和可调查物。跨角色决定见 `pm/decisions.md`。还在等别人定的事列在第 7 节。
 UX、前端请看第 2.8 节（幕）、第 4 节（记忆）、第 5 节（结局）。1.1 新增或写清的地方都标了「（1.1）」，文末变更记录有汇总。
-最近更新：2026-10-10（1.7：relocate 和 `ActExit` 的 `spot`、`WorldState.spots`、`Character.group`、`ActExit.arrival`、`ActExit.sub`、`Affordance.playerSpot`（C-18）、`Act.plan`（C-19）、`setPieces`（S-080 ④）；1.6：`StateVar.valueRequires`（C-16）、结局卡 1〜3 人（C-17））
+最近更新：2026-10-10（1.7：relocate 和 `ActExit` 的 `spot`、`WorldState.spots`、`Character.group`、`ActExit.arrival`、`ActExit.sub`、`Affordance.playerSpot`（C-18）、`Act.plan`（C-19）、`setPieces`（S-080 ④）、`objects`；1.6：`StateVar.valueRequires`（C-16）、结局卡 1〜3 人（C-17））
 
 四个契约：**WorldModel**（世界模型，静态、按书版本化）、**Event**（运行时事件，只追加）、**Memory**（角色对玩家的记忆，可删除）、**Ending**（结局）。另有两个支撑结构：**Playthrough**（一局游戏）和 **WorldState**（由事件推出的当前状态）。
 
@@ -16,7 +16,7 @@ UX、前端请看第 2.8 节（幕）、第 4 节（记忆）、第 5 节（结�
 |---|---|
 | 格式 | JSON；每个契约有 JSON Schema（放在 `packages/contracts/schemas/data/*.schema.json`，CI 校验）。本文用 TypeScript 风格写，便于阅读 |
 | 版本 | 每个文档带 `schemaVersion`（写入时的契约版本，现在是 `"1.6"`；1.1 起新增的字段都是可选的，旧版本写的文档按新版本读仍然合法）；世界模型另带 `worldModelVersion`（内容版本，如 `"hashire-merosu@1.0.0"`） |
-| 静态 ID | 世界模型里的 ID 用小写短横线 slug，带类型前缀：`char.king`、`place.syracuse-square`、`scene.village`、`act.2`、`beat.03`、`fact.promise`、`var.hostage.fate`、`role.traveler`、`edge.10-11`、`exit.1.road` 幕末去处、`rule.no-resurrection` 全局规则；（1.1）`aid.melos.shortcut` 互助、`promise.melos.return` 约定模板、`aff.river-hold` 情境动作、`item.water` 物品；（1.7）`piece.gate-taken` 固定演出。世界结局的 ID 不带前缀（`canon-reunion`）。（1.6 写清）状态变量 ID 的段里可以用驼峰：`var.player.companionOf`、`var.player.knowsShortcut`、`var.melos.knowsTyranny`（`world.json` 已在用） |
+| 静态 ID | 世界模型里的 ID 用小写短横线 slug，带类型前缀：`char.king`、`place.syracuse-square`、`scene.village`、`act.2`、`beat.03`、`fact.promise`、`var.hostage.fate`、`role.traveler`、`edge.10-11`、`exit.1.road` 幕末去处、`rule.no-resurrection` 全局规则；（1.1）`aid.melos.shortcut` 互助、`promise.melos.return` 约定模板、`aff.river-hold` 情境动作、`item.water` 物品；（1.7）`piece.gate-taken` 固定演出、`obj.workshop-door` 可调查物。世界结局的 ID 不带前缀（`canon-reunion`）。（1.6 写清）状态变量 ID 的段里可以用驼峰：`var.player.companionOf`、`var.player.knowsShortcut`、`var.melos.knowsTyranny`（`world.json` 已在用） |
 | 运行时 ID | 前缀 + ULID（按时间可排序）：`pt_…` 一局、`turn_…` 一轮、`ev_…` 事件、`mem_…` 记忆、`utt_…` 一句话、`end_…` 结局；（1.1）`prm_…` 约定、`rf_…` 本局即兴设定 |
 | 故事时间 | `t` = 从 Day 0（约束之日）00:00 起算的故事分钟数。期限是 Day 3 日没 = `5460`（2.6 节）。时间只由事件推进，不随真实时间流动（S-021） |
 | 时间的说法 | `tLabel` 按世界模型的 `clock.labels` 生成，如 `t=1380` →「約束の日・夜」，`t=5460` →「三日目・日没」（1.1：格式和时段按 UX 的表，S-037，见 2.6）。前端、記憶帳、结局都用同一个规则 |
@@ -108,6 +108,7 @@ type WorldModel = {
   affordances?: Affordance[];         // （1.1）情境动作（S-036 ②、S-038、UX 5.1），见 2.10
   items?: Item[];                     // （1.1）故事里的物品（R7：给东西要拿得到），见 2.10
   setPieces?: SetPiece[];               // （1.7，S-080 ④）固定演出：挂在节拍或玩家的动作上的地の文和预录句，见 2.11
+  objects?: WorldObject[];              // （1.7）场景里可「調べる」的东西，见 2.12
 };
 ```
 
@@ -571,12 +572,13 @@ type SetPiece = {
   on: { beat: string } | { act: string; target?: string; refused?: true };
                                    // beat：这个节拍发生（happened / altered）时玩家在节拍的地点（在场，2.4.1 第 4 条）；
                                    // act：玩家的这种动作（api-contract 3.8 的 kind）判定之后。target：对人物的动作写人物 ID，move 写地点 ID，
-                                   // go 写出口通往的地点（布局 exits[].place），examine 写 interactable 的 ID（obj.*）；省略 = 不看对象。
+                                   // go 写出口通往的地点（布局 exits[].place），examine 写可调查物的 ID（obj.*，2.12）；省略 = 不看对象。
                                    // refused = 只在被拒时，省略 = 只在做成时（done / partial）
   after?: string[];                // 这些节拍已经发生（happened / altered）
   before?: string[];               // 这些节拍还没发生
   knows?: { character: string; fact: string }[];  // 这些人物知道这件事：Character.knows 里到这个时刻已经成立的（since），或这一局已提交的 learn
   played?: string[];               // 这些固定演出里至少有一个这一局已经演过
+  notPlayed?: string[];            // 这些固定演出这一局都还没演过
   when?: Condition[];              // 别的状态条件（同节拍前提）
   once?: true;                     // 一局只演一次
   lines: ({ narration: string } | { speaker: string; line: string })[];
@@ -589,7 +591,24 @@ type SetPiece = {
 
 - 同一个时机（同一个节拍，或同一种动作和对象、同样的 `refused`）有几条时，按列表顺序取第一条条件全满足、而且（`once` 的）这一局还没演过的，只演这一条。都不满足就不演，照常由叙事者说。
 - `on.act` 的那一条在这个动作的 `action_result` 之后演，代替叙事者对这个动作的叙事（不再另说一遍）；`on.beat` 的演在节拍的那次提交之后。玩家不在场的节拍不演。
-- 校验工具查：ID 唯一；引用的节拍、人物、事实、地点存在；`target` 按动作是存在的人物或地点，`examine` 的是 `obj.*`；`played` 引用别的固定演出；同一个时机上，排在一条没有任何条件的条目后面的永远轮不到，算错。`act` 是不是 api-contract 3.8 的动作、`lines` 的形状由 Schema 查。`obj.*` 是服务端给的 interactable（api-contract 2.3），世界模型不查，挂上去的要和后端、前端对好 ID。
+- 选哪一条和条件怎么算只有一份：共享规则库 `zoujin_worldsim.pick_set_piece(world, state, hook, played)`（`played` 是这一局演过的固定演出 ID，由服务端记）。`knows` 用同一个库的 `knows(world, state, character, fact)`。
+- 校验工具查：ID 唯一；引用的节拍、人物、事实、地点存在；`target` 按动作是存在的人物或地点，`examine` 的是 `objects` 里的可调查物；`played`、`notPlayed` 引用别的固定演出；同一个时机上，排在一条没有任何条件的条目后面的永远轮不到，算错。`act` 是不是 api-contract 3.8 的动作、`lines` 的形状由 Schema 查。
+
+### 2.12 WorldObject（1.7，可调查物）
+
+场景里可以「調べる」的东西（例：工房关着的屋门）。服务端按它出快照的 `interactables`（`kind: "examine"`，0 分，api-contract 2.3），不写死；玩家调查时有挂在上面的固定演出（2.11）就演，没有就由叙事者说一行。场景出口不在这里，照布局的 `exits`。
+
+```ts
+type WorldObject = {
+  id: string;                      // "obj.workshop-door"
+  place: string;                   // 在哪个地点（要有场景）
+  label: string;                   // 按钮上的字（日语，UX 出），例「戸を叩く」
+  spot?: string;                   // 布局里的位置点（前端加）；服务端出快照时要有
+  inferred: true; note?: string;
+};
+```
+
+- 校验工具查：ID 唯一、以 `obj.` 开头；地点存在、有场景；`spot` 在这个地点所在场景的布局里、属于这个地点（同 3.1）；`label` 不为空。
 
 ---
 
@@ -1023,7 +1042,7 @@ type CharacterEnding = {           // （1.1）
   - R2 加上 `valueRequires`（第 3 节规则表）。只有到点的节拍和期限（`origin: "schedule"`）不判；导演事件的 `actor` 也是 `system`，照样判（后端评审）。
   - 写清（后端评审 W-1，2026-10-10）：同一个节拍的几次改动怎么合（第 3 节 `Effect` 的注释；以前共享规则换方向时整条替换，先拖慢 30 再帮快 10 成了帮快 10）；`origin: "schedule"` 只用于到点的节拍和期限（第 3 节）。
 - **v1.7（2026-10-10）**：只做加法（C-18）。M2 切片要的位置点和落地。
-  - WorldModel：`Character.group`；`ActExit.spot`、`ActExit.arrival`（2.8、2.8.1 第 4 步）；`ActExit.sub`（幕末页副题的后半，以前写在 UX 的文案表里、前端按去处 ID 对）；`Affordance.playerSpot`（做完以后玩家站哪，后端 10-10 提）；`Act.plan`（打算成行时的落点，2.8.1 第 2 步，C-19）；`WorldModel.setPieces`（固定演出：节拍或玩家的动作上写好的地の文和预录句，2.11，S-080 ④，PM 10-10 定放进切片世界模型）。
+  - WorldModel：`Character.group`；`ActExit.spot`、`ActExit.arrival`（2.8、2.8.1 第 4 步）；`ActExit.sub`（幕末页副题的后半，以前写在 UX 的文案表里、前端按去处 ID 对）；`Affordance.playerSpot`（做完以后玩家站哪，后端 10-10 提）；`Act.plan`（打算成行时的落点，2.8.1 第 2 步，C-19）；`WorldModel.setPieces`（固定演出：节拍或玩家的动作上写好的地の文和预录句，2.11，S-080 ④，PM 10-10 定放进切片世界模型）；`WorldModel.objects`（可调查物，2.12，后端 10-10 提：服务端按它出快照的 interactables）。
   - Event：`relocate` 效果的 `spot`。WorldState：`spots`。站位规则和校验写在 3.1。
   - 第 7 节新增 C-18、C-19（已定：打算成行时的落点用 `Act.plan`）。
   - 『走れメロス』（draft.3）：群众、警吏、山贼、一团旅人 `group: true`；beat.s1 セリヌンティウス站 `stake`、王站 `king-west`，beat.24 梅洛斯站 `scaffold`（布局见前端 #22）。同一个 PR 里的世界模型修正：群众、少女第一幕在广场的家里（`absent`），beat.s1 到刑场；beat.04（捕缚）挪到王城前庭（`place.execution-ground`）；送老爺回家记 `var.player.walkedOldManHome`（说话兑现，或第一幕的情境动作「家まで送る」`aff.walk-old-man-home`，30 分，UX 10-10）。

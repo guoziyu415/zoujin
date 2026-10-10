@@ -261,6 +261,12 @@ type MemoryId = Annotated[str, Field(pattern="^mem_[0-7][0-9A-HJKMNP-TV-Z]{25}$"
 """
 
 
+type ObjectId = Annotated[str, Field(pattern="^obj\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="ObjectId")]
+"""
+（1.7）可调查物：`obj.` 加小写 slug（可以有 `.` 和 `-`）
+"""
+
+
 class PlaceCrossing(BaseModel):
     """
     有河的地点
@@ -368,7 +374,7 @@ type SchemaVersion = Annotated[
     Field(title="SchemaVersion"),
 ]
 """
-写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival / sub、Affordance.playerSpot（C-18）、Act.plan（C-19）、WorldModel.setPieces（S-080 ④）
+写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival / sub、Affordance.playerSpot（C-18）、Act.plan（C-19）、WorldModel.setPieces（S-080 ④）、WorldModel.objects
 """
 
 
@@ -536,6 +542,32 @@ class WorldModelGlobalRulesItem(BaseModel):
 
 
 PacingAdditionalProperty = TypeAliasType("PacingAdditionalProperty", Annotated[int, Field(ge=0)])
+
+
+class WorldObject(BaseModel):
+    """
+    （1.7）可调查物（2.12）：场景里可「調べる」的东西。服务端按它出快照的 interactables（kind examine，0 分），不写死；场景出口照布局的 exits
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    id: ObjectId
+    place: PlaceId
+    """
+    在哪个地点（要有场景）
+    """
+    label: Annotated[str, Field(min_length=1)]
+    """
+    按钮上的字（日语，UX 出）
+    """
+    spot: SpotId | None = None
+    """
+    布局里的位置点（前端加）；服务端出快照时要有
+    """
+    inferred: Literal[True] = True
+    note: str | None = None
 
 
 class ActStart(BaseModel):
@@ -1577,6 +1609,10 @@ class SetPiece(BaseModel):
     """
     这些固定演出里至少有一个这一局已经演过
     """
+    notPlayed: list[SetPieceId] | None = None
+    """
+    这些固定演出这一局都还没演过
+    """
     when: list[Condition] | None = None
     """
     别的状态条件（同节拍前提）
@@ -2562,6 +2598,10 @@ class WorldModel(BaseModel):
     setPieces: list[SetPiece] | None = None
     """
     （1.7，S-080 ④）固定演出：挂在节拍或玩家的动作上的地の文和预录句，见 2.11
+    """
+    objects: list[WorldObject] | None = None
+    """
+    （1.7）场景里可「調べる」的东西，见 2.12
     """
 
 

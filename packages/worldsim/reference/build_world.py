@@ -20,7 +20,7 @@
    （1.4）设计台词、互助的效果、节拍的变体、过场二选一（enRoute）都成立；（1.7）位置点（relocate 和去处的 spot）在这个地点所在场景的
    布局里、属于这个地点（assets/scenes/<场景>/scene.json），去处落地的 arrival，成群的人物（group）不能对话；打算成行的落点
    （Act.plan，C-19）和去处一样查，情境动作做完玩家站的点（playerSpot）也查；固定演出（setPieces，2.11）引用的节拍、人物、事实、
-   地点和别的固定演出都存在，同一个时机上不会有永远轮不到的条目。
+   地点和别的固定演出都存在，同一个时机上不会有永远轮不到的条目；可调查物（objects，2.12）的地点有场景、位置点在布局里。
 7. 情景模拟（--scenarios）：按 contracts 2.5 的时间传播规则推演原著路径和若干改道情景，
    检查原著路径每个节拍都发生、每个情景落到预期的世界结局（和预期的节拍状态、变体）、每类底线世界结局都能走到；
    （1.4）第四幕按钮上的 melosMinutes 和共享规则算出的梅洛斯到达时间差一致；（1.5）过场选项的 melosMinutes 也一样。
@@ -138,7 +138,7 @@ def main():
         err(f"schemaVersion 要是契约版本 {CONTRACT_VERSION}，现在 {world.get('schemaVersion')}")
     ids = {}
     for kind in ("characters", "places", "facts", "beats", "stateVars", "roles", "causal", "globalRules", "scenes", "acts", "affordances", "items",
-                 "setPieces"):
+                 "setPieces", "objects"):
         for x in world.get(kind, []):
             if x["id"] in ids:
                 err(f"ID 重复：{x['id']}")
@@ -678,6 +678,20 @@ def main():
         if kinds != {"slower", "faster"}:
             err(f"{pl}: 第四幕每处要同时有让他慢和帮他快的动作（S-036 ②），现在只有 {sorted(kinds)}")
 
+    # ---------- 可调查物（contracts 2.12，1.7） ----------
+    objects = {x["id"]: x for x in world.get("objects", [])}
+    for ob in objects.values():
+        if not ob["id"].startswith("obj."):
+            err(f"{ob['id']}: 可调查物的 ID 以 obj. 开头")
+        if ob.get("place") not in places:
+            err(f"{ob['id']}: 地点不存在 {ob.get('place')}")
+        elif scene_of.get(ob["place"]) is None:
+            err(f"{ob['id']}: 地点 {ob['place']} 没有场景，放不了可调查物")
+        elif "spot" in ob:
+            check_spot(ob["place"], ob["spot"], f"{ob['id']}.spot")
+        if not ob.get("label"):
+            err(f"{ob['id']}: label 不能为空")
+
     # ---------- 固定演出（contracts 2.11，1.7，S-080 ④） ----------
     piece_ids = {x["id"] for x in world.get("setPieces", [])}
     unconditional = {}  # 时机 → 这个时机上第一条什么条件都没有的固定演出：排在它后面的永远轮不到
@@ -698,8 +712,8 @@ def main():
                 if tgt not in places:
                     err(f"{w2}: {kind} 的 target 要是存在的地点（go 写出口通往的地点），现在 {tgt}")
             elif kind == "examine":
-                if not tgt.startswith("obj."):
-                    err(f"{w2}: examine 的 target 写 interactable 的 ID（obj.*），现在 {tgt}")
+                if tgt not in objects:
+                    err(f"{w2}: examine 的 target 要是 objects 里的可调查物（2.12），现在 {tgt}")
             elif tgt not in chars:
                 err(f"{w2}: {kind} 的 target 要是存在的人物，现在 {tgt}")
         for k in ("after", "before"):
@@ -713,9 +727,10 @@ def main():
                 err(f"{w2}: knows 的人物不存在 {kn['character']}")
             if kn["fact"] not in facts:
                 err(f"{w2}: knows 的事实不存在 {kn['fact']}")
-        for x in sg.get("played", []):
-            if x not in piece_ids or x == w2:
-                err(f"{w2}: played 要引用别的固定演出，现在 {x}")
+        for k in ("played", "notPlayed"):
+            for x in sg.get(k, []):
+                if x not in piece_ids or x == w2:
+                    err(f"{w2}: {k} 要引用别的固定演出，现在 {x}")
         for cnd in sg.get("when", []):
             check_value(cnd["var"], cnd["value"], f"{w2}.when")
         if not sg.get("lines"):
@@ -725,7 +740,7 @@ def main():
                 err(f"{w2}: speaker 不存在 {ln['speaker']}")
         if hook in unconditional:
             err(f"{w2}: 同一个时机上 {unconditional[hook]} 排在前面、没有条件，这条永远轮不到")
-        elif not any(sg.get(k) for k in ("after", "before", "knows", "played", "when", "once")):
+        elif not any(sg.get(k) for k in ("after", "before", "knows", "played", "notPlayed", "when", "once")):
             unconditional[hook] = w2
 
     # ---------- 节拍上的人物状态、台词和动机的生效时间（contracts 2.1、2.4，1.1） ----------

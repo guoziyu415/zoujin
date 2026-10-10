@@ -225,6 +225,13 @@
             "$ref": "#/$defs/SetPiece"
           },
           "description": "（1.7，S-080 ④）固定演出：挂在节拍或玩家的动作上的地の文和预录句，见 2.11"
+        },
+        "objects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WorldObject"
+          },
+          "description": "（1.7）场景里可「調べる」的东西，见 2.12"
         }
       },
       "required": [
@@ -1961,6 +1968,13 @@
           },
           "description": "这些固定演出里至少有一个这一局已经演过"
         },
+        "notPlayed": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/SetPieceId"
+          },
+          "description": "这些固定演出这一局都还没演过"
+        },
         "when": {
           "type": "array",
           "items": {
@@ -2016,6 +2030,37 @@
         }
       },
       "required": ["id", "on", "lines", "inferred"],
+      "additionalProperties": false
+    },
+    "WorldObject": {
+      "title": "WorldObject",
+      "description": "（1.7）可调查物（2.12）：场景里可「調べる」的东西。服务端按它出快照的 interactables（kind examine，0 分），不写死；场景出口照布局的 exits",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/ObjectId"
+        },
+        "place": {
+          "$ref": "common.schema.json#/$defs/PlaceId",
+          "description": "在哪个地点（要有场景）"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "description": "按钮上的字（日语，UX 出）"
+        },
+        "spot": {
+          "$ref": "common.schema.json#/$defs/SpotId",
+          "description": "布局里的位置点（前端加）；服务端出快照时要有"
+        },
+        "inferred": {
+          "const": true
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "place", "label", "inferred"],
       "additionalProperties": false
     }
   }

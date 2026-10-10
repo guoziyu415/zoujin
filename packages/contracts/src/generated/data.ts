@@ -170,7 +170,7 @@ export type EdgeId = string;
  */
 export type EventId = string;
 /**
- * 写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival / sub、Affordance.playerSpot（C-18）、Act.plan（C-19）、WorldModel.setPieces（S-080 ④）
+ * 写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival / sub、Affordance.playerSpot（C-18）、Act.plan（C-19）、WorldModel.setPieces（S-080 ④）、WorldModel.objects
  */
 export type SchemaVersion = "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5" | "1.6" | "1.7";
 /**
@@ -201,6 +201,10 @@ export type TurnId = string;
  * 一句话：`utt_` 加 ULID（26 位 Crockford base32，大写）
  */
 export type UtteranceId = string;
+/**
+ * （1.7）可调查物：`obj.` 加小写 slug（可以有 `.` 和 `-`）
+ */
+export type ObjectId = string;
 /**
  * 全局规则（globalRules）：`rule.` 加小写 slug（可以有 `.` 和 `-`）
  */
@@ -1555,6 +1559,10 @@ export interface SetPiece {
    */
   played?: SetPieceId[];
   /**
+   * 这些固定演出这一局都还没演过
+   */
+  notPlayed?: SetPieceId[];
+  /**
    * 别的状态条件（同节拍前提）
    */
   when?: Condition[];
@@ -1812,6 +1820,30 @@ export interface WorldModel {
    * （1.7，S-080 ④）固定演出：挂在节拍或玩家的动作上的地の文和预录句，见 2.11
    */
   setPieces?: SetPiece[];
+  /**
+   * （1.7）场景里可「調べる」的东西，见 2.12
+   */
+  objects?: WorldObject[];
+}
+/**
+ * （1.7）可调查物（2.12）：场景里可「調べる」的东西。服务端按它出快照的 interactables（kind examine，0 分），不写死；场景出口照布局的 exits
+ */
+export interface WorldObject {
+  id: ObjectId;
+  /**
+   * 在哪个地点（要有场景）
+   */
+  place: PlaceId;
+  /**
+   * 按钮上的字（日语，UX 出）
+   */
+  label: string;
+  /**
+   * 布局里的位置点（前端加）；服务端出快照时要有
+   */
+  spot?: SpotId;
+  inferred: true;
+  note?: string;
 }
 /**
  * 由事件推出的当前状态，不是第二份事实（3.1）：世界模型初值 + 按 seq 依次应用全部事件的 effects
