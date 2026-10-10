@@ -29,6 +29,7 @@ INVALID_BECAUSE: dict[str, tuple[str, str]] = {
     "error/ErrorResponse/unknown-code.json": ("enum", "error/code"),
     "rest/ending/200/card-extra-field.json": ("additionalProperties", "card"),
     "rest/ending/200/card-title-too-long.json": ("maxLength", "card/title"),
+    "rest/ending/200/missing-card.json": ("required", ""),
     "rest/events/query/limit-over-50.json": ("maximum", "limit"),
     "rest/me/200/missing-limits.json": ("required", ""),
     "rest/playthroughs-create/409/without-active-playthrough.json": ("required", ""),

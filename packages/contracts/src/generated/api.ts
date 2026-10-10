@@ -1076,9 +1076,9 @@ export interface EndingView {
    */
   characters: Data.CharacterEnding[];
   /**
-   * 可选：数据契约第 5 节，校验两次都不过时用模板尾声，不生成结局卡；文档的例子总有（C-1 评审定）
+   * 每一局都有（S-076，数据契约 1.6 第 5 节）：生成的结局取 rank 最前的 1〜3 人，一个也没排上名时放梅洛斯一句；模板尾声的局用 ux-design 11.4 那一组预写的句子
    */
-  card?: EndingCardView;
+  card: EndingCardView;
 }
 /**
  * 结局的世界层（2.8）。contrast 和数据契约一样可选
