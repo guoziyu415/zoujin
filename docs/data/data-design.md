@@ -1,8 +1,8 @@
-# 数据设计（data-design.md）v1.2.4
+# 数据设计（data-design.md）v1.2.5
 
-负责人：数据工程 · 状态：**v1.2.4**。v1.0 已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改；1.1 跟上契约 1.1、PM 的 S-022〜S-053 和世界模型 draft.3；1.2 跟上契约 1.2 和 S-054〜S-063，补齐前端、UX 要的埋点（9.3）和市场调研要的试玩导出（9.5）。跨角色决定见 `pm/decisions.md`。待别人定的事见第 13 节。
+负责人：数据工程 · 状态：**v1.2.5**。v1.0 已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改；1.1 跟上契约 1.1、PM 的 S-022〜S-053 和世界模型 draft.3；1.2 跟上契约 1.2 和 S-054〜S-063，补齐前端、UX 要的埋点（9.3）和市场调研要的试玩导出（9.5）。跨角色决定见 `pm/decisions.md`。待别人定的事见第 13 节。
 相关：[contracts.md](contracts.md) v1.7（四个数据契约，本文所有字段以它为准）· `backend/backend-design.md` · `pm/prd.md`
-最近更新：2026-10-10（v1.2.4：按后端 #56 的评审改第 3、8 节四处说法，5.3 写清 B-3 加的 `turns.request` / `result` 和打算文字怎么清；v1.2.3：第 3 节 B-2 加的花费和计数列，第 8 节叙事者的五种 Span；v1.2.2：7.3 评审员定为 Claude Opus 5.5，写清校准和独立性；7.1 模拟局的 AI 玩家用 Claude；9.3 画质遥测的两处读法）
+最近更新：2026-10-11（v1.2.5：跟上 B-3（#61）：第 3 节动作和打算的花费、计数和局上的新列，5.3 `turns.result.seq`，第 8 节 `narrator.action` / `narrate` / `plan`；v1.2.4：按后端 #56 的评审改第 3、8 节四处说法，5.3 写清 B-3 加的 `turns.request` / `result` 和打算文字怎么清；v1.2.3：第 3 节 B-2 加的花费和计数列，第 8 节叙事者的五种 Span；v1.2.2：7.3 评审员定为 Claude Opus 5.5，写清校准和独立性；7.1 模拟局的 AI 玩家用 Claude；9.3 画质遥测的两处读法）
 
 数据工程负责六件事：世界模型（含『走れメロス』v1）、新增一本书的流水线、事件日志与世界状态、記憶帳与删除、评测与可观测数据、分析与成本测算。
 
@@ -58,6 +58,7 @@
 playthroughs(playthrough_id PK, user_ref FK users ON DELETE CASCADE, book_id, world_model_version, role_id,
              status,                          -- active / ended / abandoned；删除的局整行删掉，不留 deleted
              started_at, ended_at, last_active_at, last_seq,
+             player_spot, played_pieces, act_end, plan_tries, plan_alternative, arrival,  -- B-3（#61，迁移 0003）
              UNIQUE (user_ref) WHERE status = 'active')   -- 每账号同时 1 局
 events(event_id PK, playthrough_id FK ON DELETE CASCADE, seq, turn_id, idempotency_key, schema_version,
        t, dt, actor, type, origin, place, summary, causes jsonb, effects jsonb, key_moment bool, check_result jsonb,
@@ -73,7 +74,9 @@ playthrough_metrics(playthrough_id PK FK CASCADE, turns, turns_retracted,
                     voice_in_seconds, voice_out_seconds, degraded_at,  -- 后端写，分析用，不含文字
                     cost_triage_usd, cost_rewrite_usd,                 -- B-2（#47，迁移 0002）
                     turns_triage_skipped, turns_timed_out,
-                    candidates_rewritten, candidates_downgraded, candidates_rejected, candidates_confirm_dropped)
+                    candidates_rewritten, candidates_downgraded, candidates_rejected, candidates_confirm_dropped,
+                    cost_narrate_usd, cost_plan_usd,                   -- B-3（#61，迁移 0003）
+                    actions, actions_act_ended, plans_accepted, plans_refused)
 
 -- 用到它们的 M2 卡再建
 memory_items(memory_id PK, playthrough_id FK CASCADE, character, kind, text, from_events jsonb, t,
@@ -81,13 +84,18 @@ memory_items(memory_id PK, playthrough_id FK CASCADE, character, kind, text, fro
 endings(ending_id PK, playthrough_id FK CASCADE, body jsonb, decided_at)
 ```
 
-- 每局费用 = `playthrough_metrics` 里所有 `cost_*_usd` 列之和（9.1「成本可持续吗」、第 10 节）。B-0 建了四列：提取、检查、回答、Live；B-2 加了分流、改写两列。重发的、超时取消的调用也算（钱已经花了）。安全分类器、结局生成、记忆整理、人物简报的费用，由做这些功能的卡各加一列 `cost_<项>_usd`，不并进已有的列。9.1 还要的问句结尾计数、导演事件数、结局演出开始时间，也由做这些功能的卡加列（第 12 节）。
+- 每局费用 = `playthrough_metrics` 里所有 `cost_*_usd` 列之和（9.1「成本可持续吗」、第 10 节）。B-0 建了四列：提取、检查、回答、Live；B-2 加了分流、改写两列；B-3 加了两列：`cost_narrate_usd` 是动作的一行叙事（提示 `narrate`），`cost_plan_usd` 是判幕末的打算（提示 `plan`）。动作和打算也走提取、检查、改写的，钱记进原来那几列：自由动作不分流、直接提取再检查；情境动作、`go`、`give` 只过检查（和改写）；`move`、`examine`、`wait` 只按规则判，不调模型；打算自己的效果过检查和改写。没挂固定演出的动作都调一次 `narrate`。重发的、超时取消的调用也算（钱已经花了）。安全分类器、结局生成、记忆整理、人物简报的费用，由做这些功能的卡各加一列 `cost_<项>_usd`，不并进已有的列。9.1 还要的问句结尾计数、导演事件数、结局演出开始时间，也由做这些功能的卡加列（第 12 节）。
 - B-2 的六个计数（叙事者每轮加，backend-design 2.4）：
   - `turns_triage_skipped`：分流判为闲聊、没做提取的轮。分流两次都失败时当「可能」照常提取，不算这里。
   - `turns_timed_out`：提取、检查或改写两次都失败（超时、输出不过 Schema、调用出错），这一轮只提交了时钟。第 3〜5 步里任何一次调用这样失败，整轮都只提交时钟。
   - `candidates_rewritten` / `candidates_downgraded` / `candidates_rejected`：按候选的最后结果数，改写两次后才降级的只算降级。
   - `candidates_confirm_dropped`：要确认又不可逆的候选，在意图确认（B-4）做好之前先丢掉，不进第 3 步。
   - 否决率、改写率的分母是这一局进了第 3 步的候选数，这张表里没有。从 `events` 数：每条候选都写成一个事件（被拒的 `effects` 为空），`check_result.checker` 以 `rules@` 开头；同一轮记时钟的那条「〜と話した」是 `b0:clock`，不算。
+- B-3 的四个计数（叙事者每处理一个动作或打算加，`turns.kind` 是 `action` / `plan`）：
+  - `actions`：叙事者判过的动作，不论结果。结果从 `turns.result` 里 `action_result.status` 数（`done` / `refused` / `partial`，api-contract 3.8），动作的拒绝率 = `refused` 的条数 ÷ `actions`。`move` 也算一次。
+  - `actions_act_ended`：收幕以后才轮到、直接回 `refused` 的动作（`turns.result.reason = "act-ended"`，0 分、不写事件、不调模型）。不进 `actions`，也不算进拒绝率：是玩家在收幕那一刻还排着的，不是动作做不成。
+  - `plans_accepted` / `plans_refused`：幕末说出的打算成行、不成行的次数（同一次幕末最多 2 次）。成行率 = accepted ÷ (accepted + refused)。不算的：用声音说、转写是空的（误按、没出声，不写任务、不算试次，api-contract 3.11）；试次用完或没在幕末时发来的（回 `invalid_request`）。选了不成行时给的替代去处是一次 `choose`，不算进这两列；它写的玩家 `act-transition` 和成行一样带 `plan`，要数「最后按自己的打算走了」的局，从事件数。
+- 局上的六列（B-3）是叙事者在幕末和落地之间用的运行状态，分析不读：`player_spot`（玩家站在布局的哪个点）、`played_pieces`（演过的固定演出）、`act_end`（收幕后待选的那一份）、`plan_tries`、`plan_alternative`（不成行时给的替代去处，幕切换时清掉，5.3）、`arrival`（落地后谁先开口）。
 - 分析会读后端 `turns` 表的 `status`：pending / leased / done / retracted / failed / lost。`lost` 是断线时人物还没说完的一轮：叙事者不处理，不判、不花时间、没有 `turn_settled`（api-contract v1.0.3 第 4 节），也不算进 `playthrough_metrics.turns`。算「一局几轮」用 `playthrough_metrics.turns`，`lost` 的轮数单独看（9.1「续玩」的断线）。
 
 `events` 不允许 UPDATE / DELETE：narrator 角色只有 INSERT、SELECT；只有「删除整局」走单独的特权流程（backend-design 2.1）。
@@ -153,7 +161,7 @@ endings(ending_id PK, playthrough_id FK CASCADE, body jsonb, decided_at)
 |---|---|---|
 | PostgreSQL 主库 | L1 清空记忆文本和整轮原话；L2/L3 级联删除 | 立即 |
 | 局势说明（`briefs`） | L1 后立即重写该角色的局势说明；L2/L3 级联 | 立即 |
-| 轮次任务表（`turns`） | 存 ID、状态、租约，B-3 起加 `request`（动作和幕末选项的 ID、参数）和 `result`（要推的结果和固定演出），不存原话。`result` 里打算的文字（`label`、`narration`、`alternative.label`，从玩家的话转述来的）：L1 清空那一轮的，结局生成后和原话一起清空（5.5）；局上的 `plan_alternative` 幕切换时清掉。L2/L3 级联 | 立即 |
+| 轮次任务表（`turns`） | 存 ID、状态、租约，B-3 起加 `request`（动作和幕末选项的 ID、参数）和 `result`（要推的结果、演的固定演出，`seq` 是这一轮那次提交的最后一个 seq：网关等 `commit` 推到这里才推结果），不存原话。`result` 里打算的文字（`label`、`narration`、`alternative.label`，从玩家的话转述来的）：L1 清空那一轮的，结局生成后和原话一起清空（5.5）；局上的 `plan_alternative` 幕切换时清掉。L2/L3 级联 | 立即 |
 | 正在进行的角色语音会话 | L1 后 gateway 关掉会话，用新局势说明重建（backend-design 2.10 删除、3.2 重建会话） | 立即 |
 | 最近几轮对话（网关内存） | 重建会话时补给模型的近期对话只放在网关内存里，不写数据库、不进 Trace（S-056）；会话结束或 L1 删除时丢弃 | 立即 |
 | Live 会话恢复状态（服务商侧） | 正式环境**不开**会话恢复（S-059 ②），服务商侧不保存会话状态；重建会话不靠恢复句柄 | 不产生 |
@@ -328,9 +336,13 @@ UX 的设计层校对（`ux/reviews/data-world-draft3.md`）已按契约 1.4 落
 | `turn` | playthrough_id、turn_id、character、input_mode（voice / text）、character_text_missing（等满仍没有人物的文字） |
 | `live.response` | model、voice、audio_in_s、audio_out_s、tokens_in、tokens_out、release_to_first_audio_ms、interrupted |
 | `narrator.triage` / `narrator.extract` / `narrator.check` / `narrator.rewrite` / `narrator.reply`（B-2；每次调用一个，重发是第二个） | 都有：world_model_version、model、prompt_version、attempt、status（ok / timeout / invalid / error）、duration_ms。tokens_in、tokens_out、tokens_cached、tokens_thought 只在 ok 时有；cost_usd 在 ok、timeout（取消时按预计记账的数）、invalid（已经花掉的）时有，error 没有。叙事者处理的一轮（含评测入口的 `say`）的前四种另有 playthrough_id、turn_id；评测入口的 `check()`（S-2）不带，带运行器给的 trace_id。另加：triage 的 route；extract 的 candidate_count（模型给的候选数）；check 的 candidate_count（这一轮一起送检的候选数）和 failed_rules（模型判 fail 的规则名，ok 时也带）；rewrite 的 mode（rewrite / downgrade）和 failed_rules（只有规则名）；reply 的 character（reply 现在只用在评测入口的 `say`） |
+| `narrator.action`（B-3，一个动作一个） | playthrough_id、turn_id、world_model_version、action_kind（`move` / `examine` / `help` / `give` …）、status（动作的结果：done / refused / partial）、failed_rules（不过的规则名）、piece_id（演了固定演出时）。收幕以后才轮到的动作不判，没有这个 Span |
+| `narrator.narrate`（B-3，动作的一行叙事，每次调用一个） | 同上面五种的公共属性，另有 playthrough_id、turn_id。status 是这次调用的状态，动作的结果看 `narrator.action`。挂着固定演出的动作不叙事，没有这个 Span |
+| `narrator.plan`（B-3，判幕末的打算，每次调用一个） | 同上面五种的公共属性，另有 playthrough_id、turn_id、tries（这次幕末第几次说打算，1 或 2）、accepted（ok 时有：模型判的成不成行；最后成没成行还要这一幕有 `Act.plan`、打算自己的效果过检查，看 `plans_accepted`） |
 | `narrator.commit` | seq_from、seq_to、event_count、memory_count、lock_wait_ms |
 | `budget` | run_cost_jpy_so_far、degraded |
 
+- （B-3）动作和打算里的提取、检查、改写照样各出 `narrator.extract` / `check` / `rewrite`（哪些动作调哪几步见第 3 节）：自由动作有 extract（不分流，没有 triage），打算自己的效果有 check、rewrite。
 - （B-2）Span 只收白名单里的属性（`zoujin_backend/trace.py` 的 `ATTRS`），值只有数、布尔、ID 和规则名，不带原话、摘要和理由的文字。B-2 先写进日志 `zoujin.trace`，一行一个 Span；接 Cloud Trace 是部署的卡，属性名照这张表。`turn`、`live.response`、`narrator.commit`、`budget` 还没有，由做这些的卡加。
 - Live 没有单独的语音识别步骤，第一个 Span 是「玩家松开 → 首个音频」。端到端延迟以前端测量为准（遥测），服务端测的是不含网络下行的部分。
 - 核心指标：松开到开口 p50/p95、每轮叙事者耗时、否决率与改写次数、correction 比例、出戏率、剧透率、每局费用、降级率、错误率。
