@@ -2,10 +2,15 @@
 // start probe as the game runs it, then the plaza at each quality level L0-L3 with S7's method, so S4, S5 and older
 // iPhones can be measured the same way. Per level: 6.5 s walking S7's route (frame intervals), then at one fixed pose
 // the same frame drawn 2, 4, 8, 16, 32 times until the interval reaches 45 ms: one frame's GPU time ~ interval / draws
-// (frontend-design 10.6.5). For the team; the words are Chinese like the dev panel.
+// (frontend-design 10.6.5). Then the bloom check UX asked for (PR #46): L0 against L1 at 19:00 looking at the west gate
+// (the sun in the gateway) and at night by a fire, as pictures. Inside the claude.ai page a button saves the numbers
+// and the pictures into the page itself (its db and assets), so the team reads them there. For the team; the words
+// are Chinese like the dev panel.
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { PCFShadowMap, type WebGLRenderer } from "three";
+import { Color, PCFShadowMap, type WebGLRenderer } from "three";
+import { useWorld } from "../three/dev/fakeStore";
+import { lighting } from "../three/Lighting";
 import { frameStats } from "../three/PostFX";
 import {
   levelDpr,
@@ -25,6 +30,46 @@ quality.manual = true; // the page sets the levels itself; no governor
 const VSYNC = 1000 / 60;
 const STEPS = [2, 4, 8, 16, 32];
 const ROUTE_MS = 6500;
+
+type Plan = [number, number, number]; // layout.json plan x, y and height
+// UX, PR #46: does L0 (no bloom, no MSAA) turn the sun into a hard white disc, and how does a fire read at night. The
+// plaza has no fire yet: a stand-in, a hot little ball and a warm point light (only on this page)
+const FIRE: Plan = [13.0, -2.6, 2.0]; // by the foot of the castle steps, a held torch's height
+type Look = {
+  name: string;
+  t: number;
+  from: Plan;
+  to: Plan;
+  fov: number;
+  fire: boolean;
+};
+const LOOKS: Look[] = [
+  // the sun sets along the gate street (ux/slice/ending-shots.md, shot 2). UX asked for 19:00, but by then it is on the
+  // horizon behind the far ground; at 18:45 it is 2.8° up, inside the gateway seen from here on its line
+  {
+    name: "sunset-gate",
+    t: 1125,
+    from: [4, 1.3, 1.65],
+    to: [-31, 0, 2.6],
+    fov: 50,
+    fire: false,
+  },
+  {
+    name: "night-fire",
+    t: 1260,
+    from: [7.0, -4.5, 1.65], // south of the platform, the castle steps behind the fire
+    to: [13.0, -2.6, 1.7],
+    fov: 55,
+    fire: true,
+  },
+];
+const LOOK_LEVELS: Level[] = ["L0", "L1"];
+// ?measure&looks: only the pictures, no timing (a quick check of the looks)
+const ONLY_LOOKS =
+  typeof location !== "undefined" &&
+  new URLSearchParams(location.search).has("looks");
+
+type Shot = { look: string; level: Level; url: string };
 
 type Row = {
   level: Level;
@@ -94,7 +139,37 @@ const rec = {
   last: -1,
   t: 0, // seconds along the route
   route: false,
+  capture: null as ((url: string) => void) | null, // the next frame as a JPEG, read right after PostFX drew it
 };
+
+// after PostFX's render (priority 1), in the same frame: the drawing buffer still holds the picture
+function Capturer() {
+  const { gl } = useThree();
+  useFrame(() => {
+    const done = rec.capture;
+    if (!done) return;
+    rec.capture = null;
+    done(gl.domElement.toDataURL("image/jpeg", 0.85));
+  }, 2);
+  return null;
+}
+
+function FireStandIn({ on }: { on: boolean }) {
+  if (!on) return null;
+  const at = planToWorld(...FIRE, loadInfo.sceneRotationDeg);
+  return (
+    <group position={at}>
+      <mesh>
+        <sphereGeometry args={[0.07, 16, 12]} />
+        {/* luminance about 5, over the bloom threshold (3.0), like a flame against the night */}
+        <meshBasicMaterial
+          color={new Color(1, 0.45, 0.12).multiplyScalar(10)}
+        />
+      </mesh>
+      <pointLight color="#ffa458" intensity={25} distance={15} decay={2} />
+    </group>
+  );
+}
 
 function Recorder() {
   useFrame((_, dt) => {
@@ -176,14 +251,50 @@ async function measureLevel(
   };
 }
 
+const capture = () =>
+  new Promise<string>((resolve) => {
+    rec.capture = resolve;
+  });
+
+// the bloom check: each look at L0 and L1, one picture each (no timing: the fire's light recompiles the materials)
+async function shootLooks(
+  onMsg: (s: string) => void,
+  setFire: (on: boolean) => void,
+): Promise<Shot[]> {
+  const shots: Shot[] = [];
+  const rot = loadInfo.sceneRotationDeg;
+  for (const look of LOOKS) {
+    useWorld.getState().setClock(look.t);
+    lighting.settle();
+    setFire(look.fire);
+    rig.fixedView = {
+      from: planToWorld(...look.from, rot),
+      to: planToWorld(...look.to, rot),
+      fov: look.fov,
+    };
+    for (const level of LOOK_LEVELS) {
+      quality.force(level);
+      onMsg(`泛光：${look.name} ${level}`);
+      await sleep(2500);
+      shots.push({ look: look.name, level, url: await capture() });
+    }
+  }
+  setFire(false);
+  useWorld.getState().setClock(1050);
+  lighting.settle();
+  return shots;
+}
+
 function Runner({
   go,
   onMsg,
   onDone,
+  setFire,
 }: {
   go: number;
   onMsg: (s: string) => void;
-  onDone: (rows: Row[], env: ReturnType<typeof envInfo>) => void;
+  onDone: (rows: Row[], env: ReturnType<typeof envInfo>, shots: Shot[]) => void;
+  setFire: (on: boolean) => void;
 }) {
   const { gl } = useThree();
   useEffect(() => {
@@ -191,19 +302,58 @@ function Runner({
     let alive = true;
     (async () => {
       const rows: Row[] = [];
-      for (const l of LEVELS) {
+      for (const l of ONLY_LOOKS ? [] : LEVELS) {
         if (!alive) return;
         rows.push(await measureLevel(l, onMsg));
       }
+      const shots = alive ? await shootLooks(onMsg, setFire) : [];
       quality.force("L1");
       rig.fixedView = null;
-      if (alive) onDone(rows, envInfo(gl));
+      if (alive) onDone(rows, envInfo(gl), shots);
     })();
     return () => {
       alive = false;
     };
-  }, [go, gl, onMsg, onDone]);
+  }, [go, gl, onMsg, onDone, setFire]);
   return null;
+}
+
+// Inside the claude.ai page (measure_artifact.mjs), declared with the db and assets capabilities: the pictures go to
+// the page's assets and one document per run to its db (runs/<id>), so the team reads them without copying anything
+type ClaudeHost = { use?: (name: string) => Promise<unknown> };
+type Db = {
+  collection: (p: string) => {
+    doc: () => { id: string; set: (d: object) => Promise<void> };
+  };
+};
+type Assets = {
+  upload: (b: Blob, o?: { type?: string }) => Promise<{ id: string }>;
+};
+const host = () => (window as { claude?: ClaudeHost }).claude;
+const canSave = () => !!host()?.use;
+
+function jpegBlob(url: string): Blob {
+  const bin = atob(url.slice(url.indexOf(",") + 1));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new Blob([bytes], { type: "image/jpeg" });
+}
+
+async function saveRun(result: object, shots: Shot[]): Promise<string> {
+  const use = host()?.use;
+  if (!use) throw new Error("不在 claude.ai 页面里");
+  const db = (await use("db")) as Db | null;
+  const assets = (await use("assets")) as Assets | null;
+  if (!db) throw new Error("页面的数据库用不了");
+  const pictures: Record<string, string> = {};
+  if (assets)
+    for (const s of shots)
+      pictures[`${s.look}-${s.level}`] = (
+        await assets.upload(jpegBlob(s.url), { type: "image/jpeg" })
+      ).id;
+  const ref = db.collection("runs").doc();
+  await ref.set({ ...result, pictures });
+  return ref.id;
 }
 
 export default function MeasureScreen() {
@@ -212,6 +362,9 @@ export default function MeasureScreen() {
   const [msg, setMsg] = useState("加载广场，同时跑起始档自测……");
   const [result, setResult] = useState<string>("");
   const [rows, setRows] = useState<Row[]>([]);
+  const [shots, setShots] = useState<Shot[]>([]);
+  const [fire, setFire] = useState(false);
+  const [saved, setSaved] = useState("");
   const level = useQuality((s) => s.level);
   const hiReady = useQuality((s) => s.hiReady);
   const t0 = useRef(new Date().toISOString());
@@ -220,33 +373,52 @@ export default function MeasureScreen() {
     if (s === "ready") setMsg("广场好了。");
     if (s === "failed") setMsg(`加载失败：${loadInfo.error}`);
   }, []);
-  const onDone = useCallback((r: Row[], env: ReturnType<typeof envInfo>) => {
-    setRows(r);
-    setMsg("完成。把下面的结果复制给前端。");
-    const probe = quality.probe;
-    setResult(
-      JSON.stringify(
-        {
-          page: "zoujin-measure",
-          version: 1,
-          at: t0.current,
-          env,
-          scene: {
-            id: "scene.syracuse-square",
-            entryMbps: r1(loadInfo.entryMbps),
-            readyMs: loadInfo.readyMs,
+  const onDone = useCallback(
+    (r: Row[], env: ReturnType<typeof envInfo>, pics: Shot[]) => {
+      setRows(r);
+      setShots(pics);
+      setMsg(
+        canSave()
+          ? "完成。点「保存结果」，前端就能在这一页里读到。"
+          : "完成。把下面的结果复制给前端。",
+      );
+      const probe = quality.probe;
+      setResult(
+        JSON.stringify(
+          {
+            page: "zoujin-measure",
+            version: 2,
+            at: t0.current,
+            env,
+            scene: {
+              id: "scene.syracuse-square",
+              entryMbps: r1(loadInfo.entryMbps),
+              readyMs: loadInfo.readyMs,
+            },
+            probe: probe && {
+              ...probe,
+              startLevel: pickStartLevel(probe.gpuMs, devicePixelRatio),
+            },
+            levels: r,
+            looks: pics.map((p) => ({ look: p.look, level: p.level })),
           },
-          probe: probe && {
-            ...probe,
-            startLevel: pickStartLevel(probe.gpuMs, devicePixelRatio),
-          },
-          levels: r,
-        },
-        null,
-        1,
-      ),
+          null,
+          1,
+        ),
+      );
+    },
+    [],
+  );
+  const onSave = useCallback(() => {
+    setSaved("保存中……");
+    saveRun(JSON.parse(result) as object, shots).then(
+      (id) => setSaved(`已保存（runs/${id}），告诉前端跑完了就行。`),
+      (e: unknown) =>
+        setSaved(
+          `没存上：${(e as { code?: string; message?: string }).code ?? (e as Error).message}。请点「复制结果」发给前端。`,
+        ),
     );
-  }, []);
+  }, [result, shots]);
   const probe = quality.probe;
 
   return (
@@ -261,7 +433,9 @@ export default function MeasureScreen() {
         <QualityProbe />
         <World onStage={onStage} />
         <Recorder />
-        <Runner go={go} onMsg={setMsg} onDone={onDone} />
+        <Capturer />
+        <FireStandIn on={fire} />
+        <Runner go={go} onMsg={setMsg} onDone={onDone} setFire={setFire} />
       </Canvas>
       <div
         style={{
@@ -331,6 +505,38 @@ export default function MeasureScreen() {
               ))}
             </tbody>
           </table>
+        )}
+        {shots.length > 0 && (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 4,
+              margin: "6px 0",
+            }}
+          >
+            {shots.map((p) => (
+              <figure key={`${p.look}-${p.level}`} style={{ margin: 0 }}>
+                <img src={p.url} alt="" style={{ width: "100%" }} />
+                <figcaption>
+                  {p.look === "sunset-gate" ? "18:45 西门" : "夜里火光（替身）"}{" "}
+                  {p.level}
+                </figcaption>
+              </figure>
+            ))}
+          </div>
+        )}
+        {result && canSave() && (
+          <div>
+            <button
+              style={{ font: "inherit", margin: "6px 0" }}
+              disabled={saved !== "" && !saved.startsWith("没存上")}
+              onClick={onSave}
+            >
+              保存结果（数字和 4 张图存进这一页）
+            </button>
+            {saved && <div>{saved}</div>}
+          </div>
         )}
         {result && (
           <>
