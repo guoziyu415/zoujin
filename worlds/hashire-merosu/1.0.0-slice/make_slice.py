@@ -194,6 +194,7 @@ SLICE_OBJECTS: list[dict[str, Any]] = [
     {
         "id": WORKSHOP_DOOR,
         "place": WORKSHOP,
+        "spot": "workshop-door",
         "label": "戸を叩く",
         "inferred": True,
         "note": "第 4 节：院子里关着的屋门，里面传出凿石头的声音",

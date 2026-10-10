@@ -5871,6 +5871,7 @@
      "spot": "old-man-house"
     }
    ],
+   "playerSpot": "old-man-house-side",
    "inferred": true,
    "note": "旅人の開局互助（S-048）をボタンでも果たせるように（UX 10-10）。老爺はゆっくり歩き、道々話す。叙事者は道中を一、二文で語るが、王が人を殺す訳（aid.old-man.tell）はここで代わりに語らない。終わると老爺は家の前（old-man-house）、プレイヤーはその隣。一局一度"
   },
