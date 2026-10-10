@@ -78,3 +78,79 @@ def test_markdown() -> None:
     assert "- E1-001 第 3 次 检查 1 `world_unchanged`：提交了不该有的事件" in md
     assert "只跑了确定性检查" in md and "## 判分" not in md
     assert "## 判分" in markdown(build(CASES, {"mode": "fake", "deterministicOnly": False}))
+
+
+def _passes(n: int, *, timeouts: int = 0, no_text: int = 0) -> list[RunResult]:
+    """n 次：先 timeouts 次超时，再 no_text 次有一条检查没有人物原话，其余全过。"""
+    out: list[RunResult] = []
+    for i in range(1, n + 1):
+        if i <= timeouts:
+            out.append(run(i, skip={"code": "timeout"}))
+        elif i <= timeouts + no_text:
+            r = run(i, "pass", "skip")
+            r["checks"][1]["skip"] = {"code": "no-character-text"}
+            out.append(r)
+        else:
+            out.append(run(i, "pass"))
+    return out
+
+
+def one_case(results: list[RunResult], suite: str = "E3") -> list[CaseResult]:
+    return [
+        {"id": f"{suite}-001", "suite": suite, "title": "a", "mode": "text", "runs": len(results), "results": results}
+    ]
+
+
+def test_timeouts_over_5_percent_withhold_the_score() -> None:
+    rep = build(one_case(_passes(20, timeouts=2)), {"mode": "replay"})  # 10%
+    assert rep["infra"]["timeout"] == {"count": 2, "share": 0.1, "over": True}
+    e3 = rep["suites"]["E3"]
+    assert e3["noScore"] is True and e3["passRate"] is None
+    assert e3["gate"]["mergeMet"] is None and e3["runs"]["pass"] == 18, "次数照列"
+    md = markdown(rep)
+    assert "**这一次不出分**：超时 2 次，占真跑的 10.0%" in md
+    assert "| E3 人设一致 | 1 | 18 / 18 | 不出分 | ≥ 90%：判不了 |" in md
+
+
+def test_timeouts_within_5_percent_keep_the_score() -> None:
+    rep = build(one_case(_passes(20, timeouts=1)), {"mode": "replay"})  # 5%，不超过
+    assert rep["infra"]["timeout"]["over"] is False
+    assert rep["suites"]["E3"]["passRate"] == 1.0 and rep["suites"]["E3"]["noScore"] is False
+    assert "超时 1 次（5.0%）、无原话 0 次（0%），都没超过 5%。" in markdown(rep)
+
+
+def test_no_character_text_over_5_percent_is_flagged_but_scored() -> None:
+    rep = build(one_case(_passes(20, no_text=2)), {"mode": "replay"})
+    assert rep["infra"]["noCharacterText"] == {"count": 2, "share": 0.1, "over": True}
+    assert rep["suites"]["E3"]["passRate"] == 1.0
+    md = markdown(rep)
+    assert "**无原话 2 次，占真跑的 10.0%**，超过 5%：当基础设施问题报给后端" in md
+    assert "不出分" not in md
+
+
+def test_whole_case_skips_are_not_in_the_denominator() -> None:
+    skipped: CaseResult = {
+        "id": "E3-002",
+        "suite": "E3",
+        "title": "b",
+        "mode": "text",
+        "runs": 100,
+        "skip": {"code": "not-implemented", "name": "act"},
+    }
+    rep = build([*one_case(_passes(10, timeouts=1)), skipped], {"mode": "replay"})
+    assert rep["infra"]["runs"] == 10 and rep["infra"]["timeout"]["over"] is True
+
+
+def test_e6_hard_metric_counts_only_cases_that_delete() -> None:
+    def e6(cid: str, deletes: bool) -> CaseResult:
+        r = run(1, "pass")
+        r["status"] = "fail"
+        r["checks"] = [{"index": 1, "type": "memory", "status": "fail", "reason": "记忆还在"}]
+        c: CaseResult = {"id": cid, "suite": "E6", "title": cid, "mode": "text", "runs": 1, "results": [r]}
+        if deletes:
+            c["deletes"] = True
+        return c
+
+    rep = build([e6("E6-001", True), e6("E6-002", False)], {"mode": "replay"})
+    assert rep["suites"]["E6"]["hard"]["checked"] == 1, "「要记得」那例的 memory 检查不算删除的硬指标"
+    assert "只算带删除步骤的用例" in rep["suites"]["E6"]["hard"]["label"]
