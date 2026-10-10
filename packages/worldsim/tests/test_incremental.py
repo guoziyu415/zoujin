@@ -321,6 +321,30 @@ def test_apply_rejects() -> None:
         apply({**WORLD, "worldModelVersion": "other"}, s, ev(1050))
 
 
+def test_spots_follow_relocate() -> None:
+    """契约 3.1（1.7，C-18）：写了 spot 就站那里；没写 spot 时换了地点才去掉，同一个地点里不动。"""
+    g = "place.execution-ground"
+    s = apply(
+        WORLD, at(1050), ev(1050, {"op": "relocate", "character": "char.selinuntius", "place": g, "spot": "stake"})
+    )
+    assert s["spots"] == {"char.selinuntius": "stake"}
+    s = apply(WORLD, s, ev(1050, {"op": "relocate", "character": "char.selinuntius", "place": g}))
+    assert s["spots"] == {"char.selinuntius": "stake"}  # 节拍把参与人物移到节拍地点：已经在那里的人不动
+    s = apply(WORLD, s, ev(1050, {"op": "relocate", "character": "char.selinuntius", "place": "place.castle"}))
+    assert s["spots"] == {}
+    assert world_state(WORLD, s, "pt_01HZY0000000000000000000AB")["spots"] == {}
+    old = {k: v for k, v in at(1050).items() if k != "spots"}  # 1.7 之前存下的状态
+    s = apply(WORLD, old, ev(1050, {"op": "relocate", "character": "char.king", "place": g, "spot": "king-west"}))  # type: ignore[arg-type]
+    assert s["spots"] == {"char.king": "king-west"}
+
+
+def test_beat_s1_puts_the_friend_on_the_stake_and_the_king_behind_the_crowd() -> None:
+    s = settle(WORLD, initial_state(WORLD, ROLE), 5410)[1]
+    assert s["beats"]["beat.s1"] in OCCURRED
+    assert s["spots"]["char.selinuntius"] == "stake" and s["spots"]["char.king"] == "king-west"
+    assert "char.crowd" not in s["spots"]  # group：不占位置点
+
+
 AFF = {a["id"]: a["effects"] for a in WORLD["affordances"]}
 
 
@@ -438,6 +462,7 @@ def test_check_effects_shapes_and_references() -> None:
         {"op": "beat", "beat": "beat.18", "to": "delayed"},
         {"op": "promise", "promiseId": "prm_01HZY0000000000000000000AB", "change": "kept"},
         {"op": "teleport"},
+        {"op": "relocate", "character": "char.king", "place": "place.castle", "spot": "King West"},
     ]
     assert codes(check_effects(WORLD, s, bad, "turn")) == [
         (0, "bad-value"),
@@ -451,6 +476,7 @@ def test_check_effects_shapes_and_references() -> None:
         (8, "bad-value"),
         (9, "bad-state"),
         (10, "bad-op"),
+        (11, "bad-value"),
     ]
 
 

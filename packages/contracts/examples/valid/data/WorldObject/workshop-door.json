@@ -1,0 +1,8 @@
+{
+  "id": "obj.workshop-door",
+  "place": "place.stonemason-workshop",
+  "label": "戸を叩く",
+  "spot": "workshop-door",
+  "inferred": true,
+  "note": "工房关着的屋门（切片，UX ux/slice/act1-end-and-gate.md 第 4 节）"
+}

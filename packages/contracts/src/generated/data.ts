@@ -59,13 +59,17 @@ export type Effect =
     }
   | {
       op: "learn";
-      character: CharacterId;
+      character: "player" | CharacterId;
       fact: FactId | RunFactId;
     }
   | {
       op: "relocate";
       character: CharacterId;
       place: PlaceId;
+      /**
+       * （1.7）站在这个地点的哪个位置点；省略 = 由后端按布局的站位规则排（第 3.1 节 WorldState.spots）
+       */
+      spot?: SpotId;
     }
   | {
       op: "promise";
@@ -126,6 +130,10 @@ export type FactId = string;
  */
 export type RunFactId = string;
 /**
+ * （1.7）场景布局里的位置点（api-contract 第 0 节 spot，assets/scenes/<场景>/layout.json 的 spots），小写 slug，例 stake-front、way.castle。不带类型前缀：名字由前端在布局里定
+ */
+export type SpotId = string;
+/**
  * 约定（1.1）：`prm_` 加 ULID（26 位 Crockford base32，大写）
  */
 export type PromiseId = string;
@@ -162,9 +170,9 @@ export type EdgeId = string;
  */
 export type EventId = string;
 /**
- * 写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人
+ * 写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival / sub、Affordance.playerSpot（C-18）、Act.plan（C-19）、WorldModel.setPieces（S-080 ④）、WorldModel.objects
  */
-export type SchemaVersion = "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5" | "1.6";
+export type SchemaVersion = "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5" | "1.6" | "1.7";
 /**
  * 结局：`end_` 加 ULID（26 位 Crockford base32，大写）
  */
@@ -194,9 +202,17 @@ export type TurnId = string;
  */
 export type UtteranceId = string;
 /**
+ * （1.7）可调查物：`obj.` 加小写 slug（可以有 `.` 和 `-`）
+ */
+export type ObjectId = string;
+/**
  * 全局规则（globalRules）：`rule.` 加小写 slug（可以有 `.` 和 `-`）
  */
 export type RuleId = string;
+/**
+ * （1.7）固定演出：`piece.` 加小写 slug（可以有 `.` 和 `-`）
+ */
+export type SetPieceId = string;
 /**
  * 时间的说法，按世界模型的 clock.labels 生成，如「約束の日・夜」（第 0 节）
  */
@@ -233,6 +249,41 @@ export interface Act {
    * 幕末去处；最后一幕为空，收幕即进入结局
    */
   exits: ActExit[];
+  /**
+   * （1.7，C-19）玩家在幕末说出的打算成行时落在哪里（2.8.1 第 2 步）：成行的事件按这里写下一幕、地点、时间、落点和落地。省略 = 叙事者按世界模型判（M3 定）
+   */
+  plan?: {
+    toAct: ActId;
+    /**
+     * 下一幕的起点
+     */
+    place: PlaceId;
+    /**
+     * 下一幕从几点开始
+     */
+    t: StoryTime;
+    /**
+     * 玩家落在 place 的哪个位置点；省略 = 这个地点的起点（startSpots）
+     */
+    spot?: SpotId;
+    /**
+     * 成行本身固定的效果（例：人物的 relocate）；打算自己的效果由叙事者从玩家的话里提取，照常检查后加在同一条事件上
+     */
+    effects: Effect[];
+    /**
+     * 落地，同 ActExit.arrival
+     */
+    arrival?: {
+      /**
+       * 落地后的第一行叙事（地の文，日语），跳转之后显示
+       */
+      line: string;
+      /**
+       * 落地后先开口的人物：服务端发起一轮，台词按人设生成，不是问句
+       */
+      opener?: CharacterId;
+    };
+  };
   inferred: true;
   note?: string;
 }
@@ -274,6 +325,27 @@ export interface ActExit {
    * （1.4）跳过的这段路上有一个能改的节拍时，过场页给一个二选一
    */
   enRoute?: EnRoute;
+  /**
+   * （1.7）幕末页上这个去处副题的后半（日语，叙事口吻，不写分钟数）；前半「{地点}・{日子}の{时段}」由前端按 place 和 t 生成。省略 = 只有前半
+   */
+  sub?: string;
+  /**
+   * （1.7）玩家落在 place 的哪个位置点；省略 = 前端按这个地点的起点（layout.json 的 startSpots）
+   */
+  spot?: SpotId;
+  /**
+   * （1.7）落地：第一行叙事和先开口的人物（ux/slice/jump-transition.md「落地」）
+   */
+  arrival?: {
+    /**
+     * 落地后的第一行叙事（地の文，日语），跳转之后显示
+     */
+    line: string;
+    /**
+     * 落地后先开口的人物：服务端发起一轮，台词按人设生成，不是问句
+     */
+    opener?: CharacterId;
+  };
 }
 /**
  * 条件：引用 stateVars（2.4）。节拍前提、变体、去处、情境动作、世界结局共用
@@ -396,6 +468,10 @@ export interface Affordance {
    * 做成了就兑现这条互助（fromYou 的 MutualAid.id）
    */
   aid?: AidId;
+  /**
+   * （1.7）做完以后玩家站在 place 的哪个位置点（布局的 spots）；省略 = 不挪。只管玩家，人物用 relocate 的 spot
+   */
+  playerSpot?: SpotId;
   /**
    * 效果模板：判定通过时提交的效果；空 = 只影响关系
    */
@@ -618,6 +694,10 @@ export interface Character {
    * 第一版能不能自由对话（S-003）
    */
   talkable: boolean;
+  /**
+   * （1.7）一群人（群众、警吏、山贼、一团旅人）：不占布局的位置点，前端按地点成群地放（站位规则见第 3.1 节 WorldState.spots）
+   */
+  group?: true;
   /**
    * 声音配置的引用，具体值由后端/UX 管
    */
@@ -1423,6 +1503,106 @@ export interface Scene {
   note?: string;
 }
 /**
+ * （1.7）固定演出（2.11，S-080 ④）：每局一样、写好的地の文和人物的预录句，挂在节拍或玩家的动作上，由服务端在对的时机下发。只是演出：不是事件，不改世界状态；例外是 learns（演出里说出的事，听的人就知道了）
+ */
+export interface SetPiece {
+  id: SetPieceId;
+  /**
+   * 什么时候演：这个节拍发生时玩家在场，或玩家的这种动作判定之后
+   */
+  on:
+    | {
+        beat: BeatId;
+      }
+    | {
+        /**
+         * api-contract 3.8 的 kind
+         */
+        act:
+          | "examine"
+          | "give"
+          | "follow"
+          | "block"
+          | "help"
+          | "wait"
+          | "go"
+          | "shortcut"
+          | "run-together"
+          | "hasten"
+          | "move";
+        /**
+         * 对人物的动作写人物 ID，move 写地点 ID，go 写出口通往的地点（布局 exits[].place），examine 写 interactable 的 ID（obj.*）；省略 = 不看对象
+         */
+        target?: string;
+        /**
+         * 只在被拒时演；省略 = 只在做成时（done / partial）
+         */
+        refused?: true;
+      };
+  /**
+   * 这些节拍已经发生（happened / altered）
+   */
+  after?: BeatId[];
+  /**
+   * 这些节拍还没发生
+   */
+  before?: BeatId[];
+  /**
+   * 这些人物知道这件事：Character.knows 里到这个时刻已经成立的（since），或这一局已提交的 learn
+   */
+  knows?: {
+    character: CharacterId;
+    fact: FactId;
+  }[];
+  /**
+   * 这些固定演出里至少有一个这一局已经演过
+   */
+  played?: SetPieceId[];
+  /**
+   * 这些固定演出这一局都还没演过
+   */
+  notPlayed?: SetPieceId[];
+  /**
+   * 别的状态条件（同节拍前提）
+   */
+  when?: Condition[];
+  /**
+   * 一局只演一次
+   */
+  once?: true;
+  /**
+   * 按顺序演：narration = 地の文；speaker + line = 这个人物的一句预录（构建时生成，ux-design 16.2）
+   *
+   * @minItems 1
+   */
+  lines: (
+    | {
+        /**
+         * 一行地の文（日语）
+         */
+        narration: string;
+      }
+    | {
+        speaker: CharacterId;
+        /**
+         * 预录句，也是字幕（日语）
+         */
+        line: string;
+      }
+  )[];
+  /**
+   * 演这一条时谁知道了哪件事（S-077 ⑪）：服务端把这些 learn 和这一条的演出同一次提交写进事件（写在哪条事件里 B-3 定）。只给 learn，不给任意 effects：固定演出不过叙事者的 R1〜R7
+   *
+   * @minItems 1
+   */
+  learns?: {
+    character: "player" | CharacterId;
+    fact: FactId;
+  }[];
+  inferred: true;
+  note?: string;
+}
+/**
  * 状态变量（2.6）
  */
 export interface StateVar {
@@ -1645,6 +1825,34 @@ export interface WorldModel {
    * （1.1）故事里的物品，见 2.10
    */
   items?: Item[];
+  /**
+   * （1.7，S-080 ④）固定演出：挂在节拍或玩家的动作上的地の文和预录句，见 2.11
+   */
+  setPieces?: SetPiece[];
+  /**
+   * （1.7）场景里可「調べる」的东西，见 2.12
+   */
+  objects?: WorldObject[];
+}
+/**
+ * （1.7）可调查物（2.12）：场景里可「調べる」的东西。服务端按它出快照的 interactables（kind examine，0 分），不写死；场景出口照布局的 exits
+ */
+export interface WorldObject {
+  id: ObjectId;
+  /**
+   * 在哪个地点（要有场景）
+   */
+  place: PlaceId;
+  /**
+   * 按钮上的字（日语，UX 出）
+   */
+  label: string;
+  /**
+   * 布局里的位置点（前端加）；服务端出快照时要有
+   */
+  spot?: SpotId;
+  inferred: true;
+  note?: string;
 }
 /**
  * 由事件推出的当前状态，不是第二份事实（3.1）：世界模型初值 + 按 seq 依次应用全部事件的 effects
@@ -1685,6 +1893,12 @@ export interface WorldState {
    */
   locations: {
     [k: string]: PlaceId | undefined;
+  };
+  /**
+   * （1.7）角色 → 指定的位置点：relocate 写了 spot 才有；换到别的地点时去掉。没有的由后端按布局的站位规则排（第 3.1 节）
+   */
+  spots?: {
+    [k: string]: SpotId | undefined;
   };
   /**
    * （1.1）promiseId → 约定

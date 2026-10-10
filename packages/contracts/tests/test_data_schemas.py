@@ -28,6 +28,7 @@ TYPES_BY_FILE: dict[str, list[str]] = {
     "world-model": (
         "WorldModel Character DesignLine MutualAid PromiseTemplate Place Scene Fact Beat BeatVariant Activity Condition"
         " CausalEdge Clock StateVar Role Act ActExit EnRoute EnRouteChoice WorldEnding EndingSignature Affordance Item"
+        " SetPiece WorldObject"
     ).split(),
     "event": ["Event", "Effect", "CheckResult"],
     "utterance": ["Utterance"],
@@ -49,7 +50,7 @@ COMMON_DEFS = set(
     "Cite SchemaVersion StoryTime TLabel RecordedAt Actor WorldEndingId"
     " PlaythroughId TurnId EventId MemoryId UtteranceId EndingId PromiseId RunFactId"
     " CharacterId PlaceId SceneId ActId BeatId FactId VarId RoleId EdgeId AidId PromiseTemplateId AffordanceId ItemId"
-    " ExitId RuleId".split()
+    " ExitId RuleId SpotId SetPieceId ObjectId".split()
 )
 EFFECT_OPS = {"set", "inc", "beat", "learn", "relocate", "promise", "improv", "hold"}
 
@@ -117,7 +118,7 @@ def test_eight_files_with_the_agreed_defs() -> None:
         assert set(doc["$defs"]) == expected, name
         if name in MAIN_TYPE:
             assert doc["$ref"] == f"#/$defs/{MAIN_TYPE[name]}"
-    assert sum(len(ts) for ts in TYPES_BY_FILE.values()) == 37
+    assert sum(len(ts) for ts in TYPES_BY_FILE.values()) == 39
 
 
 @pytest.mark.parametrize("name", sorted(SCHEMA_DOCS))
@@ -247,10 +248,10 @@ def doc_types() -> dict[str, Any]:
 DOC_TYPES = doc_types()
 
 
-def test_doc_and_schema_have_the_same_37_types() -> None:
+def test_doc_and_schema_have_the_same_39_types() -> None:
     only_doc, only_schema = sorted(set(DOC_TYPES) - set(FILE_OF)), sorted(set(FILE_OF) - set(DOC_TYPES))
     assert not only_doc and not only_schema, f"文档有、Schema 没有：{only_doc}；Schema 有、文档没有：{only_schema}"
-    assert len(DOC_TYPES) == 37
+    assert len(DOC_TYPES) == 39
 
 
 def _compare(where: str, doc_fields: dict[str, bool], schema: dict[str, Any]) -> None:
@@ -281,11 +282,17 @@ def test_fields_match_contracts_md(type_name: str) -> None:
 
 # 反例为什么不过：(关键字, 出错位置)。新加反例要在这里写明，免得它因为别的原因被拒、测不到想测的东西。
 INVALID_BECAUSE: dict[str, tuple[str, str]] = {
+    "Act/plan-with-label.json": ("additionalProperties", "plan"),
+    "ActExit/arrival-without-line.json": ("required", "arrival"),
+    "ActExit/sub-too-long.json": ("maxLength", "sub"),
+    "Affordance/player-spot-uppercase.json": ("pattern", "playerSpot"),
     "Character/sample-line-extra-field.json": ("additionalProperties", "speech/sampleLines/1"),
     "CheckResult/failed-rule-r8.json": ("enum", "failedRules/0"),
     "Cite/quote-81.json": ("maxLength", "quote"),
     "Effect/beat-to-skipped.json": ("enum", "to"),
     "Effect/op-teleport.json": ("const", "op"),
+    "Effect/learn-nobody.json": ("anyOf", "character"),
+    "Effect/relocate-spot-uppercase.json": ("pattern", "spot"),
     "Ending/card-title-empty.json": ("minLength", "card/title"),
     "Ending/character-lines-4.json": ("maxItems", "card/characterLines"),
     "Ending/character-lines-empty.json": ("minItems", "card/characterLines"),
@@ -298,14 +305,19 @@ INVALID_BECAUSE: dict[str, tuple[str, str]] = {
     "Event/idempotency-key-empty.json": ("minLength", "idempotencyKey"),
     "Event/missing-summary.json": ("required", ""),
     "Event/promise-without-id.json": ("required", "effects/0"),
-    "Event/schema-version-1.7.json": ("enum", "schemaVersion"),
+    "Event/schema-version-1.8.json": ("enum", "schemaVersion"),
     "Event/t-fraction.json": ("type", "t"),
     "Event/t-negative.json": ("minimum", "t"),
     "MemoryItem/from-events-empty.json": ("minItems", "fromEvents"),
     "MemoryItem/trust-delta-25.json": ("maximum", "trustDelta"),
     "Relationship/level-6.json": ("enum", "level"),
+    "SetPiece/learns-run-fact.json": ("pattern", "learns/0/fact"),
+    "SetPiece/line-with-both.json": ("additionalProperties", "lines/0"),
+    "SetPiece/lines-empty.json": ("minItems", "lines"),
+    "SetPiece/on-act-push.json": ("enum", "on/act"),
     "StateVar/value-requires-without-note.json": ("required", "valueRequires/0"),
     "StateVar/value-requires-empty-when.json": ("minItems", "valueRequires/0/when"),
+    "WorldObject/label-empty.json": ("minLength", "label"),
 }
 
 

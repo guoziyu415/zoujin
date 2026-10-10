@@ -17,7 +17,10 @@
 6. 设计层：场景（sceneRef）、幕（acts，开始/收幕/幕末去处）、身份（release、startAct、conditionalAccess）、世界结局（endings）、
    时刻标签（clock.labels）、人物的互助 / 约定 / 打算（S-029、S-030、S-048）、情境动作和物品（affordances / items，
    contracts 2.10；第四幕让他慢和帮他快并排，S-036 ②）、节拍上的人物状态（activities）、台词和动机的生效时间（since / until / when）、
-   （1.4）设计台词、互助的效果、节拍的变体、过场二选一（enRoute）都成立。
+   （1.4）设计台词、互助的效果、节拍的变体、过场二选一（enRoute）都成立；（1.7）位置点（relocate 和去处的 spot）在这个地点所在场景的
+   布局里、属于这个地点（assets/scenes/<场景>/scene.json），去处落地的 arrival，成群的人物（group）不能对话；打算成行的落点
+   （Act.plan，C-19）和去处一样查，情境动作做完玩家站的点（playerSpot）也查；固定演出（setPieces，2.11）引用的节拍、人物、事实、
+   地点和别的固定演出都存在，同一个时机上不会有永远轮不到的条目；可调查物（objects，2.12）的地点有场景、位置点在布局里。
 7. 情景模拟（--scenarios）：按 contracts 2.5 的时间传播规则推演原著路径和若干改道情景，
    检查原著路径每个节拍都发生、每个情景落到预期的世界结局（和预期的节拍状态、变体）、每类底线世界结局都能走到；
    （1.4）第四幕按钮上的 melosMinutes 和共享规则算出的梅洛斯到达时间差一致；（1.5）过场选项的 melosMinutes 也一样。
@@ -33,7 +36,7 @@ from pathlib import Path
 
 from zoujin_worldsim import Sim  # 共用的推演规则（W-1 的包，contracts 2.4.1 / 2.5.1）
 
-CONTRACT_VERSION = "1.6"  # contracts.md 的版本
+CONTRACT_VERSION = "1.7"  # contracts.md 的版本
 errors, warnings = [], []
 
 
@@ -108,6 +111,7 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--report", required=True)
     ap.add_argument("--scenarios")
+    ap.add_argument("--scenes-dir", help="场景布局的目录（默认：仓库的 assets/scenes）")
     a = ap.parse_args()
 
     src = json.loads(Path(a.src).read_text(encoding="utf-8"))
@@ -133,7 +137,8 @@ def main():
     if world.get("schemaVersion") != CONTRACT_VERSION:
         err(f"schemaVersion 要是契约版本 {CONTRACT_VERSION}，现在 {world.get('schemaVersion')}")
     ids = {}
-    for kind in ("characters", "places", "facts", "beats", "stateVars", "roles", "causal", "globalRules", "scenes", "acts", "affordances", "items"):
+    for kind in ("characters", "places", "facts", "beats", "stateVars", "roles", "causal", "globalRules", "scenes", "acts", "affordances", "items",
+                 "setPieces", "objects"):
         for x in world.get(kind, []):
             if x["id"] in ids:
                 err(f"ID 重复：{x['id']}")
@@ -187,8 +192,8 @@ def main():
                 if e["character"] not in chars or e["place"] not in places:
                     err(f"{where}: relocate 引用不存在：{e}")
             elif op == "learn":
-                if e["character"] not in chars or e["fact"] not in facts:
-                    err(f"{where}: learn 引用不存在：{e}")
+                if (e["character"] != "player" and e["character"] not in chars) or e["fact"] not in facts:
+                    err(f"{where}: learn 引用不存在：{e}")  # 1.7：玩家也能学（契约 2.1）
             elif op == "beat":
                 if e["beat"] not in beats:
                     err(f"{where}: beat 引用不存在：{e}")
@@ -418,8 +423,10 @@ def main():
                 err(f"{where}: 场景不存在 {sc}")
         if not act["exits"] and act["order"] != len(acts):
             err(f"{where}: 不是最后一幕却没有幕末去处")
-        for ex in act["exits"]:
-            w2 = f"{where}/{ex['id']}"
+        landings = [(f"{where}/{ex['id']}", ex) for ex in act["exits"]]
+        if act.get("plan"):                            # 1.7（C-19）：打算成行时的落点，和去处一样查下一幕、地点、时间
+            landings.append((f"{where}.plan", act["plan"]))
+        for w2, ex in landings:
             to = acts.get(ex["toAct"])
             if to is None or to["order"] <= act["order"]:
                 err(f"{w2}: toAct 无效 {ex['toAct']}")
@@ -432,6 +439,9 @@ def main():
                     err(f"{w2}: 去处的场景 {sref} 不在 {to['id']} 的场景里")
             if not (to["start"]["t"] <= ex["t"] <= to["end"]["atLatest"]):
                 err(f"{w2}: 跳到的时间 {ex['t']} 不在 {to['id']} 内")
+            if "id" not in ex:                         # Act.plan 只有落点和固定的效果
+                check_effects(ex.get("effects", []), f"{w2}.effects")
+                continue
             if ex.get("alignTo") and ex["alignTo"] not in beats:
                 err(f"{w2}: alignTo 节拍不存在 {ex['alignTo']}")
             for r in ex.get("roles", []):
@@ -465,6 +475,56 @@ def main():
                         enroute_minutes.append((f"{w2}.enRoute「{x['label']}」", x, max(ends, default=act["start"]["t"])))
                     if "after" in x and not (isinstance(x["after"], str) and x["after"]):
                         err(f"{w2}.enRoute「{x.get('label')}」: after 要是一句日语")
+    # ---------- （1.7，C-18）位置点 ----------
+    scenes_dir = Path(a.scenes_dir) if a.scenes_dir else Path(a.src).resolve().parents[3] / "assets" / "scenes"
+    layouts = {}                                   # 场景 ID → {位置点: 地点}（前端生成的 scene.json）
+    for sc in scenes:
+        f = scenes_dir / sc.removeprefix("scene.") / "scene.json"
+        if f.exists():
+            layouts[sc] = {k: v["place"] for k, v in json.loads(f.read_text(encoding="utf-8"))["spots"].items()}
+    scene_of = {p["id"]: p.get("sceneRef") for p in world["places"]}
+
+    def check_spot(place, spot, where):
+        lay = layouts.get(scene_of.get(place))
+        if lay is None:
+            err(f"{where}: {place} 所在的场景还没有布局（{scenes_dir}），写不了位置点 {spot}")
+        elif spot not in lay:
+            err(f"{where}: 位置点 {spot} 不在 {scene_of[place]} 的布局里")
+        elif lay[spot] != place:
+            err(f"{where}: 位置点 {spot} 属于 {lay[spot]}，不是 {place}")
+
+    def walk_spots(x, where):
+        if isinstance(x, dict):
+            where = x.get("id", where)
+            if x.get("op") == "relocate" and "spot" in x:
+                check_spot(x["place"], x["spot"], where)
+            for y in x.values():
+                walk_spots(y, where)
+        elif isinstance(x, list):
+            for y in x:
+                walk_spots(y, where)
+
+    walk_spots(world, "$")
+    for act in acts.values():
+        landings = [(f"{act['id']}/{ex['id']}", ex) for ex in act["exits"]]
+        if act.get("plan"):
+            landings.append((f"{act['id']}.plan", act["plan"]))
+        for w2, ex in landings:
+            if "spot" in ex:
+                check_spot(ex["place"], ex["spot"], w2)
+            arr = ex.get("arrival")
+            if arr is not None:
+                if not arr.get("line"):
+                    err(f"{w2}.arrival: 要有 line（落地的一行叙事）")
+                if "opener" in arr and arr["opener"] not in chars:
+                    err(f"{w2}.arrival: opener 不是人物 {arr['opener']}")
+    for a_ in world.get("affordances", []):           # 1.7：做完以后玩家站的点
+        if "playerSpot" in a_:
+            check_spot(a_["place"], a_["playerSpot"], f"{a_['id']}.playerSpot")
+    for c in world["characters"]:
+        if c.get("group") and c.get("talkable"):
+            err(f"{c['id']}: group（一群人）不能对话")
+
     used_scenes = {sc for act in acts.values() for sc in act["scenes"]}
     for sc in scenes:
         if sc not in used_scenes:
@@ -617,6 +677,87 @@ def main():
     for pl, kinds in by_place.items():
         if kinds != {"slower", "faster"}:
             err(f"{pl}: 第四幕每处要同时有让他慢和帮他快的动作（S-036 ②），现在只有 {sorted(kinds)}")
+
+    # ---------- 可调查物（contracts 2.12，1.7） ----------
+    objects = {x["id"]: x for x in world.get("objects", [])}
+    for ob in objects.values():
+        if not ob["id"].startswith("obj."):
+            err(f"{ob['id']}: 可调查物的 ID 以 obj. 开头")
+        if ob.get("place") not in places:
+            err(f"{ob['id']}: 地点不存在 {ob.get('place')}")
+        elif scene_of.get(ob["place"]) is None:
+            err(f"{ob['id']}: 地点 {ob['place']} 没有场景，放不了可调查物")
+        elif "spot" in ob:
+            check_spot(ob["place"], ob["spot"], f"{ob['id']}.spot")
+        if not ob.get("label"):
+            err(f"{ob['id']}: label 不能为空")
+
+    # ---------- 固定演出（contracts 2.11，1.7，S-080 ④） ----------
+    piece_ids = {x["id"] for x in world.get("setPieces", [])}
+    cmap = {c["id"]: c for c in world["characters"]}
+    unconditional = {}  # 时机 → 这个时机上第一条什么条件都没有的固定演出：排在它后面的永远轮不到
+    for sg in world.get("setPieces", []):
+        w2, on = sg["id"], sg.get("on", {})
+        if "beat" in on:
+            hook = ("beat", on["beat"])
+            if on["beat"] not in beats:
+                err(f"{w2}: on.beat 不存在 {on['beat']}")
+        else:
+            hook = ("act", on.get("act"), on.get("target"), on.get("refused", False))
+            tgt, kind = on.get("target"), on.get("act")
+            if kind not in UX_ACTIONS | {"move"}:
+                err(f"{w2}: on.act 不是 api-contract 3.8 的动作 {kind}")
+            if tgt is None:
+                pass
+            elif kind in ("move", "go"):
+                if tgt not in places:
+                    err(f"{w2}: {kind} 的 target 要是存在的地点（go 写出口通往的地点），现在 {tgt}")
+            elif kind == "examine":
+                if tgt not in objects:
+                    err(f"{w2}: examine 的 target 要是 objects 里的可调查物（2.12），现在 {tgt}")
+            elif tgt not in chars:
+                err(f"{w2}: {kind} 的 target 要是存在的人物，现在 {tgt}")
+        for k in ("after", "before"):
+            for b in sg.get(k, []):
+                if b not in beats:
+                    err(f"{w2}: {k} 的节拍不存在 {b}")
+        if set(sg.get("after", [])) & set(sg.get("before", [])):
+            err(f"{w2}: 同一个节拍不能既在 after 又在 before")
+        for kn in sg.get("knows", []):
+            if kn["character"] not in chars:
+                err(f"{w2}: knows 的人物不存在 {kn['character']}")
+            if kn["fact"] not in facts:
+                err(f"{w2}: knows 的事实不存在 {kn['fact']}")
+        for k in ("played", "notPlayed"):
+            for x in sg.get(k, []):
+                if x not in piece_ids or x == w2:
+                    err(f"{w2}: {k} 要引用别的固定演出，现在 {x}")
+        for cnd in sg.get("when", []):
+            check_value(cnd["var"], cnd["value"], f"{w2}.when")
+        if not sg.get("lines"):
+            err(f"{w2}: lines 不能为空")
+        for ln in sg.get("lines", []):
+            if "speaker" in ln and ln["speaker"] not in chars:
+                err(f"{w2}: speaker 不存在 {ln['speaker']}")
+        sure = {"pre", *sg.get("after", [])}  # 演的时候一定已经发生的
+        speakers = {ln["speaker"] for ln in sg.get("lines", []) if ln.get("speaker") in chars}
+        for ln in sg.get("learns", []):  # S-077 ⑪：说出来的事，演的时候一定成立、说的人一定知道
+            if ln["character"] != "player" and ln["character"] not in chars:
+                err(f"{w2}: learns 的人物不存在 {ln['character']}")
+            f = facts.get(ln["fact"])
+            if f is None:
+                err(f"{w2}: learns 的事实不存在 {ln['fact']}")
+                continue
+            if f["trueFrom"] not in sure:
+                err(f"{w2}: learns {ln['fact']} 从 {f['trueFrom']} 起才成立，after 要写上它")
+            if speakers and not any(
+                k["fact"] == ln["fact"] and k["since"] in sure for c in speakers for k in cmap[c].get("knows", [])
+            ):
+                err(f"{w2}: learns {ln['fact']}：说话的 {sorted(speakers)} 演的时候不一定知道（knows 的 since 要在 after 里）")
+        if hook in unconditional:
+            err(f"{w2}: 同一个时机上 {unconditional[hook]} 排在前面、没有条件，这条永远轮不到")
+        elif not any(sg.get(k) for k in ("after", "before", "knows", "played", "notPlayed", "when", "once")):
+            unconditional[hook] = w2
 
     # ---------- 节拍上的人物状态、台词和动机的生效时间（contracts 2.1、2.4，1.1） ----------
     ACTIVITIES = {"idle", "walk", "run", "talk", "work", "sleep", "absent"}

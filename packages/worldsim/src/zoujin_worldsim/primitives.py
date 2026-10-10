@@ -1,8 +1,9 @@
 """叙事者的确定性规则要用、推演里原来没有的两个原语（B-2 卡：后端提，数据加，后端评审）。
 
 - knows()：R4（契约 2.1 防剧透规则）。人物 C 此刻知道的 = `C.knows` 里 `since` 已发生的（或 `pre`）+ 这一局 `learn`
-  学到的（含别人的即兴设定）+ C 自己的即兴设定；玩家 = 身份的 `initialKnowledge`。世界事实的 `trueFrom` 这一局没发生，
-  谁都不算知道（契约 2.3，1.4）。和评测的 evals/s2_check.py（S-2 标注用的判法）一致。
+  学到的（含别人的即兴设定）+ C 自己的即兴设定；（1.7）玩家 = 身份的 `initialKnowledge` + 这一局学到的（人物告诉的，
+  和节拍发生时玩家在场、settle 写进系统事件的 public 事实）。世界事实的 `trueFrom` 这一局没发生，谁都不算知道
+  （契约 2.3，1.4）。和评测的 evals/s2_check.py（S-2 标注用的判法）一致。
 - travel_minutes()：R3 的路程（契约 2.2 `adjacent`，api-contract 3.7、3.8）。按 `places.adjacent` 的步行分钟取最短路；
   同一场景里的两个地点之间按 `pacing.sceneWalkMinutes`（S-038：场景内走动 0 分）。只量玩家的移动和排程以外的
   `relocate`；按排程走的人物看排程（backend-design 2.4）。
@@ -25,10 +26,10 @@ def knows(world: World, state: SimState, who: str, fact: str) -> bool:
     f = next((x for x in world["facts"] if x["id"] == fact), None)
     if f is not None and f["trueFrom"] != "pre" and beats.get(f["trueFrom"]) not in OCCURRED:
         return False
-    if who == "player":
-        return f is not None and fact in role_of(world, state["role"]).get("initialKnowledge", [])
     if fact in state["knowledge"].get(who, []):
         return True
+    if who == "player":
+        return fact in role_of(world, state["role"]).get("initialKnowledge", [])
     rf = state["runFacts"].get(fact)
     if rf is not None and rf.get("character") == who:
         return True

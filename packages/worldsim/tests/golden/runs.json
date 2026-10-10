@@ -117,6 +117,7 @@
     "var.player.custody": "free",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
+    "var.player.walkedOldManHome": false,
     "var.act.current": "act.1"
    },
    "holdings": {
@@ -286,6 +287,7 @@
     "var.player.custody": "free",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
+    "var.player.walkedOldManHome": false,
     "var.act.current": "act.1"
    },
    "holdings": {
@@ -449,6 +451,7 @@
     "var.player.custody": "free",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
+    "var.player.walkedOldManHome": false,
     "var.act.current": "act.1"
    },
    "holdings": {
@@ -617,6 +620,7 @@
     "var.player.custody": "free",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
+    "var.player.walkedOldManHome": false,
     "var.act.current": "act.1"
    },
    "holdings": {
@@ -788,6 +792,7 @@
     "var.player.custody": "free",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
+    "var.player.walkedOldManHome": false,
     "var.act.current": "act.1"
    },
    "holdings": {
@@ -957,6 +962,7 @@
     "var.player.custody": "free",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
+    "var.player.walkedOldManHome": false,
     "var.act.current": "act.1"
    },
    "holdings": {
@@ -1125,6 +1131,7 @@
     "var.player.custody": "hostage",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
+    "var.player.walkedOldManHome": false,
     "var.act.current": "act.1"
    },
    "holdings": {
@@ -1287,6 +1294,7 @@
     "var.player.custody": "executed",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
+    "var.player.walkedOldManHome": false,
     "var.act.current": "act.1"
    },
    "holdings": {
@@ -1452,6 +1460,7 @@
     "var.player.custody": "free",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
+    "var.player.walkedOldManHome": false,
     "var.act.current": "act.1"
    },
    "holdings": {
@@ -1625,6 +1634,7 @@
     "var.player.custody": "free",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
+    "var.player.walkedOldManHome": false,
     "var.act.current": "act.1"
    },
    "holdings": {
@@ -1796,6 +1806,7 @@
     "var.player.custody": "free",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
+    "var.player.walkedOldManHome": false,
     "var.act.current": "act.1"
    },
    "holdings": {
@@ -1966,6 +1977,7 @@
     "var.player.custody": "free",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
+    "var.player.walkedOldManHome": false,
     "var.act.current": "act.1"
    },
    "holdings": {
@@ -2138,6 +2150,7 @@
     "var.player.custody": "free",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
+    "var.player.walkedOldManHome": false,
     "var.act.current": "act.1"
    },
    "holdings": {
@@ -2304,6 +2317,7 @@
     "var.player.custody": "free",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
+    "var.player.walkedOldManHome": false,
     "var.act.current": "act.1"
    },
    "holdings": {
@@ -2476,6 +2490,7 @@
     "var.player.custody": "free",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
+    "var.player.walkedOldManHome": false,
     "var.act.current": "act.1"
    },
    "holdings": {
@@ -2646,6 +2661,7 @@
     "var.player.custody": "free",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
+    "var.player.walkedOldManHome": false,
     "var.act.current": "act.1"
    },
    "holdings": {
@@ -2816,6 +2832,7 @@
     "var.player.custody": "free",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
+    "var.player.walkedOldManHome": false,
     "var.act.current": "act.1"
    },
    "holdings": {
@@ -2987,6 +3004,7 @@
     "var.player.custody": "free",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
+    "var.player.walkedOldManHome": false,
     "var.act.current": "act.1"
    },
    "holdings": {
@@ -3157,6 +3175,7 @@
     "var.player.custody": "free",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
+    "var.player.walkedOldManHome": false,
     "var.act.current": "act.1"
    },
    "holdings": {
@@ -3327,6 +3346,7 @@
     "var.player.custody": "free",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
+    "var.player.walkedOldManHome": false,
     "var.act.current": "act.1"
    },
    "holdings": {
@@ -3495,6 +3515,7 @@
     "var.player.custody": "free",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
+    "var.player.walkedOldManHome": false,
     "var.act.current": "act.1"
    },
    "holdings": {
@@ -3664,6 +3685,7 @@
     "var.player.custody": "free",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
+    "var.player.walkedOldManHome": false,
     "var.act.current": "act.1"
    },
    "holdings": {
@@ -3833,6 +3855,7 @@
     "var.player.custody": "free",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
+    "var.player.walkedOldManHome": false,
     "var.act.current": "act.1"
    },
    "holdings": {
@@ -4002,6 +4025,7 @@
     "var.player.custody": "free",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
+    "var.player.walkedOldManHome": false,
     "var.act.current": "act.1"
    },
    "holdings": {

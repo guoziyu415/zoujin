@@ -1,0 +1,15 @@
+{
+  "id": "piece.gate-promise",
+  "on": { "act": "go", "target": "place.castle", "refused": true },
+  "after": ["beat.05"],
+  "once": true,
+  "lines": [
+    {
+      "speaker": "char.guards",
+      "line": "あの男なら王と約束をして帰った。下がれ。"
+    }
+  ],
+  "learns": [{ "character": "player", "fact": "fact.promise" }],
+  "inferred": true,
+  "note": "例：立約以后城门的警吏赶人时说出约定（S-077 ⑪），台词是示例"
+}

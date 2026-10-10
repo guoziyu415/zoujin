@@ -118,7 +118,7 @@ class Checker:
                 if "to" in e and e["to"] not in BEAT_STATUS - {"pending"}:
                     self.err(f"{where}：beat.to 不认识 {e['to']}")
             elif op == "learn":
-                if e.get("character") not in self.chars or e.get("fact") not in self.facts:
+                if (e.get("character") != "player" and e.get("character") not in self.chars) or e.get("fact") not in self.facts:
                     self.err(f"{where}：learn 的人物或事实不存在")
             elif op == "promise":
                 if "change" in e and e["change"] not in ("made", "kept", "broken", "voided"):

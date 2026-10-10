@@ -32,7 +32,7 @@
 | beat.01 未明、村を発つ | D0 04:00（D0 03:00〜D0 05:00） | village | メロス | anchor | — | — | 「きょう未明メロスは村を出発し」(1) | |
 | beat.02 市の異変 | D0 19:10（D0 19:00〜D0 20:00） | syracuse-square | メロス | anchor | — | — | 「歩いているうちにメロスは、まちの様子を怪しく思った。」(1) | |
 | beat.03 王の暴虐を知る | D0 19:30（D0 19:10〜D0 21:00） | syracuse-square | メロス、市の若い衆、市の老爺 | mutable | — | melos.knowsTyranny = True | 「王様は、人を殺します。」(2)<br>「聞いて、メロスは激怒した。」(9) | |
-| beat.04 王城で捕縛 | D0 20:00（D0 19:30〜D0 22:00） | castle | メロス、警吏（巡邏・刑吏） | mutable | melos.knowsTyranny == True | melos.custody = arrested、melos → castle、item.dagger 被拿走 | 「買い物を、背負ったままで、のそのそ王城にはいって行った。」(10)<br>「調べられて、メロスの懐中からは短剣が出て来たので、騒ぎが大きくなってしまった。」(10) | |
+| beat.04 王城で捕縛 | D0 20:00（D0 19:30〜D0 22:00） | execution-ground | メロス、警吏（巡邏・刑吏） | mutable | melos.knowsTyranny == True | melos.custody = arrested、melos → castle、item.dagger 被拿走 | 「買い物を、背負ったままで、のそのそ王城にはいって行った。」(10)<br>「調べられて、メロスの懐中からは短剣が出て来たので、騒ぎが大きくなってしまった。」(10) | |
 | beat.05 王との問答と約束 | D0 20:30（D0 20:00〜D0 23:00） | castle | メロス、王ディオニス | mutable | melos.custody == arrested | promise.made = True、hostage.who = char.selinuntius | 「処刑までに三日間の日限を与えて下さい。」(18)<br>「あれを、人質としてここに置いて行こう。」(20)<br>「願いを、聞いた。その身代りを呼ぶがよい。」(22)<br>「メロスは口惜しく、地団駄踏んだ。」(25) | |
 | beat.06 深夜、友が召される | D0 23:30（D0 21:30〜D1 01:00） | castle | セリヌンティウス、メロス、王ディオニス | mutable | promise.made == True | hostage.fate = held、selinuntius → castle | 「竹馬の友、セリヌンティウスは、深夜、王城に召された。」(26) | |
 | beat.07 満天の星の下を発つ | D0 23:45（D0 21:40〜D1 02:00） | castle | メロス | mutable | hostage.fate == held | melos.custody = on-parole、melos.stamina -30 | 「メロスは、すぐに出発した。初夏、満天の星である。」(26) | |
@@ -52,7 +52,7 @@
 | beat.s2 ちらと友を疑う | D3 16:00（D3 14:00〜D3 17:50） | castle | セリヌンティウス | mutable | hostage.who == char.selinuntius、hostage.fate == held、selinuntius.faith <= 2〔推断〕 | selinuntius.doubted = True | 「私はこの三日の間、たった一度だけ、ちらと君を疑った。」(65) | |
 | beat.21 泉 | D3 16:30（D3 12:30〜D3 19:00） | spring | メロス | mutable | — | melos.stamina +30、melos.resolve = 100 | 「水を両手で掬って、一くち飲んだ。」(48)<br>「走れ！　メロス。」(48)<br>「先刻の、あの悪魔の囁きは、あれは夢だ。」(49) | |
 | beat.22 黒い風のように | D3 17:30（D3 13:30〜D3 19:00） | road-to-city | メロス、一団の旅人 | mutable | — | melos.clothing = nearly-naked | 「メロスは黒い風のように走った。」(50)<br>「メロスは、いまは、ほとんど全裸体であった。」(50) | |
-| beat.s1 刑場に引き出される友 | D3 18:00（D3 17:00〜D3 18:55） | execution-ground | セリヌンティウス、王ディオニス、刑場の群衆、警吏（巡邏・刑吏） | mutable | hostage.fate == held | hostage.fate = on-cross、selinuntius → execution-ground | 「王様が、さんざんあの方をからかっても、メロスは来ます、とだけ答え」(57) | |
+| beat.s1 刑場に引き出される友 | D3 18:00（D3 17:00〜D3 18:55） | execution-ground | セリヌンティウス、王ディオニス、刑場の群衆、警吏（巡邏・刑吏） | mutable | hostage.fate == held | hostage.fate = on-cross、selinuntius → execution-ground、maiden → execution-ground、king → execution-ground | 「王様が、さんざんあの方をからかっても、メロスは来ます、とだけ答え」(57) | |
 | beat.23 フィロストラトス | D3 18:30（D3 14:30〜D3 19:00） | road-to-city | メロス、フィロストラトス | mutable | — | — | 「もう、駄目でございます。」(53)<br>「それだから、走るのだ。信じられているから走るのだ。」(58)<br>「いや、まだ陽は沈まぬ。」(56) | |
 | beat.24 日没、刑場へ | D3 19:00（D3 16:00〜D3 19:00） | execution-ground | メロス、セリヌンティウス、刑場の群衆、警吏（巡邏・刑吏） | mutable | melos.custody == on-parole | melos.custody = returned、hostage.fate = released、melos → execution-ground | 「メロスは疾風の如く刑場に突入した。間に合った。」(60)<br>「セリヌンティウスの縄は、ほどかれたのである。」(62) | |
 | beat.25 殴り合いと抱擁 | D3 19:05（D3 16:00〜D3 20:00） | execution-ground | メロス、セリヌンティウス | mutable | hostage.fate == released、hostage.who == char.selinuntius〔推断〕 | — | 「私を殴れ。ちから一ぱいに頬を殴れ。」(63)<br>「「ありがとう、友よ。」二人同時に言い」(67)<br>「刑場一ぱいに鳴り響くほど音高くメロスの右頬を殴った。」(64)<br>「メロスは腕に唸りをつけてセリヌンティウスの頬を殴った。」(66) | |
@@ -258,7 +258,7 @@
 | 说话 | 一人称「—」；へりくだった丁寧語（〜ます、〜居りませぬ、〜ございませぬ）。年寄りらしい語尾（〜くだされ、〜ですぞ、〜なされ）も使う。；开局在做：idle | 「王様は、人を殺します。」(2)<br>「いいえ、乱心ではございませぬ。」(8)<br>「誰もそんな、悪心を持っては居りませぬ。」(4) | |
 | 设计台词 | 「旅の方、日が落ちますぞ。早う宿へお入りなされ。」〔until beat.07〕〔推断〕（第一幕の夕方（ux-design 16.2 の予録台詞））<br>「旅の方、暗うなる前に、すまぬが家の前まで手を貸してくだされ。」〔until beat.07〕〔推断〕（S-044 ② の開口例：老爺の方から旅人に頼む（aid.old-man.listen）） | — | |
 | 知道 | king-killings@pre、king-distrust@pre、hostage-decree@pre、six-killed-today@pre、city-silent@pre | — | |
-| 你能为他 | 怯える老爺の話を最後まで聞き、暗くなる道を家まで送る〔开局互助：role.traveler〕〔推断〕 | 「老爺は、あたりをはばかる低声で、わずか答えた。」(1) | |
+| 你能为他 | 怯える老爺の話を最後まで聞き、暗くなる道を家まで送る〔开局互助：role.traveler〕〔效果：player.walkedOldManHome = True〕〔推断〕 | 「老爺は、あたりをはばかる低声で、わずか答えた。」(1) | |
 | 他能为你 | 声をひそめて王の所業を打ち明け、メロスが来たら引き合わせる〔开局互助：role.traveler〕〔推断〕 | 「王様は、人を殺します。」(2) | |
 | 他能为你 | 警吏に目をつけられない道を教える〔推断〕 | — | |
 | 你能为他 | 聞いたことを誰にも言わない〔推断〕 | — | |
@@ -285,7 +285,7 @@
 | 性格 | 王の命令に従う | 「たちまち彼は、巡邏の警吏に捕縛された。」(10) | |
 | 动机 | 命令を遂行する（推定） | 「私だ、刑吏！」(62) | |
 | 说话 | 一人称「—」；原文に台詞なし（推定）。；开局在做：idle | — | |
-| 知道 | hostage-decree@pre、melos-dagger@beat.04、selinuntius-hostage@beat.06 | — | |
+| 知道 | hostage-decree@pre、melos-dagger@beat.04、promise@beat.05、selinuntius-hostage@beat.06 | — | |
 
 ### 峠の山賊（char.bandits）
 
@@ -315,7 +315,7 @@
 | 项 | 内容 | 原文 | 校对 |
 |---|---|---|---|
 | 性格 | 感情の振れ幅が大きい | 「群衆は、どよめいた。」(62) | |
-| 说话 | 一人称「—」；叫び。；开局在做：idle | 「万歳、王様万歳。」(71) | |
+| 说话 | 一人称「—」；叫び。；开局在做：absent | 「万歳、王様万歳。」(71) | |
 | 知道 | selinuntius-steadfast@beat.s1 | — | |
 
 ### 緋のマントの少女（char.maiden）
@@ -325,7 +325,7 @@
 | 项 | 内容 | 原文 | 校对 |
 |---|---|---|---|
 | 性格 | メロスの裸体を人に見られるのを口惜しがる | 「この可愛い娘さんは、メロスの裸体を、皆に見られるのが、たまらなく口惜しいのだ。」(73) | |
-| 说话 | 一人称「—」；原文に台詞なし（推定）。；开局在做：idle | — | |
+| 说话 | 一人称「—」；原文に台詞なし（推定）。；开局在做：absent | — | |
 | 知道 | — | — | |
 
 ## 5. 因果边
@@ -416,6 +416,7 @@
 | aff.road-shortcut-told | act.4 · road-to-city | traveler、apprentice、castle-maid、guard | shortcut | 近道を教える（15分早まる） | 帮他快 | player.knowsShortcut == True | 近道や浅瀬を教える | beat.22 hastened 15 分 | 花婿から野道を聞いていれば（aid.groom.shortcut）牧童でなくても案内できる | — | |
 | aff.road-run-ahead | act.4 · road-to-city | 全部 | hasten | 先に走って知らせる（5分早まる） | 帮他快 | — | 市へ先に走り、もうすぐ着くと知らせる | beat.24 hastened 5 分、player.location = place.execution-ground、player.companionOf = none | 先に刑場へ走り、メロスが来ると叫んで知らせる。群衆が振り返って道をあけるので、群衆を掻きわける手間が省ける（UX 4.3、5 分は推定）。期限は動かない。プレイヤーは刑場でメロスを迎える。フィロストラトスに頼んで走ってもらう（aid.philostratus.run）のも同じ効果 | 「群衆は、ひとりとして彼の到着に気がつかない。」(61)<br>「群衆を掻きわけ、掻きわけ、」(61) | |
 | aff.vouch | act.1 · castle | traveler | help | メロスの身元を保証する（15分ほど） | — | melos.custody == arrested | — | king.trust +10 | 見知らぬ旅人が王の前でメロスを保証する。王は人を信じられないが、この一件は覚える（王の信頼 +10、推定）。王の態度は軟らかくならない（信頼の閾値は var.king.trust）。王は冷笑して「ならば、おまえも人質になるか」と返すことがあり、受ければ第 1 類の結局への道（意図確認を通す） | — | |
+| aff.walk-old-man-home | act.1 · syracuse-square | 全部 | help | 家まで送る（30分ほど） | — | player.walkedOldManHome == False | 怯える老爺の話を最後まで聞き、暗くなる道を家まで送る | player.walkedOldManHome = True、old-man → syracuse-square | 旅人の開局互助（S-048）をボタンでも果たせるように（UX 10-10）。老爺はゆっくり歩き、道々話す。叙事者は道中を一、二文で語るが、王が人を殺す訳（aid.old-man.tell）はここで代わりに語らない。終わると老爺は家の前（old-man-house）、プレイヤーはその隣。一局一度 | — | |
 | aff.keep-workshop | act.1 · stonemason-workshop | apprentice | help | 工房を預かる（15分ほど） | — | — | 親方の留守、工房を守ると約束する | 约定成立「工房を守る」 | S-048 の開局互助。promiseId は提交時に叙事者が振る | — | |
 | aff.stay-by-master | 各幕 · castle | apprentice | help | 親方のそばにいる（1時間ほど） | — | hostage.who == char.selinuntius、hostage.fate == held、selinuntius.attended == False | 人質の夜、そばにいる | selinuntius.attended = True、selinuntius.faith +2 | 人質の夜、縄を打たれた親方のそばにいる（一局に一度）。親方の支え +2。これだけでは三日目の「ちらと疑う」（beat.s2）は防げない：さらに便りを届けるか、一緒に信じ続ける言葉が要る（S-064） | — | |
 | aff.village-water | act.3 · village | shepherd-boy | give（交出 item.water） | 水を一杯差し出す（15分ほど） | — | — | よろめいて村に戻ったメロスに水を一杯差し出す | — | S-048 の開局互助（牧童） | — | |
@@ -521,6 +522,7 @@
 | var.player.custody | enum（free / arrested / hostage / executed） | free | 是 | arrested:あなたは捕らえられた、hostage:あなたが人質になった、free:あなたは自由になった | プレイヤーの身柄。executed は当場で表示しない（S-067）：結局の中で間接的に伝え、「処刑」「死」とは書かない |
 | var.player.companionOf | enum（none / char.melos / char.selinuntius / char.philostratus） | none |  | — | 誰と行動を共にしているか |
 | var.player.knowsShortcut | bool | False |  | — | 村と市のあいだの抜け道（峠の脇道、町へ抜ける野道）を知っているか。牧童は初めから知っている（aff.pass-detour、aff.road-shortcut は牧童専用）。ほかの身分は花婿から聞けば（aid.groom.shortcut）使える |
+| var.player.walkedOldManHome | bool | False |  | — | 怯える老爺の話を聞き、家まで送ったか（aid.old-man.listen を果たした）。旅人の第一幕の去処「老爺の家に身を寄せる」の条件（S-077 ④） |
 | var.act.current | enum（act.1 / act.2 / act.3 / act.4） | act.1 |  | — | いまの幕。開局時は身分の startAct |
 
 ### 全局规则

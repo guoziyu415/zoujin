@@ -7,11 +7,12 @@ import json
 from pathlib import Path
 from typing import Any
 
-from zoujin_worldsim import SimState, apply, initial_state, knows, settle, travel_minutes
+from zoujin_worldsim import SimState, apply, check_effects, initial_state, knows, settle, travel_minutes
 
 WORLD_DIR = Path(__file__).resolve().parents[3] / "worlds" / "hashire-merosu" / "1.0.0-draft"
 WORLD: dict[str, Any] = json.loads((WORLD_DIR / "world.json").read_text(encoding="utf-8"))
 ROLE = "role.traveler"
+GROUND = "place.execution-ground"
 RF = "rf_01J00000000000000000000000"
 
 
@@ -55,14 +56,35 @@ def test_a_fact_that_is_not_true_this_run_is_known_by_nobody() -> None:
         assert knows(WORLD, {**late, "beats": beats}, "char.melos", "fact.selinuntius-doubted-once") is known
 
 
-def test_the_player_knows_what_the_role_knows() -> None:
-    """玩家 = 身份的 initialKnowledge（和 evals/s2_check.py 一样）；learn 只给人物。"""
+def test_the_player_knows_what_the_role_knows_and_what_they_learn() -> None:
+    """玩家 = 身份的 initialKnowledge + 这一局学到的（契约 2.1，1.7）。"""
     s = at(0)
     assert knows(WORLD, s, "player", "fact.city-silent")
     assert not knows(WORLD, s, "player", "fact.king-killings")
+    assert check_effects(WORLD, s, [{"op": "learn", "character": "player", "fact": "fact.king-killings"}], "turn") == []
+    bad = check_effects(WORLD, s, [{"op": "learn", "character": "char.nobody", "fact": "fact.king-killings"}], "turn")
+    assert [p["code"] for p in bad] == ["unknown-id"]
+    told = [{"op": "learn", "character": "player", "fact": "fact.king-killings"}]  # 老爺告诉玩家的
+    s = apply(WORLD, s, {"t": 0, "dt": 0, "origin": "turn", "effects": told})
+    assert knows(WORLD, s, "player", "fact.king-killings")
+    assert not knows(WORLD, s, "char.melos", "fact.king-killings")  # 梅洛斯 since beat.03
     boy = settle(WORLD, initial_state(WORLD, "role.shepherd-boy"), 1980)[1]
     assert knows(WORLD, boy, "player", "fact.sister-engaged")
     assert not knows(WORLD, boy, "player", "fact.city-silent")
+
+
+def test_the_player_learns_public_facts_of_beats_they_see() -> None:
+    """节拍发生时玩家在节拍的地点：settle 在那个系统事件里写 learn，只写 public 的（契约 2.1、2.3，1.7）。"""
+    drafts, s = settle(WORLD, at(0, [{"op": "set", "var": "var.player.location", "value": GROUND}]), 1201)
+    arrest = next(d["event"] for d in drafts if d["beat"] == "beat.04")  # 捕缚在王城前庭
+    assert {"op": "learn", "character": "player", "fact": "fact.melos-dagger"} in arrest["effects"]
+    assert knows(WORLD, s, "player", "fact.melos-dagger")
+    drafts, s = settle(WORLD, s, 1411)  # 立约（beat.05）、人质（beat.06）在王城里，玩家不在
+    assert not any(e.get("character") == "player" for d in drafts for e in d["event"]["effects"])
+    assert not knows(WORLD, s, "player", "fact.promise")
+    away = at(1411)  # 一直在广场
+    assert not knows(WORLD, away, "player", "fact.melos-dagger")
+    assert not any(e["op"] == "learn" for d in settle(WORLD, at(0), 1201)[0] for e in d["event"]["effects"])
 
 
 def test_walking_minutes_take_the_shortest_way() -> None:

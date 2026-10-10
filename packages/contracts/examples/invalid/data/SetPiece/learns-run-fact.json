@@ -1,0 +1,9 @@
+{
+  "id": "piece.gate-promise",
+  "on": { "act": "go", "target": "place.castle", "refused": true },
+  "lines": [{ "speaker": "char.guards", "line": "下がれ。" }],
+  "learns": [
+    { "character": "player", "fact": "rf_01JNQCPPXM2V8W7D7WT44XCB26" }
+  ],
+  "inferred": true
+}

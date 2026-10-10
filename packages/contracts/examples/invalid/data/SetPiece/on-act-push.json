@@ -1,0 +1,6 @@
+{
+  "id": "piece.gate-again",
+  "on": { "act": "push", "target": "place.castle" },
+  "lines": [{ "speaker": "char.guards", "line": "二度は言わぬ。下がれ。" }],
+  "inferred": true
+}

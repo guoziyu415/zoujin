@@ -1,0 +1,18 @@
+{
+  "id": "piece.gate-again",
+  "on": {
+    "act": "go",
+    "target": "place.castle",
+    "refused": true
+  },
+  "played": ["piece.gate-taken", "piece.gate-turned-away"],
+  "notPlayed": ["piece.gate-taken-again"],
+  "once": true,
+  "lines": [
+    {
+      "speaker": "char.guards",
+      "line": "二度は言わぬ。下がれ。"
+    }
+  ],
+  "inferred": true
+}

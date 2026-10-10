@@ -1,12 +1,12 @@
 # 数据契约的 JSON Schema
 
-`docs/data/contracts.md` 1.6 的 37 个类型，写成 JSON Schema 2020-12（C-2，数据负责）。改字段先改 contracts.md，再改这里；契约测试会把两边逐个类型、逐个顶层字段对一遍。
+`docs/data/contracts.md` 1.7 的 39 个类型，写成 JSON Schema 2020-12（C-2，数据负责）。改字段先改 contracts.md，再改这里；契约测试会把两边逐个类型、逐个顶层字段对一遍。
 
 | 文件                      | 主类型        | `$defs`                                                                    |
 | ------------------------- | ------------- | -------------------------------------------------------------------------- |
 | `common.schema.json`      | —             | `Cite`，加公共定义：`SchemaVersion`、`StoryTime`、`RecordedAt`、各种 ID 等 |
 | `playthrough.schema.json` | `Playthrough` | `Playthrough`                                                              |
-| `world-model.schema.json` | `WorldModel`  | 世界模型的 24 个类型                                                       |
+| `world-model.schema.json` | `WorldModel`  | 世界模型的 26 个类型                                                       |
 | `event.schema.json`       | `Event`       | `Event`、`Effect`、`CheckResult`                                           |
 | `utterance.schema.json`   | `Utterance`   | `Utterance`                                                                |
 | `world-state.schema.json` | `WorldState`  | `WorldState`、`RunFact`                                                    |

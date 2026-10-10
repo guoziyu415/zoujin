@@ -261,6 +261,12 @@ type MemoryId = Annotated[str, Field(pattern="^mem_[0-7][0-9A-HJKMNP-TV-Z]{25}$"
 """
 
 
+type ObjectId = Annotated[str, Field(pattern="^obj\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="ObjectId")]
+"""
+（1.7）可调查物：`obj.` 加小写 slug（可以有 `.` 和 `-`）
+"""
+
+
 class PlaceCrossing(BaseModel):
     """
     有河的地点
@@ -364,11 +370,101 @@ type SceneId = Annotated[str, Field(pattern="^scene\\.[a-z0-9]+(?:[.-][a-z0-9]+)
 
 
 type SchemaVersion = Annotated[
-    Literal["1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6"],
+    Literal["1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7"],
     Field(title="SchemaVersion"),
 ]
 """
-写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人
+写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival / sub、Affordance.playerSpot（C-18）、Act.plan（C-19）、WorldModel.setPieces（S-080 ④）、WorldModel.objects
+"""
+
+
+class SetPieceOnOption1(BaseModel):
+    """
+    什么时候演：这个节拍发生时玩家在场，或玩家的这种动作判定之后
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    beat: BeatId
+
+
+class SetPieceOnOption2(BaseModel):
+    """
+    什么时候演：这个节拍发生时玩家在场，或玩家的这种动作判定之后
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    act: Literal[
+        "examine", "give", "follow", "block", "help", "wait", "go", "shortcut", "run-together", "hasten", "move"
+    ]
+    """
+    api-contract 3.8 的 kind
+    """
+    target: Annotated[str | None, Field(max_length=128, min_length=1)] = None
+    """
+    对人物的动作写人物 ID，move 写地点 ID，go 写出口通往的地点（布局 exits[].place），examine 写 interactable 的 ID（obj.*）；省略 = 不看对象
+    """
+    refused: Literal[True] | None = None
+    """
+    只在被拒时演；省略 = 只在做成时（done / partial）
+    """
+
+
+class SetPieceKnowsItem(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    character: CharacterId
+    fact: FactId
+
+
+class SetPieceLinesItemOption1(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    narration: Annotated[str, Field(min_length=1)]
+    """
+    一行地の文（日语）
+    """
+
+
+class SetPieceLinesItemOption2(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    speaker: CharacterId
+    line: Annotated[str, Field(min_length=1)]
+    """
+    预录句，也是字幕（日语）
+    """
+
+
+class SetPieceLearnsItem(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    character: Literal["player"] | CharacterId
+    fact: FactId
+
+
+type SetPieceId = Annotated[str, Field(pattern="^piece\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="SetPieceId")]
+"""
+（1.7）固定演出：`piece.` 加小写 slug（可以有 `.` 和 `-`）
+"""
+
+
+type SpotId = Annotated[str, Field(max_length=64, pattern="^[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="SpotId")]
+"""
+（1.7）场景布局里的位置点（api-contract 第 0 节 spot，assets/scenes/<场景>/layout.json 的 spots），小写 slug，例 stake-front、way.castle。不带类型前缀：名字由前端在布局里定
 """
 
 
@@ -457,6 +553,32 @@ class WorldModelGlobalRulesItem(BaseModel):
 PacingAdditionalProperty = TypeAliasType("PacingAdditionalProperty", Annotated[int, Field(ge=0)])
 
 
+class WorldObject(BaseModel):
+    """
+    （1.7）可调查物（2.12）：场景里可「調べる」的东西。服务端按它出快照的 interactables（kind examine，0 分），不写死；场景出口照布局的 exits
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    id: ObjectId
+    place: PlaceId
+    """
+    在哪个地点（要有场景）
+    """
+    label: Annotated[str, Field(min_length=1)]
+    """
+    按钮上的字（日语，UX 出）
+    """
+    spot: SpotId | None = None
+    """
+    布局里的位置点（前端加）；服务端出快照时要有
+    """
+    inferred: Literal[True] = True
+    note: str | None = None
+
+
 class ActStart(BaseModel):
     """
     本幕最早从什么时候开始
@@ -481,6 +603,44 @@ class ActEnd(BaseModel):
     atLatest: StoryTime
     """
     最迟在这个时间收幕
+    """
+
+
+class ActPlanArrival(BaseModel):
+    """
+    落地，同 ActExit.arrival
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    line: Annotated[str, Field(min_length=1)]
+    """
+    落地后的第一行叙事（地の文，日语），跳转之后显示
+    """
+    opener: CharacterId | None = None
+    """
+    落地后先开口的人物：服务端发起一轮，台词按人设生成，不是问句
+    """
+
+
+class ActExitArrival(BaseModel):
+    """
+    （1.7）落地：第一行叙事和先开口的人物（ux/slice/jump-transition.md「落地」）
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    line: Annotated[str, Field(min_length=1)]
+    """
+    落地后的第一行叙事（地の文，日语），跳转之后显示
+    """
+    opener: CharacterId | None = None
+    """
+    落地后先开口的人物：服务端发起一轮，台词按人设生成，不是问句
     """
 
 
@@ -745,7 +905,7 @@ class EffectInc(BaseModel):
 
 class EffectLearn(BaseModel):
     """
-    某角色知道了某事实；（1.1）fact 也可以是 rf_…（别人的即兴设定）
+    某角色知道了某事实；（1.1）fact 也可以是 rf_…（别人的即兴设定）；（1.7）character 可以是 player（契约 2.1：人物告诉玩家时叙事者提取，玩家在节拍的地点时由共享规则写进节拍的系统事件）
     """
 
     model_config = ConfigDict(
@@ -753,7 +913,7 @@ class EffectLearn(BaseModel):
         validate_by_name=True,
     )
     op: Literal["learn"] = "learn"
-    character: CharacterId
+    character: Literal["player"] | CharacterId
     fact: FactId | RunFactId
 
 
@@ -815,6 +975,10 @@ class EffectRelocate(BaseModel):
     op: Literal["relocate"] = "relocate"
     character: CharacterId
     place: PlaceId
+    spot: SpotId | None = None
+    """
+    （1.7）站在这个地点的哪个位置点；省略 = 由后端按布局的站位规则排（第 3.1 节 WorldState.spots）
+    """
 
 
 class EffectSet(BaseModel):
@@ -1424,6 +1588,60 @@ class Scene(BaseModel):
     note: str | None = None
 
 
+class SetPiece(BaseModel):
+    """
+    （1.7）固定演出（2.11，S-080 ④）：每局一样、写好的地の文和人物的预录句，挂在节拍或玩家的动作上，由服务端在对的时机下发。只是演出：不是事件，不改世界状态；例外是 learns（演出里说出的事，听的人就知道了）
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    id: SetPieceId
+    on: SetPieceOnOption1 | SetPieceOnOption2
+    """
+    什么时候演：这个节拍发生时玩家在场，或玩家的这种动作判定之后
+    """
+    after: list[BeatId] | None = None
+    """
+    这些节拍已经发生（happened / altered）
+    """
+    before: list[BeatId] | None = None
+    """
+    这些节拍还没发生
+    """
+    knows: list[SetPieceKnowsItem] | None = None
+    """
+    这些人物知道这件事：Character.knows 里到这个时刻已经成立的（since），或这一局已提交的 learn
+    """
+    played: list[SetPieceId] | None = None
+    """
+    这些固定演出里至少有一个这一局已经演过
+    """
+    notPlayed: list[SetPieceId] | None = None
+    """
+    这些固定演出这一局都还没演过
+    """
+    when: list[Condition] | None = None
+    """
+    别的状态条件（同节拍前提）
+    """
+    once: Literal[True] | None = None
+    """
+    一局只演一次
+    """
+    lines: Annotated[list[SetPieceLinesItemOption1 | SetPieceLinesItemOption2], Field(min_length=1)]
+    """
+    按顺序演：narration = 地の文；speaker + line = 这个人物的一句预录（构建时生成，ux-design 16.2）
+    """
+    learns: Annotated[list[SetPieceLearnsItem] | None, Field(min_length=1)] = None
+    """
+    演这一条时谁知道了哪件事（S-077 ⑪）：服务端把这些 learn 和这一条的演出同一次提交写进事件（写在哪条事件里 B-3 定）。只给 learn，不给任意 effects：固定演出不过叙事者的 R1〜R7
+    """
+    inferred: Literal[True] = True
+    note: str | None = None
+
+
 class StateVarValueRequiresItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -1636,6 +1854,10 @@ class WorldState(BaseModel):
     """
     角色 → 地点
     """
+    spots: dict[CharacterId, SpotId] | None = None
+    """
+    （1.7）角色 → 指定的位置点：relocate 写了 spot 才有；换到别的地点时去掉。没有的由后端按布局的站位规则排（第 3.1 节）
+    """
     promises: dict[PromiseId, StoryPromise] | None = None
     """
     （1.1）promiseId → 约定
@@ -1751,6 +1973,38 @@ class CharacterSpeech(BaseModel):
     """
 
 
+class ActPlan(BaseModel):
+    """
+    （1.7，C-19）玩家在幕末说出的打算成行时落在哪里（2.8.1 第 2 步）：成行的事件按这里写下一幕、地点、时间、落点和落地。省略 = 叙事者按世界模型判（M3 定）
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    toAct: ActId
+    place: PlaceId
+    """
+    下一幕的起点
+    """
+    t: StoryTime
+    """
+    下一幕从几点开始
+    """
+    spot: SpotId | None = None
+    """
+    玩家落在 place 的哪个位置点；省略 = 这个地点的起点（startSpots）
+    """
+    effects: list[Effect]
+    """
+    成行本身固定的效果（例：人物的 relocate）；打算自己的效果由叙事者从玩家的话里提取，照常检查后加在同一条事件上
+    """
+    arrival: Annotated[ActPlanArrival | None, Field(title="ActPlanArrival")] = None
+    """
+    落地，同 ActExit.arrival
+    """
+
+
 class Act(BaseModel):
     """
     幕（2.8，S-004）
@@ -1775,6 +2029,10 @@ class Act(BaseModel):
     exits: list[ActExit]
     """
     幕末去处；最后一幕为空，收幕即进入结局
+    """
+    plan: Annotated[ActPlan | None, Field(title="ActPlan")] = None
+    """
+    （1.7，C-19）玩家在幕末说出的打算成行时落在哪里（2.8.1 第 2 步）：成行的事件按这里写下一幕、地点、时间、落点和落地。省略 = 叙事者按世界模型判（M3 定）
     """
     inferred: Literal[True] = True
     note: str | None = None
@@ -1822,6 +2080,18 @@ class ActExit(BaseModel):
     enRoute: EnRoute | None = None
     """
     （1.4）跳过的这段路上有一个能改的节拍时，过场页给一个二选一
+    """
+    sub: Annotated[str | None, Field(max_length=16, min_length=1)] = None
+    """
+    （1.7）幕末页上这个去处副题的后半（日语，叙事口吻，不写分钟数）；前半「{地点}・{日子}の{时段}」由前端按 place 和 t 生成。省略 = 只有前半
+    """
+    spot: SpotId | None = None
+    """
+    （1.7）玩家落在 place 的哪个位置点；省略 = 前端按这个地点的起点（layout.json 的 startSpots）
+    """
+    arrival: Annotated[ActExitArrival | None, Field(title="ActExitArrival")] = None
+    """
+    （1.7）落地：第一行叙事和先开口的人物（ux/slice/jump-transition.md「落地」）
     """
 
 
@@ -1879,6 +2149,10 @@ class Affordance(BaseModel):
     aid: AidId | None = None
     """
     做成了就兑现这条互助（fromYou 的 MutualAid.id）
+    """
+    playerSpot: SpotId | None = None
+    """
+    （1.7）做完以后玩家站在 place 的哪个位置点（布局的 spots）；省略 = 不挪。只管玩家，人物用 relocate 的 spot
     """
     effects: list[Effect]
     """
@@ -2000,6 +2274,10 @@ class Character(BaseModel):
     talkable: bool
     """
     第一版能不能自由对话（S-003）
+    """
+    group: Literal[True] | None = None
+    """
+    （1.7）一群人（群众、警吏、山贼、一团旅人）：不占布局的位置点，前端按地点成群地放（站位规则见第 3.1 节 WorldState.spots）
     """
     voiceRef: str | None = None
     """
@@ -2330,8 +2608,17 @@ class WorldModel(BaseModel):
     """
     （1.1）故事里的物品，见 2.10
     """
+    setPieces: list[SetPiece] | None = None
+    """
+    （1.7，S-080 ④）固定演出：挂在节拍或玩家的动作上的地の文和预录句，见 2.11
+    """
+    objects: list[WorldObject] | None = None
+    """
+    （1.7）场景里可「調べる」的东西，见 2.12
+    """
 
 
+ActPlan.model_rebuild()
 Act.model_rebuild()
 ActExit.model_rebuild()
 Affordance.model_rebuild()

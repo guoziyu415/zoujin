@@ -1,0 +1,48 @@
+{
+  "id": "act.1",
+  "order": 1,
+  "title": "約束の日",
+  "start": {
+    "t": 1050
+  },
+  "end": {
+    "onBeats": ["beat.07"],
+    "atLatest": 1560
+  },
+  "scenes": ["scene.syracuse-square"],
+  "exits": [
+    {
+      "id": "exit.1.city",
+      "label": "市に残り、メロスの帰りを待つ",
+      "toAct": "act.4",
+      "place": "place.execution-ground",
+      "t": 5370,
+      "effects": [],
+      "sub": "西の門が見える所で",
+      "spot": "ground-west"
+    }
+  ],
+  "plan": {
+    "toAct": "act.4",
+    "place": "place.execution-ground",
+    "t": 5370,
+    "spot": "stake-front",
+    "effects": [
+      {
+        "op": "relocate",
+        "character": "char.old-man",
+        "place": "place.execution-ground",
+        "spot": "ground-west"
+      },
+      {
+        "op": "relocate",
+        "character": "char.philostratus",
+        "place": "place.road-to-city"
+      }
+    ],
+    "arrival": {
+      "line": "三日目の夕方。あなたは、刑場の近くに来ていた。"
+    }
+  },
+  "inferred": true
+}
