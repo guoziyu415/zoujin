@@ -6,7 +6,7 @@ import type * as Data from "./data";
  */
 export type ClientMsgId = string;
 /**
- * 幕末说出打算后的替代去处（3.11 alternative.optionId），例 plan_…。文档只给了前缀
+ * 幕末说出打算后的替代去处（3.11 alternative.optionId）：plan_ 加 ULID，和别的运行时 ID 一样（C-1 评审定）
  */
 export type PlanOptionId = string;
 /**
@@ -34,7 +34,7 @@ export type Minutes = number;
  */
 export type ActionId = string;
 /**
- * 关键时刻（3.4），rev_ 加 ULID
+ * 关键时刻（3.4），rev_ 加 ULID（大写 Crockford base32，第一位 0〜7，同数据契约的运行时 ID）
  */
 export type RevealId = string;
 /**
@@ -50,7 +50,7 @@ export type Seq = number;
  */
 export type BeatChange = "happened" | "prevented" | "delayed" | "hastened" | "altered";
 /**
- * 待确认的举动（3.9），draft_ 加 ULID
+ * 待确认的举动（3.9），draft_ 加 ULID（大写 Crockford base32，第一位 0〜7，同数据契约的运行时 ID）
  */
 export type DraftId = string;
 /**
@@ -104,9 +104,10 @@ export type CueKind = "arrival_capped";
 export type StagingState =
   "present" | "in-crowd" | "on-cross" | "freed" | "arriving" | "approaching" | "collapsed" | "absent";
 /**
- * 第 5 节的错误码。TODO(C-1 评审)：invalid_invite 在第 1 节（登录 401）出现、第 5 节的表里没有；请求体不合 Schema 时回哪个码文档没写
+ * 第 5 节的错误码，加第 1 节的 invalid_invite（登录 401）和 invalid_request（400：请求体、参数或 WebSocket 消息不合 Schema，是前端的毛病，不给玩家具体原因）（C-1 评审定）
  */
 export type ErrorCode =
+  | "invalid_request"
   | "unauthenticated"
   | "forbidden"
   | "not_found"
@@ -232,11 +233,11 @@ export interface ActEnd {
    * @minItems 2
    * @maxItems 4
    */
-  recapLines: [string, string, ...string[]];
+  recapLines: string[];
   /**
    * @minItems 1
    */
-  options: [ActOption, ...ActOption[]];
+  options: ActOption[];
   freeform: Freeform;
 }
 /**
@@ -260,7 +261,7 @@ export interface ActOptionEnRoute {
    * @minItems 2
    * @maxItems 2
    */
-  choices: [EnRouteOption, EnRouteOption, ...EnRouteOption[]];
+  choices: EnRouteOption[];
 }
 export interface EnRouteOption {
   /**
@@ -294,11 +295,11 @@ export interface ActEndedMessage {
    * @minItems 2
    * @maxItems 4
    */
-  recapLines: [string, string, ...string[]];
+  recapLines: string[];
   /**
    * @minItems 1
    */
-  options: [ActOption, ...ActOption[]];
+  options: ActOption[];
   freeform: Freeform;
 }
 /**
@@ -307,14 +308,18 @@ export interface ActEndedMessage {
 export interface ActPlanResultMessage {
   type: "act_plan_result";
   /**
-   * act_propose 的 clientMsgId。TODO(C-1 评审)：用声音说打算（activity_start purpose = act_plan）时没有 clientMsgId，文档没写；这里那时省略
+   * 用文字说打算时：act_propose 的 clientMsgId。和 turnId 正好有一个（C-1 评审定）
    */
   clientMsgId?: ClientMsgId;
+  /**
+   * 用声音说打算时（activity_start purpose = act_plan）：那一轮的 turnId，前端按它对上语音那一轮、丢掉已作废那一轮的结果（C-1 评审加）
+   */
+  turnId?: Data.TurnId;
   accepted: boolean;
   /**
    * @minItems 1
    */
-  narration: [string, ...string[]];
+  narration: string[];
   alternative?: PlanAlternative;
   triesLeft: number;
 }
@@ -459,7 +464,7 @@ export interface SituationalAction {
   actionId: ActionId;
   kind: "examine" | "give" | "follow" | "block" | "help" | "wait" | "go" | "shortcut" | "run-together" | "hasten";
   /**
-   * 对象人物。TODO(C-1 评审)：文档的例子都有 target，世界模型的 Affordance.target 可选（wait 这类没有对象）；这里没有对象时省略
+   * 对象人物；没有对象的动作（wait 这类，世界模型 Affordance.target 可选）省略，不给 null（C-1 评审定）
    */
   target?: Data.CharacterId;
   /**
@@ -505,6 +510,10 @@ export interface Reveal {
    * @maxItems 12
    */
   chain: WhyStep[];
+  /**
+   * 链超过 12 步时中间折叠了几步，同 /why 的 collapsed（2.6）；没折叠时省略（C-1 评审加）
+   */
+  collapsed?: number;
 }
 export interface WhyEventStep {
   eventId: Data.EventId;
@@ -524,7 +533,7 @@ export interface WhyBeatStep {
   change: BeatChange;
 }
 /**
- * 续玩时还没回答的意图确认：confirm（3.9）的字段加剩余秒数（第 4 节「含剩余秒数」）。TODO(C-1 评审)：文档没给剩余秒数的字段名，这里叫 remainingSec
+ * 续玩时还没回答的意图确认：confirm（3.9）的字段加剩余秒数 remainingSec（第 4 节「含剩余秒数」），timeoutSec 照样给（C-1 评审定）
  */
 export interface PendingConfirm {
   draftId: DraftId;
@@ -533,7 +542,7 @@ export interface PendingConfirm {
   /**
    * @minItems 2
    */
-  options: [ConfirmOption, ConfirmOption, ...ConfirmOption[]];
+  options: ConfirmOption[];
   timeoutSec: number;
   remainingSec: number;
 }
@@ -575,9 +584,9 @@ export interface ActionMessage {
   kind:
     "examine" | "give" | "follow" | "block" | "help" | "wait" | "go" | "shortcut" | "run-together" | "hasten" | "move";
   /**
-   * 对象：人物 ID、地点 ID（move）或 interactable 的 ID
+   * 对象：人物 ID、地点 ID（move）或 interactable 的 ID。快照里这个动作有 target 就原样带；wait 这类没有对象的动作省略（服务端按 actionId 找回）。move、examine、go 必带（C-1 评审定）
    */
-  target: string;
+  target?: string;
   /**
    * give 时 params.item 是交出的物品
    */
@@ -661,7 +670,7 @@ export interface ApproachMessage {
   kind: "request" | "news";
 }
 /**
- * commit.patch.characters[]（3.4）：按 id 合并，只给变了的字段
+ * commit.patch.characters[]（3.4）：按 id 合并，只给变了的字段。人物进场（之前不在当前场景）时带完整的 CharacterPresence 字段；离场就是 place 变成不在当前场景里的地点
  */
 export interface CharacterPresencePatch {
   id: Data.CharacterId;
@@ -764,7 +773,7 @@ export interface PingMessage {
   type: "ping";
 }
 /**
- * commit.patch.clock（3.4）。TODO(C-1 评审)：文档的例子只有 t 和 tLabel；这里 t、tLabel 必填，deadlineT 可选
+ * commit.patch.clock（3.4）：t、tLabel 必填，deadlineT 可选（C-1 评审定）
  */
 export interface ClockPatch {
   t: Data.StoryTime;
@@ -800,7 +809,7 @@ export interface VisibleEvent {
    */
   seq: number;
   /**
-   * 来自哪一轮；到点的节拍、人物的打算这类事件没有。TODO(C-1 评审)：文档的例子都有 turnId；这里照数据契约 Event.turnId 写成可选
+   * 来自哪一轮；到点的节拍、人物的打算这类事件没有，照数据契约 Event.turnId 可选（C-1 评审定）
    */
   turnId?: Data.TurnId;
   /**
@@ -866,7 +875,7 @@ export interface PromiseChange {
   change: "made" | "kept" | "broken" | "voided";
 }
 /**
- * commit.patch（3.4）：快照字段的增量，按 id 合并。TODO(C-1 评审)：文档只举了这 7 个字段；interactables、voice、status 变了怎么给没写，这里不收
+ * commit.patch（3.4）：快照字段的增量，按 id 合并。voice、status 不走 patch（C-1 评审定）
  */
 export interface SnapshotPatch {
   clock?: ClockPatch;
@@ -875,7 +884,15 @@ export interface SnapshotPatch {
   characters?: CharacterPresencePatch[];
   places?: PlaceAccess[];
   actions?: ActionsPatch;
+  interactables?: InteractablesPatch;
   player?: PlayerPositionPatch;
+}
+/**
+ * commit.patch.interactables：可调查物和场景出口（3.8）的增减，形状同 actions。add 里的 id 已经有了就整条替换（例：enabled 变了）（C-1 评审加）
+ */
+export interface InteractablesPatch {
+  add?: Interactable[];
+  remove?: InteractableId[];
 }
 /**
  * commit.patch.player（3.4）：只给变了的字段
@@ -885,7 +902,7 @@ export interface PlayerPositionPatch {
   spot?: Spot;
 }
 /**
- * commit.memories[]（3.4）；前端据此让記憶帳的查询失效重拉。TODO(C-1 评审)：文档只举了 added；这里 added、updated 必带 text 和 kind，deleted 不带
+ * commit.memories[]（3.4）；前端据此让記憶帳的查询失效重拉。added、updated 必带 text 和 kind，deleted 不带（C-1 评审定）
  */
 export interface MemoryChange {
   character: Data.CharacterId;
@@ -955,7 +972,7 @@ export interface ConfirmMessage {
   /**
    * @minItems 2
    */
-  options: [ConfirmOption, ConfirmOption, ...ConfirmOption[]];
+  options: ConfirmOption[];
   timeoutSec: number;
 }
 export interface CreatePlaythroughRequest {
@@ -992,29 +1009,13 @@ export interface EndingCardView {
    * @minItems 2
    * @maxItems 3
    */
-  characterLines: [
-    {
-      character: Data.CharacterId;
-      /**
-       * ≤ 40 字
-       */
-      line: string;
-    },
-    {
-      character: Data.CharacterId;
-      /**
-       * ≤ 40 字
-       */
-      line: string;
-    },
-    ...{
-      character: Data.CharacterId;
-      /**
-       * ≤ 40 字
-       */
-      line: string;
-    }[]
-  ];
+  characterLines: {
+    character: Data.CharacterId;
+    /**
+     * ≤ 40 字
+     */
+    line: string;
+  }[];
   /**
    * 「原作との違い」≤ 48 字
    */
@@ -1054,7 +1055,7 @@ export interface Staging {
   /**
    * @minItems 1
    */
-  characters: [StagingCharacter, ...StagingCharacter[]];
+  characters: StagingCharacter[];
 }
 export interface StagingCharacter {
   /**
@@ -1105,7 +1106,7 @@ export interface EndingWorldView {
      *
      * @minItems 1
      */
-    cites: [Data.EventId, ...Data.EventId[]];
+    cites: Data.EventId[];
   }[];
   /**
    * （1.1，S-026）「原作では…／あなたの世界では…」
@@ -1132,7 +1133,7 @@ export interface EndingYouView {
      *
      * @minItems 1
      */
-    cites: [Data.EventId, ...Data.EventId[]];
+    cites: Data.EventId[];
   }[];
   /**
    * （1.1）你为人物做的事
@@ -1144,7 +1145,7 @@ export interface EndingYouView {
      *
      * @minItems 1
      */
-    cites: [Data.EventId, ...Data.EventId[]];
+    cites: Data.EventId[];
   }[];
 }
 export interface ErrorBody {
@@ -1172,7 +1173,7 @@ export interface ErrorMessage {
 export interface ErrorResponse {
   error: ErrorBody;
   /**
-   * 只在 active_playthrough_exists（409）时给，同 /v1/me。TODO(C-1 评审)：文档没说放在 error 里面还是外面，这里放在外面
+   * 只在 active_playthrough_exists（409）时给，同 /v1/me，放在 error 外面（C-1 评审定）
    */
   activePlaythrough?: ActivePlaythrough;
 }
@@ -1222,7 +1223,10 @@ export interface InterruptedMessage {
  */
 export interface LastTurn {
   turnId: Data.TurnId;
-  character: Data.CharacterId;
+  /**
+   * 和谁说的；幕末用声音说打算的一轮（activity_start purpose = act_plan）没有人物，为 null（C-1 评审定）
+   */
+  character: Data.CharacterId | null;
   status: "settled" | "pending" | "lost";
   /**
    * 原话已清空的轮次为 null
@@ -1242,7 +1246,7 @@ export interface LimitsMessage {
 }
 export interface LoginRequest {
   /**
-   * 邀请码。TODO(C-1 评审)：文档的例子是 XXXX-XXXX，B-0 的格式是 inv- 开头；这里不限格式
+   * 邀请码，不限格式（≤ 64 字），前端只去掉前后空格（C-1 评审定）
    */
   inviteCode: string;
 }
@@ -1262,45 +1266,25 @@ export interface ManifestResponse {
   /**
    * @minItems 1
    */
-  roles: [
-    {
-      roleId: Data.RoleId;
-      name: string;
-      summary: string;
-      startSceneId: Data.SceneId;
-      startActId: Data.ActId;
-    },
-    ...{
-      roleId: Data.RoleId;
-      name: string;
-      summary: string;
-      startSceneId: Data.SceneId;
-      startActId: Data.ActId;
-    }[]
-  ];
+  roles: {
+    roleId: Data.RoleId;
+    name: string;
+    summary: string;
+    startSceneId: Data.SceneId;
+    startActId: Data.ActId;
+  }[];
   /**
    * @minItems 1
    */
-  scenes: [
-    {
-      sceneId: Data.SceneId;
-      /**
-       * @minItems 1
-       */
-      places: [Data.PlaceId, ...Data.PlaceId[]];
-      assetUrl: AssetPath;
-      assetVersion: string;
-    },
-    ...{
-      sceneId: Data.SceneId;
-      /**
-       * @minItems 1
-       */
-      places: [Data.PlaceId, ...Data.PlaceId[]];
-      assetUrl: AssetPath;
-      assetVersion: string;
-    }[]
-  ];
+  scenes: {
+    sceneId: Data.SceneId;
+    /**
+     * @minItems 1
+     */
+    places: Data.PlaceId[];
+    assetUrl: AssetPath;
+    assetVersion: string;
+  }[];
   characters: {
     id: Data.CharacterId;
     name: string;
@@ -1317,7 +1301,7 @@ export interface ManifestResponse {
     /**
      * @minItems 1
      */
-    sceneIds: [Data.SceneId, ...Data.SceneId[]];
+    sceneIds: Data.SceneId[];
   }[];
   clock: {
     deadlineT: Data.StoryTime;
@@ -1325,7 +1309,7 @@ export interface ManifestResponse {
     /**
      * @minItems 1
      */
-    days: [string, ...string[]];
+    days: string[];
   };
   ruby: {
     word: string;
@@ -1342,14 +1326,14 @@ export interface Prerecorded {
    * @minItems 3
    * @maxItems 3
    */
-  aizuchi: [VoiceClip, VoiceClip, VoiceClip, ...VoiceClip[]];
+  aizuchi: VoiceClip[];
   /**
    * 听不清 2 句
    *
    * @minItems 2
    * @maxItems 2
    */
-  unheard: [VoiceClip, VoiceClip, ...VoiceClip[]];
+  unheard: VoiceClip[];
   wait: VoiceClip;
   /**
    * 服务端在某个时刻触发的固定台词，键是 commit.cue.kind；没有就是空对象
@@ -1489,7 +1473,7 @@ export interface NarrationMessage {
   type: "narration";
   line: string;
   /**
-   * TODO(C-1 评审)：文档没写 ref 指什么；这里先当作事件或节拍的 ID 字符串
+   * 服务端内部的来源标记（例：节拍 ID、离题提示的规则名），只给日志和评测对照；前端不用、不显示（C-1 评审定）
    */
   ref?: string;
 }
@@ -1586,7 +1570,7 @@ export interface TurnCompleteMessage {
   audio: boolean;
   metrics: {
     /**
-     * TODO(C-1 评审)：audio = false 时没有第一个音频分片，文档没写给什么；这里给 null
+     * audio = false 时没有第一个音频分片，给 null（C-1 评审定）
      */
     serverReleaseToFirstAudioMs: number | null;
   };
@@ -1602,20 +1586,10 @@ export interface SuggestionsMessage {
    * @minItems 2
    * @maxItems 3
    */
-  items: [
-    {
-      text: string;
-      kind: "ask" | "act" | "accept" | "decline";
-    },
-    {
-      text: string;
-      kind: "ask" | "act" | "accept" | "decline";
-    },
-    ...{
-      text: string;
-      kind: "ask" | "act" | "accept" | "decline";
-    }[]
-  ];
+  items: {
+    text: string;
+    kind: "ask" | "act" | "accept" | "decline";
+  }[];
 }
 /**
  * 每一轮判完都推（3.4）；之后这一轮不能再作废
@@ -1742,7 +1716,7 @@ export interface TelemetryBatch {
    * @minItems 1
    * @maxItems 50
    */
-  events: [TelemetryEvent, ...TelemetryEvent[]];
+  events: TelemetryEvent[];
 }
 /**
  * 公共属性（data-design 9.3），只有粗粒度的设备信息；每批带一次，服务端入库时抄到这一批的每条（C-1 评审定）
@@ -1863,7 +1837,7 @@ export interface TelemetryPerfSample {
      * @minItems 9
      * @maxItems 9
      */
-    frameTimeHistogram: [number, number, number, number, number, number, number, number, number, ...number[]];
+    frameTimeHistogram: number[];
     longTasks: number;
     jsHeapMb?: number;
     renderer: "webgl" | "webgpu";

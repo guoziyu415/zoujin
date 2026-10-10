@@ -159,7 +159,7 @@ type ClientTurnSeq = Annotated[int, Field(ge=1, le=2147483647, title="ClientTurn
 
 class ClockPatch(BaseModel):
     """
-    commit.patch.clock（3.4）。TODO(C-1 评审)：文档的例子只有 t 和 tLabel；这里 t、tLabel 必填，deadlineT 可选
+    commit.patch.clock（3.4）：t、tLabel 必填，deadlineT 可选（C-1 评审定）
     """
 
     model_config = ConfigDict(
@@ -236,9 +236,12 @@ class DegradedMessage(BaseModel):
     reason: Literal["budget", "service", "daily"]
 
 
-type DraftId = Annotated[str, Field(min_length=1, pattern="^draft_[0-9A-HJKMNP-TV-Z]{26}$", title="DraftId")]
+type DraftId = Annotated[
+    str,
+    Field(min_length=1, pattern="^draft_[0-7][0-9A-HJKMNP-TV-Z]{25}$", title="DraftId"),
+]
 """
-待确认的举动（3.9），draft_ 加 ULID
+待确认的举动（3.9），draft_ 加 ULID（大写 Crockford base32，第一位 0〜7，同数据契约的运行时 ID）
 """
 
 
@@ -453,6 +456,7 @@ rate_limited、daily_limit 时给
 
 type ErrorCode = Annotated[
     Literal[
+        "invalid_request",
         "unauthenticated",
         "forbidden",
         "not_found",
@@ -468,7 +472,7 @@ type ErrorCode = Annotated[
     Field(title="ErrorCode"),
 ]
 """
-第 5 节的错误码。TODO(C-1 评审)：invalid_invite 在第 1 节（登录 401）出现、第 5 节的表里没有；请求体不合 Schema 时回哪个码文档没写
+第 5 节的错误码，加第 1 节的 invalid_invite（登录 401）和 invalid_request（400：请求体、参数或 WebSocket 消息不合 Schema，是前端的毛病，不给玩家具体原因）（C-1 评审定）
 """
 
 
@@ -618,7 +622,10 @@ class LastTurn(BaseModel):
         arbitrary_types_allowed=True,
     )
     turnId: TurnId
-    character: CharacterId
+    character: CharacterId | None
+    """
+    和谁说的；幕末用声音说打算的一轮（activity_start purpose = act_plan）没有人物，为 null（C-1 评审定）
+    """
     status: Literal["settled", "pending", "lost"]
     playerText: PlayerText | None
     """
@@ -637,7 +644,7 @@ class LoginRequest(BaseModel):
     )
     inviteCode: Annotated[str, Field(max_length=64, min_length=1)]
     """
-    邀请码。TODO(C-1 评审)：文档的例子是 XXXX-XXXX，B-0 的格式是 inv- 开头；这里不限格式
+    邀请码，不限格式（≤ 64 字），前端只去掉前后空格（C-1 评审定）
     """
 
 
@@ -751,7 +758,7 @@ class MemoryBookCharacterYouDidItem(BaseModel):
 
 class MemoryChange(BaseModel):
     """
-    commit.memories[]（3.4）；前端据此让記憶帳的查询失效重拉。TODO(C-1 评审)：文档只举了 added；这里 added、updated 必带 text 和 kind，deleted 不带
+    commit.memories[]（3.4）；前端据此让記憶帳的查询失效重拉。added、updated 必带 text 和 kind，deleted 不带（C-1 评审定）
     """
 
     model_config = ConfigDict(
@@ -876,7 +883,7 @@ class NarrationMessage(BaseModel):
     line: Annotated[str, Field(min_length=1)]
     ref: Annotated[str | None, Field(max_length=128, min_length=1)] = None
     """
-    TODO(C-1 评审)：文档没写 ref 指什么；这里先当作事件或节拍的 ID 字符串
+    服务端内部的来源标记（例：节拍 ID、离题提示的规则名），只给日志和评测对照；前端不用、不显示（C-1 评审定）
     """
 
 
@@ -910,7 +917,7 @@ class PendingApproach(BaseModel):
 
 class PendingConfirm(BaseModel):
     """
-    续玩时还没回答的意图确认：confirm（3.9）的字段加剩余秒数（第 4 节「含剩余秒数」）。TODO(C-1 评审)：文档没给剩余秒数的字段名，这里叫 remainingSec
+    续玩时还没回答的意图确认：confirm（3.9）的字段加剩余秒数 remainingSec（第 4 节「含剩余秒数」），timeoutSec 照样给（C-1 评审定）
     """
 
     model_config = ConfigDict(
@@ -955,9 +962,12 @@ class PlaceAccess(BaseModel):
     """
 
 
-type PlanOptionId = Annotated[str, Field(min_length=1, pattern="^plan_[A-Za-z0-9_-]+$", title="PlanOptionId")]
+type PlanOptionId = Annotated[
+    str,
+    Field(min_length=1, pattern="^plan_[0-7][0-9A-HJKMNP-TV-Z]{25}$", title="PlanOptionId"),
+]
 """
-幕末说出打算后的替代去处（3.11 alternative.optionId），例 plan_…。文档只给了前缀
+幕末说出打算后的替代去处（3.11 alternative.optionId）：plan_ 加 ULID，和别的运行时 ID 一样（C-1 评审定）
 """
 
 
@@ -1074,9 +1084,12 @@ class RecapItem(BaseModel):
     """
 
 
-type RevealId = Annotated[str, Field(min_length=1, pattern="^rev_[0-9A-HJKMNP-TV-Z]{26}$", title="RevealId")]
+type RevealId = Annotated[
+    str,
+    Field(min_length=1, pattern="^rev_[0-7][0-9A-HJKMNP-TV-Z]{25}$", title="RevealId"),
+]
 """
-关键时刻（3.4），rev_ 加 ULID
+关键时刻（3.4），rev_ 加 ULID（大写 Crockford base32，第一位 0〜7，同数据契约的运行时 ID）
 """
 
 
@@ -1185,7 +1198,7 @@ class SituationalAction(BaseModel):
     kind: Literal["examine", "give", "follow", "block", "help", "wait", "go", "shortcut", "run-together", "hasten"]
     target: CharacterId | None = None
     """
-    对象人物。TODO(C-1 评审)：文档的例子都有 target，世界模型的 Affordance.target 可选（wait 这类没有对象）；这里没有对象时省略
+    对象人物；没有对象的动作（wait 这类，世界模型 Affordance.target 可选）省略，不给 null（C-1 评审定）
     """
     label: str
     """
@@ -2434,7 +2447,7 @@ class TurnCompleteMessageMetrics(BaseModel):
     )
     serverReleaseToFirstAudioMs: ServerReleaseToFirstAudioMs | None
     """
-    TODO(C-1 评审)：audio = false 时没有第一个音频分片，文档没写给什么；这里给 null
+    audio = false 时没有第一个音频分片，给 null（C-1 评审定）
     """
 
 
@@ -2720,9 +2733,9 @@ class ActionMessage(BaseModel):
     """
     3.8 的清单：世界模型 Affordance.kind 加上 move
     """
-    target: Annotated[str, Field(max_length=128, min_length=1)]
+    target: Annotated[str | None, Field(max_length=128, min_length=1)] = None
     """
-    对象：人物 ID、地点 ID（move）或 interactable 的 ID
+    对象：人物 ID、地点 ID（move）或 interactable 的 ID。快照里这个动作有 target 就原样带；wait 这类没有对象的动作省略（服务端按 actionId 找回）。move、examine、go 必带（C-1 评审定）
     """
     params: Annotated[ActionMessageParams | None, Field(title="ActionMessageParams")] = None
     """
@@ -2825,7 +2838,7 @@ class CharacterPresence(BaseModel):
 
 class CharacterPresencePatch(BaseModel):
     """
-    commit.patch.characters[]（3.4）：按 id 合并，只给变了的字段
+    commit.patch.characters[]（3.4）：按 id 合并，只给变了的字段。人物进场（之前不在当前场景）时带完整的 CharacterPresence 字段；离场就是 place 变成不在当前场景里的地点
     """
 
     model_config = ConfigDict(
@@ -2981,7 +2994,7 @@ class ErrorResponse(BaseModel):
     error: ErrorBody
     activePlaythrough: ActivePlaythrough | None = None
     """
-    只在 active_playthrough_exists（409）时给，同 /v1/me。TODO(C-1 评审)：文档没说放在 error 里面还是外面，这里放在外面
+    只在 active_playthrough_exists（409）时给，同 /v1/me，放在 error 外面（C-1 评审定）
     """
 
 
@@ -3034,6 +3047,19 @@ class Interactable(BaseModel):
     label: Annotated[str, Field(min_length=1)]
     enabled: bool
     estimatedMinutes: Minutes
+
+
+class InteractablesPatch(BaseModel):
+    """
+    commit.patch.interactables：可调查物和场景出口（3.8）的增减，形状同 actions。add 里的 id 已经有了就整条替换（例：enabled 变了）（C-1 评审加）
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    add: list[Interactable] | None = None
+    remove: list[InteractableId] | None = None
 
 
 class LimitsMessage(BaseModel):
@@ -3186,11 +3212,15 @@ class Reveal(BaseModel):
     """
     line: Annotated[str, Field(min_length=1)]
     chain: Annotated[list[WhyStep], Field(max_length=12)]
+    collapsed: Annotated[int | None, Field(ge=1)] = None
+    """
+    链超过 12 步时中间折叠了几步，同 /why 的 collapsed（2.6）；没折叠时省略（C-1 评审加）
+    """
 
 
 class SnapshotPatch(BaseModel):
     """
-    commit.patch（3.4）：快照字段的增量，按 id 合并。TODO(C-1 评审)：文档只举了这 7 个字段；interactables、voice、status 变了怎么给没写，这里不收
+    commit.patch（3.4）：快照字段的增量，按 id 合并。voice、status 不走 patch（C-1 评审定）
     """
 
     model_config = ConfigDict(
@@ -3203,6 +3233,7 @@ class SnapshotPatch(BaseModel):
     characters: list[CharacterPresencePatch] | None = None
     places: list[PlaceAccess] | None = None
     actions: ActionsPatch | None = None
+    interactables: InteractablesPatch | None = None
     player: PlayerPositionPatch | None = None
 
 
@@ -3284,7 +3315,7 @@ class VisibleEvent(BaseModel):
     """
     turnId: TurnId | None = None
     """
-    来自哪一轮；到点的节拍、人物的打算这类事件没有。TODO(C-1 评审)：文档的例子都有 turnId；这里照数据契约 Event.turnId 写成可选
+    来自哪一轮；到点的节拍、人物的打算这类事件没有，照数据契约 Event.turnId 可选（C-1 评审定）
     """
     t: StoryTime
     """
@@ -3369,11 +3400,16 @@ class ActPlanResultMessage(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
         validate_by_name=True,
+        arbitrary_types_allowed=True,
     )
     type: Literal["act_plan_result"] = "act_plan_result"
     clientMsgId: ClientMsgId | None = None
     """
-    act_propose 的 clientMsgId。TODO(C-1 评审)：用声音说打算（activity_start purpose = act_plan）时没有 clientMsgId，文档没写；这里那时省略
+    用文字说打算时：act_propose 的 clientMsgId。和 turnId 正好有一个（C-1 评审定）
+    """
+    turnId: TurnId | None = None
+    """
+    用声音说打算时（activity_start purpose = act_plan）：那一轮的 turnId，前端按它对上语音那一轮、丢掉已作废那一轮的结果（C-1 评审加）
     """
     accepted: bool
     narration: Annotated[list[NarrationItem], Field(min_length=1)]

@@ -16,9 +16,10 @@
 
 - JSON Schema 2020-12；`$id` 是相对 `schemas/` 的路径，`$ref` 只用相对引用。
 - 对象一律 `additionalProperties: false`，不用 `allOf`（测试会查）。以后加字段先改这里。
+- 关死只约束写的一方：服务端发出的消息和响应、mock、前端发出的消息。读的一方按 api-contract 第 0 节忽略不认识的字段、消息类型和枚举值，运行时不拿 Schema 校验对方的消息（Service Worker 缓存的旧前端会连到新服务端）。生成的 pydantic 模型是 `extra="forbid"`，服务端解析客户端消息时先去掉不认识的字段再校验（B-0）。
 - 整个用数据类型的地方 `$ref` 到 `data/` 的 `$defs`；接口在数据类型上加减了字段的（结局、事件的可见投影、記憶帳），写成接口自己的对象，共有的字段用 JSON 指针引用数据那边的字段，加减了哪些字段在 `tests/test_alignment.py` 里列着。
 - `$defs` 的名字就是生成的类型名，和 `data/` 的不能重名。
 - 只在非生产环境有的（`hello.debug`、`fakeVoice`、`event_rejected`、`POST /v1/test/…`）照样写，`description` 里标「非生产」。
-- 文档没写清的地方先按最可能的意思写，`description` 里标 `TODO(C-1 评审)`。
+- 文档没写清、C-1 评审时定下来的地方，`description` 末尾标「（C-1 评审定）」；api-contract 下一版把它们补进正文。
 
 改完跑 `uv run contracts-gen` 重新生成类型，再跑 `uv run pytest packages/contracts`。

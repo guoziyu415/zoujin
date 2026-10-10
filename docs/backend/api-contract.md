@@ -765,7 +765,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 
 ## 修订记录
 
-- v1.0（2026-10-10）：冻结（C-1）。每种消息和响应写成 JSON Schema（`packages/contracts/schemas/api/`），生成前后端类型；第 6 节松手到出声定为服务端中位 ≤ 1.2 s、p95 ≤ 1.6 s；第 7 节写 Schema 的位置；第 8 节 `npc_line` 留到 P1。传输形状不变。
+- v1.0（2026-10-10）：冻结（C-1）。每种消息和响应写成 JSON Schema（`packages/contracts/schemas/api/`），生成前后端类型；第 6 节松手到出声定为服务端中位 ≤ 1.2 s、p95 ≤ 1.6 s；第 7 节写 Schema 的位置；第 8 节 `npc_line` 留到 P1。C-1 评审定了文档没写清的地方，并按前端评审做了几处加法和放宽：`commit.patch.interactables`、`act_plan_result.turnId`（语音那条路，和 `clientMsgId` 恰好给一个）、`reveal.collapsed`、错误码 `invalid_request`（400）；`action.target` 只在 `move` / `examine` / `go` 时必填，`lastTurn.character` 可为 `null`。这些先写在 Schema 里（`description` 标「C-1 评审定」），正文在 v1.0.1 补上。
 - v0.3.9（2026-10-10）：第 7 节评测入口加 `check`（S-2：候选事件直接进第 3、4 步，不提交）；写明 `setup.events` 只给 `effects` 时怎么补成完整事件，`sc.canon` 是原著路径。只改评测入口（Python 包内），不改传输形状。
 - v0.3.8（2026-10-07）：按 UX 对核对 U-2、U-3 的决定改文字，不改字段：`too_late` 那句改为叙事一行（地の文），不播声音，manifest 不加 `cues.too_late`；`voided` 的约定記憶帳不显示（前端过滤），「その頃」和结局里也不提（结局见 backend-design 2.9）。
 - v0.3.7（2026-10-07）：按接口一致性核对（`consistency/contract-check-2026-10-07.md` B-1〜B-5）改文字，不改字段，按 v0.3.6 写的代码不用动：按钮例子改用半角数字（「10分早まる」「30分遅れる」「1時間ほど」「1時間遅れる」，ux-design 4.3）；幕末例子 `exit.1.vigil` 的 `tLabel` 改为「一日目・深夜」（t=1440）；2.5 写明节拍 `canon` = 契约的 `happened`；`too_late` 那句现在只出字幕、不播声音，等 UX 定要不要每个人物各录一句（U-3）；文件头的设计版本和日期。

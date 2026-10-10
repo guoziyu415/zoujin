@@ -250,7 +250,7 @@
       "description": "身体动作，先判后演（3.8）",
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "clientMsgId", "kind", "target"],
+      "required": ["type", "clientMsgId", "kind"],
       "properties": {
         "type": {
           "const": "action"
@@ -280,7 +280,7 @@
           ]
         },
         "target": {
-          "description": "对象：人物 ID、地点 ID（move）或 interactable 的 ID",
+          "description": "对象：人物 ID、地点 ID（move）或 interactable 的 ID。快照里这个动作有 target 就原样带；wait 这类没有对象的动作省略（服务端按 actionId 找回）。move、examine、go 必带（C-1 评审定）",
           "type": "string",
           "minLength": 1,
           "maxLength": 128
@@ -296,7 +296,18 @@
           }
         }
       },
-      "title": "ActionMessage"
+      "title": "ActionMessage",
+      "if": {
+        "properties": {
+          "kind": {
+            "enum": ["move", "examine", "go"]
+          }
+        },
+        "required": ["kind"]
+      },
+      "then": {
+        "required": ["target"]
+      }
     },
     "ConfirmAnswerMessage": {
       "description": "回答意图确认（3.9）",

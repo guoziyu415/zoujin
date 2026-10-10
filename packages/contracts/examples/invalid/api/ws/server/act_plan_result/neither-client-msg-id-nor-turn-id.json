@@ -1,0 +1,15 @@
+{
+  "type": "act_plan_result",
+  "accepted": false,
+  "narration": [
+    "夜の城門は、もう閉ざされている。",
+    "夜明けを待って、門が開くとともに村へ向かうこともできる。"
+  ],
+  "alternative": {
+    "optionId": "plan_01K7AZ00000000000000000001",
+    "label": "夜明けを待って村へ向かう",
+    "sceneId": "scene.village",
+    "tLabel": "一日目・朝"
+  },
+  "triesLeft": 1
+}

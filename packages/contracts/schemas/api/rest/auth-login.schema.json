@@ -20,7 +20,7 @@
       "required": ["inviteCode"],
       "properties": {
         "inviteCode": {
-          "description": "邀请码。TODO(C-1 评审)：文档的例子是 XXXX-XXXX，B-0 的格式是 inv- 开头；这里不限格式",
+          "description": "邀请码，不限格式（≤ 64 字），前端只去掉前后空格（C-1 评审定）",
           "type": "string",
           "minLength": 1,
           "maxLength": 64

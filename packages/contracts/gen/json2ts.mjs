@@ -11,8 +11,8 @@ let ts = await compile(bundle, rootName, {
   bannerComment: "",
   unreachableDefinitions: true,
   additionalProperties: false,
-  // 长度上下限不变成元组，数组一律 T[]（前端评审时可以改）。
-  maxItems: -1,
+  // 长度上下限不变成元组，数组一律 T[]（C-1 前端评审：minItems 也会生成元组，前端从数组拼时报 TS2322）。
+  ignoreMinAndMaxItems: true,
   strictIndexSignatures: true,
   unknownAny: true,
   format: true,

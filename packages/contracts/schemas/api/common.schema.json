@@ -12,24 +12,24 @@
       "title": "BookId"
     },
     "DraftId": {
-      "description": "待确认的举动（3.9），draft_ 加 ULID",
+      "description": "待确认的举动（3.9），draft_ 加 ULID（大写 Crockford base32，第一位 0〜7，同数据契约的运行时 ID）",
       "type": "string",
       "minLength": 1,
-      "pattern": "^draft_[0-9A-HJKMNP-TV-Z]{26}$",
+      "pattern": "^draft_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
       "title": "DraftId"
     },
     "RevealId": {
-      "description": "关键时刻（3.4），rev_ 加 ULID",
+      "description": "关键时刻（3.4），rev_ 加 ULID（大写 Crockford base32，第一位 0〜7，同数据契约的运行时 ID）",
       "type": "string",
       "minLength": 1,
-      "pattern": "^rev_[0-9A-HJKMNP-TV-Z]{26}$",
+      "pattern": "^rev_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
       "title": "RevealId"
     },
     "PlanOptionId": {
-      "description": "幕末说出打算后的替代去处（3.11 alternative.optionId），例 plan_…。文档只给了前缀",
+      "description": "幕末说出打算后的替代去处（3.11 alternative.optionId）：plan_ 加 ULID，和别的运行时 ID 一样（C-1 评审定）",
       "type": "string",
       "minLength": 1,
-      "pattern": "^plan_[A-Za-z0-9_-]+$",
+      "pattern": "^plan_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
       "title": "PlanOptionId"
     },
     "ClientMsgId": {
@@ -161,7 +161,7 @@
       "title": "SnapshotClock"
     },
     "ClockPatch": {
-      "description": "commit.patch.clock（3.4）。TODO(C-1 评审)：文档的例子只有 t 和 tLabel；这里 t、tLabel 必填，deadlineT 可选",
+      "description": "commit.patch.clock（3.4）：t、tLabel 必填，deadlineT 可选（C-1 评审定）",
       "type": "object",
       "additionalProperties": false,
       "required": ["t", "tLabel"],
@@ -313,7 +313,7 @@
       "title": "CharacterPresence"
     },
     "CharacterPresencePatch": {
-      "description": "commit.patch.characters[]（3.4）：按 id 合并，只给变了的字段",
+      "description": "commit.patch.characters[]（3.4）：按 id 合并，只给变了的字段。人物进场（之前不在当前场景）时带完整的 CharacterPresence 字段；离场就是 place 变成不在当前场景里的地点",
       "type": "object",
       "additionalProperties": false,
       "required": ["id"],
@@ -405,7 +405,7 @@
           "$ref": "../data/world-model.schema.json#/$defs/Affordance/properties/kind"
         },
         "target": {
-          "description": "对象人物。TODO(C-1 评审)：文档的例子都有 target，世界模型的 Affordance.target 可选（wait 这类没有对象）；这里没有对象时省略",
+          "description": "对象人物；没有对象的动作（wait 这类，世界模型 Affordance.target 可选）省略，不给 null（C-1 评审定）",
           "$ref": "../data/common.schema.json#/$defs/CharacterId"
         },
         "label": {
@@ -503,6 +503,27 @@
       "minProperties": 1,
       "title": "ActionsPatch"
     },
+    "InteractablesPatch": {
+      "description": "commit.patch.interactables：可调查物和场景出口（3.8）的增减，形状同 actions。add 里的 id 已经有了就整条替换（例：enabled 变了）（C-1 评审加）",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "add": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Interactable"
+          }
+        },
+        "remove": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/InteractableId"
+          }
+        }
+      },
+      "minProperties": 1,
+      "title": "InteractablesPatch"
+    },
     "ConfirmOption": {
       "type": "object",
       "additionalProperties": false,
@@ -521,7 +542,7 @@
       "title": "ConfirmOption"
     },
     "PendingConfirm": {
-      "description": "续玩时还没回答的意图确认：confirm（3.9）的字段加剩余秒数（第 4 节「含剩余秒数」）。TODO(C-1 评审)：文档没给剩余秒数的字段名，这里叫 remainingSec",
+      "description": "续玩时还没回答的意图确认：confirm（3.9）的字段加剩余秒数 remainingSec（第 4 节「含剩余秒数」），timeoutSec 照样给（C-1 评审定）",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -719,7 +740,7 @@
       "title": "Snapshot"
     },
     "SnapshotPatch": {
-      "description": "commit.patch（3.4）：快照字段的增量，按 id 合并。TODO(C-1 评审)：文档只举了这 7 个字段；interactables、voice、status 变了怎么给没写，这里不收",
+      "description": "commit.patch（3.4）：快照字段的增量，按 id 合并。voice、status 不走 patch（C-1 评审定）",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -753,6 +774,9 @@
         },
         "actions": {
           "$ref": "#/$defs/ActionsPatch"
+        },
+        "interactables": {
+          "$ref": "#/$defs/InteractablesPatch"
         },
         "player": {
           "$ref": "#/$defs/PlayerPositionPatch"
@@ -865,7 +889,7 @@
           "$ref": "../data/event.schema.json#/$defs/Event/properties/seq"
         },
         "turnId": {
-          "description": "来自哪一轮；到点的节拍、人物的打算这类事件没有。TODO(C-1 评审)：文档的例子都有 turnId；这里照数据契约 Event.turnId 写成可选",
+          "description": "来自哪一轮；到点的节拍、人物的打算这类事件没有，照数据契约 Event.turnId 可选（C-1 评审定）",
           "$ref": "../data/event.schema.json#/$defs/Event/properties/turnId"
         },
         "t": {
@@ -1014,6 +1038,11 @@
             "$ref": "#/$defs/WhyStep"
           },
           "maxItems": 12
+        },
+        "collapsed": {
+          "description": "链超过 12 步时中间折叠了几步，同 /why 的 collapsed（2.6）；没折叠时省略（C-1 评审加）",
+          "type": "integer",
+          "minimum": 1
         }
       },
       "title": "Reveal"
@@ -1119,7 +1148,7 @@
       "title": "MemoryView"
     },
     "MemoryChange": {
-      "description": "commit.memories[]（3.4）；前端据此让記憶帳的查询失效重拉。TODO(C-1 评审)：文档只举了 added；这里 added、updated 必带 text 和 kind，deleted 不带",
+      "description": "commit.memories[]（3.4）；前端据此让記憶帳的查询失效重拉。added、updated 必带 text 和 kind，deleted 不带（C-1 评审定）",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -1481,7 +1510,15 @@
           "$ref": "../data/common.schema.json#/$defs/TurnId"
         },
         "character": {
-          "$ref": "../data/common.schema.json#/$defs/CharacterId"
+          "description": "和谁说的；幕末用声音说打算的一轮（activity_start purpose = act_plan）没有人物，为 null（C-1 评审定）",
+          "anyOf": [
+            {
+              "$ref": "../data/common.schema.json#/$defs/CharacterId"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "status": {
           "type": "string",

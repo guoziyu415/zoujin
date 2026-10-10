@@ -5,9 +5,10 @@
   "description": "错误（api-contract 第 5 节）",
   "$defs": {
     "ErrorCode": {
-      "description": "第 5 节的错误码。TODO(C-1 评审)：invalid_invite 在第 1 节（登录 401）出现、第 5 节的表里没有；请求体不合 Schema 时回哪个码文档没写",
+      "description": "第 5 节的错误码，加第 1 节的 invalid_invite（登录 401）和 invalid_request（400：请求体、参数或 WebSocket 消息不合 Schema，是前端的毛病，不给玩家具体原因）（C-1 评审定）",
       "type": "string",
       "enum": [
+        "invalid_request",
         "unauthenticated",
         "forbidden",
         "not_found",
@@ -63,7 +64,7 @@
           "$ref": "#/$defs/ErrorBody"
         },
         "activePlaythrough": {
-          "description": "只在 active_playthrough_exists（409）时给，同 /v1/me。TODO(C-1 评审)：文档没说放在 error 里面还是外面，这里放在外面",
+          "description": "只在 active_playthrough_exists（409）时给，同 /v1/me，放在 error 外面（C-1 评审定）",
           "$ref": "common.schema.json#/$defs/ActivePlaythrough"
         }
       },

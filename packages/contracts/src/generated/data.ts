@@ -306,7 +306,7 @@ export interface EnRoute {
    * @minItems 2
    * @maxItems 2
    */
-  choices: [EnRouteChoice, EnRouteChoice, ...EnRouteChoice[]];
+  choices: EnRouteChoice[];
   inferred: true;
   note?: string;
   cite?: Cite[];
@@ -761,26 +761,15 @@ export interface CharacterEnding {
    * @minItems 1
    * @maxItems 3
    */
-  yours?: [
-    {
-      sentence: string;
-      /**
-       * 至少引用一个本局事件
-       *
-       * @minItems 1
-       */
-      cites: [EventId, ...EventId[]];
-    },
-    ...{
-      sentence: string;
-      /**
-       * 至少引用一个本局事件
-       *
-       * @minItems 1
-       */
-      cites: [EventId, ...EventId[]];
-    }[]
-  ];
+  yours?: {
+    sentence: string;
+    /**
+     * 至少引用一个本局事件
+     *
+     * @minItems 1
+     */
+    cites: EventId[];
+  }[];
 }
 /**
  * 自检结果（第 3 节）
@@ -934,7 +923,7 @@ export interface Ending {
        *
        * @minItems 2
        */
-      causedBy: [EventId, EventId, ...EventId[]];
+      causedBy: EventId[];
     };
     /**
      * （1.1）按 endings.signature 算出的署名（2.9.1）：变量 → 最终值，节拍 → 是否照原著发生
@@ -961,7 +950,7 @@ export interface Ending {
       /**
        * @minItems 1
        */
-      causedBy: [EventId, ...EventId[]];
+      causedBy: EventId[];
     };
     relationships: {
       character: CharacterId;
@@ -981,7 +970,7 @@ export interface Ending {
       /**
        * @minItems 1
        */
-      causedBy: [EventId, ...EventId[]];
+      causedBy: EventId[];
     };
     /**
      * 每句至少引用一个事件
@@ -993,7 +982,7 @@ export interface Ending {
        *
        * @minItems 1
        */
-      cites: [EventId, ...EventId[]];
+      cites: EventId[];
     }[];
     lastScene: {
       place: PlaceId;
@@ -1013,7 +1002,7 @@ export interface Ending {
        *
        * @minItems 1
        */
-      cites: [EventId, ...EventId[]];
+      cites: EventId[];
     }[];
     /**
      * （1.1）你为人物做的事
@@ -1025,7 +1014,7 @@ export interface Ending {
        *
        * @minItems 1
        */
-      cites: [EventId, ...EventId[]];
+      cites: EventId[];
     }[];
   };
   /**
@@ -1054,29 +1043,13 @@ export interface Ending {
      * @minItems 2
      * @maxItems 3
      */
-    characterLines: [
-      {
-        character: CharacterId;
-        /**
-         * ≤ 40 字
-         */
-        line: string;
-      },
-      {
-        character: CharacterId;
-        /**
-         * ≤ 40 字
-         */
-        line: string;
-      },
-      ...{
-        character: CharacterId;
-        /**
-         * ≤ 40 字
-         */
-        line: string;
-      }[]
-    ];
+    characterLines: {
+      character: CharacterId;
+      /**
+       * ≤ 40 字
+       */
+      line: string;
+    }[];
   };
   /**
    * 生成产物的存储引用
@@ -1260,7 +1233,7 @@ export interface MemoryItem {
    *
    * @minItems 1
    */
-  fromEvents: [EventId, ...EventId[]];
+  fromEvents: EventId[];
   t: StoryTime;
   /**
    * 这条记忆对信任的影响，-20..+20

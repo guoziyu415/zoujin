@@ -322,7 +322,7 @@
           "required": ["serverReleaseToFirstAudioMs"],
           "properties": {
             "serverReleaseToFirstAudioMs": {
-              "description": "TODO(C-1 评审)：audio = false 时没有第一个音频分片，文档没写给什么；这里给 null",
+              "description": "audio = false 时没有第一个音频分片，给 null（C-1 评审定）",
               "anyOf": [
                 {
                   "description": "收到 activity_end 到发出第一个音频分片（第 6 节）",
@@ -507,7 +507,7 @@
           "minLength": 1
         },
         "ref": {
-          "description": "TODO(C-1 评审)：文档没写 ref 指什么；这里先当作事件或节拍的 ID 字符串",
+          "description": "服务端内部的来源标记（例：节拍 ID、离题提示的规则名），只给日志和评测对照；前端不用、不显示（C-1 评审定）",
           "type": "string",
           "minLength": 1,
           "maxLength": 128
@@ -689,8 +689,12 @@
           "const": "act_plan_result"
         },
         "clientMsgId": {
-          "description": "act_propose 的 clientMsgId。TODO(C-1 评审)：用声音说打算（activity_start purpose = act_plan）时没有 clientMsgId，文档没写；这里那时省略",
+          "description": "用文字说打算时：act_propose 的 clientMsgId。和 turnId 正好有一个（C-1 评审定）",
           "$ref": "../common.schema.json#/$defs/ClientMsgId"
+        },
+        "turnId": {
+          "description": "用声音说打算时（activity_start purpose = act_plan）：那一轮的 turnId，前端按它对上语音那一轮、丢掉已作废那一轮的结果（C-1 评审加）",
+          "$ref": "../../data/common.schema.json#/$defs/TurnId"
         },
         "accepted": {
           "type": "boolean"
@@ -712,7 +716,18 @@
           "maximum": 2
         }
       },
-      "title": "ActPlanResultMessage"
+      "title": "ActPlanResultMessage",
+      "if": {
+        "required": ["clientMsgId"]
+      },
+      "then": {
+        "not": {
+          "required": ["turnId"]
+        }
+      },
+      "else": {
+        "required": ["turnId"]
+      }
     },
     "ActTransitionMessage": {
       "description": "进入下一幕：「その頃」（≤ 3 件）和新场景的快照（3.11）",
