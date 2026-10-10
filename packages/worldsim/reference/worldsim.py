@@ -6,6 +6,9 @@
 2026-10-10（为 W-1 的增量接口对齐契约，24 次推演和全部生成物不变）：同一时刻先节拍、再期限、最后事件；
 排定时间到了而前提不成立的节拍，到 window.latest 为止每一步之后再查（contracts 2.4.1 第 3 条），以前只查一次。
 
+1.6（C-16）：StateVar.valueRequires，变量改成某个值时要满足的条件（value_requires()）。推演照样应用事件，
+违反的记进结果的 violations，build_world 拿它查情景，S-2 的参考判法拿它报 R2。
+
 build_world.py（改道情景）和 check_evals.py（评测检查点）共用这一份，免得两边规则不一致。只用标准库。
 """
 from collections import defaultdict
@@ -48,6 +51,27 @@ class Sim:
                 where[e["character"]] = e["place"]
             elif e["op"] == "hold":                    # contracts 1.3：物品换手，持有者记在 state[物品 ID]
                 state[e["item"]] = e["to"]
+
+    def value_requires(self, effs, state, origin=None):
+        """contracts 2.6（1.6，C-16）StateVar.valueRequires：事件把变量改成某个值时，这个值的 when 要成立。
+        ① 只有 origin == "schedule"（到点的节拍和期限）不判，节拍的结果由节拍前提管；导演事件的 actor 也是 system，
+        origin 是 director，照样判（不能按 actor 跳过）；② 值真的变了才判，设成现在的值不判；
+        ③ 按这个 effect 之前的状态判，同一事件里前面的 effect 已经生效（先升信任再设 wavering 能过，反过来不过）；
+        ④ when 和节拍前提用同一个 holds()；⑤ 设好以后条件不再成立不追究。
+        不改 state。返回违反的条目 [{var, value, when, note}]，叙事者第 3 步报 R2，reason 带变量、value 和 note。"""
+        if origin == "schedule":
+            return []
+        out, cur = [], dict(state)
+        for e in effs:
+            nxt = dict(cur)
+            self.apply([e], nxt)
+            var = e.get("var") if e["op"] in ("set", "inc") else None
+            if var is not None and nxt.get(var) != cur.get(var):
+                for r in self.svars.get(var, {}).get("valueRequires", []):
+                    if r["value"] == nxt[var] and not self.holds(r["when"], cur):
+                        out.append({"var": var, "value": nxt[var], "when": r["when"], "note": r["note"]})
+            cur = nxt
+        return out
 
     def schedule(self, over, _floor=True):
         """2.5.1：先排时间（与状态无关）。返回 (shift, late)。
@@ -136,11 +160,14 @@ class Sim:
         queue.sort(key=lambda q: q[:3])
         variant = {}                                   # contracts 1.4：节拍 ID → 本局用的变体 ID
         res = {"status": status, "times": times, "state": state, "where": where, "outcome": None,
-               "t": None, "stopped": until is None, "late": late, "shift": shift, "variant": variant}
+               "t": None, "stopped": until is None, "late": late, "shift": shift, "variant": variant,
+               "violations": []}                 # 1.6：违反 valueRequires 的事件 [(t, 违反的条目)]
         for i, (t, _, _, kind, x) in enumerate(queue):
             if until and until[0] == "t" and t > until[1]:
                 res["t"], res["stopped"], res["rest"] = until[1], True, queue[i:]
                 return res
+            if kind == "event":
+                res["violations"] += [(t, v) for v in self.value_requires(x["effects"], state)]
             self._step(kind, x, t, over, late, state, where, status, times, variant)
             if until and until[0] == "beat" and kind == "beat" and x["id"] == until[1]:
                 res["t"], res["stopped"], res["rest"] = t, status[x["id"]] in OCCURRED, queue[i + 1:]
@@ -157,6 +184,7 @@ class Sim:
         排定时间沿用 run() 算好的（extra_effects 不再改时间表）。"""
         over = res["over"]
         state, where, status, times = res["state"], res["where"], res["status"], res["times"]
+        res["violations"] += [(res["t"], v) for v in self.value_requires(extra_effects, state)]
         self.apply(extra_effects, state, where)
         if res["t"] is not None:
             self._recheck(res["t"], over, state, where, status, times, res["variant"])
@@ -164,6 +192,8 @@ class Sim:
             if until_t is not None and t > until_t:
                 res["t"] = until_t
                 return res
+            if kind == "event":
+                res["violations"] += [(t, v) for v in self.value_requires(x["effects"], state)]
             self._step(kind, x, t, over, res["late"], state, where, status, times, res["variant"])
         res["t"] = until_t
         if until_t is None:

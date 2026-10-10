@@ -1,8 +1,8 @@
 # 数据设计（data-design.md）v1.2
 
 负责人：数据工程 · 状态：**v1.2**。v1.0 已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改；1.1 跟上契约 1.1、PM 的 S-022〜S-053 和世界模型 draft.3；1.2 跟上契约 1.2 和 S-054〜S-063，补齐前端、UX 要的埋点（9.3）和市场调研要的试玩导出（9.5）。跨角色决定见 `pm/decisions.md`。待别人定的事见第 13 节。
-相关：[contracts.md](contracts.md) v1.5（四个数据契约，本文所有字段以它为准）· `backend/backend-design.md` · `pm/prd.md`
-最近更新：2026-10-10（9.3 按 C-1、C-2 评审写清：公共属性每批带一次、帧时间直方图固定 9 格、`why_opened.target` 和 `/why` 的 target 一一对应）
+相关：[contracts.md](contracts.md) v1.6（四个数据契约，本文所有字段以它为准）· `backend/backend-design.md` · `pm/prd.md`
+最近更新：2026-10-10（9.3 按 C-1、C-2 评审写清：公共属性每批带一次、帧时间直方图固定 9 格、`why_opened.target` 和 `/why` 的 target 一一对应；6.3 跟上契约 1.6 的取值条件）
 
 数据工程负责六件事：世界模型（含『走れメロス』v1）、新增一本书的流水线、事件日志与世界状态、記憶帳与删除、评测与可观测数据、分析与成本测算。
 
@@ -194,7 +194,7 @@ playthrough_metrics(playthrough_id PK FK CASCADE, cost_usd, degraded_at, voice_s
 
 ### 6.3 『走れメロス』世界模型 v1（`worlds/hashire-merosu/1.0.0-draft/`）
 
-版本 `hashire-merosu@1.0.0-draft.3`（契约 1.5）：
+版本 `hashire-merosu@1.0.0-draft.3`（契约 1.6；1.6 加了三条取值条件 `valueRequires`：王的心看信任 40 / 70，过桥要桥还在）：
 
 | 项 | 数量 |
 |---|---|

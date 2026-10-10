@@ -1,8 +1,8 @@
-# 数据契约（contracts.md）v1.5
+# 数据契约（contracts.md）v1.6
 
-负责人：数据工程 · 状态：**v1.5，已冻结**（M2-0，C-2；以后只做加法）。v1.0 是基线（S-033），v1.1 是 PM 接受的新基线（S-061〜S-063），已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改。1.1 只做加法：加进 D-012〜D-015 的落地（S-029〜S-032：互助、约定、打算、即兴设定、导演事件、生成的结局、角色结局）、S-034〜S-053 里和数据有关的决定、后端设计 v1.0 第 12 节的 13 条提案和 UX 设计 v1.0 第 18.3 节的要求。1.2 也只做加法：幕末说出的打算（S-031 ③）、作废和出戏的一轮怎么落数据（S-054、S-057）。1.3 加随身的东西（UX 5.1，C-14）。1.4 按 UX 对世界模型的校对和 S-064 加：有条件的台词和设计台词、互助的效果、节拍的变体、过场里的二选一、第四幕按钮上「对梅洛斯的影响」。1.5 给过场的选项也加上「对梅洛斯的影响」和选后的一句（UX 校对 7.3、ux-design 4.5）。跨角色决定见 `pm/decisions.md`。还在等别人定的事列在第 7 节。
+负责人：数据工程 · 状态：**v1.6**（1.5 在 M2-0 冻结（C-2），以后只做加法；1.6 是冻结后第一个加法版本）。v1.0 是基线（S-033），v1.1 是 PM 接受的新基线（S-061〜S-063），已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改。1.1 只做加法：加进 D-012〜D-015 的落地（S-029〜S-032：互助、约定、打算、即兴设定、导演事件、生成的结局、角色结局）、S-034〜S-053 里和数据有关的决定、后端设计 v1.0 第 12 节的 13 条提案和 UX 设计 v1.0 第 18.3 节的要求。1.2 也只做加法：幕末说出的打算（S-031 ③）、作废和出戏的一轮怎么落数据（S-054、S-057）。1.3 加随身的东西（UX 5.1，C-14）。1.4 按 UX 对世界模型的校对和 S-064 加：有条件的台词和设计台词、互助的效果、节拍的变体、过场里的二选一、第四幕按钮上「对梅洛斯的影响」。1.5 给过场的选项也加上「对梅洛斯的影响」和选后的一句（UX 校对 7.3、ux-design 4.5）。1.6 把两条只写在说明文字里的取值条件写成数据（`StateVar.valueRequires`，C-16），结局卡改成 1〜3 人、每一局都出（C-17）。跨角色决定见 `pm/decisions.md`。还在等别人定的事列在第 7 节。
 UX、前端请看第 2.8 节（幕）、第 4 节（记忆）、第 5 节（结局）。1.1 新增或写清的地方都标了「（1.1）」，文末变更记录有汇总。
-最近更新：2026-10-10（1.5 冻结，C-2：字段不变，Schema 在 `packages/contracts/schemas/data/`；第 7 节加 C-16）
+最近更新：2026-10-10（1.6：`StateVar.valueRequires`（C-16）；结局卡 1〜3 人、模板尾声的局也出卡，1.6 起写入的结局哪些字段必写（C-17）；写清变量 ID 的驼峰和 promise 效果的 `promiseId?`）
 
 四个契约：**WorldModel**（世界模型，静态、按书版本化）、**Event**（运行时事件，只追加）、**Memory**（角色对玩家的记忆，可删除）、**Ending**（结局）。另有两个支撑结构：**Playthrough**（一局游戏）和 **WorldState**（由事件推出的当前状态）。
 
@@ -15,8 +15,8 @@ UX、前端请看第 2.8 节（幕）、第 4 节（记忆）、第 5 节（结�
 | 约定 | 内容 |
 |---|---|
 | 格式 | JSON；每个契约有 JSON Schema（放在 `packages/contracts/schemas/data/*.schema.json`，CI 校验）。本文用 TypeScript 风格写，便于阅读 |
-| 版本 | 每个文档带 `schemaVersion`（写入时的契约版本，现在是 `"1.5"`；1.1 起新增的字段都是可选的，旧版本写的文档按新版本读仍然合法）；世界模型另带 `worldModelVersion`（内容版本，如 `"hashire-merosu@1.0.0"`） |
-| 静态 ID | 世界模型里的 ID 用小写短横线 slug，带类型前缀：`char.king`、`place.syracuse-square`、`scene.village`、`act.2`、`beat.03`、`fact.promise`、`var.hostage.fate`、`role.traveler`、`edge.10-11`、`exit.1.road` 幕末去处、`rule.no-resurrection` 全局规则；（1.1）`aid.melos.shortcut` 互助、`promise.melos.return` 约定模板、`aff.river-hold` 情境动作、`item.water` 物品。世界结局的 ID 不带前缀（`canon-reunion`） |
+| 版本 | 每个文档带 `schemaVersion`（写入时的契约版本，现在是 `"1.6"`；1.1 起新增的字段都是可选的，旧版本写的文档按新版本读仍然合法）；世界模型另带 `worldModelVersion`（内容版本，如 `"hashire-merosu@1.0.0"`） |
+| 静态 ID | 世界模型里的 ID 用小写短横线 slug，带类型前缀：`char.king`、`place.syracuse-square`、`scene.village`、`act.2`、`beat.03`、`fact.promise`、`var.hostage.fate`、`role.traveler`、`edge.10-11`、`exit.1.road` 幕末去处、`rule.no-resurrection` 全局规则；（1.1）`aid.melos.shortcut` 互助、`promise.melos.return` 约定模板、`aff.river-hold` 情境动作、`item.water` 物品。世界结局的 ID 不带前缀（`canon-reunion`）。（1.6 写清）状态变量 ID 的段里可以用驼峰：`var.player.companionOf`、`var.player.knowsShortcut`、`var.melos.knowsTyranny`（`world.json` 已在用） |
 | 运行时 ID | 前缀 + ULID（按时间可排序）：`pt_…` 一局、`turn_…` 一轮、`ev_…` 事件、`mem_…` 记忆、`utt_…` 一句话、`end_…` 结局；（1.1）`prm_…` 约定、`rf_…` 本局即兴设定 |
 | 故事时间 | `t` = 从 Day 0（约束之日）00:00 起算的故事分钟数。期限是 Day 3 日没 = `5460`（2.6 节）。时间只由事件推进，不随真实时间流动（S-021） |
 | 时间的说法 | `tLabel` 按世界模型的 `clock.labels` 生成，如 `t=1380` →「約束の日・夜」，`t=5460` →「三日目・日没」（1.1：格式和时段按 UX 的表，S-037，见 2.6）。前端、記憶帳、结局都用同一个规则 |
@@ -54,7 +54,7 @@ type Cite = {
 
 ```ts
 type Playthrough = {
-  schemaVersion: "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5";
+  schemaVersion: "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5" | "1.6";
   playthroughId: string;          // pt_…
   userRef: string;                // 邀请码账号的匿名 ID（S-020），不是邮箱、不是姓名；L3「删除我的全部数据」按它删
   worldModelVersion: string;      // 开局时锁定，整局不变
@@ -78,7 +78,7 @@ type Playthrough = {
 
 ```ts
 type WorldModel = {
-  schemaVersion: "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5";
+  schemaVersion: "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5" | "1.6";
   worldModelVersion: string;      // "hashire-merosu@1.0.0"
   book: {
     id: string;                   // "hashire-merosu"
@@ -339,9 +339,23 @@ type StateVar = {
   keyMoment?: boolean;             // 决定结局的变量；（1.1）应当和 endings.signature.vars 一致，关键时刻按 3 节 S-041 的四条判
   visibleToPlayer?: boolean;       // 变化能不能显示给玩家（api-contract 的 visibleEffects）；默认 false。体力、信任这类数值不显示
   valueLabels?: Record<string, string>;  // 取值 → 一句可直接显示的日语，如 { "destroyed": "橋が流された" }
+  valueRequires?: { value: unknown; when: Condition[]; note: string; inferred: true; cite?: Cite[] }[];
+                                   // （1.6，C-16）把变量改成 value 时 when 要全部成立，见下面「取值条件」；note 是日语，叙事者的 reason 用它
   description: string;
 };
 ```
+
+**取值条件 `valueRequires`（1.6，C-16）：** 有的取值不是随时能设的，条件以前只写在说明文字里，叙事者第 3 步判不了。现在写成数据，叙事者、参考实现（`packages/worldsim/reference/worldsim.py` 的 `value_requires()`）和评测都只读它，不写死阈值。
+
+1. 只管叙事者提交的事件。到点的节拍和期限（`actor: "system"`、`origin: "schedule"`）不判，节拍的结果由节拍前提管（例：刑场的 `beat.26` 让王改心）。导演事件的 `actor` 也是 `system`，但 `origin` 是 `director`，照样判：按 `origin` 区分，不按 `actor`。
+2. 只在值真的变化时判；设成和现在一样的值不判。
+3. 按这个 effect 之前的状态判，同一事件里前面的 effect 已经生效：先升信任再设 `wavering` 能过，反过来不过。
+4. `when` 用和节拍前提同一个 `Condition` 类型和求值函数。不成立报 R2，`reason` 带变量、`value` 和这一条的 `note`。
+5. 设好以后条件不再成立（信任又掉到 40 以下）不自动改回，也不算违规；改不改回是剧情的事。
+
+世界模型自检（`build_world`）另查：`value` 在这个变量的取值里；`when` 引用的变量存在、取值合法；`note` 不空；情景（`scenarios.json`）里的事件也守这些条件；节拍以外的效果模板（互助、幕末去处、情境动作等）把变量设成受限的值时给警告。
+
+『走れメロス』有三条：`var.king.disposition` 设 `wavering` 要 `var.king.trust` ≥ 40，设 `reformed` 要 ≥ 70（刑场的改心是到点的 `beat.26`，不判）；`var.river.crossing` 设 `bridge` 要 `var.bridge` = `intact`。
 
 **玩家看得到哪些变化：** （1.4 写清，S-067）`valueLabels` 里没写的取值，当场不显示、不进状态栏、也不进「その頃」，只在结局里交代（例：`player.custody` / `hostage.fate` 的 `executed`，结局里间接说，不写「処刑」「死」）。一个事件的 effect 只有同时满足两条才进 `visibleEffects`：① 改的是 `visibleToPlayer` 的变量（文字取 `valueLabels`），或者是节拍走向的改变（文字 =「{beat.title}」+ 改变的说法）；② 玩家当时在这个事件的地点，或者事件就是玩家做的。其他变化不实时显示，留到幕切换时的「その頃」回顾（2.8.1），以免把玩家不可能知道的事提前说出来。
 
@@ -539,7 +553,7 @@ type Item = {
 
 ```ts
 type Event = {
-  schemaVersion: "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5";
+  schemaVersion: "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5" | "1.6";
   eventId: string;                 // ev_…
   playthroughId: string;
   seq: number;                     // 本局内严格递增，从 1 开始；重放按 seq
@@ -581,7 +595,8 @@ type Effect =
                                    // altered 时 outcomes = 改变后的结果（代替世界模型里的 outcomes）
   | { op: "learn"; character: string; fact: string }   // 某角色知道了某事实；（1.1）fact 也可以是 rf_…（别人的即兴设定）
   | { op: "relocate"; character: string; place: string }
-  | { op: "promise"; promiseId: string; change: "made" | "kept" | "broken" | "voided";   // （1.1）约定，见 3.1 的 Promise
+  | { op: "promise"; promiseId?: string; change: "made" | "kept" | "broken" | "voided";  // （1.1）约定，见 3.1 的 Promise；
+                                   // （1.6 写清）promiseId 在提交的事件里必带；世界模型的效果模板（2.10）和候选事件不写，提交时由叙事者分配
       from?: "player" | string; to?: "player" | string; text?: string;     // change = made 时必填
       due?: { t?: number; beat?: string }; template?: string }              // 期限（时刻或节拍）；模板 ID（可选）
   | { op: "improv"; factId: string; character: string; statement: string }   // （1.1）即兴设定（S-030 ②），见 3.1 的 RunFact
@@ -600,7 +615,7 @@ type CheckResult = {
 | 规则 | 检查什么 | 怎么判 |
 |---|---|---|
 | R1-anchor | 不推翻锚点（`anchors`、`kind: anchor` 的节拍） | 确定性 |
-| R2-precondition | 节拍和状态的前提成立；死者不复活 | 确定性 |
+| R2-precondition | 节拍和状态的前提成立；死者不复活；（1.6）变量改成的值满足 `valueRequires`（2.6） | 确定性 |
 | R3-time | 时间来得及：路程（`adjacent`、`crossing`）、2.5.1 的排定时间 | 确定性 |
 | R4-knowledge | 行为者此刻知道这件事（2.1 防剧透规则） | 确定性 |
 | R5-persona | 这个角色会这么做吗、动机成立吗、和之前的事件矛盾吗 | 模型 |
@@ -704,7 +719,7 @@ type WorldState = {
 
 ```ts
 type MemoryItem = {
-  schemaVersion: "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5";
+  schemaVersion: "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5" | "1.6";
   memoryId: string;                // mem_…
   playthroughId: string;
   character: string;               // 谁记得
@@ -759,7 +774,7 @@ type Relationship = {              // 不单独存，按记忆推出
 
 ```ts
 type Ending = {
-  schemaVersion: "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5";
+  schemaVersion: "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5" | "1.6";
   endingId: string;                // end_…
   playthroughId: string;
   worldModelVersion: string;
@@ -794,7 +809,7 @@ type Ending = {
     title: string;                 // 称号 ≤ 14 字
     subtitle: string;              // 世界的去向 ≤ 26 字
     contrast: string;              // 「原作との違い」≤ 48 字
-    characterLines: { character: string; line: string }[];  // 影响最深的 2〜3 人，每句 ≤ 40 字
+    characterLines: { character: string; line: string }[];  // 影响最深的 1〜3 人（1.6 起；1.5 是 2〜3 人），每句 ≤ 40 字
   };
   share?: { cardImageRef?: string; videoRef?: string; branchTreeRef?: string };  // 生成产物的存储引用
 };
@@ -808,17 +823,23 @@ type CharacterEnding = {           // （1.1）
 };
 ```
 
-**校验规则：** `world.outcome` 必须等于按 2.9 的顺序对最终状态判出的那一类；`epilogue` 每句 `cites` 非空且都是本局存在的事件；`title`、`fate` 的 `causedBy` 非空；`changedBeats` 与 `WorldState.beats` 一致；全部文字是日语、不含现实个人信息（E8）。不满足就重写一次，仍不满足用模板尾声（后端 6.2），不能生成结局卡。
+**校验规则：** `world.outcome` 必须等于按 2.9 的顺序对最终状态判出的那一类；`epilogue` 每句 `cites` 非空且都是本局存在的事件；`title`、`fate` 的 `causedBy` 非空；`changedBeats` 与 `WorldState.beats` 一致；全部文字是日语、不含现实个人信息（E8）。不满足就重写一次，仍不满足用模板尾声（后端 6.2）。（1.6 改）模板尾声的局也出结局卡，见下面 1.6 那一段。
 
 （1.1）另加：
 
 - `world.variant.claims` 和 `finalVars` 一致，`causedBy` 至少 2 个本局事件；人物结局和世界结局不矛盾（同样按主张核对）。
 - `characters` 每个可对话人物一条；`unchanged: false` 的 `yours` 1〜3 句，每句 `cites` 非空且都是本局事件；`rank` 从 1 起连续。
-- `card` 的字数上限按上面（S-051）；`characterLines` 取 `rank` 最前的 2〜3 人。
+- `card` 的字数上限按上面（S-051）；`characterLines` 取 `rank` 最前的 1〜3 人（1.6 改，原来是 2〜3 人）。
 - **不逐字引用玩家原话**（S-046）：每个文字字段和这一局玩家的每句原话比，先把世界模型里的专有名词（人物名、地名、引文）换成占位符，最长公共子串 ≥ 8 字就不过。这一步在清空原话之前做（S-035）。
 - 删过记忆的人物，他的结局和尾声里不写「他记得你」（第 4 节删除语义第 2 条）。
 - `lastScene.present` 默认有セリヌンティウス（S-053）；这一局的事件让他不可能在场时不放，`description` 交代他在哪里。
 - 越过日没线的原因链上必须有玩家的举动（3.2 第 1 条），评测 E7 `director_not_sole_cause`。
+
+（1.6，C-17）结局卡和必写的字段：
+
+- **每一局都出结局卡。** 生成的结局：`characterLines` 取 `rank` 最前的 1〜3 人，排得上几人放几人。一个人物也没排上名（全部 `unchanged`）时，放梅洛斯一句，按他的 `original` 写（每一局的世界结局都围着他）。所以卡上至少 1 行。
+- **模板尾声的局也出卡**（S-065 降级）：按这一局的 `world.outcome`，以及 `var.player.custody`、`var.melos.custody`，挑 ux-design 11.4 对应的那一组，`card` 的字段全用那一组的预写句子（称号里填开局身份）。人物行只放那一组写好的（1〜2 行）。句子不抄进本契约，以 ux-design 11.4 为准。
+- **1.6 起写入的结局，这几个字段必写**（类型里仍是可选，1.5 及以前的文档照旧合法；Schema 按 `schemaVersion` 判）：`world.title`（模板尾声的局写世界模型 `endings.world` 里这一类的 `label`）、`player.didForYou` 和 `player.youDid`（没有就写空数组）、`characters`、`card`。接口（api-contract 2.8）要这几个字段。
 
 ---
 
@@ -896,7 +917,8 @@ type CharacterEnding = {           // （1.1）
 | C-13 | 2.4.1 第 3 条的例外（有时间边的节拍当场记 prevented）和 2.5.1 的 `timeLink: "order"` 是写清，不是改语义 | **已定**（S-063）：记为写清；默认值和 1.0 行为一样 |
 | C-14 | 能带在身上的物品（如妹妹给的便当）和「交给」的效果 | **已定**（1.3，按 UX 5.1「随身的东西」）：`Item.portable`、`Role.items`、`Character.items`、`MutualAid.gives`、`hold` 效果、`WorldState.holdings`（2.10） |
 | C-15 | 第三、四幕「帮他快」的动作全做，梅洛斯最多早到多少；超过一个半小时左右第四幕就不紧张（UX 校对 1.1） | **已定**（S-066）：不设上限能早 190 分，封顶在 17:30（`clock.deadline.earliestArrival`，日没前 90 分）〔待验证，R1 后调〕；单个动作分钟数不变；拖慢不受上限影响；按钮显示按本局实际还能早多少（2.10） |
-| C-16 | 有两条取值条件只写在说明文字里，第 3 步判不了（S-2 标注时发现）：王的心设成「揺れている」要 `var.king.trust` ≥ 40，期限前改心要 ≥ 70；`var.river.crossing = bridge` 要桥还在 | **已定**（后端、PM 2026-10-10）：1.5 照约定冻结（C-2），冻结后第一个加字段的版本 1.6 加 `StateVar.valueRequires?: { value; when: Condition[]; note: string; inferred: true; cite?: Cite[] }[]`。后端不写死阈值，叙事者第 3 步只读数据，所以 **S-2 测量集开跑前要合并 1.6**。语义（也写进 Schema 的 description）：① 只管非 `system` 的事件，节拍的结果由节拍前提管（例：刑场的 `beat.26`）；② 只在值真的变化时判，设成和现在一样的值不判；③ 按这个 effect 之前的状态判（同一事件里前面的 effect 已生效，先升信任再设 `wavering` 能过，反过来不过）；④ `when` 用和节拍前提同一个 `Condition` 类型和求值函数，不成立报 R2，`reason` 带变量、`value` 和这一条的 `note`；⑤ 设好以后条件不再成立（信任又掉到 40 以下）不自动改回、不算违规，改不改回是剧情的事。世界模型自检加两项：`value` 在这个 StateVar 的取值里；`when` 引用的变量和节拍都存在。W-1 黄金测试加：39 被拒、40 能过；顺序两种；系统事件不受限；桥不在时设 `bridge` 被拒；值没变不判。参考实现、Schema、world.json 同一个 PR 改，后端评审 |
+| C-16 | 有两条取值条件只写在说明文字里，第 3 步判不了（S-2 标注时发现）：王的心设成「揺れている」要 `var.king.trust` ≥ 40，期限前改心要 ≥ 70；`var.river.crossing = bridge` 要桥还在 | **已定**（后端、PM 2026-10-10）：1.5 照约定冻结（C-2），冻结后第一个加字段的版本 1.6 加 `StateVar.valueRequires?: { value; when: Condition[]; note: string; inferred: true; cite?: Cite[] }[]`。后端不写死阈值，叙事者第 3 步只读数据，所以 **S-2 测量集开跑前要合并 1.6**。语义（也写进 Schema 的 description）：① 只管非 `system` 的事件，节拍的结果由节拍前提管（例：刑场的 `beat.26`）；② 只在值真的变化时判，设成和现在一样的值不判；③ 按这个 effect 之前的状态判（同一事件里前面的 effect 已生效，先升信任再设 `wavering` 能过，反过来不过）；④ `when` 用和节拍前提同一个 `Condition` 类型和求值函数，不成立报 R2，`reason` 带变量、`value` 和这一条的 `note`；⑤ 设好以后条件不再成立（信任又掉到 40 以下）不自动改回、不算违规，改不改回是剧情的事。世界模型自检加两项：`value` 在这个 StateVar 的取值里；`when` 引用的变量和节拍都存在。W-1 黄金测试加：39 被拒、40 能过；顺序两种；系统事件不受限；桥不在时设 `bridge` 被拒；值没变不判。参考实现、Schema、world.json 同一个 PR 改，后端评审。**1.6 已落地**（2.6「取值条件」） |
+| C-17 | 结局卡的人物 2〜3 人时，只有 1 个人物排得上的局没有卡；模板尾声的局也没有卡（UX 10-10 发现） | **已定**（UX ux-design 11.3、11.4，PM 2026-10-10）：1.6 放宽到 1〜3 人，一个也没排上名时放梅洛斯；模板尾声的局也出卡，字段取 ux-design 11.4 那一组；1.6 起写入的结局 `world.title`、`didForYou`、`youDid`、`characters`、`card` 必写（第 5 节） |
 
 ---
 
@@ -934,3 +956,8 @@ type CharacterEnding = {           // （1.1）
   - 写清：`requires` 的「发生了」包括 `altered`；`Fact.trueFrom` 的节拍本局没发生，这条事实本局不成立（2.3）；`valueLabels` 没写的取值不当场显示（S-067）；按钮上的实际分钟数用共享规则的 `arrival_delta`（S-066）。
   - 第 7 节新增 C-15，已定（S-066）。
 - **1.5 冻结（2026-10-10，M2-0，C-2）**：字段不变；以后只做加法，新增可选字段走 1.6、1.7…；Schema 在 `packages/contracts/schemas/data/`，CI 按它校验世界模型和评测集，并和本文的类型逐个对照。同时写清：第 0 节静态 ID 补上 `world.json` 已在用的 `exit.`、`rule.` 前缀，世界结局的 ID 不带前缀；第 6 节事件例子去掉和类型（`reason?: string`）不一致的 `"reason": null`。
+- **v1.6（2026-10-10）**：冻结后第一个加法版本。
+  - WorldModel：`StateVar.valueRequires`（2.6「取值条件」，C-16）。『走れメロス』（draft.3）写上王的心（信任 40 / 70）和过桥（桥还在）三条；情景「王が先に変わった」的事件先把信任设到 70。
+  - Ending：`card.characterLines` 放宽到 1〜3 人，一个也没排上名时放梅洛斯；模板尾声的局也出卡；1.6 起写入的结局 `world.title`、`player.didForYou` / `youDid`、`characters`、`card` 必写（第 5 节，C-17）。读的一方要能排 1 行。
+  - 写清（C-2 评审定的两件事）：状态变量 ID 的段里可以用驼峰（第 0 节）；`Effect.promise` 的 `promiseId` 在类型里可选，提交的事件必带（第 3 节）。
+  - R2 加上 `valueRequires`（第 3 节规则表）。只有到点的节拍和期限（`origin: "schedule"`）不判；导演事件的 `actor` 也是 `system`，照样判（后端评审）。

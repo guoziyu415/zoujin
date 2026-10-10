@@ -1233,6 +1233,42 @@
           },
           "description": "取值 → 一句可直接显示的日语"
         },
+        "valueRequires": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "value": {
+                "description": "这个变量的一个取值（enum 在 values 里，其余合类型）"
+              },
+              "when": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Condition"
+                },
+                "minItems": 1,
+                "description": "全部成立才能改成 value；和节拍前提同一个 Condition 和求值函数"
+              },
+              "note": {
+                "type": "string",
+                "minLength": 1,
+                "description": "为什么有这个条件（日语）；不成立时叙事者的 reason 带上变量、value 和它"
+              },
+              "inferred": {
+                "const": true
+              },
+              "cite": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/Cite"
+                }
+              }
+            },
+            "required": ["value", "when", "note", "inferred"],
+            "additionalProperties": false
+          },
+          "description": "（1.6，C-16）把变量改成某个值时要满足的条件（2.6）。① 只管叙事者提交的事件，到点的节拍和期限（origin = schedule）不判，节拍的结果由节拍前提管；② 值真的变了才判，设成现在的值不判；③ 按这个 effect 之前的状态判，同一事件里前面的 effect 已生效；④ when 不成立报 R2；⑤ 设好以后条件不再成立不自动改回、不算违规"
+        },
         "description": {
           "type": "string"
         }

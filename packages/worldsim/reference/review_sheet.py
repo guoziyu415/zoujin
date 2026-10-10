@@ -224,7 +224,9 @@ def main():
     for v in w["stateVars"]:
         vals = f"{v['type']}" + (f"（{' / '.join(map(str, v['values']))}）" if v.get("values") else "")
         labels = "、".join(f"{k}:{t}" for k, t in v.get("valueLabels", {}).items()) or "—"
-        L.append(f"| {v['id']} | {vals} | {v['default']} | {'是' if v.get('keyMoment') else ''} | {labels} | {v['description']} |")
+        # 1.6（C-16）：改成某个值要满足的条件，写在说明后面
+        req = "".join(f"<br>改成 {r['value']} 要 {cond(r['when'])}：{r['note']}" for r in v.get("valueRequires", []))
+        L.append(f"| {v['id']} | {vals} | {v['default']} | {'是' if v.get('keyMoment') else ''} | {labels} | {v['description']}{req} |")
     L += ["", "### 全局规则", ""] + [f"- {g['id']}：{g['text']}" + (f"（{quotes(g['cite'])}）" if g.get("cite") else "") for g in w["globalRules"]]
     Path(a.out).write_text("\n".join(L) + "\n", encoding="utf-8")
     print(f"wrote {a.out}: {len(L)} lines")

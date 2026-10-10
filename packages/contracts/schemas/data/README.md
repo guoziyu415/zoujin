@@ -1,6 +1,6 @@
 # 数据契约的 JSON Schema
 
-`docs/data/contracts.md` 1.5 的 37 个类型，写成 JSON Schema 2020-12（C-2，数据负责）。改字段先改 contracts.md，再改这里；契约测试会把两边逐个类型、逐个顶层字段对一遍。
+`docs/data/contracts.md` 1.6 的 37 个类型，写成 JSON Schema 2020-12（C-2，数据负责）。改字段先改 contracts.md，再改这里；契约测试会把两边逐个类型、逐个顶层字段对一遍。
 
 | 文件                      | 主类型        | `$defs`                                                                    |
 | ------------------------- | ------------- | -------------------------------------------------------------------------- |
@@ -26,7 +26,8 @@
 - 故事时间 `t` 和故事分钟（`dt`、路程、情境动作的耗时）是整数；`melosMinutes` 带正负号。
 - 子结构不另起 `$defs`，接口那边要原样复用时用 JSON 指针引用（例：`ending.schema.json#/$defs/Ending/properties/card`）。
 - `sampleLines` 在契约里是 `Cite & { since?, until?, when? }`，这里写成关死的普通对象，`source` / `para` / `quote` 用 JSON 指针引 `Cite` 的字段，不用 `allOf`。
-- Schema 只管形状。`quote` 是原文的精确子串、事件按 `seq` 的 `t` 不递减、`world.outcome` 等于按 2.9 判出的那一类，这些跨字段的规矩在 `build_world`、worldsim、B-0 和结局的校验里。
+- Schema 只管形状。`quote` 是原文的精确子串、事件按 `seq` 的 `t` 不递减、`world.outcome` 等于按 2.9 判出的那一类、变量改成的值满足 `valueRequires`（1.6），这些跨字段的规矩在 `build_world`、worldsim、B-0 和结局的校验里。
+- 按版本加的必填写成 `if` / `then`，不改类型里的可选：`Ending` 的 `schemaVersion` 不是 1.0〜1.5 时，`world.title`、`player.didForYou` / `youDid`、`characters`、`card` 必写（1.6，C-17）。`if` 里列的是旧版本，以后加 1.7 不用改它。生成的 pydantic 模型不管 `if` / `then`，B-0 写库前按 Schema 校验时才查。
 
 ## 以后改
 

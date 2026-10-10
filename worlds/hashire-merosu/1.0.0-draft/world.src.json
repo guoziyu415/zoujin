@@ -1,5 +1,5 @@
 {
- "schemaVersion": "1.5",
+ "schemaVersion": "1.6",
  "worldModelVersion": "hashire-merosu@1.0.0-draft.3",
  "_authoring": "出典は {\"q\": 原文の逐字引用, \"p\": 段落番号（省略可）} で書く。spikes/pipeline/build_world.py が段落を特定・検証して world.json を出力する。",
  "book": {
@@ -2964,7 +2964,7 @@
    "min": 0,
    "max": 100,
    "default": 5,
-   "description": "王が人を信じる度合い（推定の数値モデル、0〜100、初期 5）。0 まで落ちると刑場でも改心しない（beat.26 の前提）。40 以上で叙事者は王の心を「揺れている」（wavering）にしてよい。70 以上で期限前の改心（第 4 類「王が先に変わった」）を認めてよい。旅人の保証（aff.vouch）は +10、本当のことを言って聞かせる（aid.king.truth）+10、群臣の前で面目をつぶさない（aid.king.face）+5：設計した手段だけでは 30 で、一度の保証で王が軟化することはない（評測 E3）"
+   "description": "王が人を信じる度合い（推定の数値モデル、0〜100、初期 5）。0 まで落ちると刑場でも改心しない（beat.26 の前提）。40 以上で王の心を「揺れている」（wavering）にでき、70 以上で期限前に改心（第 4 類「王が先に変わった」）できる（var.king.disposition の valueRequires）。旅人の保証（aff.vouch）は +10、本当のことを言って聞かせる（aid.king.truth）+10、群臣の前で面目をつぶさない（aid.king.face）+5：設計した手段だけでは 30 で、一度の保証で王が軟化することはない（評測 E3）"
   },
   {
    "id": "var.king.disposition",
@@ -2981,7 +2981,33 @@
    "valueLabels": {
     "wavering": "王の心が揺れている",
     "reformed": "王が改心した"
-   }
+   },
+   "valueRequires": [
+    {
+     "value": "wavering",
+     "when": [
+      {
+       "var": "var.king.trust",
+       "op": ">=",
+       "value": 40
+      }
+     ],
+     "note": "王の心が揺れるのは、人を信じる度合いが 40 以上になってから",
+     "inferred": true
+    },
+    {
+     "value": "reformed",
+     "when": [
+      {
+       "var": "var.king.trust",
+       "op": ">=",
+       "value": 70
+      }
+     ],
+     "note": "王が改心するのは、人を信じる度合いが 70 以上になってから。刑場での改心は beat.26 の前提が決める（時刻どおりに起きる出来事はこの条件の対象外）",
+     "inferred": true
+    }
+   ]
   },
   {
    "id": "var.groom.agreed",
@@ -3053,7 +3079,21 @@
     "other"
    ],
    "default": "none",
-   "description": "メロスがどう川を渡ったか"
+   "description": "メロスがどう川を渡ったか",
+   "valueRequires": [
+    {
+     "value": "bridge",
+     "when": [
+      {
+       "var": "var.bridge",
+       "op": "==",
+       "value": "intact"
+      }
+     ],
+     "note": "橋で渡れるのは、橋が流されていない時だけ",
+     "inferred": true
+    }
+   ]
   },
   {
    "id": "var.bandits",

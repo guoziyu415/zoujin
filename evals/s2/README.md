@@ -1,6 +1,6 @@
 # S-2 叙事者自检准确率的标注集
 
-负责人：数据工程 · 对应 `backend/backend-design.md` S-2（和人工一致率 ≥ 90%；锚点违反漏检 0）、契约 `contracts.md` v1.5 第 3 节（Event、CheckResult、R1〜R7） · 最近更新：2026-10-10
+负责人：数据工程 · 对应 `backend/backend-design.md` S-2（和人工一致率 ≥ 90%；锚点违反漏检 0）、契约 `contracts.md` v1.6 第 3 节（Event、CheckResult、R1〜R7） · 最近更新：2026-10-10
 
 被测的是叙事者流水线的**第 3、4 步**（backend-design 2.4）：确定性规则 R1〜R4、R7 和模型检查 R5、R6。不测提取（第 2 步）和改写（第 5 步）：每条直接给一个候选事件，看自检判过还是不过、报哪几条规则。
 
@@ -89,7 +89,7 @@ R6 的条目仍标 `stage: model`：第 3 步的模式抓得到电话、邮箱�
 | 规则 | 判法 |
 |---|---|
 | R1 | `op: beat` 改一个锚点节拍（`kind: anchor` 或在 `anchors` 里），`to` 不是 `happened`；`set` 一个变量，而它现在的值是已发生的锚点节拍写的、之后没有别的节拍改过（如大雨后的 `var.weather`、冲桥后的 `var.bridge`） |
-| R2 | 改一个已经有结果的节拍；候选事件让节拍 `happened`（只有到点的系统事件写 `happened`，要早用 `hastened`；W-1 的 `check_effects` 同样报）；让节拍 `altered` 而它的前提或 `requires` 的前一节拍不成立；`executed` 的变量改回别的值、移动已处刑的人质（rule.no-resurrection）；`var.king.disposition` 设 `wavering` 要 `var.king.trust` ≥ 40，设 `reformed` 要 ≥ 70（`var.king.trust` 的说明） |
+| R2 | 改一个已经有结果的节拍；候选事件让节拍 `happened`（只有到点的系统事件写 `happened`，要早用 `hastened`；W-1 的 `check_effects` 同样报）；让节拍 `altered` 而它的前提或 `requires` 的前一节拍不成立；`executed` 的变量改回别的值、移动已处刑的人质（rule.no-resurrection）；变量改成的值不满足 `StateVar.valueRequires`（契约 1.6，C-16：王的心看 `var.king.trust` 40 / 70，`var.river.crossing` 设 `bridge` 要桥还在；只读世界模型，用参考实现的 `value_requires()`） |
 | R3 | 事件的 `t` 早于此刻的时钟；`relocate` 或玩家换地点，按 `places.adjacent` 的最短路程超过 `dt` |
 | R4 | `learn`：这条事实此刻成立（`trueFrom` 已发生），而且行为者知道它（人物按 `knows` 的 `since` 和本局学到的；玩家按身份的 `initialKnowledge`）；`improv` 的 `statement` 不含该人物此刻不知道的事实的 `spoilerTerms` |
 | R7 | 玩家换地点要在 `access` 或此刻成立的 `conditionalAccess` 里；玩家交出的东西要在玩家手上；交给人物要和他在同一地点（或正跟着他）；情境动作的 `place`、`roles`、`when`、要用的物品都要满足 |
@@ -97,7 +97,7 @@ R6 的条目仍标 `stage: model`：第 3 步的模式抓得到电话、邮箱�
 做标注时碰到的三件事，后端实现时要注意：
 
 - **第四幕的路程和原作时间对不上。** 「市へ続く野の道」是一大段路：`places.adjacent` 里泉到野道 120 分、野道到刑场 62 分，但原作 `beat.21`→`beat.22` 只隔 60 分、`beat.23`→`beat.24` 只隔 30 分。按排程走的人物，R3 看排程；`adjacent` 只量玩家的移动和排程外的 `relocate`（backend-design v1.0.9 已定）。
-- **有两条约束只写在说明文字里**：王的信任阈值（40 / 70），和「过桥渡河要桥还在」。前一条 `judge()` 按 R2 判（见上表，写死在这份参考判法里）；后一条现在只能靠模型。叙事者的第 3 步不写死，只读数据：契约冻结后的第一个加字段版本（1.6）把它们写成 `StateVar.valueRequires`，**S-2 测量集开跑前合并**，见 `../../contracts.md` 第 7 节 C-16。
+- **两条只写在说明文字里的约束已经写成数据**：王的信任阈值（40 / 70）和「过桥渡河要桥还在」，契约 1.6 的 `StateVar.valueRequires`（`../../docs/data/contracts.md` 2.6「取值条件」，C-16）。`judge()` 改为读它，不再写死；叙事者的第 3 步也只读数据。两份标注集用新的 `judge()` 核过，错误都是 0，标注不用改。
 - **人物说错话 ≠ 世界变了。** 人物的回答本身错了（说漏了还不知道的事、说错了自己的来历）时，叙事者照着提取就错了。正确做法是不提交、给这个人物的下一次局势说明加圆回提示（契约第 3 节「被否决和被修正是两回事」）。
 
 ## 请别人看的

@@ -162,6 +162,11 @@
     "effects": [
      {
       "op": "set",
+      "var": "var.king.trust",
+      "value": 70
+     },
+     {
+      "op": "set",
       "var": "var.king.disposition",
       "value": "reformed"
      }

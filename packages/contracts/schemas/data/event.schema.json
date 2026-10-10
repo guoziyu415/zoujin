@@ -322,7 +322,7 @@
             },
             "promiseId": {
               "$ref": "common.schema.json#/$defs/PromiseId",
-              "description": "这里可选：世界模型的效果模板（2.10）和候选事件（evals/s2/README.md）不写，提交时由叙事者分配 prm_…。提交的事件另外要求必带（Event.effects）。契约第 3 节写的是必填，1.6 改成可选并加注（C-2 评审定）"
+              "description": "可选（1.6 契约第 3 节写清）：世界模型的效果模板（2.10）和候选事件（evals/s2/README.md）不写，提交时由叙事者分配 prm_…。提交的事件另外要求必带（Event.effects）"
             },
             "change": {
               "enum": ["made", "kept", "broken", "voided"]
