@@ -1,0 +1,34 @@
+{
+  "type": "act_ended",
+  "actId": "act.1",
+  "recapLines": [
+    "あなたは、メロスに王のことを告げた。",
+    "あなたは、老爺を家まで送った。"
+  ],
+  "options": [
+    {
+      "optionId": "exit.1.city",
+      "label": "市に残り、メロスの帰りを待つ",
+      "sceneId": "scene.syracuse-square",
+      "tLabel": "三日目・夕方",
+      "where": "刑場・三日目の夕方",
+      "sub": "西の門が見える所で、メロスの帰りをひとりで待つ",
+      "with": [],
+      "because": null
+    },
+    {
+      "optionId": "exit.1.old-man",
+      "label": "老爺の家に身を寄せる",
+      "sceneId": "scene.syracuse-square",
+      "tLabel": "三日目・夕方",
+      "where": "刑場・三日目の夕方",
+      "sub": "老爺があなたを覚えている",
+      "with": ["char.old-man"],
+      "because": null
+    }
+  ],
+  "freeform": {
+    "allowed": true,
+    "triesLeft": 2
+  }
+}

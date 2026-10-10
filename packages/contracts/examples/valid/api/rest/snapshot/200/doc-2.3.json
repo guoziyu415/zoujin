@@ -42,6 +42,13 @@
       "talkable": true,
       "relationLabel": "様子を見ている",
       "relationLevel": 3
+    },
+    {
+      "id": "char.crowd",
+      "place": "place.syracuse-square",
+      "activity": "idle",
+      "talkable": false,
+      "group": true
     }
   ],
   "interactables": [

@@ -1,0 +1,88 @@
+{
+  "playthroughId": "pt_01K7AZ00000000000000000001",
+  "lastSeq": 42,
+  "status": "active",
+  "actId": "act.1",
+  "sceneId": "scene.syracuse-square",
+  "clock": {
+    "t": 1260,
+    "tLabel": "約束の日・夜",
+    "deadlineT": 5460
+  },
+  "deadline": {
+    "shown": true,
+    "line": "期限　三日目の日没／遅れれば、身代わりが死ぬ"
+  },
+  "forecast": {
+    "melosEtaT": 5460,
+    "beforeDeadline": true
+  },
+  "player": {
+    "roleId": "role.traveler",
+    "place": "place.syracuse-square",
+    "spot": "fountain-east"
+  },
+  "places": [
+    {
+      "id": "place.syracuse-square",
+      "enabled": true
+    },
+    {
+      "id": "place.stonemason-workshop",
+      "enabled": false,
+      "reason": "戸が閉ざされている"
+    }
+  ],
+  "characters": [
+    {
+      "id": "char.old-man",
+      "place": "place.syracuse-square",
+      "activity": "idle",
+      "talkable": true,
+      "relationLabel": "様子を見ている",
+      "relationLevel": 3
+    },
+    {
+      "id": "char.crowd",
+      "place": "place.syracuse-square",
+      "activity": "idle",
+      "talkable": false,
+      "group": true
+    }
+  ],
+  "interactables": [
+    {
+      "id": "obj.market-stall",
+      "kind": "examine",
+      "spot": "market-west",
+      "label": "露店",
+      "enabled": true,
+      "estimatedMinutes": 0
+    }
+  ],
+  "actions": [
+    {
+      "actionId": "act_help_old-man_cart",
+      "kind": "help",
+      "target": "char.old-man",
+      "label": "手伝う",
+      "estimatedMinutes": 60,
+      "melos": null,
+      "melosMinutes": null,
+      "melosInTime": null,
+      "enabled": true
+    }
+  ],
+  "pending": {
+    "reveal": null,
+    "confirm": null,
+    "actEnd": null,
+    "safetyPause": false,
+    "approach": null
+  },
+  "voice": {
+    "enabled": true,
+    "degraded": false,
+    "minutesLeftToday": 52
+  }
+}

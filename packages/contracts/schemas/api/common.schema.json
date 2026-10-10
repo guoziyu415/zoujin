@@ -279,10 +279,10 @@
       "title": "PlaceAccess"
     },
     "CharacterPresence": {
-      "description": "当前场景在场的人物（2.3）；还没有关系的人物两个 relation 字段都省略",
+      "description": "当前场景在场的人物（2.3）；还没有关系的人物两个 relation 字段都省略。group 的人物（群众、警吏）不占位置点，没有 spot（v1.0.4）",
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "place", "spot", "activity", "talkable"],
+      "required": ["id", "place", "activity", "talkable"],
       "properties": {
         "id": {
           "$ref": "../data/common.schema.json#/$defs/CharacterId"
@@ -299,6 +299,10 @@
         "talkable": {
           "type": "boolean"
         },
+        "group": {
+          "description": "（v1.0.4）一群人（契约 1.7 的 Character.group）：不占位置点，没有 spot，前端按地点成群地放（契约 3.1）",
+          "$ref": "../data/world-model.schema.json#/$defs/Character/properties/group"
+        },
         "relationLabel": {
           "$ref": "../data/memory.schema.json#/$defs/Relationship/properties/label"
         },
@@ -310,7 +314,18 @@
         "relationLabel": ["relationLevel"],
         "relationLevel": ["relationLabel"]
       },
-      "title": "CharacterPresence"
+      "title": "CharacterPresence",
+      "if": {
+        "required": ["group"]
+      },
+      "then": {
+        "not": {
+          "required": ["spot"]
+        }
+      },
+      "else": {
+        "required": ["spot"]
+      }
     },
     "CharacterPresencePatch": {
       "description": "commit.patch.characters[]（3.4）：按 id 合并，只给变了的字段。人物进场（之前不在当前场景）时带完整的 CharacterPresence 字段；离场就是 place 变成不在当前场景里的地点",
@@ -646,6 +661,10 @@
               "type": "null"
             }
           ]
+        },
+        "arrival": {
+          "description": "（v1.0.4）幕切换以后还没落地：这一幕的 arrival 带 opener、服务端还没收到 act_landed 时给，和 act_transition.arrival 同形；没有时省略（3.11、第 4 节）",
+          "$ref": "#/$defs/Arrival"
         }
       },
       "title": "Pending"
@@ -1307,7 +1326,15 @@
       "description": "幕末的一个去处（3.11，来自世界模型的 ActExit）",
       "type": "object",
       "additionalProperties": false,
-      "required": ["optionId", "label", "sceneId", "tLabel", "with", "because"],
+      "required": [
+        "optionId",
+        "label",
+        "sceneId",
+        "tLabel",
+        "where",
+        "with",
+        "because"
+      ],
       "properties": {
         "optionId": {
           "$ref": "../data/common.schema.json#/$defs/ExitId"
@@ -1322,6 +1349,15 @@
         "tLabel": {
           "$ref": "../data/common.schema.json#/$defs/TLabel"
         },
+        "where": {
+          "description": "（v1.0.4）副题的前半「{地点}・{日子}の{时段}」（ux-design 4.4）：服务端算好，地点是落点的 Place.name，日子和时段是落点时刻（和 tLabel 同一个时刻）在 clock.labels 的 days、bands 里的叫法，中间用「の」，不套 clock.labels.format。例「刑場・三日目の夕方」",
+          "type": "string",
+          "minLength": 1
+        },
+        "sub": {
+          "description": "（v1.0.4）副题的后半：世界模型的 ActExit.sub（≤ 16 字），没有就省略。例「西の門が見える所で」",
+          "$ref": "../data/world-model.schema.json#/$defs/ActExit/properties/sub"
+        },
         "with": {
           "type": "array",
           "items": {
@@ -1331,7 +1367,7 @@
         "because": {
           "anyOf": [
             {
-              "description": "条件出现的理由，如「王があなたを覚えている」",
+              "description": "条件出现的理由。世界模型的 ActExit 没有写理由的字段，服务端现在一律给 null；条件去处的说明写在 sub 里（v1.0.4）",
               "type": "string",
               "minLength": 1
             },
@@ -1437,6 +1473,16 @@
         }
       },
       "title": "RecapItem"
+    },
+    "Arrival": {
+      "description": "（v1.0.4）幕切换的落地（3.11）：世界模型的 ActExit.arrival 或 Act.plan.arrival 原样下发",
+      "$ref": "../data/world-model.schema.json#/$defs/ActExit/properties/arrival",
+      "title": "Arrival"
+    },
+    "SetPieceLine": {
+      "description": "（v1.0.4）固定演出的一行（3.14）：世界模型的 SetPiece.lines 原样下发。narration = 一行地の文；speaker + line = 这个人物的一句预录，字幕就是 line",
+      "$ref": "../data/world-model.schema.json#/$defs/SetPiece/properties/lines/items",
+      "title": "SetPieceLine"
     },
     "StagingState": {
       "description": "ux-design 11.1 的 8 个状态；前端遇到不认识的按 present 演",

@@ -38,6 +38,9 @@
       "$ref": "#/$defs/NarrationMessage"
     },
     {
+      "$ref": "#/$defs/SetPieceMessage"
+    },
+    {
       "$ref": "#/$defs/ConfirmMessage"
     },
     {
@@ -170,7 +173,7 @@
       "title": "SessionReadyMessage"
     },
     "TurnStartedMessage": {
-      "description": "服务端发起的一轮：人物先开口（3.9、3.10）",
+      "description": "服务端发起的一轮：人物先开口（3.9、3.10、3.11 的落地）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "turnId", "turnSeq", "speaker", "reason"],
@@ -189,7 +192,8 @@
         },
         "reason": {
           "type": "string",
-          "enum": ["approach", "leaving", "confirm"]
+          "enum": ["approach", "leaving", "confirm", "arrival"],
+          "description": "arrival（v1.0.4）= 幕切换落地后 opener 先开口（3.11）。approach、arrival 的一轮服务端把 speaker 当作已经 focus 的人物，前端不用另发 focus"
         }
       },
       "title": "TurnStartedMessage"
@@ -515,6 +519,29 @@
       },
       "title": "NarrationMessage"
     },
+    "SetPieceMessage": {
+      "description": "（v1.0.4）固定演出（3.14，契约 2.11）：写好的地の文和人物的预录句，按顺序演。不是事件，不占 seq，断线时没收到的不补发",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "pieceId", "lines"],
+      "properties": {
+        "type": {
+          "const": "set_piece"
+        },
+        "pieceId": {
+          "$ref": "../../data/common.schema.json#/$defs/SetPieceId"
+        },
+        "lines": {
+          "description": "人物的句子播 manifest 的 setPieceVoices[\"<pieceId>/<序号>\"]（序号 = 在 lines 里的位置，从 1 起，地の文也算）",
+          "type": "array",
+          "items": {
+            "$ref": "../common.schema.json#/$defs/SetPieceLine"
+          },
+          "minItems": 1
+        }
+      },
+      "title": "SetPieceMessage"
+    },
     "ConfirmMessage": {
       "description": "意图确认（3.9）",
       "type": "object",
@@ -609,14 +636,7 @@
       "description": "动作的判定结果（3.8）",
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "type",
-        "clientMsgId",
-        "status",
-        "eventIds",
-        "narration",
-        "minutes"
-      ],
+      "required": ["type", "clientMsgId", "status", "eventIds", "minutes"],
       "properties": {
         "type": {
           "const": "action_result"
@@ -635,18 +655,33 @@
           }
         },
         "narration": {
-          "description": "一句故事里的说明；拒绝也在故事里说",
+          "description": "一句故事里的说明；拒绝也在故事里说。这个动作挂着固定演出时没有（v1.0.4），和 setPiece 正好有一个",
           "type": "string",
           "minLength": 1
+        },
+        "setPiece": {
+          "description": "（v1.0.4）这个动作挂着固定演出（契约 2.11 的 on.act）：它的 ID，紧接着推那条 set_piece（3.14），代替 narration",
+          "$ref": "../../data/common.schema.json#/$defs/SetPieceId"
         },
         "minutes": {
           "$ref": "../common.schema.json#/$defs/Minutes"
         }
       },
-      "title": "ActionResultMessage"
+      "title": "ActionResultMessage",
+      "if": {
+        "required": ["setPiece"]
+      },
+      "then": {
+        "not": {
+          "required": ["narration"]
+        }
+      },
+      "else": {
+        "required": ["narration"]
+      }
     },
     "ActEndedMessage": {
-      "description": "幕结束，给出去处（3.11）；除 type 外和 ActEnd 同形",
+      "description": "幕结束，给出去处（3.11）；除 type 外和 ActEnd 同形。每个去处带副题的前半 where 和后半 sub（v1.0.4）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "actId", "recapLines", "options", "freeform"],
@@ -730,7 +765,7 @@
       }
     },
     "ActTransitionMessage": {
-      "description": "进入下一幕：「その頃」（≤ 3 件）和新场景的快照（3.11）",
+      "description": "进入下一幕：「その頃」（≤ 3 件）、新场景的快照和落地（3.11）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "fromActId", "toActId", "recap", "snapshot"],
@@ -753,6 +788,10 @@
         },
         "snapshot": {
           "$ref": "../common.schema.json#/$defs/Snapshot"
+        },
+        "arrival": {
+          "description": "（v1.0.4）落地：第一行地の文 line 和先开口的人物 opener；去处（或成行的打算）没写 arrival 时省略。有 opener 时前端落地后发 act_landed",
+          "$ref": "../common.schema.json#/$defs/Arrival"
         }
       },
       "title": "ActTransitionMessage"
