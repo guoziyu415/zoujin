@@ -149,6 +149,8 @@ for (const [name, s] of Object.entries(layout.spots)) {
     errors.push(
       `spot ${name}: scene.json place ${got.place}, layout says ${want}`,
     );
+  if ((s.auto === false) !== (got.auto === false))
+    errors.push(`spot ${name}: auto differs from layout.json (rebuild)`);
   const [x, , z] = planToWorld(s.at[0], s.at[1], 0, layout.rotationDeg);
   if (Math.hypot(got.pos[0] - x, got.pos[2] - z) > 0.7)
     errors.push(

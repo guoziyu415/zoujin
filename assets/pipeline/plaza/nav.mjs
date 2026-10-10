@@ -390,6 +390,8 @@ async function build(meshes, layout) {
       yaw: +yawOf(FX - px, FZ - pz).toFixed(4),
       place,
       poly: hit.i,
+      // only an explicit placement stands someone here; the automatic one skips it, as it skips way.*
+      ...(s.auto === false ? { auto: false } : {}),
     };
   }
   for (const e of layout.exits) {
