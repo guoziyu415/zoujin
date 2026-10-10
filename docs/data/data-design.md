@@ -2,7 +2,7 @@
 
 负责人：数据工程 · 状态：**v1.2.2**。v1.0 已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改；1.1 跟上契约 1.1、PM 的 S-022〜S-053 和世界模型 draft.3；1.2 跟上契约 1.2 和 S-054〜S-063，补齐前端、UX 要的埋点（9.3）和市场调研要的试玩导出（9.5）。跨角色决定见 `pm/decisions.md`。待别人定的事见第 13 节。
 相关：[contracts.md](contracts.md) v1.7（四个数据契约，本文所有字段以它为准）· `backend/backend-design.md` · `pm/prd.md`
-最近更新：2026-10-10（v1.2.2：7.3 评审员定为 Claude Opus 5.5，写清校准和独立性；7.2 AI 玩家用 Claude；9.3 画质遥测的两处读法）
+最近更新：2026-10-10（v1.2.2：7.3 评审员定为 Claude Opus 5.5，写清校准和独立性；7.1 模拟局的 AI 玩家用 Claude；9.3 画质遥测的两处读法）
 
 数据工程负责六件事：世界模型（含『走れメロス』v1）、新增一本书的流水线、事件日志与世界状态、記憶帳与删除、评测与可观测数据、分析与成本测算。
 
@@ -400,6 +400,10 @@ BigQuery 每天一个定时查询，用 `EXTERNAL_QUERY` 直接读 Cloud SQL，�
 
 （D-019）画质分 L0〜L3 四级后，`perf_sample` 的 `qualityTier` 改为 `qualityLevel` + `assetTier`，`quality_changed` 和 `gl_context_lost` 分成两行。每局的起始级、升降次数和最后停在哪一级从 `quality_changed` 算（`reason=start` 那条就是起始级），不另设事件。`probeGpuMs` 取到 0.1ms、`assetMbps` 取整数：够校准用，又不会和 `deviceClass`、`dpr` 合起来变成设备指纹。
 
+（F-2c，前端 10-10）两处读法：
+- `reason` 是 `lowPower`（判定为低电量）或 `locked`（降两次以后锁住上限）时，档位不变，`from` 等于 `to`。所以「升降次数」只数 `reason` 是 `down` 或 `up` 的行；「最后停在哪一级」取这一局最后一条的 `to`。
+- Safari 没有长任务的 API，`longTasks` 照样报 0（字段是必填）。分析按公共属性里的 `browser` 拆开看，Safari 的 `longTasks` 不计，免得当成「没有长任务」。`jsHeapMb` 只有 Chrome 报，别的浏览器不带这个字段。
+
 幕末选择不需要遥测，从 `act-transition` 事件的 `exitId` / `plan` 算。
 
 （C-1、C-2 评审）`frameTimeHistogram` 固定 9 格：第 i 格数「上一格上界 < 帧时间 ≤ 这一格上界」的帧，上界依次是 8.5、12、17、20、26、34、51、101 ms，最后一格是 > 101 ms。帧间隔是刷新间隔的整数倍（120 Hz 的 1、3 帧 = 8.3、25 ms，90 Hz 的 1 帧 = 11.1 ms，60 Hz 的 1、2、3、6 帧 = 16.7、33.3、50、100 ms），实测有零点几毫秒的抖动，所以边界都放在整数倍稍上，同一种掉帧不会拆到两格（前端评审）。20 和 34 对上前端的帧时间预算（基准机 p95 ≤ 20 ms、底线机 p95 ≤ 33 ms）。格子固定，不同版本前端发来的直方图才能相加；以后要换边界就另起一个字段，不改这个字段。
@@ -489,6 +493,7 @@ BigQuery 每天一个定时查询，用 `EXTERNAL_QUERY` 直接读 Cloud SQL，�
 
 修订记录：
 
+- **v1.2.2（2026-10-10）**：7.3 写清评审员（Claude Opus 5.5，走 Batch）和它的校准、独立性（zg 盲标 20 条，Gemini 2.5 Pro 再判一遍）；7.1 模拟局的 AI 玩家用 Claude Sonnet 5.5（PM 10-10 定，dev-plan Z-8 两本账）；9.3 按前端 F-2c 写清 `quality_changed` 档位不变的两种 `reason` 和 Safari 的 `longTasks` 怎么读。
 - **v1.2.1（2026-10-10）**：第 3 节的表对齐 B-0（#26）建的表：`playthroughs` 加 `book_id` 和每账号同时 1 局，`events` 加 `schema_version`、`origin`、`extra`，`utterances` 加 `source`，`playthrough_metrics` 按后端分成四项费用（每局费用是所有 `cost_*_usd` 列之和，以后的功能各加一列）和进出两项语音秒数；`memory_items`、`endings` 注明由用到的 M2 卡建；写明分析怎么读 `turns.status`（含 `lost`，api-contract v1.0.3）。契约跟到 1.7。
 - v0.1（2026-10-06）：初稿。
 - 2026-10-07：加自伤分类器的留出验证样本 25 条（`evals/safety/s4_selfharm_holdout.jsonl`），只用来验已定稿的 v3。

@@ -78,6 +78,7 @@ Batch 两头半价；缓存读取是输入价的 0.05 倍。
 ## 建议
 
 - 两本账各有上限，都要显式给（评测运行器的 `--max-google-usd`、`--max-claude-usd`）。到上限自动停，第一个 429 就停（Claude 的 529 过载也一样），都能 `--resume`。
+- 两本账记在 Mac 上同一个账本文件里（`ZJ_LEDGER`，JSONL），每行带 `provider`（`google` / `claude`）、`kind`、`model`、`usage`、`costUsd`、`at` 和记在哪一项下的 `item`。后端的真客户端（B-2，#47）和评测运行器写同一种行。Google 的总上限只算 `google` 的行，Claude 的只算 `claude` 的行；单项上限两本账合起来算。账本不写请求和回答的内容，也不写项目 ID。
 - Google 账仍建议分两段给：先给 50 美元，跑 S-2、第一遍切片评测和 S-5；PM 拿账本实数对照这张表，再问后面那段。
 - Claude 账用 zg 的额度，Anthropic 控制台不开自动充值，额度用完就停。Key 由 zg 在控制台建，只放在 Mac 上，不进仓库、文档和聊天。
 - 不交给 Claude 的：
