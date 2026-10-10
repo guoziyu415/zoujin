@@ -264,6 +264,8 @@ type Condition = {
 };
 ```
 
+- （1.7 写清）人物此刻在做什么只按一份规则算：共享规则库 `zoujin_worldsim.activity(world, state, who)`，叙事者的 R7 和快照共用。开局是 `initialActivity`（省略 = idle）。已发生的节拍按发生时刻依次看：节拍的 `activities` 给了他，就换成那个；没给，而这个节拍把他挪到了别的地点（参与人物先移到节拍地点，或 `relocate`），就变 idle。最后，他此刻的地点和按节拍该在的地点不同（节拍以外的事件挪过他，例如叙事者、人物的打算），就是 idle。这条规则不记历史：被挪走又回到那个地点的人物，又是那个节拍给他的 activity（前端在 #45 的评审）。`absent` 是人在这个地点、但不在场上（屋里）：快照里 `talkable: false`（S-077 ⑩）；被节拍带走以后就不再是 absent。
+
 #### 2.4.1 节拍是世界的默认时间表（回答 PM 评审第 1 条、后端评审第 7 条）
 
 不管玩家在不在场，规则只有一条：
@@ -585,9 +587,9 @@ type SetPiece = {
   when?: Condition[];              // 别的状态条件（同节拍前提）
   once?: true;                     // 一局只演一次
   lines: ({ narration: string } | { speaker: string; line: string })[];
-                                   // 按顺序演：narration = 一行地の文（服务端推 narration { line, ref }，ref = 这条的 id）；
-                                   // speaker + line = 这个人物的一句预录（构建时生成，ux-design 16.2，声音按 UX 的文案表），字幕就是 line。
-                                   // 预录句怎么下发（manifest 的 cues 那样，或别的）由后端定（B-3）
+                                   // 按顺序演，整条放在一条 set_piece 消息里下发（api-contract 3.14）：narration = 一行地の文；
+                                   // speaker + line = 这个人物的一句预录（构建时生成，ux-design 16.2，声音按 UX 的文案表），字幕就是 line，
+                                   // 录音是 manifest 的 setPieceVoices["{id}/{序号}"]（序号是这一句在 lines 里的位置，从 1 起，地の文也算；api-contract 2.1）
   learns?: { character: string; fact: string }[];
                                    // 演这一条时谁知道了哪件事（character 可以是 "player"，2.1）。服务端把这些 learn 和这一条的演出同一次提交
                                    // 写进事件（写在动作的事件里还是另写一条，B-3 定）。只给 learn、不给任意 effects：固定演出不过叙事者的
@@ -1054,3 +1056,4 @@ type CharacterEnding = {           // （1.1）
   - 玩家知道什么（2.1，PM、后端 10-10 评审 #33 时提）：`learn` 的 `character` 可以是 `"player"`；人物告诉玩家时叙事者提取，玩家在节拍的地点时共享规则库给 public 事实写进节拍的系统事件；R4 对玩家 = 身份的 `initialKnowledge` + 学到的。
   - 第 7 节新增 C-18、C-19（已定：打算成行时的落点用 `Act.plan`）。
   - 『走れメロス』（draft.3）：群众、警吏、山贼、一团旅人 `group: true`；beat.s1 セリヌンティウス站 `stake`、王站 `king-west`，beat.24 梅洛斯站 `scaffold`（布局见前端 #22）。同一个 PR 里的世界模型修正：群众、少女第一幕在广场的家里（`absent`），beat.s1 到刑场；beat.04（捕缚）挪到王城前庭（`place.execution-ground`）；送老爺回家记 `var.player.walkedOldManHome`（说话兑现，或第一幕的情境动作「家まで送る」`aff.walk-old-man-home`，30 分，UX 10-10）；警吏从 beat.05 起知道约定（`knows`，PM 10-10：警吏在殿上，城门的固定演出靠它说出约定，S-077 ⑪）。
+  - 写清（10-10，#41、#45、#50 合并以后，字段不变）：固定演出的 `lines` 整条放在一条 `set_piece` 消息里下发，预录句的录音是 manifest 的 `setPieceVoices["{id}/{序号}"]`（2.11，api-contract v1.0.4 的 3.14、2.1）；人物此刻的 activity 怎么算（2.4，共享规则库的 `activity()`，挪走又回来的人物又是节拍给的 activity）。Schema 里 `SetPiece.lines` 的说明跟着改；例子里城门的地の文「衛兵」改成「警吏」，和世界模型、api-contract 3.14 一致。

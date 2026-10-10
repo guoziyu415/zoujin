@@ -3,7 +3,7 @@
   "on": { "beat": "beat.04" },
   "once": true,
   "lines": [
-    { "narration": "衛兵が、あなたの前に槍を下ろした。" },
+    { "narration": "警吏が、あなたの前に槍を下ろした。" },
     {
       "speaker": "char.guards",
       "line": "下がれ、旅の者。ここから先は、通さぬ。"
