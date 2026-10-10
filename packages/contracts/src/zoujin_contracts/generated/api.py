@@ -208,7 +208,7 @@ type CueKind = Annotated[Literal["arrival_capped"], Field(title="CueKind")]
 
 class Deadline(BaseModel):
     """
-    期限（2.3）：约定（beat.05）之前 shown = false、没有 line；之后一直 shown = true、带 line
+    期限（2.3）：玩家知道约定（契约 1.7 knows(player, fact.promise)）之前 shown = false、没有 line；之后一直 shown = true、带 line（S-077 ⑫，v1.0.3）
     """
 
     model_config = ConfigDict(
@@ -528,7 +528,7 @@ class FocusMessage(BaseModel):
 
 class Forecast(BaseModel):
     """
-    梅洛斯预计到达刑场的时刻（2.3）；约定之前整个为 null（防剧透）
+    梅洛斯预计到达刑场的时刻（2.3）；玩家知道约定之前整个为 null（防剧透，条件和 Deadline.shown 一样）
     """
 
     model_config = ConfigDict(
@@ -581,7 +581,7 @@ type InteractableId = Annotated[str, Field(max_length=128, min_length=1, title="
 
 class InterruptedMessage(BaseModel):
     """
-    服务端确认打断
+    服务端确认打断：人物还在说时被新的一轮打断。被打断的轮没有 turn_complete，照常交给叙事者（v1.0.3）
     """
 
     model_config = ConfigDict(
@@ -627,6 +627,9 @@ class LastTurn(BaseModel):
     和谁说的；幕末用声音说打算的一轮（activity_start purpose = act_plan）没有人物，为 null（C-1 评审定）
     """
     status: Literal["settled", "pending", "lost"]
+    """
+    settled / pending（叙事者还在判）/ lost（断线时人物还没说完：不判、没有 turn_settled，v1.0.3）
+    """
     playerText: PlayerText | None
     """
     原话已清空的轮次为 null
@@ -2412,7 +2415,7 @@ type Text = Annotated[str, Field(min_length=1)]
 
 class TranscriptMessage(BaseModel):
     """
-    字幕。人物每一轮恰好一条 final = true；定稿可能晚于 turn_complete
+    字幕。人物每一轮恰好一条 final = true，没回答的轮、出戏卡停下的轮、一个字没说就被打断的轮除外；定稿可能晚于 turn_complete
     """
 
     model_config = ConfigDict(
@@ -2453,7 +2456,7 @@ class TurnCompleteMessageMetrics(BaseModel):
 
 class TurnCompleteMessage(BaseModel):
     """
-    人物这一轮说完
+    人物这一轮说完；被打断的轮没有这条（v1.0.3）
     """
 
     model_config = ConfigDict(

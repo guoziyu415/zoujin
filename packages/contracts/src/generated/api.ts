@@ -390,7 +390,7 @@ export interface SnapshotClock {
   deadlineT: Data.StoryTime;
 }
 /**
- * 期限（2.3）：约定（beat.05）之前 shown = false、没有 line；之后一直 shown = true、带 line
+ * 期限（2.3）：玩家知道约定（契约 1.7 knows(player, fact.promise)）之前 shown = false、没有 line；之后一直 shown = true、带 line（S-077 ⑫，v1.0.3）
  */
 export interface Deadline {
   shown: boolean;
@@ -400,7 +400,7 @@ export interface Deadline {
   line?: string;
 }
 /**
- * 梅洛斯预计到达刑场的时刻（2.3）；约定之前整个为 null（防剧透）
+ * 梅洛斯预计到达刑场的时刻（2.3）；玩家知道约定之前整个为 null（防剧透，条件和 Deadline.shown 一样）
  */
 export interface Forecast {
   melosEtaT: Data.StoryTime;
@@ -1212,7 +1212,7 @@ export interface GoawayMessage {
   reconnectAfterMs: number;
 }
 /**
- * 服务端确认打断
+ * 服务端确认打断：人物还在说时被新的一轮打断。被打断的轮没有 turn_complete，照常交给叙事者（v1.0.3）
  */
 export interface InterruptedMessage {
   type: "interrupted";
@@ -1227,6 +1227,9 @@ export interface LastTurn {
    * 和谁说的；幕末用声音说打算的一轮（activity_start purpose = act_plan）没有人物，为 null（C-1 评审定）
    */
   character: Data.CharacterId | null;
+  /**
+   * settled / pending（叙事者还在判）/ lost（断线时人物还没说完：不判、没有 turn_settled，v1.0.3）
+   */
   status: "settled" | "pending" | "lost";
   /**
    * 原话已清空的轮次为 null
@@ -1542,7 +1545,7 @@ export interface TurnStartedMessage {
   reason: "approach" | "leaving" | "confirm";
 }
 /**
- * 字幕。人物每一轮恰好一条 final = true；定稿可能晚于 turn_complete
+ * 字幕。人物每一轮恰好一条 final = true，没回答的轮、出戏卡停下的轮、一个字没说就被打断的轮除外；定稿可能晚于 turn_complete
  */
 export interface TranscriptMessage {
   type: "transcript";
@@ -1559,7 +1562,7 @@ export interface TranscriptMessage {
   source?: "live" | "script" | "fallback";
 }
 /**
- * 人物这一轮说完
+ * 人物这一轮说完；被打断的轮没有这条（v1.0.3）
  */
 export interface TurnCompleteMessage {
   type: "turn_complete";

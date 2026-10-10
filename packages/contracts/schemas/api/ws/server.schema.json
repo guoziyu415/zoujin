@@ -195,7 +195,7 @@
       "title": "TurnStartedMessage"
     },
     "TranscriptMessage": {
-      "description": "字幕。人物每一轮恰好一条 final = true；定稿可能晚于 turn_complete",
+      "description": "字幕。人物每一轮恰好一条 final = true，没回答的轮、出戏卡停下的轮、一个字没说就被打断的轮除外；定稿可能晚于 turn_complete",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "turnId", "speaker", "text", "final"],
@@ -286,7 +286,7 @@
       "title": "TranscriptMessage"
     },
     "InterruptedMessage": {
-      "description": "服务端确认打断",
+      "description": "服务端确认打断：人物还在说时被新的一轮打断。被打断的轮没有 turn_complete，照常交给叙事者（v1.0.3）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "turnId"],
@@ -301,7 +301,7 @@
       "title": "InterruptedMessage"
     },
     "TurnCompleteMessage": {
-      "description": "人物这一轮说完",
+      "description": "人物这一轮说完；被打断的轮没有这条（v1.0.3）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "turnId", "audio", "metrics"],

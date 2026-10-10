@@ -179,7 +179,7 @@
       "title": "ClockPatch"
     },
     "Deadline": {
-      "description": "期限（2.3）：约定（beat.05）之前 shown = false、没有 line；之后一直 shown = true、带 line",
+      "description": "期限（2.3）：玩家知道约定（契约 1.7 knows(player, fact.promise)）之前 shown = false、没有 line；之后一直 shown = true、带 line（S-077 ⑫，v1.0.3）",
       "type": "object",
       "additionalProperties": false,
       "required": ["shown"],
@@ -211,7 +211,7 @@
       "title": "Deadline"
     },
     "Forecast": {
-      "description": "梅洛斯预计到达刑场的时刻（2.3）；约定之前整个为 null（防剧透）",
+      "description": "梅洛斯预计到达刑场的时刻（2.3）；玩家知道约定之前整个为 null（防剧透，条件和 Deadline.shown 一样）",
       "type": "object",
       "additionalProperties": false,
       "required": ["melosEtaT", "beforeDeadline"],
@@ -1521,6 +1521,7 @@
           ]
         },
         "status": {
+          "description": "settled / pending（叙事者还在判）/ lost（断线时人物还没说完：不判、没有 turn_settled，v1.0.3）",
           "type": "string",
           "enum": ["settled", "pending", "lost"]
         },
