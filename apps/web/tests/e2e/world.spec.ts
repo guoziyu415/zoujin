@@ -153,12 +153,12 @@ test("sunset: the shadow line climbs the castle wall", async () => {
 
 test("follow camera: UX's framing, towards the west gate and the castle", async () => {
   // plan points: the city gate and the castle door (layout.json way.road-to-city, way.castle). ground-west looks down
-  // the light corridor (ux/slice/ending-shots.md, shot 2); a little off its axis, since right on it the stake stands
-  // behind the player and the camera comes in front of it
+  // the light corridor (ux/slice/ending-shots.md, shot 2) along its own facing; it stands south of the stake, so the
+  // stake isn't behind the player and the camera keeps its distance
   const views: [string, string, [number, number], number][] = [
-    ["follow-west-gate", "ground-west", [-38, 3], 1050],
+    ["follow-west-gate", "ground-west", [-31, 0], 1050],
     ["follow-castle", "fountain-south", [18.3, 0], 1050],
-    ["follow-west-gate-1845", "ground-west", [-38, 3], 1125],
+    ["follow-west-gate-1845", "ground-west", [-31, 0], 1125],
   ];
   for (const [name, spot, towards, t] of views) {
     await page.evaluate((tt) => window.__zoujin.setClock(tt), t);

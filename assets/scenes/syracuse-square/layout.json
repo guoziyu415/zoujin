@@ -132,6 +132,12 @@
       "face": [3.6, 0],
       "about": "in front of the old man's door (building S2), facing the square"
     },
+    "old-man-house-side": {
+      "at": [2.5, -14.7],
+      "face": [3.6, -15.2],
+      "about": "beside the old man at his door, facing him: where the player stands after walking him home (aff.walk-old-man-home playerSpot)",
+      "auto": false
+    },
     "plaza-north": {
       "at": [-8.0, 13.0],
       "face": [0, 7.5]
@@ -160,9 +166,15 @@
       "face": [-11.6, -16.4]
     },
     "workshop-bench": {
-      "at": [-9.0, -20.4],
-      "face": [-9, -22],
+      "at": [-10.3, -20.4],
+      "face": [-10.3, -22],
       "about": "at the stonemason's bench"
+    },
+    "workshop-door": {
+      "at": [-8.3, -22.2],
+      "face": [-8.4, -23],
+      "about": "at the stonemason's house door in the yard (obj.workshop-door, 戸を叩く), the bench on the left",
+      "auto": false
     },
     "stake": {
       "at": [10.4, 0.0],
@@ -194,14 +206,14 @@
       "auto": false
     },
     "ground-west": {
-      "at": [4.0, 0.0],
+      "at": [4.0, -2.5],
       "face": [-31, 0],
-      "about": "west end of the execution ground, in the light corridor facing the gate: where a player who stayed in the city to wait for Melos sees him come through the gate at sunset (ux/slice/ending-shots.md, shot 2)"
+      "about": "west end of the execution ground, facing the gate down the light corridor: where a player who stayed in the city to wait for Melos sees him come through the gate at sunset (ux/slice/ending-shots.md, shot 2). 2.5 m south of the gate-to-post line, so the follow camera behind the player clears the post and the platform (UX, PR #32)"
     },
     "king-west": {
-      "at": [3.0, -2.0],
+      "at": [3.0, 2.0],
       "face": [10.4, 0],
-      "about": "west end of the execution ground, behind the crowd, facing the post: where the king first stands at sunset; about 2.2 m from ground-west, so a player there does not block him",
+      "about": "west end of the execution ground, behind the crowd, facing the post: where the king first stands at sunset; north of the gate-to-post line, about 4.6 m from ground-west on the other side, so a player there does not block him",
       "auto": false
     },
     "castle-steps": {
