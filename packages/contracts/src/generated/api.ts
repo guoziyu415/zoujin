@@ -1004,9 +1004,9 @@ export interface EndingCardView {
    */
   subtitle: string;
   /**
-   * 影响最深的 2〜3 人（卡片按最多 3 行排）
+   * （1.6 起 1〜3 人）影响最深的 1〜3 人，一个也没排上名时是梅洛斯一句（卡片按最多 3 行排）
    *
-   * @minItems 2
+   * @minItems 1
    * @maxItems 3
    */
   characterLines: {

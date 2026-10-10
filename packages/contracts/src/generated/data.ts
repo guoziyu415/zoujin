@@ -28,7 +28,7 @@ export type PlaceId = string;
  */
 export type RoleId = string;
 /**
- * 状态变量：`var.` 加 slug（可以有 `.` 和 `-`），段里可以用驼峰（`var.player.companionOf`、`var.player.knowsShortcut`、`var.melos.knowsTyranny`）。第 0 节写的是「小写」，1.6 写清（C-2 评审定）
+ * 状态变量：`var.` 加 slug（可以有 `.` 和 `-`），段里可以用驼峰（`var.player.companionOf`、`var.player.knowsShortcut`、`var.melos.knowsTyranny`），第 0 节（1.6 写清）
  */
 export type VarId = string;
 /**
@@ -70,7 +70,7 @@ export type Effect =
   | {
       op: "promise";
       /**
-       * 这里可选：世界模型的效果模板（2.10）和候选事件（evals/s2/README.md）不写，提交时由叙事者分配 prm_…。提交的事件另外要求必带（Event.effects）。契约第 3 节写的是必填，1.6 改成可选并加注（C-2 评审定）
+       * 可选（1.6 契约第 3 节写清）：世界模型的效果模板（2.10）和候选事件（evals/s2/README.md）不写，提交时由叙事者分配 prm_…。提交的事件另外要求必带（Event.effects）
        */
       promiseId?: PromiseId;
       change: "made" | "kept" | "broken" | "voided";
@@ -162,9 +162,9 @@ export type EdgeId = string;
  */
 export type EventId = string;
 /**
- * 写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法；1.6 起往这里加值
+ * 写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人
  */
-export type SchemaVersion = "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5";
+export type SchemaVersion = "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5" | "1.6";
 /**
  * 结局：`end_` 加 ULID（26 位 Crockford base32，大写）
  */
@@ -864,7 +864,7 @@ export interface Clock {
   };
 }
 /**
- * 结局（第 5 节）
+ * 结局（第 5 节）。1.6 起写入的结局，world.title、player.didForYou / youDid（可以是空数组）、characters、card 必写
  */
 export interface Ending {
   schemaVersion: SchemaVersion;
@@ -898,7 +898,7 @@ export interface Ending {
       [k: string]: unknown | undefined;
     };
     /**
-     * （1.1）世界结局的一句标题。没有时（模板尾声）接口用世界模型 endings.world 里这一类的 label（api-contract 2.8 的 world.title）
+     * （1.1）世界结局的一句标题。1.6 起必写：模板尾声的局写世界模型 endings.world 里这一类的 label（api-contract 2.8 的 world.title）
      */
     title?: string;
     /**
@@ -1022,7 +1022,7 @@ export interface Ending {
    */
   characters?: CharacterEnding[];
   /**
-   * （1.1，S-049、S-051）结局卡，字数由这里保证。校验两次不过、或者排上名（rank 非空）的人物不到 2 个时不生成
+   * （1.1，S-049、S-051）结局卡，字数由这里保证。1.6 起每一局都生成：生成的结局取 rank 最前的 1〜3 人，一个也没排上名时放梅洛斯一句（按他的 original）；校验两次不过、改用模板尾声的局，字段取 ux-design 11.4 对应那一组的预写句子
    */
   card?: {
     /**
@@ -1038,9 +1038,9 @@ export interface Ending {
      */
     contrast: string;
     /**
-     * 影响最深的 2〜3 人（卡片按最多 3 行排）
+     * （1.6 起 1〜3 人）影响最深的 1〜3 人，一个也没排上名时是梅洛斯一句（卡片按最多 3 行排）
      *
-     * @minItems 2
+     * @minItems 1
      * @maxItems 3
      */
     characterLines: {
@@ -1449,6 +1449,27 @@ export interface StateVar {
   valueLabels?: {
     [k: string]: string | undefined;
   };
+  /**
+   * （1.6，C-16）把变量改成某个值时要满足的条件（2.6）。① 只管叙事者提交的事件，到点的节拍和期限（origin = schedule）不判，节拍的结果由节拍前提管；② 值真的变了才判，设成现在的值不判；③ 按这个 effect 之前的状态判，同一事件里前面的 effect 已生效；④ when 不成立报 R2；⑤ 设好以后条件不再成立不自动改回、不算违规
+   */
+  valueRequires?: {
+    /**
+     * 这个变量的一个取值（enum 在 values 里，其余合类型）
+     */
+    value: unknown;
+    /**
+     * 全部成立才能改成 value；和节拍前提同一个 Condition 和求值函数
+     *
+     * @minItems 1
+     */
+    when: Condition[];
+    /**
+     * 为什么有这个条件（日语）；不成立时叙事者的 reason 带上变量、value 和它
+     */
+    note: string;
+    inferred: true;
+    cite?: Cite[];
+  }[];
   description: string;
 }
 /**

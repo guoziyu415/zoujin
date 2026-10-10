@@ -301,9 +301,9 @@ class EndingCardView(BaseModel):
     """
     世界的去向 ≤ 26 字
     """
-    characterLines: Annotated[list[EndingCardViewCharacterLinesItem], Field(max_length=3, min_length=2)]
+    characterLines: Annotated[list[EndingCardViewCharacterLinesItem], Field(max_length=3, min_length=1)]
     """
-    影响最深的 2〜3 人（卡片按最多 3 行排）
+    （1.6 起 1〜3 人）影响最深的 1〜3 人，一个也没排上名时是梅洛斯一句（卡片按最多 3 行排）
     """
     contrast: Annotated[str, Field(max_length=48, min_length=1)]
     """
