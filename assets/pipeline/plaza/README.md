@@ -26,7 +26,7 @@ Python 依赖：直接依赖写在 `requirements.in`，`requirements.txt` 是连
 ## 输出（`assets/scenes/syracuse-square/`）
 
 - `layout.json`（手写）：可走区域、地点边界、位置点（api-contract 的 `spot`）、每个地点的起点（`startSpots`）、出口。平面坐标，和 `build_plaza.py` 同一套。
-- `scene.json`（生成，进仓库）：页面要的全部信息，坐标已换成 glTF（米，+Y 朝上）。`spots` 的每一项有 `pos`、`yaw`（绕 +Y 把模型的 +Z 转向朝向点）、`place`；`startSpots` 是每个地点的起点：开局在这个地点的身份站在那里，人物按 `layout.json` 里这个地点的位置点顺序站第一个空着的（`way.*` 除外）；`playerStartSpot` 就是默认地点的起点，也是第一屏。`files` 列出每个文件的大小和 sha256，`pack` 是 `entry`（进场包，能走之前下完）或 `hi`（高档在后台下）。`inputs` 记这份清单是从哪些输入生成的：`layout.json` 和各个脚本的 sha256、每张贴图的来源（扫描图带 sha256）、工具版本、脚本读的环境变量。
+- `scene.json`（生成，进仓库）：页面要的全部信息，坐标已换成 glTF（米，+Y 朝上）。`spots` 的每一项有 `pos`、`yaw`（绕 +Y 把模型的 +Z 转向朝向点）、`place`，只给指定站位用的再加 `auto: false`；`startSpots` 是每个地点的起点：开局在这个地点的身份站在那里。人物没写 `spot` 的时候，按 `layout.json` 里这个地点的位置点顺序站第一个空着的，`way.*` 和 `auto: false` 的除外；玩家站的算占着；`group: true` 的人物（群众、警吏这类）不占位置点。`playerStartSpot` 就是默认地点的起点，也是第一屏。`files` 列出每个文件的大小和 sha256，`pack` 是 `entry`（进场包，能走之前下完）或 `hi`（高档在后台下）。`inputs` 记这份清单是从哪些输入生成的：`layout.json` 和各个脚本的 sha256、每张贴图的来源（扫描图带 sha256）、工具版本、脚本读的环境变量。
 - `build/`（生成，暂不进仓库，见下）：`geo.glb`、`nav.json`、`tex/std/`、`tex/hi/`、`lm/`。
 
 地点和出口：
@@ -39,7 +39,7 @@ Python 依赖：直接依赖写在 `requirements.in`，`requirements.txt` 是连
 | 出口 `place.road-to-city`   | 位置点 `way.road-to-city`，城门外                                                                                                                                                      |
 | 出口 `place.castle`         | 位置点 `way.castle`，台阶顶上的城门                                                                                                                                                    |
 
-位置点 23 个，名字和说明在 `layout.json`。磔台上有两个：`stake`（背靠柱子、被吊起来的人）和 `scaffold`（爬上台、够得着他双脚的地方）；`old-man-house` 是老爷家门前。通往别的场景的位置点叫 `way.<地点>`，不用 `exit.`（那是世界模型 `ExitId`，幕末去处）。后端和数据在 `characters[].spot`、`player.spot` 里只用这些名字；要加新的位置点，改 `layout.json` 再重新生成。
+位置点 26 个，名字和说明在 `layout.json`。磔台上有两个：`stake`（背靠柱子、被吊起来的人）和 `scaffold`（爬上台、够得着他双脚的地方）；`old-man-house` 是老爷家门前。四个只给演出指定（`auto: false`）：`stake`、`scaffold`、`king-west`（刑场西头、群众背后，王先站的地方）、`stake-front-side`（`stake-front` 旁边，玩家站 `stake-front` 时老爷站这里）。通往别的场景的位置点叫 `way.<地点>`，不用 `exit.`（那是世界模型 `ExitId`，幕末去处）。后端和数据在 `characters[].spot`、`player.spot` 里只用这些名字；要加新的位置点，改 `layout.json` 再重新生成。
 
 ## 两档贴图（frontend-design 10.6.2，art-direction 9.3）
 

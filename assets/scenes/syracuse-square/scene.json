@@ -7,7 +7,7 @@
  "placeholderTextures": true,
  "inputs": {
   "files": {
-   "assets/scenes/syracuse-square/layout.json": "dff06697d5c5cc9bb70c763e6b5ca79056306450df2b64e68808585f7da6bb68",
+   "assets/scenes/syracuse-square/layout.json": "ca9fdd8d08efaa67d74f5d9511cb381ba2ddcbf2904713c115068790247ebb15",
    "assets/pipeline/plaza/build.sh": "5640d8d18a8817b84b1c0387c476d127996931dab6b70389b0b5ac1753151716",
    "assets/pipeline/plaza/requirements.txt": "0a234e44f52fb462c7e8694ecd82b99aca8e534ac610dde2dd749bb1e2cbe0e3",
    "assets/pipeline/plaza/placeholder_tex.py": "aabda4df4f3974b2eb65b227ed3b5ae2d606a489441d665b3f2f108c5cd1343e",
@@ -17,7 +17,7 @@
    "assets/pipeline/plaza/bake.py": "1b2267b42cf6de868bd1799754b2724e73a91817ba954cfef038c4229c1a53b3",
    "assets/pipeline/plaza/encode.py": "4f4da080164bf598dff116bc28461b1bc582bb4e80a53a0ad03a5bcac9028a1b",
    "assets/pipeline/plaza/pack_scene.mjs": "1b367b40d064324b0408192dd7dce28c7099602ae03b9bbf274862bc3bd36cf7",
-   "assets/pipeline/plaza/nav.mjs": "0b90eab71ba36d2456f6d5acc83cc2751cb8e6b0c84359306e000ea216798b6f",
+   "assets/pipeline/plaza/nav.mjs": "abe19b65f19fe1788f8a53d17697ece14ec808e7facd14a5e744701fdbb00069",
    "assets/pipeline/plaza/frame.mjs": "0a5da76ee5796a9850fb35d84b8aae3d7f826f8ecde8c8275ee131c4f658defb",
    "assets/pipeline/plaza/ktx2_decode.mjs": "3772741bf09c2898ba1a2cbe2fc64582c0b97471355be2c5272f0584991a4553"
   },
@@ -1122,7 +1122,8 @@
    ],
    "yaw": 0.944,
    "place": "place.execution-ground",
-   "poly": 85
+   "poly": 85,
+   "auto": false
   },
   "scaffold": {
    "pos": [
@@ -1132,7 +1133,8 @@
    ],
    "yaw": 2.9457,
    "place": "place.execution-ground",
-   "poly": 85
+   "poly": 85,
+   "auto": false
   },
   "stake-front": {
    "pos": [
@@ -1144,6 +1146,17 @@
    "place": "place.execution-ground",
    "poly": 96
   },
+  "stake-front-side": {
+   "pos": [
+    -5.64,
+    0,
+    -5.33
+   ],
+   "yaw": -1.8444,
+   "place": "place.execution-ground",
+   "poly": 96,
+   "auto": false
+  },
   "ground-west": {
    "pos": [
     -3.24,
@@ -1153,6 +1166,17 @@
    "yaw": 0.9425,
    "place": "place.execution-ground",
    "poly": 96
+  },
+  "king-west": {
+   "pos": [
+    -1.25,
+    0,
+    -3.38
+   ],
+   "yaw": -1.9352,
+   "place": "place.execution-ground",
+   "poly": 96,
+   "auto": false
   },
   "castle-steps": {
    "pos": [
