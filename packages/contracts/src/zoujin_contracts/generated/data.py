@@ -120,7 +120,7 @@ class ClockDeadlineEarliestArrivalCue(BaseModel):
 type BandItem = Annotated[int, Field(ge=0)]
 
 
-type Band = Annotated[list[BandItem | str], Field(min_length=2)]
+type Band = Annotated[list[BandItem | str], Field(max_length=2, min_length=2)]
 
 
 class ClockLabels(BaseModel):
@@ -167,8 +167,8 @@ class EndingWorldContrast(BaseModel):
         extra="forbid",
         validate_by_name=True,
     )
-    original: str
-    yours: str
+    original: Annotated[str, Field(min_length=1)]
+    yours: Annotated[str, Field(min_length=1)]
     beat: BeatId | None = None
 
 
@@ -178,7 +178,7 @@ class EndingCardCharacterLinesItem(BaseModel):
         validate_by_name=True,
     )
     character: CharacterId
-    line: Annotated[str, Field(max_length=40)]
+    line: Annotated[str, Field(max_length=40, min_length=1)]
     """
     ≤ 40 字
     """
@@ -186,22 +186,22 @@ class EndingCardCharacterLinesItem(BaseModel):
 
 class EndingCard(BaseModel):
     """
-    （1.1，S-049、S-051）结局卡，字数由这里保证
+    （1.1，S-049、S-051）结局卡，字数由这里保证。校验两次不过、或者排上名（rank 非空）的人物不到 2 个时不生成
     """
 
     model_config = ConfigDict(
         extra="forbid",
         validate_by_name=True,
     )
-    title: Annotated[str, Field(max_length=14)]
+    title: Annotated[str, Field(max_length=14, min_length=1)]
     """
     称号 ≤ 14 字
     """
-    subtitle: Annotated[str, Field(max_length=26)]
+    subtitle: Annotated[str, Field(max_length=26, min_length=1)]
     """
     世界的去向 ≤ 26 字
     """
-    contrast: Annotated[str, Field(max_length=48)]
+    contrast: Annotated[str, Field(max_length=48, min_length=1)]
     """
     「原作との違い」≤ 48 字
     """
@@ -333,7 +333,7 @@ class Relationship(BaseModel):
     """
     由 trust 区间映射（第 4 节的表）
     """
-    level: Annotated[int, Field(ge=1, le=5)]
+    level: Literal[1, 2, 3, 4, 5]
     """
     （1.5）同一区间的档位，接口里叫 relationLevel
     """
@@ -579,7 +579,7 @@ class CharacterEndingYoursItem(BaseModel):
         extra="forbid",
         validate_by_name=True,
     )
-    sentence: str
+    sentence: Annotated[str, Field(min_length=1)]
     cites: Annotated[list[EventId], Field(min_length=1)]
     """
     至少引用一个本局事件
@@ -604,7 +604,7 @@ class CharacterEnding(BaseModel):
     """
     玩家没碰过、世界变化也没波及到：只显示「原作どおり」，不生成句子
     """
-    original: str | None = None
+    original: Annotated[str | None, Field(min_length=1)] = None
     """
     原作里他的结局，一句（日语）
     """
@@ -853,12 +853,12 @@ class EndingWorldVariant(BaseModel):
         extra="forbid",
         validate_by_name=True,
     )
-    id: str
+    id: Annotated[str, Field(min_length=1)]
     """
     本局内唯一，如 "gen.king-abdicates"（API 的 outcomeId）
     """
-    title: str
-    summary: str
+    title: Annotated[str, Field(min_length=1)]
+    summary: Annotated[str, Field(min_length=1)]
     claims: list[EndingWorldVariantClaimsItem]
     """
     它主张的最终状态，必须和 finalVars 一致
@@ -878,7 +878,7 @@ class EndingWorld(BaseModel):
     """
     WorldModel.endings.world[].id（底线类）
     """
-    summary: str
+    summary: Annotated[str, Field(min_length=1)]
     """
     日语
     """
@@ -887,9 +887,9 @@ class EndingWorld(BaseModel):
     和原著不同的节拍，各自指回事件
     """
     finalVars: dict[VarId, Any]
-    title: str | None = None
+    title: Annotated[str | None, Field(min_length=1)] = None
     """
-    （1.1）世界结局的一句标题
+    （1.1）世界结局的一句标题。没有时（模板尾声）接口用世界模型 endings.world 里这一类的 label（api-contract 2.8 的 world.title）
     """
     variant: Annotated[EndingWorldVariant | None, Field(title="EndingWorldVariant")] = None
     """
@@ -914,8 +914,8 @@ class EndingPlayerFate(BaseModel):
         extra="forbid",
         validate_by_name=True,
     )
-    id: str
-    label: str
+    id: Annotated[str, Field(min_length=1)]
+    label: Annotated[str, Field(min_length=1)]
     causedBy: Annotated[list[EventId], Field(min_length=1)]
 
 
@@ -929,8 +929,8 @@ class EndingPlayerRelationshipsItem(BaseModel):
     """
     初值 + 未删除记忆的 trustDelta 之和，截断到 -100..100
     """
-    label: str
-    line: str | None = None
+    label: Annotated[str, Field(min_length=1)]
+    line: Annotated[str | None, Field(min_length=1)] = None
     memoryIds: list[MemoryId]
 
 
@@ -943,7 +943,7 @@ class EndingPlayerTitle(BaseModel):
         extra="forbid",
         validate_by_name=True,
     )
-    text: str
+    text: Annotated[str, Field(min_length=1)]
     causedBy: Annotated[list[EventId], Field(min_length=1)]
 
 
@@ -952,7 +952,7 @@ class EndingPlayerEpilogueItem(BaseModel):
         extra="forbid",
         validate_by_name=True,
     )
-    sentence: str
+    sentence: Annotated[str, Field(min_length=1)]
     cites: Annotated[list[EventId], Field(min_length=1)]
     """
     至少引用一个本局事件
@@ -965,7 +965,7 @@ class EndingPlayerLastScene(BaseModel):
         validate_by_name=True,
     )
     place: PlaceId
-    description: str
+    description: Annotated[str, Field(min_length=1)]
     present: list[CharacterId] | None = None
     """
     （1.1）结局演出里在场的人物（S-053）
@@ -977,7 +977,7 @@ class EndingPlayerDidForYouItem(BaseModel):
         extra="forbid",
         validate_by_name=True,
     )
-    sentence: str
+    sentence: Annotated[str, Field(min_length=1)]
     cites: Annotated[list[EventId], Field(min_length=1)]
     """
     至少引用一个本局事件
@@ -989,7 +989,7 @@ class EndingPlayerYouDidItem(BaseModel):
         extra="forbid",
         validate_by_name=True,
     )
-    sentence: str
+    sentence: Annotated[str, Field(min_length=1)]
     cites: Annotated[list[EventId], Field(min_length=1)]
     """
     至少引用一个本局事件
@@ -1052,7 +1052,7 @@ class Ending(BaseModel):
     """
     card: Annotated[EndingCard | None, Field(title="EndingCard")] = None
     """
-    （1.1，S-049、S-051）结局卡，字数由这里保证
+    （1.1，S-049、S-051）结局卡，字数由这里保证。校验两次不过、或者排上名（rank 非空）的人物不到 2 个时不生成
     """
     share: Annotated[EndingShare | None, Field(title="EndingShare")] = None
     """

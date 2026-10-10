@@ -193,6 +193,26 @@ def run(cmd: list[str], cwd: Path | None = None) -> None:
         raise SystemExit(f"失败：{' '.join(cmd[:3])} …")
 
 
+def closed_tuples(node: Json) -> Json:
+    """定长元组（`prefixItems` 加 `items: false`，例：数据的 Clock.labels.bands）改写成 draft-07 的 `items` 数组。
+
+    两个生成器都不认 `prefixItems`：json-schema-to-typescript 生成 `never[]`，datamodel-code-generator 生成不限长的
+    联合数组。改写后 TS 是 `[number, string]`，Python 是定长 2 的数组。只改喂给生成器的 bundle，Schema 不动。
+    """
+    if isinstance(node, list):
+        return [closed_tuples(v) for v in node]
+    if not isinstance(node, dict):
+        return node
+    out = map_schema(node, closed_tuples)
+    if "prefixItems" in out:
+        items = out.pop("prefixItems")
+        assert isinstance(items, list)
+        if out.get("items") is not False or out.get("minItems") != len(items):
+            raise SystemExit("只处理定长元组：prefixItems 要配 items: false，minItems 等于元素个数")
+        out.update(items=items, additionalItems=False, maxItems=len(items))
+    return out
+
+
 SHAPE_KEYWORDS = {"type", "$ref", "enum", "const", "properties", "items", "oneOf", "anyOf", "allOf", "tsType"}
 
 
@@ -220,7 +240,7 @@ def gen_ts(bundles: dict[str, dict[str, Json]], tmp: Path) -> None:
     TS_OUT.mkdir(parents=True, exist_ok=True)
     for name, b in bundles.items():
         src = tmp / f"{name}.ts.json"
-        src.write_text(json.dumps(ts_unknown_for_any(b), ensure_ascii=False), encoding="utf-8")
+        src.write_text(json.dumps(ts_unknown_for_any(closed_tuples(b)), ensure_ascii=False), encoding="utf-8")
         header = TS_HEADER
         if name == "api":
             header += '\nimport type * as Data from "./data";\n'
@@ -294,7 +314,8 @@ def gen_py(docs: dict[str, dict[str, Json]], tmp: Path) -> None:
         else:
             b = bundle(docs, "api/", "ApiBundle", py_external(docs, py_names(PY_OUT / "data.py")))
         src = tmp / f"{name}.py.json"
-        src.write_text(json.dumps(name_inline_objects(with_discriminators(b)), ensure_ascii=False), encoding="utf-8")
+        b = name_inline_objects(with_discriminators(b))
+        src.write_text(json.dumps(closed_tuples(b), ensure_ascii=False), encoding="utf-8")
         out = PY_OUT / f"{name}.py"
         run(
             [

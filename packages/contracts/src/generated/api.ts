@@ -441,7 +441,7 @@ export interface CharacterPresence {
   /**
    * （1.5）同一区间的档位，接口里叫 relationLevel
    */
-  relationLevel?: number;
+  relationLevel?: 1 | 2 | 3 | 4 | 5;
 }
 /**
  * 场景里可「調べる」的东西（2.3，estimatedMinutes 为 0）和场景出口（3.8）
@@ -685,7 +685,7 @@ export interface CharacterPresencePatch {
   /**
    * （1.5）同一区间的档位，接口里叫 relationLevel
    */
-  relationLevel?: number;
+  relationLevel?: 1 | 2 | 3 | 4 | 5;
 }
 /**
  * 连接后第一条；服务端补发 lastSeq 之后的 commit
@@ -920,7 +920,7 @@ export interface MemoryChange {
   /**
    * （1.5）同一区间的档位，接口里叫 relationLevel
    */
-  relationLevel: number;
+  relationLevel: 1 | 2 | 3 | 4 | 5;
 }
 /**
  * commit.promises[]（3.4）
@@ -1385,7 +1385,7 @@ export interface MemoryBookCharacter {
   /**
    * （1.5）同一区间的档位，接口里叫 relationLevel
    */
-  relationLevel: number;
+  relationLevel: 1 | 2 | 3 | 4 | 5;
   promises: PromiseView[];
   didForYou: {
     eventId: Data.EventId;
@@ -1445,7 +1445,7 @@ export interface MemoryDeleteResponse {
   /**
    * （1.5）同一区间的档位，接口里叫 relationLevel
    */
-  relationLevel: number;
+  relationLevel: 1 | 2 | 3 | 4 | 5;
   /**
    * 作废了约定时给它的 ID
    */
@@ -1832,7 +1832,7 @@ export interface TelemetryPerfSample {
   t?: Data.StoryTime;
   props: {
     /**
-     * 10 秒的帧时间直方图，固定 9 格，每格是帧数（data-design 9.3）。第 i 格数「上一格上界 < 帧时间 ≤ 这一格上界」的帧，上界依次是 8.5、12、17、20、25、34、50、100 ms，最后一格是 > 100 ms。格子固定，不同版本前端发来的直方图才能相加；要换边界就另起一个字段
+     * 10 秒的帧时间直方图，固定 9 格，每格是帧数（data-design 9.3）。第 i 格数「上一格上界 < 帧时间 ≤ 这一格上界」的帧，上界依次是 8.5、12、17、20、26、34、51、101 ms，最后一格是 > 101 ms。边界都放在刷新间隔整数倍稍上，同一种掉帧不会拆到两格。格子固定，不同版本前端发来的直方图才能相加；要换边界就另起一个字段
      *
      * @minItems 9
      * @maxItems 9
@@ -2026,9 +2026,9 @@ export interface TelemetryWhyOpened {
   t?: Data.StoryTime;
   props: {
     /**
-     * forecast = 地图顶部「間に合わない」那一行的「なぜ」（api-contract 2.6 的 target=forecast，data-design 9.3）
+     * 和 api-contract 2.6 /why 的 target 一一对应（data-design 9.3）：reveal = 关键时刻卡上的「なぜ」，forecast = 地图顶部「間に合わない」那一行的「なぜ」
      */
-    target: "event" | "beat" | "forecast";
+    target: "event" | "beat" | "reveal" | "forecast";
     fromKeyMoment: boolean;
   };
 }

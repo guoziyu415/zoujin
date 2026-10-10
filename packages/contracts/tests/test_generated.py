@@ -38,6 +38,12 @@ def test_data_ts_index_signatures_only_for_records(contracts: Contracts) -> None
     assert len(re.findall(r"\[k: string\]", text)) == records
 
 
+def test_ts_has_no_never() -> None:
+    """生成器不认的写法会生成 `never`（例：`prefixItems` 的元组，codegen 里改写成了 `items` 数组）。"""
+    for name in ("api.ts", "data.ts"):
+        assert not re.search(r"\bnever\b", (TS / name).read_text(encoding="utf-8")), name
+
+
 def test_binary_constants_consistent() -> None:
     spec = json.loads((PKG / "schemas" / "api" / "binary.json").read_text(encoding="utf-8"))
     up = spec["types"]["micUp"]

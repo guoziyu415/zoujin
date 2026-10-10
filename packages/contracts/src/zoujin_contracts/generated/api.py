@@ -278,7 +278,7 @@ class EndingCardViewCharacterLinesItem(BaseModel):
         arbitrary_types_allowed=True,
     )
     character: CharacterId
-    line: Annotated[str, Field(max_length=40)]
+    line: Annotated[str, Field(max_length=40, min_length=1)]
     """
     ≤ 40 字
     """
@@ -293,11 +293,11 @@ class EndingCardView(BaseModel):
         extra="forbid",
         validate_by_name=True,
     )
-    title: Annotated[str, Field(max_length=14)]
+    title: Annotated[str, Field(max_length=14, min_length=1)]
     """
     称号 ≤ 14 字
     """
-    subtitle: Annotated[str, Field(max_length=26)]
+    subtitle: Annotated[str, Field(max_length=26, min_length=1)]
     """
     世界的去向 ≤ 26 字
     """
@@ -305,7 +305,7 @@ class EndingCardView(BaseModel):
     """
     影响最深的 2〜3 人（卡片按最多 3 行排）
     """
-    contrast: Annotated[str, Field(max_length=48)]
+    contrast: Annotated[str, Field(max_length=48, min_length=1)]
     """
     「原作との違い」≤ 48 字
     """
@@ -348,7 +348,7 @@ class EndingWorldViewEpilogueItem(BaseModel):
         validate_by_name=True,
         arbitrary_types_allowed=True,
     )
-    sentence: str
+    sentence: Annotated[str, Field(min_length=1)]
     cites: Annotated[list[EventId], Field(min_length=1)]
     """
     至少引用一个本局事件
@@ -365,8 +365,8 @@ class EndingWorldViewContrast(BaseModel):
         validate_by_name=True,
         arbitrary_types_allowed=True,
     )
-    original: str
-    yours: str
+    original: Annotated[str, Field(min_length=1)]
+    yours: Annotated[str, Field(min_length=1)]
     beat: BeatId | None = None
 
 
@@ -387,7 +387,7 @@ class EndingWorldView(BaseModel):
     """
     true = 5 类底线结局之一（没有 variant）
     """
-    title: str
+    title: Annotated[str, Field(min_length=1)]
     """
     variant?.title ?? title
     """
@@ -407,7 +407,7 @@ class EndingYouViewDidForYouItem(BaseModel):
         validate_by_name=True,
         arbitrary_types_allowed=True,
     )
-    sentence: str
+    sentence: Annotated[str, Field(min_length=1)]
     cites: Annotated[list[EventId], Field(min_length=1)]
     """
     至少引用一个本局事件
@@ -420,7 +420,7 @@ class EndingYouViewYouDidItem(BaseModel):
         validate_by_name=True,
         arbitrary_types_allowed=True,
     )
-    sentence: str
+    sentence: Annotated[str, Field(min_length=1)]
     cites: Annotated[list[EventId], Field(min_length=1)]
     """
     至少引用一个本局事件
@@ -436,8 +436,8 @@ class EndingYouView(BaseModel):
         extra="forbid",
         validate_by_name=True,
     )
-    title: str
-    fate: str
+    title: Annotated[str, Field(min_length=1)]
+    fate: Annotated[str, Field(min_length=1)]
     didForYou: list[EndingYouViewDidForYouItem]
     """
     （1.1，D-012）人物为你做的事
@@ -778,7 +778,7 @@ class MemoryChange(BaseModel):
     """
     由 trust 区间映射（第 4 节的表）
     """
-    relationLevel: Annotated[int, Field(ge=1, le=5)]
+    relationLevel: Literal[1, 2, 3, 4, 5]
     """
     （1.5）同一区间的档位，接口里叫 relationLevel
     """
@@ -797,7 +797,7 @@ class MemoryDeleteResponse(BaseModel):
     """
     由 trust 区间映射（第 4 节的表）
     """
-    relationLevel: Annotated[int, Field(ge=1, le=5)]
+    relationLevel: Literal[1, 2, 3, 4, 5]
     """
     （1.5）同一区间的档位，接口里叫 relationLevel
     """
@@ -1927,7 +1927,7 @@ class TelemetryPerfSampleProps(BaseModel):
     )
     frameTimeHistogram: Annotated[list[FrameTimeHistogramItem], Field(max_length=9, min_length=9)]
     """
-    10 秒的帧时间直方图，固定 9 格，每格是帧数（data-design 9.3）。第 i 格数「上一格上界 < 帧时间 ≤ 这一格上界」的帧，上界依次是 8.5、12、17、20、25、34、50、100 ms，最后一格是 > 100 ms。格子固定，不同版本前端发来的直方图才能相加；要换边界就另起一个字段
+    10 秒的帧时间直方图，固定 9 格，每格是帧数（data-design 9.3）。第 i 格数「上一格上界 < 帧时间 ≤ 这一格上界」的帧，上界依次是 8.5、12、17、20、26、34、51、101 ms，最后一格是 > 101 ms。边界都放在刷新间隔整数倍稍上，同一种掉帧不会拆到两格。格子固定，不同版本前端发来的直方图才能相加；要换边界就另起一个字段
     """
     longTasks: Annotated[int, Field(ge=0)]
     jsHeapMb: Annotated[float | None, Field(ge=0.0)] = None
@@ -2273,9 +2273,9 @@ class TelemetryWhyOpenedProps(BaseModel):
         extra="forbid",
         validate_by_name=True,
     )
-    target: Literal["event", "beat", "forecast"]
+    target: Literal["event", "beat", "reveal", "forecast"]
     """
-    forecast = 地图顶部「間に合わない」那一行的「なぜ」（api-contract 2.6 的 target=forecast，data-design 9.3）
+    和 api-contract 2.6 /why 的 target 一一对应（data-design 9.3）：reveal = 关键时刻卡上的「なぜ」，forecast = 地图顶部「間に合わない」那一行的「なぜ」
     """
     fromKeyMoment: bool
 
@@ -2830,7 +2830,7 @@ class CharacterPresence(BaseModel):
     """
     由 trust 区间映射（第 4 节的表）
     """
-    relationLevel: Annotated[int | None, Field(ge=1, le=5)] = None
+    relationLevel: Literal[1, 2, 3, 4, 5] | None = None
     """
     （1.5）同一区间的档位，接口里叫 relationLevel
     """
@@ -2855,7 +2855,7 @@ class CharacterPresencePatch(BaseModel):
     """
     由 trust 区间映射（第 4 节的表）
     """
-    relationLevel: Annotated[int | None, Field(ge=1, le=5)] = None
+    relationLevel: Literal[1, 2, 3, 4, 5] | None = None
     """
     （1.5）同一区间的档位，接口里叫 relationLevel
     """
@@ -3109,7 +3109,7 @@ class MemoryBookCharacter(BaseModel):
     """
     由 trust 区间映射（第 4 节的表）
     """
-    relationLevel: Annotated[int, Field(ge=1, le=5)]
+    relationLevel: Literal[1, 2, 3, 4, 5]
     """
     （1.5）同一区间的档位，接口里叫 relationLevel
     """

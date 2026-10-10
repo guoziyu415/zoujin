@@ -32,6 +32,16 @@
         "target": "forecast",
         "fromKeyMoment": false
       }
+    },
+    {
+      "name": "why_opened",
+      "playthroughId": "pt_01K7AZ00000000000000000001",
+      "clientTs": "2026-10-10T07:03:05Z",
+      "t": 1310,
+      "props": {
+        "target": "reveal",
+        "fromKeyMoment": true
+      }
     }
   ]
 }

@@ -850,7 +850,7 @@ export interface Clock {
     /**
      * 一天内的时段起点（分钟）和叫法，如 [1140,"日没"]；从 0 开始严格递增
      */
-    bands: never[][];
+    bands: [number, string][];
     /**
      * （1.1）模板，含 {day} 和 {band}
      */
@@ -898,7 +898,7 @@ export interface Ending {
       [k: string]: unknown | undefined;
     };
     /**
-     * （1.1）世界结局的一句标题
+     * （1.1）世界结局的一句标题。没有时（模板尾声）接口用世界模型 endings.world 里这一类的 label（api-contract 2.8 的 world.title）
      */
     title?: string;
     /**
@@ -1022,7 +1022,7 @@ export interface Ending {
    */
   characters?: CharacterEnding[];
   /**
-   * （1.1，S-049、S-051）结局卡，字数由这里保证
+   * （1.1，S-049、S-051）结局卡，字数由这里保证。校验两次不过、或者排上名（rank 非空）的人物不到 2 个时不生成
    */
   card?: {
     /**
@@ -1346,7 +1346,7 @@ export interface Relationship {
   /**
    * （1.5）同一区间的档位，接口里叫 relationLevel
    */
-  level: number;
+  level: 1 | 2 | 3 | 4 | 5;
 }
 /**
  * 玩家身份（2.7）

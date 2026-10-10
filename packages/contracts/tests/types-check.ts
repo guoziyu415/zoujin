@@ -44,3 +44,9 @@ export const typo: Api.ClientMessage = {
   type: "nearby",
   character: "char.melos",
 };
+
+// 定长元组（prefixItems）生成 [number, string]，不是 never[]
+export const bands: Data.Clock["labels"]["bands"] = [
+  [0, "未明"],
+  [1140, "日没"],
+];
