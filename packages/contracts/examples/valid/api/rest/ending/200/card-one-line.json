@@ -1,9 +1,9 @@
 {
   "endingId": "end_01K7AZ00000000000000000001",
   "world": {
-    "outcomeId": "canon-reunion",
+    "outcomeId": "in-time-king-unchanged",
     "baseline": true,
-    "title": "メロスは、間に合った。",
+    "title": "間に合ったが、王は変わらなかった",
     "epilogue": [
       {
         "sentence": "メロスは日没の直前に刑場へ駆け込んだ。",
@@ -56,11 +56,11 @@
     "subtitle": "王城の客人として、市に残った",
     "characterLines": [
       {
-        "character": "char.melos",
-        "line": "おまえのおかげで、走り抜けた。"
+        "character": "char.selinuntius",
+        "line": "あの夜、隣にいてくれた。"
       }
     ],
     "contrast": "原作では王は改心した。あなたの世界では――",
-    "fallbackImageUrl": "/assets/endings/canon-reunion.2b7d.webp"
+    "fallbackImageUrl": "/assets/endings/in-time-king-unchanged.2b7d.webp"
   }
 }

@@ -1,0 +1,69 @@
+{
+  "endingId": "end_01K7AZ00000000000000000002",
+  "world": {
+    "outcomeId": "canon-reunion",
+    "baseline": true,
+    "title": "原作どおりの大団円",
+    "epilogue": [
+      {
+        "sentence": "メロスは日没の直前に刑場へ駆け込み、王は改心した。",
+        "cites": ["ev_01K7AZ00000000000000000190"]
+      }
+    ]
+  },
+  "you": {
+    "title": "黙って見届けた旅人",
+    "fate": "市の片隅で、二人の抱擁を見た",
+    "didForYou": [],
+    "youDid": []
+  },
+  "characters": [
+    {
+      "character": "char.melos",
+      "rank": null,
+      "unchanged": true
+    },
+    {
+      "character": "char.king",
+      "rank": null,
+      "unchanged": true
+    },
+    {
+      "character": "char.selinuntius",
+      "rank": null,
+      "unchanged": true
+    },
+    {
+      "character": "char.sister",
+      "rank": null,
+      "unchanged": true
+    },
+    {
+      "character": "char.groom",
+      "rank": null,
+      "unchanged": true
+    },
+    {
+      "character": "char.philostratus",
+      "rank": null,
+      "unchanged": true
+    },
+    {
+      "character": "char.old-man",
+      "rank": null,
+      "unchanged": true
+    }
+  ],
+  "card": {
+    "title": "黙って見届けた旅人",
+    "subtitle": "市の片隅で、二人の抱擁を見た",
+    "characterLines": [
+      {
+        "character": "char.melos",
+        "line": "間に合った。友は、私を信じて待っていた。"
+      }
+    ],
+    "contrast": "原作どおりの結末。あなたの世界でも、王は改心した。",
+    "fallbackImageUrl": "/assets/endings/canon-reunion.2b7d.webp"
+  }
+}
