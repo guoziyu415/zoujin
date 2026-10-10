@@ -435,6 +435,13 @@ def _occur_draft(sim: Sim, s: SimState, b: str, t: int) -> Draft:
         else:
             effects.append({"op": "beat", "beat": b, "to": "happened"})
             effects += copy.deepcopy(list(x["outcomes"]))
+    if s["vars"].get("var.player.location") == x["place"]:  # 玩家在场：public 事实玩家也知道了（契约 2.1、2.3，1.7）
+        known = s["knowledge"].get("player", [])
+        effects += [
+            {"op": "learn", "character": "player", "fact": f["id"]}
+            for f in sim.world["facts"]
+            if f["trueFrom"] == b and f["visibility"] == "public" and f["id"] not in known
+        ]
     return {
         "event": _system_event("beat", t, x["place"], effects),
         "beat": b,
@@ -584,7 +591,7 @@ def check_effects(world: World, state: SimState, effects: Iterable[Effect], orig
             if "to" not in e:
                 bad(i, "bad-op", "hold 要写 to（null = 被拿走、用掉）")
         elif op == "learn":
-            if e.get("character") not in chars:
+            if not who(e.get("character")):  # 1.7：玩家也能学（契约 2.1）
                 bad(i, "unknown-id", f"learn 的人物不存在：{e.get('character')}")
             if e.get("fact") not in facts and e.get("fact") not in run_facts:
                 bad(i, "unknown-id", f"learn 的事实不存在：{e.get('fact')}")

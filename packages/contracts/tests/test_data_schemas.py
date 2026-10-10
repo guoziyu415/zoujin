@@ -291,6 +291,7 @@ INVALID_BECAUSE: dict[str, tuple[str, str]] = {
     "Cite/quote-81.json": ("maxLength", "quote"),
     "Effect/beat-to-skipped.json": ("enum", "to"),
     "Effect/op-teleport.json": ("const", "op"),
+    "Effect/learn-nobody.json": ("anyOf", "character"),
     "Effect/relocate-spot-uppercase.json": ("pattern", "spot"),
     "Ending/card-title-empty.json": ("minLength", "card/title"),
     "Ending/character-lines-4.json": ("maxItems", "card/characterLines"),

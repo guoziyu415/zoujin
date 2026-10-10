@@ -59,7 +59,7 @@ export type Effect =
     }
   | {
       op: "learn";
-      character: CharacterId;
+      character: "player" | CharacterId;
       fact: FactId | RunFactId;
     }
   | {

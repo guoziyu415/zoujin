@@ -51,11 +51,11 @@ events, s = opening(world, "role.traveler", scenarios.get(sc_id), until, place=N
 from zoujin_worldsim import knows, travel_minutes
 
 knows(world, s, "char.selinuntius", "fact.promise")  # R4：beat.06 以后才知道
-knows(world, s, "player", "fact.city-silent")  # 玩家 = 身份的 initialKnowledge
+knows(world, s, "player", "fact.city-silent")  # 玩家 = 身份的 initialKnowledge + 这一局学到的
 travel_minutes(world, "place.road-to-city", "place.syracuse-square")  # R3：60；走不到 None
 ```
 
-- `knows` 按契约 2.1：`Character.knows` 里 `since` 已发生的（或 `pre`）、这一局 `learn` 学到的、自己的即兴设定；`trueFrom` 这一局没发生的事实谁都不算知道（2.3）。
+- `knows` 按契约 2.1：`Character.knows` 里 `since` 已发生的（或 `pre`）、这一局 `learn` 学到的、自己的即兴设定；`trueFrom` 这一局没发生的事实谁都不算知道（2.3）。（1.7）玩家 = 身份的 `initialKnowledge` + `learn` 写 `player` 学到的：人物告诉玩家由叙事者提取；节拍发生时玩家在节拍的地点，`settle` 在那个系统事件里给 `public` 事实写 `learn`。
 - `travel_minutes` 按 `places.adjacent` 的步行分钟取最短路，同一场景里的两个地点之间按 `pacing.sceneWalkMinutes`（0 分，S-038）。只量玩家的移动和排程以外的 `relocate`，按排程走的人物看排程（backend-design 2.4）。过河（`crossing`）和归途的走法 M3 再加：归途四个地点同一场景，现在互相 0 分。
 
 ## 改规则

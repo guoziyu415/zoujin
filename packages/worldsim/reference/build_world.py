@@ -192,8 +192,8 @@ def main():
                 if e["character"] not in chars or e["place"] not in places:
                     err(f"{where}: relocate 引用不存在：{e}")
             elif op == "learn":
-                if e["character"] not in chars or e["fact"] not in facts:
-                    err(f"{where}: learn 引用不存在：{e}")
+                if (e["character"] != "player" and e["character"] not in chars) or e["fact"] not in facts:
+                    err(f"{where}: learn 引用不存在：{e}")  # 1.7：玩家也能学（契约 2.1）
             elif op == "beat":
                 if e["beat"] not in beats:
                     err(f"{where}: beat 引用不存在：{e}")

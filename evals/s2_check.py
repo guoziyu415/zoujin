@@ -24,7 +24,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 DATA = HERE.parent
-from zoujin_worldsim import OCCURRED, Sim, travel_minutes  # 共享规则（W-1 的包）
+from zoujin_worldsim import OCCURRED, Sim, opening, travel_minutes  # 共享规则（W-1 的包）
 sys.path.insert(0, str(DATA / "packages" / "worldsim" / "reference"))
 from check_evals import Checker  # noqa: E402  效果的格式检查沿用评测用例自检
 
@@ -104,7 +104,10 @@ class S2:
             return None, None, None, f"{m[2]} 在 {m[1]} 里没有发生"
         if res["t"] < role["startT"]:
             return None, None, None, f"检查点 t={res['t']} 早于身份开局 {role['startT']}"
-        learned, granted = {}, set()
+        # 玩家在场时发生的节拍的 public 事实（契约 2.1，1.7）：和 B-2 同一份规则，从共享库的 opening() 拿
+        until = ("beat", m[2]) if m[2] else ("t", int(m[3]))
+        seen = opening(self.w, role["id"], self.scen[m[1]], until, place=setup.get("place"))[1]["knowledge"]
+        learned, granted = {"player": set(seen.get("player", []))}, set()
         for ev in setup.get("events", []):
             for e in ev.get("effects", []):
                 if e.get("op") == "learn":
@@ -127,10 +130,10 @@ class S2:
     def knows(self, actor, fact, res, learned, role):
         if not self.fact_true(fact, res):
             return False
-        if actor == "player":
-            return fact in role.get("initialKnowledge", [])
         if fact in learned.get(actor, set()):
             return True
+        if actor == "player":
+            return fact in role.get("initialKnowledge", [])
         return any(k["fact"] == fact and self.occurred(k["since"], res) for k in self.chars[actor]["knows"])
 
     def dist(self, a, b):

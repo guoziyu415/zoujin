@@ -1,8 +1,8 @@
 # 数据契约（contracts.md）v1.7
 
-负责人：数据工程 · 状态：**v1.7**（1.5 在 M2-0 冻结（C-2），以后只做加法；1.6 是冻结后第一个加法版本）。v1.0 是基线（S-033），v1.1 是 PM 接受的新基线（S-061〜S-063），已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改。1.1 只做加法：加进 D-012〜D-015 的落地（S-029〜S-032：互助、约定、打算、即兴设定、导演事件、生成的结局、角色结局）、S-034〜S-053 里和数据有关的决定、后端设计 v1.0 第 12 节的 13 条提案和 UX 设计 v1.0 第 18.3 节的要求。1.2 也只做加法：幕末说出的打算（S-031 ③）、作废和出戏的一轮怎么落数据（S-054、S-057）。1.3 加随身的东西（UX 5.1，C-14）。1.4 按 UX 对世界模型的校对和 S-064 加：有条件的台词和设计台词、互助的效果、节拍的变体、过场里的二选一、第四幕按钮上「对梅洛斯的影响」。1.5 给过场的选项也加上「对梅洛斯的影响」和选后的一句（UX 校对 7.3、ux-design 4.5）。1.6 把两条只写在说明文字里的取值条件写成数据（`StateVar.valueRequires`，C-16），结局卡改成 1〜3 人、每一局都出（C-17）。1.7 加位置点（谁站在布局的哪个点）、成群的人物和幕末去处的落地（M2 切片，C-18），以及打算成行时的落点（C-19）、固定演出（S-080 ④）和可调查物。跨角色决定见 `pm/decisions.md`。还在等别人定的事列在第 7 节。
+负责人：数据工程 · 状态：**v1.7**（1.5 在 M2-0 冻结（C-2），以后只做加法；1.6 是冻结后第一个加法版本）。v1.0 是基线（S-033），v1.1 是 PM 接受的新基线（S-061〜S-063），已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改。1.1 只做加法：加进 D-012〜D-015 的落地（S-029〜S-032：互助、约定、打算、即兴设定、导演事件、生成的结局、角色结局）、S-034〜S-053 里和数据有关的决定、后端设计 v1.0 第 12 节的 13 条提案和 UX 设计 v1.0 第 18.3 节的要求。1.2 也只做加法：幕末说出的打算（S-031 ③）、作废和出戏的一轮怎么落数据（S-054、S-057）。1.3 加随身的东西（UX 5.1，C-14）。1.4 按 UX 对世界模型的校对和 S-064 加：有条件的台词和设计台词、互助的效果、节拍的变体、过场里的二选一、第四幕按钮上「对梅洛斯的影响」。1.5 给过场的选项也加上「对梅洛斯的影响」和选后的一句（UX 校对 7.3、ux-design 4.5）。1.6 把两条只写在说明文字里的取值条件写成数据（`StateVar.valueRequires`，C-16），结局卡改成 1〜3 人、每一局都出（C-17）。1.7 加位置点（谁站在布局的哪个点）、成群的人物和幕末去处的落地（M2 切片，C-18），以及打算成行时的落点（C-19）、固定演出（S-080 ④）、可调查物和玩家知道什么。跨角色决定见 `pm/decisions.md`。还在等别人定的事列在第 7 节。
 UX、前端请看第 2.8 节（幕）、第 4 节（记忆）、第 5 节（结局）。1.1 新增或写清的地方都标了「（1.1）」，文末变更记录有汇总。
-最近更新：2026-10-10（1.7：relocate 和 `ActExit` 的 `spot`、`WorldState.spots`、`Character.group`、`ActExit.arrival`、`ActExit.sub`、`Affordance.playerSpot`（C-18）、`Act.plan`（C-19）、`setPieces`（S-080 ④）、`objects`；1.6：`StateVar.valueRequires`（C-16）、结局卡 1〜3 人（C-17））
+最近更新：2026-10-10（1.7：relocate 和 `ActExit` 的 `spot`、`WorldState.spots`、`Character.group`、`ActExit.arrival`、`ActExit.sub`、`Affordance.playerSpot`（C-18）、`Act.plan`（C-19）、`setPieces`（S-080 ④）、`objects`、玩家学到的事实（`learn` 写 `player`）；1.6：`StateVar.valueRequires`（C-16）、结局卡 1〜3 人（C-17））
 
 四个契约：**WorldModel**（世界模型，静态、按书版本化）、**Event**（运行时事件，只追加）、**Memory**（角色对玩家的记忆，可删除）、**Ending**（结局）。另有两个支撑结构：**Playthrough**（一局游戏）和 **WorldState**（由事件推出的当前状态）。
 
@@ -178,6 +178,8 @@ type PromiseTemplate = {           // （1.1）
 ```
 
 **防剧透规则（叙事者、局势说明和评测共用）：** 在故事时间 `t`，角色 C 能提起的事实 = `C.knows` 里 `since` 已发生的那些 + 运行时通过事件 `learn` 学到的那些（1.1：包括别人的即兴设定）+ C 自己的即兴设定（3 节 `improv`）。别的一律当「不知道」。
+
+**（1.7）玩家知道什么（R4 的行为者是玩家时）：** 玩家能提起的事实 = 身份的 `initialKnowledge` + 这一局学到的（`learn` 的 `character` 写 `"player"`）。学到有两条路：① 人物告诉玩家：叙事者从这一轮提取 `learn`，R4 查说的人知不知道；② 亲眼看到：节拍发生（`happened` / `altered`）时玩家在节拍的地点（`var.player.location` = `Beat.place`，按这个事件之前的状态），共享规则库在这个节拍的系统事件里追加 `learn`，事实 = `trueFrom` 是这个节拍、`visibility: "public"`、玩家还不知道的那些（2.3：public 在场的人都会知道）。`trueFrom` 这一局没发生的事实，玩家也不算知道（2.3）。人物不按在场自动学：`Character.knows` 已按原作的在场写好，原作以外的在场靠 `learn`（例：群众要玩家传话才知道约定，S-077）。人物和玩家都由共享规则库的 `zoujin_worldsim.knows(world, state, who, fact)` 判。
 
 **互助、约定、打算怎么用（1.1，S-029、S-030、S-048）：**
 
@@ -663,7 +665,7 @@ type Effect =
                                    // （1.6 写清，W-1 评审）本局对一个还没结果的节拍只有一种改动，玩家先后做的几件事这样合：
                                    //   delayed、hastened 按带符号的分钟相加（推迟为正），净值 0 = 没有改动；prevented 顶掉之前的推迟、提前、改写；
                                    //   别的组合（已登记 prevented 之后再改、altered 和推迟或提前混用、第二次 altered）自检不过（共享规则报 bad-state）
-  | { op: "learn"; character: string; fact: string }   // 某角色知道了某事实；（1.1）fact 也可以是 rf_…（别人的即兴设定）
+  | { op: "learn"; character: string; fact: string }   // 某角色知道了某事实；（1.1）fact 也可以是 rf_…（别人的即兴设定）；（1.7）character 可以是 "player"（2.1）
   | { op: "relocate"; character: string; place: string; spot?: string }  // （1.7）spot = 站在这个地点的哪个位置点，见 3.1 的站位规则
   | { op: "promise"; promiseId?: string; change: "made" | "kept" | "broken" | "voided";  // （1.1）约定，见 3.1 的 Promise；
                                    // （1.6 写清）promiseId 在提交的事件里必带；世界模型的效果模板（2.10）和候选事件不写，提交时由叙事者分配
@@ -759,7 +761,7 @@ type WorldState = {
   vars: Record<string, unknown>;   // 所有 stateVar 的当前值（含 var.act.current、var.player.*）
   beats: Record<string, "pending" | "happened" | "prevented" | "delayed" | "hastened" | "altered">;
   schedule: Record<string, number>;   // 还没结果的节拍的本局排定时间（2.5.1）
-  knowledge: Record<string, string[]>; // 角色 → 运行时新学到的 fact
+  knowledge: Record<string, string[]>; // 角色（1.7：含 "player"）→ 运行时新学到的 fact
   locations: Record<string, string>;   // 角色 → 地点
   spots?: Record<string, string>;      // （1.7）角色 → 指定的位置点：relocate 写了 spot 才有，换到别的地点时去掉
   promises?: Record<string, Promise>;  // （1.1）promiseId → 约定
@@ -1044,5 +1046,6 @@ type CharacterEnding = {           // （1.1）
 - **v1.7（2026-10-10）**：只做加法（C-18）。M2 切片要的位置点和落地。
   - WorldModel：`Character.group`；`ActExit.spot`、`ActExit.arrival`（2.8、2.8.1 第 4 步）；`ActExit.sub`（幕末页副题的后半，以前写在 UX 的文案表里、前端按去处 ID 对）；`Affordance.playerSpot`（做完以后玩家站哪，后端 10-10 提）；`Act.plan`（打算成行时的落点，2.8.1 第 2 步，C-19）；`WorldModel.setPieces`（固定演出：节拍或玩家的动作上写好的地の文和预录句，2.11，S-080 ④，PM 10-10 定放进切片世界模型）；`WorldModel.objects`（可调查物，2.12，后端 10-10 提：服务端按它出快照的 interactables）。
   - Event：`relocate` 效果的 `spot`。WorldState：`spots`。站位规则和校验写在 3.1。
+  - 玩家知道什么（2.1，PM、后端 10-10 评审 #33 时提）：`learn` 的 `character` 可以是 `"player"`；人物告诉玩家时叙事者提取，玩家在节拍的地点时共享规则库给 public 事实写进节拍的系统事件；R4 对玩家 = 身份的 `initialKnowledge` + 学到的。
   - 第 7 节新增 C-18、C-19（已定：打算成行时的落点用 `Act.plan`）。
   - 『走れメロス』（draft.3）：群众、警吏、山贼、一团旅人 `group: true`；beat.s1 セリヌンティウス站 `stake`、王站 `king-west`，beat.24 梅洛斯站 `scaffold`（布局见前端 #22）。同一个 PR 里的世界模型修正：群众、少女第一幕在广场的家里（`absent`），beat.s1 到刑场；beat.04（捕缚）挪到王城前庭（`place.execution-ground`）；送老爺回家记 `var.player.walkedOldManHome`（说话兑现，或第一幕的情境动作「家まで送る」`aff.walk-old-man-home`，30 分，UX 10-10）。

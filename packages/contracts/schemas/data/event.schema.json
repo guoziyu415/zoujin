@@ -274,14 +274,21 @@
           "additionalProperties": false
         },
         {
-          "description": "某角色知道了某事实；（1.1）fact 也可以是 rf_…（别人的即兴设定）",
+          "description": "某角色知道了某事实；（1.1）fact 也可以是 rf_…（别人的即兴设定）；（1.7）character 可以是 player（契约 2.1：人物告诉玩家时叙事者提取，玩家在节拍的地点时由共享规则写进节拍的系统事件）",
           "type": "object",
           "properties": {
             "op": {
               "const": "learn"
             },
             "character": {
-              "$ref": "common.schema.json#/$defs/CharacterId"
+              "anyOf": [
+                {
+                  "const": "player"
+                },
+                {
+                  "$ref": "common.schema.json#/$defs/CharacterId"
+                }
+              ]
             },
             "fact": {
               "anyOf": [
