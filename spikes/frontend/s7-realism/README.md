@@ -1,5 +1,7 @@
 # S7 · 写实广场（D-016 的技术样板）
 
+〔场景流水线已整理进仓库 `assets/pipeline/plaza/`（F-2），以那里为准；这里保留 S7 当时的原样。〕
+
 技术验证，不算正式代码。回答 PM 转来的 D-016 问题：手机浏览器上写实能做到什么样，每种手段花多少帧时间、下载和首次进入时间，人物预算够不够。结论和三档方案写在 `frontend/frontend-design.md` 10.6。
 
 - 测试页（claude.ai 私有页面）：https://claude.ai/artifact/4kuxSACRpsKBZN7NjSiuYv （只有 zg 能打开）

@@ -8,11 +8,14 @@
   },
   "scene": {
     "entryPackMb": 8,
+    "geoNavMb": 1.5,
+    "envTexturesMb": 5,
     "envTotalMb": 10,
     "envTotalHighMb": 19,
     "firstEntryTotalMb": 10,
     "maxDrawCalls": 120,
-    "textureVramMb": 150
+    "textureVramMb": 150,
+    "tierMeanColourMaxDiff": 3
   },
   "character": {
     "talkStd": {

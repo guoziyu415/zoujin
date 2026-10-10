@@ -1,0 +1,4 @@
+# Python for the Blender scripts (build.sh: BPY_PYTHON). Versions the plaza was built and checked with.
+bpy==5.2.2
+numpy==2.5.3
+pillow==12.3.0

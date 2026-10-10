@@ -25,3 +25,7 @@ evals/holdout/
 
 # 系统文件
 .DS_Store
+
+# 场景生成物（F-2）：项目容器推不了 Git LFS（lfs.github.com 被网络策略挡），能推之前不进仓库，
+# 用 assets/pipeline/plaza/build.sh 重新生成；清单 scene.json 进仓库
+assets/scenes/*/build/
