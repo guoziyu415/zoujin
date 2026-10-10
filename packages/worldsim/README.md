@@ -7,6 +7,7 @@
 | `src/zoujin_worldsim/sim.py`         | 一口气推演 `Sim`（`run` / `resume` / `arrival_delta` / `classify` / `value_requires`），从参考实现原样移植，开局状态按身份读                                                                                           |
 | `src/zoujin_worldsim/incremental.py` | 逐事件推演：`initial_state` / `apply` / `settle` / `world_state` / `check_effects`，加上 `classify` / `predict` / `arrival_delta`                                                                                      |
 | `src/zoujin_worldsim/opening.py`     | 开局到起点：`opening` / `parse_checkpoint`，eval_api 的 setup 里 `checkpoint`、`scenario`、`place` 三种起点（B-0 和评测运行器共用）                                                                                    |
+| `src/zoujin_worldsim/primitives.py`  | 叙事者规则的原语：`knows`（R4，谁此刻知道一件事）、`travel_minutes`（R3，两地之间最少走几分钟）；评测 `evals/s2_check.py` 的 R3 也用它                                                                                 |
 | `reference/`                         | 参考实现 `worldsim.py`（R-0 从项目文件夹 `data/spikes/pipeline/` 原样搬来），是黄金文件的来源；同目录还有数据的工具 `build_world.py`、`review_sheet.py`、`check_evals.py`、`check_probes.py`，它们从包 import 推演规则 |
 | `tests/golden/`                      | 参考实现生成的黄金文件和生成脚本 `gen_golden.py`；CI 重跑生成脚本查一致                                                                                                                                                |
 
@@ -40,9 +41,22 @@ events, s = opening(world, "role.traveler", scenarios.get(sc_id), until, place=N
 
 - 顺序：`place` 在时钟 0 写一个事件 → 情景的节拍改动在时钟 0 合成一个事件 → `settle` 到身份的 `startT` → 情景的事件按 `t` 先 `settle` 再写 → 按起点停。`until=None` 推演到底（`scenario`）。
 - 停在节拍：写完这个节拍发生的事件就停，同一时刻后面的节拍留给下一次 `settle`。这一局里它没发生（被阻止），就报错：检查点写错了。
-- 停在某一刻：那一刻到点的节拍和期限都算；那一刻没有事件时写一个只推时钟的事件（`effects` 为空）。
-- 每个事件是一份草稿加 `source`（`place` / `scenario` / `schedule` / `clock`），非 `schedule` 的另带一句日语 `note`，B-0 拿去写 `summary`、在 trace 里标成评测布置。`event.seq` 从 1 起连续，B-0 补上其余字段写库。
+- 停在某一刻：那一刻到点的节拍和期限都算，情景里正好在那一刻的事件不算（先停）；那一刻没有事件时写一个只推时钟的事件（`effects` 为空）。
+- 每个事件是一份草稿加 `source`（`place` / `scenario` / `schedule` / `clock`），非 `schedule` 的另带一句日语 `note`（情景事件自己写了 `note` 就用它），B-0 拿去写 `summary`、在 trace 里标成评测布置。`event.seq` 从 1 起连续，B-0 补上其余字段写库。
 - `setup.events`（评测布置）不在这里，B-0 在起点之后照 api-contract 第 7 节追加。
+
+## 叙事者规则的原语
+
+```python
+from zoujin_worldsim import knows, travel_minutes
+
+knows(world, s, "char.selinuntius", "fact.promise")  # R4：beat.06 以后才知道
+knows(world, s, "player", "fact.city-silent")  # 玩家 = 身份的 initialKnowledge
+travel_minutes(world, "place.road-to-city", "place.syracuse-square")  # R3：60；走不到 None
+```
+
+- `knows` 按契约 2.1：`Character.knows` 里 `since` 已发生的（或 `pre`）、这一局 `learn` 学到的、自己的即兴设定；`trueFrom` 这一局没发生的事实谁都不算知道（2.3）。
+- `travel_minutes` 按 `places.adjacent` 的步行分钟取最短路，同一场景里的两个地点之间按 `pacing.sceneWalkMinutes`（0 分，S-038）。只量玩家的移动和排程以外的 `relocate`，按排程走的人物看排程（backend-design 2.4）。过河（`crossing`）和归途的走法 M3 再加：归途四个地点同一场景，现在互相 0 分。
 
 ## 改规则
 

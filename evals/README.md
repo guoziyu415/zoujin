@@ -78,7 +78,7 @@ uv run python -I packages/worldsim/reference/check_evals.py --world worlds/hashi
 | `runs` | 跑几次，默认 5；通过率 = 通过次数 / runs。只推演情景的用例写 1 |
 | `note` | 可选，说明这条依据什么、还在等什么 |
 | `setup.role` | 玩家身份（只能用第一版的 3 个） |
-| `setup.checkpoint` | 起点。`"<情景 ID>@<节拍 ID>"` = 按情景推演到该节拍刚发生之后；`"<情景 ID>@t=<分钟>"` = 推演到该时刻（含那一刻的期限规则）。情景在 `worlds/…/scenarios.json`，`sc.canon` 是原著路径 |
+| `setup.checkpoint` | 起点。`"<情景 ID>@<节拍 ID>"` = 按情景推演到该节拍刚发生之后；`"<情景 ID>@t=<分钟>"` = 推演到该时刻（含那一刻到点的节拍和期限规则，不含情景里正好在那一刻的事件）。情景在 `worlds/…/scenarios.json`，`sc.canon` 是原著路径 |
 | `setup.place` | 玩家在哪（省略 = 身份起点） |
 | `setup.events` | 起点之后追加的事件：`effects`，可带 `memory`（种一条记忆：`character`、`kind`、`text`）和 `note`。用来构造额外前提 |
 | `setup.budgetTier` | `normal`（默认）/ `saving`（记忆注入 8 → 4 条） |

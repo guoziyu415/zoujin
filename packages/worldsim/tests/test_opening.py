@@ -64,6 +64,11 @@ def test_what_each_event_is() -> None:
     hardened = next(d for d in out if d["source"] == "scenario")
     assert hardened["event"]["t"] == 1235 and hardened["event"]["origin"] == "action"
     assert hardened["event"]["place"] == "place.execution-ground"  # 玩家所在地
+    assert hardened["note"] == "シナリオの設定"  # 情景事件没写 note
+    noted = {**scenario("sc.king-hardened")}
+    noted["events"] = [{**e, "note": "王が刑場で笑う"} for e in noted["events"]]
+    out, _ = opening(WORLD, ROLE, noted, ("beat", "beat.07"))
+    assert next(d for d in out if d["source"] == "scenario")["note"] == "王が刑場で笑う"
     beats = [d for d in out if d["source"] == "schedule"]
     assert all(d["event"]["origin"] == "schedule" and "note" not in d for d in beats)
     assert beats[-1]["beat"] == "beat.07"
@@ -101,8 +106,9 @@ def test_checkpoint_at_the_deadline_includes_the_deadline_rule() -> None:
 
 def test_checkpoint_before_a_scenario_event_leaves_it_out() -> None:
     sc = scenario("sc.king-hardened")
-    _, s = opening(WORLD, ROLE, sc, ("t", 1230))
-    assert s["vars"]["var.king.trust"] == initial_state(WORLD, ROLE)["vars"]["var.king.trust"]
+    for t in (1230, 1235):  # 情景事件在 1235：正好在那一刻也不算（先停）
+        _, s = opening(WORLD, ROLE, sc, ("t", t))
+        assert s["vars"]["var.king.trust"] == initial_state(WORLD, ROLE)["vars"]["var.king.trust"]
     _, s = opening(WORLD, ROLE, sc, ("t", 1240))
     assert s["vars"]["var.king.trust"] < initial_state(WORLD, ROLE)["vars"]["var.king.trust"]
 
