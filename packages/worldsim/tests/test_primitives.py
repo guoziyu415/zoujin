@@ -87,6 +87,22 @@ def test_the_player_learns_public_facts_of_beats_they_see() -> None:
     assert not any(e["op"] == "learn" for d in settle(WORLD, at(0), 1201)[0] for e in d["event"]["effects"])
 
 
+def test_the_player_is_away_while_an_act_change_settles() -> None:
+    """幕切换的第 3 步（契约 2.8.1）：玩家的地点还没换，但这一段算不在场，不写 learn；别的照旧。"""
+    there = at(0, [{"op": "set", "var": "var.player.location", "value": GROUND}])
+    seen, s_seen = settle(WORLD, there, 1201)
+    away, s_away = settle(WORLD, there, 1201, player_present=False)
+    assert not any(e.get("character") == "player" for d in away for e in d["event"]["effects"])
+    assert not knows(WORLD, s_away, "player", "fact.melos-dagger")
+    assert knows(WORLD, s_seen, "player", "fact.melos-dagger")
+
+    def unlearned(e: dict[str, Any]) -> dict[str, Any]:
+        return {**e, "effects": [x for x in e["effects"] if x.get("character") != "player"]}
+
+    assert [unlearned(d["event"]) for d in seen] == [d["event"] for d in away]
+    assert s_away["beats"] == s_seen["beats"]
+
+
 def test_walking_minutes_take_the_shortest_way() -> None:
     def m(a: str, b: str) -> int | None:
         return travel_minutes(WORLD, f"place.{a}", f"place.{b}")

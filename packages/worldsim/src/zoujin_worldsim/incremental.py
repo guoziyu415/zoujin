@@ -297,8 +297,13 @@ def _apply_beat_change(s: SimState, e: Effect) -> None:
     merge_change(s["overrides"], e)
 
 
-def settle(world: World, state: SimState, t2: int | None) -> tuple[list[Draft], SimState]:
+def settle(
+    world: World, state: SimState, t2: int | None, *, player_present: bool = True
+) -> tuple[list[Draft], SimState]:
     """时钟走到 t2：按先后结算排定时间 ≤ t2 的节拍和期限。t2 = None 时结算到所有节拍都有结果、期限也结算过。
+
+    player_present=False：这一段玩家一律算不在场，节拍落在 `var.player.location` 也不给玩家写 learn（契约 2.1 ②）。
+    幕切换的第 3 步用（2.8.1）：这时玩家的地点还没换，人已经不在了。
 
     返回 (系统事件的草稿，结算后的状态)。结算后的状态 = 把草稿依次 apply 到传进来的状态。不改传进来的状态。"""
     _same_world(world, state)
@@ -319,7 +324,7 @@ def settle(world: World, state: SimState, t2: int | None) -> tuple[list[Draft], 
     # 排定时间已过、还没结果的节拍在等前提（上一次 settle 判过；判一次就有结果的那几种不会在等）
     seen = {b for b, tb in _schedule(sim, s).items() if tb <= now} - _special(sim, s)
     if s["cursor"] is not None:
-        _recheck(sim, now, seen, emit, current)
+        _recheck(sim, now, seen, emit, current, player_present)
 
     while True:
         sched = _schedule(sim, s)
@@ -347,11 +352,11 @@ def settle(world: World, state: SimState, t2: int | None) -> tuple[list[Draft], 
             emit(_deadline_draft(sim, world, s, tt))
         elif kind == "beat":
             seen.add(bid)
-            _first_check(sim, s, bid, tt, emit)
+            _first_check(sim, s, bid, tt, emit, player_present)
         else:
             code = "expired" if sim.requires_met(bid, s["beats"]) else "expired-requires"
             emit(_prevented(sim, bid, tt, code))
-        _recheck(sim, tt, seen, emit, current)
+        _recheck(sim, tt, seen, emit, current, player_present)
     return drafts, s
 
 
@@ -371,7 +376,7 @@ def _special(sim: Sim, s: SimState) -> set[str]:
     }
 
 
-def _first_check(sim: Sim, s: SimState, b: str, t: int, emit: Emit) -> None:
+def _first_check(sim: Sim, s: SimState, b: str, t: int, emit: Emit, player_present: bool) -> None:
     """节拍到了排定时间（参考实现的 _step1）。"""
     x = sim.beats[b]
     late = sim.schedule(s["overrides"])[1]
@@ -388,10 +393,12 @@ def _first_check(sim: Sim, s: SimState, b: str, t: int, emit: Emit) -> None:
         if b in sim.timed:
             emit(_prevented(sim, b, t, "precondition"))
     else:
-        emit(_occur_draft(sim, s, b, t))
+        emit(_occur_draft(sim, s, b, t, player_present))
 
 
-def _recheck(sim: Sim, t: int, seen: set[str], emit: Emit, current: Callable[[], SimState]) -> None:
+def _recheck(
+    sim: Sim, t: int, seen: set[str], emit: Emit, current: Callable[[], SimState], player_present: bool
+) -> None:
     """每一步之后按 order 再查在等前提的节拍，成立的在此刻 t 发生；查到不再变化（参考实现的 _recheck）。"""
     changed = True
     while changed:
@@ -413,11 +420,11 @@ def _recheck(sim: Sim, t: int, seen: set[str], emit: Emit, current: Callable[[],
                 and sim.requires_met(b, s["beats"])
                 and sim.holds(sim.beats[b]["preconditions"], flat(s))
             ):
-                emit(_occur_draft(sim, s, b, t))
+                emit(_occur_draft(sim, s, b, t, player_present))
                 changed = True
 
 
-def _occur_draft(sim: Sim, s: SimState, b: str, t: int) -> Draft:
+def _occur_draft(sim: Sim, s: SimState, b: str, t: int, player_present: bool) -> Draft:
     """节拍发生：先把参与人物移到节拍地点，再写结果（参考实现的 _occur）。"""
     x = sim.beats[b]
     effects: list[dict[str, Any]] = [{"op": "relocate", "character": p, "place": x["place"]} for p in x["participants"]]
@@ -435,7 +442,8 @@ def _occur_draft(sim: Sim, s: SimState, b: str, t: int) -> Draft:
         else:
             effects.append({"op": "beat", "beat": b, "to": "happened"})
             effects += copy.deepcopy(list(x["outcomes"]))
-    if s["vars"].get("var.player.location") == x["place"]:  # 玩家在场：public 事实玩家也知道了（契约 2.1、2.3，1.7）
+    # 玩家在场：public 事实玩家也知道了（契约 2.1、2.3，1.7）
+    if player_present and s["vars"].get("var.player.location") == x["place"]:
         known = s["knowledge"].get("player", [])
         effects += [
             {"op": "learn", "character": "player", "fact": f["id"]}

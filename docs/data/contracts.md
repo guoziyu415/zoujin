@@ -179,7 +179,7 @@ type PromiseTemplate = {           // （1.1）
 
 **防剧透规则（叙事者、局势说明和评测共用）：** 在故事时间 `t`，角色 C 能提起的事实 = `C.knows` 里 `since` 已发生的那些 + 运行时通过事件 `learn` 学到的那些（1.1：包括别人的即兴设定）+ C 自己的即兴设定（3 节 `improv`）。别的一律当「不知道」。
 
-**（1.7）玩家知道什么（R4 的行为者是玩家时）：** 玩家能提起的事实 = 身份的 `initialKnowledge` + 这一局学到的（`learn` 的 `character` 写 `"player"`）。学到有两条路：① 人物告诉玩家：叙事者从这一轮提取 `learn`，R4 查说的人知不知道；② 亲眼看到：节拍发生（`happened` / `altered`）时玩家在节拍的地点（`var.player.location` = `Beat.place`，按这个事件之前的状态），共享规则库在这个节拍的系统事件里追加 `learn`，事实 = `trueFrom` 是这个节拍、`visibility: "public"`、玩家还不知道的那些（2.3：public 在场的人都会知道）。`trueFrom` 这一局没发生的事实，玩家也不算知道（2.3）。人物不按在场自动学：`Character.knows` 已按原作的在场写好，原作以外的在场靠 `learn`（例：群众要玩家传话才知道约定，S-077）。人物和玩家都由共享规则库的 `zoujin_worldsim.knows(world, state, who, fact)` 判。
+**（1.7）玩家知道什么（R4 的行为者是玩家时）：** 玩家能提起的事实 = 身份的 `initialKnowledge` + 这一局学到的（`learn` 的 `character` 写 `"player"`）。学到有两条路：① 人物告诉玩家：叙事者从这一轮提取 `learn`，R4 查说的人知不知道；② 亲眼看到：节拍发生（`happened` / `altered`）时玩家在节拍的地点（`var.player.location` = `Beat.place`，按这个事件之前的状态），共享规则库在这个节拍的系统事件里追加 `learn`，事实 = `trueFrom` 是这个节拍、`visibility: "public"`、玩家还不知道的那些（2.3：public 在场的人都会知道）。幕切换第 3 步结算的那段，玩家一律算不在场，不写这条 `learn`（2.8.1 第 3 步）。`trueFrom` 这一局没发生的事实，玩家也不算知道（2.3）。人物不按在场自动学：`Character.knows` 已按原作的在场写好，原作以外的在场靠 `learn`（例：群众要玩家传话才知道约定，S-077）。人物和玩家都由共享规则库的 `zoujin_worldsim.knows(world, state, who, fact)` 判。
 
 **互助、约定、打算怎么用（1.1，S-029、S-030、S-048）：**
 
@@ -469,11 +469,11 @@ type EnRouteChoice = {
 #### 2.8.1 幕切换的事件顺序
 
 1. 收幕条件满足 → 后端推送「幕终わり」和当前可选的去处（按 `roles`、`requires` 过滤）。
-2. 玩家选择 → 事件 `type: "act-transition"`，`actor: "player"`，`exitId` = 去处 ID，`t` = 当前时间，`dt = 0`，`effects` = 该去处的 `effects`。
+2. 玩家选择 → 事件 `type: "act-transition"`，`actor: "player"`，`origin: "act"`，`exitId` = 去处 ID，`t` = 当前时间，`dt = 0`，`effects` = 该去处的 `effects`。去处的 `effects` 是世界模型写死的、校验工具静态查过，不过叙事者的检查：`check` 是 passed，`checker: "world-exit"`。
    （1.2，S-031 ③）玩家说出自己的打算（api-contract 3.11 `act_propose`）：叙事者按 R2、R3、R7 判定能否成行（时间、地点、权限、同行的人在不在）。**成行** → 同样写这一条事件，但不写 `exitId`，改写 `plan`（叙事者的日语转述，不逐字引用玩家原话；下一幕起点、时间、同行的人），`effects` 由叙事者写、照常自检，第 4 步的目标时间用 `plan.t`。（1.7，C-19）这一幕有 `Act.plan` 时，`plan.toAct`、`plan.place`、`plan.t` 照它写，`effects` = `Act.plan.effects` 加上叙事者从打算里提取的效果，落点和落地照 `Act.plan.spot`、`Act.plan.arrival`。**不成行** → 不写事件，后端回替代去处（替代去处被选中时按成行处理）。同一次幕末最多试 2 次。
    （1.4）选的去处有 `enRoute`，而且它的节拍还没有结果、本局排定时间落在现在和目标时间之间 → 过场页先给这个二选一。玩家选了 → 事件 `type: "action"`，`actor: "player"`，`origin: "act"`，`exitId` = 去处 ID，`t` = 当前时间，`dt = 0`，`effects` = 选项的 `effects`，照常自检。玩家选最后一个（照原作）或不选 → 不写事件。每次过场最多一个二选一。（1.5）按钮上的分钟数是按本局此刻算的实际值（同 2.10 的按钮；api-contract 3.11 `act_ended.options[].enRoute.choices[].melosMinutes`，最后一项为 null）；选了带 `after` 的一项（接口里叫 `afterLine`），过场页先显示这一句再进下一幕。回传是 `act_choose` 的 `enRouteChoice`（序号），评测入口是 eval_api 的 `choose`。第 4 步的目标时间在这之后算（例：催梅洛斯别闲逛 → `beat.16` prevented → 他早 40 分钟到河边 → 跟着他走的去处 `alignTo: beat.18` 也早 40 分钟）。
-3. 叙事者按 2.4.1 结算从现在到目标时间之间所有到点的节拍（`actor: "system"`，各自带自己的 `t`）。
-4. 事件 `type: "act-transition"`，`actor: "system"`，`t` = 目标时间（`exit.t` 加上 `alignTo` 的偏移，或（1.2）`plan.t`；都不早于当前时间），`effects` = `set var.act.current`、`set var.player.location`。（1.7）去处有 `spot` 时玩家落在那个位置点（api-contract `snapshot.player.spot`）；有 `arrival` 时，落地后先显示 `arrival.line`，`arrival.opener` 先开口。
+3. 叙事者按 2.4.1 结算从现在到目标时间之间所有到点的节拍（`actor: "system"`，各自带自己的 `t`）。这一段玩家一律算不在场：`var.player.location` 要到第 4 步才换，可人已经走了。所以不按 2.1 ② 给玩家写 `learn`，节拍时机的固定演出（2.11）也不演；共享规则库的 `settle(world, state, t2, player_present=False)`。这些节拍只进「その頃」（第 5 步）。
+4. 事件 `type: "act-transition"`，`actor: "system"`，`origin: "act"`，`check` 同第 2 步（passed，`world-exit`），`t` = 目标时间（`exit.t` 加上 `alignTo` 的偏移，或（1.2）`plan.t`；都不早于当前时间），`effects` = `set var.act.current`、`set var.player.location`。（1.7）去处有 `spot` 时玩家落在那个位置点（api-contract `snapshot.player.spot`）；有 `arrival` 时，落地后先显示 `arrival.line`，`arrival.opener` 先开口。
 5. UX 用第 3 步的事件做「その頃」回顾（「あなたのいない間に」）。（1.1，ux-design 4.5 放宽）只列玩家在下一幕开始时能知道的事，最多 3 件，按顺序取：和玩家有关的约定的兑现或违背 → `keyMoment` 事件 → 玩家见过的人物自己做的事（`origin: "plan"`）。导演事件也在这里交代（S-045 ③）。
 
 『走れメロス』的四幕（幕名和时间按 S-037；时间、去处都已用校验工具核对过）：
@@ -592,14 +592,16 @@ type SetPiece = {
                                    // 录音是 manifest 的 setPieceVoices["{id}/{序号}"]（序号是这一句在 lines 里的位置，从 1 起，地の文也算；api-contract 2.1）
   learns?: { character: string; fact: string }[];
                                    // 演这一条时谁知道了哪件事（character 可以是 "player"，2.1）。服务端把这些 learn 和这一条的演出同一次提交
-                                   // 写进事件（写在动作的事件里还是另写一条，B-3 定）。只给 learn、不给任意 effects：固定演出不过叙事者的
+                                   // 写进事件：同一次提交里紧跟着另写一条 type: "learn"（B-3 定，被拒的动作没有事件可挂）。actor = 第一个说话的人物，
+                                   // 只有地の文时 system；dt 0；check passed，checker "set-piece"；动作时机 origin: "action"，节拍时机不写 origin。
+                                   // 只给 learn、不给任意 effects：固定演出不过叙事者的
                                    // R1〜R7，能改的状态越少越好；它的 R4 由校验工具静态查（见下）
   inferred: true; note?: string;
 };
 ```
 
 - 同一个时机（同一个节拍，或同一种动作和对象、同样的 `refused`）有几条时，按列表顺序取第一条条件全满足、而且（`once` 的）这一局还没演过的，只演这一条。都不满足就不演，照常由叙事者说。
-- `on.act` 的那一条在这个动作的 `action_result` 之后演，代替叙事者对这个动作的叙事（不再另说一遍）；`on.beat` 的演在节拍的那次提交之后。玩家不在场的节拍不演。
+- `on.act` 的那一条在这个动作的 `action_result` 之后演，代替叙事者对这个动作的叙事（不再另说一遍）；`on.beat` 的演在节拍的那次提交之后。玩家不在场的节拍不演，幕切换第 3 步结算的节拍也不演（2.8.1）。
 - 选哪一条和条件怎么算只有一份：共享规则库 `zoujin_worldsim.pick_set_piece(world, state, hook, played)`（`played` 是这一局演过的固定演出 ID，由服务端记）。`knows` 用同一个库的 `knows(world, state, character, fact)`。
 - 校验工具查：ID 唯一；引用的节拍、人物、事实、地点存在；`target` 按动作是存在的人物或地点，`examine` 的是 `objects` 里的可调查物；`played`、`notPlayed` 引用别的固定演出；`learns` 的事实在演的时候一定成立、说的人一定知道（事实的 `trueFrom` 和说话人物 `knows` 的 `since` 都是 `pre` 或写在 `after` 里；只有地の文时只查前一半）；同一个时机上，排在一条没有任何条件的条目后面的永远轮不到，算错。`act` 是不是 api-contract 3.8 的动作、`lines` 的形状由 Schema 查。
 
@@ -1057,3 +1059,4 @@ type CharacterEnding = {           // （1.1）
   - 第 7 节新增 C-18、C-19（已定：打算成行时的落点用 `Act.plan`）。
   - 『走れメロス』（draft.3）：群众、警吏、山贼、一团旅人 `group: true`；beat.s1 セリヌンティウス站 `stake`、王站 `king-west`，beat.24 梅洛斯站 `scaffold`（布局见前端 #22）。同一个 PR 里的世界模型修正：群众、少女第一幕在广场的家里（`absent`），beat.s1 到刑场；beat.04（捕缚）挪到王城前庭（`place.execution-ground`）；送老爺回家记 `var.player.walkedOldManHome`（说话兑现，或第一幕的情境动作「家まで送る」`aff.walk-old-man-home`，30 分，UX 10-10）；警吏从 beat.05 起知道约定（`knows`，PM 10-10：警吏在殿上，城门的固定演出靠它说出约定，S-077 ⑪）。
   - 写清（10-10，#41、#45、#50 合并以后，字段不变）：固定演出的 `lines` 整条放在一条 `set_piece` 消息里下发，预录句的录音是 manifest 的 `setPieceVoices["{id}/{序号}"]`（2.11，api-contract v1.0.4 的 3.14、2.1）；人物此刻的 activity 怎么算（2.4，共享规则库的 `activity()`，挪走又回来的人物又是节拍给的 activity）。Schema 里 `SetPiece.lines` 的说明跟着改；例子里城门的地の文「衛兵」改成「警吏」，和世界模型、api-contract 3.14 一致。
+  - 写清（10-10，B-3 卡 #58 以后，字段不变）：幕切换第 3 步结算的那段玩家算不在场，不写 2.1 ② 的 `learn`、不演节拍时机的固定演出（2.8.1 第 3 步，共享规则库 `settle` 加 `player_present`）；第 2、4 步的 `act-transition` 事件 `origin: "act"`、`checker: "world-exit"`；`SetPiece.learns` 另写一条 `type: "learn"` 事件（2.11，Schema 的说明跟着改）。

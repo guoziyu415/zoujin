@@ -1,8 +1,8 @@
-# 数据设计（data-design.md）v1.2.3
+# 数据设计（data-design.md）v1.2.4
 
-负责人：数据工程 · 状态：**v1.2.3**。v1.0 已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改；1.1 跟上契约 1.1、PM 的 S-022〜S-053 和世界模型 draft.3；1.2 跟上契约 1.2 和 S-054〜S-063，补齐前端、UX 要的埋点（9.3）和市场调研要的试玩导出（9.5）。跨角色决定见 `pm/decisions.md`。待别人定的事见第 13 节。
+负责人：数据工程 · 状态：**v1.2.4**。v1.0 已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改；1.1 跟上契约 1.1、PM 的 S-022〜S-053 和世界模型 draft.3；1.2 跟上契约 1.2 和 S-054〜S-063，补齐前端、UX 要的埋点（9.3）和市场调研要的试玩导出（9.5）。跨角色决定见 `pm/decisions.md`。待别人定的事见第 13 节。
 相关：[contracts.md](contracts.md) v1.7（四个数据契约，本文所有字段以它为准）· `backend/backend-design.md` · `pm/prd.md`
-最近更新：2026-10-10（v1.2.3：第 3 节 B-2 加的花费和计数列，第 8 节叙事者的五种 Span；v1.2.2：7.3 评审员定为 Claude Opus 5.5，写清校准和独立性；7.1 模拟局的 AI 玩家用 Claude；9.3 画质遥测的两处读法）
+最近更新：2026-10-10（v1.2.4：按后端 #56 的评审改第 3、8 节四处说法，5.3 写清 B-3 加的 `turns.request` / `result` 和打算文字怎么清；v1.2.3：第 3 节 B-2 加的花费和计数列，第 8 节叙事者的五种 Span；v1.2.2：7.3 评审员定为 Claude Opus 5.5，写清校准和独立性；7.1 模拟局的 AI 玩家用 Claude；9.3 画质遥测的两处读法）
 
 数据工程负责六件事：世界模型（含『走れメロス』v1）、新增一本书的流水线、事件日志与世界状态、記憶帳与删除、评测与可观测数据、分析与成本测算。
 
@@ -84,7 +84,7 @@ endings(ending_id PK, playthrough_id FK CASCADE, body jsonb, decided_at)
 - 每局费用 = `playthrough_metrics` 里所有 `cost_*_usd` 列之和（9.1「成本可持续吗」、第 10 节）。B-0 建了四列：提取、检查、回答、Live；B-2 加了分流、改写两列。重发的、超时取消的调用也算（钱已经花了）。安全分类器、结局生成、记忆整理、人物简报的费用，由做这些功能的卡各加一列 `cost_<项>_usd`，不并进已有的列。9.1 还要的问句结尾计数、导演事件数、结局演出开始时间，也由做这些功能的卡加列（第 12 节）。
 - B-2 的六个计数（叙事者每轮加，backend-design 2.4）：
   - `turns_triage_skipped`：分流判为闲聊、没做提取的轮。分流两次都失败时当「可能」照常提取，不算这里。
-  - `turns_timed_out`：提取或检查两次都失败（超时、输出不过 Schema、调用出错），这一轮只提交了时钟。
+  - `turns_timed_out`：提取、检查或改写两次都失败（超时、输出不过 Schema、调用出错），这一轮只提交了时钟。第 3〜5 步里任何一次调用这样失败，整轮都只提交时钟。
   - `candidates_rewritten` / `candidates_downgraded` / `candidates_rejected`：按候选的最后结果数，改写两次后才降级的只算降级。
   - `candidates_confirm_dropped`：要确认又不可逆的候选，在意图确认（B-4）做好之前先丢掉，不进第 3 步。
   - 否决率、改写率的分母是这一局进了第 3 步的候选数，这张表里没有。从 `events` 数：每条候选都写成一个事件（被拒的 `effects` 为空），`check_result.checker` 以 `rules@` 开头；同一轮记时钟的那条「〜と話した」是 `b0:clock`，不算。
@@ -153,7 +153,7 @@ endings(ending_id PK, playthrough_id FK CASCADE, body jsonb, decided_at)
 |---|---|---|
 | PostgreSQL 主库 | L1 清空记忆文本和整轮原话；L2/L3 级联删除 | 立即 |
 | 局势说明（`briefs`） | L1 后立即重写该角色的局势说明；L2/L3 级联 | 立即 |
-| 轮次任务表（`turns`） | 只存 ID、状态、租约，不存原话；L2/L3 级联 | 立即 |
+| 轮次任务表（`turns`） | 存 ID、状态、租约，B-3 起加 `request`（动作和幕末选项的 ID、参数）和 `result`（要推的结果和固定演出），不存原话。`result` 里打算的文字（`label`、`narration`、`alternative.label`，从玩家的话转述来的）：L1 清空那一轮的，结局生成后和原话一起清空（5.5）；局上的 `plan_alternative` 幕切换时清掉。L2/L3 级联 | 立即 |
 | 正在进行的角色语音会话 | L1 后 gateway 关掉会话，用新局势说明重建（backend-design 2.10 删除、3.2 重建会话） | 立即 |
 | 最近几轮对话（网关内存） | 重建会话时补给模型的近期对话只放在网关内存里，不写数据库、不进 Trace（S-056）；会话结束或 L1 删除时丢弃 | 立即 |
 | Live 会话恢复状态（服务商侧） | 正式环境**不开**会话恢复（S-059 ②），服务商侧不保存会话状态；重建会话不靠恢复句柄 | 不产生 |
@@ -177,7 +177,7 @@ endings(ending_id PK, playthrough_id FK CASCADE, body jsonb, decided_at)
 | 数据 | 规则 | 理由 |
 |---|---|---|
 | 进行中的局 | 一直保留，可以改天继续；**30 天没有任何操作** → 自动按 L2 删除整局（游戏里提前说明「30 日間遊ばないと、このプレイは消えます」） | 一局只有 15〜20 分钟，30 天不回来基本不会再续；放着只增加风险 |
-| 原话（`utterances`） | **结局生成后立即清空**；没走到结局的局按上一行 | 原话唯一的用途是让角色在这一局里接得上话；结局用的是事件，不需要原话。原话是最可能含个人信息的数据 |
+| 原话（`utterances`），和 `turns.result` 里打算的文字 | **结局生成后立即清空**；没走到结局的局按上一行 | 原话唯一的用途是让角色在这一局里接得上话；结局用的是事件，不需要原话。原话是最可能含个人信息的数据 |
 | 结局、事件、记忆 | 保留到玩家删除（结局收藏、分岔树要用）；账号 1 年没有登录 → 按 L3 删除 | 这些是玩家自己的作品；事件摘要和记忆在写入前已过滤个人信息 |
 | 邀请码试玩期的账号 | 试玩期结束后 90 天内按 L3 全部删除（在邀请时说明） | 第一版是测试，测试结束就没有继续保存的目的 |
 | 分析聚合 | 永久（只有计数，少于 50 局的分组不展示） | 不能反推个人 |
@@ -327,7 +327,7 @@ UX 的设计层校对（`ux/reviews/data-world-draft3.md`）已按契约 1.4 落
 |---|---|
 | `turn` | playthrough_id、turn_id、character、input_mode（voice / text）、character_text_missing（等满仍没有人物的文字） |
 | `live.response` | model、voice、audio_in_s、audio_out_s、tokens_in、tokens_out、release_to_first_audio_ms、interrupted |
-| `narrator.triage` / `narrator.extract` / `narrator.check` / `narrator.rewrite` / `narrator.reply`（B-2；每次调用一个，重发是第二个） | 都有：world_model_version、model、prompt_version、attempt、status（ok / timeout / invalid / error）、tokens_in、tokens_out、tokens_cached、tokens_thought、cost_usd、duration_ms。叙事者服务里的前四种另有 playthrough_id、turn_id（评测入口没有）。另加：triage 的 route；extract 的 candidate_count（模型给的候选数）；check 的 candidate_count（这一轮一起送检的候选数）；rewrite 的 mode（rewrite / downgrade）和 failed_rules（只有规则名）；reply 的 character（reply 现在只用在评测入口的 `say`） |
+| `narrator.triage` / `narrator.extract` / `narrator.check` / `narrator.rewrite` / `narrator.reply`（B-2；每次调用一个，重发是第二个） | 都有：world_model_version、model、prompt_version、attempt、status（ok / timeout / invalid / error）、duration_ms。tokens_in、tokens_out、tokens_cached、tokens_thought 只在 ok 时有；cost_usd 在 ok、timeout（取消时按预计记账的数）、invalid（已经花掉的）时有，error 没有。叙事者处理的一轮（含评测入口的 `say`）的前四种另有 playthrough_id、turn_id；评测入口的 `check()`（S-2）不带，带运行器给的 trace_id。另加：triage 的 route；extract 的 candidate_count（模型给的候选数）；check 的 candidate_count（这一轮一起送检的候选数）和 failed_rules（模型判 fail 的规则名，ok 时也带）；rewrite 的 mode（rewrite / downgrade）和 failed_rules（只有规则名）；reply 的 character（reply 现在只用在评测入口的 `say`） |
 | `narrator.commit` | seq_from、seq_to、event_count、memory_count、lock_wait_ms |
 | `budget` | run_cost_jpy_so_far、degraded |
 
@@ -503,6 +503,7 @@ BigQuery 每天一个定时查询，用 `EXTERNAL_QUERY` 直接读 Cloud SQL，�
 
 修订记录：
 
+- **v1.2.4（2026-10-10）**：按后端 #56 的评审改四处：`turns_timed_out` 也算改写两次都失败；Span 的 token 四项只在 ok 时有，`cost_usd` 在 ok、timeout、invalid 时有；check 的 Span 也带 `failed_rules`；评测入口的 `say` 也带 playthrough_id、turn_id，只有 `check()` 带 trace_id。5.3 `turns` 那一行跟上 B-3 卡（#58）：`request`、`result`，打算的文字随 L1 和结局清空。打算的文字写入前过和事件 `summary` 一样的过滤（B-3 卡第 4 条）。
 - **v1.2.3（2026-10-10）**：跟上 B-2（#47）。第 3 节 `playthrough_metrics` 加分流、改写的花费和六个计数（迁移 0002），写清每个计数怎么算、否决率的分母从哪数；第 8 节的 Span 表换成叙事者的五种（triage、extract、check、rewrite、reply）和它们的属性，写明 Span 只收白名单属性、B-2 先写进日志。
 - **v1.2.2（2026-10-10）**：7.3 写清评审员（Claude Opus 5.5，走 Batch）和它的校准、独立性（zg 盲标 20 条，Gemini 2.5 Pro 再判一遍）；7.1 模拟局的 AI 玩家用 Claude Sonnet 5.5（PM 10-10 定，dev-plan Z-8 两本账）；9.3 按前端 F-2c 写清 `quality_changed` 档位不变的两种 `reason` 和 Safari 的 `longTasks` 怎么读。
 - **v1.2.1（2026-10-10）**：第 3 节的表对齐 B-0（#26）建的表：`playthroughs` 加 `book_id` 和每账号同时 1 局，`events` 加 `schema_version`、`origin`、`extra`，`utterances` 加 `source`，`playthrough_metrics` 按后端分成四项费用（每局费用是所有 `cost_*_usd` 列之和，以后的功能各加一列）和进出两项语音秒数；`memory_items`、`endings` 注明由用到的 M2 卡建；写明分析怎么读 `turns.status`（含 `lost`，api-contract v1.0.3）。契约跟到 1.7。
