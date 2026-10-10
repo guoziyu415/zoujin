@@ -96,7 +96,7 @@ input[type=text]{font:inherit;width:100%;padding:8px;border-radius:8px;border:1p
   <h3>口型时差（手调）</h3>
   <input id="lipDelay" type="range" min="-150" max="250" step="10" value="0"><p class="note" id="lipNote"></p>
   <h3>探索镜头里的梅洛斯</h3>
-  <div class="row" data-key="gait"><button data-v="run">跑</button><button data-v="walk">走</button></div>
+  <div class="row" data-key="gait"><button data-v="run">跑</button><button data-v="walk">走</button><button data-v="sprint">冲刺</button></div>
   <h3>视线</h3>
   <div class="row" data-key="gaze"><button data-v="player">看玩家</button><button data-v="camera">看镜头</button><button data-v="off">不跟</button></div>
   <h3>皮肤透光（次表面散射的近似）</h3>
@@ -454,7 +454,7 @@ function patchMaterial(m) {
 
 // ---------------------------------------------------------------- characters
 // three.js strips "." from node names: eye.L -> eyeL
-const BONES = ['head', 'neck02', 'eyeL', 'eyeR'];
+const BONES = ['head', 'neck02', 'eyeL', 'eyeR', 'spine_03'];
 const TPL = {};          // model -> Promise of the template below
 const TPLR = {};         // model -> { root, fwd, up, morphBytes, tris, meshes, bytes }
 const CLIPS = {};
@@ -608,6 +608,8 @@ class Char {
     this.face = model.startsWith('talk') ? new Face(this.root) : null;
     this.look = null; this.lookS = new THREE.Vector3(); this.lookInit = false;
     this.sacc = new THREE.Vector3(); this.saccT = 0; this.path = null; this.anim = null;
+    // the talking hands, layered over standing (UX round 3): w = weight now, peak = this run of lines' weight
+    this.gest = { w: 0, peak: 0, target: 0, fall: 0.5, dropIn: 0 };
     this.root.visible = false;
     scene.add(this.root);
   }
@@ -615,15 +617,46 @@ class Char {
   // fade: seconds to blend over from the clip that is playing (else a cut)
   play(name, offset = 0, speed = 0, fade = 0) {
     if (this.anim === name || !this.act[name]) return;
+    if (name !== 'idle') this.gestureOff(true);
     const a = this.act[name], prev = this.anim && this.act[this.anim];
     a.timeScale = speed && CLIP_SPEED[name] ? speed / CLIP_SPEED[name] : 1;
     if (fade && prev) { a.reset().play(); prev.crossFadeTo(a, fade, false); }
     else { for (const x of Object.values(this.act)) x.stop(); a.play(); this.mixer.setTime(offset); }
     this.anim = name;
   }
+  // a line starts: hands come up over 0.5 s at weight 0.5-0.7 (lower and smaller than the clip), from a random point
+  // of the loop at 0.9-1.1x, so lines don't repeat the same gesture. Already up (lines back to back): they stay
+  gestureOn() {
+    const g = this.gest, a = this.act.talk;
+    if (!a || this.anim !== 'idle') return;
+    g.dropIn = 0;
+    if (g.target > 0) return;
+    if (g.w === 0) {
+      a.reset(); a.timeScale = 0.9 + Math.random() * 0.2; a.time = Math.random() * a.getClip().duration;
+      a.setEffectiveWeight(0); a.play();
+    }
+    g.peak = g.target = 0.5 + Math.random() * 0.2;
+  }
+  // a line ended: if no other line starts within `wait` seconds, the hands go down over 0.4-0.6 s
+  gestureOff(now = false, wait = 0.8) {
+    const g = this.gest;
+    if (now) { g.w = g.target = g.dropIn = 0; this.act.talk?.stop(); this.act.idle?.setEffectiveWeight(1); return; }
+    if (g.target > 0 && !g.dropIn) g.dropIn = wait;
+  }
+  gestureFrame(dt) {
+    const g = this.gest, a = this.act.talk;
+    if (!a || !a.isRunning()) return;
+    if (g.dropIn > 0 && (g.dropIn -= dt) <= 0) { g.dropIn = 0; g.target = 0; g.fall = 0.4 + Math.random() * 0.2; }
+    const up = g.target > g.w, step = (dt / (up ? 0.5 : g.fall)) * g.peak;
+    g.w = up ? Math.min(g.target, g.w + step) : Math.max(g.target, g.w - step);
+    const k = g.peak ? g.w / g.peak : 0, w = g.peak * k * k * (3 - 2 * k);   // eased in and out
+    this.act.idle.setEffectiveWeight(1 - w); a.setEffectiveWeight(w);
+    if (g.w === 0 && g.target === 0) { a.stop(); this.act.idle.setEffectiveWeight(1); }
+  }
   update(dt, t) {
     if (!this.root.visible) return;
     if (this.path) this.path(this, t);
+    this.gestureFrame(dt);
     this.mixer.update(dt);
     if (!this.face) return;
     this.root.updateMatrixWorld(true);
@@ -659,6 +692,14 @@ class Char {
       // a small nod with the loudness of the voice
       _v.crossVectors(T.up.head, T.fwd.head).normalize();
       B.head.quaternion.multiply(_qa.setFromAxisAngle(_v, s.open * 2.5 * D2R));
+    }
+    if (s && B.spine_03) {
+      // the chest too, smaller: leans in on the loud syllables and turns a little, slowly (short lines move only this
+      // and the head)
+      this.speak = THREE.MathUtils.lerp(this.speak || 0, s.open > 0.05 ? 1 : 0, 1 - Math.exp(-dt * 2));
+      _v.crossVectors(T.up.spine_03, T.fwd.spine_03).normalize();
+      B.spine_03.quaternion.multiply(_qa.setFromAxisAngle(_v, s.open * 1.2 * D2R));
+      B.spine_03.quaternion.multiply(_qa.setFromAxisAngle(T.up.spine_03, this.speak * Math.sin(t * 1.7) * 1.5 * D2R));
     }
     this.face.update(dt, extra);
   }
@@ -724,10 +765,11 @@ async function setCast() {
     }
   }
 }
-// ground speed of each Quaternius clip as authored (m/s, measured by retarget.py: the planted foot sliding back),
-// and the speeds Melos walks and runs at here; the clips are sped up or slowed down to match (play())
-const CLIP_SPEED = { walk: 1.01, run: 6.12, sprint: 9.13 };
-const GAIT_SPEED = { walk: 1.15, run: 4.9 };
+// ground speed of each clip as exported (m/s, retarget.py's report: the planted foot sliding back), and the speeds
+// Melos walks, runs and sprints at here (retarget.py STYLE speed: the run and sprint are restyled for these); the
+// clips are sped up or slowed down to match (play())
+const CLIP_SPEED = { walk: 1.027, run: 3.847, sprint: 6.002 };
+const GAIT_SPEED = { walk: 1.15, run: 4.9, sprint: 6.5 };
 const playerEyes = new THREE.Vector3().copy(SPOT.player).setY(1.65);   // the player figure is the walk model: eyes at 1.65 m
 
 // ---------------------------------------------------------------- camera per view
@@ -940,13 +982,14 @@ async function say(k) {
   if (voice.src) { try { voice.src.onended = null; voice.src.stop(); } catch { /* already stopped */ } }
   const L = lines[k];
   const src = voice.ctx.createBufferSource(); src.buffer = L.buf; src.connect(voice.ctx.destination);
-  // the talking clip (hands and shoulders) for real lines, not for a short 相槌; back to standing when the line ends
+  // the talking hands only for lines of 4 s or more (UX round 3); a short line moves the head and chest only, unless
+  // it follows a long one closely (hands already up stay up until the last line ends)
   const talkers = [...pool.values()].filter((c) => c.face && c.root.visible);
-  if (k !== 's') for (const c of talkers) c.play('talk', 0, 0, 0.5);
+  for (const c of talkers) if (L.buf.duration >= 4 || c.gest.target > 0) c.gestureOn();
   src.onended = () => {
     if (voice.src !== src) return;
     voice.speaking = false; voice.feat = null; $('sub').classList.add('hidden');
-    for (const c of talkers) c.play('idle', 0, 0, 0.6);
+    for (const c of talkers) c.gestureOff();
   };
   voice.src = src; voice.feat = L.feat; voice.speaking = true;
   voice.t0 = voice.ctx.currentTime + 0.02; src.start(voice.t0);

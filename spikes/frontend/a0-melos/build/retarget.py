@@ -36,7 +36,7 @@ FPS = 30
 # contact: share of the loop with a foot planted (time warp); swing: bone -> scale of its swing around the clip's mean;
 # arms_in: how far the upper arms' mean pose moves towards idle's; knee: bone -> (stance, swing) scale of its bend
 # beyond the straightest frame; bend: the same in every frame; rise: how far the pelvis may rise in stance above its
-# lowest stance height (the planted leg bends to reach). speed: what the game plays it at (test page GAIT_SPEED;
+# lowest stance height (the planted leg bends to reach); clear: the swinging foot's least height at mid-swing. speed: what the game plays it at (test page GAIT_SPEED;
 # the sprint is Melos coming in at the end, spent, at about 6.5 m/s), for the time in the air and the report.
 # Tuned against UX round 3 (real run at 4.9 m/s: 165-180 steps/min, about 1.7 m a step, pelvis 7-10 cm, swinging
 # foot about knee high): run 164 steps/min, 1.8 m, 8 cm, ankle at most 0.39 m (knee 0.51 m). Sprint at 6.5 m/s:
@@ -50,6 +50,7 @@ STYLE = {
         'knee': {'calf_l': (1.0, 0.9), 'calf_r': (1.0, 0.9)},
         'bend': {'lowerarm_l': 0.85, 'lowerarm_r': 0.85},
         'rise': 0.025,
+        'clear': 0.08,
         'speed': 4.9,
     },
     'sprint': {
@@ -58,6 +59,7 @@ STYLE = {
         'arms_in': 0.3,
         'knee': {'calf_l': (1.0, 0.7), 'calf_r': (1.0, 0.7)},
         'rise': 0.03,
+        'clear': 0.1,
         'speed': 6.5,
     },
     'walk': {'speed': 1.15},
@@ -241,16 +243,16 @@ def build(rig, glb_path, fps=FPS):
                 pb = rig.pose.bones[b.name]
                 pb.rotation_mode = 'QUATERNION'
                 pb.rotation_quaternion = quats[b.name]
-                pb.keyframe_insert('rotation_quaternion', frame=i + 1)
+                pb.keyframe_insert('rotation_quaternion', frame=i)
             pb = rig.pose.bones['pelvis']
             pb.location = rest_rot @ (pelvis - tgt_rest['pelvis'].translation)
-            pb.keyframe_insert('location', frame=i + 1)
+            pb.keyframe_insert('location', frame=i)
         for pb in rig.pose.bones:
             pb.rotation_quaternion = (1, 0, 0, 0)
             pb.location = (0, 0, 0)
         track = rig.animation_data.nla_tracks.new()
         track.name = clip
-        track.strips.new(clip, 1, act)
+        track.strips.new(clip, 0, act)   # from frame 0: the glTF keys start at t = 0, else the loop holds a frame
         rig.animation_data.action = None
         act.use_fake_user = True
         report[clip] = {'from': ual, **_gait(fk, frames, fps, floor, st.get('speed'), stance)}
@@ -340,6 +342,20 @@ def _restyle(fk, frames, st, means, floor, stance, fps):
         w = (i - a) / (b - a)
         fly = (b - a) / fps / rate
         z[i] = z[a % period] * (1 - w) + z[b % period] * w + 4 * (9.81 * fly * fly / 8) * w * (1 - w)
+    # a swinging foot arcs clear of the floor: at least st['clear'] at mid-swing, sin-shaped from take-off to landing
+    # (without it the sprint's back foot came down to 3 cm under the body and skimmed forward)
+    clear = st.get('clear', 0.02)
+    phase = {}
+    for side in ('_l', '_r'):
+        down = stance['ball' + side]
+        on = [i for i in range(period) if down[i]]
+        phase[side] = [None] * n
+        for i in range(period):
+            if down[i] or not on:
+                continue
+            a = max((k for k in on if k < i), default=on[-1] - period)
+            b = min((k for k in on if k > i), default=on[0] + period)
+            phase[side][i] = (i - a) / (b - a)
     for i in range(period):
         q = newq[i]
         lifted = Vector((pel[i].x, pel[i].y, z[i]))
@@ -349,10 +365,12 @@ def _restyle(fk, frames, st, means, floor, stance, fps):
             low = min(cur['ball' + side].translation.z, a_now.z - ankle) - floor
             if pin[i] is not None and stance['ball' + side][i]:
                 want = a_now + Vector((0, 0, pin[i] - z[i]))      # where the foot was, on the floor
-            elif low < 0.02:
-                want = a_now + Vector((0, 0, 0.02 - low))         # a swinging foot clear of the floor
             else:
-                continue
+                w = phase[side][i]
+                need = max(0.02, clear * math.sin(math.pi * w)) if w is not None else 0.02
+                if low >= need:
+                    continue
+                want = a_now + Vector((0, 0, need - low))         # a swinging foot clear of the floor
             _reach(fk, q, lifted, side, want)
         pel[i] = lifted
     newq[period] = dict(newq[0])
