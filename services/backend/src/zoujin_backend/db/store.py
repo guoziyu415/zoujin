@@ -48,9 +48,11 @@ async def enqueue(
     character: str | None = None,
     turn_seq: int | None = None,
     minutes: int | None = None,
+    status: str = "pending",
 ) -> str:
     """排一个叙事者任务。幂等键就是 turnId：重试用同一个，这一轮写的事件的键都以它开头。
-    created_at 用 clock_timestamp()，同一个事务里排的几个也分得出先后。"""
+    created_at 用 clock_timestamp()，同一个事务里排的几个也分得出先后。
+    status="lost"：断线时人物还没说完的一轮，只留记录（welcome 的 lastTurn），叙事者不处理。"""
     turn_id = turn_id or ids.new("turn")
     await c.execute(
         insert(turns).values(
@@ -61,7 +63,7 @@ async def enqueue(
             character=character,
             turn_seq=turn_seq,
             minutes=minutes,
-            status="pending",
+            status=status,
             idempotency_key=turn_id,
             created_at=func.clock_timestamp(),
         )

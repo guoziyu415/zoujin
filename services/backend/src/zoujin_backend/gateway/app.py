@@ -33,6 +33,7 @@ from zoujin_backend.world import Library
 log = logging.getLogger("zoujin.gateway")
 
 GOAWAY_MS = 1000  # 前端在这之后重连
+SHUTDOWN_GRACE_S = 5  # 停服务前等手上的任务（交轮次、叫叙事者）最多几秒
 
 
 def build(settings: Settings, narrator: NarratorClient | None = None) -> Gateway:
@@ -58,6 +59,8 @@ def create_app(settings: Settings, gw: Gateway | None = None) -> FastAPI:
             yield
         finally:
             await hub.stop()
+            if gw.tasks:  # 排空：断线时交上去的轮次、叫叙事者的请求，等一会儿再停
+                await asyncio.wait(set(gw.tasks), timeout=SHUTDOWN_GRACE_S)
             for task in list(gw.tasks):
                 task.cancel()
             if isinstance(gw.narrator, HttpNarrator):
@@ -73,6 +76,12 @@ def create_app(settings: Settings, gw: Gateway | None = None) -> FastAPI:
     @app.exception_handler(rest.Fail)
     async def on_fail(request: Request, exc: rest.Fail) -> Response:
         return rest.fail_response(gw, exc)
+
+    @app.exception_handler(Exception)
+    async def on_error(request: Request, exc: Exception) -> Response:
+        """没接住的异常也回第 5 节的 JSON（不回 uvicorn 的纯文本 500）。"""
+        log.error("%s %s 出错", request.method, request.url.path, exc_info=exc)
+        return rest.fail_response(gw, rest.Fail("internal"))
 
     @app.exception_handler(StarletteHTTPException)
     async def on_http(request: Request, exc: StarletteHTTPException) -> Response:

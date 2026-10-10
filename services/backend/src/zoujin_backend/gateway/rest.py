@@ -13,7 +13,7 @@ from typing import Any
 
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import JSONResponse
-from sqlalchemy import delete, func, insert, select
+from sqlalchemy import delete, func, insert, select, text
 from sqlalchemy.exc import IntegrityError
 
 from zoujin_backend.config import COOKIE, SESSION_DAYS
@@ -231,6 +231,17 @@ async def create_playthrough(request: Request) -> Response:
         raise Fail("invalid_request")
     raw = await request.body()
     fp = fingerprint(request, raw)
+    async with gw.engine.begin() as lock:
+        # 同一账号、同一个键的请求排队（前端断网重试用同一个键，可能并发）：前一个建完、记下结果，后一个再查，
+        # 拿到同样的 201。锁跟着这个事务，出错回滚也会放掉。
+        await lock.execute(LOCK_KEY, {"k": f"idem:{user_id}:{key}"})
+        return await _create(gw, request, user_id, key, fp)
+
+
+LOCK_KEY = text("SELECT pg_advisory_xact_lock(hashtextextended(:k, 0))")
+
+
+async def _create(gw: Gateway, request: Request, user_id: str, key: str, fp: str) -> Response:
     async with gw.engine.connect() as c:
         seen = (
             await c.execute(

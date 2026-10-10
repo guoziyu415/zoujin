@@ -14,6 +14,7 @@ import subprocess
 import sys
 import time
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 import httpx
@@ -76,16 +77,16 @@ class Proc:
                 self.p.wait()
 
 
-def service_env(url: str, narrator_port: int) -> dict[str, str]:
+def service_env(url: str, narrator_port: int, speed: str = "0") -> dict[str, str]:
     env = {k: v for k, v in os.environ.items() if not k.startswith("ZJ_")}
-    env.update(DATABASE_URL=url, ZJ_DEV="1", ZJ_SPEED="0", ZJ_NARRATOR_URL=f"http://127.0.0.1:{narrator_port}")
+    env.update(DATABASE_URL=url, ZJ_DEV="1", ZJ_SPEED=speed, ZJ_NARRATOR_URL=f"http://127.0.0.1:{narrator_port}")
     return env
 
 
 class Services:
-    def __init__(self, url: str) -> None:
+    def __init__(self, url: str, speed: str = "0") -> None:
         n_port, g_port = free_port(), free_port()
-        env = service_env(url, n_port)
+        env = service_env(url, n_port, speed)
         self.narrator = Proc("zoujin_backend.narrator.app", n_port, env)
         self.gateway = Proc("zoujin_backend.gateway.app", g_port, env)
         self.base = f"http://127.0.0.1:{g_port}"
@@ -217,6 +218,12 @@ class Player:
         self.send({"type": "focus", "character": character})
         self.expect("session_ready", character=character)
 
+    def index(self, type_: str, **fields: Any) -> int:
+        """log 里第一条这样的消息的位置。"""
+        return next(
+            i for i, m in enumerate(self.log) if m["type"] == type_ and all(m.get(k) == v for k, v in fields.items())
+        )
+
     def find(self, type_: str, **fields: Any) -> Json:
         hits = [m for m in self.log if m["type"] == type_ and all(m.get(k) == v for k, v in fields.items())]
         assert len(hits) == 1, (type_, fields, len(hits))
@@ -240,6 +247,16 @@ class Player:
         self.seq = seq
         self.send({"type": "text", "turnId": turn_id, "turnSeq": seq, "text": text, "via": "typed"})
         return turn_id
+
+
+@pytest.fixture(scope="module")
+def slow(migrated: str) -> Iterator[Services]:
+    """ZJ_SPEED=1：人物按真实节奏说话（一句几秒），打断和断线才有固定的窗口。"""
+    s = Services(migrated, speed="1")
+    try:
+        yield s
+    finally:
+        s.stop()
 
 
 @pytest.fixture
@@ -439,6 +456,113 @@ def test_idempotency_and_one_active_playthrough(player: Player) -> None:
     assert r.status_code == 400 and r.json()["error"]["code"] == "invalid_request"
 
 
+def test_same_key_at_the_same_time_gets_the_same_201(env: Env, services: Services) -> None:
+    """断网重试会用同一个键并发：排队处理，都拿到同一个 201（前端评审 #26 第 5 条）。"""
+    p = Player(services.base)
+    p.login(invite(env))
+    clients = [
+        httpx.Client(base_url=services.base, headers={"Origin": services.base}, cookies=p.http.cookies, timeout=30)
+        for _ in range(3)
+    ]
+    try:
+        with ThreadPoolExecutor(len(clients)) as pool:
+            rs = list(
+                pool.map(
+                    lambda c: c.post("/v1/playthroughs", json=CREATE, headers={"Idempotency-Key": "together"}), clients
+                )
+            )
+        assert [r.status_code for r in rs] == [201, 201, 201], [r.text for r in rs]
+        assert len({r.json()["playthroughId"] for r in rs}) == 1
+    finally:
+        for c in clients:
+            c.close()
+        p.close()
+
+
+def test_back_to_back_turns_each_settle_after_their_commit(player: Player) -> None:
+    """前端评审 #26 第 1、2 条：不等回答连发，每一轮都交上去，人物定稿、commit、turn_settled 各一条，
+    turn_settled 在它自己的 commit 之后。速度 0 时多数轮次是被下一轮打断的。"""
+    p = player
+    p.start()
+    p.connect(last_seq=p.last_seq)
+    p.expect("welcome")
+    p.focus(OLD)
+    ids = [p.text(f"{i + 1}つ目の質問です。") for i in range(12)]
+    deadline = time.monotonic() + 60
+    while len(settled := [m["turnId"] for m in p.log if m["type"] == "turn_settled"]) < len(ids):
+        assert time.monotonic() < deadline and p.ws is not None, settled
+        p._read(1)
+    assert settled == ids  # 叙事者按玩家发的顺序判
+    for t in ids:
+        said = [m for m in p.log if m["type"] == "transcript" and m.get("turnId") == t and m["speaker"] == OLD]
+        finals = [m for m in said if m["final"]]
+        assert len([m for m in p.log if m["type"] == "turn_settled" and m.get("turnId") == t]) == 1, t
+        assert p.index("commit", turnId=t) < p.index("turn_settled", turnId=t), t
+        cut = [m for m in p.log if m["type"] == "interrupted" and m.get("turnId") == t]
+        complete = [m for m in p.log if m["type"] == "turn_complete" and m.get("turnId") == t]
+        assert len(cut) + len(complete) == 1, t  # 被打断的没有 turn_complete
+        # 说完的一条定稿；被打断的说到哪定稿到哪，还没出字的没有定稿
+        assert len(finals) == (1 if complete or len(said) > len(finals) else 0), t
+
+
+def test_cut_in_while_the_character_speaks(env: Env, slow: Services) -> None:
+    """人物说到一半发下一轮：旧的一轮 interrupted、半句定稿、不再有音频，照样 commit 和 turn_settled；
+    这些都在新的一轮之前（3.2、3.3）。"""
+    p = Player(slow.base)
+    p.login(invite(env))
+    try:
+        p.start()
+        p.connect(last_seq=p.last_seq)
+        p.expect("welcome")
+        p.focus(OLD)
+        first = p.text("こんばんは。")
+        half = p.expect("transcript", turnId=first, speaker=OLD, final=False)
+        second = p.text("待ってください。")
+        p.expect("turn_settled", turnId=second, timeout=30)
+        cut = p.index("interrupted", turnId=first)
+        assert cut < min(i for i, m in enumerate(p.log) if m.get("turnId") == second)
+        final = p.find("transcript", turnId=first, speaker=OLD, final=True)
+        assert final["source"] == "live" and final["text"] == half["text"]
+        assert not [m for m in p.log if m["type"] == "turn_complete" and m.get("turnId") == first]
+        assert not [m for m in p.log[cut:] if m["type"] == "#audio" and m["turnSeq"] == 1]
+        assert p.index("commit", turnId=first) < p.index("turn_settled", turnId=first)
+        assert p.find("turn_complete", turnId=second)["audio"] is True
+    finally:
+        p.close()
+
+
+def test_disconnect_while_speaking_leaves_the_turn_lost(env: Env, slow: Services) -> None:
+    """人物还没说完就断线：这一轮不交给叙事者，重连时 lastTurn.status = lost（第 4 节）。"""
+    p = Player(slow.base)
+    p.login(invite(env))
+    try:
+        p.start()
+        p.connect(last_seq=p.last_seq)
+        p.expect("welcome")
+        p.focus(OLD)
+        t = p.text("こんばんは。")
+        p.expect("transcript", turnId=t, speaker=OLD, final=False)
+        assert p.ws is not None
+        p.ws.close()
+        deadline = time.monotonic() + 10
+        while True:  # 网关处理断线、写下这一轮要一点时间
+            p.log, p.pos = [], 0
+            p.connect(last_seq=p.last_seq)
+            last = p.expect("welcome")["lastTurn"]
+            if last is not None or time.monotonic() > deadline:
+                break
+            assert p.ws is not None
+            p.ws.close()
+            time.sleep(0.2)
+        assert last is not None and last["turnId"] == t and last["status"] == "lost"
+        assert last["playerText"] == "こんばんは。"
+        p.send({"type": "ping"})
+        p.expect("pong")
+        assert not [m for m in p.log if m.get("turnId") == t]  # 没有 commit、turn_settled
+    finally:
+        p.close()
+
+
 def test_routes_b0_does_not_mount_are_404(player: Player) -> None:
     p = player
     p.start()
@@ -452,8 +576,16 @@ def test_routes_b0_does_not_mount_are_404(player: Player) -> None:
 def test_bad_and_unhandled_messages(player: Player) -> None:
     p = player
     p.start()
-    p.connect(last_seq=p.last_seq)
+    p.connect()
+    p.text("こんばんは。")  # hello 之前：回 error，不处理（不然这一轮的 turn_settled 永远不来）
+    assert p.expect("error")["error"]["code"] == "invalid_request"
+    p.send({"type": "hello", "lastSeq": p.last_seq, "clientVersion": "test"})
     p.expect("welcome")
+    p.text("こんばんは。")  # 还没 focus 人物
+    assert p.expect("error")["error"]["code"] == "invalid_request"
+    for who in ("char.crowd", "char.nobody"):  # 不能说话的、不存在的
+        p.send({"type": "focus", "character": who})
+        assert p.expect("error")["error"]["code"] == "invalid_request"
     p.send({"type": "focus"})  # 少了 character
     assert p.expect("error")["error"]["code"] == "invalid_request"
     assert p.ws is not None

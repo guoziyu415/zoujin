@@ -97,7 +97,7 @@ turns = Table(
     Column("character", Text),  # talk：和谁说
     Column("turn_seq", BigInteger),  # 前端的 turnSeq
     Column("minutes", Integer),  # advance：快进几分钟；完成后：这一轮花了几分钟（turn_settled.minutes）
-    Column("status", Text, nullable=False),  # pending / leased / done / retracted / failed
+    Column("status", Text, nullable=False),  # pending / leased / done / retracted / failed / lost（断线时人物没说完）
     Column("outcome", Text),  # turn_settled.outcome
     _ts("lease_until"),
     Column("attempts", Integer, nullable=False, server_default="0"),
