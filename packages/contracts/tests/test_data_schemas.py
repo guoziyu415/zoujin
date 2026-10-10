@@ -53,11 +53,6 @@ COMMON_DEFS = set(
 )
 EFFECT_OPS = {"set", "inc", "beat", "learn", "relocate", "promise", "improv", "hold"}
 
-# 契约写法和 Schema 有意不一样的地方（C-2 评审定，description 里写了原因）。
-# Effect 的 promise 分支：契约写 promiseId 必填，但效果模板（2.10）和候选事件不写；
-# Schema 里可选，Event.effects 另外要求。契约 1.6 改成可选后去掉这条例外。
-DOC_REQUIRED_BUT_OPTIONAL = {("Effect", "promise", "promiseId")}
-
 
 def load_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
@@ -156,8 +151,9 @@ def test_every_object_is_closed() -> None:
     allOf 拼出来的交叉类型只能在外层用 unevaluatedProperties: false（现在没有：sampleLines 写成了普通对象）。"""
     for name, doc in SCHEMA_DOCS.items():
         for path, node in walk(doc):
-            # properties、$defs 是名字到 Schema 的表；if 是判断条件（Event.effects 的 promiseId），不是形状
-            if not isinstance(node, dict) or path.endswith(("/properties", "/$defs", "/if")):
+            # properties、$defs 是名字到 Schema 的表；if / then 是按条件加的必填（Event.effects 的 promiseId、
+            # 1.6 起写入的 Ending 必写的字段），不是形状
+            if not isinstance(node, dict) or path.endswith(("/properties", "/$defs", "/if", "/then")):
                 continue
             if "allOf" in node:
                 assert node.get("unevaluatedProperties") is False, f"{name}{path}: allOf 的外层要关死"
@@ -257,12 +253,12 @@ def test_doc_and_schema_have_the_same_37_types() -> None:
     assert len(DOC_TYPES) == 37
 
 
-def _compare(where: str, doc_fields: dict[str, bool], schema: dict[str, Any], optional_ok: set[str]) -> None:
+def _compare(where: str, doc_fields: dict[str, bool], schema: dict[str, Any]) -> None:
     props = set(schema["properties"])
     required = set(schema.get("required", []))
     only_doc, only_schema = sorted(set(doc_fields) - props), sorted(props - set(doc_fields))
     assert not only_doc and not only_schema, f"{where}：文档多 {only_doc}，Schema 多 {only_schema}"
-    doc_required = {f for f, req in doc_fields.items() if req} - optional_ok
+    doc_required = {f for f, req in doc_fields.items() if req}
     assert required == doc_required, f"{where}：必填对不上，文档 {sorted(doc_required)}，Schema {sorted(required)}"
 
 
@@ -276,10 +272,9 @@ def test_fields_match_contracts_md(type_name: str) -> None:
         branches = {b["properties"]["op"]["const"]: b for b in schema["oneOf"]}
         assert set(branches) == set(doc) == EFFECT_OPS
         for op, fields in doc.items():
-            optional_ok = {f for (t, o, f) in DOC_REQUIRED_BUT_OPTIONAL if (t, o) == ("Effect", op)}
-            _compare(f"Effect.{op}", fields, branches[op], optional_ok)
+            _compare(f"Effect.{op}", fields, branches[op])
     else:
-        _compare(type_name, doc, schema, set())
+        _compare(type_name, doc, schema)
 
 
 # —— 4. 例子 ——
@@ -293,6 +288,9 @@ INVALID_BECAUSE: dict[str, tuple[str, str]] = {
     "Effect/op-teleport.json": ("const", "op"),
     "Ending/card-title-empty.json": ("minLength", "card/title"),
     "Ending/character-lines-4.json": ("maxItems", "card/characterLines"),
+    "Ending/character-lines-empty.json": ("minItems", "card/characterLines"),
+    "Ending/v1.6-without-card.json": ("required", ""),
+    "Ending/v1.6-without-did-for-you.json": ("required", "player"),
     "Ending/epilogue-empty-cites.json": ("minItems", "player/epilogue/0/cites"),
     "Event/event-id-prefix-evt.json": ("pattern", "eventId"),
     "Event/event-id-ulid-25.json": ("pattern", "eventId"),
@@ -300,12 +298,14 @@ INVALID_BECAUSE: dict[str, tuple[str, str]] = {
     "Event/idempotency-key-empty.json": ("minLength", "idempotencyKey"),
     "Event/missing-summary.json": ("required", ""),
     "Event/promise-without-id.json": ("required", "effects/0"),
-    "Event/schema-version-1.6.json": ("enum", "schemaVersion"),
+    "Event/schema-version-1.7.json": ("enum", "schemaVersion"),
     "Event/t-fraction.json": ("type", "t"),
     "Event/t-negative.json": ("minimum", "t"),
     "MemoryItem/from-events-empty.json": ("minItems", "fromEvents"),
     "MemoryItem/trust-delta-25.json": ("maximum", "trustDelta"),
     "Relationship/level-6.json": ("enum", "level"),
+    "StateVar/value-requires-without-note.json": ("required", "valueRequires/0"),
+    "StateVar/value-requires-empty-when.json": ("minItems", "valueRequires/0/when"),
 }
 
 

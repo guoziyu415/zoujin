@@ -1,0 +1,15 @@
+{
+  "id": "var.river.crossing",
+  "type": "enum",
+  "values": ["none", "bridge", "swam", "boat", "other"],
+  "default": "none",
+  "description": "メロスがどう川を渡ったか",
+  "valueRequires": [
+    {
+      "value": "bridge",
+      "when": [],
+      "note": "橋で渡れるのは、橋が流されていない時だけ",
+      "inferred": true
+    }
+  ]
+}

@@ -10,7 +10,7 @@
    省略 p 时自动定位；找不到或在多段出现（且没给 p）都算错误。
    输出时展开成 contracts.md 的 Cite：{source, para, quote}。
 2. 引用完整性：所有 ID 唯一；knows / since / place / participants / var / anchors / causal / roles 的引用都存在；
-   状态变量的取值符合类型和枚举。
+   状态变量的取值符合类型和枚举；（1.6，C-16）valueRequires 的 value 在这个变量的取值里，when 引用的变量存在、取值合法。
 3. 时间：节拍 earliest <= canonical <= latest；按 order 排列时 canonical 不倒退；期限 = Day 3 日没。
 4. 知情范围：角色「从 X 起知道 F」时，F 必须在 X 之前（或同时）已经成立。
 5. 因果图无环；from 的 canonical 不晚于 to。
@@ -34,7 +34,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from worldsim import Sim  # noqa: E402  共用的推演规则（contracts 2.4.1 / 2.5.1）
 
-CONTRACT_VERSION = "1.5"  # contracts.md 的版本
+CONTRACT_VERSION = "1.6"  # contracts.md 的版本
 errors, warnings = [], []
 
 
@@ -223,6 +223,14 @@ def main():
             check_value(v["id"], val, f"{v['id']}.valueLabels")
         if v.get("valueLabels") and not v.get("visibleToPlayer"):
             warn(f"{v['id']}: 有 valueLabels 但没有标 visibleToPlayer")
+        for r in v.get("valueRequires", []):     # 1.6，C-16
+            check_value(v["id"], r["value"], f"{v['id']}.valueRequires")
+            if not r.get("when"):
+                err(f"{v['id']}.valueRequires: {r['value']!r} 的 when 是空的")
+            for cnd in r.get("when", []):
+                check_value(cnd["var"], cnd["value"], f"{v['id']}.valueRequires[{r['value']!r}].when")
+            if not r.get("note"):
+                err(f"{v['id']}.valueRequires: {r['value']!r} 要写 note（叙事者的 reason 用它）")
 
     for c in world["characters"]:
         if c["initialPlace"] not in places:
@@ -658,7 +666,7 @@ def main():
 
     def simulate(sc):
         r = sim.run(sc)
-        return r["outcome"], r["status"], r["times"], r["state"], r["variant"]
+        return r["outcome"], r["status"], r["times"], r["state"], r["variant"], r["violations"]
 
     # 1.4：第四幕按钮上的 melosMinutes = 只做这一个动作时，梅洛斯到刑场（watchBeat）在原著路径上早晚几分钟。
     # 晚到超过期限也照算分钟数（按钮写「六十分遅れる」），所以用去掉 window.latest 的副本推演。
@@ -692,7 +700,9 @@ def main():
             check_effects([{"op": "beat", "beat": bid, **o}], sc["id"])
         for ev in sc.get("events", []):
             check_effects(ev["effects"], sc["id"])
-        outcome, status, times, state, variant = simulate(sc)
+        outcome, status, times, state, variant, violations = simulate(sc)
+        for t_, x in violations:                 # 1.6：情景里的事件也守 valueRequires
+            err(f"{sc['id']}：t={t_} 把 {x['var']} 改成 {x['value']!r}，条件 {x['when']} 不成立（{x['note']}）")
         if sc["id"] == "sc.canon":
             canon_status, canon_times = status, times
             for bid, st in status.items():

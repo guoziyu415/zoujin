@@ -42,9 +42,6 @@ LABEL_KEYS = {"verdict", "failedRules", "acceptAlso", "stage", "rationale", "fix
 TURN_KEYS = {"player", "to", "reply", "act"}
 TAGS = {"anchor-text", "improv", "claim", "tricky-valid", "pair", "no-effects", "verbatim-quote", "pii",
         "violence", "affordance", "aid", "travel", "past", "romance", "faith", "threshold"}
-# var.king.trust 的说明（世界模型 stateVars）：40 以上才可以「揺れている」，70 以上才可以期限前改心
-THRESHOLDS = {("var.king.disposition", "wavering"): ("var.king.trust", 40),
-              ("var.king.disposition", "reformed"): ("var.king.trust", 70)}
 TERMINAL = {"var.hostage.fate": "executed", "var.player.custody": "executed", "var.melos.custody": "executed"}
 JA = re.compile(r"[぀-ヿ一-鿿]")
 PII = re.compile(r"\d{2,4}-\d{2,4}-\d{3,4}|@[\w.-]+\.\w+|〒")
@@ -228,9 +225,6 @@ class S2:
                     hit("R1-anchor", f"{v} = {locked[v]!r} 是锚点节拍的结果，不能改成 {e['value']!r}")
                 if v in TERMINAL and sim_state.get(v) == TERMINAL[v] and e["value"] != TERMINAL[v]:
                     hit("R2-precondition", f"{v} 已经是 {TERMINAL[v]}，死者不复活（rule.no-resurrection）")
-                th = THRESHOLDS.get((v, e["value"]))
-                if th and sim_state.get(th[0], 0) < th[1]:
-                    hit("R2-precondition", f"{v} = {e['value']} 要 {th[0]} ≥ {th[1]}，此刻 {sim_state.get(th[0])}")
                 if v == "var.player.location":
                     if e["value"] not in self.reach(role, sim_state, set()):
                         hit("R7-capability", f"{role['id']} 进不了 {e['value']}（access 和此刻成立的 conditionalAccess）")
@@ -263,6 +257,10 @@ class S2:
                 tgt = e.get("to")
                 if tgt not in (None, "player") and where.get(tgt) != ppl and state["var.player.companionOf"] != tgt:
                     hit("R7-capability", f"{tgt} 在 {where.get(tgt)}，玩家在 {ppl}，交不到他手上")
+            # 契约 1.6（C-16）StateVar.valueRequires：王的心（信任 40 / 70）、过桥渡河（桥还在）等，只读世界模型
+            for x in self.sim.value_requires([e], sim_state):
+                now = {cnd["var"]: sim_state.get(cnd["var"]) for cnd in x["when"]}
+                hit("R2-precondition", f"{x['var']} = {x['value']!r} 要 {x['when']}，此刻 {now}（{x['note']}）")
             self.sim.apply([e], sim_state, None)
 
         act = turn.get("act")

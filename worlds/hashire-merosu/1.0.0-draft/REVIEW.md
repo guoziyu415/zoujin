@@ -509,13 +509,13 @@
 | var.selinuntius.faith | int | 0 |  | — | 人質の間、セリヌンティウスがメロスを信じ続ける支え（S-064、推定）。3 以上あれば三日目の「ちらと疑う」（beat.s2）が起きない。親方のそばにいる（aff.stay-by-master）+2、自分の目で見たメロスの様子を届ける（aid.selinuntius.bring-news）+1、一緒に信じ続ける（aid.selinuntius.keep-faith）+1。そばにいるだけでは 2 で足りない。メロスを疑わせることを言ったり、約束「そばにいる」を破ったりすれば、叙事者は −1 してよい |
 | var.selinuntius.attended | bool | False |  | — | 弟子が人質の夜に親方のそばにいたか（aff.stay-by-master は一局に一度） |
 | var.selinuntius.doubted | bool | False |  | — | セリヌンティウスが三日の間に一度、ちらとメロスを疑ったか（beat.s2 で true）。台詞と beat.25 の演じ方が変わる |
-| var.king.trust | int | 5 |  | — | 王が人を信じる度合い（推定の数値モデル、0〜100、初期 5）。0 まで落ちると刑場でも改心しない（beat.26 の前提）。40 以上で叙事者は王の心を「揺れている」（wavering）にしてよい。70 以上で期限前の改心（第 4 類「王が先に変わった」）を認めてよい。旅人の保証（aff.vouch）は +10、本当のことを言って聞かせる（aid.king.truth）+10、群臣の前で面目をつぶさない（aid.king.face）+5：設計した手段だけでは 30 で、一度の保証で王が軟化することはない（評測 E3） |
-| var.king.disposition | enum（tyrant / wavering / reformed） | tyrant | 是 | wavering:王の心が揺れている、reformed:王が改心した | 王の心 |
+| var.king.trust | int | 5 |  | — | 王が人を信じる度合い（推定の数値モデル、0〜100、初期 5）。0 まで落ちると刑場でも改心しない（beat.26 の前提）。40 以上で王の心を「揺れている」（wavering）にでき、70 以上で期限前に改心（第 4 類「王が先に変わった」）できる（var.king.disposition の valueRequires）。旅人の保証（aff.vouch）は +10、本当のことを言って聞かせる（aid.king.truth）+10、群臣の前で面目をつぶさない（aid.king.face）+5：設計した手段だけでは 30 で、一度の保証で王が軟化することはない（評測 E3） |
+| var.king.disposition | enum（tyrant / wavering / reformed） | tyrant | 是 | wavering:王の心が揺れている、reformed:王が改心した | 王の心<br>改成 wavering 要 king.trust >= 40：王の心が揺れるのは、人を信じる度合いが 40 以上になってから<br>改成 reformed 要 king.trust >= 70：期限前に王が改心するのは、人を信じる度合いが 70 以上になってから。刑場での改心は beat.26 の前提が決める（系統の事件は対象外） |
 | var.groom.agreed | bool | False |  | true:花婿が婚礼の繰り上げを承知した | 花婿が婚礼の繰り上げに同意したか |
 | var.wedding.status | enum（planned / scheduled / held / postponed） | planned | 是 | scheduled:婚礼があすと決まった、held:婚礼が挙げられた、postponed:婚礼が延期された | 婚礼 |
 | var.weather | enum（clear / storm / after-rain） | clear |  | storm:大雨になった、after-rain:雨が上がった | 天気 |
 | var.bridge | enum（intact / destroyed） | intact |  | destroyed:橋が流された | 川の橋 |
-| var.river.crossing | enum（none / bridge / swam / boat / other） | none |  | — | メロスがどう川を渡ったか |
+| var.river.crossing | enum（none / bridge / swam / boat / other） | none |  | — | メロスがどう川を渡ったか<br>改成 bridge 要 bridge == intact：橋で渡れるのは、橋が流されていない時だけ |
 | var.bandits | enum（waiting / defeated / evaded / absent） | waiting |  | — | 峠の山賊 |
 | var.player.location | place | role.startPlace |  | — | プレイヤーの居場所 |
 | var.player.custody | enum（free / arrested / hostage / executed） | free | 是 | arrested:あなたは捕らえられた、hostage:あなたが人質になった、free:あなたは自由になった | プレイヤーの身柄。executed は当場で表示しない（S-067）：結局の中で間接的に伝え、「処刑」「死」とは書かない |

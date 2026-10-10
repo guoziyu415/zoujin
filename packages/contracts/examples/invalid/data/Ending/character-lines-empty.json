@@ -1,0 +1,95 @@
+{
+  "schemaVersion": "1.6",
+  "endingId": "end_01JYJ5Q3A1B2C3D4E5F6G7H8J9",
+  "playthroughId": "pt_01JK7G0S9BVTJK98MKM7R7ZJDM",
+  "worldModelVersion": "hashire-merosu@1.0.0",
+  "trigger": "deadline",
+  "t": 5460,
+  "decidedAt": "2026-10-06T13:10:00Z",
+  "world": {
+    "outcome": "in-time-king-unchanged",
+    "summary": "メロスは日没に間に合ったが、王の心は変わらなかった。",
+    "changedBeats": [
+      {
+        "beat": "beat.26",
+        "to": "prevented",
+        "causedBy": ["ev_01JYJ5Q2K8VXN3M4B7C9D1E2F3"]
+      }
+    ],
+    "finalVars": {
+      "var.hostage.fate": "released",
+      "var.king.disposition": "tyrant",
+      "var.melos.custody": "returned"
+    },
+    "title": "間に合ったが、王は変わらなかった"
+  },
+  "player": {
+    "fate": {
+      "id": "witness",
+      "label": "目撃者",
+      "causedBy": ["ev_01JYJ5Q2K8VXN3M4B7C9D1E2F3"]
+    },
+    "relationships": [],
+    "title": {
+      "text": "約束を見届けた旅人",
+      "causedBy": ["ev_01JYJ5Q2K8VXN3M4B7C9D1E2F3"]
+    },
+    "epilogue": [
+      {
+        "sentence": "メロスは間に合ったが、王の心は変わらなかった。",
+        "cites": ["ev_01JYJ5Q2K8VXN3M4B7C9D1E2F3"]
+      }
+    ],
+    "lastScene": {
+      "place": "place.syracuse-square",
+      "description": "刑場の群衆が、静かに散っていく。",
+      "present": ["char.selinuntius", "char.melos"]
+    },
+    "didForYou": [],
+    "youDid": []
+  },
+  "characters": [
+    {
+      "character": "char.melos",
+      "rank": null,
+      "unchanged": true,
+      "original": "メロスは日没に間に合い、友と抱き合った。"
+    },
+    {
+      "character": "char.king",
+      "rank": null,
+      "unchanged": true
+    },
+    {
+      "character": "char.selinuntius",
+      "rank": null,
+      "unchanged": true
+    },
+    {
+      "character": "char.sister",
+      "rank": null,
+      "unchanged": true
+    },
+    {
+      "character": "char.groom",
+      "rank": null,
+      "unchanged": true
+    },
+    {
+      "character": "char.philostratus",
+      "rank": null,
+      "unchanged": true
+    },
+    {
+      "character": "char.old-man",
+      "rank": null,
+      "unchanged": true
+    }
+  ],
+  "card": {
+    "title": "約束を見届けた旅人",
+    "subtitle": "メロスは間に合ったが、王の心は変わらなかった。",
+    "contrast": "原作では王が改心した。あなたの世界では、王は二人を見ても変わらなかった。",
+    "characterLines": []
+  }
+}
