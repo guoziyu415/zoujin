@@ -214,7 +214,7 @@ UX 维护。M2 切片（广场、旅人、町の老爺和メロス、第一幕�
 | 键 | 日语 | 状态 |
 |---|---|---|
 | `actEnd.title` | 第一幕　約束の日　おわり | 定 |
-| `actEnd.rumor` | 門の衛兵たちが、ひそひそと話していた。<br>──あの男は友を人質に置き、三日目の日没までに戻ると誓ったそうだ。 | 定（切片） |
+| `actEnd.rumor` | 門の警吏たちが、ひそひそと話していた。<br>──あの男は友を人質に置き、三日目の日没までに戻ると誓ったそうだ。 | 定（切片） |
 | `actEnd.melosLeft` | メロスは、村へ走り去った。 | 定 |
 | `actEnd.prompt` | 三日のあいだ、あなたは── | 定（切片；完整版是「あなたは──」） |
 | `actEnd.when` | {place}・{day}の{band} | 定（去处副题的前半，前端拼。`{place}` 是去处的地点名（`ActExit.place` 的 `Place.name`，服务端在 `act_ended.options[]` 的 `placeName` 里下发，不用场景名），切片两条都是「刑場」，例「刑場・三日目の夕方」；`{day}` `{band}` 是 `options[]` 的 `day`、`band`（服务端按 `clock.labels` 算好下发，前端没有 `clock.labels`）；和 ux-design 4.4「村・一日目の午前」同一写法。后半是 `options[]` 的 `sub`（数据 `ActExit.sub`），排在同一行，中间一个全角空格） |
