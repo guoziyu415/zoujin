@@ -53,7 +53,7 @@ async def _main(args: argparse.Namespace) -> int:
             for code in await create_invites(engine, args.count):
                 print(code)
             return 0
-        library = Library(settings.worlds, settings.scenes)
+        library = Library(settings.worlds, settings.scenes, settings.world)
         fields = await replay(engine, library, args.playthrough_id)
         if fields is None:
             print(f"没有这一局，或开局还没做完：{args.playthrough_id}", file=sys.stderr)

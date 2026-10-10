@@ -20,7 +20,9 @@ RULES = ("R1-anchor", "R2-precondition", "R3-time", "R4-knowledge", "R5-persona"
 CHECKER = "b0:w1-check_effects"  # 只跑了 W-1 的检查；R1〜R7 本体没做
 # check_effects 的问题 → 最接近的规则（S-2 的标注集里同类的违规按这个记）
 CODE_RULE = {
-    "beat-happened": "R1-anchor",  # 候选事件让原作节拍直接发生
+    # 候选事件让节拍直接发生：节拍只由到点的系统事件写 happened，要早用 hastened（契约 2.4.1），是前提问题。
+    # R1 只管推翻锚点（S-2 的 s2d-03 和 s2_check.py 都记 R2）
+    "beat-happened": "R2-precondition",
     "beat-has-result": "R2-precondition",
     "bad-state": "R2-precondition",
     "value-requires": "R2-precondition",

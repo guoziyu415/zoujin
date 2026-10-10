@@ -58,8 +58,8 @@ class EvalNotImplemented(Exception):
 
 
 @cache
-def _library(worlds: Path, scenes: Path) -> Library:
-    return Library(worlds, scenes)
+def _library(worlds: Path, scenes: Path, current: Path) -> Library:
+    return Library(worlds, scenes, current)
 
 
 @cache
@@ -86,7 +86,7 @@ def setup(setup: Mapping[str, Json], *, mode: str = "text") -> Session:
     if any("memory" in e for e in setup.get("events", [])):
         raise EvalNotImplemented("memory")
     settings = Settings.from_env()
-    library = _library(settings.worlds, settings.scenes)
+    library = _library(settings.worlds, settings.scenes, settings.world)  # ZJ_WORLD 每次 setup() 都读
     book = library.book(setup.get("book", BOOK))
     if book is None:
         raise ValueError(f"没有这本书：{setup.get('book', BOOK)}")
@@ -166,10 +166,8 @@ class Session:
             await engine.dispose()
 
     def _world_dir(self) -> Path:
-        for p in self.settings.worlds.glob("*/*/world.json"):
-            if json.loads(p.read_text(encoding="utf-8"))["worldModelVersion"] == self.book.version:
-                return p.parent
-        raise FileNotFoundError(self.book.version)
+        """情景 `scenarios.json` 和开局用的 world.json 在同一个目录（setup 只用 `Library.current`）。"""
+        return self.settings.world.parent
 
     # —— 步骤 ——
 

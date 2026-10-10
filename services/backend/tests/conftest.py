@@ -19,7 +19,7 @@ from alembic.config import Config
 from sqlalchemy import insert
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
-from zoujin_backend.config import REPO, Settings, async_url
+from zoujin_backend.config import DEFAULT_WORLD, REPO, Settings, async_url
 from zoujin_backend.db import store
 from zoujin_backend.db.tables import metadata, users
 from zoujin_backend.ids import IdGen
@@ -30,7 +30,7 @@ from zoujin_backend.world import Book, Library
 
 ALEMBIC_INI = REPO / "services" / "backend" / "alembic.ini"
 SCHEMAS = SchemaBook(REPO / "packages" / "contracts" / "schemas")
-LIBRARY = Library(REPO / "worlds", REPO / "assets" / "scenes")
+LIBRARY = Library(REPO / "worlds", REPO / "assets" / "scenes", DEFAULT_WORLD)
 BOOK: Book = LIBRARY.book("hashire-merosu")  # type: ignore[assignment]
 OLD = "char.old-man"
 PLAYER_LINE = "さっき、村の牧人だという若い男とすれ違いました。"  # fixtures/fake-text/b0-minimal.json 认「牧人」

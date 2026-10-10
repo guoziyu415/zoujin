@@ -54,7 +54,7 @@ def test_minimal_script(env: Env) -> None:
             (OLD, "rejected", False),
             ("player", "passed", False),  # 这一轮的 10 分钟：只推进时钟的 say
         ]
-        assert evs[1]["check"]["failedRules"] == ["R1-anchor"]
+        assert evs[1]["check"]["failedRules"] == ["R2-precondition"]
         assert [e["seq"] for e in evs] == [3, 4, 5] and evs[-1]["dt"] == 10
         assert all(e["turnId"] == turn_id for e in evs)
         for e in await log_of(env, pid):

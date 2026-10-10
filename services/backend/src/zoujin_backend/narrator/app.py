@@ -30,7 +30,7 @@ def build(settings: Settings) -> Narrator:
     engine = create_async_engine(settings.database_url, pool_size=5)
     return Narrator(
         engine=engine,
-        library=Library(settings.worlds, settings.scenes),
+        library=Library(settings.worlds, settings.scenes, settings.world),
         text=text_model(settings.model, fake_rules=settings.fake_text, replays=settings.replays),
         schemas=SchemaBook(settings.schemas),
     )

@@ -1,6 +1,7 @@
 """世界模型和场景布局（只读）。
 
 - 世界模型：`worlds/<bookId>/<版本目录>/world.json`，按 `worldModelVersion` 找；一局开局时锁定版本（data-design 4.5）。
+  开新局用哪一个由配置定（`ZJ_WORLD`，没设是草稿），不按目录排序。
 - 场景布局：`assets/scenes/<场景>/scene.json`（前端的流水线生成）的 `defaultPlace`、`places`、`spots`、`exits`、
   `startSpots`。有布局的场景才能投影位置点；还没有布局的场景，位置点用地点 ID 的最后一段。
 """
@@ -122,24 +123,32 @@ class Book:
 
 
 class Library:
-    """仓库里全部的世界模型和场景布局，开进程时读一次。"""
+    """仓库里全部的世界模型和场景布局，开进程时读一次。
 
-    def __init__(self, worlds: Path, scenes: Path) -> None:
-        layouts = {}
+    `current` 是开新局用的那一个（`Settings.world`，即 `ZJ_WORLD` 或默认的草稿）；已有的局按自己锁定的版本查
+    `version()`，版本不在这里就报错，不悄悄换。
+    """
+
+    def __init__(self, worlds: Path, scenes: Path, current: Path) -> None:
+        self.layouts: dict[str, Scene] = {}
         for p in sorted(scenes.glob("*/scene.json")):
             s = Scene.read(p)
-            layouts[s.scene_id] = s
+            self.layouts[s.scene_id] = s
         self.by_version: dict[str, Book] = {}
-        self.latest: dict[str, Book] = {}
         for p in sorted(worlds.glob("*/*/world.json")):
-            w = json.loads(p.read_text(encoding="utf-8"))
-            book = Book(book_id=w["book"]["id"], world=w)
-            book.scenes = {k: v for k, v in layouts.items() if k in {s["id"] for s in w["scenes"]}}
-            self.by_version[book.version] = book
-            self.latest[book.book_id] = book  # 目录名排序后的最后一个
+            self._add(p)
+        self.current = self._add(current)
+
+    def _add(self, path: Path) -> Book:
+        w = json.loads(path.read_text(encoding="utf-8"))
+        book = Book(book_id=w["book"]["id"], world=w)
+        book.scenes = {k: v for k, v in self.layouts.items() if k in {s["id"] for s in w["scenes"]}}
+        self.by_version[book.version] = book
+        return book
 
     def book(self, book_id: str) -> Book | None:
-        return self.latest.get(book_id)
+        """开新局：只用 `current`，书不对就是没有。"""
+        return self.current if self.current.book_id == book_id else None
 
     def version(self, world_model_version: str) -> Book:
         return self.by_version[world_model_version]

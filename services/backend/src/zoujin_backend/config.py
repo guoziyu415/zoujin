@@ -23,6 +23,10 @@ TEXT_MODELS: dict[str, str] = {
     "reply": "gemini-3.8-flash",
 }
 
+# 开新局用的世界模型。`ZJ_WORLD`（world.json 的绝对路径，E-0 的运行器这样设，`--slice` 时是切片版）换掉它；
+# 不按目录名排序挑最新的：切片（1.0.0-slice）排在 1.0.0-draft 后面，排序会让新局悄悄落到切片上
+DEFAULT_WORLD = REPO / "worlds" / "hashire-merosu" / "1.0.0-draft" / "world.json"
+
 COOKIE = "zj_session"
 SESSION_DAYS = 30  # 会话 Cookie 30 天，每次使用滑动续期（backend-design 5.2）
 
@@ -38,6 +42,19 @@ def model_mode(env: Mapping[str, str] | None = None) -> ModelMode:
         if value == m:
             return m
     raise ConfigError(f"ZJ_MODEL 只能是 {' / '.join(MODEL_MODES)}，得到 {value!r}")
+
+
+def world_path(env: Mapping[str, str] | None = None) -> Path:
+    """`ZJ_WORLD`：world.json 的绝对路径；没设就是 `DEFAULT_WORLD`。"""
+    value = (os.environ if env is None else env).get("ZJ_WORLD", "")
+    if not value:
+        return DEFAULT_WORLD
+    path = Path(value)
+    if not path.is_absolute():
+        raise ConfigError(f"ZJ_WORLD 要写 world.json 的绝对路径，得到 {value!r}")
+    if not path.is_file():
+        raise ConfigError(f"ZJ_WORLD 指的文件不存在：{value}")
+    return path
 
 
 def async_url(url: str) -> str:
@@ -61,6 +78,7 @@ class Settings:
     fake_voice: Path = field(default=REPO / "fixtures" / "fake-voice")
     fake_text: Path = field(default=REPO / "fixtures" / "fake-text")
     replays: Path = field(default=REPO / "fixtures" / "model-replays")
+    world: Path = DEFAULT_WORLD  # 开新局用的世界模型；已有的局按自己锁定的版本
 
     @property
     def schemas(self) -> Path:
@@ -88,4 +106,5 @@ class Settings:
             allow_origins=origins,
             narrator_url=e.get("ZJ_NARRATOR_URL", cls.narrator_url),
             speed=float(e.get("ZJ_SPEED", "1")),
+            world=world_path(e),
         )

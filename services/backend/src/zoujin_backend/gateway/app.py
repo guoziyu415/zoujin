@@ -39,7 +39,7 @@ def build(settings: Settings, narrator: NarratorClient | None = None) -> Gateway
     return Gateway(
         settings=settings,
         engine=create_async_engine(settings.database_url, pool_size=10),
-        library=Library(settings.worlds, settings.scenes),
+        library=Library(settings.worlds, settings.scenes, settings.world),
         schemas=SchemaBook(settings.schemas),
         live=FakeLive(settings.fake_voice, speed=settings.speed),
         narrator=narrator or HttpNarrator(settings.narrator_url),

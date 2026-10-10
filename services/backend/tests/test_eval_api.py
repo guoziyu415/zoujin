@@ -7,12 +7,13 @@ import importlib.util
 import json
 import os
 import sys
+from pathlib import Path
 from types import ModuleType
 from typing import Any
 
 import pytest
 from zoujin_backend import eval_api
-from zoujin_backend.config import REPO
+from zoujin_backend.config import DEFAULT_WORLD, REPO
 from zoujin_backend.models import prompts
 from zoujin_backend.models.text import FakeText, TextResult, record
 from zoujin_backend.narrator.rules import RULES
@@ -108,11 +109,30 @@ def test_say_returns_rejected_candidates_with_their_effects(env: Env, monkeypatc
     s = eval_api.setup(MINIMAL, mode="text")
     step = s.say(OLD, PLAYER_LINE)
     rejected = [e for e in step["events"] if e["check"]["status"] == "rejected"]
-    assert len(rejected) == 1 and rejected[0]["check"]["failedRules"] == ["R1-anchor"]
+    assert len(rejected) == 1 and rejected[0]["check"]["failedRules"] == ["R2-precondition"]
     assert rejected[0]["effects"] == [{"op": "beat", "beat": "beat.03", "to": "happened"}]  # 候选原本的
     (logged,) = [e for e in s.events() if e["eventId"] == rejected[0]["eventId"]]
     assert logged["effects"] == []  # 日志里那条是空的（契约第 3 节）
     assert step["clockMinutes"] == 10 and step["traceId"].startswith("turn_")
+
+
+def test_setup_reads_zj_world_on_every_call(env: Env, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """E-0 的运行器在 setup() 之前设 ZJ_WORLD（--slice 时是切片版）；没设就用草稿，不按目录排序挑。"""
+    monkeypatch.setenv("DATABASE_URL", env.url)
+    monkeypatch.delenv("ZJ_MODEL", raising=False)
+    w = json.loads(DEFAULT_WORLD.read_text(encoding="utf-8"))
+    draft = w["worldModelVersion"]
+    w["worldModelVersion"] = "hashire-merosu@9.9.9-test"
+    other = tmp_path / "9.9.9-test" / "world.json"
+    other.parent.mkdir(parents=True)
+    other.write_text(json.dumps(w, ensure_ascii=False), encoding="utf-8")
+
+    monkeypatch.setenv("ZJ_WORLD", str(other))
+    s = eval_api.setup(MINIMAL, mode="text")
+    assert s.book.version == "hashire-merosu@9.9.9-test"
+    assert all(e["t"] <= 1080 for e in s.events())
+    monkeypatch.delenv("ZJ_WORLD")
+    assert eval_api.setup(MINIMAL, mode="text").book.version == draft
 
 
 @pytest.mark.parametrize(
