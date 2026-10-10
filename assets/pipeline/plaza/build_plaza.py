@@ -447,8 +447,9 @@ def workshop():
         box(f'yard_block{i}', bx - sx / 2, bx + sx / 2, by - sy / 2, by + sy / 2, z0, z0 + sz, M_ASHLAR2, tile=1.2, caster=True)
     cyl('yard_drum', -13.2, -19.9, 0, 0.9, 0.55, 0.55, 18, M_PLAIN, caster=True)
     cyl('yard_drum2', -11.9, -21.6, 0, 0.62, 0.5, 0.5, 18, M_PLAIN, caster=True)
-    box('yard_bench', -10.0, -8.0, -21.9, -21.2, 0, 0.85, M_BARK, tile=1.5, caster=True)
-    box('yard_bench_stone', -9.6, -8.9, -21.75, -21.3, 0.85, 1.12, M_PLAIN, tile=1.0)
+    # the bench stands west of the house door (x about -8.4), so the door is clear to knock on (spot workshop-door)
+    box('yard_bench', -11.3, -9.3, -21.9, -21.2, 0, 0.85, M_BARK, tile=1.5, caster=True)
+    box('yard_bench_stone', -10.9, -10.2, -21.75, -21.3, 0.85, 1.12, M_PLAIN, tile=1.0)
     for i, (cx, cy) in enumerate([(-9.6, -18.9), (-9.1, -18.4), (-8.6, -19.2), (-10.2, -18.3)]):
         box(f'yard_chip{i}', cx - 0.18, cx + 0.18, cy - 0.14, cy + 0.14, 0, 0.12, M_PLAIN, tile=1.0)
 
