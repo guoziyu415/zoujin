@@ -283,6 +283,10 @@ export interface ActExit {
    */
   enRoute?: EnRoute;
   /**
+   * （1.7）幕末页上这个去处副题的后半（日语，叙事口吻，不写分钟数）；前半「{地点}・{日子}の{时段}」由前端按 place 和 t 生成。省略 = 只有前半
+   */
+  sub?: string;
+  /**
    * （1.7）玩家落在 place 的哪个位置点；省略 = 前端按这个地点的起点（layout.json 的 startSpots）
    */
   spot?: SpotId;

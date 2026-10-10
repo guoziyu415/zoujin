@@ -1856,6 +1856,10 @@ class ActExit(BaseModel):
     """
     （1.4）跳过的这段路上有一个能改的节拍时，过场页给一个二选一
     """
+    sub: Annotated[str | None, Field(max_length=16, min_length=1)] = None
+    """
+    （1.7）幕末页上这个去处副题的后半（日语，叙事口吻，不写分钟数）；前半「{地点}・{日子}の{时段}」由前端按 place 和 t 生成。省略 = 只有前半
+    """
     spot: SpotId | None = None
     """
     （1.7）玩家落在 place 的哪个位置点；省略 = 前端按这个地点的起点（layout.json 的 startSpots）

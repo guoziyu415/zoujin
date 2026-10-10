@@ -2,7 +2,7 @@
 
 负责人：数据工程 · 状态：**v1.7**（1.5 在 M2-0 冻结（C-2），以后只做加法；1.6 是冻结后第一个加法版本）。v1.0 是基线（S-033），v1.1 是 PM 接受的新基线（S-061〜S-063），已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改。1.1 只做加法：加进 D-012〜D-015 的落地（S-029〜S-032：互助、约定、打算、即兴设定、导演事件、生成的结局、角色结局）、S-034〜S-053 里和数据有关的决定、后端设计 v1.0 第 12 节的 13 条提案和 UX 设计 v1.0 第 18.3 节的要求。1.2 也只做加法：幕末说出的打算（S-031 ③）、作废和出戏的一轮怎么落数据（S-054、S-057）。1.3 加随身的东西（UX 5.1，C-14）。1.4 按 UX 对世界模型的校对和 S-064 加：有条件的台词和设计台词、互助的效果、节拍的变体、过场里的二选一、第四幕按钮上「对梅洛斯的影响」。1.5 给过场的选项也加上「对梅洛斯的影响」和选后的一句（UX 校对 7.3、ux-design 4.5）。1.6 把两条只写在说明文字里的取值条件写成数据（`StateVar.valueRequires`，C-16），结局卡改成 1〜3 人、每一局都出（C-17）。1.7 加位置点（谁站在布局的哪个点）、成群的人物和幕末去处的落地（M2 切片，C-18）。跨角色决定见 `pm/decisions.md`。还在等别人定的事列在第 7 节。
 UX、前端请看第 2.8 节（幕）、第 4 节（记忆）、第 5 节（结局）。1.1 新增或写清的地方都标了「（1.1）」，文末变更记录有汇总。
-最近更新：2026-10-10（1.7：relocate 和 `ActExit` 的 `spot`、`WorldState.spots`、`Character.group`、`ActExit.arrival`（C-18）；1.6：`StateVar.valueRequires`（C-16）、结局卡 1〜3 人（C-17））
+最近更新：2026-10-10（1.7：relocate 和 `ActExit` 的 `spot`、`WorldState.spots`、`Character.group`、`ActExit.arrival`、`ActExit.sub`（C-18）；1.6：`StateVar.valueRequires`（C-16）、结局卡 1〜3 人（C-17））
 
 四个契约：**WorldModel**（世界模型，静态、按书版本化）、**Event**（运行时事件，只追加）、**Memory**（角色对玩家的记忆，可删除）、**Ending**（结局）。另有两个支撑结构：**Playthrough**（一局游戏）和 **WorldState**（由事件推出的当前状态）。
 
@@ -430,6 +430,8 @@ type ActExit = {
   requires?: Condition[];          // 收幕时的状态要满足
   effects: Effect[];               // 选择本身的效果，如 set var.player.companionOf = "char.melos"
   enRoute?: EnRoute;               // （1.4，UX 校对 3.2）跳过的这段路上有一个能改的节拍时，过场页给一个二选一
+  sub?: string;                    // （1.7，UX）幕末页上这个去处副题的后半（日语，≤ 16 字，叙事口吻，不写分钟数），如「老爺があなたを覚えている」；
+                                   // 前半「{地点}・{日子}の{时段}」前端按 place 和 t 生成。省略 = 只有前半
   spot?: string;                   // （1.7）玩家落在 place 的哪个位置点（布局 layout.json 的 spots）；省略 = 这个地点的起点（startSpots）
   arrival?: { line: string; opener?: string };  // （1.7）落地：line = 跳转之后的第一行叙事（地の文，日语）；
                                    // opener = 落地后先开口的人物（服务端发起一轮，台词按人设生成，不是问句）。ux/slice/jump-transition.md「落地」
@@ -934,7 +936,7 @@ type CharacterEnding = {           // （1.1）
 | C-15 | 第三、四幕「帮他快」的动作全做，梅洛斯最多早到多少；超过一个半小时左右第四幕就不紧张（UX 校对 1.1） | **已定**（S-066）：不设上限能早 190 分，封顶在 17:30（`clock.deadline.earliestArrival`，日没前 90 分）〔待验证，R1 后调〕；单个动作分钟数不变；拖慢不受上限影响；按钮显示按本局实际还能早多少（2.10） |
 | C-16 | 有两条取值条件只写在说明文字里，第 3 步判不了（S-2 标注时发现）：王的心设成「揺れている」要 `var.king.trust` ≥ 40，期限前改心要 ≥ 70；`var.river.crossing = bridge` 要桥还在 | **已定**（后端、PM 2026-10-10）：1.5 照约定冻结（C-2），冻结后第一个加字段的版本 1.6 加 `StateVar.valueRequires?: { value; when: Condition[]; note: string; inferred: true; cite?: Cite[] }[]`。后端不写死阈值，叙事者第 3 步只读数据，所以 **S-2 测量集开跑前要合并 1.6**。语义（也写进 Schema 的 description）：① 只管非 `system` 的事件，节拍的结果由节拍前提管（例：刑场的 `beat.26`）；② 只在值真的变化时判，设成和现在一样的值不判；③ 按这个 effect 之前的状态判（同一事件里前面的 effect 已生效，先升信任再设 `wavering` 能过，反过来不过）；④ `when` 用和节拍前提同一个 `Condition` 类型和求值函数，不成立报 R2，`reason` 带变量、`value` 和这一条的 `note`；⑤ 设好以后条件不再成立（信任又掉到 40 以下）不自动改回、不算违规，改不改回是剧情的事。世界模型自检加两项：`value` 在这个 StateVar 的取值里；`when` 引用的变量和节拍都存在。W-1 黄金测试加：39 被拒、40 能过；顺序两种；系统事件不受限；桥不在时设 `bridge` 被拒；值没变不判。参考实现、Schema、world.json 同一个 PR 改，后端评审。**1.6 已落地**（2.6「取值条件」） |
 | C-17 | 结局卡的人物 2〜3 人时，只有 1 个人物排得上的局没有卡；模板尾声的局也没有卡（UX 10-10 发现） | **已定**（UX ux-design 11.3、11.4，PM 2026-10-10）：1.6 放宽到 1〜3 人，一个也没排上名时放梅洛斯；模板尾声的局也出卡，字段取 ux-design 11.4 那一组；1.6 起写入的结局 `world.title`、`didForYou`、`youDid`、`characters`、`card` 必写（第 5 节） |
-| C-18 | M2 切片要写清谁站在刑场的哪儿（柱上的セリヌンティウス、群众背后的王、玩家身边的老爺）和去处落地的那一行；位置点名只在前端的布局里，世界模型写不了 | **已定**（数据、前端 10-10，UX 10-10）：1.7 加 relocate 和 `ActExit` 的 `spot`、`WorldState.spots`、`Character.group`、`ActExit.arrival`（3.1 站位规则；前端 #22 加了 `auto: false` 的点） |
+| C-18 | M2 切片要写清谁站在刑场的哪儿（柱上的セリヌンティウス、群众背后的王、玩家身边的老爺）和去处落地的那一行；位置点名只在前端的布局里，世界模型写不了 | **已定**（数据、前端 10-10，UX 10-10）：1.7 加 relocate 和 `ActExit` 的 `spot`、`WorldState.spots`、`Character.group`、`ActExit.arrival`（3.1 站位规则；前端 #22 加了 `auto: false` 的点）；幕末页副题的后半 `ActExit.sub`（UX、前端在 #24 评审时提，PM 同意） |
 | C-19 | 幕末说出的打算成行时，下一幕从哪儿、几点开始，落在哪个位置点、落地说什么（2.8.1 第 2 步的 `plan` 由叙事者写，切片要一个固定的默认） | **待定**（问后端）：数据的提议是 `Act` 加可选的 `plan`（toAct、t、place、spot、effects、arrival）给默认；另一个办法是 B-0 用第一个去处的值 |
 
 ---
@@ -980,7 +982,7 @@ type CharacterEnding = {           // （1.1）
   - R2 加上 `valueRequires`（第 3 节规则表）。只有到点的节拍和期限（`origin: "schedule"`）不判；导演事件的 `actor` 也是 `system`，照样判（后端评审）。
   - 写清（后端评审 W-1，2026-10-10）：同一个节拍的几次改动怎么合（第 3 节 `Effect` 的注释；以前共享规则换方向时整条替换，先拖慢 30 再帮快 10 成了帮快 10）；`origin: "schedule"` 只用于到点的节拍和期限（第 3 节）。
 - **v1.7（2026-10-10）**：只做加法（C-18）。M2 切片要的位置点和落地。
-  - WorldModel：`Character.group`；`ActExit.spot`、`ActExit.arrival`（2.8、2.8.1 第 4 步）。
+  - WorldModel：`Character.group`；`ActExit.spot`、`ActExit.arrival`（2.8、2.8.1 第 4 步）；`ActExit.sub`（幕末页副题的后半，以前写在 UX 的文案表里、前端按去处 ID 对）。
   - Event：`relocate` 效果的 `spot`。WorldState：`spots`。站位规则和校验写在 3.1。
   - 第 7 节新增 C-18（已定）、C-19（待定：打算成行时的默认落点）。
   - 『走れメロス』（draft.3）：群众、警吏、山贼、一团旅人 `group: true`；beat.s1 セリヌンティウス站 `stake`、王站 `king-west`，beat.24 梅洛斯站 `scaffold`（布局见前端 #22）。同一个 PR 里的世界模型修正：群众、少女第一幕在广场的家里（`absent`），beat.s1 到刑场；beat.04（捕缚）挪到王城前庭（`place.execution-ground`）；送老爺回家记 `var.player.walkedOldManHome`。
