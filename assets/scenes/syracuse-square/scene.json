@@ -7,7 +7,7 @@
  "placeholderTextures": true,
  "inputs": {
   "files": {
-   "assets/scenes/syracuse-square/layout.json": "ca9fdd8d08efaa67d74f5d9511cb381ba2ddcbf2904713c115068790247ebb15",
+   "assets/scenes/syracuse-square/layout.json": "2481628f31a5b0671f4633627ef4ef45f5d5c3e63853bd92c741c5b203a1f4c8",
    "assets/pipeline/plaza/build.sh": "5640d8d18a8817b84b1c0387c476d127996931dab6b70389b0b5ac1753151716",
    "assets/pipeline/plaza/requirements.txt": "0a234e44f52fb462c7e8694ecd82b99aca8e534ac610dde2dd749bb1e2cbe0e3",
    "assets/pipeline/plaza/placeholder_tex.py": "aabda4df4f3974b2eb65b227ed3b5ae2d606a489441d665b3f2f108c5cd1343e",
@@ -1155,6 +1155,17 @@
    "yaw": -1.8444,
    "place": "place.execution-ground",
    "poly": 96,
+   "auto": false
+  },
+  "crowd-front": {
+   "pos": [
+    -7.9,
+    0,
+    -3.76
+   ],
+   "yaw": -2.7871,
+   "place": "place.execution-ground",
+   "poly": 99,
    "auto": false
   },
   "ground-west": {

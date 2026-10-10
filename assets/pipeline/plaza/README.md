@@ -39,7 +39,7 @@ Python 依赖：直接依赖写在 `requirements.in`，`requirements.txt` 是连
 | 出口 `place.road-to-city`   | 位置点 `way.road-to-city`，城门外                                                                                                                                                      |
 | 出口 `place.castle`         | 位置点 `way.castle`，台阶顶上的城门                                                                                                                                                    |
 
-位置点 26 个，名字和说明在 `layout.json`。磔台上有两个：`stake`（背靠柱子、被吊起来的人）和 `scaffold`（爬上台、够得着他双脚的地方）；`old-man-house` 是老爷家门前。四个只给演出指定（`auto: false`）：`stake`、`scaffold`、`king-west`（刑场西头、群众背后，王先站的地方）、`stake-front-side`（`stake-front` 旁边，玩家站 `stake-front` 时老爷站这里）。通往别的场景的位置点叫 `way.<地点>`，不用 `exit.`（那是世界模型 `ExitId`，幕末去处）。后端和数据在 `characters[].spot`、`player.spot` 里只用这些名字；要加新的位置点，改 `layout.json` 再重新生成。
+位置点 27 个，名字和说明在 `layout.json`。磔台上有两个：`stake`（背靠柱子、被吊起来的人）和 `scaffold`（爬上台、够得着他双脚的地方）；`old-man-house` 是老爷家门前。五个只给演出指定（`auto: false`）：`stake`、`scaffold`、`king-west`（刑场西头、群众背后，王先站的地方）、`stake-front-side`（`stake-front` 旁边，玩家站 `stake-front` 时老爷站这里）、`crowd-front`（群众前排、磔台西北角，拿斗篷的少女）。通往别的场景的位置点叫 `way.<地点>`，不用 `exit.`（那是世界模型 `ExitId`，幕末去处）。后端和数据在 `characters[].spot`、`player.spot` 里只用这些名字；要加新的位置点，改 `layout.json` 再重新生成。
 
 ## 两档贴图（frontend-design 10.6.2，art-direction 9.3）
 

@@ -187,6 +187,12 @@
       "about": "beside stake-front, facing the platform: the old man stands here next to a player at stake-front (slice, 'stay at the old man's house')",
       "auto": false
     },
+    "crowd-front": {
+      "at": [8.6, 1.6],
+      "face": [11, 0],
+      "about": "front row of the crowd, by the north-west corner of the platform, facing the post: the maiden with the scarlet cloak, close enough to hand it to Melos on the platform",
+      "auto": false
+    },
     "ground-west": {
       "at": [4.0, 0.0],
       "face": [-31, 0],
