@@ -1,0 +1,5 @@
+# Direct Python deps for the Blender scripts (build.sh: BPY_PYTHON). The lock with hashes is requirements.txt:
+#   uv pip compile requirements.in --universal --python-version 3.13 --generate-hashes -o requirements.txt
+bpy==5.2.2
+numpy==2.5.3
+pillow==12.3.0

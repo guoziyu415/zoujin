@@ -5,6 +5,74 @@
  "frame": "glTF metres, +Y up. Plan (x, y) of layout.json -> rotate 144° about up -> (xr, height, -yr).",
  "quality": "final",
  "placeholderTextures": true,
+ "inputs": {
+  "files": {
+   "assets/scenes/syracuse-square/layout.json": "dff06697d5c5cc9bb70c763e6b5ca79056306450df2b64e68808585f7da6bb68",
+   "assets/pipeline/plaza/build.sh": "5640d8d18a8817b84b1c0387c476d127996931dab6b70389b0b5ac1753151716",
+   "assets/pipeline/plaza/requirements.txt": "0a234e44f52fb462c7e8694ecd82b99aca8e534ac610dde2dd749bb1e2cbe0e3",
+   "assets/pipeline/plaza/placeholder_tex.py": "aabda4df4f3974b2eb65b227ed3b5ae2d606a489441d665b3f2f108c5cd1343e",
+   "assets/pipeline/plaza/build_plaza.py": "fb61124392b81812980e4da4a2d7d0e214254f25e761e817540a87c8abc4a423",
+   "assets/pipeline/plaza/sky.py": "20375dd1f411ad91e240078b2691b4ddd7773ba0818542d7415537fe11dd9836",
+   "assets/pipeline/plaza/sunpos.py": "2da6794757da0d29b482c5483577881d2098ecfd12f7d7178956da185310b03a",
+   "assets/pipeline/plaza/bake.py": "1b2267b42cf6de868bd1799754b2724e73a91817ba954cfef038c4229c1a53b3",
+   "assets/pipeline/plaza/encode.py": "4f4da080164bf598dff116bc28461b1bc582bb4e80a53a0ad03a5bcac9028a1b",
+   "assets/pipeline/plaza/pack_scene.mjs": "1b367b40d064324b0408192dd7dce28c7099602ae03b9bbf274862bc3bd36cf7",
+   "assets/pipeline/plaza/nav.mjs": "0b90eab71ba36d2456f6d5acc83cc2751cb8e6b0c84359306e000ea216798b6f",
+   "assets/pipeline/plaza/frame.mjs": "0a5da76ee5796a9850fb35d84b8aae3d7f826f8ecde8c8275ee131c4f658defb",
+   "assets/pipeline/plaza/ktx2_decode.mjs": "3772741bf09c2898ba1a2cbe2fc64582c0b97471355be2c5272f0584991a4553"
+  },
+  "textures": {
+   "ashlar2_base": "placeholder",
+   "ashlar_base": "placeholder",
+   "ashlar_mr": "placeholder",
+   "ashlar_nrm": "placeholder",
+   "bark_base": "placeholder",
+   "cornice_base": "placeholder",
+   "cornice_mr": "placeholder",
+   "cornice_nrm": "placeholder",
+   "cypress_base": "placeholder",
+   "doors_base": "placeholder",
+   "doors_mr": "placeholder",
+   "doors_nrm": "placeholder",
+   "fabric_blue_base": "placeholder",
+   "fabric_blue_mr": "placeholder",
+   "fabric_red_base": "placeholder",
+   "fabric_red_mr": "placeholder",
+   "fabric_red_nrm": "placeholder",
+   "floor_base": "placeholder",
+   "floor_mr": "placeholder",
+   "floor_nrm": "placeholder",
+   "hill_base": "placeholder",
+   "ivy_nrm": "placeholder",
+   "olive_base": "placeholder",
+   "plain_base": "placeholder",
+   "plain_mr": "placeholder",
+   "plain_nrm": "placeholder",
+   "plaster_base": "placeholder",
+   "roof_mr": "placeholder",
+   "roof_nrm": "placeholder",
+   "roofwarm_base": "placeholder",
+   "trim_base": "placeholder",
+   "trim_nrm": "placeholder"
+  },
+  "tools": {
+   "@gltf-transform/core": "4.5.1",
+   "@gltf-transform/extensions": "4.5.1",
+   "@gltf-transform/functions": "4.5.1",
+   "meshoptimizer": "1.3.0",
+   "ktx2-encoder": "0.6.0",
+   "sharp": "0.35.5",
+   "recast-navigation": "0.43.1",
+   "three": "0.186.1"
+  },
+  "env": {
+   "E_SKY": "default",
+   "AEROSOL": "default",
+   "SKY_W": "default",
+   "SKY_H": "default",
+   "PLAZA_BAKE_MINUTE": "default"
+  }
+ },
  "sun": {
   "latitudeDeg": 37,
   "declinationDeg": 19,
@@ -15,7 +83,7 @@
  "nodes": {
   "arch": {
    "prims": 13,
-   "tris": 4358,
+   "tris": 4408,
    "lightmap": "arch"
   },
   "far": {
@@ -29,7 +97,7 @@
   },
   "proxy": {
    "prims": 1,
-   "tris": 2922,
+   "tris": 2962,
    "shadowCasterOnly": true
   },
   "workshop_gate": {
@@ -40,7 +108,7 @@
    "closedYawDeg": 90
   }
  },
- "tris": 19526,
+ "tris": 19616,
  "materials": {
   "ashlar_warm": {
    "color": [
@@ -768,7 +836,7 @@
   "ground": {
    "indirect": {
     "file": "lm/ground_indirect.ktx2",
-    "K": 0.7545277512150652
+    "K": 0.7546172645203735
    },
    "ao": {
     "file": "lm/ground_ao.ktx2"
@@ -778,7 +846,7 @@
   "arch": {
    "indirect": {
     "file": "lm/arch_indirect.ktx2",
-    "K": 0.6793856650002758
+    "K": 0.6741543913316416
    },
    "ao": {
     "file": "lm/arch_ao.ktx2"
@@ -788,7 +856,7 @@
  },
  "nav": {
   "file": "nav.json",
-  "polys": 153,
+  "polys": 171,
   "agent": {
    "radius": 0.3,
    "height": 1.8,
@@ -823,8 +891,12 @@
    "id": "place.execution-ground",
    "polygon": [
     [
-     -1.1820686843673194,
-     -11.983434967714313
+     0.14532176812752495,
+     -3.602621487709788
+    ],
+    [
+     -0.7775601871798461,
+     -11.689542341568075
     ],
     [
      -10.081255622491739,
@@ -835,8 +907,12 @@
      -3.886766844182466
     ],
     [
-     -11.762203225631838,
-     2.57887093103474
+     -11.357694728444365,
+     2.872763557180977
+    ],
+    [
+     -3.381389745627314,
+     1.2514804785398954
     ]
    ]
   }
@@ -852,6 +928,11 @@
   }
  ],
  "playerStartSpot": "plaza-southwest",
+ "startSpots": {
+  "place.syracuse-square": "plaza-southwest",
+  "place.stonemason-workshop": "workshop-yard",
+  "place.execution-ground": "stake-front"
+ },
  "spots": {
   "plaza-southwest": {
    "pos": [
@@ -861,7 +942,7 @@
    ],
    "yaw": -1.6484,
    "place": "place.syracuse-square",
-   "poly": 69
+   "poly": 91
   },
   "gate-inside": {
    "pos": [
@@ -871,7 +952,7 @@
    ],
    "yaw": -2.1991,
    "place": "place.syracuse-square",
-   "poly": 127
+   "poly": 136
   },
   "gate-street": {
    "pos": [
@@ -881,7 +962,7 @@
    ],
    "yaw": -2.2491,
    "place": "place.syracuse-square",
-   "poly": 126
+   "poly": 135
   },
   "way.road-to-city": {
    "pos": [
@@ -891,47 +972,47 @@
    ],
    "yaw": 0.9425,
    "place": "place.syracuse-square",
-   "poly": 127
+   "poly": 136
   },
   "fountain-east": {
    "pos": [
-    -4.65,
+    -7.89,
     0,
-    -0.91
+    3.54
    ],
    "yaw": 0.9425,
    "place": "place.syracuse-square",
-   "poly": 80
+   "poly": 120
   },
   "fountain-west": {
    "pos": [
-    2.3,
+    -0.93,
     0,
-    4.15
+    8.6
    ],
    "yaw": -2.1991,
    "place": "place.syracuse-square",
-   "poly": 88
+   "poly": 126
   },
   "fountain-north": {
    "pos": [
-    -3.7,
+    -6.94,
     0,
-    5.1
+    9.55
    ],
    "yaw": 2.5133,
    "place": "place.syracuse-square",
-   "poly": 115
+   "poly": 131
   },
   "fountain-south": {
    "pos": [
-    1.35,
+    -1.88,
     0,
-    -1.86
+    2.59
    ],
    "yaw": -0.6283,
    "place": "place.syracuse-square",
-   "poly": 56
+   "poly": 73
   },
   "market-west": {
    "pos": [
@@ -941,7 +1022,7 @@
    ],
    "yaw": 2.5133,
    "place": "place.syracuse-square",
-   "poly": 77
+   "poly": 70
   },
   "market-east": {
    "pos": [
@@ -951,7 +1032,17 @@
    ],
    "yaw": 2.5133,
    "place": "place.syracuse-square",
-   "poly": 63
+   "poly": 74
+  },
+  "old-man-house": {
+   "pos": [
+    6.02,
+    0,
+    -14.41
+   ],
+   "yaw": -0.6283,
+   "place": "place.syracuse-square",
+   "poly": 5
   },
   "plaza-north": {
    "pos": [
@@ -959,9 +1050,9 @@
     0,
     15.22
    ],
-   "yaw": -3.1411,
+   "yaw": -2.8014,
    "place": "place.syracuse-square",
-   "poly": 121
+   "poly": 145
   },
   "plaza-east": {
    "pos": [
@@ -971,7 +1062,7 @@
    ],
    "yaw": 0.0152,
    "place": "place.syracuse-square",
-   "poly": 47
+   "poly": 52
   },
   "temple-steps": {
    "pos": [
@@ -981,7 +1072,7 @@
    ],
    "yaw": 2.5133,
    "place": "place.syracuse-square",
-   "poly": 117
+   "poly": 131
   },
   "temple-porch": {
    "pos": [
@@ -991,7 +1082,7 @@
    ],
    "yaw": 2.5133,
    "place": "place.syracuse-square",
-   "poly": 133
+   "poly": 151
   },
   "workshop-gate": {
    "pos": [
@@ -1001,7 +1092,7 @@
    ],
    "yaw": 2.5133,
    "place": "place.syracuse-square",
-   "poly": 65
+   "poly": 87
   },
   "workshop-yard": {
    "pos": [
@@ -1011,7 +1102,7 @@
    ],
    "yaw": -1.3737,
    "place": "place.stonemason-workshop",
-   "poly": 23
+   "poly": 26
   },
   "workshop-bench": {
    "pos": [
@@ -1021,27 +1112,47 @@
    ],
    "yaw": 2.5133,
    "place": "place.stonemason-workshop",
-   "poly": 16
+   "poly": 19
   },
   "stake": {
    "pos": [
-    -9.38,
-    0,
-    -6.81
+    -8.42,
+    1.2,
+    -6.1
    ],
-   "yaw": 0.9428,
+   "yaw": 0.944,
    "place": "place.execution-ground",
-   "poly": 43
+   "poly": 85
+  },
+  "scaffold": {
+   "pos": [
+    -8.55,
+    1.2,
+    -5.41
+   ],
+   "yaw": 2.9457,
+   "place": "place.execution-ground",
+   "poly": 85
   },
   "stake-front": {
    "pos": [
-    -6.63,
+    -6.15,
     0,
-    -4.82
+    -4.47
    ],
    "yaw": -2.1991,
    "place": "place.execution-ground",
-   "poly": 71
+   "poly": 96
+  },
+  "ground-west": {
+   "pos": [
+    -3.24,
+    0,
+    -2.35
+   ],
+   "yaw": 0.9425,
+   "place": "place.execution-ground",
+   "poly": 96
   },
   "castle-steps": {
    "pos": [
@@ -1051,7 +1162,7 @@
    ],
    "yaw": 0.6061,
    "place": "place.execution-ground",
-   "poly": 5
+   "poly": 3
   },
   "way.castle": {
    "pos": [
@@ -1061,14 +1172,14 @@
    ],
    "yaw": -2.1991,
    "place": "place.execution-ground",
-   "poly": 43
+   "poly": 46
   }
  },
  "files": [
   {
    "path": "geo.glb",
-   "bytes": 480104,
-   "sha256": "c4baa7a95b8738184e38b6a2c1c895cae8de4ed72801a33016ae5abd1ad2d469",
+   "bytes": 481968,
+   "sha256": "e77013def95614ad10724c1b6d7d3754b15719de3f30f3659f568721cc61ce9f",
    "pack": "entry"
   },
   {
@@ -1325,39 +1436,39 @@
   },
   {
    "path": "lm/ground_indirect.ktx2",
-   "bytes": 424038,
-   "sha256": "5b54c1848a15d70cbd273af91d6691423d510333af474251550a3e2c2ceab1fd",
+   "bytes": 422995,
+   "sha256": "97c2fd13121a25be1119d016436bb7a8df493abe649c5e98292fe96971d574d1",
    "pack": "entry"
   },
   {
    "path": "lm/ground_ao.ktx2",
-   "bytes": 539463,
-   "sha256": "1729d54a4dcf4c14c16103aaedeb096c6507da3d6edef7a23ab65ac6d8181a67",
+   "bytes": 540746,
+   "sha256": "ea38f630fbd436a3e6a4e2edcaf1591998d388d6cc40ac5f0ce948b1f62d1c46",
    "pack": "entry"
   },
   {
    "path": "lm/arch_indirect.ktx2",
-   "bytes": 618309,
-   "sha256": "9a93eb13217327551200583c6ec25add617087581fcbe8c324354868ba0ecfb0",
+   "bytes": 623801,
+   "sha256": "79d59f024917841e86503b94eef7b66dc59e6a09a0b805dab5f12cd12d5005f3",
    "pack": "entry"
   },
   {
    "path": "lm/arch_ao.ktx2",
-   "bytes": 557704,
-   "sha256": "1a910743c0ec8b04537c4b62549f005ae8bc8fa12f400b2ef4ad280b2eda7cb5",
+   "bytes": 560551,
+   "sha256": "da707e1592e03e4baa7e49a617e8670d571fadc44b66cb32b544ac40e98b1583",
    "pack": "entry"
   },
   {
    "path": "nav.json",
-   "bytes": 38891,
-   "sha256": "0ba1898e3f7f9dd42aabfc05f7da93086a91636985984b0af018368dda9dc131",
+   "bytes": 40345,
+   "sha256": "a2d3111e567ef723a1302adb6b3f0c8bb5d1344b9b26a4b684a5126506c4bad8",
    "pack": "entry"
   }
  ],
  "bytes": {
-  "entry": 4773702,
+  "entry": 4785599,
   "hiExtra": 3050832,
-  "envStd": 4773702,
-  "envHi": 7824534
+  "envStd": 4785599,
+  "envHi": 7836431
  }
 }

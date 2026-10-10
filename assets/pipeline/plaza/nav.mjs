@@ -398,7 +398,14 @@ async function build(meshes, layout) {
   }
   for (const [i, id] of placeIds.entries()) {
     if (!outA.includes(i)) errors.push(`place ${id} has no walkable polygon`);
+    const s = layout.startSpots?.[id];
+    if (!s) errors.push(`place ${id} has no start spot (layout.startSpots)`);
+    else if (spots[s] && spots[s].place !== id)
+      errors.push(`start spot ${s} of ${id} lies in ${spots[s].place}`);
+    else if (!spots[s]) errors.push(`start spot ${s} of ${id} is missing`);
   }
+  if (layout.startSpots?.[layout.defaultPlace] !== layout.playerStartSpot)
+    errors.push("playerStartSpot must be the start spot of the default place");
 
   const json = {
     version: 1,
