@@ -6,7 +6,7 @@ import { NodeIO, PropertyType } from "@gltf-transform/core";
 import { ALL_EXTENSIONS, KHRTextureBasisu } from "@gltf-transform/extensions";
 import { prune, dedup, quantize, meshopt } from "@gltf-transform/functions";
 import { MeshoptEncoder } from "meshoptimizer";
-import { encodeToKTX2 } from "/tmp/spk/ktx/node_modules/ktx2-encoder/dist/node/index.js";
+import { encodeToKTX2 } from "ktx2-encoder";
 import sharp from "sharp";
 import fs from "fs";
 import path from "path";

@@ -1,7 +1,7 @@
 # A-0 梅洛斯美术流水线试点（前端）
 
 状态：**容器部分做完（替身）**，等 Mac 上做真梅洛斯。2026-10-10，前端（同日第二版：切头省显存、加跑、三个时刻、三句台词换成梅洛斯候选声音、口型对时）。
-卡：`pm/tasks-draft/A-0.md`。验收标准（UX）：`pm/tasks-draft/A-0-acceptance-ux.md`。依据：`ux/art-direction.md` 5.1〜5.6、9.1〜9.6；`frontend-design.md` 10.6.2、10.6.4。
+卡：`docs/tasks/m2-0/A-0.md`。验收标准（UX）：`docs/tasks/m2-0/A-0-acceptance.md`。依据：`docs/ux/art-direction.md` 5.1〜5.6、9.1〜9.6；`docs/frontend/frontend-design.md` 10.6.2、10.6.4。
 
 ## 一句话
 
@@ -25,7 +25,7 @@
 - **切头**（`lod_export.py` 的 `split_head`）：在所有形变都动不到的高度（下巴下面再低 2cm）水平切开，只有头带形变，身体没有。切之前先把法线固定下来，切口不出光照接缝（截图里看不到）。表情显存：档 B 25.7 → 9.4 MB，强机 43.8 → 13.5 MB；4 个不同的强机人物约 54 MB（原来约 175 MB）。下载也小了（强机 2.33 → 2.19 MB，档 B 1.69 → 1.36 MB）。
 - 不带形变法线的版本：强机 1.95 MB、档 B 1.10 MB，形变显存再减半（6.7 / 4.7 MB）。
 - 修了一个错：以前档 B 的形变是在「第一帧的动作姿势」下算的，嘴和眉的幅度被放大了约 30%；现在在静止姿势（rest pose）下算，和强机一致。
-- 来源：`reports/lod_report.json`、`reports/compress_report.json`，形变显存用 `build/morphmem.mjs`（顶点 × 形变数 × 2 × 16 字节）。
+- 来源：`lod_report.json`、`compress_report.json`（替身的报告，留在项目文件夹 `frontend/spikes/a0-melos/reports/`，不进仓库），形变显存用 `assets/pipeline/morphmem.mjs`（顶点 × 形变数 × 2 × 16 字节）。
 
 **替身的数字偏小的地方**：替身的贴图源图只有 512，而且皮肤没有法线图。真梅洛斯用 MPFB 的 1024〜4096 贴图，高档皮肤加 2048 的法线图（UASTC 约 2.5〜3 MB）以后，**高档估计 5〜6 MB，接近 6.5 MB 的线**；标准档加 1024 皮肤法线约 +0.7 MB，估计 2.5〜3 MB。〔推断，等真梅洛斯量〕
 
@@ -39,7 +39,7 @@
 - 越肩镜头按 ux-design 6.3 摆：玩家背影在左下前景，对方在上三分之一；镜头视角按「脸（下巴到发际）占屏高 13.5%」自动算，HUD 上显示实测值。
 - 自测（容器里无头 Chromium，软件渲染）：越肩镜头**脸占屏高 13.6%**（规格 12〜15%）；探索镜头**梅洛斯高 83px**（规格 40〜80px，这个替身身高约 1.98m，偏高）。
 - 自动计测 7 项：广场＋玩家背影 / 1 个档 B / 2 个档 B（卡上「× 3.4 ≤ 25ms」那条）/ 2 个档 B 脸不动（量形变的代价）/ 4 个强机 DPR 2（卡上「≤ 12ms」那条）/ 4 个强机皮肤不透光 / 探索镜头 10 个走动版。结果存进页面自己的 `runs`，前端能直接读。
-- 截图：`shots/`。容器里是软件渲染，帧时间没有意义，要在 iPhone 上测。
+- 截图在项目文件夹 `frontend/spikes/a0-melos/shots/`（替身的截图不进仓库）。容器里是软件渲染，帧时间没有意义，要在 iPhone 上测。
 
 ### 口型
 
@@ -66,15 +66,15 @@
 1. 装 MPFB 2（Blender 扩展站），下官方 CC0 系统素材：皮肤、眼、眉、睫毛、牙、舌、短发；`faceunits01`（ARKit 52）和 `visemes02`（15 个口型）。
 2. 下 CC0 动作：Quaternius Universal Animation Library 免费部分（或 CMU）。
 3. 建梅洛斯（20 多岁、瘦长有肌肉、晒黑的牧人；exomis 露一侧肩，皮凉鞋，赭和未染羊毛色，短发），改名成脚本用的对象名（Body / Eyes / Brows / Lashes / Teeth / Tongue / Hair / Tunic / EyesLow / Rig），存 .blend。
-4. 把 .blend 和动作文件传回容器：`lod_export.py` → `compress.mjs` → `pack.py` → 更新测试页。
-5. 做法 PM 定了 (b)：前端线程里开 Remote Control（卡已发，等 zg 点允许），Mac 上的会话只在新建的 `~/Developer/zoujin-art/` 里装 MPFB、下素材、开 Blender；建模由前端线程通过设备连接操作 Mac 上的 Blender MCP。不碰 `~/Developer/zoujin-spike`、gcloud 和凭证；装和下载之前先给 zg 看清单和命令。
+4. 把 .blend 和动作文件传回容器：`assets/pipeline/lod_export.py` → `assets/pipeline/compress.mjs` → `build/pack.py` → 更新测试页。
+5. 做法 PM 定了 (b)：前端线程里开 Remote Control（zg 10-10 已允许），Mac 上的会话只在新建的 `~/Developer/zoujin-art/` 里装 MPFB、下素材、开 Blender；建模由前端线程通过设备连接操作 Mac 上的 Blender MCP。不碰 `~/Developer/zoujin-spike`、gcloud 和凭证；装和下载之前先给 zg 看清单和命令。
 
 ## 文件
 
-- `build/`：`mhload.py`（读 MakeHuman 数据）、`build_standin.py`（搭替身）、`anims.py`（占位动作：待机、走、跑）、`preview.py`（Cycles 预览）、`lod_export.py`（三个版本＋切头＋导出）、`compress.mjs`（KTX2＋meshopt＋法线检查）、`inspect.mjs`、`morphmem.mjs`、`gen_voice.py`（元音模板用的测试声音）、`gen_lines.py`（从 casting 录音剪三句台词）、`lipcheck.py`（离线口型检查）、`pack.py`（打包测试页）、`test_page.mjs`（无头浏览器自测）。
+- `assets/pipeline/`（真梅洛斯和以后的人物都用，不在这个目录）：`lod_export.py`（三个版本＋切头＋导出）、`compress.mjs`（KTX2＋meshopt＋法线检查）、`inspect.mjs`、`morphmem.mjs`。
+- `build/`：`mhload.py`（读 MakeHuman 数据）、`build_standin.py`（搭替身）、`anims.py`（占位动作：待机、走、跑）、`preview.py`（Cycles 预览）、`gen_voice.py`（元音模板用的测试声音）、`gen_lines.py`（从 casting 录音剪三句台词）、`lipcheck.py`（离线口型检查）、`pack.py`（打包测试页）、`test_page.mjs`（无头浏览器自测）。
 - `page/index.src.html`：测试页源文件（`/*MANIFEST*/` 由 pack.py 填）。
-- `reports/`：减面和压缩报告、声音元数据。
-- `shots/`：截图。
+- 减面和压缩报告、声音元数据（`reports/`）和截图（`shots/`）只在项目文件夹 `frontend/spikes/a0-melos/` 里，替身的生成物不进仓库。
 
 ## 授权清单（这一页用到的）
 

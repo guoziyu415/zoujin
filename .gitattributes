@@ -3,7 +3,7 @@
 # 青空文库的原始文件按字节原样保存（换行和编码都不动，sha256 才对得上）
 worlds/**/sources/raw/** -text
 
-# 美术大文件走 Git LFS（dev-plan 2.1；CI 只在需要的 job 里检出）
+# 美术大文件和预录音频走 Git LFS（dev-plan 2.1；CI 只在需要的 job 里检出）
 assets/**/*.blend filter=lfs diff=lfs merge=lfs -text
 assets/**/*.glb filter=lfs diff=lfs merge=lfs -text
 assets/**/*.ktx2 filter=lfs diff=lfs merge=lfs -text
@@ -13,6 +13,9 @@ assets/**/*.exr filter=lfs diff=lfs merge=lfs -text
 assets/**/*.hdr filter=lfs diff=lfs merge=lfs -text
 assets/**/*.ogg filter=lfs diff=lfs merge=lfs -text
 assets/**/*.opus filter=lfs diff=lfs merge=lfs -text
+assets/**/*.mp3 filter=lfs diff=lfs merge=lfs -text
+assets/**/*.m4a filter=lfs diff=lfs merge=lfs -text
+assets/**/*.wav filter=lfs diff=lfs merge=lfs -text
 
 # 其余二进制
 *.png binary
