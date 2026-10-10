@@ -2,7 +2,7 @@
 
 负责人：数据工程 · 状态：**v1.6**（1.5 在 M2-0 冻结（C-2），以后只做加法；1.6 是冻结后第一个加法版本）。v1.0 是基线（S-033），v1.1 是 PM 接受的新基线（S-061〜S-063），已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改。1.1 只做加法：加进 D-012〜D-015 的落地（S-029〜S-032：互助、约定、打算、即兴设定、导演事件、生成的结局、角色结局）、S-034〜S-053 里和数据有关的决定、后端设计 v1.0 第 12 节的 13 条提案和 UX 设计 v1.0 第 18.3 节的要求。1.2 也只做加法：幕末说出的打算（S-031 ③）、作废和出戏的一轮怎么落数据（S-054、S-057）。1.3 加随身的东西（UX 5.1，C-14）。1.4 按 UX 对世界模型的校对和 S-064 加：有条件的台词和设计台词、互助的效果、节拍的变体、过场里的二选一、第四幕按钮上「对梅洛斯的影响」。1.5 给过场的选项也加上「对梅洛斯的影响」和选后的一句（UX 校对 7.3、ux-design 4.5）。1.6 把两条只写在说明文字里的取值条件写成数据（`StateVar.valueRequires`，C-16），结局卡改成 1〜3 人、每一局都出（C-17）。跨角色决定见 `pm/decisions.md`。还在等别人定的事列在第 7 节。
 UX、前端请看第 2.8 节（幕）、第 4 节（记忆）、第 5 节（结局）。1.1 新增或写清的地方都标了「（1.1）」，文末变更记录有汇总。
-最近更新：2026-10-10（1.6：`StateVar.valueRequires`（C-16）；结局卡 1〜3 人、模板尾声的局也出卡，1.6 起写入的结局哪些字段必写（C-17）；写清变量 ID 的驼峰和 promise 效果的 `promiseId?`）
+最近更新：2026-10-10（1.6：`StateVar.valueRequires`（C-16）；结局卡 1〜3 人、模板尾声的局也出卡，1.6 起写入的结局哪些字段必写（C-17）；写清变量 ID 的驼峰和 promise 效果的 `promiseId?`；同一个节拍几次改动怎么合、`origin: "schedule"` 只用于节拍和期限）
 
 四个契约：**WorldModel**（世界模型，静态、按书版本化）、**Event**（运行时事件，只追加）、**Memory**（角色对玩家的记忆，可删除）、**Ending**（结局）。另有两个支撑结构：**Playthrough**（一局游戏）和 **WorldState**（由事件推出的当前状态）。
 
@@ -304,7 +304,7 @@ type CausalEdge = {
 - **（1.1）`timeLink: "order"` 的边**不参加上面的「最大值」，只加一条下限：`schedule[Y] ≥ schedule[from]`。用在「from 只是早就该发生的前提、不是同一条时间线」的地方。例：洪水冲走桥（`beat.17`，早上 6 点，锚点）是渡河（`beat.18`，正午）的前提；如果按「等最慢的那个」，洪水的偏移永远是 0，玩家在第三幕帮梅洛斯省下的时间就永远传不到第四幕。`edge.17-18` 标成 order 以后，第三幕天亮前叫醒梅洛斯（`aff.wake-melos`，出发早 60 分钟，1.4 起代替原来的「帮花婿备婚礼」）能让梅洛斯日没前 60 分钟赶到（情景 `sc.wake-early`）。默认值 `shift` 和 1.0 的规则完全一样，没标的边行为不变。
 - 例：原著的梅洛斯在日没那一刻（5460）冲进刑场，**余量是零**（S-036 保持）。玩家在河边拖住他 20 分钟就来不及。如果前面在过场里催他别闲逛（`edge.16-18-delay`，40 分钟；1.4 起是 `exit.3.road` 的 `enRoute`，体力照样消耗），18:20 就到，这时在河边拖 20 分钟也赶得上（情景 `sc.delay-offset`，18:40）。牧童（或听花婿说过路的人）带他走山口的脇道，他体力留着，过了山口不会倒下（2.4.1 第 3 条的例外，`edge.20-21-delay` 省 60 分钟），18:00 到（`sc.detour`）。帮他争取时间和拖住他一样容易（S-036 ②）：在河边拖 30 分钟、之后在泉边递水，18:30 到（`sc.hold-then-help`）；只拖不帮就来不及（`sc.hold-no-help`）。
 - **（1.4，S-066；1.5 改为逐步算）到达下限 `clock.deadline.earliestArrival`：** 梅洛斯到 watchBeat 的时刻每一步都不早于下限。把本局对节拍的改动按节拍顺序（= 玩家做的先后）一个个加上去，每加一个看 watchBeat 的偏移变了多少（`delta`），累计 `a = max(下限 − canonical, a + delta)`，watchBeat 的偏移就是最后的 `a`。所以：已经到了下限，再帮他快是 0（作废，不攒着）；拖慢照算全额（S-066 ②）；拖慢之后离开了下限，再帮他快又有用，最多回到下限（ux-design 4.3）。例：「帮他快」全部做，不设下限 16:10 到，封顶在 17:30（`sc.all-help`）；第三幕帮快已到下限，第四幕在河边拖 30 分钟，18:00 到（`sc.all-help-then-hold`）；之后在泉边递水，回到 17:30、不会更早（`sc.capped-hold-then-water`）。参考实现 `Sim.schedule()`。1.4 的写法（帮快总量先封顶、再加拖延）会让拖慢之后的帮快也变成 0，和 S-066 ①「按钮写实际还能早多少」不一致，1.5 改掉；按 1.4 写法算出的情景结果只有 `sc.all-help-then-hold` 受影响，已改成上面的定义。
-- 校验工具的情景模拟（`worlds/…/scenarios.json`）和评测 E5 都按这条规则算，参考实现是 `data/spikes/pipeline/worldsim.py`：条件求值 `holds`、效果应用 `apply`、排程 `schedule`、结局分类 `classify`（后端评审提案第 13 条：共享规则库可以直接从这里移植，评测用同一批用例对照）。
+- 校验工具的情景模拟（`worlds/…/scenarios.json`）和评测 E5 都按这条规则算，参考实现是 `packages/worldsim/reference/worldsim.py`（W-1 移植成包 `packages/worldsim`）：条件求值 `holds`、效果应用 `apply`、排程 `schedule`、结局分类 `classify`（后端评审提案第 13 条：共享规则库可以直接从这里移植，评测用同一批用例对照）。
 
 ### 2.6 Clock 与 StateVar
 
@@ -569,6 +569,8 @@ type Event = {
   origin?: "turn" | "action" | "schedule" | "plan" | "director" | "act" | "memory";
                                    // （1.1）事件从哪来：玩家一轮对话 / 玩家的动作 / 到点的节拍和期限 / 人物的打算 /
                                    // 导演（S-031 ②）/ 幕切换 / 記憶帳删除。只给评测、Trace 和「その頃」排序，不推前端
+                                   // （1.6 写清，W-1 评审）schedule 只用于到点的节拍（type = "beat"，只有一条 beat 结果）和期限
+                                   // （type = "action"，每局一条，t 不早于 clock.deadline.t）；幕的开始、钟声、天色等别的系统事件不用它
   beneficiary?: "player" | string; // （1.1）这件事是为谁做的；人物为玩家做的事 = "player"（記憶帳「してくれたこと」、结局）
   confirmed?: true;                // （1.1）提交前经过故事里的意图确认（S-040），一局 0〜3 次
   place: string;
@@ -593,6 +595,9 @@ type Effect =
   | { op: "inc"; var: string; by: number }
   | { op: "beat"; beat: string; to: "happened" | "prevented" | "delayed" | "hastened" | "altered"; minutes?: number; outcomes?: Effect[]; note?: string }
                                    // altered 时 outcomes = 改变后的结果（代替世界模型里的 outcomes）
+                                   // （1.6 写清，W-1 评审）本局对一个还没结果的节拍只有一种改动，玩家先后做的几件事这样合：
+                                   //   delayed、hastened 按带符号的分钟相加（推迟为正），净值 0 = 没有改动；prevented 顶掉之前的推迟、提前、改写；
+                                   //   别的组合（已登记 prevented 之后再改、altered 和推迟或提前混用、第二次 altered）自检不过（共享规则报 bad-state）
   | { op: "learn"; character: string; fact: string }   // 某角色知道了某事实；（1.1）fact 也可以是 rf_…（别人的即兴设定）
   | { op: "relocate"; character: string; place: string }
   | { op: "promise"; promiseId?: string; change: "made" | "kept" | "broken" | "voided";  // （1.1）约定，见 3.1 的 Promise；
@@ -640,7 +645,7 @@ type CheckResult = {
 **被否决和被修正是两回事（后端评审第 1 条）：**
 
 - **角色说了做不到的话**（例：答应陪你去王城，但他正被看守）：这句话不是事件，不需要修正。这一轮提取出的候选事件按规则写一条 `check.status = "rejected"`（`effects` 为空，`dt = 0`，`reason` 写原因），后端在给这个角色的下一次局势说明里加「圆回提示」（后端内部，不进契约）。
-- **叙事者撤回自己已提交的事件**（例：事后发现某事件违背了一个当时没检查到的前提）：追加 `type: "correction"`、`actor: "narrator"`、`supersedes` 指向旧事件，`effects` 写抵消和修正后的效果。旧事件不改。
+- **叙事者撤回自己已提交的事件**（例：事后发现某事件违背了一个当时没检查到的前提）：追加 `type: "correction"`、`actor: "narrator"`、`supersedes` 指向旧事件，`effects` 写抵消和修正后的效果。旧事件不改。（1.6 写清）抵消一次推迟或提前 = 同一个节拍反方向的同样分钟数（按上面 `Effect` 的注释相加）。
 
 ```ts
 type Utterance = {                 // 玩家和角色的原话，单独存放，可删除
@@ -961,3 +966,4 @@ type CharacterEnding = {           // （1.1）
   - Ending：`card.characterLines` 放宽到 1〜3 人，一个也没排上名时放梅洛斯；模板尾声的局也出卡；1.6 起写入的结局 `world.title`、`player.didForYou` / `youDid`、`characters`、`card` 必写（第 5 节，C-17）。读的一方要能排 1 行。
   - 写清（C-2 评审定的两件事）：状态变量 ID 的段里可以用驼峰（第 0 节）；`Effect.promise` 的 `promiseId` 在类型里可选，提交的事件必带（第 3 节）。
   - R2 加上 `valueRequires`（第 3 节规则表）。只有到点的节拍和期限（`origin: "schedule"`）不判；导演事件的 `actor` 也是 `system`，照样判（后端评审）。
+  - 写清（后端评审 W-1，2026-10-10）：同一个节拍的几次改动怎么合（第 3 节 `Effect` 的注释；以前共享规则换方向时整条替换，先拖慢 30 再帮快 10 成了帮快 10）；`origin: "schedule"` 只用于到点的节拍和期限（第 3 节）。

@@ -31,8 +31,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from worldsim import Sim  # noqa: E402  共用的推演规则（contracts 2.4.1 / 2.5.1）
+from zoujin_worldsim import Sim  # 共用的推演规则（W-1 的包，contracts 2.4.1 / 2.5.1）
 
 CONTRACT_VERSION = "1.6"  # contracts.md 的版本
 errors, warnings = [], []
@@ -684,9 +683,10 @@ def main():
 
     # ---------- 情景模拟（原著路径 + 改道情景） ----------
     sim = Sim(world)
+    role0 = world["roles"][0]["id"]              # 原著路径和情景按第一个身份推演（情景可以写 role 另指定）
 
     def simulate(sc):
-        r = sim.run(sc)
+        r = sim.run(sc, role=sc.get("role", role0))
         return r["outcome"], r["status"], r["times"], r["state"], r["variant"], r["violations"]
 
     # 1.4：第四幕按钮上的 melosMinutes = 只做这一个动作时，梅洛斯到刑场（watchBeat）在原著路径上早晚几分钟。
@@ -700,12 +700,12 @@ def main():
             if not af.get("melos") or not isinstance(af.get("melosMinutes"), int):
                 continue
             over = {e["beat"]: {k: v for k, v in e.items() if k not in ("op", "beat")} for e in af["effects"] if e.get("op") == "beat"}
-            got = lsim.run({"beats": over})["shift"].get(wb, 0)
+            got = lsim.run({"beats": over}, role=role0)["shift"].get(wb, 0)
             if got != af["melosMinutes"]:
                 err(f"{af['id']}: melosMinutes 写的是 {af['melosMinutes']:+d}，按共享规则在原著路径上是 {got:+d}")
         # 1.5：过场选项在收幕时选，非节拍的效果（如体力）也算进去，用共享规则 arrival_delta（和服务端一样：做和不做各排一次程）
         for where_, x, t_ in enroute_minutes:
-            got = sim.arrival_delta({}, x["effects"], t_)["minutes"]
+            got = sim.arrival_delta({}, x["effects"], t_, role=role0)["minutes"]
             if got != x["melosMinutes"]:
                 err(f"{where_}: melosMinutes 写的是 {x['melosMinutes']:+d}，按共享规则在原著路径上是 {got:+d}")
 

@@ -1,0 +1,560 @@
+{
+ "meta": {
+  "role": "role.traveler",
+  "world": "hashire-merosu@1.0.0-draft.3",
+  "generator": "packages/worldsim/tests/golden/gen_golden.py"
+ },
+ "canon_beats": {
+  "beat.01": {
+   "t": 240,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.village",
+    "char.king": "place.castle",
+    "char.selinuntius": "place.stonemason-workshop",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.groom-house",
+    "char.philostratus": "place.stonemason-workshop",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.castle",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.02": {
+   "t": 1150,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.syracuse-square",
+    "char.king": "place.castle",
+    "char.selinuntius": "place.stonemason-workshop",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.groom-house",
+    "char.philostratus": "place.stonemason-workshop",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.castle",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.03": {
+   "t": 1170,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.syracuse-square",
+    "char.king": "place.castle",
+    "char.selinuntius": "place.stonemason-workshop",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.groom-house",
+    "char.philostratus": "place.stonemason-workshop",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.castle",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.04": {
+   "t": 1200,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.castle",
+    "char.king": "place.castle",
+    "char.selinuntius": "place.stonemason-workshop",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.groom-house",
+    "char.philostratus": "place.stonemason-workshop",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.castle",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.05": {
+   "t": 1230,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.castle",
+    "char.king": "place.castle",
+    "char.selinuntius": "place.stonemason-workshop",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.groom-house",
+    "char.philostratus": "place.stonemason-workshop",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.castle",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.06": {
+   "t": 1410,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.castle",
+    "char.king": "place.castle",
+    "char.selinuntius": "place.castle",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.groom-house",
+    "char.philostratus": "place.stonemason-workshop",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.castle",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.07": {
+   "t": 1425,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.castle",
+    "char.king": "place.castle",
+    "char.selinuntius": "place.castle",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.groom-house",
+    "char.philostratus": "place.stonemason-workshop",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.castle",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.08": {
+   "t": 2040,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.melos-home",
+    "char.king": "place.castle",
+    "char.selinuntius": "place.castle",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.groom-house",
+    "char.philostratus": "place.stonemason-workshop",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.castle",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.09": {
+   "t": 2070,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.melos-home",
+    "char.king": "place.castle",
+    "char.selinuntius": "place.castle",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.groom-house",
+    "char.philostratus": "place.stonemason-workshop",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.castle",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.10": {
+   "t": 3150,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.groom-house",
+    "char.king": "place.castle",
+    "char.selinuntius": "place.castle",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.groom-house",
+    "char.philostratus": "place.stonemason-workshop",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.castle",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.11": {
+   "t": 3600,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.melos-home",
+    "char.king": "place.castle",
+    "char.selinuntius": "place.castle",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.melos-home",
+    "char.philostratus": "place.stonemason-workshop",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.castle",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.12": {
+   "t": 3630,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.melos-home",
+    "char.king": "place.castle",
+    "char.selinuntius": "place.castle",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.melos-home",
+    "char.philostratus": "place.stonemason-workshop",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.castle",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.13": {
+   "t": 4140,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.melos-home",
+    "char.king": "place.castle",
+    "char.selinuntius": "place.castle",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.melos-home",
+    "char.philostratus": "place.stonemason-workshop",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.castle",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.14": {
+   "t": 4590,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.village",
+    "char.king": "place.castle",
+    "char.selinuntius": "place.castle",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.melos-home",
+    "char.philostratus": "place.stonemason-workshop",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.castle",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.15": {
+   "t": 4860,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.village",
+    "char.king": "place.castle",
+    "char.selinuntius": "place.castle",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.melos-home",
+    "char.philostratus": "place.stonemason-workshop",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.castle",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.16": {
+   "t": 4900,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.neighbor-village",
+    "char.king": "place.castle",
+    "char.selinuntius": "place.castle",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.melos-home",
+    "char.philostratus": "place.stonemason-workshop",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.castle",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.17": {
+   "t": 4680,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.village",
+    "char.king": "place.castle",
+    "char.selinuntius": "place.castle",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.melos-home",
+    "char.philostratus": "place.stonemason-workshop",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.castle",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.18": {
+   "t": 5040,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.river",
+    "char.king": "place.castle",
+    "char.selinuntius": "place.castle",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.melos-home",
+    "char.philostratus": "place.stonemason-workshop",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.castle",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.19": {
+   "t": 5160,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.mountain-pass",
+    "char.king": "place.castle",
+    "char.selinuntius": "place.castle",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.melos-home",
+    "char.philostratus": "place.stonemason-workshop",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.castle",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.20": {
+   "t": 5220,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.spring",
+    "char.king": "place.castle",
+    "char.selinuntius": "place.castle",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.melos-home",
+    "char.philostratus": "place.stonemason-workshop",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.castle",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.s2": {
+   "t": 5280,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.spring",
+    "char.king": "place.castle",
+    "char.selinuntius": "place.castle",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.melos-home",
+    "char.philostratus": "place.stonemason-workshop",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.castle",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.21": {
+   "t": 5310,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.spring",
+    "char.king": "place.castle",
+    "char.selinuntius": "place.castle",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.melos-home",
+    "char.philostratus": "place.stonemason-workshop",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.castle",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.22": {
+   "t": 5370,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.road-to-city",
+    "char.king": "place.castle",
+    "char.selinuntius": "place.castle",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.melos-home",
+    "char.philostratus": "place.stonemason-workshop",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.castle",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.s1": {
+   "t": 5400,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.road-to-city",
+    "char.king": "place.execution-ground",
+    "char.selinuntius": "place.execution-ground",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.melos-home",
+    "char.philostratus": "place.stonemason-workshop",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.execution-ground",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.23": {
+   "t": 5430,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.road-to-city",
+    "char.king": "place.execution-ground",
+    "char.selinuntius": "place.execution-ground",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.melos-home",
+    "char.philostratus": "place.road-to-city",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.execution-ground",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.24": {
+   "t": 5460,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.execution-ground",
+    "char.king": "place.execution-ground",
+    "char.selinuntius": "place.execution-ground",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.melos-home",
+    "char.philostratus": "place.road-to-city",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.execution-ground",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.25": {
+   "t": 5465,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.execution-ground",
+    "char.king": "place.execution-ground",
+    "char.selinuntius": "place.execution-ground",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.melos-home",
+    "char.philostratus": "place.road-to-city",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.execution-ground",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.26": {
+   "t": 5475,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.execution-ground",
+    "char.king": "place.execution-ground",
+    "char.selinuntius": "place.execution-ground",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.melos-home",
+    "char.philostratus": "place.road-to-city",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.execution-ground",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  },
+  "beat.27": {
+   "t": 5480,
+   "status": "happened",
+   "where": {
+    "char.melos": "place.execution-ground",
+    "char.king": "place.execution-ground",
+    "char.selinuntius": "place.execution-ground",
+    "char.sister": "place.melos-home",
+    "char.groom": "place.melos-home",
+    "char.philostratus": "place.road-to-city",
+    "char.old-man": "place.syracuse-square",
+    "char.young-man": "place.syracuse-square",
+    "char.guards": "place.execution-ground",
+    "char.bandits": "place.mountain-pass",
+    "char.travelers": "place.road-to-city",
+    "char.crowd": "place.execution-ground",
+    "char.maiden": "place.execution-ground"
+   }
+  }
+ }
+}

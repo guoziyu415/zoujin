@@ -20,8 +20,7 @@ import re
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from worldsim import Sim  # noqa: E402  和 build_world.py 共用的推演规则
+from zoujin_worldsim import Sim  # 和 build_world.py 共用的推演规则（W-1 的包）
 
 CHECK_STATUS = {"passed", "rewritten", "downgraded", "rejected"}
 RULES = {"R1-anchor", "R2-precondition", "R3-time", "R4-knowledge", "R5-persona", "R6-safety", "R7-capability"}
@@ -216,7 +215,7 @@ class Checker:
             if m[2] and m[2] not in self.sim.beats:
                 return self.err(f"{where}：节拍不存在 {m[2]}") or False
             res = self.sim.run(sc, ("beat", m[2]) if m[2] else ("t", int(m[3])),
-                               start_place=setup.get("place", role["startPlace"]), player_items=role.get("items", []))
+                               role=role["id"], place=setup.get("place"))
             if not res["stopped"]:
                 return self.err(f"{where}：{m[2]} 在 {m[1]} 里没有发生（{res['status'].get(m[2])}），不能当检查点") or False
             if res["t"] < role["startT"]:
@@ -489,7 +488,7 @@ class Checker:
         if not sim_checks or any(k != "advance" for k in kinds.values()) or start == "persona":
             return False
         if start == "scenario":
-            res, end_t = self.sim.run(sc, start_place=role["startPlace"], player_items=role.get("items", [])), None
+            res, end_t = self.sim.run(sc, role=role["id"]), None
         else:
             if any(d["type"] == "outcome" for d in sim_checks):
                 end_t = None

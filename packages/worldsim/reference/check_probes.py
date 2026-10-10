@@ -1,7 +1,7 @@
 """核对防剧透探针题（PM S-068）：evals/probes/s3_spoiler_probes.json 是否和世界模型一致、能直接给后端的 s3 用。
 
-  python3 -I spikes/pipeline/check_probes.py --world worlds/hashire-merosu/1.0.0-draft/world.json \
-      --probes evals/probes/s3_spoiler_probes.json --existing ../backend/spikes/zj_spike/data/s3_scenarios.json
+  uv run python -I packages/worldsim/reference/check_probes.py --world worlds/hashire-merosu/1.0.0-draft/world.json \
+      --probes evals/probes/s3_spoiler_probes.json [--existing 后端原有的 s3_scenarios.json]
 
 查的是：
 - 格式和 s3_scenarios.json 一样（about / partner / scenarios / common_questions / keywords；情景的 id、character、after、place、when、voice、questions），
@@ -19,8 +19,7 @@ import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from worldsim import Sim  # noqa: E402  和 build_world.py 共用的推演规则
+from zoujin_worldsim import Sim  # 和 build_world.py 共用的推演规则（W-1 的包）
 
 SCENARIO_KEYS = {"id", "character", "after", "place", "when", "voice", "questions"}
 STYLES = {"open", "leading"}
@@ -48,7 +47,7 @@ def check(world, spec, existing=None):
     def moment(cid, after):
         if after == "pre":
             return clock["startT"], chars[cid].get("initialPlace")
-        res = sim.run({}, until=("beat", after))
+        res = sim.run({}, until=("beat", after), role=world["roles"][0]["id"])
         return res["t"], res["where"].get(cid)
 
     def label(t):

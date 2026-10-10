@@ -250,7 +250,7 @@ UX 的设计层校对（`ux/reviews/data-world-draft3.md`）已按契约 1.4 落
 
 起点不用任意的状态字典，而用**情景检查点**：`"<情景 ID>@<节拍 ID>"` = 按 `scenarios.json` 里的情景推演到该节拍刚发生之后，`"<情景 ID>@t=<分钟>"` = 推演到该时刻（后端评审第 9 条）。这样构造出的状态一定是真实可能出现的。需要额外前提时再追加事件。
 
-完整格式、步骤和检查类型见 `data/evals/README.md`；种子 97 例在 `data/evals/seeds/`，自检脚本 `spikes/pipeline/check_evals.py` 和世界模型校验共用同一份推演规则（`spikes/pipeline/worldsim.py`），会核对检查点真的走得到、被问的角色在那时确实还不知道、只靠时间规则的用例结果成立。
+完整格式、步骤和检查类型见 `data/evals/README.md`；种子 97 例在 `data/evals/seeds/`，自检脚本 `packages/worldsim/reference/check_evals.py` 和世界模型校验共用同一份推演规则（W-1 的包 `packages/worldsim`），会核对检查点真的走得到、被问的角色在那时确实还不知道、只靠时间规则的用例结果成立。
 
 ```json
 {"id":"E2-009","suite":"E2","title":"梅洛斯（渡河后）：山口那边是什么路","mode":"text","runs":5,
