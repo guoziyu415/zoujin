@@ -1,0 +1,8 @@
+{"note": "降级为文字回答：先推 degraded，之后 session_ready.voiceAvailable 为 false；发一句文字，人物只回字幕（没有音频，turn_complete audio false），再照常判定。先 focus 市の老爺。"}
+{"delayMs": 800, "send": {"type": "degraded", "voice": false, "reason": "budget"}}
+{"on": ["text", "activity_end"]}
+{"delayMs": 1200, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.old-man", "text": "……日が沈む前に、刑場へ行ってみなされ。", "final": true, "source": "live"}}
+{"send": {"type": "turn_complete", "turnId": "{{turnId}}", "audio": false, "metrics": {"serverReleaseToFirstAudioMs": null}}}
+{"delayMs": 1000, "send": {"type": "suggestions", "turnId": "{{turnId}}", "character": "char.old-man", "items": [{"text": "刑場で何が？", "kind": "ask"}, {"text": "行ってみます", "kind": "act"}]}}
+{"delayMs": 2000, "send": {"type": "commit", "turnId": "{{playerTurnId}}", "events": [], "patch": {"clock": {"t": "{{t+15}}", "tLabel": "{{tLabel+15}}"}}, "memories": [], "promises": [], "narration": [], "cue": null, "reveal": null}}
+{"delayMs": 100, "send": {"type": "turn_settled", "turnId": "{{playerTurnId}}", "outcome": "no_change", "eventIds": [], "minutes": 15}}

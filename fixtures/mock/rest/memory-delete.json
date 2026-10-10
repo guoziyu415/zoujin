@@ -1,0 +1,29 @@
+{
+  "melos-1": {
+    "memoryId": "{{memoryId}}",
+    "deleted": true,
+    "character": "char.melos",
+    "relationLabel": "気を許している",
+    "relationLevel": 4,
+    "promiseVoided": null,
+    "sessionRebuilt": true
+  },
+  "melos-2": {
+    "memoryId": "{{memoryId}}",
+    "deleted": true,
+    "character": "char.melos",
+    "relationLabel": "様子を見ている",
+    "relationLevel": 3,
+    "promiseVoided": "{{id:prm:help-melos}}",
+    "sessionRebuilt": true
+  },
+  "old-man-1": {
+    "memoryId": "{{memoryId}}",
+    "deleted": true,
+    "character": "char.old-man",
+    "relationLabel": "様子を見ている",
+    "relationLevel": 3,
+    "promiseVoided": null,
+    "sessionRebuilt": true
+  }
+}

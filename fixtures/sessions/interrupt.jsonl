@@ -1,0 +1,26 @@
+{"note": "打断：先 focus メロス，说一句；他说话（6 秒）时再按下说话或发文字。mock 回 interrupted，剩下的音频不发。"}
+{"on": ["activity_start", "text"]}
+{"when": "voice", "delayMs": 700, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "メロスさん、", "final": false}}
+{"on": "activity_end", "if": {"trigger.type": "activity_start"}}
+{"when": "voice", "delayMs": 150, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "メロスさん、ですか。", "final": true}}
+{"delayMs": 850, "audio": {"seconds": 2.0}}
+{"send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.melos", "text": "いかにも、メロスだ。", "final": false}}
+{"audio": {"seconds": 4.0}}
+{"note": "没被打断时照常说完；被打断时定稿只到打断处，不发 turn_complete"}
+{"if": {"interrupted": false}, "send": {"type": "turn_complete", "turnId": "{{turnId}}", "audio": true, "metrics": {"serverReleaseToFirstAudioMs": 850}}}
+{"if": {"interrupted": false}, "delayMs": 200, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.melos", "text": "いかにも、メロスだ。妹の婚礼の支度を買いに、村から来た。", "final": true, "source": "live"}}
+{"if": {"interrupted": true}, "delayMs": 100, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.melos", "text": "いかにも、メロスだ。妹の", "final": true, "source": "live"}}
+{"delayMs": 300, "send": {"type": "commit", "turnId": "{{playerTurnId}}", "events": [], "patch": {"clock": {"t": "{{t+10}}", "tLabel": "{{tLabel+10}}"}}, "memories": [], "promises": [], "narration": [], "cue": null, "reveal": null}}
+{"delayMs": 100, "send": {"type": "turn_settled", "turnId": "{{playerTurnId}}", "outcome": "no_change", "eventIds": [], "minutes": 10}}
+{"on": ["activity_start", "text"]}
+{"when": "voice", "delayMs": 700, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "待って", "final": false}}
+{"on": "activity_end", "if": {"trigger.type": "activity_start"}}
+{"when": "voice", "delayMs": 150, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "待ってください。", "final": true}}
+{"delayMs": 850, "audio": {"seconds": 0.8}}
+{"send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.melos", "text": "……なんだ。", "final": false}}
+{"audio": {"seconds": 1.2}}
+{"send": {"type": "turn_complete", "turnId": "{{turnId}}", "audio": true, "metrics": {"serverReleaseToFirstAudioMs": 850}}}
+{"delayMs": 200, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.melos", "text": "……なんだ。言いたいことがあるなら、言え。", "final": true, "source": "live"}}
+{"delayMs": 1000, "send": {"type": "suggestions", "turnId": "{{turnId}}", "character": "char.melos", "items": [{"text": "この市の様子が変です", "kind": "ask"}, {"text": "なんでもありません", "kind": "act"}]}}
+{"delayMs": 2500, "send": {"type": "commit", "turnId": "{{playerTurnId}}", "events": [], "patch": {"clock": {"t": "{{t+10}}", "tLabel": "{{tLabel+10}}"}}, "memories": [], "promises": [], "narration": [], "cue": null, "reveal": null}}
+{"delayMs": 100, "send": {"type": "turn_settled", "turnId": "{{playerTurnId}}", "outcome": "no_change", "eventIds": [], "minutes": 10}}

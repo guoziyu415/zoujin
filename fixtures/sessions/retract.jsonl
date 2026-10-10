@@ -1,0 +1,45 @@
+{"note": "作废（3.6）：先 focus 市の老爺。第 1 轮在人物回答后约 4 秒内发 turn_retract → retracted；第 2 轮 turn_settled 之后再发 turn_retract → too_late；第 3 轮玩家字幕识别错了（往生），发 turn_retract 加 text {via: correction, replaces} 改正。"}
+{"on": ["activity_start", "text"]}
+{"when": "voice", "delayMs": 700, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "王様のことを、", "final": false}}
+{"on": "activity_end", "if": {"trigger.type": "activity_start"}}
+{"when": "voice", "delayMs": 150, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "王様のことを、聞いてもいいですか。", "final": true}}
+{"delayMs": 850, "audio": {"seconds": 1.4}}
+{"send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.old-man", "text": "……その話は、", "final": false}}
+{"audio": {"seconds": 1.4}}
+{"send": {"type": "turn_complete", "turnId": "{{turnId}}", "audio": true, "metrics": {"serverReleaseToFirstAudioMs": 850}}}
+{"delayMs": 200, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.old-man", "text": "……その話は、ここではのう。", "final": true, "source": "live"}}
+{"delayMs": 4000, "send": {"type": "commit", "turnId": "{{playerTurnId}}", "events": [], "patch": {"clock": {"t": "{{t+10}}", "tLabel": "{{tLabel+10}}"}}, "memories": [], "promises": [], "narration": [], "cue": null, "reveal": null}}
+{"delayMs": 100, "send": {"type": "turn_settled", "turnId": "{{playerTurnId}}", "outcome": "no_change", "eventIds": [], "minutes": 10}}
+{"on": ["activity_start", "text"]}
+{"when": "voice", "delayMs": 700, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "今夜の宿を", "final": false}}
+{"on": "activity_end", "if": {"trigger.type": "activity_start"}}
+{"when": "voice", "delayMs": 150, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "今夜の宿を探しています。", "final": true}}
+{"delayMs": 850, "audio": {"seconds": 1.4}}
+{"send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.old-man", "text": "宿なら、", "final": false}}
+{"audio": {"seconds": 1.4}}
+{"send": {"type": "turn_complete", "turnId": "{{turnId}}", "audio": true, "metrics": {"serverReleaseToFirstAudioMs": 850}}}
+{"delayMs": 200, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.old-man", "text": "宿なら、西の門のそばにあるぞい。", "final": true, "source": "live"}}
+{"delayMs": 2500, "send": {"type": "commit", "turnId": "{{playerTurnId}}", "events": [], "patch": {"clock": {"t": "{{t+10}}", "tLabel": "{{tLabel+10}}"}}, "memories": [], "promises": [], "narration": [], "cue": null, "reveal": null}}
+{"delayMs": 100, "send": {"type": "turn_settled", "turnId": "{{playerTurnId}}", "outcome": "no_change", "eventIds": [], "minutes": 10}}
+{"on": ["activity_start", "text"]}
+{"when": "voice", "delayMs": 700, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "往生は、", "final": false}}
+{"on": "activity_end", "if": {"trigger.type": "activity_start"}}
+{"when": "voice", "delayMs": 150, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "往生は、どっちですか。", "final": true}}
+{"delayMs": 1500, "audio": {"seconds": 1.2}}
+{"send": {"type": "turn_complete", "turnId": "{{turnId}}", "audio": true, "metrics": {"serverReleaseToFirstAudioMs": 1500}}}
+{"delayMs": 200, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.old-man", "text": "……なんじゃと？", "final": true, "source": "live"}}
+{"delayMs": 4000, "send": {"type": "commit", "turnId": "{{playerTurnId}}", "events": [], "patch": {"clock": {"t": "{{t+10}}", "tLabel": "{{tLabel+10}}"}}, "memories": [], "promises": [], "narration": [], "cue": null, "reveal": null}}
+{"delayMs": 100, "send": {"type": "turn_settled", "turnId": "{{playerTurnId}}", "outcome": "no_change", "eventIds": [], "minutes": 10}}
+{"note": "改正后的那一轮（text via correction）"}
+{"on": ["activity_start", "text"]}
+{"when": "voice", "delayMs": 700, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "王城は、", "final": false}}
+{"on": "activity_end", "if": {"trigger.type": "activity_start"}}
+{"when": "voice", "delayMs": 150, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "王城は、どっちですか。", "final": true}}
+{"delayMs": 850, "audio": {"seconds": 1.4}}
+{"send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.old-man", "text": "王城なら、", "final": false}}
+{"audio": {"seconds": 1.4}}
+{"send": {"type": "turn_complete", "turnId": "{{turnId}}", "audio": true, "metrics": {"serverReleaseToFirstAudioMs": 850}}}
+{"delayMs": 200, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.old-man", "text": "王城なら、あの坂の上じゃ。……じゃが、近づかんほうがええ。", "final": true, "source": "live"}}
+{"delayMs": 1000, "send": {"type": "suggestions", "turnId": "{{turnId}}", "character": "char.old-man", "items": [{"text": "なぜですか", "kind": "ask"}, {"text": "わかりました", "kind": "act"}]}}
+{"delayMs": 2500, "send": {"type": "commit", "turnId": "{{playerTurnId}}", "events": [], "patch": {"clock": {"t": "{{t+10}}", "tLabel": "{{tLabel+10}}"}}, "memories": [], "promises": [], "narration": [], "cue": null, "reveal": null}}
+{"delayMs": 100, "send": {"type": "turn_settled", "turnId": "{{playerTurnId}}", "outcome": "no_change", "eventIds": [], "minutes": 10}}

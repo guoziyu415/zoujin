@@ -1,0 +1,11 @@
+{"note": "人物的定稿晚于 turn_complete：Live 这一轮没给文字（没有中途字幕），turn_complete 后约 1.8 秒补转写的定稿到（source fallback）。先 focus 市の老爺。"}
+{"on": ["activity_start", "text"]}
+{"when": "voice", "delayMs": 700, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "お名前を、", "final": false}}
+{"on": "activity_end", "if": {"trigger.type": "activity_start"}}
+{"when": "voice", "delayMs": 150, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "お名前を、伺ってもいいですか。", "final": true}}
+{"delayMs": 850, "audio": {"seconds": 1.4}}
+{"audio": {"seconds": 1.4}}
+{"send": {"type": "turn_complete", "turnId": "{{turnId}}", "audio": true, "metrics": {"serverReleaseToFirstAudioMs": 850}}}
+{"delayMs": 1800, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.old-man", "text": "名乗るほどの者ではないわい。", "final": true, "source": "fallback"}}
+{"delayMs": 2500, "send": {"type": "commit", "turnId": "{{playerTurnId}}", "events": [], "patch": {"clock": {"t": "{{t+10}}", "tLabel": "{{tLabel+10}}"}}, "memories": [], "promises": [], "narration": [], "cue": null, "reveal": null}}
+{"delayMs": 100, "send": {"type": "turn_settled", "turnId": "{{playerTurnId}}", "outcome": "no_change", "eventIds": [], "minutes": 10}}

@@ -1,0 +1,85 @@
+{
+  "days": [
+    {
+      "day": 0,
+      "label": "約束の日",
+      "items": [
+        {
+          "kind": "event",
+          "eventId": "{{id:ev:tell-melos}}",
+          "t": 1080,
+          "tLabel": "約束の日・日没前",
+          "summary": "旅人がメロスに、王が人を殺していると告げた",
+          "place": "place.syracuse-square",
+          "style": "player",
+          "causedByPlayer": true,
+          "forPlayer": false,
+          "knownBy": [
+            "char.melos"
+          ]
+        },
+        {
+          "kind": "event",
+          "eventId": "{{id:ev:help-cart}}",
+          "t": 1110,
+          "tLabel": "約束の日・日没前",
+          "summary": "旅人が老爺の荷車を押して運んだ",
+          "place": "place.syracuse-square",
+          "style": "player",
+          "causedByPlayer": true,
+          "forPlayer": false,
+          "knownBy": [
+            "char.old-man"
+          ]
+        },
+        {
+          "kind": "beat",
+          "beatId": "beat.02",
+          "t": 1150,
+          "tLabel": "約束の日・日没",
+          "title": "市の異変",
+          "status": "canon",
+          "known": true
+        },
+        {
+          "kind": "beat",
+          "beatId": "beat.03",
+          "t": 1170,
+          "tLabel": "約束の日・夜",
+          "title": "王の暴虐を知る",
+          "status": "altered",
+          "known": true
+        },
+        {
+          "kind": "event",
+          "eventId": "{{id:ev:promise-melos}}",
+          "t": 1170,
+          "tLabel": "約束の日・夜",
+          "summary": "旅人がメロスに、力になると約束した",
+          "place": "place.syracuse-square",
+          "style": "player",
+          "causedByPlayer": true,
+          "forPlayer": false,
+          "knownBy": [
+            "char.melos"
+          ]
+        },
+        {
+          "kind": "beat",
+          "beatId": "beat.04",
+          "t": 1200,
+          "tLabel": "約束の日・夜",
+          "known": false
+        },
+        {
+          "kind": "beat",
+          "beatId": "beat.05",
+          "t": 1230,
+          "tLabel": "約束の日・夜",
+          "known": false
+        }
+      ]
+    }
+  ],
+  "lastSeq": 0
+}

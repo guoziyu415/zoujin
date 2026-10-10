@@ -1,0 +1,17 @@
+{"note": "导览：把全部情形串成一局，按这个顺序走（每一段要做什么见各剧本第一行的 note 和 README）。"}
+{"include": "full-turn"}
+{"include": "small-talk"}
+{"include": "approach"}
+{"include": "confirm"}
+{"include": "interrupt"}
+{"include": "retract"}
+{"include": "late-transcript"}
+{"include": "transcript-failed"}
+{"include": "no-audio"}
+{"include": "safety"}
+{"include": "goaway"}
+{"include": "limits"}
+{"include": "future-message"}
+{"include": "act-end"}
+{"include": "degraded"}
+{"include": "ending"}

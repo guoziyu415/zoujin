@@ -3,8 +3,27 @@ name = "zoujin-backend"
 version = "0.0.0"
 description = "网关、叙事者和 mock 服务（一个包，部署成两个 Cloud Run 服务；B-0、B-1 往里写）"
 requires-python = ">=3.13,<3.14"
-dependencies = []
+dependencies = [
+    "fastapi>=0.120",
+    "jsonschema>=4.25",
+    "referencing>=0.36",
+    "uvicorn>=0.38",
+    "websockets>=15",
+    "zoujin-contracts",
+]
+
+[project.scripts]
+zoujin-mock = "zoujin_backend.mock.cli:main"
 
 [build-system]
 requires = ["uv_build>=0.11,<0.12"]
 build-backend = "uv_build"
+
+[tool.uv.sources]
+zoujin-contracts = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28",
+    "types-jsonschema>=4.25",
+]

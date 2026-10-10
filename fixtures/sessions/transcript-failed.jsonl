@@ -1,0 +1,11 @@
+{"note": "补转写也失败：turn_complete 后约 3 秒，定稿 {final: true, text: null, source: fallback}。先 focus 市の老爺。"}
+{"on": ["activity_start", "text"]}
+{"when": "voice", "delayMs": 700, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "この噴水は、", "final": false}}
+{"on": "activity_end", "if": {"trigger.type": "activity_start"}}
+{"when": "voice", "delayMs": 150, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "この噴水は、古いのですか。", "final": true}}
+{"delayMs": 850, "audio": {"seconds": 1.4}}
+{"audio": {"seconds": 1.4}}
+{"send": {"type": "turn_complete", "turnId": "{{turnId}}", "audio": true, "metrics": {"serverReleaseToFirstAudioMs": 850}}}
+{"delayMs": 3000, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.old-man", "text": null, "final": true, "source": "fallback"}}
+{"delayMs": 2500, "send": {"type": "commit", "turnId": "{{playerTurnId}}", "events": [], "patch": {"clock": {"t": "{{t+10}}", "tLabel": "{{tLabel+10}}"}}, "memories": [], "promises": [], "narration": [], "cue": null, "reveal": null}}
+{"delayMs": 100, "send": {"type": "turn_settled", "turnId": "{{playerTurnId}}", "outcome": "no_change", "eventIds": [], "minutes": 10}}

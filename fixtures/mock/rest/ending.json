@@ -1,0 +1,112 @@
+{
+  "endingId": "{{id:end:ending}}",
+  "world": {
+    "outcomeId": "canon-reunion",
+    "baseline": true,
+    "title": "原作どおりの大団円",
+    "epilogue": [
+      {
+        "sentence": "メロスは日没の直前に刑場へ駆け込み、友の縄はほどかれた。",
+        "cites": [
+          "{{id:ev:melos-arrives}}"
+        ]
+      },
+      {
+        "sentence": "王は二人に歩み寄り、群衆は王を讃えた。",
+        "cites": [
+          "{{id:ev:king-reformed}}"
+        ]
+      }
+    ]
+  },
+  "you": {
+    "title": "市で待ち続けた旅人",
+    "fate": "市に残り、刑場で友の到着を見届けた",
+    "didForYou": [],
+    "youDid": [
+      {
+        "sentence": "メロスに、王のことを告げた",
+        "cites": [
+          "{{id:ev:tell-melos}}"
+        ]
+      },
+      {
+        "sentence": "老爺の荷車を、家まで押して運んだ",
+        "cites": [
+          "{{id:ev:help-cart}}"
+        ]
+      }
+    ]
+  },
+  "characters": [
+    {
+      "character": "char.melos",
+      "rank": 1,
+      "unchanged": false,
+      "original": "日没の直前に刑場へ駆け込み、友と抱き合った。",
+      "yours": [
+        {
+          "sentence": "旅人から王のことを聞き、その夜のうちに王城へ向かった。",
+          "cites": [
+            "{{id:ev:tell-melos}}"
+          ]
+        }
+      ]
+    },
+    {
+      "character": "char.old-man",
+      "rank": 2,
+      "unchanged": false,
+      "original": "旅の者に、王の暴虐を小声で語った。",
+      "yours": [
+        {
+          "sentence": "荷車を押してくれた旅人と、刑場の端で日没を待った。",
+          "cites": [
+            "{{id:ev:help-cart}}"
+          ]
+        }
+      ]
+    },
+    {
+      "character": "char.selinuntius",
+      "rank": null,
+      "unchanged": true
+    },
+    {
+      "character": "char.king",
+      "rank": null,
+      "unchanged": true
+    },
+    {
+      "character": "char.philostratus",
+      "rank": null,
+      "unchanged": true
+    },
+    {
+      "character": "char.sister",
+      "rank": null,
+      "unchanged": true
+    },
+    {
+      "character": "char.groom",
+      "rank": null,
+      "unchanged": true
+    }
+  ],
+  "card": {
+    "title": "市で待ち続けた旅人",
+    "subtitle": "市に残り、刑場で友の到着を見届けた",
+    "characterLines": [
+      {
+        "character": "char.melos",
+        "line": "あの夜、王のことを教えてくれた旅の人だ。"
+      },
+      {
+        "character": "char.old-man",
+        "line": "あの旅の方は、最後まで待っておった。"
+      }
+    ],
+    "contrast": "原作どおりの結末。あなたの世界でも、王は改心した。",
+    "fallbackImageUrl": "/assets/endings/canon-reunion.0001.webp"
+  }
+}

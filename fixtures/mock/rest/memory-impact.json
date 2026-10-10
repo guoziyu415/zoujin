@@ -1,0 +1,14 @@
+{
+  "melos-1": {
+    "keeps": "メロスが王のことを知ったことは、そのまま残ります。",
+    "voidsPromise": false
+  },
+  "melos-2": {
+    "keeps": null,
+    "voidsPromise": true
+  },
+  "old-man-1": {
+    "keeps": "荷車を運んだことは、そのまま残ります。",
+    "voidsPromise": false
+  }
+}
