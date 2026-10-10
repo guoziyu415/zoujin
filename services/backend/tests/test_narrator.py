@@ -261,6 +261,7 @@ def test_two_extract_timeouts_commit_only_the_clock(env: Env) -> None:
         (result,) = await n.run(pid)
         assert [kind for kind, _ in slow.calls] == ["triage", "extract", "extract"]  # 第一次超时重发一次，没有检查
         assert [(e["actor"], e["type"], e["effects"], e["dt"]) for e in result.events] == [("player", "say", [], 10)]
+        assert (result.outcome, result.minutes) == ("no_change", 10)  # 客户端收到的和提取没有候选时一样
         n_events, last, cached = await counts(env, pid)
         assert (n_events, last, cached) == (before[0] + 1, before[1] + 1, before[2] + 1)
         async with engine.connect() as c:
