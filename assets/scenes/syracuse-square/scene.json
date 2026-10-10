@@ -7,7 +7,7 @@
  "placeholderTextures": true,
  "inputs": {
   "files": {
-   "assets/scenes/syracuse-square/layout.json": "952ac6eb09d8a09573c268969336a3eea2e8cc17ab6a533199adfe9a78d229ce",
+   "assets/scenes/syracuse-square/layout.json": "7479540792f5ddb67c27063b5fe06194966976c120d43204a5bddb4667f21f75",
    "assets/pipeline/plaza/build.sh": "5640d8d18a8817b84b1c0387c476d127996931dab6b70389b0b5ac1753151716",
    "assets/pipeline/plaza/requirements.txt": "0a234e44f52fb462c7e8694ecd82b99aca8e534ac610dde2dd749bb1e2cbe0e3",
    "assets/pipeline/plaza/placeholder_tex.py": "aabda4df4f3974b2eb65b227ed3b5ae2d606a489441d665b3f2f108c5cd1343e",
@@ -1166,7 +1166,8 @@
    ],
    "yaw": -2.1991,
    "place": "place.execution-ground",
-   "poly": 91
+   "poly": 91,
+   "auto": false
   },
   "stake-front-side": {
    "pos": [
@@ -1198,7 +1199,18 @@
    ],
    "yaw": 0.8712,
    "place": "place.execution-ground",
-   "poly": 91
+   "poly": 91,
+   "auto": false
+  },
+  "ground-south": {
+   "pos": [
+    -4.71,
+    0,
+    -7.13
+   ],
+   "yaw": -1.3031,
+   "place": "place.execution-ground",
+   "poly": 10
   },
   "king-west": {
    "pos": [

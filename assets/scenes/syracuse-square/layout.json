@@ -191,7 +191,8 @@
     "stake-front": {
       "at": [7.6, 0.0],
       "face": [11, 0],
-      "about": "in front of the platform steps"
+      "about": "in front of the platform steps: where the player lands at the execution ground (startSpots, the slice's act-1 exits); auto: false so no one is placed there before the player arrives",
+      "auto": false
     },
     "stake-front-side": {
       "at": [7.7, -1.0],
@@ -208,7 +209,13 @@
     "ground-west": {
       "at": [4.0, -2.5],
       "face": [-31, 0],
-      "about": "west end of the execution ground, facing the gate down the light corridor: where a player who stayed in the city to wait for Melos sees him come through the gate at sunset (ux/slice/ending-shots.md, shot 2). 2.5 m south of the gate-to-post line, so the follow camera behind the player clears the post and the platform (UX, PR #32)"
+      "about": "west end of the execution ground, facing the gate down the light corridor: where a player who stayed in the city to wait for Melos sees him come through the gate at sunset (ux/slice/ending-shots.md, shot 2). 2.5 m south of the gate-to-post line, so the follow camera behind the player clears the post and the platform (UX, PR #32). auto: false: only the act plan puts someone here",
+      "auto": false
+    },
+    "ground-south": {
+      "at": [8.0, -3.0],
+      "face": [10.4, 0],
+      "about": "south-west of the platform, facing the post: where someone the act plan does not place stands to watch. Listed before castle-steps so the first one stands by the post, not up the steps; 2 m from stake-front-side, clear of the gate-to-post corridor"
     },
     "king-west": {
       "at": [3.0, 2.0],
