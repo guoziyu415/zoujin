@@ -1,9 +1,18 @@
-# 评测集的生成器和自检脚本（数据负责）。现在都是只用标准库的独立脚本，不打包；E-0 加评测运行器时再定。
+# 评测（数据负责）：evals/ 下的生成器和自检脚本是只用标准库的独立脚本，不打包；
+# src/zoujin_evals 是评测运行器（E-0），推演规则从 W-1 的包 zoujin_worldsim 来。
 [project]
 name = "zoujin-evals"
 version = "0.0.0"
+description = "评测运行器（E-0）：读 E1〜E8 的用例，经后端的 eval_api 跑，做确定性检查，出报告"
 requires-python = ">=3.13,<3.14"
-dependencies = []
+dependencies = ["zoujin-worldsim"]
 
-[tool.uv]
-package = false
+[project.scripts]
+zoujin-eval = "zoujin_evals.cli:main"
+
+[tool.uv.sources]
+zoujin-worldsim = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"

@@ -22,8 +22,17 @@ exclude = ["spikes/*"]
 [tool.ruff]
 target-version = "py313"
 line-length = 120
-# evals/ 是数据的脚本（规则由数据定），assets/pipeline/ 是前端原样搬来的 Blender 脚本（前端整理时纳入）。
-extend-exclude = ["spikes", "packages/worldsim/reference", "evals", "assets/pipeline", "worlds", "docs"]
+# evals/ 下的 gen_*.py、s2_check.py 是数据的生成器和自检脚本（规则由数据定；运行器 evals/src 照常查），
+# assets/pipeline/ 是前端原样搬来的 Blender 脚本（前端整理时纳入）。
+extend-exclude = [
+    "spikes",
+    "packages/worldsim/reference",
+    "evals/gen_*.py",
+    "evals/s2_check.py",
+    "assets/pipeline",
+    "worlds",
+    "docs",
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP"]
@@ -36,7 +45,14 @@ select = ["E", "F", "W", "I", "B", "UP"]
 [tool.mypy]
 python_version = "3.13"
 strict = true
-files = ["services/backend/src", "services/backend/tests", "packages/worldsim/src", "packages/contracts/src"]
+files = [
+    "services/backend/src",
+    "services/backend/tests",
+    "packages/worldsim/src",
+    "packages/contracts/src",
+    "evals/src",
+    "evals/tests",
+]
 exclude = ["^spikes/", "^packages/worldsim/reference/"]
 
 [tool.pytest.ini_options]

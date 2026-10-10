@@ -609,7 +609,13 @@ dev = [
 [[package]]
 name = "zoujin-evals"
 version = "0.0.0"
-source = { virtual = "evals" }
+source = { editable = "evals" }
+dependencies = [
+    { name = "zoujin-worldsim" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "zoujin-worldsim", editable = "packages/worldsim" }]
 
 [[package]]
 name = "zoujin-worldsim"
