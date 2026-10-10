@@ -25,6 +25,7 @@ class Scene:
     spots: dict[str, str]  # 位置点 → 地点，按布局里的顺序
     exits: tuple[dict[str, str], ...]  # {place, spot}
     start_spots: dict[str, str]  # 地点 → 玩家站的位置点
+    manual: frozenset[str] = frozenset()  # `auto: false` 的位置点：只给节拍、结局演出明确指定，自动分配跳过
 
     @classmethod
     def read(cls, path: Path) -> Scene:
@@ -36,21 +37,28 @@ class Scene:
             spots={k: v["place"] for k, v in d.get("spots", {}).items()},
             exits=tuple({"place": e["place"], "spot": e["spot"]} for e in d.get("exits", [])),
             start_spots=dict(d.get("startSpots", {})),
+            manual=frozenset(k for k, v in d.get("spots", {}).items() if v.get("auto") is False),
         )
+
+    def auto_spots(self, place: str) -> list[str]:
+        """自动分配能用的位置点（布局顺序）：这个地点的，`way.*` 和 `auto: false` 的除外。"""
+        return [s for s, p in self.spots.items() if p == place and not s.startswith("way.") and s not in self.manual]
 
     def player_spot(self, place: str) -> str:
         if place in self.start_spots:
             return self.start_spots[place]
-        return next((s for s, p in self.spots.items() if p == place and not s.startswith("way.")), _slug(place))
+        return next(iter(self.auto_spots(place)), _slug(place))
 
     def character_spots(self, people: list[tuple[str, str]], taken: set[str] | None = None) -> dict[str, str]:
-        """人物按顺序占自己地点里还空着的位置点（布局顺序，way.* 和 taken 除外）；不够了就和最后一个重叠。
-        taken 给玩家站的点，人物不站到玩家身上。"""
-        taken = set(taken or ())
+        """人物按顺序占自己地点里还空着的位置点（`auto_spots` 里 taken 以外的）。taken 给玩家站的点，人物不站到
+        玩家身上；不够了就和别的人物重叠在第一个点上，这个地点只有玩家那一个点时才和玩家重叠。"""
+        player = set(taken or ())
+        taken = set(player)
         out: dict[str, str] = {}
         for who, place in people:
-            free = [s for s, p in self.spots.items() if p == place and not s.startswith("way.") and s not in taken]
-            spot = free[0] if free else next((s for s, p in self.spots.items() if p == place), _slug(place))
+            usable = self.auto_spots(place)
+            free = [s for s in usable if s not in taken]
+            spot = free[0] if free else next((s for s in usable if s not in player), next(iter(usable), _slug(place)))
             taken.add(spot)
             out[who] = spot
         return out
