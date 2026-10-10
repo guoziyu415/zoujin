@@ -5,7 +5,8 @@
 写三个文件（都用旅人：Role.startPlace、Role.items）：
 - runs.json：原作和 scenarios.json 的情景，一共 24 次推演各自跑到底的结果；
 - canon_beats.json：原作里每个节拍刚发生时的 t 和人物所在地（防剧透探针的 place / when 靠它）；
-- arrival.json：每个带 melosMinutes 的动作，在第四幕开始到它改的节拍发生前每 30 分钟的 arrival_delta；
+- arrival.json：每个带 melosMinutes 的动作，在第四幕开始到它改的节拍发生前每 15 分钟（第四幕说一轮话的长度，
+  pacing.talkTurnMinutesAct4）的 arrival_delta；
   过场二选一的选项在收幕时选，只算收幕那一刻。
 """
 
@@ -21,7 +22,7 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[3]
 W = REPO / "worlds" / "hashire-merosu" / "1.0.0-draft"
 ROLE = "role.traveler"
-STEP = 30
+STEP = 15  # 第四幕一轮的长度：玩家每个能做的时刻
 
 
 def load_reference() -> ModuleType:
