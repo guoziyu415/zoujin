@@ -7,11 +7,11 @@
  "placeholderTextures": true,
  "inputs": {
   "files": {
-   "assets/scenes/syracuse-square/layout.json": "2481628f31a5b0671f4633627ef4ef45f5d5c3e63853bd92c741c5b203a1f4c8",
+   "assets/scenes/syracuse-square/layout.json": "952ac6eb09d8a09573c268969336a3eea2e8cc17ab6a533199adfe9a78d229ce",
    "assets/pipeline/plaza/build.sh": "5640d8d18a8817b84b1c0387c476d127996931dab6b70389b0b5ac1753151716",
    "assets/pipeline/plaza/requirements.txt": "0a234e44f52fb462c7e8694ecd82b99aca8e534ac610dde2dd749bb1e2cbe0e3",
    "assets/pipeline/plaza/placeholder_tex.py": "aabda4df4f3974b2eb65b227ed3b5ae2d606a489441d665b3f2f108c5cd1343e",
-   "assets/pipeline/plaza/build_plaza.py": "fb61124392b81812980e4da4a2d7d0e214254f25e761e817540a87c8abc4a423",
+   "assets/pipeline/plaza/build_plaza.py": "249c8f24ce14a0cb2cff2afe6625806667506c545e264d8e6ab57dd021dadf43",
    "assets/pipeline/plaza/sky.py": "20375dd1f411ad91e240078b2691b4ddd7773ba0818542d7415537fe11dd9836",
    "assets/pipeline/plaza/sunpos.py": "2da6794757da0d29b482c5483577881d2098ecfd12f7d7178956da185310b03a",
    "assets/pipeline/plaza/bake.py": "1b2267b42cf6de868bd1799754b2724e73a91817ba954cfef038c4229c1a53b3",
@@ -836,7 +836,7 @@
   "ground": {
    "indirect": {
     "file": "lm/ground_indirect.ktx2",
-    "K": 0.7546172645203735
+    "K": 0.7546172911176251
    },
    "ao": {
     "file": "lm/ground_ao.ktx2"
@@ -846,7 +846,7 @@
   "arch": {
    "indirect": {
     "file": "lm/arch_indirect.ktx2",
-    "K": 0.6741543913316416
+    "K": 0.6741543890327952
    },
    "ao": {
     "file": "lm/arch_ao.ktx2"
@@ -856,7 +856,7 @@
  },
  "nav": {
   "file": "nav.json",
-  "polys": 171,
+  "polys": 166,
   "agent": {
    "radius": 0.3,
    "height": 1.8,
@@ -942,7 +942,7 @@
    ],
    "yaw": -1.6484,
    "place": "place.syracuse-square",
-   "poly": 91
+   "poly": 86
   },
   "gate-inside": {
    "pos": [
@@ -952,7 +952,7 @@
    ],
    "yaw": -2.1991,
    "place": "place.syracuse-square",
-   "poly": 136
+   "poly": 131
   },
   "gate-street": {
    "pos": [
@@ -962,7 +962,7 @@
    ],
    "yaw": -2.2491,
    "place": "place.syracuse-square",
-   "poly": 135
+   "poly": 130
   },
   "way.road-to-city": {
    "pos": [
@@ -972,7 +972,7 @@
    ],
    "yaw": 0.9425,
    "place": "place.syracuse-square",
-   "poly": 136
+   "poly": 131
   },
   "fountain-east": {
    "pos": [
@@ -982,7 +982,7 @@
    ],
    "yaw": 0.9425,
    "place": "place.syracuse-square",
-   "poly": 120
+   "poly": 115
   },
   "fountain-west": {
    "pos": [
@@ -992,7 +992,7 @@
    ],
    "yaw": -2.1991,
    "place": "place.syracuse-square",
-   "poly": 126
+   "poly": 121
   },
   "fountain-north": {
    "pos": [
@@ -1002,7 +1002,7 @@
    ],
    "yaw": 2.5133,
    "place": "place.syracuse-square",
-   "poly": 131
+   "poly": 126
   },
   "fountain-south": {
    "pos": [
@@ -1012,7 +1012,7 @@
    ],
    "yaw": -0.6283,
    "place": "place.syracuse-square",
-   "poly": 73
+   "poly": 68
   },
   "market-west": {
    "pos": [
@@ -1022,7 +1022,7 @@
    ],
    "yaw": 2.5133,
    "place": "place.syracuse-square",
-   "poly": 70
+   "poly": 65
   },
   "market-east": {
    "pos": [
@@ -1032,7 +1032,7 @@
    ],
    "yaw": 2.5133,
    "place": "place.syracuse-square",
-   "poly": 74
+   "poly": 69
   },
   "old-man-house": {
    "pos": [
@@ -1044,6 +1044,17 @@
    "place": "place.syracuse-square",
    "poly": 5
   },
+  "old-man-house-side": {
+   "pos": [
+    6.62,
+    0,
+    -13.36
+   ],
+   "yaw": -2.6257,
+   "place": "place.syracuse-square",
+   "poly": 5,
+   "auto": false
+  },
   "plaza-north": {
    "pos": [
     -1.17,
@@ -1052,7 +1063,7 @@
    ],
    "yaw": -2.8014,
    "place": "place.syracuse-square",
-   "poly": 145
+   "poly": 140
   },
   "plaza-east": {
    "pos": [
@@ -1062,7 +1073,7 @@
    ],
    "yaw": 0.0152,
    "place": "place.syracuse-square",
-   "poly": 52
+   "poly": 47
   },
   "temple-steps": {
    "pos": [
@@ -1072,7 +1083,7 @@
    ],
    "yaw": 2.5133,
    "place": "place.syracuse-square",
-   "poly": 131
+   "poly": 126
   },
   "temple-porch": {
    "pos": [
@@ -1082,7 +1093,7 @@
    ],
    "yaw": 2.5133,
    "place": "place.syracuse-square",
-   "poly": 151
+   "poly": 146
   },
   "workshop-gate": {
    "pos": [
@@ -1092,7 +1103,7 @@
    ],
    "yaw": 2.5133,
    "place": "place.syracuse-square",
-   "poly": 87
+   "poly": 82
   },
   "workshop-yard": {
    "pos": [
@@ -1102,17 +1113,28 @@
    ],
    "yaw": -1.3737,
    "place": "place.stonemason-workshop",
-   "poly": 26
+   "poly": 20
   },
   "workshop-bench": {
    "pos": [
-    19.27,
+    20.32,
     0,
-    -11.21
+    -10.45
    ],
    "yaw": 2.5133,
    "place": "place.stonemason-workshop",
-   "poly": 19
+   "poly": 16
+  },
+  "workshop-door": {
+   "pos": [
+    19.76,
+    0,
+    -13.08
+   ],
+   "yaw": 2.3889,
+   "place": "place.stonemason-workshop",
+   "poly": 22,
+   "auto": false
   },
   "stake": {
    "pos": [
@@ -1122,7 +1144,7 @@
    ],
    "yaw": 0.944,
    "place": "place.execution-ground",
-   "poly": 85,
+   "poly": 80,
    "auto": false
   },
   "scaffold": {
@@ -1133,7 +1155,7 @@
    ],
    "yaw": 2.9457,
    "place": "place.execution-ground",
-   "poly": 85,
+   "poly": 80,
    "auto": false
   },
   "stake-front": {
@@ -1144,7 +1166,7 @@
    ],
    "yaw": -2.1991,
    "place": "place.execution-ground",
-   "poly": 96
+   "poly": 91
   },
   "stake-front-side": {
    "pos": [
@@ -1154,7 +1176,7 @@
    ],
    "yaw": -1.8444,
    "place": "place.execution-ground",
-   "poly": 96,
+   "poly": 91,
    "auto": false
   },
   "crowd-front": {
@@ -1165,28 +1187,28 @@
    ],
    "yaw": -2.7871,
    "place": "place.execution-ground",
-   "poly": 99,
+   "poly": 94,
    "auto": false
   },
   "ground-west": {
    "pos": [
-    -3.24,
+    -1.77,
     0,
-    -2.35
+    -4.37
    ],
-   "yaw": 0.9425,
+   "yaw": 0.8712,
    "place": "place.execution-ground",
-   "poly": 96
+   "poly": 91
   },
   "king-west": {
    "pos": [
-    -1.25,
+    -3.6,
     0,
-    -3.38
+    -0.15
    ],
-   "yaw": -1.9352,
+   "yaw": -2.4631,
    "place": "place.execution-ground",
-   "poly": 96,
+   "poly": 91,
    "auto": false
   },
   "castle-steps": {
@@ -1207,14 +1229,14 @@
    ],
    "yaw": -2.1991,
    "place": "place.execution-ground",
-   "poly": 46
+   "poly": 41
   }
  },
  "files": [
   {
    "path": "geo.glb",
    "bytes": 481968,
-   "sha256": "e77013def95614ad10724c1b6d7d3754b15719de3f30f3659f568721cc61ce9f",
+   "sha256": "e821a6739f65e03c5739fa4c71f658d149e8e207516f6496e8c3805dde465288",
    "pack": "entry"
   },
   {
@@ -1471,39 +1493,39 @@
   },
   {
    "path": "lm/ground_indirect.ktx2",
-   "bytes": 422995,
-   "sha256": "97c2fd13121a25be1119d016436bb7a8df493abe649c5e98292fe96971d574d1",
+   "bytes": 422798,
+   "sha256": "d80265610b72910752c2f95ee2cc5e4df6864ad37cffde47d67cc4f215fb1e37",
    "pack": "entry"
   },
   {
    "path": "lm/ground_ao.ktx2",
-   "bytes": 540746,
-   "sha256": "ea38f630fbd436a3e6a4e2edcaf1591998d388d6cc40ac5f0ce948b1f62d1c46",
+   "bytes": 540623,
+   "sha256": "fe490662a68742766d802e3d7c7fc3c18fa98dcf94c30ec7e064e295a5ae7927",
    "pack": "entry"
   },
   {
    "path": "lm/arch_indirect.ktx2",
-   "bytes": 623801,
-   "sha256": "79d59f024917841e86503b94eef7b66dc59e6a09a0b805dab5f12cd12d5005f3",
+   "bytes": 624465,
+   "sha256": "1106ec621e91fef9912d490b10bc47cf7830f11a2ef53f83a8093cfdbc641441",
    "pack": "entry"
   },
   {
    "path": "lm/arch_ao.ktx2",
-   "bytes": 560551,
-   "sha256": "da707e1592e03e4baa7e49a617e8670d571fadc44b66cb32b544ac40e98b1583",
+   "bytes": 560387,
+   "sha256": "0d7db1d04b82ffc8b19c05ca61f1c2c8ac0dc0195dab781ca76c1879939759b9",
    "pack": "entry"
   },
   {
    "path": "nav.json",
-   "bytes": 40345,
-   "sha256": "a2d3111e567ef723a1302adb6b3f0c8bb5d1344b9b26a4b684a5126506c4bad8",
+   "bytes": 39727,
+   "sha256": "9ac6434dbee27588c20fccd9c6a4150d94a1dee067e5ff27e6825c65177fbaf7",
    "pack": "entry"
   }
  ],
  "bytes": {
-  "entry": 4785599,
+  "entry": 4785161,
   "hiExtra": 3050832,
-  "envStd": 4785599,
-  "envHi": 7836431
+  "envStd": 4785161,
+  "envHi": 7835993
  }
 }
