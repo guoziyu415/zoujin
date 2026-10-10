@@ -1,7 +1,7 @@
 {
   "type": "act_transition",
   "fromActId": "act.1",
-  "toActId": "act.2",
+  "toActId": "act.4",
   "recap": [
     {
       "eventId": "ev_01K7AZ00000000000000000055",
@@ -13,11 +13,11 @@
     "playthroughId": "pt_01K7AZ00000000000000000001",
     "lastSeq": 60,
     "status": "active",
-    "actId": "act.2",
-    "sceneId": "scene.castle-throne",
+    "actId": "act.4",
+    "sceneId": "scene.syracuse-square",
     "clock": {
-      "t": 1440,
-      "tLabel": "一日目・深夜",
+      "t": 5370,
+      "tLabel": "三日目・夕方",
       "deadlineT": 5460
     },
     "deadline": {
@@ -30,20 +30,20 @@
     },
     "player": {
       "roleId": "role.traveler",
-      "place": "place.castle",
-      "spot": "throne-front"
+      "place": "place.execution-ground",
+      "spot": "stake-front"
     },
     "places": [
       {
-        "id": "place.castle",
+        "id": "place.execution-ground",
         "enabled": true
       }
     ],
     "characters": [
       {
-        "id": "char.selinuntius",
-        "place": "place.castle",
-        "spot": "throne-front",
+        "id": "char.old-man",
+        "place": "place.execution-ground",
+        "spot": "stake-front-side",
         "activity": "idle",
         "talkable": true,
         "relationLabel": "気を許している",
@@ -64,5 +64,9 @@
       "degraded": false,
       "minutesLeftToday": 52
     }
+  },
+  "arrival": {
+    "line": "三日のあいだ、老爺はあなたを家に置いてくれた。いまは二人で、刑場の前に立っている。",
+    "opener": "char.old-man"
   }
 }

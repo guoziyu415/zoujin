@@ -1,0 +1,71 @@
+{
+  "type": "act_transition",
+  "fromActId": "act.1",
+  "toActId": "act.4",
+  "recap": [
+    {
+      "eventId": "ev_01K7AZ00000000000000000055",
+      "line": "セリヌンティウスは、あなたとの約束どおり、工房の火を落とさずにいた。",
+      "promise": "kept"
+    }
+  ],
+  "snapshot": {
+    "playthroughId": "pt_01K7AZ00000000000000000001",
+    "lastSeq": 60,
+    "status": "active",
+    "actId": "act.4",
+    "sceneId": "scene.syracuse-square",
+    "clock": {
+      "t": 5370,
+      "tLabel": "三日目・夕方",
+      "deadlineT": 5460
+    },
+    "deadline": {
+      "shown": true,
+      "line": "期限　三日目の日没／遅れれば、身代わりが死ぬ"
+    },
+    "forecast": {
+      "melosEtaT": 5460,
+      "beforeDeadline": true
+    },
+    "player": {
+      "roleId": "role.traveler",
+      "place": "place.execution-ground",
+      "spot": "stake-front"
+    },
+    "places": [
+      {
+        "id": "place.execution-ground",
+        "enabled": true
+      }
+    ],
+    "characters": [
+      {
+        "id": "char.old-man",
+        "place": "place.execution-ground",
+        "spot": "stake-front-side",
+        "activity": "idle",
+        "talkable": true,
+        "relationLabel": "気を許している",
+        "relationLevel": 4
+      }
+    ],
+    "interactables": [],
+    "actions": [],
+    "pending": {
+      "reveal": null,
+      "confirm": null,
+      "actEnd": null,
+      "safetyPause": false,
+      "approach": null
+    },
+    "voice": {
+      "enabled": true,
+      "degraded": false,
+      "minutesLeftToday": 52
+    }
+  },
+  "arrival": {
+    "opener": "char.old-man"
+  }
+}

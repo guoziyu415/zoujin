@@ -441,7 +441,8 @@ type ActExit = {
   effects: Effect[];               // 选择本身的效果，如 set var.player.companionOf = "char.melos"
   enRoute?: EnRoute;               // （1.4，UX 校对 3.2）跳过的这段路上有一个能改的节拍时，过场页给一个二选一
   sub?: string;                    // （1.7，UX）幕末页上这个去处副题的后半（日语，≤ 16 字，叙事口吻，不写分钟数），如「老爺があなたを覚えている」；
-                                   // 前半「{地点}・{日子}の{时段}」前端按 place 和 t 生成。省略 = 只有前半
+                                   // 前半「{地点}・{日子}の{时段}」由服务端按 place 的 `Place.name` 和 t 算好（日子、时段照 `clock.labels`，
+                                   // 不套它的 `format`），和后半一起下发（ux-design 4.4）。省略 = 只有前半
   spot?: string;                   // （1.7）玩家落在 place 的哪个位置点（布局 layout.json 的 spots）；省略 = 这个地点的起点（startSpots）
   arrival?: { line: string; opener?: string };  // （1.7）落地：line = 跳转之后的第一行叙事（地の文，日语）；
                                    // opener = 落地后先开口的人物（服务端发起一轮，台词按人设生成，不是问句）。ux/slice/jump-transition.md「落地」
@@ -586,7 +587,7 @@ type SetPiece = {
   lines: ({ narration: string } | { speaker: string; line: string })[];
                                    // 按顺序演：narration = 一行地の文（服务端推 narration { line, ref }，ref = 这条的 id）；
                                    // speaker + line = 这个人物的一句预录（构建时生成，ux-design 16.2，声音按 UX 的文案表），字幕就是 line。
-                                   // 预录句怎么下发（manifest 的 cues 那样，或别的）由后端定（B-2）
+                                   // 预录句怎么下发（manifest 的 cues 那样，或别的）由后端定（B-3）
   learns?: { character: string; fact: string }[];
                                    // 演这一条时谁知道了哪件事（character 可以是 "player"，2.1）。服务端把这些 learn 和这一条的演出同一次提交
                                    // 写进事件（写在动作的事件里还是另写一条，B-3 定）。只给 learn、不给任意 effects：固定演出不过叙事者的

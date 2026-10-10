@@ -1,0 +1,7 @@
+{"note": "固定演出（3.14）：mock 先推一条只加可调查物的 commit，工房の戸「戸を叩く」（obj.workshop-door，位置点 workshop-gate）。点它（action kind examine）：action_result 不带 narration、带 setPiece，紧接着 set_piece（セリヌンティウス隔着门的一句预录 + 一行地の文）。mock 的 manifest 没有这句的录音，前端只出字幕。再点一次：这条固定演出只演一次，照常回一行 narration。"}
+{"delayMs": 300, "send": {"type": "commit", "events": [], "patch": {"interactables": {"add": [{"id": "obj.workshop-door", "kind": "examine", "spot": "workshop-gate", "label": "戸を叩く", "enabled": true, "estimatedMinutes": 0}]}}, "memories": [], "promises": [], "narration": [], "cue": null, "reveal": null}}
+{"on": "action"}
+{"delayMs": 400, "send": {"type": "action_result", "clientMsgId": "{{trigger.clientMsgId}}", "status": "done", "eventIds": [], "setPiece": "piece.workshop-knock", "minutes": 0}}
+{"send": {"type": "set_piece", "pieceId": "piece.workshop-knock", "lines": [{"speaker": "char.selinuntius", "line": "もう遅い。用があるなら、明日にしてくれ。"}, {"narration": "それきり、戸の向こうからは、石を刻む音しか聞こえなかった。"}]}}
+{"on": "action"}
+{"delayMs": 400, "send": {"type": "action_result", "clientMsgId": "{{trigger.clientMsgId}}", "status": "done", "eventIds": [], "narration": "戸は閉ざされたままだ。", "minutes": 0}}

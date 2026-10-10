@@ -50,6 +50,9 @@
       "$ref": "#/$defs/ActProposeMessage"
     },
     {
+      "$ref": "#/$defs/ActLandedMessage"
+    },
+    {
       "$ref": "#/$defs/SafetyResumeMessage"
     },
     {
@@ -411,6 +414,21 @@
         }
       },
       "title": "ActProposeMessage"
+    },
+    "ActLandedMessage": {
+      "description": "（v1.0.4）幕切换以后落地（3.11）：act_transition.arrival（或 pending.arrival）带 opener 时，前端显示完落地那一行、玩家能动的时候发一次；服务端收到才让 opener 先开口。actId 不是现在这一幕的、同一幕再发的，服务端忽略",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "actId"],
+      "properties": {
+        "type": {
+          "const": "act_landed"
+        },
+        "actId": {
+          "$ref": "../../data/common.schema.json#/$defs/ActId"
+        }
+      },
+      "title": "ActLandedMessage"
     },
     "SafetyResumeMessage": {
       "description": "玩家在出戏卡上选了「物語に戻る」（3.12）",

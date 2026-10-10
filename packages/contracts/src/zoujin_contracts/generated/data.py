@@ -2083,7 +2083,7 @@ class ActExit(BaseModel):
     """
     sub: Annotated[str | None, Field(max_length=16, min_length=1)] = None
     """
-    （1.7）幕末页上这个去处副题的后半（日语，叙事口吻，不写分钟数）；前半「{地点}・{日子}の{时段}」由前端按 place 和 t 生成。省略 = 只有前半
+    （1.7）幕末页上这个去处副题的后半（日语，叙事口吻，不写分钟数）；前半「{地点}・{日子}の{时段}」由服务端按 place 的 Place.name 和 t 算好（日子、时段照 clock.labels，不套它的 format），和后半一起下发（ux-design 4.4）。省略 = 只有前半
     """
     spot: SpotId | None = None
     """

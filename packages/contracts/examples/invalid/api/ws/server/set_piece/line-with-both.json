@@ -1,0 +1,11 @@
+{
+  "type": "set_piece",
+  "pieceId": "piece.gate-taken",
+  "lines": [
+    {
+      "speaker": "char.guards",
+      "line": "下がれ。",
+      "narration": "衛兵が槍を下ろした。"
+    }
+  ]
+}

@@ -2,24 +2,28 @@
   "type": "act_ended",
   "actId": "act.1",
   "recapLines": [
-    "あなたは、王の前でメロスの身元を保証した。",
-    "老爺は、あなたをメロスに引き合わせた。"
+    "あなたは、メロスに王のことを告げた。",
+    "あなたは、老爺を家まで送った。"
   ],
   "options": [
     {
-      "optionId": "exit.1.vigil",
-      "label": "城に残り、セリヌンティウスのそばにいる",
-      "sceneId": "scene.castle-throne",
-      "tLabel": "一日目・深夜",
-      "with": ["char.selinuntius"],
+      "optionId": "exit.1.city",
+      "label": "市に残り、メロスの帰りを待つ",
+      "sceneId": "scene.syracuse-square",
+      "tLabel": "三日目・夕方",
+      "where": "刑場・三日目の夕方",
+      "sub": "西の門が見える所で",
+      "with": [],
       "because": null
     },
     {
-      "optionId": "exit.1.road",
-      "label": "メロスと夜の道を行く",
-      "sceneId": "scene.homeward-road",
-      "tLabel": "一日目・深夜",
-      "with": ["char.melos"],
+      "optionId": "exit.1.old-man",
+      "label": "老爺の家に身を寄せる",
+      "sceneId": "scene.syracuse-square",
+      "tLabel": "三日目・夕方",
+      "where": "刑場・三日目の夕方",
+      "sub": "老爺があなたを覚えている",
+      "with": ["char.old-man"],
       "because": null
     }
   ],

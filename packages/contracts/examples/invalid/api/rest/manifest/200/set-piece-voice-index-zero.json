@@ -1,0 +1,105 @@
+{
+  "manifestVersion": "hashire-merosu@1.0.0+m4",
+  "book": {
+    "id": "hashire-merosu",
+    "title": "走れメロス",
+    "author": "太宰治"
+  },
+  "roles": [
+    {
+      "roleId": "role.traveler",
+      "name": "旅人",
+      "summary": "シラクスの市に着いたばかりの旅の者。",
+      "startSceneId": "scene.syracuse-square",
+      "startActId": "act.1"
+    }
+  ],
+  "scenes": [
+    {
+      "sceneId": "scene.syracuse-square",
+      "places": [
+        "place.syracuse-square",
+        "place.stonemason-workshop",
+        "place.execution-ground"
+      ],
+      "assetUrl": "/assets/scenes/syracuse-square.4f3a.glb",
+      "assetVersion": "4f3a"
+    }
+  ],
+  "characters": [
+    {
+      "id": "char.melos",
+      "name": "メロス",
+      "reading": "メロス",
+      "talkable": true,
+      "prerecorded": {
+        "aizuchi": [
+          {
+            "url": "/assets/voice/melos/aizuchi-1.9c1e.m4a",
+            "text": "うむ。",
+            "durationMs": 420
+          },
+          {
+            "url": "/assets/voice/melos/aizuchi-2.9c1e.m4a",
+            "text": "ああ。",
+            "durationMs": 380
+          },
+          {
+            "url": "/assets/voice/melos/aizuchi-3.9c1e.m4a",
+            "text": "なるほど。",
+            "durationMs": 610
+          }
+        ],
+        "unheard": [
+          {
+            "url": "/assets/voice/melos/unheard-1.9c1e.m4a",
+            "text": "……すまない、もう一度言ってくれ。",
+            "durationMs": 1300
+          },
+          {
+            "url": "/assets/voice/melos/unheard-2.9c1e.m4a",
+            "text": "よく聞こえなかった。",
+            "durationMs": 1100
+          }
+        ],
+        "wait": {
+          "url": "/assets/voice/melos/wait-1.9c1e.m4a",
+          "text": "少し待ってくれ。",
+          "durationMs": 900
+        },
+        "cues": {
+          "arrival_capped": {
+            "url": "/assets/voice/melos/arrival-capped-1.9c1e.m4a",
+            "text": "……これなら、間に合う。",
+            "durationMs": 2100
+          }
+        }
+      }
+    }
+  ],
+  "acts": [
+    {
+      "actId": "act.1",
+      "title": "約束の日",
+      "sceneIds": ["scene.syracuse-square", "scene.castle-throne"]
+    }
+  ],
+  "clock": {
+    "deadlineT": 5460,
+    "sunsetMinuteOfDay": 1140,
+    "days": ["約束の日", "一日目", "二日目", "三日目"]
+  },
+  "ruby": [
+    {
+      "word": "邪智暴虐",
+      "reading": "じゃちぼうぎゃく"
+    }
+  ],
+  "setPieceVoices": {
+    "piece.gate-taken/0": {
+      "url": "/assets/voice/pieces/gate-taken-2.7d2a.m4a",
+      "text": "下がれ、旅の者。ここから先は、通さぬ。",
+      "durationMs": 2600
+    }
+  }
+}

@@ -1,9 +1,9 @@
-# 前后端接口约定（api-contract.md）v1.0.3
+# 前后端接口约定（api-contract.md）v1.0.4
 
-负责人：后端 · 状态：**v1.0.3，冻结**（v1.0 在 C-1 冻结；v1.0.1 把 C-1 评审定下的写进正文；v1.0.2 把 B-1 评审定下的几处顺序写进正文；v1.0.3 把 B-0、F-2b 评审和 S-077 ⑫ 定下的写进正文）：之后只做加法（第 0 节「版本」），每种消息和响应的 JSON Schema 在 `packages/contracts/schemas/api/`。v0.3 吸收了前端评审 17 条（`frontend/reviews/backend-v0.1.md` 和 frontend-design 第 14 节 1〜17）、数据评审 16 条（`data/reviews/backend-v0.1.md`）、ux-design 18.2 的接口要求，以及 decisions S-022〜S-053、D-012〜D-015。v0.3.2 和数据契约 v1.2 对齐。逐条对照见第 9 节。
-数据字段以 `data/contracts.md` 为准（v1.6；标「契约 1.1」「契约 1.2」「契约 1.4」的字段是这几个小版本加的；1.3 加的随身物品不进接口，物品只出现在 `give` 类按钮上；1.6 的结局卡见 2.8），本文只定义传输形状。字段名 camelCase；WebSocket 消息类型 snake_case。
+负责人：后端 · 状态：**v1.0.4，冻结**（v1.0 在 C-1 冻结；v1.0.1 把 C-1 评审定下的写进正文；v1.0.2 把 B-1 评审定下的几处顺序写进正文；v1.0.3 把 B-0、F-2b 评审和 S-077 ⑫ 定下的写进正文；v1.0.4 把数据契约 1.7 里前端要拿到的几样加进接口）：之后只做加法（第 0 节「版本」），每种消息和响应的 JSON Schema 在 `packages/contracts/schemas/api/`。v0.3 吸收了前端评审 17 条（`frontend/reviews/backend-v0.1.md` 和 frontend-design 第 14 节 1〜17）、数据评审 16 条（`data/reviews/backend-v0.1.md`）、ux-design 18.2 的接口要求，以及 decisions S-022〜S-053、D-012〜D-015。v0.3.2 和数据契约 v1.2 对齐。逐条对照见第 9 节。
+数据字段以 `data/contracts.md` 为准（v1.7；标「契约 1.1」「契约 1.2」「契约 1.4」的字段是这几个小版本加的；1.3 加的随身物品不进接口，物品只出现在 `give` 类按钮上；1.6 的结局卡见 2.8；1.7 的位置点、幕末副题和落地、固定演出、可调查物见 2.3、3.8、3.11、3.14），本文只定义传输形状。字段名 camelCase；WebSocket 消息类型 snake_case。
 相关：`backend/backend-design.md` v1.0.9（为什么这么设计）· `frontend/frontend-design.md` · `ux/ux-design.md`
-最近更新：2026-10-10（v1.0.3）
+最近更新：2026-10-10（v1.0.4）
 
 ---
 
@@ -83,12 +83,16 @@
     "deadlineT": 5460, "sunsetMinuteOfDay": 1140,
     "days": ["約束の日", "一日目", "二日目", "三日目"]
   },
-  "ruby": [ { "word": "邪智暴虐", "reading": "じゃちぼうぎゃく" } ]
+  "ruby": [ { "word": "邪智暴虐", "reading": "じゃちぼうぎゃく" } ],
+  "setPieceVoices": {
+    "piece.gate-taken/2": { "url": "/assets/voice/pieces/gate-taken-2.7d2a.m4a", "text": "下がれ、旅の者。ここから先は、通さぬ。", "durationMs": 2600 }
+  }
 }
 ```
 - 生成规则（数据评审第 1 条）：`scenes[].places` = 世界模型里 `sceneRef` 指向它的地点；`roles[].startSceneId` = `Role.startPlace` 的 `sceneRef`；`acts[].sceneIds` = `Act.scenes`。
 - `prerecorded`：ux-design 16.2 的 6 句（相槌 3、听不清 2、等一下 1），后端用这个角色的声音在构建时生成（backend-design 3.6），前端在场景加载时解码。每一句是 `{ url, text, durationMs }`：`text` 是剧本原文（字幕用它，`source: "script"`，S-071），`durationMs` 是实际音频长度，前端按它分段跟着声音出字幕。现在所有固定台词都是预录的；以后若有服务端经 WebSocket 推的固定台词，`transcript {final: true, source: "script"}` 会在第一个音频包之前到。声音定了以后才有（Q-004）。`cues`：由服务端在某个时刻触发的固定台词，键是 `commit.cue.kind`（3.4）；现在只有梅洛斯的 `arrival_capped`。
 - `ruby`：注音词表，词由数据工程出（F-11）。
+- `setPieceVoices`（v1.0.4）：固定演出（3.14）里人物的预录句，前端在场景加载时和 `prerecorded` 一起解码。键是「{固定演出 ID}/{序号}」，序号是这一句在那条固定演出 `lines` 里的位置（从 1 起，地の文也算；上面的例子是 `piece.gate-taken` 的第 2 行，警吏的那句）。和 `prerecorded` 一样构建时用这个人物的声音生成（ux-design 16.2，声音按 UX 的文案表），不能对话的人物（警吏）也有；声音还没生成的句子没有键。世界模型没有固定演出时省略。
 - 第一版只有 3 个身份（S-002、S-039 U-3），没开放的身份不出现在 `roles` 里。
 
 ### 2.2 `POST /v1/playthroughs`（开局）
@@ -122,7 +126,8 @@
   ],
   "characters": [
     { "id": "char.old-man", "place": "place.syracuse-square", "spot": "market-west", "activity": "idle",
-      "talkable": true, "relationLabel": "様子を見ている", "relationLevel": 3 }
+      "talkable": true, "relationLabel": "様子を見ている", "relationLevel": 3 },
+    { "id": "char.crowd", "place": "place.syracuse-square", "activity": "idle", "talkable": false, "group": true }
   ],
   "interactables": [
     { "id": "obj.market-stall", "kind": "examine", "spot": "market-west", "label": "露店", "enabled": true, "estimatedMinutes": 0 }
@@ -135,10 +140,11 @@
   "voice": { "enabled": true, "degraded": false, "minutesLeftToday": 52 }
 }
 ```
-- `characters`：只给当前场景在场的；还没有关系的角色省略 `relationLabel` / `relationLevel`。`relationLevel` 是 1〜5（記憶帳的 5 格刻度），标签和区间按 contracts 第 4 节（文字由 UX 定，最上一档「信じている」）。
+- `characters`：只给当前场景在场的；还没有关系的角色省略 `relationLabel` / `relationLevel`。`relationLevel` 是 1〜5（記憶帳的 5 格刻度），标签和区间按 contracts 第 4 节（文字由 UX 定，最上一档「信じている」）。`group: true`（v1.0.4，契约 1.7 的 `Character.group`：群众、警吏）的人物是一群人，不占位置点，没有 `spot`，前端按地点成群地放（契约 3.1）；别的人物都有 `spot`。
 - `activity`：`idle`、`walk`、`run`、`talk`、`work`、`sleep`、`absent`；前端遇到不认识的按 `idle`。来源见 backend-design 2.7（世界模型节拍上的提示 + 叙事者推出）。
 - `places`：本场景里各地点现在进不进得去（前端评审第 6 条）。`enabled: false` 时前端提前把那条路挡住，`reason` 是一句故事里的说明。
-- `interactables`：场景里可「調べる」的东西（`kind: "examine"`，`estimatedMinutes` 为 0，S-038）和场景出口（`kind: "go"`，3.8）。之后的增减走 `commit.patch.interactables`（3.4）。
+- `player.spot`：玩家站在哪个位置点（v1.0.4 写明来源，契约 3.1）。开局是布局的起点；幕切换以后按去处的 `ActExit.spot`（说出的打算成行时按 `Act.plan.spot`，3.11），没写就是这个地点的起点（`startSpots`）；之后的变化走 `commit.patch.player`（3.8）。
+- `interactables`：场景里可「調べる」的东西（`kind: "examine"`，`estimatedMinutes` 为 0，S-038）和场景出口（`kind: "go"`，3.8）。`examine` 的来自世界模型的 `objects`（v1.0.4，契约 1.7 的 2.12）：`id` 是可调查物的 ID（`obj.…`），`label`、`spot` 照它；出口来自场景布局的 `exits`。之后的增减走 `commit.patch.interactables`（3.4）。
 - `actions`：此刻能做的情境动作（`kind` 清单见 3.8）。`target` 是对象人物，没有对象的动作（`wait` 这类）省略这个字段，不给 `null`。按钮上显示 `label` 和 `estimatedMinutes`（前端写成「手伝う（1時間ほど）」；数字用半角，60 分以上写「時間」，ux-design 4.3）。`melos`：第四幕标出这个动作对梅洛斯的影响，`"delay"`（花他的时间）、`"hasten"`（替他争取时间）或 `null`（S-036、S-038）。`melosMinutes`：带 `melos` 的动作做了以后，梅洛斯到刑场的时刻**按这一局此刻的排程**实际变多少分钟，正数 = 晚到、负数 = 早到（S-066 ①）。服务端用共享规则的 `arrival_delta(本局, 动作的效果, 当前时刻)` 算（契约 2.10）：分钟数用去掉 `window.latest` 的排程算（拖到来不及时也算得出「1時間遅れる」），赶不赶得上看真实排程；含到达下限 `clock.deadline.earliestArrival`（17:30）：已经到下限时「帮他快」的动作是 0，按钮写「（変わらない）」，照常显示、照常能点（ux-design 4.3；动作还可能兑现互助）。第一次到下限时的那句话见 3.4 的 `cue`。世界模型里的 `Affordance.melosMinutes` 只是原作路径上的估计，不下发。`melosInTime`：做了以后这一局还赶不赶得上日没（`arrival_delta` 的 `inTime`），`false` = 做了就来不及；没有 `melos` 的动作给 `null`。这时按钮写对梅洛斯的影响，不写玩家花的时间，例「浅瀬を探す（10分早まる）」「引き止める（30分遅れる）」（UX 校对意见 `ux/reviews/data-world-draft3.md` 3.3）。没有 `melos` 的动作给 `null`，照旧显示 `estimatedMinutes`。
 - `deadline.shown`：**玩家知道了约定以后**为 `true`，之后一直显示（S-049 ④、S-077 ⑫）；之前为 `false`，`line` 省略。「知道」= 数据契约 1.7 的 `knows(player, fact.promise)`，怎么知道的都算：人物告诉、在场看见立约（beat.05）、城门那一场（`piece.gate-promise`，S-077 ⑪）、第一幕幕末的幕切换（那条 `act-transition` 事件给玩家补 `learn`），先到的算。约定没有成立的局一直是 `false`。不再跟着 beat.05 的提交出：玩家不在场时，界面不能比叙事者先知道约定。
 - `forecast`：梅洛斯预计到达刑场的时刻（太阳带上的菱形，ux-design 8.3），和 `deadline.shown` 同一个条件：**玩家知道约定以后**才给，之前为 `null`（防剧透）。`beforeDeadline: false` 时地图顶部那行变成「このままでは、日没に間に合わない」。
@@ -335,6 +341,7 @@
 | `approach_dismiss` | `character`, `reason`：`dismissed` / `walked_away` / `timeout` | 玩家选了「いまは、いい」、走开，或人物等了 20 秒没等到（3.10） |
 | `act_choose` | `clientMsgId`, `optionId`, `enRouteChoice?` | 幕末选给定的去处；去处带 `enRoute` 时，`enRouteChoice` 是玩家在过场页选的那一项的序号（3.11，契约 1.4） |
 | `act_propose` | `clientMsgId`, `text`（≤ 200 字） | 幕末用文字说出自己的打算（3.11）；用声音时走 `activity_start { purpose: "act_plan" }` |
+| `act_landed` | `actId` | 幕切换以后落地（v1.0.4，3.11）：`arrival` 带 `opener` 时，前端显示完落地那一行、玩家能动的时候发一次；服务端收到才让 `opener` 先开口 |
 | `safety_resume` | — | 玩家在出戏卡上选了「物語に戻る」（3.12） |
 | `ping` | — | 每 20 秒一次 |
 
@@ -345,7 +352,7 @@
 | `welcome` | `lastSeq`, `voice: { enabled, degraded, minutesLeftToday }`, `lastTurn`, `pending` | 回应 `hello`；`lastTurn`、`pending` 见第 4 节 |
 | `session_preparing` | `character`, `reason`（`switch` / `rebuild` / `reconnect`）, `etaMs` | 需要等待演出（人物转身、吸气） |
 | `session_ready` | `character`, `voiceAvailable` | 这个人物可以说话了 |
-| `turn_started` | `turnId`, `turnSeq`, `speaker`, `reason`（`approach` / `leaving` / `confirm`） | 服务端发起的一轮：人物先开口（3.9、3.10） |
+| `turn_started` | `turnId`, `turnSeq`, `speaker`, `reason`（`approach` / `leaving` / `confirm` / `arrival`） | 服务端发起的一轮：人物先开口（3.9、3.10；`arrival` 是 v1.0.4 加的幕切换落地，3.11）。`approach`、`arrival` 的一轮服务端把 `speaker` 当作已经 `focus` 的人物，前端不用另发 `focus` |
 | `transcript` | `turnId`, `speaker`（`player` / 人物 ID）, `text`（可为 null）, `final`, `source`（只在人物的 `final: true` 上：`live` / `script` / `fallback`） | 字幕。**玩家的字幕在说话过程中就推**（`final: false`，S-025，前端第 9 条；能多早出来看 S-1 的 `first_user_transcript_ms`）；`final: true` 是这一句的定稿。**定稿可能在 `turn_complete` 之后才到**（转写会晚于语音到达，最多约 3 秒，backend-design 3.1）：前端收到 `turn_complete` 后不要锁死这一轮的字幕，同一 `turnId` 的 `final: true` 来了就替换。**人物的定稿带 `source`**（S-071）：`live` = Live 自己的文字；`script` = 剧本原文（固定台词、预录台词）；`fallback` = 补转写（Live 一段文字都没给时，`turn_complete` 一到就开始转写，3 秒截止，通常 `turn_complete` 后 1〜2 秒到）。补转写也失败时仍发定稿 `{final: true, text: null, source: "fallback"}`，前端就不用再等，字幕显示「（字幕を出せませんでした）」（ux-design 7.7）。每一轮人物都恰好有一条 `final: true`，三种例外没有：`turn_complete { audio: false }` 而人物没回答的轮，被出戏卡停下的轮（`turn_settled` 的 `outcome: "paused"`，3.12），和人物还一个字没说就被打断的轮（Schema 不许 `source: "live"` 配 `text: null`，这时和没回答一样不发）。被打断的轮只要人物说了，就有定稿，是说到一半的文字，在 `interrupted` 之后到。**降级为文字回答时**（`degraded` 之后），人物的定稿（`source: "live"`）一定在 `turn_complete { audio: false }` **之前**到：前端收到 `audio: false` 时这一轮已经有人物定稿 = 文字回答，没有 = 不回应 |
 | （二进制 `0x02`） | — | 人物音频 |
 | `interrupted` | `turnId` | 服务端确认打断（前端此时应该已经停播）。只在人物还在说（还没有 `turn_complete`）时被新的一轮打断才发；**被打断的轮没有 `turn_complete`**，`interrupted` 就是人物这边的结束。这一轮照样交给叙事者（玩家的话和人物说到一半的话），照常有 `turn_settled`。人物已经说完（`turn_complete` 到了、定稿还没到）时按下说话不算打断，那一轮照常交 |
@@ -354,13 +361,14 @@
 | `turn_settled` | `turnId`, `outcome`, `eventIds[]`, `minutes` | **每一轮判完都推**，不管有没有事件（前端第 5 条、数据第 9 条）；见 3.4 |
 | `commit` | 见 3.4 | 叙事者的一次提交，前端一次原子地应用 |
 | `narration` | `line`, `ref?` | 不随事件的叙事一行（灰色地の文）：连续离题时的提示、幕将结束的预告（「日が傾いてきた。」）等。`ref` 是服务端内部的来源标记（节拍 ID、离题提示的规则名），只给日志和评测对照，前端不用、不显示 |
+| `set_piece` | `pieceId`, `lines[]` | 固定演出（v1.0.4，3.14）：世界模型里写好的地の文和人物的预录句，按顺序演 |
 | `confirm` | `draftId`, `character`, `prompt`, `options: [{ optionId, label }]`, `timeoutSec` | 意图确认（3.9） |
 | `confirm_closed` | `draftId`, `optionId`（或 `null`）, `by`（`button` / `voice` / `timeout`） | 确认结束；`optionId: null` = 当作「不是」 |
 | `approach` | `character`, `kind`（`request` / `news`） | 人物要走过来找你（3.10）；前端演出走近，到了发 `approach_arrived` |
-| `action_result` | `clientMsgId`, `status`（`done` / `refused` / `partial`）, `eventIds[]`, `narration`, `minutes` | 动作的判定结果；`narration` 是一句故事里的说明，拒绝也在故事里说 |
-| `act_ended` | `actId`, `recapLines[]`, `options[]`, `freeform` | 幕结束，给出去处（3.11） |
+| `action_result` | `clientMsgId`, `status`（`done` / `refused` / `partial`）, `eventIds[]`, `narration` 或 `setPiece`, `minutes` | 动作的判定结果；`narration` 是一句故事里的说明，拒绝也在故事里说。这个动作挂着固定演出时（v1.0.4，3.14）不带 `narration`，改带 `setPiece`（固定演出 ID），紧接着推那条 `set_piece`；两个正好给一个 |
+| `act_ended` | `actId`, `recapLines[]`, `options[]`, `freeform` | 幕结束，给出去处（3.11）；每个去处带副题的前半 `where` 和后半 `sub`（v1.0.4） |
 | `act_plan_result` | `clientMsgId` 或 `turnId`, `accepted`, `narration[]`, `alternative?`, `triesLeft` | 幕末说出的打算能不能成行（3.11）。用文字说时带 `act_propose` 的 `clientMsgId`，用声音说时带那一轮的 `turnId`，两个正好给一个；前端按它对上是哪一次，已作废那一轮的结果丢掉 |
-| `act_transition` | `fromActId`, `toActId`, `recap[]`, `snapshot` | 进入下一幕：「その頃」（≤ 3 件）和新场景的快照（3.11） |
+| `act_transition` | `fromActId`, `toActId`, `recap[]`, `snapshot`, `arrival?` | 进入下一幕：「その頃」（≤ 3 件）、新场景的快照和落地（`arrival`，v1.0.4）（3.11） |
 | `safety_pause` | — | 出戏卡（3.12） |
 | `safety_hint` | — | 不暂停的小提示（S-069，3.12），一局最多一次 |
 | `safety_resumed` | — | 回到故事 |
@@ -497,13 +505,14 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 - **同一场景里跨地点**（从广场走进石屋的工房）：前端照常走过去，同时发 `action { kind: "move", target: "place.stonemason-workshop" }`，不等结果；服务端回 `action_result`（不花时间）。进不去的地点已经在快照的 `places` 里标成 `enabled: false`，前端提前挡住，正常不会走进去再被推出来。
 - **地点关上时玩家在里面**（F-2b 评审）：关这个地点的那次 `commit`（`patch.places` 里它变成 `enabled: false`）同时带 `patch.player { place, spot }`，把玩家放到同场景里和它相连的地点，`spot` 是那边的一个位置点（服务端按世界模型选）。前端收到和本地不同的 `patch.player.place` 时，直接把玩家摆到 `spot`，不走过去，也不回发 `move`（进场、重连按快照摆人也一样）。前端另有兜底：玩家所在的地点在他走出去之前照样能走。
 - **玩家刚走进去、服务端已经关了**（关地点的 `commit` 和 `move` 擦肩而过）：`move` 回 `action_result { status: "refused" }`，带一句 `narration`，不写事件、不带 `commit`，服务端记的玩家地点不变，还是原来的地点。前端把玩家送回原来的地点（走回门口还是直接摆过去，前端定），之后不再为这次送回发 `move`。`move` 进任何 `enabled: false` 的地点都这样回。
+- **做完情境动作玩家站到别处**（v1.0.4，契约 1.7 的 `Affordance.playerSpot`，例：「家まで送る」做完站在老爺家门口旁边）：这个动作的 `commit` 带 `patch.player { spot }`（地点不变，只给 `spot`）。前端和上面关地点一样直接摆到那个点，不走过去，不回发 `move`；按本节末尾的做法，`commit` 压到动作播完再应用，玩家就是在动作演完以后到那个点的。
 - **走动中的人物被玩家点了**（前端第 13 条）：玩家能和画面上看得到、走得到的人物说话；叙事者把这次对话的地点算作玩家所在的地点。
 - **换场景**：只通过幕末（3.11）或场景出口的 interactable（`kind: "go"`，先判后演，配过场演出）。出口出现、消失或能不能走变了，走 `commit.patch.interactables`（3.4）。
 - **`kind` 清单**（ux-design 18.2）：
 
 | kind | 日语 | 说明 |
 |---|---|---|
-| `examine` | 調べる | 0 分；`action_result.narration` 一行叙事 |
+| `examine` | 調べる | 0 分；`action_result.narration` 一行叙事；挂着固定演出时演固定演出（3.14） |
 | `give` | 渡す | 给人东西；`params.item` |
 | `follow` | ついて行く | 跟着一个人物走 |
 | `block` | 引き止める | 拦住；第四幕对梅洛斯是 `melos: "delay"` |
@@ -515,7 +524,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 | `hasten` | 先に走って知らせる | 替梅洛斯争取时间 |
 | `move` | — | 同场景跨地点（见上） |
 
-动作先判后演：服务端判定后才回 `action_result`，前端在 `done` / `partial` 时播动作，`refused` 时播 `narration`。**顺序**：动作写了事件时，服务端先推这次提交的 `commit`，再推 `action_result`（和对话的 `commit` → `turn_settled` 一样）。前端可以把 `action_result` 之前到的 `commit` 先压住，播完动作再按 `seq` 应用，免得人物在动作开始前就被 `patch` 挪走、记忆提示先于动作弹出（B-1 评审，前端的做法）。快照里出现的 `actions` 都是此刻有希望成立的（地点、身份、条件已经满足），但结果仍以判定为准。
+动作先判后演：服务端判定后才回 `action_result`，前端在 `done` / `partial` 时播动作，`refused` 时播 `narration`。**顺序**：动作写了事件时，服务端先推这次提交的 `commit`，再推 `action_result`（和对话的 `commit` → `turn_settled` 一样）。前端可以把 `action_result` 之前到的 `commit` 先压住，播完动作再按 `seq` 应用，免得人物在动作开始前就被 `patch` 挪走、记忆提示先于动作弹出（B-1 评审，前端的做法）；`action_result` 带 `setPiece` 时也可以压到固定演出演完（例：城门的警吏说出约定，那条 `commit` 里的期限一行在他说完以后才出，3.14）。快照里出现的 `actions` 都是此刻有希望成立的（地点、身份、条件已经满足），但结果仍以判定为准。
 
 ### 3.9 意图确认（`confirm`，S-040）
 
@@ -539,16 +548,19 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 
 ```json
 { "type": "act_ended", "actId": "act.1",
-  "recapLines": [ "あなたは、王の前でメロスの身元を保証した。" ],
+  "recapLines": [ "あなたは、メロスに王のことを告げた。", "あなたは、老爺を家まで送った。" ],
   "options": [
-    { "optionId": "exit.1.vigil", "label": "城に残り、セリヌンティウスのそばにいる",
-      "sceneId": "scene.castle-throne", "tLabel": "一日目・深夜", "with": ["char.selinuntius"], "because": null },
-    { "optionId": "exit.1.road", "label": "メロスと夜の道を行く",
-      "sceneId": "scene.homeward-road", "tLabel": "一日目・深夜", "with": ["char.melos"], "because": null }
+    { "optionId": "exit.1.city", "label": "市に残り、メロスの帰りを待つ",
+      "sceneId": "scene.syracuse-square", "tLabel": "三日目・夕方", "where": "刑場・三日目の夕方", "sub": "西の門が見える所で",
+      "with": [], "because": null },
+    { "optionId": "exit.1.old-man", "label": "老爺の家に身を寄せる",
+      "sceneId": "scene.syracuse-square", "tLabel": "三日目・夕方", "where": "刑場・三日目の夕方", "sub": "老爺があなたを覚えている",
+      "with": ["char.old-man"], "because": null }
   ],
   "freeform": { "allowed": true, "triesLeft": 2 } }
 ```
-- `options` 来自世界模型的 `ActExit`，按 `roles`、`requires` 过滤；`because` 是条件出现的理由（「王があなたを覚えている」），没有就是 `null`。`recapLines` 是「この幕であなたが動かしたこと」（2〜4 行）。
+- `options` 来自世界模型的 `ActExit`，按 `roles`、`requires` 过滤（例子是切片的第一幕：送过老爺回家才有第二个去处）。`recapLines` 是「この幕であなたが動かしたこと」（2〜4 行）。
+- **副题**（v1.0.4，ux-design 4.4）：`where` 是前半「{地点}・{日子}の{时段}」，服务端算好：地点是落点 `ActExit.place` 的 `Place.name`，日子和时段是落点时刻（和 `tLabel` 同一个时刻）在世界模型 `clock.labels` 的 `days`、`bands` 里的叫法，中间用「の」，不套 `clock.labels.format`。`sub` 是后半，世界模型的 `ActExit.sub`（≤ 16 字），没有就省略。前端照 UX 拼成一行，例「刑場・三日目の夕方　西の門が見える所で」，不按去处 ID 写死。`because` 现在一律 `null`：世界模型的 `ActExit` 没有写理由的字段，条件去处的说明写在 `sub` 里（例「老爺があなたを覚えている」）。
 - 选给定去处：`act_choose { optionId }`。
 - **过场里的二选一**〔契约 1.4，2.8.1 第 2 步，ux-design 4.5〕：去处的跳过的这段路上有一个还能改的节拍时，这个去处多带一个 `enRoute`：
   ```json
@@ -574,11 +586,26 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
   `accepted: true` 时 `narration` 是「あなたは、〜ことにした。」，紧接着进入幕切换（服务端写一条玩家的 `act-transition` 事件，不带 `exitId`，带 `plan { label, toAct, place, t, with? }`，`label` 是叙事者的转述、不逐字引用玩家原话，契约 1.2 的 2.8.1；不成行不写事件，选了替代去处按成行处理）；`false` 时给最接近的替代去处，玩家可以 `act_choose { optionId: alternative.optionId }`。`triesLeft` 到 0 后 `freeform.allowed = false`，只能选给定去处（同一次幕末最多试 2 次）。用声音说的打算没有 `clientMsgId`，`act_plan_result` 改带那一轮的 `turnId`（3.3）。
 - **幕切换**：玩家选定后，服务端按 contracts 2.8.1 结算到下一幕起点之间的节拍、人物的打算、导演事件、约定的兑现，然后推：
   ```json
-  { "type": "act_transition", "fromActId": "act.1", "toActId": "act.2",
+  { "type": "act_transition", "fromActId": "act.1", "toActId": "act.4",
     "recap": [ { "eventId": "ev_…", "line": "セリヌンティウスは、あなたとの約束どおり、工房の火を落とさずにいた。", "promise": "kept" } ],
-    "snapshot": { …2.3… } }
+    "snapshot": { …2.3… },
+    "arrival": { "line": "三日のあいだ、老爺はあなたを家に置いてくれた。いまは二人で、刑場の前に立っている。", "opener": "char.old-man" } }
   ```
   `recap` 是「その頃」，最多 3 件，排序：和你有关的约定兑现或违背 → `keyMoment` 事件 → 你见过的人物自己做的事（ux-design 4.5）；只写玩家在下一幕开始时可以知道的事。**不写 `voided` 的约定**：`type: "forget"` 的事件和只为成立一个后来作废的约定的事件都不进「その頃」（ux-design 10.1，核对 U-2）。没有可交代的事时为空数组，前端不显示这一页。超出 3 件的事件在地图里可见。
+- **落地**（v1.0.4，契约 1.7 的 `ActExit.arrival`、`Act.plan.arrival`，ux/slice/jump-transition.md「落地」）：`act_transition.arrival` 是进新场景以后的第一行地の文 `line`，和先开口的人物 `opener`（可省）；选的去处（或成行的打算）没写 `arrival` 时省略。玩家落在 `snapshot.player.spot`（2.3）。
+  - 前端：「その頃」（和切片的跳转页）之后进新场景，按地の文的样式显示 `line`。
+  - 有 `opener` 时，前端在 `line` 出来、玩家能动的时候发 `act_landed { actId }`；服务端收到才发起一轮 `turn_started { reason: "arrival", speaker: <opener> }`（服务端分配的 `turnSeq`，3.1），人物先开口一句（按人设和局势生成，不是问句），之后照常对话，前端不用另发 `focus`（和 3.10 第 3 步一样）。这一句不花故事时间，也不单独交给叙事者，没有 `turn_settled`；玩家接着说的是普通的一轮。`actId` 不是现在这一幕的、同一幕再发的 `act_landed`，服务端忽略。
+  - 收到 `act_landed` 之前断线：`welcome.pending.arrival` 带着这一幕的 `arrival`（第 4 节），前端重连后照样落地、发 `act_landed`。
+  ```
+  → act_choose {optionId: "exit.1.old-man"}
+  ← commit {…}                    （选定的事件，跳过的这段时间里结算的节拍）
+  ← act_transition {…, arrival: {line: "三日のあいだ、…", opener: "char.old-man"}}
+     （前端：「その頃」→ 跳转页 → 进刑场，显示 arrival.line）
+  → act_landed {actId: "act.4"}
+  ← turn_started {turnId: "turn_…", turnSeq: 2147483650, speaker: "char.old-man", reason: "arrival"}
+  ← [0x02 | 2147483650 | PCM] … transcript … turn_complete … transcript {final: true, source: "live"}
+  ← suggestions {character: "char.old-man", …}
+  ```
 
 ### 3.12 出戏卡（自伤、求助信号，S-043）
 
@@ -604,6 +631,23 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 - `staging`：结局演出里谁在哪、什么状态，按这一局的世界状态给。セリヌンティウス默认在场（S-053）；这一局的事件让他不可能在场时不放进来，叙事交代他在哪。**玩家也在 `characters` 里**，`id: "player"`（「あなたが身代わりになった」那类结局里，柱上的是玩家）。`state` 按 ux-design 11.1 的 8 个：`present`、`in-crowd`、`on-cross`、`freed`、`arriving`、`approaching`、`collapsed`、`absent`，只表示人在哪、身体什么样子；前端遇到不认识的值按 `present` 演。不演处刑本身。
 - 演出同时盖住结局生成的等待；生成好推 `ending_ready`，前端用 2.8 取。超过 20 秒还没好，前端按 UX 提示可以先看地图。
 
+### 3.14 固定演出（`set_piece`，v1.0.4，契约 1.7 的 2.11）
+
+世界模型里写好的、每局都一样的地の文和人物的话（切片：城门的警吏、工房关着的门）。演不演、演哪一条由服务端按契约 2.11 定（共享规则库的 `pick_set_piece`，演过哪些服务端按局记），前端不按 ID 写死，也不判断条件。
+
+```json
+{ "type": "set_piece", "pieceId": "piece.gate-taken",
+  "lines": [ { "narration": "衛兵が、あなたの前に槍を下ろした。" },
+             { "speaker": "char.guards", "line": "下がれ、旅の者。ここから先は、通さぬ。" },
+             { "narration": "メロスは、王城の奥へ引かれていった。" } ] }
+```
+- `lines` 就是世界模型的 `SetPiece.lines`，按顺序演：`narration` 是一行地の文（和 `narration` 消息同样式）；`speaker` + `line` 是这个人物的一句预录，播 manifest 的 `setPieceVoices["<pieceId>/<序号>"]`（序号是这一句在 `lines` 里的位置，从 1 起；例子里警吏那句是 `piece.gate-taken/2`，2.1），字幕是 `line`（剧本原文，和 `source: "script"` 一样）。manifest 里没有这一句的录音时只出字幕。前一句播完再出下一句；人物正在出声时等他这一句说完再演（同 3.4 的 `cue`）。
+- **时机**：
+  - 挂在玩家的动作上（`on.act`）：`commit`（这个动作写了事件时）→ `action_result { setPiece }` → `set_piece`。固定演出代替叙事者对这个动作的叙事，所以这时 `action_result` 不带 `narration`（3.3）。被拒的动作也可能挂（例：立约以后去王城，警吏赶人时说出约定）。
+  - 挂在节拍上（`on.beat`，节拍发生时玩家在节拍的地点）：紧跟在节拍那次提交的 `commit` 之后。那次提交属于玩家的一轮或一个动作时，`set_piece` 在这一轮的 `turn_settled`（或 `action_result`）之前。
+- **玩家从演出里知道的事**（`SetPiece.learns`，S-077 ⑪）：和演出同一次提交，在它前面那条 `commit` 里。城门的警吏说出约定时，`patch.deadline`、`patch.forecast` 就在那条 `commit` 里（2.3）；前端可以把它压到演完再应用（3.8 末尾）。
+- `set_piece` 不是事件，不占 `seq`，不进地图和「その頃」；断线时没收到的不补发（`learns` 已经在 `commit` 里，世界状态不受影响）。
+
 ---
 
 ## 4. 断线、重连、续玩（S-024）
@@ -619,7 +663,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
     "pending": { "reveal": null, "confirm": null, "actEnd": null, "safetyPause": false, "approach": null } }
   ```
   - `lastTurn.status`：`settled` / `pending`（叙事者还在判）/ `lost`（断线时人物还没说完）。`lost` 的轮不交给叙事者、不花时间，也不会有 `turn_settled`；人物已经说完（`turn_complete` 到了）才断线的轮照常交，是 `pending` 或 `settled`。`lost` 时人物在画面上就播他的预录「听不清」第 1 句，不在画面上就叙事一行「もう一度、話しかけてください。」（ux-design 第 12 节）。原话已清空的轮次（作废、删除）不给文字；人物的文字没收到的轮次（backend-design 3.1 的 `characterTextMissing`）`characterText` 为 null。幕末用声音说打算的那一轮没有人物在听，`character` 为 `null`。
-  - `pending`：断线前还没处理完的确认（`confirm` 的字段加剩余秒数 `remainingSec`，`timeoutSec` 照给）、幕末选择（`actEnd` 和 `act_ended` 同形，含 `enRoute`）、关键时刻、出戏卡、走过来的人物，前端恢复对应画面。
+  - `pending`：断线前还没处理完的确认（`confirm` 的字段加剩余秒数 `remainingSec`，`timeoutSec` 照给）、幕末选择（`actEnd` 和 `act_ended` 同形，含 `enRoute`、`where`、`sub`）、关键时刻、出戏卡、走过来的人物，前端恢复对应画面。（v1.0.4）`arrival`：幕切换以后、`arrival` 带 `opener` 而服务端还没收到 `act_landed` 时给，和 `act_transition.arrival` 同形，前端落地后发 `act_landed`（3.11）；没有时省略。
 - 关闭码：`4001` 未登录、`4003` 无权访问这一局、`4004` 这一局已被删除、`4009` 同一局在别的标签页打开（新连接踢掉旧连接）、`4290` 限流、`1012` 服务重启（立即重连）。
 - 语音会话的连续性由服务端负责：用局势说明和网关内存里的最近对话重建会话（不开 Live 的会话恢复，backend-design 5.4）；前端重连后重新 `focus`。
 
@@ -665,7 +709,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 
 ## 7. 测试支持
 
-- **本地 mock 服务**：`uv run zoujin-mock` 一条命令启动（也提供 `docker compose up`）；同样的 REST 和 WebSocket 消息，回放录制好的会话并保留真实的时间间隔，覆盖：一整轮对话、闲聊轮、打断、作废和识别改正、意图确认、人物走过来、幕末自由说、`goaway`、`4009`、出戏卡、结局。前端可以离线开发和做契约测试（前端建议第 12 条）。
+- **本地 mock 服务**：`uv run zoujin-mock` 一条命令启动（也提供 `docker compose up`）；同样的 REST 和 WebSocket 消息，回放录制好的会话并保留真实的时间间隔，覆盖：一整轮对话、闲聊轮、打断、作废和识别改正、意图确认、人物走过来、幕末自由说、`goaway`、`4009`、出戏卡、结局，（v1.0.4）幕切换的落地和固定演出。前端可以离线开发和做契约测试（前端建议第 12 条）。
 - **JSON Schema**：3.2、3.3 的每种消息和第 2 节的每个响应都有 Schema，放在代码仓库 `packages/contracts/schemas/api/`，前端直接生成 TypeScript 类型；CI 用它校验 mock 和真实服务。
 - **非生产环境**：`POST /v1/test/playthroughs/{id}/advance`（快进故事时间：请求 `{ "minutes": 60 }`，响应是快进后的快照）；`fakeVoice` 模式（`hello { debug: true, fakeVoice: true }`：服务端用录好的音频回答，不调用 Live），联调和前端 CI 的端到端测试不花钱；`event_rejected` 调试消息。生产环境没有这些。
 - **评测入口** `zoujin_backend.eval_api`（给数据工程的评测运行器；Python 包内调用，不开 HTTP，生产环境没有）。用例格式以 `evals/README.md` 为准，这里只列后端提供什么。Python 的写法：`setup(setup, *, mode)`（`setup` 是用例的 `setup` 原样，`mode` 是用例的 `text` / `voice`；`ZJ_MODEL` 在每次 `setup()` 时读，不在 import 时读）；方法名用蛇形；步骤号从 1 起，按调用顺序数，`delete_memory` 的 `from_step`、`retract` 的 `step`、`utterance_cleared` 的 `step` 都按它。没实现的步骤或查询抛 `EvalNotImplemented("<名字>")`，回放里找不到这次调用抛 `ReplayMissing`，两个都在 `zoujin_backend.eval_api` 里，运行器按类名认、记跳过。
@@ -689,6 +733,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 | Q-B11 结局卡插画 | 前端确认 3D 定格可行，后端不生成插画；预画 5 张兜底（2.8） |
 | `staging` 的状态 | 按 ux-design 11.1 的 8 个，玩家也在里面（3.13） |
 | 契约 1.6 的结局卡 | 每一局都有 `card`，人物行 1〜3 条，模板尾声的局也有（2.8，S-076） |
+| 契约 1.7 要接口给前端的（v1.0.4） | 幕末副题的前半 `where`、后半 `sub`，`because` 一律 `null`（3.11）；落地 `act_transition.arrival`、`act_landed`、`turn_started.reason: "arrival"`、`pending.arrival`（3.11、第 4 节）；固定演出 `set_piece`、`action_result.setPiece`、manifest 的 `setPieceVoices`（3.14、2.1）；`Affordance.playerSpot` 走 `commit.patch.player`（3.8）；可调查物来自 `objects`，`group` 的人物没有 `spot`，`player.spot` 的来源（2.3） |
 | 契约 1.4 的界面字段 | 数据请后端定的三处：第四幕按钮的 `melosMinutes` 和 `melosInTime`（2.3，按 S-066 用 `arrival_delta` 算本局实际值）、幕末去处的 `enRoute`（3.11）、`act_choose.enRouteChoice`（3.11） |
 
 还开着的：
@@ -777,6 +822,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 
 ## 修订记录
 
+- v1.0.4（2026-10-10）：只做加法，把数据契约 1.7（#34）里前端要拿到的几样加进接口（F-2b 的 #37 评审和 ux-design v1.0.1 4.4 提的）：幕末去处的副题 `where`（服务端按 `Place.name` 和 `clock.labels` 拼好的前半）和 `sub`（`ActExit.sub`），`because` 写明一律 `null`（3.11）；落地：`act_transition.arrival { line, opener? }`、新的客户端消息 `act_landed`、`turn_started.reason` 加 `arrival`、`pending.arrival`（3.11、第 4 节）；固定演出：新的服务端消息 `set_piece`，`action_result` 加 `setPiece`、这时不带 `narration`（两个正好给一个），manifest 加 `setPieceVoices`（3.14、2.1）；`Affordance.playerSpot` 走 `commit.patch.player { spot }`（3.8）；快照里 `group` 的人物没有 `spot`、写明 `player.spot` 和 `examine` 的来源（2.3）。Schema 跟着改：`ActOption.where` 必有；`action_result.narration` 从必有改成和 `setPiece` 二选一；`CharacterPresence.spot` 从必有改成 `group` 的人物没有。mock 的 `act-end` 剧本按这些改，加 `set-piece` 剧本。服务端在 B-3 做。
 - v1.0.3（2026-10-10）：传输形状不变，Schema 只改 `description`。把 B-0（#26）、F-2b（#32）评审和 S-077 ⑫ 定下的写进正文：期限一行和预报在玩家知道约定（契约 1.7 `knows(player, fact.promise)`）以后才出，不再跟着 beat.05 的提交出；玩家不知道约定时不出 `eta`（2.3、3.4.1）；人物一个字没说就被打断的轮没有人物定稿，被打断的轮没有 `turn_complete`、照常交给叙事者，人物说完以后按下说话不算打断（3.3）；地点关上时玩家在里面，那次 `commit` 带 `patch.player` 把人放到外面，`move` 进关着的地点回 `refused`（3.8）；`lost` 的轮不判、没有 `turn_settled`（4）；WebSocket 上 `invalid_request` 的三种情况（5）。服务端：打断、`lost`、`invalid_request` 在 B-0 做了；关地点、期限一行的条件在 B-3 做。
 - v1.0.2（2026-10-10）：只补正文，传输形状和 Schema 都不变。把 B-1（mock）评审时前端要求写明、mock 已经照做的写进来：降级为文字回答时人物定稿在 `turn_complete { audio: false }` 之前；没有人物定稿的两种轮（没出声、出戏卡停下），被打断的轮照样有定稿（3.3）；动作的 `commit` 在 `action_result` 之前（3.8）；结局还没开始时 `GET …/ending` 回 404（2.8）。
 - v1.0.1（2026-10-10）：只补正文，传输形状和 C-1 的 Schema 一样，只有一处收紧：`GET …/ending` 的 `card` 改成必有（S-076，契约 1.6 第 5 节；C-1 的 Schema 还写着模板尾声的局没有卡）。把 C-1 评审定下的写进正文：`plan_` 前缀（0）；`inviteCode` 的格式（1）；409 的 `activePlaythrough` 在 `error` 外面（2.2、5）；`interactables` 含场景出口，增减走 `commit.patch.interactables`（2.3、3.4、3.8）；快照动作没有对象时省略 `target`（2.3）；事件的 `turnId` 可省、`visibleEffects` 的两种形状（2.4）；遥测回 204、公共属性每批一次（2.11）；`action.target` 只在 `move` / `examine` / `go` 时必带（3.2）；`turn_complete` 没出声时 `serverReleaseToFirstAudioMs` 为 `null`、`narration.ref` 只给日志、`act_plan_result` 带 `clientMsgId` 或 `turnId`、`event_rejected.candidate` 的形状（3.3、3.11）；`patch` 的合并规则、`clock` 的必带字段、`memories` 的必带字段、`reveal.collapsed`（3.4）；`lastTurn.character` 可为 `null`、`pending.confirm` 带 `remainingSec`（4）；错误码 `invalid_request`、`invalid_invite`（5）；快进接口的请求和响应（7）。2.8 跟契约 1.6：结局卡人物 1〜3 行，模板尾声的局也出卡；例子改成 `in-time-king-unchanged`（标题用这一类的 `label`，梅洛斯排第 2）。第 7 节按和数据对好的评测入口改：Python 的写法和两个异常；`check` 的返回形状；每一步的 `events` 包括到点结算的系统事件，被否决的给原本的 `effects`；`new_playthrough()` 之后查询答新局；模拟局的 AI 玩家放在数据的运行器里，逐步调用，后端不提供玩家原话。

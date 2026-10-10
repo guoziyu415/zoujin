@@ -1,0 +1,13 @@
+{
+  "type": "set_piece",
+  "pieceId": "piece.workshop-knock",
+  "lines": [
+    {
+      "speaker": "char.selinuntius",
+      "line": "もう遅い。用があるなら、明日にしてくれ。"
+    },
+    {
+      "narration": "それきり、戸の向こうからは、石を刻む音しか聞こえなかった。"
+    }
+  ]
+}

@@ -2,6 +2,7 @@
 {"include": "full-turn"}
 {"include": "small-talk"}
 {"include": "approach"}
+{"include": "set-piece"}
 {"include": "confirm"}
 {"include": "interrupt"}
 {"include": "retract"}
