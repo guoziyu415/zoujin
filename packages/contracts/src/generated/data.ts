@@ -241,6 +241,41 @@ export interface Act {
    * 幕末去处；最后一幕为空，收幕即进入结局
    */
   exits: ActExit[];
+  /**
+   * （1.7，C-19）玩家在幕末说出的打算成行时落在哪里（2.8.1 第 2 步）：成行的事件按这里写下一幕、地点、时间、落点和落地。省略 = 叙事者按世界模型判（M3 定）
+   */
+  plan?: {
+    toAct: ActId;
+    /**
+     * 下一幕的起点
+     */
+    place: PlaceId;
+    /**
+     * 下一幕从几点开始
+     */
+    t: StoryTime;
+    /**
+     * 玩家落在 place 的哪个位置点；省略 = 这个地点的起点（startSpots）
+     */
+    spot?: SpotId;
+    /**
+     * 成行本身固定的效果（例：人物的 relocate）；打算自己的效果由叙事者从玩家的话里提取，照常检查后加在同一条事件上
+     */
+    effects: Effect[];
+    /**
+     * 落地，同 ActExit.arrival
+     */
+    arrival?: {
+      /**
+       * 落地后的第一行叙事（地の文，日语），跳转之后显示
+       */
+      line: string;
+      /**
+       * 落地后先开口的人物：服务端发起一轮，台词按人设生成，不是问句
+       */
+      opener?: CharacterId;
+    };
+  };
   inferred: true;
   note?: string;
 }
@@ -425,6 +460,10 @@ export interface Affordance {
    * 做成了就兑现这条互助（fromYou 的 MutualAid.id）
    */
   aid?: AidId;
+  /**
+   * （1.7）做完以后玩家站在 place 的哪个位置点（布局的 spots）；省略 = 不挪。只管玩家，人物用 relocate 的 spot
+   */
+  playerSpot?: SpotId;
   /**
    * 效果模板：判定通过时提交的效果；空 = 只影响关系
    */

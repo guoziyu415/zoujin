@@ -281,8 +281,10 @@ def test_fields_match_contracts_md(type_name: str) -> None:
 
 # 反例为什么不过：(关键字, 出错位置)。新加反例要在这里写明，免得它因为别的原因被拒、测不到想测的东西。
 INVALID_BECAUSE: dict[str, tuple[str, str]] = {
+    "Act/plan-with-label.json": ("additionalProperties", "plan"),
     "ActExit/arrival-without-line.json": ("required", "arrival"),
     "ActExit/sub-too-long.json": ("maxLength", "sub"),
+    "Affordance/player-spot-uppercase.json": ("pattern", "playerSpot"),
     "Character/sample-line-extra-field.json": ("additionalProperties", "speech/sampleLines/1"),
     "CheckResult/failed-rule-r8.json": ("enum", "failedRules/0"),
     "Cite/quote-81.json": ("maxLength", "quote"),

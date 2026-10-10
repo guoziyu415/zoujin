@@ -18,7 +18,8 @@
    时刻标签（clock.labels）、人物的互助 / 约定 / 打算（S-029、S-030、S-048）、情境动作和物品（affordances / items，
    contracts 2.10；第四幕让他慢和帮他快并排，S-036 ②）、节拍上的人物状态（activities）、台词和动机的生效时间（since / until / when）、
    （1.4）设计台词、互助的效果、节拍的变体、过场二选一（enRoute）都成立；（1.7）位置点（relocate 和去处的 spot）在这个地点所在场景的
-   布局里、属于这个地点（assets/scenes/<场景>/scene.json），去处落地的 arrival，成群的人物（group）不能对话。
+   布局里、属于这个地点（assets/scenes/<场景>/scene.json），去处落地的 arrival，成群的人物（group）不能对话；打算成行的落点
+   （Act.plan，C-19）和去处一样查，情境动作做完玩家站的点（playerSpot）也查。
 7. 情景模拟（--scenarios）：按 contracts 2.5 的时间传播规则推演原著路径和若干改道情景，
    检查原著路径每个节拍都发生、每个情景落到预期的世界结局（和预期的节拍状态、变体）、每类底线世界结局都能走到；
    （1.4）第四幕按钮上的 melosMinutes 和共享规则算出的梅洛斯到达时间差一致；（1.5）过场选项的 melosMinutes 也一样。
@@ -420,8 +421,10 @@ def main():
                 err(f"{where}: 场景不存在 {sc}")
         if not act["exits"] and act["order"] != len(acts):
             err(f"{where}: 不是最后一幕却没有幕末去处")
-        for ex in act["exits"]:
-            w2 = f"{where}/{ex['id']}"
+        landings = [(f"{where}/{ex['id']}", ex) for ex in act["exits"]]
+        if act.get("plan"):                            # 1.7（C-19）：打算成行时的落点，和去处一样查下一幕、地点、时间
+            landings.append((f"{where}.plan", act["plan"]))
+        for w2, ex in landings:
             to = acts.get(ex["toAct"])
             if to is None or to["order"] <= act["order"]:
                 err(f"{w2}: toAct 无效 {ex['toAct']}")
@@ -434,6 +437,9 @@ def main():
                     err(f"{w2}: 去处的场景 {sref} 不在 {to['id']} 的场景里")
             if not (to["start"]["t"] <= ex["t"] <= to["end"]["atLatest"]):
                 err(f"{w2}: 跳到的时间 {ex['t']} 不在 {to['id']} 内")
+            if "id" not in ex:                         # Act.plan 只有落点和固定的效果
+                check_effects(ex.get("effects", []), f"{w2}.effects")
+                continue
             if ex.get("alignTo") and ex["alignTo"] not in beats:
                 err(f"{w2}: alignTo 节拍不存在 {ex['alignTo']}")
             for r in ex.get("roles", []):
@@ -498,15 +504,21 @@ def main():
 
     walk_spots(world, "$")
     for act in acts.values():
-        for ex in act["exits"]:
+        landings = [(f"{act['id']}/{ex['id']}", ex) for ex in act["exits"]]
+        if act.get("plan"):
+            landings.append((f"{act['id']}.plan", act["plan"]))
+        for w2, ex in landings:
             if "spot" in ex:
-                check_spot(ex["place"], ex["spot"], f"{act['id']}/{ex['id']}")
+                check_spot(ex["place"], ex["spot"], w2)
             arr = ex.get("arrival")
             if arr is not None:
                 if not arr.get("line"):
-                    err(f"{act['id']}/{ex['id']}.arrival: 要有 line（落地的一行叙事）")
+                    err(f"{w2}.arrival: 要有 line（落地的一行叙事）")
                 if "opener" in arr and arr["opener"] not in chars:
-                    err(f"{act['id']}/{ex['id']}.arrival: opener 不是人物 {arr['opener']}")
+                    err(f"{w2}.arrival: opener 不是人物 {arr['opener']}")
+    for a_ in world.get("affordances", []):           # 1.7：做完以后玩家站的点
+        if "playerSpot" in a_:
+            check_spot(a_["place"], a_["playerSpot"], f"{a_['id']}.playerSpot")
     for c in world["characters"]:
         if c.get("group") and c.get("talkable"):
             err(f"{c['id']}: group（一群人）不能对话")
