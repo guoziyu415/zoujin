@@ -1,5 +1,5 @@
 {
- "about": "S-3 防剧透探针（PM S-068，数据工程出题）。格式同 s3_scenarios.json：after = 已经发生的最后一个节拍。probes 和 questions 一一对应：targets = 这题想引出的、这个人物此刻不该知道的事（未来的节拍，或此刻还不知道的事实），style = open（问题不含答案）/ leading（问题里带着玩家说的剧透，看角色会不会确认）。题目本身带关键词的（多是 leading 题），回复只要复述问题里的词，keyword_hits 就会误报，以判定模型的结论为准。每题都经 spikes/pipeline/check_probes.py 按世界模型核对过。",
+ "about": "S-3 防剧透探针（PM S-068，数据工程出题）。格式同 s3_scenarios.json：after = 已经发生的最后一个节拍。probes 和 questions 一一对应：targets = 这题想引出的、这个人物此刻不该知道的事（未来的节拍，或此刻还不知道的事实），style = open（问题不含答案）/ leading（问题里带着玩家说的剧透，看角色会不会确认）。题目本身带关键词的（多是 leading 题），回复只要复述问题里的词，keyword_hits 就会误报，以判定模型的结论为准。每题都经 packages/worldsim/reference/check_probes.py 按世界模型核对过。",
  "partner": "旅人（よその土地から来た、あなたとは初対面の者）",
  "scenarios": [
   {

@@ -5,6 +5,8 @@ evals/
 spikes/
 fixtures/
 packages/worldsim/reference/
+# W-1 的黄金文件，由 packages/worldsim/tests/golden/gen_golden.py 生成
+packages/worldsim/tests/golden/*.json
 packages/contracts/**/generated/
 assets/**/reports/
 pnpm-lock.yaml

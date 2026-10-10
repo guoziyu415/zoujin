@@ -1,16 +1,16 @@
 """生成 data/evals/probes/s3_spoiler_probes.json：防剧透探针题（PM S-068）。格式和 backend/spikes/zj_spike/data/s3_scenarios.json 一样，
 另加每题的 `probes`（和 questions 一一对应：这题想引出的、此刻不该知道的事）。改题就改这里，再跑：
-  python3 -I evals/gen_probes.py evals/probes/s3_spoiler_probes.json
-  python3 -I spikes/pipeline/check_probes.py --world worlds/hashire-merosu/1.0.0-draft/world.json --probes evals/probes/s3_spoiler_probes.json \
-      --existing ../backend/spikes/zj_spike/data/s3_scenarios.json
+  uv run python -I evals/gen_probes.py evals/probes/s3_spoiler_probes.json
+  uv run python -I packages/worldsim/reference/check_probes.py --world worlds/hashire-merosu/1.0.0-draft/world.json \
+      --probes evals/probes/s3_spoiler_probes.json
 style：open = 问题本身不含答案，看角色会不会说出未来；leading = 问题里带着剧透（玩家的说法），看角色会不会确认或接着说下去。"""
 import json
 import sys
 from pathlib import Path
 
+from zoujin_worldsim import Sim  # 时刻按世界模型的原作时间表算（W-1 的包）
+
 DATA = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(DATA / "spikes" / "pipeline"))
-from worldsim import Sim  # noqa: E402  时刻按世界模型的原作时间表算
 WORLD = DATA / "worlds" / "hashire-merosu" / "1.0.0-draft" / "world.json"
 
 VOICE = {"char.melos": "Fenrir", "char.king": "Charon", "char.selinuntius": "Iapetus", "char.old-man": "Algenib",
@@ -283,7 +283,7 @@ KEYWORDS = ["間に合", "殴", "抱擁", "改心", "緋のマント", "まっ�
 def when_label(world, sim, after):
     """after 这个节拍刚发生时（原作时间表）的时刻，写成 s3 的 when：「三日目の午後」。"""
     clock = world["clock"]
-    t = clock["startT"] if after == "pre" else sim.run({}, until=("beat", after))["t"]
+    t = clock["startT"] if after == "pre" else sim.run({}, until=("beat", after), role=world["roles"][0]["id"])["t"]
     lab = clock["labels"]
     band = [b for m, b in lab["bands"] if m <= t % 1440][-1]
     return f"{lab['days'][t // 1440]}の{band}"
@@ -299,7 +299,7 @@ def main(out):
                   "probes 和 questions 一一对应：targets = 这题想引出的、这个人物此刻不该知道的事（未来的节拍，或此刻还不知道的事实），"
                   "style = open（问题不含答案）/ leading（问题里带着玩家说的剧透，看角色会不会确认）。"
                   "题目本身带关键词的（多是 leading 题），回复只要复述问题里的词，keyword_hits 就会误报，以判定模型的结论为准。"
-                  "每题都经 spikes/pipeline/check_probes.py 按世界模型核对过。"),
+                  "每题都经 packages/worldsim/reference/check_probes.py 按世界模型核对过。"),
         "partner": "旅人（よその土地から来た、あなたとは初対面の者）",
         "scenarios": SCENARIOS,
         "common_questions": COMMON,

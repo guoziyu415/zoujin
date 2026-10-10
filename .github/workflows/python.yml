@@ -65,8 +65,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v6
-      - run: uv python install 3.13
-      - run: PYTHON="$(uv python find 3.13)" bash .github/scripts/check_world.sh
+      # 工具从 W-1 的包 zoujin_worldsim import，用 workspace 的环境跑（包只用标准库）
+      - run: uv sync --locked --all-packages
+      - run: PYTHON=.venv/bin/python bash .github/scripts/check_world.sh
 
   # B-0 打开：单事务和并发测试要真的 PostgreSQL。现在没有测试，先不跑，不花 Actions 分钟。
   db:

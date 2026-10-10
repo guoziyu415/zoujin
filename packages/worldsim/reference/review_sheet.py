@@ -101,7 +101,7 @@ def main():
     w = json.loads(Path(a.world).read_text(encoding="utf-8"))
     chars = {c["id"]: c["name"] for c in w["characters"]}
     L = [f"# 校对表：{w['book']['title']}（{w['worldModelVersion']}）", "",
-         "由 `spikes/pipeline/review_sheet.py` 从 `world.json` 生成，**不要手改**；改 `world.src.json` 后重新生成。",
+         "由 `packages/worldsim/reference/review_sheet.py` 从 `world.json` 生成，**不要手改**；改 `world.src.json` 后重新生成。",
          "引文后的数字是规范化原文的段落号。校对人在最后一列填 OK / 改 / 删。〔推断〕= 原文没写、由人推断。", ""]
 
     L += ["## 1. 锚点（PM 确认：这些不能被玩家改变）", "", "| ID | 内容 | 原文 | 校对 |", "|---|---|---|---|"]

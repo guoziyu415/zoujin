@@ -25,8 +25,8 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 DATA = HERE.parent
-sys.path.insert(0, str(DATA / "spikes" / "pipeline"))
-from worldsim import Sim, OCCURRED  # noqa: E402  共享规则的参考实现
+from zoujin_worldsim import OCCURRED, Sim  # 共享规则（W-1 的包）
+sys.path.insert(0, str(DATA / "packages" / "worldsim" / "reference"))
 from check_evals import Checker  # noqa: E402  效果的格式检查沿用评测用例自检
 
 WORLD = DATA / "worlds" / "hashire-merosu" / "1.0.0-draft" / "world.json"
@@ -100,7 +100,7 @@ class S2:
         if not m or m[1] not in self.scen or (m[2] and m[2] not in self.sim.beats):
             return None, None, None, f"检查点不对：{setup.get('checkpoint')}"
         res = self.sim.run(self.scen[m[1]], ("beat", m[2]) if m[2] else ("t", int(m[3])),
-                           start_place=setup.get("place", role["startPlace"]), player_items=role.get("items", []))
+                           role=role["id"], place=setup.get("place"))
         if not res["stopped"]:
             return None, None, None, f"{m[2]} 在 {m[1]} 里没有发生"
         if res["t"] < role["startT"]:

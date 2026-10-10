@@ -11,11 +11,11 @@
 | `seeds/E1.jsonl` 〜 `seeds/E8.jsonl` | 用例，一行一例（生成出来的，不要手改） |
 | `gen_seeds.py` | 用例的编写源。改用例改这里，再跑 `python3 -I evals/gen_seeds.py evals/seeds` |
 | `personas.json` | 模拟局用的 AI 玩家画像，11 个（E5、E7 和后端 spike S-5 用）；（1.5）`persona.melos-helper` 一心帮梅洛斯赶上，用来看刑场一幕的演法分布 |
-| `../spikes/pipeline/check_evals.py` | 用例自检（不调模型） |
-| `../spikes/pipeline/worldsim.py` | 推演规则（contracts 2.4.1、2.5.1）。世界模型校验和用例自检共用这一份 |
+| `../packages/worldsim/reference/check_evals.py` | 用例自检（不调模型） |
+| `../packages/worldsim/` | 推演规则（contracts 2.4.1、2.5.1）的包 `zoujin_worldsim`（W-1）。世界模型校验、用例自检和叙事者共用这一份，所以这里的脚本用 `uv run python` 跑 |
 | `probes/s3_spoiler_probes.json` | 防剧透探针题（S-068），格式同后端的 `s3_scenarios.json`，后端 s3 和以后的 S-3 直接用（生成出来的，不要手改） |
-| `gen_probes.py` | 探针题的编写源。改题改这里，再跑 `python3 -I evals/gen_probes.py evals/probes/s3_spoiler_probes.json` |
-| `../spikes/pipeline/check_probes.py` | 探针题自检（不调模型），见下面「防剧透探针」 |
+| `gen_probes.py` | 探针题的编写源。改题改这里，再跑 `uv run python -I evals/gen_probes.py evals/probes/s3_spoiler_probes.json` |
+| `../packages/worldsim/reference/check_probes.py` | 探针题自检（不调模型），见下面「防剧透探针」 |
 | `safety/s4_selfharm.jsonl` | 自伤信号分类器的样本（S-069，E8 用），格式同后端的 `s4_samples.jsonl`，后端打包时原样放进去（生成出来的，不要手改） |
 | `gen_selfharm.py` | 上面样本的编写源，自带自检。改样本改这里，再跑 `python3 -I evals/gen_selfharm.py evals/safety/s4_selfharm.jsonl --existing ../backend/spikes/zj_spike/data/s4_samples.jsonl` |
 | `safety/s4_selfharm_holdout.jsonl`、`gen_selfharm_holdout.py` | 自伤分类器的留出验证样本 25 条和它的编写源。**只用来验已定稿的 v3，不拿它改提示**；跑法见脚本开头。S-072（2026-10-07）已经用它验过 v3，用过一次，所以搬进了仓库；下一版分类器要另写新的留出样本 |
@@ -25,8 +25,7 @@
 自检：
 
 ```bash
-cd data
-python3 -I spikes/pipeline/check_evals.py --world worlds/hashire-merosu/1.0.0-draft/world.json \
+uv run python -I packages/worldsim/reference/check_evals.py --world worlds/hashire-merosu/1.0.0-draft/world.json \
   --scenarios worlds/hashire-merosu/1.0.0-draft/scenarios.json --cases evals/seeds --personas evals/personas.json
 ```
 
@@ -158,9 +157,8 @@ S-018 要剧透 ≤ 1%，后端 s3 的 50 问分不清 1% 和 2%（S-068），�
 自检：
 
 ```bash
-cd data
-python3 -I spikes/pipeline/check_probes.py --world worlds/hashire-merosu/1.0.0-draft/world.json \
-  --probes evals/probes/s3_spoiler_probes.json --existing ../backend/spikes/zj_spike/data/s3_scenarios.json
+uv run python -I packages/worldsim/reference/check_probes.py --world worlds/hashire-merosu/1.0.0-draft/world.json \
+  --probes evals/probes/s3_spoiler_probes.json   # 加 --existing <后端原有的 s3_scenarios.json> 查重复
 ```
 
 会核对：人物能对话；`place` 是这个人物在 after 刚发生时所在的地方（按推演）；`when` 和时钟一致；`targets` 的节拍在 after 之后、事实不在他此刻的 `knows` 里；`open` 题里没有目标事实的剧透词；题目不重复（也不和后端原有的重复）；每人 20〜30 问。现状：错误 0、警告 0。改世界模型以后要重跑。

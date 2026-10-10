@@ -12,18 +12,17 @@
 | `scenarios.json` | 改道情景（推迟、提前、阻止、改变节拍，或插入玩家事件），用来验证世界结局都能走到；也是评测 E5 和检查点的来源 | 数据、后端 |
 | `REVIEW.md` | 人工校对表（由 `world.json` 生成）：每条内容旁边是原文和段落号 | PM（锚点）、UX（设计层） |
 
-原文：`data/sources/hashire-merosu/melos_plain.txt`（75 段，sha256 `2a437c04…e685`，底本「太宰治全集3」ちくま文庫）。
+原文：`worlds/hashire-merosu/sources/melos_plain.txt`（75 段，sha256 `2a437c04…e685`，底本「太宰治全集3」ちくま文庫）。
 
-重新生成（改了 `world.src.json` 或 `scenarios.json` 以后三条都要跑，评测自检也要保持 0 错误）：
+重新生成（改了 `world.src.json` 或 `scenarios.json` 以后三条都要跑，评测自检也要保持 0 错误）。在仓库根目录跑，工具从 `packages/worldsim` 的包 import 推演规则，所以用 `uv run`；`bash .github/scripts/check_world.sh` 一次跑完全部生成和自检（CI 也跑它）：
 
 ```bash
-cd data
-python3 -I spikes/pipeline/build_world.py --src worlds/hashire-merosu/1.0.0-draft/world.src.json \
-  --text sources/hashire-merosu/melos_plain.txt --out worlds/hashire-merosu/1.0.0-draft/world.json \
+uv run python -I packages/worldsim/reference/build_world.py --src worlds/hashire-merosu/1.0.0-draft/world.src.json \
+  --text worlds/hashire-merosu/sources/melos_plain.txt --out worlds/hashire-merosu/1.0.0-draft/world.json \
   --report worlds/hashire-merosu/1.0.0-draft/report.md --scenarios worlds/hashire-merosu/1.0.0-draft/scenarios.json
-python3 -I spikes/pipeline/review_sheet.py --world worlds/hashire-merosu/1.0.0-draft/world.json \
+uv run python -I packages/worldsim/reference/review_sheet.py --world worlds/hashire-merosu/1.0.0-draft/world.json \
   --out worlds/hashire-merosu/1.0.0-draft/REVIEW.md
-python3 -I spikes/pipeline/check_evals.py --world worlds/hashire-merosu/1.0.0-draft/world.json \
+uv run python -I packages/worldsim/reference/check_evals.py --world worlds/hashire-merosu/1.0.0-draft/world.json \
   --scenarios worlds/hashire-merosu/1.0.0-draft/scenarios.json --cases evals/seeds --personas evals/personas.json
 ```
 

@@ -15,10 +15,10 @@
 为什么分开：S-069 里后端看着 58 条样本写了 v3，在同一批样本上过线就不算数了。S-2 的 90% 也一样：自检的提示要是看着这 50 条改出来，一致率会虚高。所以测量集等提示定稿后再交给后端跑，调提示用公开的 10 条和评测 E4（世界一致）。两份不是同一批场面，摘要的字二元组 Jaccard < 0.5（生成器会查）。
 
 ```bash
-cd data
-python3 -I -B evals/gen_s2_dev.py evals/s2/s2_dev.jsonl
-python3 -I -B evals/holdout/s2/gen_s2_holdout.py evals/holdout/s2/s2_holdout.jsonl
-python3 -I -B evals/s2_check.py evals/s2/s2_dev.jsonl      # 只自检，不重新生成
+# 在仓库根目录；判法从 packages/worldsim 的包 import 推演规则，所以用 uv run
+uv run python -I -B evals/gen_s2_dev.py evals/s2/s2_dev.jsonl
+uv run python -I -B evals/s2_check.py evals/s2/s2_dev.jsonl      # 只自检，不重新生成
+uv run python -I -B evals/s2_check.py <项目文件夹 data/evals/holdout/s2/s2_holdout.jsonl>   # 留出集不进仓库
 ```
 
 改世界模型以后要重跑。现状：两份都是错误 0。

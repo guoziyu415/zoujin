@@ -1,8 +1,8 @@
-"""契约 1.6（C-16）StateVar.valueRequires 的黄金测试，测参考实现 reference/worldsim.py 的 value_requires()。
+"""契约 1.6（C-16）StateVar.valueRequires 的黄金测试：参考实现 reference/worldsim.py 和包里的 Sim 都测。
 
 用例按 contracts.md 第 7 节 C-16 定的：39 被拒、40 能过；同一事件里顺序两种；
 只有到点的节拍和期限（origin = schedule）不受限，导演事件照样判；桥不在时设 bridge 被拒；
-值没变不判；设好以后条件不再成立不追究。W-1 把参考实现整理成包以后，包也要过这些用例。
+值没变不判；设好以后条件不再成立不追究。逐事件推演的 check_effects() 在 test_incremental.py 里测。
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ from types import ModuleType
 from typing import Any
 
 import pytest
+from zoujin_worldsim import Sim
 
 REPO = Path(__file__).resolve().parents[3]
 WORLD = REPO / "worlds" / "hashire-merosu" / "1.0.0-draft" / "world.json"
@@ -31,7 +32,18 @@ def _load_reference() -> ModuleType:
 
 ref = _load_reference()
 world: dict[str, Any] = json.loads(WORLD.read_text(encoding="utf-8"))
-sim = ref.Sim(world)
+SIMS = {"reference": ref.Sim(world), "package": Sim(world)}
+
+
+@pytest.fixture(params=list(SIMS))
+def sim(request: pytest.FixtureRequest) -> Any:
+    return SIMS[request.param]
+
+
+def run(sim: Any, sc: dict[str, Any]) -> dict[str, Any]:
+    """参考实现开局写死在广场；包按身份读，用旅人（开局也在广场）。"""
+    result: dict[str, Any] = sim.run(sc, role="role.traveler") if isinstance(sim, Sim) else sim.run(sc)
+    return result
 
 
 def state(**overrides: Any) -> dict[str, Any]:
@@ -74,7 +86,7 @@ def test_world_has_the_three_rules() -> None:
     ("effect", "trust", "ok"),
     [(WAVERING, 39, False), (WAVERING, 40, True), (REFORMED, 69, False), (REFORMED, 70, True)],
 )
-def test_threshold(effect: dict[str, Any], trust: int, ok: bool) -> None:
+def test_threshold(sim: Any, effect: dict[str, Any], trust: int, ok: bool) -> None:
     got = sim.value_requires([effect], state(trust=trust))
     assert (got == []) is ok
     if not ok:
@@ -82,25 +94,25 @@ def test_threshold(effect: dict[str, Any], trust: int, ok: bool) -> None:
         assert got[0]["note"]
 
 
-def test_order_within_one_event() -> None:
+def test_order_within_one_event(sim: Any) -> None:
     # ③ 按每个 effect 之前的状态判：先升信任再设 wavering 能过，反过来不过
     assert sim.value_requires([inc("var.king.trust", 35), WAVERING], state(trust=5)) == []
     assert len(sim.value_requires([WAVERING, inc("var.king.trust", 35)], state(trust=5))) == 1
 
 
-def test_scheduled_events_are_not_checked() -> None:
+def test_scheduled_events_are_not_checked(sim: Any) -> None:
     # ① 到点的节拍和期限（origin = schedule）不判：刑场的 beat.26 让王改心靠的是节拍前提
     assert sim.value_requires([REFORMED], state(trust=5), origin="schedule") == []
 
 
-def test_director_events_are_checked() -> None:
+def test_director_events_are_checked(sim: Any) -> None:
     # ① 导演事件的 actor 也是 system，但 origin 是 director，照样判：不能按 actor 跳过
     event = {"actor": "system", "origin": "director", "effects": [REFORMED]}
     got = sim.value_requires(event["effects"], state(trust=5), origin=event["origin"])
     assert [(x["var"], x["value"]) for x in got] == [("var.king.disposition", "reformed")]
 
 
-def test_bridge() -> None:
+def test_bridge(sim: Any) -> None:
     assert sim.value_requires([BRIDGE], state(bridge="intact")) == []
     got = sim.value_requires([BRIDGE], state(bridge="destroyed"))
     assert [(x["var"], x["value"]) for x in got] == [("var.river.crossing", "bridge")]
@@ -109,22 +121,22 @@ def test_bridge() -> None:
     assert len(sim.value_requires([destroy, BRIDGE], state(bridge="intact"))) == 1
 
 
-def test_unchanged_value_is_not_checked() -> None:
+def test_unchanged_value_is_not_checked(sim: Any) -> None:
     # ② 设成现在的值不判（信任掉到 40 以下以后，再写一次 wavering 不算违规）
     assert sim.value_requires([WAVERING], state(trust=10, disposition="wavering")) == []
 
 
-def test_later_drop_is_not_a_violation() -> None:
+def test_later_drop_is_not_a_violation(sim: Any) -> None:
     # ⑤ 设好以后条件不再成立，不自动改回、不算违规
     s = state(trust=40)
     assert sim.value_requires([WAVERING, inc("var.king.trust", -20)], s) == []
     assert s["var.king.trust"] == 40, "value_requires 不改传进来的状态"
 
 
-def test_simulation_records_violations() -> None:
+def test_simulation_records_violations(sim: Any) -> None:
     # 推演照样应用事件，违反的记进 violations；build_world 拿它查情景
     bad = {"events": [{"t": 3000, "effects": [REFORMED]}], "beats": {"beat.18": {"to": "delayed", "minutes": 240}}}
-    res = sim.run(bad)
+    res = run(sim, bad)
     assert [(t, x["value"]) for t, x in res["violations"]] == [(3000, "reformed")]
     for sc in json.loads(SCENARIOS.read_text(encoding="utf-8")):
-        assert sim.run(sc)["violations"] == [], sc["id"]
+        assert run(sim, sc)["violations"] == [], sc["id"]
