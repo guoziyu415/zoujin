@@ -137,7 +137,7 @@
       "title": "VarId",
       "type": "string",
       "pattern": "^var\\.[a-zA-Z0-9]+(?:[.-][a-zA-Z0-9]+)*$",
-      "description": "状态变量：`var.` 加小写 slug（可以有 `.` 和 `-`）。TODO(C-2 评审)：第 0 节写「小写」，但契约自己的例子和 world.json 都用了驼峰（`var.player.companionOf`、`var.player.knowsShortcut`、`var.melos.knowsTyranny`），这里先允许大写字母"
+      "description": "状态变量：`var.` 加 slug（可以有 `.` 和 `-`），段里可以用驼峰（`var.player.companionOf`、`var.player.knowsShortcut`、`var.melos.knowsTyranny`）。第 0 节写的是「小写」，1.6 写清（C-2 评审定）"
     },
     "RoleId": {
       "title": "RoleId",

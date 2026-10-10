@@ -53,9 +53,9 @@ COMMON_DEFS = set(
 )
 EFFECT_OPS = {"set", "inc", "beat", "learn", "relocate", "promise", "improv", "hold"}
 
-# 契约写法和 Schema 有意不一样的地方，每条都在 Schema 的 description 里标了 TODO(C-2 评审)。
+# 契约写法和 Schema 有意不一样的地方（C-2 评审定，description 里写了原因）。
 # Effect 的 promise 分支：契约写 promiseId 必填，但效果模板（2.10）和候选事件不写；
-# Schema 里可选，Event.effects 另外要求。
+# Schema 里可选，Event.effects 另外要求。契约 1.6 改成可选后去掉这条例外。
 DOC_REQUIRED_BUT_OPTIONAL = {("Effect", "promise", "promiseId")}
 
 
@@ -296,11 +296,13 @@ INVALID_BECAUSE: dict[str, tuple[str, str]] = {
     "Event/event-id-prefix-evt.json": ("pattern", "eventId"),
     "Event/event-id-ulid-25.json": ("pattern", "eventId"),
     "Event/extra-field.json": ("additionalProperties", ""),
+    "Event/idempotency-key-empty.json": ("minLength", "idempotencyKey"),
     "Event/missing-summary.json": ("required", ""),
     "Event/promise-without-id.json": ("required", "effects/0"),
     "Event/schema-version-1.6.json": ("enum", "schemaVersion"),
     "Event/t-fraction.json": ("type", "t"),
     "Event/t-negative.json": ("minimum", "t"),
+    "MemoryItem/from-events-empty.json": ("minItems", "fromEvents"),
     "MemoryItem/trust-delta-25.json": ("maximum", "trustDelta"),
     "Relationship/level-6.json": ("maximum", "level"),
 }
