@@ -73,7 +73,8 @@ async function encodeTexture(tex, size, isNormal) {
       }
     }
   }
-  const k = size / Math.max(info.width, info.height);
+  // never scale up: a 1024 source in a 2048 slot only costs bytes
+  const k = Math.min(1, size / Math.max(info.width, info.height));
   const png = await sharp(data, {
     raw: { width: info.width, height: info.height, channels: 4 },
   })
@@ -100,7 +101,7 @@ async function encodeTexture(tex, size, isNormal) {
       };
   const out = await encodeToKTX2(new Uint8Array(png), opts);
   tex.setImage(new Uint8Array(out)).setMimeType("image/ktx2");
-  return out.length;
+  return [out.length, Math.round(Math.max(info.width, info.height) * k)];
 }
 
 async function run(file, tier) {
@@ -124,9 +125,9 @@ async function run(file, tier) {
       if (tier === "high" && (skin || name === "tunic"))
         size = isNormal ? 1024 : 2048;
       if (tier === "high" && skin) size = 2048;
-      const n = await encodeTexture(tex, size, isNormal);
+      const [n, encoded] = await encodeTexture(tex, size, isNormal);
       rep.textures[`${name}.${slot}`] = {
-        size,
+        size: encoded,
         bytes: n,
         ...(isNormal ? { leanDeg: tex.getExtras().normalLeanDeg } : {}),
       };

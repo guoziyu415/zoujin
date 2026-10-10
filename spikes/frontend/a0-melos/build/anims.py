@@ -3,14 +3,29 @@
 The real clips come from CC0 motion capture (Quaternius UAL / CMU) retargeted on the
 Mac.  These exist so export, file size and playback can be tested now.
 Rotations are written in armature rest axes (Z up, character faces -Y, left = +X)
-and converted to each bone's local axes.
+and converted to each bone's local axes.  The clips are written for the MakeHuman default
+rig of the stand-in; on MPFB's game_engine rig (the Melos build) build() maps the names and
+measures how far the arms must come down from that rig's rest pose.
 """
 import math
 
 import bpy
-from mathutils import Matrix, Quaternion, Vector
+from mathutils import Quaternion, Vector
 
 FPS = 30
+NAMES = {}        # stand-in bone -> bone of the rig being animated (filled by build())
+ARM_DOWN = 38.0   # degrees from the rest A-pose to arms at the sides (stand-in; build() measures others)
+
+
+def _game_engine_names():
+    m = {'spine01': 'spine_03', 'spine03': 'spine_02', 'neck02': 'neck_01'}
+    for big, s in (('L', 'l'), ('R', 'r')):
+        m |= {f'upperarm01.{big}': f'upperarm_{s}', f'lowerarm01.{big}': f'lowerarm_{s}',
+              f'upperleg01.{big}': f'thigh_{s}', f'lowerleg01.{big}': f'calf_{s}', f'foot.{big}': f'foot_{s}'}
+        for i, f in enumerate(('thumb', 'index', 'middle', 'ring', 'pinky'), 1):
+            m[f'finger{i}-1.{big}'] = f'{f}_01_{s}'
+            m[f'finger{i}-2.{big}'] = f'{f}_02_{s}'
+    return m
 
 
 def _local(pb, q_arm):
@@ -30,7 +45,7 @@ def _key(rig, frame, pose):
             pb.location = pb.bone.matrix_local.to_3x3().inverted() @ q
             pb.keyframe_insert('location', frame=frame)
             continue
-        pb = rig.pose.bones.get(name)
+        pb = rig.pose.bones.get(NAMES.get(name, name))
         if pb is None:
             continue
         pb.rotation_mode = 'QUATERNION'
@@ -40,8 +55,8 @@ def _key(rig, frame, pose):
 
 def arms_down(pose, swing_l=0.0, swing_r=0.0, elbow=12.0):
     # rest pose is an A-pose; bring the arms to the sides, then swing forward/back about X
-    pose['upperarm01.L'] = _rot((1, 0, 0), swing_l) @ _rot((0, 1, 0), 38)
-    pose['upperarm01.R'] = _rot((1, 0, 0), swing_r) @ _rot((0, 1, 0), -38)
+    pose['upperarm01.L'] = _rot((1, 0, 0), swing_l) @ _rot((0, 1, 0), ARM_DOWN)
+    pose['upperarm01.R'] = _rot((1, 0, 0), swing_r) @ _rot((0, 1, 0), -ARM_DOWN)
     pose['lowerarm01.L'] = _rot((1, 0, 0), -elbow)
     pose['lowerarm01.R'] = _rot((1, 0, 0), -elbow)
     for s in 'LR':
@@ -130,6 +145,12 @@ def run(t, T):
 
 
 def build(rig):
+    global ARM_DOWN
+    if 'upperarm_l' in rig.pose.bones:
+        NAMES.update(_game_engine_names())
+        b = rig.data.bones['upperarm_l']
+        v = b.tail_local - b.head_local
+        ARM_DOWN = 78.0 - math.degrees(math.atan2(-v.z, v.x))   # to 78 degrees below horizontal
     for tr in list(rig.animation_data.nla_tracks) if rig.animation_data else []:
         rig.animation_data.nla_tracks.remove(tr)
     a = make_action(rig, 'idle', 4.0, idle)

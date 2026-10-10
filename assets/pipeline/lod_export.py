@@ -71,9 +71,42 @@ def delete_group(ob, gname):
     dl = bm.verts.layers.deform.active
     kill = [v for v in bm.verts if dl and gi in v[dl] and v[dl][gi] > 0.5]
     bmesh.ops.delete(bm, geom=kill, context='VERTS')
+    # edges left without a face along the cut: Surface Deform refuses a target with them ("invalid polygons")
+    bmesh.ops.delete(bm, geom=[e for e in bm.edges if not e.link_faces], context='EDGES')
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_edges], context='VERTS')
     bm.to_mesh(ob.data)
     bm.free()
     ob.data.update()
+    return len(kill)
+
+
+def drop_islands(ob, keep=100):
+    """Remove every part of the mesh with fewer than `keep` vertices. MPFB leaves MakeHuman's joint helpers
+    (small 8-vertex cubes, hidden by its Mask modifier) in the skin mesh; two stacks stood in front of the eyes.
+    Only on the outputs: with the cubes gone from the Surface Deform target the bind fails ("invalid polygons")."""
+    bm = bmesh.new()
+    bm.from_mesh(ob.data)
+    seen, kill = set(), []
+    for v in bm.verts:
+        if v in seen:
+            continue
+        comp, stack = [], [v]
+        seen.add(v)
+        while stack:
+            x = stack.pop()
+            comp.append(x)
+            for e in x.link_edges:
+                o = e.other_vert(x)
+                if o not in seen:
+                    seen.add(o)
+                    stack.append(o)
+        if len(comp) < keep:
+            kill += comp
+    bmesh.ops.delete(bm, geom=kill, context='VERTS')
+    bm.to_mesh(ob.data)
+    bm.free()
+    ob.data.update()
+    report.setdefault('islands_removed_verts', {})[ob.name] = len(kill)
     return len(kill)
 
 
@@ -376,11 +409,17 @@ def merge_parts(objs, name, layout, size, alpha):
     t.image = img
     nt.links.new(t.outputs['Color'], bsdf.inputs['Base Color'])
     if alpha:
-        nt.links.new(t.outputs['Alpha'], bsdf.inputs['Alpha'])
-        try:
-            mat.blend_method = 'CLIP'
-        except Exception:
-            pass
+        # alpha = 1 - (a < cutoff): the node pattern the glTF exporter writes as alphaMode MASK (a texture
+        # linked straight into Alpha exports as BLEND, which three.js sorts and draws without depth writes)
+        lt = nt.nodes.new('ShaderNodeMath')
+        lt.operation = 'LESS_THAN'
+        lt.inputs[1].default_value = ALPHA_CUTOFF
+        inv = nt.nodes.new('ShaderNodeMath')
+        inv.operation = 'SUBTRACT'
+        inv.inputs[0].default_value = 1.0
+        nt.links.new(t.outputs['Alpha'], lt.inputs[0])
+        nt.links.new(lt.outputs[0], inv.inputs[1])
+        nt.links.new(inv.outputs[0], bsdf.inputs['Alpha'])
     bsdf.inputs['Roughness'].default_value = float(np.mean(rough))
     for ob in parts:
         ob.data.materials.clear()
@@ -394,6 +433,8 @@ def merge_parts(objs, name, layout, size, alpha):
     return active
 
 
+ALPHA_CUTOFF = 0.35   # hair cards: low enough to keep the thin strand ends
+TEETH_HIGH = 2400     # tris; the MPFB teeth are 7.1k, which alone would push talk_high past 40k
 # hair cards: hair 752 + brows and lashes 240 each, 16 px gutters; mouth: teeth and tongue side by side
 HAIR_LAYOUT = ((1024, 1024), [(0, 0, 752), (768, 0, 240), (768, 272, 240)])
 MOUTH_LAYOUT = ((1024, 512), [(0, 0, 496), (512, 0, 496)])
@@ -405,7 +446,8 @@ def main():
 
     # 8 parts -> 5 materials (skin, eyes, hair cards, clothes, teeth): art-direction 9.2
     hair = merge_parts([o['Hair'], o['Brows'], o['Lashes']], 'hair', HAIR_LAYOUT[1], HAIR_LAYOUT[0], True)
-    mouth = merge_parts([o['Teeth'], o['Tongue']], 'teeth', MOUTH_LAYOUT[1], MOUTH_LAYOUT[0], False)
+    teeth_h = decimate_keep_keys(o['Teeth'], TEETH_HIGH) if tris(o['Teeth']) > TEETH_HIGH else o['Teeth']
+    mouth = merge_parts([teeth_h, o['Tongue']], 'teeth', MOUTH_LAYOUT[1], MOUTH_LAYOUT[0], False)
     report['merged'] = {'hair': tris(hair), 'teeth': tris(mouth)}
 
     for part in (hair, mouth):
@@ -413,6 +455,8 @@ def main():
 
     # ---------- high: the build as is, skin cut into head (morphs) + body (none)
     body_h, head_h = split_head(o['Body'])
+    for part in (body_h, head_h):
+        drop_islands(part)
     high = [body_h, head_h, o['Eyes'], hair, mouth, o['Tunic']]
     report['talk_high'] = {'tris': sum(tris(x) for x in high), 'parts': {x.name: tris(x) for x in high}}
     report['talk_high']['bytes'] = export(high, os.path.join(outdir, 'talk_high.glb'))
@@ -428,6 +472,7 @@ def main():
     tunic_s = decimate_keep_keys(o['Tunic'], 3000)
     mouth_s = merge_parts([teeth_s, o['Tongue']], 'teeth', MOUTH_LAYOUT[1], MOUTH_LAYOUT[0], False)
     report['pruned_keys']['teeth_std'] = prune_keys(mouth_s)
+    drop_islands(body_s)
     body_ss, head_s = split_head(body_s)
     std = [body_ss, head_s, o['Eyes'], hair, mouth_s, tunic_s]
     report['talk_std'] = {'tris': sum(tris(x) for x in std), 'parts': {x.name: tris(x) for x in std}}
@@ -438,6 +483,7 @@ def main():
     # ---------- walk: one mesh, 8k, one material
     parts = [dup(body, 'w_body', keys=False), dup(o['Tunic'], 'w_tunic', keys=False),
              dup(o['Hair'], 'w_hair', keys=False), dup(o['EyesLow'], 'w_eyes', keys=False)]
+    drop_islands(parts[0])
     for p in parts:
         for g in list(p.vertex_groups):
             if g.name.startswith('__'):

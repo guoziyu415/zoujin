@@ -109,13 +109,13 @@ input[type=text]{font:inherit;width:100%;padding:8px;border-radius:8px;border:1p
   <div class="row" data-key="dpr"><button data-v="1.5">1.5</button><button data-v="2">2</button><button data-v="3">设备上限</button></div>
   <h3>这些人物的资源</h3>
   <div id="sizes" class="note"></div>
-  <p class="credit">人物现在是<b>替身</b>：用 npm 上一份 2016 年的 MakeHuman 数据拼的（同一套人体拓扑，文件头是 AGPL），只用来打通流水线、量下载和帧时间，<b>不是正式的梅洛斯，也不进产品</b>。动作是程序生成的占位，正式的用 CC0 动作捕捉。声音：S-1 casting 时 Gemini Live 的 Fenrir 录音（D-025 定为梅洛斯的声音），剪成三句，只在这一页用；元音模板用 Open JTalk（MIT）和 HTS 音声「Mei」（CC BY 3.0，名古屋工业大学）合成的元音。广场的石材贴图：Crytek Sponza（CC BY 3.0，经 Khronos glTF Sample Assets），建筑是程序生成的临时模型。</p>
+  <p class="credit">人物是梅洛斯第一版：用 MPFB 2（Blender 的 MakeHuman 插件）建的，皮肤、眼、眉、睫毛、牙、舌、短发是 MPFB 官方系统素材（CC0）；衣服（未染羊毛的 exomis、赭色腰带、皮凉鞋）和衣服贴图是脚本生成的。动作还是程序生成的占位，正式的用 Quaternius 的 CC0 动作捕捉。声音：S-1 casting 时 Gemini Live 的 Fenrir 录音（D-025 定为梅洛斯的声音），剪成三句，只在这一页用；元音模板用 Open JTalk（MIT）和 HTS 音声「Mei」（CC BY 3.0，名古屋工业大学）合成的元音。广场的石材贴图：Crytek Sponza（CC BY 3.0，经 Khronos glTF Sample Assets），建筑是程序生成的临时模型。</p>
 </div>
 <div id="cover">
   <div class="in">
     <h1>人物特写样板（A-0）</h1>
     <p>约束の日・17:30 的广场，和一个写实人物面对面。这一页看两件事：<b>人物在对话镜头里像不像真人</b>（眨眼、视线、嘴跟着声音动、眉、皮肤），以及<b>人物要花多少下载和帧时间</b>。</p>
-    <p id="standinNote">现在的人物是替身，脸和衣服都不是梅洛斯，只用来先把流水线和计测打通。声音是正式定下的 Fenrir。</p>
+    <p id="standinNote">现在的人物是梅洛斯第一版（脸、身材、衣服按美术方向 5.4 建）。动作还是占位的，声音是正式定下的 Fenrir。</p>
     <div id="prog"><div></div></div>
     <div id="loadmsg">正在加载…</div>
     <div class="go">
@@ -467,6 +467,14 @@ async function loadModel(model) {
       t.fwd[n] = new THREE.Vector3(0, 0, 1).applyQuaternion(q);
       t.up[n] = new THREE.Vector3(0, 1, 0).applyQuaternion(q);
     }
+    // MPFB's game_engine rig has no eye bones: keep where the eyes sit in head space (gaze and framing need it)
+    const headB = root.getObjectByName('head');
+    root.traverse((o) => {
+      if (o.isMesh && /^Eyes/.test(o.name) && headB && !root.getObjectByName('eyeL')) {
+        o.computeBoundingBox();   // SkinnedMesh: the skinned (rest pose) box; the quantized geometry box is not in metres
+        t.eyeInHead = headB.worldToLocal(o.boundingBox.getCenter(new THREE.Vector3()).applyMatrix4(o.matrixWorld));
+      }
+    });
     root.traverse((o) => {
       if (!o.isMesh) return;
       t.meshes++;
@@ -606,7 +614,7 @@ class Char {
     this.root.updateMatrixWorld(true);
     let extra = null;
     const B = this.bones, T = this.t;
-    if (this.look && cfg.gaze !== 'off' && B.head && B.eyeL) {
+    if (this.look && cfg.gaze !== 'off' && B.head && (B.eyeL || T.eyeInHead)) {
       // head turns a little and lags; eyes go all the way, with small saccades every 0.6-2.5 s
       if (!this.lookInit) { this.lookS.copy(this.look); this.lookInit = true; }
       this.lookS.lerp(this.look, 1 - Math.exp(-dt * 3));
@@ -614,14 +622,20 @@ class Char {
       this.saccT -= dt;
       if (this.saccT <= 0) { this.saccT = 0.6 + Math.random() * 1.9; this.sacc.set((Math.random() - 0.5) * 0.05, (Math.random() - 0.5) * 0.03, 0); }
       _v.copy(this.look).add(this.saccOf ? this.saccOf.sacc : this.sacc);
-      aim(B.eyeL, T.fwd.eyeL, _v, 28 * D2R, 1); aim(B.eyeR, T.fwd.eyeR, _v, 28 * D2R, 1);
-      // eyelids follow the eyes: angles of the gaze in head space drive the eyeLook shapes
       B.head.getWorldQuaternion(_qa).invert();
-      B.eyeL.getWorldQuaternion(_qw);
-      _c.copy(T.fwd.eyeL).applyQuaternion(_qw).applyQuaternion(_qa);
+      if (B.eyeL) {
+        aim(B.eyeL, T.fwd.eyeL, _v, 28 * D2R, 1); aim(B.eyeR, T.fwd.eyeR, _v, 28 * D2R, 1);
+        // eyelids follow the eyes: angles of the gaze in head space drive the eyeLook shapes
+        B.eyeL.getWorldQuaternion(_qw);
+        _c.copy(T.fwd.eyeL).applyQuaternion(_qw).applyQuaternion(_qa);
+      } else {
+        // no eye bones (MPFB game_engine rig): the eyeLook shapes turn the eyes and the lids together
+        _c.copy(_v).sub(eyesMid(this, _p)).normalize().applyQuaternion(_qa);
+      }
       const f = T.fwd.head, u = T.up.head; _w.crossVectors(u, f);   // _w = character's left in head space
       const yaw = Math.atan2(_c.dot(_w), _c.dot(f)), pitch = Math.asin(THREE.MathUtils.clamp(_c.dot(u), -1, 1));
-      const ky = THREE.MathUtils.clamp(yaw / (30 * D2R), -1, 1) * 0.6, kp = THREE.MathUtils.clamp(pitch / (25 * D2R), -1, 1) * 0.6;
+      const gain = B.eyeL ? 0.6 : 1.0;   // with eye bones the shapes only move the lids
+      const ky = THREE.MathUtils.clamp(yaw / (30 * D2R), -1, 1) * gain, kp = THREE.MathUtils.clamp(pitch / (25 * D2R), -1, 1) * gain;
       extra = { eyeLookOutLeft: Math.max(0, ky), eyeLookInRight: Math.max(0, ky), eyeLookInLeft: Math.max(0, -ky), eyeLookOutRight: Math.max(0, -ky),
         eyeLookUpLeft: Math.max(0, kp), eyeLookUpRight: Math.max(0, kp), eyeLookDownLeft: Math.max(0, -kp), eyeLookDownRight: Math.max(0, -kp) };
     }
@@ -697,11 +711,12 @@ async function setCast() {
 }
 // metres per second that match each placeholder clip's stride (no foot sliding); re-measure with the mocap clips
 const GAIT_SPEED = { walk: 1.15, run: 3.0 };
-const playerEyes = new THREE.Vector3().copy(SPOT.player).setY(1.78);   // the stand-in is tall: eyes at about 1.87 m
+const playerEyes = new THREE.Vector3().copy(SPOT.player).setY(1.65);   // the player figure is the walk model: eyes at 1.65 m
 
 // ---------------------------------------------------------------- camera per view
 function eyesMid(c, out = new THREE.Vector3()) {
   const a = c.bones.eyeL, b = c.bones.eyeR;
+  if ((!a || !b) && c.t.eyeInHead && c.bones.head) { c.root.updateMatrixWorld(true); return c.bones.head.localToWorld(out.copy(c.t.eyeInHead)); }
   if (!a || !b) return out.copy(c.root.position).setY(1.62);
   c.root.updateMatrixWorld(true);
   a.getWorldPosition(out); b.getWorldPosition(_p); return out.add(_p).multiplyScalar(0.5);
