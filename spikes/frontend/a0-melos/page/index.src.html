@@ -302,16 +302,16 @@ function onResize() {
   if (viewMode === 'look') setView(view);
 }
 const GradeShader = {
-  uniforms: { tDiffuse: { value: null }, uVig: { value: 0.32 }, uWarm: { value: 0.06 }, uContrast: { value: 1.06 }, uSat: { value: 1.12 } },
+  uniforms: { tDiffuse: { value: null }, uVig: { value: 0.32 }, uVigC: { value: new THREE.Vector2(0.5, 0.5) }, uVigSx: { value: 1 }, uWarm: { value: 0.06 }, uContrast: { value: 1.06 }, uSat: { value: 1.12 } },
   vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-  fragmentShader: `uniform sampler2D tDiffuse; uniform float uVig, uWarm, uContrast, uSat; varying vec2 vUv;
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float uVig, uVigSx, uWarm, uContrast, uSat; uniform vec2 uVigC; varying vec2 vUv;
     void main(){ vec4 c = texture2D(tDiffuse, vUv); vec3 col = c.rgb;
       float l = dot(col, vec3(0.2126,0.7152,0.0722));
       col = max(mix(vec3(l), col, uSat), 0.0);
       col = mix(col, col * vec3(1.0 + uWarm, 1.0, 1.0 - uWarm), smoothstep(0.35, 0.9, l));
       col = mix(col, col * vec3(1.0 - uWarm*0.6, 1.0, 1.0 + uWarm), 1.0 - smoothstep(0.05, 0.35, l));
       col = (col - 0.5) * uContrast + 0.5;
-      vec2 d = vUv - 0.5; col *= 1.0 - uVig * dot(d, d) * 2.2;
+      vec2 d = (vUv - uVigC) * vec2(uVigSx, 1.0); col *= 1.0 - uVig * dot(d, d) * 2.2;
       gl_FragColor = vec4(clamp(col, 0.0, 1.0), c.a); }`,
 };
 function ensureComposer() {
@@ -438,18 +438,33 @@ const SKIN_CHUNK = THREE.ShaderChunk.lights_physical_pars_fragment.replace(DIFFU
     reflectedLight.directDiffuse += directLight.color * material.diffuseContribution * ( uRim * rimV * rimL );
   #endif`);
 const SKIN_OK = SKIN_CHUNK !== THREE.ShaderChunk.lights_physical_pars_fragment;
+// the tunic's bands, rope, knots and sandal straps (the thin parts: right half of the UV square, v < 0.55 in glTF's
+// flipped v) are a centimetre thick, under one shadow texel: they shadowed themselves and the cloth under them, and
+// lit only by the sky they went blue-grey (UX rounds 1-4). Their shadow lookup moves towards the sun by 3 texels, so
+// they still fall in a wall's or the head's shadow but not in their own.
+const THIN_SHADOW = { dir: { value: new THREE.Vector3(0, 1, 0) }, lift: { value: 0.05 } };
+const DIR_SHADOW_LINE = 'shadowWorldPosition = worldPosition + vec4( shadowWorldNormal * directionalLightShadows[ i ].shadowNormalBias, 0 );';
+const THIN_SHADOW_CHUNK = 'float thinLift = ( uv.x > 0.62 && uv.y < 0.55 ) ? uThinLift : 0.0;\n'
+  + THREE.ShaderChunk.shadowmap_vertex.replace(DIR_SHADOW_LINE,
+    'shadowWorldPosition = worldPosition + vec4( shadowWorldNormal * directionalLightShadows[ i ].shadowNormalBias + uSunDirW * thinLift, 0 );');
+const THIN_OK = THIN_SHADOW_CHUNK.includes('uSunDirW');
 function patchMaterial(m) {
   const skin = m.name === 'skin', rim = RIM_PARTS.has(m.name);
   if (m.name === 'hair') { m.alphaTest = 0.35; m.alphaToCoverage = true; }
+  const thin = m.name === 'tunic' && THIN_OK;
   m.onBeforeCompile = (sh) => {
     fogUniforms(sh);
+    if (thin) {
+      sh.uniforms.uSunDirW = THIN_SHADOW.dir; sh.uniforms.uThinLift = THIN_SHADOW.lift;
+      sh.vertexShader = 'uniform vec3 uSunDirW;\nuniform float uThinLift;\n' + sh.vertexShader.replace('#include <shadowmap_vertex>', THIN_SHADOW_CHUNK);
+    }
     const wrap = skin && cfg.skin && SKIN_OK;
     if (!wrap && !rim) return;
     sh.uniforms.uSkinScatter = SKIN_SCATTER; sh.uniforms.uRim = RIM;
     sh.fragmentShader = (wrap ? '#define SKIN_WRAP\n' : '') + (rim ? '#define CHAR_RIM\n' : '') + 'uniform vec3 uSkinScatter;\nuniform float uRim;\n'
       + sh.fragmentShader.replace('#include <lights_physical_pars_fragment>', SKIN_CHUNK);
   };
-  m.customProgramCacheKey = () => (skin && cfg.skin ? 'skin1' : 'char') + (rim ? 'r' : '');
+  m.customProgramCacheKey = () => (skin && cfg.skin ? 'skin1' : 'char') + (rim ? 'r' : '') + (thin ? 't' : '');
 }
 
 // ---------------------------------------------------------------- characters
@@ -768,8 +783,8 @@ async function setCast() {
 // ground speed of each clip as exported (m/s, retarget.py's report: the planted foot sliding back), and the speeds
 // Melos walks, runs and sprints at here (retarget.py STYLE speed: the run and sprint are restyled for these); the
 // clips are sped up or slowed down to match (play())
-const CLIP_SPEED = { walk: 1.027, run: 3.847, sprint: 6.002 };
-const GAIT_SPEED = { walk: 1.15, run: 4.9, sprint: 6.5 };
+const CLIP_SPEED = { walk: 1.027, run: 3.847, sprint: 6.596 };
+const GAIT_SPEED = { walk: 1.15, run: 4.9, sprint: 6.6 };
 const playerEyes = new THREE.Vector3().copy(SPOT.player).setY(1.65);   // the player figure is the walk model: eyes at 1.65 m
 
 // ---------------------------------------------------------------- camera per view
@@ -820,10 +835,9 @@ function setView(name) {
       const fwd = new THREE.Vector3(0, 0, 1).applyQuaternion(melos.root.quaternion);
       camera.position.copy(face).addScaledVector(fwd, 2.0);
       camera.fov = 2 * Math.atan(FACE_H / 2 / 2.0 / 0.2) / D2R; camera.updateProjectionMatrix();
-      pairCam = camera.clone();
-      frameAt(face, -0.5, 0.15);
-      pairCam.lookAt(face); const tanH = Math.tan(pairCam.fov * D2R / 2);
-      pairCam.rotateX(-Math.atan(0.15 * tanH)); pairCam.rotateY(Math.atan(0.5 * tanH * pairCam.aspect));
+      // one camera for both halves, looking straight at him; renderOnce slides its window a quarter screen each way,
+      // so both halves see him from the same angle (before, each half turned the camera its own way)
+      frameAt(face, 0, 0.15);
     } else if (name === 'explore') {
       // the product's follow camera (ux-design 6.3: distance about 13.5, height about 7.6)
       camera.fov = 50; camera.updateProjectionMatrix();
@@ -1056,6 +1070,7 @@ function updateSun() {
   const c = sun.shadow.camera;
   if (c.right !== half) { c.left = -half; c.right = half; c.top = half; c.bottom = -half; c.near = 1; c.far = 220; c.updateProjectionMatrix(); }
   const texel = (2 * half) / Math.max(1, cfg.shadow || 1024);
+  THIN_SHADOW.dir.value.copy(sunDirCur); THIN_SHADOW.lift.value = 3 * texel;
   _lr.lookAt(new THREE.Vector3(), _v.copy(sunDirCur).negate(), UP); _li.copy(_lr).invert();
   center.applyMatrix4(_li); center.x = Math.round(center.x / texel) * texel; center.y = Math.round(center.y / texel) * texel; center.applyMatrix4(_lr);
   sun.target.position.copy(center); sun.position.copy(center).addScaledVector(sunDirCur, 120);
@@ -1102,7 +1117,6 @@ $('brow').onclick = () => { browIdx = (browIdx + 1) % BROW.length; $('brow').tex
 
 // ---------------------------------------------------------------- frame loop + stats
 const ft = []; let last = performance.now(), simT = 0, frameNo = 0, rec = null, stressN = 1;
-let pairCam = null;
 function drawWith(cam) {
   if (cfg.post) { composer.passes[0].camera = cam; composer.render(); composer.passes[0].camera = camera; }
   else renderer.render(scene, cam);
@@ -1111,10 +1125,16 @@ function renderOnce() {
   if (view !== 'pair' || viewMode !== 'look') { drawWith(camera); return; }
   // split screen: the post passes still draw full frames off screen; only the final copy to the screen is cut
   const a = pool.get('pair_std'), b = pool.get('pair_high'), w = innerWidth, h = innerHeight;
+  const m = Math.floor(w / 2), q = Math.floor(w / 4); // each half shows the window [q, q + half) of the centred view
+  // the vignette is centred on each half too: with one full-screen vignette the left figure's right side and the
+  // right figure's left side were the bright middle of the screen, and the same model read ΔE 5.5 apart there
+  const vig = gradePass?.uniforms, vigAt = (x, sx) => { if (vig) { vig.uVigC.value.set(x, 0.5); vig.uVigSx.value = sx; } };
   renderer.setScissorTest(true);
-  a.root.visible = true; b.root.visible = false; renderer.setScissor(0, 0, Math.floor(w / 2), h); drawWith(camera);
-  a.root.visible = false; b.root.visible = true; renderer.setScissor(Math.floor(w / 2), 0, w - Math.floor(w / 2), h);
-  pairCam.position.copy(camera.position); drawWith(pairCam);
+  a.root.visible = true; b.root.visible = false; renderer.setScissor(0, 0, m, h);
+  camera.setViewOffset(w, h, q, 0, w, h); vigAt(m / 2 / w, w / m); drawWith(camera);
+  a.root.visible = false; b.root.visible = true; renderer.setScissor(m, 0, w - m, h);
+  camera.setViewOffset(w, h, q - m, 0, w, h); vigAt((m + w) / 2 / w, w / (w - m)); drawWith(camera);
+  camera.clearViewOffset(); vigAt(0.5, 1);
   a.root.visible = b.root.visible = true;
   renderer.setScissorTest(false);
 }

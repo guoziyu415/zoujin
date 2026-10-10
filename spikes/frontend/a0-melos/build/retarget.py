@@ -37,10 +37,11 @@ FPS = 30
 # arms_in: how far the upper arms' mean pose moves towards idle's; knee: bone -> (stance, swing) scale of its bend
 # beyond the straightest frame; bend: the same in every frame; rise: how far the pelvis may rise in stance above its
 # lowest stance height (the planted leg bends to reach); clear: the swinging foot's least height at mid-swing. speed: what the game plays it at (test page GAIT_SPEED;
-# the sprint is Melos coming in at the end, spent, at about 6.5 m/s), for the time in the air and the report.
+# the sprint is Melos coming in at the end, spent, at about 6.6 m/s), for the time in the air and the report.
 # Tuned against UX round 3 (real run at 4.9 m/s: 165-180 steps/min, about 1.7 m a step, pelvis 7-10 cm, swinging
-# foot about knee high): run 164 steps/min, 1.8 m, 8 cm, ankle at most 0.39 m (knee 0.51 m). Sprint at 6.5 m/s:
-# 195 steps/min, 2.0 m, 7 cm, ankle at most 0.27 m (UX: heel at most 0.8 m, pelvis at most 8 cm).
+# foot about knee high): run 164 steps/min, 1.8 m, 8 cm, ankle at most 0.39 m (knee 0.51 m). Sprint, UX round 4
+# (180 steps/min, 2.2 m a step, ankle 0.45-0.5 m, pelvis 7 cm; v8's 195 steps/min with the ankle at 0.27 m read as
+# a fast shuffle): at 6.6 m/s 180 steps/min, 2.2 m, 7 cm, ankle at most 0.49 m, UAL's own knee bend in the swing.
 STYLE = {
     'run': {
         'contact': 0.45,
@@ -54,13 +55,12 @@ STYLE = {
         'speed': 4.9,
     },
     'sprint': {
-        'contact': 0.38,
+        'contact': 0.345,
         'swing': {'upperarm_l': 0.8, 'upperarm_r': 0.8, 'pelvis': 0.8},
         'arms_in': 0.3,
-        'knee': {'calf_l': (1.0, 0.7), 'calf_r': (1.0, 0.7)},
-        'rise': 0.03,
-        'clear': 0.1,
-        'speed': 6.5,
+        'rise': 0.005,
+        'clear': 0.16,
+        'speed': 6.6,
     },
     'walk': {'speed': 1.15},
 }

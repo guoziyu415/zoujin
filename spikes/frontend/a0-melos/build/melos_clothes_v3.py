@@ -31,8 +31,9 @@ import melos_clothes_v2 as v2  # noqa: E402  (its helpers: parts, tubes, weights
 
 NEW_UV = v2.NEW_UV
 # bundle: centre height, tilt (its across axis goes down towards his left), half sizes across / deep / up
-BUNDLE_Z, BUNDLE_TILT = 1.31, math.radians(15)
-BUNDLE_HALF = (0.27, 0.11, 0.19)
+# UX round 4: 8 cm lower and a tenth narrower, so from the front it no longer rings his neck (top under the shoulders)
+BUNDLE_Z, BUNDLE_TILT = 1.23, math.radians(15)
+BUNDLE_HALF = (0.243, 0.11, 0.19)
 BUNDLE_SEGS, BUNDLE_RINGS = 28, 12
 # where the cloth gathers, as directions from the bundle's centre in its own frame (x across, y back, z up): the
 # knot on its back, and the corners that leave as bands (top on his right, bottom on his left)

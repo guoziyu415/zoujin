@@ -13,7 +13,11 @@ $BPY melos_prep.py <melos.blend> <tex_dir from melos_tex.py> <out.blend>
 - Skin: the scalp (MakeHuman's `scalp` vertex group) painted towards the hair colour with a soft edge, so the skin
   between the hair cards and along the hairline reads as hair instead of a bright ragged line.
 - Hair (v3, UX round 2): warm dark brown, its outline pushed out in soft clumps about 2 cm across (small curls
-  instead of a smooth helmet).
+  instead of a smooth helmet). Round 4: 1 cm thinner on top, still round; a few of the front cards copied smaller
+  onto the forehead and temples, so the hairline is no longer a straight line; the scalp tinted after the AO bake,
+  to the hair's colour a little darker (the roots), since between the cards it showed reddish and lighter than them.
+- Specular: the tunic and the hair reflect half as much at grazing angles (KHR_materials_specular 0.5); at the
+  default the bands and the card edges caught the blue sky as a rim (UX round 4). The tunic is fully rough.
 - Dust from a day on the road, by height on the body: feet and shins below the knee, the tunic's hem, the sandals.
   The tunic's shoulders are faded by the sun where the cloth faces up.
 - Skin normal map (new in v2; compress.mjs keeps it at 2048 on the high tier and 1024 on std): the larger relief in
@@ -28,6 +32,12 @@ $BPY melos_prep.py <melos.blend> <tex_dir from melos_tex.py> <out.blend>
   one flat texel of the wool texture (no weave, no fading, no AO). Then tunic_base.png and tunic_nrm.png from
   melos_tex.py (UV regions of melos_clothes_v2), packed into the file; triangulated (the sole hulls are n-gons, and
   the exporter cannot compute tangents for the normal map on those).
+- Tunic folds (UX round 4): a height field over the wool's 3D surface, with folds the way it hangs: fanning out from
+  the knot on his left shoulder down to his right hip, soft and horizontal where it bags over the rope, vertical in
+  the skirt, gathered under the rope and deepest at the hem. Turned into a normal map in the wool's UV space (slopes
+  measured on the cloth, so the unwrap's stretching doesn't matter), blended (UDN) with melos_tex's weave; the
+  valleys a little darker in the colour map, so the folds still read on tier B's 512 normal map.
+- Bundle, bands and rope graded to UX round 4's mean colours (melos_tex.PART_MEAN) after the dust and AO.
 - Image paths cut down to the file name (the Mac build recorded absolute paths with the user name; the pixels are
   packed), then unused data purged.
 """
@@ -41,7 +51,11 @@ from mathutils import Vector
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
+from mathutils import Quaternion
+from mathutils.bvhtree import BVHTree
+
 from melos_clothes_v2 import AXIS_Y, HEM_Z, KNEE_Z, NEW_UV, UV_MARGIN
+from melos_tex import PART_MEAN, match_mean
 
 src, tex_dir, out = sys.argv[-3:]
 bpy.ops.wm.open_mainfile(filepath=src)
@@ -53,11 +67,13 @@ ROUGH = {
     "EyesLow": 0.12,
     "Teeth": 0.3,
     "Tongue": 0.35,
-    "Hair": 0.8,  # dark cards at 0.5 mirrored the blue sky in patches, at 0.7 still a blue edge against the sky
+    "Hair": 0.9,  # dark cards at 0.5 mirrored the blue sky in patches, at 0.7-0.8 still a blue edge against the sky
     "Brows": 0.6,
     "Lashes": 0.6,
-    "Tunic": 0.92,
+    "Tunic": 1.0,  # UX round 4: 0.9-1.0, wool has no sheen
 }
+# Principled "Specular IOR Level": 0.25 exports as KHR_materials_specular 0.5, half the reflection at grazing angles
+SPECULAR = {"Hair": 0.25, "Tunic": 0.25}
 MAT_NAME = {"Body": "skin", "Eyes": "eyes", "EyesLow": "eyes", "Teeth": "teeth", "Tongue": "tongue", "Hair": "hair"}
 MAT_NAME |= {"Brows": "brows", "Lashes": "lashes", "Tunic": "tunic"}
 SKIN = (138, 90, 60)  # #8A5A3C
@@ -66,6 +82,10 @@ HAIR = (60, 40, 26)  # warm dark brown (UX round 2: warmer than v2's near black)
 DUST = (152, 134, 110)
 SUN_FADED = (196, 160, 116)
 AO = {"Body": (0.5, 0.06), "Tunic": (0.85, 0.08)}  # strength, distance (m)
+HAIR_DROP = 0.010  # m off the top (UX round 4)
+HAIR_CURLS = 14  # cards copied onto the forehead and temples
+ROOTS = 0.8  # the scalp: the hair's mean colour times this
+FOLD_DARK = 0.1  # fold valleys in the colour map
 AO_SAMPLES = 48
 
 
@@ -233,6 +253,8 @@ def simplify(ob):
             nt.links.remove(link)
         bsdf.inputs["Alpha"].default_value = 1.0
     bsdf.inputs["Roughness"].default_value = ROUGH[ob.name]
+    if ob.name in SPECULAR:
+        bsdf.inputs["Specular IOR Level"].default_value = SPECULAR[ob.name]
     return tex.image
 
 
@@ -278,7 +300,7 @@ def hair_clumps(ob, amp=0.007, cell=0.022):
 
 
 def scalp_tint(ob, skin, hair, amount=0.95, soft=10):
-    """Paint the skin texture under the scalp group towards the hair's mean opaque colour."""
+    """Paint the skin texture under the scalp group towards the hair's mean opaque colour, a little darker."""
     gi = ob.vertex_groups["scalp"].index
     on = np.zeros(len(ob.data.vertices), bool)
     for v in ob.data.vertices:
@@ -294,12 +316,78 @@ def scalp_tint(ob, skin, hair, amount=0.95, soft=10):
             faces += 1
     m = np.asarray(mask.filter(ImageFilter.GaussianBlur(soft)), np.float32)[..., None] / 255 * amount
     hp = image_pixels(hair).reshape(-1, 4)
-    colour = hp[hp[:, 3] > 0.9, :3].mean(0)
+    colour = hp[hp[:, 3] > 0.9, :3].mean(0) * ROOTS
     px = image_pixels(skin)  # rows bottom-up, like the UV v axis drawn above
     px[..., :3] = px[..., :3] * (1 - m) + colour * m
     skin.pixels.foreach_set(px.ravel())
     skin.pack()
     return faces
+
+
+def _skin_bvh(body):
+    me = body.data
+    return BVHTree.FromPolygons([v.co.copy() for v in me.vertices], [tuple(p.vertices) for p in me.polygons])
+
+
+def hair_thin_top(hair, body, z0, drop=HAIR_DROP):
+    """UX round 4: the hair `drop` lower on top and still round. Above z0 (the eyes) every vertex moves towards the
+    scalp, the more the higher it sits, so the hair gets thinner on top instead of flatter."""
+    bvh = _skin_bvh(body)
+    me = hair.data
+    co = np.array([v.co[:] for v in me.vertices])
+    near = np.array([bvh.find_nearest(Vector(c))[0][:] for c in co])
+    top = float(co[:, 2].max())
+    w = np.clip((co[:, 2] - z0) / (top - z0), 0, 1)
+    w = w * w * (3 - 2 * w)
+    lo, hi = 0.0, 1.0
+    for _ in range(30):
+        pull = (lo + hi) / 2
+        new = near + (co - near) * (1 - pull * w)[:, None]
+        lo, hi = (pull, hi) if new[:, 2].max() > top - drop else (lo, pull)
+    for kb in list(me.shape_keys.key_blocks) if me.shape_keys else []:
+        for d, a, b in zip(kb.data, co, new):
+            d.co += Vector(b - a)
+    me.vertices.foreach_set("co", new.ravel())
+    me.update()
+    return {"top": round(top, 4), "top_after": round(float(new[:, 2].max()), 4), "pull": round(pull, 3)}
+
+
+def hairline_curls(hair, body, eye, n=HAIR_CURLS, seed=11):
+    """UX round 4: the cards' lower edge drew a straight line across the forehead. n of the lowest cards along it are
+    copied, half to two thirds the size, 0.4-1.4 cm lower on the forehead and temples, turned at random about the
+    skin's normal: an uneven hairline with a few small curls. Corners kept 3 mm off the skin (it moves with the brows,
+    the hair doesn't)."""
+    bvh = _skin_bvh(body)
+    rng = np.random.default_rng(seed)
+    bm = bmesh.new()
+    bm.from_mesh(hair.data)
+    cards = [f for f in bm.faces if all(len(e.link_faces) == 1 for e in f.edges)]
+    cen = np.array([f.calc_center_median()[:] for f in cards])
+    idx = np.flatnonzero((cen[:, 1] < eye[1] + 0.05) & (np.abs(cen[:, 0]) < 0.085))
+    strips = np.digitize(cen[idx, 0], np.linspace(-0.085, 0.085, 8))
+    pool = [j for b in np.unique(strips) for j in idx[strips == b][np.argsort(cen[idx[strips == b], 2])[:3]]]
+    lowest = []
+    for i in rng.choice(pool, size=min(n, len(pool)), replace=False):
+        c = Vector(cen[i])
+        _, n0, _, d0 = bvh.find_nearest(c)
+        q1, n1, _, _ = bvh.find_nearest(c - Vector((0, 0, rng.uniform(0.004, 0.014))))
+        rot = Quaternion(n1, rng.uniform(-0.6, 0.6)) @ n0.rotation_difference(n1)
+        size = rng.uniform(0.5, 0.7)
+        centre = q1 + n1 * min(d0, 0.008)
+        verts = [g for g in bmesh.ops.duplicate(bm, geom=[cards[i]])["geom"] if isinstance(g, bmesh.types.BMVert)]
+        for v in verts:
+            v.co = centre + rot @ ((v.co - c) * size)
+        lift = 0.0
+        for v in verts:
+            q, nq, _, _ = bvh.find_nearest(v.co)
+            lift = max(lift, 0.003 - (v.co - q).dot(nq))
+        for v in verts:
+            v.co += n1 * lift
+        lowest.append(min(v.co.z for v in verts))
+    bm.to_mesh(hair.data)
+    bm.free()
+    hair.data.update()
+    return {"cards": len(lowest), "pool": len(pool), "lowest_z": round(min(lowest), 4)}
 
 
 def wool_uv(ob):
@@ -347,11 +435,140 @@ def _shoelace(q):
     return abs(np.dot(q[:, 0], np.roll(q[:, 1], -1)) - np.dot(q[:, 1], np.roll(q[:, 0], -1))) / 2
 
 
+def _value_noise(p, cell, seed):
+    """Smooth 3D value noise, -1..1, at the points p (n x 3, metres)."""
+    g = np.random.default_rng(seed).uniform(-1, 1, (64, 64, 64)).astype(np.float32)
+    q = p / cell
+    i = np.floor(q).astype(int)
+    f = q - i
+    f = f * f * (3 - 2 * f)
+    out = np.zeros(len(p), np.float32)
+    for dx in (0, 1):
+        for dy in (0, 1):
+            for dz in (0, 1):
+                w = np.prod([f[:, k] if d else 1 - f[:, k] for k, d in enumerate((dx, dy, dz))], axis=0)
+                out += w * g[(i[:, 0] + dx) % 64, (i[:, 1] + dy) % 64, (i[:, 2] + dz) % 64]
+    return out
+
+
+def wool_positions(ob, size):
+    """Each wool texel's point on the cloth, and which texels the wool covers (rows bottom-up, like image_pixels)."""
+    uvl = ob.data.uv_layers[0].data
+    mw = ob.matrix_world
+    co = np.array([(mw @ v.co)[:] for v in ob.data.vertices])
+    pos = np.zeros((size, size, 3), np.float32)
+    cover = np.zeros((size, size), bool)
+    for p in ob.data.polygons:
+        if not in_region(uv_centre(ob, p), "wool"):
+            continue
+        vi = list(p.vertices)
+        uv = np.array([uvl[i].uv[:] for i in p.loop_indices]) * size - 0.5  # texel centres on the integers
+        for k in range(1, len(vi) - 1):
+            a, b, c = uv[0], uv[k], uv[k + 1]
+            (x0, y0), (x1, y1) = np.floor(np.min([a, b, c], 0)).astype(int), np.ceil(np.max([a, b, c], 0)).astype(int)
+            x0, y0, x1, y1 = max(x0, 0), max(y0, 0), min(x1, size - 1), min(y1, size - 1)
+            m = np.array([b - a, c - a]).T
+            if x1 < x0 or y1 < y0 or abs(np.linalg.det(m)) < 1e-12:
+                continue
+            ys, xs = np.mgrid[y0 : y1 + 1, x0 : x1 + 1]
+            xy = np.stack([xs.ravel(), ys.ravel()], -1).astype(float)
+            l12 = np.linalg.solve(m, (xy - a).T).T
+            l0 = 1 - l12.sum(1)
+            inside = (l0 >= -1e-6) & (l12 >= -1e-6).all(1)
+            pts = l0[inside, None] * co[vi[0]] + l12[inside, :1] * co[vi[k]] + l12[inside, 1:] * co[vi[k + 1]]
+            yy, xx = xy[inside, 1].astype(int), xy[inside, 0].astype(int)
+            pos[yy, xx], cover[yy, xx] = pts, True
+    return pos, cover
+
+
+def tunic_folds(ob, base, nrm_in, nrm_out):
+    """The folds' height field over the wool (see the module notes), written into a copy of nrm_in at nrm_out;
+    the valleys darkened in base. Returns numbers for the report."""
+    size = base.size[0]
+    pos, cover = wool_positions(ob, size)
+    co = np.array([v.co[:] for v in ob.data.vertices])
+    in_part = {n: sorted({i for p in ob.data.polygons if in_region(uv_centre(ob, p), n) for i in p.vertices})
+               for n in ("wool", "rope")}
+    wool = co[in_part["wool"]]
+    band = wool[(wool[:, 0] > 0.11) & (wool[:, 0] < 0.17)]
+    knot = band[np.argmax(band[:, 2])]  # where melos_clothes_v4 ties the knot on his left shoulder
+    rope_z = float(co[in_part["rope"], 2].mean())
+    p = pos[cover]
+    x, y, z = p.T
+    n1, n2 = _value_noise(p, 0.05, 1), _value_noise(p, 0.12, 2)
+    # from the knot down across to his right hip, front and back; finer near the knot, as fanned folds are
+    dx, dz = x - knot[0], z - knot[2]
+    r, th = np.hypot(dx, dz), np.arctan2(dz, dx)
+    toward = np.clip(np.cos(th - np.arctan2(-1.0, -0.75)), 0, 1) ** 2
+    reach = np.clip((r - 0.02) / 0.06, 0, 1) * np.clip((0.55 - r) / 0.2, 0, 1)
+    above = np.clip((z - rope_z - 0.02) / 0.05, 0, 1)
+    h = 0.0035 * toward * reach * above * np.sin(24 * th + 1.2 * n1)
+    # bagging over the rope: soft and horizontal
+    t = z - rope_z
+    blouse = np.clip((t - 0.005) / 0.02, 0, 1) * np.clip((0.10 - t) / 0.04, 0, 1)
+    h += 0.0022 * blouse * np.sin(2 * np.pi * t / 0.032 + 1.5 * n2)
+    # the skirt: vertical, gathered under the rope and deepest at the hem (26 round him, so no step at the seam)
+    phi = np.arctan2(y - AXIS_Y, x)
+    hem = np.clip((HEM_Z + 0.22 - z) / 0.18, 0, 1)
+    gather = np.clip((-t - 0.015) / 0.02, 0, 1) * np.clip((t + 0.14) / 0.06, 0, 1)
+    h += (t < -0.01) * (0.0032 * hem + 0.0018 * gather) * np.sin(26 * phi + 2.0 * n2 + 0.6 * n1)
+    H = np.zeros((size, size), np.float32)
+    H[cover] = h
+
+    def slope(ax):
+        """dH/ds along a texel axis, s measured on the cloth: central where both neighbours are wool, else one-sided"""
+        f, b = np.roll(H, -1, ax), np.roll(H, 1, ax)
+        pf, pb = np.roll(pos, -1, ax), np.roll(pos, 1, ax)
+        cf, cb = np.roll(cover, -1, ax), np.roll(cover, 1, ax)
+        both = cf & cb
+        dh = np.where(both, f - b, np.where(cf, f - H, H - b))
+        ds = np.linalg.norm(np.where(both[..., None], pf - pb, np.where(cf[..., None], pf - pos, pos - pb)), axis=-1)
+        return np.where(cover & (cf | cb), dh / np.maximum(ds, 1e-5), 0)
+
+    fold = np.stack([-slope(1), -slope(0)], -1)  # x is +u, rows bottom-up are +v (OpenGL, as glTF)
+    have = cover.copy()
+    for _ in range(4):  # into the gutters, so mipmaps don't pull flat normals over the islands' edges
+        acc, cnt = np.zeros_like(fold), np.zeros((size, size), np.float32)
+        for ax in (0, 1):
+            for sh in (1, -1):
+                acc += np.roll(fold * have[..., None], sh, ax)
+                cnt += np.roll(have, sh, ax)
+        grow = ~have & (cnt > 0)
+        fold[grow] = acc[grow] / cnt[grow, None]
+        have |= grow
+    nw = np.asarray(Image.open(nrm_in).convert("RGB"), np.float32)[::-1] / 255 * 2 - 1
+    n = np.concatenate([nw[..., :2] + fold, nw[..., 2:]], -1)  # UDN blend
+    n /= np.linalg.norm(n, axis=-1, keepdims=True)
+    Image.fromarray(((n[::-1] * 0.5 + 0.5) * 255 + 0.5).astype(np.uint8), "RGB").save(nrm_out)
+    px = image_pixels(base)
+    dark = 1 - FOLD_DARK * np.clip(-H / 0.0035, 0, 1)
+    px[..., :3] = to_srgb(to_lin(px[..., :3]) * dark[..., None])
+    base.pixels.foreach_set(px.ravel())
+    lean = np.degrees(np.arctan(np.linalg.norm(fold[cover], axis=-1)))
+    return {"knot": [round(float(c), 3) for c in knot], "rope_z": round(rope_z, 3), "texels": int(cover.sum()),
+            "fold_lean_deg_p50_p99": [round(float(np.percentile(lean, q)), 1) for q in (50, 99)]}
+
+
+def grade_parts(ob, img):
+    """The bundle, bands and rope back to UX round 4's mean colours (PART_MEAN) after the dust and AO."""
+    px = image_pixels(img)
+    out = {}
+    for name, target in PART_MEAN.items():
+        sel = face_mask(ob, img, lambda p, n=name: 1.0 if in_region(uv_centre(ob, p), n) else None, 0) > 0.5
+        rgb = match_mean(px[..., :3][sel], target)
+        px[..., :3][sel] = rgb
+        out[name] = [round(float(c) * 255) for c in rgb.mean(0)]
+    img.pixels.foreach_set(px.ravel())
+    return out
+
+
 def tunic_textures(ob):
     nt = ob.data.materials[0].node_tree
     bsdf = nt.nodes["Principled BSDF"]
     base = bpy.data.images.load(os.path.join(tex_dir, "tunic_base.png"))
-    nrm = bpy.data.images.load(os.path.join(tex_dir, "tunic_nrm.png"))
+    nrm_path = os.path.join(os.path.dirname(os.path.abspath(out)), "tunic_nrm.png")
+    report["tunic_folds"] = tunic_folds(ob, base, os.path.join(tex_dir, "tunic_nrm.png"), nrm_path)
+    nrm = bpy.data.images.load(nrm_path)
     nrm.colorspace_settings.name = "Non-Color"
     z = z_of(ob)
     mw3 = ob.matrix_world.to_3x3()
@@ -379,6 +596,7 @@ def tunic_textures(ob):
         u0, u1, v0, v1 = NEW_UV[name]
         own[(u >= u0) & (u < u1) & (v >= v0) & (v < v1)] = k
     darken(base, bake_ao(ob, size, AO["Tunic"][1]), AO["Tunic"][0] * own)
+    report["part_means"] = grade_parts(ob, base)
     for img in (base, nrm):
         img.pack()
     nt.nodes["tunic_tex"].image = base
@@ -388,6 +606,7 @@ def tunic_textures(ob):
     nt.links.new(t.outputs["Color"], nm.inputs["Color"])
     nt.links.new(nm.outputs["Normal"], bsdf.inputs["Normal"])
     bsdf.inputs["Roughness"].default_value = ROUGH["Tunic"]
+    bsdf.inputs["Specular IOR Level"].default_value = SPECULAR["Tunic"]
     bm = bmesh.new()
     bm.from_mesh(ob.data)
     bmesh.ops.triangulate(bm, faces=bm.faces[:], quad_method="BEAUTY", ngon_method="BEAUTY")
@@ -420,14 +639,17 @@ nrm_path = os.path.join(os.path.dirname(os.path.abspath(out)), "skin_nrm.png")
 cover = face_mask(body, skin, lambda p: 1.0, 0)[::-1] > 0.5
 report["skin_normal_lean_deg"] = skin_normal(skin, nrm_path, cover)
 attach_normal(body, nrm_path)
-report["scalp_faces"] = scalp_tint(body, skin, img["Hair"])
 report["hair_clumps_max_m"] = hair_clumps(OBJ["Hair"])
+eye = np.mean([v.co[:] for v in OBJ["Eyes"].data.vertices], axis=0)
+report["hair_top"] = hair_thin_top(OBJ["Hair"], body, float(eye[2]))
+report["hair_curls"] = hairline_curls(OBJ["Hair"], body, eye)
 bz = z_of(body)
 legs = face_mask(body, skin, lambda p: 0.5 * np.clip((KNEE_Z - bz[list(p.vertices)].mean()) / 0.42, 0, 1) ** 0.8, 6)
 mix_towards(skin, legs, DUST)
 OBJ["EyesLow"].hide_render = True  # the low eyes sit in the same place as the high ones
 darken(skin, bake_ao(body, min(2048, skin.size[0]), AO["Body"][1]), AO["Body"][0])
 OBJ["EyesLow"].hide_render = False
+report["scalp_faces"] = scalp_tint(body, skin, img["Hair"])  # after the AO: the hair's cards darkened it unevenly
 skin.pack()
 report["wool_uv"] = wool_uv(OBJ["Tunic"])
 tunic_textures(OBJ["Tunic"])

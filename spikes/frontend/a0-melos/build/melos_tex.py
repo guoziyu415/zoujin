@@ -6,7 +6,8 @@ UV regions as melos_clothes_v2.NEW_UV (v3 keeps them; its bundle's pole is the k
 metres along) (u0, u1, v0, v1): the tunic's wool on the left (u 0..0.62); on the right the
 bundle, the bands that tie it, the rope, the sandal straps and the soles, top to bottom in the image. Colours from
 the style guide (docs/ux/style-guide/characters/melos.md, palette in art-direction 5.4): tunic ochre O1 #A5733F,
-washed out in patches; bundle, bands and rope undyed wool W0 #CBBDA3 (the bands and rope darker with handling);
+washed out in patches; bundle, bands and rope undyed wool W0 #CBBDA3, grubby from the road (UX round 4's
+means);
 sandals old leather K1 #6E4A2E, soles darker.
 Dust on the hem and the sandals, and sun fade on the shoulders, depend on where a texel sits on the body, so
 melos_prep.py paints them from the geometry. Generated from a fixed seed, no downloads: the output is reproducible.
@@ -20,11 +21,14 @@ from PIL import Image
 
 S = 1024
 O1 = (165, 115, 63)
-W0 = (203, 189, 163)
-# undyed wool that has been carried and handled for days: W0 darkened and a little warmer. At W0 itself the bundle and
-# bands read white, and blue in the sky light, next to the ochre tunic (UX rounds 1 and 2; the thin strands face the
-# sky on most of their sides, so they went bluest)
-GRUBBY = np.array([1.06, 1.0, 0.84], np.float32)
+# undyed wool that has been carried and handled for days: the mean colour of each part's texels, from UX round 4. At
+# W0 itself the bundle and bands read white, and blue in the sky light, next to the ochre tunic (UX rounds 1 and 2; the
+# thin strands face the sky on most of their sides, so they went bluest); v8's W0 darkened and warmed a little still
+# went grey and blue-edged. melos_prep.py grades each part to these again after its dust and AO (PART_MEAN there).
+# UX's bands #8C7A5A and rope #93805F (saturation 36%) rendered at 38% in the noon talk shot, over UX's 25-30%;
+# at 28% they rendered at 17%, at 32% at 24% (the sky light greys the pale strands). The bands and rope keep UX's value
+# and hue at 33.5%
+PART_MEAN = {"bundle": (160, 141, 104), "bands": (140, 123, 93), "rope": (147, 129, 98)}  # #A08D68 #8C7B5D #938162
 K1 = (110, 74, 46)
 SOLE = (78, 52, 33)
 # keep in step with melos_clothes_v2.NEW_UV (that module needs bpy, so it is not imported here)
@@ -52,6 +56,13 @@ def blur(a, r):
 def noise(rng, cell, r):
     n = rng.normal(0, 1, (S // cell + 1, S // cell + 1)).astype(np.float32)
     return blur(np.kron(n, np.ones((cell, cell), np.float32))[:S, :S], r)
+
+
+def match_mean(rgb, target, rounds=4):
+    """rgb (n x 3, sRGB 0..1) scaled in linear light, per channel, until its sRGB mean is target (0..255)."""
+    for _ in range(rounds):
+        rgb = np.clip((rgb**2.2) * ((np.asarray(target) / 255) / rgb.mean(0)) ** 2.2, 0, 1) ** (1 / 2.2)
+    return rgb
 
 
 def main(out):
@@ -82,7 +93,8 @@ def main(out):
     paler = lin(O1) * 0.6 + lin((196, 182, 155)) * 0.4
     wash = 0.1 + 0.4 * fade[m, None]
     base[m] = lin(O1)[None] * (1 - wash) + paler[None] * wash
-    h[m] = (0.35 * weave + 0.8 * slub + 2.5 * folds)[m]
+    # the large folds come from melos_prep.py, along the way the cloth hangs (UX round 4); only a little unevenness here
+    h[m] = (0.35 * weave + 0.8 * slub + 1.0 * folds)[m]
     shade[m] = (1 + 0.03 * weave + 0.05 * mott - 0.10 * slub)[m]
 
     # bundle: undyed wool cloth gathered towards the knot on its back (v3: the UV sphere's pole, v = 1): creases run
@@ -95,7 +107,7 @@ def main(out):
         fade = np.clip((bv - (1 - reach)) / reach, 0, 1) ** 1.2
         lines += d * fade * np.exp(-(((bu - c - wob + 0.5) % 1 - 0.5) ** 2) / (2 * w * w))
     crease = lines + 0.3 * np.clip((0.2 - bv) / 0.2, 0, 1) * lines.mean()
-    base[m] = lin(W0) * GRUBBY * (0.55 + 0.06 * mott[m, None])  # carried all day: grubby
+    base[m] = lin(PART_MEAN["bundle"]) * (1 + 0.11 * mott[m, None])  # carried all day: grubby
     h[m] = (0.35 * weave + 0.6 * slub + 1.8 * folds - 3.5 * crease)[m]
     shade[m] = (1 + 0.03 * weave + 0.05 * mott - 0.08 * slub - 0.3 * np.clip(crease, 0, 1))[m]
 
@@ -105,14 +117,14 @@ def main(out):
     m, cu, cv = region("bands")
     k = 2 * 0.8 / 0.06
     along = np.sin(2 * np.pi * (2 * cv + k * cu) + 1.2 * folds) * 0.5 + 0.5
-    base[m] = lin(W0) * GRUBBY * (0.45 + 0.05 * mott[m, None])  # handled and sweated on
+    base[m] = lin(PART_MEAN["bands"]) * (1 + 0.11 * mott[m, None])  # handled and sweated on
     h[m] = (0.3 * weave + 1.4 * along)[m]
     shade[m] = (1 + 0.03 * weave + 0.05 * mott - 0.22 * (1 - along))[m]
 
     # rope: two-ply twist, about 1 cm a turn; the grooves dark
     m, ru, rv = region("rope")
     twist = np.sin(np.pi * (ru * 85 + 2 * rv))  # |twist|: 85 strand crossings along the waist loop, ~1 cm each
-    base[m] = lin(W0) * GRUBBY * 0.48
+    base[m] = lin(PART_MEAN["rope"])
     h[m] = (1.6 * np.abs(twist) + 0.2 * grain)[m]
     shade[m] = (0.72 + 0.32 * np.abs(twist) + 0.04 * mott)[m]
 
@@ -124,6 +136,9 @@ def main(out):
         shade[m] = (1 + 0.06 * mott)[m]
 
     rgb = np.clip(base * shade[..., None], 0, 1) ** (1 / 2.2)
+    for name, target in PART_MEAN.items():
+        m, _, _ = region(name)
+        rgb[m] = match_mean(rgb[m], target)
     Image.fromarray((rgb * 255 + 0.5).astype(np.uint8), "RGB").save(os.path.join(out, "tunic_base.png"))
 
     # normal map from the height field (strength in texels)

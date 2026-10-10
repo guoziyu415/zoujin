@@ -433,6 +433,7 @@ def merge_parts(objs, name, layout, size, alpha):
     atlas = np.zeros((H, W, 4), np.float32)
     rough = []
     parts = [dup(ob, ob.name + '_m') for ob in objs]
+    spec = objs[0].data.materials[0].node_tree.nodes['Principled BSDF'].inputs['Specular IOR Level'].default_value
     for ob, (x0, y0, s) in zip(parts, layout):
         px, r = _base_rgba(ob)
         rough.append(r)
@@ -472,7 +473,9 @@ def merge_parts(objs, name, layout, size, alpha):
         nt.links.new(t.outputs['Alpha'], lt.inputs[0])
         nt.links.new(lt.outputs[0], inv.inputs[1])
         nt.links.new(inv.outputs[0], bsdf.inputs['Alpha'])
-    bsdf.inputs['Roughness'].default_value = float(np.mean(rough))
+    # the first part's: the hair (brows and lashes are a few cards; their mean made the hair shinier than melos_prep set)
+    bsdf.inputs['Roughness'].default_value = float(rough[0])
+    bsdf.inputs['Specular IOR Level'].default_value = spec
     for ob in parts:
         ob.data.materials.clear()
         ob.data.materials.append(mat)
@@ -505,8 +508,11 @@ def main():
     for part in (hair, mouth):
         report.setdefault('pruned_keys', {})[part.name] = prune_keys(part)
 
-    # ---------- high: the build as is, skin cut into head (morphs) + body (none)
-    body_h, head_h = split_head(o['Body'])
+    # ---------- high: the build as is, skin cut into head (morphs) + body (none); the skin the tunic
+    # covers goes here too, or it pokes through the cloth when he moves (UX round 4)
+    body_hi = dup(o['Body'], 'Body_high')
+    report['under_tunic_deleted_high'] = delete_group(body_hi, '__under_tunic')
+    body_h, head_h = split_head(body_hi)
     for part in (body_h, head_h):
         drop_islands(part)
     high = [body_h, head_h, o['Eyes'], hair, mouth, o['Tunic']]
