@@ -88,6 +88,13 @@ def lines(path: Path) -> list[Json]:
     return [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines()] if path.is_file() else []
 
 
+def by_kind(billed: list[Json]) -> dict[str, float]:
+    out: dict[str, float] = {}
+    for x in billed:
+        out[x["kind"]] = out.get(x["kind"], 0.0) + x["costUsd"]
+    return out
+
+
 def test_request_shape(tmp_path: Path) -> None:
     seen: list[httpx.Request] = []
     rt = client(ok({"candidates": []}, seen), tmp_path, item="s2d-01")
@@ -150,9 +157,10 @@ def test_rate_limit_and_errors(tmp_path: Path) -> None:
             200, json={"candidates": [{"content": {"parts": [{"text": "not json"}]}}], "usageMetadata": USAGE}
         )
 
-    with pytest.raises(BadOutput):
+    with pytest.raises(BadOutput) as e3:
         asyncio.run(client(garbage, tmp_path).call("extract", REQ))
-    assert len(lines(tmp_path / "ledger.jsonl")) == 1  # 不合 Schema 的那次也花了钱，记账
+    (line,) = lines(tmp_path / "ledger.jsonl")  # 不合 Schema 的那次也花了钱，记账
+    assert line["costUsd"] > 0 and e3.value.cost_usd == pytest.approx(line["costUsd"])  # 叙事者拿它加进这一轮的花费
 
 
 def test_budget_caps_are_cumulative(tmp_path: Path) -> None:
@@ -160,9 +168,13 @@ def test_budget_caps_are_cumulative(tmp_path: Path) -> None:
     guess = vertex.estimate_usd("gemini-3.8-flash", "extract", 50_000, regional=False)
     (tmp_path / "ledger.jsonl").write_text(
         json.dumps({"provider": "google", "kind": "extract", "costUsd": 0.95, "item": "e0-x"}) + "\n"
-        + json.dumps({"provider": "claude", "kind": "judge", "costUsd": 5.0}) + "\n",
+        + json.dumps({"provider": "claude", "kind": "judge", "costUsd": 5.0}) + "\n"
+        + json.dumps({"provider": "claude", "kind": "judge", "costUsd": 0.04, "item": "e0-x"}) + "\n",
         encoding="utf-8",
     )  # fmt: skip
+    books = Ledger(tmp_path / "ledger.jsonl", 1.0)
+    assert books.spent() == pytest.approx(0.95)  # 总上限只算 Google 那本账
+    assert books.spent("e0-x") == pytest.approx(0.99)  # 单项上限两本账合起来（数据 #49）
     rt = client(ok({"candidates": []}, seen), tmp_path, max_total=1.0)
     with pytest.raises(BudgetStop):
         asyncio.run(rt.call("extract", REQ))  # 账本里已经花了 0.95（E-0 记的），加这一次的预计超过 1.0
@@ -174,6 +186,10 @@ def test_budget_caps_are_cumulative(tmp_path: Path) -> None:
     rt = client(ok({"candidates": []}, seen), tmp_path, max_total=100.0)
     asyncio.run(rt.call("extract", REQ))
     assert len(seen) == 1 and Ledger(tmp_path / "ledger.jsonl", 1.0).spent() > 0.95  # Claude 那本账不算
+    rt = client(ok({"candidates": []}, seen), tmp_path, max_total=100.0, max_item=1.0, item="e0-x")
+    with pytest.raises(BudgetStop):
+        asyncio.run(rt.call("extract", REQ))  # Google 0.95 + Claude 0.04 + 这次的预计 > 1.0：Claude 那行也算进单项
+    assert len(seen) == 1
 
 
 def test_cancelled_call_is_billed_at_the_estimate(tmp_path: Path) -> None:
@@ -184,11 +200,28 @@ def test_cancelled_call_is_billed_at_the_estimate(tmp_path: Path) -> None:
     http = httpx.AsyncClient(transport=httpx.MockTransport(slow))
     rt = replace(client(ok({}), tmp_path), transport=vertex.RestTransport(PROJECT, "global", Auth(), http))
     p = Pipeline(rt, SCHEMAS, IdGen(), Tracer(), {"triage": 0.05, "extract": 0.05, "check": 0.05, "rewrite": 0.05})
-    ex = asyncio.run(p.extract(BOOK, at(), TurnInput(character=OLD, player="宿は？"), Spend()))
+    spend = Spend()
+    ex = asyncio.run(p.extract(BOOK, at(), TurnInput(character=OLD, player="宿は？"), spend))
     assert ex.timed_out  # 分流两次超时当「可能」，提取两次超时 → 只走时钟
     billed = lines(tmp_path / "ledger.jsonl")
     assert [x["kind"] for x in billed] == ["triage", "triage", "extract", "extract"]
     assert all(x["costUsd"] > 0 and x["usage"] == {} for x in billed)
+    assert spend.usd == pytest.approx(by_kind(billed))  # 这一轮的花费（playthrough_metrics）和账本对得上
+
+
+def test_invalid_output_is_in_the_turn_spend(tmp_path: Path) -> None:
+    def garbage(r: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200, json={"candidates": [{"content": {"parts": [{"text": "not json"}]}}], "usageMetadata": USAGE}
+        )
+
+    p = Pipeline(client(garbage, tmp_path), SCHEMAS, IdGen(), Tracer())
+    spend = Spend()
+    ex = asyncio.run(p.extract(BOOK, at(), TurnInput(character=OLD, player="宿は？"), spend))
+    assert ex.timed_out  # 两次都不合格：分流当「可能」，提取 → 只走时钟
+    billed = lines(tmp_path / "ledger.jsonl")
+    assert [x["kind"] for x in billed] == ["triage", "triage", "extract", "extract"]
+    assert spend.usd == pytest.approx(by_kind(billed)) and all(v > 0 for v in spend.usd.values())
 
 
 def test_recorded_replays_have_the_b0_format(tmp_path: Path) -> None:

@@ -241,11 +241,21 @@ class RealText:
             self._prefix[version] = world_prefix(self.worlds(version))
         return self._prefix[version]
 
+    def _user(self, kind: str, request: Json) -> str:
+        return render(kind, request, self.prefix(request.get("worldModelVersion")))
+
+    def _guess(self, kind: str, user: str) -> float:
+        model, _ = model_and_version(kind)
+        return estimate_usd(model, kind, len(user) + len(PROMPTS[kind].text), regional=self.regional)
+
+    def cancelled_cost(self, kind: str, request: Json) -> float:
+        return self._guess(kind, self._user(kind, request))
+
     async def call(self, kind: str, request: Json) -> TextResult:
         model, version = model_and_version(kind)
-        user = render(kind, request, self.prefix(request.get("worldModelVersion")))
+        user = self._user(kind, request)
         req = body(kind, user)
-        guess = estimate_usd(model, kind, len(user) + len(PROMPTS[kind].text), regional=self.regional)
+        guess = self._guess(kind, user)
         self.ledger.before(guess)
         try:
             got = await self.transport.generate(model, req)
@@ -258,7 +268,7 @@ class RealText:
             output = json.loads(got.text)
             jsonschema.validate(output, PROMPTS[kind].schema)
         except (ValueError, jsonschema.ValidationError):
-            raise BadOutput(f"{kind} 的输出不是合 Schema 的 JSON") from None
+            raise BadOutput(f"{kind} 的输出不是合 Schema 的 JSON", cost) from None
         return TextResult(output, kind, model, version, dict(got.usage), cost)
 
 

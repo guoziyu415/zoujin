@@ -113,12 +113,15 @@ class Counts:
 
 @dataclass
 class Spend:
-    """这一轮各类提示花了多少（美元），重来的、超时的也算（钱已经花了）。"""
+    """这一轮各类提示花了多少（美元），重来的、超时被取消的、输出不合格的也算（钱已经花了），和账本对得上。"""
 
     usd: dict[str, float] = field(default_factory=dict)
 
     def add(self, r: TextResult) -> None:
-        self.usd[r.kind] = self.usd.get(r.kind, 0.0) + r.cost_usd
+        self.charge(r.kind, r.cost_usd)
+
+    def charge(self, kind: str, usd: float) -> None:
+        self.usd[kind] = self.usd.get(kind, 0.0) + usd
 
 
 @dataclass
@@ -252,19 +255,24 @@ class Pipeline:
             with self.tracer.span(
                 f"narrator.{kind}", model=model, prompt_version=version, attempt=attempt, **span
             ) as sp:
+                got: TextResult | None = None
                 try:
-                    r = await asyncio.wait_for(self.text.call(kind, request), self.deadlines[kind])
+                    r = got = await asyncio.wait_for(self.text.call(kind, request), self.deadlines[kind])
                     spend.add(r)
                     try:
                         jsonschema.validate(r.output, PROMPTS[kind].schema)
                     except jsonschema.ValidationError:
                         raise BadOutput(f"{kind} 的输出不过 Schema") from None
                     attrs = extra(r.output) if extra is not None else None
-                except TimeoutError:
-                    sp.set(status="timeout")
+                except TimeoutError:  # 被取消的调用可能已经计费：真客户端按预计记了账，这一轮的花费记同一个数
+                    cost = self.text.cancelled_cost(kind, request)
+                    spend.charge(kind, cost)
+                    sp.set(status="timeout", cost_usd=round(cost, 6))
                     continue
-                except BadOutput:
-                    sp.set(status="invalid")
+                except BadOutput as e:
+                    if got is None:  # 真客户端拿到回答才知道不合格，没返回结果，钱已经花了
+                        spend.charge(kind, e.cost_usd)
+                    sp.set(status="invalid", cost_usd=round(e.cost_usd if got is None else got.cost_usd, 6))
                     continue
                 except ModelCallFailed:
                     sp.set(status="error")

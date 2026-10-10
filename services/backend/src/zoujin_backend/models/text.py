@@ -55,7 +55,12 @@ class RateLimited(Stop):
 
 
 class BadOutput(ValueError):
-    """模型的输出不是 JSON 或不过 Schema：算这次调用失败，按时限的规则重发一次。"""
+    """模型的输出不是 JSON 或不过 Schema：算这次调用失败，按时限的规则重发一次。`cost_usd`：这次调用已经花的钱
+    （真客户端拿到了回答才知道不合格，已经记了账；叙事者把它也加进这一轮的花费）。"""
+
+    def __init__(self, message: str, cost_usd: float = 0.0) -> None:
+        super().__init__(message)
+        self.cost_usd = cost_usd
 
 
 class ModelCallFailed(RuntimeError):
@@ -77,6 +82,10 @@ class TextModel(Protocol):
     mode: ModelMode
 
     async def call(self, kind: str, request: Json) -> TextResult: ...
+
+    def cancelled_cost(self, kind: str, request: Json) -> float:
+        """这次调用被时限取消时记多少钱（真客户端按调用前的预计，和账本那行同一个数；假模型、回放是 0）。"""
+        ...
 
 
 def canonical(request: Json) -> str:
@@ -195,6 +204,9 @@ class FakeText:
                 output = _check_failing(request, rule)
         return TextResult(output, kind, model, version, dict(NO_USAGE), 0.0)
 
+    def cancelled_cost(self, kind: str, request: Json) -> float:
+        return 0.0
+
 
 def _check_failing(request: Mapping[str, Any], rule: Mapping[str, Any]) -> Json:
     """`fail` 的简写：摘要含 `when.summaryContains` 的候选（没写就是全部）这条规则判 fail，其余全过。"""
@@ -236,6 +248,9 @@ class ReplayText:
         return TextResult(
             copy.deepcopy(rec["response"]), kind, model, version, dict(rec["usage"]), float(rec["costUsd"])
         )
+
+    def cancelled_cost(self, kind: str, request: Json) -> float:
+        return 0.0
 
 
 def record(
@@ -279,6 +294,9 @@ class Recording:
         with (self.directory / f"{kind}.jsonl").open("a", encoding="utf-8") as f:
             f.write(json.dumps(line, ensure_ascii=False, sort_keys=True) + "\n")
         return r
+
+    def cancelled_cost(self, kind: str, request: Json) -> float:
+        return self.inner.cancelled_cost(kind, request)
 
 
 def now_z() -> str:

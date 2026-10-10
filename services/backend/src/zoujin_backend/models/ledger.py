@@ -5,8 +5,9 @@
 - 一行：`at`（UTC，Z 结尾）、`provider`（"google"）、`kind`（提示类型）、`model`、`usage`、`costUsd`，
   有的话 `item`（记在哪一项下：S-2 的条目 ID、E-0 的用例 ID）。不写请求和回答的内容，也不写项目 ID。
 - 调用前用预计花费（按输入长度和输出上限估，偏高）判上限，到了抛 `BudgetStop`，这次不发；调用后记实际的花费。
-- 单项上限只在给了 `item` 时判：同一个 item 在账本里的花费加这一次。
-- Claude 那本账在数据的运行器里（评审员、AI 玩家），后端不碰。
+- 总上限只算 `google` 的行；单项上限只在给了 `item` 时判：同一个 item 在账本里**两本账合起来**的花费加这一次
+  （数据 #49，m2-model-budget「建议」）。
+- Claude 那本账的行由数据的运行器写（评审员、AI 玩家），后端只在单项上限里读。
 """
 
 from __future__ import annotations
@@ -45,10 +46,11 @@ class Ledger:
         return [json.loads(x) for x in self.path.read_text(encoding="utf-8").splitlines() if x.strip()]
 
     def spent(self, item: str | None = None) -> float:
-        """账本里 Google 这本账累计的花费；给了 item 只算这一项。每次重读文件（E-0 可能同时在记）。"""
+        """没给 item：Google 这本账的累计（总上限）。给了 item：这一项两本账合起来的花费（单项上限）。
+        每次重读文件（E-0 可能同时在记）。"""
         total = 0.0
         for line in self._lines():
-            if line.get("provider", PROVIDER) != PROVIDER:
+            if item is None and line.get("provider", PROVIDER) != PROVIDER:
                 continue
             if item is not None and line.get("item") != item:
                 continue
