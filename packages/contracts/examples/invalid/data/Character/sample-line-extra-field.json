@@ -1,0 +1,51 @@
+{
+  "id": "char.melos",
+  "name": "メロス",
+  "summary": "村の牧人。政治はわからないが邪悪には人一倍敏感。",
+  "traits": [
+    {
+      "text": "政治がわからない",
+      "cite": [
+        {
+          "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+          "para": 1,
+          "quote": "メロスには政治がわからぬ。"
+        }
+      ]
+    }
+  ],
+  "goals": [],
+  "speech": {
+    "firstPerson": "私",
+    "register": "率直で激しい。古風な断定（〜ぬ、〜のだ）。",
+    "sampleLines": [
+      {
+        "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+        "para": 14,
+        "quote": "人の心を疑うのは、最も恥ずべき悪徳だ。"
+      },
+      {
+        "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+        "para": 20,
+        "quote": "そうです。帰って来るのです。",
+        "since": "beat.05",
+        "speaker": "char.melos"
+      }
+    ]
+  },
+  "knows": [
+    {
+      "fact": "fact.melos-shepherd",
+      "since": "pre"
+    }
+  ],
+  "initialPlace": "place.syracuse-square",
+  "talkable": true,
+  "cite": [
+    {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 1,
+      "quote": "メロスは、村の牧人である。"
+    }
+  ]
+}

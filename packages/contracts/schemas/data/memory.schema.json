@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "data/memory.schema.json",
+  "description": "数据契约 1.5：MemoryItem、Relationship（第 4 节）和 Promise（3.1，约定）",
+  "$ref": "#/$defs/MemoryItem",
+  "$defs": {
+    "MemoryItem": {
+      "title": "MemoryItem",
+      "description": "角色对玩家的记忆，可删除（第 4 节）。只由已提交的事件生成",
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "$ref": "common.schema.json#/$defs/SchemaVersion"
+        },
+        "memoryId": {
+          "$ref": "common.schema.json#/$defs/MemoryId"
+        },
+        "playthroughId": {
+          "$ref": "common.schema.json#/$defs/PlaythroughId"
+        },
+        "character": {
+          "$ref": "common.schema.json#/$defs/CharacterId",
+          "description": "谁记得"
+        },
+        "kind": {
+          "enum": [
+            "promise",
+            "help",
+            "harm",
+            "shared-moment",
+            "claim",
+            "impression"
+          ]
+        },
+        "text": {
+          "type": "string",
+          "description": "角色视角的一句日语，給記憶帳显示；不含现实个人信息；删除后清空"
+        },
+        "fromEvents": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/EventId"
+          },
+          "description": "来自哪些事件"
+        },
+        "t": {
+          "$ref": "common.schema.json#/$defs/StoryTime"
+        },
+        "trustDelta": {
+          "type": "integer",
+          "minimum": -20,
+          "maximum": 20,
+          "description": "这条记忆对信任的影响，-20..+20"
+        },
+        "salience": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "0..1，检索排序用"
+        },
+        "via": {
+          "enum": ["witnessed", "told", "rumor"],
+          "description": "（1.1）見た / 聞いた / 噂で"
+        },
+        "promiseId": {
+          "$ref": "common.schema.json#/$defs/PromiseId",
+          "description": "（1.1）这条记忆属于哪个约定"
+        },
+        "createdAt": {
+          "$ref": "common.schema.json#/$defs/RecordedAt"
+        },
+        "deletedAt": {
+          "$ref": "common.schema.json#/$defs/RecordedAt",
+          "description": "删除后：text 清空，只留 ID 和删除时间（审计用）"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "memoryId",
+        "playthroughId",
+        "character",
+        "kind",
+        "text",
+        "fromEvents",
+        "t",
+        "trustDelta",
+        "salience",
+        "createdAt"
+      ],
+      "additionalProperties": false
+    },
+    "Relationship": {
+      "title": "Relationship",
+      "description": "关系，不单独存，按记忆推出（第 4 节）",
+      "type": "object",
+      "properties": {
+        "character": {
+          "$ref": "common.schema.json#/$defs/CharacterId"
+        },
+        "trust": {
+          "type": "integer",
+          "minimum": -100,
+          "maximum": 100,
+          "description": "初值 + 未删除记忆的 trustDelta 之和，截断到 -100..100"
+        },
+        "label": {
+          "type": "string",
+          "description": "由 trust 区间映射（第 4 节的表）"
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "description": "（1.5）同一区间的档位，接口里叫 relationLevel"
+        }
+      },
+      "required": ["character", "trust", "label", "level"],
+      "additionalProperties": false
+    },
+    "Promise": {
+      "title": "StoryPromise",
+      "description": "（1.1）约定，由 promise 效果推出，不单独写（3.1）。生成的代码里叫 StoryPromise，避开 JS 的 Promise",
+      "type": "object",
+      "properties": {
+        "promiseId": {
+          "$ref": "common.schema.json#/$defs/PromiseId"
+        },
+        "from": {
+          "anyOf": [
+            {
+              "const": "player"
+            },
+            {
+              "$ref": "common.schema.json#/$defs/CharacterId"
+            }
+          ],
+          "description": "许下的一方"
+        },
+        "to": {
+          "anyOf": [
+            {
+              "const": "player"
+            },
+            {
+              "$ref": "common.schema.json#/$defs/CharacterId"
+            }
+          ],
+          "description": "对方"
+        },
+        "text": {
+          "type": "string",
+          "description": "约定的内容（日语，中性，不是原话）"
+        },
+        "due": {
+          "type": "object",
+          "properties": {
+            "t": {
+              "$ref": "common.schema.json#/$defs/StoryTime"
+            },
+            "beat": {
+              "$ref": "common.schema.json#/$defs/BeatId"
+            }
+          },
+          "additionalProperties": false
+        },
+        "template": {
+          "$ref": "common.schema.json#/$defs/PromiseTemplateId"
+        },
+        "status": {
+          "enum": ["open", "kept", "broken", "voided"],
+          "description": "まだ / 果たされた / 破られた / 作废"
+        },
+        "madeBy": {
+          "$ref": "common.schema.json#/$defs/EventId",
+          "description": "成立的事件"
+        },
+        "resolvedBy": {
+          "$ref": "common.schema.json#/$defs/EventId",
+          "description": "兑现、违背或作废的事件"
+        }
+      },
+      "required": ["promiseId", "from", "to", "text", "status", "madeBy"],
+      "additionalProperties": false
+    }
+  }
+}

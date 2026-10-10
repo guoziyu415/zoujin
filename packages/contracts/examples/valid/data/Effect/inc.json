@@ -1,0 +1,5 @@
+{
+  "op": "inc",
+  "var": "var.king.trust",
+  "by": -20
+}

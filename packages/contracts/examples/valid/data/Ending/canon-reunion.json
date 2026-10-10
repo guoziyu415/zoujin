@@ -1,0 +1,101 @@
+{
+  "schemaVersion": "1.5",
+  "endingId": "end_01JVX7T37GSR6H9Q9G3WSSPV73",
+  "playthroughId": "pt_01JK7G0S9BVTJK98MKM7R7ZJDM",
+  "worldModelVersion": "hashire-merosu@1.0.0",
+  "trigger": "story-closed",
+  "t": 5460,
+  "decidedAt": "2026-10-06T13:10:00Z",
+  "world": {
+    "outcome": "canon-reunion",
+    "summary": "メロスは日没に間に合い、王は改心した。",
+    "changedBeats": [
+      {
+        "beat": "beat.18",
+        "to": "delayed",
+        "causedBy": ["ev_01JYHEZBNPCJ7GTYGVK6D5CZRN"]
+      }
+    ],
+    "finalVars": {
+      "var.hostage.fate": "released",
+      "var.king.disposition": "reformed"
+    },
+    "title": "メロスは、間に合った。",
+    "signature": {
+      "var.hostage.fate": "released",
+      "beat.26": true
+    },
+    "contrast": {
+      "original": "王はふたりを見て改心した。",
+      "yours": "王は、旅人のことばを思い出していた。",
+      "beat": "beat.26"
+    }
+  },
+  "player": {
+    "fate": {
+      "id": "witness",
+      "label": "目撃者",
+      "causedBy": ["ev_01J3N1DDDTEP1P84FDV7W3WN0V"]
+    },
+    "relationships": [
+      {
+        "character": "char.king",
+        "trust": 25,
+        "label": "気を許している",
+        "memoryIds": ["mem_01JF29M1XAS5JVJ7CGYS3KMMSE"]
+      }
+    ],
+    "title": {
+      "text": "王に信を説いた旅人",
+      "causedBy": ["ev_01J3N1DDDTEP1P84FDV7W3WN0V"]
+    },
+    "epilogue": [
+      {
+        "sentence": "旅人は群衆のうしろから、ふたりの友を見ていた。",
+        "cites": [
+          "ev_01J3N1DDDTEP1P84FDV7W3WN0V",
+          "ev_01JYHEZBNPCJ7GTYGVK6D5CZRN"
+        ]
+      }
+    ],
+    "lastScene": {
+      "place": "place.syracuse-square",
+      "description": "刑場の群衆が、静かに散っていく。",
+      "present": ["char.selinuntius", "char.melos"]
+    }
+  },
+  "characters": [
+    {
+      "character": "char.king",
+      "rank": 1,
+      "unchanged": false,
+      "original": "王は改心し、ふたりの仲間に入れてくれと願った。",
+      "yours": [
+        {
+          "sentence": "王は、旅人のことばを最後まで聞いていた。",
+          "cites": ["ev_01J3N1DDDTEP1P84FDV7W3WN0V"]
+        }
+      ]
+    },
+    {
+      "character": "char.sister",
+      "rank": null,
+      "unchanged": true
+    }
+  ],
+  "card": {
+    "title": "王に信を説いた旅人",
+    "subtitle": "メロスは、間に合った。",
+    "contrast": "王は、旅人のことばを思い出していた。",
+    "characterLines": [
+      {
+        "character": "char.king",
+        "line": "あの旅人のことばが、まだ耳に残っている。"
+      },
+      {
+        "character": "char.melos",
+        "line": "間に合った。それだけで、いい。"
+      }
+    ]
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "data/utterance.schema.json",
+  "description": "数据契约 1.5：Utterance（第 3 节）",
+  "$ref": "#/$defs/Utterance",
+  "$defs": {
+    "Utterance": {
+      "title": "Utterance",
+      "description": "玩家和角色的原话，单独存放，可删除（第 3 节）",
+      "type": "object",
+      "properties": {
+        "utteranceId": {
+          "$ref": "common.schema.json#/$defs/UtteranceId"
+        },
+        "playthroughId": {
+          "$ref": "common.schema.json#/$defs/PlaythroughId"
+        },
+        "turnId": {
+          "$ref": "common.schema.json#/$defs/TurnId",
+          "description": "記憶帳删除时按轮清空（第 4 节）"
+        },
+        "speaker": {
+          "anyOf": [
+            {
+              "const": "player"
+            },
+            {
+              "$ref": "common.schema.json#/$defs/CharacterId"
+            }
+          ]
+        },
+        "text": {
+          "type": "string",
+          "description": "识别后的文字（不存音频）；删除后清空"
+        },
+        "t": {
+          "$ref": "common.schema.json#/$defs/StoryTime"
+        },
+        "recordedAt": {
+          "$ref": "common.schema.json#/$defs/RecordedAt"
+        },
+        "deletedAt": {
+          "$ref": "common.schema.json#/$defs/RecordedAt",
+          "description": "删除后 text 清空"
+        }
+      },
+      "required": [
+        "utteranceId",
+        "playthroughId",
+        "turnId",
+        "speaker",
+        "text",
+        "t",
+        "recordedAt"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

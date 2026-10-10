@@ -1,0 +1,480 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "data/event.schema.json",
+  "description": "数据契约 1.5：Event、Effect、CheckResult（第 3 节）",
+  "$ref": "#/$defs/Event",
+  "$defs": {
+    "Event": {
+      "title": "Event",
+      "description": "运行时事件，只追加（第 3 节）。叙事者是唯一写入方",
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "$ref": "common.schema.json#/$defs/SchemaVersion"
+        },
+        "eventId": {
+          "$ref": "common.schema.json#/$defs/EventId"
+        },
+        "playthroughId": {
+          "$ref": "common.schema.json#/$defs/PlaythroughId"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "本局内严格递增，从 1 开始；重放按 seq"
+        },
+        "turnId": {
+          "$ref": "common.schema.json#/$defs/TurnId",
+          "description": "来自哪一轮；system 事件没有"
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "description": "同一轮提交重试时不重复写（后端生成）"
+        },
+        "worldModelVersion": {
+          "type": "string"
+        },
+        "t": {
+          "$ref": "common.schema.json#/$defs/StoryTime",
+          "description": "发生时的故事时间；按 seq 不递减"
+        },
+        "dt": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "这件事消耗的故事分钟；本事件之后时钟 = max(之前的时钟, t + dt)"
+        },
+        "recordedAt": {
+          "$ref": "common.schema.json#/$defs/RecordedAt"
+        },
+        "actor": {
+          "$ref": "common.schema.json#/$defs/Actor"
+        },
+        "type": {
+          "enum": [
+            "say",
+            "action",
+            "move",
+            "beat",
+            "learn",
+            "act-transition",
+            "correction",
+            "ending",
+            "forget"
+          ]
+        },
+        "origin": {
+          "enum": [
+            "turn",
+            "action",
+            "schedule",
+            "plan",
+            "director",
+            "act",
+            "memory"
+          ],
+          "description": "（1.1）事件从哪来；只给评测、Trace 和「その頃」排序，不推前端"
+        },
+        "beneficiary": {
+          "anyOf": [
+            {
+              "const": "player"
+            },
+            {
+              "$ref": "common.schema.json#/$defs/CharacterId"
+            }
+          ],
+          "description": "（1.1）这件事是为谁做的"
+        },
+        "confirmed": {
+          "const": true,
+          "description": "（1.1）提交前经过故事里的意图确认（S-040）"
+        },
+        "place": {
+          "$ref": "common.schema.json#/$defs/PlaceId"
+        },
+        "summary": {
+          "type": "string",
+          "description": "叙事者写的中性日语摘要：只写故事里的行为，不含玩家原话，不含现实个人信息"
+        },
+        "utteranceRefs": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/UtteranceId"
+          },
+          "description": "相关原话（可删除；删除后这里保留 ID 但内容取不到）"
+        },
+        "causes": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "common.schema.json#/$defs/EventId"
+              },
+              {
+                "$ref": "common.schema.json#/$defs/BeatId"
+              }
+            ]
+          },
+          "description": "因为哪些事件（ev_…）或节拍（beat.…）"
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Effect",
+            "if": {
+              "properties": {
+                "op": {
+                  "const": "promise"
+                }
+              },
+              "required": ["op"]
+            },
+            "then": {
+              "required": ["promiseId"]
+            }
+          },
+          "description": "提交的事件里 promise 效果必须带 promiseId（见 Effect 的 promise 分支）"
+        },
+        "keyMoment": {
+          "type": "boolean",
+          "description": "提交时算出，（1.1）按 S-041 的四条"
+        },
+        "check": {
+          "$ref": "#/$defs/CheckResult"
+        },
+        "supersedes": {
+          "$ref": "common.schema.json#/$defs/EventId",
+          "description": "只用于 type=correction：修正哪一条事件"
+        },
+        "exitId": {
+          "$ref": "common.schema.json#/$defs/ExitId",
+          "description": "只用于 type=act-transition（actor=player）和过场二选一的 action 事件"
+        },
+        "plan": {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string",
+              "description": "叙事者的日语转述；不逐字引用玩家原话"
+            },
+            "toAct": {
+              "$ref": "common.schema.json#/$defs/ActId"
+            },
+            "place": {
+              "$ref": "common.schema.json#/$defs/PlaceId"
+            },
+            "t": {
+              "$ref": "common.schema.json#/$defs/StoryTime",
+              "description": "不早于 Act.start.t"
+            },
+            "with": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/CharacterId"
+              },
+              "description": "同行的人物"
+            }
+          },
+          "required": ["label", "toAct", "place", "t"],
+          "additionalProperties": false,
+          "description": "（1.2，S-031 ③）只用于 type=act-transition（actor=player）且玩家说出了自己的打算"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "eventId",
+        "playthroughId",
+        "seq",
+        "idempotencyKey",
+        "worldModelVersion",
+        "t",
+        "dt",
+        "recordedAt",
+        "actor",
+        "type",
+        "place",
+        "summary",
+        "causes",
+        "effects",
+        "keyMoment",
+        "check"
+      ],
+      "additionalProperties": false
+    },
+    "Effect": {
+      "title": "Effect",
+      "description": "效果：按 op 区分的 8 种（第 3 节）。事件、节拍结果、去处、情境动作、互助、期限规则共用",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "set"
+            },
+            "var": {
+              "$ref": "common.schema.json#/$defs/VarId"
+            },
+            "value": {},
+            "from": {}
+          },
+          "required": ["op", "var", "value"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "inc"
+            },
+            "var": {
+              "$ref": "common.schema.json#/$defs/VarId"
+            },
+            "by": {
+              "type": "integer"
+            }
+          },
+          "required": ["op", "var", "by"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "beat"
+            },
+            "beat": {
+              "$ref": "common.schema.json#/$defs/BeatId"
+            },
+            "to": {
+              "enum": [
+                "happened",
+                "prevented",
+                "delayed",
+                "hastened",
+                "altered"
+              ]
+            },
+            "minutes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "outcomes": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/Effect"
+              },
+              "description": "altered 时 = 改变后的结果（代替世界模型里的 outcomes）"
+            },
+            "note": {
+              "type": "string"
+            }
+          },
+          "required": ["op", "beat", "to"],
+          "additionalProperties": false
+        },
+        {
+          "description": "某角色知道了某事实；（1.1）fact 也可以是 rf_…（别人的即兴设定）",
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "learn"
+            },
+            "character": {
+              "$ref": "common.schema.json#/$defs/CharacterId"
+            },
+            "fact": {
+              "anyOf": [
+                {
+                  "$ref": "common.schema.json#/$defs/FactId"
+                },
+                {
+                  "$ref": "common.schema.json#/$defs/RunFactId"
+                }
+              ]
+            }
+          },
+          "required": ["op", "character", "fact"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "relocate"
+            },
+            "character": {
+              "$ref": "common.schema.json#/$defs/CharacterId"
+            },
+            "place": {
+              "$ref": "common.schema.json#/$defs/PlaceId"
+            }
+          },
+          "required": ["op", "character", "place"],
+          "additionalProperties": false
+        },
+        {
+          "description": "（1.1）约定，见 3.1 的 Promise",
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "promise"
+            },
+            "promiseId": {
+              "$ref": "common.schema.json#/$defs/PromiseId",
+              "description": "TODO(C-2 评审)：契约第 3 节写成必填，但世界模型的效果模板（2.10）和候选事件（evals/s2/README.md）不写，提交时由叙事者分配 prm_…。这里写成可选，提交的事件另外要求（Event.effects）"
+            },
+            "change": {
+              "enum": ["made", "kept", "broken", "voided"]
+            },
+            "from": {
+              "anyOf": [
+                {
+                  "const": "player"
+                },
+                {
+                  "$ref": "common.schema.json#/$defs/CharacterId"
+                }
+              ],
+              "description": "change = made 时必填"
+            },
+            "to": {
+              "anyOf": [
+                {
+                  "const": "player"
+                },
+                {
+                  "$ref": "common.schema.json#/$defs/CharacterId"
+                }
+              ],
+              "description": "change = made 时必填"
+            },
+            "text": {
+              "type": "string",
+              "description": "change = made 时必填"
+            },
+            "due": {
+              "type": "object",
+              "properties": {
+                "t": {
+                  "$ref": "common.schema.json#/$defs/StoryTime"
+                },
+                "beat": {
+                  "$ref": "common.schema.json#/$defs/BeatId"
+                }
+              },
+              "additionalProperties": false,
+              "description": "期限（时刻或节拍）"
+            },
+            "template": {
+              "$ref": "common.schema.json#/$defs/PromiseTemplateId",
+              "description": "模板 ID（可选）"
+            }
+          },
+          "required": ["op", "change"],
+          "additionalProperties": false
+        },
+        {
+          "description": "（1.1）即兴设定（S-030 ②），见 3.1 的 RunFact",
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "improv"
+            },
+            "factId": {
+              "$ref": "common.schema.json#/$defs/RunFactId"
+            },
+            "character": {
+              "$ref": "common.schema.json#/$defs/CharacterId"
+            },
+            "statement": {
+              "type": "string"
+            }
+          },
+          "required": ["op", "factId", "character", "statement"],
+          "additionalProperties": false
+        },
+        {
+          "description": "（1.3）物品换手；只用于 portable 的物品",
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "hold"
+            },
+            "item": {
+              "$ref": "common.schema.json#/$defs/ItemId"
+            },
+            "to": {
+              "anyOf": [
+                {
+                  "const": "player"
+                },
+                {
+                  "$ref": "common.schema.json#/$defs/CharacterId"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "新的持有者；null = 被拿走、用掉"
+            },
+            "from": {
+              "anyOf": [
+                {
+                  "const": "player"
+                },
+                {
+                  "$ref": "common.schema.json#/$defs/CharacterId"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": ["op", "item", "to"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "CheckResult": {
+      "title": "CheckResult",
+      "description": "自检结果（第 3 节）",
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": ["passed", "rewritten", "downgraded", "rejected"]
+        },
+        "attempts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3,
+          "description": "共尝试几次（改写上限 2 次，即最多 3）"
+        },
+        "failedRules": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "R1-anchor",
+              "R2-precondition",
+              "R3-time",
+              "R4-knowledge",
+              "R5-persona",
+              "R6-safety",
+              "R7-capability"
+            ]
+          }
+        },
+        "reason": {
+          "type": "string",
+          "description": "给「なぜこうなった？」和评审看的一句日语"
+        },
+        "checker": {
+          "type": "string",
+          "description": "自检用的模型/规则版本"
+        }
+      },
+      "required": ["status", "attempts", "failedRules", "checker"],
+      "additionalProperties": false
+    }
+  }
+}

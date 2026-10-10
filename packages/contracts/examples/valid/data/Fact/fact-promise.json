@@ -1,0 +1,13 @@
+{
+  "id": "fact.promise",
+  "statement": "王はメロスに三日目の日没までに戻れと命じ、遅れたら身代りを殺すと言った。身代りはセリヌンティウス。",
+  "trueFrom": "beat.05",
+  "visibility": "public",
+  "cite": [
+    {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 22,
+      "quote": "三日目には日没までに帰って来い。"
+    }
+  ]
+}

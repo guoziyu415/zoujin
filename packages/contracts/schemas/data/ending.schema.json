@@ -1,0 +1,460 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "data/ending.schema.json",
+  "description": "数据契约 1.5：Ending、CharacterEnding（第 5 节）",
+  "$ref": "#/$defs/Ending",
+  "$defs": {
+    "Ending": {
+      "title": "Ending",
+      "description": "结局（第 5 节）",
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "$ref": "common.schema.json#/$defs/SchemaVersion"
+        },
+        "endingId": {
+          "$ref": "common.schema.json#/$defs/EndingId"
+        },
+        "playthroughId": {
+          "$ref": "common.schema.json#/$defs/PlaythroughId"
+        },
+        "worldModelVersion": {
+          "type": "string"
+        },
+        "trigger": {
+          "enum": ["deadline", "story-closed", "abandoned"],
+          "description": "story-closed = 最后一幕的收幕节拍有了结果"
+        },
+        "t": {
+          "$ref": "common.schema.json#/$defs/StoryTime"
+        },
+        "decidedAt": {
+          "$ref": "common.schema.json#/$defs/RecordedAt"
+        },
+        "world": {
+          "type": "object",
+          "properties": {
+            "outcome": {
+              "$ref": "common.schema.json#/$defs/WorldEndingId",
+              "description": "WorldModel.endings.world[].id（底线类）"
+            },
+            "summary": {
+              "type": "string",
+              "description": "日语"
+            },
+            "changedBeats": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "beat": {
+                    "$ref": "common.schema.json#/$defs/BeatId"
+                  },
+                  "to": {
+                    "type": "string"
+                  },
+                  "causedBy": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "common.schema.json#/$defs/EventId"
+                    }
+                  }
+                },
+                "required": ["beat", "to", "causedBy"],
+                "additionalProperties": false
+              },
+              "description": "和原著不同的节拍，各自指回事件"
+            },
+            "finalVars": {
+              "type": "object",
+              "propertyNames": {
+                "$ref": "common.schema.json#/$defs/VarId"
+              },
+              "additionalProperties": {}
+            },
+            "title": {
+              "type": "string",
+              "description": "（1.1）世界结局的一句标题"
+            },
+            "variant": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "本局内唯一，如 \"gen.king-abdicates\"（API 的 outcomeId）"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "claims": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "var": {
+                        "$ref": "common.schema.json#/$defs/VarId"
+                      },
+                      "value": {}
+                    },
+                    "required": ["var", "value"],
+                    "additionalProperties": false
+                  },
+                  "description": "它主张的最终状态，必须和 finalVars 一致"
+                },
+                "causedBy": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "common.schema.json#/$defs/EventId"
+                  },
+                  "minItems": 2,
+                  "description": "至少 2 个本局事件（「讲得通」）"
+                }
+              },
+              "required": ["id", "title", "summary", "claims", "causedBy"],
+              "additionalProperties": false,
+              "description": "（1.1，S-031 ①）这一局生成的世界结局；没有 = 就是底线类本身"
+            },
+            "signature": {
+              "type": "object",
+              "propertyNames": {
+                "anyOf": [
+                  {
+                    "$ref": "common.schema.json#/$defs/VarId"
+                  },
+                  {
+                    "$ref": "common.schema.json#/$defs/BeatId"
+                  }
+                ]
+              },
+              "additionalProperties": {},
+              "description": "（1.1）按 endings.signature 算出的署名（2.9.1）：变量 → 最终值，节拍 → 是否照原著发生"
+            },
+            "contrast": {
+              "type": "object",
+              "properties": {
+                "original": {
+                  "type": "string"
+                },
+                "yours": {
+                  "type": "string"
+                },
+                "beat": {
+                  "$ref": "common.schema.json#/$defs/BeatId"
+                }
+              },
+              "required": ["original", "yours"],
+              "additionalProperties": false,
+              "description": "（1.1，S-026）「原作では…／あなたの世界では…」"
+            }
+          },
+          "required": ["outcome", "summary", "changedBeats", "finalVars"],
+          "additionalProperties": false
+        },
+        "player": {
+          "type": "object",
+          "properties": {
+            "fate": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "causedBy": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "common.schema.json#/$defs/EventId"
+                  },
+                  "minItems": 1
+                }
+              },
+              "required": ["id", "label", "causedBy"],
+              "additionalProperties": false,
+              "description": "顾问、人质、同行者、目击者、被处刑…"
+            },
+            "relationships": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "character": {
+                    "$ref": "common.schema.json#/$defs/CharacterId"
+                  },
+                  "trust": {
+                    "$ref": "memory.schema.json#/$defs/Relationship/properties/trust"
+                  },
+                  "label": {
+                    "type": "string"
+                  },
+                  "line": {
+                    "type": "string"
+                  },
+                  "memoryIds": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "common.schema.json#/$defs/MemoryId"
+                    }
+                  }
+                },
+                "required": ["character", "trust", "label", "memoryIds"],
+                "additionalProperties": false
+              }
+            },
+            "title": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string"
+                },
+                "causedBy": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "common.schema.json#/$defs/EventId"
+                  },
+                  "minItems": 1
+                }
+              },
+              "required": ["text", "causedBy"],
+              "additionalProperties": false,
+              "description": "如「王に信を説いた旅人」"
+            },
+            "epilogue": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "sentence": {
+                    "type": "string"
+                  },
+                  "cites": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "common.schema.json#/$defs/EventId"
+                    },
+                    "minItems": 1,
+                    "description": "至少引用一个本局事件"
+                  }
+                },
+                "required": ["sentence", "cites"],
+                "additionalProperties": false
+              },
+              "description": "每句至少引用一个事件"
+            },
+            "lastScene": {
+              "type": "object",
+              "properties": {
+                "place": {
+                  "$ref": "common.schema.json#/$defs/PlaceId"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "present": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "common.schema.json#/$defs/CharacterId"
+                  },
+                  "description": "（1.1）结局演出里在场的人物（S-053）"
+                }
+              },
+              "required": ["place", "description"],
+              "additionalProperties": false
+            },
+            "didForYou": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "sentence": {
+                    "type": "string"
+                  },
+                  "cites": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "common.schema.json#/$defs/EventId"
+                    },
+                    "minItems": 1,
+                    "description": "至少引用一个本局事件"
+                  }
+                },
+                "required": ["sentence", "cites"],
+                "additionalProperties": false
+              },
+              "description": "（1.1，D-012）人物为你做的事"
+            },
+            "youDid": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "sentence": {
+                    "type": "string"
+                  },
+                  "cites": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "common.schema.json#/$defs/EventId"
+                    },
+                    "minItems": 1,
+                    "description": "至少引用一个本局事件"
+                  }
+                },
+                "required": ["sentence", "cites"],
+                "additionalProperties": false
+              },
+              "description": "（1.1）你为人物做的事"
+            }
+          },
+          "required": [
+            "fate",
+            "relationships",
+            "title",
+            "epilogue",
+            "lastScene"
+          ],
+          "additionalProperties": false
+        },
+        "characters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CharacterEnding"
+          },
+          "description": "（1.1，D-015、S-032）7 个可对话人物都在"
+        },
+        "card": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": "string",
+              "maxLength": 14,
+              "description": "称号 ≤ 14 字"
+            },
+            "subtitle": {
+              "type": "string",
+              "maxLength": 26,
+              "description": "世界的去向 ≤ 26 字"
+            },
+            "contrast": {
+              "type": "string",
+              "maxLength": 48,
+              "description": "「原作との違い」≤ 48 字"
+            },
+            "characterLines": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "character": {
+                    "$ref": "common.schema.json#/$defs/CharacterId"
+                  },
+                  "line": {
+                    "type": "string",
+                    "maxLength": 40,
+                    "description": "≤ 40 字"
+                  }
+                },
+                "required": ["character", "line"],
+                "additionalProperties": false
+              },
+              "minItems": 2,
+              "maxItems": 3,
+              "description": "影响最深的 2〜3 人（卡片按最多 3 行排）"
+            }
+          },
+          "required": ["title", "subtitle", "contrast", "characterLines"],
+          "additionalProperties": false,
+          "description": "（1.1，S-049、S-051）结局卡，字数由这里保证"
+        },
+        "share": {
+          "type": "object",
+          "properties": {
+            "cardImageRef": {
+              "type": "string"
+            },
+            "videoRef": {
+              "type": "string"
+            },
+            "branchTreeRef": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "description": "生成产物的存储引用"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "endingId",
+        "playthroughId",
+        "worldModelVersion",
+        "trigger",
+        "t",
+        "decidedAt",
+        "world",
+        "player"
+      ],
+      "additionalProperties": false
+    },
+    "CharacterEnding": {
+      "title": "CharacterEnding",
+      "description": "（1.1）每个可对话人物的结局（第 5 节）",
+      "type": "object",
+      "properties": {
+        "character": {
+          "$ref": "common.schema.json#/$defs/CharacterId"
+        },
+        "rank": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "受影响深浅，从 1 起；unchanged 时 null"
+        },
+        "unchanged": {
+          "type": "boolean",
+          "description": "玩家没碰过、世界变化也没波及到：只显示「原作どおり」，不生成句子"
+        },
+        "original": {
+          "type": "string",
+          "description": "原作里他的结局，一句（日语）"
+        },
+        "yours": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "sentence": {
+                "type": "string"
+              },
+              "cites": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/EventId"
+                },
+                "minItems": 1,
+                "description": "至少引用一个本局事件"
+              }
+            },
+            "required": ["sentence", "cites"],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 3,
+          "description": "1〜3 句，「あなたの世界では」；unchanged 时省略"
+        }
+      },
+      "required": ["character", "rank", "unchanged"],
+      "additionalProperties": false
+    }
+  }
+}

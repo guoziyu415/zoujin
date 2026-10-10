@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "1.1",
+  "eventId": "ev_01JBKH05Q03QWQD48QB6TNWNCC",
+  "playthroughId": "pt_01JK7G0S9BVTJK98MKM7R7ZJDM",
+  "seq": 4,
+  "turnId": "turn_01J82AMR8XCWA7GMS2K2FHPAHN",
+  "idempotencyKey": "turn_01J82AMR8XCWA7GMS2K2FHPAHN#0",
+  "worldModelVersion": "hashire-merosu@1.0.0",
+  "t": 1080,
+  "dt": 10,
+  "recordedAt": "2026-10-06T11:52:00Z",
+  "actor": "player",
+  "type": "say",
+  "origin": "turn",
+  "place": "place.stonemason-workshop",
+  "summary": "弟子は、親方の留守のあいだ工房を守ると約束した",
+  "causes": [],
+  "effects": [
+    {
+      "op": "promise",
+      "promiseId": "prm_01JTF4A3CXF9JGQB96Z2E7TPHD",
+      "change": "made",
+      "from": "player",
+      "to": "char.selinuntius",
+      "text": "工房を守る",
+      "template": "promise.selinuntius.workshop"
+    }
+  ],
+  "keyMoment": false,
+  "check": {
+    "status": "passed",
+    "attempts": 1,
+    "failedRules": [],
+    "checker": "rules@1.1+gemini-3.8-flash"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "playthroughId": "pt_01JK7G0S9BVTJK98MKM7R7ZJDM",
+  "asOfSeq": 12,
+  "t": 1240,
+  "vars": {
+    "var.king.trust": -15,
+    "var.player.companionOf": "none",
+    "var.act.current": "act.1"
+  },
+  "beats": {
+    "beat.05": "happened",
+    "beat.06": "pending",
+    "beat.11": "pending"
+  },
+  "schedule": {
+    "beat.06": 1410,
+    "beat.11": 3600
+  },
+  "knowledge": {
+    "char.selinuntius": ["rf_01JNQCPPXM2V8W7D7WT44XCB26"]
+  },
+  "locations": {
+    "char.melos": "place.castle",
+    "char.selinuntius": "place.stonemason-workshop"
+  },
+  "promises": {
+    "prm_01JTF4A3CXF9JGQB96Z2E7TPHD": {
+      "promiseId": "prm_01JTF4A3CXF9JGQB96Z2E7TPHD",
+      "from": "player",
+      "to": "char.selinuntius",
+      "text": "工房を守る",
+      "template": "promise.selinuntius.workshop",
+      "status": "open",
+      "madeBy": "ev_01JBKH05Q03QWQD48QB6TNWNCC"
+    }
+  },
+  "runFacts": {
+    "rf_01JNQCPPXM2V8W7D7WT44XCB26": {
+      "factId": "rf_01JNQCPPXM2V8W7D7WT44XCB26",
+      "character": "char.melos",
+      "statement": "メロスは羊の数を毎朝かぞえる",
+      "madeBy": "ev_01J3N1DDDTEP1P84FDV7W3WN0V"
+    }
+  },
+  "holdings": {
+    "item.dagger": null
+  }
+}

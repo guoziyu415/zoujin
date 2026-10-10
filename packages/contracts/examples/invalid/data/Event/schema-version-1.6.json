@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "1.6",
+  "eventId": "ev_01J3N1DDDTEP1P84FDV7W3WN0V",
+  "playthroughId": "pt_01JK7G0S9BVTJK98MKM7R7ZJDM",
+  "seq": 7,
+  "turnId": "turn_01JYCH7R87B49HE37YQ6S5AEX0",
+  "idempotencyKey": "turn_01JYCH7R87B49HE37YQ6S5AEX0#0",
+  "worldModelVersion": "hashire-merosu@1.0.0",
+  "t": 1235,
+  "dt": 5,
+  "recordedAt": "2026-10-06T12:00:00Z",
+  "actor": "player",
+  "type": "say",
+  "place": "place.castle",
+  "summary": "旅人は王の前で、人を信じられぬ王を嘲った",
+  "utteranceRefs": ["utt_01JJXE5NJQQ6HE4SMSCREP0M5K"],
+  "causes": ["beat.05"],
+  "origin": "turn",
+  "effects": [
+    {
+      "op": "inc",
+      "var": "var.king.trust",
+      "by": -20
+    }
+  ],
+  "keyMoment": false,
+  "check": {
+    "status": "passed",
+    "attempts": 1,
+    "failedRules": [],
+    "checker": "rules@1.0+gemini-3.8-flash"
+  }
+}

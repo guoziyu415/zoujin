@@ -1,0 +1,12 @@
+{
+  "character": "char.king",
+  "rank": 1,
+  "unchanged": false,
+  "original": "王は改心し、ふたりの仲間に入れてくれと願った。",
+  "yours": [
+    {
+      "sentence": "王は、旅人のことばを最後まで聞いていた。",
+      "cites": ["ev_01J3N1DDDTEP1P84FDV7W3WN0V"]
+    }
+  ]
+}

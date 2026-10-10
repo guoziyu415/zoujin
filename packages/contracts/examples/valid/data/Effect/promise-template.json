@@ -1,0 +1,8 @@
+{
+  "op": "promise",
+  "change": "made",
+  "from": "player",
+  "to": "char.selinuntius",
+  "text": "工房を守る",
+  "template": "promise.selinuntius.workshop"
+}

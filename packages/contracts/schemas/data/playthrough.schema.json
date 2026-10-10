@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "data/playthrough.schema.json",
+  "description": "数据契约 1.5：Playthrough（第 1 节）",
+  "$ref": "#/$defs/Playthrough",
+  "$defs": {
+    "Playthrough": {
+      "title": "Playthrough",
+      "description": "一局游戏（第 1 节）",
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "$ref": "common.schema.json#/$defs/SchemaVersion"
+        },
+        "playthroughId": {
+          "$ref": "common.schema.json#/$defs/PlaythroughId"
+        },
+        "userRef": {
+          "type": "string",
+          "description": "邀请码账号的匿名 ID（S-020），不是邮箱、不是姓名"
+        },
+        "worldModelVersion": {
+          "type": "string",
+          "description": "开局时锁定，整局不变"
+        },
+        "roleId": {
+          "$ref": "common.schema.json#/$defs/RoleId",
+          "description": "玩家选的身份"
+        },
+        "playerAlias": {
+          "type": "string",
+          "description": "S-010：默认不填，第一版没有任何界面入口"
+        },
+        "ageBand": {
+          "enum": ["under13", "13to17", "18plus", "unknown"],
+          "description": "S-010：默认不收集"
+        },
+        "status": {
+          "enum": ["active", "ended", "abandoned", "deleted"]
+        },
+        "startedAt": {
+          "$ref": "common.schema.json#/$defs/RecordedAt"
+        },
+        "endedAt": {
+          "$ref": "common.schema.json#/$defs/RecordedAt"
+        },
+        "lastActiveAt": {
+          "$ref": "common.schema.json#/$defs/RecordedAt",
+          "description": "最后一次有玩家操作的真实时间；默认保留期按它算"
+        },
+        "lastSeq": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "最后一个事件的序号"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "playthroughId",
+        "userRef",
+        "worldModelVersion",
+        "roleId",
+        "status",
+        "startedAt",
+        "lastActiveAt",
+        "lastSeq"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

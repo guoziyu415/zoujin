@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "data/world-state.schema.json",
+  "description": "数据契约 1.5：WorldState、RunFact（3.1）",
+  "$ref": "#/$defs/WorldState",
+  "$defs": {
+    "WorldState": {
+      "title": "WorldState",
+      "description": "由事件推出的当前状态，不是第二份事实（3.1）：世界模型初值 + 按 seq 依次应用全部事件的 effects",
+      "type": "object",
+      "properties": {
+        "playthroughId": {
+          "$ref": "common.schema.json#/$defs/PlaythroughId"
+        },
+        "asOfSeq": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "推导到第几个事件"
+        },
+        "t": {
+          "$ref": "common.schema.json#/$defs/StoryTime",
+          "description": "时钟 = 所有事件 max(t + dt)"
+        },
+        "vars": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "common.schema.json#/$defs/VarId"
+          },
+          "additionalProperties": {},
+          "description": "所有 stateVar 的当前值"
+        },
+        "beats": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "common.schema.json#/$defs/BeatId"
+          },
+          "additionalProperties": {
+            "enum": [
+              "pending",
+              "happened",
+              "prevented",
+              "delayed",
+              "hastened",
+              "altered"
+            ]
+          }
+        },
+        "schedule": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "common.schema.json#/$defs/BeatId"
+          },
+          "additionalProperties": {
+            "$ref": "common.schema.json#/$defs/StoryTime"
+          },
+          "description": "还没结果的节拍的本局排定时间（2.5.1）"
+        },
+        "knowledge": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "common.schema.json#/$defs/CharacterId"
+          },
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "$ref": "common.schema.json#/$defs/FactId"
+                },
+                {
+                  "$ref": "common.schema.json#/$defs/RunFactId"
+                }
+              ]
+            }
+          },
+          "description": "角色 → 运行时新学到的 fact"
+        },
+        "locations": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "common.schema.json#/$defs/CharacterId"
+          },
+          "additionalProperties": {
+            "$ref": "common.schema.json#/$defs/PlaceId"
+          },
+          "description": "角色 → 地点"
+        },
+        "promises": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "common.schema.json#/$defs/PromiseId"
+          },
+          "additionalProperties": {
+            "$ref": "memory.schema.json#/$defs/Promise"
+          },
+          "description": "（1.1）promiseId → 约定"
+        },
+        "runFacts": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "common.schema.json#/$defs/RunFactId"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/RunFact"
+          },
+          "description": "（1.1）factId → 即兴设定"
+        },
+        "holdings": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "common.schema.json#/$defs/ItemId"
+          },
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "const": "player"
+              },
+              {
+                "$ref": "common.schema.json#/$defs/CharacterId"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": "（1.3）portable 物品 → 现在谁拿着"
+        }
+      },
+      "required": [
+        "playthroughId",
+        "asOfSeq",
+        "t",
+        "vars",
+        "beats",
+        "schedule",
+        "knowledge",
+        "locations"
+      ],
+      "additionalProperties": false
+    },
+    "RunFact": {
+      "title": "RunFact",
+      "description": "（1.1）本局即兴设定（3.1）",
+      "type": "object",
+      "properties": {
+        "factId": {
+          "$ref": "common.schema.json#/$defs/RunFactId"
+        },
+        "character": {
+          "$ref": "common.schema.json#/$defs/CharacterId",
+          "description": "谁说的（归属于谁）"
+        },
+        "statement": {
+          "type": "string",
+          "description": "一句中性日语"
+        },
+        "madeBy": {
+          "$ref": "common.schema.json#/$defs/EventId",
+          "description": "记下它的事件"
+        }
+      },
+      "required": ["factId", "character", "statement", "madeBy"],
+      "additionalProperties": false
+    }
+  }
+}

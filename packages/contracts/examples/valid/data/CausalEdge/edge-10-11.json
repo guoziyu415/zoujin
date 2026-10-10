@@ -1,0 +1,15 @@
+{
+  "id": "edge.10-11",
+  "from": "beat.10",
+  "to": "beat.11",
+  "type": "requires",
+  "note": "花婿の同意がなければ婚礼は挙げられない",
+  "inferred": false,
+  "cite": [
+    {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 32,
+      "quote": "説き伏せた。結婚式は、真昼に行われた。"
+    }
+  ]
+}

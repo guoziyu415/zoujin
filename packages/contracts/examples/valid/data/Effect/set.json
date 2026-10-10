@@ -1,0 +1,6 @@
+{
+  "op": "set",
+  "var": "var.player.companionOf",
+  "value": "char.melos",
+  "from": "none"
+}
