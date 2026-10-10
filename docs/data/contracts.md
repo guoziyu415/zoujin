@@ -441,7 +441,8 @@ type ActExit = {
   effects: Effect[];               // 选择本身的效果，如 set var.player.companionOf = "char.melos"
   enRoute?: EnRoute;               // （1.4，UX 校对 3.2）跳过的这段路上有一个能改的节拍时，过场页给一个二选一
   sub?: string;                    // （1.7，UX）幕末页上这个去处副题的后半（日语，≤ 16 字，叙事口吻，不写分钟数），如「老爺があなたを覚えている」；
-                                   // 前半「{地点}・{日子}の{时段}」前端按 place 和 t 生成。省略 = 只有前半
+                                   // 前半「{地点}・{日子}の{时段}」由服务端按 place 的 `Place.name` 和 t 算好（日子、时段照 `clock.labels`，
+                                   // 不套它的 `format`），和后半一起下发（ux-design 4.4）。省略 = 只有前半
   spot?: string;                   // （1.7）玩家落在 place 的哪个位置点（布局 layout.json 的 spots）；省略 = 这个地点的起点（startSpots）
   arrival?: { line: string; opener?: string };  // （1.7）落地：line = 跳转之后的第一行叙事（地の文，日语）；
                                    // opener = 落地后先开口的人物（服务端发起一轮，台词按人设生成，不是问句）。ux/slice/jump-transition.md「落地」
