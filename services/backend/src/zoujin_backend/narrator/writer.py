@@ -24,7 +24,7 @@ from zoujin_worldsim import OCCURRED, SimState, apply, pick_set_piece, settle
 
 Json = Any
 
-SCHEMA_VERSION = "1.6"  # 写入时的数据契约版本
+SCHEMA_VERSION = "1.7"  # 写入时的数据契约版本
 CHECKER_SYSTEM = "w1-settle"
 CHECKER_PIECE = "set-piece"
 

@@ -37,6 +37,8 @@ LABEL_MAX = 30
 LINE_MAX = 60
 LABEL_FALLBACK = "自分で決めた道を行く"
 REFUSAL_FALLBACK = "その考えは、いまは形にならなかった。"
+# 声音说打算没转写出字：不算试次（UX 定之前先用 copy-ja 的 reconnect.lostTurn）
+NOT_HEARD = "もう一度、話しかけてください。"
 INVALID_CHOICE = "その行き先は選べません。"
 INVALID_REQUEST = "うまく送れませんでした。"
 FLAGS = frozenset({"injection", "pii"})  # 第 0 步（Model Armor）的标记，有就不转述

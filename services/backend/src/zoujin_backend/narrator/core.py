@@ -546,7 +546,7 @@ class Narrator:
                     minutes=result.minutes,
                     lease_until=None,
                     settled_at=func.now(),
-                    result={"push": push, "pieces": pieces, **planned.extra},
+                    result={"push": push, "pieces": pieces, "seq": w.state["seq"], **planned.extra},
                 )
             )
             self.fault("metrics")

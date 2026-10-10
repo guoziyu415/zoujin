@@ -12,7 +12,8 @@
   回答，再走叙事者整条流水线，B-2）、`advance`；`act`、`propose`、`choose`（B-3：和 WebSocket 同一条路，写任务、
   叫叙事者）；`check`（第 3 步 + 按 `model_checks` 跑第 4 步，不改写、不提交）；查询 `state()`、`events()`。
   检查点停在这一幕的收幕节拍上（例 `sc.canon@beat.07`）时，setup 之后就是幕末待选。
-- 没做的步骤和查询、带 `persona` 的 setup、带 `memory` 的布置事件抛 `EvalNotImplemented("<名字>")`；
+- 没做的步骤和查询、带 `persona` 的 setup、带 `memory` 的布置事件、没有布局的场景里的 `move` 抛
+  `EvalNotImplemented("<名字>")`；
   回放里查不到抛 `ReplayMissing`。账本到上限抛 `BudgetStop`，模型回 429 抛 `RateLimited`：这两个要整次停下，不是跳过
   这一例。运行器按类名认。
 - 每次调用在自己的事件循环里跑（`asyncio.run`）、用不进连接池的连接，运行器的超时（SIGALRM）中途打断时，
@@ -231,7 +232,12 @@ class Session:
         }
 
     def act(self, kind: str, target: str | None, params: Mapping[str, Json]) -> Json:
-        """动作（api-contract 3.8）：和 `action` 消息一样写一行任务，叙事者判定。"""
+        """动作（api-contract 3.8）：和 `action` 消息一样写一行任务，叙事者判定。还没有 3D 布局的场景里的 `move`
+        （归途、村子：路程和过河跟 S-081 的停靠点一起做，M3）抛 `EvalNotImplemented`，用例记成跳过。"""
+        if kind == "move":
+            here = _run(self._state())["vars"]["var.player.location"]
+            if self.book.places.get(here, {}).get("sceneRef") not in self.book.scenes:
+                raise EvalNotImplemented("move（没有布局的场景）")
         self.steps += 1
         request: Json = {"clientMsgId": f"eval-{self.steps}", "kind": kind, "params": dict(params or {})}
         if target is not None:

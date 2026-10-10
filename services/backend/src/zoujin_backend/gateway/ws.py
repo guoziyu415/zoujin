@@ -28,19 +28,19 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from fastapi import WebSocket, WebSocketDisconnect
-from sqlalchemy import func, select, update
+from sqlalchemy import select, update
 from starlette.websockets import WebSocketState
 
 from zoujin_backend import audio
 from zoujin_backend.config import COOKIE
 from zoujin_backend.db import store
 from zoujin_backend.db.store import Run
-from zoujin_backend.db.tables import events, playthroughs, turns, utterances
+from zoujin_backend.db.tables import playthroughs, turns, utterances
 from zoujin_backend.gateway import auth
 from zoujin_backend.gateway.core import VOICE_MINUTES, Gateway
 from zoujin_backend.models.live import LiveSession, Transcriber
 from zoujin_backend.narrator.acts import PLAN_TRIES
-from zoujin_backend.narrator.plans import INVALID_REQUEST, REFUSAL_FALLBACK, narrate_fallback
+from zoujin_backend.narrator.plans import INVALID_REQUEST, NOT_HEARD, REFUSAL_FALLBACK, narrate_fallback
 from zoujin_backend.origin import origin_allowed
 from zoujin_backend.projection import pending
 from zoujin_backend.schemas import SchemaError
@@ -167,15 +167,10 @@ class Conn:
 
     async def _results(self) -> None:
         """判完的轮次推结果：叙事者记在 `turns.result.push` 里的消息（固定演出、turn_settled、action_result、
-        act_plan_result、act_transition、act_ended），按判完的先后。这一轮的事件还有没推出去的（commit 在读事件日志
-        之后才落地）就留到下一次，保证结果在它自己的 commit 之后（3.4、3.8）。三次都没做成的任务按种类补一个
+        act_plan_result、act_transition、act_ended），按判完的先后。`turns.result.seq` 是这一轮那次提交的最后一个
+        seq：commit 还没推到那里（叙事者正好在读提交和读轮次之间提交了）就留到下一次，保证结果在它自己那次的 commit
+        之后（3.4、3.8、3.14），这一轮自己没有事件（`wait` 只结算节拍）也一样。三次都没做成的任务按种类补一个
         （`_fallback`）。"""
-        upto = (
-            select(func.max(events.c.seq))
-            .where(events.c.playthrough_id == turns.c.playthrough_id, events.c.turn_id == turns.c.turn_id)
-            .scalar_subquery()
-            .label("upto")
-        )
         async with self.gw.engine.connect() as c:
             rows = (
                 await c.execute(
@@ -187,7 +182,6 @@ class Conn:
                         turns.c.client_msg_id,
                         turns.c.request,
                         turns.c.result,
-                        upto,
                     )
                     .where(
                         turns.c.playthrough_id == self.pid,
@@ -199,7 +193,8 @@ class Conn:
                 )
             ).all()
         for r in rows:
-            if r.turn_id in self.settled or (r.upto is not None and r.upto > self.sent_seq):
+            upto = (r.result or {}).get("seq")
+            if r.turn_id in self.settled or (upto is not None and upto > self.sent_seq):
                 continue
             self.settled.add(r.turn_id)
             if r.result is not None and "push" in r.result:
@@ -615,6 +610,18 @@ class Conn:
         """用声音说打算：转写的定稿推给前端，再写 plan 任务；结果（act_plan_result）带这一轮的 turnId。"""
         heard = await plan.listener.finish()
         await asyncio.gather(*plan.partials, return_exceptions=True)  # 半句先到，定稿不被半句盖掉
+        if not (heard or "").strip():  # 误按、没出声：不写任务、不算试次（3.11）
+            left = max(0, PLAN_TRIES - (await self._run()).plan_tries)
+            await self.send(
+                {
+                    "type": "act_plan_result",
+                    "turnId": plan.turn_id,
+                    "accepted": False,
+                    "narration": [NOT_HEARD],
+                    "triesLeft": left,
+                }
+            )
+            return
         await self.send(
             {"type": "transcript", "turnId": plan.turn_id, "speaker": "player", "text": heard, "final": True}
         )

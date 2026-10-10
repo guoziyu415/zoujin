@@ -11,10 +11,13 @@ from collections.abc import Iterator
 
 import httpx
 import pytest
+from sqlalchemy import select
 from zoujin_backend.config import REPO
 from zoujin_backend.db import store
+from zoujin_backend.db.tables import turns
 from zoujin_backend.gateway.ws import SERVER_SEQ
 from zoujin_backend.ids import IdGen
+from zoujin_backend.narrator.plans import NOT_HEARD
 
 from .conftest import OLD, Env
 from .test_gateway import Player, Services, invite
@@ -63,6 +66,19 @@ def advance_to(env: Env, s: Services, pid: str, t: int) -> None:
     asyncio.run(main())
     r = httpx.post(f"{s.narrator_url}/internal/v1/playthroughs/{pid}/run", timeout=30)
     assert r.status_code == 200, r.text
+
+
+def plan_turns(env: Env, pid: str) -> list[str]:
+    async def main() -> list[str]:
+        engine = env.engine()
+        try:
+            async with engine.connect() as c:
+                q = select(turns.c.turn_id).where(turns.c.playthrough_id == pid, turns.c.kind == "plan")
+                return list((await c.execute(q)).scalars())
+        finally:
+            await engine.dispose()
+
+    return asyncio.run(main())
 
 
 def test_actions_act_end_choose_and_arrival(env: Env, sliced: Services, player: Player) -> None:
@@ -150,7 +166,22 @@ def test_a_spoken_plan(env: Env, sliced: Services, player: Player) -> None:
     ended = p.expect("welcome")["pending"]["actEnd"]
     assert [o["optionId"] for o in ended["options"]] == ["exit.1.city"]  # 没送过老爺：一个去处
 
-    turn_id, seq = p.turn_id(), 1
+    # 误按：没有一帧声音就松开。不写任务、不算试次，不推定稿
+    silent = p.turn_id()
+    p.send({"type": "activity_start", "turnId": silent, "turnSeq": 1, "purpose": "act_plan"})
+    p.send({"type": "activity_end", "turnId": silent, "turnSeq": 1})
+    nothing = p.expect("act_plan_result", turnId=silent)
+    assert nothing == {
+        "type": "act_plan_result",
+        "turnId": silent,
+        "accepted": False,
+        "narration": [NOT_HEARD],
+        "triesLeft": 2,
+    }
+    assert not [m for m in p.log if m["type"] == "transcript" and m.get("turnId") == silent]
+    assert plan_turns(env, p.pid) == []
+
+    turn_id, seq = p.turn_id(), 2
     p.send({"type": "activity_start", "turnId": turn_id, "turnSeq": seq, "purpose": "act_plan"})
     assert p.ws is not None
     for _ in range(3):
@@ -165,3 +196,4 @@ def test_a_spoken_plan(env: Env, sliced: Services, player: Player) -> None:
     moved_on = p.expect("act_transition")
     assert p.log.index(p.find("commit", seq=p.last_seq)) < p.log.index(result) < p.log.index(moved_on)
     assert moved_on["toActId"] == "act.4" and "opener" not in moved_on["arrival"]
+    assert plan_turns(env, p.pid) == [turn_id]

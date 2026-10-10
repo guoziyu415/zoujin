@@ -22,6 +22,7 @@ from zoujin_backend.db import store
 from zoujin_backend.db.store import Run
 from zoujin_backend.db.tables import events, playthrough_metrics, playthroughs, turns
 from zoujin_backend.gateway.core import Gateway
+from zoujin_backend.gateway.ws import Conn
 from zoujin_backend.models.live import FakeLive
 from zoujin_backend.models.text import FakeText
 from zoujin_backend.narrator.actions import ACT_ENDED_LINE, CHECKER_MOVE
@@ -48,6 +49,20 @@ PROMISE = "fact.promise"
 CITY, HOME = "exit.1.city", "exit.1.old-man"
 ACCEPTED = "町の人たちに、メロスの約束のことを話して回ります。"  # fixtures/fake-text/b3-slice.json 认「約束」
 REFUSED = "メロスを追いかけて、村まで一緒に行きます。"
+
+
+class Sink:
+    """记下发出去的文字帧。"""
+
+    def __init__(self) -> None:
+        self.sent: list[Json] = []
+
+    async def send_text(self, text: str) -> None:
+        self.sent.append(json.loads(text))
+
+    def take(self) -> list[Json]:
+        out, self.sent = self.sent, []
+        return out
 
 
 class Game:
@@ -98,22 +113,43 @@ class Game:
         st = eval_api._run(self.s._state())
         return snapshot(self.s.book, self.s.pid, self.s.role, "active", st, st["seq"], Run.of(self.row()))
 
+    def _gateway(self, engine: AsyncEngine) -> Gateway:
+        return Gateway(
+            settings=self.s.settings,
+            engine=engine,
+            library=LIBRARY,
+            schemas=SCHEMAS,
+            live=FakeLive(self.s.settings.fake_voice, speed=0),
+            narrator=None,  # type: ignore[arg-type]
+        )
+
     def commits(self, after_seq: int) -> list[Json]:
         """网关会推的 commit（和 WebSocket 同一个函数）。"""
 
         async def main() -> list[Json]:
             engine = self._engine()
-            gw = Gateway(
-                settings=self.s.settings,
-                engine=engine,
-                library=LIBRARY,
-                schemas=SCHEMAS,
-                live=FakeLive(self.s.settings.fake_voice, speed=0),
-                narrator=None,  # type: ignore[arg-type]
-            )
             try:
-                msgs, _ = await gw.commits(self.s.pid, after_seq)
+                msgs, _ = await self._gateway(engine).commits(self.s.pid, after_seq)
                 return msgs
+            finally:
+                await engine.dispose()
+
+        return eval_api._run(main())
+
+    def results(self, *sent_seqs: int) -> list[list[Json]]:
+        """一条连接依次推到这些 seq 时，每次推出来的轮次结果（`Conn._results`，不经 WebSocket）。"""
+
+        async def main() -> list[list[Json]]:
+            engine = self._engine()
+            ws = Sink()
+            conn = Conn(self._gateway(engine), ws, self.s.pid, "user")  # type: ignore[arg-type]
+            out: list[list[Json]] = []
+            try:
+                for seq in sent_seqs:
+                    conn.sent_seq = seq
+                    await conn._results()
+                    out.append(ws.take())
+                return out
             finally:
                 await engine.dispose()
 
@@ -310,6 +346,20 @@ def test_gate_taken_again_after_being_turned_away(game: Callable[..., Game]) -> 
     assert turned["setPiece"] == "piece.gate-turned-away"
     step = g.s.advance(60)
     assert g.turn(step["traceId"])["result"]["pieces"] == ["piece.gate-taken-again"]
+
+
+def test_wait_settles_to_the_next_beat_and_its_result_waits_for_the_commit(game: Callable[..., Game]) -> None:
+    """`wait` 只写节拍的系统事件（不带 turnId）：结果记下那次提交的最后一个 seq，commit 没推到那里就不推结果
+    （前端 #61 评审：set_piece、action_result 不能比 commit 先到）。"""
+    g = game("sc.canon@beat.03", place=GROUND)
+    before = g.seq
+    step = g.s.act("wait", None, {})
+    assert step["status"] == "done" and step["pieces"] == ["piece.gate-taken"]
+    assert step["events"] and all(e["actor"] == "system" and "turnId" not in e for e in step["events"])
+    result = g.turn(step["traceId"])["result"]
+    assert result["seq"] == g.seq > before
+    early, late = g.results(before, g.seq)
+    assert early == [] and types(late) == types(result["push"]) == ["set_piece", "action_result"]
 
 
 # —— 第 4 组：收幕和幕末 ——

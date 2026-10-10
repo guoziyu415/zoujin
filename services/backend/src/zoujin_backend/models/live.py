@@ -114,7 +114,7 @@ class FakeLiveSession:
 
 
 class FakeTranscriber:
-    """假的转写：第一帧给半句，松开给整句（`planLines` 依次用）。"""
+    """假的转写：第一帧给半句，松开给整句（`planLines` 依次用）；一帧都没收到（没出声）松开给空串。"""
 
     def __init__(self, line: str) -> None:
         self.line = line
@@ -127,7 +127,7 @@ class FakeTranscriber:
         return [LiveEvent("input_partial", self.line[: max(1, len(self.line) // 2)])]
 
     async def finish(self) -> str | None:
-        return self.line
+        return self.line if self.heard else ""
 
 
 class FakeLive:
