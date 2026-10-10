@@ -27,11 +27,12 @@ GROUND = "place.execution-ground"
 OLD_MAN_TO_GROUND = {"op": "relocate", "character": "char.old-man", "place": GROUND}
 PHILOSTRATUS_TO_ROAD = {"op": "relocate", "character": "char.philostratus", "place": "place.road-to-city"}
 
-# 第一幕的两个去处（S-077 ④⑤，落点和落地句：前端 #22 的位置点，UX `ux/slice/jump-transition.md`「落地」）
+# 第一幕的两个去处（S-077 ④⑤；副题的后半：UX 文案表；落点和落地句：前端 #22 的位置点，UX `ux/slice/jump-transition.md`「落地」）
 SLICE_EXITS: list[dict[str, Any]] = [
     {
         "id": "exit.1.city",
         "label": "市に残り、メロスの帰りを待つ",
+        "sub": "西の門が見える所で",
         "toAct": "act.4",
         "place": GROUND,
         "t": T_JUMP,
@@ -42,6 +43,7 @@ SLICE_EXITS: list[dict[str, Any]] = [
     {
         "id": "exit.1.old-man",
         "label": "老爺の家に身を寄せる",
+        "sub": "老爺があなたを覚えている",
         "toAct": "act.4",
         "place": GROUND,
         "t": T_JUMP,

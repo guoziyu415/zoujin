@@ -5445,6 +5445,7 @@
     {
      "id": "exit.1.city",
      "label": "市に残り、メロスの帰りを待つ",
+     "sub": "西の門が見える所で",
      "toAct": "act.4",
      "place": "place.execution-ground",
      "t": 5370,
@@ -5469,6 +5470,7 @@
     {
      "id": "exit.1.old-man",
      "label": "老爺の家に身を寄せる",
+     "sub": "老爺があなたを覚えている",
      "toAct": "act.4",
      "place": "place.execution-ground",
      "t": 5370,

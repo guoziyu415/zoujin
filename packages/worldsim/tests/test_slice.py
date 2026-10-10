@@ -52,6 +52,7 @@ def test_slice_opens_only_the_traveler_the_plaza_and_two_exits() -> None:
     assert "conditionalAccess" not in SLICE["roles"][0]
     assert ACTS["act.1"]["scenes"] == ACTS["act.4"]["scenes"] == ["scene.syracuse-square"]
     assert list(EXITS) == ["exit.1.city", "exit.1.old-man"]
+    assert [e["sub"] for e in EXITS.values()] == ["西の門が見える所で", "老爺があなたを覚えている"]
     assert all(a["place"] in SLICE["roles"][0]["access"] for a in SLICE["affordances"])  # 「保証する」不在
     chars = {c["id"]: c for c in SLICE["characters"]}
     assert {c for c, x in chars.items() if x["talkable"]} == {"char.melos", "char.old-man"}  # S-050
