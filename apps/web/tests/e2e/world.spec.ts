@@ -30,6 +30,7 @@ type Hook = {
   follow(towards: [number, number]): Promise<void>;
   onScreen(): { playerPx: number; aheadPx: number; horizon: number };
   walkTo(to: string | [number, number]): void;
+  inView(spot: string): boolean | null;
 };
 declare global {
   interface Window {
@@ -174,6 +175,11 @@ test("follow camera: UX's framing, towards the west gate and the castle", async 
     expect(f.aheadPx).toBeLessThanOrEqual(80);
     expect(f.horizon).toBeGreaterThan(0.25);
     expect(f.horizon).toBeLessThan(0.4);
+    // the onlooker's spot stays out of the 「市に残り」 landing shot (UX on PR #51)
+    if (spot === "ground-west")
+      expect(
+        await page.evaluate(() => window.__zoujin.inView("ground-south")),
+      ).toBe(false);
     const png = await shot(name);
     // looking along the gate street the sky shows above the roofs
     if (name === "follow-west-gate") {

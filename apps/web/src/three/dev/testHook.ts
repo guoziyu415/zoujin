@@ -8,7 +8,7 @@ import { quality, useQuality, type AssetTier } from "../quality/quality";
 import { rig } from "../rig";
 import { planToWorld, type Vec3 } from "../scene/frame";
 import { highTier, loadInfo } from "../World";
-import { useWorld } from "./fakeStore";
+import { useWorld, type CharacterState } from "./fakeStore";
 
 type Plan = [number, number, number]; // layout.json plan x, y and height
 
@@ -79,6 +79,21 @@ export function installTestHook(): void {
           aheadPx: tall(feet.clone().addScaledVector(fwd, 15)),
           horizon: y(cam.position.clone().addScaledVector(fwd, 1e5)) / h,
         };
+      },
+      // the scene's other people (fake store; F-0's snapshot and commits later)
+      setCharacters: async (chars: Record<string, CharacterState>) => {
+        useWorld.setState({ characters: chars });
+        await nextFrames(2);
+      },
+      // is any of a 1.7 m person standing on this spot inside the current camera's view
+      inView: (spot: string) => {
+        const cam = rig.camera;
+        const at = loadInfo.spots[spot];
+        if (!cam || !at) return null;
+        return [0, 0.85, 1.7].some((up) => {
+          const v = new Vector3(at[0], at[1] + up, at[2]).project(cam);
+          return Math.abs(v.x) <= 1 && Math.abs(v.y) <= 1 && v.z < 1;
+        });
       },
       // walk as if the ground there had been tapped (Player.tsx does the same on a tap): a spot name or plan x, y
       // the quality level, the probe's result and the telemetry waiting to be sent
