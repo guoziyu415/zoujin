@@ -14,8 +14,8 @@ $BPY melos_prep.py <melos.blend> <tex_dir from melos_tex.py> <out.blend>
   between the hair cards and along the hairline reads as hair instead of a bright ragged line.
 - Dust from a day on the road, by height on the body: feet and shins below the knee, the tunic's hem, the sandals.
   The tunic's shoulders are faded by the sun where the cloth faces up.
-- Skin normal map (new in v2; compress.mjs keeps it at 2048 on the high tier and 512 on std): fine relief from the
-  colour map's own detail (high-pass of its luminance) plus small pores from a fixed-seed noise.
+- Skin normal map (new in v2; compress.mjs keeps it at 2048 on the high tier and 1024 on std): the larger relief in
+  the colour map's own detail (a band-pass of its luminance). No pores (art-direction 5.1).
 - Ambient occlusion baked with Cycles (rest pose, the whole figure as occluder) and multiplied into the skin and
   tunic colour maps: contact shadow under the rope, the bands, the bundle and the tunic's edges, and in the folds.
 - Roughness per part (MPFB sets 0.7 everywhere); materials renamed as on the stand-in (skin, eyes, hair, ...):
@@ -156,9 +156,19 @@ def bake_ao(ob, size, distance):
     return ao
 
 
-def _blur(a, r):
-    im = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), "L")
-    return np.asarray(im.filter(ImageFilter.GaussianBlur(r)), float)
+def _box(a, r, ax):
+    a = np.moveaxis(a, ax, 0)
+    c = np.cumsum(np.pad(a, [(r + 1, r)] + [(0, 0)] * (a.ndim - 1), mode="edge"), axis=0)
+    return np.moveaxis((c[2 * r + 1 :] - c[: -2 * r - 1]) / (2 * r + 1), 0, ax)
+
+
+def _blur(a, sigma):
+    """Gaussian blur in float (three box passes); 8-bit blurs would step the relief into fine grain."""
+    r = max(1, round((np.sqrt(4 * sigma * sigma + 1) - 1) / 2))
+    a = np.asarray(a, np.float64)
+    for _ in range(3):
+        a = _box(_box(a, r, 0), r, 1)
+    return a
 
 
 def skin_normal(skin, path, cover, strength=0.5):
@@ -169,19 +179,12 @@ def skin_normal(skin, path, cover, strength=0.5):
     lum = to_lin(px[..., :3]) @ np.array([0.2126, 0.7152, 0.0722], np.float32)
     lum = lum * 255 / max(float(lum.max()), 1e-6)
     m = cover.astype(float)
-    fill = _blur(lum * m, 8) / np.maximum(_blur(m * 255, 8) / 255, 1e-3)
+    fill = _blur(lum * m, 8) / np.maximum(_blur(m, 8), 1e-3)
     lum = np.where(cover, lum, fill)
     inner = np.asarray(Image.fromarray((m * 255).astype(np.uint8), "L").filter(ImageFilter.MinFilter(5)), float) / 255
-    detail = (lum - _blur(lum, 8)) / 255 * inner
-    rng = np.random.default_rng(20261010)
-    n = np.asarray(
-        Image.fromarray(np.clip(rng.normal(128, 40, lum.shape), 0, 255).astype(np.uint8), "L").filter(
-            ImageFilter.GaussianBlur(0.7)
-        ),
-        np.float32,
-    )
-    pores = -np.clip((n - 128) / 40 - 0.9, 0, None) * inner
-    h = 6.0 * detail + 0.6 * pores
+    # a band, not a high-pass: no pores or fine grain (art-direction 5.1; on a 2 cm face they turn into glitter
+    # in the noon highlight), only the larger relief the colour map carries: creases, knuckles, round the eyes
+    h = 10.0 * (_blur(lum, 1.5) - _blur(lum, 12)) / 255 * inner
     gx = (np.roll(h, -1, 1) - np.roll(h, 1, 1)) * 0.5
     gy = (np.roll(h, -1, 0) - np.roll(h, 1, 0)) * 0.5
     nrm = np.stack([-gx * strength, gy * strength, np.ones_like(h)], -1)
