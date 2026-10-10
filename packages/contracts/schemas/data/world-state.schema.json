@@ -85,6 +85,16 @@
           },
           "description": "角色 → 地点"
         },
+        "spots": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "common.schema.json#/$defs/CharacterId"
+          },
+          "additionalProperties": {
+            "$ref": "common.schema.json#/$defs/SpotId"
+          },
+          "description": "（1.7）角色 → 指定的位置点：relocate 写了 spot 才有；换到别的地点时去掉。没有的由后端按布局的站位规则排（第 3.1 节）"
+        },
         "promises": {
           "type": "object",
           "propertyNames": {

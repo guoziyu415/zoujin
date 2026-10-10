@@ -308,6 +308,10 @@
             },
             "place": {
               "$ref": "common.schema.json#/$defs/PlaceId"
+            },
+            "spot": {
+              "$ref": "common.schema.json#/$defs/SpotId",
+              "description": "（1.7）站在这个地点的哪个位置点；省略 = 由后端按布局的站位规则排（第 3.1 节 WorldState.spots）"
             }
           },
           "required": ["op", "character", "place"],

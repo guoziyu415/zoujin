@@ -418,6 +418,10 @@
           "type": "boolean",
           "description": "第一版能不能自由对话（S-003）"
         },
+        "group": {
+          "const": true,
+          "description": "（1.7）一群人（群众、警吏、山贼、一团旅人）：不占布局的位置点，前端按地点成群地放（站位规则见第 3.1 节 WorldState.spots）"
+        },
         "voiceRef": {
           "type": "string",
           "description": "声音配置的引用，具体值由后端/UX 管"
@@ -1501,6 +1505,27 @@
         "enRoute": {
           "$ref": "#/$defs/EnRoute",
           "description": "（1.4）跳过的这段路上有一个能改的节拍时，过场页给一个二选一"
+        },
+        "spot": {
+          "$ref": "common.schema.json#/$defs/SpotId",
+          "description": "（1.7）玩家落在 place 的哪个位置点；省略 = 前端按这个地点的起点（layout.json 的 startSpots）"
+        },
+        "arrival": {
+          "type": "object",
+          "properties": {
+            "line": {
+              "type": "string",
+              "minLength": 1,
+              "description": "落地后的第一行叙事（地の文，日语），跳转之后显示"
+            },
+            "opener": {
+              "$ref": "common.schema.json#/$defs/CharacterId",
+              "description": "落地后先开口的人物：服务端发起一轮，台词按人设生成，不是问句"
+            }
+          },
+          "required": ["line"],
+          "additionalProperties": false,
+          "description": "（1.7）落地：第一行叙事和先开口的人物（ux/slice/jump-transition.md「落地」）"
         }
       },
       "required": ["id", "label", "toAct", "place", "t", "effects"],

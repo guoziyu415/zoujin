@@ -17,7 +17,8 @@
 6. 设计层：场景（sceneRef）、幕（acts，开始/收幕/幕末去处）、身份（release、startAct、conditionalAccess）、世界结局（endings）、
    时刻标签（clock.labels）、人物的互助 / 约定 / 打算（S-029、S-030、S-048）、情境动作和物品（affordances / items，
    contracts 2.10；第四幕让他慢和帮他快并排，S-036 ②）、节拍上的人物状态（activities）、台词和动机的生效时间（since / until / when）、
-   （1.4）设计台词、互助的效果、节拍的变体、过场二选一（enRoute）都成立。
+   （1.4）设计台词、互助的效果、节拍的变体、过场二选一（enRoute）都成立；（1.7）位置点（relocate 和去处的 spot）在这个地点所在场景的
+   布局里、属于这个地点（assets/scenes/<场景>/scene.json），去处落地的 arrival，成群的人物（group）不能对话。
 7. 情景模拟（--scenarios）：按 contracts 2.5 的时间传播规则推演原著路径和若干改道情景，
    检查原著路径每个节拍都发生、每个情景落到预期的世界结局（和预期的节拍状态、变体）、每类底线世界结局都能走到；
    （1.4）第四幕按钮上的 melosMinutes 和共享规则算出的梅洛斯到达时间差一致；（1.5）过场选项的 melosMinutes 也一样。
@@ -33,7 +34,7 @@ from pathlib import Path
 
 from zoujin_worldsim import Sim  # 共用的推演规则（W-1 的包，contracts 2.4.1 / 2.5.1）
 
-CONTRACT_VERSION = "1.6"  # contracts.md 的版本
+CONTRACT_VERSION = "1.7"  # contracts.md 的版本
 errors, warnings = [], []
 
 
@@ -108,6 +109,7 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--report", required=True)
     ap.add_argument("--scenarios")
+    ap.add_argument("--scenes-dir", help="场景布局的目录（默认：仓库的 assets/scenes）")
     a = ap.parse_args()
 
     src = json.loads(Path(a.src).read_text(encoding="utf-8"))
@@ -465,6 +467,50 @@ def main():
                         enroute_minutes.append((f"{w2}.enRoute「{x['label']}」", x, max(ends, default=act["start"]["t"])))
                     if "after" in x and not (isinstance(x["after"], str) and x["after"]):
                         err(f"{w2}.enRoute「{x.get('label')}」: after 要是一句日语")
+    # ---------- （1.7，C-18）位置点 ----------
+    scenes_dir = Path(a.scenes_dir) if a.scenes_dir else Path(a.src).resolve().parents[3] / "assets" / "scenes"
+    layouts = {}                                   # 场景 ID → {位置点: 地点}（前端生成的 scene.json）
+    for sc in scenes:
+        f = scenes_dir / sc.removeprefix("scene.") / "scene.json"
+        if f.exists():
+            layouts[sc] = {k: v["place"] for k, v in json.loads(f.read_text(encoding="utf-8"))["spots"].items()}
+    scene_of = {p["id"]: p.get("sceneRef") for p in world["places"]}
+
+    def check_spot(place, spot, where):
+        lay = layouts.get(scene_of.get(place))
+        if lay is None:
+            err(f"{where}: {place} 所在的场景还没有布局（{scenes_dir}），写不了位置点 {spot}")
+        elif spot not in lay:
+            err(f"{where}: 位置点 {spot} 不在 {scene_of[place]} 的布局里")
+        elif lay[spot] != place:
+            err(f"{where}: 位置点 {spot} 属于 {lay[spot]}，不是 {place}")
+
+    def walk_spots(x, where):
+        if isinstance(x, dict):
+            where = x.get("id", where)
+            if x.get("op") == "relocate" and "spot" in x:
+                check_spot(x["place"], x["spot"], where)
+            for y in x.values():
+                walk_spots(y, where)
+        elif isinstance(x, list):
+            for y in x:
+                walk_spots(y, where)
+
+    walk_spots(world, "$")
+    for act in acts.values():
+        for ex in act["exits"]:
+            if "spot" in ex:
+                check_spot(ex["place"], ex["spot"], f"{act['id']}/{ex['id']}")
+            arr = ex.get("arrival")
+            if arr is not None:
+                if not arr.get("line"):
+                    err(f"{act['id']}/{ex['id']}.arrival: 要有 line（落地的一行叙事）")
+                if "opener" in arr and arr["opener"] not in chars:
+                    err(f"{act['id']}/{ex['id']}.arrival: opener 不是人物 {arr['opener']}")
+    for c in world["characters"]:
+        if c.get("group") and c.get("talkable"):
+            err(f"{c['id']}: group（一群人）不能对话")
+
     used_scenes = {sc for act in acts.values() for sc in act["scenes"]}
     for sc in scenes:
         if sc not in used_scenes:

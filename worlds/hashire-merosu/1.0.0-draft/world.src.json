@@ -1,5 +1,5 @@
 {
- "schemaVersion": "1.6",
+ "schemaVersion": "1.7",
  "worldModelVersion": "hashire-merosu@1.0.0-draft.3",
  "_authoring": "出典は {\"q\": 原文の逐字引用, \"p\": 段落番号（省略可）} で書く。spikes/pipeline/build_world.py が段落を特定・検証して world.json を出力する。",
  "book": {
@@ -1942,6 +1942,7 @@
    ],
    "initialPlace": "place.castle",
    "talkable": false,
+   "group": true,
    "cite": [
     {
      "q": "巡邏の警吏"
@@ -1983,6 +1984,7 @@
    "knows": [],
    "initialPlace": "place.mountain-pass",
    "talkable": false,
+   "group": true,
    "cite": [
     {
      "q": "一隊の山賊が躍り出た。"
@@ -2020,6 +2022,7 @@
    ],
    "initialPlace": "place.road-to-city",
    "talkable": false,
+   "group": true,
    "cite": [
     {
      "q": "一団の旅人"
@@ -2057,6 +2060,7 @@
    ],
    "initialPlace": "place.syracuse-square",
    "talkable": false,
+   "group": true,
    "initialActivity": "absent",
    "cite": [
     {
@@ -4190,12 +4194,19 @@
     {
      "op": "relocate",
      "character": "char.selinuntius",
-     "place": "place.execution-ground"
+     "place": "place.execution-ground",
+     "spot": "stake"
     },
     {
      "op": "relocate",
      "character": "char.maiden",
      "place": "place.execution-ground"
+    },
+    {
+     "op": "relocate",
+     "character": "char.king",
+     "place": "place.execution-ground",
+     "spot": "king-west"
     }
    ],
    "activities": [
@@ -4290,7 +4301,8 @@
     {
      "op": "relocate",
      "character": "char.melos",
-     "place": "place.execution-ground"
+     "place": "place.execution-ground",
+     "spot": "scaffold"
     }
    ],
    "activities": [

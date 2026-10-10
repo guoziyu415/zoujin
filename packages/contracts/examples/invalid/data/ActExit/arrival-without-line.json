@@ -1,0 +1,26 @@
+{
+  "id": "exit.1.old-man",
+  "label": "老爺の家に身を寄せる",
+  "toAct": "act.4",
+  "place": "place.execution-ground",
+  "t": 5370,
+  "requires": [
+    {
+      "var": "var.player.walkedOldManHome",
+      "op": "==",
+      "value": true
+    }
+  ],
+  "effects": [
+    {
+      "op": "relocate",
+      "character": "char.old-man",
+      "place": "place.execution-ground",
+      "spot": "stake-front-side"
+    }
+  ],
+  "spot": "stake-front",
+  "arrival": {
+    "opener": "char.old-man"
+  }
+}

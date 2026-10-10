@@ -18,6 +18,8 @@ settle() 写出的系统事件）都用 apply() 应用。settle() 自己也是�
 - 本局对一个还没结果的节拍只有一种改动（契约第 3 节，1.6 写清）：推迟、提前按带符号的分钟相加，净值 0 就去掉；
   prevented 顶掉之前的改动；别的组合 check_effects() 报 bad-state，apply() 抛 ValueError（sim.merge_change）。
 - origin = "schedule" 只用于到点的节拍（type beat，一条 beat 结果）和期限（type action，每局一条，不早于期限）。
+- （1.7）relocate 写了 spot 就记在 spots 里；没写 spot 时换到别的地点才去掉，同一个地点里不动（节拍先把参与人物移到
+  节拍地点，已经站在那里的人保持原来的位置点）。位置点不进任何判定，给后端摆人用（契约 3.1）。
 
 一口气推演没有、这里才有的两处，24 次推演都不受影响：
 ① 玩家在 t 时登记的改动让某个还没结果的节拍的排定时间提前到 t 之前，这个节拍在 t 判
@@ -29,12 +31,14 @@ from __future__ import annotations
 
 import copy
 import json
+import re
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any, NotRequired, TypedDict
 
 from .sim import BIG, OCCURRED, Effect, Override, Sim, World, change_conflict, merge_change, role_of
 
 SCHEDULE = "schedule"  # Event.origin：到点的节拍和期限
+SPOT = re.compile(r"[a-z0-9]+(?:[.-][a-z0-9]+)*")  # 1.7：位置点名（data common.schema.json 的 SpotId）
 
 
 class SimState(TypedDict):
@@ -48,6 +52,7 @@ class SimState(TypedDict):
     vars: dict[str, Any]  # 所有 stateVar
     holdings: dict[str, str | None]  # portable 物品（和开局有人拿着的物品）→ 现在谁拿着
     locations: dict[str, str]  # 人物 → 地点
+    spots: NotRequired[dict[str, str]]  # （1.7）人物 → 指定的位置点；1.7 之前存下的状态没有这一项
     knowledge: dict[str, list[str]]  # 人物 → 运行时学到的事实（按学到的先后，不重复）
     runFacts: dict[str, dict[str, Any]]  # factId → RunFact（madeBy 没有事件 ID 时是 None）
     promises: dict[str, dict[str, Any]]  # promiseId → StoryPromise（同上）
@@ -128,6 +133,7 @@ def initial_state(world: World, role_id: str) -> SimState:
         "vars": vars_,
         "holdings": holdings,
         "locations": {c["id"]: c["initialPlace"] for c in world["characters"]},
+        "spots": {},
         "knowledge": {},
         "runFacts": {},
         "promises": {},
@@ -208,8 +214,13 @@ def _apply_effect(sim: Sim, s: SimState, e: Effect, t: int, system: bool, eid: s
     elif op == "inc":
         v = sim.svars[e["var"]]
         s["vars"][e["var"]] = max(v.get("min", -BIG), min(v.get("max", BIG), s["vars"][e["var"]] + e["by"]))
-    elif op == "relocate":
-        s["locations"][e["character"]] = e["place"]
+    elif op == "relocate":  # 1.7：写了 spot 就站那里；没写时换了地点才去掉，同一个地点里不动（契约 3.1）
+        c, spots = e["character"], s.setdefault("spots", {})
+        if "spot" in e:
+            spots[c] = e["spot"]
+        elif s["locations"].get(c) != e["place"]:
+            spots.pop(c, None)
+        s["locations"][c] = e["place"]
     elif op == "hold":
         s["holdings"][e["item"]] = e["to"]
     elif op == "learn":
@@ -491,6 +502,7 @@ def world_state(world: World, state: SimState, playthrough_id: str) -> dict[str,
         "schedule": sched,
         "knowledge": copy.deepcopy(state["knowledge"]),
         "locations": dict(state["locations"]),
+        "spots": dict(state.get("spots", {})),
         "promises": copy.deepcopy(state["promises"]),
         "runFacts": copy.deepcopy(state["runFacts"]),
         "holdings": dict(state["holdings"]),
@@ -560,6 +572,8 @@ def check_effects(world: World, state: SimState, effects: Iterable[Effect], orig
         elif op == "relocate":
             if e.get("character") not in chars or e.get("place") not in places:
                 bad(i, "unknown-id", f"relocate 引用不存在：{e.get('character')} → {e.get('place')}")
+            if "spot" in e and not (isinstance(e["spot"], str) and SPOT.fullmatch(e["spot"])):
+                bad(i, "bad-value", f"relocate 的 spot 要是布局里的位置点名（小写 slug）：{e['spot']!r}")
         elif op == "hold":
             it = items.get(e.get("item", ""))
             if not it or not it.get("portable"):

@@ -49,7 +49,7 @@ COMMON_DEFS = set(
     "Cite SchemaVersion StoryTime TLabel RecordedAt Actor WorldEndingId"
     " PlaythroughId TurnId EventId MemoryId UtteranceId EndingId PromiseId RunFactId"
     " CharacterId PlaceId SceneId ActId BeatId FactId VarId RoleId EdgeId AidId PromiseTemplateId AffordanceId ItemId"
-    " ExitId RuleId".split()
+    " ExitId RuleId SpotId".split()
 )
 EFFECT_OPS = {"set", "inc", "beat", "learn", "relocate", "promise", "improv", "hold"}
 
@@ -281,11 +281,13 @@ def test_fields_match_contracts_md(type_name: str) -> None:
 
 # 反例为什么不过：(关键字, 出错位置)。新加反例要在这里写明，免得它因为别的原因被拒、测不到想测的东西。
 INVALID_BECAUSE: dict[str, tuple[str, str]] = {
+    "ActExit/arrival-without-line.json": ("required", "arrival"),
     "Character/sample-line-extra-field.json": ("additionalProperties", "speech/sampleLines/1"),
     "CheckResult/failed-rule-r8.json": ("enum", "failedRules/0"),
     "Cite/quote-81.json": ("maxLength", "quote"),
     "Effect/beat-to-skipped.json": ("enum", "to"),
     "Effect/op-teleport.json": ("const", "op"),
+    "Effect/relocate-spot-uppercase.json": ("pattern", "spot"),
     "Ending/card-title-empty.json": ("minLength", "card/title"),
     "Ending/character-lines-4.json": ("maxItems", "card/characterLines"),
     "Ending/character-lines-empty.json": ("minItems", "card/characterLines"),
@@ -298,7 +300,7 @@ INVALID_BECAUSE: dict[str, tuple[str, str]] = {
     "Event/idempotency-key-empty.json": ("minLength", "idempotencyKey"),
     "Event/missing-summary.json": ("required", ""),
     "Event/promise-without-id.json": ("required", "effects/0"),
-    "Event/schema-version-1.7.json": ("enum", "schemaVersion"),
+    "Event/schema-version-1.8.json": ("enum", "schemaVersion"),
     "Event/t-fraction.json": ("type", "t"),
     "Event/t-negative.json": ("minimum", "t"),
     "MemoryItem/from-events-empty.json": ("minItems", "fromEvents"),

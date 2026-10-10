@@ -364,11 +364,17 @@ type SceneId = Annotated[str, Field(pattern="^scene\\.[a-z0-9]+(?:[.-][a-z0-9]+)
 
 
 type SchemaVersion = Annotated[
-    Literal["1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6"],
+    Literal["1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7"],
     Field(title="SchemaVersion"),
 ]
 """
-写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人
+写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival
+"""
+
+
+type SpotId = Annotated[str, Field(max_length=64, pattern="^[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="SpotId")]
+"""
+（1.7）场景布局里的位置点（api-contract 第 0 节 spot，assets/scenes/<场景>/layout.json 的 spots），小写 slug，例 stake-front、way.castle。不带类型前缀：名字由前端在布局里定
 """
 
 
@@ -481,6 +487,25 @@ class ActEnd(BaseModel):
     atLatest: StoryTime
     """
     最迟在这个时间收幕
+    """
+
+
+class ActExitArrival(BaseModel):
+    """
+    （1.7）落地：第一行叙事和先开口的人物（ux/slice/jump-transition.md「落地」）
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    line: Annotated[str, Field(min_length=1)]
+    """
+    落地后的第一行叙事（地の文，日语），跳转之后显示
+    """
+    opener: CharacterId | None = None
+    """
+    落地后先开口的人物：服务端发起一轮，台词按人设生成，不是问句
     """
 
 
@@ -815,6 +840,10 @@ class EffectRelocate(BaseModel):
     op: Literal["relocate"] = "relocate"
     character: CharacterId
     place: PlaceId
+    spot: SpotId | None = None
+    """
+    （1.7）站在这个地点的哪个位置点；省略 = 由后端按布局的站位规则排（第 3.1 节 WorldState.spots）
+    """
 
 
 class EffectSet(BaseModel):
@@ -1636,6 +1665,10 @@ class WorldState(BaseModel):
     """
     角色 → 地点
     """
+    spots: dict[CharacterId, SpotId] | None = None
+    """
+    （1.7）角色 → 指定的位置点：relocate 写了 spot 才有；换到别的地点时去掉。没有的由后端按布局的站位规则排（第 3.1 节）
+    """
     promises: dict[PromiseId, StoryPromise] | None = None
     """
     （1.1）promiseId → 约定
@@ -1823,6 +1856,14 @@ class ActExit(BaseModel):
     """
     （1.4）跳过的这段路上有一个能改的节拍时，过场页给一个二选一
     """
+    spot: SpotId | None = None
+    """
+    （1.7）玩家落在 place 的哪个位置点；省略 = 前端按这个地点的起点（layout.json 的 startSpots）
+    """
+    arrival: Annotated[ActExitArrival | None, Field(title="ActExitArrival")] = None
+    """
+    （1.7）落地：第一行叙事和先开口的人物（ux/slice/jump-transition.md「落地」）
+    """
 
 
 class Affordance(BaseModel):
@@ -2000,6 +2041,10 @@ class Character(BaseModel):
     talkable: bool
     """
     第一版能不能自由对话（S-003）
+    """
+    group: Literal[True] | None = None
+    """
+    （1.7）一群人（群众、警吏、山贼、一团旅人）：不占布局的位置点，前端按地点成群地放（站位规则见第 3.1 节 WorldState.spots）
     """
     voiceRef: str | None = None
     """

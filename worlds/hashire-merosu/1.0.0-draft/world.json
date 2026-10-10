@@ -1,5 +1,5 @@
 {
- "schemaVersion": "1.6",
+ "schemaVersion": "1.7",
  "worldModelVersion": "hashire-merosu@1.0.0-draft.3",
  "book": {
   "id": "hashire-merosu",
@@ -2176,6 +2176,7 @@
    ],
    "initialPlace": "place.castle",
    "talkable": false,
+   "group": true,
    "cite": [
     {
      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
@@ -2225,6 +2226,7 @@
    "knows": [],
    "initialPlace": "place.mountain-pass",
    "talkable": false,
+   "group": true,
    "cite": [
     {
      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
@@ -2268,6 +2270,7 @@
    ],
    "initialPlace": "place.road-to-city",
    "talkable": false,
+   "group": true,
    "cite": [
     {
      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
@@ -2311,6 +2314,7 @@
    ],
    "initialPlace": "place.syracuse-square",
    "talkable": false,
+   "group": true,
    "initialActivity": "absent",
    "cite": [
     {
@@ -4634,12 +4638,19 @@
     {
      "op": "relocate",
      "character": "char.selinuntius",
-     "place": "place.execution-ground"
+     "place": "place.execution-ground",
+     "spot": "stake"
     },
     {
      "op": "relocate",
      "character": "char.maiden",
      "place": "place.execution-ground"
+    },
+    {
+     "op": "relocate",
+     "character": "char.king",
+     "place": "place.execution-ground",
+     "spot": "king-west"
     }
    ],
    "activities": [
@@ -4741,7 +4752,8 @@
     {
      "op": "relocate",
      "character": "char.melos",
-     "place": "place.execution-ground"
+     "place": "place.execution-ground",
+     "spot": "scaffold"
     }
    ],
    "activities": [
