@@ -62,7 +62,7 @@ uv run python -I -B evals/s2_check.py <项目文件夹 data/evals/holdout/s2/s2_
 
 ## 怎么跑、怎么算
 
-1. 每条：按 `setup` 起局（`eval_api`），调 `check(candidate, turn, modelChecks="all")`（api-contract 第 7 节：只检查、不提交；`turn` 给模型检查当上下文；`all` = 第 4 步对每条都跑，不按正式范围挑），记下 `status`（过 = `passed`；不过 = 其余三种）、`failedRules`、`reason`。
+1. 每条：按 `setup` 起局（`eval_api`），调 `check(candidate, turn, model_checks="all")`（api-contract 第 7 节：只检查、不提交；`turn` 给模型检查当上下文；`all` = 第 4 步对每条都跑，不按正式范围挑），记下 `status`（过 = `passed`；不过 = 其余三种）、`failedRules`、`reason`。
 2. 每条跑 3 次，模型和思考档用叙事者正式的设置（3.8-flash、MEDIUM）。花费约 50 × 3 × $0.01 ≈ $1.5（`cost/m2-model-budget.md`）。
 3. 计分：
    - **一致率** = 判定（过 / 不过）和 `label.verdict` 一样的条数 ÷ 50，门槛 ≥ 90%（最多错 5 条）。三次各算一次，报最差的一次，另报三次多数票。
@@ -78,7 +78,7 @@ uv run python -I -B evals/s2_check.py <项目文件夹 data/evals/holdout/s2/s2_
 - R6 的规则部分（电话、邮箱、地址的模式，Model Armor 的标记，和原话连续 8 字相同）放在第 3 步，每条摘要和即兴设定都跑。
 - 净增约 $0.03 / 局（backend-design 第 8 节，S-5 实测替换）。
 
-S-2 用 `modelChecks="all"`，不受范围影响。正式范围下会漏看哪些违规，由 `s2_check.py` 的 `scope_gap()` 数（`effects` 为空、标成 `model`、又不是第 3 步 R6 模式能抓的违规）：两份现在都是 0。
+S-2 用 `model_checks="all"`，不受范围影响。正式范围下会漏看哪些违规，由 `s2_check.py` 的 `scope_gap()` 数（`effects` 为空、标成 `model`、又不是第 3 步 R6 模式能抓的违规）：两份现在都是 0。
 
 R6 的条目仍标 `stage: model`：第 3 步的模式抓得到电话、邮箱和照抄的原话，抓不全名字、住址和分寸；`judge()` 也不做 R6。
 
