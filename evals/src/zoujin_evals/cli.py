@@ -36,8 +36,9 @@ def parse(argv: Sequence[str]) -> argparse.Namespace:
     ap.add_argument("--timeout", type=float, help="每次运行的时限（秒）；不给 = 文字 600、语音和模拟局 1800；0 = 不限")
     ap.add_argument("--quiet", action="store_true", help="不打印每次运行的进度")
     g = ap.add_argument_group("live（只在 zg 的 Mac 上）")
-    g.add_argument("--max-item-usd", type=float, help="单项上限（美元），live 必填")
-    g.add_argument("--max-total-usd", type=float, help="总上限（美元），live 必填")
+    g.add_argument("--max-item-usd", type=float, help="单项上限（美元，两本账合起来），live 必填")
+    g.add_argument("--max-google-usd", type=float, help="Google 账的总上限（美元，产品路径的模型），live 必填")
+    g.add_argument("--max-claude-usd", type=float, help="Claude 账的总上限（美元，评审员和 AI 玩家），live 必填")
     g.add_argument("--confirm", action="store_true", help="zg 看过预计花费、同意了")
     g.add_argument("--prices", type=Path, default=PRICES, help="每步估价")
     return ap.parse_args(argv)
@@ -53,7 +54,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         code, msg = live.gate(
             os.environ,
             max_item_usd=a.max_item_usd,
-            max_total_usd=a.max_total_usd,
+            caps={"google": a.max_google_usd, "claude": a.max_claude_usd},
             confirm=a.confirm,
             cases=cases,
             prices=prices,

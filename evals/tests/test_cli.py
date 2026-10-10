@@ -43,11 +43,15 @@ def test_filters(tmp_path: Path) -> None:
     assert [c["id"] for c in got["cases"]] == ["E5-002"]
 
 
+LIVE = ["--mode", "live", "--max-item-usd", "1", "--max-google-usd", "30", "--max-claude-usd", "10"]
+
+
 def test_live_exits(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     monkeypatch.delenv("ZJ_EVAL_LIVE", raising=False)
-    assert main(["--mode", "live", "--max-item-usd", "1", "--max-total-usd", "30", *ARGS]) == 2
+    assert main([*LIVE, *ARGS]) == 2
     assert "ZJ_EVAL_LIVE" in capsys.readouterr().err
     monkeypatch.setenv("ZJ_EVAL_LIVE", "1")
-    assert main(["--mode", "live", "--max-item-usd", "1", *ARGS]) == 2
-    assert main(["--mode", "live", "--max-item-usd", "1", "--max-total-usd", "30", *ARGS]) == 0
-    assert "--confirm" in capsys.readouterr().out
+    assert main(["--mode", "live", "--max-item-usd", "1", "--max-google-usd", "30", *ARGS]) == 2
+    assert main([*LIVE, *ARGS]) == 0
+    out = capsys.readouterr().out
+    assert "--confirm" in out and "Claude" in out

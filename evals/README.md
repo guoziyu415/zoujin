@@ -21,7 +21,7 @@
 | `safety/s4_selfharm_holdout.jsonl`、`gen_selfharm_holdout.py` | 自伤分类器的留出验证样本 25 条和它的编写源。**只用来验已定稿的 v3，不拿它改提示**；跑法见脚本开头。S-072（2026-10-07）已经用它验过 v3，用过一次，所以搬进了仓库；下一版分类器要另写新的留出样本 |
 | `s2/`、`gen_s2_dev.py`、`s2_check.py` | S-2 叙事者自检准确率：公开样例 10 条、生成器、格式自检和确定性规则的最简判法。格式和计分见 `s2/README.md` |
 | `src/zoujin_evals/`、`pyproject.toml` | 评测运行器（E-0）：读用例、经后端的 `eval_api` 跑、28 种确定性检查、报告、`live` 的开关。用法见下面「运行器」 |
-| `config/live-cost.json` | `live` 模式估算花费用的每步单价（推算值，M2 跑完第一批后换成账本的实数） |
+| `config/live-cost.json` | `live` 模式估算花费用的单价，按两本账分（`google` 产品路径、`claude` 评审员和 AI 玩家）；推算值，M2 跑完第一批后换成账本的实数 |
 | `tests/`、`tests/snapshots/fake/` | 运行器的测试；`--mode fake --deterministic-only` 的预期报告（快照） |
 | `holdout/`（不在仓库里） | 还没用过的留出测量集（现在是 S-2 的 50 条），只放在项目文件夹的 `data/evals/holdout/`，用过一次再搬进来（CONTRIBUTING「不进仓库的」）。**被测的一方在提示定稿前不读**，见那里的 `README.md` |
 
@@ -242,8 +242,12 @@ uv run zoujin-eval --mode fake --deterministic-only --quiet --out evals/tests/sn
 真模型的客户端 M2 才接，现在只有开关和退出（E-0 卡第 3 条）：
 
 1. 没有 `ZJ_EVAL_LIVE=1` 就退出（退出码 2），打印原因。
-2. `--max-item-usd`（单项上限）和 `--max-total-usd`（总上限）都要显式给，没有默认值；少一个就退出。
-3. 不带 `--confirm`：按 `config/live-cost.json` 打印每个套件的预计花费（用例 × `runs` ×（会调模型的步数 × 每步单价 + 判分）；模拟局按每局单价），标出超过上限的，再打印完整命令，退出码 0。由协调把这两样给 zg 看，zg 同意后才带 `--confirm` 再跑。
+2. 上限都要显式给，没有默认值，少一个就退出：
+   - `--max-item-usd`：单项上限，两本账合起来算；
+   - `--max-google-usd`：Google 账的总上限（产品路径：人物、叙事者、结局）；
+   - `--max-claude-usd`：Claude 账的总上限（评审员、AI 玩家）。
+   分两本账是 PM 2026-10-10 定的（zg 的 Claude 额度只付 Claude 的调用）。
+3. 不带 `--confirm`：按 `config/live-cost.json` 打印每个套件在两本账上的预计花费（用例 × `runs` ×（会调模型的步数 × 每步单价 + 判分）；模拟局按每局单价），标出超过上限的，再打印完整命令，退出码 0。由协调把这两样给 zg 看，zg 同意后才带 `--confirm` 再跑。
 4. 带 `--confirm`：退出，打印「真模型的客户端还没有，M2 接上」。
 
 ## 需要别人定的
