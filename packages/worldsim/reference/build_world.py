@@ -19,7 +19,8 @@
    contracts 2.10；第四幕让他慢和帮他快并排，S-036 ②）、节拍上的人物状态（activities）、台词和动机的生效时间（since / until / when）、
    （1.4）设计台词、互助的效果、节拍的变体、过场二选一（enRoute）都成立；（1.7）位置点（relocate 和去处的 spot）在这个地点所在场景的
    布局里、属于这个地点（assets/scenes/<场景>/scene.json），去处落地的 arrival，成群的人物（group）不能对话；打算成行的落点
-   （Act.plan，C-19）和去处一样查，情境动作做完玩家站的点（playerSpot）也查。
+   （Act.plan，C-19）和去处一样查，情境动作做完玩家站的点（playerSpot）也查；固定演出（setPieces，2.11）引用的节拍、人物、事实、
+   地点和别的固定演出都存在，同一个时机上不会有永远轮不到的条目。
 7. 情景模拟（--scenarios）：按 contracts 2.5 的时间传播规则推演原著路径和若干改道情景，
    检查原著路径每个节拍都发生、每个情景落到预期的世界结局（和预期的节拍状态、变体）、每类底线世界结局都能走到；
    （1.4）第四幕按钮上的 melosMinutes 和共享规则算出的梅洛斯到达时间差一致；（1.5）过场选项的 melosMinutes 也一样。
@@ -136,7 +137,8 @@ def main():
     if world.get("schemaVersion") != CONTRACT_VERSION:
         err(f"schemaVersion 要是契约版本 {CONTRACT_VERSION}，现在 {world.get('schemaVersion')}")
     ids = {}
-    for kind in ("characters", "places", "facts", "beats", "stateVars", "roles", "causal", "globalRules", "scenes", "acts", "affordances", "items"):
+    for kind in ("characters", "places", "facts", "beats", "stateVars", "roles", "causal", "globalRules", "scenes", "acts", "affordances", "items",
+                 "setPieces"):
         for x in world.get(kind, []):
             if x["id"] in ids:
                 err(f"ID 重复：{x['id']}")
@@ -675,6 +677,56 @@ def main():
     for pl, kinds in by_place.items():
         if kinds != {"slower", "faster"}:
             err(f"{pl}: 第四幕每处要同时有让他慢和帮他快的动作（S-036 ②），现在只有 {sorted(kinds)}")
+
+    # ---------- 固定演出（contracts 2.11，1.7，S-080 ④） ----------
+    piece_ids = {x["id"] for x in world.get("setPieces", [])}
+    unconditional = {}  # 时机 → 这个时机上第一条什么条件都没有的固定演出：排在它后面的永远轮不到
+    for sg in world.get("setPieces", []):
+        w2, on = sg["id"], sg.get("on", {})
+        if "beat" in on:
+            hook = ("beat", on["beat"])
+            if on["beat"] not in beats:
+                err(f"{w2}: on.beat 不存在 {on['beat']}")
+        else:
+            hook = ("act", on.get("act"), on.get("target"), on.get("refused", False))
+            tgt, kind = on.get("target"), on.get("act")
+            if kind not in UX_ACTIONS | {"move"}:
+                err(f"{w2}: on.act 不是 api-contract 3.8 的动作 {kind}")
+            if tgt is None:
+                pass
+            elif kind in ("move", "go"):
+                if tgt not in places:
+                    err(f"{w2}: {kind} 的 target 要是存在的地点（go 写出口通往的地点），现在 {tgt}")
+            elif kind == "examine":
+                if not tgt.startswith("obj."):
+                    err(f"{w2}: examine 的 target 写 interactable 的 ID（obj.*），现在 {tgt}")
+            elif tgt not in chars:
+                err(f"{w2}: {kind} 的 target 要是存在的人物，现在 {tgt}")
+        for k in ("after", "before"):
+            for b in sg.get(k, []):
+                if b not in beats:
+                    err(f"{w2}: {k} 的节拍不存在 {b}")
+        if set(sg.get("after", [])) & set(sg.get("before", [])):
+            err(f"{w2}: 同一个节拍不能既在 after 又在 before")
+        for kn in sg.get("knows", []):
+            if kn["character"] not in chars:
+                err(f"{w2}: knows 的人物不存在 {kn['character']}")
+            if kn["fact"] not in facts:
+                err(f"{w2}: knows 的事实不存在 {kn['fact']}")
+        for x in sg.get("played", []):
+            if x not in piece_ids or x == w2:
+                err(f"{w2}: played 要引用别的固定演出，现在 {x}")
+        for cnd in sg.get("when", []):
+            check_value(cnd["var"], cnd["value"], f"{w2}.when")
+        if not sg.get("lines"):
+            err(f"{w2}: lines 不能为空")
+        for ln in sg.get("lines", []):
+            if "speaker" in ln and ln["speaker"] not in chars:
+                err(f"{w2}: speaker 不存在 {ln['speaker']}")
+        if hook in unconditional:
+            err(f"{w2}: 同一个时机上 {unconditional[hook]} 排在前面、没有条件，这条永远轮不到")
+        elif not any(sg.get(k) for k in ("after", "before", "knows", "played", "when", "once")):
+            unconditional[hook] = w2
 
     # ---------- 节拍上的人物状态、台词和动机的生效时间（contracts 2.1、2.4，1.1） ----------
     ACTIVITIES = {"idle", "walk", "run", "talk", "work", "sleep", "absent"}

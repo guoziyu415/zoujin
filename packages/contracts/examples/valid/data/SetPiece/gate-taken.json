@@ -1,0 +1,15 @@
+{
+  "id": "piece.gate-taken",
+  "on": { "beat": "beat.04" },
+  "once": true,
+  "lines": [
+    { "narration": "衛兵が、あなたの前に槍を下ろした。" },
+    {
+      "speaker": "char.guards",
+      "line": "下がれ、旅の者。ここから先は、通さぬ。"
+    },
+    { "narration": "メロスは、王城の奥へ引かれていった。" }
+  ],
+  "inferred": true,
+  "note": "UX ux/slice/act1-end-and-gate.md 第 1 节：跟着梅洛斯走到王城门口"
+}

@@ -6,14 +6,10 @@
     "t": 1050
   },
   "end": {
-    "onBeats": [
-      "beat.07"
-    ],
+    "onBeats": ["beat.07"],
     "atLatest": 1560
   },
-  "scenes": [
-    "scene.syracuse-square"
-  ],
+  "scenes": ["scene.syracuse-square"],
   "exits": [
     {
       "id": "exit.1.city",

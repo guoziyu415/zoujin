@@ -1,0 +1,6 @@
+{
+  "id": "piece.gate-again",
+  "on": { "act": "go", "target": "place.castle", "refused": true },
+  "lines": [],
+  "inferred": true
+}

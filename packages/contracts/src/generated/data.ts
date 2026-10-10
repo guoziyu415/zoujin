@@ -170,7 +170,7 @@ export type EdgeId = string;
  */
 export type EventId = string;
 /**
- * 写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival
+ * 写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival / sub、Affordance.playerSpot（C-18）、Act.plan（C-19）、WorldModel.setPieces（S-080 ④）
  */
 export type SchemaVersion = "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5" | "1.6" | "1.7";
 /**
@@ -205,6 +205,10 @@ export type UtteranceId = string;
  * 全局规则（globalRules）：`rule.` 加小写 slug（可以有 `.` 和 `-`）
  */
 export type RuleId = string;
+/**
+ * （1.7）固定演出：`piece.` 加小写 slug（可以有 `.` 和 `-`）
+ */
+export type SetPieceId = string;
 /**
  * 时间的说法，按世界模型的 clock.labels 生成，如「約束の日・夜」（第 0 节）
  */
@@ -1495,6 +1499,93 @@ export interface Scene {
   note?: string;
 }
 /**
+ * （1.7）固定演出（2.11，S-080 ④）：每局一样、写好的地の文和人物的预录句，挂在节拍或玩家的动作上，由服务端在对的时机下发。只是演出：不是事件，不改世界状态
+ */
+export interface SetPiece {
+  id: SetPieceId;
+  /**
+   * 什么时候演：这个节拍发生时玩家在场，或玩家的这种动作判定之后
+   */
+  on:
+    | {
+        beat: BeatId;
+      }
+    | {
+        /**
+         * api-contract 3.8 的 kind
+         */
+        act:
+          | "examine"
+          | "give"
+          | "follow"
+          | "block"
+          | "help"
+          | "wait"
+          | "go"
+          | "shortcut"
+          | "run-together"
+          | "hasten"
+          | "move";
+        /**
+         * 对人物的动作写人物 ID，move 写地点 ID，go 写出口通往的地点（布局 exits[].place），examine 写 interactable 的 ID（obj.*）；省略 = 不看对象
+         */
+        target?: string;
+        /**
+         * 只在被拒时演；省略 = 只在做成时（done / partial）
+         */
+        refused?: true;
+      };
+  /**
+   * 这些节拍已经发生（happened / altered）
+   */
+  after?: BeatId[];
+  /**
+   * 这些节拍还没发生
+   */
+  before?: BeatId[];
+  /**
+   * 这些人物知道这件事（Character.knowledge，或这一局已提交的 learn）
+   */
+  knows?: {
+    character: CharacterId;
+    fact: FactId;
+  }[];
+  /**
+   * 这些固定演出里至少有一个这一局已经演过
+   */
+  played?: SetPieceId[];
+  /**
+   * 别的状态条件（同节拍前提）
+   */
+  when?: Condition[];
+  /**
+   * 一局只演一次
+   */
+  once?: true;
+  /**
+   * 按顺序演：narration = 地の文；speaker + line = 这个人物的一句预录（构建时生成，ux-design 16.2）
+   *
+   * @minItems 1
+   */
+  lines: (
+    | {
+        /**
+         * 一行地の文（日语）
+         */
+        narration: string;
+      }
+    | {
+        speaker: CharacterId;
+        /**
+         * 预录句，也是字幕（日语）
+         */
+        line: string;
+      }
+  )[];
+  inferred: true;
+  note?: string;
+}
+/**
  * 状态变量（2.6）
  */
 export interface StateVar {
@@ -1717,6 +1808,10 @@ export interface WorldModel {
    * （1.1）故事里的物品，见 2.10
    */
   items?: Item[];
+  /**
+   * （1.7，S-080 ④）固定演出：挂在节拍或玩家的动作上的地の文和预录句，见 2.11
+   */
+  setPieces?: SetPiece[];
 }
 /**
  * 由事件推出的当前状态，不是第二份事实（3.1）：世界模型初值 + 按 seq 依次应用全部事件的 effects

@@ -218,6 +218,13 @@
             "$ref": "#/$defs/Item"
           },
           "description": "（1.1）故事里的物品，见 2.10"
+        },
+        "setPieces": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SetPiece"
+          },
+          "description": "（1.7，S-080 ④）固定演出：挂在节拍或玩家的动作上的地の文和预录句，见 2.11"
         }
       },
       "required": [
@@ -1858,6 +1865,157 @@
         }
       },
       "required": ["id", "name", "at", "inferred"],
+      "additionalProperties": false
+    },
+    "SetPiece": {
+      "title": "SetPiece",
+      "description": "（1.7）固定演出（2.11，S-080 ④）：每局一样、写好的地の文和人物的预录句，挂在节拍或玩家的动作上，由服务端在对的时机下发。只是演出：不是事件，不改世界状态",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/SetPieceId"
+        },
+        "on": {
+          "description": "什么时候演：这个节拍发生时玩家在场，或玩家的这种动作判定之后",
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "beat": {
+                  "$ref": "common.schema.json#/$defs/BeatId"
+                }
+              },
+              "required": ["beat"],
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "act": {
+                  "enum": [
+                    "examine",
+                    "give",
+                    "follow",
+                    "block",
+                    "help",
+                    "wait",
+                    "go",
+                    "shortcut",
+                    "run-together",
+                    "hasten",
+                    "move"
+                  ],
+                  "description": "api-contract 3.8 的 kind"
+                },
+                "target": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "description": "对人物的动作写人物 ID，move 写地点 ID，go 写出口通往的地点（布局 exits[].place），examine 写 interactable 的 ID（obj.*）；省略 = 不看对象"
+                },
+                "refused": {
+                  "const": true,
+                  "description": "只在被拒时演；省略 = 只在做成时（done / partial）"
+                }
+              },
+              "required": ["act"],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "after": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/BeatId"
+          },
+          "description": "这些节拍已经发生（happened / altered）"
+        },
+        "before": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/BeatId"
+          },
+          "description": "这些节拍还没发生"
+        },
+        "knows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "character": {
+                "$ref": "common.schema.json#/$defs/CharacterId"
+              },
+              "fact": {
+                "$ref": "common.schema.json#/$defs/FactId"
+              }
+            },
+            "required": ["character", "fact"],
+            "additionalProperties": false
+          },
+          "description": "这些人物知道这件事（Character.knowledge，或这一局已提交的 learn）"
+        },
+        "played": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/SetPieceId"
+          },
+          "description": "这些固定演出里至少有一个这一局已经演过"
+        },
+        "when": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Condition"
+          },
+          "description": "别的状态条件（同节拍前提）"
+        },
+        "once": {
+          "const": true,
+          "description": "一局只演一次"
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "narration": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "一行地の文（日语）"
+                  }
+                },
+                "required": ["narration"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "speaker": {
+                    "$ref": "common.schema.json#/$defs/CharacterId"
+                  },
+                  "line": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "预录句，也是字幕（日语）"
+                  }
+                },
+                "required": ["speaker", "line"],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "minItems": 1,
+          "description": "按顺序演：narration = 地の文；speaker + line = 这个人物的一句预录（构建时生成，ux-design 16.2）"
+        },
+        "inferred": {
+          "const": true
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "on", "lines", "inferred"],
       "additionalProperties": false
     }
   }

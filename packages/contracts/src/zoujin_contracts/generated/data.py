@@ -368,7 +368,82 @@ type SchemaVersion = Annotated[
     Field(title="SchemaVersion"),
 ]
 """
-写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival
+写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival / sub、Affordance.playerSpot（C-18）、Act.plan（C-19）、WorldModel.setPieces（S-080 ④）
+"""
+
+
+class SetPieceOnOption1(BaseModel):
+    """
+    什么时候演：这个节拍发生时玩家在场，或玩家的这种动作判定之后
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    beat: BeatId
+
+
+class SetPieceOnOption2(BaseModel):
+    """
+    什么时候演：这个节拍发生时玩家在场，或玩家的这种动作判定之后
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    act: Literal[
+        "examine", "give", "follow", "block", "help", "wait", "go", "shortcut", "run-together", "hasten", "move"
+    ]
+    """
+    api-contract 3.8 的 kind
+    """
+    target: Annotated[str | None, Field(max_length=128, min_length=1)] = None
+    """
+    对人物的动作写人物 ID，move 写地点 ID，go 写出口通往的地点（布局 exits[].place），examine 写 interactable 的 ID（obj.*）；省略 = 不看对象
+    """
+    refused: Literal[True] | None = None
+    """
+    只在被拒时演；省略 = 只在做成时（done / partial）
+    """
+
+
+class SetPieceKnowsItem(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    character: CharacterId
+    fact: FactId
+
+
+class SetPieceLinesItemOption1(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    narration: Annotated[str, Field(min_length=1)]
+    """
+    一行地の文（日语）
+    """
+
+
+class SetPieceLinesItemOption2(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    speaker: CharacterId
+    line: Annotated[str, Field(min_length=1)]
+    """
+    预录句，也是字幕（日语）
+    """
+
+
+type SetPieceId = Annotated[str, Field(pattern="^piece\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="SetPieceId")]
+"""
+（1.7）固定演出：`piece.` 加小写 slug（可以有 `.` 和 `-`）
 """
 
 
@@ -1472,6 +1547,52 @@ class Scene(BaseModel):
     note: str | None = None
 
 
+class SetPiece(BaseModel):
+    """
+    （1.7）固定演出（2.11，S-080 ④）：每局一样、写好的地の文和人物的预录句，挂在节拍或玩家的动作上，由服务端在对的时机下发。只是演出：不是事件，不改世界状态
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    id: SetPieceId
+    on: SetPieceOnOption1 | SetPieceOnOption2
+    """
+    什么时候演：这个节拍发生时玩家在场，或玩家的这种动作判定之后
+    """
+    after: list[BeatId] | None = None
+    """
+    这些节拍已经发生（happened / altered）
+    """
+    before: list[BeatId] | None = None
+    """
+    这些节拍还没发生
+    """
+    knows: list[SetPieceKnowsItem] | None = None
+    """
+    这些人物知道这件事（Character.knowledge，或这一局已提交的 learn）
+    """
+    played: list[SetPieceId] | None = None
+    """
+    这些固定演出里至少有一个这一局已经演过
+    """
+    when: list[Condition] | None = None
+    """
+    别的状态条件（同节拍前提）
+    """
+    once: Literal[True] | None = None
+    """
+    一局只演一次
+    """
+    lines: Annotated[list[SetPieceLinesItemOption1 | SetPieceLinesItemOption2], Field(min_length=1)]
+    """
+    按顺序演：narration = 地の文；speaker + line = 这个人物的一句预录（构建时生成，ux-design 16.2）
+    """
+    inferred: Literal[True] = True
+    note: str | None = None
+
+
 class StateVarValueRequiresItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -2437,6 +2558,10 @@ class WorldModel(BaseModel):
     items: list[Item] | None = None
     """
     （1.1）故事里的物品，见 2.10
+    """
+    setPieces: list[SetPiece] | None = None
+    """
+    （1.7，S-080 ④）固定演出：挂在节拍或玩家的动作上的地の文和预录句，见 2.11
     """
 
 

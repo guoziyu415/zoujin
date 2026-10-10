@@ -1,0 +1,12 @@
+{
+  "id": "piece.gate-again",
+  "on": { "act": "go", "target": "place.castle", "refused": true },
+  "lines": [
+    {
+      "narration": "衛兵が、あなたの前に槍を下ろした。",
+      "speaker": "char.guards",
+      "line": "二度は言わぬ。下がれ。"
+    }
+  ],
+  "inferred": true
+}
