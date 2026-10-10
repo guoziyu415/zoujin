@@ -17,7 +17,7 @@ from typing import Any
 import pytest
 from zoujin_evals import RunContext, StepResult, WorldIndex
 from zoujin_evals.api import EvalNotImplemented, EvalSession, Event
-from zoujin_worldsim import OCCURRED, SimState, apply, classify, initial_state, role_of, settle, world_state
+from zoujin_worldsim import SimState, apply, classify, initial_state, opening, parse_checkpoint, settle, world_state
 
 REPO = Path(__file__).resolve().parents[2]
 WORLD_DIR = REPO / "worlds" / "hashire-merosu" / "1.0.0-draft"
@@ -161,57 +161,9 @@ class SimSession:
         self.log.append(full)
         return full
 
-    def settle_to(self, t2: int | None, stop_after: str | None = None) -> list[Event]:
-        """结算到 t2；stop_after 给了节拍时，写完这个节拍的系统事件就停（checkpoint「刚发生之后」）。"""
+    def settle_to(self, t2: int | None) -> list[Event]:
         drafts, _ = settle(WORLD, self.s, t2)
-        out = []
-        for d in drafts:
-            out.append(self._write(d["event"]))
-            if stop_after is not None and d["beat"] == stop_after:
-                break
-        return out
-
-    def play(self, sc: Mapping[str, Any], until: tuple[str, Any] | None) -> None:
-        """情景：改动在时钟 0 作为一个事件；settle 到身份的 startT；情景的事件按 t 先 settle 再 apply。"""
-        if sc.get("beats"):
-            self._write(
-                {
-                    "t": 0,
-                    "origin": "action",
-                    "effects": [{"op": "beat", "beat": b, **o} for b, o in sc["beats"].items()],
-                }
-            )
-        start = role_of(WORLD, self.role)["startT"]
-        events = sorted(sc.get("events", []), key=lambda e: e["t"])
-        if self._settle_until(start, until):
-            return
-        for e in events:
-            if self._settle_until(e["t"], until):
-                return
-            self._write({"t": e["t"], "origin": "action", "effects": e["effects"]})
-        if until is None:
-            self.settle_to(None)
-            self.done = True
-        else:
-            self._settle_until(None, until)
-
-    def _settle_until(self, t2: int | None, until: tuple[str, Any] | None) -> bool:
-        """结算到 t2，碰到检查点就停；返回停没停。"""
-        if until is None:
-            self.settle_to(t2)
-            return False
-        kind, x = until
-        if kind == "t":
-            if t2 is None or t2 >= x:
-                self.move_clock(x)
-                return True
-            self.settle_to(t2)
-            return False
-        written = self.settle_to(t2, stop_after=x)
-        return any(
-            any(f.get("op") == "beat" and f.get("beat") == x and f.get("to") in OCCURRED for f in e["effects"])
-            for e in written
-        )
+        return [self._write(d["event"]) for d in drafts]
 
     def move_clock(self, t2: int) -> list[Event]:
         """时钟走到 t2：结算到 t2，再写一个只推进时钟的事件（契约：时钟只由事件推出）。"""
@@ -258,15 +210,12 @@ class SimApi:
     def setup(self, setup: Mapping[str, Any], *, mode: str = "text") -> EvalSession:
         if "persona" in setup:
             raise EvalNotImplemented("persona")
-        sess = SimSession(setup["role"])
-        if "place" in setup:
-            sess._write({"t": 0, "effects": [{"op": "set", "var": "var.player.location", "value": setup["place"]}]})
-        if "scenario" in setup:
-            sess.play(SCENARIOS[setup["scenario"]], None)
-        else:
-            sc_id, _, at = setup["checkpoint"].partition("@")
-            until = ("t", int(at[2:])) if at.startswith("t=") else ("beat", at)
-            sess.play(SCENARIOS[sc_id], until)
+        sc_id, until = (setup["scenario"], None) if "scenario" in setup else parse_checkpoint(setup["checkpoint"])
+        opened, _ = opening(WORLD, setup["role"], SCENARIOS[sc_id], until, place=setup.get("place"))
+        sess = SimSession(setup["role"])  # 起点之前的事件和 B-0 一样由 worldsim 的 opening() 写出
+        for o in opened:
+            sess._write(o["event"])
+        sess.done = until is None
         for e in setup.get("events", []):  # 评测布置：t = 起点时刻
             check = {"status": "passed", "failedRules": [], "checker": "eval-setup"}
             sess._write({"t": sess.s["t"], "effects": e["effects"], "check": check})
