@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "1.5",
+  "eventId": "ev_01JET1JPAFNT8BP31W6DVYNA3M",
+  "playthroughId": "pt_01JK7G0S9BVTJK98MKM7R7ZJDM",
+  "seq": 9,
+  "idempotencyKey": "schedule#beat.06#pt_01JK7G0S9BVTJK98MKM7R7ZJDM",
+  "worldModelVersion": "hashire-merosu@1.0.0",
+  "t": 1410,
+  "dt": 0,
+  "recordedAt": "2026-10-06T12:03:00Z",
+  "actor": "system",
+  "type": "beat",
+  "origin": "schedule",
+  "place": "place.castle",
+  "summary": "深夜、セリヌンティウスが王城に召された",
+  "causes": ["beat.05"],
+  "effects": [
+    {
+      "op": "beat",
+      "beat": "beat.06",
+      "to": "happened"
+    }
+  ],
+  "keyMoment": false,
+  "check": {
+    "status": "passed",
+    "attempts": 1,
+    "failedRules": [],
+    "checker": "rules@1.5"
+  }
+}

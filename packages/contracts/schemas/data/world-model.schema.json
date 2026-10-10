@@ -1,0 +1,1746 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "data/world-model.schema.json",
+  "description": "数据契约 1.5：WorldModel（第 2 节）",
+  "$ref": "#/$defs/WorldModel",
+  "$defs": {
+    "WorldModel": {
+      "title": "WorldModel",
+      "description": "世界模型（第 2 节）：静态、按书版本化；由原文抽取流水线生成，人工校对后发布，运行时只读",
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "$ref": "common.schema.json#/$defs/SchemaVersion"
+        },
+        "worldModelVersion": {
+          "type": "string",
+          "description": "内容版本，如 \"hashire-merosu@1.0.0\""
+        },
+        "book": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "如 \"hashire-merosu\""
+            },
+            "title": {
+              "type": "string"
+            },
+            "author": {
+              "type": "string"
+            },
+            "year": {
+              "type": "integer"
+            },
+            "source": {
+              "type": "object",
+              "properties": {
+                "provider": {
+                  "const": "aozora"
+                },
+                "cardId": {
+                  "type": "string"
+                },
+                "fileId": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "textSha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "retrievedAt": {
+                  "type": "string",
+                  "description": "取得原文的日期"
+                },
+                "license": {
+                  "const": "public-domain"
+                }
+              },
+              "required": [
+                "provider",
+                "cardId",
+                "fileId",
+                "url",
+                "textSha256",
+                "retrievedAt",
+                "license"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": ["id", "title", "author", "year", "source"],
+          "additionalProperties": false
+        },
+        "characters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Character"
+          }
+        },
+        "places": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Place"
+          }
+        },
+        "facts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Fact"
+          }
+        },
+        "beats": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Beat"
+          }
+        },
+        "causal": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CausalEdge"
+          }
+        },
+        "anchors": {
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "$ref": "common.schema.json#/$defs/FactId"
+              },
+              {
+                "$ref": "common.schema.json#/$defs/BeatId"
+              }
+            ]
+          },
+          "description": "不能被推翻的 fact / beat ID（锚点）"
+        },
+        "globalRules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "common.schema.json#/$defs/RuleId"
+              },
+              "text": {
+                "type": "string"
+              },
+              "inferred": {
+                "const": true
+              },
+              "cite": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/Cite"
+                },
+                "description": "有原文依据时（1.4）"
+              }
+            },
+            "required": ["id", "text", "inferred"],
+            "additionalProperties": false
+          },
+          "description": "死者不复活、没有奇迹、时间不倒流、没有现代物品、人物自己做决定"
+        },
+        "clock": {
+          "$ref": "#/$defs/Clock"
+        },
+        "stateVars": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StateVar"
+          }
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Role"
+          },
+          "description": "玩家可选身份"
+        },
+        "scenes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Scene"
+          },
+          "description": "3D 场景（S-001）"
+        },
+        "acts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Act"
+          },
+          "description": "幕（S-004）"
+        },
+        "endings": {
+          "type": "object",
+          "properties": {
+            "world": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/WorldEnding"
+              },
+              "description": "世界结局的底线分类（S-007、S-034）"
+            },
+            "signature": {
+              "$ref": "#/$defs/EndingSignature",
+              "description": "（1.1）什么叫「结局实质不同」，见 2.9.1"
+            }
+          },
+          "required": ["world"],
+          "additionalProperties": false
+        },
+        "pacing": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "description": "时间消耗参数（S-005、S-038），键见 2.6.1；值是故事分钟"
+        },
+        "pacingNote": {
+          "type": "string",
+          "description": "（1.1）pacing 的说明（日语）"
+        },
+        "affordances": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Affordance"
+          },
+          "description": "（1.1）情境动作，见 2.10"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Item"
+          },
+          "description": "（1.1）故事里的物品，见 2.10"
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "worldModelVersion",
+        "book",
+        "characters",
+        "places",
+        "facts",
+        "beats",
+        "causal",
+        "anchors",
+        "globalRules",
+        "clock",
+        "stateVars",
+        "roles",
+        "scenes",
+        "acts",
+        "endings"
+      ],
+      "additionalProperties": false
+    },
+    "Character": {
+      "title": "Character",
+      "description": "人物（2.1）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/CharacterId"
+        },
+        "name": {
+          "type": "string"
+        },
+        "reading": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string",
+          "description": "一两句，中性描述"
+        },
+        "traits": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string"
+              },
+              "cite": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/Cite"
+                }
+              },
+              "since": {
+                "$ref": "common.schema.json#/$defs/BeatId",
+                "description": "从该节拍发生起才用（1.1）"
+              },
+              "until": {
+                "$ref": "common.schema.json#/$defs/BeatId",
+                "description": "该节拍发生后不再用（1.1）"
+              },
+              "when": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Condition"
+                },
+                "description": "此刻的 WorldState 满足这些条件才用（1.4）；since / until / when 同时写时三者都要满足"
+              }
+            },
+            "required": ["text", "cite"],
+            "additionalProperties": false
+          },
+          "description": "性格，每条有出处"
+        },
+        "goals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "text": {
+                "type": "string"
+              },
+              "cite": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/Cite"
+                }
+              },
+              "since": {
+                "$ref": "common.schema.json#/$defs/BeatId",
+                "description": "从该节拍发生起才用（1.1）"
+              },
+              "until": {
+                "$ref": "common.schema.json#/$defs/BeatId",
+                "description": "该节拍发生后不再用（1.1）"
+              },
+              "when": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Condition"
+                },
+                "description": "此刻的 WorldState 满足这些条件才用（1.4）；since / until / when 同时写时三者都要满足"
+              }
+            },
+            "required": ["text", "cite"],
+            "additionalProperties": false
+          },
+          "description": "动机（= S-030 的「当下目标」）"
+        },
+        "speech": {
+          "type": "object",
+          "properties": {
+            "firstPerson": {
+              "type": "string",
+              "description": "「私」「わし」…"
+            },
+            "register": {
+              "type": "string"
+            },
+            "sampleLines": {
+              "type": "array",
+              "items": {
+                "description": "原文台词，直接引用。契约写作 Cite & { since?, until?, when? }：这里写成关死的普通对象，source / para / quote 用 JSON 指针引 Cite 的字段（约束只有一份），不用 allOf，生成的类型也是关死的",
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "$ref": "common.schema.json#/$defs/Cite/properties/source"
+                  },
+                  "para": {
+                    "$ref": "common.schema.json#/$defs/Cite/properties/para"
+                  },
+                  "quote": {
+                    "$ref": "common.schema.json#/$defs/Cite/properties/quote"
+                  },
+                  "since": {
+                    "$ref": "common.schema.json#/$defs/BeatId",
+                    "description": "从该节拍发生起才用（1.1）"
+                  },
+                  "until": {
+                    "$ref": "common.schema.json#/$defs/BeatId",
+                    "description": "该节拍发生后不再用（1.1）"
+                  },
+                  "when": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/Condition"
+                    },
+                    "description": "此刻的 WorldState 满足这些条件才用（1.4）；since / until / when 同时写时三者都要满足"
+                  }
+                },
+                "required": ["source", "para", "quote"],
+                "additionalProperties": false
+              },
+              "description": "原文台词，直接引用"
+            },
+            "designLines": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/DesignLine"
+              },
+              "description": "（1.4）原文没有、为游戏写的示例台词"
+            }
+          },
+          "required": ["register", "sampleLines"],
+          "additionalProperties": false,
+          "description": "说话方式，给角色 Agent 和评测用"
+        },
+        "knows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "fact": {
+                "$ref": "common.schema.json#/$defs/FactId"
+              },
+              "since": {
+                "anyOf": [
+                  {
+                    "$ref": "common.schema.json#/$defs/BeatId"
+                  },
+                  {
+                    "const": "pre"
+                  }
+                ],
+                "description": "\"pre\" = 故事开始前就知道"
+              }
+            },
+            "required": ["fact", "since"],
+            "additionalProperties": false
+          },
+          "description": "知道哪个 fact，从哪个 beat 起"
+        },
+        "initialPlace": {
+          "$ref": "common.schema.json#/$defs/PlaceId"
+        },
+        "talkable": {
+          "type": "boolean",
+          "description": "第一版能不能自由对话（S-003）"
+        },
+        "voiceRef": {
+          "type": "string",
+          "description": "声音配置的引用，具体值由后端/UX 管"
+        },
+        "initialActivity": {
+          "$ref": "#/$defs/Activity",
+          "description": "（1.1）开局在做什么（默认 idle）"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/ItemId"
+          },
+          "description": "（1.3）开局带在身上的物品（portable 的 Item ID）"
+        },
+        "cite": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Cite"
+          }
+        },
+        "mutualAid": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MutualAid"
+          },
+          "description": "（1.1）互助：他能为你做的、你能为他做的"
+        },
+        "promiseTemplates": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PromiseTemplate"
+          },
+          "description": "（1.1）这个人物常见的约定"
+        },
+        "plans": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "act": {
+                "$ref": "common.schema.json#/$defs/ActId"
+              },
+              "text": {
+                "type": "string"
+              },
+              "inferred": {
+                "const": true
+              },
+              "cite": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/Cite"
+                }
+              }
+            },
+            "required": ["act", "text"],
+            "additionalProperties": false
+          },
+          "description": "（1.1）每一幕「没人管时的打算」"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "summary",
+        "traits",
+        "goals",
+        "speech",
+        "knows",
+        "initialPlace",
+        "talkable",
+        "cite"
+      ],
+      "additionalProperties": false
+    },
+    "DesignLine": {
+      "title": "DesignLine",
+      "description": "（1.4）原文没有、为游戏写的示例台词（2.1）",
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "日语一句。角色提示里和 sampleLines 一样当示例用，不逐字照念"
+        },
+        "since": {
+          "$ref": "common.schema.json#/$defs/BeatId",
+          "description": "从该节拍发生起才用（1.1）"
+        },
+        "until": {
+          "$ref": "common.schema.json#/$defs/BeatId",
+          "description": "该节拍发生后不再用（1.1）"
+        },
+        "when": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Condition"
+          },
+          "description": "此刻的 WorldState 满足这些条件才用（1.4）；since / until / when 同时写时三者都要满足"
+        },
+        "inferred": {
+          "const": true
+        },
+        "note": {
+          "type": "string",
+          "description": "什么场合说"
+        },
+        "cite": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Cite"
+          },
+          "description": "依据的原文"
+        }
+      },
+      "required": ["text", "inferred"],
+      "additionalProperties": false
+    },
+    "MutualAid": {
+      "title": "MutualAid",
+      "description": "（1.1）互助：他能为你做的、你能为他做的（2.1）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/AidId"
+        },
+        "direction": {
+          "enum": ["forYou", "fromYou"],
+          "description": "forYou = 他能为你做的；fromYou = 你能为他做的"
+        },
+        "text": {
+          "type": "string",
+          "description": "日语一句，给叙事者和角色提示用，不直接显示给玩家"
+        },
+        "when": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Condition"
+          },
+          "description": "只在这些条件下才可能"
+        },
+        "opening": {
+          "$ref": "common.schema.json#/$defs/RoleId",
+          "description": "这一条是该身份第一幕的「开局互助」（S-048）"
+        },
+        "major": {
+          "const": true,
+          "description": "只用于 forYou：兑现时算关键时刻（S-041）"
+        },
+        "gives": {
+          "$ref": "common.schema.json#/$defs/ItemId",
+          "description": "（1.3）只用于 forYou：兑现时人物交给你的物品"
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "event.schema.json#/$defs/Effect"
+          },
+          "description": "（1.4）兑现时提交的效果模板（同 Affordance.effects）"
+        },
+        "inferred": {
+          "const": true
+        },
+        "cite": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Cite"
+          },
+          "description": "有原文依据时给出处"
+        }
+      },
+      "required": ["id", "direction", "text", "inferred"],
+      "additionalProperties": false
+    },
+    "PromiseTemplate": {
+      "title": "PromiseTemplate",
+      "description": "（1.1）这个人物常见的约定；叙事者写 promise 效果时引用（2.1）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/PromiseTemplateId"
+        },
+        "by": {
+          "anyOf": [
+            {
+              "const": "player"
+            },
+            {
+              "$ref": "common.schema.json#/$defs/CharacterId"
+            }
+          ],
+          "description": "谁许下的；另一方是模板所属的人物（by 是人物自己时，另一方是玩家）"
+        },
+        "text": {
+          "type": "string",
+          "description": "约定的内容（日语），如「必ず戻る」"
+        },
+        "inferred": {
+          "const": true
+        },
+        "cite": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Cite"
+          }
+        },
+        "note": {
+          "type": "string",
+          "description": "（1.4）语气、什么场合"
+        }
+      },
+      "required": ["id", "by", "text"],
+      "additionalProperties": false
+    },
+    "Place": {
+      "title": "Place",
+      "description": "地点（2.2）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/PlaceId"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "adjacent": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "place": {
+                "$ref": "common.schema.json#/$defs/PlaceId"
+              },
+              "travelMinutes": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "inferred": {
+                "type": "boolean"
+              }
+            },
+            "required": ["place", "travelMinutes"],
+            "additionalProperties": false
+          },
+          "description": "步行分钟；跑步等节奏由叙事者按系数换算"
+        },
+        "crossing": {
+          "type": "object",
+          "properties": {
+            "bridgeMinutes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "swimMinutes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "boatMinutes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "inferred": {
+              "const": true
+            }
+          },
+          "required": [
+            "bridgeMinutes",
+            "swimMinutes",
+            "boatMinutes",
+            "inferred"
+          ],
+          "additionalProperties": false,
+          "description": "有河的地点"
+        },
+        "sceneRef": {
+          "anyOf": [
+            {
+              "$ref": "common.schema.json#/$defs/SceneId"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "对应的 3D 场景；null = 第一版没有场景"
+        },
+        "inferred": {
+          "type": "boolean",
+          "description": "原文没有这个场景、为游戏设计的地点"
+        },
+        "note": {
+          "type": "string"
+        },
+        "cite": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Cite"
+          }
+        }
+      },
+      "required": ["id", "name", "description", "adjacent", "sceneRef", "cite"],
+      "additionalProperties": false
+    },
+    "Scene": {
+      "title": "Scene",
+      "description": "3D 场景（2.2）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/SceneId",
+          "description": "ID 由前端提出（frontend-design 8.1）"
+        },
+        "name": {
+          "type": "string"
+        },
+        "release": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "第几版做"
+        },
+        "inferred": {
+          "const": true
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "name", "release", "inferred"],
+      "additionalProperties": false
+    },
+    "Fact": {
+      "title": "Fact",
+      "description": "事实（2.3）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/FactId"
+        },
+        "statement": {
+          "type": "string",
+          "description": "中性陈述（日语）"
+        },
+        "trueFrom": {
+          "anyOf": [
+            {
+              "$ref": "common.schema.json#/$defs/BeatId"
+            },
+            {
+              "const": "pre"
+            }
+          ],
+          "description": "从哪个 beat 起成立；\"pre\" = 开场前已成立"
+        },
+        "visibility": {
+          "enum": ["public", "private"],
+          "description": "public：在场的人都会知道；private：只有 knows 里的人知道"
+        },
+        "spoilerTerms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "说出这个事实时常用的词和别名（日语）"
+        },
+        "cite": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Cite"
+          }
+        }
+      },
+      "required": ["id", "statement", "trueFrom", "visibility", "cite"],
+      "additionalProperties": false
+    },
+    "Beat": {
+      "title": "Beat",
+      "description": "情节节拍（2.4）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/BeatId"
+        },
+        "order": {
+          "type": "number",
+          "description": "原著顺序（可以有小数，插在两个节拍之间）"
+        },
+        "title": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "window": {
+          "type": "object",
+          "properties": {
+            "earliest": {
+              "$ref": "common.schema.json#/$defs/StoryTime"
+            },
+            "latest": {
+              "$ref": "common.schema.json#/$defs/StoryTime"
+            },
+            "canonical": {
+              "$ref": "common.schema.json#/$defs/StoryTime"
+            }
+          },
+          "required": ["earliest", "latest", "canonical"],
+          "additionalProperties": false,
+          "description": "故事分钟；原著发生在 canonical；最晚 latest 之后就不可能再发生"
+        },
+        "place": {
+          "$ref": "common.schema.json#/$defs/PlaceId"
+        },
+        "participants": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/CharacterId"
+          }
+        },
+        "kind": {
+          "enum": ["anchor", "mutable"],
+          "description": "anchor：不能被阻止或改写；mutable：可被提前、推迟、阻止或改变结果"
+        },
+        "preconditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Condition"
+          },
+          "description": "发生前提，引用 stateVars"
+        },
+        "outcomes": {
+          "type": "array",
+          "items": {
+            "$ref": "event.schema.json#/$defs/Effect"
+          },
+          "description": "原著里发生后对状态的影响"
+        },
+        "activities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "character": {
+                "$ref": "common.schema.json#/$defs/CharacterId"
+              },
+              "activity": {
+                "$ref": "#/$defs/Activity"
+              }
+            },
+            "required": ["character", "activity"],
+            "additionalProperties": false
+          },
+          "description": "（1.1）节拍发生后这个人物在做什么"
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BeatVariant"
+          },
+          "description": "（1.4）到点发生时，按这一局的状态换成另一种演法"
+        },
+        "cite": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Cite"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "order",
+        "title",
+        "summary",
+        "window",
+        "place",
+        "participants",
+        "kind",
+        "preconditions",
+        "outcomes",
+        "cite"
+      ],
+      "additionalProperties": false
+    },
+    "BeatVariant": {
+      "title": "BeatVariant",
+      "description": "（1.4，S-064）节拍到点发生时按这一局的状态换的另一种演法（2.4）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/BeatId",
+          "description": "如 \"beat.25.v-no-doubt\""
+        },
+        "when": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Condition"
+          },
+          "description": "节拍到点、前提成立时，按顺序取第一个 when 全满足的变体"
+        },
+        "summary": {
+          "type": "string",
+          "description": "这一局的演法（日语）"
+        },
+        "outcomes": {
+          "type": "array",
+          "items": {
+            "$ref": "event.schema.json#/$defs/Effect"
+          },
+          "description": "代替节拍的 outcomes"
+        },
+        "inferred": {
+          "const": true
+        },
+        "note": {
+          "type": "string"
+        },
+        "cite": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Cite"
+          }
+        }
+      },
+      "required": ["id", "when", "summary", "outcomes", "inferred"],
+      "additionalProperties": false
+    },
+    "Activity": {
+      "title": "Activity",
+      "description": "（1.1）人物此刻在做什么，同 api-contract 2.3；前端不认识的按 idle（2.4）",
+      "enum": ["idle", "walk", "run", "talk", "work", "sleep", "absent"]
+    },
+    "Condition": {
+      "title": "Condition",
+      "description": "条件：引用 stateVars（2.4）。节拍前提、变体、去处、情境动作、世界结局共用",
+      "type": "object",
+      "properties": {
+        "var": {
+          "$ref": "common.schema.json#/$defs/VarId"
+        },
+        "op": {
+          "enum": ["==", "!=", ">=", "<=", "in"]
+        },
+        "value": {},
+        "inferred": {
+          "const": true
+        },
+        "note": {
+          "type": "string",
+          "description": "原文没写、为游戏设计的前提的说明"
+        }
+      },
+      "required": ["var", "op", "value"],
+      "additionalProperties": false
+    },
+    "CausalEdge": {
+      "title": "CausalEdge",
+      "description": "因果边（2.5）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/EdgeId"
+        },
+        "from": {
+          "anyOf": [
+            {
+              "$ref": "common.schema.json#/$defs/BeatId"
+            },
+            {
+              "$ref": "common.schema.json#/$defs/VarId"
+            }
+          ],
+          "description": "beat 或 stateVar"
+        },
+        "to": {
+          "anyOf": [
+            {
+              "$ref": "common.schema.json#/$defs/BeatId"
+            },
+            {
+              "$ref": "common.schema.json#/$defs/VarId"
+            }
+          ],
+          "description": "beat 或 stateVar"
+        },
+        "type": {
+          "enum": ["enables", "requires", "prevents", "delays", "hastens"]
+        },
+        "timeLink": {
+          "enum": ["shift", "order"],
+          "description": "（1.1）只用于 enables / requires；默认 shift"
+        },
+        "minutes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "delays / hastens 必填：from 发生会让 to 推迟（提前）几分钟"
+        },
+        "note": {
+          "type": "string",
+          "description": "为什么有这条边（日语）"
+        },
+        "cite": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Cite"
+          },
+          "description": "原文能直接支持时给出处"
+        },
+        "inferred": {
+          "type": "boolean",
+          "description": "原文没明说、由人推断的为 true"
+        }
+      },
+      "required": ["id", "from", "to", "type", "note", "inferred"],
+      "additionalProperties": false
+    },
+    "Clock": {
+      "title": "Clock",
+      "description": "时钟：开局时间、期限、时段叫法（2.6）",
+      "type": "object",
+      "properties": {
+        "startT": {
+          "$ref": "common.schema.json#/$defs/StoryTime",
+          "description": "默认开局时间（各身份见 Role.startT）"
+        },
+        "deadline": {
+          "type": "object",
+          "properties": {
+            "t": {
+              "$ref": "common.schema.json#/$defs/StoryTime"
+            },
+            "label": {
+              "type": "string",
+              "description": "如「三日目の日没」"
+            },
+            "cite": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/Cite"
+              }
+            },
+            "watchBeat": {
+              "$ref": "common.schema.json#/$defs/BeatId",
+              "description": "（1.1）决定赶不赶得上的节拍"
+            },
+            "earliestArrival": {
+              "$ref": "common.schema.json#/$defs/StoryTime",
+              "description": "（1.4，S-066）watchBeat 最早的时刻"
+            },
+            "earliestArrivalCue": {
+              "type": "object",
+              "properties": {
+                "speaker": {
+                  "$ref": "common.schema.json#/$defs/CharacterId"
+                },
+                "line": {
+                  "type": "string"
+                },
+                "narration": {
+                  "type": "string"
+                },
+                "inferred": {
+                  "const": true
+                },
+                "note": {
+                  "type": "string"
+                }
+              },
+              "required": ["speaker", "line", "narration", "inferred"],
+              "additionalProperties": false,
+              "description": "（1.5，S-066 ①）本局第一次到下限时说一次的话"
+            }
+          },
+          "required": ["t", "label", "cite"],
+          "additionalProperties": false
+        },
+        "sunsetMinuteOfDay": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1439,
+          "description": "日没是几点；默认 1140（19:00）"
+        },
+        "onDeadline": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "if": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Condition"
+                }
+              },
+              "then": {
+                "type": "array",
+                "items": {
+                  "$ref": "event.schema.json#/$defs/Effect"
+                }
+              },
+              "note": {
+                "type": "string"
+              },
+              "cite": {
+                "type": "array",
+                "items": {
+                  "$ref": "common.schema.json#/$defs/Cite"
+                }
+              }
+            },
+            "required": ["if", "then", "note", "cite"],
+            "additionalProperties": false
+          },
+          "description": "到期限时自动执行（actor: \"system\"）；所有 if 都按期限那一刻的状态判断"
+        },
+        "labels": {
+          "type": "object",
+          "properties": {
+            "days": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "下标 = Day（S-037）"
+            },
+            "bands": {
+              "type": "array",
+              "items": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  {
+                    "type": "string"
+                  }
+                ],
+                "items": false,
+                "minItems": 2
+              },
+              "description": "一天内的时段起点（分钟）和叫法，如 [1140,\"日没\"]；从 0 开始严格递增"
+            },
+            "format": {
+              "type": "string",
+              "description": "（1.1）模板，含 {day} 和 {band}"
+            },
+            "inferred": {
+              "const": true
+            },
+            "note": {
+              "type": "string"
+            },
+            "cite": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/Cite"
+              },
+              "description": "（1.1）时段叫法的原文依据"
+            }
+          },
+          "required": ["days", "bands", "format", "inferred"],
+          "additionalProperties": false,
+          "description": "tLabel 的生成规则"
+        }
+      },
+      "required": [
+        "startT",
+        "deadline",
+        "sunsetMinuteOfDay",
+        "onDeadline",
+        "labels"
+      ],
+      "additionalProperties": false
+    },
+    "StateVar": {
+      "title": "StateVar",
+      "description": "状态变量（2.6）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/VarId"
+        },
+        "type": {
+          "enum": ["enum", "int", "bool", "place", "minutes"]
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        },
+        "default": {
+          "description": "var.player.location、var.act.current 的初值由身份决定"
+        },
+        "keyMoment": {
+          "type": "boolean",
+          "description": "决定结局的变量"
+        },
+        "visibleToPlayer": {
+          "type": "boolean",
+          "description": "变化能不能显示给玩家；默认 false"
+        },
+        "valueLabels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "取值 → 一句可直接显示的日语"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "type", "default", "description"],
+      "additionalProperties": false
+    },
+    "Role": {
+      "title": "Role",
+      "description": "玩家身份（2.7）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/RoleId"
+        },
+        "name": {
+          "type": "string"
+        },
+        "release": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "第几版开放"
+        },
+        "startAct": {
+          "$ref": "common.schema.json#/$defs/ActId"
+        },
+        "startPlace": {
+          "$ref": "common.schema.json#/$defs/PlaceId"
+        },
+        "startT": {
+          "$ref": "common.schema.json#/$defs/StoryTime"
+        },
+        "knownCharacters": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/CharacterId"
+          },
+          "description": "一开始认识谁（这些角色开局信任 +10）"
+        },
+        "access": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/PlaceId"
+          },
+          "description": "能自由进出的地点"
+        },
+        "conditionalAccess": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "place": {
+                "$ref": "common.schema.json#/$defs/PlaceId"
+              },
+              "when": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Condition"
+                }
+              },
+              "note": {
+                "type": "string"
+              }
+            },
+            "required": ["place", "when"],
+            "additionalProperties": false
+          },
+          "description": "（1.1）条件满足时也能进"
+        },
+        "initialKnowledge": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/FactId"
+          },
+          "description": "身份自带知道的 fact"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/ItemId"
+          },
+          "description": "（1.3）开局带在身上的物品"
+        },
+        "inferred": {
+          "const": true
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "release",
+        "startAct",
+        "startPlace",
+        "startT",
+        "knownCharacters",
+        "access",
+        "initialKnowledge",
+        "inferred"
+      ],
+      "additionalProperties": false
+    },
+    "Act": {
+      "title": "Act",
+      "description": "幕（2.8，S-004）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/ActId"
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "title": {
+          "type": "string"
+        },
+        "start": {
+          "type": "object",
+          "properties": {
+            "t": {
+              "$ref": "common.schema.json#/$defs/StoryTime"
+            }
+          },
+          "required": ["t"],
+          "additionalProperties": false,
+          "description": "本幕最早从什么时候开始"
+        },
+        "end": {
+          "type": "object",
+          "properties": {
+            "onBeats": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/BeatId"
+              },
+              "description": "这些节拍任一有了结果就收幕"
+            },
+            "atLatest": {
+              "$ref": "common.schema.json#/$defs/StoryTime",
+              "description": "最迟在这个时间收幕"
+            }
+          },
+          "required": ["onBeats", "atLatest"],
+          "additionalProperties": false
+        },
+        "scenes": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/SceneId"
+          },
+          "description": "本幕可能用到的场景（前端据此预加载）"
+        },
+        "exits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ActExit"
+          },
+          "description": "幕末去处；最后一幕为空，收幕即进入结局"
+        },
+        "inferred": {
+          "const": true
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "order",
+        "title",
+        "start",
+        "end",
+        "scenes",
+        "exits",
+        "inferred"
+      ],
+      "additionalProperties": false
+    },
+    "ActExit": {
+      "title": "ActExit",
+      "description": "幕末推荐去处（2.8）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/ExitId"
+        },
+        "label": {
+          "type": "string",
+          "description": "玩家看到的选项（日语）"
+        },
+        "toAct": {
+          "$ref": "common.schema.json#/$defs/ActId"
+        },
+        "place": {
+          "$ref": "common.schema.json#/$defs/PlaceId",
+          "description": "下一幕的起点"
+        },
+        "t": {
+          "$ref": "common.schema.json#/$defs/StoryTime",
+          "description": "下一幕从几点开始"
+        },
+        "alignTo": {
+          "$ref": "common.schema.json#/$defs/BeatId",
+          "description": "跟着某个节拍走：该节拍本局被推迟/提前多少，t 就平移多少"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/RoleId"
+          },
+          "description": "只对这些身份开放；省略 = 全部"
+        },
+        "requires": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Condition"
+          },
+          "description": "收幕时的状态要满足"
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "event.schema.json#/$defs/Effect"
+          },
+          "description": "选择本身的效果"
+        },
+        "enRoute": {
+          "$ref": "#/$defs/EnRoute",
+          "description": "（1.4）跳过的这段路上有一个能改的节拍时，过场页给一个二选一"
+        }
+      },
+      "required": ["id", "label", "toAct", "place", "t", "effects"],
+      "additionalProperties": false
+    },
+    "EnRoute": {
+      "title": "EnRoute",
+      "description": "（1.4）过场里的二选一（2.8）",
+      "type": "object",
+      "properties": {
+        "beat": {
+          "$ref": "common.schema.json#/$defs/BeatId",
+          "description": "跳过的这段里能改的节拍"
+        },
+        "line": {
+          "type": "string",
+          "description": "过场页上叙事的一句（日语）"
+        },
+        "choices": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EnRouteChoice"
+          },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "正好两个；最后一个是「照原作」，effects 为空"
+        },
+        "inferred": {
+          "const": true
+        },
+        "note": {
+          "type": "string"
+        },
+        "cite": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Cite"
+          }
+        }
+      },
+      "required": ["beat", "line", "choices", "inferred"],
+      "additionalProperties": false
+    },
+    "EnRouteChoice": {
+      "title": "EnRouteChoice",
+      "description": "（1.5）过场二选一的一个选项（2.8）",
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "按钮上的动词（日语），不写分钟数"
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "event.schema.json#/$defs/Effect"
+          }
+        },
+        "melosMinutes": {
+          "type": "integer",
+          "description": "（1.5）effects 里有改节拍的一条时必填：梅洛斯到刑场早（−）晚（+）几分钟"
+        },
+        "after": {
+          "type": "string",
+          "description": "（1.5）选了这一项，进下一幕之前过场页再多一句（日语）"
+        }
+      },
+      "required": ["label", "effects"],
+      "additionalProperties": false
+    },
+    "WorldEnding": {
+      "title": "WorldEnding",
+      "description": "世界结局的底线分类（2.9，S-007）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/WorldEndingId",
+          "description": "写进 Ending.world.outcome"
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "判定顺序：从 1 开始，第一个条件全满足的就是本局的世界结局"
+        },
+        "label": {
+          "type": "string",
+          "description": "日语，结局卡上显示"
+        },
+        "when": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Condition"
+          },
+          "description": "按结局时的 WorldState 判断"
+        },
+        "inferred": {
+          "const": true
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "order", "label", "when", "inferred"],
+      "additionalProperties": false
+    },
+    "EndingSignature": {
+      "title": "EndingSignature",
+      "description": "（1.1）结局署名：什么叫「世界结局实质不同」（2.9.1）",
+      "type": "object",
+      "properties": {
+        "vars": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/VarId"
+          },
+          "description": "这些变量的最终值"
+        },
+        "beats": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/BeatId"
+          },
+          "description": "这些节拍是否照原著发生"
+        },
+        "inferred": {
+          "const": true
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": ["vars", "beats", "inferred"],
+      "additionalProperties": false
+    },
+    "Affordance": {
+      "title": "Affordance",
+      "description": "（1.1）情境动作（2.10）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/AffordanceId"
+        },
+        "kind": {
+          "enum": [
+            "examine",
+            "give",
+            "follow",
+            "block",
+            "help",
+            "wait",
+            "go",
+            "shortcut",
+            "run-together",
+            "hasten"
+          ]
+        },
+        "label": {
+          "type": "string",
+          "description": "按钮上的动词短语（日语），不写耗时"
+        },
+        "place": {
+          "$ref": "common.schema.json#/$defs/PlaceId",
+          "description": "在哪个地点出现"
+        },
+        "act": {
+          "$ref": "common.schema.json#/$defs/ActId",
+          "description": "只在这一幕"
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/RoleId"
+          },
+          "description": "只对这些身份；省略 = 全部"
+        },
+        "target": {
+          "$ref": "common.schema.json#/$defs/CharacterId",
+          "description": "对象人物"
+        },
+        "item": {
+          "$ref": "common.schema.json#/$defs/ItemId",
+          "description": "kind = give 时必填：交出的物品"
+        },
+        "minutes": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "玩家花的故事时间（= 事件的 dt）"
+        },
+        "melos": {
+          "enum": ["delay", "hasten"],
+          "description": "第四幕对梅洛斯的影响"
+        },
+        "melosMinutes": {
+          "type": "integer",
+          "description": "（1.4）有 melos 时必填：梅洛斯到刑场会晚（+）或早（−）几分钟"
+        },
+        "when": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Condition"
+          },
+          "description": "出现条件"
+        },
+        "aid": {
+          "$ref": "common.schema.json#/$defs/AidId",
+          "description": "做成了就兑现这条互助（fromYou 的 MutualAid.id）"
+        },
+        "effects": {
+          "type": "array",
+          "items": {
+            "$ref": "event.schema.json#/$defs/Effect"
+          },
+          "description": "效果模板：判定通过时提交的效果；空 = 只影响关系"
+        },
+        "inferred": {
+          "const": true
+        },
+        "note": {
+          "type": "string"
+        },
+        "cite": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Cite"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "label",
+        "place",
+        "minutes",
+        "effects",
+        "inferred"
+      ],
+      "additionalProperties": false
+    },
+    "Item": {
+      "title": "Item",
+      "description": "（1.1）故事里的物品（2.10）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "common.schema.json#/$defs/ItemId"
+        },
+        "name": {
+          "type": "string",
+          "description": "日语"
+        },
+        "at": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/PlaceId"
+          },
+          "description": "在这些地点随手可得；能带在身上的物品写 []"
+        },
+        "portable": {
+          "const": true,
+          "description": "（1.3）一件实物：同一时刻只在一个人手里"
+        },
+        "inferred": {
+          "const": true
+        },
+        "note": {
+          "type": "string"
+        },
+        "cite": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/Cite"
+          }
+        }
+      },
+      "required": ["id", "name", "at", "inferred"],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "data/common.schema.json",
+  "description": "数据契约的公共定义（contracts.md 第 0 节）：Cite、ID、故事时间、真实时间、Actor。接口的 Schema（C-1）也引用这里",
+  "$defs": {
+    "Cite": {
+      "title": "Cite",
+      "description": "原文出处，可以被机器校验（第 0 节）",
+      "type": "object",
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "原文版本 ID，如 \"aozora:1567_ruby_4948@sha256:2a437c047d7f\"（对规范化全文求哈希）"
+        },
+        "para": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "规范化文本里的段落号，从 1 开始"
+        },
+        "quote": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80,
+          "description": "原文片段，≤ 80 字。必须是该段的精确子串（跨字段的规矩，由 build_world 校验，不在 Schema 里）"
+        }
+      },
+      "required": ["source", "para", "quote"],
+      "additionalProperties": false
+    },
+    "SchemaVersion": {
+      "title": "SchemaVersion",
+      "description": "写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法；1.6 起往这里加值",
+      "enum": ["1.0", "1.1", "1.2", "1.3", "1.4", "1.5"]
+    },
+    "StoryTime": {
+      "title": "StoryTime",
+      "description": "故事时间 t：从 Day 0（约束之日）00:00 起算的故事分钟数（第 0 节）",
+      "type": "integer",
+      "minimum": 0
+    },
+    "TLabel": {
+      "title": "TLabel",
+      "description": "时间的说法，按世界模型的 clock.labels 生成，如「約束の日・夜」（第 0 节）",
+      "type": "string"
+    },
+    "RecordedAt": {
+      "title": "RecordedAt",
+      "description": "真实时间，ISO 8601 UTC，以 Z 结尾（第 0 节）。只用于审计和分析，不参与故事逻辑。用 pattern 校验，不靠 format",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]{1,9})?Z$"
+    },
+    "PlaythroughId": {
+      "title": "PlaythroughId",
+      "type": "string",
+      "pattern": "^pt_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "一局：`pt_` 加 ULID（26 位 Crockford base32，大写）"
+    },
+    "TurnId": {
+      "title": "TurnId",
+      "type": "string",
+      "pattern": "^turn_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "一轮：`turn_` 加 ULID（26 位 Crockford base32，大写）"
+    },
+    "EventId": {
+      "title": "EventId",
+      "type": "string",
+      "pattern": "^ev_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "事件：`ev_` 加 ULID（26 位 Crockford base32，大写）"
+    },
+    "MemoryId": {
+      "title": "MemoryId",
+      "type": "string",
+      "pattern": "^mem_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "记忆：`mem_` 加 ULID（26 位 Crockford base32，大写）"
+    },
+    "UtteranceId": {
+      "title": "UtteranceId",
+      "type": "string",
+      "pattern": "^utt_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "一句话：`utt_` 加 ULID（26 位 Crockford base32，大写）"
+    },
+    "EndingId": {
+      "title": "EndingId",
+      "type": "string",
+      "pattern": "^end_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "结局：`end_` 加 ULID（26 位 Crockford base32，大写）"
+    },
+    "PromiseId": {
+      "title": "PromiseId",
+      "type": "string",
+      "pattern": "^prm_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "约定（1.1）：`prm_` 加 ULID（26 位 Crockford base32，大写）"
+    },
+    "RunFactId": {
+      "title": "RunFactId",
+      "type": "string",
+      "pattern": "^rf_[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+      "description": "本局即兴设定（1.1）：`rf_` 加 ULID（26 位 Crockford base32，大写）"
+    },
+    "CharacterId": {
+      "title": "CharacterId",
+      "type": "string",
+      "pattern": "^char\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$",
+      "description": "人物：`char.` 加小写 slug（可以有 `.` 和 `-`）"
+    },
+    "PlaceId": {
+      "title": "PlaceId",
+      "type": "string",
+      "pattern": "^place\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$",
+      "description": "地点：`place.` 加小写 slug（可以有 `.` 和 `-`）"
+    },
+    "SceneId": {
+      "title": "SceneId",
+      "type": "string",
+      "pattern": "^scene\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$",
+      "description": "3D 场景：`scene.` 加小写 slug（可以有 `.` 和 `-`）"
+    },
+    "ActId": {
+      "title": "ActId",
+      "type": "string",
+      "pattern": "^act\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$",
+      "description": "幕：`act.` 加小写 slug（可以有 `.` 和 `-`）"
+    },
+    "BeatId": {
+      "title": "BeatId",
+      "type": "string",
+      "pattern": "^beat\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$",
+      "description": "节拍：`beat.` 加小写 slug（可以有 `.` 和 `-`）；节拍的变体也用这个前缀（`beat.25.v-no-doubt`）"
+    },
+    "FactId": {
+      "title": "FactId",
+      "type": "string",
+      "pattern": "^fact\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$",
+      "description": "事实：`fact.` 加小写 slug（可以有 `.` 和 `-`）"
+    },
+    "VarId": {
+      "title": "VarId",
+      "type": "string",
+      "pattern": "^var\\.[a-zA-Z0-9]+(?:[.-][a-zA-Z0-9]+)*$",
+      "description": "状态变量：`var.` 加 slug（可以有 `.` 和 `-`），段里可以用驼峰（`var.player.companionOf`、`var.player.knowsShortcut`、`var.melos.knowsTyranny`）。第 0 节写的是「小写」，1.6 写清（C-2 评审定）"
+    },
+    "RoleId": {
+      "title": "RoleId",
+      "type": "string",
+      "pattern": "^role\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$",
+      "description": "玩家身份：`role.` 加小写 slug（可以有 `.` 和 `-`）"
+    },
+    "EdgeId": {
+      "title": "EdgeId",
+      "type": "string",
+      "pattern": "^edge\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$",
+      "description": "因果边：`edge.` 加小写 slug（可以有 `.` 和 `-`）"
+    },
+    "AidId": {
+      "title": "AidId",
+      "type": "string",
+      "pattern": "^aid\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$",
+      "description": "互助（1.1）：`aid.` 加小写 slug（可以有 `.` 和 `-`）"
+    },
+    "PromiseTemplateId": {
+      "title": "PromiseTemplateId",
+      "type": "string",
+      "pattern": "^promise\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$",
+      "description": "约定模板（1.1）：`promise.` 加小写 slug（可以有 `.` 和 `-`）"
+    },
+    "AffordanceId": {
+      "title": "AffordanceId",
+      "type": "string",
+      "pattern": "^aff\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$",
+      "description": "情境动作（1.1）：`aff.` 加小写 slug（可以有 `.` 和 `-`）"
+    },
+    "ItemId": {
+      "title": "ItemId",
+      "type": "string",
+      "pattern": "^item\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$",
+      "description": "物品（1.1）：`item.` 加小写 slug（可以有 `.` 和 `-`）"
+    },
+    "ExitId": {
+      "title": "ExitId",
+      "type": "string",
+      "pattern": "^exit\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$",
+      "description": "幕末去处：`exit.` 加小写 slug（可以有 `.` 和 `-`）"
+    },
+    "RuleId": {
+      "title": "RuleId",
+      "type": "string",
+      "pattern": "^rule\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$",
+      "description": "全局规则（globalRules）：`rule.` 加小写 slug（可以有 `.` 和 `-`）"
+    },
+    "WorldEndingId": {
+      "title": "WorldEndingId",
+      "description": "世界结局的底线类 ID，不带前缀的小写短横线 slug，如 `canon-reunion`",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "Actor": {
+      "title": "Actor",
+      "description": "事件是谁做的（不是谁写的，写入方永远是叙事者）：player 玩家，system 按时间表自然发生，narrator 只用于 correction，或人物 ID（第 0 节）",
+      "anyOf": [
+        {
+          "enum": ["player", "system", "narrator"]
+        },
+        {
+          "$ref": "common.schema.json#/$defs/CharacterId"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "id": "beat.11",
+  "order": 11,
+  "title": "真昼の婚礼",
+  "summary": "婚礼が真昼に行われる。",
+  "window": {
+    "earliest": 3300,
+    "latest": 4000,
+    "canonical": 3600
+  },
+  "place": "place.melos-home",
+  "participants": ["char.melos", "char.sister", "char.groom"],
+  "kind": "mutable",
+  "preconditions": [
+    {
+      "var": "var.groom.agreed",
+      "op": "==",
+      "value": true
+    }
+  ],
+  "outcomes": [
+    {
+      "op": "set",
+      "var": "var.wedding.status",
+      "value": "held"
+    }
+  ],
+  "cite": [
+    {
+      "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+      "para": 32,
+      "quote": "結婚式は、真昼に行われた。"
+    }
+  ]
+}

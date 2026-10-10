@@ -1,0 +1,13 @@
+{
+  "promiseId": "prm_01JTF4A3CXF9JGQB96Z2E7TPHD",
+  "from": "player",
+  "to": "char.selinuntius",
+  "text": "工房を守る",
+  "template": "promise.selinuntius.workshop",
+  "status": "kept",
+  "madeBy": "ev_01JBKH05Q03QWQD48QB6TNWNCC",
+  "due": {
+    "t": 5460
+  },
+  "resolvedBy": "ev_01JYHEZBNPCJ7GTYGVK6D5CZRN"
+}

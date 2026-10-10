@@ -1,0 +1,12 @@
+{
+  "op": "promise",
+  "promiseId": "prm_01JTF4A3CXF9JGQB96Z2E7TPHD",
+  "change": "made",
+  "from": "player",
+  "to": "char.selinuntius",
+  "text": "工房を守る",
+  "template": "promise.selinuntius.workshop",
+  "due": {
+    "beat": "beat.24"
+  }
+}

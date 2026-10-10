@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "1.5",
+  "memoryId": "mem_01JF29M1XAS5JVJ7CGYS3KMMSE",
+  "playthroughId": "pt_01JK7G0S9BVTJK98MKM7R7ZJDM",
+  "character": "char.selinuntius",
+  "kind": "promise",
+  "text": "留守のあいだ、工房を守ると言ってくれた人",
+  "fromEvents": ["ev_01JBKH05Q03QWQD48QB6TNWNCC"],
+  "t": 1080,
+  "trustDelta": 25,
+  "salience": 0.8,
+  "via": "witnessed",
+  "promiseId": "prm_01JTF4A3CXF9JGQB96Z2E7TPHD",
+  "createdAt": "2026-10-06T11:52:01Z"
+}

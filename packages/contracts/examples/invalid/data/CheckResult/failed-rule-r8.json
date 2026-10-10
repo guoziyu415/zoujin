@@ -1,0 +1,7 @@
+{
+  "status": "rewritten",
+  "attempts": 2,
+  "failedRules": ["R8-other"],
+  "reason": "その時刻には、まだ村に着いていない",
+  "checker": "rules@1.5"
+}

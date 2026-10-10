@@ -1,0 +1,13 @@
+{
+  "op": "beat",
+  "beat": "beat.25",
+  "to": "altered",
+  "outcomes": [
+    {
+      "op": "set",
+      "var": "var.selinuntius.doubted",
+      "value": false
+    }
+  ],
+  "note": "beat.25.v-no-doubt"
+}

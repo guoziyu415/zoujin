@@ -1,8 +1,8 @@
 # 数据契约（contracts.md）v1.5
 
-负责人：数据工程 · 状态：**v1.5**。v1.0 是基线（S-033），v1.1 是 PM 接受的新基线（S-061〜S-063），已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改。1.1 只做加法：加进 D-012〜D-015 的落地（S-029〜S-032：互助、约定、打算、即兴设定、导演事件、生成的结局、角色结局）、S-034〜S-053 里和数据有关的决定、后端设计 v1.0 第 12 节的 13 条提案和 UX 设计 v1.0 第 18.3 节的要求。1.2 也只做加法：幕末说出的打算（S-031 ③）、作废和出戏的一轮怎么落数据（S-054、S-057）。1.3 加随身的东西（UX 5.1，C-14）。1.4 按 UX 对世界模型的校对和 S-064 加：有条件的台词和设计台词、互助的效果、节拍的变体、过场里的二选一、第四幕按钮上「对梅洛斯的影响」。1.5 给过场的选项也加上「对梅洛斯的影响」和选后的一句（UX 校对 7.3、ux-design 4.5）。跨角色决定见 `pm/decisions.md`。还在等别人定的事列在第 7 节。
+负责人：数据工程 · 状态：**v1.5，已冻结**（M2-0，C-2；以后只做加法）。v1.0 是基线（S-033），v1.1 是 PM 接受的新基线（S-061〜S-063），已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改。1.1 只做加法：加进 D-012〜D-015 的落地（S-029〜S-032：互助、约定、打算、即兴设定、导演事件、生成的结局、角色结局）、S-034〜S-053 里和数据有关的决定、后端设计 v1.0 第 12 节的 13 条提案和 UX 设计 v1.0 第 18.3 节的要求。1.2 也只做加法：幕末说出的打算（S-031 ③）、作废和出戏的一轮怎么落数据（S-054、S-057）。1.3 加随身的东西（UX 5.1，C-14）。1.4 按 UX 对世界模型的校对和 S-064 加：有条件的台词和设计台词、互助的效果、节拍的变体、过场里的二选一、第四幕按钮上「对梅洛斯的影响」。1.5 给过场的选项也加上「对梅洛斯的影响」和选后的一句（UX 校对 7.3、ux-design 4.5）。跨角色决定见 `pm/decisions.md`。还在等别人定的事列在第 7 节。
 UX、前端请看第 2.8 节（幕）、第 4 节（记忆）、第 5 节（结局）。1.1 新增或写清的地方都标了「（1.1）」，文末变更记录有汇总。
-最近更新：2026-10-10（第 7 节加 C-16，契约本身不变）
+最近更新：2026-10-10（1.5 冻结，C-2：字段不变，Schema 在 `packages/contracts/schemas/data/`；第 7 节加 C-16）
 
 四个契约：**WorldModel**（世界模型，静态、按书版本化）、**Event**（运行时事件，只追加）、**Memory**（角色对玩家的记忆，可删除）、**Ending**（结局）。另有两个支撑结构：**Playthrough**（一局游戏）和 **WorldState**（由事件推出的当前状态）。
 
@@ -14,9 +14,9 @@ UX、前端请看第 2.8 节（幕）、第 4 节（记忆）、第 5 节（结�
 
 | 约定 | 内容 |
 |---|---|
-| 格式 | JSON；每个契约有 JSON Schema（放在 `data/schemas/*.schema.json`，CI 校验）。本文用 TypeScript 风格写，便于阅读 |
+| 格式 | JSON；每个契约有 JSON Schema（放在 `packages/contracts/schemas/data/*.schema.json`，CI 校验）。本文用 TypeScript 风格写，便于阅读 |
 | 版本 | 每个文档带 `schemaVersion`（写入时的契约版本，现在是 `"1.5"`；1.1 起新增的字段都是可选的，旧版本写的文档按新版本读仍然合法）；世界模型另带 `worldModelVersion`（内容版本，如 `"hashire-merosu@1.0.0"`） |
-| 静态 ID | 世界模型里的 ID 用小写短横线 slug，带类型前缀：`char.king`、`place.syracuse-square`、`scene.village`、`act.2`、`beat.03`、`fact.promise`、`var.hostage.fate`、`role.traveler`、`edge.10-11`；（1.1）`aid.melos.shortcut` 互助、`promise.melos.return` 约定模板、`aff.river-hold` 情境动作、`item.water` 物品 |
+| 静态 ID | 世界模型里的 ID 用小写短横线 slug，带类型前缀：`char.king`、`place.syracuse-square`、`scene.village`、`act.2`、`beat.03`、`fact.promise`、`var.hostage.fate`、`role.traveler`、`edge.10-11`、`exit.1.road` 幕末去处、`rule.no-resurrection` 全局规则；（1.1）`aid.melos.shortcut` 互助、`promise.melos.return` 约定模板、`aff.river-hold` 情境动作、`item.water` 物品。世界结局的 ID 不带前缀（`canon-reunion`） |
 | 运行时 ID | 前缀 + ULID（按时间可排序）：`pt_…` 一局、`turn_…` 一轮、`ev_…` 事件、`mem_…` 记忆、`utt_…` 一句话、`end_…` 结局；（1.1）`prm_…` 约定、`rf_…` 本局即兴设定 |
 | 故事时间 | `t` = 从 Day 0（约束之日）00:00 起算的故事分钟数。期限是 Day 3 日没 = `5460`（2.6 节）。时间只由事件推进，不随真实时间流动（S-021） |
 | 时间的说法 | `tLabel` 按世界模型的 `clock.labels` 生成，如 `t=1380` →「約束の日・夜」，`t=5460` →「三日目・日没」（1.1：格式和时段按 UX 的表，S-037，见 2.6）。前端、記憶帳、结局都用同一个规则 |
@@ -862,7 +862,7 @@ type CharacterEnding = {           // （1.1）
   "utteranceRefs": ["utt_01J…"], "causes": ["beat.05"], "origin": "turn",
   "effects": [{ "op": "inc", "var": "var.king.trust", "by": -20 }],
   "keyMoment": false,
-  "check": { "status": "passed", "attempts": 1, "failedRules": [], "reason": null, "checker": "rules@1.0+gemini-3.8-flash" } }
+  "check": { "status": "passed", "attempts": 1, "failedRules": [], "checker": "rules@1.0+gemini-3.8-flash" } }
 ```
 
 （1.1）一个约定成立的事件（石屋の弟子答应替师父看工坊，S-048 的开局互助）：
@@ -933,3 +933,4 @@ type CharacterEnding = {           // （1.1）
   - Event：`exitId` 也用于过场二选一的 action 事件。
   - 写清：`requires` 的「发生了」包括 `altered`；`Fact.trueFrom` 的节拍本局没发生，这条事实本局不成立（2.3）；`valueLabels` 没写的取值不当场显示（S-067）；按钮上的实际分钟数用共享规则的 `arrival_delta`（S-066）。
   - 第 7 节新增 C-15，已定（S-066）。
+- **1.5 冻结（2026-10-10，M2-0，C-2）**：字段不变；以后只做加法，新增可选字段走 1.6、1.7…；Schema 在 `packages/contracts/schemas/data/`，CI 按它校验世界模型和评测集，并和本文的类型逐个对照。同时写清：第 0 节静态 ID 补上 `world.json` 已在用的 `exit.`、`rule.` 前缀，世界结局的 ID 不带前缀；第 6 节事件例子去掉和类型（`reason?: string`）不一致的 `"reason": null`。

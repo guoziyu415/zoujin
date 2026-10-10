@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "1.5",
+  "playthroughId": "pt_01JK7G0S9BVTJK98MKM7R7ZJDM",
+  "userRef": "u_example_0001",
+  "worldModelVersion": "hashire-merosu@1.0.0",
+  "roleId": "role.traveler",
+  "status": "active",
+  "startedAt": "2026-10-06T11:30:00Z",
+  "lastActiveAt": "2026-10-06T12:04:00.250Z",
+  "lastSeq": 12
+}

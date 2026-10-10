@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.5",
+  "eventId": "ev_01JYHEZBNPCJ7GTYGVK6D5CZRN",
+  "playthroughId": "pt_01JK7G0S9BVTJK98MKM7R7ZJDM",
+  "seq": 12,
+  "turnId": "turn_01JYCH7R87B49HE37YQ6S5AEX0",
+  "idempotencyKey": "turn_01JYCH7R87B49HE37YQ6S5AEX0#1",
+  "worldModelVersion": "hashire-merosu@1.0.0",
+  "t": 1240,
+  "dt": 0,
+  "recordedAt": "2026-10-06T12:04:00Z",
+  "actor": "char.melos",
+  "type": "action",
+  "origin": "turn",
+  "place": "place.castle",
+  "summary": "メロスは旅人を王城の外へ連れ出そうとした",
+  "causes": ["ev_01J3N1DDDTEP1P84FDV7W3WN0V"],
+  "effects": [],
+  "keyMoment": false,
+  "check": {
+    "status": "rejected",
+    "attempts": 3,
+    "failedRules": ["R7-capability"],
+    "reason": "メロスは捕らえられていて、王城を出られない",
+    "checker": "rules@1.5"
+  }
+}

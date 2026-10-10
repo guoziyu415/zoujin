@@ -2,7 +2,7 @@
 
 负责人：数据工程 · 状态：**v1.2**。v1.0 已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改；1.1 跟上契约 1.1、PM 的 S-022〜S-053 和世界模型 draft.3；1.2 跟上契约 1.2 和 S-054〜S-063，补齐前端、UX 要的埋点（9.3）和市场调研要的试玩导出（9.5）。跨角色决定见 `pm/decisions.md`。待别人定的事见第 13 节。
 相关：[contracts.md](contracts.md) v1.5（四个数据契约，本文所有字段以它为准）· `backend/backend-design.md` · `pm/prd.md`
-最近更新：2026-10-06
+最近更新：2026-10-10（9.3 按 C-1、C-2 评审写清：公共属性每批带一次、帧时间直方图固定 9 格、`why_opened.target` 和 `/why` 的 target 一一对应）
 
 数据工程负责六件事：世界模型（含『走れメロス』v1）、新增一本书的流水线、事件日志与世界状态、記憶帳与删除、评测与可观测数据、分析与成本测算。
 
@@ -348,7 +348,7 @@ BigQuery 每天一个定时查询，用 `EXTERNAL_QUERY` 直接读 Cloud SQL，�
 
 ### 9.3 前端遥测事件（`POST /v1/telemetry`）
 
-每条：`name`、`playthroughId`（没有局时省略）、`clientTs`（真实时间）、`t`（故事时间，有的话）、`props`。公共属性只有粗粒度的设备信息：`deviceClass`（屏幕尺寸类：逻辑像素 + DPR，如 `ios-390x844@3`；iOS Safari 认不出具体机型，一个类覆盖好几代，如 390×844 有 12 / 13 / 14 / 16e）、`os`、`browser`（含 App 内浏览器名，S-015）、`appVersion`。**不带原话、不带记忆文本、不带 IP 以外的标识**（服务端也不把 IP 写进分析库）。
+每条：`name`、`playthroughId`（没有局时省略）、`clientTs`（真实时间，设备的钟，ISO 8601 UTC、以 `Z` 结尾）、`t`（故事时间，有的话）、`props`。公共属性每批带一次（请求体的 `common`，服务端入库时抄到这一批的每条），只有粗粒度的设备信息：`deviceClass`（屏幕尺寸类：逻辑像素 + DPR，如 `ios-390x844@3`；iOS Safari 认不出具体机型，一个类覆盖好几代，如 390×844 有 12 / 13 / 14 / 16e）、`os`、`browser`（含 App 内浏览器名，S-015）、`appVersion`。**不带原话、不带记忆文本、不带 IP 以外的标识**（服务端也不把 IP 写进分析库）。
 
 | name | props | 回答 9.1 的哪个问题 |
 |---|---|---|
@@ -357,7 +357,7 @@ BigQuery 每天一个定时查询，用 `EXTERNAL_QUERY` 直接读 Cloud SQL，�
 | `role_selected` | `roleId` | 漏斗 |
 | `scene_ready` | `sceneId`、`loadMs`、`fromTap`（点「はじめる」到能走） | 手机体验 |
 | `web_vitals` | `lcp`、`inp`、`cls`、`inpTarget`（归因元素）、`loafScript` | 手机体验 |
-| `perf_sample` | 每 10 秒一个帧时间直方图（批量上报）、长任务数、JS 堆、`renderer`（webgl / webgpu）、`qualityLevel`（L0〜L3）、`assetTier`（standard / high）、`dpr`、`drawCalls`、`lowPower`（低电量模式把帧率锁在 30） | 手机体验；帧时间按渲染器和画质级切分（D-019） |
+| `perf_sample` | `frameTimeHistogram`（每 10 秒一个帧时间直方图，固定 9 格，见表下；批量上报）、`longTasks`（长任务数）、`jsHeapMb`（JS 堆，MB）、`renderer`（webgl / webgpu）、`qualityLevel`（L0〜L3）、`assetTier`（standard / high）、`dpr`、`drawCalls`、`lowPower`（低电量模式把帧率锁在 30） | 手机体验；帧时间按渲染器和画质级切分（D-019） |
 | `quality_changed` | `from`（`reason=start` 时省略）、`to`（L0〜L3）、`reason`（start / down / up / lowPower / locked）、`probeGpuMs`（起始档自测的一帧 GPU 耗时，`reason=start` 时带）、`assetMbps`（进场包实测下载速度，判断下不下高档资源；`to` 是 L2 / L3 时带） | 手机体验；校准升降档阈值和 iPhone 12 的推算系数（前端 10.6.3） |
 | `gl_context_lost` | `restored` | 手机体验 |
 | `talk_turn` | `turnId`、`character`、`inputMode`（voice / text）、`clientReleaseToAudibleMs`、`interrupted`、`noResponse`（6 秒档触发） | 声音交互；按 `turnId` 和服务端 Trace 对齐；试玩导出的「和谁说过话」 |
@@ -367,7 +367,7 @@ BigQuery 每天一个定时查询，用 `EXTERNAL_QUERY` 直接读 Cloud SQL，�
 | `approach_shown` / `approach_ended` | `character` / `character`、`result`（talked / dismissed / walked_away） | 人物自己在动吗 |
 | `act_plan_result` | `actId`、`accepted`、`try`（1 / 2）、`inputMode` | 幕末说出打算的比例和成行比例 |
 | `sonokoro_viewed` | `count`、`tappedMap` | 人物自己在动吗 |
-| `map_opened` / `why_opened` | `from`（hud / sonokoro / ending） / `target`（事件 / 节拍）、`fromKeyMoment` | 玩家信任这个世界吗 |
+| `map_opened` / `why_opened` | `from`（hud / sonokoro / ending） / `target`（event / beat / reveal / forecast，和 api-contract 2.6 `/why` 的 target 一一对应；reveal = 关键时刻卡上的「なぜ」，forecast = 地图顶部「間に合わない」那一行的「なぜ」）、`fromKeyMoment` | 玩家信任这个世界吗 |
 | `memory_book_opened` / `memory_section_viewed` / `memory_deleted` | — / `section`（promises / didForYou / youDid / memories） / `character` | 角色是否被记住 |
 | `app_resumed` | `awayMs`、`discarded`（页面是否被系统回收）、`resumeMs`（到能操作）、`contextLost` | 续玩 |
 | `continue_started` | `awayMs` | 续玩（从封面「続きから」） |
@@ -383,6 +383,8 @@ BigQuery 每天一个定时查询，用 `EXTERNAL_QUERY` 直接读 Cloud SQL，�
 （D-019）画质分 L0〜L3 四级后，`perf_sample` 的 `qualityTier` 改为 `qualityLevel` + `assetTier`，`quality_changed` 和 `gl_context_lost` 分成两行。每局的起始级、升降次数和最后停在哪一级从 `quality_changed` 算（`reason=start` 那条就是起始级），不另设事件。`probeGpuMs` 取到 0.1ms、`assetMbps` 取整数：够校准用，又不会和 `deviceClass`、`dpr` 合起来变成设备指纹。
 
 幕末选择不需要遥测，从 `act-transition` 事件的 `exitId` / `plan` 算。
+
+（C-1、C-2 评审）`frameTimeHistogram` 固定 9 格：第 i 格数「上一格上界 < 帧时间 ≤ 这一格上界」的帧，上界依次是 8.5、12、17、20、26、34、51、101 ms，最后一格是 > 101 ms。帧间隔是刷新间隔的整数倍（120 Hz 的 1、3 帧 = 8.3、25 ms，90 Hz 的 1 帧 = 11.1 ms，60 Hz 的 1、2、3、6 帧 = 16.7、33.3、50、100 ms），实测有零点几毫秒的抖动，所以边界都放在整数倍稍上，同一种掉帧不会拆到两格（前端评审）。20 和 34 对上前端的帧时间预算（基准机 p95 ≤ 20 ms、底线机 p95 ≤ 33 ms）。格子固定，不同版本前端发来的直方图才能相加；以后要换边界就另起一个字段，不改这个字段。
 
 ### 9.4 匿名对比（「この夜、セリヌンティウスのそばにいたのは 12% の人だけ」）
 
