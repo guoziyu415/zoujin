@@ -44,6 +44,15 @@
 - 截图在项目文件夹 `frontend/spikes/a0-melos/shots/melos-v2/`，报告在 `reports/melos-v2/`。
 - 还要看的：发片边缘是透明测试的硬边；胸前的结是个光滑的椭球，像颗珠子；包袱在逆光和正午的天光下偏白偏蓝；下摆骨骼（4〜6 根，风格指南）留到动作那一轮。
 
+## 动作（2026-10-10）
+
+- 来源：Quaternius 的 Universal Animation Library 免费版（`UAL1_Standard.glb`，包里的 License.txt 写 CC0 1.0，不用账号）。zg 在 Mac 上下载，放在 `~/Developer/zoujin-art/anims/`，拷到项目文件夹 `frontend/spikes/a0-melos/mac/anims/`（sha256 69591853…4ed67997）。动作文件不进仓库。
+- `build/retarget.py`：两边都是 Unreal 人体模型的骨骼名、都朝 −Y；UAL 静止是 T 字，MPFB 是 A 字、前臂朝前。每根骨骼先转到和来源静止时同一方向，再每帧加上来源骨骼离开静止姿势的转动（骨架空间里算）；骨盆的位移按髋高缩放；包袱的骨骼跟着父骨骼。设 `UAL_GLB=<路径>` 时 `anims.build()` 用它，没设还是程序做的占位。
+- 五段：待机 `Idle_Loop`、说话 `Idle_Talking_Loop`、走 `Walk_Loop`、跑 `Jog_Fwd_Loop`、冲刺 `Sprint_Loop`，24 帧/秒。`anims.glb` 0.24 MB（≤ 0.3 MB）。
+- 每段的地面速度（脚踩地时往后滑的速度）记在 `lod_report.json`：走 1.01 m/s、跑 6.12、冲刺 9.13。原样播放的跑步就是这个速度；游戏里走得慢时按「移动速度 ÷ 地面速度」放慢动画，脚就不打滑。测试页：梅洛斯跑 4.9 m/s（动画 0.8 倍），路人走 1.25 m/s。
+- 测试页第 7 版：说「3 秒」和长句时换成说话的手势，说完回到待机（0.5 秒交叉淡化）；相槌不换。
+- 截图在项目文件夹 `frontend/spikes/a0-melos/shots/melos-v3/`（`clips_sheet.jpg` 是 Cycles 渲的走、跑、说话、待机，`retarget_stick.png` 是来源和梅洛斯骨架的对照）。
+
 ## 数字（替身，2026-10-10）
 
 | 文件 | 下载 | 预算 | 面数 | 材质 | 形变 | 形变在显存里（three.js） |
@@ -68,7 +77,7 @@
 
 - 五个视角：**对话（越肩）**、近看（检查用，不是产品镜头）、**并排对比**（左右分屏，左档 B 右强机，同一个位置同一个动作）、探索（产品的跟随镜头，梅洛斯在跑，可切成走）、逆光（18:50 日没前的剪影，5.3）。
 - 三个时刻（UX 验收 1.2）：17:30（第一屏）、真昼 12:00、18:50 逆光，设置里一点就换，也可以拖时间条。
-- 人物会：每 3〜6 秒眨眼（15% 连眨两下）；头转一点、眼睛看着玩家（或镜头），每 0.6〜2.5 秒小幅扫视，眼睑跟着眼睛走；五种表情、三种眉；说三句梅洛斯的台词，嘴跟着声音动；对话待机、走、跑。跑和走是程序做的占位动作，速度按步幅算好，脚不打滑；正式的用 CC0 动作捕捉。
+- 人物会：每 3〜6 秒眨眼（15% 连眨两下）；头转一点、眼睛看着玩家（或镜头），每 0.6〜2.5 秒小幅扫视，眼睑跟着眼睛走；五种表情、三种眉；说三句梅洛斯的台词，嘴跟着声音动；对话待机、说话、走、跑（第 7 版起是 UAL 的动作捕捉，见上面「动作」）。
 - 越肩镜头按 ux-design 6.3 摆：玩家背影在左下前景，对方在上三分之一；镜头视角按「脸（下巴到发际）占屏高 13.5%」自动算，HUD 上显示实测值。
 - 自测（容器里无头 Chromium，软件渲染）：越肩镜头**脸占屏高 13.6%**（规格 12〜15%）；探索镜头**梅洛斯高 83px**（规格 40〜80px，这个替身身高约 1.98m，偏高）。
 - 自动计测 7 项：广场＋玩家背影 / 1 个档 B / 2 个档 B（卡上「× 3.4 ≤ 25ms」那条）/ 2 个档 B 脸不动（量形变的代价）/ 4 个强机 DPR 2（卡上「≤ 12ms」那条）/ 4 个强机皮肤不透光 / 探索镜头 10 个走动版。结果存进页面自己的 `runs`，前端能直接读。
@@ -105,7 +114,7 @@
 ## 文件
 
 - `assets/pipeline/`（真梅洛斯和以后的人物都用，不在这个目录）：`lod_export.py`（三个版本＋切头＋导出）、`compress.mjs`（KTX2＋meshopt＋法线检查）、`inspect.mjs`、`morphmem.mjs`。
-- `build/`：`mhload.py`（读 MakeHuman 数据）、`build_standin.py`（搭替身）、`anims.py`（占位动作：待机、走、跑）、`preview.py`（Cycles 预览）、`gen_voice.py`（元音模板用的测试声音）、`gen_lines.py`（从 casting 录音剪三句台词）、`lipcheck.py`（离线口型检查）、`pack.py`（打包测试页）、`test_page.mjs`（无头浏览器自测）。
+- `build/`：`mhload.py`（读 MakeHuman 数据）、`build_standin.py`（搭替身）、`anims.py`（占位动作：待机、走、跑）、`retarget.py`（把 UAL 的动作重定向到 MPFB 骨架）、`preview.py`（Cycles 预览）、`gen_voice.py`（元音模板用的测试声音）、`gen_lines.py`（从 casting 录音剪三句台词）、`lipcheck.py`（离线口型检查）、`pack.py`（打包测试页）、`test_page.mjs`（无头浏览器自测）。
 - `page/index.src.html`：测试页源文件（`/*MANIFEST*/` 由 pack.py 填）。
 - 减面和压缩报告、声音元数据（`reports/`）和截图（`shots/`）只在项目文件夹 `frontend/spikes/a0-melos/` 里，替身的生成物不进仓库。
 

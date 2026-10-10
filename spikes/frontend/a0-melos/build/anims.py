@@ -1,18 +1,20 @@
 """Procedural idle, walk and run clips for the stand-in rig (placeholders for CC0 mocap).
 
-The real clips come from CC0 motion capture (Quaternius UAL / CMU) retargeted on the
-Mac.  These exist so export, file size and playback can be tested now.
+The real clips are Quaternius' Universal Animation Library (CC0), retargeted by retarget.py when UAL_GLB
+points at UAL1_Standard.glb.  These stay as the fallback so export and playback work without it.
 Rotations are written in armature rest axes (Z up, character faces -Y, left = +X)
 and converted to each bone's local axes.  The clips are written for the MakeHuman default
 rig of the stand-in; on MPFB's game_engine rig (the Melos build) build() maps the names and
 measures how far the arms must come down from that rig's rest pose.
 """
 import math
+import os
 
 import bpy
 from mathutils import Quaternion, Vector
 
 FPS = 30
+REPORT = {}       # clip -> source, length, ground speed (filled when the mocap clips are used)
 NAMES = {}        # stand-in bone -> bone of the rig being animated (filled by build())
 ARM_DOWN = 38.0   # degrees from the rest A-pose to arms at the sides (stand-in; build() measures others)
 
@@ -145,6 +147,14 @@ def run(t, T):
 
 
 def build(rig):
+    """Clips on the rig as NLA tracks. With UAL_GLB set (Quaternius' UAL1_Standard.glb, CC0): the retargeted mocap
+    clips (retarget.py), their measured ground speeds in REPORT; otherwise these procedural placeholders."""
+    glb = os.environ.get('UAL_GLB')
+    if glb:
+        import retarget
+        acts, rep = retarget.build(rig, glb)
+        REPORT.update(rep)
+        return acts
     global ARM_DOWN
     if 'upperarm_l' in rig.pose.bones:
         NAMES.update(_game_engine_names())

@@ -502,7 +502,7 @@ def main():
 
     # ---------- shared clips
     report['anims'] = {'bytes': export([], os.path.join(outdir, 'anims.glb'), morph=False, anim=True),
-                       'bones': len(rig.data.bones)}
+                       'bones': len(rig.data.bones), 'clips': anims.REPORT or 'procedural placeholders'}
     report['morphs'] = len(o['Body'].data.shape_keys.key_blocks) - 1
     bpy.ops.wm.save_as_mainfile(filepath=os.path.join(outdir, 'lods.blend'))
     import json

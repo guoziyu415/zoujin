@@ -604,17 +604,22 @@ class Char {
     });
     this.bones = {}; for (const n of BONES) this.bones[n] = this.root.getObjectByName(n);
     this.mixer = new THREE.AnimationMixer(this.root);
-    this.act = { idle: this.mixer.clipAction(CLIPS.idle), walk: this.mixer.clipAction(CLIPS.walk), run: this.mixer.clipAction(CLIPS.run) };
+    this.act = Object.fromEntries(Object.entries(CLIPS).map(([n, c]) => [n, this.mixer.clipAction(c)]));
     this.face = model.startsWith('talk') ? new Face(this.root) : null;
     this.look = null; this.lookS = new THREE.Vector3(); this.lookInit = false;
     this.sacc = new THREE.Vector3(); this.saccT = 0; this.path = null; this.anim = null;
     this.root.visible = false;
     scene.add(this.root);
   }
-  play(name, offset = 0) {
-    if (this.anim === name) return;
-    for (const a of Object.values(this.act)) a.stop();
-    this.act[name].play(); this.mixer.setTime(offset); this.anim = name;
+  // speed: metres per second along the ground; the clip plays faster or slower so the feet don't slide.
+  // fade: seconds to blend over from the clip that is playing (else a cut)
+  play(name, offset = 0, speed = 0, fade = 0) {
+    if (this.anim === name || !this.act[name]) return;
+    const a = this.act[name], prev = this.anim && this.act[this.anim];
+    a.timeScale = speed && CLIP_SPEED[name] ? speed / CLIP_SPEED[name] : 1;
+    if (fade && prev) { a.reset().play(); prev.crossFadeTo(a, fade, false); }
+    else { for (const x of Object.values(this.act)) x.stop(); a.play(); this.mixer.setTime(offset); }
+    this.anim = name;
   }
   update(dt, t) {
     if (!this.root.visible) return;
@@ -689,12 +694,12 @@ async function setCast() {
     return;
   }
   if (view === 'explore') {
-    melos = inst('melos_walk', 'walk'); melos.root.visible = true; melos.anim = null; melos.play(cfg.gait, 0);
     const speed = GAIT_SPEED[cfg.gait];
+    melos = inst('melos_walk', 'walk'); melos.root.visible = true; melos.anim = null; melos.play(cfg.gait, 0, speed);
     melos.path = (c, t) => { const r = 6.5, a = t * speed / r; const p = L2W(2 + Math.cos(a) * r, 2 + Math.sin(a) * r, 0); const q = L2W(2 + Math.cos(a + 0.05) * r, 2 + Math.sin(a + 0.05) * r, 0); c.root.position.copy(p); c.root.lookAt(q); };
     for (let i = 0; i < cfg.walkN; i++) {
       const c = inst('walker' + i, 'walk', [0.7 + 0.1 * (i % 3), 0.7, 0.65 + 0.1 * (i % 2)]);
-      c.root.visible = true; c.play('walk', i * 0.37);
+      c.root.visible = true; c.play('walk', i * 0.37, 1.25);
       const r = 5 + (i % 4) * 2.4, w = (i % 2 ? 1 : -1) * 1.25 / r, a0 = i * 2.1;
       c.path = (cc, t) => { const a = a0 + w * t; cc.root.position.copy(L2W(2 + Math.cos(a) * r, 2 + Math.sin(a) * r, 0)); const a2 = a + Math.sign(w) * 0.05; cc.root.lookAt(L2W(2 + Math.cos(a2) * r, 2 + Math.sin(a2) * r, 0)); };
     }
@@ -719,8 +724,10 @@ async function setCast() {
     }
   }
 }
-// metres per second that match each placeholder clip's stride (no foot sliding); re-measure with the mocap clips
-const GAIT_SPEED = { walk: 1.15, run: 3.0 };
+// ground speed of each Quaternius clip as authored (m/s, measured by retarget.py: the planted foot sliding back),
+// and the speeds Melos walks and runs at here; the clips are sped up or slowed down to match (play())
+const CLIP_SPEED = { walk: 1.01, run: 6.12, sprint: 9.13 };
+const GAIT_SPEED = { walk: 1.15, run: 4.9 };
 const playerEyes = new THREE.Vector3().copy(SPOT.player).setY(1.65);   // the player figure is the walk model: eyes at 1.65 m
 
 // ---------------------------------------------------------------- camera per view
@@ -933,7 +940,14 @@ async function say(k) {
   if (voice.src) { try { voice.src.onended = null; voice.src.stop(); } catch { /* already stopped */ } }
   const L = lines[k];
   const src = voice.ctx.createBufferSource(); src.buffer = L.buf; src.connect(voice.ctx.destination);
-  src.onended = () => { if (voice.src === src) { voice.speaking = false; voice.feat = null; $('sub').classList.add('hidden'); } };
+  // the talking clip (hands and shoulders) for real lines, not for a short 相槌; back to standing when the line ends
+  const talkers = [...pool.values()].filter((c) => c.face && c.root.visible);
+  if (k !== 's') for (const c of talkers) c.play('talk', 0, 0, 0.5);
+  src.onended = () => {
+    if (voice.src !== src) return;
+    voice.speaking = false; voice.feat = null; $('sub').classList.add('hidden');
+    for (const c of talkers) c.play('idle', 0, 0, 0.6);
+  };
   voice.src = src; voice.feat = L.feat; voice.speaking = true;
   voice.t0 = voice.ctx.currentTime + 0.02; src.start(voice.t0);
   voice.segs = VOICE.voices?.[cfg.voiceName]?.[k]?.segments || []; voice.seg = -1;
@@ -1240,7 +1254,7 @@ function modelFacts() {
 async function showSizes() {
   const f = {}; for (const [k, p] of Object.entries(TPL)) f[k] = await p;
   const row = (label, k) => { const s = SIZES[k]; const m = f[k]; return [label, `${s ? fmtMB(s) : '—'}${m ? ` · ${(m.tris / 1000).toFixed(1)}k 面 · ${m.meshes} 个网格` + (m.morphBytes ? ` · 形变占显存 ${(m.morphBytes / 1048576).toFixed(1)} MB` : '') : ''}`]; };
-  const rows = [row('对话版 档 B', 'talk_std'), row('对话版 强机', 'talk_high'), row('走动版', 'walk'), row('共用动作（待机、走、跑）', 'anims'), ['测口型的声音（只在这一页）', SIZES.voice ? fmtMB(SIZES.voice) : '—']];
+  const rows = [row('对话版 档 B', 'talk_std'), row('对话版 强机', 'talk_high'), row('走动版', 'walk'), row('共用动作（待机、说话、走、跑、冲刺）', 'anims'), ['测口型的声音（只在这一页）', SIZES.voice ? fmtMB(SIZES.voice) : '—']];
   $('sizes').innerHTML = '<table>' + rows.map(([a, b]) => `<tr><td>${a}</td><td>${b}</td></tr>`).join('') + '</table><p class="note">下载大小是 glb 本身（几何 meshopt 压缩，贴图 KTX2）。形变数据在 three.js 里会展开成浮点贴图，所以显存比下载大得多。</p>';
 }
 
