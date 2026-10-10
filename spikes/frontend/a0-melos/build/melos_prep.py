@@ -12,6 +12,8 @@ $BPY melos_prep.py <melos.blend> <tex_dir from melos_tex.py> <out.blend>
   #8A5A3C with a little less saturation; hair and brows graded to the same dark brown, near black.
 - Skin: the scalp (MakeHuman's `scalp` vertex group) painted towards the hair colour with a soft edge, so the skin
   between the hair cards and along the hairline reads as hair instead of a bright ragged line.
+- Hair (v3, UX round 2): warm dark brown, its outline pushed out in soft clumps about 2 cm across (small curls
+  instead of a smooth helmet).
 - Dust from a day on the road, by height on the body: feet and shins below the knee, the tunic's hem, the sandals.
   The tunic's shoulders are faded by the sun where the cloth faces up.
 - Skin normal map (new in v2; compress.mjs keeps it at 2048 on the high tier and 1024 on std): the larger relief in
@@ -35,6 +37,7 @@ import sys
 
 import bpy
 import bmesh  # noqa: I001  (only importable after bpy)
+from mathutils import Vector
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
@@ -50,7 +53,7 @@ ROUGH = {
     "EyesLow": 0.12,
     "Teeth": 0.3,
     "Tongue": 0.35,
-    "Hair": 0.7,  # dark cards at 0.5 mirrored the blue sky in patches
+    "Hair": 0.8,  # dark cards at 0.5 mirrored the blue sky in patches, at 0.7 still a blue edge against the sky
     "Brows": 0.6,
     "Lashes": 0.6,
     "Tunic": 0.92,
@@ -59,7 +62,7 @@ MAT_NAME = {"Body": "skin", "Eyes": "eyes", "EyesLow": "eyes", "Teeth": "teeth",
 MAT_NAME |= {"Brows": "brows", "Lashes": "lashes", "Tunic": "tunic"}
 SKIN = (138, 90, 60)  # #8A5A3C
 SKIN_SAT = 0.85
-HAIR = (40, 28, 21)  # dark brown, near black
+HAIR = (60, 40, 26)  # warm dark brown (UX round 2: warmer than v2's near black)
 DUST = (152, 134, 110)
 SUN_FADED = (196, 160, 116)
 AO = {"Body": (0.5, 0.06), "Tunic": (0.85, 0.08)}  # strength, distance (m)
@@ -253,7 +256,28 @@ def drop_cornea(ob, img):
     return len(kill)
 
 
-def scalp_tint(ob, skin, hair, amount=0.85, soft=10):
+def hair_clumps(ob, amp=0.007, cell=0.022):
+    """Soft lumps on the hair's outline (UX round 2): afro01's cards sit on a smooth cap that reads as a helmet;
+    pushed out from the head's middle in clumps about 2 cm across, the outline breaks up into small curls."""
+    from mathutils import noise
+
+    me = ob.data
+    centre = sum((v.co for v in me.vertices), Vector()) / len(me.vertices)
+    offs = []
+    for v in me.vertices:
+        n = noise.noise(v.co / cell, noise_basis="PERLIN_ORIGINAL")
+        offs.append((v.co - centre).normalized() * amp * max(0.0, 1.6 * n + 0.25))
+    blocks = list(me.shape_keys.key_blocks) if me.shape_keys else []
+    for kb in blocks:
+        for d, o in zip(kb.data, offs):
+            d.co += o
+    for v, o in zip(me.vertices, offs):
+        v.co += o
+    me.update()
+    return round(max(o.length for o in offs), 4)
+
+
+def scalp_tint(ob, skin, hair, amount=0.95, soft=10):
     """Paint the skin texture under the scalp group towards the hair's mean opaque colour."""
     gi = ob.vertex_groups["scalp"].index
     on = np.zeros(len(ob.data.vertices), bool)
@@ -391,6 +415,7 @@ cover = face_mask(body, skin, lambda p: 1.0, 0)[::-1] > 0.5
 report["skin_normal_lean_deg"] = skin_normal(skin, nrm_path, cover)
 attach_normal(body, nrm_path)
 report["scalp_faces"] = scalp_tint(body, skin, img["Hair"])
+report["hair_clumps_max_m"] = hair_clumps(OBJ["Hair"])
 bz = z_of(body)
 legs = face_mask(body, skin, lambda p: 0.5 * np.clip((KNEE_Z - bz[list(p.vertices)].mean()) / 0.42, 0, 1) ** 0.8, 6)
 mix_towards(skin, legs, DUST)

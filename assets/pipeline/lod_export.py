@@ -374,6 +374,28 @@ def _resized(px, s):
     return out.reshape(s, s, 4)
 
 
+def _bleed(px):
+    """Colour for the see-through texels from the nearest opaque ones (push-pull over a mip pyramid): mipmaps and
+    texture compression average the colour of texels round a card's edge, and MPFB leaves whatever colour it had
+    there (blue-white on afro01) plus the atlas's black gutters, which showed as blue lines on the hair's edges."""
+    a = (px[..., 3] > 0.5).astype(np.float32)
+    levels = [(px[..., :3] * a[..., None], a)]
+    while min(levels[-1][1].shape) > 1:
+        c, w = levels[-1]
+        h2, w2 = c.shape[0] // 2, c.shape[1] // 2
+        levels.append((c[:h2 * 2, :w2 * 2].reshape(h2, 2, w2, 2, 3).sum((1, 3)),
+                       w[:h2 * 2, :w2 * 2].reshape(h2, 2, w2, 2).sum((1, 3))))
+    c, w = levels[-1]
+    fill = c / np.maximum(w, 1e-6)[..., None]
+    for c, w in reversed(levels[:-1]):
+        up = np.repeat(np.repeat(fill, 2, 0), 2, 1)
+        up = np.pad(up, ((0, c.shape[0] - up.shape[0]), (0, c.shape[1] - up.shape[1]), (0, 0)), mode='edge')
+        fill = np.where(w[..., None] > 0, c / np.maximum(w, 1e-6)[..., None], up)
+    out = px.copy()
+    out[..., :3] = np.where(a[..., None] > 0, px[..., :3], fill)
+    return out
+
+
 def merge_parts(objs, name, layout, size, alpha):
     """Join several small parts into one mesh with one material: their base colour images
     (tints baked in) go into one atlas and the UVs are moved into each part's square.
@@ -396,6 +418,8 @@ def merge_parts(objs, name, layout, size, alpha):
         uvl.data.foreach_set('uv', uv.ravel())
     if not alpha:
         atlas[..., 3] = 1.0
+    else:
+        atlas = _bleed(atlas)
     img = bpy.data.images.new(name + '_atlas', W, H, alpha=True)
     img.pixels.foreach_set(atlas.ravel())
     img.filepath_raw = os.path.join(outdir, name + '_atlas.png')

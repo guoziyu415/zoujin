@@ -2,7 +2,8 @@
 
 python3 melos_tex.py <out_dir>   ->  tunic_base.png (sRGB), tunic_nrm.png (tangent space, OpenGL +Y)
 
-UV regions as melos_clothes_v2.NEW_UV (u0, u1, v0, v1): the tunic's wool on the left (u 0..0.62); on the right the
+UV regions as melos_clothes_v2.NEW_UV (v3 keeps them; its bundle's pole is the knot on its back, its strands' u is
+metres along) (u0, u1, v0, v1): the tunic's wool on the left (u 0..0.62); on the right the
 bundle, the bands that tie it, the rope, the sandal straps and the soles, top to bottom in the image. Colours from
 the style guide (docs/ux/style-guide/characters/melos.md, palette in art-direction 5.4): tunic ochre O1 #A5733F,
 washed out in patches; bundle, bands and rope undyed wool W0 #CBBDA3 (the bands and rope darker with handling);
@@ -80,24 +81,29 @@ def main(out):
     h[m] = (0.35 * weave + 0.8 * slub + 2.5 * folds)[m]
     shade[m] = (1 + 0.03 * weave + 0.05 * mott - 0.10 * slub)[m]
 
-    # bundle: undyed wool cloth gathered towards its top (the knot): creases run from the top pole downwards
+    # bundle: undyed wool cloth gathered towards the knot on its back (v3: the UV sphere's pole, v = 1): creases run
+    # out from there, a few long ones reach round to the far side; matte and grubby, darker in the creases
     m, bu, bv = region("bundle")
     lines = np.zeros((S, S), np.float32)
-    for c, w, d in zip(rng.uniform(0, 1, 26), rng.uniform(0.004, 0.012, 26), rng.uniform(0.4, 1.0, 26)):
-        wob = 0.012 * np.sin(bv * 7 + 40 * c)
-        lines += d * np.exp(-(((bu - c - wob + 0.5) % 1 - 0.5) ** 2) / (2 * w * w))
-    top = np.clip((bv - 0.45) / 0.55, 0, 1) ** 1.5 + 0.35 * np.clip((0.25 - bv) / 0.25, 0, 1)
-    crease = lines * top
-    base[m] = lin(W0) * (0.9 + 0.06 * mott[m, None])  # carried all day: a little grubby
-    h[m] = (0.35 * weave + 0.6 * slub + 1.5 * folds - 3.0 * crease)[m]
-    shade[m] = (1 + 0.03 * weave + 0.05 * mott - 0.08 * slub - 0.22 * np.clip(crease, 0, 1))[m]
+    for c, w, d, reach in zip(rng.uniform(0, 1, 34), rng.uniform(0.004, 0.013, 34), rng.uniform(0.4, 1.0, 34),
+                              rng.uniform(0.25, 0.9, 34)):
+        wob = 0.015 * np.sin(bv * 7 + 40 * c) + 0.01 * np.sin(bv * 19 + 13 * c)
+        fade = np.clip((bv - (1 - reach)) / reach, 0, 1) ** 1.2
+        lines += d * fade * np.exp(-(((bu - c - wob + 0.5) % 1 - 0.5) ** 2) / (2 * w * w))
+    crease = lines + 0.3 * np.clip((0.2 - bv) / 0.2, 0, 1) * lines.mean()
+    base[m] = lin(W0) * (0.84 + 0.07 * mott[m, None])  # carried all day: grubby
+    h[m] = (0.35 * weave + 0.6 * slub + 1.8 * folds - 3.5 * crease)[m]
+    shade[m] = (1 + 0.03 * weave + 0.05 * mott - 0.08 * slub - 0.3 * np.clip(crease, 0, 1))[m]
 
-    # bands: corners of the same cloth twisted into strips; creases along their length (u)
-    m, _, cv = region("bands")
-    along = np.sin(cv * 2 * np.pi * 2 + 1.5 * folds + 0.8 * np.sin(xx / 23)) * 0.5 + 0.5
-    base[m] = lin(W0) * 0.8  # handled and sweated on
-    h[m] = (0.3 * weave + 1.2 * along)[m]
-    shade[m] = (1 + 0.03 * weave + 0.05 * mott - 0.15 * (1 - along))[m]
+    # bands, and the knots and ends made of them (v3): corners of the same cloth twisted into a round strand. u runs
+    # along it (BAND_U_M = 0.8 m per unit, melos_clothes_v3.py), v round it: two ridges of the twist as helices, one
+    # turn every 6 cm
+    m, cu, cv = region("bands")
+    k = 2 * 0.8 / 0.06
+    along = np.sin(2 * np.pi * (2 * cv + k * cu) + 1.2 * folds) * 0.5 + 0.5
+    base[m] = lin(W0) * (0.78 + 0.05 * mott[m, None])  # handled and sweated on
+    h[m] = (0.3 * weave + 1.4 * along)[m]
+    shade[m] = (1 + 0.03 * weave + 0.05 * mott - 0.22 * (1 - along))[m]
 
     # rope: two-ply twist, about 1 cm a turn; the grooves dark
     m, ru, rv = region("rope")
