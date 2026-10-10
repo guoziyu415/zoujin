@@ -693,12 +693,13 @@
           "$ref": "../../data/common.schema.json#/$defs/ActId"
         },
         "recapLines": {
+          "description": "玩家这一幕什么都没动时为空（v1.0.5 放宽，原来 2〜4 条）",
           "type": "array",
           "items": {
             "type": "string",
             "minLength": 1
           },
-          "minItems": 2,
+          "minItems": 0,
           "maxItems": 4
         },
         "options": {

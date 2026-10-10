@@ -251,9 +251,9 @@ export interface ActChooseMessage {
 export interface ActEnd {
   actId: Data.ActId;
   /**
-   * 「この幕であなたが動かしたこと」
+   * 「この幕であなたが動かしたこと」。玩家这一幕什么都没动时为空，前端显示 actEnd.summary.empty（v1.0.5 放宽，原来 2〜4 条）
    *
-   * @minItems 2
+   * @minItems 0
    * @maxItems 4
    */
   recapLines: string[];
@@ -323,7 +323,9 @@ export interface ActEndedMessage {
   type: "act_ended";
   actId: Data.ActId;
   /**
-   * @minItems 2
+   * 玩家这一幕什么都没动时为空（v1.0.5 放宽，原来 2〜4 条）
+   *
+   * @minItems 0
    * @maxItems 4
    */
   recapLines: string[];
@@ -365,7 +367,10 @@ export interface ActPlanResultMessage {
  * 说出的打算不成行时最接近的替代去处（3.11）
  */
 export interface PlanAlternative {
-  optionId: PlanOptionId;
+  /**
+   * 另一个打算（plan_…），或某个给定去处的 ID（v1.0.5 放宽）。前端照旧回 act_choose { optionId }
+   */
+  optionId: PlanOptionId | Data.ExitId;
   label: string;
   sceneId: Data.SceneId;
   tLabel: Data.TLabel;
@@ -745,6 +750,10 @@ export interface CharacterPresencePatch {
   spot?: Spot;
   activity?: Data.Activity;
   talkable?: boolean;
+  /**
+   * （v1.0.5）进场时和 CharacterPresence 一样带（一群人：不占位置点、没有 spot）
+   */
+  group?: true;
   /**
    * 由 trust 区间映射（第 4 节的表）
    */

@@ -117,12 +117,27 @@ def _rewrite_same(request: Mapping[str, Any]) -> Json:
     return {"candidate": copy.deepcopy(request.get("candidate")) if request.get("mode") == "rewrite" else None}
 
 
+NARRATE_LINES = {  # 假模型的一行地の文：每种 status 一句（为测试写的）
+    "done": "あなたは、そうした。",
+    "partial": "思ったようには、いかなかった。",
+    "refused": "それは、いまはかなわなかった。",
+}
+
 DEFAULTS: dict[str, Callable[[Mapping[str, Any]], Json]] = {
     "triage": lambda r: {"route": "maybe"},
     "extract": lambda r: {"candidates": []},  # 没有候选事件：只走时钟
     "check": _check_all_pass,
     "rewrite": _rewrite_same,  # 改写 = 原样；降级 = 做不到
     "reply": lambda r: {"text": "……そうか。"},
+    "narrate": lambda r: {"text": NARRATE_LINES.get(str(r.get("status")), NARRATE_LINES["done"])},
+    "plan": lambda r: {  # 不成行，替代去处是第一个给定去处（B-3 卡「接口」）
+        "accepted": False,
+        "label": None,
+        "with": [],
+        "effects": [],
+        "narration": ["その道は、いまは開けていなかった。"],
+        "alternative": {"exit": r["options"][0]["optionId"]} if r.get("options") else None,
+    },
 }
 ERRORS = ("rate-limit", "invalid", "unavailable")
 

@@ -36,8 +36,16 @@ Json = Any
 PROJECT_ENV = "ZJ_VERTEX_PROJECT"
 LOCATION_ENV = "ZJ_VERTEX_LOCATION"
 SCOPE = "https://www.googleapis.com/auth/cloud-platform"
-MAX_OUTPUT = {"triage": 256, "extract": 4096, "check": 4096, "rewrite": 4096, "reply": 1024}  # 含思考
-TEMPERATURE = {"triage": 0.0, "extract": 0.2, "check": 0.0, "rewrite": 0.4, "reply": 0.8}
+MAX_OUTPUT = {  # 含思考
+    "triage": 256,
+    "extract": 4096,
+    "check": 4096,
+    "rewrite": 4096,
+    "reply": 1024,
+    "narrate": 1024,
+    "plan": 2048,
+}
+TEMPERATURE = {"triage": 0.0, "extract": 0.2, "check": 0.0, "rewrite": 0.4, "reply": 0.8, "narrate": 0.7, "plan": 0.3}
 
 
 @dataclass(frozen=True)
@@ -193,7 +201,9 @@ def render(kind: str, request: Mapping[str, Any], prefix: str) -> str:
         parts.append("<state>\n" + json.dumps(request["state"], ensure_ascii=False) + "\n</state>")
     if "turn" in request:
         parts.append(render_turn(request["turn"]))
-    rest = {k: v for k, v in request.items() if k not in ("state", "turn", "worldModelVersion")}
+    if "action" in request:  # B-3：提取的输入里玩家做的动作（kind、对象、物品），数据字段
+        parts.append("<action>\n" + json.dumps(request["action"], ensure_ascii=False) + "\n</action>")
+    rest = {k: v for k, v in request.items() if k not in ("state", "turn", "action", "worldModelVersion")}
     if rest:
         parts.append(f"<{kind}>\n" + json.dumps(rest, ensure_ascii=False) + f"\n</{kind}>")
     return "\n\n".join(parts)

@@ -38,6 +38,10 @@ ATTRS = frozenset(
         "cost_usd",
         "duration_ms",
         "route",
+        "action_kind",  # B-3：动作的 kind、演的固定演出、打算成没成行、第几次
+        "piece_id",
+        "accepted",
+        "tries",
     }
 )
 

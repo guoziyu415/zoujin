@@ -6,6 +6,10 @@
   提交候选事件（被否决的也写，effects 为空）、这一轮的时间（一条只推进时钟的 say 事件）和这段时间里到点的节拍。
   提取或检查两次都超时：只提交时钟事件，候选丢弃，`playthrough_metrics` 记一次。
 - advance：快进（只给测试和评测）。
+- B-3：action（动作，`narrator/actions.py`）、choose（幕末选去处）、plan（幕末说出打算，`narrator/plans.py`）。
+  每次提交以后看这一幕收了没有（`Writer.closed`）：收了就把幕末的去处记在局上，推 `act_ended`。收幕以后、选定之前
+  才轮到的对话和动作 0 分、不写事件、不调模型。提交以后要推的消息（固定演出、turn_settled、action_result、
+  act_plan_result、act_transition、act_ended）按顺序记在 `turns.result`，网关推完 commit 以后照着推。
 
 同一局严格串行：取任务时锁住这一局的行，有没过期的租约就不取。提交时再锁一次、校验 lastSeq 没变；变了就丢弃，
 用新状态从第 3 步重来（不重新提取）。任何一步失败整轮回滚，任务放回队列，用同一个幂等键重试，三次都失败记 no_response。
@@ -24,15 +28,18 @@ from typing import Any, cast
 from sqlalchemy import and_, func, insert, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 from zoujin_backend.config import DEADLINES
+from zoujin_backend.db import store
 from zoujin_backend.db.events import recorded_at, to_row
+from zoujin_backend.db.store import Run
 from zoujin_backend.db.tables import events as events_t
 from zoujin_backend.db.tables import playthrough_metrics, playthroughs, turns, utterances, world_state
 from zoujin_backend.ids import IdGen
 from zoujin_backend.models.text import ReplayMissing, Stop, TextModel
+from zoujin_backend.narrator import acts
 from zoujin_backend.narrator.pipeline import Counts, Pipeline, Spend, TurnInput, Verified
 from zoujin_backend.narrator.rules import Checked
 from zoujin_backend.narrator.writer import Writer
-from zoujin_backend.projection import is_visible
+from zoujin_backend.projection import is_visible, snapshot
 from zoujin_backend.schemas import SchemaBook
 from zoujin_backend.trace import Tracer
 from zoujin_backend.world import Book, Library
@@ -68,6 +75,14 @@ class Task:
     minutes: int | None
     key: str
     attempts: int
+    client_msg_id: str | None = None  # B-3：动作、幕末的 clientMsgId
+    request: Json | None = None  # B-3：动作和幕末的请求（turns.request）
+
+
+# 叙事者的事件带 turnId 的任务（契约 Event.turnId：这一轮、这个动作、这次幕末）
+TURN_KINDS = ("talk", "action", "choose", "plan")
+# 失败时也要给前端一个结果的任务（网关按 turns 补推）
+ANSWERED = ("talk", "action", "choose", "plan")
 
 
 @dataclass
@@ -77,6 +92,14 @@ class Planned:
     outcome: str | None = None  # talk：turn_settled.outcome
     minutes: int = 0  # 这一轮花了几分钟
     checked: list[Checked] = field(default_factory=list)
+    push: list[Json] = field(default_factory=list)  # 提交以后按顺序推的消息（节拍时机的固定演出之后）
+    info: dict[str, Any] = field(default_factory=dict)  # 评测入口要的（status、narration、accepted…）
+    extra: dict[str, Any] = field(default_factory=dict)  # 记进 turns.result 的（playerSpot、reason）
+    snapshot: bool = False  # push 里的 act_transition 要补落地以后的快照
+    actions: int = 0
+    actions_ended: int = 0
+    plans_accepted: int = 0
+    plans_refused: int = 0
 
 
 @dataclass
@@ -89,6 +112,9 @@ class Result:
     outcome: str | None = None
     minutes: int = 0
     checked: list[Checked] = field(default_factory=list)
+    push: list[Json] = field(default_factory=list)  # 网关要推的（固定演出、结果、幕末、幕切换）
+    info: dict[str, Any] = field(default_factory=dict)
+    pieces: list[str] = field(default_factory=list)  # 这次演的固定演出 ID
 
 
 def talk_minutes(book: Book, state: SimState) -> int:
@@ -186,6 +212,8 @@ class Narrator:
                 minutes=row["minutes"],
                 key=row["idempotency_key"],
                 attempts=row["attempts"] + 1,
+                client_msg_id=row["client_msg_id"],
+                request=row["request"],
             )
 
     async def release(self, task: Task, *, failed: bool) -> None:
@@ -203,7 +231,7 @@ class Narrator:
                 .values(status="failed", outcome="no_response", minutes=0, lease_until=None, settled_at=func.now())
                 .returning(turns.c.turn_id)
             )
-            if res.first() is not None and task.kind == "talk":
+            if res.first() is not None and task.kind in ANSWERED:
                 last = await c.scalar(select(playthroughs.c.last_seq).where(playthroughs.c.playthrough_id == task.pid))
                 await self._notify(c, task, seq=int(last or 0), outcome="no_response")
 
@@ -217,6 +245,18 @@ class Narrator:
             return await self._commit(task, None, lambda w, book: self._advance(w, minutes))
         if task.kind == "talk":
             return await self._talk(task)
+        if task.kind == "action":
+            from zoujin_backend.narrator.actions import run_action
+
+            return await run_action(self, task)
+        if task.kind == "choose":
+            from zoujin_backend.narrator.plans import run_choose
+
+            return await run_choose(self, task)
+        if task.kind == "plan":
+            from zoujin_backend.narrator.plans import run_plan
+
+            return await run_plan(self, task, (await self._lines(task.turn_id)).get("player"))
         raise ValueError(f"不认识的任务 {task.kind}")
 
     async def read(self, pid: str) -> tuple[dict[str, Any], SimState]:
@@ -229,6 +269,8 @@ class Narrator:
 
     async def _talk(self, task: Task) -> Result:
         pt, state = await self.read(task.pid)
+        if pt["act_end"] is not None:  # 收幕以后才轮到：no_response、0 分、不调模型
+            return await self._commit(task, pt["last_seq"], lambda w, book: self._ended_talk(w, task))
         book = self.library.version(pt["world_model_version"])
         lines = await self._lines(task.turn_id)
         turn = TurnInput(
@@ -295,11 +337,16 @@ class Narrator:
         return Planned()
 
     def _advance(self, w: Writer, minutes: int) -> Planned:
-        """结算到 t0 + minutes，再写一个只推进时钟的事件（契约：时钟只由事件推出）。"""
+        """结算到 t0 + minutes，再写一个只推进时钟的事件（契约：时钟只由事件推出）。这一幕在这段时间里收了，就停在
+        收幕那一刻；收了幕、还没选定时不动。"""
+        if w.run.act_end is not None:
+            return Planned()
         t0 = w.state["t"]
         t2 = t0 + minutes
+        if w.guard:
+            t2 = min(t2, int(acts.current_act(w.book, w.state)["end"]["atLatest"]))
         w.settle(t2)
-        if w.state["t"] < t2:
+        if not w.closed and w.state["t"] < t2:
             w.add(
                 w.full(
                     t=t2,
@@ -361,7 +408,25 @@ class Narrator:
         w.settle(w.state["t"])
         visible = [e for e in w.events if e.get("turnId") == task.turn_id and is_visible(book, e, place)]
         outcome = "committed" if visible else "rejected" if any(not c.passed for c in checked) else "no_change"
-        return Planned(outcome=outcome, minutes=minutes, checked=checked)
+        seen = set(w.seen)
+        settled = {
+            "type": "turn_settled",
+            "turnId": task.turn_id,
+            "outcome": outcome,
+            "eventIds": [e["eventId"] for e in w.events if e.get("turnId") == task.turn_id and e["eventId"] in seen],
+            "minutes": minutes,
+        }
+        return Planned(outcome=outcome, minutes=minutes, checked=checked, push=[settled])
+
+    def _ended_talk(self, w: Writer, task: Task) -> Planned:
+        settled = {
+            "type": "turn_settled",
+            "turnId": task.turn_id,
+            "outcome": "no_response",
+            "eventIds": [],
+            "minutes": 0,
+        }
+        return Planned(outcome="no_response", push=[settled])
 
     # —— 单事务提交 ——
 
@@ -408,12 +473,44 @@ class Narrator:
                 task.pid,
                 state,
                 key_base=task.key,
-                turn_id=task.turn_id if task.kind == "talk" else None,
+                turn_id=task.turn_id if task.kind in TURN_KINDS else None,
                 ids=self.ids,
                 now=recorded_at(),
             )
+            w.run = Run.of(dict(pt))
             planned = plan(w, book)
-            result = Result(task, w.events, w.state, planned.outcome, planned.minutes, planned.checked)
+            push = list(w.pieces) + list(planned.push)
+            if w.closed:  # 这一幕在这次提交里收了：幕末的去处记在局上，推 act_ended（api-contract 3.11）
+                start = await c.scalar(
+                    select(func.max(events_t.c.seq)).where(
+                        events_t.c.playthrough_id == task.pid,
+                        events_t.c.type == "act-transition",
+                        events_t.c.actor == "system",
+                    )
+                )
+                earlier = await store.event_log(c, task.pid, book.version, after_seq=int(start or 0))
+                w.run.act_end = acts.act_end(book, w.state, 0, [*earlier, *w.events])
+                w.run.plan_tries = 0
+                w.run.plan_alternative = None
+                push.append({"type": "act_ended", **w.run.act_end})
+            if planned.snapshot:
+                for m in push:
+                    if m["type"] == "act_transition":
+                        m["snapshot"] = snapshot(
+                            book, task.pid, pt["role_id"], pt["status"], w.state, w.state["seq"], w.run
+                        )
+            pieces = [m["pieceId"] for m in push if m["type"] == "set_piece"]
+            result = Result(
+                task,
+                w.events,
+                w.state,
+                planned.outcome,
+                planned.minutes,
+                planned.checked,
+                push,
+                planned.info,
+                pieces,
+            )
 
             self.fault("validate")
             for ev in w.events:
@@ -437,7 +534,7 @@ class Narrator:
             await c.execute(
                 update(playthroughs)
                 .where(playthroughs.c.playthrough_id == task.pid)
-                .values(last_seq=w.state["seq"], last_active_at=func.now())
+                .values(last_seq=w.state["seq"], last_active_at=func.now(), **w.run.values())
             )
             self.fault("turn")
             await c.execute(
@@ -449,13 +546,14 @@ class Narrator:
                     minutes=result.minutes,
                     lease_until=None,
                     settled_at=func.now(),
+                    result={"push": push, "pieces": pieces, "seq": w.state["seq"], **planned.extra},
                 )
             )
             self.fault("metrics")
             await c.execute(
                 update(playthrough_metrics)
                 .where(playthrough_metrics.c.playthrough_id == task.pid)
-                .values(metrics(task, spend or Spend(), counts or Counts()))
+                .values(metrics(task, spend or Spend(), counts or Counts(), planned))
             )
             self.fault("notify")
             await self._notify(c, task, seq=w.state["seq"], outcome=result.outcome)
@@ -482,6 +580,8 @@ COST_COLUMNS = {
     "check": "cost_check_usd",
     "rewrite": "cost_rewrite_usd",
     "reply": "cost_reply_usd",
+    "narrate": "cost_narrate_usd",
+    "plan": "cost_plan_usd",
 }
 COUNT_COLUMNS = {
     "triage_skipped": "turns_triage_skipped",
@@ -493,9 +593,21 @@ COUNT_COLUMNS = {
 }
 
 
-def metrics(task: Task, spend: Spend, counts: Counts) -> dict[str, Any]:
+PLANNED_COLUMNS = {  # B-3：动作的次数（收幕时队列里回 refused 的另数），打算成行、不成行的次数
+    "actions": "actions",
+    "actions_ended": "actions_act_ended",
+    "plans_accepted": "plans_accepted",
+    "plans_refused": "plans_refused",
+}
+
+
+def metrics(task: Task, spend: Spend, counts: Counts, planned: Planned | None = None) -> dict[str, Any]:
     m = playthrough_metrics.c
     out: dict[str, Any] = {"turns": m.turns + (1 if task.kind == "talk" else 0)}
+    for k, col in PLANNED_COLUMNS.items():
+        n = getattr(planned, k) if planned is not None else 0
+        if n:
+            out[col] = m[col] + n
     for kind, usd in spend.usd.items():
         col = COST_COLUMNS[kind]
         out[col] = m[col] + usd

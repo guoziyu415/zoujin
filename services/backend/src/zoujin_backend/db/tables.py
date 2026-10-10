@@ -81,12 +81,20 @@ playthroughs = Table(
     _ts("ended_at"),
     _ts("last_active_at", nullable=False, now=True),
     Column("last_seq", Integer, nullable=False, server_default="0"),
+    # B-3（0003）：这一局的几样不是事件、不进 WorldState 的东西（契约 3.1、2.11，api-contract 3.11），都随整局删除
+    Column("player_spot", Text),  # 玩家站的位置点；空 = 所在地点的起点（startSpots）
+    Column("played_pieces", JSONB, nullable=False, server_default=text("'[]'::jsonb")),  # 演过的固定演出 ID
+    Column("act_end", JSONB),  # 收了幕、还没选定：pending.actEnd（和 act_ended 同形，不带 type）
+    Column("plan_tries", Integer, nullable=False, server_default="0"),  # 这次幕末说过几次打算
+    Column("plan_alternative", JSONB),  # 打算不成行时给的替代去处（幕切换时清掉）
+    Column("arrival", JSONB),  # 落地带 opener、还没收到 act_landed：{actId, line, opener}
     # 每账号同时 1 局（backend-design 5.2）
     Index("playthroughs_one_active", "user_ref", unique=True, postgresql_where=text("status = 'active'")),
 )
 
 # 叙事者的任务表（backend-design 3.4）：只存 ID、状态、租约，不存原话。
-# kind：open（开局）、talk（一轮对话，语音或文字）、advance（快进，只给测试和评测）
+# kind：open（开局）、talk（一轮对话，语音或文字）、advance（快进，只给测试和评测）；B-3：action（动作）、
+# choose（幕末选去处）、plan（幕末说出打算）、arrival（落地后人物先开口，只留记录，叙事者不处理）
 turns = Table(
     "turns",
     metadata,
@@ -103,6 +111,11 @@ turns = Table(
     Column("attempts", Integer, nullable=False, server_default="0"),
     Column("idempotency_key", Text, nullable=False),  # 这一轮写的事件的幂等键都以它开头
     Column("character_text_missing", Boolean, nullable=False, server_default=text("false")),
+    # B-3（0003）：前端的 clientMsgId；请求（动作的 kind / target / params / actionId，幕末的 optionId /
+    # enRouteChoice，不放原话）；结果（提交以后按顺序要推的消息，和这次演的固定演出）
+    Column("client_msg_id", Text),
+    Column("request", JSONB),
+    Column("result", JSONB),
     _ts("created_at", nullable=False, now=True),
     _ts("settled_at"),
     UniqueConstraint("playthrough_id", "idempotency_key", name="turns_idempotency"),
@@ -199,6 +212,13 @@ playthrough_metrics = Table(
     Column("candidates_downgraded", Integer, nullable=False, server_default="0"),
     Column("candidates_rejected", Integer, nullable=False, server_default="0"),
     Column("candidates_confirm_dropped", Integer, nullable=False, server_default="0"),
+    # B-3（0003）：一行地の文和幕末打算的花费；动作的次数（收幕时队列里回 refused 的另数），打算成行、不成行的次数
+    Column("cost_narrate_usd", Numeric(12, 6), nullable=False, server_default="0"),
+    Column("cost_plan_usd", Numeric(12, 6), nullable=False, server_default="0"),
+    Column("actions", Integer, nullable=False, server_default="0"),
+    Column("actions_act_ended", Integer, nullable=False, server_default="0"),
+    Column("plans_accepted", Integer, nullable=False, server_default="0"),
+    Column("plans_refused", Integer, nullable=False, server_default="0"),
 )
 
 # data-design 5.3 的删除清单里，B-0 建了的表（eval_api 的 db_absent 查这些）

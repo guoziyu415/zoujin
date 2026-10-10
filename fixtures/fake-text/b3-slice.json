@@ -1,0 +1,17 @@
+{
+  "note": "切片幕末（B-3 卡验收第 4 条，E4-105）：第一幕收幕以后玩家说「约定」的打算 → 成行：转述是「メロスの約束を、町の人々に知らせて回る」（不和玩家的话连续 8 字相同），打算自己的效果是群众知道约定（S-077 ⑥），落点照 Act.plan。话和转述都是为测试写的。没有「約束」的打算走假模型的默认（不成行，替代去处是第一个给定去处）。",
+  "rules": [
+    {
+      "kind": "plan",
+      "when": { "playerContains": "約束" },
+      "output": {
+        "accepted": true,
+        "label": "メロスの約束を、町の人々に知らせて回る",
+        "with": [],
+        "effects": [{ "op": "learn", "character": "char.crowd", "fact": "fact.promise" }],
+        "narration": [],
+        "alternative": null
+      }
+    }
+  ]
+}

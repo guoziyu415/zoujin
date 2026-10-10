@@ -4,8 +4,11 @@
 
 B-0 的投影只做骨架能给的：场景里的人物（位置点按契约 3.1：relocate 指定的站那里，`group` 的不占，其余按布局
 分配；activity 是世界模型给的那部分，W-1 的 `activity()`；此刻不在场的是 absent、不能搭话（B-2，S-077 ⑩）；
-还没有关系的省略关系）、地点能不能进、场景出口、期限和梅洛斯的预计到达。情境动作、可调查物、关系、记忆、待处理的
-东西是 M2 各卡的。
+还没有关系的省略关系）、地点能不能进、场景出口、期限和梅洛斯的预计到达。
+
+B-3 加了：情境动作（世界模型的 affordances 里此刻成立的）、可调查物（objects）、出口一律能点（拦不拦由判定说，
+S-077 ③）、玩家的位置点（局上记的，`Run.player_spot`）、期限一行按玩家知不知道约定（S-077 ⑫）、
+`pending.actEnd` 和 `pending.arrival`。关系、记忆、别的待处理的东西是 M2 各卡的。
 """
 
 from __future__ import annotations
@@ -13,13 +16,14 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from zoujin_worldsim import OCCURRED, SimState, activity, flat, world_state
+from zoujin_worldsim import SimState, activity, arrival_delta, flat, knows, world_state
 
+from zoujin_backend.db.store import Run
 from zoujin_backend.world import Book
 
 Json = Any
 
-PROMISE_BEAT = "beat.05"  # 「約束」：之后才显示期限和预计到达（S-049 ④、防剧透）
+PROMISE_FACT = "fact.promise"  # 玩家知道约定以后才显示期限和预计到达（S-077 ⑫，api-contract 2.3）
 DEADLINE_TAIL = "遅れれば、身代わりが死ぬ"  # 期限那一行的后半（api-contract 2.3 的例子）；UX 定了文案再换
 VOICE = {"enabled": True, "degraded": False, "minutesLeftToday": 60}  # 预算是 M2 的卡
 PENDING = {"reveal": None, "confirm": None, "actEnd": None, "safetyPause": False, "approach": None}
@@ -130,8 +134,95 @@ def place_open(book: Book, role_id: str, place: str, state: SimState) -> bool:
     return any(c["place"] == place and _holds(c["when"], vals) for c in role.get("conditionalAccess", []))
 
 
-def snapshot(book: Book, pid: str, role_id: str, status: str, state: SimState, last_seq: int) -> Json:
-    """2.3 的快照。state 是 last_seq 时的 SimState。"""
+def action_id(affordance: str) -> str:
+    """快照里情境动作的 ID：`act_` 加上 Affordance ID 去掉 `aff.` 的部分（B-3），前端原样回传。"""
+    return "act_" + affordance.removeprefix("aff.")
+
+
+def item_ready(book: Book, state: SimState, item: str | None) -> bool:
+    """情境动作要用的物品此刻拿得到（叙事者 R7 的同一个判法）：不能带走的在这个地点，能带走的在玩家手上。"""
+    it = next((x for x in book.world.get("items", []) if x["id"] == item), None)
+    if it is None:
+        return True
+    if it.get("portable"):
+        return bool(state["holdings"].get(it["id"]) == "player")
+    return state["vars"]["var.player.location"] in it.get("at", [])
+
+
+def open_affordances(book: Book, state: SimState) -> list[Json]:
+    """此刻成立的情境动作（B-3 第 1 条）：玩家所在地点、这一幕、这个身份、when 成立、对象人物在这里而且不是
+    absent、要用的物品拿得到。"""
+    vars_ = state["vars"]
+    place, act, values = vars_["var.player.location"], book.act_of(vars_), flat(state)
+    out = []
+    for a in book.world.get("affordances", []):
+        if a["place"] != place or a.get("act", act) != act:
+            continue
+        if a.get("roles") and state["role"] not in a["roles"]:
+            continue
+        if a.get("when") and not book.sim.holds(a["when"], values):
+            continue
+        who = a.get("target")
+        if who is not None and (state["locations"].get(who) != place or activity(book.world, state, who) == "absent"):
+            continue
+        if not item_ready(book, state, a.get("item")):
+            continue
+        out.append(a)
+    return out
+
+
+def affordance_minutes(book: Book, a: Json) -> int:
+    return int(a.get("minutes", book.world["pacing"]["situationalMinMinutes"]))
+
+
+def situational(book: Book, state: SimState, a: Json) -> Json:
+    """快照的 SituationalAction。带 melos 的按本局此刻算梅洛斯会晚几分钟、还赶不赶得上（W-1 arrival_delta）。"""
+    out: Json = {"actionId": action_id(a["id"]), "kind": a["kind"]}
+    if a.get("target"):
+        out["target"] = a["target"]
+    out |= {
+        "label": a["label"],
+        "estimatedMinutes": affordance_minutes(book, a),
+        "melos": a.get("melos"),
+        "melosMinutes": None,
+        "melosInTime": None,
+        "enabled": True,
+    }
+    if a.get("melos"):
+        effects = [e for e in a.get("effects", []) if e.get("op") not in ("promise", "improv")]
+        try:
+            d = arrival_delta(book.world, state, effects, state["t"])
+            out["melosMinutes"], out["melosInTime"] = int(d["minutes"]), bool(d["inTime"])
+        except ValueError:  # 和已登记的改动合不了：照世界模型写的分钟，赶不赶得上按现在的预计
+            out["melosMinutes"] = int(a.get("melosMinutes", 0))
+            out["melosInTime"] = True
+    return out
+
+
+def player_spot(book: Book, state: SimState, run: Run | None) -> str:
+    """玩家站的位置点：局上记的（属于玩家现在的地点时），不然是这个地点的起点（契约 3.1，B-3 第 1 条）。"""
+    place: str = state["vars"]["var.player.location"]
+    scene = book.scenes.get(book.scene_of(place, book.act_of(state["vars"])))
+    if scene is None:
+        return place.removeprefix("place.")
+    if run is not None and run.player_spot and scene.spots.get(run.player_spot) == place:
+        return run.player_spot
+    return scene.player_spot(place)
+
+
+def pending(run: Run | None) -> Json:
+    out: Json = dict(PENDING)
+    if run is not None:
+        out["actEnd"] = run.act_end
+        if run.arrival and run.arrival.get("opener"):
+            out["arrival"] = {k: run.arrival[k] for k in ("line", "opener")}
+    return out
+
+
+def snapshot(
+    book: Book, pid: str, role_id: str, status: str, state: SimState, last_seq: int, run: Run | None = None
+) -> Json:
+    """2.3 的快照。state 是 last_seq 时的 SimState；run 是局上记的位置点和待处理的（没给 = 起点、没有待处理的）。"""
     vars_ = state["vars"]
     act = book.act_of(vars_)
     player_place: str = vars_["var.player.location"]
@@ -139,12 +230,12 @@ def snapshot(book: Book, pid: str, role_id: str, status: str, state: SimState, l
     scene = book.scenes.get(scene_id)
     scene_places = list(scene.places) if scene else [player_place]
     deadline_t: int = book.world["clock"]["deadline"]["t"]
-    promised = state["beats"].get(PROMISE_BEAT) in OCCURRED
+    promised = knows(book.world, state, "player", PROMISE_FACT)
 
     present = [(c, state["locations"][c]) for c in book.characters if state["locations"].get(c) in scene_places]
     doing = {c: activity(book.world, state, c) for c, _ in present}  # W-1：节拍给的 activity，absent = 不在场
     away = {c for c, a in doing.items() if a == "absent"}
-    player_spot = scene.player_spot(player_place) if scene else player_place.removeprefix("place.")
+    me = player_spot(book, state, run)
     # 契约 3.1 的站位规则：group 的人物不占位置点；relocate 写了 spot 的站那里（布局里这个地点得有这个点）；
     # 其余的人按布局顺序站空着的点，玩家和指定的点算占着
     group = {c for c, _ in present if book.characters[c].get("group")}
@@ -156,7 +247,7 @@ def snapshot(book: Book, pid: str, role_id: str, status: str, state: SimState, l
     # 看得见的人先排位置点，不在场的排在最后：前端不画他们，别让他们挤掉看得见的人的点
     order = [x for x in rest if x[0] not in away] + [x for x in rest if x[0] in away]
     if scene:
-        spots = {**scene.character_spots(order, {player_spot, *fixed.values()}), **fixed}
+        spots = {**scene.character_spots(order, {me, *fixed.values()}), **fixed}
     else:
         spots = {c: p.removeprefix("place.") for c, p in order}
     characters = []
@@ -176,14 +267,26 @@ def snapshot(book: Book, pid: str, role_id: str, status: str, state: SimState, l
             entry["reason"] = CLOSED
         places.append(entry)
     interactables = []
-    for ex in scene.exits if scene else ():
+    for obj in book.world.get("objects", []):  # 調べる（契约 2.12）：这个场景里的、布局里有位置点的
+        if obj["place"] in scene_places and obj.get("spot"):
+            interactables.append(
+                {
+                    "id": obj["id"],
+                    "kind": "examine",
+                    "spot": obj["spot"],
+                    "label": obj["label"],
+                    "enabled": place_open(book, role_id, obj["place"], state),
+                    "estimatedMinutes": 0,
+                }
+            )
+    for ex in scene.exits if scene else ():  # 出口一律能点，拦不拦由判定说（S-077 ③）
         interactables.append(
             {
                 "id": ex["spot"],
                 "kind": "go",
                 "spot": ex["spot"],
                 "label": book.places[ex["place"]]["name"],
-                "enabled": place_open(book, role_id, ex["place"], state),
+                "enabled": True,
                 "estimatedMinutes": _travel(book, player_place, ex["place"]),
             }
         )
@@ -212,13 +315,13 @@ def snapshot(book: Book, pid: str, role_id: str, status: str, state: SimState, l
         "player": {
             "roleId": role_id,
             "place": player_place,
-            "spot": player_spot,
+            "spot": me,
         },
         "places": places,
         "characters": characters,
         "interactables": interactables,
-        "actions": [],
-        "pending": dict(PENDING),
+        "actions": [situational(book, state, a) for a in open_affordances(book, state)],
+        "pending": pending(run),
         "voice": dict(VOICE),
     }
 

@@ -193,6 +193,14 @@ def normalize(raw: Mapping[str, Any], view: View, book: Book) -> Json:
     return c
 
 
+def act_doc(act: Mapping[str, Any] | None) -> Json | None:
+    """提取请求里的 `action`（B-3）：玩家做的动作的 kind、对象、物品。打算、出口、过场的 act 不是动作。"""
+    if not act or "kind" not in act or act["kind"] in ("plan", "en-route", "go"):
+        return None
+    params = act.get("params") or {}
+    return {"kind": act["kind"], "target": act.get("target"), "item": params.get("item")}
+
+
 def irreversible(cand: Mapping[str, Any]) -> bool:
     for e in cand.get("effects", []):
         if e.get("op") == "beat" and e.get("to") in IRREVERSIBLE_BEAT:
@@ -300,18 +308,26 @@ class Pipeline:
             "player": book.roles[state["role"]]["name"],
             "character": book.characters.get(turn.character or "", {}).get("name"),
         }
-        try:
-            r = await self.call(
-                "triage", {"names": names, "turn": turn.doc()}, spend, span=span, extra=lambda o: {"route": o["route"]}
-            )
-            route = r.output["route"]
-        except CallFailed:
-            route = "maybe"  # 分流两次都超时：当作「可能」
-        if route == "chat":
-            counts.triage_skipped = 1
-            return Extracted([], counts)
+        action = act_doc(turn.act)
+        if action is None:  # 动作（B-3）不分流：做了就要找事件
+            try:
+                r = await self.call(
+                    "triage",
+                    {"names": names, "turn": turn.doc()},
+                    spend,
+                    span=span,
+                    extra=lambda o: {"route": o["route"]},
+                )
+                route = r.output["route"]
+            except CallFailed:
+                route = "maybe"  # 分流两次都超时：当作「可能」
+            if route == "chat":
+                counts.triage_skipped = 1
+                return Extracted([], counts)
         view = state_view(book, state)
         request = {"worldModelVersion": book.version, "state": view.doc, "turn": turn.doc()}
+        if action is not None:
+            request["action"] = action
         try:
             r = await self.call(
                 "extract", request, spend, span=span, extra=lambda o: {"candidate_count": len(o["candidates"])}

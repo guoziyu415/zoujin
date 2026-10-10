@@ -137,4 +137,49 @@ REPLY = Prompt(
     },
 )
 
-PROMPTS: dict[str, Prompt] = {p.kind: p for p in (TRIAGE, EXTRACT, CHECK, REWRITE, REPLY)}
+# B-3：动作的一行地の文（status 按判定），幕末说出的打算能不能成行
+NARRATE = Prompt(
+    "narrate",
+    text("narrate"),
+    {
+        "type": "object",
+        "properties": {"text": {"type": "string", "minLength": 1}},
+        "required": ["text"],
+        "additionalProperties": False,
+    },
+)
+
+PLAN_ALTERNATIVE = {
+    "anyOf": [
+        {"type": "object", "properties": {"exit": {"type": "string", "minLength": 1}}, "required": ["exit"]},
+        {
+            "type": "object",
+            "properties": {
+                "label": {"type": "string", "minLength": 1},
+                "with": {"type": "array", "items": {"type": "string"}},
+                "effects": {"type": "array", "items": EFFECT},
+            },
+            "required": ["label"],
+        },
+        {"type": "null"},
+    ]
+}
+
+PLAN = Prompt(
+    "plan",
+    text("plan"),
+    {
+        "type": "object",
+        "properties": {
+            "accepted": {"type": "boolean"},
+            "label": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+            "with": {"type": "array", "items": {"type": "string"}},
+            "effects": {"type": "array", "items": EFFECT},
+            "narration": {"type": "array", "maxItems": 2, "items": {"type": "string", "minLength": 1}},
+            "alternative": PLAN_ALTERNATIVE,
+        },
+        "required": ["accepted", "label", "with", "effects", "narration", "alternative"],
+    },
+)
+
+PROMPTS: dict[str, Prompt] = {p.kind: p for p in (TRIAGE, EXTRACT, CHECK, REWRITE, REPLY, NARRATE, PLAN)}
