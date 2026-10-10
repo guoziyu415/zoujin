@@ -24,7 +24,7 @@ from zoujin_backend.narrator.rules import Turn
 from zoujin_backend.narrator.writer import Writer
 from zoujin_backend.projection import snapshot
 from zoujin_backend.world import Book, Library
-from zoujin_worldsim import SimState, initial_state
+from zoujin_worldsim import SimState, activity, initial_state
 
 Json = Any
 
@@ -301,7 +301,7 @@ def test_absent_characters_cannot_act_or_be_told() -> None:
     s = at()
     ix = rules.index(W)
     assert rules.absent(ix, s, "char.crowd") and rules.absent(ix, s, "char.maiden")
-    assert rules.activity(ix, s, OLD) is None and not rules.absent(ix, s, OLD)
+    assert activity(W, s, OLD) == "idle" and not rules.absent(ix, s, OLD)
     told = cand(s, [{"op": "learn", "character": "char.crowd", "fact": "fact.city-silent"}])
     assert ("R7-capability", "target-away") in codes(s, told)
     spoke = cand(s, [{"op": "improv", "factId": "rf_01J00000000000000000000002", "character": "char.maiden",

@@ -21,7 +21,7 @@ from functools import cached_property
 from typing import Any
 
 from zoujin_backend.ids import IdGen
-from zoujin_worldsim import OCCURRED, Sim, SimState, apply, check_effects, flat, knows, travel_minutes
+from zoujin_worldsim import OCCURRED, Sim, SimState, activity, apply, check_effects, flat, knows, travel_minutes
 
 Json = Any
 
@@ -175,34 +175,10 @@ def anchor_locked(ix: Index, state: SimState) -> dict[str, Json]:
     return {v: x for v, x in locked.items() if state["vars"].get(v) == x[0]}
 
 
-def activity(ix: Index, state: SimState, who: str) -> str | None:
-    """人物此刻的 activity 里能从世界模型推出的那部分（契约 2.2 `Beat.activities`、`Character.initialActivity`）：
-    最近一个已发生、写了他 activity 的节拍；之前被节拍移动过就不再是开局的；都没有就是 `initialActivity`。
-    开局的 activity 只在人物还在 `initialPlace` 时算数（本局的事件把他移走了，SimState 里没有移动的历史）。
-    正在说话、走动由叙事者推出，不在这里。"""
-    c = ix.chars.get(who)
-    if c is None:
-        return None
-    cur: str | None = c.get("initialActivity")
-    initial = True
-    times = state["times"]
-    for bid in sorted(times, key=lambda b: (times[b], ix.sim.beats[b]["order"])):
-        if state["beats"].get(bid) not in OCCURRED:
-            continue
-        beat = ix.sim.beats[bid]
-        acts = [a["activity"] for a in beat.get("activities", []) if a["character"] == who]
-        if acts:
-            cur, initial = acts[-1], False
-        elif any(e["op"] == "relocate" and e["character"] == who for e in beat["outcomes"]):
-            cur, initial = None, False
-    if initial and state["locations"].get(who) != c["initialPlace"]:
-        return None
-    return cur
-
-
 def absent(ix: Index, state: SimState, who: str) -> bool:
-    """S-077 ⑩：此刻不在场（例：切片里石工房的两人第一幕在屋里）。快照照样列出，`activity: absent`。"""
-    return activity(ix, state, who) == "absent"
+    """S-077 ⑩：此刻不在场（例：切片里石工房的两人第一幕在屋里）。快照照样列出，`activity: absent`。
+    判法在 W-1 的 `activity()`：开局 absent、还没被节拍或事件带走的人物。"""
+    return activity(ix.world, state, who) == "absent"
 
 
 def reach(ix: Index, state: SimState, cur: Mapping[str, Any]) -> set[str]:

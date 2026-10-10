@@ -15,9 +15,9 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from zoujin_backend.narrator.rules import absent, activity, index
+from zoujin_backend.narrator.rules import absent, index
 from zoujin_backend.world import Book
-from zoujin_worldsim import OCCURRED, SimState, flat, knows
+from zoujin_worldsim import OCCURRED, SimState, activity, flat, knows
 
 Json = Any
 
@@ -49,7 +49,6 @@ def aliases(state: SimState) -> dict[str, str]:
 
 
 def state_view(book: Book, state: SimState) -> View:
-    ix = index(book.world)
     out = aliases(state)
 
     def a(x: str) -> str:
@@ -57,11 +56,7 @@ def state_view(book: Book, state: SimState) -> View:
 
     people: dict[str, Json] = {}
     for c in sorted(state["locations"]):
-        row: Json = {"place": state["locations"][c]}
-        act = activity(ix, state, c)
-        if act is not None:
-            row["activity"] = act
-        people[c] = row
+        people[c] = {"place": state["locations"][c], "activity": activity(book.world, state, c)}
     promises = [
         {"ref": a(p["promiseId"]), **{k: p[k] for k in ("from", "to", "text", "status", "due", "template") if k in p}}
         for p in sorted(state["promises"].values(), key=lambda p: a(p["promiseId"]))

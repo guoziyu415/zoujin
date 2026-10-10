@@ -2,9 +2,9 @@
 
 快照和 commit 用同一个投影：patch = 提交前后两个快照的差。
 
-B-0 的投影只做骨架能给的：场景里的人物（位置点按布局分配，activity 一律 idle，此刻不在场的是 absent、不能搭话（B-2，
-S-077 ⑩）；还没有关系的省略关系）、地点能不能进、
-场景出口、期限和梅洛斯的预计到达。情境动作、可调查物、关系、记忆、待处理的东西是 M2 各卡的。
+B-0 的投影只做骨架能给的：场景里的人物（位置点按布局分配；activity 是世界模型给的那部分，W-1 的 `activity()`；
+此刻不在场的是 absent、不能搭话（B-2，S-077 ⑩）；还没有关系的省略关系）、地点能不能进、场景出口、期限和梅洛斯的
+预计到达。情境动作、可调查物、关系、记忆、待处理的东西是 M2 各卡的。
 """
 
 from __future__ import annotations
@@ -12,9 +12,8 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from zoujin_worldsim import OCCURRED, SimState, flat, world_state
+from zoujin_worldsim import OCCURRED, SimState, activity, flat, world_state
 
-from zoujin_backend.narrator.rules import absent, index
 from zoujin_backend.world import Book
 
 Json = Any
@@ -142,8 +141,8 @@ def snapshot(book: Book, pid: str, role_id: str, status: str, state: SimState, l
     promised = state["beats"].get(PROMISE_BEAT) in OCCURRED
 
     present = [(c, state["locations"][c]) for c in book.characters if state["locations"].get(c) in scene_places]
-    ix = index(book.world)
-    away = {c for c, _ in present if absent(ix, state, c)}
+    doing = {c: activity(book.world, state, c) for c, _ in present}  # W-1：节拍给的 activity，absent = 不在场
+    away = {c for c, a in doing.items() if a == "absent"}
     player_spot = scene.player_spot(player_place) if scene else player_place.removeprefix("place.")
     # 看得见的人先排位置点，不在场的排在最后：前端不画他们，别让他们挤掉看得见的人的点
     order = [x for x in present if x[0] not in away] + [x for x in present if x[0] in away]
@@ -153,7 +152,7 @@ def snapshot(book: Book, pid: str, role_id: str, status: str, state: SimState, l
             "id": c,
             "place": p,
             "spot": spots[c],
-            "activity": "absent" if c in away else "idle",
+            "activity": doing[c],
             "talkable": c not in away and bool(book.characters[c].get("talkable")),
         }
         for c, p in present
