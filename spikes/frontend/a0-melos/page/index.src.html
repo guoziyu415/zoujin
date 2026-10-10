@@ -419,6 +419,8 @@ function setTime(minute, immediate) {
 
 // ---------------------------------------------------------------- skin: wrap lighting with a red tail, a cheap stand-in for subsurface scattering
 const SKIN_SCATTER = { value: new THREE.Color().setRGB(0.3, 0.09, 0.045, THREE.LinearSRGBColorSpace) };
+const RIM = { value: 0.8 };
+const RIM_PARTS = new Set(['skin', 'hair', 'tunic']);
 const DIFFUSE_LINE = 'reflectedLight.directDiffuse += irradiance * BRDF_Lambert( material.diffuseContribution ) * ( 1.0 - F );';
 const SKIN_CHUNK = THREE.ShaderChunk.lights_physical_pars_fragment.replace(DIFFUSE_LINE, `
   #ifdef SKIN_WRAP
@@ -428,19 +430,26 @@ const SKIN_CHUNK = THREE.ShaderChunk.lights_physical_pars_fragment.replace(DIFFU
     reflectedLight.directDiffuse += ( irradiance * ( 1.0 - F ) + scatter ) * BRDF_Lambert( material.diffuseContribution );
   #else
     ${DIFFUSE_LINE}
+  #endif
+  #ifdef CHAR_RIM
+    // backlight rim (art-direction 3.2): the low sun behind him grazes his outline (shadowed with the sun)
+    float rimV = pow( 1.0 - saturate( dot( geometryNormal, geometryViewDir ) ), 3.0 );
+    float rimL = saturate( dot( directLight.direction, -geometryViewDir ) );
+    reflectedLight.directDiffuse += directLight.color * material.diffuseContribution * ( uRim * rimV * rimL );
   #endif`);
 const SKIN_OK = SKIN_CHUNK !== THREE.ShaderChunk.lights_physical_pars_fragment;
 function patchMaterial(m) {
-  const skin = m.name === 'skin';
+  const skin = m.name === 'skin', rim = RIM_PARTS.has(m.name);
   if (m.name === 'hair') { m.alphaTest = 0.35; m.alphaToCoverage = true; }
   m.onBeforeCompile = (sh) => {
     fogUniforms(sh);
-    if (skin && cfg.skin && SKIN_OK) {
-      sh.uniforms.uSkinScatter = SKIN_SCATTER;
-      sh.fragmentShader = '#define SKIN_WRAP\nuniform vec3 uSkinScatter;\n' + sh.fragmentShader.replace('#include <lights_physical_pars_fragment>', SKIN_CHUNK);
-    }
+    const wrap = skin && cfg.skin && SKIN_OK;
+    if (!wrap && !rim) return;
+    sh.uniforms.uSkinScatter = SKIN_SCATTER; sh.uniforms.uRim = RIM;
+    sh.fragmentShader = (wrap ? '#define SKIN_WRAP\n' : '') + (rim ? '#define CHAR_RIM\n' : '') + 'uniform vec3 uSkinScatter;\nuniform float uRim;\n'
+      + sh.fragmentShader.replace('#include <lights_physical_pars_fragment>', SKIN_CHUNK);
   };
-  m.customProgramCacheKey = () => (skin && cfg.skin ? 'skin1' : 'char');
+  m.customProgramCacheKey = () => (skin && cfg.skin ? 'skin1' : 'char') + (rim ? 'r' : '');
 }
 
 // ---------------------------------------------------------------- characters
@@ -589,7 +598,8 @@ class Char {
     this.root.traverse((o) => {
       if (!o.isMesh) return;
       // eyes and teeth sit inside the head: no shadow pass for them (keeps a talk version at 10 draw calls with the head split)
-      o.castShadow = !/^(Eyes|Teeth)/.test(o.name); o.receiveShadow = true; o.frustumCulled = false;
+      // hair, brows and lashes are alpha-tested cards: their shadows speckle the neck and face, so they cast none
+      o.castShadow = !/^(Eyes|Teeth)/.test(o.name) && !['hair', 'brows', 'lashes'].includes(o.material.name); o.receiveShadow = true; o.frustumCulled = false;
       if (tint) { o.material = o.material.clone(); o.material.color.setRGB(...tint, THREE.LinearSRGBColorSpace); patchMaterial(o.material); }
     });
     this.bones = {}; for (const n of BONES) this.bones[n] = this.root.getObjectByName(n);

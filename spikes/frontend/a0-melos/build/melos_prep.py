@@ -8,11 +8,20 @@ $BPY melos_prep.py <melos.blend> <tex_dir from melos_tex.py> <out.blend>
   become opaque; hair, brows and lashes keep their alpha (merge_parts turns it into a mask).
 - Eyes: the cornea shell sits on the transparent part of the eye texture; opaque, it would hide the iris. Removed.
 - An object saved in edit mode (EyesLow, on the Mac) is taken back to object mode: until then its UVs read empty.
+- Colours from the style guide (docs/ux/style-guide/characters/melos.md): skin graded so its mean is the sunburnt
+  #8A5A3C with a little less saturation; hair and brows graded to the same dark brown, near black.
 - Skin: the scalp (MakeHuman's `scalp` vertex group) painted towards the hair colour with a soft edge, so the skin
   between the hair cards and along the hairline reads as hair instead of a bright ragged line.
+- Dust from a day on the road, by height on the body: feet and shins below the knee, the tunic's hem, the sandals.
+  The tunic's shoulders are faded by the sun where the cloth faces up.
+- Skin normal map (new in v2; compress.mjs keeps it at 2048 on the high tier and 512 on std): fine relief from the
+  colour map's own detail (high-pass of its luminance) plus small pores from a fixed-seed noise.
+- Ambient occlusion baked with Cycles (rest pose, the whole figure as occluder) and multiplied into the skin and
+  tunic colour maps: contact shadow under the rope, the bands, the bundle and the tunic's edges, and in the folds.
 - Roughness per part (MPFB sets 0.7 everywhere); materials renamed as on the stand-in (skin, eyes, hair, ...):
   compress.mjs and the test page find the skin and the alpha-tested parts by material name.
-- Tunic: tunic_base.png and tunic_nrm.png from melos_tex.py, packed into the file; triangulated (the sole hulls are
+- Tunic: tunic_base.png and tunic_nrm.png from melos_tex.py (UV regions of melos_clothes_v2), packed into the file;
+  triangulated (the sole hulls are
   n-gons, and the exporter cannot compute tangents for the normal map on those).
 - Image paths cut down to the file name (the Mac build recorded absolute paths with the user name; the pixels are
   packed), then unused data purged.
@@ -25,6 +34,8 @@ import bpy
 import bmesh  # noqa: I001  (only importable after bpy)
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
+
+from melos_clothes_v2 import HEM_Z, KNEE_Z, NEW_UV
 
 src, tex_dir, out = sys.argv[-3:]
 bpy.ops.wm.open_mainfile(filepath=src)
@@ -43,6 +54,13 @@ ROUGH = {
 }
 MAT_NAME = {"Body": "skin", "Eyes": "eyes", "EyesLow": "eyes", "Teeth": "teeth", "Tongue": "tongue", "Hair": "hair"}
 MAT_NAME |= {"Brows": "brows", "Lashes": "lashes", "Tunic": "tunic"}
+SKIN = (138, 90, 60)  # #8A5A3C
+SKIN_SAT = 0.85
+HAIR = (40, 28, 21)  # dark brown, near black
+DUST = (152, 134, 110)
+SUN_FADED = (196, 160, 116)
+AO = {"Body": (0.5, 0.06), "Tunic": (0.85, 0.08)}  # strength, distance (m)
+AO_SAMPLES = 48
 
 
 def image_pixels(img):
@@ -50,6 +68,147 @@ def image_pixels(img):
     px = np.empty(w * h * 4, np.float32)
     img.pixels.foreach_get(px)
     return px.reshape(h, w, 4)
+
+
+def to_lin(c):
+    return np.clip(c, 0, 1) ** 2.2
+
+
+def to_srgb(c):
+    return np.clip(c, 0, 1) ** (1 / 2.2)
+
+
+def face_mask(ob, img, value, soft):
+    """Rasterize value(polygon) (0..1, or None to skip) over ob's UVs at img's size; rows bottom-up like img.pixels."""
+    w, h = img.size
+    uvl = ob.data.uv_layers[0].data
+    mask = Image.new("L", (w, h), 0)
+    draw = ImageDraw.Draw(mask)
+    for p in ob.data.polygons:
+        x = value(p)
+        if x:
+            draw.polygon([(uvl[i].uv[0] * w, uvl[i].uv[1] * h) for i in p.loop_indices], fill=int(255 * min(1.0, x)))
+    if soft:
+        mask = mask.filter(ImageFilter.GaussianBlur(soft))
+    return np.asarray(mask, np.float32) / 255
+
+
+def grade(img, sel, target, sat=1.0):
+    """Scale img's colours (in linear light) so the mean over sel is target; sat < 1 greys them a little first."""
+    px = image_pixels(img)
+    rgb = to_lin(px[..., :3])
+    lum = rgb @ np.array([0.2126, 0.7152, 0.0722], np.float32)
+    rgb = lum[..., None] + (rgb - lum[..., None]) * sat
+    gain = to_lin(np.asarray(target, np.float32) / 255) / rgb[sel].mean(0)
+    px[..., :3] = to_srgb(rgb * gain)
+    img.pixels.foreach_set(px.ravel())
+    img.pack()
+    return [round(float(g), 2) for g in gain]
+
+
+def mix_towards(img, m, colour):
+    px = image_pixels(img)
+    c = np.asarray(colour, np.float32) / 255
+    px[..., :3] = px[..., :3] * (1 - m[..., None]) + c * m[..., None]
+    img.pixels.foreach_set(px.ravel())
+
+
+def z_of(ob):
+    mw = ob.matrix_world
+    return np.array([(mw @ v.co).z for v in ob.data.vertices], np.float32)
+
+
+def uv_centre(ob, p):
+    uvl = ob.data.uv_layers[0].data
+    return np.mean([uvl[i].uv[:] for i in p.loop_indices], axis=0)
+
+
+def in_region(c, name):
+    u0, u1, v0, v1 = NEW_UV[name]
+    return u0 <= c[0] <= u1 and v0 <= c[1] <= v1
+
+
+def bake_ao(ob, size, distance):
+    """Cycles AO of ob over its UVs at size x size (rows bottom-up); everything visible in the file occludes."""
+    sc = bpy.context.scene
+    sc.render.engine = "CYCLES"
+    sc.cycles.device = "CPU"
+    sc.cycles.samples = AO_SAMPLES
+    sc.cycles.seed = 0
+    sc.render.bake.margin = 8
+    if sc.world is None:
+        sc.world = bpy.data.worlds.new("bake")
+    sc.world.light_settings.distance = distance
+    target = bpy.data.images.new("ao_" + ob.name, size, size, float_buffer=True)
+    nt = ob.data.materials[0].node_tree
+    node = nt.nodes.new("ShaderNodeTexImage")
+    node.image = target
+    nt.nodes.active = node
+    vl = bpy.context.view_layer
+    for o in vl.objects:
+        o.select_set(False)
+    ob.select_set(True)
+    vl.objects.active = ob
+    bpy.ops.object.bake(type="AO")
+    ao = image_pixels(target)[..., 0].copy()
+    nt.nodes.remove(node)
+    bpy.data.images.remove(target)
+    return ao
+
+
+def _blur(a, r):
+    im = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), "L")
+    return np.asarray(im.filter(ImageFilter.GaussianBlur(r)), float)
+
+
+def skin_normal(skin, path, cover, strength=0.5):
+    """Write a tangent-space normal map (OpenGL +Y, as glTF) for the skin; returns the mean lean in degrees.
+    `cover`: texels inside the UV islands (top row first). Outside them the luminance is filled from the inside
+    before the high-pass, and the relief is flat, so island borders don't turn into ridges."""
+    px = image_pixels(skin)[::-1]  # top row first, as in the PNG
+    lum = to_lin(px[..., :3]) @ np.array([0.2126, 0.7152, 0.0722], np.float32)
+    lum = lum * 255 / max(float(lum.max()), 1e-6)
+    m = cover.astype(float)
+    fill = _blur(lum * m, 8) / np.maximum(_blur(m * 255, 8) / 255, 1e-3)
+    lum = np.where(cover, lum, fill)
+    inner = np.asarray(Image.fromarray((m * 255).astype(np.uint8), "L").filter(ImageFilter.MinFilter(5)), float) / 255
+    detail = (lum - _blur(lum, 8)) / 255 * inner
+    rng = np.random.default_rng(20261010)
+    n = np.asarray(
+        Image.fromarray(np.clip(rng.normal(128, 40, lum.shape), 0, 255).astype(np.uint8), "L").filter(
+            ImageFilter.GaussianBlur(0.7)
+        ),
+        np.float32,
+    )
+    pores = -np.clip((n - 128) / 40 - 0.9, 0, None) * inner
+    h = 6.0 * detail + 0.6 * pores
+    gx = (np.roll(h, -1, 1) - np.roll(h, 1, 1)) * 0.5
+    gy = (np.roll(h, -1, 0) - np.roll(h, 1, 0)) * 0.5
+    nrm = np.stack([-gx * strength, gy * strength, np.ones_like(h)], -1)
+    nrm /= np.linalg.norm(nrm, axis=-1, keepdims=True)
+    Image.fromarray(((nrm * 0.5 + 0.5) * 255 + 0.5).astype(np.uint8), "RGB").save(path)
+    return round(float(np.degrees(np.arccos(nrm[..., 2].mean()))), 1)
+
+
+def attach_normal(ob, path):
+    nt = ob.data.materials[0].node_tree
+    img = bpy.data.images.load(path)
+    img.colorspace_settings.name = "Non-Color"
+    img.pack()
+    t = nt.nodes.new("ShaderNodeTexImage")
+    t.image = img
+    nm = nt.nodes.new("ShaderNodeNormalMap")
+    nt.links.new(t.outputs["Color"], nm.inputs["Color"])
+    nt.links.new(nm.outputs["Normal"], nt.nodes["Principled BSDF"].inputs["Normal"])
+
+
+def darken(img, ao, strength):
+    px = image_pixels(img)
+    if ao.shape != px.shape[:2]:
+        ao = np.asarray(Image.fromarray(ao.astype(np.float32), "F").resize(img.size[:], Image.BILINEAR), np.float32)
+    f = 1 - strength * (1 - np.clip(ao, 0, 1))
+    px[..., :3] = to_srgb(to_lin(px[..., :3]) * f[..., None])
+    img.pixels.foreach_set(px.ravel())
 
 
 def simplify(ob):
@@ -119,6 +278,24 @@ def tunic_textures(ob):
     base = bpy.data.images.load(os.path.join(tex_dir, "tunic_base.png"))
     nrm = bpy.data.images.load(os.path.join(tex_dir, "tunic_nrm.png"))
     nrm.colorspace_settings.name = "Non-Color"
+    z = z_of(ob)
+    mw3 = ob.matrix_world.to_3x3()
+
+    def dust(p):
+        c = uv_centre(ob, p)
+        if in_region(c, "wool"):
+            return 0.4 * np.clip((HEM_Z + 0.10 - z[list(p.vertices)].min()) / 0.10, 0, 1)
+        return 0.35 if in_region(c, "straps") else 0.5 if in_region(c, "soles") else None
+
+    def sun(p):
+        up = (mw3 @ p.normal).z
+        if not in_region(uv_centre(ob, p), "wool") or z[list(p.vertices)].mean() < 1.25:
+            return None
+        return 0.3 * np.clip((up - 0.3) / 0.5, 0, 1)
+
+    mix_towards(base, face_mask(ob, base, sun, 6), SUN_FADED)
+    mix_towards(base, face_mask(ob, base, dust, 4), DUST)
+    darken(base, bake_ao(ob, base.size[0], AO["Tunic"][1]), AO["Tunic"][0])
     for img in (base, nrm):
         img.pack()
     nt.nodes["tunic_tex"].image = base
@@ -141,13 +318,27 @@ for ob in OBJ:
         with bpy.context.temp_override(object=ob, active_object=ob, selected_objects=[ob], edit_object=ob):
             bpy.ops.object.mode_set(mode="OBJECT")
         report.setdefault("left_edit_mode", []).append(ob.name)
+img = {}
 for name in ("Body", "Eyes", "EyesLow", "Teeth", "Tongue", "Hair", "Brows", "Lashes"):
-    img = simplify(OBJ[name])
+    img[name] = simplify(OBJ[name])
     if name == "Eyes":
-        report["cornea_faces_removed"] = drop_cornea(OBJ[name], img)
-report["scalp_faces"] = scalp_tint(
-    OBJ["Body"], bpy.data.images["melos_skin_diffuse"], bpy.data.images["short02_diffuse.png"]
-)
+        report["cornea_faces_removed"] = drop_cornea(OBJ[name], img[name])
+body, skin = OBJ["Body"], img["Body"]
+report["skin_gain"] = grade(skin, face_mask(body, skin, lambda p: 1.0, 0) > 0.5, SKIN, SKIN_SAT)
+for name in ("Hair", "Brows"):
+    report[name.lower() + "_gain"] = grade(img[name], image_pixels(img[name])[..., 3] > 0.9, HAIR)
+nrm_path = os.path.join(os.path.dirname(os.path.abspath(out)), "skin_nrm.png")
+cover = face_mask(body, skin, lambda p: 1.0, 0)[::-1] > 0.5
+report["skin_normal_lean_deg"] = skin_normal(skin, nrm_path, cover)
+attach_normal(body, nrm_path)
+report["scalp_faces"] = scalp_tint(body, skin, img["Hair"])
+bz = z_of(body)
+legs = face_mask(body, skin, lambda p: 0.5 * np.clip((KNEE_Z - bz[list(p.vertices)].mean()) / 0.42, 0, 1) ** 0.8, 6)
+mix_towards(skin, legs, DUST)
+OBJ["EyesLow"].hide_render = True  # the low eyes sit in the same place as the high ones
+darken(skin, bake_ao(body, min(2048, skin.size[0]), AO["Body"][1]), AO["Body"][0])
+OBJ["EyesLow"].hide_render = False
+skin.pack()
 tunic_textures(OBJ["Tunic"])
 for name, mat_name in MAT_NAME.items():
     OBJ[name].data.materials[0].name = mat_name
