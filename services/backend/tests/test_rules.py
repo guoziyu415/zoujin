@@ -26,6 +26,8 @@ from zoujin_backend.projection import snapshot
 from zoujin_backend.world import Book, Library
 from zoujin_worldsim import SimState, activity, initial_state
 
+from .conftest import SCHEMAS
+
 Json = Any
 
 LIBRARY = Library(REPO / "worlds", REPO / "assets" / "scenes", DEFAULT_WORLD)
@@ -375,3 +377,23 @@ def test_slice_player_cannot_be_arrested_and_the_workshop_pair_is_absent() -> No
     shown = {c["id"]: c for c in snapshot(book, "pt_test", "role.traveler", "active", yard, 0)["characters"]}
     for who in ("char.selinuntius", "char.philostratus"):
         assert (shown[who]["activity"], shown[who]["talkable"]) == ("absent", False)
+
+
+@pytest.mark.skipif(not SLICE.is_file(), reason="切片世界模型还没进 main（数据 #38）")
+def test_slice_snapshot_follows_the_standing_rules() -> None:
+    """契约 3.1 的站位规则：relocate 指定的位置点照用（beat.s1：柱上的セリヌンティウス、王、少女），`group` 的人物
+    不占位置点、没有 spot，其余的人自动分配时避开玩家和指定的点。"""
+    book: Book = Library(REPO / "worlds", REPO / "assets" / "scenes", SLICE).current
+    ground = start({**SQUARE, "checkpoint": "sc.canon@t=5410", "place": "place.execution-ground"}, book)
+    named = ground.get("spots", {})
+    assert named.get("char.selinuntius") and named.get("char.king") and named.get("char.maiden")
+    snap = snapshot(book, "pt_test", "role.traveler", "active", ground, 0)
+    shown = {c["id"]: c for c in snap["characters"]}
+    for who, spot in named.items():
+        assert shown[who]["spot"] == spot
+    for who in ("char.crowd", "char.guards"):
+        assert shown[who]["group"] is True and "spot" not in shown[who]
+    auto = [c for c in shown.values() if "spot" in c and c["id"] not in named]
+    assert auto and all(c["spot"] not in {snap["player"]["spot"], *named.values()} for c in auto)
+    for c in snap["characters"]:
+        assert SCHEMAS.errors("api/common.schema.json", "#/$defs/CharacterPresence", c) == [], c

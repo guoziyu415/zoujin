@@ -2,9 +2,10 @@
 
 快照和 commit 用同一个投影：patch = 提交前后两个快照的差。
 
-B-0 的投影只做骨架能给的：场景里的人物（位置点按布局分配；activity 是世界模型给的那部分，W-1 的 `activity()`；
-此刻不在场的是 absent、不能搭话（B-2，S-077 ⑩）；还没有关系的省略关系）、地点能不能进、场景出口、期限和梅洛斯的
-预计到达。情境动作、可调查物、关系、记忆、待处理的东西是 M2 各卡的。
+B-0 的投影只做骨架能给的：场景里的人物（位置点按契约 3.1：relocate 指定的站那里，`group` 的不占，其余按布局
+分配；activity 是世界模型给的那部分，W-1 的 `activity()`；此刻不在场的是 absent、不能搭话（B-2，S-077 ⑩）；
+还没有关系的省略关系）、地点能不能进、场景出口、期限和梅洛斯的预计到达。情境动作、可调查物、关系、记忆、待处理的
+东西是 M2 各卡的。
 """
 
 from __future__ import annotations
@@ -144,19 +145,30 @@ def snapshot(book: Book, pid: str, role_id: str, status: str, state: SimState, l
     doing = {c: activity(book.world, state, c) for c, _ in present}  # W-1：节拍给的 activity，absent = 不在场
     away = {c for c, a in doing.items() if a == "absent"}
     player_spot = scene.player_spot(player_place) if scene else player_place.removeprefix("place.")
+    # 契约 3.1 的站位规则：group 的人物不占位置点；relocate 写了 spot 的站那里（布局里这个地点得有这个点）；
+    # 其余的人按布局顺序站空着的点，玩家和指定的点算占着
+    group = {c for c, _ in present if book.characters[c].get("group")}
+    named = state.get("spots", {})
+    fixed = {
+        c: named[c] for c, p in present if c not in group and c in named and scene and scene.spots.get(named[c]) == p
+    }
+    rest = [x for x in present if x[0] not in group and x[0] not in fixed]
     # 看得见的人先排位置点，不在场的排在最后：前端不画他们，别让他们挤掉看得见的人的点
-    order = [x for x in present if x[0] not in away] + [x for x in present if x[0] in away]
-    spots = scene.character_spots(order, {player_spot}) if scene else {c: p.removeprefix("place.") for c, p in present}
-    characters = [
-        {
-            "id": c,
-            "place": p,
-            "spot": spots[c],
-            "activity": doing[c],
-            "talkable": c not in away and bool(book.characters[c].get("talkable")),
-        }
-        for c, p in present
-    ]
+    order = [x for x in rest if x[0] not in away] + [x for x in rest if x[0] in away]
+    if scene:
+        spots = {**scene.character_spots(order, {player_spot, *fixed.values()}), **fixed}
+    else:
+        spots = {c: p.removeprefix("place.") for c, p in order}
+    characters = []
+    for c, p in present:
+        who: Json = {"id": c, "place": p}
+        if c in group:
+            who["group"] = True
+        else:
+            who["spot"] = spots[c]
+        who["activity"] = doing[c]
+        who["talkable"] = c not in away and bool(book.characters[c].get("talkable"))
+        characters.append(who)
     places = []
     for p in scene_places:
         entry: Json = {"id": p, "enabled": place_open(book, role_id, p, state)}

@@ -61,7 +61,7 @@ uv sync --all-packages --extra real      # google-auth；CI 的 lint 任务也�
 ```
 
 - `ZJ_MODEL=real`：Vertex AI 上的 Gemini，走 REST，认证用 Mac 上 gcloud 登录的应用默认凭证，没有 API Key。项目 ID 和地区**只**从 `ZJ_VERTEX_PROJECT`、`ZJ_VERTEX_LOCATION` 读，没设就退出、不发请求；不用 gcloud 的默认项目。项目 ID 不进日志、Trace、回放和账本。
-- 账本和上限：`ZJ_LEDGER`（Google 那本账，一行一次调用，和 E-0 同一个文件）、`ZJ_MAX_GOOGLE_USD`（总上限，比的是账本里的累计）、`ZJ_MAX_ITEM_USD` 和 `ZJ_LEDGER_ITEM`（单项的上限和记在哪一项下）。调用前按预计花费判，到了就 `BudgetStop`；被时限取消的调用按预计花费记账。
+- 账本和上限：`ZJ_LEDGER`（Google 那本账，一行一次调用，和 E-0 同一个文件）、`ZJ_MAX_GOOGLE_USD`（总上限，比的是账本里的累计）、`ZJ_MAX_ITEM_USD` 和 `ZJ_LEDGER_ITEM`（单项的上限和记在哪一项下；单项上限把同一项的 Google、Claude 两本账合起来算，Claude 的行由数据的运行器写）。调用前按预计花费判，到了就 `BudgetStop`；被时限取消的调用按预计花费记账，输出不合格的按实际花费记账，这两种也按同一个数记进这一轮的花费（`playthrough_metrics`）。
 - `ZJ_RECORD_REPLAYS=<目录>`：fake 和 real 的每次调用按回放格式录一行（`<目录>/<提示类型>.jsonl`）。`ZJ_REPLAYS=<目录>` 让 `replay` 读别的目录（例：留出集的回放，不进仓库）。
 
 ### S-2 的运行脚本
