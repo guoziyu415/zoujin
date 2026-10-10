@@ -1571,7 +1571,7 @@ class SetPiece(BaseModel):
     """
     knows: list[SetPieceKnowsItem] | None = None
     """
-    这些人物知道这件事（Character.knowledge，或这一局已提交的 learn）
+    这些人物知道这件事：Character.knows 里到这个时刻已经成立的（since），或这一局已提交的 learn
     """
     played: list[SetPieceId] | None = None
     """

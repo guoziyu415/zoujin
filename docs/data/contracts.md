@@ -575,7 +575,7 @@ type SetPiece = {
                                    // refused = 只在被拒时，省略 = 只在做成时（done / partial）
   after?: string[];                // 这些节拍已经发生（happened / altered）
   before?: string[];               // 这些节拍还没发生
-  knows?: { character: string; fact: string }[];  // 这些人物知道这件事（Character.knowledge，或这一局已提交的 learn）
+  knows?: { character: string; fact: string }[];  // 这些人物知道这件事：Character.knows 里到这个时刻已经成立的（since），或这一局已提交的 learn
   played?: string[];               // 这些固定演出里至少有一个这一局已经演过
   when?: Condition[];              // 别的状态条件（同节拍前提）
   once?: true;                     // 一局只演一次
