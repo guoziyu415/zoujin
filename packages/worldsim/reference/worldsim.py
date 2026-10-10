@@ -52,13 +52,14 @@ class Sim:
             elif e["op"] == "hold":                    # contracts 1.3：物品换手，持有者记在 state[物品 ID]
                 state[e["item"]] = e["to"]
 
-    def value_requires(self, effs, state, system=False):
+    def value_requires(self, effs, state, origin=None):
         """contracts 2.6（1.6，C-16）StateVar.valueRequires：事件把变量改成某个值时，这个值的 when 要成立。
-        ① system=True（到点的节拍和期限，origin = schedule）不判，节拍的结果由节拍前提管；② 值真的变了才判，设成现在的值不判；
+        ① 只有 origin == "schedule"（到点的节拍和期限）不判，节拍的结果由节拍前提管；导演事件的 actor 也是 system，
+        origin 是 director，照样判（不能按 actor 跳过）；② 值真的变了才判，设成现在的值不判；
         ③ 按这个 effect 之前的状态判，同一事件里前面的 effect 已经生效（先升信任再设 wavering 能过，反过来不过）；
         ④ when 和节拍前提用同一个 holds()；⑤ 设好以后条件不再成立不追究。
         不改 state。返回违反的条目 [{var, value, when, note}]，叙事者第 3 步报 R2，reason 带变量、value 和 note。"""
-        if system:
+        if origin == "schedule":
             return []
         out, cur = [], dict(state)
         for e in effs:

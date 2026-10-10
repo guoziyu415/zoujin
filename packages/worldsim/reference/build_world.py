@@ -10,7 +10,7 @@
    省略 p 时自动定位；找不到或在多段出现（且没给 p）都算错误。
    输出时展开成 contracts.md 的 Cite：{source, para, quote}。
 2. 引用完整性：所有 ID 唯一；knows / since / place / participants / var / anchors / causal / roles 的引用都存在；
-   状态变量的取值符合类型和枚举；（1.6，C-16）valueRequires 的 value 在这个变量的取值里，when 引用的变量存在、取值合法。
+   状态变量的取值符合类型和枚举；（1.6，C-16）valueRequires 的 value 在这个变量的取值里，when 引用的变量存在、取值合法；节拍以外的效果模板把变量设成受限的值时给警告。
 3. 时间：节拍 earliest <= canonical <= latest；按 order 排列时 canonical 不倒退；期限 = Day 3 日没。
 4. 知情范围：角色「从 X 起知道 F」时，F 必须在 X 之前（或同时）已经成立。
 5. 因果图无环；from 的 canonical 不晚于 to。
@@ -231,6 +231,27 @@ def main():
                 check_value(cnd["var"], cnd["value"], f"{v['id']}.valueRequires[{r['value']!r}].when")
             if not r.get("note"):
                 err(f"{v['id']}.valueRequires: {r['value']!r} 要写 note（叙事者的 reason 用它）")
+
+    # 1.6：除了到点的节拍（origin = schedule），互助、幕末去处、情境动作这些效果模板运行时都按 valueRequires 判，
+    # 模板把变量设成受限的值，when 不成立时叙事者会按 R2 否决。现在没有这种模板，以后加世界模型时早点看到
+    limited = {(v["id"], r["value"]): r["when"] for v in world["stateVars"] for r in v.get("valueRequires", [])}
+
+    def limited_templates(x, owner):
+        if isinstance(x, dict):
+            owner = x.get("id", owner)
+            for k, y in x.items():
+                for e in y if k in ("effects", "outcomes") and isinstance(y, list) else []:
+                    if isinstance(e, dict) and e.get("op") == "set" and (e.get("var"), e.get("value")) in limited:
+                        when = limited[(e["var"], e["value"])]
+                        warn(f"{owner}: 把 {e['var']} 设成 {e['value']!r}，运行时要 {when} 成立，不成立叙事者按 R2 否决")
+                limited_templates(y, owner)
+        elif isinstance(x, list):
+            for y in x:
+                limited_templates(y, owner)
+
+    for k, x in world.items():
+        if k != "beats":                         # 节拍到点发生（origin = schedule），结果由节拍前提管
+            limited_templates(x, k)
 
     for c in world["characters"]:
         if c["initialPlace"] not in places:

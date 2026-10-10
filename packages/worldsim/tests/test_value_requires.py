@@ -1,6 +1,7 @@
 """契约 1.6（C-16）StateVar.valueRequires 的黄金测试，测参考实现 reference/worldsim.py 的 value_requires()。
 
-用例按 contracts.md 第 7 节 C-16 定的：39 被拒、40 能过；同一事件里顺序两种；系统事件不受限；桥不在时设 bridge 被拒；
+用例按 contracts.md 第 7 节 C-16 定的：39 被拒、40 能过；同一事件里顺序两种；
+只有到点的节拍和期限（origin = schedule）不受限，导演事件照样判；桥不在时设 bridge 被拒；
 值没变不判；设好以后条件不再成立不追究。W-1 把参考实现整理成包以后，包也要过这些用例。
 """
 
@@ -87,9 +88,16 @@ def test_order_within_one_event() -> None:
     assert len(sim.value_requires([WAVERING, inc("var.king.trust", 35)], state(trust=5))) == 1
 
 
-def test_system_events_are_not_checked() -> None:
+def test_scheduled_events_are_not_checked() -> None:
     # ① 到点的节拍和期限（origin = schedule）不判：刑场的 beat.26 让王改心靠的是节拍前提
-    assert sim.value_requires([REFORMED], state(trust=5), system=True) == []
+    assert sim.value_requires([REFORMED], state(trust=5), origin="schedule") == []
+
+
+def test_director_events_are_checked() -> None:
+    # ① 导演事件的 actor 也是 system，但 origin 是 director，照样判：不能按 actor 跳过
+    event = {"actor": "system", "origin": "director", "effects": [REFORMED]}
+    got = sim.value_requires(event["effects"], state(trust=5), origin=event["origin"])
+    assert [(x["var"], x["value"]) for x in got] == [("var.king.disposition", "reformed")]
 
 
 def test_bridge() -> None:

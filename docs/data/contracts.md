@@ -347,15 +347,15 @@ type StateVar = {
 
 **取值条件 `valueRequires`（1.6，C-16）：** 有的取值不是随时能设的，条件以前只写在说明文字里，叙事者第 3 步判不了。现在写成数据，叙事者、参考实现（`packages/worldsim/reference/worldsim.py` 的 `value_requires()`）和评测都只读它，不写死阈值。
 
-1. 只管叙事者提交的事件。到点的节拍和期限（`actor: "system"`、`origin: "schedule"`）不判，节拍的结果由节拍前提管（例：刑场的 `beat.26` 让王改心）。
+1. 只管叙事者提交的事件。到点的节拍和期限（`actor: "system"`、`origin: "schedule"`）不判，节拍的结果由节拍前提管（例：刑场的 `beat.26` 让王改心）。导演事件的 `actor` 也是 `system`，但 `origin` 是 `director`，照样判：按 `origin` 区分，不按 `actor`。
 2. 只在值真的变化时判；设成和现在一样的值不判。
 3. 按这个 effect 之前的状态判，同一事件里前面的 effect 已经生效：先升信任再设 `wavering` 能过，反过来不过。
 4. `when` 用和节拍前提同一个 `Condition` 类型和求值函数。不成立报 R2，`reason` 带变量、`value` 和这一条的 `note`。
 5. 设好以后条件不再成立（信任又掉到 40 以下）不自动改回，也不算违规；改不改回是剧情的事。
 
-世界模型自检（`build_world`）另查：`value` 在这个变量的取值里；`when` 引用的变量存在、取值合法；`note` 不空；情景（`scenarios.json`）里的事件也守这些条件。
+世界模型自检（`build_world`）另查：`value` 在这个变量的取值里；`when` 引用的变量存在、取值合法；`note` 不空；情景（`scenarios.json`）里的事件也守这些条件；节拍以外的效果模板（互助、幕末去处、情境动作等）把变量设成受限的值时给警告。
 
-『走れメロス』有三条：`var.king.disposition` 设 `wavering` 要 `var.king.trust` ≥ 40，期限前设 `reformed` 要 ≥ 70；`var.river.crossing` 设 `bridge` 要 `var.bridge` = `intact`。
+『走れメロス』有三条：`var.king.disposition` 设 `wavering` 要 `var.king.trust` ≥ 40，设 `reformed` 要 ≥ 70（刑场的改心是到点的 `beat.26`，不判）；`var.river.crossing` 设 `bridge` 要 `var.bridge` = `intact`。
 
 **玩家看得到哪些变化：** （1.4 写清，S-067）`valueLabels` 里没写的取值，当场不显示、不进状态栏、也不进「その頃」，只在结局里交代（例：`player.custody` / `hostage.fate` 的 `executed`，结局里间接说，不写「処刑」「死」）。一个事件的 effect 只有同时满足两条才进 `visibleEffects`：① 改的是 `visibleToPlayer` 的变量（文字取 `valueLabels`），或者是节拍走向的改变（文字 =「{beat.title}」+ 改变的说法）；② 玩家当时在这个事件的地点，或者事件就是玩家做的。其他变化不实时显示，留到幕切换时的「その頃」回顾（2.8.1），以免把玩家不可能知道的事提前说出来。
 
@@ -960,4 +960,4 @@ type CharacterEnding = {           // （1.1）
   - WorldModel：`StateVar.valueRequires`（2.6「取值条件」，C-16）。『走れメロス』（draft.3）写上王的心（信任 40 / 70）和过桥（桥还在）三条；情景「王が先に変わった」的事件先把信任设到 70。
   - Ending：`card.characterLines` 放宽到 1〜3 人，一个也没排上名时放梅洛斯；模板尾声的局也出卡；1.6 起写入的结局 `world.title`、`player.didForYou` / `youDid`、`characters`、`card` 必写（第 5 节，C-17）。读的一方要能排 1 行。
   - 写清（C-2 评审定的两件事）：状态变量 ID 的段里可以用驼峰（第 0 节）；`Effect.promise` 的 `promiseId` 在类型里可选，提交的事件必带（第 3 节）。
-  - R2 加上 `valueRequires`（第 3 节规则表）。
+  - R2 加上 `valueRequires`（第 3 节规则表）。只有到点的节拍和期限（`origin: "schedule"`）不判；导演事件的 `actor` 也是 `system`，照样判（后端评审）。
