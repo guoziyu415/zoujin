@@ -58,6 +58,7 @@ class CheckResult(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     status: Literal["passed", "rewritten", "downgraded", "rejected"]
     attempts: Annotated[int, Field(ge=1, le=3)]
@@ -84,6 +85,7 @@ class Cite(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     source: str
     """
@@ -106,6 +108,7 @@ class ClockDeadlineEarliestArrivalCue(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     speaker: CharacterId
     line: str
@@ -127,6 +130,7 @@ class ClockLabels(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     days: list[str]
     """
@@ -161,6 +165,7 @@ class EndingWorldContrast(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     original: str
     yours: str
@@ -170,6 +175,7 @@ class EndingWorldContrast(BaseModel):
 class EndingCardCharacterLinesItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     character: CharacterId
     line: Annotated[str, Field(max_length=40)]
@@ -185,6 +191,7 @@ class EndingCard(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     title: Annotated[str, Field(max_length=14)]
     """
@@ -211,6 +218,7 @@ class EndingShare(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     cardImageRef: str | None = None
     videoRef: str | None = None
@@ -260,6 +268,7 @@ class PlaceCrossing(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     bridgeMinutes: Annotated[int, Field(ge=0)]
     swimMinutes: Annotated[int, Field(ge=0)]
@@ -313,6 +322,7 @@ class Relationship(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     character: CharacterId
     trust: Annotated[int, Field(ge=-100, le=100)]
@@ -385,7 +395,7 @@ type UtteranceId = Annotated[str, Field(pattern="^utt_[0-7][0-9A-HJKMNP-TV-Z]{25
 
 type VarId = Annotated[str, Field(pattern="^var\\.[a-zA-Z0-9]+(?:[.-][a-zA-Z0-9]+)*$", title="VarId")]
 """
-状态变量：`var.` 加小写 slug（可以有 `.` 和 `-`）。TODO(C-2 评审)：第 0 节写「小写」，但契约自己的例子和 world.json 都用了驼峰（`var.player.companionOf`、`var.player.knowsShortcut`、`var.melos.knowsTyranny`），这里先允许大写字母
+状态变量：`var.` 加 slug（可以有 `.` 和 `-`），段里可以用驼峰（`var.player.companionOf`、`var.player.knowsShortcut`、`var.melos.knowsTyranny`）。第 0 节写的是「小写」，1.6 写清（C-2 评审定）
 """
 
 
@@ -398,6 +408,7 @@ type WorldEndingId = Annotated[str, Field(pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$", 
 class WorldModelBookSource(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     provider: Literal["aozora"] = "aozora"
     cardId: str
@@ -414,6 +425,7 @@ class WorldModelBookSource(BaseModel):
 class WorldModelBook(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     id: str
     """
@@ -428,6 +440,7 @@ class WorldModelBook(BaseModel):
 class WorldModelGlobalRulesItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     id: RuleId
     text: str
@@ -448,6 +461,7 @@ class ActStart(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     t: StoryTime
 
@@ -455,6 +469,7 @@ class ActStart(BaseModel):
 class ActEnd(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     onBeats: list[BeatId]
     """
@@ -479,6 +494,7 @@ class BeatWindow(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     earliest: StoryTime
     latest: StoryTime
@@ -488,6 +504,7 @@ class BeatWindow(BaseModel):
 class BeatActivitiesItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     character: CharacterId
     activity: Activity
@@ -500,6 +517,7 @@ class CausalEdge(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     id: EdgeId
     from_: Annotated[BeatId | VarId, Field(alias="from")]
@@ -536,6 +554,7 @@ class CausalEdge(BaseModel):
 class CharacterKnowsItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     fact: FactId
     since: BeatId | Literal["pre"]
@@ -547,6 +566,7 @@ class CharacterKnowsItem(BaseModel):
 class CharacterPlansItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     act: ActId
     text: str
@@ -557,6 +577,7 @@ class CharacterPlansItem(BaseModel):
 class CharacterEndingYoursItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     sentence: str
     cites: Annotated[list[EventId], Field(min_length=1)]
@@ -572,6 +593,7 @@ class CharacterEnding(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     character: CharacterId
     rank: Rank | None
@@ -595,6 +617,7 @@ class CharacterEnding(BaseModel):
 class ClockDeadline(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     t: StoryTime
     label: str
@@ -626,6 +649,7 @@ class Condition(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     var: VarId
     op: Literal["==", "!=", ">=", "<=", "in"]
@@ -644,6 +668,7 @@ class DesignLine(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     text: str
     """
@@ -679,6 +704,7 @@ class EffectHold(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     op: Literal["hold"] = "hold"
     item: ItemId
@@ -696,6 +722,7 @@ class EffectImprov(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     op: Literal["improv"] = "improv"
     factId: RunFactId
@@ -706,6 +733,7 @@ class EffectImprov(BaseModel):
 class EffectInc(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     op: Literal["inc"] = "inc"
     var: VarId
@@ -719,6 +747,7 @@ class EffectLearn(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     op: Literal["learn"] = "learn"
     character: CharacterId
@@ -732,6 +761,7 @@ class EffectPromiseDue(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     t: StoryTime | None = None
     beat: BeatId | None = None
@@ -744,11 +774,12 @@ class EffectPromise(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     op: Literal["promise"] = "promise"
     promiseId: PromiseId | None = None
     """
-    TODO(C-2 评审)：契约第 3 节写成必填，但世界模型的效果模板（2.10）和候选事件（evals/s2/README.md）不写，提交时由叙事者分配 prm_…。这里写成可选，提交的事件另外要求（Event.effects）
+    这里可选：世界模型的效果模板（2.10）和候选事件（evals/s2/README.md）不写，提交时由叙事者分配 prm_…。提交的事件另外要求必带（Event.effects）。契约第 3 节写的是必填，1.6 改成可选并加注（C-2 评审定）
     """
     change: Literal["made", "kept", "broken", "voided"]
     from_: Annotated[Literal["player"] | CharacterId | None, Field(alias="from")] = None
@@ -776,6 +807,7 @@ class EffectPromise(BaseModel):
 class EffectRelocate(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     op: Literal["relocate"] = "relocate"
     character: CharacterId
@@ -785,6 +817,7 @@ class EffectRelocate(BaseModel):
 class EffectSet(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     op: Literal["set"] = "set"
     var: VarId
@@ -795,6 +828,7 @@ class EffectSet(BaseModel):
 class EndingWorldChangedBeatsItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     beat: BeatId
     to: str
@@ -804,6 +838,7 @@ class EndingWorldChangedBeatsItem(BaseModel):
 class EndingWorldVariantClaimsItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     var: VarId
     value: Any
@@ -816,6 +851,7 @@ class EndingWorldVariant(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     id: str
     """
@@ -836,6 +872,7 @@ class EndingWorldVariant(BaseModel):
 class EndingWorld(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     outcome: WorldEndingId
     """
@@ -875,6 +912,7 @@ class EndingPlayerFate(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     id: str
     label: str
@@ -884,6 +922,7 @@ class EndingPlayerFate(BaseModel):
 class EndingPlayerRelationshipsItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     character: CharacterId
     trust: Annotated[int, Field(ge=-100, le=100)]
@@ -902,6 +941,7 @@ class EndingPlayerTitle(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     text: str
     causedBy: Annotated[list[EventId], Field(min_length=1)]
@@ -910,6 +950,7 @@ class EndingPlayerTitle(BaseModel):
 class EndingPlayerEpilogueItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     sentence: str
     cites: Annotated[list[EventId], Field(min_length=1)]
@@ -921,6 +962,7 @@ class EndingPlayerEpilogueItem(BaseModel):
 class EndingPlayerLastScene(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     place: PlaceId
     description: str
@@ -933,6 +975,7 @@ class EndingPlayerLastScene(BaseModel):
 class EndingPlayerDidForYouItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     sentence: str
     cites: Annotated[list[EventId], Field(min_length=1)]
@@ -944,6 +987,7 @@ class EndingPlayerDidForYouItem(BaseModel):
 class EndingPlayerYouDidItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     sentence: str
     cites: Annotated[list[EventId], Field(min_length=1)]
@@ -955,6 +999,7 @@ class EndingPlayerYouDidItem(BaseModel):
 class EndingPlayer(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     fate: Annotated[EndingPlayerFate, Field(title="EndingPlayerFate")]
     """
@@ -987,6 +1032,7 @@ class Ending(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     schemaVersion: SchemaVersion
     endingId: EndingId
@@ -1021,6 +1067,7 @@ class EndingSignature(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     vars: list[VarId]
     """
@@ -1041,6 +1088,7 @@ class EventPlan(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     label: str
     """
@@ -1065,6 +1113,7 @@ class Fact(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     id: FactId
     statement: str
@@ -1093,6 +1142,7 @@ class Item(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     id: ItemId
     name: str
@@ -1119,6 +1169,7 @@ class MemoryItem(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     schemaVersion: SchemaVersion
     memoryId: MemoryId
@@ -1132,9 +1183,9 @@ class MemoryItem(BaseModel):
     """
     角色视角的一句日语，給記憶帳显示；不含现实个人信息；删除后清空
     """
-    fromEvents: list[EventId]
+    fromEvents: Annotated[list[EventId], Field(min_length=1)]
     """
-    来自哪些事件
+    来自哪些事件；记忆只由已提交的事件生成（第 4 节），所以至少一个
     """
     t: StoryTime
     trustDelta: Annotated[int, Field(ge=-20, le=20)]
@@ -1163,6 +1214,7 @@ class MemoryItem(BaseModel):
 class PlaceAdjacentItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     place: PlaceId
     travelMinutes: Annotated[int, Field(ge=0)]
@@ -1176,6 +1228,7 @@ class Place(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     id: PlaceId
     name: str
@@ -1207,6 +1260,7 @@ class Playthrough(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     schemaVersion: SchemaVersion
     playthroughId: PlaythroughId
@@ -1250,6 +1304,7 @@ class PromiseTemplate(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     id: PromiseTemplateId
     by: Literal["player"] | CharacterId
@@ -1271,6 +1326,7 @@ class PromiseTemplate(BaseModel):
 class RoleConditionalAccessItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     place: PlaceId
     when: list[Condition]
@@ -1284,6 +1340,7 @@ class Role(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     id: RoleId
     name: str
@@ -1325,6 +1382,7 @@ class RunFact(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     factId: RunFactId
     character: CharacterId
@@ -1348,6 +1406,7 @@ class Scene(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     id: SceneId
     """
@@ -1369,6 +1428,7 @@ class StateVar(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     id: VarId
     type: Literal["enum", "int", "bool", "place", "minutes"]
@@ -1397,6 +1457,7 @@ class StateVar(BaseModel):
 class StoryPromiseDue(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     t: StoryTime | None = None
     beat: BeatId | None = None
@@ -1409,6 +1470,7 @@ class StoryPromise(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     promiseId: PromiseId
     from_: Annotated[Literal["player"] | CharacterId, Field(alias="from")]
@@ -1446,6 +1508,7 @@ class Utterance(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     utteranceId: UtteranceId
     playthroughId: PlaythroughId
@@ -1473,6 +1536,7 @@ class WorldEnding(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     id: WorldEndingId
     """
@@ -1497,6 +1561,7 @@ class WorldEnding(BaseModel):
 class WorldModelEndings(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     world: list[WorldEnding]
     """
@@ -1515,6 +1580,7 @@ class WorldState(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     playthroughId: PlaythroughId
     asOfSeq: Annotated[int, Field(ge=0)]
@@ -1559,6 +1625,7 @@ class WorldState(BaseModel):
 class CharacterTraitsItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     text: str
     cite: list[Cite]
@@ -1579,6 +1646,7 @@ class CharacterTraitsItem(BaseModel):
 class CharacterGoalsItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     text: str
     cite: list[Cite]
@@ -1603,6 +1671,7 @@ class CharacterSpeechSampleLinesItem(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     source: str
     """
@@ -1637,6 +1706,7 @@ class CharacterSpeech(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     firstPerson: str | None = None
     """
@@ -1660,6 +1730,7 @@ class Act(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     id: ActId
     order: Annotated[int, Field(ge=1)]
@@ -1688,6 +1759,7 @@ class ActExit(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     id: ExitId
     label: str
@@ -1732,6 +1804,7 @@ class Affordance(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     id: AffordanceId
     kind: Literal["examine", "give", "follow", "block", "help", "wait", "go", "shortcut", "run-together", "hasten"]
@@ -1795,6 +1868,7 @@ class Beat(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     id: BeatId
     order: float
@@ -1839,6 +1913,7 @@ class BeatVariant(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     id: BeatId
     """
@@ -1868,6 +1943,7 @@ class Character(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     id: CharacterId
     name: str
@@ -1927,6 +2003,7 @@ class Character(BaseModel):
 class ClockOnDeadlineItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     if_: Annotated[list[Condition], Field(alias="if")]
     then: list[Effect]
@@ -1941,6 +2018,7 @@ class Clock(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     startT: StoryTime
     """
@@ -1973,6 +2051,7 @@ type Effect = Annotated[
 class EffectBeat(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     op: Literal["beat"] = "beat"
     beat: BeatId
@@ -1992,6 +2071,7 @@ class EnRoute(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     beat: BeatId
     """
@@ -2017,6 +2097,7 @@ class EnRouteChoice(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     label: str
     """
@@ -2040,6 +2121,7 @@ class Event(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     schemaVersion: SchemaVersion
     eventId: EventId
@@ -2052,9 +2134,9 @@ class Event(BaseModel):
     """
     来自哪一轮；system 事件没有
     """
-    idempotencyKey: str
+    idempotencyKey: Annotated[str, Field(min_length=1)]
     """
-    同一轮提交重试时不重复写（后端生成）
+    同一轮提交重试时不重复写（后端生成，靠它去重，不能是空串）
     """
     worldModelVersion: str
     t: StoryTime
@@ -2123,6 +2205,7 @@ class MutualAid(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     id: AidId
     direction: Literal["forYou", "fromYou"]
@@ -2167,6 +2250,7 @@ class WorldModel(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     schemaVersion: SchemaVersion
     worldModelVersion: str

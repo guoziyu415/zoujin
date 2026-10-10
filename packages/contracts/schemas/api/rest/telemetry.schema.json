@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "api/rest/telemetry.schema.json",
   "title": "POST /v1/telemetry",
-  "description": "前端遥测（2.11、data-design 9.3）。TODO(C-1 评审)：成功的响应文档没写，这里写 204",
+  "description": "前端遥测（2.11、data-design 9.3）。成功回 204，没有响应体（C-1 评审定）",
   "x-endpoint": {
     "method": "POST",
     "path": "/v1/telemetry",

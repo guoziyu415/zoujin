@@ -28,7 +28,7 @@ export type PlaceId = string;
  */
 export type RoleId = string;
 /**
- * 状态变量：`var.` 加小写 slug（可以有 `.` 和 `-`）。TODO(C-2 评审)：第 0 节写「小写」，但契约自己的例子和 world.json 都用了驼峰（`var.player.companionOf`、`var.player.knowsShortcut`、`var.melos.knowsTyranny`），这里先允许大写字母
+ * 状态变量：`var.` 加 slug（可以有 `.` 和 `-`），段里可以用驼峰（`var.player.companionOf`、`var.player.knowsShortcut`、`var.melos.knowsTyranny`）。第 0 节写的是「小写」，1.6 写清（C-2 评审定）
  */
 export type VarId = string;
 /**
@@ -70,7 +70,7 @@ export type Effect =
   | {
       op: "promise";
       /**
-       * TODO(C-2 评审)：契约第 3 节写成必填，但世界模型的效果模板（2.10）和候选事件（evals/s2/README.md）不写，提交时由叙事者分配 prm_…。这里写成可选，提交的事件另外要求（Event.effects）
+       * 这里可选：世界模型的效果模板（2.10）和候选事件（evals/s2/README.md）不写，提交时由叙事者分配 prm_…。提交的事件另外要求必带（Event.effects）。契约第 3 节写的是必填，1.6 改成可选并加注（C-2 评审定）
        */
       promiseId?: PromiseId;
       change: "made" | "kept" | "broken" | "voided";
@@ -1118,7 +1118,7 @@ export interface Event {
    */
   turnId?: TurnId;
   /**
-   * 同一轮提交重试时不重复写（后端生成）
+   * 同一轮提交重试时不重复写（后端生成，靠它去重，不能是空串）
    */
   idempotencyKey: string;
   worldModelVersion: string;
@@ -1256,9 +1256,11 @@ export interface MemoryItem {
    */
   text: string;
   /**
-   * 来自哪些事件
+   * 来自哪些事件；记忆只由已提交的事件生成（第 4 节），所以至少一个
+   *
+   * @minItems 1
    */
-  fromEvents: EventId[];
+  fromEvents: [EventId, ...EventId[]];
   t: StoryTime;
   /**
    * 这条记忆对信任的影响，-20..+20

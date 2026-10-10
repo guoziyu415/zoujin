@@ -128,7 +128,7 @@
           "$ref": "../../data/ending.schema.json#/$defs/Ending/properties/characters"
         },
         "card": {
-          "description": "TODO(C-1 评审)：数据契约里 card 可选（校验两次不过时不生成结局卡），文档的例子总有；这里可选",
+          "description": "可选：数据契约第 5 节，校验两次都不过时用模板尾声，不生成结局卡；文档的例子总有（C-1 评审定）",
           "$ref": "#/$defs/EndingCardView"
         }
       },

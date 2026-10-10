@@ -788,7 +788,7 @@
       "title": "VisibleBeatEffect"
     },
     "VisibleVarEffect": {
-      "description": "TODO(C-1 评审)：文档只举了 beat 的形状；变量这一种按「只给标签不给原值」（第 0 节）写成 kind、var、label",
+      "description": "变量这一种只给标签、不给原值（第 0 节）：kind、var、label（C-1 评审定）",
       "type": "object",
       "additionalProperties": false,
       "required": ["kind", "var", "label"],

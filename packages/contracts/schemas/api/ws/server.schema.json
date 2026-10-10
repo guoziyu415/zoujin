@@ -924,7 +924,7 @@
           "$ref": "../../data/common.schema.json#/$defs/TurnId"
         },
         "candidate": {
-          "description": "被否决的候选事件。TODO(C-1 评审)：文档没写形状；按数据契约 3 节「否决也写一条 rejected 事件」写成完整的 Event",
+          "description": "被否决的候选事件，就是写进事件流的那条 rejected 事件：完整的 Event，check.status = rejected、effects 为空、dt = 0（数据契约第 3 节）。导演事件不过 3.2 节的规矩时直接丢掉，不发 event_rejected（C-1 评审定）",
           "$ref": "../../data/event.schema.json#/$defs/Event"
         },
         "failedRules": {

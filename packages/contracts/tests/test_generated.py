@@ -86,3 +86,9 @@ def test_effect_parses_by_op() -> None:
     effect = TypeAdapter(data.Effect)
     parsed = effect.validate_python({"op": "inc", "var": "var.trust.king", "by": -1})
     assert type(parsed).__name__ == "EffectInc"
+
+
+def test_aliased_fields_accept_the_python_name() -> None:
+    """叫 `from` 的字段生成成 `from_` 加别名；按 Python 的名字也能构造，导出时用回 `from`。"""
+    effect = data.EffectSet(op="set", var="var.trust.king", value=1, from_=0)
+    assert effect.model_dump(by_alias=True) == {"op": "set", "var": "var.trust.king", "value": 1, "from": 0}

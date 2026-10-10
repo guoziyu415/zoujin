@@ -37,6 +37,7 @@ INVALID_BECAUSE: dict[str, tuple[str, str]] = {
     "rest/snapshot/200/relation-label-without-level.json": ("dependentRequired", "characters/0"),
     "rest/snapshot/200/unknown-activity.json": ("enum", "characters/0/activity"),
     "rest/telemetry/request/empty-batch.json": ("minItems", "events"),
+    "rest/telemetry/request/histogram-8-bins.json": ("minItems", "events/0/props/frameTimeHistogram"),
     "rest/telemetry/request/transcript-in-props.json": ("additionalProperties", "events/0/props"),
     "rest/timeline/200/unknown-beat-with-title.json": ("not", "days/0/items/2"),
     "ws/client/act_choose/option-not-exit.json": ("pattern", "optionId"),

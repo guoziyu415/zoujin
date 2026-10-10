@@ -60,6 +60,14 @@ def test_action_kind_is_affordance_kind_plus_move(contracts: Contracts) -> None:
     assert api == [*data, "move"]
 
 
+def test_timeline_beat_status_is_world_state_beats_with_canon(contracts: Contracts) -> None:
+    """时间线节拍的 status 就是 WorldState.beats 的取值，只把 happened 叫作 canon（2.5）。"""
+    api = api_def(contracts, "rest/timeline.schema.json#/$defs/TimelineBeatItem")["properties"]["status"]["enum"]
+    beats = data_def(contracts, "world-state", "/$defs/WorldState/properties/beats/additionalProperties")
+    data = enum_of(contracts, "data/world-state.schema.json", beats)
+    assert sorted(api) == sorted("canon" if s == "happened" else s for s in data)
+
+
 def test_ending_trigger_is_subset_of_data(contracts: Contracts) -> None:
     """接口的结局演出只有 deadline、story-closed（3.13）；abandoned 的局不演结局。"""
     api = api_def(contracts, "ws/server.schema.json#/$defs/EndingStartedMessage")["properties"]["trigger"]["enum"]

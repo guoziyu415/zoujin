@@ -1,0 +1,37 @@
+{
+  "common": {
+    "deviceClass": "ios-390x844@3",
+    "os": "iOS 26",
+    "browser": "Safari",
+    "appVersion": "web-0.1.0"
+  },
+  "events": [
+    {
+      "name": "perf_sample",
+      "playthroughId": "pt_01K7AZ00000000000000000001",
+      "clientTs": "2026-10-10T07:02:10Z",
+      "t": 1300,
+      "props": {
+        "frameTimeHistogram": [0, 4, 571, 12, 6, 3, 1, 0, 0],
+        "longTasks": 1,
+        "jsHeapMb": 182.5,
+        "renderer": "webgl",
+        "qualityLevel": "L2",
+        "assetTier": "standard",
+        "dpr": 2,
+        "drawCalls": 214,
+        "lowPower": false
+      }
+    },
+    {
+      "name": "why_opened",
+      "playthroughId": "pt_01K7AZ00000000000000000001",
+      "clientTs": "2026-10-10T07:02:30Z",
+      "t": 1300,
+      "props": {
+        "target": "forecast",
+        "fromKeyMoment": false
+      }
+    }
+  ]
+}

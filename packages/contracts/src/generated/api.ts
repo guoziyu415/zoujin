@@ -845,7 +845,7 @@ export interface VisibleBeatEffect {
   label: string;
 }
 /**
- * TODO(C-1 评审)：文档只举了 beat 的形状；变量这一种按「只给标签不给原值」（第 0 节）写成 kind、var、label
+ * 变量这一种只给标签、不给原值（第 0 节）：kind、var、label（C-1 评审定）
  */
 export interface VisibleVarEffect {
   kind: "var";
@@ -1075,7 +1075,7 @@ export interface EndingView {
    */
   characters: Data.CharacterEnding[];
   /**
-   * TODO(C-1 评审)：数据契约里 card 可选（校验两次不过时不生成结局卡），文档的例子总有；这里可选
+   * 可选：数据契约第 5 节，校验两次都不过时用模板尾声，不生成结局卡；文档的例子总有（C-1 评审定）
    */
   card?: EndingCardView;
 }
@@ -1183,7 +1183,7 @@ export interface EventRejectedMessage {
   type: "event_rejected";
   turnId: Data.TurnId;
   /**
-   * 被否决的候选事件。TODO(C-1 评审)：文档没写形状；按数据契约 3 节「否决也写一条 rejected 事件」写成完整的 Event
+   * 被否决的候选事件，就是写进事件流的那条 rejected 事件：完整的 Event，check.status = rejected、effects 为空、dt = 0（数据契约第 3 节）。导演事件不过 3.2 节的规矩时直接丢掉，不发 event_rejected（C-1 评审定）
    */
   candidate: Data.Event;
   failedRules: (
@@ -1642,7 +1642,7 @@ export interface TelemetryActPlanResult {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -1663,7 +1663,7 @@ export interface TelemetryAppOpen {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -1682,7 +1682,7 @@ export interface TelemetryAppResumed {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -1703,7 +1703,7 @@ export interface TelemetryApproachEnded {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -1722,7 +1722,7 @@ export interface TelemetryApproachShown {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -1745,7 +1745,7 @@ export interface TelemetryBatch {
   events: [TelemetryEvent, ...TelemetryEvent[]];
 }
 /**
- * 公共属性（data-design 9.3），只有粗粒度的设备信息。TODO(C-1 评审)：文档没说公共属性每条带还是一批带一次；这里一批带一次
+ * 公共属性（data-design 9.3），只有粗粒度的设备信息；每批带一次，服务端入库时抄到这一批的每条（C-1 评审定）
  */
 export interface TelemetryCommon {
   /**
@@ -1766,7 +1766,7 @@ export interface TelemetryMicPermission {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -1786,7 +1786,7 @@ export interface TelemetryRoleSelected {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -1804,7 +1804,7 @@ export interface TelemetrySceneReady {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -1827,7 +1827,7 @@ export interface TelemetryWebVitals {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -1849,7 +1849,7 @@ export interface TelemetryPerfSample {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -1858,11 +1858,12 @@ export interface TelemetryPerfSample {
   t?: Data.StoryTime;
   props: {
     /**
-     * 10 秒的帧时间直方图（每格的帧数）
+     * 10 秒的帧时间直方图，固定 9 格，每格是帧数（data-design 9.3）。第 i 格数「上一格上界 < 帧时间 ≤ 这一格上界」的帧，上界依次是 8.5、12、17、20、25、34、50、100 ms，最后一格是 > 100 ms。格子固定，不同版本前端发来的直方图才能相加；要换边界就另起一个字段
      *
-     * @maxItems 32
+     * @minItems 9
+     * @maxItems 9
      */
-    frameTimeHistogram: number[];
+    frameTimeHistogram: [number, number, number, number, number, number, number, number, number, ...number[]];
     longTasks: number;
     jsHeapMb?: number;
     renderer: "webgl" | "webgpu";
@@ -1880,7 +1881,7 @@ export interface TelemetryQualityChanged {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -1891,6 +1892,9 @@ export interface TelemetryQualityChanged {
     from?: QualityLevel;
     to: QualityLevel;
     reason: "start" | "down" | "up" | "lowPower" | "locked";
+    /**
+     * 起始档自测的一帧 GPU 耗时（ms），reason = start 时带；取到 0.1 ms（防设备指纹，data-design 9.3）
+     */
     probeGpuMs?: number;
     assetMbps?: number;
   };
@@ -1902,7 +1906,7 @@ export interface TelemetryGlContextLost {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -1920,7 +1924,7 @@ export interface TelemetryTalkTurn {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -1946,7 +1950,7 @@ export interface TelemetryTurnRetracted {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -1966,7 +1970,7 @@ export interface TelemetryTranscriptCorrected {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -1984,7 +1988,7 @@ export interface TelemetryConfirmAnswered {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -2002,7 +2006,7 @@ export interface TelemetrySonokoroViewed {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -2021,7 +2025,7 @@ export interface TelemetryMapOpened {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -2039,7 +2043,7 @@ export interface TelemetryWhyOpened {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -2047,7 +2051,10 @@ export interface TelemetryWhyOpened {
    */
   t?: Data.StoryTime;
   props: {
-    target: "event" | "beat";
+    /**
+     * forecast = 地图顶部「間に合わない」那一行的「なぜ」（api-contract 2.6 的 target=forecast，data-design 9.3）
+     */
+    target: "event" | "beat" | "forecast";
     fromKeyMoment: boolean;
   };
 }
@@ -2058,7 +2065,7 @@ export interface TelemetryMemoryBookOpened {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -2074,7 +2081,7 @@ export interface TelemetryMemorySectionViewed {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -2092,7 +2099,7 @@ export interface TelemetryMemoryDeleted {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -2110,7 +2117,7 @@ export interface TelemetryContinueStarted {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -2128,7 +2135,7 @@ export interface TelemetryConnectionLost {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -2146,7 +2153,7 @@ export interface TelemetryConnectionRestored {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -2164,7 +2171,7 @@ export interface TelemetryEndingViewed {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -2183,7 +2190,7 @@ export interface TelemetryEndingClosed {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -2202,7 +2209,7 @@ export interface TelemetryEndingCardSaved {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -2220,7 +2227,7 @@ export interface TelemetryEndingShared {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -2239,7 +2246,7 @@ export interface TelemetryReplayStarted {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**
@@ -2258,7 +2265,7 @@ export interface TelemetryDegradedShown {
    */
   playthroughId?: Data.PlaythroughId;
   /**
-   * 真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
    */
   clientTs: Data.RecordedAt;
   /**

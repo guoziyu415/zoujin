@@ -56,6 +56,7 @@ class ActionMessageParams(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     item: ItemId | None = None
@@ -68,6 +69,7 @@ class ActivePlaythrough(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     playthroughId: PlaythroughId
@@ -85,6 +87,7 @@ class ApproachArrivedMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["approach_arrived"] = "approach_arrived"
@@ -98,6 +101,7 @@ class ApproachDismissMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["approach_dismiss"] = "approach_dismiss"
@@ -112,6 +116,7 @@ class ApproachMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["approach"] = "approach"
@@ -159,6 +164,7 @@ class ClockPatch(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     t: StoryTime
@@ -175,6 +181,7 @@ null = 当作「不是」
 class ConfirmOption(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     optionId: Annotated[str, Field(min_length=1)]
     """
@@ -186,6 +193,7 @@ class ConfirmOption(BaseModel):
 class CreatePlaythroughRequest(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     bookId: BookId
@@ -205,6 +213,7 @@ class Deadline(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     shown: bool
     line: Annotated[str | None, Field(min_length=1)] = None
@@ -220,6 +229,7 @@ class DegradedMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     type: Literal["degraded"] = "degraded"
     voice: Literal[False] = False
@@ -241,6 +251,7 @@ type AfterLine = Annotated[str, Field(min_length=1)]
 class EnRouteOption(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     index: Annotated[int, Field(ge=0, le=1)]
     """
@@ -260,6 +271,7 @@ class EnRouteOption(BaseModel):
 class EndingCardViewCharacterLinesItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     character: CharacterId
@@ -276,6 +288,7 @@ class EndingCardView(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     title: Annotated[str, Field(max_length=14)]
     """
@@ -306,6 +319,7 @@ class EndingPending(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     status: Literal["pending"] = "pending"
     etaSeconds: Annotated[int, Field(ge=0)]
@@ -318,6 +332,7 @@ class EndingReadyMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["ending_ready"] = "ending_ready"
@@ -327,6 +342,7 @@ class EndingReadyMessage(BaseModel):
 class EndingWorldViewEpilogueItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     sentence: str
@@ -343,6 +359,7 @@ class EndingWorldViewContrast(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     original: str
@@ -357,6 +374,7 @@ class EndingWorldView(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     outcomeId: Annotated[str, Field(min_length=1)]
     """
@@ -383,6 +401,7 @@ class EndingWorldView(BaseModel):
 class EndingYouViewDidForYouItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     sentence: str
@@ -395,6 +414,7 @@ class EndingYouViewDidForYouItem(BaseModel):
 class EndingYouViewYouDidItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     sentence: str
@@ -411,6 +431,7 @@ class EndingYouView(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     title: str
     fate: str
@@ -458,13 +479,14 @@ class EventRejectedMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["event_rejected"] = "event_rejected"
     turnId: TurnId
     candidate: Event
     """
-    被否决的候选事件。TODO(C-1 评审)：文档没写形状；按数据契约 3 节「否决也写一条 rejected 事件」写成完整的 Event
+    被否决的候选事件，就是写进事件流的那条 rejected 事件：完整的 Event，check.status = rejected、effects 为空、dt = 0（数据契约第 3 节）。导演事件不过 3.2 节的规矩时直接丢掉，不发 event_rejected（C-1 评审定）
     """
     failedRules: list[
         Literal["R1-anchor", "R2-precondition", "R3-time", "R4-knowledge", "R5-persona", "R6-safety", "R7-capability"]
@@ -479,6 +501,7 @@ class FarMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["far"] = "far"
@@ -492,6 +515,7 @@ class FocusMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["focus"] = "focus"
@@ -505,6 +529,7 @@ class Forecast(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     melosEtaT: StoryTime
@@ -521,6 +546,7 @@ class Freeform(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     allowed: bool
     triesLeft: Annotated[int, Field(ge=0, le=2)]
@@ -533,6 +559,7 @@ class GoawayMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     type: Literal["goaway"] = "goaway"
     reason: Literal["deploy", "maintenance"]
@@ -555,6 +582,7 @@ class InterruptedMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["interrupted"] = "interrupted"
@@ -586,6 +614,7 @@ class LastTurn(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     turnId: TurnId
@@ -604,6 +633,7 @@ class LastTurn(BaseModel):
 class LoginRequest(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     inviteCode: Annotated[str, Field(max_length=64, min_length=1)]
     """
@@ -614,6 +644,7 @@ class LoginRequest(BaseModel):
 class ManifestParams(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     bookId: BookId
 
@@ -621,6 +652,7 @@ class ManifestParams(BaseModel):
 class ManifestResponseBook(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     id: BookId
     title: Annotated[str, Field(min_length=1)]
@@ -630,6 +662,7 @@ class ManifestResponseBook(BaseModel):
 class ManifestResponseRolesItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     roleId: RoleId
@@ -642,6 +675,7 @@ class ManifestResponseRolesItem(BaseModel):
 class ManifestResponseScenesItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     sceneId: SceneId
@@ -653,6 +687,7 @@ class ManifestResponseScenesItem(BaseModel):
 class ManifestResponseActsItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     actId: ActId
@@ -666,6 +701,7 @@ type Day = Annotated[str, Field(min_length=1)]
 class ManifestResponseClock(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     deadlineT: StoryTime
@@ -676,6 +712,7 @@ class ManifestResponseClock(BaseModel):
 class ManifestResponseRubyItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     word: Annotated[str, Field(min_length=1)]
     reading: Annotated[str, Field(min_length=1)]
@@ -684,6 +721,7 @@ class ManifestResponseRubyItem(BaseModel):
 class MeResponseUser(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     userRef: str
     """
@@ -694,6 +732,7 @@ class MeResponseUser(BaseModel):
 class MemoryBookCharacterDidForYouItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     eventId: EventId
@@ -703,6 +742,7 @@ class MemoryBookCharacterDidForYouItem(BaseModel):
 class MemoryBookCharacterYouDidItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     eventId: EventId
@@ -716,6 +756,7 @@ class MemoryChange(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     character: CharacterId
@@ -739,6 +780,7 @@ class MemoryChange(BaseModel):
 class MemoryDeleteResponse(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     memoryId: MemoryId
@@ -768,6 +810,7 @@ type Keeps = Annotated[str, Field(min_length=1)]
 class MemoryImpactResponse(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     keeps: Keeps | None
     """
@@ -782,6 +825,7 @@ class MemoryImpactResponse(BaseModel):
 class MemoryPathParams(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     id: PlaythroughId
@@ -795,6 +839,7 @@ class MemoryView(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     memoryId: MemoryId
@@ -825,6 +870,7 @@ class NarrationMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     type: Literal["narration"] = "narration"
     line: Annotated[str, Field(min_length=1)]
@@ -841,6 +887,7 @@ class NearMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["near"] = "near"
@@ -854,6 +901,7 @@ class PendingApproach(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     character: CharacterId
@@ -867,6 +915,7 @@ class PendingConfirm(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     draftId: DraftId
@@ -884,6 +933,7 @@ class PingMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     type: Literal["ping"] = "ping"
 
@@ -891,6 +941,7 @@ class PingMessage(BaseModel):
 class PlaceAccess(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     id: PlaceId
@@ -913,6 +964,7 @@ type PlanOptionId = Annotated[str, Field(min_length=1, pattern="^plan_[A-Za-z0-9
 class PlaythroughPathParams(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     id: PlaythroughId
@@ -921,6 +973,7 @@ class PlaythroughPathParams(BaseModel):
 class PongMessage(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     type: Literal["pong"] = "pong"
 
@@ -932,6 +985,7 @@ class PromiseChange(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     promiseId: PromiseId
@@ -954,6 +1008,7 @@ class PromiseUpdate(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     promiseId: PromiseId
@@ -976,6 +1031,7 @@ class PromiseView(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     promiseId: PromiseId
@@ -1007,6 +1063,7 @@ class RecapItem(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     eventId: EventId
@@ -1030,6 +1087,7 @@ class SafetyHintMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     type: Literal["safety_hint"] = "safety_hint"
 
@@ -1041,6 +1099,7 @@ class SafetyPauseMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     type: Literal["safety_pause"] = "safety_pause"
 
@@ -1052,6 +1111,7 @@ class SafetyResumeMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     type: Literal["safety_resume"] = "safety_resume"
 
@@ -1063,6 +1123,7 @@ class SafetyResumedMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     type: Literal["safety_resumed"] = "safety_resumed"
 
@@ -1086,6 +1147,7 @@ class SessionPreparingMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["session_preparing"] = "session_preparing"
@@ -1101,6 +1163,7 @@ class SessionReadyMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["session_ready"] = "session_ready"
@@ -1115,6 +1178,7 @@ class SituationalAction(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     actionId: ActionId
@@ -1146,6 +1210,7 @@ class SituationalAction(BaseModel):
 class SnapshotClock(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     t: StoryTime
@@ -1177,6 +1242,7 @@ ux-design 11.1 的 8 个状态；前端遇到不认识的按 present 演
 class SuggestionsMessageItemsItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     text: Annotated[str, Field(min_length=1)]
     kind: Literal["ask", "act", "accept", "decline"]
@@ -1189,6 +1255,7 @@ class SuggestionsMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["suggestions"] = "suggestions"
@@ -1200,6 +1267,7 @@ class SuggestionsMessage(BaseModel):
 class TelemetryActPlanResultProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     actId: ActId
@@ -1211,6 +1279,7 @@ class TelemetryActPlanResultProps(BaseModel):
 class TelemetryActPlanResult(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["act_plan_result"] = "act_plan_result"
@@ -1220,7 +1289,7 @@ class TelemetryActPlanResult(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1232,6 +1301,7 @@ class TelemetryActPlanResult(BaseModel):
 class TelemetryAppOpenProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     entry: Literal["direct", "line", "other"]
     inAppBrowser: bool
@@ -1240,6 +1310,7 @@ class TelemetryAppOpenProps(BaseModel):
 class TelemetryAppOpen(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["app_open"] = "app_open"
@@ -1249,7 +1320,7 @@ class TelemetryAppOpen(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1261,6 +1332,7 @@ class TelemetryAppOpen(BaseModel):
 class TelemetryAppResumedProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     awayMs: Annotated[int, Field(ge=0)]
     discarded: bool
@@ -1271,6 +1343,7 @@ class TelemetryAppResumedProps(BaseModel):
 class TelemetryAppResumed(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["app_resumed"] = "app_resumed"
@@ -1280,7 +1353,7 @@ class TelemetryAppResumed(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1292,6 +1365,7 @@ class TelemetryAppResumed(BaseModel):
 class TelemetryApproachEndedProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     character: CharacterId
@@ -1301,6 +1375,7 @@ class TelemetryApproachEndedProps(BaseModel):
 class TelemetryApproachEnded(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["approach_ended"] = "approach_ended"
@@ -1310,7 +1385,7 @@ class TelemetryApproachEnded(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1322,6 +1397,7 @@ class TelemetryApproachEnded(BaseModel):
 class TelemetryApproachShownProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     character: CharacterId
@@ -1330,6 +1406,7 @@ class TelemetryApproachShownProps(BaseModel):
 class TelemetryApproachShown(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["approach_shown"] = "approach_shown"
@@ -1339,7 +1416,7 @@ class TelemetryApproachShown(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1350,11 +1427,12 @@ class TelemetryApproachShown(BaseModel):
 
 class TelemetryCommon(BaseModel):
     """
-    公共属性（data-design 9.3），只有粗粒度的设备信息。TODO(C-1 评审)：文档没说公共属性每条带还是一批带一次；这里一批带一次
+    公共属性（data-design 9.3），只有粗粒度的设备信息；每批带一次，服务端入库时抄到这一批的每条（C-1 评审定）
     """
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     deviceClass: Annotated[str, Field(max_length=64, min_length=1)]
     """
@@ -1371,6 +1449,7 @@ class TelemetryCommon(BaseModel):
 class TelemetryConfirmAnsweredProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     answer: Literal["yes", "no", "timeout"]
 
@@ -1378,6 +1457,7 @@ class TelemetryConfirmAnsweredProps(BaseModel):
 class TelemetryConfirmAnswered(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["confirm_answered"] = "confirm_answered"
@@ -1387,7 +1467,7 @@ class TelemetryConfirmAnswered(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1399,6 +1479,7 @@ class TelemetryConfirmAnswered(BaseModel):
 class TelemetryConnectionLostProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     reason: Annotated[str, Field(max_length=64, min_length=1)]
 
@@ -1406,6 +1487,7 @@ class TelemetryConnectionLostProps(BaseModel):
 class TelemetryConnectionLost(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["connection_lost"] = "connection_lost"
@@ -1415,7 +1497,7 @@ class TelemetryConnectionLost(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1427,6 +1509,7 @@ class TelemetryConnectionLost(BaseModel):
 class TelemetryConnectionRestoredProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     downMs: Annotated[int, Field(ge=0)]
 
@@ -1434,6 +1517,7 @@ class TelemetryConnectionRestoredProps(BaseModel):
 class TelemetryConnectionRestored(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["connection_restored"] = "connection_restored"
@@ -1443,7 +1527,7 @@ class TelemetryConnectionRestored(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1458,6 +1542,7 @@ class TelemetryConnectionRestored(BaseModel):
 class TelemetryContinueStartedProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     awayMs: Annotated[int, Field(ge=0)]
 
@@ -1465,6 +1550,7 @@ class TelemetryContinueStartedProps(BaseModel):
 class TelemetryContinueStarted(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["continue_started"] = "continue_started"
@@ -1474,7 +1560,7 @@ class TelemetryContinueStarted(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1486,6 +1572,7 @@ class TelemetryContinueStarted(BaseModel):
 class TelemetryDegradedShownProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     reason: Literal["budget", "service", "daily"]
 
@@ -1493,6 +1580,7 @@ class TelemetryDegradedShownProps(BaseModel):
 class TelemetryDegradedShown(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["degraded_shown"] = "degraded_shown"
@@ -1502,7 +1590,7 @@ class TelemetryDegradedShown(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1514,6 +1602,7 @@ class TelemetryDegradedShown(BaseModel):
 class TelemetryEndingCardSavedProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     endingId: EndingId
@@ -1522,6 +1611,7 @@ class TelemetryEndingCardSavedProps(BaseModel):
 class TelemetryEndingCardSaved(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["ending_card_saved"] = "ending_card_saved"
@@ -1531,7 +1621,7 @@ class TelemetryEndingCardSaved(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1543,6 +1633,7 @@ class TelemetryEndingCardSaved(BaseModel):
 class TelemetryEndingClosedProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     endingId: EndingId
@@ -1552,6 +1643,7 @@ class TelemetryEndingClosedProps(BaseModel):
 class TelemetryEndingClosed(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["ending_closed"] = "ending_closed"
@@ -1561,7 +1653,7 @@ class TelemetryEndingClosed(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1573,6 +1665,7 @@ class TelemetryEndingClosed(BaseModel):
 class TelemetryEndingSharedProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     endingId: EndingId
@@ -1582,6 +1675,7 @@ class TelemetryEndingSharedProps(BaseModel):
 class TelemetryEndingShared(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["ending_shared"] = "ending_shared"
@@ -1591,7 +1685,7 @@ class TelemetryEndingShared(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1603,6 +1697,7 @@ class TelemetryEndingShared(BaseModel):
 class TelemetryEndingViewedProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     endingId: EndingId
@@ -1612,6 +1707,7 @@ class TelemetryEndingViewedProps(BaseModel):
 class TelemetryEndingViewed(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["ending_viewed"] = "ending_viewed"
@@ -1621,7 +1717,7 @@ class TelemetryEndingViewed(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1633,6 +1729,7 @@ class TelemetryEndingViewed(BaseModel):
 class TelemetryGlContextLostProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     restored: bool
 
@@ -1640,6 +1737,7 @@ class TelemetryGlContextLostProps(BaseModel):
 class TelemetryGlContextLost(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["gl_context_lost"] = "gl_context_lost"
@@ -1649,7 +1747,7 @@ class TelemetryGlContextLost(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1661,6 +1759,7 @@ class TelemetryGlContextLost(BaseModel):
 class TelemetryMapOpenedProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     from_: Annotated[Literal["hud", "sonokoro", "ending"], Field(alias="from")]
 
@@ -1668,6 +1767,7 @@ class TelemetryMapOpenedProps(BaseModel):
 class TelemetryMapOpened(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["map_opened"] = "map_opened"
@@ -1677,7 +1777,7 @@ class TelemetryMapOpened(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1689,6 +1789,7 @@ class TelemetryMapOpened(BaseModel):
 class TelemetryMemoryBookOpened(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["memory_book_opened"] = "memory_book_opened"
@@ -1698,7 +1799,7 @@ class TelemetryMemoryBookOpened(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1710,6 +1811,7 @@ class TelemetryMemoryBookOpened(BaseModel):
 class TelemetryMemoryDeletedProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     character: CharacterId
@@ -1718,6 +1820,7 @@ class TelemetryMemoryDeletedProps(BaseModel):
 class TelemetryMemoryDeleted(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["memory_deleted"] = "memory_deleted"
@@ -1727,7 +1830,7 @@ class TelemetryMemoryDeleted(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1739,6 +1842,7 @@ class TelemetryMemoryDeleted(BaseModel):
 class TelemetryMemorySectionViewedProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     section: Literal["promises", "didForYou", "youDid", "memories"]
 
@@ -1746,6 +1850,7 @@ class TelemetryMemorySectionViewedProps(BaseModel):
 class TelemetryMemorySectionViewed(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["memory_section_viewed"] = "memory_section_viewed"
@@ -1755,7 +1860,7 @@ class TelemetryMemorySectionViewed(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1770,6 +1875,7 @@ class TelemetryMemorySectionViewed(BaseModel):
 class TelemetryMicPermissionProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     result: Literal["granted", "denied", "unavailable"]
     reason: Annotated[str | None, Field(max_length=64, min_length=1)] = None
@@ -1779,6 +1885,7 @@ class TelemetryMicPermissionProps(BaseModel):
 class TelemetryMicPermission(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["mic_permission"] = "mic_permission"
@@ -1788,7 +1895,7 @@ class TelemetryMicPermission(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1803,10 +1910,11 @@ type FrameTimeHistogramItem = Annotated[int, Field(ge=0)]
 class TelemetryPerfSampleProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
-    frameTimeHistogram: Annotated[list[FrameTimeHistogramItem], Field(max_length=32)]
+    frameTimeHistogram: Annotated[list[FrameTimeHistogramItem], Field(max_length=9, min_length=9)]
     """
-    10 秒的帧时间直方图（每格的帧数）
+    10 秒的帧时间直方图，固定 9 格，每格是帧数（data-design 9.3）。第 i 格数「上一格上界 < 帧时间 ≤ 这一格上界」的帧，上界依次是 8.5、12、17、20、25、34、50、100 ms，最后一格是 > 100 ms。格子固定，不同版本前端发来的直方图才能相加；要换边界就另起一个字段
     """
     longTasks: Annotated[int, Field(ge=0)]
     jsHeapMb: Annotated[float | None, Field(ge=0.0)] = None
@@ -1821,6 +1929,7 @@ class TelemetryPerfSampleProps(BaseModel):
 class TelemetryPerfSample(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["perf_sample"] = "perf_sample"
@@ -1830,7 +1939,7 @@ class TelemetryPerfSample(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1842,17 +1951,22 @@ class TelemetryPerfSample(BaseModel):
 class TelemetryQualityChangedProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     from_: Annotated[QualityLevel | None, Field(alias="from")] = None
     to: QualityLevel
     reason: Literal["start", "down", "up", "lowPower", "locked"]
     probeGpuMs: Annotated[float | None, Field(ge=0.0)] = None
+    """
+    起始档自测的一帧 GPU 耗时（ms），reason = start 时带；取到 0.1 ms（防设备指纹，data-design 9.3）
+    """
     assetMbps: Annotated[int | None, Field(ge=0)] = None
 
 
 class TelemetryQualityChanged(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["quality_changed"] = "quality_changed"
@@ -1862,7 +1976,7 @@ class TelemetryQualityChanged(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1874,6 +1988,7 @@ class TelemetryQualityChanged(BaseModel):
 class TelemetryReplayStartedProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     fromEndingId: EndingId
@@ -1883,6 +1998,7 @@ class TelemetryReplayStartedProps(BaseModel):
 class TelemetryReplayStarted(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["replay_started"] = "replay_started"
@@ -1892,7 +2008,7 @@ class TelemetryReplayStarted(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1904,6 +2020,7 @@ class TelemetryReplayStarted(BaseModel):
 class TelemetryRoleSelectedProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     roleId: RoleId
@@ -1912,6 +2029,7 @@ class TelemetryRoleSelectedProps(BaseModel):
 class TelemetryRoleSelected(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["role_selected"] = "role_selected"
@@ -1921,7 +2039,7 @@ class TelemetryRoleSelected(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1933,6 +2051,7 @@ class TelemetryRoleSelected(BaseModel):
 class TelemetrySceneReadyProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     sceneId: SceneId
@@ -1946,6 +2065,7 @@ class TelemetrySceneReadyProps(BaseModel):
 class TelemetrySceneReady(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["scene_ready"] = "scene_ready"
@@ -1955,7 +2075,7 @@ class TelemetrySceneReady(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1967,6 +2087,7 @@ class TelemetrySceneReady(BaseModel):
 class TelemetrySonokoroViewedProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     count: Annotated[int, Field(ge=0, le=3)]
     tappedMap: bool
@@ -1975,6 +2096,7 @@ class TelemetrySonokoroViewedProps(BaseModel):
 class TelemetrySonokoroViewed(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["sonokoro_viewed"] = "sonokoro_viewed"
@@ -1984,7 +2106,7 @@ class TelemetrySonokoroViewed(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -1996,6 +2118,7 @@ class TelemetrySonokoroViewed(BaseModel):
 class TelemetryTalkTurnProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     turnId: TurnId
@@ -2012,6 +2135,7 @@ class TelemetryTalkTurnProps(BaseModel):
 class TelemetryTalkTurn(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["talk_turn"] = "talk_turn"
@@ -2021,7 +2145,7 @@ class TelemetryTalkTurn(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -2033,6 +2157,7 @@ class TelemetryTalkTurn(BaseModel):
 class TelemetryTranscriptCorrectedProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     turnId: TurnId
@@ -2041,6 +2166,7 @@ class TelemetryTranscriptCorrectedProps(BaseModel):
 class TelemetryTranscriptCorrected(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["transcript_corrected"] = "transcript_corrected"
@@ -2050,7 +2176,7 @@ class TelemetryTranscriptCorrected(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -2065,6 +2191,7 @@ class TelemetryTranscriptCorrected(BaseModel):
 class TelemetryTurnRetractedProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     turnId: TurnId
@@ -2075,6 +2202,7 @@ class TelemetryTurnRetractedProps(BaseModel):
 class TelemetryTurnRetracted(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["turn_retracted"] = "turn_retracted"
@@ -2084,7 +2212,7 @@ class TelemetryTurnRetracted(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -2096,6 +2224,7 @@ class TelemetryTurnRetracted(BaseModel):
 class TelemetryWebVitalsProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     lcp: Annotated[float | None, Field(ge=0.0)] = None
     inp: Annotated[float | None, Field(ge=0.0)] = None
@@ -2107,6 +2236,7 @@ class TelemetryWebVitalsProps(BaseModel):
 class TelemetryWebVitals(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["web_vitals"] = "web_vitals"
@@ -2116,7 +2246,7 @@ class TelemetryWebVitals(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -2128,14 +2258,19 @@ class TelemetryWebVitals(BaseModel):
 class TelemetryWhyOpenedProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
-    target: Literal["event", "beat"]
+    target: Literal["event", "beat", "forecast"]
+    """
+    forecast = 地图顶部「間に合わない」那一行的「なぜ」（api-contract 2.6 的 target=forecast，data-design 9.3）
+    """
     fromKeyMoment: bool
 
 
 class TelemetryWhyOpened(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     name: Literal["why_opened"] = "why_opened"
@@ -2145,7 +2280,7 @@ class TelemetryWhyOpened(BaseModel):
     """
     clientTs: RecordedAt
     """
-    真实时间，ISO 8601 UTC。TODO(C-1 评审)：文档只写了「真实时间」，这里用和 recordedAt 一样的写法
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
     """
     t: StoryTime | None = None
     """
@@ -2157,6 +2292,7 @@ class TelemetryWhyOpened(BaseModel):
 class TestAdvanceRequest(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     minutes: Annotated[int, Field(ge=1, le=5460)]
 
@@ -2174,6 +2310,7 @@ class TextMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["text"] = "text"
@@ -2190,6 +2327,7 @@ class TextMessage(BaseModel):
 class TimelineBeatItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     kind: Literal["beat"] = "beat"
@@ -2210,6 +2348,7 @@ class TimelineBeatItem(BaseModel):
 class TimelineEventItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     kind: Literal["event"] = "event"
@@ -2236,6 +2375,7 @@ type TimelineItem = Annotated[
 class TimelineResponseDaysItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     day: Annotated[int, Field(ge=0)]
     label: Annotated[str, Field(min_length=1)]
@@ -2245,6 +2385,7 @@ class TimelineResponseDaysItem(BaseModel):
 class TimelineResponse(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     days: list[TimelineResponseDaysItem]
     lastSeq: LastSeq
@@ -2263,6 +2404,7 @@ class TranscriptMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["transcript"] = "transcript"
@@ -2288,6 +2430,7 @@ type ServerReleaseToFirstAudioMs = Annotated[int, Field(ge=0)]
 class TurnCompleteMessageMetrics(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     serverReleaseToFirstAudioMs: ServerReleaseToFirstAudioMs | None
     """
@@ -2302,6 +2445,7 @@ class TurnCompleteMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["turn_complete"] = "turn_complete"
@@ -2320,6 +2464,7 @@ class TurnRetractMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["turn_retract"] = "turn_retract"
@@ -2333,6 +2478,7 @@ class TurnRetractResultMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["turn_retract_result"] = "turn_retract_result"
@@ -2353,6 +2499,7 @@ class TurnSettledMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["turn_settled"] = "turn_settled"
@@ -2369,6 +2516,7 @@ class TurnStartedMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["turn_started"] = "turn_started"
@@ -2385,6 +2533,7 @@ class UnfocusMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     type: Literal["unfocus"] = "unfocus"
     reason: Literal["walk_away", "silence", "menu", "dismiss"]
@@ -2393,6 +2542,7 @@ class UnfocusMessage(BaseModel):
 class VisibleBeatEffect(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     kind: Literal["beat"] = "beat"
@@ -2403,11 +2553,12 @@ class VisibleBeatEffect(BaseModel):
 
 class VisibleVarEffect(BaseModel):
     """
-    TODO(C-1 评审)：文档只举了 beat 的形状；变量这一种按「只给标签不给原值」（第 0 节）写成 kind、var、label
+    变量这一种只给标签、不给原值（第 0 节）：kind、var、label（C-1 评审定）
     """
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     kind: Literal["var"] = "var"
@@ -2425,6 +2576,7 @@ class Voice(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     enabled: bool
     degraded: bool
@@ -2438,6 +2590,7 @@ class VoiceClip(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     url: AssetPath
     text: Annotated[str, Field(min_length=1)]
@@ -2453,6 +2606,7 @@ class VoiceClip(BaseModel):
 class WhyBeatStep(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     beatId: BeatId
@@ -2464,6 +2618,7 @@ class WhyBeatStep(BaseModel):
 class WhyEventStep(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     eventId: EventId
@@ -2480,6 +2635,7 @@ class WhyEventStep(BaseModel):
 class WhyQuery(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     target: EventId | BeatId | RevealId | Literal["forecast"]
@@ -2501,6 +2657,7 @@ class ActChooseMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["act_choose"] = "act_choose"
@@ -2522,6 +2679,7 @@ class ActOptionEnRoute(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     line: Annotated[str, Field(min_length=1)]
     choices: Annotated[list[EnRouteOption], Field(max_length=2, min_length=2)]
@@ -2534,6 +2692,7 @@ class ActProposeMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     type: Literal["act_propose"] = "act_propose"
     clientMsgId: ClientMsgId
@@ -2547,6 +2706,7 @@ class ActionMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     type: Literal["action"] = "action"
     clientMsgId: ClientMsgId
@@ -2577,6 +2737,7 @@ class ActionResultMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["action_result"] = "action_result"
@@ -2597,6 +2758,7 @@ class ActionsPatch(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     add: list[SituationalAction] | None = None
     remove: list[ActionId] | None = None
@@ -2609,6 +2771,7 @@ class ActivityEndMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["activity_end"] = "activity_end"
@@ -2623,6 +2786,7 @@ class ActivityStartMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["activity_start"] = "activity_start"
@@ -2641,6 +2805,7 @@ class CharacterPresence(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     id: CharacterId
@@ -2665,6 +2830,7 @@ class CharacterPresencePatch(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     id: CharacterId
@@ -2689,6 +2855,7 @@ class ConfirmAnswerMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     type: Literal["confirm_answer"] = "confirm_answer"
     draftId: DraftId
@@ -2702,6 +2869,7 @@ class ConfirmClosedMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     type: Literal["confirm_closed"] = "confirm_closed"
     draftId: DraftId
@@ -2719,6 +2887,7 @@ class ConfirmMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["confirm"] = "confirm"
@@ -2736,6 +2905,7 @@ class Cue(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     kind: CueKind
@@ -2753,6 +2923,7 @@ class EndingView(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     endingId: EndingId
@@ -2764,13 +2935,14 @@ class EndingView(BaseModel):
     """
     card: EndingCardView | None = None
     """
-    TODO(C-1 评审)：数据契约里 card 可选（校验两次不过时不生成结局卡），文档的例子总有；这里可选
+    可选：数据契约第 5 节，校验两次都不过时用模板尾声，不生成结局卡；文档的例子总有（C-1 评审定）
     """
 
 
 class ErrorBody(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     code: ErrorCode
     message: Annotated[str, Field(min_length=1)]
@@ -2791,6 +2963,7 @@ class ErrorMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     type: Literal["error"] = "error"
     error: ErrorBody
@@ -2803,6 +2976,7 @@ class ErrorResponse(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     error: ErrorBody
     activePlaythrough: ActivePlaythrough | None = None
@@ -2814,6 +2988,7 @@ class ErrorResponse(BaseModel):
 class EventsQuery(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     afterSeq: LastSeq
     limit: Annotated[int | None, Field(ge=1, le=50)] = None
@@ -2826,6 +3001,7 @@ class HelloMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     type: Literal["hello"] = "hello"
     lastSeq: LastSeq
@@ -2847,6 +3023,7 @@ class Interactable(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     id: InteractableId
     kind: Literal["examine", "go"]
@@ -2866,6 +3043,7 @@ class LimitsMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     type: Literal["limits"] = "limits"
     voiceMinutesLeft: Minutes
@@ -2874,6 +3052,7 @@ class LimitsMessage(BaseModel):
 class MeResponseLimits(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     runsToday: Annotated[int, Field(ge=0)]
     runsPerDay: Annotated[int, Field(ge=1)]
@@ -2883,6 +3062,7 @@ class MeResponseLimits(BaseModel):
 class MeResponse(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     user: Annotated[MeResponseUser, Field(title="MeResponseUser")]
     limits: Annotated[MeResponseLimits, Field(title="MeResponseLimits")]
@@ -2895,6 +3075,7 @@ class MeResponse(BaseModel):
 class MemoryBookCharacter(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     character: CharacterId
@@ -2919,6 +3100,7 @@ class PlanAlternative(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     optionId: PlanOptionId
@@ -2930,6 +3112,7 @@ class PlanAlternative(BaseModel):
 class PlayerPosition(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     roleId: RoleId
@@ -2944,6 +3127,7 @@ class PlayerPositionPatch(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     place: PlaceId | None = None
@@ -2957,6 +3141,7 @@ class PrerecordedCues(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     arrival_capped: VoiceClip | None = None
 
@@ -2968,6 +3153,7 @@ class Prerecorded(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     aizuchi: Annotated[list[VoiceClip], Field(max_length=3, min_length=3)]
     """
@@ -2991,6 +3177,7 @@ class Reveal(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     revealId: RevealId
     kind: Literal["beat", "eta", "ending", "favor"]
@@ -3008,6 +3195,7 @@ class SnapshotPatch(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     clock: ClockPatch | None = None
     deadline: Deadline | None = None
@@ -3021,6 +3209,7 @@ class SnapshotPatch(BaseModel):
 class StagingCharacter(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     id: Literal["player"] | CharacterId
@@ -3085,6 +3274,7 @@ class VisibleEvent(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     eventId: EventId
@@ -3135,6 +3325,7 @@ class VisibleEvent(BaseModel):
 class WhyResponse(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     target: EventId | BeatId | RevealId | Literal["forecast"]
@@ -3158,6 +3349,7 @@ class ActOption(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     optionId: ExitId
@@ -3176,6 +3368,7 @@ class ActPlanResultMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     type: Literal["act_plan_result"] = "act_plan_result"
     clientMsgId: ClientMsgId | None = None
@@ -3220,6 +3413,7 @@ class CommitMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["commit"] = "commit"
@@ -3241,6 +3435,7 @@ class CommitMessage(BaseModel):
 class EventsResponse(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     events: Annotated[list[VisibleEvent], Field(max_length=50)]
     lastSeq: LastSeq
@@ -3249,6 +3444,7 @@ class EventsResponse(BaseModel):
 class ManifestResponseCharactersItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     id: CharacterId
@@ -3268,6 +3464,7 @@ class ManifestResponse(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     manifestVersion: Annotated[str, Field(min_length=1)]
     book: Annotated[ManifestResponseBook, Field(title="ManifestResponseBook")]
@@ -3282,6 +3479,7 @@ class ManifestResponse(BaseModel):
 class MemoriesResponse(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     characters: list[MemoryBookCharacter]
 
@@ -3293,6 +3491,7 @@ class Staging(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     place: PlaceId
@@ -3306,6 +3505,7 @@ class TelemetryBatch(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     common: TelemetryCommon
     events: Annotated[list[TelemetryEvent], Field(max_length=50, min_length=1)]
@@ -3318,6 +3518,7 @@ class ActEnd(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     actId: ActId
@@ -3336,6 +3537,7 @@ class ActEndedMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["act_ended"] = "act_ended"
@@ -3352,6 +3554,7 @@ class EndingStartedMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     type: Literal["ending_started"] = "ending_started"
     trigger: Literal["deadline", "story-closed"]
@@ -3365,6 +3568,7 @@ class Pending(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     reveal: Reveal | None
     confirm: PendingConfirm | None
@@ -3380,6 +3584,7 @@ class Snapshot(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     playthroughId: PlaythroughId
@@ -3406,6 +3611,7 @@ class WelcomeMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
     )
     type: Literal["welcome"] = "welcome"
     lastSeq: LastSeq
@@ -3424,6 +3630,7 @@ class ActTransitionMessage(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     type: Literal["act_transition"] = "act_transition"
@@ -3436,6 +3643,7 @@ class ActTransitionMessage(BaseModel):
 class CreatePlaythroughResponse(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
+        validate_by_name=True,
         arbitrary_types_allowed=True,
     )
     playthroughId: PlaythroughId
