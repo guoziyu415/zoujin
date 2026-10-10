@@ -364,7 +364,7 @@ type StateVar = {
 
 『走れメロス』有三条：`var.king.disposition` 设 `wavering` 要 `var.king.trust` ≥ 40，设 `reformed` 要 ≥ 70（刑场的改心是到点的 `beat.26`，不判）；`var.river.crossing` 设 `bridge` 要 `var.bridge` = `intact`。
 
-**玩家看得到哪些变化：** （1.4 写清，S-067）`valueLabels` 里没写的取值，当场不显示、不进状态栏、也不进「その頃」，只在结局里交代（例：`player.custody` / `hostage.fate` 的 `executed`，结局里间接说，不写「処刑」「死」）。一个事件的 effect 只有同时满足两条才进 `visibleEffects`：① 改的是 `visibleToPlayer` 的变量（文字取 `valueLabels`），或者是节拍走向的改变（文字 =「{beat.title}」+ 改变的说法）；② 玩家当时在这个事件的地点，或者事件就是玩家做的。其他变化不实时显示，留到幕切换时的「その頃」回顾（2.8.1），以免把玩家不可能知道的事提前说出来。
+**玩家看得到哪些变化：** （1.4 写清，S-067）`valueLabels` 里没写的取值，当场不显示、不进状态栏、也不进「その頃」，只在结局里交代（例：`player.custody` / `hostage.fate` 的 `executed`，结局里间接说，不写「処刑」「死」）。一个事件的 effect 只有同时满足两条才进 `visibleEffects`：① 改的是 `visibleToPlayer` 的变量（文字取 `valueLabels`），或者是节拍走向的改变（文字 =「{beat.title}」+ 改变的说法）；② 玩家当时在这个事件的地点，或者事件就是玩家做的；幕切换第 3 步结算的事件除外（玩家算不在场，2.8.1）。其他变化不实时显示，留到幕切换时的「その頃」回顾（2.8.1），以免把玩家不可能知道的事提前说出来。
 
 『走れメロス』的时段（ux-design 4.2）：深夜 0:00、薄明 4:00、朝 5:30、午前 9:00、真昼 11:30、午後 13:00、夕方 16:00、日没前 18:00、日没 19:00、夜 19:30。例：`t=1050` →「約束の日・夕方」，`t=1440` →「一日目・深夜」。
 
@@ -1059,4 +1059,4 @@ type CharacterEnding = {           // （1.1）
   - 第 7 节新增 C-18、C-19（已定：打算成行时的落点用 `Act.plan`）。
   - 『走れメロス』（draft.3）：群众、警吏、山贼、一团旅人 `group: true`；beat.s1 セリヌンティウス站 `stake`、王站 `king-west`，beat.24 梅洛斯站 `scaffold`（布局见前端 #22）。同一个 PR 里的世界模型修正：群众、少女第一幕在广场的家里（`absent`），beat.s1 到刑场；beat.04（捕缚）挪到王城前庭（`place.execution-ground`）；送老爺回家记 `var.player.walkedOldManHome`（说话兑现，或第一幕的情境动作「家まで送る」`aff.walk-old-man-home`，30 分，UX 10-10）；警吏从 beat.05 起知道约定（`knows`，PM 10-10：警吏在殿上，城门的固定演出靠它说出约定，S-077 ⑪）。
   - 写清（10-10，#41、#45、#50 合并以后，字段不变）：固定演出的 `lines` 整条放在一条 `set_piece` 消息里下发，预录句的录音是 manifest 的 `setPieceVoices["{id}/{序号}"]`（2.11，api-contract v1.0.4 的 3.14、2.1）；人物此刻的 activity 怎么算（2.4，共享规则库的 `activity()`，挪走又回来的人物又是节拍给的 activity）。Schema 里 `SetPiece.lines` 的说明跟着改；例子里城门的地の文「衛兵」改成「警吏」，和世界模型、api-contract 3.14 一致。
-  - 写清（10-10，B-3 卡 #58 以后，字段不变）：幕切换第 3 步结算的那段玩家算不在场，不写 2.1 ② 的 `learn`、不演节拍时机的固定演出（2.8.1 第 3 步，共享规则库 `settle` 加 `player_present`）；第 2、4 步的 `act-transition` 事件 `origin: "act"`、`checker: "world-exit"`；`SetPiece.learns` 另写一条 `type: "learn"` 事件（2.11，Schema 的说明跟着改）。
+  - 写清（10-10，B-3 卡 #58 以后，字段不变）：幕切换第 3 步结算的那段玩家算不在场，不写 2.1 ② 的 `learn`、不演节拍时机的固定演出、不进 `visibleEffects`（2.8.1 第 3 步、第 3 节，共享规则库 `settle` 加 `player_present`）；第 2、4 步的 `act-transition` 事件 `origin: "act"`、`checker: "world-exit"`；`SetPiece.learns` 另写一条 `type: "learn"` 事件（2.11，Schema 的说明跟着改）。
