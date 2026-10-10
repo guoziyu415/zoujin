@@ -53,9 +53,11 @@ def without_pid(state: Json) -> Json:
 
 
 def test_s2_dev_setups_start_and_check(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
-    """10 条起点都能起，候选事件经 check 返回过 Schema 的 CheckResult（判得对不对是 M2 叙事者卡的验收）。"""
+    """10 条起点都能起，候选事件经 check 返回过 Schema 的 CheckResult，checker 带规则和检查提示的版本；
+    `scoped` 下第 3 步没过的不跑第 4 步（R5 记 skipped），`all` 下都跑。"""
     monkeypatch.setenv("DATABASE_URL", env.url)
     monkeypatch.delenv("ZJ_MODEL", raising=False)
+    version = prompts.PROMPTS["check"].version
     for item in S2_DEV:
         s = eval_api.setup(item["setup"], mode="text")
         before = s.events()
@@ -63,7 +65,17 @@ def test_s2_dev_setups_start_and_check(env: Env, monkeypatch: pytest.MonkeyPatch
         SCHEMAS.build("data/event.schema.json", "#/$defs/CheckResult", out["check"])
         assert [r["rule"] for r in out["rules"]] == list(RULES)
         assert {r["status"] for r in out["rules"]} <= {"pass", "fail", "skipped"}
+        r5 = {r["rule"]: r["status"] for r in out["rules"]}["R5-persona"]
+        stage3 = item["label"].get("stage") == "rules"
+        assert r5 == ("skipped" if stage3 else "pass"), item["id"]
+        assert out["check"]["checker"] == ("rules@b2.1" if stage3 else f"rules@b2.1+gemini-3.8-flash/{version}")
+        every = s.check(item["candidate"], item["turn"], model_checks="all")
+        assert (
+            every["check"]["checker"].endswith(version) and every["check"]["failedRules"] == out["check"]["failedRules"]
+        )
         assert s.events() == before  # check 不提交
+    with pytest.raises(ValueError):
+        s.check(S2_DEV[0]["candidate"], S2_DEV[0]["turn"], model_checks="none")
 
 
 def test_starts_match_the_e0_stand_in_event_by_event(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -173,7 +185,7 @@ def test_persona_and_planted_memory_raise_in_setup(env: Env, monkeypatch: pytest
 
 
 def test_replay_fixture_is_the_fake_model_recorded(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
-    """b0-minimal.jsonl = 最小剧本那一轮的两次调用，输出取假模型的。提示、请求或假模型的输出改了，这条不过；重写：
+    """b0-minimal.jsonl = 最小剧本那一轮的各次调用，输出取假模型的。提示、请求或假模型的输出改了，这条不过；重写：
     ZJ_UPDATE_REPLAYS=1 DATABASE_URL=… uv run pytest services/backend/tests/test_eval_api.py -k fixture
     """
     monkeypatch.setenv("DATABASE_URL", env.url)
@@ -192,7 +204,8 @@ def test_replay_fixture_is_the_fake_model_recorded(env: Env, monkeypatch: pytest
     text = "".join(json.dumps(c, ensure_ascii=False, sort_keys=True) + "\n" for c in calls)
     if os.environ.get("ZJ_UPDATE_REPLAYS") == "1":
         REPLAYS.write_text(text, encoding="utf-8")
-    assert [c["kind"] for c in calls] == ["reply", "extract"]
+    # 被否决的那个：改写两次（假模型原样改回）、降级一次（做不到）
+    assert [c["kind"] for c in calls] == ["reply", "triage", "extract", "check", "rewrite", "rewrite", "rewrite"]
     assert REPLAYS.read_text(encoding="utf-8") == text, "回放过期：ZJ_UPDATE_REPLAYS=1 重跑这条测试"
 
 

@@ -2,7 +2,8 @@
 
 快照和 commit 用同一个投影：patch = 提交前后两个快照的差。
 
-B-0 的投影只做骨架能给的：场景里的人物（位置点按布局分配，activity 一律 idle，还没有关系的省略关系）、地点能不能进、
+B-0 的投影只做骨架能给的：场景里的人物（位置点按布局分配，activity 一律 idle，此刻不在场的是 absent、不能搭话（B-2，
+S-077 ⑩）；还没有关系的省略关系）、地点能不能进、
 场景出口、期限和梅洛斯的预计到达。情境动作、可调查物、关系、记忆、待处理的东西是 M2 各卡的。
 """
 
@@ -13,6 +14,7 @@ from typing import Any
 
 from zoujin_worldsim import OCCURRED, SimState, flat, world_state
 
+from zoujin_backend.narrator.rules import absent, index
 from zoujin_backend.world import Book
 
 Json = Any
@@ -144,13 +146,15 @@ def snapshot(book: Book, pid: str, role_id: str, status: str, state: SimState, l
     spots = (
         scene.character_spots(present, {player_spot}) if scene else {c: p.removeprefix("place.") for c, p in present}
     )
+    ix = index(book.world)
+    away = {c for c, _ in present if absent(ix, state, c)}
     characters = [
         {
             "id": c,
             "place": p,
             "spot": spots[c],
-            "activity": "idle",
-            "talkable": bool(book.characters[c].get("talkable")),
+            "activity": "absent" if c in away else "idle",
+            "talkable": c not in away and bool(book.characters[c].get("talkable")),
         }
         for c, p in present
     ]

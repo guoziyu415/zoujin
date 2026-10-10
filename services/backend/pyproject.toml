@@ -22,6 +22,12 @@ zoujin-mock = "zoujin_backend.mock.cli:main"
 zoujin-gateway = "zoujin_backend.gateway.app:main"
 zoujin-narrator = "zoujin_backend.narrator.app:main"
 zoujin-admin = "zoujin_backend.admin:main"
+zoujin-s2 = "zoujin_backend.s2:main"
+
+[project.optional-dependencies]
+real = [
+    "google-auth[requests]>=2.40",
+]
 
 [build-system]
 requires = ["uv_build>=0.11,<0.12"]

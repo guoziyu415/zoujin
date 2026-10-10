@@ -5,12 +5,15 @@
     s.say("char.old-man", "…")
     s.state()
 
-- `setup` 每次读 `DATABASE_URL` 和 `ZJ_MODEL`（fake / replay）。一局是测试库里真的一局：一个新账号、一局、
+- `setup` 每次读 `DATABASE_URL` 和 `ZJ_MODEL`（fake / replay / real；real 只在 Mac 上，账本和上限见
+  `models/vertex.py`）。一局是测试库里真的一局：一个新账号、一局、
   起点的事件和 world_state，之后的步骤走和网关同一个叙事者（`Narrator.run`）。
-- 做了的：setup 的 `role`、`place`、`budgetTier`（只记下）、`scenario`、`checkpoint`、`events`；步骤 `say`、
-  `advance`；`check`（不提交）；查询 `state()`、`events()`。
+- 做了的：setup 的 `role`、`place`、`budgetTier`（只记下）、`scenario`、`checkpoint`、`events`；步骤 `say`（人物用文字
+  回答，再走叙事者整条流水线，B-2）、`advance`；`check`（第 3 步 + 按 `model_checks` 跑第 4 步，不改写、不提交）；
+  查询 `state()`、`events()`。
 - 没做的步骤和查询、带 `persona` 的 setup、带 `memory` 的布置事件抛 `EvalNotImplemented("<名字>")`；
-  回放里查不到抛 `ReplayMissing`。运行器按类名认。
+  回放里查不到抛 `ReplayMissing`。账本到上限抛 `BudgetStop`，模型回 429 抛 `RateLimited`：这两个要整次停下，不是跳过
+  这一例。运行器按类名认。
 - 每次调用在自己的事件循环里跑（`asyncio.run`）、用不进连接池的连接，运行器的超时（SIGALRM）中途打断时，
   丢下的那一局只是留在测试库里。
 """
@@ -37,14 +40,15 @@ from zoujin_backend.db.tables import events as events_t
 from zoujin_backend.db.tables import playthrough_metrics, playthroughs, users
 from zoujin_backend.db.tables import world_state as world_state_t
 from zoujin_backend.ids import IdGen
-from zoujin_backend.models.text import ReplayMissing, TextModel, text_model
+from zoujin_backend.models.text import BudgetStop, RateLimited, ReplayMissing, TextModel, text_model
 from zoujin_backend.narrator.core import Narrator, Result
-from zoujin_backend.narrator.rules import check_candidates
+from zoujin_backend.narrator.pipeline import CallFailed, Pipeline, Spend, TurnInput
 from zoujin_backend.narrator.writer import Writer
 from zoujin_backend.schemas import SchemaBook
+from zoujin_backend.trace import Tracer
 from zoujin_backend.world import Book, Library
 
-__all__ = ["EvalNotImplemented", "ReplayMissing", "Session", "setup"]
+__all__ = ["BudgetStop", "CallFailed", "EvalNotImplemented", "RateLimited", "ReplayMissing", "Session", "setup"]
 
 Json = Any
 
@@ -107,8 +111,12 @@ class Session:
         self.role: str = setup["role"]
         self.budget_tier: str = setup.get("budgetTier", "normal")  # 只记下（预算是 M2 的卡）
         self.ids = IdGen()
-        self.text: TextModel = text_model(settings.model, fake_rules=settings.fake_text, replays=settings.replays)
+        self.text: TextModel = text_model(
+            settings.model, fake_rules=settings.fake_text, replays=settings.replays, settings=settings
+        )
         self.schemas = _schemas(settings.schemas)
+        self.tracer = Tracer()
+        self.span: dict[str, Any] = {}  # 运行器给这一步的 Span 加的属性（例：S-2 的 trace_id）
         self.pid = ""
         self.steps = 0
 
@@ -118,7 +126,20 @@ class Session:
         return create_async_engine(self.settings.database_url, poolclass=NullPool)
 
     def _narrator(self, engine: AsyncEngine) -> Narrator:
-        return Narrator(engine=engine, library=self.library, text=self.text, schemas=self.schemas, ids=self.ids)
+        return Narrator(
+            engine=engine,
+            library=self.library,
+            text=self.text,
+            schemas=self.schemas,
+            ids=self.ids,
+            tracer=self.tracer,
+            deadlines=self.settings.deadlines,
+        )
+
+    @property
+    def pipeline(self) -> Pipeline:
+        """`text` 可能被测试换掉，每次按当前的建。"""
+        return Pipeline(self.text, self.schemas, self.ids, self.tracer, self.settings.deadlines)
 
     # —— 起点 ——
 
@@ -172,25 +193,24 @@ class Session:
     # —— 步骤 ——
 
     def say(self, to: str, text: str) -> Json:
-        """文字代替语音：人物的回答（文本模型 reply），原话和这一轮写进去，走叙事者。"""
+        """文字代替语音：人物用文字回答（`reply`），原话和这一轮写进去，走叙事者整条流水线。"""
         self.steps += 1
         return _run(self._say(to, text))
 
     async def _say(self, to: str, text: str) -> Json:
         engine = self._engine()
         try:
-            async with engine.begin() as c:
+            async with engine.connect() as c:
                 st = await store.sim_state(c, self.pid)
-                assert st is not None
-                request = {
-                    "role": self.role,
-                    "place": st["vars"]["var.player.location"],
-                    "t": st["t"],
-                    "character": to,
-                    "player": text,
-                }
-                answer = await self.text.call("reply", request)
-                reply = answer.output.get("text")
+            assert st is not None
+            spend = Spend()
+            reply = await self.pipeline.reply(self.book, st, TurnInput(character=to, player=text), spend)
+            async with engine.begin() as c:
+                await c.execute(
+                    update(playthrough_metrics)
+                    .where(playthrough_metrics.c.playthrough_id == self.pid)
+                    .values(cost_reply_usd=playthrough_metrics.c.cost_reply_usd + spend.usd.get("reply", 0.0))
+                )
                 turn_id = await store.enqueue(c, self.ids, self.pid, kind="talk", input_mode="text", character=to)
                 await store.add_utterance(c, self.ids, self.pid, turn_id, speaker="player", text=text, t=st["t"])
                 await store.add_utterance(
@@ -243,9 +263,18 @@ class Session:
         return out
 
     def check(self, candidate: Mapping[str, Json], turn: Mapping[str, Json], model_checks: str = "scoped") -> Json:
-        """S-2：候选事件交给第 3 步（W-1 的 check_effects），不提交。B-0 没有第 4 步，模型检查记 skipped。"""
+        """S-2：候选事件交给第 3 步，再按 `model_checks` 跑第 4 步（`scoped` = 正式范围：过了第 3 步、`effects`
+        不为空的；`all` = 都跑），不改写、不提交。没跑第 4 步的 R5 和 R6 其余部分记 skipped。"""
+        if model_checks not in ("scoped", "all"):
+            raise ValueError(f"model_checks 只能是 scoped / all，得到 {model_checks!r}")
         st = _run(self._state())
-        (checked,) = check_candidates(self.book.world, st, [dict(candidate)], self.ids)
+        t = TurnInput(
+            character=turn.get("to"),
+            player=turn.get("player"),
+            reply=turn.get("reply"),
+            act=turn.get("act"),
+        )
+        checked = _run(self.pipeline.check_only(self.book, st, dict(candidate), t, model_checks, Spend(), self.span))
         return {"check": checked.check, "rules": checked.rules}
 
     # —— 查询 ——

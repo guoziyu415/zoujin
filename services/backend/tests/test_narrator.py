@@ -3,16 +3,20 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import logging
 from typing import Any
 
 import pytest
 from sqlalchemy import func, select, update
 from zoujin_backend.admin import replay
 from zoujin_backend.db import store
-from zoujin_backend.db.tables import events, playthroughs, turns, world_state
+from zoujin_backend.db.tables import events, playthrough_metrics, playthroughs, turns, world_state
+from zoujin_backend.models.text import FakeText
 from zoujin_backend.narrator.core import Narrator, Task
+from zoujin_backend.trace import Tracer
 
-from .conftest import BOOK, LIBRARY, OLD, SCHEMAS, Env
+from .conftest import BOOK, LIBRARY, OLD, PLAYER_LINE, SCHEMAS, Env
 
 pytestmark = pytest.mark.db
 
@@ -37,7 +41,8 @@ async def log_of(env: Env, pid: str) -> list[Json]:
 
 
 def test_minimal_script(env: Env) -> None:
-    """B-0 第 10 条：旅人在广场对老爺说一句话 → 两个候选事件，一个有 effects，一个被否决 → 提交。"""
+    """B-0 第 10 条（B-2 走整条流水线）：旅人在广场对老爺说一句话 → 两个候选事件：老爺的即兴设定过了第 3、4 步；
+    让节拍直接发生的那个第 3 步不过，改写原样、降级做不到 → 被否决 → 提交。"""
 
     async def main() -> None:
         engine = env.engine()
@@ -50,11 +55,13 @@ def test_minimal_script(env: Env) -> None:
         assert result.task.turn_id == turn_id and result.outcome == "rejected" and result.minutes == 10
         evs = result.events
         assert [(e["actor"], e["check"]["status"], bool(e["effects"])) for e in evs] == [
-            ("player", "passed", True),
+            (OLD, "passed", True),
             (OLD, "rejected", False),
             ("player", "passed", False),  # 这一轮的 10 分钟：只推进时钟的 say
         ]
-        assert evs[1]["check"]["failedRules"] == ["R2-precondition"]
+        assert evs[0]["check"]["checker"].startswith("rules@") and "+gemini-3.8-flash/p" in evs[0]["check"]["checker"]
+        assert evs[1]["check"]["failedRules"] == ["R2-precondition"] and evs[1]["check"]["attempts"] == 3
+        assert evs[1]["check"]["checker"] == "rules@b2.1"  # 第 3 步就没过，没跑第 4 步
         assert [e["seq"] for e in evs] == [3, 4, 5] and evs[-1]["dt"] == 10
         assert all(e["turnId"] == turn_id for e in evs)
         for e in await log_of(env, pid):
@@ -238,3 +245,57 @@ def test_stale_result_is_discarded_and_rechecked(env: Env) -> None:
         await engine.dispose()
 
     asyncio.run(main())
+
+
+def test_two_extract_timeouts_commit_only_the_clock(env: Env) -> None:
+    """B-2 第 3 组：提取两次都超时 → 这一轮只提交时钟事件，候选丢弃，指标加一，库里没有半轮。"""
+
+    async def main() -> None:
+        engine = env.engine()
+        pid = await env.opened(engine)
+        before = await counts(env, pid)
+        turn_id = await env.talk(engine, pid)
+        slow = FakeText(rules=[{"kind": "extract", "latencyMs": 300}])
+        fast = dict.fromkeys(("triage", "extract", "check", "rewrite"), 0.05)
+        n = Narrator(engine=engine, library=LIBRARY, text=slow, schemas=SCHEMAS, ids=env.ids, deadlines=fast)
+        (result,) = await n.run(pid)
+        assert [kind for kind, _ in slow.calls] == ["triage", "extract", "extract"]  # 第一次超时重发一次，没有检查
+        assert [(e["actor"], e["type"], e["effects"], e["dt"]) for e in result.events] == [("player", "say", [], 10)]
+        n_events, last, cached = await counts(env, pid)
+        assert (n_events, last, cached) == (before[0] + 1, before[1] + 1, before[2] + 1)
+        async with engine.connect() as c:
+            row = (await c.execute(select(turns).where(turns.c.turn_id == turn_id))).mappings().one()
+            m = (
+                (await c.execute(select(playthrough_metrics).where(playthrough_metrics.c.playthrough_id == pid)))
+                .mappings()
+                .one()
+            )
+        assert (row["status"], row["minutes"]) == ("done", 10)
+        assert (m["turns_timed_out"], m["candidates_rejected"], m["candidates_rewritten"]) == (1, 0, 0)
+        assert await replay(engine, LIBRARY, pid) == []
+        await engine.dispose()
+
+    asyncio.run(main())
+
+
+def test_logs_and_spans_carry_no_words(env: Env, caplog: pytest.LogCaptureFixture) -> None:
+    """B-2 第 9 组：原话、人物的回答、摘要、即兴设定、否决理由都不进日志和 Span（data-design 第 8 节）。"""
+    said, answer = "ゆびきりマーカー", "かえりみちマーカー"
+    caplog.set_level(logging.DEBUG)
+
+    async def main() -> list[str]:
+        engine = env.engine()
+        pid = await env.opened(engine)
+        await env.talk(engine, pid, text=f"{said}。{PLAYER_LINE}", reply=answer)
+        tracer = Tracer()
+        (result,) = await env.narrator(engine, tracer=tracer).run(pid)
+        await engine.dispose()
+        assert tracer.spans and [e["check"]["status"] for e in result.events[:2]] == ["passed", "rejected"]
+        words = [e["summary"] for e in result.events[:2]] + [str(result.events[1]["check"]["reason"])]
+        words += [x["statement"] for x in result.events[0]["effects"]]
+        return [*words, json.dumps([s.attrs for s in tracer.spans], ensure_ascii=False)]
+
+    *words, spans = asyncio.run(main())
+    assert "R2-precondition" in spans and "R2-precondition" in caplog.text  # 规则名照写
+    for w in [said, answer, *words]:
+        assert w not in caplog.text and w not in spans, w

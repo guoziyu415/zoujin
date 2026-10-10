@@ -52,7 +52,8 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-      - run: uv sync --locked --all-packages
+      # --extra real：真客户端的可选依赖（google-auth，B-2）只为类型检查和不联网的单元测试装，CI 从不调用真模型
+      - run: uv sync --locked --all-packages --extra real
       - run: uv run ruff check
       - run: uv run ruff format --check
       - run: uv run mypy
