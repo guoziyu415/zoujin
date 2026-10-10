@@ -103,7 +103,7 @@ async def body_of(request: Request) -> Json:
 def check_request(gw: Gateway, endpoint: str, part: str, doc: Json) -> None:
     errs = gw.schemas.request_errors(endpoint, part, doc)
     if errs:
-        log.info("%s 的 %s 不合 Schema（%d 处）", endpoint, part, len(errs))
+        log.info("%s 的 %s 不合 Schema：%s", endpoint, part, "; ".join(errs[:3]))
         raise Fail("invalid_request")
 
 

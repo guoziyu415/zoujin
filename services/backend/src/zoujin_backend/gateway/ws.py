@@ -505,8 +505,9 @@ async def read_loop(conn: Conn) -> None:
             msg = json.loads(frame.get("text") or "")
         except json.JSONDecodeError:
             msg = None
-        if msg is None or conn.gw.schemas.client_errors(msg):
-            log.info("客户端消息不合 Schema（%s）", msg.get("type") if isinstance(msg, dict) else "不是 JSON")
+        errs = ["不是 JSON"] if msg is None else conn.gw.schemas.client_errors(msg)
+        if errs:
+            log.info("客户端消息不合 Schema：%s", "; ".join(errs[:3]))
             await conn.send(error_msg("invalid_request", "うまく送れませんでした。"))
             continue
         try:

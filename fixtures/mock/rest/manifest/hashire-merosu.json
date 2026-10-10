@@ -123,7 +123,7 @@
       "id": "char.philostratus",
       "name": "フィロストラトス",
       "reading": "フィロストラトス",
-      "talkable": true,
+      "talkable": false,
       "prerecorded": {
         "aizuchi": [
           {
@@ -166,25 +166,25 @@
       "id": "char.king",
       "name": "王ディオニス",
       "reading": "おうディオニス",
-      "talkable": true
+      "talkable": false
     },
     {
       "id": "char.selinuntius",
       "name": "セリヌンティウス",
       "reading": "セリヌンティウス",
-      "talkable": true
+      "talkable": false
     },
     {
       "id": "char.sister",
       "name": "メロスの妹",
       "reading": "メロスのいもうと",
-      "talkable": true
+      "talkable": false
     },
     {
       "id": "char.groom",
       "name": "花婿",
       "reading": "はなむこ",
-      "talkable": true
+      "talkable": false
     },
     {
       "id": "char.crowd",

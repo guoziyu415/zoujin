@@ -26,7 +26,7 @@ from zoujin_backend.gateway import rest, ws
 from zoujin_backend.gateway.core import Gateway, HttpNarrator, NarratorClient
 from zoujin_backend.gateway.hub import Hub
 from zoujin_backend.models.live import FakeLive
-from zoujin_backend.origin import origin_allowed
+from zoujin_backend.origin import csrf_problem
 from zoujin_backend.schemas import SchemaBook
 from zoujin_backend.world import Library
 
@@ -93,8 +93,9 @@ def create_app(settings: Settings, gw: Gateway | None = None) -> FastAPI:
     @app.middleware("http")
     async def guard(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         if request.method in ("POST", "DELETE") and request.url.path.startswith("/v1/"):
-            json_type = request.headers.get("content-type", "").split(";")[0].strip() == "application/json"
-            if not json_type or not origin_allowed(request.headers, request.url.scheme, settings.allow_origins):
+            why = csrf_problem(request, settings.allow_origins)
+            if why is not None:
+                log.info("%s %s 回 403：%s", request.method, request.url.path, why)
                 return rest.fail_response(gw, rest.Fail("forbidden"))
         resp = await call_next(request)
         token = getattr(request.state, "slid_token", None)

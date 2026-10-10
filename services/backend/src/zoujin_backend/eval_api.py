@@ -28,7 +28,7 @@ from typing import Any, NoReturn
 from sqlalchemy import insert, update
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
-from zoujin_worldsim import OCCURRED, SimState, initial_state, role_of, world_state
+from zoujin_worldsim import Opened, SimState, initial_state, opening, parse_checkpoint, world_state
 
 from zoujin_backend.config import Settings
 from zoujin_backend.db import store
@@ -149,7 +149,7 @@ class Session:
                     ids=self.ids,
                     now=recorded_at(),
                 )
-                Start(w, _scenarios(self._world_dir())).play(self.setup_doc)
+                play_setup(w, _scenarios(self._world_dir()), self.setup_doc)
                 for ev in w.events:
                     self.schemas.event(ev)
                 if w.events:
@@ -321,121 +321,45 @@ class Session:
         self._no("ending")
 
 
-class Start:
-    """起点：用 W-1 推演，结果写成这一局的初始事件（B-0 第 9 条）。
+def play_setup(w: Writer, scenarios: Mapping[str, Json], setup: Mapping[str, Json]) -> None:
+    """起点：用 W-1 的 `opening()` 推演（和评测运行器同一套），结果写成这一局的初始事件（B-0 第 9 条）。
 
-    - `place`：时钟 0 一个评测布置事件，改玩家所在地；
-    - 情景的节拍改动：时钟 0 一个事件；情景的事件按 t 排，每个之前先结算到它的 t；
-    - `scenario`：推演到底；`checkpoint`：`<情景>@<节拍>` 停在那个节拍的系统事件刚写完，`<情景>@t=<分钟>`
-      结算到那一刻再写一个只推进时钟的事件（含那一刻的期限规则）；
-    - `events`：起点时刻的评测布置，只给了 effects 的补成完整事件（api-contract 第 7 节）。
+    `place`、情景的节拍改动、情景的事件、到点的节拍和期限、只推进时钟的事件都由 `opening()` 给，这里只补成完整的
+    事件（eventId、summary、check）再按 seq 应用；之后在起点时刻追加 `events`（评测布置，api-contract 第 7 节）。
     """
-
-    def __init__(self, w: Writer, scenarios: Mapping[str, Json]) -> None:
-        self.w = w
-        self.scenarios = scenarios
-
-    def play(self, setup: Mapping[str, Json]) -> None:
-        w = self.w
-        if "place" in setup:
-            self._setup_event(0, [{"op": "set", "var": "var.player.location", "value": setup["place"]}], "開始地点")
-        if "scenario" in setup:
-            self._scenario(self.scenarios[setup["scenario"]], None)
-        else:
-            sc_id, _, at = str(setup["checkpoint"]).partition("@")
-            until = ("t", int(at[2:])) if at.startswith("t=") else ("beat", at)
-            self._scenario(self.scenarios[sc_id], until)
-        for e in setup.get("events", []):
-            self._setup_event(w.state["t"], e["effects"], e.get("note") or "評価の設定")
-
-    def _setup_event(self, t: int, effects: Sequence[Json], summary: str) -> None:
-        w = self.w
+    if "scenario" in setup:
+        sc_id, until = str(setup["scenario"]), None
+    else:
+        sc_id, until = parse_checkpoint(str(setup["checkpoint"]))
+    opened, _ = opening(w.book.world, w.state["role"], scenarios[sc_id], until, place=setup.get("place"))
+    for d in opened:
+        w.add(w.from_draft(d) if d["source"] == "schedule" else _setup_event(w, d))
+    for e in setup.get("events", []):
         w.add(
             w.full(
-                t=t,
+                t=w.state["t"],
                 dt=0,
                 actor="system",
                 type="action",
                 place=w.player_place,
-                summary=summary,
-                effects=effects,
+                summary=e.get("note") or "評価の設定",
+                effects=e["effects"],
                 check=SETUP_PASSED,
             )
         )
 
-    def _scenario(self, sc: Mapping[str, Json], until: tuple[str, Any] | None) -> None:
-        w = self.w
-        if sc.get("beats"):
-            effects = [{"op": "beat", "beat": b, **o} for b, o in sc["beats"].items()]
-            w.add(
-                w.full(
-                    t=0,
-                    dt=0,
-                    actor="system",
-                    type="action",
-                    origin="action",
-                    place=w.player_place,
-                    summary=f"情景 {sc['id']}",
-                    effects=effects,
-                    check=SETUP_PASSED,
-                )
-            )
-        start = int(role_of(w.book.world, w.state["role"])["startT"])
-        if self._until(start, until):
-            return
-        for e in sorted(sc.get("events", []), key=lambda e: e["t"]):
-            if self._until(e["t"], until):
-                return
-            w.add(
-                w.full(
-                    t=e["t"],
-                    dt=0,
-                    actor="system",
-                    type="action",
-                    origin="action",
-                    place=w.player_place,
-                    summary=e.get("note") or f"情景 {sc['id']}",
-                    effects=e["effects"],
-                    check=SETUP_PASSED,
-                )
-            )
-        if until is None:
-            w.settle(None)
-        else:
-            self._until(None, until)
 
-    def _until(self, t2: int | None, until: tuple[str, Any] | None) -> bool:
-        """结算到 t2，碰到检查点就停；返回停没停。"""
-        w = self.w
-        if until is None:
-            w.settle(t2)
-            return False
-        kind, x = until
-        if kind == "t":
-            if t2 is None or t2 >= x:
-                self._move_clock(int(x))
-                return True
-            w.settle(t2)
-            return False
-        written = w.settle(t2, stop_after=x)
-        return any(
-            any(f.get("op") == "beat" and f.get("beat") == x and f.get("to") in OCCURRED for f in e["effects"])
-            for e in written
-        )
-
-    def _move_clock(self, t2: int) -> None:
-        w = self.w
-        w.settle(t2)
-        if w.state["t"] < t2:
-            w.add(
-                w.full(
-                    t=t2,
-                    dt=0,
-                    actor="system",
-                    type="action",
-                    place=w.player_place,
-                    summary="時が過ぎた",
-                    effects=[],
-                    check=SETUP_PASSED,
-                )
-            )
+def _setup_event(w: Writer, d: Opened) -> Json:
+    """开局地点、情景、只推进时钟的事件：summary 用 `opening()` 给的 note。"""
+    e = d["event"]
+    return w.full(
+        t=e["t"],
+        dt=e["dt"],
+        actor=e["actor"],
+        type=e["type"],
+        origin=e.get("origin"),
+        place=e["place"],
+        summary=d.get("note") or "評価の設定",
+        effects=e["effects"],
+        check=SETUP_PASSED,
+    )

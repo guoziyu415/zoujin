@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
 
 from zoujin_backend.mock import rest, ws
 from zoujin_backend.mock.core import Config, Mock
-from zoujin_backend.origin import origin_allowed
+from zoujin_backend.origin import csrf_problem
+
+log = logging.getLogger("zoujin.mock")
 
 
 def create_app(config: Config | None = None) -> FastAPI:
@@ -27,8 +30,9 @@ def create_app(config: Config | None = None) -> FastAPI:
         """会改数据的 REST（POST、DELETE）要 JSON 内容类型和对的 Origin，否则 403（第 0 节）。"""
         m: Mock = app.state.mock
         if request.method in ("POST", "DELETE") and request.url.path.startswith("/v1/"):
-            json_type = request.headers.get("content-type", "").split(";")[0].strip() == "application/json"
-            if not json_type or not origin_allowed(request.headers, request.url.scheme, m.config.allow_origins):
+            why = csrf_problem(request, m.config.allow_origins)
+            if why is not None:
+                log.info("%s %s 回 403：%s", request.method, request.url.path, why)
                 return rest.fail_response(m, rest.Fail("forbidden"))
         return await call_next(request)
 
