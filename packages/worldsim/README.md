@@ -6,6 +6,7 @@
 | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/zoujin_worldsim/sim.py`         | 一口气推演 `Sim`（`run` / `resume` / `arrival_delta` / `classify` / `value_requires`），从参考实现原样移植，开局状态按身份读                                                                                           |
 | `src/zoujin_worldsim/incremental.py` | 逐事件推演：`initial_state` / `apply` / `settle` / `world_state` / `check_effects`，加上 `classify` / `predict` / `arrival_delta`                                                                                      |
+| `src/zoujin_worldsim/opening.py`     | 开局到起点：`opening` / `parse_checkpoint`，eval_api 的 setup 里 `checkpoint`、`scenario`、`place` 三种起点（B-0 和评测运行器共用）                                                                                    |
 | `reference/`                         | 参考实现 `worldsim.py`（R-0 从项目文件夹 `data/spikes/pipeline/` 原样搬来），是黄金文件的来源；同目录还有数据的工具 `build_world.py`、`review_sheet.py`、`check_evals.py`、`check_probes.py`，它们从包 import 推演规则 |
 | `tests/golden/`                      | 参考实现生成的黄金文件和生成脚本 `gen_golden.py`；CI 重跑生成脚本查一致                                                                                                                                                |
 
@@ -27,6 +28,21 @@ drafts, s = settle(world, s, s["t"])
 - 草稿是 `{event, beat, variant, reason, reasonCode}`：`event` 是契约 Event 的子集（`actor: "system"`、`origin: "schedule"`、`dt: 0`），B-0 补上 `eventId`、`seq`、`summary` 等再写库；`prevented` 的草稿带一句日语原因。
 - 期限每局写一个系统事件（`type: "action"`），`onDeadline` 一条都不成立时 `effects` 为空：状态靠它记下期限结算过了。
 - `check_effects` 按 `origin` 判：不是 `schedule` 的（叙事者的候选事件、导演事件）不能写 `{op: "beat", to: "happened"}`，也按 `StateVar.valueRequires`（契约 1.6）判。
+
+## 开局到起点
+
+```python
+from zoujin_worldsim import opening, parse_checkpoint
+
+sc_id, until = parse_checkpoint("sc.canon@beat.05")  # 或 "sc.king-hardened@t=1235"
+events, s = opening(world, "role.traveler", scenarios.get(sc_id), until, place=None)
+```
+
+- 顺序：`place` 在时钟 0 写一个事件 → 情景的节拍改动在时钟 0 合成一个事件 → `settle` 到身份的 `startT` → 情景的事件按 `t` 先 `settle` 再写 → 按起点停。`until=None` 推演到底（`scenario`）。
+- 停在节拍：写完这个节拍发生的事件就停，同一时刻后面的节拍留给下一次 `settle`。这一局里它没发生（被阻止），就报错：检查点写错了。
+- 停在某一刻：那一刻到点的节拍和期限都算；那一刻没有事件时写一个只推时钟的事件（`effects` 为空）。
+- 每个事件是一份草稿加 `source`（`place` / `scenario` / `schedule` / `clock`），非 `schedule` 的另带一句日语 `note`，B-0 拿去写 `summary`、在 trace 里标成评测布置。`event.seq` 从 1 起连续，B-0 补上其余字段写库。
+- `setup.events`（评测布置）不在这里，B-0 在起点之后照 api-contract 第 7 节追加。
 
 ## 改规则
 
