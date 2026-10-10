@@ -5,7 +5,7 @@
 | 用途 | 美术资产的具体规格：做模型、贴图的人照着做，UX 照着验收。art-direction 定目标和原则，这里把它落到每个资产上 |
 | 作者 | UX。技术数字（面数、贴图尺寸、骨骼）以 frontend-design 10.6 和 art-direction 9.2 为准，这里只引用 |
 | 依据 | art-direction v1.3（第 4〜7、9 节）；ux-design 5.1（身份）、6.3（镜头）、11.1（结局演出的站位）；世界模型 `worlds/hashire-merosu/1.0.0-draft/world.json` 的 `characters`、`items`；原作青空文库本（`worlds/hashire-merosu/sources/`）；A-0 卡（`docs/tasks/m2-0/A-0.md`） |
-| 范围 | M2 切片要的（dev-plan M2-0）：梅洛斯、老爺、旅人三个人物；广场的材质。广场的平面和太阳轨迹已经在 art-direction 3、4.1 和前端 F-2a 的 `assets/scenes/syracuse-square/layout.json` 里，这里不重复。其余人物和场景在 M3 补 |
+| 范围 | M2 切片要的（dev-plan M2-0）：梅洛斯、老爺、旅人三个人物；切片结局里的其余人物（走动版的精度）；广场的材质。广场的平面和太阳轨迹已经在 art-direction 3、4.1 和前端 F-2a 的 `assets/scenes/syracuse-square/layout.json` 里，这里不重复。其余人物和场景在 M3 补 |
 | 最近更新 | 2026-10-10 |
 
 ## 文件
@@ -17,6 +17,8 @@
 | [characters/traveler.md](characters/traveler.md) | 玩家・旅人 |
 | [characters/views.svg](characters/views.svg) | 三个人物的三视图（正、侧、背）和同比例的身高对照 |
 | [characters/silhouettes.svg](characters/silhouettes.svg) | 60px 剪影对照（探索镜头里的大小） |
+| [characters/ending-cast.md](characters/ending-cast.md) | 切片结局里的其余人物：セリヌンティウス、王、警吏、群众、緋のマントの少女（走动版） |
+| [characters/ending-cast.svg](characters/ending-cast.svg) | 结局人物的正面颜色、60px 剪影、从群众背后看找不找得到 |
 | [plaza-materials.md](plaza-materials.md) | 广场材质清单定稿 |
 
 ## 所有人物共用的规则
@@ -31,7 +33,7 @@
 | 町の老爺 | 1.68 m（驼背后头顶约 1.56 m） | 7 | 瘦，驼背 |
 | 旅人（玩家） | 1.68 m | 7.25 | 中等偏瘦，不分男女（见 traveler.md） |
 
-以后的人物先按这个对齐：王 1.82 m 最高，セリヌンティウス 1.72 m 最宽。
+结局里的人物（ending-cast.md）按这个对齐：王 1.82 m 最高，セリヌンティウス 1.72 m 最宽，緋のマントの少女约 1.50 m。
 
 ### 颜色
 
@@ -100,5 +102,5 @@
 
 ## 以后再补
 
-- 其余人物（王、セリヌンティウス、妹、花婿、フィロストラトス、警吏、群众）的服装表，和石屋の弟子、村の牧童两个身份：M3，A-0 过了以后。
+- 其余人物（妹、花婿、フィロストラトス）的服装表，王和セリヌンティウス的对话版（脸、口型），和石屋の弟子、村の牧童两个身份：M3，A-0 过了以后。
 - 王座之间、村子、归途的材质：M3，随场景设计一起出。
