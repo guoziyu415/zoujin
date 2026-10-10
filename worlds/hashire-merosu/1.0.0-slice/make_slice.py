@@ -97,8 +97,8 @@ def make_slice(src: dict[str, Any]) -> dict[str, Any]:
     # 第二、三幕在切片里只在后台结算，去处不会出现；落在归途的那个去掉，其余照旧
     acts["act.3"]["exits"] = [e for e in acts["act.3"]["exits"] if e["id"] != "exit.3.road"]
 
-    # ② 玩家不会被抓：叙事者提交 arrested 会被 R2 按取值拒掉（hostage 留着：全局规则和「あなたが身代わりになった」要它，
-    #    切片里进不了王城，按地点就做不到）
+    # ② 玩家不会被抓：叙事者提交 arrested 会被第 3 步按取值拒掉（bad-value）。hostage 留着：全局规则和
+    #    「あなたが身代わりになった」要它，切片里进不了王城，按地点就做不到
     custody = by_id(w["stateVars"], "var.player.custody")
     custody["values"].remove("arrested")
     del custody["valueLabels"]["arrested"]

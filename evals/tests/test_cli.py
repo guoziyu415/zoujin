@@ -52,7 +52,7 @@ def test_slice_runs_the_slice_cases_on_the_slice_world(tmp_path: Path, monkeypat
     ids = [json.loads(line)["id"] for f in sorted((REPO / "evals/slice").glob("E*.jsonl")) for line in f.open()]
     assert "1.0.0-slice" in got["meta"]["worldModelVersion"]
     assert sorted(c["id"] for c in got["cases"]) == sorted(ids)
-    assert Path(os.environ["ZJ_WORLD"]) == Path("worlds/hashire-merosu/1.0.0-slice/world.json")
+    assert os.environ["ZJ_WORLD"] == str(REPO / "worlds/hashire-merosu/1.0.0-slice/world.json")  # 绝对路径
 
 
 LIVE = ["--mode", "live", "--max-item-usd", "1", "--max-google-usd", "30", "--max-claude-usd", "10"]

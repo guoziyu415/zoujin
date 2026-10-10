@@ -71,7 +71,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return code
 
     os.environ["ZJ_MODEL"] = a.mode  # B-0 按它选假模型或回放
-    os.environ["ZJ_WORLD"] = str(a.world)  # B-0 按它读世界模型（--slice 时是切片版）
+    os.environ["ZJ_WORLD"] = str(a.world.resolve())  # B-0 按它读世界模型（--slice 时是切片版），绝对路径
     api = load_backend()
     world = WorldIndex(json.loads(a.world.read_text(encoding="utf-8")))
     opts = Options(
