@@ -19,8 +19,8 @@ from starlette.websockets import WebSocketState
 
 from zoujin_backend.mock.core import COOKIE, Mock
 from zoujin_backend.mock.live import Link, Live
-from zoujin_backend.mock.origin import origin_allowed
 from zoujin_backend.mock.state import Playthrough
+from zoujin_backend.origin import origin_allowed
 
 log = logging.getLogger("zoujin.mock")
 

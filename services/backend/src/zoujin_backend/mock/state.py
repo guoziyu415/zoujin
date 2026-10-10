@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
-from zoujin_backend.mock.ids import IdGen
+from zoujin_backend.ids import IdGen
 
 Json = Any
 

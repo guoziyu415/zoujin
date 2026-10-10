@@ -1,0 +1,34 @@
+{
+  "note": "B-0 的最小剧本（卡第 10 条）：旅人在广场对市の老爺说见过一个村里的牧人 → 提取出两个候选事件：老爺知道了メロス是牧人（有 effects，通过）；老爺把王的事全说了、让节拍 beat.03 直接发生（候选事件不能让节拍发生，被否决）。台词和摘要都是为测试写的。",
+  "rules": [
+    {
+      "kind": "extract",
+      "when": { "character": "char.old-man", "playerContains": "牧人" },
+      "output": {
+        "candidates": [
+          {
+            "actor": "player",
+            "type": "say",
+            "origin": "turn",
+            "summary": "旅人は老爺に、村の牧人らしい若者を見かけたと話した",
+            "causes": [],
+            "effects": [{ "op": "learn", "character": "char.old-man", "fact": "fact.melos-shepherd" }]
+          },
+          {
+            "actor": "char.old-man",
+            "type": "say",
+            "origin": "turn",
+            "summary": "老爺が、メロスに王のことをすべて話した",
+            "causes": [],
+            "effects": [{ "op": "beat", "beat": "beat.03", "to": "happened" }]
+          }
+        ]
+      }
+    },
+    {
+      "kind": "reply",
+      "when": { "character": "char.old-man", "playerContains": "牧人" },
+      "output": { "text": "……牧人か。この市にも、昔は人が集まったものじゃ。" }
+    }
+  ]
+}

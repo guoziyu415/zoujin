@@ -24,11 +24,11 @@ import uvicorn
 from websockets.exceptions import ConnectionClosed
 from websockets.sync.client import ClientConnection, connect
 from websockets.typing import Origin
+from zoujin_backend.ids import IdGen
 from zoujin_backend.mock import scripts
 from zoujin_backend.mock.app import create_app
 from zoujin_backend.mock.core import COOKIE, REPO, Config, Mock
-from zoujin_backend.mock.ids import IdGen
-from zoujin_backend.mock.schemas import SERVER, SchemaBook, SchemaError
+from zoujin_backend.schemas import SERVER, SchemaBook, SchemaError
 
 Json = Any
 

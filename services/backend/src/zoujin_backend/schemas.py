@@ -1,4 +1,7 @@
-"""发出前的自检（B-1「自检」）：先用 packages/contracts 生成的 pydantic 类型构造，再按 C-1 的 JSON Schema 校验。"""
+"""发出前的自检：先用 packages/contracts 生成的 pydantic 类型构造，再按 JSON Schema 校验。
+
+mock（B-1）发的每条消息和响应、网关（B-0）发的每条消息和响应、叙事者写库前的每个事件都过这里。
+"""
 
 from __future__ import annotations
 
@@ -12,12 +15,13 @@ from jsonschema import Draft202012Validator
 from pydantic import TypeAdapter
 from referencing import Registry
 from referencing.jsonschema import DRAFT202012
-from zoujin_contracts.generated import api
+from zoujin_contracts.generated import api, data
 
 Json = Any
 
 SERVER = "api/ws/server.schema.json"
 CLIENT = "api/ws/client.schema.json"
+EVENT = "data/event.schema.json"
 
 
 class SchemaError(Exception):
@@ -70,7 +74,7 @@ class SchemaBook:
 
     def build(self, base: str, ref: str, doc: Json, adapter: TypeAdapter[Any] | None = None) -> Json:
         """用生成的类型构造（解析再导出），再按 Schema 校验；不过就抛 SchemaError。"""
-        ta = adapter or rest_adapter(self.title(base, ref))
+        ta = adapter or (data_adapter if base.startswith("data/") else rest_adapter)(self.title(base, ref))
         try:
             out = ta.dump_python(ta.validate_python(doc), mode="json", by_alias=True, exclude_unset=True)
         except ValueError as e:
@@ -82,6 +86,10 @@ class SchemaBook:
 
     def server_message(self, doc: Json) -> Json:
         return self.build(SERVER, "#", doc, server_adapter())
+
+    def event(self, doc: Json) -> Json:
+        """数据契约的 Event（叙事者写库前）。"""
+        return self.build(EVENT, "#/$defs/Event", doc)
 
     def client_errors(self, doc: Json) -> list[str]:
         return self.errors(CLIENT, "#", doc)
@@ -106,3 +114,8 @@ def server_adapter() -> TypeAdapter[Any]:
 @cache
 def rest_adapter(title: str) -> TypeAdapter[Any]:
     return TypeAdapter(getattr(api, title))
+
+
+@cache
+def data_adapter(title: str) -> TypeAdapter[Any]:
+    return TypeAdapter(getattr(data, title))

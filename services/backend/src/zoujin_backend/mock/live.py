@@ -14,12 +14,12 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Any
 
-from zoujin_backend.mock import audio
-from zoujin_backend.mock.clock import Labels
-from zoujin_backend.mock.schemas import SchemaBook, SchemaError
+from zoujin_backend import audio
+from zoujin_backend.clock import Labels
 from zoujin_backend.mock.scripts import Step
 from zoujin_backend.mock.state import Playthrough
 from zoujin_backend.mock.templates import MISSING, TemplateError, render
+from zoujin_backend.schemas import SchemaBook, SchemaError
 
 log = logging.getLogger("zoujin.mock")
 

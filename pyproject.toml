@@ -60,3 +60,5 @@ testpaths = ["services", "packages", "evals"]
 norecursedirs = ["reference", ".venv", "node_modules"]
 # 测试禁网（dev-plan 2.4）：只放行本机，PostgreSQL 服务容器连得上，真模型连不上。
 addopts = "--import-mode=importlib --disable-socket --allow-unix-socket --allow-hosts=127.0.0.1,::1,localhost"
+# db：要真的 PostgreSQL（DATABASE_URL）；没设时根目录的 conftest.py 让它们跳过，CI 的 db 任务专跑这些
+markers = ["db: 要真的 PostgreSQL（DATABASE_URL），CI 的 db 任务里跑"]
