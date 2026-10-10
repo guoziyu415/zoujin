@@ -7,6 +7,8 @@ export default tseslint.config(
   {
     ignores: [
       "**/node_modules/**",
+      "**/dist/**",
+      "**/test-results/**",
       ".venv/**",
       "spikes/**",
       "docs/**",
@@ -28,6 +30,10 @@ export default tseslint.config(
     files: [
       "assets/pipeline/**/*.mjs",
       "packages/contracts/gen/**/*.mjs",
+      "apps/web/scripts/**/*.mjs",
+      "apps/web/*.config.ts",
+      "apps/web/scene-dir.ts",
+      "apps/web/tests/e2e/**/*.ts",
       "*.js",
     ],
     languageOptions: { globals: globals.node },

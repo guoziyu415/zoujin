@@ -1,0 +1,85 @@
+# 网页前端（F-2b）：单元测试、打包体积预算、世界屏幕的 Playwright 验收（无头 Chromium + 软件渲染）。
+# 场景生成物不进仓库，这里用草稿档生成广场（和 assets.yml 同一条命令），按流水线、布局和锁文件缓存；
+# 截图作为构件上传，给 UX 看。
+name: web
+
+on:
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "assets/pipeline/plaza/**"
+      - "assets/pipeline/package.json"
+      - "assets/scenes/**"
+      - "assets/budgets.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/web.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apps/web/**"
+      - "assets/pipeline/plaza/**"
+      - "assets/pipeline/package.json"
+      - "assets/scenes/**"
+      - "assets/budgets.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/web.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  world:
+    name: unit tests, bundle budget, world screen e2e
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      # where the plaza gets built and the web app reads it (scene-dir.ts); the runner context isn't available in job env
+      - run: echo "ZOUJIN_SCENE_ROOT=$RUNNER_TEMP/scenes" >> "$GITHUB_ENV"
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: plaza draft build from the cache
+        id: scene
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/scenes/syracuse-square
+          key: plaza-draft-${{ hashFiles('assets/pipeline/plaza/**', 'assets/scenes/syracuse-square/layout.json', 'assets/pipeline/package.json', 'pnpm-lock.yaml') }}
+      - uses: astral-sh/setup-uv@v6
+        if: steps.scene.outputs.cache-hit != 'true'
+        with:
+          enable-cache: true
+          cache-dependency-glob: assets/pipeline/plaza/requirements.txt
+      - name: build the plaza (draft lightmaps) when the cache missed
+        if: steps.scene.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1
+          uv venv --python 3.13 "$RUNNER_TEMP/bpy"
+          uv pip install --python "$RUNNER_TEMP/bpy/bin/python" -r assets/pipeline/plaza/requirements.txt
+          BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/plaza/build.sh draft "$ZOUJIN_SCENE_ROOT/syracuse-square"
+      - name: unit tests (navmesh on the built plaza, sun)
+        run: pnpm --filter @zoujin/web test
+      - name: build
+        run: pnpm --filter @zoujin/web build
+      - name: bundle budget (shell <= 120 KB, 3D chunk <= 250 KB, brotli)
+        run: pnpm --filter @zoujin/web check:bundle
+      - name: Chromium for Playwright
+        run: pnpm --filter @zoujin/web exec playwright install --with-deps chromium
+      - name: world screen e2e (first screen, sunset shadow line, draw calls, walking, console)
+        run: pnpm --filter @zoujin/web e2e
+      - name: screenshots for UX
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: world-screenshots
+          path: apps/web/test-results/
+          retention-days: 14
+          if-no-files-found: ignore
