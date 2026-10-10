@@ -163,6 +163,24 @@ def test_the_guards_say_each_line_once_and_the_arrest_always_plays() -> None:
     assert lines_of([(walk_to("place.syracuse-square", 1201), {"beat": "beat.04"})]) == [None]  # 不在场
 
 
+def test_after_the_promise_the_guards_tell_it() -> None:
+    """S-077 ⑪：立约以后第一次走到门口，不管之前挡过几次，警吏说出约定，玩家知道了；之后「二度は言わぬ」没说过就说。"""
+    after, promised = walk_to(GROUND, 1201), walk_to(GROUND, 1231)
+    told = ["警吏が、あなたの前に槍を下ろした。", "下がれ。メロスとかいう羊飼いなら、王と約束をした。",
+            "三日目の日没までに戻らねば、身代わりの石工セリヌンティウスが磔だ。"]  # fmt: skip
+    assert lines_of([(promised, GATE), (promised, GATE), (promised, GATE)]) == [told, [NOT_TWICE], None]
+    seen_both = lines_of([(after, {"beat": "beat.04"}), (after, GATE), (promised, GATE), (promised, GATE)])
+    assert seen_both[2:] == [told, None]  # 两句都说过了也照样说出约定，之后交给叙事者
+    just_before = walk_to(GROUND, 1229)  # 立约以前只赶人
+    assert lines_of([(after, {"beat": "beat.04"}), (just_before, GATE)])[1] == [NOT_TWICE]
+    p = pick_set_piece(SLICE, promised, GATE, set())
+    assert p is not None and p["learns"] == [{"character": "player", "fact": "fact.promise"}]
+    assert not knows(SLICE, promised, "player", "fact.promise")
+    learns = [{"op": "learn", **x} for x in p["learns"]]  # B-3 和演出同一次提交
+    heard = apply(SLICE, promised, {"t": promised["t"], "dt": 0, "origin": "turn", "effects": learns})
+    assert knows(SLICE, heard, "player", "fact.promise")
+
+
 def test_the_workshop_light_goes_out_once() -> None:
     yard = {"act": "move", "target": "place.stonemason-workshop"}
     door = {"act": "examine", "target": "obj.workshop-door"}
@@ -191,6 +209,7 @@ def test_both_exits_land_on_the_execution_ground_at_1730_and_play_to_the_canon_e
 ) -> None:
     s = jump(act1_end(), exit_id)
     assert s["t"] == 5370
+    assert knows(SLICE, s, "player", "fact.promise")  # 幕末页算玩家知道约定（S-077 ⑫）
     assert s["vars"]["var.act.current"] == "act.4"
     assert s["vars"]["var.player.location"] == GROUND
     assert (s["locations"]["char.old-man"], s["spots"]["char.old-man"]) == (GROUND, old_man_spot)

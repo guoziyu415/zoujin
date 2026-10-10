@@ -26,6 +26,8 @@ GROUND = "place.execution-ground"
 # 跳转时的人物去向（S-077 ⑦）：老爺到刑场，フィロストラトス去进城的路（结局不上场）
 OLD_MAN_TO_GROUND = {"op": "relocate", "character": "char.old-man", "place": GROUND}
 PHILOSTRATUS_TO_ROAD = {"op": "relocate", "character": "char.philostratus", "place": "place.road-to-city"}
+# 幕末页算玩家知道约定（S-077 ⑫，PM 10-10）：三条落地都写。约定没成立（beat.05 没发生）时事实不成立，knows() 照样算不知道
+PLAYER_KNOWS_PROMISE = {"op": "learn", "character": "player", "fact": "fact.promise"}
 
 # 第一幕的两个去处（S-077 ④⑤；副题的后半：UX 文案表；落点和落地句：前端 #22 的位置点，UX `ux/slice/jump-transition.md`「落地」）
 SLICE_EXITS: list[dict[str, Any]] = [
@@ -37,7 +39,7 @@ SLICE_EXITS: list[dict[str, Any]] = [
         "place": GROUND,
         "t": T_JUMP,
         "spot": "ground-west",
-        "effects": [{**OLD_MAN_TO_GROUND, "spot": "stake-front"}, PHILOSTRATUS_TO_ROAD],
+        "effects": [{**OLD_MAN_TO_GROUND, "spot": "stake-front"}, PHILOSTRATUS_TO_ROAD, PLAYER_KNOWS_PROMISE],
         "arrival": {"line": "刑場の西のはずれ。ここからなら、西の門をくぐる者が、だれより先に見える。"},
     },
     {
@@ -49,7 +51,7 @@ SLICE_EXITS: list[dict[str, Any]] = [
         "t": T_JUMP,
         "requires": [{"var": "var.player.walkedOldManHome", "op": "==", "value": True}],
         "spot": "stake-front",
-        "effects": [{**OLD_MAN_TO_GROUND, "spot": "stake-front-side"}, PHILOSTRATUS_TO_ROAD],
+        "effects": [{**OLD_MAN_TO_GROUND, "spot": "stake-front-side"}, PHILOSTRATUS_TO_ROAD, PLAYER_KNOWS_PROMISE],
         "arrival": {
             "line": "三日のあいだ、老爺はあなたを家に置いてくれた。いまは二人で、刑場の前に立っている。",
             "opener": "char.old-man",
@@ -64,7 +66,7 @@ SLICE_PLAN: dict[str, Any] = {
     "place": GROUND,
     "t": T_JUMP,
     "spot": "stake-front",
-    "effects": [{**OLD_MAN_TO_GROUND, "spot": "ground-west"}, PHILOSTRATUS_TO_ROAD],
+    "effects": [{**OLD_MAN_TO_GROUND, "spot": "ground-west"}, PHILOSTRATUS_TO_ROAD, PLAYER_KNOWS_PROMISE],
     "arrival": {"line": "三日目の夕方。あなたは、刑場の近くに来ていた。"},
 }
 
@@ -73,14 +75,17 @@ SLICE_PLAN: dict[str, Any] = {
 # セリヌンティウス Iapetus）在 UX 的文案表，不写在这里。
 # 同一个时机按列表顺序取第一条条件满足的，所以有条件的写在前面。UX 10-10 的规则：警吏的两句各说一次；
 # 抓梅洛斯那场是导演好的，不因为「一次」被跳过，玩家之前已经被「下がれ…」挡过，那场里就改说「二度は言わぬ」；
-# 两句都说过以后，再走上去交给叙事者。
+# 两句都说过以后，再走上去交给叙事者。立约（beat.05）以后第一次走到门口，不管之前挡过几次，警吏赶人时说出约定，
+# 玩家就知道了（S-077 ⑪，PM 10-10；台词 UX 第 1 节「约定以后」），之后「二度は言わぬ」没说过就说。叫法统一成「警吏」（UX 10-10）。
 # 23:30 以后的「灯は消えていた」只出一次（走进院子和敲门共用）
 GATE = "place.castle"  # 王城门口的场景出口通往的地点（布局 exits[].place）；出口给 enabled，由判定拒掉（后端 10-10）
 WORKSHOP = "place.stonemason-workshop"
 WORKSHOP_DOOR = "obj.workshop-door"
-SPEAR = {"narration": "衛兵が、あなたの前に槍を下ろした。"}
+SPEAR = {"narration": "警吏が、あなたの前に槍を下ろした。"}
 STAND_BACK = {"speaker": "char.guards", "line": "下がれ、旅の者。ここから先は、通さぬ。"}
 NOT_TWICE = {"speaker": "char.guards", "line": "二度は言わぬ。下がれ。"}
+PROMISE_MADE = {"speaker": "char.guards", "line": "下がれ。メロスとかいう羊飼いなら、王と約束をした。"}
+PROMISE_TERMS = {"speaker": "char.guards", "line": "三日目の日没までに戻らねば、身代わりの石工セリヌンティウスが磔だ。"}
 TAKEN_IN = {"narration": "メロスは、王城の奥へ引かれていった。"}
 LIGHT_OUT = {"narration": "工房の灯は、いつのまにか消えていた。"}
 SLICE_SET_PIECES: list[dict[str, Any]] = [
@@ -102,9 +107,19 @@ SLICE_SET_PIECES: list[dict[str, Any]] = [
         "note": "第 1 节：跟着梅洛斯走到王城门口。梅洛斯回头看一眼、不说话是演出，不是台词",
     },
     {
+        "id": "piece.gate-promise",
+        "on": {"act": "go", "target": GATE, "refused": True},
+        "after": ["beat.05"],
+        "once": True,
+        "lines": [SPEAR, PROMISE_MADE, PROMISE_TERMS],
+        "learns": [{"character": "player", "fact": "fact.promise"}],
+        "inferred": True,
+        "note": "第 1 节「约定以后」：只说约定本身（日限、晚了人质死、人质是谁），不提深夜召人质、出发、王的耳语（S-077 ⑪）",
+    },
+    {
         "id": "piece.gate-again",
         "on": {"act": "go", "target": GATE, "refused": True},
-        "played": ["piece.gate-taken", "piece.gate-turned-away"],
+        "played": ["piece.gate-taken", "piece.gate-turned-away", "piece.gate-promise"],
         "notPlayed": ["piece.gate-taken-again"],
         "once": True,
         "lines": [NOT_TWICE],

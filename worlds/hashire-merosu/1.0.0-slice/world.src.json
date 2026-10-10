@@ -4952,6 +4952,11 @@
        "op": "relocate",
        "character": "char.philostratus",
        "place": "place.road-to-city"
+      },
+      {
+       "op": "learn",
+       "character": "player",
+       "fact": "fact.promise"
       }
      ],
      "arrival": {
@@ -4984,6 +4989,11 @@
        "op": "relocate",
        "character": "char.philostratus",
        "place": "place.road-to-city"
+      },
+      {
+       "op": "learn",
+       "character": "player",
+       "fact": "fact.promise"
       }
      ],
      "arrival": {
@@ -5010,6 +5020,11 @@
       "op": "relocate",
       "character": "char.philostratus",
       "place": "place.road-to-city"
+     },
+     {
+      "op": "learn",
+      "character": "player",
+      "fact": "fact.promise"
      }
     ],
     "arrival": {
@@ -5358,7 +5373,7 @@
    "once": true,
    "lines": [
     {
-     "narration": "衛兵が、あなたの前に槍を下ろした。"
+     "narration": "警吏が、あなたの前に槍を下ろした。"
     },
     {
      "speaker": "char.guards",
@@ -5379,7 +5394,7 @@
    "once": true,
    "lines": [
     {
-     "narration": "衛兵が、あなたの前に槍を下ろした。"
+     "narration": "警吏が、あなたの前に槍を下ろした。"
     },
     {
      "speaker": "char.guards",
@@ -5393,6 +5408,39 @@
    "note": "第 1 节：跟着梅洛斯走到王城门口。梅洛斯回头看一眼、不说话是演出，不是台词"
   },
   {
+   "id": "piece.gate-promise",
+   "on": {
+    "act": "go",
+    "target": "place.castle",
+    "refused": true
+   },
+   "after": [
+    "beat.05"
+   ],
+   "once": true,
+   "lines": [
+    {
+     "narration": "警吏が、あなたの前に槍を下ろした。"
+    },
+    {
+     "speaker": "char.guards",
+     "line": "下がれ。メロスとかいう羊飼いなら、王と約束をした。"
+    },
+    {
+     "speaker": "char.guards",
+     "line": "三日目の日没までに戻らねば、身代わりの石工セリヌンティウスが磔だ。"
+    }
+   ],
+   "learns": [
+    {
+     "character": "player",
+     "fact": "fact.promise"
+    }
+   ],
+   "inferred": true,
+   "note": "第 1 节「约定以后」：只说约定本身（日限、晚了人质死、人质是谁），不提深夜召人质、出发、王的耳语（S-077 ⑪）"
+  },
+  {
    "id": "piece.gate-again",
    "on": {
     "act": "go",
@@ -5401,7 +5449,8 @@
    },
    "played": [
     "piece.gate-taken",
-    "piece.gate-turned-away"
+    "piece.gate-turned-away",
+    "piece.gate-promise"
    ],
    "notPlayed": [
     "piece.gate-taken-again"
@@ -5429,7 +5478,7 @@
    "once": true,
    "lines": [
     {
-     "narration": "衛兵が、あなたの前に槍を下ろした。"
+     "narration": "警吏が、あなたの前に槍を下ろした。"
     },
     {
      "speaker": "char.guards",
