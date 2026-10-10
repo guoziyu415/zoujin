@@ -7,8 +7,13 @@
 - 会话上每种步骤一个方法，每次调用算一步，步骤号从 1 起，和用例 steps 的下标一致（delete_memory 的 from_step、
   retract 的 step、utterance_cleared 的 step 都按这个数）。每一步返回 StepResult。
 - 查询随时可调：state()、events()、memories()、trust()、utterance_cleared()、db_absent()、ending()。
+  new_playthrough() 之后查询都答新的一局；delete_playthrough() 之后 db_absent() 答被删的那局。
 - 没做的步骤和查询抛 EvalNotImplemented("名字")；回放里查不到抛 ReplayMissing。运行器按异常的类名认，
-  所以后端自己定义这两个类就行。会话上没有的方法也当作没做。
+  B-0 在 zoujin_backend.eval_api 里定义这两个类。会话上没有的方法也当作没做。
+- ZJ_MODEL（fake / replay）由运行器在调 setup() 之前设，后端每次 setup() 时读。
+- 模拟局（setup 带 persona + seed）：后端只按它定身份、起点和假模型的种子；AI 玩家在运行器里，按画像逐步调
+  say / act / propose / choose，玩家说过的话运行器自己记（2026-10-10 和后端定）。
+- check() 不是用例的步骤：S-2 用它把一个候选事件交给叙事者第 3、4 步，不提交。
 """
 
 from __future__ import annotations
@@ -36,7 +41,9 @@ class StepResult(TypedDict):
 
     reply: NotRequired[str | None]  # 人物回答的文字；人物没开口时 None
     characterTextMissing: NotRequired[bool]  # 人物开口了但没有文字（backend-design 3.1），记「无原话」
-    events: NotRequired[list[Event]]  # 这一步产生的全部候选事件，被否决的也给；提交了的带 eventId
+    # 这一步写进日志的全部事件，按 seq 排，都带 eventId 和 seq：候选事件（提交的和被否决的）和这一步里到点结算的
+    # 系统事件（origin = schedule）。被否决的给候选原本的 effects 加 check（日志里它的 effects 是空的，契约第 3 节）
+    events: NotRequired[list[Event]]
     clockMinutes: NotRequired[int]  # 时钟前进了几分钟
     safetyCard: NotRequired[SafetyCard]
     plan: NotRequired[dict[str, Json] | None]  # 幕末打算成行时的 plan（契约 Event.plan）
@@ -58,6 +65,11 @@ class EvalSession(Protocol):
     def silence(self, seconds: int) -> StepResult: ...
     def propose(self, text: str) -> StepResult: ...
     def choose(self, exit: str, en_route: int | None = None) -> StepResult: ...
+
+    def check(self, candidate: Mapping[str, Json], turn: Mapping[str, Json], model_checks: str = "scoped") -> Json:
+        """S-2：返回 {"check": CheckResult, "rules": [{"rule", "status": pass / fail / skipped, "reason"?}]}。
+        不提交。"""
+        ...
 
     def state(self) -> dict[str, Json]: ...  # 契约 3.1 的 WorldState
     def events(self) -> list[Event]: ...  # 这一局全部事件（含评测布置的、被否决的），按 seq

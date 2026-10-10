@@ -12,7 +12,6 @@ import pytest
 from zoujin_evals import CHECKS, RunContext, StepResult, WorldIndex
 from zoujin_evals.api import Event
 from zoujin_evals.results import SkipCheck
-from zoujin_evals.runner import run_check
 
 type MakeCtx = Callable[..., RunContext]
 type MakeEvent = Callable[..., Event]
@@ -359,18 +358,13 @@ def test_no_verbatim_quotes(make_ctx: MakeCtx) -> None:
     assert why is not None and "どうか許してやってください" in why
 
 
-def test_no_verbatim_quotes_persona_needs_player_lines(make_ctx: MakeCtx) -> None:
+def test_no_verbatim_quotes_in_a_simulated_run_uses_the_ai_players_lines(make_ctx: MakeCtx) -> None:
+    """模拟局：玩家的话是 AI 玩家实际走的步骤（运行器记的），不问后端。"""
     setup = {"role": "role.traveler", "persona": "persona.canon-follower", "seed": 1}
     ending = {"world": {"summary": "あなたは最後まで走り抜けると誓った。"}}
-    got = run_check(make_ctx(setup=setup, ending_=ending), 1, {"type": "no_verbatim_quotes"})
-    assert got == {
-        "index": 1,
-        "type": "no_verbatim_quotes",
-        "status": "skip",
-        "skip": {"code": "not-implemented", "name": "player_lines"},
-    }
-    lines = ["私は最後まで走り抜けると誓う"]
-    assert run("no_verbatim_quotes", make_ctx(setup=setup, ending_=ending, lines=lines), {}) is not None
+    assert run("no_verbatim_quotes", make_ctx(setup=setup, ending_=ending, played=[]), {}) is None
+    played = [{"to": "char.melos", "say": "私は最後まで走り抜けると誓う"}]
+    assert run("no_verbatim_quotes", make_ctx(setup=setup, ending_=ending, played=played), {}) is not None
 
 
 def test_director_not_sole_cause(make_ctx: MakeCtx, make_event: MakeEvent, sim_api: Any) -> None:

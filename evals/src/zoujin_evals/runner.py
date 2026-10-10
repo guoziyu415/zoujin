@@ -126,6 +126,10 @@ def run_once(api: EvalApi, case: Mapping[str, Json], world: WorldIndex, opts: Op
     results: list[StepResult] = []
     try:
         session = api.setup(case["setup"], mode=case.get("mode", "text"))
+        if "persona" in case["setup"]:
+            # 模拟局：AI 玩家在运行器里按画像逐步走（后端只按 persona、seed 定身份、起点和假模型的种子）。
+            # AI 玩家要真模型，M2 接上；现在这一次记「要真模型」
+            return {"run": i, "status": "skip", "checks": [], "skip": {"code": "needs-live-model"}, "traceIds": []}
         setup_events = _setup_events(session)
         for step in case.get("steps", []):
             results.append(call_step(session, step))

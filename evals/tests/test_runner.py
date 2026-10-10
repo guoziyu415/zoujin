@@ -72,6 +72,13 @@ def test_setup_not_implemented_skips_whole_case_once(world_ix: WorldIndex) -> No
     assert "results" not in got and api.calls == 1
 
 
+def test_simulated_run_needs_the_ai_player(world_ix: WorldIndex) -> None:
+    """后端接受 persona 的 setup 以后，AI 玩家在运行器里，要真模型：每一次记「要真模型」，不算整例跳过。"""
+    got = one("E7-001", Api(), world_ix)
+    assert "skip" not in got
+    assert [r["skip"] for r in got["results"]] == [{"code": "needs-live-model"}] * got["runs"]
+
+
 def test_step_not_implemented_skips_whole_case(world_ix: WorldIndex) -> None:
     got = one("E6-005", Api(), world_ix)  # 第 2 步 deleteMemory，会话上没有 delete_memory
     assert got["skip"] == {"code": "not-implemented", "name": "delete_memory"}

@@ -49,7 +49,6 @@ class ScriptedSession:
     cleared: set[int] = field(default_factory=set)
     db: dict[str, int] = field(default_factory=dict)
     ending_: dict[str, Any] | None = None
-    lines: list[str] | None = None
 
     def state(self) -> dict[str, Any]:
         return self.state_
@@ -74,24 +73,21 @@ class ScriptedSession:
             raise EvalNotImplemented("ending")
         return self.ending_
 
-    def player_lines(self) -> list[str]:
-        if self.lines is None:
-            raise EvalNotImplemented("player_lines")
-        return self.lines
-
 
 type MakeCtx = Callable[..., RunContext]
 
 
 @pytest.fixture
 def make_ctx() -> MakeCtx:
-    """make_ctx(steps=[…], results=[…], setup={…}, setup_events=[…], **ScriptedSession 的字段) → RunContext。"""
+    """make_ctx(steps=[…], results=[…], setup={…}, setup_events=[…], played=[…], **ScriptedSession 的字段)
+    → RunContext。played 是模拟局里 AI 玩家走的步骤。"""
 
     def make(
         steps: Sequence[Mapping[str, Any]] = (),
         results: Sequence[StepResult] = (),
         setup: Mapping[str, Any] | None = None,
         setup_events: list[Event] | None = None,
+        played: Sequence[Mapping[str, Any]] | None = None,
         **session: Any,
     ) -> RunContext:
         case = {
@@ -101,7 +97,14 @@ def make_ctx() -> MakeCtx:
             "steps": list(steps),
         }
         s: EvalSession = ScriptedSession(**session)  # type: ignore[assignment]
-        return RunContext(world=WORLD_IX, case=case, session=s, results=list(results), setup_events=setup_events)
+        return RunContext(
+            world=WORLD_IX,
+            case=case,
+            session=s,
+            results=list(results),
+            setup_events=setup_events,
+            played=None if played is None else list(played),
+        )
 
     return make
 

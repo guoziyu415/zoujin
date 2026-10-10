@@ -108,11 +108,15 @@ class RunContext:
     session: EvalSession
     results: list[StepResult]  # 第 n 步的结果是 results[n - 1]
     setup_events: list[Event] | None  # setup 刚结束时 events() 的结果；后端没做 events() 时 None
+    played: list[Mapping[str, Json]] | None = None  # 模拟局里 AI 玩家实际走的步骤（运行器记的）；普通用例 None
     _cache: dict[Hashable, Json] = field(default_factory=dict)
 
     # ---------- 用例 ----------
     @property
     def steps(self) -> list[Mapping[str, Json]]:
+        """这一次实际走的步骤：用例写好的，模拟局是 AI 玩家走的（和用例的 steps 同一种写法）。"""
+        if self.played is not None:
+            return self.played
         steps: list[Mapping[str, Json]] = self.case.get("steps", [])
         return steps
 
@@ -125,10 +129,7 @@ class RunContext:
         return max((n for n, s in enumerate(self.steps, 1) if step_kind(s) == "to"), default=None)
 
     def player_lines(self) -> list[str]:
-        """这一局玩家说过的话：用例的对话和幕末打算；模拟局（没有 steps）问后端要。"""
-        if "persona" in self.case["setup"]:
-            lines: list[str] = self.query("player_lines")
-            return lines
+        """这一局玩家说过的话：实际走的步骤里的对话和幕末打算（模拟局由运行器自己记，不问后端）。"""
         return [s["say"] for s in self.steps if "say" in s] + [s["propose"] for s in self.steps if "propose" in s]
 
     # ---------- 步骤的结果 ----------
