@@ -1,0 +1,48 @@
+{
+  "common": {
+    "deviceClass": "ios-390x844@3",
+    "os": "iOS 26",
+    "browser": "Safari",
+    "appVersion": "web-0.1.0"
+  },
+  "events": [
+    {
+      "name": "talk_turn",
+      "playthroughId": "pt_01K7AZ00000000000000000001",
+      "clientTs": "2026-10-10T07:00:00.123Z",
+      "t": 1290,
+      "props": {
+        "turnId": "turn_01K7AZ00000000000000000001",
+        "character": "char.melos",
+        "inputMode": "voice",
+        "clientReleaseToAudibleMs": 150,
+        "interrupted": false,
+        "noResponse": false
+      }
+    },
+    {
+      "name": "app_open",
+      "clientTs": "2026-10-10T06:59:00Z",
+      "props": {
+        "entry": "line",
+        "inAppBrowser": true
+      }
+    },
+    {
+      "name": "memory_book_opened",
+      "playthroughId": "pt_01K7AZ00000000000000000001",
+      "clientTs": "2026-10-10T07:01:00Z",
+      "props": {}
+    },
+    {
+      "name": "quality_changed",
+      "clientTs": "2026-10-10T06:59:05Z",
+      "props": {
+        "to": "L2",
+        "reason": "start",
+        "probeGpuMs": 7.3,
+        "assetMbps": 24
+      }
+    }
+  ]
+}

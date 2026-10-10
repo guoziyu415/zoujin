@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api/rest/auth-login.schema.json",
+  "title": "POST /v1/auth/login",
+  "description": "邀请码登录，成功后发会话 Cookie（第 1 节）",
+  "x-endpoint": {
+    "method": "POST",
+    "path": "/v1/auth/login",
+    "request": "#/$defs/LoginRequest",
+    "responses": {
+      "200": "me.schema.json#/$defs/MeResponse",
+      "401": "../error.schema.json#/$defs/ErrorResponse",
+      "429": "../error.schema.json#/$defs/ErrorResponse"
+    }
+  },
+  "$defs": {
+    "LoginRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inviteCode"],
+      "properties": {
+        "inviteCode": {
+          "description": "邀请码，不限格式（≤ 64 字），前端只去掉前后空格（C-1 评审定）",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "title": "LoginRequest"
+    }
+  }
+}

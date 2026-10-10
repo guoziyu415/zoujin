@@ -1,0 +1,8 @@
+{
+  "type": "turn_complete",
+  "turnId": "turn_01K7AZ00000000000000000001",
+  "audio": true,
+  "metrics": {
+    "serverReleaseToFirstAudioMs": 1180
+  }
+}

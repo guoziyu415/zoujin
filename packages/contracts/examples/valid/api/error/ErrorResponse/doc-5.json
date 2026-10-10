@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "daily_limit",
+    "message": "今日はここまでです",
+    "retryable": false,
+    "retryAfterSeconds": null
+  }
+}

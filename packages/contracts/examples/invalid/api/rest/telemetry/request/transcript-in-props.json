@@ -1,0 +1,18 @@
+{
+  "common": {
+    "deviceClass": "ios-390x844@3",
+    "os": "iOS 26",
+    "browser": "Safari",
+    "appVersion": "web-0.1.0"
+  },
+  "events": [
+    {
+      "name": "transcript_corrected",
+      "clientTs": "2026-10-10T07:00:00Z",
+      "props": {
+        "turnId": "turn_01K7AZ00000000000000000001",
+        "text": "王城に行くのか？"
+      }
+    }
+  ]
+}

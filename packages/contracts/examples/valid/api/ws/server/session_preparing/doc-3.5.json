@@ -1,0 +1,6 @@
+{
+  "type": "session_preparing",
+  "character": "char.melos",
+  "reason": "switch",
+  "etaMs": 800
+}

@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "teapot",
+    "message": "今日はここまでです",
+    "retryable": false,
+    "retryAfterSeconds": null
+  }
+}

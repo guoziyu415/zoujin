@@ -25,7 +25,11 @@ export default tseslint.config(
     languageOptions: { globals: globals.browser },
   },
   {
-    files: ["assets/pipeline/**/*.mjs", "*.js"],
+    files: [
+      "assets/pipeline/**/*.mjs",
+      "packages/contracts/gen/**/*.mjs",
+      "*.js",
+    ],
     languageOptions: { globals: globals.node },
   },
 );

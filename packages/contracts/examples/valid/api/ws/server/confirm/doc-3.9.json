@@ -1,0 +1,17 @@
+{
+  "type": "confirm",
+  "draftId": "draft_01K7AZ00000000000000000001",
+  "character": "char.king",
+  "prompt": "……本気で言っているのか。",
+  "options": [
+    {
+      "optionId": "yes",
+      "label": "本気だ"
+    },
+    {
+      "optionId": "no",
+      "label": "いや、違う"
+    }
+  ],
+  "timeoutSec": 30
+}

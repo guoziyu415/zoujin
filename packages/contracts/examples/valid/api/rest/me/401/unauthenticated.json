@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "unauthenticated",
+    "message": "もう一度ログインしてください",
+    "retryable": false,
+    "retryAfterSeconds": null
+  }
+}

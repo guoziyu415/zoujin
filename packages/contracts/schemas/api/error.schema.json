@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api/error.schema.json",
+  "title": "api/error",
+  "description": "错误（api-contract 第 5 节）",
+  "$defs": {
+    "ErrorCode": {
+      "description": "第 5 节的错误码，加第 1 节的 invalid_invite（登录 401）和 invalid_request（400：请求体、参数或 WebSocket 消息不合 Schema，是前端的毛病，不给玩家具体原因）（C-1 评审定）",
+      "type": "string",
+      "enum": [
+        "invalid_request",
+        "unauthenticated",
+        "forbidden",
+        "not_found",
+        "invalid_invite",
+        "active_playthrough_exists",
+        "idempotency_conflict",
+        "rate_limited",
+        "daily_limit",
+        "voice_unavailable",
+        "invalid_choice",
+        "internal"
+      ],
+      "title": "ErrorCode"
+    },
+    "ErrorBody": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable", "retryAfterSeconds"],
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "message": {
+          "description": "可以直接给玩家看的日语短句",
+          "type": "string",
+          "minLength": 1
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "retryAfterSeconds": {
+          "description": "rate_limited、daily_limit 时给",
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "title": "ErrorBody"
+    },
+    "ErrorResponse": {
+      "description": "REST 的错误响应（第 5 节）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["error"],
+      "properties": {
+        "error": {
+          "$ref": "#/$defs/ErrorBody"
+        },
+        "activePlaythrough": {
+          "description": "只在 active_playthrough_exists（409）时给，同 /v1/me，放在 error 外面（C-1 评审定）",
+          "$ref": "common.schema.json#/$defs/ActivePlaythrough"
+        }
+      },
+      "if": {
+        "properties": {
+          "error": {
+            "properties": {
+              "code": {
+                "const": "active_playthrough_exists"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "required": ["activePlaythrough"]
+      },
+      "else": {
+        "not": {
+          "required": ["activePlaythrough"]
+        }
+      },
+      "title": "ErrorResponse"
+    }
+  }
+}

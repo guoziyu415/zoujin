@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api/rest/memory-impact.schema.json",
+  "title": "GET /v1/playthroughs/{id}/memories/{memoryId}/impact",
+  "description": "删除确认里「不会撤销的后果」（2.7）",
+  "x-endpoint": {
+    "method": "GET",
+    "path": "/v1/playthroughs/{id}/memories/{memoryId}/impact",
+    "params": "../common.schema.json#/$defs/MemoryPathParams",
+    "responses": {
+      "200": "#/$defs/MemoryImpactResponse"
+    }
+  },
+  "$defs": {
+    "MemoryImpactResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["keeps", "voidsPromise"],
+      "properties": {
+        "keeps": {
+          "description": "没有就是 null",
+          "anyOf": [
+            {
+              "description": "已经发生、删除也不撤销的后果，一句话",
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "voidsPromise": {
+          "description": "true = 删除后这条记忆所属的约定变成 voided",
+          "type": "boolean"
+        }
+      },
+      "title": "MemoryImpactResponse"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "user": {
+    "userRef": "u_01K7AZ00000000000000000001"
+  },
+  "limits": {
+    "runsToday": 1,
+    "runsPerDay": 5,
+    "voiceMinutesLeft": 52
+  },
+  "activePlaythrough": null
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api/rest/playthrough-delete.schema.json",
+  "title": "DELETE /v1/playthroughs/{id}",
+  "description": "删除整局（2.9），后台按 data-design 5.2 L2 执行",
+  "x-endpoint": {
+    "method": "DELETE",
+    "path": "/v1/playthroughs/{id}",
+    "idempotencyKey": true,
+    "params": "../common.schema.json#/$defs/PlaythroughPathParams",
+    "responses": {
+      "202": null
+    }
+  }
+}

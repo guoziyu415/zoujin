@@ -1,0 +1,23 @@
+{
+  "type": "welcome",
+  "lastSeq": 45,
+  "voice": {
+    "enabled": true,
+    "degraded": false,
+    "minutesLeftToday": 40
+  },
+  "lastTurn": {
+    "turnId": "turn_01K7AZ00000000000000000001",
+    "character": "char.melos",
+    "status": "settled",
+    "playerText": "王城に行くのか？",
+    "characterText": "ああ、今すぐにだ。"
+  },
+  "pending": {
+    "reveal": null,
+    "confirm": null,
+    "actEnd": null,
+    "safetyPause": false,
+    "approach": null
+  }
+}

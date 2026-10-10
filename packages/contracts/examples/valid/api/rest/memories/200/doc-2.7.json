@@ -1,0 +1,41 @@
+{
+  "characters": [
+    {
+      "character": "char.selinuntius",
+      "relationLabel": "気を許している",
+      "relationLevel": 4,
+      "promises": [
+        {
+          "promiseId": "prm_01K7AZ00000000000000000001",
+          "text": "工房を守る",
+          "direction": "playerToCharacter",
+          "status": "open",
+          "eventId": "ev_01K7AZ00000000000000000050"
+        }
+      ],
+      "didForYou": [
+        {
+          "eventId": "ev_01K7AZ00000000000000000051",
+          "text": "警吏の前で、あなたをかばった"
+        }
+      ],
+      "youDid": [
+        {
+          "eventId": "ev_01K7AZ00000000000000000052",
+          "text": "深夜、そばに座っていた"
+        }
+      ],
+      "memories": [
+        {
+          "memoryId": "mem_01K7AZ00000000000000000001",
+          "kind": "shared-moment",
+          "text": "あの夜、隣に座っていてくれた人",
+          "t": 1500,
+          "tLabel": "一日目・深夜",
+          "via": "witnessed",
+          "promiseId": null
+        }
+      ]
+    }
+  ]
+}

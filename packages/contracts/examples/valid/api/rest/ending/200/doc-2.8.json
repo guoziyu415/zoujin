@@ -1,0 +1,82 @@
+{
+  "endingId": "end_01K7AZ00000000000000000001",
+  "world": {
+    "outcomeId": "in-time-king-unchanged",
+    "baseline": true,
+    "title": "間に合ったが、王は変わらなかった",
+    "epilogue": [
+      {
+        "sentence": "メロスは日没の直前に刑場へ駆け込んだ。",
+        "cites": ["ev_01K7AZ00000000000000000090"]
+      }
+    ],
+    "contrast": {
+      "original": "王は改心した。",
+      "yours": "王は改心しなかった。",
+      "beat": "beat.26"
+    }
+  },
+  "you": {
+    "title": "王の前で、黙らなかった旅人",
+    "fate": "王城の客人として、市に残った",
+    "didForYou": [
+      {
+        "sentence": "老爺が、あなたをメロスに引き合わせた",
+        "cites": ["ev_01K7AZ00000000000000000030"]
+      }
+    ],
+    "youDid": [
+      {
+        "sentence": "セリヌンティウスとの約束を果たした",
+        "cites": ["ev_01K7AZ00000000000000000060"]
+      }
+    ]
+  },
+  "characters": [
+    {
+      "character": "char.selinuntius",
+      "rank": 1,
+      "unchanged": false,
+      "original": "メロスを信じて待ち、抱き合った。",
+      "yours": [
+        {
+          "sentence": "工房の火を落とさずに、メロスを待ち続けた。",
+          "cites": ["ev_01K7AZ00000000000000000061"]
+        }
+      ]
+    },
+    {
+      "character": "char.melos",
+      "rank": 2,
+      "unchanged": false,
+      "original": "日没の直前に刑場へ駆け込み、友と抱き合った。",
+      "yours": [
+        {
+          "sentence": "あなたが渡した水で、最後の坂を走り切った。",
+          "cites": ["ev_01K7AZ00000000000000000091"]
+        }
+      ]
+    },
+    {
+      "character": "char.philostratus",
+      "rank": null,
+      "unchanged": true
+    }
+  ],
+  "card": {
+    "title": "王の前で、黙らなかった旅人",
+    "subtitle": "王城の客人として、市に残った",
+    "characterLines": [
+      {
+        "character": "char.selinuntius",
+        "line": "あの夜、隣にいてくれた。"
+      },
+      {
+        "character": "char.melos",
+        "line": "おまえのおかげで、走り抜けた。"
+      }
+    ],
+    "contrast": "原作では王は改心した。あなたの世界では――",
+    "fallbackImageUrl": "/assets/endings/in-time-king-unchanged.2b7d.webp"
+  }
+}

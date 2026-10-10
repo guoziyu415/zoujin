@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api/rest/why.schema.json",
+  "title": "GET /v1/playthroughs/{id}/why",
+  "description": "「なぜこうなった？」（2.6）",
+  "x-endpoint": {
+    "method": "GET",
+    "path": "/v1/playthroughs/{id}/why",
+    "params": "../common.schema.json#/$defs/PlaythroughPathParams",
+    "query": "#/$defs/WhyQuery",
+    "responses": {
+      "200": "#/$defs/WhyResponse"
+    }
+  },
+  "$defs": {
+    "WhyQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target"],
+      "properties": {
+        "target": {
+          "description": "事件、节拍、关键时刻的 ID，或 forecast",
+          "anyOf": [
+            {
+              "$ref": "../../data/common.schema.json#/$defs/EventId"
+            },
+            {
+              "$ref": "../../data/common.schema.json#/$defs/BeatId"
+            },
+            {
+              "$ref": "../common.schema.json#/$defs/RevealId"
+            },
+            {
+              "const": "forecast"
+            }
+          ]
+        }
+      },
+      "title": "WhyQuery"
+    },
+    "WhyResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target", "chain", "collapsed"],
+      "properties": {
+        "target": {
+          "description": "同 query 的 target",
+          "anyOf": [
+            {
+              "$ref": "../../data/common.schema.json#/$defs/EventId"
+            },
+            {
+              "$ref": "../../data/common.schema.json#/$defs/BeatId"
+            },
+            {
+              "$ref": "../common.schema.json#/$defs/RevealId"
+            },
+            {
+              "const": "forecast"
+            }
+          ]
+        },
+        "chain": {
+          "description": "按时间正序，最长 12 步",
+          "type": "array",
+          "items": {
+            "$ref": "../common.schema.json#/$defs/WhyStep"
+          },
+          "maxItems": 12
+        },
+        "collapsed": {
+          "description": "中间折叠了几步",
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "title": "WhyResponse"
+    }
+  }
+}

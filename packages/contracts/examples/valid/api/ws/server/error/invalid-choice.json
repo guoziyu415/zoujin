@@ -1,0 +1,9 @@
+{
+  "type": "error",
+  "error": {
+    "code": "invalid_choice",
+    "message": "その道は選べません",
+    "retryable": false,
+    "retryAfterSeconds": null
+  }
+}

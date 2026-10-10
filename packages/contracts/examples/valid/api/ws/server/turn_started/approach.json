@@ -1,0 +1,7 @@
+{
+  "type": "turn_started",
+  "turnId": "turn_01K7AZ00000000000000000002",
+  "turnSeq": 2147483649,
+  "speaker": "char.old-man",
+  "reason": "approach"
+}

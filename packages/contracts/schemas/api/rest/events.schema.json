@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api/rest/events.schema.json",
+  "title": "GET /v1/playthroughs/{id}/events",
+  "description": "补拉事件（2.4），只含玩家可见投影",
+  "x-endpoint": {
+    "method": "GET",
+    "path": "/v1/playthroughs/{id}/events",
+    "params": "../common.schema.json#/$defs/PlaythroughPathParams",
+    "query": "#/$defs/EventsQuery",
+    "responses": {
+      "200": "#/$defs/EventsResponse"
+    }
+  },
+  "$defs": {
+    "EventsQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["afterSeq"],
+      "properties": {
+        "afterSeq": {
+          "$ref": "../common.schema.json#/$defs/LastSeq"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        }
+      },
+      "title": "EventsQuery"
+    },
+    "EventsResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["events", "lastSeq"],
+      "properties": {
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "../common.schema.json#/$defs/VisibleEvent"
+          },
+          "maxItems": 50
+        },
+        "lastSeq": {
+          "$ref": "../common.schema.json#/$defs/LastSeq"
+        }
+      },
+      "title": "EventsResponse"
+    }
+  }
+}

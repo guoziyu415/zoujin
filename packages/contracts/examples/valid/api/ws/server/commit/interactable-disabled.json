@@ -1,0 +1,30 @@
+{
+  "type": "commit",
+  "fromSeq": 46,
+  "seq": 46,
+  "turnId": "turn_01K7AZ00000000000000000002",
+  "events": [],
+  "patch": {
+    "clock": {
+      "t": 1310,
+      "tLabel": "約束の日・夜"
+    },
+    "interactables": {
+      "add": [
+        {
+          "id": "obj.market-stall",
+          "kind": "examine",
+          "spot": "market-west",
+          "label": "露店",
+          "enabled": false,
+          "estimatedMinutes": 0
+        }
+      ]
+    }
+  },
+  "memories": [],
+  "promises": [],
+  "narration": [],
+  "cue": null,
+  "reveal": null
+}

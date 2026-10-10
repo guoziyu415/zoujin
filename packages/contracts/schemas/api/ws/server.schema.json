@@ -1,0 +1,956 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api/ws/server.schema.json",
+  "title": "ServerMessage",
+  "description": "WebSocket 服务端 → 客户端的 JSON 消息（api-contract 3.3），按 type 区分",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/WelcomeMessage"
+    },
+    {
+      "$ref": "#/$defs/SessionPreparingMessage"
+    },
+    {
+      "$ref": "#/$defs/SessionReadyMessage"
+    },
+    {
+      "$ref": "#/$defs/TurnStartedMessage"
+    },
+    {
+      "$ref": "#/$defs/TranscriptMessage"
+    },
+    {
+      "$ref": "#/$defs/InterruptedMessage"
+    },
+    {
+      "$ref": "#/$defs/TurnCompleteMessage"
+    },
+    {
+      "$ref": "#/$defs/SuggestionsMessage"
+    },
+    {
+      "$ref": "#/$defs/TurnSettledMessage"
+    },
+    {
+      "$ref": "#/$defs/CommitMessage"
+    },
+    {
+      "$ref": "#/$defs/NarrationMessage"
+    },
+    {
+      "$ref": "#/$defs/ConfirmMessage"
+    },
+    {
+      "$ref": "#/$defs/ConfirmClosedMessage"
+    },
+    {
+      "$ref": "#/$defs/ApproachMessage"
+    },
+    {
+      "$ref": "#/$defs/ActionResultMessage"
+    },
+    {
+      "$ref": "#/$defs/ActEndedMessage"
+    },
+    {
+      "$ref": "#/$defs/ActPlanResultMessage"
+    },
+    {
+      "$ref": "#/$defs/ActTransitionMessage"
+    },
+    {
+      "$ref": "#/$defs/SafetyPauseMessage"
+    },
+    {
+      "$ref": "#/$defs/SafetyHintMessage"
+    },
+    {
+      "$ref": "#/$defs/SafetyResumedMessage"
+    },
+    {
+      "$ref": "#/$defs/EndingStartedMessage"
+    },
+    {
+      "$ref": "#/$defs/EndingReadyMessage"
+    },
+    {
+      "$ref": "#/$defs/TurnRetractResultMessage"
+    },
+    {
+      "$ref": "#/$defs/LimitsMessage"
+    },
+    {
+      "$ref": "#/$defs/DegradedMessage"
+    },
+    {
+      "$ref": "#/$defs/GoawayMessage"
+    },
+    {
+      "$ref": "#/$defs/ErrorMessage"
+    },
+    {
+      "$ref": "#/$defs/PongMessage"
+    },
+    {
+      "$ref": "#/$defs/EventRejectedMessage"
+    }
+  ],
+  "$defs": {
+    "WelcomeMessage": {
+      "description": "回应 hello（第 4 节）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "lastSeq", "voice", "lastTurn", "pending"],
+      "properties": {
+        "type": {
+          "const": "welcome"
+        },
+        "lastSeq": {
+          "$ref": "../common.schema.json#/$defs/LastSeq"
+        },
+        "voice": {
+          "$ref": "../common.schema.json#/$defs/Voice"
+        },
+        "lastTurn": {
+          "description": "这一局还没有对话时为 null",
+          "anyOf": [
+            {
+              "$ref": "../common.schema.json#/$defs/LastTurn"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pending": {
+          "$ref": "../common.schema.json#/$defs/Pending"
+        }
+      },
+      "title": "WelcomeMessage"
+    },
+    "SessionPreparingMessage": {
+      "description": "需要等待演出（人物转身、吸气）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "character", "reason", "etaMs"],
+      "properties": {
+        "type": {
+          "const": "session_preparing"
+        },
+        "character": {
+          "$ref": "../../data/common.schema.json#/$defs/CharacterId"
+        },
+        "reason": {
+          "type": "string",
+          "enum": ["switch", "rebuild", "reconnect"]
+        },
+        "etaMs": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "title": "SessionPreparingMessage"
+    },
+    "SessionReadyMessage": {
+      "description": "这个人物可以说话了",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "character", "voiceAvailable"],
+      "properties": {
+        "type": {
+          "const": "session_ready"
+        },
+        "character": {
+          "$ref": "../../data/common.schema.json#/$defs/CharacterId"
+        },
+        "voiceAvailable": {
+          "type": "boolean"
+        }
+      },
+      "title": "SessionReadyMessage"
+    },
+    "TurnStartedMessage": {
+      "description": "服务端发起的一轮：人物先开口（3.9、3.10）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "turnId", "turnSeq", "speaker", "reason"],
+      "properties": {
+        "type": {
+          "const": "turn_started"
+        },
+        "turnId": {
+          "$ref": "../../data/common.schema.json#/$defs/TurnId"
+        },
+        "turnSeq": {
+          "$ref": "../common.schema.json#/$defs/ServerTurnSeq"
+        },
+        "speaker": {
+          "$ref": "../../data/common.schema.json#/$defs/CharacterId"
+        },
+        "reason": {
+          "type": "string",
+          "enum": ["approach", "leaving", "confirm"]
+        }
+      },
+      "title": "TurnStartedMessage"
+    },
+    "TranscriptMessage": {
+      "description": "字幕。人物每一轮恰好一条 final = true；定稿可能晚于 turn_complete",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "turnId", "speaker", "text", "final"],
+      "properties": {
+        "type": {
+          "const": "transcript"
+        },
+        "turnId": {
+          "$ref": "../../data/common.schema.json#/$defs/TurnId"
+        },
+        "speaker": {
+          "$ref": "../common.schema.json#/$defs/Speaker"
+        },
+        "text": {
+          "description": "只有补转写也失败的人物定稿为 null",
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "final": {
+          "type": "boolean"
+        },
+        "source": {
+          "description": "只在人物的 final = true 上给（S-071）",
+          "type": "string",
+          "enum": ["live", "script", "fallback"]
+        }
+      },
+      "if": {
+        "properties": {
+          "final": {
+            "const": false
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        },
+        "not": {
+          "required": ["source"]
+        }
+      },
+      "else": {
+        "if": {
+          "properties": {
+            "speaker": {
+              "const": "player"
+            }
+          }
+        },
+        "then": {
+          "properties": {
+            "text": {
+              "type": "string"
+            }
+          },
+          "not": {
+            "required": ["source"]
+          }
+        },
+        "else": {
+          "required": ["source"],
+          "if": {
+            "properties": {
+              "text": {
+                "type": "null"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "source": {
+                "const": "fallback"
+              }
+            }
+          }
+        }
+      },
+      "title": "TranscriptMessage"
+    },
+    "InterruptedMessage": {
+      "description": "服务端确认打断",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "turnId"],
+      "properties": {
+        "type": {
+          "const": "interrupted"
+        },
+        "turnId": {
+          "$ref": "../../data/common.schema.json#/$defs/TurnId"
+        }
+      },
+      "title": "InterruptedMessage"
+    },
+    "TurnCompleteMessage": {
+      "description": "人物这一轮说完",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "turnId", "audio", "metrics"],
+      "properties": {
+        "type": {
+          "const": "turn_complete"
+        },
+        "turnId": {
+          "$ref": "../../data/common.schema.json#/$defs/TurnId"
+        },
+        "audio": {
+          "description": "false = 人物这一轮没有出声，前端立即进入 no-response",
+          "type": "boolean"
+        },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["serverReleaseToFirstAudioMs"],
+          "properties": {
+            "serverReleaseToFirstAudioMs": {
+              "description": "audio = false 时没有第一个音频分片，给 null（C-1 评审定）",
+              "anyOf": [
+                {
+                  "description": "收到 activity_end 到发出第一个音频分片（第 6 节）",
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "title": "TurnCompleteMessage"
+    },
+    "SuggestionsMessage": {
+      "description": "候选话语 2〜3 个（3.5）；新的一条替换旧的",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "character", "items"],
+      "properties": {
+        "type": {
+          "const": "suggestions"
+        },
+        "turnId": {
+          "$ref": "../../data/common.schema.json#/$defs/TurnId"
+        },
+        "character": {
+          "$ref": "../../data/common.schema.json#/$defs/CharacterId"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["text", "kind"],
+            "properties": {
+              "text": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "type": "string",
+                "enum": ["ask", "act", "accept", "decline"]
+              }
+            }
+          },
+          "minItems": 2,
+          "maxItems": 3
+        }
+      },
+      "title": "SuggestionsMessage"
+    },
+    "TurnSettledMessage": {
+      "description": "每一轮判完都推（3.4）；之后这一轮不能再作废",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "turnId", "outcome", "eventIds", "minutes"],
+      "properties": {
+        "type": {
+          "const": "turn_settled"
+        },
+        "turnId": {
+          "$ref": "../../data/common.schema.json#/$defs/TurnId"
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "committed",
+            "no_change",
+            "rejected",
+            "retracted",
+            "no_response",
+            "paused"
+          ]
+        },
+        "eventIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../../data/common.schema.json#/$defs/EventId"
+          }
+        },
+        "minutes": {
+          "$ref": "../common.schema.json#/$defs/Minutes"
+        }
+      },
+      "title": "TurnSettledMessage"
+    },
+    "CommitMessage": {
+      "description": "叙事者的一次提交，前端一次原子地应用（3.4）；覆盖 fromSeq〜seq（含两端）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "fromSeq",
+        "seq",
+        "events",
+        "patch",
+        "memories",
+        "promises",
+        "narration",
+        "cue",
+        "reveal"
+      ],
+      "properties": {
+        "type": {
+          "const": "commit"
+        },
+        "fromSeq": {
+          "$ref": "../common.schema.json#/$defs/Seq"
+        },
+        "seq": {
+          "$ref": "../common.schema.json#/$defs/Seq"
+        },
+        "turnId": {
+          "description": "没有 turnId 的 commit 来自到点的节拍、人物的打算、导演事件或幕切换",
+          "$ref": "../../data/common.schema.json#/$defs/TurnId"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "../common.schema.json#/$defs/VisibleEvent"
+          }
+        },
+        "patch": {
+          "$ref": "../common.schema.json#/$defs/SnapshotPatch"
+        },
+        "memories": {
+          "type": "array",
+          "items": {
+            "$ref": "../common.schema.json#/$defs/MemoryChange"
+          }
+        },
+        "promises": {
+          "type": "array",
+          "items": {
+            "$ref": "../common.schema.json#/$defs/PromiseUpdate"
+          }
+        },
+        "narration": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "cue": {
+          "anyOf": [
+            {
+              "$ref": "../common.schema.json#/$defs/Cue"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reveal": {
+          "anyOf": [
+            {
+              "$ref": "../common.schema.json#/$defs/Reveal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "title": "CommitMessage"
+    },
+    "NarrationMessage": {
+      "description": "不随事件的叙事一行（灰色地の文）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "line"],
+      "properties": {
+        "type": {
+          "const": "narration"
+        },
+        "line": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ref": {
+          "description": "服务端内部的来源标记（例：节拍 ID、离题提示的规则名），只给日志和评测对照；前端不用、不显示（C-1 评审定）",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "title": "NarrationMessage"
+    },
+    "ConfirmMessage": {
+      "description": "意图确认（3.9）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "draftId",
+        "character",
+        "prompt",
+        "options",
+        "timeoutSec"
+      ],
+      "properties": {
+        "type": {
+          "const": "confirm"
+        },
+        "draftId": {
+          "$ref": "../common.schema.json#/$defs/DraftId"
+        },
+        "character": {
+          "$ref": "../../data/common.schema.json#/$defs/CharacterId"
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "../common.schema.json#/$defs/ConfirmOption"
+          },
+          "minItems": 2
+        },
+        "timeoutSec": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "title": "ConfirmMessage"
+    },
+    "ConfirmClosedMessage": {
+      "description": "确认结束",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "draftId", "optionId", "by"],
+      "properties": {
+        "type": {
+          "const": "confirm_closed"
+        },
+        "draftId": {
+          "$ref": "../common.schema.json#/$defs/DraftId"
+        },
+        "optionId": {
+          "description": "null = 当作「不是」",
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "by": {
+          "type": "string",
+          "enum": ["button", "voice", "timeout"]
+        }
+      },
+      "title": "ConfirmClosedMessage"
+    },
+    "ApproachMessage": {
+      "description": "人物要走过来找你（3.10）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "character", "kind"],
+      "properties": {
+        "type": {
+          "const": "approach"
+        },
+        "character": {
+          "$ref": "../../data/common.schema.json#/$defs/CharacterId"
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["request", "news"]
+        }
+      },
+      "title": "ApproachMessage"
+    },
+    "ActionResultMessage": {
+      "description": "动作的判定结果（3.8）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "clientMsgId",
+        "status",
+        "eventIds",
+        "narration",
+        "minutes"
+      ],
+      "properties": {
+        "type": {
+          "const": "action_result"
+        },
+        "clientMsgId": {
+          "$ref": "../common.schema.json#/$defs/ClientMsgId"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["done", "refused", "partial"]
+        },
+        "eventIds": {
+          "type": "array",
+          "items": {
+            "$ref": "../../data/common.schema.json#/$defs/EventId"
+          }
+        },
+        "narration": {
+          "description": "一句故事里的说明；拒绝也在故事里说",
+          "type": "string",
+          "minLength": 1
+        },
+        "minutes": {
+          "$ref": "../common.schema.json#/$defs/Minutes"
+        }
+      },
+      "title": "ActionResultMessage"
+    },
+    "ActEndedMessage": {
+      "description": "幕结束，给出去处（3.11）；除 type 外和 ActEnd 同形",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "actId", "recapLines", "options", "freeform"],
+      "properties": {
+        "type": {
+          "const": "act_ended"
+        },
+        "actId": {
+          "$ref": "../../data/common.schema.json#/$defs/ActId"
+        },
+        "recapLines": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 2,
+          "maxItems": 4
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "../common.schema.json#/$defs/ActOption"
+          },
+          "minItems": 1
+        },
+        "freeform": {
+          "$ref": "../common.schema.json#/$defs/Freeform"
+        }
+      },
+      "title": "ActEndedMessage"
+    },
+    "ActPlanResultMessage": {
+      "description": "幕末说出的打算能不能成行（3.11）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "accepted", "narration", "triesLeft"],
+      "properties": {
+        "type": {
+          "const": "act_plan_result"
+        },
+        "clientMsgId": {
+          "description": "用文字说打算时：act_propose 的 clientMsgId。和 turnId 正好有一个（C-1 评审定）",
+          "$ref": "../common.schema.json#/$defs/ClientMsgId"
+        },
+        "turnId": {
+          "description": "用声音说打算时（activity_start purpose = act_plan）：那一轮的 turnId，前端按它对上语音那一轮、丢掉已作废那一轮的结果（C-1 评审加）",
+          "$ref": "../../data/common.schema.json#/$defs/TurnId"
+        },
+        "accepted": {
+          "type": "boolean"
+        },
+        "narration": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "alternative": {
+          "$ref": "../common.schema.json#/$defs/PlanAlternative"
+        },
+        "triesLeft": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        }
+      },
+      "title": "ActPlanResultMessage",
+      "if": {
+        "required": ["clientMsgId"]
+      },
+      "then": {
+        "not": {
+          "required": ["turnId"]
+        }
+      },
+      "else": {
+        "required": ["turnId"]
+      }
+    },
+    "ActTransitionMessage": {
+      "description": "进入下一幕：「その頃」（≤ 3 件）和新场景的快照（3.11）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "fromActId", "toActId", "recap", "snapshot"],
+      "properties": {
+        "type": {
+          "const": "act_transition"
+        },
+        "fromActId": {
+          "$ref": "../../data/common.schema.json#/$defs/ActId"
+        },
+        "toActId": {
+          "$ref": "../../data/common.schema.json#/$defs/ActId"
+        },
+        "recap": {
+          "type": "array",
+          "items": {
+            "$ref": "../common.schema.json#/$defs/RecapItem"
+          },
+          "maxItems": 3
+        },
+        "snapshot": {
+          "$ref": "../common.schema.json#/$defs/Snapshot"
+        }
+      },
+      "title": "ActTransitionMessage"
+    },
+    "SafetyPauseMessage": {
+      "description": "出戏卡（3.12）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "safety_pause"
+        }
+      },
+      "title": "SafetyPauseMessage"
+    },
+    "SafetyHintMessage": {
+      "description": "不暂停的小提示（S-069），一局最多一次",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "safety_hint"
+        }
+      },
+      "title": "SafetyHintMessage"
+    },
+    "SafetyResumedMessage": {
+      "description": "回到故事",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "safety_resumed"
+        }
+      },
+      "title": "SafetyResumedMessage"
+    },
+    "EndingStartedMessage": {
+      "description": "进入结局演出（3.13）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "trigger", "staging"],
+      "properties": {
+        "type": {
+          "const": "ending_started"
+        },
+        "trigger": {
+          "type": "string",
+          "enum": ["deadline", "story-closed"]
+        },
+        "staging": {
+          "$ref": "../common.schema.json#/$defs/Staging"
+        }
+      },
+      "title": "EndingStartedMessage"
+    },
+    "EndingReadyMessage": {
+      "description": "结局已生成，用 2.8 取",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "endingId"],
+      "properties": {
+        "type": {
+          "const": "ending_ready"
+        },
+        "endingId": {
+          "$ref": "../../data/common.schema.json#/$defs/EndingId"
+        }
+      },
+      "title": "EndingReadyMessage"
+    },
+    "TurnRetractResultMessage": {
+      "description": "「取り消す」「言い直す」的结果（3.6）",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "turnId", "status"],
+      "properties": {
+        "type": {
+          "const": "turn_retract_result"
+        },
+        "turnId": {
+          "$ref": "../../data/common.schema.json#/$defs/TurnId"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["retracted", "too_late"]
+        }
+      },
+      "title": "TurnRetractResultMessage"
+    },
+    "LimitsMessage": {
+      "description": "今天的语音时间剩 5 分钟时推一次",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "voiceMinutesLeft"],
+      "properties": {
+        "type": {
+          "const": "limits"
+        },
+        "voiceMinutesLeft": {
+          "$ref": "../common.schema.json#/$defs/Minutes"
+        }
+      },
+      "title": "LimitsMessage"
+    },
+    "DegradedMessage": {
+      "description": "降级为文字回答",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "voice", "reason"],
+      "properties": {
+        "type": {
+          "const": "degraded"
+        },
+        "voice": {
+          "const": false
+        },
+        "reason": {
+          "type": "string",
+          "enum": ["budget", "service", "daily"]
+        }
+      },
+      "title": "DegradedMessage"
+    },
+    "GoawayMessage": {
+      "description": "服务端要关闭连接，前端按第 4 节重连",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "reason", "reconnectAfterMs"],
+      "properties": {
+        "type": {
+          "const": "goaway"
+        },
+        "reason": {
+          "type": "string",
+          "enum": ["deploy", "maintenance"]
+        },
+        "reconnectAfterMs": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "title": "GoawayMessage"
+    },
+    "ErrorMessage": {
+      "description": "不致命的错误（第 5 节的形状）；致命错误后服务端关闭连接",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "error"],
+      "properties": {
+        "type": {
+          "const": "error"
+        },
+        "error": {
+          "$ref": "../error.schema.json#/$defs/ErrorBody"
+        }
+      },
+      "title": "ErrorMessage"
+    },
+    "PongMessage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "pong"
+        }
+      },
+      "title": "PongMessage"
+    },
+    "EventRejectedMessage": {
+      "description": "非生产（hello.debug = true）：候选事件被否决",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "turnId", "candidate", "failedRules", "reason"],
+      "properties": {
+        "type": {
+          "const": "event_rejected"
+        },
+        "turnId": {
+          "$ref": "../../data/common.schema.json#/$defs/TurnId"
+        },
+        "candidate": {
+          "description": "被否决的候选事件，就是写进事件流的那条 rejected 事件：完整的 Event，check.status = rejected、effects 为空、dt = 0（数据契约第 3 节）。导演事件不过 3.2 节的规矩时直接丢掉，不发 event_rejected（C-1 评审定）",
+          "$ref": "../../data/event.schema.json#/$defs/Event"
+        },
+        "failedRules": {
+          "$ref": "../../data/event.schema.json#/$defs/CheckResult/properties/failedRules"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "title": "EventRejectedMessage"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "type": "event_rejected",
+  "turnId": "turn_01K7AZ00000000000000000001",
+  "candidate": {
+    "schemaVersion": "1.5",
+    "eventId": "ev_01K7AZ00000000000000000048",
+    "playthroughId": "pt_01K7AZ00000000000000000001",
+    "seq": 48,
+    "turnId": "turn_01K7AZ00000000000000000001",
+    "idempotencyKey": "cand-1",
+    "worldModelVersion": "hashire-merosu@1.0.0",
+    "t": 1320,
+    "dt": 0,
+    "recordedAt": "2026-10-10T07:02:00Z",
+    "actor": "char.melos",
+    "type": "action",
+    "origin": "turn",
+    "place": "place.castle",
+    "summary": "メロスが旅人と王城へ向かった",
+    "causes": ["ev_01K7AZ00000000000000000044"],
+    "effects": [],
+    "keyMoment": false,
+    "check": {
+      "status": "rejected",
+      "attempts": 1,
+      "failedRules": ["R7-capability"],
+      "reason": "メロスは衛兵に囲まれていて動けない",
+      "checker": "rules-0.1"
+    }
+  },
+  "failedRules": ["R7-capability"],
+  "reason": "メロスは衛兵に囲まれていて動けない"
+}

@@ -1,0 +1,49 @@
+{
+  "endingId": "end_01K7AZ00000000000000000001",
+  "world": {
+    "outcomeId": "gen.king-abdicates",
+    "baseline": false,
+    "title": "王は、自ら冠を置いた。",
+    "epilogue": [
+      {
+        "sentence": "メロスは日没の直前に刑場へ駆け込んだ。",
+        "cites": ["ev_01K7AZ00000000000000000090"]
+      }
+    ]
+  },
+  "you": {
+    "title": "王の前で、黙らなかった旅人",
+    "fate": "王城の客人として、市に残った",
+    "didForYou": [
+      {
+        "sentence": "老爺が、あなたをメロスに引き合わせた",
+        "cites": ["ev_01K7AZ00000000000000000030"]
+      }
+    ],
+    "youDid": [
+      {
+        "sentence": "セリヌンティウスとの約束を果たした",
+        "cites": ["ev_01K7AZ00000000000000000060"]
+      }
+    ]
+  },
+  "characters": [
+    {
+      "character": "char.selinuntius",
+      "rank": 1,
+      "unchanged": false,
+      "original": "メロスを信じて待ち、抱き合った。",
+      "yours": [
+        {
+          "sentence": "工房の火を落とさずに、メロスを待ち続けた。",
+          "cites": ["ev_01K7AZ00000000000000000061"]
+        }
+      ]
+    },
+    {
+      "character": "char.philostratus",
+      "rank": null,
+      "unchanged": true
+    }
+  ]
+}

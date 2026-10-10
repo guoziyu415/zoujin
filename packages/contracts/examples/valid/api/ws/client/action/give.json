@@ -1,0 +1,10 @@
+{
+  "type": "action",
+  "clientMsgId": "2d7f9e5c-3a4f-4e7d-8c1b-8a9f0e1d2c3b",
+  "actionId": "act_give_melos_water",
+  "kind": "give",
+  "target": "char.melos",
+  "params": {
+    "item": "item.water"
+  }
+}

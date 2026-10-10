@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "invalid_request",
+    "message": "うまく送れませんでした",
+    "retryable": false,
+    "retryAfterSeconds": null
+  }
+}

@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api/rest/timeline.schema.json",
+  "title": "GET /v1/playthroughs/{id}/timeline",
+  "description": "連鎖反応マップ（2.5）",
+  "x-endpoint": {
+    "method": "GET",
+    "path": "/v1/playthroughs/{id}/timeline",
+    "params": "../common.schema.json#/$defs/PlaythroughPathParams",
+    "responses": {
+      "200": "#/$defs/TimelineResponse"
+    }
+  },
+  "$defs": {
+    "TimelineEventItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "eventId",
+        "t",
+        "tLabel",
+        "summary",
+        "place",
+        "style",
+        "causedByPlayer",
+        "forPlayer",
+        "knownBy"
+      ],
+      "properties": {
+        "kind": {
+          "const": "event"
+        },
+        "eventId": {
+          "$ref": "../../data/common.schema.json#/$defs/EventId"
+        },
+        "t": {
+          "$ref": "../../data/common.schema.json#/$defs/StoryTime"
+        },
+        "tLabel": {
+          "$ref": "../../data/common.schema.json#/$defs/TLabel"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "place": {
+          "$ref": "../../data/common.schema.json#/$defs/PlaceId"
+        },
+        "style": {
+          "type": "string",
+          "enum": ["player", "caused", "character", "system"]
+        },
+        "causedByPlayer": {
+          "type": "boolean"
+        },
+        "forPlayer": {
+          "type": "boolean"
+        },
+        "knownBy": {
+          "description": "只列玩家见过的人物",
+          "type": "array",
+          "items": {
+            "$ref": "../../data/common.schema.json#/$defs/CharacterId"
+          }
+        }
+      },
+      "title": "TimelineEventItem"
+    },
+    "TimelineBeatItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "beatId", "t", "tLabel", "known"],
+      "properties": {
+        "kind": {
+          "const": "beat"
+        },
+        "beatId": {
+          "$ref": "../../data/common.schema.json#/$defs/BeatId"
+        },
+        "t": {
+          "$ref": "../../data/common.schema.json#/$defs/StoryTime"
+        },
+        "tLabel": {
+          "$ref": "../../data/common.schema.json#/$defs/TLabel"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "description": "canon = 数据契约 WorldState.beats 的 happened",
+          "type": "string",
+          "enum": [
+            "canon",
+            "hastened",
+            "delayed",
+            "prevented",
+            "altered",
+            "pending"
+          ]
+        },
+        "known": {
+          "description": "还没到、或玩家还不知道的节拍为 false，只给时刻",
+          "type": "boolean"
+        }
+      },
+      "if": {
+        "properties": {
+          "known": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "required": ["title", "status"]
+      },
+      "else": {
+        "not": {
+          "anyOf": [
+            {
+              "required": ["title"]
+            },
+            {
+              "required": ["status"]
+            }
+          ]
+        }
+      },
+      "title": "TimelineBeatItem"
+    },
+    "TimelineItem": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/TimelineEventItem"
+        },
+        {
+          "$ref": "#/$defs/TimelineBeatItem"
+        }
+      ],
+      "title": "TimelineItem"
+    },
+    "TimelineResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["days", "lastSeq"],
+      "properties": {
+        "days": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["day", "label", "items"],
+            "properties": {
+              "day": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/TimelineItem"
+                }
+              }
+            }
+          }
+        },
+        "lastSeq": {
+          "$ref": "../common.schema.json#/$defs/LastSeq"
+        }
+      },
+      "title": "TimelineResponse"
+    }
+  }
+}

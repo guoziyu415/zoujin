@@ -1,0 +1,30 @@
+{
+  "events": [
+    {
+      "eventId": "ev_01K7AZ00000000000000000041",
+      "seq": 41,
+      "turnId": "turn_01K7AZ00000000000000000001",
+      "t": 1290,
+      "dt": 10,
+      "tLabel": "約束の日・夜",
+      "type": "action",
+      "actor": "player",
+      "forPlayer": false,
+      "place": "place.castle",
+      "summary": "旅人がメロスの身元を保証した",
+      "causes": ["ev_01K7AZ00000000000000000030"],
+      "visibleEffects": [
+        {
+          "kind": "beat",
+          "beat": "beat.05",
+          "change": "altered",
+          "label": "王は旅人を覚えた"
+        }
+      ],
+      "promise": null,
+      "keyMoment": true,
+      "supersedes": null
+    }
+  ],
+  "lastSeq": 42
+}

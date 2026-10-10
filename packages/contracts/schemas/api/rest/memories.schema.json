@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api/rest/memories.schema.json",
+  "title": "GET /v1/playthroughs/{id}/memories",
+  "description": "記憶帳（2.7）：只列见过的人物，按人物分好四栏",
+  "x-endpoint": {
+    "method": "GET",
+    "path": "/v1/playthroughs/{id}/memories",
+    "params": "../common.schema.json#/$defs/PlaythroughPathParams",
+    "responses": {
+      "200": "#/$defs/MemoriesResponse"
+    }
+  },
+  "$defs": {
+    "MemoryBookCharacter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "character",
+        "relationLabel",
+        "relationLevel",
+        "promises",
+        "didForYou",
+        "youDid",
+        "memories"
+      ],
+      "properties": {
+        "character": {
+          "$ref": "../../data/common.schema.json#/$defs/CharacterId"
+        },
+        "relationLabel": {
+          "$ref": "../../data/memory.schema.json#/$defs/Relationship/properties/label"
+        },
+        "relationLevel": {
+          "$ref": "../../data/memory.schema.json#/$defs/Relationship/properties/level"
+        },
+        "promises": {
+          "type": "array",
+          "items": {
+            "$ref": "../common.schema.json#/$defs/PromiseView"
+          }
+        },
+        "didForYou": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["eventId", "text"],
+            "properties": {
+              "eventId": {
+                "$ref": "../../data/common.schema.json#/$defs/EventId"
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "youDid": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["eventId", "text"],
+            "properties": {
+              "eventId": {
+                "$ref": "../../data/common.schema.json#/$defs/EventId"
+              },
+              "text": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "memories": {
+          "type": "array",
+          "items": {
+            "$ref": "../common.schema.json#/$defs/MemoryView"
+          }
+        }
+      },
+      "title": "MemoryBookCharacter"
+    },
+    "MemoriesResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["characters"],
+      "properties": {
+        "characters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/MemoryBookCharacter"
+          }
+        }
+      },
+      "title": "MemoriesResponse"
+    }
+  }
+}

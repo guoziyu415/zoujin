@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api/rest/auth-logout.schema.json",
+  "title": "POST /v1/auth/logout",
+  "description": "登出（第 1 节）",
+  "x-endpoint": {
+    "method": "POST",
+    "path": "/v1/auth/logout",
+    "responses": {
+      "204": null
+    }
+  }
+}

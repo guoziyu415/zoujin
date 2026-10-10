@@ -1,0 +1,27 @@
+{
+  "target": "beat.05",
+  "chain": [
+    {
+      "eventId": "ev_01K7AZ00000000000000000012",
+      "seq": 12,
+      "tLabel": "約束の日・夕方",
+      "summary": "旅人が老爺に王のことを尋ねた",
+      "actor": "player"
+    },
+    {
+      "eventId": "ev_01K7AZ00000000000000000030",
+      "seq": 30,
+      "tLabel": "約束の日・夜",
+      "summary": "老爺が旅人をメロスに引き合わせた",
+      "actor": "char.old-man",
+      "forPlayer": true
+    },
+    {
+      "beatId": "beat.05",
+      "tLabel": "約束の日・夜",
+      "summary": "王はメロスの願いを聞き入れた",
+      "change": "altered"
+    }
+  ],
+  "collapsed": 0
+}
