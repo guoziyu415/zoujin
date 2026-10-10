@@ -375,9 +375,9 @@ def tunic_textures(ob):
     size = base.size[0]
     v, u = (np.mgrid[0:size, 0:size] + 0.5) / size  # rows bottom-up, like image_pixels
     own = np.zeros((size, size), np.float32)
-    for name in ("wool", "bundle"):
+    for name, k in (("wool", 1.0), ("bundle", 0.55)):  # the bundle's contact with the back and its knot left dark stains
         u0, u1, v0, v1 = NEW_UV[name]
-        own[(u >= u0) & (u < u1) & (v >= v0) & (v < v1)] = 1
+        own[(u >= u0) & (u < u1) & (v >= v0) & (v < v1)] = k
     darken(base, bake_ao(ob, size, AO["Tunic"][1]), AO["Tunic"][0] * own)
     for img in (base, nrm):
         img.pack()
@@ -393,6 +393,12 @@ def tunic_textures(ob):
     bmesh.ops.triangulate(bm, faces=bm.faces[:], quad_method="BEAUTY", ngon_method="BEAUTY")
     bm.to_mesh(ob.data)
     bm.free()
+    # the strands, knots, rope and sandal straps are thin tubes of a few sides: lod_export leaves the vertices in
+    # "__keep" out of decimation (talk_std halved them into flat ribbons), so tier B takes its cut from the wool
+    keep = ob.vertex_groups.new(name="__keep")
+    thin = {i for p in ob.data.polygons if any(in_region(uv_centre(ob, p), n) for n in ("bands", "rope", "straps", "soles"))
+            for i in p.vertices}
+    keep.add(sorted(thin), 1.0, "REPLACE")
 
 
 report = {}

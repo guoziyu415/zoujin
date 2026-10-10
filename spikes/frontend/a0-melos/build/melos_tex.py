@@ -21,6 +21,10 @@ from PIL import Image
 S = 1024
 O1 = (165, 115, 63)
 W0 = (203, 189, 163)
+# undyed wool that has been carried and handled for days: W0 darkened and a little warmer. At W0 itself the bundle and
+# bands read white, and blue in the sky light, next to the ochre tunic (UX rounds 1 and 2; the thin strands face the
+# sky on most of their sides, so they went bluest)
+GRUBBY = np.array([1.06, 1.0, 0.84], np.float32)
 K1 = (110, 74, 46)
 SOLE = (78, 52, 33)
 # keep in step with melos_clothes_v2.NEW_UV (that module needs bpy, so it is not imported here)
@@ -91,7 +95,7 @@ def main(out):
         fade = np.clip((bv - (1 - reach)) / reach, 0, 1) ** 1.2
         lines += d * fade * np.exp(-(((bu - c - wob + 0.5) % 1 - 0.5) ** 2) / (2 * w * w))
     crease = lines + 0.3 * np.clip((0.2 - bv) / 0.2, 0, 1) * lines.mean()
-    base[m] = lin(W0) * (0.84 + 0.07 * mott[m, None])  # carried all day: grubby
+    base[m] = lin(W0) * GRUBBY * (0.55 + 0.06 * mott[m, None])  # carried all day: grubby
     h[m] = (0.35 * weave + 0.6 * slub + 1.8 * folds - 3.5 * crease)[m]
     shade[m] = (1 + 0.03 * weave + 0.05 * mott - 0.08 * slub - 0.3 * np.clip(crease, 0, 1))[m]
 
@@ -101,14 +105,14 @@ def main(out):
     m, cu, cv = region("bands")
     k = 2 * 0.8 / 0.06
     along = np.sin(2 * np.pi * (2 * cv + k * cu) + 1.2 * folds) * 0.5 + 0.5
-    base[m] = lin(W0) * (0.78 + 0.05 * mott[m, None])  # handled and sweated on
+    base[m] = lin(W0) * GRUBBY * (0.45 + 0.05 * mott[m, None])  # handled and sweated on
     h[m] = (0.3 * weave + 1.4 * along)[m]
     shade[m] = (1 + 0.03 * weave + 0.05 * mott - 0.22 * (1 - along))[m]
 
     # rope: two-ply twist, about 1 cm a turn; the grooves dark
     m, ru, rv = region("rope")
     twist = np.sin(np.pi * (ru * 85 + 2 * rv))  # |twist|: 85 strand crossings along the waist loop, ~1 cm each
-    base[m] = lin(W0) * 0.75
+    base[m] = lin(W0) * GRUBBY * 0.48
     h[m] = (1.6 * np.abs(twist) + 0.2 * grain)[m]
     shade[m] = (0.72 + 0.32 * np.abs(twist) + 0.04 * mott)[m]
 

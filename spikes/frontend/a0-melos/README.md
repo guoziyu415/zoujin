@@ -1,6 +1,6 @@
 # A-0 梅洛斯美术流水线试点（前端）
 
-状态：**梅洛斯第二版做好，测试页第 6 版已换上，等 UX 第 2 轮评审**（MPFB 2 在 zg 的 Mac 上建，容器里减面、压缩、打包）；动作还是占位，等 Quaternius 的 CC0 动作包。2026-10-10，前端。
+状态：**梅洛斯第三版（包袱、带子、结、头发）和第 3 轮动作做好，测试页第 8 版，等 UX 第 3 轮评审**（MPFB 2 在 zg 的 Mac 上建，容器里改衣服、减面、压缩、打包；动作是 Quaternius 的 CC0 动作捕捉）。2026-10-10，前端。
 卡：`docs/tasks/m2-0/A-0.md`。验收标准（UX）：`docs/tasks/m2-0/A-0-acceptance.md`。依据：`docs/ux/art-direction.md` 5.1〜5.6、9.1〜9.6；`docs/frontend/frontend-design.md` 10.6.2、10.6.4。
 
 ## 一句话
@@ -32,7 +32,7 @@
 | 文件 | 下载 | 预算 | 面数 | 材质 | 形变 |
 |---|---|---|---|---|---|
 | 对话版 强机 `talk_high.glb` | **4.68 MB** | ≤ 6.5 MB | 37.8k | 5 | 65 |
-| 对话版 档 B `talk_std.glb` | **2.28 MB** | ≤ 4 MB | 23.3k | 5 | 65 |
+| 对话版 档 B `talk_std.glb` | **2.28 MB** | ≤ 4 MB | 25.3k | 5 | 65 |
 | 走动版 `walk.glb` | **0.30 MB** | ≤ 0.5 MB | 8.0k | 1 | 0 |
 | 共用动作 `anims.glb`（占位） | **0.13 MB** | ≤ 0.3 MB | — | — | — |
 
@@ -44,13 +44,43 @@
 - 截图在项目文件夹 `frontend/spikes/a0-melos/shots/melos-v2/`，报告在 `reports/melos-v2/`。
 - 还要看的：发片边缘是透明测试的硬边；胸前的结是个光滑的椭球，像颗珠子；包袱在逆光和正午的天光下偏白偏蓝；下摆骨骼（4〜6 根，风格指南）留到动作那一轮。
 
+## 梅洛斯第三版（UX 第 2 轮评审后，2026-10-10）
+
+| 文件 | 下载 | 预算 | 面数 | 材质 | 形变 |
+|---|---|---|---|---|---|
+| 对话版 强机 `talk_high.glb` | **4.72 MB** | ≤ 6.5 MB | 39.6k | 5 | 65 |
+| 对话版 档 B `talk_std.glb` | **2.30 MB** | ≤ 4 MB | 25.3k | 5 | 65 |
+| 走动版 `walk.glb` | **0.32 MB** | ≤ 0.5 MB | 8.0k | 1 | 0 |
+| 共用动作 `anims.glb`（UAL 五段） | **0.25 MB** | ≤ 0.3 MB | — | — | — |
+
+- 容器里改，Mac 上的 `melos_v2.blend` 没动：`build/melos_clothes_v3.py <melos_v2.blend> <out.blend>` 删掉第二版的包袱、带子、绳子，重新做。
+  - **包袱**：一块未染羊毛的布兜着东西，在背上打结。形状是方一点的椭球（超椭圆），有鼓包，从背上的结往外放射出褶子，靠结的地方往里收；中心在背上 1.31 m、往后倾 15°，还是自己一根骨骼。背后的结是三叶结，两只「耳朵」垂下来。
+  - **带子**：同一块布的两个角拧成圆股（不再是扁的条），从包袱的两个角绕过两肩和腋下，在胸前（左偏一点）打结，两头垂 9〜10 cm。路线贴着皮肤和衣服走、离开 3 cm 以内吸到表面上，跑起来不穿模。贴图是拧出来的两道螺旋棱，每 6 cm 一圈。
+  - **绳子腰带**：同一条路线，结换成三叶结，两头按长度展开 UV（股纹不拉伸）。
+  - 新的股、结都按沿着走的米数展开 UV，股纹密度一致。
+- `build/melos_prep.py`：头发按块往外推一点（柏林噪声，最多 1.1 cm），afro 不再像一层光滑的壳；发色更深更暖（#3C281A），头皮染色 95%。
+- `assets/pipeline/lod_export.py`：发片、眉、睫毛合成一张图时，透明处的颜色用旁边不透明的颜色填（push-pull），压缩和缩小以后发片边上不再出灰白的边。
+- 档 B 的袍子减面时，带子、绳子、结、凉鞋底不减（`melos_prep.py` 把它们放进 `__keep` 顶点组，`lod_export.py` 的 `decimate_except` 只减其余的羊毛）。以前一起减，圆股被压成扁条。档 B 的袍子从 6.2k 减到 5.0k 面。
+- `build/melos_tex.py`：包袱、带子、绳子的颜色照风格指南的 W0（#CBBDA3）往暗、往暖调（乘 1.06 / 1.00 / 0.84，再按部位压亮度），以前在天光下发白发蓝。贴图上的平均颜色：包袱 (156,142,113)、带子 (136,123,98)、绳子 (143,130,103)；环境光遮蔽乘进去以后渲出来还是一个浅色块（风格指南「背后看是一个圆鼓鼓的浅色块」）。
+- 截图在项目文件夹 `frontend/spikes/a0-melos/shots/melos-v4/`（`views_sheet.jpg` 是 Cycles 渲的导出模型 `talk_high.glb`：背、正、侧、探索视角、胸前、斜后方；静止姿势没加表情形变，嘴里的牙露出来是这个原因，游戏里没有）。
+- 还要看的：袍子的褶子和腰上的鼓起、左肩的结、布的厚度（边缘是单面）、档 B 的袍子颜色比强机差约 ΔE 6（法线图只有 512）、下摆骨骼。
+
 ## 动作（2026-10-10）
 
 - 来源：Quaternius 的 Universal Animation Library 免费版（`UAL1_Standard.glb`，包里的 License.txt 写 CC0 1.0，不用账号）。zg 在 Mac 上下载，放在 `~/Developer/zoujin-art/anims/`，拷到项目文件夹 `frontend/spikes/a0-melos/mac/anims/`（sha256 69591853…4ed67997）。动作文件不进仓库。
 - `build/retarget.py`：两边都是 Unreal 人体模型的骨骼名、都朝 −Y；UAL 静止是 T 字，MPFB 是 A 字、前臂朝前。每根骨骼先转到和来源静止时同一方向，再每帧加上来源骨骼离开静止姿势的转动（骨架空间里算）；骨盆的位移按髋高缩放；包袱的骨骼跟着父骨骼。设 `UAL_GLB=<路径>` 时 `anims.build()` 用它，没设还是程序做的占位。
 - 五段：待机 `Idle_Loop`、说话 `Idle_Talking_Loop`、走 `Walk_Loop`、跑 `Jog_Fwd_Loop`、冲刺 `Sprint_Loop`，24 帧/秒。`anims.glb` 0.24 MB（≤ 0.3 MB）。
-- 每段的地面速度（脚踩地时往后滑的速度）记在 `lod_report.json`：走 1.01 m/s、跑 6.12、冲刺 9.13。原样播放的跑步就是这个速度；游戏里走得慢时按「移动速度 ÷ 地面速度」放慢动画，脚就不打滑。测试页：梅洛斯跑 4.9 m/s（动画 0.8 倍），路人走 1.25 m/s。
-- 测试页第 7 版：说「3 秒」和长句时换成说话的手势，说完回到待机（0.5 秒交叉淡化）；相槌不换。
+- **第 3 轮（UX 评审后）**：UAL 的慢跑和冲刺是大跨步的弹跳（跑 129 步/分、一步 2.9 m、骨盆起伏 25 cm）。`retarget.py` 重定向以后再改一遍（`STYLE`）：时间轴拉伸让脚踩地更久，压小手臂和上身的摆，按比例改膝盖的弯，限制踩地时骨盆往上抬（踩地的腿用两节 IK 够到地面），腾空按游戏里的速度走抛物线，摆动的脚在中间至少离地 8 cm（跑）/ 10 cm（冲刺）。关键帧从第 0 帧开始（以前从第 1 帧，每次循环停一帧）。
+- 用 UX 的步态工具（`ux/tools/gait/`）量：
+
+| | 游戏里的速度 | 步频 | 步幅 | 骨盆起伏 | 脚踝最高 | 动画倍速 |
+|---|---|---|---|---|---|---|
+| 走 | 1.15 m/s | 101 步/分 | 0.68 m | — | — | 1.12 |
+| 跑 | 4.9 m/s | 164 步/分 | 1.8 m | 8 cm | 0.39 m | 1.27 |
+| 冲刺（第四幕） | 6.5 m/s | 195 步/分 | 2.0 m | 7 cm | 0.27 m | 1.08 |
+
+- 每段的地面速度（脚踩地时往后滑的速度）记在 `lod_report.json`：走 1.027 m/s、跑 3.847、冲刺 6.002。游戏里按「移动速度 ÷ 地面速度」放动画，脚不打滑。
+- 说话的手势（测试页第 8 版，UX 第 3 轮）：4 秒以上的句子才换手势，叠在待机上、权重 0.5〜0.7、从随机位置开始、0.9〜1.1 倍速，0.5 秒抬起；连着说保持，最后一句说完 0.4〜0.6 秒放下。短句只动头和胸。
 - 截图在项目文件夹 `frontend/spikes/a0-melos/shots/melos-v3/`（`clips_sheet.jpg` 是 Cycles 渲的走、跑、说话、待机，`retarget_stick.png` 是来源和梅洛斯骨架的对照）。
 
 ## 数字（替身，2026-10-10）
@@ -114,7 +144,7 @@
 ## 文件
 
 - `assets/pipeline/`（真梅洛斯和以后的人物都用，不在这个目录）：`lod_export.py`（三个版本＋切头＋导出）、`compress.mjs`（KTX2＋meshopt＋法线检查）、`inspect.mjs`、`morphmem.mjs`。
-- `build/`：`mhload.py`（读 MakeHuman 数据）、`build_standin.py`（搭替身）、`anims.py`（占位动作：待机、走、跑）、`retarget.py`（把 UAL 的动作重定向到 MPFB 骨架）、`preview.py`（Cycles 预览）、`gen_voice.py`（元音模板用的测试声音）、`gen_lines.py`（从 casting 录音剪三句台词）、`lipcheck.py`（离线口型检查）、`pack.py`（打包测试页）、`test_page.mjs`（无头浏览器自测）。
+- `build/`：`mhload.py`（读 MakeHuman 数据）、`build_standin.py`（搭替身）、`anims.py`（占位动作：待机、走、跑）、`retarget.py`（把 UAL 的动作重定向到 MPFB 骨架，再改跑和冲刺的步幅）、`melos_clothes_v2.py` / `melos_clothes_v3.py`（衣服、包袱、带子、绳子）、`melos_prep.py`、`melos_tex.py`、`preview.py`（Cycles 预览）、`gen_voice.py`（元音模板用的测试声音）、`gen_lines.py`（从 casting 录音剪三句台词）、`lipcheck.py`（离线口型检查）、`pack.py`（打包测试页）、`test_page.mjs`（无头浏览器自测）。
 - `page/index.src.html`：测试页源文件（`/*MANIFEST*/` 由 pack.py 填）。
 - 减面和压缩报告、声音元数据（`reports/`）和截图（`shots/`）只在项目文件夹 `frontend/spikes/a0-melos/` 里，替身的生成物不进仓库。
 
@@ -128,4 +158,5 @@
 | 元音模板用的测试声音 | Open JTalk（pyopenjtalk-plus 0.4.1，MIT）＋ HTS 音声 Mei | MIT / CC BY 3.0 | 不进 |
 | 广场石材贴图 | Crytek Sponza（经 Khronos glTF Sample Assets） | CC BY 3.0 | 不进（正式版用 CC0 扫描） |
 | three.js 0.186.1、gltf-transform、meshoptimizer、ktx2-encoder | npm / jsDelivr | MIT 等 | 工具 |
-| 正式梅洛斯 | MPFB 2 系统素材（皮肤、眼、眉 eyebrow009、睫毛、牙、舌、头发 afro01）；动作待 Quaternius | CC0 | 进 |
+| 正式梅洛斯 | MPFB 2 系统素材（皮肤、眼、眉 eyebrow009、睫毛、牙、舌、头发 afro01） | CC0 | 进 |
+| 动作 | Quaternius Universal Animation Library（`UAL1_Standard.glb`，License.txt） | CC0 1.0 | 进（动作文件不进仓库） |

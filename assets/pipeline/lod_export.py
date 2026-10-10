@@ -5,7 +5,8 @@
 Versions (frontend-design 10.6.2, art-direction 9.2):
   talk_high  ~40k tris, all parts, 52 ARKit + 15 viseme morphs
   talk_std   20-30k tris: body under the clothes removed, body and teeth decimated
-             with the face protected; morphs carried over with Surface Deform
+             with the face protected; morphs carried over with Surface Deform; clothes
+             decimated except the faces in their vertex group __keep (thin tubes)
   walk       8k tris, no morphs, everything baked into one 1024 atlas, 1 material
 plus anims.glb (rig + clips, shared by every character).
 Works on any character with the object names used by build_standin.py; the MPFB
@@ -186,6 +187,33 @@ def decimate_keep_keys(src, target_tris, protect=None):
             arm.show_viewport = True
         rig.data.pose_position = 'POSE'
     return d
+
+
+def decimate_except(src, target_tris, keep='__keep'):
+    """Decimate src to about target_tris but leave the faces whose vertices are all in the vertex group `keep`
+    untouched (thin tubes such as straps, knots and ropes, which collapse into flat ribbons): they are split off,
+    the rest is decimated to what remains of the budget, and the two are joined again. No shape keys (clothes)."""
+    g = src.vertex_groups.get(keep)
+    if g is None:
+        return decimate_keep_keys(src, target_tris)
+    gi = g.index
+    rest, kept = dup(src, src.name + '_dec', keys=False), dup(src, src.name + '_keep', keys=False)
+    for ob, drop_kept in ((rest, True), (kept, False)):
+        bm = bmesh.new()
+        bm.from_mesh(ob.data)
+        dl = bm.verts.layers.deform.active
+        inside = lambda f: all(dl and gi in v[dl] and v[dl][gi] > 0.5 for v in f.verts)  # noqa: E731
+        bmesh.ops.delete(bm, geom=[f for f in bm.faces if inside(f) == drop_kept], context='FACES')
+        bm.to_mesh(ob.data)
+        bm.free()
+        ob.data.update()
+    m = rest.modifiers.new('Dec', 'DECIMATE')
+    m.ratio = min(1.0, max(0.05, (target_tris - tris(kept)) / max(1, tris(rest))))
+    apply_first(rest, m)
+    with bpy.context.temp_override(object=rest, active_object=rest, selected_objects=[rest, kept],
+                                   selected_editable_objects=[rest, kept]):
+        bpy.ops.object.join()
+    return rest
 
 
 def moved_verts(ob, eps=1e-4):
@@ -493,7 +521,7 @@ def main():
     report['face_verts'] = face_group(body)
     body_s = decimate_keep_keys(body, 15500, protect='__face')
     teeth_s = decimate_keep_keys(o['Teeth'], 2000)
-    tunic_s = decimate_keep_keys(o['Tunic'], 3000)
+    tunic_s = decimate_except(o['Tunic'], 5000)  # its straps, knots and rope (__keep) are not decimated
     mouth_s = merge_parts([teeth_s, o['Tongue']], 'teeth', MOUTH_LAYOUT[1], MOUTH_LAYOUT[0], False)
     report['pruned_keys']['teeth_std'] = prune_keys(mouth_s)
     drop_islands(body_s)
