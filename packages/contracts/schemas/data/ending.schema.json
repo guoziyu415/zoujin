@@ -40,6 +40,7 @@
             },
             "summary": {
               "type": "string",
+              "minLength": 1,
               "description": "日语"
             },
             "changedBeats": {
@@ -74,20 +75,24 @@
             },
             "title": {
               "type": "string",
-              "description": "（1.1）世界结局的一句标题"
+              "minLength": 1,
+              "description": "（1.1）世界结局的一句标题。没有时（模板尾声）接口用世界模型 endings.world 里这一类的 label（api-contract 2.8 的 world.title）"
             },
             "variant": {
               "type": "object",
               "properties": {
                 "id": {
                   "type": "string",
+                  "minLength": 1,
                   "description": "本局内唯一，如 \"gen.king-abdicates\"（API 的 outcomeId）"
                 },
                 "title": {
-                  "type": "string"
+                  "type": "string",
+                  "minLength": 1
                 },
                 "summary": {
-                  "type": "string"
+                  "type": "string",
+                  "minLength": 1
                 },
                 "claims": {
                   "type": "array",
@@ -136,10 +141,12 @@
               "type": "object",
               "properties": {
                 "original": {
-                  "type": "string"
+                  "type": "string",
+                  "minLength": 1
                 },
                 "yours": {
-                  "type": "string"
+                  "type": "string",
+                  "minLength": 1
                 },
                 "beat": {
                   "$ref": "common.schema.json#/$defs/BeatId"
@@ -160,10 +167,12 @@
               "type": "object",
               "properties": {
                 "id": {
-                  "type": "string"
+                  "type": "string",
+                  "minLength": 1
                 },
                 "label": {
-                  "type": "string"
+                  "type": "string",
+                  "minLength": 1
                 },
                 "causedBy": {
                   "type": "array",
@@ -189,10 +198,12 @@
                     "$ref": "memory.schema.json#/$defs/Relationship/properties/trust"
                   },
                   "label": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                   },
                   "line": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                   },
                   "memoryIds": {
                     "type": "array",
@@ -209,7 +220,8 @@
               "type": "object",
               "properties": {
                 "text": {
-                  "type": "string"
+                  "type": "string",
+                  "minLength": 1
                 },
                 "causedBy": {
                   "type": "array",
@@ -229,7 +241,8 @@
                 "type": "object",
                 "properties": {
                   "sentence": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                   },
                   "cites": {
                     "type": "array",
@@ -252,7 +265,8 @@
                   "$ref": "common.schema.json#/$defs/PlaceId"
                 },
                 "description": {
-                  "type": "string"
+                  "type": "string",
+                  "minLength": 1
                 },
                 "present": {
                   "type": "array",
@@ -271,7 +285,8 @@
                 "type": "object",
                 "properties": {
                   "sentence": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                   },
                   "cites": {
                     "type": "array",
@@ -293,7 +308,8 @@
                 "type": "object",
                 "properties": {
                   "sentence": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1
                   },
                   "cites": {
                     "type": "array",
@@ -331,16 +347,19 @@
           "properties": {
             "title": {
               "type": "string",
+              "minLength": 1,
               "maxLength": 14,
               "description": "称号 ≤ 14 字"
             },
             "subtitle": {
               "type": "string",
+              "minLength": 1,
               "maxLength": 26,
               "description": "世界的去向 ≤ 26 字"
             },
             "contrast": {
               "type": "string",
+              "minLength": 1,
               "maxLength": 48,
               "description": "「原作との違い」≤ 48 字"
             },
@@ -354,6 +373,7 @@
                   },
                   "line": {
                     "type": "string",
+                    "minLength": 1,
                     "maxLength": 40,
                     "description": "≤ 40 字"
                   }
@@ -368,7 +388,7 @@
           },
           "required": ["title", "subtitle", "contrast", "characterLines"],
           "additionalProperties": false,
-          "description": "（1.1，S-049、S-051）结局卡，字数由这里保证"
+          "description": "（1.1，S-049、S-051）结局卡，字数由这里保证。校验两次不过、或者排上名（rank 非空）的人物不到 2 个时不生成"
         },
         "share": {
           "type": "object",
@@ -426,6 +446,7 @@
         },
         "original": {
           "type": "string",
+          "minLength": 1,
           "description": "原作里他的结局，一句（日语）"
         },
         "yours": {
@@ -434,7 +455,8 @@
             "type": "object",
             "properties": {
               "sentence": {
-                "type": "string"
+                "type": "string",
+                "minLength": 1
               },
               "cites": {
                 "type": "array",

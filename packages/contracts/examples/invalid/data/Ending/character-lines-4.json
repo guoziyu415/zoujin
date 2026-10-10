@@ -78,7 +78,39 @@
       ]
     },
     {
+      "character": "char.melos",
+      "rank": 2,
+      "unchanged": false,
+      "original": "メロスは日没に間に合い、友と抱き合った。",
+      "yours": [
+        {
+          "sentence": "メロスは、旅人が王に伝えたことを、刑場で知った。",
+          "cites": ["ev_01JYHEZBNPCJ7GTYGVK6D5CZRN"]
+        }
+      ]
+    },
+    {
+      "character": "char.selinuntius",
+      "rank": null,
+      "unchanged": true
+    },
+    {
       "character": "char.sister",
+      "rank": null,
+      "unchanged": true
+    },
+    {
+      "character": "char.groom",
+      "rank": null,
+      "unchanged": true
+    },
+    {
+      "character": "char.philostratus",
+      "rank": null,
+      "unchanged": true
+    },
+    {
+      "character": "char.old-man",
       "rank": null,
       "unchanged": true
     }

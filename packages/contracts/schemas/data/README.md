@@ -30,6 +30,6 @@
 
 ## 以后改
 
-1.5 已冻结，以后只做加法：新增可选字段走 1.6、1.7…，`SchemaVersion` 加一个值，contracts.md 的变更记录写一行，这里同一个 PR 改。改 `packages/contracts` 要后端、前端、数据三方评审（dev-plan 2.3）。
+1.5 已冻结，以后只做加法：新增可选字段走 1.6、1.7…，`SchemaVersion` 加一个值，contracts.md 的变更记录写一行，这里同一个 PR 改。枚举加值也算加法：前端按值渲染的枚举（`Activity`、`MemoryItem.kind` / `via`、`StoryPromise.status`、`Event.type`、`Affordance.kind` 等）以后可能加值，读的一方都要留默认分支（`Activity` 不认识的按 `idle`）。去掉值、改名、收紧约束不算加法。改 `packages/contracts` 要后端、前端、数据三方评审（dev-plan 2.3）。
 
 例子在 `packages/contracts/examples/`，测试在 `packages/contracts/tests/test_data_schemas.py`。

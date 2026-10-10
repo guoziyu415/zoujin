@@ -291,6 +291,7 @@ INVALID_BECAUSE: dict[str, tuple[str, str]] = {
     "Cite/quote-81.json": ("maxLength", "quote"),
     "Effect/beat-to-skipped.json": ("enum", "to"),
     "Effect/op-teleport.json": ("const", "op"),
+    "Ending/card-title-empty.json": ("minLength", "card/title"),
     "Ending/character-lines-4.json": ("maxItems", "card/characterLines"),
     "Ending/epilogue-empty-cites.json": ("minItems", "player/epilogue/0/cites"),
     "Event/event-id-prefix-evt.json": ("pattern", "eventId"),
@@ -304,7 +305,7 @@ INVALID_BECAUSE: dict[str, tuple[str, str]] = {
     "Event/t-negative.json": ("minimum", "t"),
     "MemoryItem/from-events-empty.json": ("minItems", "fromEvents"),
     "MemoryItem/trust-delta-25.json": ("maximum", "trustDelta"),
-    "Relationship/level-6.json": ("maximum", "level"),
+    "Relationship/level-6.json": ("enum", "level"),
 }
 
 

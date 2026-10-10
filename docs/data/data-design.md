@@ -2,7 +2,7 @@
 
 负责人：数据工程 · 状态：**v1.2**。v1.0 已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改；1.1 跟上契约 1.1、PM 的 S-022〜S-053 和世界模型 draft.3；1.2 跟上契约 1.2 和 S-054〜S-063，补齐前端、UX 要的埋点（9.3）和市场调研要的试玩导出（9.5）。跨角色决定见 `pm/decisions.md`。待别人定的事见第 13 节。
 相关：[contracts.md](contracts.md) v1.5（四个数据契约，本文所有字段以它为准）· `backend/backend-design.md` · `pm/prd.md`
-最近更新：2026-10-10（9.3 按 C-1 评审写清：公共属性每批带一次、帧时间直方图固定 9 格、`why_opened.target` 加 `forecast`）
+最近更新：2026-10-10（9.3 按 C-1、C-2 评审写清：公共属性每批带一次、帧时间直方图固定 9 格、`why_opened.target` 和 `/why` 的 target 一一对应）
 
 数据工程负责六件事：世界模型（含『走れメロス』v1）、新增一本书的流水线、事件日志与世界状态、記憶帳与删除、评测与可观测数据、分析与成本测算。
 
@@ -367,7 +367,7 @@ BigQuery 每天一个定时查询，用 `EXTERNAL_QUERY` 直接读 Cloud SQL，�
 | `approach_shown` / `approach_ended` | `character` / `character`、`result`（talked / dismissed / walked_away） | 人物自己在动吗 |
 | `act_plan_result` | `actId`、`accepted`、`try`（1 / 2）、`inputMode` | 幕末说出打算的比例和成行比例 |
 | `sonokoro_viewed` | `count`、`tappedMap` | 人物自己在动吗 |
-| `map_opened` / `why_opened` | `from`（hud / sonokoro / ending） / `target`（event / beat / forecast；forecast = 地图顶部「間に合わない」那一行的「なぜ」，api-contract 2.6）、`fromKeyMoment` | 玩家信任这个世界吗 |
+| `map_opened` / `why_opened` | `from`（hud / sonokoro / ending） / `target`（event / beat / reveal / forecast，和 api-contract 2.6 `/why` 的 target 一一对应；reveal = 关键时刻卡上的「なぜ」，forecast = 地图顶部「間に合わない」那一行的「なぜ」）、`fromKeyMoment` | 玩家信任这个世界吗 |
 | `memory_book_opened` / `memory_section_viewed` / `memory_deleted` | — / `section`（promises / didForYou / youDid / memories） / `character` | 角色是否被记住 |
 | `app_resumed` | `awayMs`、`discarded`（页面是否被系统回收）、`resumeMs`（到能操作）、`contextLost` | 续玩 |
 | `continue_started` | `awayMs` | 续玩（从封面「続きから」） |
@@ -384,7 +384,7 @@ BigQuery 每天一个定时查询，用 `EXTERNAL_QUERY` 直接读 Cloud SQL，�
 
 幕末选择不需要遥测，从 `act-transition` 事件的 `exitId` / `plan` 算。
 
-（C-1 评审）`frameTimeHistogram` 固定 9 格：第 i 格数「上一格上界 < 帧时间 ≤ 这一格上界」的帧，上界依次是 8.5、12、17、20、25、34、50、100 ms，最后一格是 > 100 ms。8.5 / 12 / 17 / 34 对应 120 / 90 / 60 / 30 fps（留了 vsync 抖动），20 和 34 对上前端的帧时间预算（基准机 p95 ≤ 20 ms、底线机 p95 ≤ 33 ms）。格子固定，不同版本前端发来的直方图才能相加；以后要换边界就另起一个字段，不改这个字段。
+（C-1、C-2 评审）`frameTimeHistogram` 固定 9 格：第 i 格数「上一格上界 < 帧时间 ≤ 这一格上界」的帧，上界依次是 8.5、12、17、20、26、34、51、101 ms，最后一格是 > 101 ms。帧间隔是刷新间隔的整数倍（120 Hz 的 1、3 帧 = 8.3、25 ms，90 Hz 的 1 帧 = 11.1 ms，60 Hz 的 1、2、3、6 帧 = 16.7、33.3、50、100 ms），实测有零点几毫秒的抖动，所以边界都放在整数倍稍上，同一种掉帧不会拆到两格（前端评审）。20 和 34 对上前端的帧时间预算（基准机 p95 ≤ 20 ms、底线机 p95 ≤ 33 ms）。格子固定，不同版本前端发来的直方图才能相加；以后要换边界就另起一个字段，不改这个字段。
 
 ### 9.4 匿名对比（「この夜、セリヌンティウスのそばにいたのは 12% の人だけ」）
 

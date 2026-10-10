@@ -110,8 +110,7 @@
         },
         "level": {
           "type": "integer",
-          "minimum": 1,
-          "maximum": 5,
+          "enum": [1, 2, 3, 4, 5],
           "description": "（1.5）同一区间的档位，接口里叫 relationLevel"
         }
       },
