@@ -14,7 +14,8 @@
 | `SCENE_INPUTS`               | 清单里记成本场景自己的脚本                                       | —             | 本目录的脚本   |
 
 ```
-assets/pipeline/road/build.sh [final|draft] [out_dir]
+assets/pipeline/road/build.sh [final|draft] [out_dir]        # 川（F-10）
+assets/pipeline/road/build_rest.sh [final|draft] [out_dir]   # 峠、泉、野の道、跑段（F-15）
 ```
 
 一条命令出：
@@ -28,3 +29,5 @@ assets/pipeline/road/build.sh [final|draft] [out_dir]
 `preview_river.py` 是开发用的 Cycles 预览，不进构建。
 
 贴图现在全是占位（`../common/road_tex.py` 按固定种子生成，路和村子共用；Blender 小工具 `../common/bl.py`、叶子贴图的小尺寸重编码 `../common/small_tex.mjs` 也在那里）；CC0 扫描在 zg 的 Mac 上下载，经第一个前端线程的资产流程，放进 `ROAD_SCANS` 目录重新生成。
+
+其余几处（F-15）：`build_rest.sh` 生成峠 `road-pass-day`、泉 `road-spring-day`、野の道 `road-field-day`（跑段）和跑段 `road-run-r1`、`-r2`、`-r2s`、`-r3`、`road-run-night`（第 2 幕夜路，代替三处）。场景脚本 `build_road_pass.py`、`build_road_spring.py`、`build_road_run.py`（共用 `roadkit.py`），新贴图 `rest_tex.py`，合并 `merge_rest.mjs`（写 `road-pass`、`road-spring`、`road-field` 的 `index.json` 和 `scene.json`），检查 `check_rest.mjs`，进仓库的清单 `check_committed.sh`。跑段的 `layout.runway`（一块 36 m 的路面循环、布景按时刻出现）抄进包的 `scene.json`，页面在 `apps/web/src/three/road/runway.ts` 里当跑步机放。

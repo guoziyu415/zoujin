@@ -71,5 +71,7 @@ jobs:
       - run: |
           for p in road-river-calm road-river-flood; do node assets/pipeline/plaza/check_scene.mjs assets/scenes/$p; done
           node assets/pipeline/road/check_road.mjs assets/scenes/road-common assets/scenes/road-river-calm assets/scenes/road-river-flood assets/scenes/road-river
+      # 归途其余（F-15）：峠、泉、野の道和跑段的包，它们在共用包里的部分，三处的索引和合起来的布局
+      - run: bash assets/pipeline/road/check_committed.sh
       # 王城（F-14）
       - run: node assets/pipeline/plaza/check_scene.mjs assets/scenes/castle-throne

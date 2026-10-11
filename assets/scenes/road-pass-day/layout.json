@@ -1,0 +1,343 @@
+{
+  "sceneId": "road-pass-day",
+  "partOf": "scene.road-pass",
+  "select": {
+    "act": "act.4"
+  },
+  "about": "Hand-written layout of the pass (F-15; ux/scenes/homeward-road.md 2): plan metres, +x = towards Syracuse = azimuth 80°, +y = its left, the landing ground at z = 0. Rotation 0, so glTF x = plan x and glTF z = -plan y. Act 4 only, 13:40 to 14:00 (beat.19); in act 2 the pass is part of the night road (road-night, index.json). Spots marked auto: false are for set pieces only; the bandits wait behind the rock gate on ground the player cannot walk to (navRoots); way.* are the ways out.",
+  "rotationDeg": 0,
+  "defaultPlace": "place.mountain-pass",
+  "playerStartSpot": "shelf-west",
+  "startSpots": {
+    "place.mountain-pass": "shelf-west"
+  },
+  "hiTextures": {
+    "base": ["road", "grass", "outcrop"],
+    "nrm": ["road", "grass", "outcrop"]
+  },
+  "walkable": [
+    {
+      "name": "the road up, the shelf, the fork, the zigzag and the saddle; the scree and the rock wall are not (2.1)",
+      "polygon": [
+        [
+          -32,
+          -4
+        ],
+        [
+          -16,
+          -5.5
+        ],
+        [
+          -4,
+          -5.5
+        ],
+        [
+          1,
+          -6.2
+        ],
+        [
+          7,
+          -3
+        ],
+        [
+          13,
+          -2.2
+        ],
+        [
+          18,
+          -2.2
+        ],
+        [
+          18,
+          2.2
+        ],
+        [
+          13,
+          2.2
+        ],
+        [
+          7.5,
+          2.2
+        ],
+        [
+          4,
+          1
+        ],
+        [
+          -1,
+          6.5
+        ],
+        [
+          -4,
+          6.5
+        ],
+        [
+          -16,
+          5.5
+        ],
+        [
+          -32,
+          2
+        ]
+      ]
+    },
+    {
+      "name": "the goat track round the shoulder, as far as (6, 15) (2.1)",
+      "polygon": [
+        [
+          -4.2,
+          3.4
+        ],
+        [
+          -1.6,
+          6.8
+        ],
+        [
+          3.4,
+          11.8
+        ],
+        [
+          6.6,
+          14.2
+        ],
+        [
+          6.2,
+          15.8
+        ],
+        [
+          2.6,
+          12.8
+        ],
+        [
+          -2.4,
+          8.8
+        ],
+        [
+          -5.6,
+          4.4
+        ]
+      ]
+    },
+    {
+      "name": "behind the north rock, the bandits' ground (2.2; navRoots, not walkable from the saddle)",
+      "polygon": [
+        [
+          14.6,
+          4.4
+        ],
+        [
+          19,
+          4.4
+        ],
+        [
+          19,
+          9
+        ],
+        [
+          14.6,
+          9
+        ]
+      ]
+    },
+    {
+      "name": "behind the south rock, the bandits' ground (2.2; navRoots)",
+      "polygon": [
+        [
+          14.4,
+          -8
+        ],
+        [
+          18,
+          -8
+        ],
+        [
+          18,
+          -4.4
+        ],
+        [
+          14.4,
+          -4.4
+        ]
+      ]
+    }
+  ],
+  "places": [],
+  "exits": [
+    {
+      "place": "place.spring",
+      "spot": "way.east",
+      "about": "over the saddle and down towards the spring"
+    },
+    {
+      "place": "place.river",
+      "spot": "way.west",
+      "about": "the road back down to the river"
+    }
+  ],
+  "navRoots": [
+    "bandit-1",
+    "bandit-4"
+  ],
+  "spots": {
+    "shelf-west": {
+      "at": [
+        -20,
+        -1
+      ],
+      "face": [
+        -10,
+        -1
+      ],
+      "about": "landing; the default camera 9 m behind it (-29, -1) sees only the road up (2.3)"
+    },
+    "melos-breath": {
+      "at": [
+        -9.2,
+        5.0
+      ],
+      "face": [
+        0.8,
+        5.0
+      ],
+      "about": "Melos in the holm oak's shade, hands on his knees, then leaning on the trunk"
+    },
+    "cairn": {
+      "at": [
+        -5.2,
+        2.2
+      ],
+      "face": [
+        -5.5,
+        3
+      ],
+      "about": "by the shepherds' cairn at the fork"
+    },
+    "cleft": {
+      "at": [
+        7.0,
+        2.0
+      ],
+      "face": [
+        8,
+        3.2
+      ],
+      "about": "in front of the cleft in the north rock: a glimpse behind it (optional hint)"
+    },
+    "saddle": {
+      "at": [
+        12,
+        0
+      ],
+      "face": [
+        22,
+        0
+      ],
+      "about": "beat.19: the bandits leap out on both sides",
+      "auto": false
+    },
+    "side-path": {
+      "at": [
+        -1,
+        7.6
+      ],
+      "face": [
+        4,
+        13
+      ],
+      "about": "「峠を避けて、脇道を行く」: both turn into the goat track here"
+    },
+    "bandit-1": {
+      "at": [
+        16,
+        6
+      ],
+      "face": [
+        12,
+        0
+      ],
+      "about": "behind the north rock",
+      "auto": false
+    },
+    "bandit-2": {
+      "at": [
+        17.5,
+        7.5
+      ],
+      "face": [
+        12,
+        0
+      ],
+      "about": "behind the north rock",
+      "auto": false
+    },
+    "bandit-3": {
+      "at": [
+        16.5,
+        8.2
+      ],
+      "face": [
+        12,
+        0
+      ],
+      "about": "behind the north rock",
+      "auto": false
+    },
+    "bandit-4": {
+      "at": [
+        15.5,
+        -5.5
+      ],
+      "face": [
+        12,
+        0
+      ],
+      "about": "behind the south rock",
+      "auto": false
+    },
+    "bandit-5": {
+      "at": [
+        17,
+        -7
+      ],
+      "face": [
+        12,
+        0
+      ],
+      "about": "behind the south rock",
+      "auto": false
+    },
+    "way.west": {
+      "at": [
+        -28,
+        -1
+      ],
+      "face": [
+        -38,
+        -1
+      ],
+      "about": "the road back down to the river"
+    },
+    "way.east": {
+      "at": [
+        16,
+        0
+      ],
+      "face": [
+        26,
+        0
+      ],
+      "about": "over the saddle, down to the plain and the spring"
+    },
+    "way.side": {
+      "at": [
+        6,
+        15
+      ],
+      "face": [
+        8,
+        16
+      ],
+      "about": "the goat track turns out of sight here"
+    }
+  }
+}

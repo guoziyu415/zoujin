@@ -1,0 +1,105 @@
+{
+  "sceneId": "road-run-night",
+  "runway": {
+    "tileLengthM": 36,
+    "scroll": [
+      "ground",
+      "arch",
+      "proxy",
+      "tile_*"
+    ],
+    "static": [
+      "far"
+    ],
+    "about": "the tile repeats every tileLengthM along plan +x: the page lays copies end to end and scrolls them back under the runners (scroll), the far land stays put; set_* nodes are set pieces placed on one tile; speedMps: act 2's night road is walked fast, not run (homeward-road.md 5)",
+    "setPieces": {
+      "spring": {
+        "about": "the stretch with the spring at 02:45: three planes and the rock, black against the stars"
+      },
+      "passtop": {
+        "about": "the top of the pass about 03:30: the gate's two rocks, low"
+      }
+    },
+    "speedMps": 1.7
+  },
+  "about": "Hand-written layout of a run segment (F-15): act 2's night road, 02:45 to 05:10, walked the other way: a dry tile, set pieces set_spring and set_passtop (5.1). Plan metres, +x = the way the runners go, the road on y = 0. Not a scene of the world model (no partOf): the page plays it between two stops after action_result and before the commit that moves you (homeward-road.md 10). The spots are for the runners on the treadmill; defaultPlace is where the segment leads.",
+  "rotationDeg": 0,
+  "defaultPlace": "place.river",
+  "playerStartSpot": "run-player",
+  "startSpots": {
+    "place.river": "run-player"
+  },
+  "walkable": [
+    {
+      "name": "the road and its verges, the length of the tile",
+      "polygon": [
+        [
+          -17.5,
+          -3
+        ],
+        [
+          17.5,
+          -3
+        ],
+        [
+          17.5,
+          3
+        ],
+        [
+          -17.5,
+          3
+        ]
+      ]
+    }
+  ],
+  "places": [],
+  "exits": [],
+  "spots": {
+    "run-player": {
+      "at": [
+        0,
+        -0.8
+      ],
+      "face": [
+        10,
+        -0.8
+      ],
+      "about": "where you run on the spot"
+    },
+    "run-melos": {
+      "at": [
+        0,
+        0.8
+      ],
+      "face": [
+        10,
+        0.8
+      ],
+      "about": "where Melos runs on the spot"
+    },
+    "run-third": {
+      "at": [
+        -0.6,
+        2.2
+      ],
+      "face": [
+        9.4,
+        2.2
+      ],
+      "about": "a third runner (Philostratus in the field road)"
+    }
+  },
+  "standsIn": {
+    "act": "act.2",
+    "scenes": [
+      "scene.road-pass",
+      "scene.road-spring",
+      "scene.road-field"
+    ],
+    "about": "in act 2 these scenes are stretches of the night road: their index.json gives this pack for act.2"
+  },
+  "hiTextures": {
+    "base": ["road", "grass", "outcrop"],
+    "nrm": ["road", "grass", "outcrop"]
+  }
+}

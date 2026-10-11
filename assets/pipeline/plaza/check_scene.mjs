@@ -218,7 +218,10 @@ const worlds = subdirs(path.join(REPO, "worlds"))
   .map((v) => path.join(v, "world.json"))
   .filter((f) => fs.existsSync(f));
 let usedBy = 0;
-for (const f of worlds) {
+// a run segment of the road (F-15: layout.runway, no partOf) is a stretch the page plays between two stops, not a
+// scene of the world model
+const RUNWAY = layout.runway && !scene.partOf;
+for (const f of RUNWAY ? [] : worlds) {
   const w = JSON.parse(fs.readFileSync(f, "utf8"));
   if (!w.scenes?.some((sc) => sc.id === SCENE_ID)) continue;
   usedBy++;
@@ -251,9 +254,14 @@ for (const f of worlds) {
       );
   }
 }
-rows.push(`world models using ${SCENE_ID}: ${usedBy}`);
+rows.push(
+  RUNWAY
+    ? `${SCENE_ID}: a run segment, not a scene of the world model`
+    : `world models using ${SCENE_ID}: ${usedBy}`,
+);
 // a scene in the repo that no world model uses means a renamed id somewhere, and the checks above checked nothing
-if (usedBy === 0) errors.push(`no world model in worlds/ uses ${SCENE_ID}`);
+if (usedBy === 0 && !RUNWAY)
+  errors.push(`no world model in worlds/ uses ${SCENE_ID}`);
 
 // ---- the committed manifest alone: the layout and scripts it was built from are still the ones in the repo
 if (!present)
