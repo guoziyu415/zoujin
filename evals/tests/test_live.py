@@ -1,6 +1,6 @@
 """live 模式只有开关和退出（E-0 卡验收最后一条）：没开关退出、少上限退出、不带 --confirm 打印预计花费和命令。
 
-花费按两本账分：google（产品路径）、claude（评审员和 AI 玩家）。
+花费按两本账分：google（人物的文字回答）、claude（叙事者、评审员和 AI 玩家）。
 """
 
 from __future__ import annotations

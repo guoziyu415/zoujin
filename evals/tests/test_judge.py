@@ -378,7 +378,7 @@ def test_live_gate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pyte
     fake = FakeClaude()
     assert run_cli(tmp_path, monkeypatch, "calibrate", "--mode", "live", *caps, fake=fake) == 0
     out = capsys.readouterr().out
-    assert "要调 150 次" in out and "约 $3.60" in out and f"{LIVE_SWITCH}=1 uv run zoujin-judge calibrate" in out
+    assert "要调 150 次" in out and "约 $1.50" in out and f"{LIVE_SWITCH}=1 uv run zoujin-judge calibrate" in out
     assert out.rstrip().endswith("--confirm") and fake.calls == []  # 不带 --confirm 不调
 
 
