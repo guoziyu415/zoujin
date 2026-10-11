@@ -4,7 +4,8 @@
   `zoujin_worldsim.knows(world, state, 人物, 事实)` 是 False（还没成立的事实 knows 也是 False，契约 1.4）。
   命中只记事实 ID。
 - **Model Armor `sanitizeModelResponse`**（第二层，网关里并行、不等）：RAI HIGH 算一次「有害输出」，只记次数。
-- 命中时：Trace 记一个 Span（人物 ID、事实 ID，不记原话）；这个人物下一次局势说明加一句纠正提示；同一个会话连续 2 句命中
+- 命中时：Trace 记一个 `monitor.hit` Span（一轮、人物 ID、事实 ID 或 RAI 类别、重建没有，不记原话和词）；
+  这个人物下一次局势说明加一句纠正提示；同一个会话连续 2 句命中
   → 重建这个人物的会话（`should_rebuild`）。
 - **问句比例**：每个人物以问句结尾的定稿 / 总定稿（`is_question`，这条连接上，满 `QUESTION_MIN` 句以后才算），
   超过 30% 加
@@ -38,7 +39,11 @@ MAX_SPOILER_NOTES = 3
 # 提示的日语（UX 在 #112 的评审里给的写法；文字改了不影响契约）
 # 剧透：不点名（数据评审 #112：写出那个词等于把还没发生的事告诉人物）。词只在 Trace 的事实 ID 和计数里。
 # 日语是数据给的初稿，UX 定
-NOTE_SPOILER = "さっき、まだ知らないはずのことを口にした。自分の目で見たこと、人から聞いたことだけを話す。"
+NOTE_SPOILER = (
+    "さっき、まだ知らないはずのことを口にした。"
+    "話すのは、自分の目で見たこと、人から聞いたこと、自分の思いだけにする。"
+    "その話を振られたら、よく分からないと答える。"
+)
 NOTE_QUESTIONS = "問いかけは控えめにする。相手の言葉に応えて、自分の思いや知っていることを話す。"
 # 似是而非的一句之后（S-069 ①）：只管玩家那句话，不避开处刑这条主线；带到这一幕结束，这一局所有人物都带
 NOTE_CALM = (
@@ -58,16 +63,17 @@ def last_sentence(text: str) -> str:
 
 
 def is_question(text: str | None) -> bool:
-    """把话头推回给玩家（S-023）：人物一次定稿的最后一句以「？」「?」结尾，或以「か。」「かい。」「かね。」结尾
-    （「そうか」「ものか」「ではないか」「じゃないか」除外）。「〜の。」「かな」不算（陈述、自言自语）。
+    """把话头推回给玩家（S-023）：人物一次定稿的最后一句以「？」「?」结尾，或去掉句号、感叹号、省略号后以
+    「か」「かい」「かね」「かしら」结尾（「のか」「だろうか」「ですか」等都以「か」结尾；
+    「そうか」「ものか」「ではないか」「じゃないか」除外）。「〜の。」「かな」不算（陈述、自言自语）。
     口径见 data-design 9.1。"""
     if not text:
         return False
     last = last_sentence(text)
     if last.endswith(("？", "?")):
         return True
-    body = last.rstrip("。．.…‥")
-    if not body.endswith(("か", "かい", "かね")):
+    body = last.rstrip("。．.！!…‥")
+    if not body.endswith(("か", "かい", "かね", "かしら")):
         return False
     return not body.endswith(_NOT_QUESTION)
 

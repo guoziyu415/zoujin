@@ -302,9 +302,10 @@ class Conn:
         evs = await self.gw.visible_events(self.pid, 0, 10_000)
         return [e["eventId"] for e in evs if e.get("turnId") == turn_id]
 
-    async def _observe(self, character: str, text: str | None, said: str | None = None) -> None:
+    async def _observe(self, turn_id: str, character: str, text: str | None, said: str | None = None) -> None:
         """人物的一句定稿过输出侧监控（B-12，2.11）：剧透、Model Armor、问句比例；连续两句剧透重建会话。
-        said = 玩家这一轮的定稿（玩家自己说过的词人物接着说不算剧透）。Span 只有人物 ID、事实 ID 和类别，没有原话。"""
+        said = 玩家这一轮的定稿（玩家自己说过的词人物接着说不算剧透）。
+        Span 只有一局、一轮、人物、事实 ID 和 RAI 类别，没有原话和命中的词（data-design 第 8 节）。"""
         if not text:
             return
         async with self.gw.engine.connect() as c:
@@ -313,9 +314,11 @@ class Conn:
         armor = self.gw.screener.armor
         harmful = False
         failed = False
+        categories: list[str] = []
         try:
             got = await asyncio.wait_for(armor.screen_response(text), self.gw.screener.armor_deadline)
             harmful = got.harmful
+            categories = [k for k, v in got.rai.items() if v == "HIGH"]
         except Exception:  # 第二层：出错、超时当没命中
             failed = True
             log.info("人物输出的 Model Armor 没有结果（%s）", character)
@@ -324,19 +327,17 @@ class Conn:
             by["cost_armor_usd"] = armor_usd
         if failed:
             by["armor_errors"] = 1
-        if o.spoilers:
-            facts = [h.fact for h in o.spoilers]
-            with self.gw.tracer.span(
-                "monitor.hit", playthrough_id=self.pid, character=character, kind="spoiler", fact_ids=facts
-            ):
-                pass
-        if harmful:
-            by["output_harmful"] = 1
-            with self.gw.tracer.span("monitor.hit", playthrough_id=self.pid, character=character, kind="harmful"):
-                pass
         rebuild = o.rebuild and character in self.sessions and not self.guard.paused
         if rebuild:
             by["output_rebuilds"] = 1
+        hit = {"playthrough_id": self.pid, "turn_id": turn_id, "character": character, "rebuild": rebuild}
+        if o.spoilers:
+            with self.gw.tracer.span("monitor.hit", **hit, kind="spoiler", fact=[h.fact for h in o.spoilers]):
+                pass
+        if harmful:
+            by["output_harmful"] = 1
+            with self.gw.tracer.span("monitor.hit", **hit, kind="harmful", category=sorted(categories)):
+                pass
         async with self.gw.engine.begin() as c:
             await store.count(c, self.pid, **by)
         if rebuild:
@@ -575,7 +576,7 @@ class Conn:
             elif ev.kind == "output_final":
                 t.said = ev.text
                 await self._final(t)
-                self.gw.spawn(self._observe(t.character, ev.text, t.heard))
+                self.gw.spawn(self._observe(t.turn_id, t.character, ev.text, t.heard))
 
     async def _final(self, t: Turn) -> None:
         if t.paused:  # 出戏卡停下的一轮没有人物定稿（3.3 的例外）

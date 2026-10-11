@@ -199,6 +199,13 @@ def test_two_spoilers_in_a_row_rebuild_the_session(env: Env, inproc: Make, play:
     assert s.live.opened[-1] == (OLD, [])  # 说漏的两句不带进新会话
     m = metrics(env, p.pid)
     assert (m["output_spoilers"], m["output_rebuilds"], m["output_lines"]) == (2, 1, 2)
+    hits = s.gw.tracer.named("monitor.hit")  # data-design 第 8 节：一句一个，不带原话和词
+    assert [(h["turn_id"], h["kind"], h["fact"], h["rebuild"]) for h in hits] == [
+        (a, "spoiler", ["fact.promise"], False),
+        (b, "spoiler", ["fact.promise"], True),
+    ]
+    assert all(h["character"] == OLD and h["playthrough_id"] == p.pid for h in hits)
+    assert "身代わり" not in str(hits)
 
 
 def test_too_many_questions_add_a_note(env: Env, inproc: Make, play: Play) -> None:
