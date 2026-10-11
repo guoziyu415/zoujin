@@ -36,7 +36,7 @@ from zoujin_llm import ClaudePrices, Ledger, Reply, canonical, claude_prices, mo
 from zoujin_backend.config import CLAUDE_TIERS, TEXT, ConfigError, ModelMode, Settings
 from zoujin_backend.models.prompts import EFFECT, PLAN_ALTERNATIVE, PROMPTS
 from zoujin_backend.models.render import render_body, world_prefix
-from zoujin_backend.models.text import BadOutput, TextResult, model_and_version, spec
+from zoujin_backend.models.text import BadOutput, Refused, TextResult, model_and_version, spec
 from zoujin_backend.world import Library
 
 Json = Any
@@ -287,7 +287,9 @@ class ClaudeText:
             raise
         cost = self.prices.cost(tag, got.usage)
         self.ledger.add(kind=kind, model=tag, usage=got.usage, cost=cost)
-        if got.stop_reason in ("refusal", "max_tokens"):
+        if got.stop_reason == "refusal":
+            raise Refused(f"{kind}：Claude 拒答", cost)
+        if got.stop_reason == "max_tokens":
             raise BadOutput(f"{kind}：Claude 停在 {got.stop_reason}", cost)
         try:
             output = json.loads(got.text or "")

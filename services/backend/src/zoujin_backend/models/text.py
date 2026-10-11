@@ -57,6 +57,11 @@ class BadOutput(ValueError):
         self.cost_usd = cost_usd
 
 
+class Refused(BadOutput):
+    """模型自己的安全过滤拒答了（Claude 的 `stop_reason: "refusal"`，没有输出）。安全筛查按有害输入处理（5.5），
+    别的提示和 BadOutput 一样按重发算。"""
+
+
 @dataclass(frozen=True)
 class TextResult:
     output: Json
@@ -124,6 +129,7 @@ DEFAULTS: dict[str, Callable[[Mapping[str, Any]], Json]] = {
     "check": _check_all_pass,
     "rewrite": _rewrite_same,  # 改写 = 原样；降级 = 做不到
     "reply": lambda r: {"text": "……そうか。"},
+    "safety": lambda r: {"selfHarm": "none", "injection": False},  # B-12：默认什么都不是
     "narrate": lambda r: {"text": NARRATE_LINES.get(str(r.get("status")), NARRATE_LINES["done"])},
     "plan": lambda r: {  # 不成行，替代去处是第一个给定去处（B-3 卡「接口」）
         "accepted": False,
@@ -134,7 +140,7 @@ DEFAULTS: dict[str, Callable[[Mapping[str, Any]], Json]] = {
         "alternative": {"exit": r["options"][0]["optionId"]} if r.get("options") else None,
     },
 }
-ERRORS = ("rate-limit", "invalid", "unavailable")
+ERRORS = ("rate-limit", "invalid", "unavailable", "refusal")
 
 
 def _summaries(request: Mapping[str, Any]) -> list[str]:
@@ -207,6 +213,8 @@ class FakeText:
                 await asyncio.sleep(rule["latencyMs"] / 1000)
             if rule.get("error") == "rate-limit":
                 raise RateLimited(f"假模型：{kind} 回 429（{rule['source']}）")
+            if rule.get("error") == "refusal":
+                raise Refused(f"假模型：{kind} 拒答（{rule['source']}）")
             if rule.get("error") == "invalid":
                 raise BadOutput(f"假模型：{kind} 的输出不过 Schema（{rule['source']}）")
             if rule.get("error") == "unavailable":

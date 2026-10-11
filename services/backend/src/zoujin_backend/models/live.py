@@ -60,7 +60,10 @@ class Recent:
 
 
 class LiveModel(Protocol):
-    async def open(self, character: str, recent: Sequence[Recent] = ()) -> LiveSession: ...
+    async def open(self, character: str, recent: Sequence[Recent] = (), notes: Sequence[str] = ()) -> LiveSession:
+        """notes：B-12 输出侧监控给这个人物局势说明加的几句日语提示（剧透纠正、问句过多、不往死亡推）。"""
+        ...
+
     def transcriber(self) -> Transcriber: ...
 
 
@@ -150,9 +153,11 @@ class FakeLive:
         self.planned = 0
         self.speed = speed
         self.opened: list[tuple[str, list[Recent]]] = []  # 测试看：开了谁的会话、带了哪些最近的对话
+        self.notes: list[tuple[str, list[str]]] = []  # 测试看：开会话时带了哪些提示（B-12）
 
-    async def open(self, character: str, recent: Sequence[Recent] = ()) -> FakeLiveSession:
+    async def open(self, character: str, recent: Sequence[Recent] = (), notes: Sequence[str] = ()) -> FakeLiveSession:
         self.opened.append((character, list(recent)))
+        self.notes.append((character, list(notes)))
         opener = self.openers.get(character) or self.openers.get("default") or "……"
         return FakeLiveSession(character, self.lines.get(character) or self.lines["default"], self.speed, opener)
 

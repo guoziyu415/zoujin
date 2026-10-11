@@ -88,6 +88,8 @@ playthroughs = Table(
     Column("plan_tries", Integer, nullable=False, server_default="0"),  # 这次幕末说过几次打算
     Column("plan_alternative", JSONB),  # 打算不成行时给的替代去处（幕切换时清掉）
     Column("arrival", JSONB),  # 落地带 opener、还没收到 act_landed：{actId, line, opener}
+    # B-12（0005）：安全筛查的这一局状态 {paused, hinted, ambiguous}（出戏卡开着、小提示推过、似是而非几次），只有网关写
+    Column("safety", JSONB, nullable=False, server_default=text("'{}'::jsonb")),
     # 每账号同时 1 局（backend-design 5.2）
     Index("playthroughs_one_active", "user_ref", unique=True, postgresql_where=text("status = 'active'")),
 )
@@ -120,6 +122,8 @@ turns = Table(
     _ts("created_at", nullable=False, now=True),
     _ts("settled_at"),
     _ts("commit_after"),  # B-4（0004）：叙事者最早什么时候提交这一轮（turn_complete、打算的定稿 + 3 秒，作废的窗口）
+    # B-12（0005）：第 0 步安全筛查给叙事者的标记（injection / pii / harmful / unscreened / ambiguous），不放判定的分数
+    Column("flags", JSONB),
     UniqueConstraint("playthrough_id", "idempotency_key", name="turns_idempotency"),
     Index("turns_queue", "playthrough_id", "status", "created_at"),
 )
@@ -227,6 +231,16 @@ playthrough_metrics = Table(
     Column("confirms_no", Integer, nullable=False, server_default="0"),
     Column("confirms_timeout", Integer, nullable=False, server_default="0"),
     Column("confirms_rejected", Integer, nullable=False, server_default="0"),
+    # B-12（0005）：只记次数（S-057、S-069 ③）：出戏卡、小提示、没判定、分类器拒答、Model Armor 出错；
+    # 输出侧：剧透命中的句数、Model Armor 判有害的人物输出、问句过多加了提示的次数
+    Column("safety_pauses", Integer, nullable=False, server_default="0"),
+    Column("safety_hints", Integer, nullable=False, server_default="0"),
+    Column("safety_unscreened", Integer, nullable=False, server_default="0"),
+    Column("safety_refused", Integer, nullable=False, server_default="0"),
+    Column("armor_errors", Integer, nullable=False, server_default="0"),
+    Column("spoiler_hits", Integer, nullable=False, server_default="0"),
+    Column("output_harmful", Integer, nullable=False, server_default="0"),
+    Column("question_notes", Integer, nullable=False, server_default="0"),
 )
 
 # 意图确认的草稿（B-4，api-contract 3.9）：叙事者提出、还没答的那一个候选（不放原话）。关掉就删行，随整局删除。

@@ -234,10 +234,12 @@ def player_spot(book: Book, state: SimState, run: Run | None) -> str:
     return scene.player_spot(place)
 
 
-def pending(run: Run | None, confirm: Json | None = None) -> Json:
-    """welcome.pending（第 4 节）。confirm：还没答的意图确认（B-4，带 remainingSec），网关查草稿给。"""
+def pending(run: Run | None, confirm: Json | None = None, *, safety_pause: bool = False) -> Json:
+    """welcome.pending（第 4 节）。confirm：还没答的意图确认（B-4，带 remainingSec），网关查草稿给；
+    safety_pause：出戏卡开着（B-12，`playthroughs.safety.paused`）。"""
     out: Json = dict(PENDING)
     out["confirm"] = confirm
+    out["safetyPause"] = safety_pause
     if run is not None:
         out["actEnd"] = run.act_end
         if run.arrival and run.arrival.get("opener"):

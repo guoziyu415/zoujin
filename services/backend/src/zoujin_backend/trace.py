@@ -49,6 +49,8 @@ ATTRS = frozenset(
         "by",
         "result",
         "nth",
+        "fact_ids",  # B-12：输出侧监控命中的事实 ID、命中的种类（spoiler / harmful）
+        "kind",
     }
 )
 

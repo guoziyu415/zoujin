@@ -29,6 +29,7 @@ from zoujin_backend.db.tables import turns
 from zoujin_backend.ids import IdGen
 from zoujin_backend.models.live import LiveModel
 from zoujin_backend.projection import is_visible, patch, snapshot, visible_event, with_locations
+from zoujin_backend.safety import Screener
 from zoujin_backend.schemas import SchemaBook
 from zoujin_backend.trace import Tracer
 from zoujin_backend.world import Book, Library
@@ -90,8 +91,16 @@ class Gateway:
     draining: bool = False
     tasks: set[asyncio.Task[Any]] = field(default_factory=set)
     tracer: Tracer = field(default_factory=Tracer)  # B-4：gateway.retract
+    # B-12：玩家每一句的安全筛查（文本模型和 Model Armor 按 ZJ_MODEL；不给就按 settings 建，测试可以换）
+    screener: Screener = field(default=None)  # type: ignore[assignment]
     # 测试用：每条发出的服务端消息（已过 Schema）
     on_send: Callable[[Json], None] | None = None
+
+    def __post_init__(self) -> None:
+        if self.screener is None:
+            from zoujin_backend.gateway.safety import build_screener
+
+            self.screener = build_screener(self.settings, self.tracer)
 
     # —— 局 ——
 

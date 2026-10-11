@@ -200,7 +200,16 @@ def test_replay_fixture_is_the_fake_model_recorded(env: Env, monkeypatch: pytest
     if os.environ.get("ZJ_UPDATE_REPLAYS") == "1":
         REPLAYS.write_text(text, encoding="utf-8")
     # 被否决的那个：改写两次（假模型原样改回）、降级一次（做不到）
-    assert [c["kind"] for c in calls] == ["reply", "triage", "extract", "check", "rewrite", "rewrite", "rewrite"]
+    assert [c["kind"] for c in calls] == [
+        "safety",
+        "reply",
+        "triage",
+        "extract",
+        "check",
+        "rewrite",
+        "rewrite",
+        "rewrite",
+    ]
     assert REPLAYS.read_text(encoding="utf-8") == text, "回放过期：ZJ_UPDATE_REPLAYS=1 重跑这条测试"
 
 

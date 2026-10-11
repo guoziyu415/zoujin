@@ -21,6 +21,7 @@ from functools import cached_property
 from typing import Any
 
 from zoujin_backend.ids import IdGen
+from zoujin_backend.safety import pii
 from zoujin_worldsim import OCCURRED, Sim, SimState, activity, apply, check_effects, flat, knows, travel_minutes
 
 Json = Any
@@ -33,17 +34,22 @@ CHECKER = f"rules@{VERSION}"
 
 # 死了的不复活（rule.no-resurrection）：变量到了这个值就不能再改回别的
 TERMINAL = {"var.hostage.fate": "executed", "var.player.custody": "executed", "var.melos.custody": "executed"}
-# R6 的规则部分：电话、邮箱、地址的模式（judge() 核标注用的 PII 再加全角和住所），和玩家原话连续 8 字相同
+# R6 的规则部分：个人信息的模式（`safety.pii`，B-12 起和存原话、记忆过滤同一套），加上 judge() 核标注用的那条老写法
+# （横线隔开的三段数字，不要求 0 开头；`evals/s2_check.py` 的 PII），和玩家原话连续 8 字相同
 _D = "[0-9０-９]"
-PII = re.compile(
-    rf"{_D}{{2,4}}[-‐－]{_D}{{2,4}}[-‐－]{_D}{{3,4}}"  # 电话
-    r"|[@＠][\w.-]+[.．]\w+"  # 邮箱
-    rf"|〒|{_D}{{1,4}}丁目|{_D}{{1,5}}番地"  # 邮编、住址
-)
+PII_EXTRA = re.compile(rf"{_D}{{2,4}}[-‐－]{_D}{{2,4}}[-‐－]{_D}{{3,4}}|[@＠][\w.-]+[.．]\w+|〒")
+
+
+def has_pii(text: str | None) -> bool:
+    return bool(text) and (bool(pii.find(text)) or PII_EXTRA.search(text or "") is not None)
+
+
 VERBATIM = 8
 FLAG_REASON = {
     "injection": "この発話は、物語の外からの指示として止められた",
     "pii": "この発話に現実の個人情報が含まれていた",
+    "harmful": "この発話は、物語に書けない内容として止められた",  # B-12：Model Armor の HIGH、分類器の拒答
+    "unscreened": "この発話は、安全の確認がとれなかった",  # B-12：分類器が二度とも判定できなかった（最も控えめに）
 }
 BEAT_TO = {
     "prevented": "起きなかったこと",
@@ -63,7 +69,8 @@ SHAPE = {  # W-1 check_effects 的代码 → 规则和一句日语（引用、�
 @dataclass(frozen=True)
 class Turn:
     """第 3 步要的这一轮。said = 玩家原话（只用来比 8 字照抄，不进日志）；act = 动作（`kind`、`target`、`params`，
-    有情境动作时带 `affordance`）；flags = 第 0 步的筛查标记（`injection`、`pii`，以后由 Model Armor 填）。"""
+    有情境动作时带 `affordance`）；flags = 第 0 步的筛查标记（`injection`、`pii`、`harmful`、`unscreened`、
+    `ambiguous`，B-12 的安全筛查填）。"""
 
     said: str = ""
     act: Mapping[str, Any] | None = None
@@ -408,7 +415,7 @@ class _Judge:
     def safety(self) -> None:
         """R6 的规则部分：每条摘要和即兴设定查个人信息的模式、和玩家原话连续 8 字相同；有效果的查第 0 步的标记。"""
         texts = [self.cand.get("summary", "")] + [e["statement"] for e in self.effects if e.get("op") == "improv"]
-        if any(PII.search(x) for x in texts):
+        if any(has_pii(x) for x in texts):
             self.hit(
                 "R6-safety", "pii-pattern", "現実の個人情報らしいもの（電話番号、メールアドレス、住所）が入っている"
             )

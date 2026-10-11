@@ -41,7 +41,7 @@ from zoujin_backend.db.tables import events as events_t
 from zoujin_backend.ids import IdGen
 from zoujin_backend.models.text import ReplayMissing, Stop, TextModel
 from zoujin_backend.narrator import acts, confirm
-from zoujin_backend.narrator.pipeline import Counts, Pipeline, Spend, TurnInput, Verified
+from zoujin_backend.narrator.pipeline import Counts, Extracted, Pipeline, Spend, TurnInput, Verified
 from zoujin_backend.narrator.rules import Checked
 from zoujin_backend.narrator.writer import Writer
 from zoujin_backend.projection import is_visible, snapshot
@@ -83,6 +83,7 @@ class Task:
     client_msg_id: str | None = None  # B-3：动作、幕末的 clientMsgId
     request: Json | None = None  # B-3：动作和幕末的请求（turns.request）
     window_until: float | None = None  # B-4：提交窗口到什么时候（time.monotonic()）；None = 没有窗口
+    flags: frozenset[str] = frozenset()  # B-12：第 0 步安全筛查的标记（turns.flags）
     # 这次处理已经花的钱（B-8 第 7 条）：从检查重来（Stale）的几遍合在一起；提交了就随提交写进 playthrough_metrics，
     # 没提交（作废了、出错了、停下了）由 `Narrator.charge` 补记，每局的花费才和账本对得上
     spend: Spend = field(default_factory=Spend, compare=False)
@@ -261,6 +262,7 @@ class Narrator:
                 client_msg_id=row["client_msg_id"],
                 request=row["request"],
                 window_until=time.monotonic() + left if left > 0 else None,
+                flags=frozenset(row["flags"] or ()),
             )
 
     async def wait_window(self, task: Task) -> None:
@@ -333,12 +335,16 @@ class Narrator:
             player=lines.get("player"),
             reply=lines.get("character"),
             mode=task.input_mode or "voice",
+            flags=task.flags,
         )
         spend = task.spend  # 跟着任务走：重来的、没提交的也算（B-8 第 7 条）
         span = {"playthrough_id": task.pid, "turn_id": task.turn_id}
         draft = await self._waiting(task)
         asking = {"prompt": draft["prompt"], "summary": draft["candidate"]["summary"]} if draft else None
-        extracted = await self.pipeline.extract(book, state, turn, spend, span, drafts=True, confirm=asking)
+        if "ambiguous" in turn.flags and asking is None:  # S-069：似是而非的一句不提取事件，只记时间（B-12）
+            extracted = Extracted([], Counts())
+        else:
+            extracted = await self.pipeline.extract(book, state, turn, spend, span, drafts=True, confirm=asking)
         answer = (draft["draft_id"], extracted.answer) if draft and extracted.answer in confirm.ANSWERS else None
         for _ in range(MAX_STALE):
             if extracted.timed_out:

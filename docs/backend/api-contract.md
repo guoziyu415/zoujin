@@ -1,9 +1,9 @@
-# 前后端接口约定（api-contract.md）v1.0.8
+# 前后端接口约定（api-contract.md）v1.0.9
 
-负责人：后端 · 状态：**v1.0.8，冻结**（v1.0 在 C-1 冻结；v1.0.1 把 C-1 评审定下的写进正文；v1.0.2 把 B-1 评审定下的几处顺序写进正文；v1.0.3 把 B-0、F-2b 评审和 S-077 ⑫ 定下的写进正文；v1.0.4 把数据契约 1.7 里前端要拿到的几样加进接口；v1.0.5 按 B-3 卡放宽三处 Schema、补一条错误说明；v1.0.6 按 UX 定的文案改下发的事件句和一句叙事，不改形状；v1.0.7 按 B-4 卡写明作废、意图确认的顺序和评测入口的三项，不改形状；v1.0.8 按 B-6 写明录音文件的格式，不改形状）：之后只做加法（第 0 节「版本」），每种消息和响应的 JSON Schema 在 `packages/contracts/schemas/api/`。v0.3 吸收了前端评审 17 条（`frontend/reviews/backend-v0.1.md` 和 frontend-design 第 14 节 1〜17）、数据评审 16 条（`data/reviews/backend-v0.1.md`）、ux-design 18.2 的接口要求，以及 decisions S-022〜S-053、D-012〜D-015。v0.3.2 和数据契约 v1.2 对齐。逐条对照见第 9 节。
+负责人：后端 · 状态：**v1.0.9，冻结**（v1.0 在 C-1 冻结；v1.0.1 把 C-1 评审定下的写进正文；v1.0.2 把 B-1 评审定下的几处顺序写进正文；v1.0.3 把 B-0、F-2b 评审和 S-077 ⑫ 定下的写进正文；v1.0.4 把数据契约 1.7 里前端要拿到的几样加进接口；v1.0.5 按 B-3 卡放宽三处 Schema、补一条错误说明；v1.0.6 按 UX 定的文案改下发的事件句和一句叙事，不改形状；v1.0.7 按 B-4 卡写明作废、意图确认的顺序和评测入口的三项，不改形状；v1.0.8 按 B-6 写明录音文件的格式，不改形状；v1.0.9 按 B-12 写明出戏卡的几处顺序，不改形状）：之后只做加法（第 0 节「版本」），每种消息和响应的 JSON Schema 在 `packages/contracts/schemas/api/`。v0.3 吸收了前端评审 17 条（`frontend/reviews/backend-v0.1.md` 和 frontend-design 第 14 节 1〜17）、数据评审 16 条（`data/reviews/backend-v0.1.md`）、ux-design 18.2 的接口要求，以及 decisions S-022〜S-053、D-012〜D-015。v0.3.2 和数据契约 v1.2 对齐。逐条对照见第 9 节。
 数据字段以 `data/contracts.md` 为准（v1.7；标「契约 1.1」「契约 1.2」「契约 1.4」的字段是这几个小版本加的；1.3 加的随身物品不进接口，物品只出现在 `give` 类按钮上；1.6 的结局卡见 2.8；1.7 的位置点、幕末副题和落地、固定演出、可调查物见 2.3、3.8、3.11、3.14），本文只定义传输形状。字段名 camelCase；WebSocket 消息类型 snake_case。
 相关：`backend/backend-design.md` v1.0.9（为什么这么设计）· `frontend/frontend-design.md` · `ux/ux-design.md`
-最近更新：2026-10-11（v1.0.8）
+最近更新：2026-10-11（v1.0.9）
 
 ---
 
@@ -626,7 +626,10 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 - 服务端对玩家的每一句话（语音的定稿字幕、文字）做安全筛查（backend-design 5.5）。判为明确的信号时：停止转发人物的回答，这一轮不交给叙事者、不花时间、原话立即清空，推 `turn_settled { outcome: "paused" }` 和 `safety_pause`。
 - 卡片的文案和相谈窗口由 UX 定（ux-design 第 14 节），不从服务端下发。
 - 推 `safety_pause` 时如果玩家正按着说话键（已发 `activity_start`），服务端把这一轮直接丢掉：之后这个 `turnId` 的音频帧和 `activity_end` 都忽略，不转写、不存、不交给叙事者。前端停发麦克风帧、丢掉本地录音，什么都不用补发（不发 `turn_retract`）；恢复后用新的 `turnId`。
-- 暂停期间故事时间不动，人物的会话关闭；玩家选「物語に戻る」时前端发 `safety_resume`，服务端回 `safety_resumed`，前端重新 `focus`。
+- 判定在定稿字幕上做，所以语音一轮的暂停最早在定稿到了以后（人物开口后约 0.2〜1 秒，S-069）；人物可能已经说了半句。被停下的这一轮服务端不推 `interrupted`、不推人物定稿（3.3 的例外），前端自己把声音淡掉、清掉这一轮的字幕（ux-design 14.1）。
+- 幕末说的打算（`act_propose`、`activity_start { purpose: "act_plan" }`）也筛：判为信号时不推 `act_plan_result`、不算试次；恢复以后幕末页照原样（`pending.actEnd`）。
+- 被停下的一轮在 `welcome.lastTurn` 里同作废的一轮：`status: "settled"`，`playerText`、`characterText` 都是 `null`，前端不重发。
+- 暂停期间故事时间不动，人物的会话关闭；`text`、`activity_start`、`action`、`act_*` 回 `invalid_request`（出戏卡在时前端不出字），`focus` 不开会话、不回错误（重连时前端自动发的那次）。玩家选「物語に戻る」时前端发 `safety_resume`，服务端回 `safety_resumed`，前端重新 `focus`。
 - 似是而非的句子（「ここで終わりにしたい」这类，故事里也说得通）不暂停（S-069）：
   - 一局里第一次：推 `safety_hint`（无字段）。前端在画面边上显示一条安静的小提示，入口和出戏卡同一个相谈窗口；文字和位置由 UX 定，不从服务端下发。人物照常说话，故事时间照常走。服务端这一轮在局势说明里不往死亡、绝望推，这一句不提取事件。
   - 同一局第二次似是而非：按明确的信号处理，走上面的 `safety_pause`。
@@ -836,6 +839,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 
 ## 修订记录
 
+- v1.0.9（2026-10-11）：只补正文，形状和 Schema 都不变（B-12）：出戏卡停下的一轮不推 `interrupted` 和人物定稿，语音一轮的暂停最早在定稿以后；幕末的打算也筛；停下的一轮在 `lastTurn` 里同作废的一轮；暂停期间哪些消息回 `invalid_request`、`focus` 不开会话（3.12）。
 - v1.0.8（2026-10-11）：传输形状和 Schema 都不变，2.1 加一条录音文件的说明（B-6）：格式是 AAC（`.m4a`）、单声道、24 kHz；几个 `setPieceVoices` 键可以指向同一个 `url`；一个人物的 6 句缺一句时这个人物没有 `prerecorded`。
 - v1.0.7（2026-10-11）：传输形状和 Schema 都不变，按 B-4 卡（#65）把作废、意图确认的顺序和评测入口写进正文，前端同意以后和 B-4 的代码同一个 PR 改：幕末用声音说的打算也能作废，作废了不推 `act_plan_result`、`turn_settled`，不算试次；文字的一轮也有提交窗口；服务端发起的一轮回 `too_late`（3.6）；意图确认的推送顺序、反问那一轮没有 `turn_settled`、一局最多 3 次、同一时间一个草稿、用声音回答的一轮照常 10 分钟、收幕时不留草稿（3.9）；作废的一轮在 `lastTurn` 里是 `settled`、文字为 `null`（4）；评测入口的 `say(hold)`、`retract(step)`、`confirm(answer)` 和 `StepResult` 的 `held`、`confirm`（7）。mock 的 `confirm` 剧本照新的顺序改，两次确认的选项都用 3.9 的固定两项。
 - v1.0.6（2026-10-10）：传输形状和 Schema 都不变，只改下发的文字（UX 10-10 定的，后端同意）：事件的 `summary`（2.4、2.5、2.6、`commit`）、`recapLines` 和「その頃」的 `line` 里，玩家写成「あなた」，不再用身份名；`recapLines` 和「その頃」句末补「。」，`summary` 不补。库里存的事件照旧用身份名。用声音说的打算转写为空时那句叙事改为「声が届かなかったようです。もう一度、聞かせてください。」（3.11）。2.4、2.5、2.6 的例子和 `packages/contracts/examples/` 里对应的合法例子跟着改，mock（`fixtures/sessions/`、`fixtures/mock/rest/`）也改了。跟契约 1.8（#70）：2.4、3.4 例子里 `visibleEffects` 的 `label` 改成「王はあなたを覚えた」（世界模型里写玩家的标签本来就用「あなた」）；mock 里送老爺回家那条事件句照 `pastLabel` 写成「あなたは、老爺を家まで送った」。
