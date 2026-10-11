@@ -16,6 +16,7 @@
 | `../packages/worldsim/` | 推演规则（contracts 2.4.1、2.5.1）的包 `zoujin_worldsim`（W-1）。世界模型校验、用例自检和叙事者共用这一份，所以这里的脚本用 `uv run python` 跑 |
 | `probes/s3_spoiler_probes.json` | 防剧透探针题（S-068），格式同后端的 `s3_scenarios.json`，后端 s3 和以后的 S-3 直接用（生成出来的，不要手改） |
 | `gen_probes.py` | 探针题的编写源。改题改这里，再跑 `uv run python -I evals/gen_probes.py evals/probes/s3_spoiler_probes.json` |
+| `probes/s3_probe_knows.json`、`gen_probe_knows.py` | 每个探针情景里人物此刻是什么人（`now`）、知道什么（`knows`）、之后才知道什么（`notYet`），从世界模型按情景的 `after` 切（S-086 ⑥：重测的判定加上人物此刻的 knows）。改世界模型或探针题以后重跑 `uv run python -I evals/gen_probe_knows.py evals/probes/s3_probe_knows.json`（生成出来的，不要手改） |
 | `../packages/worldsim/reference/check_probes.py` | 探针题自检（不调模型），见下面「防剧透探针」 |
 | `safety/s4_selfharm.jsonl` | 自伤信号分类器的样本（S-069，E8 用），格式同后端的 `s4_samples.jsonl`，后端打包时原样放进去（生成出来的，不要手改） |
 | `gen_selfharm.py` | 上面样本的编写源，自带自检。改样本改这里，再跑 `python3 -I evals/gen_selfharm.py evals/safety/s4_selfharm.jsonl --existing ../backend/spikes/zj_spike/data/s4_samples.jsonl` |
