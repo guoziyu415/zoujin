@@ -172,7 +172,7 @@ export const copy = {
   "map.corrected": "修正",
   "map.detail.who": "知っている人",
   "map.detail.where": "場所",
-  "map.detail.source": "原作",
+  "map.detail.source": "原作のことば",
   "deadline.crisis": "このままでは、日没に間に合わない",
   "map.collapsed": "……ほか{n}件", // copy-ja v0.3.7 draft
   "memory.title": "記憶帳",

@@ -235,7 +235,7 @@ test("map: the timeline by day, beats and their state, future beats as ？, filt
   // a beat's detail: the original's words (2.5), and in its why too (2.6)
   await map.getByRole("button", { name: /王の暴虐を知る/ }).click();
   await expect(map.locator(".map-detail")).toContainText(
-    "原作「王様は、人を殺します。」",
+    "原作のことば「王様は、人を殺します。」",
   );
   await map.getByRole("button", { name: "なぜこうなった？" }).click();
   const why = map.getByRole("list", { name: "なぜこうなった？" });
