@@ -4471,12 +4471,19 @@
     {
      "op": "relocate",
      "character": "char.melos",
-     "place": "place.melos-home"
+     "place": "place.melos-home",
+     "spot": "melos-meet"
     },
     {
      "op": "set",
      "var": "var.wedding.status",
      "value": "scheduled"
+    },
+    {
+     "op": "relocate",
+     "character": "char.sister",
+     "place": "place.melos-home",
+     "spot": "sister-meet"
     }
    ],
    "activities": [
@@ -4528,6 +4535,12 @@
      "op": "inc",
      "var": "var.melos.stamina",
      "by": 35
+    },
+    {
+     "op": "relocate",
+     "character": "char.melos",
+     "place": "place.melos-home",
+     "spot": "melos-sleep"
     }
    ],
    "activities": [
@@ -4577,6 +4590,18 @@
      "op": "inc",
      "var": "var.melos.stamina",
      "by": -10
+    },
+    {
+     "op": "relocate",
+     "character": "char.melos",
+     "place": "place.groom-house",
+     "spot": "melos-groom"
+    },
+    {
+     "op": "relocate",
+     "character": "char.groom",
+     "place": "place.groom-house",
+     "spot": "groom-table"
     }
    ],
    "activities": [
@@ -4631,6 +4656,24 @@
      "op": "set",
      "var": "var.wedding.status",
      "value": "held"
+    },
+    {
+     "op": "relocate",
+     "character": "char.melos",
+     "place": "place.melos-home",
+     "spot": "wedding-melos"
+    },
+    {
+     "op": "relocate",
+     "character": "char.sister",
+     "place": "place.melos-home",
+     "spot": "wedding-bride"
+    },
+    {
+     "op": "relocate",
+     "character": "char.groom",
+     "place": "place.melos-home",
+     "spot": "wedding-groom"
     }
    ],
    "cite": [
@@ -4660,6 +4703,18 @@
      "op": "set",
      "var": "var.weather",
      "value": "storm"
+    },
+    {
+     "op": "relocate",
+     "character": "char.sister",
+     "place": "place.melos-home",
+     "spot": "feast-bride"
+    },
+    {
+     "op": "relocate",
+     "character": "char.groom",
+     "place": "place.melos-home",
+     "spot": "feast-groom"
     }
    ],
    "cite": [
@@ -4694,7 +4749,14 @@
      "value": "held"
     }
    ],
-   "outcomes": [],
+   "outcomes": [
+    {
+     "op": "relocate",
+     "character": "char.melos",
+     "place": "place.melos-home",
+     "spot": "melos-hut"
+    }
+   ],
    "activities": [
     {
      "character": "char.melos",
@@ -4745,7 +4807,8 @@
     {
      "op": "relocate",
      "character": "char.melos",
-     "place": "place.village"
+     "place": "place.village",
+     "spot": "way.east"
     }
    ],
    "activities": [
@@ -6235,6 +6298,7 @@
      "toAct": "act.3",
      "place": "place.melos-home",
      "t": 2040,
+     "spot": "road-arrive",
      "alignTo": "beat.08",
      "requires": [
       {

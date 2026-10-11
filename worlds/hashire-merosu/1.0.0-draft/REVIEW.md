@@ -36,12 +36,12 @@
 | beat.05 王との問答と約束 | D0 20:30（D0 20:00〜D0 23:00） | castle | メロス、王ディオニス | mutable | melos.custody == arrested | promise.made = True、hostage.who = char.selinuntius | 「処刑までに三日間の日限を与えて下さい。」(18)<br>「あれを、人質としてここに置いて行こう。」(20)<br>「願いを、聞いた。その身代りを呼ぶがよい。」(22)<br>「メロスは口惜しく、地団駄踏んだ。」(25) | |
 | beat.06 深夜、友が召される | D0 23:30（D0 21:30〜D1 01:00） | castle | セリヌンティウス、メロス、王ディオニス | mutable | promise.made == True | hostage.fate = held、selinuntius → castle | 「竹馬の友、セリヌンティウスは、深夜、王城に召された。」(26) | |
 | beat.07 満天の星の下を発つ | D0 23:45（D0 21:40〜D1 02:00） | castle | メロス | mutable | hostage.fate == held | melos.custody = on-parole、melos.stamina -30、selinuntius → castle、melos → road-to-city | 「メロスは、すぐに出発した。初夏、満天の星である。」(26) | |
-| beat.08 村に着き、婚礼を告げる | D1 10:00（D1 07:00〜D1 14:00） | melos-home | メロス、メロスの妹 | mutable | melos.custody == on-parole | melos → melos-home、wedding.status = scheduled | 「村へ到着したのは、翌る日の午前」(27)<br>「あす、おまえの結婚式を挙げる。」(28)<br>「村の人たちに知らせて来い。結婚式は、あすだと。」(30) | |
-| beat.09 支度をして眠る | D1 10:30（D1 10:00〜D1 20:00） | melos-home | メロス | mutable | — | melos.stamina +35 | 「間もなく床に倒れ伏し、呼吸もせぬくらいの深い眠りに落ちてしまった。」(31) | |
-| beat.10 花婿を夜通し説く | D2 04:30（D1 20:00〜D2 08:00） | groom-house | メロス、花婿 | mutable | wedding.status == scheduled | groom.agreed = True、melos.stamina -10 | 「眼が覚めたのは夜だった。」(32)<br>「夜明けまで議論をつづけて、やっと、どうにか婿をなだめ、すかして、説き伏せた。」(32) | |
-| beat.11 真昼の婚礼 | D2 12:00（D2 07:00〜D2 18:40） | melos-home | メロス、メロスの妹、花婿 | mutable | groom.agreed == True | wedding.status = held | 「結婚式は、真昼に行われた。」(32) | |
-| beat.12 大雨 | D2 12:30（D2 12:20〜D2 13:00） | melos-home | — | anchor | — | weather = storm | 「黒雲が空を覆い、ぽつりぽつり雨が降り出し」(32) | |
-| beat.13 祝宴と別れの言葉 | D2 21:00（D2 13:40〜D2 23:40） | melos-home | メロス、メロスの妹、花婿 | mutable | wedding.status == held | — | 「メロスは、一生このままここにいたい、と思った。」(32)<br>「もう一つ、メロスの弟になったことを誇ってくれ。」(35) | |
+| beat.08 村に着き、婚礼を告げる | D1 10:00（D1 07:00〜D1 14:00） | melos-home | メロス、メロスの妹 | mutable | melos.custody == on-parole | melos → melos-home、wedding.status = scheduled、sister → melos-home | 「村へ到着したのは、翌る日の午前」(27)<br>「あす、おまえの結婚式を挙げる。」(28)<br>「村の人たちに知らせて来い。結婚式は、あすだと。」(30) | |
+| beat.09 支度をして眠る | D1 10:30（D1 10:00〜D1 20:00） | melos-home | メロス | mutable | — | melos.stamina +35、melos → melos-home | 「間もなく床に倒れ伏し、呼吸もせぬくらいの深い眠りに落ちてしまった。」(31) | |
+| beat.10 花婿を夜通し説く | D2 04:30（D1 20:00〜D2 08:00） | groom-house | メロス、花婿 | mutable | wedding.status == scheduled | groom.agreed = True、melos.stamina -10、melos → groom-house、groom → groom-house | 「眼が覚めたのは夜だった。」(32)<br>「夜明けまで議論をつづけて、やっと、どうにか婿をなだめ、すかして、説き伏せた。」(32) | |
+| beat.11 真昼の婚礼 | D2 12:00（D2 07:00〜D2 18:40） | melos-home | メロス、メロスの妹、花婿 | mutable | groom.agreed == True | wedding.status = held、melos → melos-home、sister → melos-home、groom → melos-home | 「結婚式は、真昼に行われた。」(32) | |
+| beat.12 大雨 | D2 12:30（D2 12:20〜D2 13:00） | melos-home | — | anchor | — | weather = storm、sister → melos-home、groom → melos-home | 「黒雲が空を覆い、ぽつりぽつり雨が降り出し」(32) | |
+| beat.13 祝宴と別れの言葉 | D2 21:00（D2 13:40〜D2 23:40） | melos-home | メロス、メロスの妹、花婿 | mutable | wedding.status == held | melos → melos-home | 「メロスは、一生このままここにいたい、と思った。」(32)<br>「もう一つ、メロスの弟になったことを誇ってくれ。」(35) | |
 | beat.14 薄明、雨中を走り出る | D3 04:30（D3 01:20〜D3 09:40） | melos-home | メロス | mutable | melos.custody == on-parole | melos.stamina +30、melos → village | 「眼が覚めたのは翌る日の薄明の頃である。」(37)<br>「雨中、矢の如く走り出た。」(37) | |
 | beat.17 濁流、橋が流される | D3 06:00（D3 04:40〜D3 08:00） | river | — | anchor | — | bridge = destroyed | 「猛勢一挙に橋を破壊し」(38) | |
 | beat.15 雨が上がる | D3 09:00（D3 08:00〜D3 10:00） | neighbor-village | — | anchor | — | weather = after-rain | 「雨も止み、日は高く昇って、そろそろ暑くなって来た。」(38) | |
