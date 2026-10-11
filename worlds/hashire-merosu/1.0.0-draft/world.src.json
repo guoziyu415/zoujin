@@ -1,5 +1,5 @@
 {
- "schemaVersion": "1.14",
+ "schemaVersion": "1.15",
  "worldModelVersion": "hashire-merosu@1.0.0-draft.3",
  "_authoring": "出典は {\"q\": 原文の逐字引用, \"p\": 段落番号（省略可）} で書く。spikes/pipeline/build_world.py が段落を特定・検証して world.json を出力する。",
  "book": {
@@ -2862,7 +2862,7 @@
   {
    "id": "place.stonemason-workshop",
    "name": "セリヌンティウスの石工の仕事場",
-   "shortName": "石工の仕事場",
+   "shortName": "工房",
    "description": "原文に場面はない。石工セリヌンティウスと弟子フィロストラトスの仕事場として設計。広場の一角にある（S-002）。",
    "adjacent": [
     {
@@ -5743,6 +5743,34 @@
     "scene.syracuse-square",
     "scene.castle-throne"
    ],
+   "endLines": [
+    {
+     "when": [
+      {
+       "var": "var.melos.custody",
+       "op": "==",
+       "value": "on-parole"
+      },
+      {
+       "var": "var.player.location",
+       "op": "==",
+       "value": "place.castle"
+      }
+     ],
+     "line": "メロスは、すぐに出発した。初夏、満天の星である。"
+    },
+    {
+     "when": [
+      {
+       "var": "var.melos.custody",
+       "op": "==",
+       "value": "on-parole"
+      }
+     ],
+     "line": "その夜のうちに、メロスは村へ発ったという。"
+    }
+   ],
+   "closingLine": "夜が更けてきた。",
    "exits": [
     {
      "id": "exit.1.road",
@@ -5779,7 +5807,11 @@
        "character": "player",
        "fact": "fact.promise"
       }
-     ]
+     ],
+     "sub": "メロスと並んで、村へ",
+     "arrival": {
+      "line": "市の灯は、とうに見えなくなった。星の下、どこかで水の音がする。"
+     }
     },
     {
      "id": "exit.1.vigil",
@@ -5806,7 +5838,11 @@
        "character": "player",
        "fact": "fact.promise"
       }
-     ]
+     ],
+     "sub": "人質の夜を共に",
+     "arrival": {
+      "line": "中庭の柱に、セリヌンティウスがつながれている。かがり火が、その横顔を照らしていた。"
+     }
     },
     {
      "id": "exit.1.city",
@@ -5820,7 +5856,11 @@
        "character": "player",
        "fact": "fact.promise"
       }
-     ]
+     ],
+     "sub": "メロスの帰りを待つ",
+     "arrival": {
+      "line": "広場は、しんと静まりかえっている。王城の高い窓に、灯がひとつともっていた。"
+     }
     }
    ],
    "inferred": true,
@@ -5847,6 +5887,29 @@
     "scene.syracuse-square",
     "scene.castle-throne"
    ],
+   "endLines": [
+    {
+     "when": [
+      {
+       "var": "var.player.companionOf",
+       "op": "==",
+       "value": "char.melos"
+      }
+     ],
+     "line": "村が見えてきた。メロスは、よろめきながら歩いていく。"
+    },
+    {
+     "when": [
+      {
+       "var": "var.player.companionOf",
+       "op": "!=",
+       "value": "char.melos"
+      }
+     ],
+     "line": "夜が明けた。市は、何事もなかったように静まりかえっている。"
+    }
+   ],
+   "closingLine": "日が高くなってきた。",
    "exits": [
     {
      "id": "exit.2.village",
@@ -5862,7 +5925,12 @@
        "value": "char.melos"
       }
      ],
-     "effects": []
+     "effects": [],
+     "sub": "メロスの妹が待つ村",
+     "arrival": {
+      "line": "羊の番をしていた娘が、よろめいて歩くメロスに気づき、駆け寄ってきた。",
+      "opener": "char.sister"
+     }
     },
     {
      "id": "exit.2.vigil",
@@ -5883,7 +5951,11 @@
        "value": "char.selinuntius"
       }
      ],
-     "effects": []
+     "effects": [],
+     "sub": "人質のそばで、昼を待つ",
+     "arrival": {
+      "line": "日が高くなった。セリヌンティウスは、柱のそばで黙って目を閉じている。"
+     }
     },
     {
      "id": "exit.2.city",
@@ -5903,7 +5975,11 @@
        ]
       }
      ],
-     "effects": []
+     "effects": [],
+     "sub": "人質の友と、王のいる市で",
+     "arrival": {
+      "line": "日が高くなった。市は、何事もなかったように動きはじめている。"
+     }
     }
    ],
    "stops": [
@@ -5930,6 +6006,38 @@
     "scene.syracuse-square",
     "scene.castle-throne"
    ],
+   "endLines": [
+    {
+     "when": [
+      {
+       "var": "var.player.location",
+       "op": "in",
+       "value": [
+        "place.village",
+        "place.melos-home",
+        "place.groom-house"
+       ]
+      }
+     ],
+     "line": "薄明、メロスは跳ね起きた。雨は、まだ降っている。"
+    },
+    {
+     "when": [
+      {
+       "var": "var.player.location",
+       "op": "in",
+       "value": [
+        "place.syracuse-square",
+        "place.stonemason-workshop",
+        "place.execution-ground",
+        "place.castle"
+       ]
+      }
+     ],
+     "line": "三日目の薄明。雨は、夜どおし屋根を打ちつづけた。"
+    }
+   ],
+   "closingLine": "東の空が白んできた。",
    "exits": [
     {
      "id": "exit.3.road",
@@ -5957,6 +6065,10 @@
        "value": "char.melos"
       }
      ],
+     "sub": "メロスと市へ走る",
+     "arrival": {
+      "line": "昼近く、ふたりは川の岸に着いた。ごうごうと、水の音が耳を打つ。"
+     },
      "enRoute": {
       "beat": "beat.16",
       "line": "隣村で、メロスは歩をゆるめた。",
@@ -6011,7 +6123,11 @@
        "value": "char.selinuntius"
       }
      ],
-     "effects": []
+     "effects": [],
+     "sub": "人質のそばで、日没を待つ",
+     "arrival": {
+      "line": "三日目の薄明。雨音が、中庭の石を打ちつづけている。"
+     }
     },
     {
      "id": "exit.3.city",
@@ -6031,7 +6147,11 @@
        ]
       }
      ],
-     "effects": []
+     "effects": [],
+     "sub": "約束の日没を待つ",
+     "arrival": {
+      "line": "三日目の薄明。雨は、まだ降りつづいている。"
+     }
     }
    ],
    "inferred": true,
@@ -6058,6 +6178,7 @@
     "scene.syracuse-square",
     "scene.castle-throne"
    ],
+   "closingLine": "日が傾いてきた。",
    "exits": [],
    "stops": [
     "place.river",
