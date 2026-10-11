@@ -17,6 +17,17 @@ export const copy = {
   "cover.new": "新しく始める",
   "inapp.notice": "LINEの中のブラウザでは、声で話せないことがあります。",
   "inapp.textOnly": "このまま文字で遊ぶ",
+  "inapp.howto": "Safariで開く方法",
+  "inapp.howto.android": "Chromeで開く方法",
+  "inapp.steps.ios":
+    "画面のすみにある「︙」か共有のマークをタップして、「Safariで開く」を選んでください。",
+  "inapp.steps.android":
+    "右上の「︙」をタップして、「他のアプリで開く」からChromeを選んでください。",
+  "inapp.steps.copy":
+    "見つからないときは、リンクをコピーして、{browser}のアドレス欄に貼り付けてください。",
+  "inapp.copyLink": "リンクをコピー",
+  "inapp.copied": "コピーしました",
+  "inapp.steps.code": "開き直したら、招待コードをもう一度入れてください。",
   "start.conflict": "続きの物語があります",
   "start.conflict.resume": "続きから",
   "start.conflict.new": "新しく始める",
@@ -48,7 +59,7 @@ export const copy = {
   "talk.disabled": "人に近づくと話せます",
   "talk.reconnecting": "つながり直しています",
   "talk.end": "話を終える",
-  "talk.preparing": "準備中", // frontend-design 7.1 (not in copy-ja yet)
+  "talk.preparing": "準備しています",
   "text.open": "文字で話す",
   "text.placeholder": "言いたいことを書く",
   "text.send": "送る",
@@ -61,6 +72,7 @@ export const copy = {
   "primer.use": "マイクを使う",
   "primer.text": "文字で話す",
   "primer.ready": "準備ができました。ボタンを押しながら、話してください。",
+  "primer.ready.tap": "準備ができました。ボタンをタップして、話してください。",
   "wait.again": "もう一度話す",
   "wait.text": "文字で送る",
   "retract.cancel": "取り消す",
@@ -88,6 +100,8 @@ export const copy = {
   "mic.denied.android": "Android：鍵のアイコン →「権限」→「マイク」を「許可」",
   "mic.unavailable":
     "マイクがうまく動いていません。Safariを一度終了して開き直すと、直ることがあります。",
+  "mic.unavailable.android":
+    "マイクがうまく動いていません。ブラウザを一度終了して開き直すと、直ることがあります。",
   "mic.textContinue": "文字で続ける",
   "mic.howto": "設定のしかた",
   "net.reconnecting": "つながり直しています",
