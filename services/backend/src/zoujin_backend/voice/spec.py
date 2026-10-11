@@ -147,14 +147,21 @@ def plan(spec: Json, world: Json) -> Plan:
         speakers[sid] = Speaker(sid, s["name"], s["voice"], s["direction"])
     readings: dict[str, str] = spec.get("readings", {})
     scenes: dict[str, str] = spec.get("scenes", {})
+    # 说话人块里的 scenes 只管这个人的句子，键可以写「aizuchi/3」这种不分人的槽位；同一个键两处都有时说话人的优先
+    own_scenes: dict[str, dict[str, str]] = {sid: s.get("scenes", {}) for sid, s in spec["speakers"].items()}
     used_scenes: set[str] = set()
+    used_own: set[tuple[str, str]] = set()
     recs: list[Recording] = []
     by_content: dict[tuple[str, str, str | None], Recording] = {}
 
     def add(rid: str, sp: Speaker, text: str, key: str) -> None:
-        scene = scenes.get(key)
+        scene = own_scenes[sp.id].get(key)
         if scene is not None:
-            used_scenes.add(key)
+            used_own.add((sp.id, key))
+        else:
+            scene = scenes.get(key)
+            if scene is not None:
+                used_scenes.add(key)
         same = by_content.get((sp.id, text, scene))
         if same is not None:
             same.keys.append(key)
@@ -191,7 +198,9 @@ def plan(spec: Json, world: Json) -> Plan:
             sp = speakers[who]
             add(f"{sp.slug}-{piece['id'].removeprefix('piece.')}-{n}", sp, line["line"], f"{piece['id']}/{n}")
 
-    unused = sorted(set(scenes) - used_scenes)
+    unused = sorted(set(scenes) - used_scenes) + sorted(
+        f"{sid} 的 {k}" for sid, own in own_scenes.items() for k in own if (sid, k) not in used_own
+    )
     if unused:
         raise SpecError(f"源文件 scenes 里的键对不上任何一句：{', '.join(unused)}")
     refs = [

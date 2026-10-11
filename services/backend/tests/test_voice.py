@@ -17,7 +17,7 @@ from zoujin_backend.models.ledger import Ledger
 from zoujin_backend.schemas import SchemaBook
 from zoujin_backend.voice import audio, checks, cli
 from zoujin_backend.voice.models import FakeReader, FakeTranscriber, LiveReader, live_usage
-from zoujin_backend.voice.spec import Plan, plan, read_spec, world_of
+from zoujin_backend.voice.spec import Plan, SpecError, plan, read_spec, world_of
 
 Json = Any
 SCHEMAS = SchemaBook(REPO / "packages" / "contracts" / "schemas")
@@ -94,6 +94,25 @@ def test_scene_line_only_where_there_is_a_scene() -> None:
     assert "場面：" not in p.recording("melos-aizuchi-1").system
     assert "場面：" not in p.recording("guards-gate-taken-2").system
     assert p.recording("melos-aizuchi-1").system.endswith("人物：" + p.speakers["char.melos"].direction)
+
+
+def test_speaker_scenes_direct_one_slot_of_one_speaker() -> None:
+    # UX 量完相槌以后，只给超过 0.5 秒的那几句加一句演法重录：「aizuchi/3」两人都有，写在说话人块里只管这个人
+    spec = read_spec("hashire-merosu")
+    short = "相づち。短く、間を置かずに一度だけ。"
+    spec["speakers"]["char.old-man"]["scenes"] = {"aizuchi/3": short}
+    p = plan(spec, world_of(spec, REPO / "worlds"))
+    assert p.recording("old-man-aizuchi-3").system.endswith("\n場面：" + short)
+    assert "場面：" not in p.recording("melos-aizuchi-3").system
+    assert "場面：" not in p.recording("old-man-aizuchi-2").system
+    # 改了演法的那句签名变了：--resume 只重读这一句
+    before = slice_plan().recording("old-man-aizuchi-3")
+    assert cli.sig(before.speaker.voice, before.system, before.spoken) != cli.sig(
+        before.speaker.voice, p.recording("old-man-aizuchi-3").system, before.spoken
+    )
+    spec["speakers"]["char.old-man"]["scenes"] = {"aizuchi/9": short}
+    with pytest.raises(SpecError, match="char.old-man 的 aizuchi/9"):
+        plan(spec, world_of(spec, REPO / "worlds"))
 
 
 def test_sessions_never_mix_scenes(tmp_path: Path) -> None:
