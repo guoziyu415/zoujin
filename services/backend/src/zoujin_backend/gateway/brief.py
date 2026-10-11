@@ -89,13 +89,16 @@ def build(
     notes: Sequence[str] = (),
     memories: Sequence[str] = (),
     forgotten: frozenset[str] = frozenset(),
+    *,
+    samples: int = 4,
 ) -> Brief:
     """notes：B-12 输出侧监控给这个人物加的几句提示（剧透纠正、问句过多、不往死亡推，`gateway/monitor.py`），
     放在「# いまの状況」后面的「# 気をつけること」。只在开会话时带上（中途更新只比较 `facts`）。
     memories：B-13 这个人物对玩家没删的记忆（`narrator/memory.memories_for_brief`，按 salience 取、按时间排），
     放在「# いまの状況」后面的「# 覚えていること」；在記憶帳删了的不在这里，会话也随删除重建。
     forgotten：删了的记忆的来源事件里他才学到的事实（`narrator/memory.forgotten_facts`），「知っていること」不带
-    （UX 评审：人物就是不知道这件事，玩家再提他当新的事听）。作废的约定和 forget 事件本来就不进局势说明。"""
+    （UX 评审：人物就是不知道这件事，玩家再提他当新的事听）。作废的约定和 forget 事件本来就不进局势说明。
+    samples：「口ぶりの例」几句（B-14 节约档 2 句；记忆条数和最近对话的轮数由调用的人截）。"""
     p = persona(book, state, who)
     me = player_card(book, state, who)
     facts = situation_facts(book, state, who, forgotten)
@@ -111,7 +114,7 @@ def build(
         out.append(f"一人称：{speech['firstPerson']}")
     if speech.get("register"):
         out.append(f"口調：{speech['register']}")
-    for q in speech.get("sampleLines", [])[:4]:
+    for q in speech.get("sampleLines", [])[:samples]:
         out.append(f"口ぶりの例：「{q}」")
     out += ["", "# いまの状況"]
     out += [f"- {x}" for x in facts]

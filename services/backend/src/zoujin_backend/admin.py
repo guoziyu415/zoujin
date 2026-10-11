@@ -3,6 +3,8 @@
 - `invite create [--count N]`：生成邀请码。明文只打印这一次，库里只存哈希。
 - `replay <playthroughId>`：从 W-1 的 initial_state 加全部事件按 seq 用 apply 重建 SimState，和 world_state 表里的比。
   一致退出 0，不一致退出 1（打印不一致的字段名，不打印值），没有这一局退出 2。
+- `voice off|on|status`（B-14）：全局语音开关（backend-design 5.3 的熔断）。关了以后网关 30 秒内读到，新会话全部
+  文字模式（`degraded { reason: "service" }`）。
 """
 
 from __future__ import annotations
@@ -14,6 +16,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
+from zoujin_backend import budget
 from zoujin_backend.config import Settings
 from zoujin_backend.db import store
 from zoujin_backend.gateway import auth
@@ -41,6 +44,14 @@ async def replay(engine: AsyncEngine, library: Library, pid: str) -> list[str] |
     return diff(dict(rebuilt), dict(cached))
 
 
+async def voice_switch(engine: AsyncEngine, action: str) -> bool:
+    """改（off / on）或只看（status）全局语音开关，返回现在开没开。"""
+    async with engine.begin() as c:
+        if action != "status":
+            await budget.set_voice_enabled(c, action == "on")
+        return await budget.voice_enabled(c)
+
+
 def diff(a: dict[str, Any], b: dict[str, Any]) -> list[str]:
     return sorted(k for k in a.keys() | b.keys() if a.get(k) != b.get(k))
 
@@ -52,6 +63,9 @@ async def _main(args: argparse.Namespace) -> int:
         if args.cmd == "invite":
             for code in await create_invites(engine, args.count):
                 print(code)
+            return 0
+        if args.cmd == "voice":
+            print("语音：" + ("开" if await voice_switch(engine, args.action) else "关"))
             return 0
         library = Library(settings.worlds, settings.scenes, settings.world)
         fields = await replay(engine, library, args.playthrough_id)
@@ -76,6 +90,8 @@ def main(argv: list[str] | None = None) -> None:
     create.add_argument("--count", type=int, default=1)
     rp = sub.add_parser("replay", help="用事件重建世界状态，和缓存比")
     rp.add_argument("playthrough_id")
+    vo = sub.add_parser("voice", help="全局语音开关（B-14）")
+    vo.add_argument("action", choices=("off", "on", "status"))
     args = p.parse_args(argv)
     if args.cmd == "invite" and args.count < 1:
         p.error("--count 至少 1")

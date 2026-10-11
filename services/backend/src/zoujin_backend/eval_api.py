@@ -49,7 +49,7 @@ from sqlalchemy.pool import NullPool
 from zoujin_llm import mark_playthrough, playthrough
 from zoujin_worldsim import Opened, SimState, initial_state, opening, parse_checkpoint, world_state
 
-from zoujin_backend import memory_delete
+from zoujin_backend import budget, memory_delete
 from zoujin_backend.config import Settings
 from zoujin_backend.db import store
 from zoujin_backend.db.events import recorded_at, to_row
@@ -161,7 +161,7 @@ class Session:
         self.setup_doc = copy.deepcopy(dict(setup))
         self.mode = mode
         self.role: str = setup["role"]
-        self.budget_tier: str = setup.get("budgetTier", "normal")  # 只记下（预算是 M2 的卡）
+        self.budget_tier: str = setup.get("budgetTier", "normal")  # B-14：开局就设成这一档（E6）
         self.persona: str | None = setup.get("persona")  # 模拟局的画像 ID，只进 Trace（B-5）
         self.seed: int | None = setup.get("seed")
         self.ids = IdGen()
@@ -236,6 +236,8 @@ class Session:
                     )
                 )
                 await c.execute(insert(playthrough_metrics).values(playthrough_id=self.pid))
+                if self.budget_tier != "normal":
+                    await budget.set_tier(c, self.pid, self.budget_tier)
                 w = Writer(
                     self.book,
                     self.pid,
@@ -292,6 +294,8 @@ class Session:
                 self.pid = await store.create_playthrough(
                     c, self.ids, user_id=user_id, book=self.book, role_id=self.role
                 )
+                if self.budget_tier != "normal":
+                    await budget.set_tier(c, self.pid, self.budget_tier)
             mark_playthrough(self.pid)
             attrs = {"eval.persona": self.persona, "eval.seed": self.seed}
             with self.tracer.span("eval.setup", playthrough_id=self.pid, mode=self.mode, **attrs):
