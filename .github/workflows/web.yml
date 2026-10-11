@@ -34,7 +34,7 @@ concurrency:
 jobs:
   world:
     name: unit tests, bundle budget, world screen e2e
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '["self-hosted","zoujin-mac"]') }}
     timeout-minutes: 45
     steps:
       # where the plaza gets built and the web app reads it (scene-dir.ts); the runner context isn't available in job env

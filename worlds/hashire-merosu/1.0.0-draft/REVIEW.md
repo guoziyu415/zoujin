@@ -171,7 +171,7 @@
 | 动机 | 友を信じて待つ〔since beat.06〕〔until beat.24〕 | 「あの方は、あなたを信じて居りました。」(57) | |
 | 说话 | 一人称「私」；穏やかで簡潔。メロスを「君」と呼ぶ。；开局在做：work | 「生れて、はじめて君を疑った。」(65)〔since beat.25〕〔条件 selinuntius.doubted == True〕<br>「君が私を殴ってくれなければ、私は君と抱擁できない。」(65)〔since beat.25〕〔条件 selinuntius.doubted == True〕<br>「メロス、君は、まっぱだかじゃないか。」(73)〔since beat.27〕 | |
 | 设计台词 | 「手を止めるな。日が落ちる前に、ここまでは刻んでおきたい。」〔until beat.02〕〔推断〕（第一幕、日没（19:00）までの工房で弟子に（ux-design 5.1）。市は前からひっそりしているので、捕縛の前に騒がしさは口にしない（UX 校対 7.1）） 依据 「ひっそりしている。」(1)<br>「……城の方が、やけに騒がしいな。」〔since beat.04〕〔until beat.06〕〔推断〕（メロスが捕まったあと、召される前（UX 校対 7.1）） 依据 「騒ぎが大きくなってしまった」(10)<br>「……メロスは来る。それだけだ。」〔since beat.06〕〔until beat.24〕〔推断〕（人質の夜。多くを語らない。王や警吏に向かっては原文どおり「メロスは来ます。」（UX 校対 7.1）） 依据 「メロスは来ます、とだけ答え」(57)<br>「……陽が、傾いてきたな。」〔since beat.s2〕〔until beat.24〕〔条件 selinuntius.doubted == True〕〔推断〕（ちらと疑ったあと。疑ったことは口にしない（打ち明けるのは刑場で、メロスにだけ））<br>「メロス、私は一度も君を疑わなかった。……ひとりで待っていたのでは、なかったからな。」〔since beat.25〕〔条件 selinuntius.doubted == False、selinuntius.attended == True〕〔推断〕（S-064：疑わなかった局の刑場（beat.25.v-melos-only / v-neither）。原作どおり「メロス、」で始め「私」「君」。v-melos-only で言い返しに聞こえないよう陳述にする（UX 校対 7.1）。後半が本当になるよう、弟子がそばにいた局に限る） | — | |
-| 知道 | friendship@pre、selinuntius-stonemason@pre、king-killings@pre、king-distrust@pre、hostage-decree@pre、promise@beat.06、melos-reason@beat.06、selinuntius-hostage@beat.06、selinuntius-doubted-once@beat.s2、melos-despair@beat.25 | — | |
+| 知道 | friendship@pre、selinuntius-stonemason@pre、king-killings@pre、king-distrust@pre、hostage-decree@pre、promise@beat.06、melos-reason@beat.06、selinuntius-hostage@beat.06、melos-errand@beat.06、melos-dagger@beat.06、selinuntius-doubted-once@beat.s2、melos-despair@beat.25 | — | |
 | 他能为你 | 深夜に召される前に、工房とあとのことを弟子に託す〔开局互助：role.apprentice〕〔推断〕 | 「竹馬の友、セリヌンティウスは、深夜、王城に召された。」(26) | |
 | 你能为他 | 親方の留守、工房を守ると約束する〔开局互助：role.apprentice〕〔推断〕 | — | |
 | 他能为你 | 城と王の様子を教える〔推断〕 | — | |
@@ -199,7 +199,7 @@
 | 动机 | 結婚する（推定：原文に本人の言葉はない）〔until beat.11〕 | 「花婿として迎える事になっていた。」(1) | |
 | 动机 | 婚礼は近いが、日取りはまだ決まっていない〔until beat.08〕 | 「結婚式も間近かなのである。」(1) | |
 | 说话 | 一人称「—」；原文に台詞なし。控えめで丁寧な話し方として設計（推定）。；开局在做：work | — | |
-| 知道 | melos-family@pre、sister-engaged@pre、wedding-tomorrow@beat.08、wedding-held@beat.11、storm@beat.12 | — | |
+| 知道 | melos-family@pre、sister-engaged@pre、melos-errand@pre、wedding-tomorrow@beat.08、wedding-held@beat.11、storm@beat.12 | — | |
 | 他能为你 | 兄にあなたを引き合わせる〔推断〕 | — | |
 | 他能为你 | 兄の出発のとき、あなたにも弁当を持たせる〔交给你：item.provisions〕〔推断〕 | — | |
 | 你能为他 | 婚礼の支度を手伝う〔推断〕 | 「神々の祭壇を飾り」(31) | |
