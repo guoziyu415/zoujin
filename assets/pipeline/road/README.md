@@ -20,11 +20,11 @@ assets/pipeline/road/build.sh [final|draft] [out_dir]
 一条命令出：
 
 - `road-river-calm`（第二幕 05:15）、`road-river-flood`（第四幕 11:45）：同一份 `build_road_river.py`，`RIVER_STATE` 开关。
-- `road-common`：两个包都用的路边贴图（土路、干草、露头、碎石、树皮、白杨、圣栎、远山），`merge_river.mjs` 从两个包里挪出来，两边必须是同一份字节。清单叫 `pack.json`，不叫 `scene.json`（后端把 `assets/scenes/*/scene.json` 都当场景布局读）。
+- `road-common`：路边共用的贴图，键表固定在 `../common/roadside.mjs`（土路、干草、露头、碎石、树皮、白杨、圣栎、远山、麦；村子也用，F-11）。`merge_river.mjs` 调它把两个包里这些键的文件挪进去，两边必须是同一份字节；生成只往已有的 `road-common` 里加，换了字节的键会覆盖，其他用到它的包的检查就会失败，要重新生成。每个包的 `bytes.shared` 只算它自己用的那几个文件。清单叫 `pack.json`，不叫 `scene.json`（后端把 `assets/scenes/*/scene.json` 都当场景布局读）。
 - `road-river/index.json`：页面按幕挑包（页面拿不到世界变量），附 `var.bridge` 的对应值；`road-river/scene.json`：后端和 `build_world` 读的 `scene.road-river` 布局（两个包的地点、出口、位置点合起来）。
 
 检查：每个包跑 `../plaza/check_scene.mjs`（预算取 `assets/budgets.json` 的 `scenes.<包名>`），再跑 `check_road.mjs`（共用包、draw call、索引和合起来的布局、世界模型里有这个场景的每一幕都挑得出唯一一个包）。
 
 `preview_river.py` 是开发用的 Cycles 预览，不进构建。
 
-贴图现在全是占位（`road_tex.py` 按固定种子生成）；CC0 扫描在 zg 的 Mac 上下载，经第一个前端线程的资产流程，放进 `ROAD_SCANS` 目录重新生成。
+贴图现在全是占位（`../common/road_tex.py` 按固定种子生成，路和村子共用；Blender 小工具 `../common/bl.py`、叶子贴图的小尺寸重编码 `../common/small_tex.mjs` 也在那里）；CC0 扫描在 zg 的 Mac 上下载，经第一个前端线程的资产流程，放进 `ROAD_SCANS` 目录重新生成。

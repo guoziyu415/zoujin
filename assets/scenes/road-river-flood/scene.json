@@ -9,13 +9,14 @@
  "inputs": {
   "files": {
    "assets/scenes/road-river-flood/layout.json": "3057e41b6a098532ccfd8d05c9908d9a7faca75c97edd5f043a0f8cd230636a8",
-   "assets/pipeline/road/build.sh": "38ba550f7ab271c696d0576c9e7c0c05c177b44e0338fd8020fab502648412e1",
-   "assets/pipeline/road/road_tex.py": "f4da9dda1867829c5799a208415346622f81d7e5a85fadbfd0d15478414b0de5",
+   "assets/pipeline/road/build.sh": "08f51649f5e7c8d2547f41fada7cb70aee0368447b8cb030e75e825ee3a16d10",
+   "assets/pipeline/common/road_tex.py": "a31a2a76e5421dccc6f5fa6e8ed272578569ea1133e8c581a05a13a4f0abdad6",
    "assets/pipeline/plaza/placeholder_tex.py": "aabda4df4f3974b2eb65b227ed3b5ae2d606a489441d665b3f2f108c5cd1343e",
-   "assets/pipeline/road/bl.py": "08a5e8b769f887ea76c72acea86b93dc40d11c421b30a28e6313649d64424d28",
-   "assets/pipeline/road/build_road_river.py": "ace3b0840f734bc2636c4bbb2af526b3f477ad9f1888bc19b09c2a29aa0960c8",
-   "assets/pipeline/road/merge_river.mjs": "1e41b37b401bda2130895dc2a6b67ae45ae866e4352d33f2e89314214f760edc",
-   "assets/pipeline/road/small_tex.mjs": "2510e7083721b8d59d94651bf0ea91e7e2df07407c9e092471146b966be34b2c",
+   "assets/pipeline/common/bl.py": "4bffdacd1d0b1876b9244e30b0f98ce00154911aa30c1130566723b55a1c9f22",
+   "assets/pipeline/road/build_road_river.py": "71a827f6a7269be2873b6df932f8f32317b4d986552c125c468644080bca1ae8",
+   "assets/pipeline/road/merge_river.mjs": "eb6cd2af219c0f5b17ad5932b07512636501a7e726e0741f327729704e6109d6",
+   "assets/pipeline/common/roadside.mjs": "5f847f5f67e51ff3ec7745e6986f73f516712b2507c6a135ae6065dcb0cb679f",
+   "assets/pipeline/common/small_tex.mjs": "2510e7083721b8d59d94651bf0ea91e7e2df07407c9e092471146b966be34b2c",
    "assets/pipeline/plaza/requirements.txt": "0a234e44f52fb462c7e8694ecd82b99aca8e534ac610dde2dd749bb1e2cbe0e3",
    "assets/pipeline/plaza/sky.py": "971584f110b8a924e737d195f30eab114cb35d7345909e364ed21ec3e77aab27",
    "assets/pipeline/plaza/sunpos.py": "807e1774526b33ef4f2329dbabf906c44f9517605a80f9ca930ecfb9ff6287ba",
@@ -31,12 +32,19 @@
    "bank_mr": "placeholder",
    "bank_nrm": "placeholder",
    "bark_base": "placeholder",
+   "earth_base": "placeholder",
+   "earth_mr": "placeholder",
+   "earth_nrm": "placeholder",
+   "fig_base": "placeholder",
    "grass_base": "placeholder",
    "grass_mr": "placeholder",
    "grass_nrm": "placeholder",
    "gravel_base": "placeholder",
    "hill_base": "placeholder",
    "holmoak_base": "placeholder",
+   "mudplaster_base": "placeholder",
+   "mudplaster_mr": "placeholder",
+   "mudplaster_nrm": "placeholder",
    "outcrop_base": "placeholder",
    "outcrop_mr": "placeholder",
    "outcrop_nrm": "placeholder",
@@ -48,8 +56,14 @@
    "road_base": "placeholder",
    "road_mr": "placeholder",
    "road_nrm": "placeholder",
+   "roofwarm_base": "placeholder",
    "silt_base": "placeholder",
+   "stubble_base": "placeholder",
+   "stubble_mr": "placeholder",
+   "stubble_nrm": "placeholder",
    "thatch_base": "placeholder",
+   "vine_base": "placeholder",
+   "wheat_base": "placeholder",
    "willow_base": "placeholder",
    "willowstrand_base": "placeholder",
    "wood_base": "placeholder",
@@ -1295,8 +1309,8 @@
   },
   {
    "path": "lm/ground_indirect.ktx2",
-   "bytes": 154114,
-   "sha256": "ba4201c1f7389a966d37f203156c7e29d8504c9082e9906eb7a840f56f08a84b",
+   "bytes": 154104,
+   "sha256": "e9c7246eeca3e324071e830fb60a0bb0b8f43d54445953600d2fbcdd5ebf1112",
    "pack": "entry"
   },
   {
@@ -1325,14 +1339,14 @@
   }
  ],
  "bytes": {
-  "entry": 2559360,
+  "entry": 2559350,
   "hiExtra": 1142841,
   "shared": {
    "entry": 1936805,
    "hiExtra": 4585771
   },
-  "envStd": 4496165,
-  "envHi": 10224777
+  "envStd": 4496155,
+  "envHi": 10224767
  },
  "sharedPacks": [
   "road-common"

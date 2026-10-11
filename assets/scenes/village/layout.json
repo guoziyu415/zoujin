@@ -1,0 +1,391 @@
+{
+  "sceneId": "scene.village",
+  "about": "Hand-written layout of scene.village (F-11; ux/scenes/village.md 2, 2.1, 3, 4): plan metres, +x = east (azimuth 90°, the road to Syracuse), +y = north, the road at z = 0. Rotation 0, so glTF x = plan x and glTF z = -plan y. place.melos-home is L-shaped; the navmesh marks convex areas only, so it is three rectangles with the same id (village.md 2.1). The first spot of each place that is not auto: false is where a character with no spot stands (data 16:01Z): well-side, sister-sheep, groom-work. The players' start and landing spots are auto: false.",
+  "rotationDeg": 0,
+  "defaultPlace": "place.village",
+  "playerStartSpot": "field-edge",
+  "startSpots": {
+    "place.village": "field-edge",
+    "place.melos-home": "road-arrive",
+    "place.groom-house": "groom-gate"
+  },
+  "hiTextures": {
+    "base": ["road", "grass", "outcrop", "earth"],
+    "nrm": ["road", "grass", "outcrop", "earth"]
+  },
+  "walkable": [
+    {
+      "name": "the village lane and the road east",
+      "polygon": [
+        [-36, 0.5],
+        [40, 0.5],
+        [40, 3.5],
+        [-36, 3.5]
+      ]
+    },
+    {
+      "name": "the field margin south of the road (field-edge)",
+      "polygon": [
+        [12.4, -3.0],
+        [36, -3.0],
+        [36, 0.5],
+        [12.4, 0.5]
+      ]
+    },
+    {
+      "name": "Melos's yard, north of the house",
+      "polygon": [
+        [-13.6, -8.1],
+        [1.6, -8.1],
+        [1.6, -0.9],
+        [-13.6, -0.9]
+      ]
+    },
+    {
+      "name": "Melos's yard, east of the house",
+      "polygon": [
+        [-1.6, -13.6],
+        [1.6, -13.6],
+        [1.6, -8.1],
+        [-1.6, -8.1]
+      ]
+    },
+    {
+      "name": "the yard gate in the north wall",
+      "polygon": [
+        [-7.4, -0.9],
+        [-5.6, -0.9],
+        [-5.6, 0.5],
+        [-7.4, 0.5]
+      ]
+    },
+    {
+      "name": "inside the house",
+      "polygon": [
+        [-13.6, -13.6],
+        [-2.4, -13.6],
+        [-2.4, -8.9],
+        [-13.6, -8.9]
+      ]
+    },
+    {
+      "name": "the house door",
+      "polygon": [
+        [-8.5, -8.9],
+        [-7.5, -8.9],
+        [-7.5, -8.1],
+        [-8.5, -8.1]
+      ]
+    },
+    {
+      "name": "the gap from the yard into the sheep pen",
+      "polygon": [
+        [1.6, -11.5],
+        [2.4, -11.5],
+        [2.4, -10.5],
+        [1.6, -10.5]
+      ]
+    },
+    {
+      "name": "inside the sheepfold (open to the north)",
+      "polygon": [
+        [2.4, -13.6],
+        [6.8, -13.6],
+        [6.8, -10.2],
+        [2.4, -10.2]
+      ]
+    },
+    {
+      "name": "the sheep pen, east of the fold",
+      "polygon": [
+        [7.2, -13.6],
+        [11.6, -13.6],
+        [11.6, -10.2],
+        [7.2, -10.2]
+      ]
+    },
+    {
+      "name": "the sheep pen, north part",
+      "polygon": [
+        [2.4, -10.2],
+        [11.6, -10.2],
+        [11.6, -3.4],
+        [2.4, -3.4]
+      ]
+    },
+    {
+      "name": "the pen gate onto the road",
+      "polygon": [
+        [6.2, -3.4],
+        [7.8, -3.4],
+        [7.8, 0.5],
+        [6.2, 0.5]
+      ]
+    },
+    {
+      "name": "the pasture",
+      "polygon": [
+        [6.4, 3.9],
+        [31.6, 3.9],
+        [31.6, 23.6],
+        [6.4, 23.6]
+      ]
+    },
+    {
+      "name": "the pasture gate",
+      "polygon": [
+        [9.0, 3.5],
+        [11.0, 3.5],
+        [11.0, 3.9],
+        [9.0, 3.9]
+      ]
+    },
+    {
+      "name": "in front of the neighbours (house A starts at y 5)",
+      "polygon": [
+        [-17.6, 3.5],
+        [-3.8, 3.5],
+        [-3.8, 4.8],
+        [-17.6, 4.8]
+      ]
+    },
+    {
+      "name": "by the well, west of it",
+      "polygon": [
+        [-3.8, 3.5],
+        [3.3, 3.5],
+        [3.3, 6.6],
+        [-3.8, 6.6]
+      ]
+    },
+    {
+      "name": "by the well, north of it",
+      "polygon": [
+        [3.3, 5.2],
+        [5.6, 5.2],
+        [5.6, 6.6],
+        [3.3, 6.6]
+      ]
+    },
+    {
+      "name": "by the well, east of it",
+      "polygon": [
+        [4.7, 3.5],
+        [5.6, 3.5],
+        [5.6, 5.2],
+        [4.7, 5.2]
+      ]
+    },
+    {
+      "name": "the groom's yard and the vine arbour",
+      "polygon": [
+        [-31.6, 5.4],
+        [-18.4, 5.4],
+        [-18.4, 12.6],
+        [-31.6, 12.6]
+      ]
+    },
+    {
+      "name": "the groom's gate",
+      "polygon": [
+        [-22.0, 3.5],
+        [-20.0, 3.5],
+        [-20.0, 5.4],
+        [-22.0, 5.4]
+      ]
+    },
+    {
+      "name": "the threshing floor (1.5 m up)",
+      "polygon": [
+        [-30.6, -11.9],
+        [-27.9, -14.6],
+        [-24.1, -14.6],
+        [-21.4, -11.9],
+        [-21.4, -8.1],
+        [-24.1, -5.4],
+        [-27.9, -5.4],
+        [-30.6, -8.1]
+      ]
+    },
+    {
+      "name": "the path up to the threshing floor",
+      "polygon": [
+        [-25.2, -5.6],
+        [-23.4, -5.6],
+        [-23.0, 0.5],
+        [-24.8, 0.5]
+      ]
+    }
+  ],
+  "places": [
+    {
+      "id": "place.melos-home",
+      "about": "yard, house (inside), sheepfold, pen and the road in front (village.md 2.1, rectangle 1 of 3)",
+      "polygon": [
+        [-14, -14],
+        [12, -14],
+        [12, 3.5],
+        [-14, 3.5]
+      ]
+    },
+    {
+      "id": "place.melos-home",
+      "about": "the pasture's east part and the road in front of it, where Melos arrives (rectangle 2 of 3)",
+      "polygon": [
+        [12, -0.5],
+        [32, -0.5],
+        [32, 24],
+        [12, 24]
+      ]
+    },
+    {
+      "id": "place.melos-home",
+      "about": "the pasture's west part (rectangle 3 of 3)",
+      "polygon": [
+        [6, 3.5],
+        [12, 3.5],
+        [12, 24],
+        [6, 24]
+      ]
+    },
+    {
+      "id": "place.groom-house",
+      "about": "the groom's walled yard, the vine arbour and his house",
+      "polygon": [
+        [-32, 5],
+        [-18, 5],
+        [-18, 18],
+        [-32, 18]
+      ]
+    }
+  ],
+  "exits": [
+    {
+      "place": "place.neighbor-village",
+      "spot": "way.east",
+      "about": "the road on east, towards the neighbouring village and Syracuse (village.md 4: exit.3.road leaves this way; the act-end page, not this exit, takes the player there)"
+    }
+  ],
+  "spots": {
+    "well-side": {
+      "at": [3, 5.4],
+      "face": [4, 4.5],
+      "about": "by the well; the first spot of place.village a character can be stood on"
+    },
+    "field-edge": {
+      "at": [24, -1.5],
+      "face": [14, -1.5],
+      "auto": false,
+      "about": "the shepherd boy's start (day 1 09:00): on the field margin, looking west at the village; 9 m behind is road"
+    },
+    "road-arrive": {
+      "at": [20, 2],
+      "face": [10, 2],
+      "auto": false,
+      "about": "where exit.2.village lands (day 1 10:00), Melos beside; place.melos-home's start spot"
+    },
+    "sister-sheep": {
+      "at": [16, 13],
+      "face": [16, 3],
+      "about": "the sister with the sheep in the pasture; the first spot of place.melos-home a character can be stood on"
+    },
+    "yard-fig": {
+      "at": [-10.5, -5],
+      "face": [-6, -4.5],
+      "about": "under the fig tree in the yard, facing the altar"
+    },
+    "yard-east": {
+      "at": [-2.5, -3.2],
+      "face": [-6, -4.5],
+      "about": "east side of the yard, on the right inside the gate, facing the altar"
+    },
+    "melos-meet": {
+      "at": [12.3, 3],
+      "face": [2.3, 3],
+      "auto": false,
+      "about": "beat.08: Melos reaches the pasture gate (x 12 is the seam of two rectangles)"
+    },
+    "sister-meet": {
+      "at": [10.7, 3.3],
+      "face": [12.3, 3],
+      "auto": false,
+      "about": "beat.08: the sister runs to him from the pasture gate"
+    },
+    "melos-altar": {
+      "at": [-6, -3.2],
+      "face": [-6, -4.5],
+      "auto": false,
+      "about": "day 1: Melos decks the altar"
+    },
+    "melos-sleep": {
+      "at": [-11, -12.5],
+      "face": [-8, -11.5],
+      "auto": false,
+      "about": "inside the house, the straw mat at the west end: Melos asleep till night"
+    },
+    "groom-work": {
+      "at": [-20, 10],
+      "face": [-21, 5],
+      "about": "the groom at work on the east side of his yard; the first spot of place.groom-house a character can be stood on"
+    },
+    "groom-gate": {
+      "at": [-21, 6.5],
+      "face": [-21, 16.5],
+      "auto": false,
+      "about": "just inside the groom's gate; place.groom-house's start spot. The default camera 9 m behind, at (-21, -2.5), is over the 1.8 m yard wall"
+    },
+    "groom-table": {
+      "at": [-27, 9.5],
+      "face": [-24.5, 9.5],
+      "auto": false,
+      "about": "beat.10: the groom at the table under the arbour, all night"
+    },
+    "melos-groom": {
+      "at": [-24.5, 9.5],
+      "face": [-27, 9.5],
+      "auto": false,
+      "about": "beat.10: Melos facing him"
+    },
+    "wedding-bride": {
+      "at": [-6.8, -3.4],
+      "face": [-6.8, -4.5],
+      "auto": false,
+      "about": "beat.11: the vows at the altar, day 2 noon"
+    },
+    "wedding-groom": {
+      "at": [-5.2, -3.4],
+      "face": [-5.2, -4.5],
+      "auto": false,
+      "about": "beat.11"
+    },
+    "wedding-melos": {
+      "at": [-6, -6],
+      "face": [-6, -3.4],
+      "auto": false,
+      "about": "beat.11: on the other side of the altar, facing the two"
+    },
+    "feast-bride": {
+      "at": [-3.5, -12],
+      "face": [-8, -12],
+      "auto": false,
+      "about": "beat.12, beat.13: the east end of the room, at the feast"
+    },
+    "feast-groom": {
+      "at": [-3.5, -10.5],
+      "face": [-8, -10.5],
+      "auto": false,
+      "about": "beat.12, beat.13"
+    },
+    "melos-hut": {
+      "at": [4.5, -12.5],
+      "face": [4.5, -9],
+      "auto": false,
+      "about": "day 2 late night: asleep in the hay of the sheepfold"
+    },
+    "way.east": {
+      "at": [36, 2],
+      "face": [46, 2],
+      "about": "the road out east (exit.3.road, day 3 04:30)"
+    }
+  }
+}

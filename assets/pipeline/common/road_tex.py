@@ -1,4 +1,5 @@
-"""Source textures for the road stops (F-10): scans when they are there, generated placeholders otherwise.
+"""Source textures for the road stops (F-10) and the village (F-11): scans when they are there, generated placeholders
+otherwise.
 
     python3 -I road_tex.py <out_dir> [<scan_dir>]
 
@@ -22,7 +23,7 @@ fbm, colour, normal_from_height, mr, rng, norm01, value_noise = (
     pt.fbm, pt.colour, pt.normal_from_height, pt.mr, pt.rng, pt.norm01, pt.value_noise)
 
 # the high tier (homeward-road.md 9): the shared road, grass and rock, the river's wet bank and the broken piles
-pt.HI = {"road", "grass", "outcrop", "bank", "wood"}
+pt.HI = {"road", "grass", "outcrop", "bank", "wood", "earth"}
 
 
 def blobs(r, S, n, rmin, rmax):
@@ -53,7 +54,7 @@ def blobs(r, S, n, rmin, rmax):
 # (UX round 2 ④: the crowns read as low-poly balls and the willow's strands as flat green sticks). Small: 512 or 256.
 from PIL import Image, ImageDraw  # noqa: E402
 
-SMALL = {"poplar": 512, "willow": 512, "holmoak": 512, "willowstrand": 256, "reed": 256}
+SMALL = {"poplar": 512, "willow": 512, "holmoak": 512, "willowstrand": 256, "reed": 256, "fig": 512, "vine": 512}
 _size_of = pt.size_of
 pt.size_of = lambda key: SMALL.get(key) or _size_of(key)
 
@@ -171,6 +172,83 @@ def reed(key, S):
     return finish(img, S, h=H // 2)
 
 
+def wheat(key, S):
+    """ripe wheat on cards 0.7 m wide and 1 m tall (two cards side by side in the texture): stalks from the foot, each
+    with a bearded ear, gold with a few greener ones (early summer, village.md 6.2: the harvest)"""
+    r = rng(key)
+    W, H = S * 2, S * 2
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    for _ in range(240):
+        x = W * r.uniform(0.02, 0.98)
+        top = H * r.uniform(0.04, 0.32)
+        lean = r.normal(0, 0.03) * W
+        g = np.array((214, 178, 104) if r.random() < 0.85 else (176, 168, 96), np.float32) * r.uniform(0.75, 1.1)
+        col = tuple(int(c) for c in np.clip(g, 0, 255)) + (255,)
+        stalk = tuple(int(c * 0.85) for c in col[:3]) + (255,)
+        tx = x + lean
+        d.line([(x, H), (tx, top + H * 0.09)], fill=stalk, width=max(2, int(W * 0.004)))
+        if r.random() < 0.5:   # a dry blade off the stalk
+            yb = H - r.uniform(0.15, 0.5) * (H - top)
+            xb = x + (tx - x) * (H - yb) / (H - top)
+            leaf(d, xb, yb, H * r.uniform(0.12, 0.2), H * 0.012, -np.pi / 2 + r.choice((-1, 1)) * r.uniform(0.3, 0.7), stalk)
+        ear_l = H * r.uniform(0.07, 0.1)
+        ang = np.arctan2(-(H - top), lean) + r.normal(0, 0.15)
+        cx, cy = tx, top + H * 0.09
+        leaf(d, cx, cy, ear_l, ear_l * 0.28, ang, col)
+        for k in range(6):   # the beard
+            t = (k + 0.5) / 6
+            px, py = cx + np.cos(ang) * ear_l * t, cy + np.sin(ang) * ear_l * t
+            for s in (-1, 1):
+                a2 = ang + s * 0.35
+                d.line([(px, py), (px + np.cos(a2) * ear_l * 0.6, py + np.sin(a2) * ear_l * 0.6)], fill=col, width=1)
+    return finish(img, S)
+
+
+def village_make(key):
+    """the village's own placeholders (F-11, ux/scenes/village.md 6.2); None for a key that is not one of them"""
+    S = pt.size_of(key)
+    r = rng(key)
+    out = {}
+    if key == "earth":
+        # the beaten earth of a yard: pale and dusty in the sun, packed smooth, a little grit
+        g = fbm(r, S, base=4)
+        fine = fbm(rng(key, "f"), S, base=40, octaves=3)
+        stones, st = blobs(rng(key, "s"), S, 160, 0.003, 0.008)
+        h = 0.6 * g + 0.25 * fine + 0.25 * stones
+        out["base"] = colour((202, 186, 154), (g - 0.5) * 1.0 + 0.3 * st * (stones > 0), fine, 0.18)
+        out["nrm"] = normal_from_height(h, 3.0)
+        out["mr"] = mr(np.clip(0.88 + 0.08 * fine, 0, 1))
+    elif key == "stubble":
+        # a reaped field: short pale-gold stalks in rows over dry brown soil
+        g = fbm(r, S, base=6)
+        yy, xx = np.mgrid[0:S, 0:S].astype(np.float32) / S
+        rows = 0.5 + 0.5 * np.cos((yy + 0.01 * fbm(rng(key, "w"), S, base=4)) * 2 * np.pi * 16)
+        stalks = value_noise(rng(key, "b"), S, 256)
+        on = (stalks > 0.55) & (rows > 0.3)
+        soil = colour((150, 126, 92), (g - 0.5) * 1.2, fbm(rng(key, "f"), S, base=32, octaves=3), 0.2)
+        straw = colour((212, 186, 122), (stalks - 0.5) * 2, g, 0.2)
+        out["base"] = np.where(on[..., None], straw, soil)
+        out["nrm"] = normal_from_height(0.5 * g + 0.5 * on * stalks, 5.0)
+        out["mr"] = mr(np.clip(0.9 + 0.06 * g, 0, 1))
+    elif key == "mudplaster":
+        # rough stone walls under an earthy lime plaster, yellower than the town's, flaking in patches to the stone
+        g = fbm(r, S, base=4)
+        fine = fbm(rng(key, "f"), S, base=32, octaves=4)
+        st, tone = blobs(rng(key, "s"), S, 90, 0.02, 0.05)
+        c = colour((200, 176, 132), (g - 0.5) * 1.2, fine, 0.12)
+        flake = (g < 0.3)[..., None]
+        stone = colour((168, 156, 134), tone, fine, 0.2) * (0.75 + 0.25 * st)[..., None]
+        out["base"] = np.where(flake, stone, c)
+        out["nrm"] = normal_from_height(0.5 * g + 0.3 * fine + 0.4 * flake[..., 0] * st, 4.0)
+        out["mr"] = mr(np.clip(0.9 + 0.06 * fine, 0, 1))
+    elif key == "wheat":
+        out["base"] = wheat(key, S)
+    else:
+        return None
+    return out
+
+
 LEAVES = {
     # white poplar: broad leaves, dark green above, white-felted below (the crowns flicker silver)
     "poplar": dict(n=420, size=0.07, aspect=0.75, top=(66, 90, 50), under=(176, 186, 170), share=0.3),
@@ -178,10 +256,17 @@ LEAVES = {
     "holmoak": dict(n=900, size=0.04, aspect=0.5, top=(46, 60, 38), under=(92, 100, 74), share=0.15),
     # willow: narrow, light grey-green, hanging
     "willow": dict(n=700, size=0.06, aspect=0.2, top=(100, 120, 74), under=(150, 160, 128), share=0.25, droop=0.5),
+    # fig (the village yard, village.md 6.2): big leaves, mid green, a lighter underside
+    "fig": dict(n=260, size=0.11, aspect=0.85, top=(70, 98, 52), under=(124, 144, 92), share=0.2),
+    # vine (the groom's arbour and vineyard): broad leaves, fresh early-summer green
+    "vine": dict(n=300, size=0.1, aspect=0.95, top=(86, 116, 58), under=(136, 154, 98), share=0.25),
 }
 
 
 def make(key):
+    v = village_make(key)
+    if v is not None:
+        return v
     S = pt.size_of(key)
     r = rng(key)
     out = {}
@@ -298,6 +383,14 @@ pt.NEEDS = {
     "willowstrand": ["base"],
     "reed": ["base"],
     "holmoak": ["base"],
+    # the village (F-11)
+    "earth": ["base", "nrm", "mr"],
+    "stubble": ["base", "nrm", "mr"],
+    "mudplaster": ["base", "nrm", "mr"],
+    "roofwarm": ["base"],
+    "wheat": ["base"],
+    "fig": ["base"],
+    "vine": ["base"],
 }
 
 if __name__ == "__main__":

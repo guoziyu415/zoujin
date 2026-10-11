@@ -8,6 +8,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { isDeepStrictEqual } from "util";
+import { packBytes } from "../common/roadside.mjs";
 
 const [COMMON, ...rest] = process.argv.slice(2);
 const RIVER = rest.pop();
@@ -68,8 +69,11 @@ for (const { scene: s } of packs) {
     )
       errors.push(`${s.sceneId} ${f.path}: not the file road-common holds`);
   }
-  if (!isDeepStrictEqual(s.bytes.shared, common.bytes))
-    errors.push(`${s.sceneId}: bytes.shared differs from road-common`);
+  // only the shared files this pack uses count for it (../common/roadside.mjs)
+  if (!isDeepStrictEqual(s.bytes, packBytes(s)))
+    errors.push(
+      `${s.sceneId}: bytes are not the sum of its own and its shared files`,
+    );
   // draw calls before shadows: one per primitive (the water node is one, the page's shader replaces its material)
   const prims =
     Object.values(s.nodes).reduce((n, x) => n + x.prims, 0) -

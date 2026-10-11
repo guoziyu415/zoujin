@@ -6,7 +6,7 @@
 # runs south (-y). No rotation (layout rotationDeg 0), so the sun scripts get SCENE_MINUS_X_AZ = 270.
 import bpy, os, sys, math, random   # bpy first: it brings mathutils
 from mathutils import Vector, Matrix, noise
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'common'))
 import bl
 from bl import box, cyl, rod, rock, tree, gable, heightfield, lines
 
@@ -19,7 +19,7 @@ random.seed(7)
 bl.setup(f'{OUT}/tex')
 mat, pbr, tex_exists = bl.mat, bl.pbr, bl.tex_exists
 
-# ---------------------------------------------------------------- materials (texture keys: road_tex.py)
+# ---------------------------------------------------------------- materials (texture keys: ../common/road_tex.py)
 M_ROAD = pbr('floor', 'road')       # named floor: the page's ambient ground colour reads materials.floor
 M_GRAVEL = pbr('gravel', 'gravel')
 M_GRASS = pbr('grass', 'grass')

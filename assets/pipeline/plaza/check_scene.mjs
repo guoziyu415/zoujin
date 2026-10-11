@@ -34,15 +34,11 @@ const budgets = {
   ...(allBudgets.scenes?.[scene.sceneId] ?? {}),
 };
 // files a shared pack holds (shared: road-common) sit in that pack's directory: the same place as this pack's
-// directory with the pack name swapped (assets/scenes/<pack>/build, or <out>/<pack> for a draft build)
+// directory with the pack's folder name swapped (assets/scenes/<pack>/build, or <out>/<pack> for a draft build)
 const fileDir = (f) => {
   if (!f.shared) return DIR;
   const parts = path.resolve(DIR).split(path.sep);
-  const i = parts.lastIndexOf(scene.sceneId);
-  if (i < 0)
-    throw new Error(
-      `${DIR}: no ${scene.sceneId} in the path to find ${f.shared}`,
-    );
+  const i = parts.at(-1) === "build" ? parts.length - 2 : parts.length - 1;
   parts[i] = f.shared;
   return parts.join(path.sep);
 };
