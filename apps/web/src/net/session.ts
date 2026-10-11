@@ -273,8 +273,11 @@ export class Session {
           return addEndingLines([{ text: msg.line, speaker: null }]);
         return addNarration(msg.line);
       case "action_result":
-        if (msg.narration) addNarration(msg.narration);
-        return;
+        if (!msg.narration) return;
+        // the action that ended the story (3.13: its result comes after the closing set piece): into the staging
+        if (useStory.getState().ending)
+          return addEndingLines([{ text: msg.narration, speaker: null }]);
+        return addNarration(msg.narration);
       case "limits":
         useVoice.setState({ voiceMinutesLeft: msg.voiceMinutesLeft });
         return;
