@@ -7,12 +7,12 @@
  "placeholderTextures": true,
  "inputs": {
   "files": {
-   "assets/scenes/castle-throne/layout.json": "c9ee5d6b3b5dee6705780d18cb0dd71b86842bca84097aeb44bf1d5b48a3f810",
+   "assets/scenes/castle-throne/layout.json": "684e5f70f6fff6c8865f2d5cf17a69930877349ef6635a7d815fc93ac822532e",
    "assets/pipeline/castle/build.sh": "95caaec94c6e41deb153a222ba55b980581134471f4571eaf807bc78645ccc0d",
-   "assets/pipeline/castle/castle_tex.py": "d1b96f3581df54e17e47851897c0b788911cd9bbabefb50fd796512cf77f3427",
+   "assets/pipeline/castle/castle_tex.py": "a31268db486a0862a33953aab488c147b3ad51397e7d199554d94b089a839222",
    "assets/pipeline/plaza/placeholder_tex.py": "aabda4df4f3974b2eb65b227ed3b5ae2d606a489441d665b3f2f108c5cd1343e",
    "assets/pipeline/road/bl.py": "08a5e8b769f887ea76c72acea86b93dc40d11c421b30a28e6313649d64424d28",
-   "assets/pipeline/castle/build_castle.py": "eef155b3ab916103c18b4ffed3b1bf476d2301bc0ea1f3036768fb8f5a5b13fd",
+   "assets/pipeline/castle/build_castle.py": "c5936b95cc017acc6fb35ea22f0adfc72c367cb44029d34c63d5dbe3fcc58f34",
    "assets/pipeline/castle/lamps.mjs": "aad62d58d093acc4378d78d2af4342b44af06d5dcafd2aa65e77b0e084f77a8c",
    "assets/pipeline/plaza/requirements.txt": "0a234e44f52fb462c7e8694ecd82b99aca8e534ac610dde2dd749bb1e2cbe0e3",
    "assets/pipeline/plaza/sky.py": "971584f110b8a924e737d195f30eab114cb35d7345909e364ed21ec3e77aab27",
@@ -38,6 +38,7 @@
    "floor_base": "placeholder",
    "floor_mr": "placeholder",
    "floor_nrm": "placeholder",
+   "hallaxis_base": "placeholder",
    "hallfloor_base": "placeholder",
    "hallfloor_mr": "placeholder",
    "hallfloor_nrm": "placeholder",
@@ -85,30 +86,30 @@
  },
  "nodes": {
   "arch": {
-   "prims": 10,
-   "tris": 3236,
+   "prims": 11,
+   "tris": 3406,
    "lightmap": "arch"
   },
   "far": {
-   "prims": 5,
-   "tris": 5046
+   "prims": 6,
+   "tris": 5258
   },
   "ground": {
-   "prims": 2,
+   "prims": 3,
    "tris": 3600,
    "lightmap": "ground"
   },
   "proxy": {
    "prims": 1,
-   "tris": 2370,
+   "tris": 2556,
    "shadowCasterOnly": true
   },
   "throne": {
-   "prims": 2,
-   "tris": 80
+   "prims": 3,
+   "tris": 90
   }
  },
- "tris": 14332,
+ "tris": 14910,
  "materials": {
   "ashlar": {
    "color": [
@@ -194,6 +195,18 @@
    "roughness": 1,
    "metalness": 1,
    "base": "hallfloor_base",
+   "nrm": "hallfloor_nrm",
+   "mr": "hallfloor_mr"
+  },
+  "hallaxis": {
+   "color": [
+    1,
+    1,
+    1
+   ],
+   "roughness": 1,
+   "metalness": 1,
+   "base": "hallaxis_base",
    "nrm": "hallfloor_nrm",
    "mr": "hallfloor_mr"
   },
@@ -349,23 +362,23 @@
   "curtain_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "052d93cfe3b42be8e072133bffddf75f5c0213dc461f371e4a67818b8546e5c2",
+   "sourceSha256": "843d6574a3e03c1f872bd8e1745228280fab692fe8d6ba49086048b3e650fb9b",
    "std": {
     "file": "tex/std/curtain_base.ktx2",
     "size": 1024,
     "mean": [
-     35.51,
-     35.51,
-     76.06
+     44.43,
+     52.38,
+     80.2
     ]
    },
    "hi": {
     "file": "tex/hi/curtain_base.ktx2",
     "size": 2048,
     "mean": [
-     35.69,
-     35.69,
-     75.83
+     44.51,
+     52.47,
+     79.99
     ]
    }
   },
@@ -473,6 +486,29 @@
      127.54,
      127.53,
      253.53
+    ]
+   }
+  },
+  "hallaxis_base": {
+   "slot": "base",
+   "from": "placeholder",
+   "sourceSha256": "01afd8fee9745617c5a0a21754d0e4cd448afd07f1e7ce5205cd1cc56508d48d",
+   "std": {
+    "file": "tex/std/hallaxis_base.ktx2",
+    "size": 1024,
+    "mean": [
+     95.36,
+     95.37,
+     92.8
+    ]
+   },
+   "hi": {
+    "file": "tex/hi/hallaxis_base.ktx2",
+    "size": 2048,
+    "mean": [
+     95.38,
+     95.38,
+     92.71
     ]
    }
   },
@@ -673,7 +709,7 @@
   "ground": {
    "indirect": {
     "file": "lm/ground_indirect.ktx2",
-    "K": 0.38232672110622495
+    "K": 0.4637819927463397
    },
    "ao": {
     "file": "lm/ground_ao.ktx2"
@@ -681,13 +717,13 @@
    "bakedRes": 1024,
    "full": {
     "file": "lm/ground_full.ktx2",
-    "K": 0.7806756596609133
+    "K": 1.066209468544783
    }
   },
   "arch": {
    "indirect": {
     "file": "lm/arch_indirect.ktx2",
-    "K": 0.3089581634706818
+    "K": 0.33470808470218166
    },
    "ao": {
     "file": "lm/arch_ao.ktx2"
@@ -695,13 +731,13 @@
    "bakedRes": 1024,
    "full": {
     "file": "lm/arch_full.ktx2",
-    "K": 1.1359176126710697
+    "K": 1.3006048077308983
    }
   }
  },
  "nav": {
   "file": "nav.json",
-  "polys": 154,
+  "polys": 151,
   "agent": {
    "radius": 0.3,
    "height": 1.8,
@@ -730,17 +766,17 @@
    ],
    "yaw": -1.5708,
    "place": "place.castle",
-   "poly": 71
+   "poly": 82
   },
   "hostage-visit": {
    "pos": [
     -14.5,
     0,
-    -4.4
+    -4.5
    ],
-   "yaw": 2.8926,
+   "yaw": 2.5686,
    "place": "place.castle",
-   "poly": 56
+   "poly": 68
   },
   "gate-in": {
    "pos": [
@@ -750,7 +786,7 @@
    ],
    "yaw": 1.5708,
    "place": "place.castle",
-   "poly": 102,
+   "poly": 101,
    "auto": false
   },
   "melos-led-in": {
@@ -761,7 +797,7 @@
    ],
    "yaw": 1.5708,
    "place": "place.castle",
-   "poly": 102,
+   "poly": 101,
    "auto": false
   },
   "before-king": {
@@ -772,18 +808,18 @@
    ],
    "yaw": 1.5708,
    "place": "place.castle",
-   "poly": 83,
+   "poly": 73,
    "auto": false
   },
   "companion-aside": {
    "pos": [
-    3.5,
+    1,
     0,
-    4.8
+    1.8
    ],
-   "yaw": 1.8438,
+   "yaw": 1.7682,
    "place": "place.castle",
-   "poly": 132,
+   "poly": 80,
    "auto": false
   },
   "selinuntius-in": {
@@ -794,7 +830,7 @@
    ],
    "yaw": 1.5708,
    "place": "place.castle",
-   "poly": 79,
+   "poly": 77,
    "auto": false
   },
   "selinuntius-meet": {
@@ -805,40 +841,40 @@
    ],
    "yaw": 1.0304,
    "place": "place.castle",
-   "poly": 83,
+   "poly": 73,
    "auto": false
   },
   "hostage-column": {
    "pos": [
-    -13.75,
+    -12.5,
     0,
     -7.29
    ],
-   "yaw": 0,
+   "yaw": -0.0001,
    "place": "place.castle",
-   "poly": 17,
+   "poly": 37,
    "auto": false
   },
   "hostage-near": {
    "pos": [
-    -13.75,
+    -13.4,
     0,
-    -5.3
+    -6.6
    ],
-   "yaw": 3.1416,
+   "yaw": 2.4058,
    "place": "place.castle",
-   "poly": 56,
+   "poly": 40,
    "auto": false
   },
   "hostage-guard": {
    "pos": [
     -8.5,
     0,
-    -9.2
+    -9.3
    ],
-   "yaw": -0.9137,
+   "yaw": -0.8961,
    "place": "place.castle",
-   "poly": 11,
+   "poly": 47,
    "auto": false
   },
   "way.plaza": {
@@ -849,14 +885,14 @@
    ],
    "yaw": -1.5708,
    "place": "place.castle",
-   "poly": 102
+   "poly": 101
   }
  },
  "files": [
   {
    "path": "geo.glb",
-   "bytes": 268600,
-   "sha256": "bf0ca2e648ff4be0ae86570ee8610dbb7ab83f92f0d7c3c77f327870ab884673",
+   "bytes": 284180,
+   "sha256": "8e730961b3056e64c199cdb1ffd01bbdffb86f62f229ceabd9f84625986b57a2",
    "pack": "entry"
   },
   {
@@ -891,14 +927,14 @@
   },
   {
    "path": "tex/std/curtain_base.ktx2",
-   "bytes": 104599,
-   "sha256": "f8696c10cf9768848c576eee1374083d0e6c9a214b0e68a9061d75e567a78b1c",
+   "bytes": 132339,
+   "sha256": "6070352ad0836c8ba1374225b246815317e1c0937acf400a877d9a5fd70386aa",
    "pack": "entry"
   },
   {
    "path": "tex/hi/curtain_base.ktx2",
-   "bytes": 387244,
-   "sha256": "62e7bf2d006db584b960be7bd02e34da3d9c06173f3abf2e6e3c1cc000baf932",
+   "bytes": 425254,
+   "sha256": "ae4f27ba2b604943f1d9b46b8b51da4d7bffaa5369799b07c88527c4eee6527b",
    "pack": "hi"
   },
   {
@@ -948,6 +984,18 @@
    "bytes": 161882,
    "sha256": "1955a461f345a143c266f0b7c32cfc492668feca7b46af69dec9112b63c0a594",
    "pack": "entry"
+  },
+  {
+   "path": "tex/std/hallaxis_base.ktx2",
+   "bytes": 90456,
+   "sha256": "e6349f9ec249853f67a42105c3fce99339c4c4c979065e3bac6e2426936dab69",
+   "pack": "entry"
+  },
+  {
+   "path": "tex/hi/hallaxis_base.ktx2",
+   "bytes": 251286,
+   "sha256": "6750948633eedf78a867db4e776c7b25975c2bceaa69313e6678add510f9c28d",
+   "pack": "hi"
   },
   {
    "path": "tex/std/hallfloor_base.ktx2",
@@ -1041,52 +1089,52 @@
   },
   {
    "path": "lm/ground_indirect.ktx2",
-   "bytes": 151276,
-   "sha256": "2476c9acfa7cdc39bd7b517c2c4764377dfbf01e4a3595ac0b3cad9a40e4cfe8",
+   "bytes": 148884,
+   "sha256": "12a879a6b0aaf6fe516bc0d61265fd66626b2eca221c16eb618169851a6bde52",
    "pack": "entry"
   },
   {
    "path": "lm/ground_ao.ktx2",
-   "bytes": 150016,
-   "sha256": "0de29c7b22a8e0eedad09f233fb4f81f0f01d87942016cc21deef5acc0bda929",
+   "bytes": 150469,
+   "sha256": "5b332fdb18e74a07afdf841b97c854fba8ac44fa6652c30e46fc6163b223e069",
    "pack": "entry"
   },
   {
    "path": "lm/arch_indirect.ktx2",
-   "bytes": 196069,
-   "sha256": "5e7864018cca51b559ad30aaf67ca53e81a3e17e0f1de87826dba110a1cc0197",
+   "bytes": 205281,
+   "sha256": "919921cd17d0a127718003c6f62dfd5cc208ad6b4a06a683d7e5f950c084d885",
    "pack": "entry"
   },
   {
    "path": "lm/arch_ao.ktx2",
-   "bytes": 174743,
-   "sha256": "8417b9ee280ee02a5f5d9083d6871b19275e9955df302e52f9849fb46383dcb1",
+   "bytes": 181237,
+   "sha256": "dad7c77e11b53467c59e70124bb10e0a22d4effe0ae38b3e8297533c25ddc042",
    "pack": "entry"
   },
   {
    "path": "nav.json",
-   "bytes": 25763,
-   "sha256": "2a7aa754e797416b9a5bc25cfc3bd6c1f23f52bb816a1edee8ac7325638cd6ef",
+   "bytes": 22320,
+   "sha256": "5df75371ef9207e0577363c3f83907cdcec07db684c90094efafc9db4537d14b",
    "pack": "entry"
   },
   {
    "path": "lm/ground_full.ktx2",
-   "bytes": 137402,
-   "sha256": "ce67aaa3bafe862920aa0ca467ef19f8f9e5695148298fd1fa1bcc35cce554bd",
+   "bytes": 135177,
+   "sha256": "005148404255bf11f12023f9ad1b484f477e05d4933fbf60078fcfc127b716c3",
    "pack": "entry"
   },
   {
    "path": "lm/arch_full.ktx2",
-   "bytes": 171321,
-   "sha256": "039d8b603b32a70b27f69fd5626ef1273ddf9a01ef95f711495bcb7407324220",
+   "bytes": 180283,
+   "sha256": "26dbc977a0fe128c30621e94d4651df2cb0a6029855c131f55cc069c64cc1575",
    "pack": "entry"
   }
  ],
  "bytes": {
-  "entry": 3163166,
-  "hiExtra": 1509825,
-  "envStd": 3163166,
-  "envHi": 4672991
+  "entry": 3314003,
+  "hiExtra": 1799121,
+  "envStd": 3314003,
+  "envHi": 5113124
  },
  "lamps": [
   {
@@ -1100,34 +1148,44 @@
    ],
    "flames": [
     [
-     11.476,
+     11.647,
      4.6,
-     -0.275
+     -0.268
     ],
     [
-     11,
+     11.268,
      4.6,
-     -0.55
+     -0.647
     ],
     [
-     10.524,
+     10.732,
      4.6,
-     -0.275
+     -0.647
     ],
     [
-     10.524,
+     10.353,
      4.6,
-     0.275
+     -0.268
     ],
     [
-     11,
+     10.353,
      4.6,
-     0.55
+     0.268
     ],
     [
-     11.476,
+     10.732,
      4.6,
-     0.275
+     0.647
+    ],
+    [
+     11.268,
+     4.6,
+     0.647
+    ],
+    [
+     11.647,
+     4.6,
+     0.268
     ]
    ]
   },
@@ -1137,13 +1195,13 @@
    "indoor": true,
    "pos": [
     9,
-    1.15,
+    1,
     -2.5
    ],
    "flames": [
     [
      9,
-     1.13,
+     0.98,
      -2.5
     ]
    ]
@@ -1154,13 +1212,13 @@
    "indoor": true,
    "pos": [
     9,
-    1.15,
+    1,
     2.5
    ],
    "flames": [
     [
      9,
-     1.13,
+     0.98,
      2.5
     ]
    ]
@@ -1171,13 +1229,13 @@
    "indoor": false,
    "pos": [
     -22.4,
-    1.15,
+    1,
     -3.2
    ],
    "flames": [
     [
      -22.4,
-     1.13,
+     0.98,
      -3.2
     ]
    ]
@@ -1188,13 +1246,13 @@
    "indoor": false,
    "pos": [
     -17.5,
-    1.15,
+    1,
     8.2
    ],
    "flames": [
     [
      -17.5,
-     1.13,
+     0.98,
      8.2
     ]
    ]
@@ -1205,13 +1263,13 @@
    "indoor": false,
    "pos": [
     -12.5,
-    1.15,
+    1,
     8.2
    ],
    "flames": [
     [
      -12.5,
-     1.13,
+     0.98,
      8.2
     ]
    ]
@@ -1222,14 +1280,82 @@
    "indoor": false,
    "pos": [
     -11.8,
-    1.15,
+    1,
     -4.4
    ],
    "flames": [
     [
      -11.8,
-     1.13,
+     0.98,
      -4.4
+    ]
+   ]
+  },
+  {
+   "id": "wall-lamp-nw",
+   "kind": "wall",
+   "indoor": true,
+   "pos": [
+    -4,
+    2.4,
+    -6.75
+   ],
+   "flames": [
+    [
+     -4,
+     2.38,
+     -6.75
+    ]
+   ]
+  },
+  {
+   "id": "wall-lamp-sw",
+   "kind": "wall",
+   "indoor": true,
+   "pos": [
+    -4,
+    2.4,
+    6.75
+   ],
+   "flames": [
+    [
+     -4,
+     2.38,
+     6.75
+    ]
+   ]
+  },
+  {
+   "id": "wall-lamp-nm",
+   "kind": "wall",
+   "indoor": true,
+   "pos": [
+    0.5,
+    2.4,
+    -6.75
+   ],
+   "flames": [
+    [
+     0.5,
+     2.38,
+     -6.75
+    ]
+   ]
+  },
+  {
+   "id": "wall-lamp-sm",
+   "kind": "wall",
+   "indoor": true,
+   "pos": [
+    0.5,
+    2.4,
+    6.75
+   ],
+   "flames": [
+    [
+     0.5,
+     2.38,
+     6.75
     ]
    ]
   }

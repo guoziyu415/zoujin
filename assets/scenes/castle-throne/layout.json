@@ -1,6 +1,6 @@
 {
   "sceneId": "scene.castle-throne",
-  "about": "Hand-written layout of scene.castle-throne (F-14; ux/scenes/castle.md v1.0.2): plan metres, +x = east = into the castle (azimuth 90°), +y = north, the courtyard floor at z = 0. Rotation 0, so glTF x = plan x and glTF z = -plan y. West to east: the gate passage, the courtyard with four porticoes (two rows of columns on the north side), the throne hall (x -6..16, y -7..7, 8 m high) with the throne on a 0.9 m dais facing west. One place (place.castle); spots in UX order: king-throne first (the king has no beat that places him), hostage-visit second, everything else auto: false. The north portico's second row stands on the mid-spans of the first (x -18.75 .. -11.25), not behind its columns, so the hostage's column is seen between two front columns from hostage-near (UX had both rows at x -12.5: the front column hid him); the hostage and the vigil landing moved with it to x -13.75. lamps: the baked lights (build_castle.py) and the page's flames read the same list. hall: the inside of the throne hall, where the page takes out the sky's light (F-14 3).",
+  "about": "Hand-written layout of scene.castle-throne (F-14; ux/scenes/castle.md v1.0.2): plan metres, +x = east = into the castle (azimuth 90°), +y = north, the courtyard floor at z = 0. Rotation 0, so glTF x = plan x and glTF z = -plan y. West to east: the gate passage, the courtyard with four porticoes (two rows of columns on the north side), the throne hall (x -6..16, y -7..7, 8 m high) with the throne on a 0.9 m dais facing west. One place (place.castle); spots in UX order: king-throne first (the king has no beat that places him), hostage-visit second, everything else auto: false. Spots and furnishings as castle.md v1.1 (3.1, 4): the north portico's two rows line up, the vigil landing hostage-near stands between two front columns; the hall's floor ends at the foot of the steps and the dais is an island of its own for the king (navRoots). lamps: the baked lights (build_castle.py) and the page's flames read the same list. hall: the inside of the throne hall, where the page takes out the sky's light (F-14 3).",
   "rotationDeg": 0,
   "defaultPlace": "place.castle",
   "playerStartSpot": "gate-in",
@@ -8,7 +8,7 @@
     "place.castle": "gate-in"
   },
   "hiTextures": {
-    "base": ["hallfloor", "plaster", "curtain", "throne"],
+    "base": ["hallfloor", "hallaxis", "plaster", "curtain", "throne"],
     "nrm": ["hallfloor", "plaster", "curtain"]
   },
   "hall": {
@@ -22,15 +22,15 @@
       "at": [11.0, 0.0],
       "z": 4.5,
       "kind": "chandelier",
-      "cups": 6,
-      "radius": 0.55,
-      "watts": 110,
+      "cups": 8,
+      "radius": 0.7,
+      "watts": 90,
       "indoor": true
     },
     {
       "id": "hall-brazier-n",
       "at": [9.0, 2.5],
-      "z": 1.15,
+      "z": 1.0,
       "kind": "brazier",
       "watts": 260,
       "indoor": true
@@ -38,7 +38,7 @@
     {
       "id": "hall-brazier-s",
       "at": [9.0, -2.5],
-      "z": 1.15,
+      "z": 1.0,
       "kind": "brazier",
       "watts": 260,
       "indoor": true
@@ -46,7 +46,7 @@
     {
       "id": "gate-brazier",
       "at": [-22.4, 3.2],
-      "z": 1.15,
+      "z": 1.0,
       "kind": "brazier",
       "watts": 260,
       "indoor": false
@@ -54,7 +54,7 @@
     {
       "id": "south-brazier-w",
       "at": [-17.5, -8.2],
-      "z": 1.15,
+      "z": 1.0,
       "kind": "brazier",
       "watts": 260,
       "indoor": false
@@ -62,7 +62,7 @@
     {
       "id": "south-brazier-e",
       "at": [-12.5, -8.2],
-      "z": 1.15,
+      "z": 1.0,
       "kind": "brazier",
       "watts": 260,
       "indoor": false
@@ -70,10 +70,42 @@
     {
       "id": "hostage-brazier",
       "at": [-11.8, 4.4],
-      "z": 1.15,
+      "z": 1.0,
       "kind": "brazier",
       "watts": 200,
       "indoor": false
+    },
+    {
+      "id": "wall-lamp-nw",
+      "at": [-4.0, 6.75],
+      "z": 2.4,
+      "kind": "wall",
+      "watts": 35,
+      "indoor": true
+    },
+    {
+      "id": "wall-lamp-sw",
+      "at": [-4.0, -6.75],
+      "z": 2.4,
+      "kind": "wall",
+      "watts": 35,
+      "indoor": true
+    },
+    {
+      "id": "wall-lamp-nm",
+      "at": [0.5, 6.75],
+      "z": 2.4,
+      "kind": "wall",
+      "watts": 35,
+      "indoor": true
+    },
+    {
+      "id": "wall-lamp-sm",
+      "at": [0.5, -6.75],
+      "z": 2.4,
+      "kind": "wall",
+      "watts": 35,
+      "indoor": true
     }
   ],
   "walkable": [
@@ -105,12 +137,21 @@
       ]
     },
     {
-      "name": "the throne hall, the steps and the dais",
+      "name": "the throne hall up to the foot of the steps (x 9.8; the player does not go up, castle.md 3.1)",
       "polygon": [
         [-6.0, -7.0],
-        [16.0, -7.0],
-        [16.0, 7.0],
+        [9.8, -7.0],
+        [9.8, 7.0],
         [-6.0, 7.0]
+      ]
+    },
+    {
+      "name": "the dais, for the king alone (navRoots)",
+      "polygon": [
+        [12.0, -3.4],
+        [16.0, -3.4],
+        [16.0, 3.4],
+        [12.0, 3.4]
       ]
     }
   ],
@@ -129,8 +170,8 @@
       "about": "the king on his throne, on the dais; the first spot characters take on their own (the king has no beat that places him)"
     },
     "hostage-visit": {
-      "at": [-14.5, 4.4],
-      "face": [-13.75, 7.35],
+      "at": [-14.5, 4.5],
+      "face": [-12.5, 7.6],
       "about": "in the courtyard, in front of and a little west of the hostage: where people who come to see him stand"
     },
     "gate-in": {
@@ -152,9 +193,9 @@
       "auto": false
     },
     "companion-aside": {
-      "at": [3.5, -4.8],
-      "face": [13.5, -2.0],
-      "about": "the player who came in with him stands aside here, by the south row of columns; 「保証する」 is said from here",
+      "at": [1.0, -1.8],
+      "face": [11.0, 0.2],
+      "about": "the player who came in with him stands aside here, 4 m behind Melos's left, south of the axis (castle.md v1.1 4: from here the indoor camera has Melos and the king both in frame); 「保証する」 is said from here",
       "auto": false
     },
     "selinuntius-in": {
@@ -170,19 +211,19 @@
       "auto": false
     },
     "hostage-column": {
-      "at": [-13.75, 7.35],
-      "face": [-13.75, 0.0],
-      "about": "beat.07's relocate: Selinuntius bound to the second-row column of the north portico (-13.75, 8), facing the courtyard, in shade all day",
+      "at": [-12.5, 7.6],
+      "face": [-12.5, 0.0],
+      "about": "beat.07's relocate: Selinuntius bound to the second-row column of the north portico (-12.5, 8), facing the courtyard, in shade all day",
       "auto": false
     },
     "hostage-near": {
-      "at": [-13.75, 5.3],
-      "face": [-13.75, 15.3],
-      "about": "exit.1.vigil landing (「城に残り、セリヌンティウスのそばにいる」), between two front columns; the camera behind it stands in the open courtyard",
+      "at": [-13.4, 6.6],
+      "face": [-12.73, 7.34],
+      "about": "exit.1.vigil landing (「城に残り、セリヌンティウスのそばにいる」), between two front columns, about 1.35 m from the hostage (castle.md v1.1 4); the camera behind it stands in the open courtyard",
       "auto": false
     },
     "hostage-guard": {
-      "at": [-8.5, 9.2],
+      "at": [-8.5, 9.3],
       "face": [-12.0, 6.5],
       "about": "where the page puts the hostage's guards (char.guards is a group and takes no spot; the data does not write this one)",
       "auto": false
@@ -192,5 +233,6 @@
       "face": [-41.0, 0.0],
       "about": "out through the gate to the square; people leaving fade out here"
     }
-  }
+  },
+  "navRoots": ["king-throne"]
 }

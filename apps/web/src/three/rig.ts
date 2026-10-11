@@ -23,6 +23,8 @@ export const rig = {
   // the ending's staging (ending/Staging.tsx): its shot's camera, and the exploring layer's people and player hidden
   stage: null as View | null,
   staged: false,
+  // a room's own follow distance (the castle's hall, castle.md 3.2: 5.5 m back, 2.6 m up), null = the exploring one
+  follow: null as { back: number; up: number } | null,
   // the next frame cuts the camera to its place instead of easing there (the player was put on a spot, not walked)
   cutCamera: false,
   camera: null as PerspectiveCamera | null, // CameraRig's, for the test hook
