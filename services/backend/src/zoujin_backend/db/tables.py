@@ -100,7 +100,7 @@ playthroughs = Table(
 # 叙事者的任务表（backend-design 3.4）：只存 ID、状态、租约，不存原话。
 # kind：open（开局）、talk（一轮对话，语音或文字）、advance（快进，只给测试和评测）；B-3：action（动作）、
 # choose（幕末选去处）、plan（幕末说出打算）、arrival（落地后人物先开口，只留记录，叙事者不处理）；
-# B-4：confirm（回答意图确认，request 带 draftId、optionId、by）
+# B-4：confirm（回答意图确认，request 带 draftId、optionId、by）；B-16：world（世界推进，request 带 reason：key / mid）
 turns = Table(
     "turns",
     metadata,
@@ -283,6 +283,10 @@ playthrough_metrics = Table(
     Column("safety_downgrades", Integer, nullable=False, server_default="0"),
     Column("safety_review_failed", Integer, nullable=False, server_default="0"),
     Column("safety_guarded", Integer, nullable=False, server_default="0"),
+    # B-16（0011）：世界推进的花费；写了的人物打算的事件、导演事件（origin plan / director）
+    Column("cost_world_usd", Numeric(12, 6), nullable=False, server_default="0"),
+    Column("world_events", Integer, nullable=False, server_default="0"),
+    Column("director_events", Integer, nullable=False, server_default="0"),
 )
 
 # 意图确认的草稿（B-4，api-contract 3.9）：叙事者提出、还没答的那一个候选（不放原话）。关掉就删行，随整局删除。

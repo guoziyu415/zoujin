@@ -65,6 +65,8 @@ TEXT: dict[str, TextSpec] = {
     "keeps": TextSpec("claude", "haiku-5.5", 2.0, 128, thinking="disabled"),
     # B-21：候选话语（backend-design 3.6、8 节：Haiku、关思考；人物说完约 1 秒内要到，3 秒时限，不行就不出）
     "suggest": TextSpec("claude", "haiku-5.5", 3.0, 256, thinking="disabled"),
+    # B-16：世界推进（幕切换、关键时刻之后、每幕中段）。和幕末打算同档；玩家不等它（幕切换那次除外），时限放宽
+    "world": TextSpec("claude", "sonnet-5.5", 20.0, 4096, thinking="adaptive", effort="low"),
 }
 TEXT_MODELS: dict[str, str] = {k: v.model for k, v in TEXT.items()}
 DEADLINES: dict[str, float] = {k: v.deadline for k, v in TEXT.items()}

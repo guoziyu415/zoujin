@@ -219,6 +219,7 @@ DEFAULTS: dict[str, Callable[[Mapping[str, Any]], Json]] = {
             {"text": "私にできることはありますか。", "kind": "act"},
         ]
     },
+    "world": lambda r: {"events": []},  # B-16：世界推进默认什么都不写
 }
 ERRORS = ("rate-limit", "invalid", "unavailable", "refusal")
 

@@ -396,6 +396,8 @@ class Pipeline:
         """确定性规则，加效果的形状（不合契约 Effect 的按 R7 否决，免得提交时才出错）和行为者存在。"""
         hits = []
         bad_actor = cand.get("actor") not in ("player", *book.characters)
+        if cand.get("actor") == "system" and (turn.act or {}).get("kind") == "world":
+            bad_actor = False  # B-16：导演的环境变化（钟声、天色、城门）
         if bad_actor or any(self.schemas.effect_errors(e) for e in effects):
             hits.append(Hit(*FORM))
         return hits + judge(book.world, state, cand, effects, turn.rules)

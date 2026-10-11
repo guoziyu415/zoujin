@@ -382,6 +382,8 @@ class Gateway:
         }
         if kinds.get(key) == "talk":
             msg["turnId"] = key
+        if kinds.get(key) == "world":  # B-16：在玩家面前的导演事件，一行地の文
+            msg["narration"] = list(results.get(key, {}).get("narration", []))
         if kinds.get(key) == "confirm":
             done = results.get(key, {})
             if done.get("turnId"):

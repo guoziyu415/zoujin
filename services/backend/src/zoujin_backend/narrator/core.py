@@ -51,7 +51,7 @@ from zoujin_backend.db.tables import events as events_t
 from zoujin_backend.ids import IdGen
 from zoujin_backend.models.armor import Armor
 from zoujin_backend.models.text import ReplayMissing, Stop, TextModel
-from zoujin_backend.narrator import acts, confirm, ending, memory
+from zoujin_backend.narrator import acts, advance, confirm, ending, memory
 from zoujin_backend.narrator.pipeline import Counts, Extracted, Pipeline, Spend, TurnInput, Verified
 from zoujin_backend.narrator.rules import Checked
 from zoujin_backend.narrator.writer import Writer
@@ -132,6 +132,8 @@ class Planned:
     confirms_timeout: int = 0
     confirms_rejected: int = 0
     dropped: int = 0
+    world_events: int = 0  # B-16：世界推进写的人物打算的事件、导演事件
+    director_events: int = 0
 
 
 @dataclass
@@ -172,6 +174,7 @@ class Narrator:
     deadlines: Mapping[str, float] = field(default_factory=lambda: dict(DEADLINES))
     on_rate_limit: str = "stop"  # 服务玩家的叙事者（narrator/app.py）是 "degrade"，见 Pipeline
     armor: Armor | None = None  # B-13：记忆一句的第二道过滤（None = 不过这一道，只给测试）
+    world_advance: bool = True  # B-16：世界推进（幕切换、关键时刻之后、每幕中段）；False = 不调模型、不排任务
 
     def __post_init__(self) -> None:
         self.pipeline = Pipeline(self.text, self.schemas, self.ids, self.tracer, self.deadlines, self.on_rate_limit)
@@ -345,6 +348,8 @@ class Narrator:
             return await run_plan(self, task, (await self._lines(task.turn_id)).get("player"))
         if task.kind == "confirm":
             return await confirm.run_confirm(self, task)
+        if task.kind == advance.KIND:
+            return await advance.run_world(self, task)
         raise ValueError(f"不认识的任务 {task.kind}")
 
     async def _ended(self, pid: str) -> bool:
@@ -693,6 +698,7 @@ class Narrator:
             self.fault("events")
             if w.events:
                 await c.execute(insert(events_t), [to_row(e) for e in w.events])
+            await self._schedule_world(c, task, dict(pt), w)
             self.fault("world_state")
             if row is None:
                 await c.execute(
@@ -753,6 +759,34 @@ class Narrator:
         if todo:
             result.memories = await self._remember(task, book, role_id, todo, result)
         return result
+
+    async def _schedule_world(self, c: AsyncConnection, task: Task, pt: Mapping[str, Any], w: Writer) -> None:
+        """B-16：对话、动作、确认提交以后排世界推进（在这次的事件写进库以后、同一个事务里）：有 keyMoment 的事件 →
+        `key`；这一幕判完的对话轮次满 8 的倍数 → `mid`。这一幕收了、进了结局、局不在进行中的不排。"""
+        if not self.world_advance or task.kind not in ("talk", "action", "confirm"):
+            return
+        if pt["status"] != "active" or w.ending is not None or w.closed or w.run.act_end is not None:
+            return
+        reason = None
+        if any(e.get("keyMoment") and e["check"]["status"] != "rejected" for e in w.events):
+            reason = "key"
+        elif task.kind == "talk":
+            start = await c.scalar(
+                select(func.max(events_t.c.seq)).where(
+                    events_t.c.playthrough_id == task.pid,
+                    events_t.c.type == "act-transition",
+                    events_t.c.actor == "system",
+                )
+            )
+            talks = await c.scalar(
+                select(func.count(func.distinct(events_t.c.turn_id)))
+                .select_from(events_t.join(turns, turns.c.turn_id == events_t.c.turn_id))
+                .where(events_t.c.playthrough_id == task.pid, events_t.c.seq > int(start or 0), turns.c.kind == "talk")
+            )
+            if talks and int(talks) % advance.MID_EVERY == 0:
+                reason = "mid"
+        if reason is not None:
+            await store.enqueue(c, self.ids, task.pid, kind=advance.KIND, request={"reason": reason})
 
     async def _remember(
         self, task: Task, book: Book, role_id: str, todo: list[memory.Seed], result: Result
@@ -839,6 +873,7 @@ COST_COLUMNS = {
     "plan": "cost_plan_usd",
     "ending": "cost_ending_usd",
     "ending-check": "cost_ending_usd",  # B-17：结局的模型检查算进结局那一列
+    "world": "cost_world_usd",  # B-16
 }
 COUNT_COLUMNS = {
     "triage_skipped": "turns_triage_skipped",
@@ -860,6 +895,8 @@ PLANNED_COLUMNS = {  # B-3：动作的次数（收幕时队列里回 refused 的
     "confirms_no": "confirms_no",
     "confirms_timeout": "confirms_timeout",
     "confirms_rejected": "confirms_rejected",
+    "world_events": "world_events",  # B-16
+    "director_events": "director_events",
 }
 
 
