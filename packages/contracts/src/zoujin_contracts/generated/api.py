@@ -2527,6 +2527,10 @@ class TimelineBeatItem(BaseModel):
     """
     还没到、或玩家还不知道的节拍为 false，只给时刻
     """
+    place: PlaceId | None = None
+    """
+    （v1.0.16）世界模型 Beat.place，地图节点详情列「場所」用。只在 known 时给（api-contract 2.5）
+    """
     cite: Annotated[list[Cite] | None, Field(min_length=1)] = None
     """
     （v1.0.14）原作出处：世界模型 Beat.cite（数据契约第 0 节的 Cite），地图节点详情列「原作」用。只在 known 时给；原句带玩家此刻不知道的事实的剧透词（spoilers()）的那条不出，世界模型里没写出处或全过滤掉时省略（api-contract 2.5）
