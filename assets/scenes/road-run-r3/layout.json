@@ -1,0 +1,87 @@
+{
+  "sceneId": "road-run-r3",
+  "runway": {
+    "tileLengthM": 36,
+    "scroll": [
+      "ground",
+      "arch",
+      "proxy",
+      "tile_*"
+    ],
+    "static": [
+      "far"
+    ],
+    "about": "the tile repeats every tileLengthM along plan +x: the page lays copies end to end and scrolls them back under the runners (scroll), the far land stays put; set_* nodes are set pieces placed on one tile"
+  },
+  "about": "Hand-written layout of a run segment (F-15): the spring to the field road, act 4, 16:30 to 17:20: meadow and olives (5 R3). Plan metres, +x = the way the runners go, the road on y = 0. Not a scene of the world model (no partOf): the page plays it between two stops after action_result and before the commit that moves you (homeward-road.md 10). The spots are for the runners on the treadmill; defaultPlace is where the segment leads.",
+  "rotationDeg": 0,
+  "defaultPlace": "place.road-to-city",
+  "playerStartSpot": "run-player",
+  "startSpots": {
+    "place.road-to-city": "run-player"
+  },
+  "walkable": [
+    {
+      "name": "the road and its verges, the length of the tile",
+      "polygon": [
+        [
+          -17.5,
+          -3
+        ],
+        [
+          17.5,
+          -3
+        ],
+        [
+          17.5,
+          3
+        ],
+        [
+          -17.5,
+          3
+        ]
+      ]
+    }
+  ],
+  "places": [],
+  "exits": [],
+  "spots": {
+    "run-player": {
+      "at": [
+        0,
+        -0.8
+      ],
+      "face": [
+        10,
+        -0.8
+      ],
+      "about": "where you run on the spot"
+    },
+    "run-melos": {
+      "at": [
+        0,
+        0.8
+      ],
+      "face": [
+        10,
+        0.8
+      ],
+      "about": "where Melos runs on the spot"
+    },
+    "run-third": {
+      "at": [
+        -0.6,
+        2.2
+      ],
+      "face": [
+        9.4,
+        2.2
+      ],
+      "about": "a third runner (Philostratus in the field road)"
+    }
+  },
+  "hiTextures": {
+    "base": ["road", "grass", "outcrop"],
+    "nrm": ["road", "grass", "outcrop"]
+  }
+}
