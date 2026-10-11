@@ -14,3 +14,10 @@
 
 - `crowd-1850.png`、`crowd-stir.png`、`crowd-cheer.png`、`crowd-part.png`：同上四个镜头，四个人里一个在说话（Idle_Talking_Loop），其余是 UAL 的 Idle_Loop。
 - `close-0-0.png`、`close-1-1.png`：从柱子那边 3 米看说话的人（看手臂有没有穿进身体）。
+
+## f2d-ux/（UX 对 #121 截图的几条，叠在 #121 上的 PR）
+
+- `gate-4-talking.png`：按住说话时自己的话（靠右、浅色底）。
+- `gate-5-answer.png`：镜头停稳后的对话镜头，玩家只露肩膀；自己的话定稿后还在右边。
+- `gate-1-plaza.png`：开场固定镜头（F-2 卡 S7 西南角构图，不是跟随镜头）。
+- `talk-key-labels.png`：说话键的八种提示，只在词组之间换行。
