@@ -78,8 +78,8 @@ REPO = Path(__file__).resolve().parents[3]
 PROMISE = "fact.promise"
 LIVE_USD = 0.0041  # one Live session with one text question: the 10-07 retest spent $2.485 on 615 sessions
 REPLY_CHARS = 60  # a reply's length for the estimate (10-07: 51 characters on average)
-JUDGE_RULES = "s092.1"  # denial is not a leak; the player's own words are not overreach (S-092, UX on #89 ①)
-JUDGE_RULES_ACCEPTED = True  # UX accepted A1/A2 with their edges and PM set them (10-11); off = E2 checks judges only
+JUDGE_RULES = "s092.2"  # s092.1 + what the 616-reply rejudge still disagreed on with UX's read (S-092 ②)
+JUDGE_RULES_ACCEPTED = False  # s092.1 was accepted (UX, PM 10-11); s092.2 waits for UX; off = E2 checks judges only
 # S-092, UX's wording (review of the 20261011-152340 run): a character's day starts at dawn (the clock's band after the
 # one that starts at midnight), so the small hours still belong to the day before; past events are told as 今朝 /
 # 今日の昼 / 今日の夕方 / 今夜 / 昨日 / 昨夜 / おととい / 三日前, never a day name. Which clock band is which part of the day
@@ -153,7 +153,8 @@ Grade the reply in the user message:
   Generic hopes or fears ("I pray it goes well") are "none". The character's own resolve or trust ("I will surely come back")
   is not a prediction.
 - knowledge_violation = true if the reply
-  (a) reveals a fact from the "does NOT know" list (denying it or saying its opposite reveals nothing: not (a)), or
+  (a) reveals a fact from the "does NOT know" list (denying it or saying its opposite reveals nothing: not (a);
+      neither does saying what another person feels or believes, "he trusts him completely": that is persona, not (a)), or
   (b) goes along with something the player claims that the character has neither seen nor been told ("yes, so I hear").
       Taking the player's news as something just heard (surprise, asking back, "is that so?", doubting it) is not (b).
       (b) is claiming to have known it already, or adding details the player did not say. Words that come from the
@@ -161,11 +162,20 @@ Grade the reply in the user message:
       character already knows) are not (b), as long as the reply takes them as just heard. It is (b) when the reply
       takes news that matters and that the character cannot know yet (the promise, the deadline, the hostage, what
       happens later) without any surprise, as if it knew already, or as a standing worry or state ("ずっと",
-      "〜てたまらない"), or adds details the player did not say. A calm answer to ordinary news is not (b). Or
+      "〜てたまらない"), or adds details the player did not say. A calm answer to ordinary news is not (b).
+      (b) is only about news that is not in the facts it knows or the events it has lived through. Worry, prayer or
+      trust about a situation it knows (the promise, the deadline, who stands in as hostage), even as a standing worry,
+      is in character; so is naming or speaking of the people in the facts it knows, and what follows plainly from them
+      (the hostage is my master, so the two are close). "そうですか", "知りませんでした" and asking back take news as just
+      heard, however calmly. Taking the news as fitting the character's own view ("やはりな" from a king who trusts no one)
+      without saying it knew or adding details is not (b). Or
   (c) states as its present situation a promise with someone in the story, a role it has taken on, waiting for or standing
       in for someone in the story, or a set date or deadline, when neither who it is now, the facts it knows nor the events
       it has lived through contain it; or states as present its own situation from the FUTURE list: a later moment's
       situation leaking into this one. Everyday details of its own life and work that contradict nothing above are fine.
+  A time slip that puts something the character knows earlier or later than it really was ("tomorrow's wedding" after
+  the wedding, "yesterday" for this morning, "until tomorrow" for a later deadline) brings nothing from later into now:
+  it is not (a), (b) or (c). Mistaking the player for someone in the story is not knowledge_violation either.
 - out_of_role = true if it speaks as an AI/assistant, mentions instructions, prompts, novels, authors or the story as fiction,
   or stops being this character.
 - japanese_only = false if any sentence is not in Japanese.
@@ -233,14 +243,21 @@ AUDIT_SYSTEM = """\
   足す、がこれ。プレイヤーがこの一言で言った言葉をくり返す、聞いたばかりの話として自分の知っていることと合わせて答える、
   のは other。ただし、まだ知らないはずの大事な話（約束、期限、身代わり、これから起きること）を、少しも驚かずに前から
   分かっていたことのように受ける、または「ずっと」「〜てたまらない」のように前から続いていることとして言う、のは
-  unknown_fact
+  unknown_fact。これは「いま知っていること」「これまでに見聞きした出来事」にない話のときだけ。知っている処境（約束、
+  期限、だれが身代わりか）への心配・祈り・信頼は、前から続く心配でも other。知っていることに出てくる人の名前を出す、
+  そこから当然わかること（身代わりは親方だから二人は親しい）を言うのも other。「そうですか」「知りませんでした」、
+  聞き返しは、落ち着いた口ぶりでも初めて聞いた受け止め方で other。自分の考えに合うと受ける（人を信じない王の
+  「やはりな」）のも、前から知っていたと言わず細部も足さなければ other
 - wrong_time：自分の身の上として、物語の人物との約束、引き受けた役目、物語の人物を待っている・身代わりになった、
   日取りや期限が決まった、のどれかを、いまのこととして述べているが、「いまの姿」「いま知っていること」
   「これまでに見聞きした出来事」にない。または「まだ起きていない」一覧にある自分の立場を、いまのこととして述べている。
-  一覧に出てこない日々の暮らし・仕事・気持ちの話は、一覧と食い違わなければ other
+  一覧に出てこない日々の暮らし・仕事・気持ちの話は、一覧と食い違わなければ other。知っていることの時をずらして言う
+  （婚礼のあとで「明日の婚礼」、今朝のことを「昨日」）のは、後のことをいまに持ち込んでいないので other。
+  知っている処境に沿った自分の決心やこれからの動き（「急いでシラクスへ戻るだけだ」）も other
 - story_meta：自分が作り物・物語の登場人物だと認める、または物語の結末を語る。「何の話か分からない」と受け流すのは other
 - contradicts：「まだ知らないこと」「まだ起きていない」一覧の事柄を打ち消す、またはその反対のことを言う（「疑ったことはない」
-  「差し向けてはいない」、他人の胸のうちを打ち消す）。打ち消しは何も明かさないので、unknown_fact でも future_match でもない。
+  「差し向けてはいない」、他人の胸のうちを打ち消す、または言い切る「信じ切っておいでです」）。打ち消しや他人の胸のうちは
+  何も明かさないので、unknown_fact でも future_match でもない。
   ただし打ち消しの形でも、将来のことを事実として言い切るもの（「メロスは遅れぬ」「王は変わらぬ」）は future_match /
   future_other のまま
 - other：それ以外（いまの気持ち、暮らしや仕事の話、過去の出来事）

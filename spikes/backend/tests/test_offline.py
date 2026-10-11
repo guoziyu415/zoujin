@@ -575,6 +575,13 @@ class Offline(unittest.TestCase):
                       s3_spoiler.persona(world, melos, melos["partner"], "guard"))
         system, _ = s3_spoiler.judge_prompts(world, sel, "q", "a", audit=True)
         self.assertIn("contradicts", system)
+        # s092.2: what the 616-reply rejudge still disagreed on with UX's read. Worry about a situation the character knows,
+        # a calm "そうですか", a time slip backwards and the king's "やはりな" are not overreach.
+        self.assertIn("知っている処境", system)
+        self.assertIn("婚礼のあとで「明日の婚礼」", system)
+        grade, _ = s3_spoiler.judge_prompts(world, sel, "q", "a")
+        self.assertIn("only about news that is not in the facts it knows", grade)
+        self.assertIn("A time slip that puts something the character knows earlier or later", grade)
 
         # A run the old way: every reply knowledge overreach.
         client = FakeClient()
@@ -592,7 +599,8 @@ class Offline(unittest.TestCase):
         self.assertEqual((v["n"], v["leak_any"], v["before_leak_any"], v["changed"], v["contradicts"]), (10, 0, 10, 10, 10))
         self.assertEqual((v["questions_leaked"], v["before_questions_leaked"]), (0, 10))
         self.assertEqual(doc["rejudgeOf"], src.name)
-        self.assertEqual(doc["judgeRules"], {"version": s3_spoiler.JUDGE_RULES, "acceptedByUx": True})
+        rules = {"version": s3_spoiler.JUDGE_RULES, "acceptedByUx": s3_spoiler.JUDGE_RULES_ACCEPTED}
+        self.assertEqual(doc["judgeRules"], rules)
         old = [json.loads(x) for x in (src / "results.jsonl").read_text().splitlines()]
         new = [json.loads(x) for x in (out / "results.jsonl").read_text().splitlines()]
         self.assertEqual([r["reply"] for r in new], [r["reply"] for r in old])
