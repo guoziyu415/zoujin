@@ -68,6 +68,14 @@ describe("prefetch", () => {
     ]);
   });
 
+  it("an act the index has no pack for fetches only the shared files", async () => {
+    const got = serve();
+    await prefetch(`${B}road-river/index.json`, "act.9");
+    expect(got.filter((u) => !u.endsWith(".json"))).toEqual([
+      `${B}road-common/tex/std/road_base.ktx2`,
+    ]);
+  });
+
   it("a scene in one pack is fetched from its scene.json", async () => {
     const got = serve();
     await prefetch(`${B}syracuse-square/scene.json`);

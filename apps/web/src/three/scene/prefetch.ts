@@ -7,6 +7,7 @@
 // act: the act the player will be in there ("act.4", the act-end destination's toActId); without it a scene with
 // several packs fetches only the files they all share, the rest once the act is known.
 // Safe to call again (another destination chosen): nothing is cancelled, a file already asked for is not asked again.
+// Rejects when the index or the manifest cannot be read (the caller ignores it: the scene loads as usual later).
 // No three.js here: the act-end page can load it on its own.
 
 type Index = { packs: { pack: string; act: string }[] };
@@ -41,10 +42,12 @@ export async function prefetch(entry: string, act?: string): Promise<void> {
   let known = true;
   if (/\/index\.json$/.test(entry)) {
     const { packs } = await json<Index>(entry);
-    const p =
-      (act !== undefined && packs.find((q) => q.act === act)) || packs[0];
+    // an act the index has no pack for counts as not knowing the act: only the shared files
+    const hit =
+      act === undefined ? undefined : packs.find((q) => q.act === act);
+    const p = hit ?? packs[0];
     if (!p) return;
-    known = act !== undefined || packs.length === 1;
+    known = hit !== undefined || packs.length === 1;
     manifest = at(`../${p.pack}/scene.json`, entry);
   }
   const m = await json<Manifest>(manifest);
