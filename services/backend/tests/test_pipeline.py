@@ -382,6 +382,27 @@ def test_reply_time_is_band_only_for_who_does_not_know_the_day_names() -> None:
     assert time(promise, at(), "char.king") == "日没前"  # 约定还没立，谁都不算知道
 
 
+def test_reply_recent_beats_count_days_from_now() -> None:
+    """S-092：局势带他亲历的节拍是什么时候（UX 的说法，一天从夜明け算起，不用日名）；没参与的、更早的不给。"""
+
+    def recent(t: int, who: str) -> list[tuple[str, str]]:
+        s = at(checkpoint=f"sc.canon@t={t}")
+        return [(x["beat"], x["day"]) for x in situation(BOOK, s, who, state_view(BOOK, s))["recent"]]
+
+    assert recent(1400, "char.king") == [("beat.05", "今夜")] and recent(1400, "char.selinuntius") == []
+    assert recent(2000, "char.selinuntius") == [("beat.06", "昨夜")]
+    assert recent(3600, "char.selinuntius") == [("beat.06", "おととい")]
+    ago = BOOK.labels.ago
+    assert ago(1440 + 60, 1410) == "今夜"  # 天亮前的深夜还算前一天
+    assert (ago(1440 + 300, 1440 + 600), ago(1440 + 600, 1440 + 700), ago(1440 + 1000, 1440 + 1100)) == (
+        "今朝",
+        "今日の昼",
+        "今日の夕方",
+    )
+    assert (ago(600, 1440 + 600), ago(1300, 1440 + 600), ago(600, 3 * 1440 + 600)) == ("昨日", "昨夜", "三日前")
+    assert ago(10, 6000) is None
+
+
 # —— Span 不含原话 ——
 
 

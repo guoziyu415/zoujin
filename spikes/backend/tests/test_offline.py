@@ -546,6 +546,82 @@ class Offline(unittest.TestCase):
         self.assertNotIn("idmark", written)
         self.assertEqual(json.loads((res / "summary.json").read_text())["judge"], "sonnet-5.5")
 
+    @unittest.skipUnless(WORLD.exists(), "world.json not found")
+    def test_s3_s092_rules_and_rejudge(self):
+        # S-092: the guard persona tells when lived events happened (UX's words, the day starting at dawn) and who the
+        # partner is; the naive one does not.
+        world = s3_spoiler.World(WORLD)
+        scenarios, _ = s3_spoiler.load_specs(["scenarios"], world)
+        sel = next(sc for sc in scenarios if sc["id"] == "selinuntius-hostage")
+        guard = s3_spoiler.persona(world, sel, sel["partner"], "guard")
+        self.assertIn("- （今夜）", guard)
+        self.assertIn("話している相手は旅の人（よその土地から来た、あなたとは初対面の者）で、メロスではない。", guard)
+        self.assertIn("あるともないとも言い切らない", guard)
+        self.assertIn("噂として受け止め", guard)
+        naive = s3_spoiler.persona(world, sel, sel["partner"], "naive")
+        self.assertNotIn("（今夜）", naive)
+        self.assertNotIn("話している相手は", naive)
+        ago = lambda beat, after: world.ago(world.beats[beat], after)
+        self.assertEqual(ago("beat.06", "beat.06"), "今夜")
+        self.assertEqual(ago("beat.06", "beat.11"), "おととい")
+        # The small hours still belong to the day before; the day turns at dawn.
+        late = {"window": {"canonical": 1440 + 60}}
+        self.assertEqual(world.ago(late, "beat.06"), "今夜")
+        with mock.patch.dict(world.beats, {"x": {"window": {"canonical": 1440 + 600}}}):
+            self.assertEqual(ago("beat.06", "x"), "昨夜")
+            self.assertEqual(world.ago({"window": {"canonical": 1440 + 300}}, "x"), "今朝")
+        melos = next(sc for sc in scenarios if sc["id"] == "melos-square")
+        self.assertIn("話している相手は旅の人（よその土地から来た、あなたとは初対面の者）。",
+                      s3_spoiler.persona(world, melos, melos["partner"], "guard"))
+        system, _ = s3_spoiler.judge_prompts(world, sel, "q", "a", audit=True)
+        self.assertIn("contradicts", system)
+
+        # A run the old way: every reply knowledge overreach.
+        client = FakeClient()
+        run_s3(["--only", "king-after-promise", "--conditions", "guard"], client, FakeClaude(knowledge_violation=True))
+        src = sorted(p for p in (TMP / "out" / "s3").iterdir() if "rejudge" not in p.name)[-1]
+        sessions = len(client.sessions)
+        # Rejudged: no overreach now, every reply a denial. No Live session; every row keeps its reply and the old verdict.
+        denial = [{"text": "疑ったことはない", "kind": "contradicts", "as_fact": True}]
+        claude = run_s3(["--only", "king-after-promise", "--rejudge", str(src)], client, FakeClaude(audit_claims=denial))
+        self.assertEqual(len(client.sessions), sessions)
+        self.assertEqual(len(claude.calls), 20)
+        out = next(p for p in (TMP / "out" / "s3").iterdir() if p.name.startswith(src.name + "-rejudge-"))
+        doc = json.loads((out / "summary.json").read_text())
+        v = doc["summary"]["guard"]
+        self.assertEqual((v["n"], v["leak_any"], v["before_leak_any"], v["changed"], v["contradicts"]), (10, 0, 10, 10, 10))
+        self.assertEqual((v["questions_leaked"], v["before_questions_leaked"]), (0, 10))
+        self.assertEqual(doc["rejudgeOf"], src.name)
+        self.assertEqual(doc["judgeRules"], {"version": s3_spoiler.JUDGE_RULES, "acceptedByUx": True})
+        old = [json.loads(x) for x in (src / "results.jsonl").read_text().splitlines()]
+        new = [json.loads(x) for x in (out / "results.jsonl").read_text().splitlines()]
+        self.assertEqual([r["reply"] for r in new], [r["reply"] for r in old])
+        self.assertTrue(all(r["before"]["e2"] and r["setup_ms"] is not None for r in new))
+        audit = (out / "audit.md").read_text()
+        self.assertIn("## 3. 和世界模型相反（10 条，不算 E2）", audit)
+        self.assertIn("## 4. 改判法以后 E2 变了（10 条）", audit)
+        self.assertIn("改判法前：E2 是", audit)
+        self.assertFalse((out / "personas.md").exists())
+        # Stopped half way: --resume judges only the rest.
+        rows = (out / "results.jsonl").read_text().splitlines()
+        (out / "results.jsonl").write_text("\n".join(rows[:6]) + "\n")
+        claude = run_s3(["--only", "king-after-promise", "--rejudge", str(src), "--resume", str(out)], client,
+                        FakeClaude(audit_claims=denial))
+        self.assertEqual(len(claude.calls), 8)
+        self.assertEqual(len((out / "results.jsonl").read_text().splitlines()), 10)
+        # Another world model than the run's: refused before anything is called.
+        summary = json.loads((src / "summary.json").read_text())
+        summary["inputs"]["world"] = "0" * 64
+        (src / "summary.json").write_text(json.dumps(summary))
+        with self.assertRaises(SystemExit) as stop:
+            run_s3(["--only", "king-after-promise", "--rejudge", str(src)], client)
+        self.assertIn("ZJ_WORLD", str(stop.exception))
+        # The grading judge's rules (S-092 A1, A2).
+        self.assertIn("A denial, or a statement opposite", s3_spoiler.JUDGE_SYSTEM)
+        self.assertIn("a denial that itself states the future as fact", s3_spoiler.JUDGE_SYSTEM)
+        self.assertIn("as long as the reply takes them as just heard", s3_spoiler.JUDGE_SYSTEM)
+        self.assertIn("〜てたまらない", s3_spoiler.AUDIT_SYSTEM)
+
     @unittest.skipUnless(WORLD.exists() and s3_spoiler.spec_path("probes").exists(), "world or probes not found")
     def test_s3_judge_sees_the_moment_as_data_cut_it(self):
         # Data's evals/probes/s3_probe_knows.json (#87) is cut from the same world model by the same rule; the judges

@@ -5,6 +5,8 @@
   uv run python -m zj_spike.s3_spoiler --conditions guard --repeat 2   # S-068: every question twice
   uv run python -m zj_spike.s3_spoiler --spec probes,scenarios --conditions guard --repeat 2   # S-068 rerun
   uv run python -m zj_spike.s3_spoiler --resume out/s3/<stamp> ...       # continue a stopped run, same arguments
+  uv run python -m zj_spike.s3_spoiler --spec probes,scenarios --conditions guard --rejudge out/s3/<stamp>
+      # S-092: judge that run's replies again with today's judges; no Live session, the run's own world model
 
 Question sets (--spec): scenarios = the S-3 baseline (s3_scenarios.json); probes, probes2 = data engineering's S-068
 probe sets (evals/probes/s3_spoiler_probes.json and s3_spoiler_probes_2.json), where every question also says
@@ -20,6 +22,14 @@ S-068 retest after S-086: what counts against the 1% line is all of E2 (an expli
 overreach such as agreeing to what the player claims, or a later moment's situation leaking into this one),
 counted per distinct question. Characters who do not know the promise yet get the time of day only, not the
 day's name (the first day is called 約束の日). Every reply of those moments also goes to people (read-all.md).
+
+S-092 changed how both judges read two things (UX on #89 ①, with the edges UX and PM set on 10-11): a character
+denying a hidden fact, or saying its opposite, reveals nothing (the audit judge lists it as "contradicts", for UX to
+check it fits the persona), unless the denial itself states the future as fact; and words that come from the
+player's own line are not knowledge overreach, as long as the character takes them as just heard. With
+JUDGE_RULES_ACCEPTED off, a run's E2 checks the judges only and does not pass the S-018 line. --rejudge judges an
+earlier run's replies again (616 replies × 2 judges, Claude only), against the world model that run used: the
+calibration of the new rules against UX's reading (one question in 20261011-152340).
 
 Without --confirm it only prints how many Live sessions and judge calls the run makes, the estimated cost on both
 books and the full command; nothing is called.
@@ -68,6 +78,16 @@ REPO = Path(__file__).resolve().parents[3]
 PROMISE = "fact.promise"
 LIVE_USD = 0.0041  # one Live session with one text question: the 10-07 retest spent $2.485 on 615 sessions
 REPLY_CHARS = 60  # a reply's length for the estimate (10-07: 51 characters on average)
+JUDGE_RULES = "s092.1"  # denial is not a leak; the player's own words are not overreach (S-092, UX on #89 ①)
+JUDGE_RULES_ACCEPTED = True  # UX accepted A1/A2 with their edges and PM set them (10-11); off = E2 checks judges only
+# S-092, UX's wording (review of the 20261011-152340 run): a character's day starts at dawn (the clock's band after the
+# one that starts at midnight), so the small hours still belong to the day before; past events are told as 今朝 /
+# 今日の昼 / 今日の夕方 / 今夜 / 昨日 / 昨夜 / おととい / 三日前, never a day name. Which clock band is which part of the day
+# is data's to keep; these are the bands of world.json today.
+PART_OF_DAY = {"薄明": "朝", "朝": "朝", "午前": "昼", "真昼": "昼", "午後": "昼", "夕方": "夕方", "日没前": "夕方",
+               "日没": "夕方", "夜": "夜", "深夜": "夜"}
+TODAY = {"朝": "今朝", "昼": "今日の昼", "夕方": "今日の夕方", "夜": "今夜"}
+CALLS = {"旅人": "旅の人"}  # how a character calls the player's role (UX); other roles by their name
 
 GUARD_RULES = """\
 # 知識の境界（必ず守る）
@@ -81,6 +101,9 @@ GUARD_RULES = """\
 - 相手が別の言語で話しても、日本語で答えます。
 - 相手から聞いた話で、あなたが自分の目で見ていないこと、誰からも聞いていないことは、初めて聞いた話として受け止めてください（驚く、聞き返す、本当かと疑う）。
   前から知っていたように「そうらしい」「聞いております」と話を合わせたり、相手が言っていないことを付け足したりしないでください。
+- 相手から聞いた話は噂として受け止め、「やはり」「さもあろう」などと請け合わないでください。
+- 他人の胸のうちや、自分が見ても聞いてもいない出来事は、あるともないとも言い切らない。「信じている」「分からない」と、自分の口調で言う。
+- いつのことかは、「これまでに見聞きしたこと」に付いた（今朝）（昨日）などのとおりに言い、もう済んだことをこれからのことのように、今日のことを昨日のことのように言わないでください。日の名前や何日目かは言いません。
 - あなた自身の身の上も、上に書かれていることがすべてです。書かれていない取り決めや役目は、いまのあなたにはありません。
 - 知らないことは知らないと言ってかまいません。話をそらしてもかまいません。
 """
@@ -124,13 +147,20 @@ Grade the reply in the user message:
 - leak = "explicit" if the reply states or confirms any future event/fact above (including the novel's ending),
   "hint" if it strongly foreshadows a specific future event (e.g. predicts the outcome as certain, names a later
   obstacle the player did not mention), otherwise "none". Repeating what the player said while denying or doubting it is "none".
+  A denial, or a statement opposite to a future event/fact above ("he never doubted", "I sent no one"), is "none":
+  it reveals nothing, whatever the lists say really happens. But a denial that itself states the future as fact
+  ("Melos will not be late", "the king will never change") is graded as usual.
   Generic hopes or fears ("I pray it goes well") are "none". The character's own resolve or trust ("I will surely come back")
   is not a prediction.
 - knowledge_violation = true if the reply
-  (a) reveals a fact from the "does NOT know" list, or
+  (a) reveals a fact from the "does NOT know" list (denying it or saying its opposite reveals nothing: not (a)), or
   (b) goes along with something the player claims that the character has neither seen nor been told ("yes, so I hear").
       Taking the player's news as something just heard (surprise, asking back, "is that so?", doubting it) is not (b).
-      (b) is claiming to have known it already, or adding details the player did not say. Or
+      (b) is claiming to have known it already, or adding details the player did not say. Words that come from the
+      player's line in the user message (repeating them, or answering them as just heard together with what the
+      character already knows) are not (b), as long as the reply takes them as just heard. A reply that sounds as if
+      it knew already is (b): no surprise at all, a standing worry or state ("ずっと", "〜てたまらない"), or details
+      the player did not say. Or
   (c) states as its present situation a promise with someone in the story, a role it has taken on, waiting for or standing
       in for someone in the story, or a set date or deadline, when neither who it is now, the facts it knows nor the events
       it has lived through contain it; or states as present its own situation from the FUTURE list: a later moment's
@@ -158,7 +188,8 @@ AUDIT_SCHEMA = {
                 "properties": {
                     "text": {"type": "string"},
                     "kind": {"type": "string",
-                             "enum": ["future_match", "future_other", "unknown_fact", "wrong_time", "story_meta", "other"]},
+                             "enum": ["future_match", "future_other", "unknown_fact", "wrong_time", "story_meta",
+                                      "contradicts", "other"]},
                     "as_fact": {"type": "boolean"},
                 },
                 "required": ["text", "kind", "as_fact"],
@@ -198,12 +229,18 @@ AUDIT_SYSTEM = """\
 - unknown_fact：「まだ知らないこと」を知っているように述べている。プレイヤーが言ったことに、自分では見聞きして
   いないのに「そうらしい」「聞いている」と話を合わせるのもこれ。プレイヤーから初めて聞いた話として受け止める
   （驚く、聞き返す、「そうなのですか」、疑う）のは other。前から知っていたように言う、プレイヤーが言っていない細部を
-  足す、がこれ
+  足す、がこれ。プレイヤーがこの一言で言った言葉をくり返す、聞いたばかりの話として自分の知っていることと合わせて答える、
+  のは other。ただし、少しも驚かない、「ずっと」「〜てたまらない」のように前から続いていることとして言う、のは
+  前から知っていたのと同じで unknown_fact
 - wrong_time：自分の身の上として、物語の人物との約束、引き受けた役目、物語の人物を待っている・身代わりになった、
   日取りや期限が決まった、のどれかを、いまのこととして述べているが、「いまの姿」「いま知っていること」
   「これまでに見聞きした出来事」にない。または「まだ起きていない」一覧にある自分の立場を、いまのこととして述べている。
   一覧に出てこない日々の暮らし・仕事・気持ちの話は、一覧と食い違わなければ other
 - story_meta：自分が作り物・物語の登場人物だと認める、または物語の結末を語る。「何の話か分からない」と受け流すのは other
+- contradicts：「まだ知らないこと」「まだ起きていない」一覧の事柄を打ち消す、またはその反対のことを言う（「疑ったことはない」
+  「差し向けてはいない」、他人の胸のうちを打ち消す）。打ち消しは何も明かさないので、unknown_fact でも future_match でもない。
+  ただし打ち消しの形でも、将来のことを事実として言い切るもの（「メロスは遅れぬ」「王は変わらぬ」）は future_match /
+  future_other のまま
 - other：それ以外（いまの気持ち、暮らしや仕事の話、過去の出来事）
 as_fact：確かなこと・知っていることとして言っていれば true。「信じている」「きっと」「祈る」など、願いや信頼としてなら
 false。自分の決心（「必ず戻る」「必ず来る」）も false。
@@ -294,9 +331,30 @@ class World:
     def rank(self, ref: str) -> float:
         return 0 if ref == "pre" else float(self.beats[ref]["order"])
 
+    def t(self, after: str) -> int:
+        """The moment's clock: the beat's canonical time; before any beat, the opening's."""
+        return int(self.w["clock"]["startT"] if after == "pre" else self.beats[after]["window"]["canonical"])
+
+    def band(self, t: int) -> str:
+        return [name for start, name in self.w["clock"]["labels"]["bands"] if start <= t % 1440][-1]
+
+    def ago(self, beat: dict, after: str) -> str:
+        """When a beat the character lived through happened, as it says it from this moment (S-092, PART_OF_DAY):
+        no day names, so it holds for a character who does not know the promise."""
+        bands = self.w["clock"]["labels"]["bands"]
+        dawn = int(bands[1][0]) if int(bands[0][0]) == 0 and len(bands) > 1 else 0
+        then = int(beat["window"]["canonical"])
+        n = (self.t(after) - dawn) // 1440 - (then - dawn) // 1440
+        part = PART_OF_DAY.get(self.band(then))
+        if n == 0:
+            return TODAY.get(part or "", "今日")
+        if n == 1:
+            return "昨夜" if part == "夜" else "昨日"
+        return {2: "おととい", 3: "三日前"}.get(n, "それより前")
+
     def when(self, after: str) -> str:
         """The clock label (UX 4.2 bands) of a beat's canonical time, e.g. 二日目の真昼; before any beat, the opening's."""
-        t = self.w["clock"]["startT"] if after == "pre" else self.beats[after]["window"]["canonical"]
+        t = self.t(after)
         labels = self.w["clock"]["labels"]
         day = labels["days"][min(int(t // 1440), len(labels["days"]) - 1)]
         band = [name for start, name in labels["bands"] if start <= t % 1440][-1]
@@ -416,8 +474,15 @@ def persona(world: World, sc: dict, partner: str, condition: str) -> str:
         out.append("# 知っていること\n" + "\n".join(f"- {f}" for f in facts))
     lived = world.lived(sc["character"], sc["after"])
     if lived:
-        out.append("# これまでに見聞きしたこと\n" + "\n".join(f"- {b['title']}：{b['summary']}" for b in lived))
+        # S-092: each event carries its day as the character counts it (S-068 mixed up 今日 and 昨日).
+        day = (lambda b: "") if condition == "naive" else (lambda b: f"（{world.ago(b, sc['after'])}）")
+        out.append("# これまでに見聞きしたこと\n" + "\n".join(f"- {day(b)}{b['title']}：{b['summary']}" for b in lived))
     out.append(f"# 話し相手\n{partner}")
+    if condition != "naive":
+        # S-092: S-068's セリヌンティウス answered the traveller as if it were メロス (UX's wording).
+        role, _, rest = partner.partition("（")
+        how = f"{CALLS.get(role, role)}（{rest.rstrip('）')}）" if rest else CALLS.get(role, role)
+        out[-1] += f"\n話している相手は{how}" + ("。" if sc["character"] == "char.melos" else "で、メロスではない。")
     out.append(f"# 話し方のルール\n{name}として、一度に一〜三文で短く話してください。" + JA_RULE)
     if condition == "guard":
         out.append(GUARD_RULES.format(name=name))
@@ -491,10 +556,16 @@ def gate(args, world: World, scenarios: list[dict], conditions: list[str], argv:
           f"上限 ${common.BUDGET_USD:.0f}）；Claude 判定约 ${e['judge_usd']:.2f}（{claude_judge.TAG}，Claude 那本账，"
           f"item {claude_judge.ITEM}），账本按的偏高上限 ${e['judge_upper_usd']:.2f}")
     print(f"交人读（read-all.md，人物还不知道约定的时刻）：{e['read_all']} 条回复")
+    return ready(args, argv, live=True)
+
+
+def ready(args, argv: list[str], *, live: bool) -> bool:
+    """The files read, the full command, and whether everything a real run needs is set."""
     print("读的文件（sha256 前 12 位）：" + "，".join(f"{k} {v[:12]}" for k, v in inputs(args).items()))
-    print("命令：ZJ_CLAUDE_LEDGER=~/.zoujin/ledger.jsonl ZJ_CLAUDE_SONNET=… ANTHROPIC_API_KEY=… ZJ_BUDGET_USD=… "
-          "caffeinate -i uv run python -m zj_spike.s3_spoiler " + shlex.join(x for x in argv if x != "--confirm")
-          + " --confirm")
+    print(f"判法 {JUDGE_RULES}" + ("" if JUDGE_RULES_ACCEPTED else "（UX 还没认可：这次的 E2 只用来看判法，不拿来过 S-018 的线）"))
+    env = "ZJ_CLAUDE_LEDGER=~/.zoujin/ledger.jsonl ZJ_CLAUDE_SONNET=… ANTHROPIC_API_KEY=… " + ("ZJ_BUDGET_USD=… " if live else "")
+    print("命令：" + env + "caffeinate -i uv run python -m zj_spike.s3_spoiler "
+          + shlex.join(x for x in argv if x != "--confirm") + " --confirm")
     missing = claude_judge.missing(os.environ)
     if not args.confirm:
         missing.append("没带 --confirm")
@@ -506,6 +577,10 @@ def gate(args, world: World, scenarios: list[dict], conditions: list[str], argv:
     return True
 
 
+def disagree(verdict: dict, leak2: str) -> bool:
+    return (verdict["leak"] != "none" or bool(verdict["knowledge_violation"])) != (leak2 != "none")
+
+
 async def main_async(args, argv: list[str]) -> None:
     world = World(world_path())
     scenarios, keywords = load_specs([x for x in args.spec.split(",") if x], world)
@@ -513,6 +588,9 @@ async def main_async(args, argv: list[str]) -> None:
     conditions = [c for c in args.conditions.split(",") if c]
     for sc in scenarios:
         world.moment(sc)  # a label that cannot be cut stops here, before anything is called
+    if args.rejudge:
+        await rejudge(args, argv, world, scenarios)
+        return
     if not gate(args, world, scenarios, conditions, argv):
         return
     s = common.settings()
@@ -576,8 +654,7 @@ async def main_async(args, argv: list[str]) -> None:
                     hits = [k for k in keywords if k in reply]
                     late = turn.to_dict()["transcript_late_ms"]
                     if audit:
-                        flagged1 = verdict["leak"] != "none" or bool(verdict["knowledge_violation"])
-                        audit["disagree"] = flagged1 != (audit["leak2"] != "none")
+                        audit["disagree"] = disagree(verdict, audit["leak2"])
                     row = {**base, "unaware": unaware(world, sc), "reply": reply, "keyword_hits": hits, **verdict,
                            **(audit or {}),
                            "first_audio_ms": turn.ms(turn.first_audio),
@@ -592,50 +669,95 @@ async def main_async(args, argv: list[str]) -> None:
                     empty = " 【没回传文字】" if not reply else ""
                     print(f"  {flag}[{cond:5s}] {sc['id']:20s} Q「{q[:18]}」→「{reply[:40]}」{role}{empty}{slow}")
 
-    summary = {}
-    for cond in conditions:
-        rows = [r for r in results if r["condition"] == cond and "leak" in r]
-        n = len(rows) or 1
-        summary[cond] = {
-            "n": len(rows),
-            "errors": sum(1 for r in results if r["condition"] == cond and "error" in r),
-            # An empty reply is judged as "no speech" and can only pass, so these rows hide leaks.
-            "empty_reply": sum(1 for r in rows if not r["reply"]),
-            "leak_explicit": sum(r["leak"] == "explicit" for r in rows),
-            "leak_hint": sum(r["leak"] == "hint" for r in rows),
-            "knowledge_violation": sum(bool(r["knowledge_violation"]) for r in rows),
-            "out_of_role": sum(bool(r["out_of_role"]) for r in rows),
-            "not_japanese_only": sum(not r["japanese_only"] for r in rows),
-            "keyword_flagged": sum(bool(r["keyword_hits"]) for r in rows),
-            "leak_explicit_rate": round(sum(r["leak"] == "explicit" for r in rows) / n, 3),
-            # The audit judge (S-068): its own counts, and how often the two judges disagree.
-            "audit_explicit": sum(r.get("leak2") == "explicit" for r in rows),
-            "audit_hint": sum(r.get("leak2") == "hint" for r in rows),
-            "audit_wrong_time": sum(any(c["kind"] == "wrong_time" for c in r.get("claims2", [])) for r in rows),
-            "disagree": sum(bool(r.get("disagree")) for r in rows),
-            "out_of_role_rate": round(sum(bool(r["out_of_role"]) for r in rows) / n, 3),
-            # All of E2 (S-086 ①): either judge says explicit, or the grading judge says knowledge overreach.
-            # Checked against S-018 before people review audit.md and read-all.md. Per distinct question (S-086 ②:
-            # a question counts once if any of its repeats failed; this is the number), and per reply for reference.
-            "leak_any": sum(any_leak(r) for r in rows),
-            "upper95": upper95(sum(any_leak(r) for r in rows), len(rows)),
-            "questions": len(qs := per_question(rows)),
-            "questions_leaked": sum(qs.values()),
-            "questions_upper95": upper95(sum(qs.values()), len(qs)),
-            "by_style": {style: {"n": len(sub), "leak_any": sum(any_leak(r) for r in sub),
-                                 "leak_explicit": sum(r["leak"] == "explicit" for r in sub),
-                                 "audit_explicit": sum(r.get("leak2") == "explicit" for r in sub)}
-                         for style in sorted({r.get("style", "original") for r in rows})
-                         for sub in [[r for r in rows if r.get("style", "original") == style]]},
-        }
+    report(out, args, world, scenarios, conditions, results, {"model": s.live_model})
+
+
+VERDICT = (*JUDGE_SCHEMA["properties"], "leak2", "claims2", "disagree", "judge_s", "before")
+
+
+async def rejudge(args, argv: list[str], world: World, scenarios: list[dict]) -> None:
+    """S-092: judge an earlier run's replies again with today's judges, against the world model that run used.
+    No Live session. Every row keeps its reply and timings and carries the old verdict under "before"."""
+    src = Path(args.rejudge)
+    old = [r for r in map(json.loads, (src / "results.jsonl").read_text(encoding="utf-8").splitlines()) if "leak" in r]
+    old = [r for r in old if not args.only or r["scenario"] in args.only.split(",")]
+    by_id = {sc["id"]: sc for sc in scenarios}
+    unknown = sorted({r["scenario"] for r in old} - set(by_id))
+    if unknown:
+        raise SystemExit(f"题集里没有这些情景：{unknown}（--spec 要和原来那次一样）")
+    was = json.loads((src / "summary.json").read_text(encoding="utf-8")).get("inputs", {})
+    if "world" not in was:
+        raise SystemExit("原来那次的 summary.json 没记世界模型的 sha256，对不上是哪一份，不重判")
+    now = inputs(args)
+    differ = [k for k in now if k in was and was[k] != now[k]]
+    if differ:
+        raise SystemExit("重判要读原来那次的文件：" + "，".join(f"{k} 那次 {was[k][:12]}、这次 {now[k][:12]}" for k in differ)
+                         + "。世界模型用 ZJ_WORLD 指到那一份；题集给那一份的路径")
+    calls = len(old) * (1 if args.one_judge else 2)
+    likely = upper = 0.0
+    per_sc = {i: sum(r["scenario"] == i for r in old) for i in by_id}
+    for audit in (False,) if args.one_judge else (False, True):
+        schema = claude_judge.api_schema(AUDIT_SCHEMA if audit else JUDGE_SCHEMA)
+        for r in old:
+            system, user = judge_prompts(world, by_id[r["scenario"]], r["question"], r["reply"], audit=audit)
+            likely += claude_judge.likely_usd(len(system), len(user), per_sc[r["scenario"]])
+            upper += claude_judge.upper_usd(len(system), len(user), schema)
+    print(f"S-092 重判：{src.name} 的 {len(old)} 条回复、{calls} 次判定，不调 Live（世界模型 {world.w['worldModelVersion']}）")
+    print(f"预计花费〔推算〕：Claude 判定约 ${likely:.2f}（{claude_judge.TAG}，Claude 那本账，item {claude_judge.ITEM}），"
+          f"账本按的偏高上限 ${upper:.2f}")
+    if not ready(args, argv, live=False):
+        return
+    cj = claude_judge.ClaudeJudge(max_total_usd=args.max_claude_usd, max_item_usd=args.max_item_usd)
+    key = lambda r: (r["scenario"], r["condition"], r["question"], r.get("rep", 1))
+    results: list[dict] = []
+    if args.resume:
+        out = Path(args.resume)
+        results = [r for r in map(json.loads, (out / "results.jsonl").read_text(encoding="utf-8").splitlines()) if "before" in r]
+    else:
+        out = src.parent / f"{src.name}-rejudge-{time.strftime('%Y%m%d-%H%M%S')}"
+        out.mkdir(parents=True, exist_ok=True)
+    done = {key(r) for r in results}
+    common.banner(f"S-092 重判：{len(old)} 条" + (f"，已有 {len(done)} 条，接着判" if done else ""))
+    with open(out / "results.jsonl", "w", encoding="utf-8") as f:
+        for row in results:
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+        f.flush()
+        for r in old:
+            if key(r) in done:
+                continue
+            sc = by_id[r["scenario"]]
+            t1 = time.perf_counter()
+            verdict = await judge(cj, world, sc, r["question"], r["reply"])
+            audit = None
+            if not args.one_judge:
+                claims = (await judge(cj, world, sc, r["question"], r["reply"], audit=True)).get("claims", [])
+                audit = {"leak2": audit_leak(claims), "claims2": claims}
+                audit["disagree"] = disagree(verdict, audit["leak2"])
+            before = {"leak": r["leak"], "knowledge_violation": r["knowledge_violation"], "leak2": r.get("leak2"),
+                      "e2": any_leak(r)}
+            row = {**{k: v for k, v in r.items() if k not in VERDICT}, **verdict, **(audit or {}),
+                   "judge_s": round(time.perf_counter() - t1, 1), "before": before}
+            results.append(row)
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+            f.flush()
+            if any_leak(row) != before["e2"]:
+                print(f"  E2 {'是→否' if before['e2'] else '否→是'} [{r['condition']}] {r['scenario']} Q「{r['question'][:18]}」")
+    conditions = list(dict.fromkeys(r["condition"] for r in results))
+    report(out, args, world, [sc for sc in scenarios if sc["id"] in {r["scenario"] for r in results}], conditions,
+           results, {"rejudgeOf": src.name, "model": None})
+
+
+def report(out: Path, args, world: World, scenarios: list[dict], conditions: list[str], results: list[dict],
+           extra: dict) -> None:
+    """summary.json, review.md, audit.md, read-all.md and the printed table, from every row of a run."""
+    summary = summarize(results, conditions)
     done = [r for r in results if "leak" in r]
-    timing = {"setup_ms": common.summarize_ms([r["setup_ms"] for r in done]),
-              "session_s": common.summarize_ms([r["session_s"] for r in done]),
-              "judge_s": common.summarize_ms([r["judge_s"] for r in done]),
-              "transcript_late_ms": common.summarize_ms([r["transcript_late_ms"] for r in done if r["transcript_late_ms"] is not None])}
-    common.write_json(out / "summary.json", {"world": world.w["worldModelVersion"], "inputs": inputs(args),
-                                             "model": s.live_model, "judge": claude_judge.TAG, "summary": summary,
-                                             "timing": timing})
+    timing = {k: common.summarize_ms([r[k] for r in done if r.get(k) is not None])
+              for k in ("setup_ms", "session_s", "judge_s", "transcript_late_ms")}
+    common.write_json(out / "summary.json", {"world": world.w["worldModelVersion"], "inputs": inputs(args), **extra,
+                                             "judge": claude_judge.TAG,
+                                             "judgeRules": {"version": JUDGE_RULES, "acceptedByUx": JUDGE_RULES_ACCEPTED},
+                                             "summary": summary, "timing": timing})
     flagged = [r for r in results if "leak" in r and (r["leak"] != "none" or r["out_of_role"] or r["knowledge_violation"]
                                                       or not r["japanese_only"] or r["keyword_hits"])]
     md = ["# S-3 需要人工复核的回复", "",
@@ -660,9 +782,63 @@ async def main_async(args, argv: list[str]) -> None:
               f"（单侧 95% 上限 {pct(v['questions_upper95'])}，S-018 要 ≤ 1%），"
               f"按回复 {v['leak_any']} / {v['n']} 条（上限 {pct(v['upper95'])}）；"
               + "，".join(f"{k} {x['leak_any']}/{x['n']}" for k, x in v["by_style"].items()))
+    if not JUDGE_RULES_ACCEPTED:
+        print(f"判法 {JUDGE_RULES} 还没经 UX 认可：上面的 E2 只用来看判法，不拿来过 S-018 的线（S-092）")
+    if any("before" in r for r in done):
+        for cond, v in summary.items():
+            print(f"{cond}：改判法前 E2 按题 {v['before_questions_leaked']} 题、按回复 {v['before_leak_any']} 条；"
+                  f"结论变了的回复 {v['changed']} 条；和世界模型相反 {v['contradicts']} 条（audit.md 第 3、4 节）")
     print(f"耗时：建会话中位数 {timing['setup_ms'].get('p50')} ms（最长 {timing['setup_ms'].get('max')}），"
           f"判定中位数 {timing['judge_s'].get('p50')} s（最长 {timing['judge_s'].get('max')}）")
-    print(f"\n结果：{out}（results.jsonl、summary.json、review.md、audit.md、read-all.md、personas.md）")
+    print(f"\n结果：{out}（results.jsonl、summary.json、review.md、audit.md、read-all.md"
+          + ("" if "rejudgeOf" in extra else "、personas.md") + "）")
+
+
+def summarize(results: list[dict], conditions: list[str]) -> dict:
+    summary: dict[str, dict] = {}
+    for cond in conditions:
+        rows = [r for r in results if r["condition"] == cond and "leak" in r]
+        n = len(rows) or 1
+        summary[cond] = {
+            "n": len(rows),
+            "errors": sum(1 for r in results if r["condition"] == cond and "error" in r),
+            # An empty reply is judged as "no speech" and can only pass, so these rows hide leaks.
+            "empty_reply": sum(1 for r in rows if not r["reply"]),
+            "leak_explicit": sum(r["leak"] == "explicit" for r in rows),
+            "leak_hint": sum(r["leak"] == "hint" for r in rows),
+            "knowledge_violation": sum(bool(r["knowledge_violation"]) for r in rows),
+            "out_of_role": sum(bool(r["out_of_role"]) for r in rows),
+            "not_japanese_only": sum(not r["japanese_only"] for r in rows),
+            "keyword_flagged": sum(bool(r["keyword_hits"]) for r in rows),
+            "leak_explicit_rate": round(sum(r["leak"] == "explicit" for r in rows) / n, 3),
+            # The audit judge (S-068): its own counts, and how often the two judges disagree.
+            "audit_explicit": sum(r.get("leak2") == "explicit" for r in rows),
+            "audit_hint": sum(r.get("leak2") == "hint" for r in rows),
+            "audit_wrong_time": sum(any(c["kind"] == "wrong_time" for c in r.get("claims2", [])) for r in rows),
+            "disagree": sum(bool(r.get("disagree")) for r in rows),
+            # S-092: replies the audit judge says deny a hidden fact or say its opposite (not E2; UX checks the persona).
+            "contradicts": sum(any(c["kind"] == "contradicts" for c in r.get("claims2", [])) for r in rows),
+            "out_of_role_rate": round(sum(bool(r["out_of_role"]) for r in rows) / n, 3),
+            # All of E2 (S-086 ①): either judge says explicit, or the grading judge says knowledge overreach.
+            # Checked against S-018 before people review audit.md and read-all.md. Per distinct question (S-086 ②:
+            # a question counts once if any of its repeats failed; this is the number), and per reply for reference.
+            "leak_any": sum(any_leak(r) for r in rows),
+            "upper95": upper95(sum(any_leak(r) for r in rows), len(rows)),
+            "questions": len(qs := per_question(rows)),
+            "questions_leaked": sum(qs.values()),
+            "questions_upper95": upper95(sum(qs.values()), len(qs)),
+            "by_style": {style: {"n": len(sub), "leak_any": sum(any_leak(r) for r in sub),
+                                 "leak_explicit": sum(r["leak"] == "explicit" for r in sub),
+                                 "audit_explicit": sum(r.get("leak2") == "explicit" for r in sub)}
+                         for style in sorted({r.get("style", "original") for r in rows})
+                         for sub in [[r for r in rows if r.get("style", "original") == style]]},
+        }
+        if any("before" in r for r in rows):  # --rejudge: the earlier verdicts, for comparison
+            was = [r for r in rows if "before" in r]
+            summary[cond] |= {"before_leak_any": sum(r["before"]["e2"] for r in was),
+                              "before_questions_leaked": len({(r["scenario"], r["question"]) for r in was if r["before"]["e2"]}),
+                              "changed": sum(any_leak(r) != r["before"]["e2"] for r in was)}
+    return summary
 
 
 def any_leak(r: dict) -> bool:
@@ -688,9 +864,12 @@ def write_audit(out: Path, rows: list[dict]) -> None:
                           if c["kind"] != "other") or "（无）"
         probe = ([f"- 题型：{r['style']}" + (f"；想引出：{'、'.join(r['targets'])}" if r.get("targets") else "")]
                  if r.get("style") in ("open", "leading") else [])
+        b = r.get("before")
+        was = ([f"- 改判法前：E2 {'是' if b['e2'] else '否'}（评分 leak={b['leak']}，知情越界={b['knowledge_violation']}；"
+                f"复核 leak={b['leak2']}），现在：E2 {'是' if any_leak(r) else '否'}"] if b else [])
         return [f"### {r['scenario']} / {r['condition']} / 第 {r.get('rep', 1)} 遍", f"- 问：{r['question']}", *probe, f"- 答：{r['reply']}",
                 f"- 评分判定：leak={r['leak']}，知情越界={r['knowledge_violation']}；理由：{r['reason']}",
-                f"- 复核判定：leak={r.get('leak2')}；抽出的主张：{claims}", "- 人工结论（剧透 / 不是）：", ""]
+                f"- 复核判定：leak={r.get('leak2')}；抽出的主张：{claims}", *was, "- 人工结论（剧透 / 不是）：", ""]
     md = ["# S-3 判定复核（S-068）", "",
           "两种判定方法：评分判定直接给结论；复核判定先把回复拆成一条条主张再按固定规则得出结论。",
           "请在每条的「人工结论」后写「剧透」或「不是」。", "",
@@ -702,6 +881,17 @@ def write_audit(out: Path, rows: list[dict]) -> None:
            f"估两边都漏的比例：这里人工判成剧透的条数 ÷ {len(sample)} × {len(passed)} = 估计漏掉的条数。", ""]
     for r in sample:
         md += entry(r)
+    # S-092: denials are not E2 any more; UX checks they fit the persona. After --rejudge, every changed verdict.
+    against = [r for r in rows if any(c["kind"] == "contradicts" for c in r.get("claims2", []))]
+    md += [f"## 3. 和世界模型相反（{len(against)} 条，不算 E2）", "",
+           "人物否认一个隐藏事实，或说出和它相反的话。请在「人工结论」后写：合人设 / 不合（写理由）。", ""]
+    for r in against:
+        md += entry(r)
+    changed = [r for r in rows if "before" in r and any_leak(r) != r["before"]["e2"]]
+    if any("before" in r for r in rows):
+        md += [f"## 4. 改判法以后 E2 变了（{len(changed)} 条）", "", "请写：新判法对 / 旧判法对（写理由）。", ""]
+        for r in changed:
+            md += entry(r)
     (out / "audit.md").write_text("\n".join(md), encoding="utf-8")
 
 
@@ -762,6 +952,8 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--one-judge", action="store_true", help="只用评分判定，不做复核判定和 audit.md")
     ap.add_argument("--spec", default="scenarios", help="题集，逗号分隔：scenarios（S-3 原题）、probes、probes2（数据的 S-068 探针题第一、二组）或文件路径")
     ap.add_argument("--resume", help="接着跑中断的那一次：给 out/s3/<时间> 目录，其余参数和上次一样")
+    ap.add_argument("--rejudge", help="S-092：用现在的判法重判这一次（out/s3/<时间>）的回复，不调 Live；"
+                                      "世界模型和题集要和那次一样。中断了加 --resume <重判的目录>")
     ap.add_argument("--max-claude-usd", type=float, help="Claude 那本账的总上限（D-029：100）")
     ap.add_argument("--max-item-usd", type=float, default=30.0, help="这一项（s068-judge）在 Claude 账上的上限")
     ap.add_argument("--confirm", action="store_true", help="看过预计花费、按批过的估算跑")
