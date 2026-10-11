@@ -76,9 +76,15 @@ export class FakeAudio implements AudioPort {
   preload(clips: Clip[]): void {
     if (this.loadClips) for (const c of clips) this.loaded.add(c.url);
   }
-  playClip(clip: Clip, hold?: { tag: number; maxMs: number }): boolean {
+  playClip(
+    clip: Clip,
+    hold?: { tag: number; maxMs: number },
+    crowd = false,
+  ): boolean {
     if (!this.loaded.has(clip.url)) return false;
-    this.log.push(hold ? `clip:${clip.url}:hold` : `clip:${clip.url}`);
+    this.log.push(
+      `clip:${clip.url}${hold ? ":hold" : ""}${crowd ? ":crowd" : ""}`,
+    );
     return true;
   }
 

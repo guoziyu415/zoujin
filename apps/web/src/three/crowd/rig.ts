@@ -20,13 +20,15 @@ export type Role =
   | "foreR";
 
 // a pose: each role's rotation (x, y, z radians, applied in XYZ order, from the rest pose) and the hips' offset; with a
-// pack's skeleton, how far each hand is closed (0 open, 1 a fist)
+// pack's skeleton, how far each hand is closed (0 open, 1 a fist; none: RELAXED, a hand hanging loose)
 export type Pose = {
   rot: Partial<Record<Role, Vec3>>;
   hips?: Vec3;
   fist?: [left: number, right: number];
 };
 
+// the fingers of a hand at rest, a little curled (UX on #148: MPFB's straight spread fingers read as claws)
+export const RELAXED = 0.3;
 // a finger bone's bend at a full fist: about `axis` (at rest, the world's axes) by `angle`; side 0 left, 1 right
 export type FingerBend = {
   bone: number;
@@ -290,7 +292,7 @@ export function skinMatrices(pose: Pose, skel: Skeleton = STAND_IN): Matrix4[] {
     const b = (r && skel.rest[r]) || [0, 0, 0];
     q.setFromEuler(e.set(a[0] + b[0], a[1] + b[1], a[2] + b[2], "XYZ"));
     const f = bend[i];
-    const k = f && pose.fist ? pose.fist[f.side] : 0;
+    const k = f ? (pose.fist?.[f.side] ?? RELAXED) : 0;
     if (f && k) q.setFromAxisAngle(axis.set(...f.axis), f.angle * k);
     const p = skel.parents[i]!;
     const from: Vec3 = p >= 0 ? skel.joints[p]! : [0, 0, 0];
