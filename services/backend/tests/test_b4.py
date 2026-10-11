@@ -221,7 +221,8 @@ def test_no_and_no_answer_drop_the_draft_and_the_clock_stays(game: Callable[...,
     later = g.s.advance(10)
     assert SUMMARY not in [e["summary"] for e in later["events"]]
     assert confirm_turns(g)[-1]["result"]["push"] == [closed_msg(third["confirm"]["draftId"], None, "timeout")]
-    assert g.s.confirm("yes") == {"events": [], "clockMinutes": 0, "error": "no_draft"}
+    late = g.s.confirm("yes")
+    assert late.pop("elapsedMs") >= 0 and late == {"events": [], "clockMinutes": 0, "error": "no_draft"}
 
     fourth = g.s.say(MELOS, OFFER)  # 一局最多问 3 次：第 4 次丢掉
     assert "confirm" not in fourth and SUMMARY not in [e["summary"] for e in fourth["events"]]

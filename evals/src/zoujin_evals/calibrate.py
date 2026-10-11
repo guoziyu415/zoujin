@@ -1,8 +1,8 @@
 """评审员校准（data-design 7.3）：命令 zoujin-judge。
 
-- calibrate：评审员把校准样本（evals/judge/calibration.jsonl，50 条）各判 --repeat 次，和数据标的分比，
+- calibrate：评审员把校准样本（evals/judge/calibration.jsonl，48 条）各判 --repeat 次，和数据标的分比，
   按判定线（>=4/5）分过 / 不过算一致率。每一次判分各算一次，≥ 90% 才采用这个模型和 effort。
-- agree：zg 盲标的 20 条（labels-zg.json）和数据标的分比，≥ 18/20 这 50 条才当标准答案用。不花钱。
+- agree：zg 盲标的 20 条（labels-zg.json）和数据标的分比，≥ 18/20 这 48 条才当标准答案用。不花钱。
 
 calibrate --mode replay 只读回放，不花钱；--mode live 只在 zg 的 Mac 上：要 ZJ_EVAL_LIVE=1、账本 ZJ_LEDGER、
 --max-claude-usd 和 --max-item-usd（没有默认值）。不带 --confirm 只打印预计花费和完整命令，zg 同意后才带它再跑。

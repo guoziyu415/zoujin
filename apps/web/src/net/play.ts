@@ -62,6 +62,10 @@ export const play = {
   actChoose: (optionId: string, enRouteChoice?: number) =>
     current?.actChoose(optionId, enRouteChoice),
   actPropose: (text: string) => current?.actPropose(text),
+  // the plan said aloud: hold and let go like the talk key (play.slide still arms the cancel)
+  actPlanPress: () => current?.actPlanPress(),
+  actPlanRelease: () => current?.actPlanRelease(),
+  actPlanRetract: () => current?.actPlanRetract(),
   actLanded: (actId: string) => current?.actLanded(actId),
   reconnect: () => current?.reconnect(),
   // pagehide: close the socket so the page can go into the back/forward cache (9.5)

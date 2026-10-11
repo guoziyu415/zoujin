@@ -73,6 +73,8 @@ class Playthrough:
     ending_id: str | None = None
     ending_ready: bool = False
     plan_options: set[str] = field(default_factory=set)
+    act_change: list[Json] = field(default_factory=list)  # 最近一次幕切换推的（成行的 act_plan_result、act_transition）
+    act_change_seq: int | None = None  # 那次幕切换时的 last_seq
     warm: dict[str, float] = field(default_factory=dict)  # 人物 → 会话就绪的时刻（time.monotonic）
     reconnected: bool = False  # 重连后第一次准备会话，reason 是 reconnect
     deleted_memories: dict[str, Json] = field(default_factory=dict)  # 記憶帳删过的记忆 → 删除时的响应
@@ -130,6 +132,13 @@ class Playthrough:
     def commits_after(self, last_seq: int) -> list[Json]:
         return [c for c in self.commits if c["seq"] > last_seq]
 
+    def act_change_after(self, last_seq: int) -> list[Json]:
+        """重连时再推一次的幕切换（api-contract 第 4 节，v1.0.12）：最后一次提交是幕切换，客户端的 lastSeq 不晚于它。"""
+        seq = self.act_change_seq
+        if seq is None or seq != self.last_seq or last_seq > seq:
+            return []
+        return list(self.act_change)
+
     def events_after(self, after_seq: int, limit: int) -> list[Json]:
         return [e for e in self.events if e["seq"] > after_seq][:limit]
 
@@ -175,12 +184,17 @@ class Playthrough:
             self.confirm = None
         elif t == "act_ended":
             self.act_end = {k: v for k, v in msg.items() if k != "type"}
+            self.act_change = []
         elif t == "act_plan_result":
+            if msg["accepted"]:
+                self.act_change = [msg]
             if msg.get("alternative"):
                 self.plan_options.add(msg["alternative"]["optionId"])
             if self.act_end is not None:
                 self.act_end["freeform"] = {"allowed": msg["triesLeft"] > 0, "triesLeft": msg["triesLeft"]}
         elif t == "act_transition":
+            self.act_change = [*self.act_change, msg]
+            self.act_change_seq = self.last_seq
             self.act_end = None
             arrival = msg.get("arrival")
             self.arrival = arrival if arrival is not None and "opener" in arrival else None
