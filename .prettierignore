@@ -15,3 +15,5 @@ uv.lock
 assets/scenes/*/scene.json
 assets/scenes/*/index.json
 assets/scenes/*/pack.json
+# 流水线生成的群众包清单（assets/pipeline/crowd/build.sh）
+assets/scenes/*/crowd.json
