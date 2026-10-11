@@ -2253,6 +2253,10 @@
      "since": "beat.06"
     },
     {
+     "fact": "fact.friendship",
+     "since": "beat.06"
+    },
+    {
      "fact": "fact.selinuntius-steadfast",
      "since": "beat.s1"
     }
