@@ -16,7 +16,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from zoujin_worldsim import SimState, activity, apply, arrival_delta, flat, initial_state, knows, world_state
+from zoujin_worldsim import SimState, activity, apply, arrival_delta, flat, initial_state, knows, sees, world_state
 
 from zoujin_backend.db.store import Run
 from zoujin_backend.world import Book
@@ -80,12 +80,14 @@ def promise_change(effects: Sequence[Mapping[str, Any]]) -> Json | None:
 
 
 def is_visible(book: Book, ev: Mapping[str, Any], player_place: str) -> bool:
-    """第 0 节：改的是可见变量或节拍走向（或约定），并且玩家在场或是玩家做的。被否决的不推。"""
+    """第 0 节：改的是可见变量或节拍走向（或约定），并且玩家看得到（数据契约 1.12 第 3 节的 `sees()`：玩家做的、
+    玩家在事件的地点，或者是没有参与人物的节拍、落在和玩家同一个场景）。player_place 是这个事件之前玩家的地点。
+    被否决的不推。"""
     if not committed(ev):
         return False
     if not visible_effects(book, ev["effects"]) and promise_change(ev["effects"]) is None:
         return False
-    return bool(ev["actor"] == "player" or ev["place"] == player_place)
+    return sees(book.world, player_place, ev)
 
 
 YOU = "あなた"

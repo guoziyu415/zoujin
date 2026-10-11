@@ -189,3 +189,32 @@ def test_events_are_written_with_the_newest_contract_version() -> None:
     assert SCHEMA_VERSION == common["$defs"]["SchemaVersion"]["enum"][-1]
     world = json.loads(DEFAULT_WORLD.read_text(encoding="utf-8"))
     assert SCHEMA_VERSION == world["schemaVersion"]
+
+
+def test_weather_beats_are_seen_from_anywhere_in_the_same_scene() -> None:
+    """数据契约 1.12：没有参与人物的节拍（beat.12 大雨，在 place.village）在同一个场景（scene.village）就推；
+    别的场景、没有场景的地点不推；有参与人物的节拍照旧要在它的地点；玩家做的照旧推；被否决的不推。"""
+    from zoujin_backend.projection import is_visible
+
+    draft = REPO / "worlds" / "hashire-merosu" / "1.0.0-draft" / "world.json"
+    book = Library(REPO / "worlds", REPO / "assets" / "scenes", draft).current
+
+    def beat(b: str, place: str, status: str = "passed") -> dict[str, Any]:
+        return {
+            "actor": "system",
+            "place": place,
+            "effects": [{"op": "beat", "beat": b, "to": "happened"}],
+            "check": {"status": status},
+        }
+
+    rain = beat("beat.12", "place.village")
+    assert is_visible(book, rain, "place.village")
+    assert is_visible(book, rain, "place.melos-home")  # 同一个场景
+    assert not is_visible(book, rain, "place.river")  # 别的场景
+    assert not is_visible(book, beat("beat.15", "place.neighbor-village"), "place.village")  # 节拍的地点没有场景
+    wedding = beat("beat.13", "place.melos-home")  # 有参与人物：要在它的地点
+    assert book.beats["beat.13"]["participants"]
+    assert is_visible(book, wedding, "place.melos-home")
+    assert not is_visible(book, wedding, "place.village")
+    assert is_visible(book, {**wedding, "actor": "player"}, "place.river")
+    assert not is_visible(book, beat("beat.12", "place.village", "rejected"), "place.village")
