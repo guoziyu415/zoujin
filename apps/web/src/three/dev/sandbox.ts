@@ -23,6 +23,8 @@ const PLACES = [
 const LANDING: Record<string, { place: string; spot: string; t: number }> = {
   // the night of the promise, 20:30 (beat.05, F-14)
   "castle-throne": { place: "place.castle", spot: "gate-in", t: 1230 },
+  // the shepherd boy's first screen, 一日目 09:00 (F-11)
+  village: { place: "place.village", spot: "field-edge", t: 1980 },
 };
 
 export function startSandbox(): void {

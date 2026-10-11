@@ -23,8 +23,9 @@ export const rig = {
   // the ending's staging (ending/Staging.tsx): its shot's camera, and the exploring layer's people and player hidden
   stage: null as View | null,
   staged: false,
-  // a room's own follow distance (the castle's hall, castle.md 3.2: 5.5 m back, 2.6 m up), null = the exploring one
-  follow: null as { back: number; up: number } | null,
+  // a room's own follow distance (the castle's hall, castle.md 3.2: 5.5 m back, 2.6 m up; the village's house, F-11:
+  // with its own field of view), null = the exploring one
+  follow: null as { back: number; up: number; fov?: number } | null,
   // a scene's own staging (castle/CastleStage.tsx, castle.md 3.2): where someone coming on or moving walks in from,
   // by which points, how fast; null = straight to the spot on the navmesh at the usual pace
   route: null as

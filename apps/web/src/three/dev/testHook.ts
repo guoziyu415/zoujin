@@ -229,6 +229,16 @@ export function installTestHook(): void {
         c.getContext("2d")!.drawImage(bmp, 0, 0);
         return { width: bmp.width, height: bmp.height, png: c.toDataURL() };
       },
+      // the village's weather switch (F-11 test page): clear, clouds, rain, or back to the clock and the commits
+      villageWeather: async (w: "clear" | "cloud" | "rain" | null) => {
+        const { villageLight } = await import("../village/VillageLife");
+        villageLight.force =
+          w === null
+            ? null
+            : { cloud: w === "clear" ? 0 : 1, rain: w === "rain" ? 1 : 0 };
+        await nextFrames(3);
+        return { ...villageLight };
+      },
       walkTo: (to: string | [number, number]) => {
         const at =
           typeof to === "string"
