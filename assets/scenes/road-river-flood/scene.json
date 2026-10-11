@@ -12,7 +12,7 @@
    "assets/pipeline/road/build.sh": "2ac8b2e79ecf2e994e65c8e67d134c67909c38c2b5badcacfe017e41b8d031a6",
    "assets/pipeline/road/road_tex.py": "db91de0e11dbfa7f6bc82764d27005795edffc888bc035248ccea97b30ed207c",
    "assets/pipeline/plaza/placeholder_tex.py": "aabda4df4f3974b2eb65b227ed3b5ae2d606a489441d665b3f2f108c5cd1343e",
-   "assets/pipeline/road/bl.py": "dfbc8b056f62af116c5f08053f825edb36c535969b008384b01accc024213221",
+   "assets/pipeline/road/bl.py": "ab473048aa242384359777e346e1e37f433e9afc8f75861a02f81a2dd0f2045c",
    "assets/pipeline/road/build_road_river.py": "4407409e930e01648c266850676ea5bb0abe6cbeee8739a5c9fbd8fb73a3f81d",
    "assets/pipeline/road/merge_river.mjs": "1e41b37b401bda2130895dc2a6b67ae45ae866e4352d33f2e89314214f760edc",
    "assets/pipeline/plaza/requirements.txt": "0a234e44f52fb462c7e8694ecd82b99aca8e534ac610dde2dd749bb1e2cbe0e3",
@@ -782,7 +782,7 @@
   "ground": {
    "indirect": {
     "file": "lm/ground_indirect.ktx2",
-    "K": 0.7022089148572477
+    "K": 0.7022087664137013
    },
    "ao": {
     "file": "lm/ground_ao.ktx2"
@@ -792,7 +792,7 @@
   "arch": {
    "indirect": {
     "file": "lm/arch_indirect.ktx2",
-    "K": 0.8316689565827953
+    "K": 0.8313022153161542
    },
    "ao": {
     "file": "lm/arch_ao.ktx2"
@@ -946,8 +946,8 @@
  "files": [
   {
    "path": "geo.glb",
-   "bytes": 493672,
-   "sha256": "b671cf9f0aed2f35a7f75a5347b6d98f6cfd565c4e6c0a29c88e91950aced005",
+   "bytes": 494736,
+   "sha256": "8edcf7535cccaa76f5f46213b87357caf0a5f7ae1818a661ee827ce0019a79a0",
    "pack": "entry"
   },
   {
@@ -1188,8 +1188,8 @@
   },
   {
    "path": "lm/ground_indirect.ktx2",
-   "bytes": 148689,
-   "sha256": "6325cbb91db62cd4d2b883afb880879b3de9d1061f90c185b85166a5e86533f6",
+   "bytes": 148667,
+   "sha256": "cdd8f855e438b171ff0b5bd16d1fb8f02a389731631d4eb4bdf1017691a4f658",
    "pack": "entry"
   },
   {
@@ -1200,14 +1200,14 @@
   },
   {
    "path": "lm/arch_indirect.ktx2",
-   "bytes": 188628,
-   "sha256": "6ee8edb21162d89a51c11976810b9685e13e633c84cd095326e3af71084ea9e3",
+   "bytes": 188505,
+   "sha256": "8882c2437d4375bc3395b8567ce1fc2f3fc34a3b80a853f02657d5ba202eb24e",
    "pack": "entry"
   },
   {
    "path": "lm/arch_ao.ktx2",
-   "bytes": 149540,
-   "sha256": "4d40ecfe925dfb9f49d155d06d7340baf83201ee68fb0d6e460fa41fb003e9e3",
+   "bytes": 149138,
+   "sha256": "56793b97fdd953619d80e650cc11ef0c0bb92d900b0a93760abdee64be4e8491",
    "pack": "entry"
   },
   {
@@ -1218,14 +1218,14 @@
   }
  ],
  "bytes": {
-  "entry": 2263807,
+  "entry": 2264324,
   "hiExtra": 1142841,
   "shared": {
    "entry": 1957733,
    "hiExtra": 4110189
   },
-  "envStd": 4221540,
-  "envHi": 9474570
+  "envStd": 4222057,
+  "envHi": 9475087
  },
  "sharedPacks": [
   "road-common"

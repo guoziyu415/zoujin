@@ -167,6 +167,22 @@ def rock(name, x, y, z, r, m, squash=0.6, seed=0, group='arch', caster=True):
     return obj_from_bm(name, bm, [m], group, caster)
 
 
+def uv_sphere(bm, us, vs):
+    """unit lat-long sphere, poles single vertices; built by hand because bmesh.ops.create_uvsphere's face order changes
+    from one Blender process to the next (Blender 5.2), which made two builds differ"""
+    top = bm.verts.new((0, 0, 1))
+    rings = [[bm.verts.new((math.sin(math.pi * j / vs) * math.cos(2 * math.pi * i / us),
+                            math.sin(math.pi * j / vs) * math.sin(2 * math.pi * i / us),
+                            math.cos(math.pi * j / vs))) for i in range(us)] for j in range(1, vs)]
+    bot = bm.verts.new((0, 0, -1))
+    for i in range(us):
+        k = (i + 1) % us
+        bm.faces.new((top, rings[0][i], rings[0][k]))
+        for j in range(vs - 2):
+            bm.faces.new((rings[j][i], rings[j + 1][i], rings[j + 1][k], rings[j][k]))
+        bm.faces.new((rings[-1][i], bot, rings[-1][k]))
+
+
 def tree(name, x, y, h, r, m_leaf, m_bark, shape='round', z=0.0, group='arch', lean=(0.0, 0.0)):
     """poplar (shape 'column': tall and narrow), holm oak ('round'), willow ('weep': wide, hanging, leaning trunk)"""
     th = h * (0.3 if shape == 'column' else 0.45)
@@ -174,7 +190,7 @@ def tree(name, x, y, h, r, m_leaf, m_bark, shape='round', z=0.0, group='arch', l
     rod(name + '_trunk', (x, y, z - 0.3), (tx, ty, z + th), 0.22 if shape != 'column' else 0.18, m_bark, group, caster=True)
     bm = bmesh.new()
     if shape == 'column':
-        bmesh.ops.create_uvsphere(bm, u_segments=12, v_segments=10, radius=1.0)
+        uv_sphere(bm, 12, 10)
         for v in bm.verts:
             t = (v.co.z + 1) / 2
             w = r * (0.5 + 0.6 * math.sin(math.pi * min(1, t * 1.1))) * (1 - 0.55 * t)

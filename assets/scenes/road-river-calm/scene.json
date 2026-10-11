@@ -12,7 +12,7 @@
    "assets/pipeline/road/build.sh": "2ac8b2e79ecf2e994e65c8e67d134c67909c38c2b5badcacfe017e41b8d031a6",
    "assets/pipeline/road/road_tex.py": "db91de0e11dbfa7f6bc82764d27005795edffc888bc035248ccea97b30ed207c",
    "assets/pipeline/plaza/placeholder_tex.py": "aabda4df4f3974b2eb65b227ed3b5ae2d606a489441d665b3f2f108c5cd1343e",
-   "assets/pipeline/road/bl.py": "dfbc8b056f62af116c5f08053f825edb36c535969b008384b01accc024213221",
+   "assets/pipeline/road/bl.py": "ab473048aa242384359777e346e1e37f433e9afc8f75861a02f81a2dd0f2045c",
    "assets/pipeline/road/build_road_river.py": "4407409e930e01648c266850676ea5bb0abe6cbeee8739a5c9fbd8fb73a3f81d",
    "assets/pipeline/road/merge_river.mjs": "1e41b37b401bda2130895dc2a6b67ae45ae866e4352d33f2e89314214f760edc",
    "assets/pipeline/plaza/requirements.txt": "0a234e44f52fb462c7e8694ecd82b99aca8e534ac610dde2dd749bb1e2cbe0e3",
@@ -773,7 +773,7 @@
   "arch": {
    "indirect": {
     "file": "lm/arch_indirect.ktx2",
-    "K": 0.36019403401396033
+    "K": 0.3599704491399527
    },
    "ao": {
     "file": "lm/arch_ao.ktx2"
@@ -938,8 +938,8 @@
  "files": [
   {
    "path": "geo.glb",
-   "bytes": 496768,
-   "sha256": "60e235a25d4671b175d1f36e7deb9ae586b8dfafda3b79f60e1c8ee46af7a612",
+   "bytes": 497924,
+   "sha256": "75f3eafc5b93fb9c6ad85cca92b3b7c7998b470f6615e7ad84c26c3849ad69d5",
    "pack": "entry"
   },
   {
@@ -1180,8 +1180,8 @@
   },
   {
    "path": "lm/ground_indirect.ktx2",
-   "bytes": 110943,
-   "sha256": "074631eb45dea041207540d5ee397f0b3ea1bfea3ca9d364c824c5f922cdd4ce",
+   "bytes": 111073,
+   "sha256": "a6da17b25119190b79430b87996b9f4b7b9d472d0b5c91d322644ac05f25885c",
    "pack": "entry"
   },
   {
@@ -1192,14 +1192,14 @@
   },
   {
    "path": "lm/arch_indirect.ktx2",
-   "bytes": 184964,
-   "sha256": "34f56aaccc67bfb2f7c351539da037186b512f62128cd3b6c76e6949a6ef40ec",
+   "bytes": 187878,
+   "sha256": "ed49e2109ccb71b1c63274cffafc06bd24240b7470d31f676fdf7174df2513cd",
    "pack": "entry"
   },
   {
    "path": "lm/arch_ao.ktx2",
-   "bytes": 157901,
-   "sha256": "51281c0fcadd159a1a1d468d6ae68258e1bc60e624b14a369931dc9908bce0b5",
+   "bytes": 158121,
+   "sha256": "67f689d35cb057957e501f56beada33a240e8d9e41354093df5f6dcc9e6e6290",
    "pack": "entry"
   },
   {
@@ -1210,14 +1210,14 @@
   }
  ],
  "bytes": {
-  "entry": 2337020,
+  "entry": 2341440,
   "hiExtra": 1142841,
   "shared": {
    "entry": 1957733,
    "hiExtra": 4110189
   },
-  "envStd": 4294753,
-  "envHi": 9547783
+  "envStd": 4299173,
+  "envHi": 9552203
  },
  "sharedPacks": [
   "road-common"
