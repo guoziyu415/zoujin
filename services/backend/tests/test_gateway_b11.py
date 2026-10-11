@@ -13,6 +13,7 @@ from typing import Any
 
 import pytest
 from zoujin_backend.gateway import voice
+from zoujin_backend.models.live import Line
 
 from . import test_gateway_b4 as b4
 from .conftest import OLD, Env
@@ -185,3 +186,26 @@ def test_forget_and_shutdown_drop_what_is_parked(env: Env, inproc: Make, play: P
     wait_for(lambda: q.pid in s.gw.parked)
     on_gateway(other, s.gw.goaway())
     assert other.closed and not s.gw.parked
+
+
+def test_output_monitor_survives_the_reconnect(
+    env: Env, inproc: Make, play: Play, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """B-12 的监控随寄存带走：重连后新会话的最近对话照样去掉说漏的那一句（#112 评审的跟进）。"""
+    monkeypatch.setattr(voice, "RESUME_HOLD_S", 2.0)  # × 0.05 = 0.1 秒：会话关了，重连要现开
+    s = inproc(SPEED)
+    # 老爺此刻还不知道约定：「身代わり」是它的 spoilerTerms（同 test_gateway_b12）
+    s.live.lines[OLD] = [Line("ねえ。", "メロスの身代わりになる者がおるそうじゃ。")]
+    p = play(s)
+    p.focus(OLD)
+    talk(p, "ねえ。")
+    before = s.gw.conns[p.pid].monitor
+    wait_for(lambda: "身代わり" in before.terms(OLD))
+    session = s.live.live_sessions(OLD)[0]
+    drop(p)
+    wait_for(lambda: session.closed)
+    back(p)
+    assert s.gw.conns[p.pid].monitor is before
+    p.send({"type": "focus", "character": OLD})
+    p.expect("session_ready", character=OLD)
+    assert "身代わり" not in s.live.opened[-1].system
