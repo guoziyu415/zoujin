@@ -1298,3 +1298,8 @@ button {
   height: auto;
   -webkit-touch-callout: default;
 }
+/* the ending's staging hides the exploring HUD (11.1); their display rules would otherwise win over [hidden] */
+.hud-top[hidden],
+.hud-bottom[hidden] {
+  display: none;
+}

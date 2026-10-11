@@ -210,9 +210,22 @@ test("ending: the staging hands over to the ending page; world, you, the people;
   const pid = await startStory(page);
   // the staging: the HUD goes, only the 3D and the subtitles stay (11.1)
   await expect(page.locator(".hud-bottom")).toBeHidden({ timeout: 60_000 });
-  await expect(page).toHaveURL(new RegExp(`/ending/${pid}$`), {
-    timeout: 60_000,
-  });
+  // tap through the closing lines (each tap completes or moves on; taps within 0.5 s don't count)
+  const ending = new RegExp(`/ending/${pid}$`);
+  let subtitled = false;
+  for (let i = 0; i < 200 && !ending.test(page.url()); i++) {
+    const stage = page.locator(".end-stage");
+    // a subtitle of the staging, once, for UX (the closing set pieces come with the mock of api-contract v1.0.12)
+    if (!subtitled && (await stage.locator(".end-sub").count()) > 0) {
+      await page.waitForTimeout(1500);
+      await shot(page, "ending-subtitles").catch(() => {});
+      subtitled = true;
+    }
+    if (await stage.isVisible().catch(() => false))
+      await stage.click({ position: { x: 20, y: 20 } }).catch(() => {});
+    await page.waitForTimeout(600);
+  }
+  await expect(page).toHaveURL(ending, { timeout: 30_000 });
   await expect(
     page.getByRole("heading", { name: "原作どおりの大団円" }),
   ).toBeVisible();
