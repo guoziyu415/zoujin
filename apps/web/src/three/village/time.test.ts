@@ -71,3 +71,13 @@ describe("the house's camera zone (F-11 card 6)", () => {
     expect(inZone(room, -0.6, 3, true)).toBe(false);
   });
 });
+
+describe("the puddles (F-11 card 5)", () => {
+  it("fill in the downpour and dry slowly after", async () => {
+    const { fill } = await import("./rainGround");
+    expect(fill(0, 1, 12.5)).toBeCloseTo(0.5);
+    expect(fill(0.5, 1, 100)).toBe(1);
+    expect(fill(1, 0, 90)).toBeCloseTo(0.5);
+    expect(fill(0.1, 0, 100)).toBe(0);
+  });
+});
