@@ -99,7 +99,7 @@ turn（玩家原话 + 人物回答的转写 / 玩家动作）
   │      自伤信号 → 出戏卡，这一轮不进叙事者（S-043）
   │      Model Armor：注入、个人信息 → 作为标记传下去，不直接拒绝
   │
-  ├─ 1. 分流（Claude Haiku 5.5，关思考，约 0.5 秒〔推算〕；B-8 前是 gemini-3.5-flash-lite）
+  ├─ 1. 分流（Claude Haiku 5.5，关思考，约 1.1 秒（p95 1.5 秒，B-8 小测实测）；B-8 前是 gemini-3.5-flash-lite）
   │      这一轮有没有可能改变世界、形成约定、说出新的即兴设定？
   │      没有（约 4 成的闲聊轮）→ 直接到第 7 步，只记时间
   │
@@ -512,7 +512,7 @@ Model Armor 没有自伤类别，所以自伤靠文本模型；S-4 用 44 条样
 
 ## 7. 模型与服务选型
 
-**v1.0.11（B-8，D-028）**：叙事者和网关用的文字模型都走 Claude（zg 的 Anthropic API 额度，不走 Vertex 上的 Claude），只有 Live 的语音和预录句留在 Google。前面各节写的 `gemini-3.8-flash`、`gemini-3.5-flash-lite` 按下表换；每种调用的思考、effort、时限和推算的延迟见 `docs/tasks/m2/B-8.md` 的清单。代码里每种提示一行（`config.TEXT`：供应商、档名加版本、思考、effort、输出上限、时限）；Claude 的模型 ID 只在 Mac 的环境变量里（`ZJ_CLAUDE_HAIKU`、`ZJ_CLAUDE_SONNET`），仓库只写档名加版本。
+**v1.0.11（B-8，D-028）**：叙事者和网关用的文字模型都走 Claude（zg 的 Anthropic API 额度，不走 Vertex 上的 Claude），只有 Live 的语音和预录句留在 Google。前面各节写的 `gemini-3.8-flash`、`gemini-3.5-flash-lite` 按下表换；每种调用的思考、effort、时限和延迟见 `docs/tasks/m2/B-8.md` 的清单（已有代码的 6 种是 10-11 Mac 小测的实测：全部的 p50 1.1〜2.1 秒、p95 1.5〜3.4 秒，都在时限里）。代码里每种提示一行（`config.TEXT`：供应商、档名加版本、思考、effort、输出上限、时限）；Claude 的模型 ID 只在 Mac 的环境变量里（`ZJ_CLAUDE_HAIKU`、`ZJ_CLAUDE_SONNET`），仓库只写档名加版本。
 
 | 用途 | 模型 / 服务 | 状态 | 理由 |
 |---|---|---|---|
