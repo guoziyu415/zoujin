@@ -49,6 +49,8 @@ test.afterAll(() => {
 });
 
 test("the longest ending, shot by shot, and the card's picture", async () => {
+  // software rendering takes about a minute a shot: eleven shots and the card don't fit the 5-minute default
+  test.setTimeout(15 * 60_000);
   const h = await hook(page);
   expect(await h.evaluate((z) => z.load().stage)).toBe("ready");
   await h.evaluate((z) => z.setClock(2 * 1440 + 18 * 60 + 40)); // 三日目 18:40, the sun low in the west
