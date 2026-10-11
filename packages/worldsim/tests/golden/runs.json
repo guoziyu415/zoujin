@@ -1068,7 +1068,7 @@
     "beat.s2": "precondition-failed",
     "beat.21": "happened",
     "beat.22": "happened",
-    "beat.s1": "happened",
+    "beat.s1": "altered",
     "beat.23": "happened",
     "beat.24": "happened",
     "beat.25": "precondition-failed",
@@ -1104,7 +1104,9 @@
     "beat.26": 5475,
     "beat.27": 5480
    },
-   "variant": {},
+   "variant": {
+    "beat.s1": "beat.s1.v-you"
+   },
    "vars": {
     "var.melos.location": "place.syracuse-square",
     "var.melos.custody": "returned",
@@ -1127,7 +1129,7 @@
     "var.bridge": "destroyed",
     "var.river.crossing": "swam",
     "var.bandits": "defeated",
-    "var.player.location": "place.syracuse-square",
+    "var.player.location": "place.execution-ground",
     "var.player.custody": "hostage",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,
@@ -1235,7 +1237,7 @@
     "beat.s2": "precondition-failed",
     "beat.22": "late",
     "beat.19": "happened",
-    "beat.s1": "happened",
+    "beat.s1": "altered",
     "beat.23": "late",
     "beat.20": "happened",
     "beat.24": "late",
@@ -1267,7 +1269,9 @@
     "beat.s1": 5400,
     "beat.20": 5460
    },
-   "variant": {},
+   "variant": {
+    "beat.s1": "beat.s1.v-you"
+   },
    "vars": {
     "var.melos.location": "place.syracuse-square",
     "var.melos.custody": "on-parole",
@@ -1290,7 +1294,7 @@
     "var.bridge": "destroyed",
     "var.river.crossing": "swam",
     "var.bandits": "defeated",
-    "var.player.location": "place.syracuse-square",
+    "var.player.location": "place.execution-ground",
     "var.player.custody": "executed",
     "var.player.companionOf": "none",
     "var.player.knowsShortcut": false,

@@ -172,10 +172,10 @@ def test_all_seven_characters_have_their_six_lines() -> None:
     assert s.recording("king-aizuchi-1").loudness is None
 
 
-def test_draft_world_has_the_same_recordings_without_set_pieces() -> None:
-    """--world 1.0.0-draft：草稿没有固定演出，只有 6 句和 arrival_capped；同一句签名一样，换世界模型不重读。"""
+def test_draft_world_has_the_same_recordings_as_the_slice() -> None:
+    """--world 1.0.0-draft：W-2 起切片的固定演出写在完整版里，录音和切片一样多；同一句签名一样，换世界模型不重读。"""
     s, d = slice_plan(), draft_plan()
-    assert len(d.recordings) == 7 * 6 + 1
+    assert {r.id for r in d.recordings} == {r.id for r in s.recordings}
     old = {r.id: cli.sig(r.speaker.voice, r.system, r.spoken) for r in s.recordings}
     assert all(old[r.id] == cli.sig(r.speaker.voice, r.system, r.spoken) for r in d.recordings)
 

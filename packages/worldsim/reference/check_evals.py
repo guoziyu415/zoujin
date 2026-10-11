@@ -541,9 +541,12 @@ def main():
     load = lambda p: json.loads(Path(p).read_text(encoding="utf-8"))  # noqa: E731
     ck = Checker(load(a.world), load(a.scenarios), load(a.personas) if a.personas else [])
 
+    # 画像文件四幕共用：切片只有旅人，别的身份的画像切片用例用不到，只查用例里用到的（W-2）
+    used = set(re.findall(r'"persona": "([^"]+)"', "".join(
+        f.read_text(encoding="utf-8") for f in Path(a.cases).glob("E*.jsonl"))))
     for pid, p in ck.personas.items():
         r = ck.roles.get(p.get("role"))
-        if not r or r["release"] != 1:
+        if pid in used and (not r or r["release"] != 1):
             ck.err(f"画像 {pid}：身份 {p.get('role')} 不存在或不在第一版")
 
     files = sorted(Path(a.cases).glob("E*.jsonl"))

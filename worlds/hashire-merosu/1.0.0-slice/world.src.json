@@ -1,5 +1,5 @@
 {
- "schemaVersion": "1.13",
+ "schemaVersion": "1.14",
  "worldModelVersion": "hashire-merosu@1.0.0-slice.3",
  "_authoring": "切片版。由 1.0.0-slice/make_slice.py 从 1.0.0-draft/world.src.json 生成，不要手改。出典は {\"q\": 原文の逐字引用, \"p\": 段落番号（省略可）} で書く。spikes/pipeline/build_world.py が段落を特定・検証して world.json を出力する。",
  "book": {
@@ -329,6 +329,14 @@
   {
    "word": "市の少女",
    "reading": "まちのしょうじょ"
+  },
+  {
+   "word": "市へ続く野の道",
+   "reading": "まちへつづくののみち"
+  },
+  {
+   "word": "野の道",
+   "reading": "ののみち"
   },
   {
    "word": "微笑ん",
@@ -2591,6 +2599,7 @@
   {
    "id": "place.melos-home",
    "name": "メロスの家と羊小屋",
+   "shortName": "メロスの家",
    "description": "妹と二人暮しの家。神々の祭壇、宴席、羊小屋がある。婚礼もここで行われる。",
    "adjacent": [
     {
@@ -2654,6 +2663,7 @@
   {
    "id": "place.river",
    "name": "川と橋",
+   "shortName": "川",
    "description": "全里程のほぼ半ば。豪雨で氾濫すると橋が流される。",
    "adjacent": [
     {
@@ -2709,6 +2719,7 @@
   {
    "id": "place.spring",
    "name": "峠下の草原と泉",
+   "shortName": "泉",
    "description": "峠を駈け降りた先の路傍の草原。岩の裂目から清水が湧く。",
    "adjacent": [
     {
@@ -2735,6 +2746,7 @@
   {
    "id": "place.road-to-city",
    "name": "市へ続く野の道",
+   "shortName": "野の道",
    "description": "野原の酒宴や旅の一団とすれちがう道。遠くにシラクスの塔楼が見える。",
    "adjacent": [
     {
@@ -2758,6 +2770,7 @@
   {
    "id": "place.syracuse-square",
    "name": "シラクスの広場と大路",
+   "shortName": "広場",
    "description": "シラクスの市の中心。原文は「市」「まち」とだけ書く。二年前は夜でも歌声で賑やかだったが、今はひっそりしている。刑場と石工の仕事場は広場の一角（S-001、S-002）。",
    "adjacent": [
     {
@@ -2837,6 +2850,7 @@
   {
    "id": "place.stonemason-workshop",
    "name": "セリヌンティウスの石工の仕事場",
+   "shortName": "石工の仕事場",
    "description": "原文に場面はない。石工セリヌンティウスと弟子フィロストラトスの仕事場として設計。広場の一角にある（S-002）。",
    "adjacent": [
     {
@@ -3823,7 +3837,8 @@
     {
      "op": "relocate",
      "character": "char.melos",
-     "place": "place.castle"
+     "place": "place.castle",
+     "spot": "before-king"
     },
     {
      "op": "hold",
@@ -3934,7 +3949,8 @@
     {
      "op": "relocate",
      "character": "char.selinuntius",
-     "place": "place.castle"
+     "place": "place.castle",
+     "spot": "selinuntius-meet"
     }
    ],
    "activities": [
@@ -3981,6 +3997,17 @@
      "op": "inc",
      "var": "var.melos.stamina",
      "by": -30
+    },
+    {
+     "op": "relocate",
+     "character": "char.selinuntius",
+     "place": "place.castle",
+     "spot": "hostage-column"
+    },
+    {
+     "op": "relocate",
+     "character": "char.melos",
+     "place": "place.road-to-city"
     }
    ],
    "activities": [
@@ -4188,7 +4215,7 @@
     "latest": 3660,
     "canonical": 3630
    },
-   "place": "place.village",
+   "place": "place.melos-home",
    "participants": [],
    "kind": "anchor",
    "preconditions": [],
@@ -4467,6 +4494,7 @@
      "activity": "run"
     }
    ],
+   "arriveBefore": 20,
    "cite": [
     {
      "q": "陽は既に西に傾きかけている。"
@@ -4516,6 +4544,7 @@
      "activity": "sleep"
     }
    ],
+   "arriveBefore": 5,
    "cite": [
     {
      "q": "ついに、がくりと膝を折った。"
@@ -4657,6 +4686,7 @@
      "activity": "run"
     }
    ],
+   "arriveBefore": 10,
    "cite": [
     {
      "q": "メロスは黒い風のように走った。"
@@ -4730,6 +4760,55 @@
     {
      "character": "char.selinuntius",
      "activity": "idle"
+    }
+   ],
+   "variants": [
+    {
+     "id": "beat.s1.v-you",
+     "when": [
+      {
+       "var": "var.hostage.who",
+       "op": "==",
+       "value": "player"
+      }
+     ],
+     "summary": "身代わりを買って出た者が、縄を打たれて刑場に引き出される。セリヌンティウスは柱に上らず、群衆の中にいる。",
+     "outcomes": [
+      {
+       "op": "set",
+       "var": "var.hostage.fate",
+       "value": "on-cross"
+      },
+      {
+       "op": "relocate",
+       "character": "char.maiden",
+       "place": "place.execution-ground",
+       "spot": "crowd-front"
+      },
+      {
+       "op": "relocate",
+       "character": "char.king",
+       "place": "place.execution-ground",
+       "spot": "king-west"
+      },
+      {
+       "op": "relocate",
+       "character": "char.crowd",
+       "place": "place.execution-ground"
+      },
+      {
+       "op": "relocate",
+       "character": "char.guards",
+       "place": "place.execution-ground"
+      },
+      {
+       "op": "set",
+       "var": "var.player.location",
+       "value": "place.execution-ground"
+      }
+     ],
+     "inferred": true,
+     "note": "B-4：人質がプレイヤーの局。セリヌンティウスは柱に上らず、群衆の中にいる（参加人物なので刑場には来る）"
     }
    ],
    "cite": [
@@ -5607,7 +5686,7 @@
      "id": "exit.2.village",
      "label": "メロスと村に着く",
      "toAct": "act.3",
-     "place": "place.village",
+     "place": "place.melos-home",
      "t": 2040,
      "alignTo": "beat.08",
      "requires": [
@@ -5615,6 +5694,27 @@
        "var": "var.player.companionOf",
        "op": "==",
        "value": "char.melos"
+      }
+     ],
+     "effects": []
+    },
+    {
+     "id": "exit.2.vigil",
+     "label": "城で、セリヌンティウスのそばにいる",
+     "toAct": "act.3",
+     "place": "place.castle",
+     "spot": "hostage-near",
+     "t": 2040,
+     "requires": [
+      {
+       "var": "var.hostage.fate",
+       "op": "==",
+       "value": "held"
+      },
+      {
+       "var": "var.player.companionOf",
+       "op": "==",
+       "value": "char.selinuntius"
       }
      ],
      "effects": []

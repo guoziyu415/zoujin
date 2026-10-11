@@ -307,7 +307,7 @@ INVALID_BECAUSE: dict[str, tuple[str, str]] = {
     "Event/idempotency-key-empty.json": ("minLength", "idempotencyKey"),
     "Event/missing-summary.json": ("required", ""),
     "Event/promise-without-id.json": ("required", "effects/0"),
-    "Event/schema-version-1.14.json": ("enum", "schemaVersion"),
+    "Event/schema-version-1.15.json": ("enum", "schemaVersion"),
     "Event/t-fraction.json": ("type", "t"),
     "Event/t-negative.json": ("minimum", "t"),
     "MemoryItem/from-events-empty.json": ("minItems", "fromEvents"),
