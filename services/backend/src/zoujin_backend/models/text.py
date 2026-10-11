@@ -197,6 +197,7 @@ DEFAULTS: dict[str, Callable[[Mapping[str, Any]], Json]] = {
     "rewrite": _rewrite_same,  # 改写 = 原样；降级 = 做不到
     "reply": lambda r: {"text": "……そうか。"},
     "safety": lambda r: {"selfHarm": "none", "injection": False},  # B-12：默认什么都不是
+    "safety_review": lambda r: {"story": False},  # B-15：默认不降（宁可误停）
     "narrate": lambda r: {"text": NARRATE_LINES.get(str(r.get("status")), NARRATE_LINES["done"])},
     "plan": lambda r: {  # 不成行，替代去处是第一个给定去处（B-3 卡「接口」）
         "accepted": False,

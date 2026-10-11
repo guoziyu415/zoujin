@@ -113,6 +113,12 @@ def error_msg(code: str, message: str) -> Json:
     return {"type": "error", "error": {"code": code, "message": message, "retryable": False, "retryAfterSeconds": None}}
 
 
+def _open() -> asyncio.Event:
+    e = asyncio.Event()
+    e.set()
+    return e
+
+
 @dataclass
 class Turn:
     """连接上正在进行的一轮（还没交给叙事者）。"""
@@ -145,6 +151,8 @@ class Turn:
     source: str = "live"  # 人物定稿的来源：live / fallback（补转写）
     dropped: bool = False  # Live 中途断了（按被打断收）
     screen: asyncio.Future[Screen] | None = None  # B-12：玩家这一句的安全筛查（定稿一到就开始）
+    # B-15：复核期间扣住人物还没发的声音和字幕（清掉 = 扣住；已经发出去的不收回）。暂停就丢掉，复核降下来就放出
+    flowing: asyncio.Event = field(default_factory=lambda: _open())
     paused: bool = False  # B-12：被出戏卡停下了（不推人物定稿、不交给叙事者）
 
     @property
@@ -659,7 +667,9 @@ class Conn:
                 await self.send(
                     {"type": "transcript", "turnId": t.turn_id, "speaker": "player", "text": ev.text, "final": True}
                 )
-            elif ev.kind == "audio":
+                continue
+            await t.flowing.wait()  # B-15：复核期间人物先停住
+            if ev.kind == "audio":
                 if t.first_audio is None:
                     t.first_audio = time.monotonic()
                 t.pcm_out.extend(ev.pcm)
