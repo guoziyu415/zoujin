@@ -496,8 +496,14 @@ def play_safety(p: Player) -> None:
     p.expect("safety_resumed")
 
 
+CURTAIN = ["piece.storm-in", "piece.embrace", "piece.king-asks", "piece.scarlet-cloak"]  # S-087，beat.24〜27
+
+
 def play_ending(p: Player) -> None:
-    p.expect("ending_started", trigger="story-closed")
+    started = p.expect("ending_started", trigger="story-closed")
+    pieces = [p.expect("set_piece") for _ in CURTAIN]  # 收幕的固定演出都在 ending_started 之后（B-9）
+    assert [x["pieceId"] for x in pieces] == CURTAIN and p.log.index(started) < p.log.index(pieces[0])
+    assert [len(x["lines"]) for x in pieces] == [10, 7, 4, 3]  # 和前端的镜头表（shots.ts）一句一句对上
     if p.timed:
         p.call("ending", 202, f"/v1/playthroughs/{p.pid}/ending")
     ready = p.expect("ending_ready")
@@ -790,6 +796,46 @@ def test_drop_then_reconnect_replays_commits_once(timed: Server) -> None:
             assert after["fromSeq"] == before["seq"] + 1
         events = p.call("events", 200, f"/v1/playthroughs/{p.pid}/events?afterSeq=0")
         assert [e["eventId"] for e in events["events"]] == [e["eventId"] for c in commits for e in c["events"]]
+    finally:
+        p.close()
+
+
+def test_a_plan_accepted_while_offline_is_pushed_again(timed: Server) -> None:
+    """第 2 次说打算成行（accepted: true）；结果出来之前断网，幕切换在断线时做完。重连时补发的 commit 后面再推一次
+    那次的 act_plan_result 和 act_transition（api-contract 第 4 节，v1.0.12）；收到了提交再连也推。"""
+    p = new_player(timed, timed=True)
+    try:
+        p.start("act-end")
+        p.expect("act_ended", actId="act.1")
+        first = p.msg_id()
+        p.send({"type": "act_propose", "clientMsgId": first, "text": "夜明けを待って村へ向かいたい"})
+        assert not p.expect("act_plan_result", clientMsgId=first)["accepted"]
+        turn = p.press(purpose="act_plan")
+        p.expect("transcript", turnId=turn[0], speaker="player", final=False)
+        p.release(turn)
+        p.expect("transcript", turnId=turn[0], speaker="player", final=True)
+        before = p.last_seq
+        assert p.http.post("/__mock/drop").json() == {"dropped": 1}  # 结果还要 80 ms 才出来
+        assert p.expect("#closed")["code"] == 1006
+        assert not p.find("act_plan_result", turnId=turn[0])
+        wait_finished(timed, p.pid)
+
+        p.connect()
+        commit = p.expect("commit")
+        plan = p.expect("act_plan_result", turnId=turn[0])
+        moved_on = p.expect("act_transition", fromActId="act.1", toActId="act.4")
+        assert plan["accepted"] and plan["triesLeft"] == 0 and plan["narration"]
+        assert p.log.index(commit) < p.log.index(plan) < p.log.index(moved_on)
+        assert commit["fromSeq"] == before + 1 and moved_on["snapshot"]["lastSeq"] == p.last_seq
+        assert commit["events"][0]["summary"] == "あなたは、刑場のそばでメロスを待つことにした"
+        assert moved_on["snapshot"]["player"]["spot"] == "ground-west" and "opener" not in moved_on["arrival"]
+
+        assert p.ws is not None
+        p.ws.close()
+        welcome = p.connect()
+        assert welcome["pending"]["actEnd"] is None
+        assert p.expect("act_plan_result", turnId=turn[0]) == plan
+        assert p.expect("act_transition") == moved_on
     finally:
         p.close()
 

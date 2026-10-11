@@ -1,7 +1,8 @@
 """玩家的动作（B-3 第 2 条；api-contract 3.8，契约 2.10、2.11、2.12）：先判后演。
 
 叙事者按 `kind` 判：
-- `move`：同一场景里换地点。进得去写一条 move 事件（0 分，不过模型）；进不去 refused，不写事件。
+- `move`：同一场景里换地点。进得去写一条 move 事件（0 分，不过模型）；进不去 refused，不写事件；带
+  `params.crossing`（过河的走法）而走不通的记一条被否决的 move（effects 空，R2-precondition，E5-008）。
 - `examine`：玩家这个地点的可调查物（objects）。0 分，不写事件；有固定演出就演，没有说一行。
 - `go`：场景出口（`way.*`，或地点 ID），候选 = 玩家走到那里，过第 3〜5 步；被拦下按契约第 3 节写 rejected 事件。
 - 有对应情境动作的（`actionId`，或评测只给 kind + target 时唯一的那条）：效果模板过第 3〜5 步，dt = minutes。
@@ -61,6 +62,7 @@ class Decision:
     at: int = 0  # 它的排定时刻
     counts: Counts = field(default_factory=Counts)
     narration: str | None = None
+    crossing: str | None = None  # move 的 params.crossing（过河的走法：bridge 等）
 
 
 @dataclass
@@ -163,7 +165,8 @@ async def decide(
             and same_scene(book, place, target)
             and target in reach(rules_index(book.world), state, flat(state))
         )
-        return Decision("move", kind, target, ok=bool(ok))
+        crossing = params.get("crossing")
+        return Decision("move", kind, target, ok=bool(ok), crossing=str(crossing) if crossing else None)
     if kind == "examine":
         obj = next((o for o in book.world.get("objects", []) if o["id"] == target), None)
         return Decision("examine", kind, target, ok=obj is not None and obj["place"] == place)
@@ -266,6 +269,24 @@ def write(w: Writer, book: Book, turn_id: str, d: Decision) -> Outcome:
                 )
             )
             w.run.player_spot = None  # 换了地点：站这个地点的起点（契约 3.1）
+        elif d.crossing and d.target in book.places:
+            # 过河的走法走不通（桥冲毁了还要走桥，E5-008；契约 3.8 的 move 没有 params，只有评测这样发）：照别的动作
+            # 被否决的写法记一条被否决的 move（effects 空、dt 0），玩家不动
+            status, failed = "refused", ["R2-precondition"]
+            w.add(
+                w.full(
+                    t=t0,
+                    dt=0,
+                    actor="player",
+                    type="move",
+                    origin="action",
+                    place=place,
+                    summary=f"{who}は{book.places[d.target]['name']}へ渡ろうとした",
+                    effects=[],
+                    check={"status": "rejected", "attempts": 1, "failedRules": failed, "checker": CHECKER_MOVE},
+                    turn_id=turn_id,
+                )
+            )
         else:
             status, failed = "refused", ["R7-capability"]
     elif d.kind in ("examine", "invalid"):
@@ -373,7 +394,7 @@ async def run_action(n: Narrator, task: Task) -> Result:
         run = Run.of(pt)
         book = n.library.version(pt["world_model_version"])
         if run.act_end is not None:  # 收幕以后：0 分、不写事件、不调模型（B-3 第 4 条）
-            return await n._commit(task, pt["last_seq"], lambda w, b: ended(w, req))
+            return await n._commit(task, pt["last_seq"], lambda w, b: ended(req))
         spend = task.spend  # 跟着任务走：重来的、没提交的也算（B-8 第 7 条）
         span = {"playthrough_id": task.pid, "turn_id": task.turn_id, "world_model_version": book.version}
         d = await decide(n, book, state, req, spend, span)
@@ -436,7 +457,7 @@ def written(n: Narrator, w: Writer, book: Book, task: Task, req: Mapping[str, An
     return Planned(minutes=out.minutes, checked=d.checked, push=push, info=info, extra=extra, actions=1)
 
 
-def ended(w: Writer, req: Mapping[str, Any]) -> Planned:
+def ended(req: Mapping[str, Any]) -> Planned:
     """收幕以后才轮到的动作：refused、0 分、没有事件，一句固定的话（前端靠 clientMsgId 收掉待定的动作）。"""
     from zoujin_backend.narrator.core import Planned
 

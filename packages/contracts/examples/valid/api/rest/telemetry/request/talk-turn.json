@@ -43,6 +43,20 @@
         "probeGpuMs": 7.3,
         "assetMbps": 24
       }
+    },
+    {
+      "name": "ending_performed",
+      "playthroughId": "pt_01K7AZ00000000000000000001",
+      "clientTs": "2026-10-10T07:20:00Z",
+      "t": 4320,
+      "props": {
+        "trigger": "deadline",
+        "playMs": 171500,
+        "pausedMs": 0,
+        "taps": 4,
+        "lines": 38,
+        "autoAdvance": true
+      }
     }
   ]
 }

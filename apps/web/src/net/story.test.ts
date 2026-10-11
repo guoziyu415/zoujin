@@ -11,7 +11,9 @@ import {
   onWelcome,
   openPropose,
   planResult,
-  proposeRetracted,
+  planRefused,
+  retracting,
+  retractResult,
   proposed,
   transition,
 } from "./story";
@@ -99,13 +101,40 @@ describe("act end", () => {
     expect(clearNotHeard(r).phase).toEqual({ k: "propose", notHeard: false });
   });
 
-  it("a retracted spoken try comes back to the input, unused", () => {
-    const a = proposed(openPropose(actEnded(end)), { turnId: "t1" });
-    expect(proposeRetracted(a, "t1").phase).toEqual({
-      k: "propose",
-      notHeard: false,
+  it("a spoken try taken back: retracted comes back to the input, unused; too late keeps waiting for its result", () => {
+    const a = retracting(
+      proposed(openPropose(actEnded(end)), { turnId: "t1" }),
+      "t1",
+    );
+    expect(a.phase).toEqual({ k: "thinking", turnId: "t1", retracting: true });
+    const back = retractResult(a, {
+      type: "turn_retract_result",
+      turnId: "t1",
+      status: "retracted",
     });
-    expect(proposeRetracted(a, "t2")).toBe(a);
+    expect(back.phase).toEqual({ k: "propose", notHeard: false });
+    expect(back.triesLeft).toBe(a.triesLeft);
+    const late = retractResult(a, {
+      type: "turn_retract_result",
+      turnId: "t1",
+      status: "too_late",
+    });
+    expect(late.phase).toEqual({ k: "thinking", turnId: "t1" });
+    expect(
+      retractResult(a, {
+        type: "turn_retract_result",
+        turnId: "t2",
+        status: "retracted",
+      }),
+    ).toBe(a);
+  });
+
+  it("a try the server refused before judging it: back to the input", () => {
+    const a = proposed(openPropose(actEnded(end)), { turnId: "t1" });
+    expect(planRefused(a).phase).toEqual({ k: "propose", notHeard: false });
+    expect(planRefused(openPropose(actEnded(end)))).toEqual(
+      openPropose(actEnded(end)),
+    );
   });
 
   it("the last try used: only the given exits, with the give-up line", () => {

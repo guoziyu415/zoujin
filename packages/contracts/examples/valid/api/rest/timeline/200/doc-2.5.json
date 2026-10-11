@@ -23,7 +23,14 @@
           "tLabel": "約束の日・夜",
           "title": "王との問答と約束",
           "status": "altered",
-          "known": true
+          "known": true,
+          "cite": [
+            {
+              "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+              "para": 22,
+              "quote": "願いを、聞いた。その身代りを呼ぶがよい。"
+            }
+          ]
         },
         {
           "kind": "beat",
