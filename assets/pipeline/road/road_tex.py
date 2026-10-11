@@ -49,6 +49,138 @@ def blobs(r, S, n, rmin, rmax):
     return h, tone
 
 
+# ---------------------------------------------------------------- foliage on a transparent ground (RGBA, alpha-tested)
+# (UX round 2 ④: the crowns read as low-poly balls and the willow's strands as flat green sticks). Small: 512 or 256.
+from PIL import Image, ImageDraw  # noqa: E402
+
+SMALL = {"poplar": 512, "willow": 512, "holmoak": 512, "willowstrand": 256, "reed": 256}
+_size_of = pt.size_of
+pt.size_of = lambda key: SMALL.get(key) or _size_of(key)
+
+_save = pt.save
+
+
+def save(key, kind, arr):
+    if arr.ndim == 3 and arr.shape[-1] == 4:
+        p = pt.OUT / f"{key}_{kind}.png"
+        Image.fromarray((np.clip(arr, 0, 1) * 255 + 0.5).astype(np.uint8), "RGBA").save(p, optimize=True)
+        return p
+    return _save(key, kind, arr)
+
+
+pt.save = save
+
+
+def leaf(d, cx, cy, length, width, ang, fill, rib=None):
+    """one leaf: a pointed egg, its broad end at the stalk (cx, cy), pointing along ang"""
+    pts = []
+    for t in np.linspace(0, 2 * np.pi, 28, endpoint=False):
+        u = (np.cos(t) + 1) * 0.5 * length
+        v = np.sin(t) * width * 0.5 * (1 - 0.45 * np.cos(t)) * (1 - 0.6 * (np.cos(t) > 0.6) * (np.cos(t) - 0.6))
+        pts.append((cx + u * np.cos(ang) - v * np.sin(ang), cy + u * np.sin(ang) + v * np.cos(ang)))
+    d.polygon(pts, fill=fill)
+    if rib:
+        d.line([(cx, cy), (cx + length * 0.9 * np.cos(ang), cy + length * 0.9 * np.sin(ang))], fill=rib, width=1)
+
+
+def finish(img, S, h=None):
+    """down to S x S (premultiplied, so no dark fringes), and the transparent texels given the leaves' mean colour"""
+    small = img.convert("RGBa").resize((S, S if h is None else h), Image.LANCZOS).resize((S, S), Image.LANCZOS)
+    a = np.asarray(small.convert("RGBA"), np.float32) / 255.0
+    on = a[..., 3] > 0.5
+    mean = a[on][:, :3].mean(0) if on.any() else np.array([0.3, 0.35, 0.25])
+    a[..., :3] = np.where(a[..., 3:] > 0.02, a[..., :3], mean)
+    a[..., 3] = np.where(a[..., 3] > 0.5, 1.0, np.clip(a[..., 3] * 1.6, 0, 1))
+    return a
+
+
+def leaves(key, S, n, size, aspect, top, under, share, droop=None):
+    """a tiling cluster of leaves (the crowns' blobs repeat it every 1.6 m, the leaf cards show a piece of it);
+    each leaf drawn at the nine wrapped positions so the tile has no seam. size: leaf length as a share of the tile"""
+    r = rng(key)
+    K = 4
+    W = S * K
+    img = Image.new("RGBA", (W, W), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    for _ in range(n):
+        cx, cy = r.random() * W, r.random() * W
+        L = r.uniform(0.7, 1.3) * size * W
+        ang = r.uniform(0, 2 * np.pi) if droop is None else np.pi / 2 + r.normal(0, droop)
+        base = np.array(under if r.random() < share else top, np.float32) * r.uniform(0.78, 1.15)
+        fill = tuple(int(c) for c in np.clip(base, 0, 255)) + (255,)
+        rib = tuple(int(c * 0.8) for c in fill[:3]) + (255,)
+        for ox in (-W, 0, W):
+            for oy in (-W, 0, W):
+                leaf(d, cx + ox, cy + oy, L, L * aspect, ang, fill, rib if L > 24 else None)
+    return finish(img, S)
+
+
+def strands(key, S):
+    """the willow's hanging twigs on a card about 0.3 m wide and 3 m long: drawn in metres (a tall canvas), squashed
+    into the square; a twig down the middle with narrow leaves hanging off it"""
+    r = rng(key)
+    W, H = S * 2, S * 20   # 0.3 m x 3 m
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    px = W / 0.3
+    for k in range(3):   # three twigs side by side, wandering a little
+        x0 = W * (0.3 + 0.2 * k) + r.uniform(-0.03, 0.03) * px
+        y = r.uniform(0, 0.4) * px
+        pts = []
+        while y < H:
+            x0 += r.normal(0, 0.004) * px
+            pts.append((x0, y))
+            side = 1 if len(pts) % 2 else -1
+            L = r.uniform(0.05, 0.09) * px
+            ang = np.pi / 2 + side * r.uniform(0.25, 0.6)
+            g = np.array((104, 124, 76), np.float32) * r.uniform(0.8, 1.15)
+            if r.random() < 0.25:
+                g = np.array((150, 162, 130), np.float32) * r.uniform(0.85, 1.1)
+            leaf(d, x0, y, L, L * 0.2, ang, tuple(int(c) for c in g) + (255,))
+            y += r.uniform(0.02, 0.035) * px
+        d.line(pts, fill=(92, 84, 60, 255), width=max(1, int(0.004 * px)))
+    return finish(img, S, h=S * 10)
+
+
+def reed(key, S):
+    """reed clumps on cards about 0.5 m wide and 1.3 m tall: blades from the foot, tapering, leaning, a few bent over;
+    straw and grey-green (the early summer)"""
+    r = rng(key)
+    W, H = S * 2, int(S * 2 * 1.3 / 0.5)
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    for _ in range(46):
+        x = W * r.uniform(0.15, 0.85)
+        top = H * r.uniform(0.0, 0.35)
+        lean = r.normal(0, 0.12) * W
+        w = W * r.uniform(0.008, 0.016)
+        g = np.array((126, 132, 86) if r.random() < 0.6 else (168, 156, 108), np.float32) * r.uniform(0.75, 1.1)
+        col = tuple(int(c) for c in g) + (255,)
+        bend = r.random() < 0.2
+        pts_l, pts_r = [], []
+        for t in np.linspace(0, 1, 12):
+            yy = H - t * (H - top)
+            xx = x + lean * t * t
+            if bend and t > 0.6:
+                xx += (t - 0.6) * W * 0.5
+                yy += (t - 0.6) ** 2 * H * 0.8
+            ww = w * (1 - t) + 0.5
+            pts_l.append((xx - ww, yy))
+            pts_r.append((xx + ww, yy))
+        d.polygon(pts_l + pts_r[::-1], fill=col)
+    return finish(img, S, h=H // 2)
+
+
+LEAVES = {
+    # white poplar: broad leaves, dark green above, white-felted below (the crowns flicker silver)
+    "poplar": dict(n=420, size=0.07, aspect=0.75, top=(66, 90, 50), under=(176, 186, 170), share=0.3),
+    # holm oak: small, leathery, very dark, a dense mass
+    "holmoak": dict(n=900, size=0.04, aspect=0.5, top=(46, 60, 38), under=(92, 100, 74), share=0.15),
+    # willow: narrow, light grey-green, hanging
+    "willow": dict(n=700, size=0.06, aspect=0.2, top=(100, 120, 74), under=(150, 160, 128), share=0.25, droop=0.5),
+}
+
+
 def make(key):
     S = pt.size_of(key)
     r = rng(key)
@@ -78,17 +210,20 @@ def make(key):
         out["nrm"] = normal_from_height(streak * 0.7 + g * 0.3, 4.0)
         out["mr"] = mr(np.clip(0.9 + 0.08 * streak, 0, 1))
     elif key == "outcrop":
-        # grey-white rounded karst with black and orange lichen
+        # pale grey-white karst limestone, weathered smooth, peppered with fine dark pits and small solution holes,
+        # a faint ochre stain here and there (UX round 2: the big black lichen blobs read as camouflage)
         g = fbm(r, S, base=3)
         pits = fbm(rng(key, "p"), S, base=24, octaves=4)
-        lich = fbm(rng(key, "l"), S, base=12, octaves=4)
-        c = colour((184, 180, 168), (g - 0.5) * 1.4, pits, 0.2)
-        black = np.clip((lich - 0.64) / 0.1, 0, 1)[..., None] * 0.4   # soft-edged, never more than 40% darker
-        orange = (np.clip((0.26 - lich) / 0.08, 0, 1) * (pits > 0.5))[..., None] * 0.3
-        c = c * (1 - black)
-        c = c * (1 - orange) + np.array([0.62, 0.42, 0.16]) * orange
+        fine = value_noise(rng(key, "f"), S, 320)
+        holes, _ = blobs(rng(key, "h"), S, 700, 0.0015, 0.004)
+        stain = fbm(rng(key, "l"), S, base=6, octaves=3)
+        c = colour((196, 192, 180), (g - 0.5) * 1.0, pits, 0.12)
+        c = c * (1 - 0.2 * np.clip((fine - 0.8) / 0.1, 0, 1))[..., None]   # pits: small, soft
+        c = c * (1 - 0.3 * holes)[..., None]
+        ochre = (np.clip((stain - 0.62) / 0.12, 0, 1) * 0.25)[..., None]
+        c = c * (1 - ochre) + np.array([0.72, 0.6, 0.42]) * ochre
         out["base"] = c
-        out["nrm"] = normal_from_height(g * 0.6 + pits * 0.4, 7.0)
+        out["nrm"] = normal_from_height(g * 0.5 + pits * 0.3 - holes * 0.4 - 0.15 * fine, 7.0)
         out["mr"] = mr(np.clip(0.82 + 0.12 * pits, 0, 1))
     elif key == "gravel":
         h, tone = blobs(r, S, 1400, 0.006, 0.02)
@@ -133,10 +268,12 @@ def make(key):
     elif key == "silt":
         g = fbm(r, S, base=6)
         out["base"] = colour((132, 108, 70), (g - 0.5), fbm(rng(key, "f"), S, base=32, octaves=3), 0.15)
-    elif key in ("poplar", "willow", "reed", "holmoak"):
-        g = fbm(r, S, base=24, octaves=4)
-        base = {"poplar": (82, 104, 62), "willow": (104, 120, 84), "reed": (122, 128, 82), "holmoak": (52, 66, 44)}[key]
-        out["base"] = colour(base, (g - 0.5) * 3, g, 0.3)
+    elif key in LEAVES:
+        out["base"] = leaves(key, S, **LEAVES[key])
+    elif key == "willowstrand":
+        out["base"] = strands(key, S)
+    elif key == "reed":
+        out["base"] = reed(key, S)
     else:
         return pt_make(key)  # bark, hill: the plaza's
     return out
@@ -158,6 +295,7 @@ pt.NEEDS = {
     "hill": ["base"],
     "poplar": ["base"],
     "willow": ["base"],
+    "willowstrand": ["base"],
     "reed": ["base"],
     "holmoak": ["base"],
 }

@@ -8,13 +8,14 @@
  "placeholderTextures": true,
  "inputs": {
   "files": {
-   "assets/scenes/road-river-flood/layout.json": "5e949ab6af364fbed30d87c837bf4ff2af57f277225adb4a581614ce237cd5e5",
-   "assets/pipeline/road/build.sh": "2ac8b2e79ecf2e994e65c8e67d134c67909c38c2b5badcacfe017e41b8d031a6",
-   "assets/pipeline/road/road_tex.py": "db91de0e11dbfa7f6bc82764d27005795edffc888bc035248ccea97b30ed207c",
+   "assets/scenes/road-river-flood/layout.json": "3057e41b6a098532ccfd8d05c9908d9a7faca75c97edd5f043a0f8cd230636a8",
+   "assets/pipeline/road/build.sh": "38ba550f7ab271c696d0576c9e7c0c05c177b44e0338fd8020fab502648412e1",
+   "assets/pipeline/road/road_tex.py": "f4da9dda1867829c5799a208415346622f81d7e5a85fadbfd0d15478414b0de5",
    "assets/pipeline/plaza/placeholder_tex.py": "aabda4df4f3974b2eb65b227ed3b5ae2d606a489441d665b3f2f108c5cd1343e",
-   "assets/pipeline/road/bl.py": "6f2a9a708c2a92f715c30439795edbbdf54b787bf9498265d1aaf1f2d130bb17",
-   "assets/pipeline/road/build_road_river.py": "2f7e43b1fe74ee223a6c399927d4fc52b3de8d60403f426f3459780cb8528119",
+   "assets/pipeline/road/bl.py": "08a5e8b769f887ea76c72acea86b93dc40d11c421b30a28e6313649d64424d28",
+   "assets/pipeline/road/build_road_river.py": "ace3b0840f734bc2636c4bbb2af526b3f477ad9f1888bc19b09c2a29aa0960c8",
    "assets/pipeline/road/merge_river.mjs": "1e41b37b401bda2130895dc2a6b67ae45ae866e4352d33f2e89314214f760edc",
+   "assets/pipeline/road/small_tex.mjs": "2510e7083721b8d59d94651bf0ea91e7e2df07407c9e092471146b966be34b2c",
    "assets/pipeline/plaza/requirements.txt": "0a234e44f52fb462c7e8694ecd82b99aca8e534ac610dde2dd749bb1e2cbe0e3",
    "assets/pipeline/plaza/sky.py": "971584f110b8a924e737d195f30eab114cb35d7345909e364ed21ec3e77aab27",
    "assets/pipeline/plaza/sunpos.py": "807e1774526b33ef4f2329dbabf906c44f9517605a80f9ca930ecfb9ff6287ba",
@@ -50,6 +51,7 @@
    "silt_base": "placeholder",
    "thatch_base": "placeholder",
    "willow_base": "placeholder",
+   "willowstrand_base": "placeholder",
    "wood_base": "placeholder",
    "wood_mr": "placeholder",
    "wood_nrm": "placeholder"
@@ -89,22 +91,97 @@
  "ridgeElevationDeg": 7,
  "water": {
   "kind": "flood",
+  "horizonDeg": 4,
   "node": "water",
   "levelM": -0.25,
-  "flowDir": [
+  "about": "plan coordinates (layout.json); the page turns them into glTF. flowDirPlan: downstream; splashPlan: where the flood breaks on the piles and the snag, and the boulders in the shallows (a faint wake, no spray below 0.5) [x, y, strength], at most 12; slowPlan: ellipses [x, y, rx, ry] of slack water (the upstream shallows, the drowned west road); haze: the distance fog against the plaza's (rain-washed air); horizonDeg: how high the hills round the valley stand seen from the water (what it mirrors low down)",
+  "flowDirPlan": [
    0,
    -1
-  ]
+  ],
+  "speedMps": 2.4,
+  "splashPlan": [
+   [
+    -1,
+    0.4,
+    1
+   ],
+   [
+    -1,
+    -2.14,
+    1
+   ],
+   [
+    3,
+    1.27,
+    0.8
+   ],
+   [
+    3,
+    -1.27,
+    0.8
+   ],
+   [
+    7,
+    1.27,
+    1
+   ],
+   [
+    7,
+    -1.27,
+    1
+   ],
+   [
+    7.4,
+    0.4,
+    0.7
+   ],
+   [
+    7.2,
+    10.6,
+    0.2
+   ],
+   [
+    5.9,
+    11.8,
+    0.2
+   ],
+   [
+    4.6,
+    13,
+    0.2
+   ],
+   [
+    3.3,
+    14.2,
+    0.2
+   ]
+  ],
+  "slowPlan": [
+   [
+    4.5,
+    12.5,
+    8.5,
+    4.2
+   ],
+   [
+    -8.8,
+    0,
+    2.8,
+    1.9
+   ]
+  ],
+  "haze": 0.8
  },
  "nodes": {
   "arch": {
-   "prims": 8,
-   "tris": 5732,
+   "prims": 9,
+   "tris": 4744,
    "lightmap": "arch"
   },
   "far": {
-   "prims": 5,
-   "tris": 4120
+   "prims": 9,
+   "tris": 8424
   },
   "ground": {
    "prims": 6,
@@ -113,7 +190,7 @@
   },
   "proxy": {
    "prims": 1,
-   "tris": 5694,
+   "tris": 4306,
    "shadowCasterOnly": true
   },
   "water": {
@@ -121,7 +198,7 @@
    "tris": 6264
   }
  },
- "tris": 32520,
+ "tris": 34448,
  "materials": {
   "outcrop": {
    "color": [
@@ -207,6 +284,18 @@
    "metalness": 0,
    "base": "holmoak_base"
   },
+  "pebbles": {
+   "color": [
+    1,
+    1,
+    1
+   ],
+   "roughness": 1,
+   "metalness": 1,
+   "base": "pebbles_base",
+   "nrm": "pebbles_nrm",
+   "mr": "pebbles_mr"
+  },
   "floor": {
    "color": [
     1,
@@ -254,6 +343,16 @@
    "base": "hill_base",
    "nrm": "outcrop_nrm"
   },
+  "willowstrand": {
+   "color": [
+    1,
+    1,
+    1
+   ],
+   "roughness": 0.800000011920929,
+   "metalness": 0,
+   "base": "willowstrand_base"
+  },
   "raincloud": {
    "color": [
     0.12999999523162842,
@@ -272,18 +371,6 @@
    "roughness": 0.8500000238418579,
    "metalness": 0,
    "base": "gravel_base"
-  },
-  "pebbles": {
-   "color": [
-    1,
-    1,
-    1
-   ],
-   "roughness": 1,
-   "metalness": 1,
-   "base": "pebbles_base",
-   "nrm": "pebbles_nrm",
-   "mr": "pebbles_mr"
   },
   "silt": {
    "color": [
@@ -478,14 +565,14 @@
   "holmoak_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "593344a3edfa91bf50abd593cd595fb3a1adcd33e96efcb61a69880bd2c4d9a8",
+   "sourceSha256": "36df9a0dd3f088611cefee536053a9377482412b061e178aca35e3927c03a877",
    "std": {
     "file": "tex/std/holmoak_base.ktx2",
-    "size": 1024,
+    "size": 512,
     "mean": [
-     51.97,
-     66.55,
-     43.74
+     48.55,
+     63.7,
+     39.85
     ]
    },
    "shared": "road-common"
@@ -493,23 +580,23 @@
   "outcrop_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "4dfc099d584d2f7d92be8b38b92b49e204f037a09abf1a231b9ddbb0dd52e2dc",
+   "sourceSha256": "0c67eb4be4c13311ad0164d4d2816e8ef82e7d02375e65808f5ba0e9f1bd198a",
    "std": {
     "file": "tex/std/outcrop_base.ktx2",
     "size": 1024,
     "mean": [
-     172.18,
-     169.39,
-     156.41
+     189.98,
+     185.21,
+     170.47
     ]
    },
    "hi": {
     "file": "tex/hi/outcrop_base.ktx2",
     "size": 2048,
     "mean": [
-     172.19,
-     169.32,
-     156.45
+     189.94,
+     185.16,
+     170.51
     ]
    },
    "shared": "road-common"
@@ -532,23 +619,23 @@
   "outcrop_nrm": {
    "slot": "nrm",
    "from": "placeholder",
-   "sourceSha256": "cc35c4f77f1752af6df9dc252a8a73ae08e5cda93f90197ca0e6fe8226a09b8b",
+   "sourceSha256": "435cd8ad4d3f478bd05d9420517cb42ea406f2fffa47230c8c4f78c8ee776043",
    "std": {
     "file": "tex/std/outcrop_nrm.ktx2",
     "size": 512,
     "mean": [
-     127.67,
-     127.69,
-     255
+     127.86,
+     127.86,
+     254.44
     ]
    },
    "hi": {
     "file": "tex/hi/outcrop_nrm.ktx2",
     "size": 1024,
     "mean": [
-     127.52,
-     127.52,
-     255
+     127.38,
+     127.38,
+     254.29
     ]
    },
    "shared": "road-common"
@@ -598,14 +685,14 @@
   "poplar_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "4abf5e79b4bb9e01d0d8bc2b2aed3f7c66dec574e8d2c7b2643c3176a4b548ce",
+   "sourceSha256": "8231defa6ddd3f9bc1bc74cf4e08627cbe36ed23f5500b09ec4a54507dd2a8ad",
    "std": {
     "file": "tex/std/poplar_base.ktx2",
-    "size": 1024,
+    "size": 512,
     "mean": [
-     82.21,
-     104.19,
-     62.43
+     98.96,
+     117.02,
+     85.4
     ]
    },
    "shared": "road-common"
@@ -704,14 +791,28 @@
   "willow_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "506ba2cddd70998198e264cda091c389e34372cce76ffca1b2937ca4672915de",
+   "sourceSha256": "ca35c67ab10ad46b126a3bf68d1868fd513308e6a4a59da376465f464c39adb4",
    "std": {
     "file": "tex/std/willow_base.ktx2",
-    "size": 1024,
+    "size": 512,
     "mean": [
-     105.22,
-     121.46,
-     85.12
+     108.41,
+     124.76,
+     83.81
+    ]
+   }
+  },
+  "willowstrand_base": {
+   "slot": "base",
+   "from": "placeholder",
+   "sourceSha256": "2250cc00ad0bae5ff6593cda92eb3a11cf4b166f4655ad356803aa0b3f51a580",
+   "std": {
+    "file": "tex/std/willowstrand_base.ktx2",
+    "size": 256,
+    "mean": [
+     111.02,
+     127.29,
+     85.14
     ]
    }
   },
@@ -782,7 +883,7 @@
   "ground": {
    "indirect": {
     "file": "lm/ground_indirect.ktx2",
-    "K": 0.6960672553675746
+    "K": 0.6977017548110668
    },
    "ao": {
     "file": "lm/ground_ao.ktx2"
@@ -792,7 +893,7 @@
   "arch": {
    "indirect": {
     "file": "lm/arch_indirect.ktx2",
-    "K": 0.7976115549185571
+    "K": 0.7542968009707975
    },
    "ao": {
     "file": "lm/arch_ao.ktx2"
@@ -802,7 +903,7 @@
  },
  "nav": {
   "file": "nav.json",
-  "polys": 81,
+  "polys": 77,
   "agent": {
    "radius": 0.3,
    "height": 1.8,
@@ -835,7 +936,7 @@
    ],
    "yaw": 1.5708,
    "place": "place.river",
-   "poly": 43
+   "poly": 44
   },
   "melos-bridgehead": {
    "pos": [
@@ -845,7 +946,7 @@
    ],
    "yaw": 1.5708,
    "place": "place.river",
-   "poly": 44
+   "poly": 45
   },
   "road-east": {
    "pos": [
@@ -855,7 +956,7 @@
    ],
    "yaw": -1.5708,
    "place": "place.river",
-   "poly": 41
+   "poly": 39
   },
   "far-bank": {
    "pos": [
@@ -865,7 +966,7 @@
    ],
    "yaw": 1.5708,
    "place": "place.river",
-   "poly": 36
+   "poly": 40
   },
   "melos-pray": {
    "pos": [
@@ -875,7 +976,7 @@
    ],
    "yaw": 1.5708,
    "place": "place.river",
-   "poly": 44,
+   "poly": 45,
    "auto": false
   },
   "swim-in": {
@@ -884,20 +985,20 @@
     -0.39,
     1
    ],
-   "yaw": 1.5705,
+   "yaw": 1.5704,
    "place": "place.river",
-   "poly": 44,
+   "poly": 45,
    "auto": false
   },
   "swim-out": {
    "pos": [
-    11.04,
-    -0.05,
-    11.86
+    11,
+    -0.06,
+    11.43
    ],
-   "yaw": -1.5572,
+   "yaw": -1.5137,
    "place": "place.river",
-   "poly": 57,
+   "poly": 56,
    "auto": false
   },
   "shallows-in": {
@@ -930,7 +1031,7 @@
    ],
    "yaw": -1.5708,
    "place": "place.river",
-   "poly": 43
+   "poly": 44
   },
   "way.east": {
    "pos": [
@@ -940,14 +1041,14 @@
    ],
    "yaw": 1.5708,
    "place": "place.river",
-   "poly": 41
+   "poly": 39
   }
  },
  "files": [
   {
    "path": "geo.glb",
-   "bytes": 645808,
-   "sha256": "b5deaf1037b6ce9f01711ba4591fcdeaf7023d2108d73ce67986139da1a85e95",
+   "bytes": 754376,
+   "sha256": "c0b731f0e5108682659669589c8788e563b225bc80bda60c36f4f181178d315a",
    "pack": "entry"
   },
   {
@@ -1038,22 +1139,22 @@
   },
   {
    "path": "tex/std/holmoak_base.ktx2",
-   "bytes": 118551,
-   "sha256": "fd074e6c7f76137758085f8548da71109554a34d2446378e78ac100e81f63ddf",
+   "bytes": 74944,
+   "sha256": "a29f47d710480d53a42a8747a47e5bd4fe19e0d3912f5c42a2cdc90fb5dcff05",
    "pack": "entry",
    "shared": "road-common"
   },
   {
    "path": "tex/std/outcrop_base.ktx2",
-   "bytes": 119373,
-   "sha256": "504a0a08f66a5a5fec02084ca21b47d924fb26bc6c37515bcb0c7f6c913eb72c",
+   "bytes": 163571,
+   "sha256": "4cc10d2aff48a2585447a97534b2a4730994fae98a65588a166a785403e341d9",
    "pack": "entry",
    "shared": "road-common"
   },
   {
    "path": "tex/hi/outcrop_base.ktx2",
-   "bytes": 338956,
-   "sha256": "34e7c6417b89275903caef165417909efd95b1867e8625ca4c862a89ace563b2",
+   "bytes": 480003,
+   "sha256": "b135663b94071279ed55ffdd9ebfc711ac3bb64150b97c150b3a9f5317a1fa2c",
    "pack": "hi",
    "shared": "road-common"
   },
@@ -1066,15 +1167,15 @@
   },
   {
    "path": "tex/std/outcrop_nrm.ktx2",
-   "bytes": 240648,
-   "sha256": "e6079edf8490684939da2baddf90d6e9e6db43b5b74d7b9ae62865239fc75ac3",
+   "bytes": 301197,
+   "sha256": "5c4846da1277976027deabee9b59a0ed23ee5b47682203e6d284b66ab6ec795a",
    "pack": "entry",
    "shared": "road-common"
   },
   {
    "path": "tex/hi/outcrop_nrm.ktx2",
-   "bytes": 807573,
-   "sha256": "a7970b17af6a7eb204dae43baa0dddbf5fe936b32c0ef39fe8dc10327777680e",
+   "bytes": 1142108,
+   "sha256": "011ab68dbf7d5a8d8a9e383d0f7ae11d2dd381ad5188d4e1732870026654801c",
    "pack": "hi",
    "shared": "road-common"
   },
@@ -1098,8 +1199,8 @@
   },
   {
    "path": "tex/std/poplar_base.ktx2",
-   "bytes": 150566,
-   "sha256": "a0c8f9b59241f7f483322f34bac79d4a94f7f500b80782afca0aa763b84fd803",
+   "bytes": 68498,
+   "sha256": "ca507ce2ba7df30be1ddacae233173efecdf7cf9966f60b15b8db76057cec368",
    "pack": "entry",
    "shared": "road-common"
   },
@@ -1152,8 +1253,14 @@
   },
   {
    "path": "tex/std/willow_base.ktx2",
-   "bytes": 156297,
-   "sha256": "81e6e2cf35d8b4071354b67b39301a367c3d1a96e278a24f62b9469d8b014523",
+   "bytes": 81197,
+   "sha256": "851034623de1ce38ae0fa073f6729835b0e4e2aa673343889c123e5984574985",
+   "pack": "entry"
+  },
+  {
+   "path": "tex/std/willowstrand_base.ktx2",
+   "bytes": 21872,
+   "sha256": "a1d0ebdd066034a61f123e383784c43cd4859e953979c668023a00fbc524638a",
    "pack": "entry"
   },
   {
@@ -1188,44 +1295,44 @@
   },
   {
    "path": "lm/ground_indirect.ktx2",
-   "bytes": 152746,
-   "sha256": "889db58204745d84779c3224abacc70394dff2a86e4a7956504c599cd64cc891",
+   "bytes": 154114,
+   "sha256": "ba4201c1f7389a966d37f203156c7e29d8504c9082e9906eb7a840f56f08a84b",
    "pack": "entry"
   },
   {
    "path": "lm/ground_ao.ktx2",
-   "bytes": 98887,
-   "sha256": "5be7b79db60d3834d6aa45eb86fc240c53a984be856906740b7cb98339353c6d",
+   "bytes": 99796,
+   "sha256": "83f0c832611867a54b4de27e81d95c3578632724be0e8bf7014b12d9d702f62e",
    "pack": "entry"
   },
   {
    "path": "lm/arch_indirect.ktx2",
-   "bytes": 214316,
-   "sha256": "7b56a270c902508924a312452c9ccd1f1fbabf9ff559e389e97b8aa13aeb9aa8",
+   "bytes": 232612,
+   "sha256": "ab2b3d745e3dabe58d3b13c0daaf1a6c90b1d78914bad8d47420573bb5774cfb",
    "pack": "entry"
   },
   {
    "path": "lm/arch_ao.ktx2",
-   "bytes": 175134,
-   "sha256": "8ec7f0fb505af06485837bae05cf680b7b86d4cec39df6a8896894cd20e17157",
+   "bytes": 189835,
+   "sha256": "b4fc9eeeeb55c4b663d76fe9740b3231671113b6812c9437bea7bcffabc4d236",
    "pack": "entry"
   },
   {
    "path": "nav.json",
-   "bytes": 27465,
-   "sha256": "6cfb8fb3867fc60368d325dee897789b63fa3113853de6e599beb16d738b21da",
+   "bytes": 27113,
+   "sha256": "e7520f54ecfe68fa6227e0fc51ccc9ad51c20df4048ebc41b74e8176b5e749be",
    "pack": "entry"
   }
  ],
  "bytes": {
-  "entry": 2469098,
+  "entry": 2559360,
   "hiExtra": 1142841,
   "shared": {
-   "entry": 1957733,
-   "hiExtra": 4110189
+   "entry": 1936805,
+   "hiExtra": 4585771
   },
-  "envStd": 4426831,
-  "envHi": 9679861
+  "envStd": 4496165,
+  "envHi": 10224777
  },
  "sharedPacks": [
   "road-common"

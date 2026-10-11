@@ -15,9 +15,30 @@
   "ridgeElevationDeg": 7,
   "water": {
     "kind": "flood",
+    "horizonDeg": 4,
     "node": "water",
     "levelM": -0.25,
-    "flowDir": [0, -1]
+    "about": "plan coordinates (layout.json); the page turns them into glTF. flowDirPlan: downstream; splashPlan: where the flood breaks on the piles and the snag, and the boulders in the shallows (a faint wake, no spray below 0.5) [x, y, strength], at most 12; slowPlan: ellipses [x, y, rx, ry] of slack water (the upstream shallows, the drowned west road); haze: the distance fog against the plaza's (rain-washed air); horizonDeg: how high the hills round the valley stand seen from the water (what it mirrors low down)",
+    "flowDirPlan": [0, -1],
+    "speedMps": 2.4,
+    "splashPlan": [
+      [-1.0, 0.4, 1],
+      [-1.0, -2.14, 1],
+      [3.0, 1.27, 0.8],
+      [3.0, -1.27, 0.8],
+      [7.0, 1.27, 1],
+      [7.0, -1.27, 1],
+      [7.4, 0.4, 0.7],
+      [7.2, 10.6, 0.2],
+      [5.9, 11.8, 0.2],
+      [4.6, 13.0, 0.2],
+      [3.3, 14.2, 0.2]
+    ],
+    "slowPlan": [
+      [4.5, 12.5, 8.5, 4.2],
+      [-8.8, 0, 2.8, 1.9]
+    ],
+    "haze": 0.8
   },
   "hiTextures": {
     "base": ["road", "grass", "outcrop", "bank", "wood"],

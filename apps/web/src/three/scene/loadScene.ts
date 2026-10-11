@@ -42,6 +42,7 @@ export type LoadedScene = {
   gate: Object3D | null; // the workshop gate (scene.json nodes.*.movable)
   bytes: number; // downloaded so far
   textures: Map<string, Promise<Texture>>; // by file, both tiers
+  dispose?: () => void; // what scene/extra.ts added to the scene (its water, the ridge) goes with it
 };
 
 type Slot = "base" | "nrm" | "mr";

@@ -35,7 +35,13 @@ import { useQuality } from "./quality/quality";
 import { minuteOfDay } from "./scene/frame";
 import type { SceneManifest } from "./scene/manifest";
 import { FOG } from "./shaderPatches";
-import { kelvinRGB, sunAt, sunLook, type SunParams } from "./sun";
+import {
+  kelvinRGB,
+  sunAt,
+  sunLook,
+  type SunParams,
+  type SunPosition,
+} from "./sun";
 
 // read by the post-processing every frame (grade's day-for-night, exposure)
 export const lightState = {
@@ -44,10 +50,20 @@ export const lightState = {
   faceExposure: 1,
   sunDir: new Vector3(0, 1, 0),
   sunUp: true,
+  direct: 0, // the sun's intensity after a scene's ridge (scene/extra.ts sets it; the test hook reads it)
 };
 
-// the test hook regenerates the environment at once instead of after the debounce
-export const lighting = { settle: () => {} };
+// the test hook regenerates the environment at once instead of after the debounce; adjust: a scene's own changes to
+// the sun and the sky after the clock has set them (scene/extra.ts, F-10: the ridge that hides a low sun, a sky drawn
+// as for another sun height), in its own chunk
+export const lighting = {
+  settle: () => {},
+  adjust: (() => {}) as (
+    pos: SunPosition,
+    sun: DirectionalLight,
+    skies: readonly Sky[],
+  ) => void,
+};
 
 const SHADOW_HALF = 36; // metres either side of the shadow box (S7)
 
@@ -370,6 +386,7 @@ export function Lighting({
       const [r, g, b] = kelvinRGB(look.kelvin);
       sun.color.setRGB(r, g, b, SRGBColorSpace);
       sun.intensity = look.intensity;
+      lighting.adjust(pos, sun, [sky, envSky]);
       const [dr, dg, db] = kelvinRGB(look.kelvin + 300);
       (disc.material as ShaderMaterial).uniforms.uColor!.value.setRGB(
         dr,
