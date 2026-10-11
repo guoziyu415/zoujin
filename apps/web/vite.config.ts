@@ -137,6 +137,32 @@ function serviceWorker(): Plugin {
 }
 
 // React Compiler on the screens and the HUD; not on the 3D layer (react-three-fiber frames, and the 3D chunk's budget)
+// r3f's Canvas registers every three.js class as a JSX element (extend(THREE) on `import * as THREE`), so nothing of
+// three.js can be left out of the build; it registers src/three/catalogue.ts instead, the classes our JSX uses
+// (the 3D chunk 249 -> 217 KB brotli). Build only: the dev server's prebundled r3f keeps the whole namespace, and
+// catalogue.test.ts keeps the list complete. An r3f that no longer has the line fails the build here.
+function threeCatalogue(): Plugin {
+  const from = "import * as THREE from 'three';";
+  const to = `import * as THREE from ${JSON.stringify(path.resolve(import.meta.dirname, "src/three/catalogue.ts"))};`;
+  return {
+    name: "zoujin-three-catalogue",
+    apply: "build",
+    transform(code, id) {
+      if (
+        !/@react-three[\\/]fiber[\\/]dist[\\/]react-three-fiber\.esm\.js$/.test(
+          id,
+        )
+      )
+        return null;
+      if (!code.includes(from) || !code.includes("extend(THREE)"))
+        this.error(
+          `${id}: r3f's Canvas changed, see threeCatalogue in vite.config.ts`,
+        );
+      return { code: code.replace(from, to), map: null };
+    },
+  };
+}
+
 const compiler = reactCompilerPreset();
 compiler.rolldown.filter = {
   ...compiler.rolldown.filter,
@@ -156,6 +182,7 @@ export default defineConfig({
     babel({ presets: [compiler] }),
     runtimeFiles(),
     serviceWorker(),
+    threeCatalogue(),
   ],
   build: {
     manifest: true,

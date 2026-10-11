@@ -5,7 +5,8 @@
 //   the hall it replaces the sky's light, outside it is scaled by lampsOutside (braziers lit from sunset);
 // - people and anything else without the bake get a warm fill inside the hall (HALL.fill);
 // - the live sun and its shadows stay: the patch of sun through the door is the real one (castle.md 3 「大门」);
-// - the camera inside the hall eases the exposure to the lamps' (the night's) over about a second.
+// - the camera inside the hall eases the exposure to the lamps' (the night's) over about a second, and the player
+//   inside it brings the follow camera in (rig.follow).
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import {
@@ -19,15 +20,17 @@ import {
   type Texture,
 } from "three";
 import { lightState } from "../Lighting";
+import { rig } from "../rig";
 import type { LoadedScene } from "../scene/loadScene";
 import { textureLoader } from "../scene/loadScene";
 import { lightmapOf } from "../scene/manifest";
 import { fogUniforms, HALL } from "../shaderPatches";
 import { ease, flicker, insideHall, lampsOutside, zoneExposure } from "./hall";
 
+const INDOOR = { back: 5.5, up: 2.6 }; // the hall's camera (castle.md 3.2): the 9 m follow doesn't fit 14 m across
 const WARM = new Color(1.0, 0.5, 0.17); // about 1900 K, linear (castle.md 5.1), as the bake's lights
 const FILL = 0.55; // irradiance on a person in the hall, in the bake's units (tune with the step-26 shots)
-const FLAME = { chandelier: 0.16, brazier: 0.55 }; // flame size, metres
+const FLAME = { chandelier: 0.16, brazier: 0.4, wall: 0.12 }; // flame size, metres (castle.md 3.1)
 
 function flameTexture(): Texture {
   const c = document.createElement("canvas");
@@ -50,7 +53,7 @@ export default function HallLight({ scene }: { scene: LoadedScene }) {
   const { gl, scene: three, camera } = useThree();
   const { manifest } = scene;
   const lampK = useRef<{ value: number; base: number }[]>([]);
-  const state = useRef({ inside: false, k: 0 });
+  const state = useRef({ inside: false, k: 0, playerIn: false });
 
   // the room's box and the uniforms on; off again when the castle goes
   useEffect(() => {
@@ -64,6 +67,7 @@ export default function HallLight({ scene }: { scene: LoadedScene }) {
       HALL.lampOut.value = 0;
       HALL.fill.value.setRGB(0, 0, 0);
       lightState.zoneExposure = 1;
+      rig.follow = null;
     };
   }, [manifest]);
 
@@ -144,6 +148,10 @@ export default function HallLight({ scene }: { scene: LoadedScene }) {
     const s = state.current;
     s.inside = insideHall(camera.position.toArray(), h, s.inside);
     s.k = ease(s.k, s.inside ? 1 : 0, dt);
+    // the camera's distance follows the player across the door (the exposure follows the camera)
+    const p = rig.player;
+    s.playerIn = insideHall([p.x, p.y + 1, p.z], h, s.playerIn);
+    rig.follow = s.playerIn ? INDOOR : null;
     lightState.zoneExposure = zoneExposure(lightState.exposure, s.k);
     const out = lampsOutside(lightState.sunDir.y);
     HALL.lampOut.value = out;
