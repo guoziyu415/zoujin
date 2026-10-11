@@ -82,7 +82,8 @@ export function CameraRig({ blockers }: { blockers: Object3D[] }) {
     }
     const gliding = performance.now() < tmp.glideUntil;
     const p = rig.player;
-    tmp.head.set(p.x, p.y + 1.45, p.z);
+    const shot = rig.shot;
+    tmp.head.set(p.x, p.y + (shot?.headY ?? 1.45), p.z);
     const talking = rig.talking
       ? rig.people?.getObjectByName(rig.talking)
       : undefined;
@@ -96,23 +97,23 @@ export function CameraRig({ blockers }: { blockers: Object3D[] }) {
       // over the shoulder: the person's face in the upper third, the player's shoulder bottom left (8.4, UX)
       const face = new Vector3(
         talking.position.x,
-        talking.position.y + 1.56,
+        talking.position.y + ((talking.userData.faceY as number) ?? 1.56),
         talking.position.z,
       );
       tmp.dir.subVectors(face, tmp.head).setY(0);
       const apart = tmp.dir.length();
       tmp.dir.normalize();
       const right = new Vector3(-tmp.dir.z, 0, tmp.dir.x);
-      fov = portrait ? 42 : 34;
+      fov = shot?.fov ?? (portrait ? 42 : 34);
       // portrait: far enough to the side that the player's head is just out of frame and only the shoulder shows
       const side = portrait
         ? shoulderSide(apart, fov, size.width / size.height)
         : 0.55;
       tmp.want
         .copy(tmp.head)
-        .addScaledVector(tmp.dir, -TALK.back)
+        .addScaledVector(tmp.dir, -(shot?.back ?? TALK.back))
         .addScaledVector(right, side)
-        .setY(p.y + 1.62);
+        .setY(p.y + (shot?.camY ?? 1.62));
       tmp.look
         .copy(face)
         .addScaledVector(right, portrait ? 0 : 0.35)

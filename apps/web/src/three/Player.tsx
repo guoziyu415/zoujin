@@ -417,6 +417,9 @@ export function Player({ scene }: { scene: LoadedScene }) {
     p.yaw += angleTo(p.yaw, wantYaw) * Math.min(1, TURN * dt);
     body.position.set(p.x, p.y, p.z);
     body.rotation.y = p.yaw;
+    // down on one knee by someone sitting (castle.md 3.2); the stand-in just squats
+    body.scale.y +=
+      ((rig.crouch ? 0.62 : 1) - body.scale.y) * Math.min(1, dt * 6);
     if (moving) {
       const place = nav.placeOf(p.poly);
       nav.setPlayerPlace(place);
