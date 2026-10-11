@@ -45,7 +45,7 @@ concurrency:
 jobs:
   lint-test:
     name: ruff, mypy, pytest
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '["self-hosted","zoujin-mac"]') }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
@@ -61,7 +61,7 @@ jobs:
 
   world:
     name: world model, 24 simulations, eval seeds, generated files
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '["self-hosted","zoujin-mac"]') }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
@@ -72,29 +72,21 @@ jobs:
 
   # 要真 PostgreSQL 的测试（`db` 标记，B-0）：单事务、注入失败、并发、重放、网关端到端、评测入口和 E-0 的快照。
   # lint-test 里没有 DATABASE_URL，这些测试跳过；这里只跑它们。
+  # 库是 job 里自己起的 PostgreSQL 17 进程（start_postgres.sh），不用 services: 容器：自建机器（zg 的 Mac 上的 Linux
+  # 容器，infra/ci-runner）里没有 Docker，也不给它 Docker。
   db:
     name: tests against PostgreSQL
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_USER: zoujin
-          POSTGRES_PASSWORD: zoujin
-          POSTGRES_DB: zoujin_test
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd "pg_isready -U zoujin"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '["self-hosted","zoujin-mac"]') }}
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
       - run: uv sync --locked --all-packages
+      - name: PostgreSQL 17 in this job (own data dir, removed with the job)
+        run: bash .github/scripts/start_postgres.sh
       - run: uv run pytest -m db
-        env:
-          DATABASE_URL: postgresql://zoujin:zoujin@127.0.0.1:5432/zoujin_test
+      - name: stop PostgreSQL
+        if: ${{ always() }}
+        run: bash .github/scripts/start_postgres.sh stop

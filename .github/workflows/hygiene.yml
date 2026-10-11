@@ -16,7 +16,7 @@ concurrency:
 jobs:
   secrets:
     name: gitleaks
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '["self-hosted","zoujin-mac"]') }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
@@ -40,7 +40,7 @@ jobs:
 
   large-files:
     name: no large files outside LFS
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '["self-hosted","zoujin-mac"]') }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
