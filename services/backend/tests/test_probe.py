@@ -40,10 +40,10 @@ def requests(tmp_path: Path) -> Path:
 
 def test_load_takes_only_claude_kinds_once(requests: Path) -> None:
     got = probe.load(requests)
-    assert list(got) == ["triage", "extract", "check", "rewrite"]  # reply 留在 Google，不量
-    assert [len(v) for v in got.values()] == [1, 1, 1, 2]  # 同样的请求只算一个
+    assert list(got) == ["triage", "extract", "check", "rewrite", "safety"]  # reply 留在 Google，不量
+    assert [len(v) for v in got.values()] == [1, 1, 1, 2, 1]  # 同样的请求只算一个
     picked = probe.pick(got, 3)
-    assert [k for k, _ in picked].count("rewrite") == 3 and len(picked) == 12
+    assert [k for k, _ in picked].count("rewrite") == 3 and len(picked) == 15
 
 
 def test_ending_requests_print_an_estimate(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -71,7 +71,7 @@ def test_without_confirm_it_only_prints(requests: Path, tmp_path: Path, capsys: 
     env = ENV | {"ZJ_LEDGER": str(tmp_path / "ledger.jsonl")}
     assert probe.main([*argv, "--max-claude-usd", "100"], env=env) == 0  # 没带 --confirm
     printed = capsys.readouterr().out
-    assert "小测：20 次调用" in printed and "预计花费" in printed and "只打印，不调用：没带 --confirm" in printed
+    assert "小测：25 次调用" in printed and "预计花费" in printed and "只打印，不调用：没带 --confirm" in printed
     (cmd,) = [x for x in printed.splitlines() if x.startswith("命令：")]
     assert (
         "uv run --all-packages --extra real zoujin-probe" in cmd
@@ -183,7 +183,7 @@ def test_a_run_writes_only_numbers(
     code, out = run_probe(tmp_path, requests, monkeypatch, answering())
     assert code == 0
     rows = [json.loads(x) for x in (out / probe.ROWS).read_text(encoding="utf-8").splitlines()]
-    assert len(rows) == 12 and {r["status"] for r in rows} == {"ok"}
+    assert len(rows) == 15 and {r["status"] for r in rows} == {"ok"}
     assert all(r["totalMs"] >= r["firstTextMs"] >= 0 for r in rows)
     assert rows[0]["usage"] == {
         "inputTokens": 900,
@@ -198,7 +198,7 @@ def test_a_run_writes_only_numbers(
     assert set(check["totalMs"]) == {"p50", "p95", "max"} and summary["meta"]["stoppedBy"] is None
     assert summary["meta"]["requests"] == "requests"  # 只写目录名，不写 Mac 上的路径
     ledger = [json.loads(x) for x in (tmp_path / "ledger.jsonl").read_text(encoding="utf-8").splitlines()]
-    assert len(ledger) == 12 and {(x["provider"], x["item"], x["use"]) for x in ledger} == {
+    assert len(ledger) == 15 and {(x["provider"], x["item"], x["use"]) for x in ledger} == {
         ("claude", "b8-probe", "product")
     }
     assert summary["costUsd"] == pytest.approx(sum(x["costUsd"] for x in ledger), abs=1e-6)

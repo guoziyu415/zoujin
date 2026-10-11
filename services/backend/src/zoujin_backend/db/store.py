@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Any, cast
@@ -56,13 +56,15 @@ async def enqueue(
     request: Json | None = None,
     commit_after: float | None = None,
     created_at: Any = None,
+    flags: Iterable[str] | None = None,
 ) -> str:
     """排一个叙事者任务。幂等键就是 turnId：重试用同一个，这一轮写的事件的键都以它开头。
     created_at 用 clock_timestamp()，同一个事务里排的几个也分得出先后。
     status="lost"：断线时人物还没说完的一轮，只留记录（welcome 的 lastTurn），叙事者不处理。
     request：动作和幕末的请求（B-3），不放原话（原话在 utterances）。
     commit_after：叙事者最早在几秒以后提交（B-4 作废的窗口，按库的时钟算）；None = 判完就提交。
-    created_at：排队的时刻（草稿到期的超时任务排在到期那一刻，B-4）。"""
+    created_at：排队的时刻（草稿到期的超时任务排在到期那一刻，B-4）。
+    flags：第 0 步安全筛查的标记（B-12），叙事者按它们判。"""
     turn_id = turn_id or ids.new("turn")
     await c.execute(
         insert(turns).values(
@@ -79,6 +81,7 @@ async def enqueue(
             request=request,
             created_at=func.clock_timestamp() if created_at is None else created_at,
             commit_after=None if commit_after is None else func.clock_timestamp() + timedelta(seconds=commit_after),
+            flags=sorted(flags) if flags else None,
         )
     )
     return turn_id
@@ -102,7 +105,9 @@ async def retract_queued(c: AsyncConnection, pid: str, turn_id: str) -> str | No
                 turns.c.kind.in_(RETRACTABLE),
                 turns.c.status.in_(("pending", "leased")),
             )
-            .values(status="retracted", outcome="retracted", minutes=0, lease_until=None, settled_at=func.now())
+            .values(
+                status="retracted", outcome="retracted", minutes=0, lease_until=None, settled_at=func.now(), flags=None
+            )
             .returning(turns.c.kind)
         )
     ).first()
@@ -121,6 +126,30 @@ async def count_retracted(c: AsyncConnection, pid: str) -> None:
 
 
 # —— 意图确认的草稿（B-4，api-contract 3.9）——
+
+
+async def count(c: AsyncConnection, pid: str, **by: float) -> None:
+    """playthrough_metrics 的计数、花费加几（B-12 的安全和输出侧；行不存在就不加，局已经删了）。"""
+    if not by:
+        return
+    await c.execute(
+        update(playthrough_metrics)
+        .where(playthrough_metrics.c.playthrough_id == pid)
+        .values({k: getattr(playthrough_metrics.c, k) + v for k, v in by.items()})
+    )
+
+
+async def safety_state(c: AsyncConnection, pid: str, *, lock: bool = False) -> dict[str, Any]:
+    """这一局安全筛查的状态（B-12）：{paused, hinted, ambiguous}。"""
+    q = select(playthroughs.c.safety).where(playthroughs.c.playthrough_id == pid)
+    if lock:
+        q = q.with_for_update()
+    got = await c.scalar(q)
+    return dict(got or {})
+
+
+async def set_safety(c: AsyncConnection, pid: str, state: Mapping[str, Any]) -> None:
+    await c.execute(update(playthroughs).where(playthroughs.c.playthrough_id == pid).values(safety=dict(state)))
 
 
 async def open_draft(c: AsyncConnection, pid: str, *, lock: bool = False) -> dict[str, Any] | None:

@@ -33,7 +33,7 @@ from zoujin_backend.db.tables import endings, playthrough_metrics, playthroughs,
 from zoujin_backend.models.prompts import PROMPTS
 from zoujin_backend.models.text import BadOutput, ModelCallFailed, RateLimited, TextResult, model_and_version, spec
 from zoujin_backend.narrator.pipeline import Spend
-from zoujin_backend.narrator.rules import PII, VERBATIM, lcs_len
+from zoujin_backend.narrator.rules import VERBATIM, has_pii, lcs_len
 from zoujin_backend.narrator.writer import SCHEMA_VERSION, Writer, has_exits
 from zoujin_backend.projection import committed, player_spot
 from zoujin_backend.world import Book
@@ -622,7 +622,7 @@ def validate(ctx: Ctx, out: Mapping[str, Any]) -> list[Problem]:
     for f, text in texts_of(out):
         if any(lcs_len(mask(text, nouns), s) >= VERBATIM for s in said):
             bad.append(Problem("verbatim", f))
-        if PII.search(text):
+        if has_pii(text):
             bad.append(Problem("pii", f))
         if forbid and any(w in text for w in FORBIDDEN):
             bad.append(Problem("s067", f))

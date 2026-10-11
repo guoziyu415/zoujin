@@ -54,8 +54,21 @@ ROWS = [
     row(None, "judge", 1.0, 200, use="eval"),  # 不在这几局里
 ]
 METRICS = {
-    "pt_a": {"cost_triage_usd": 0.002, "cost_extract_usd": 0.075, "cost_check_usd": 0.09, "turns": 2, "actions": 1},
-    "pt_b": {"cost_triage_usd": 0.001, "cost_narrate_usd": 0.02, "turns": 1},  # 叙事 0.01 vs 0.02：对不上
+    "pt_a": {
+        "cost_triage_usd": 0.002,
+        "cost_extract_usd": 0.075,
+        "cost_check_usd": 0.09,
+        "turns": 2,
+        "actions": 1,
+        "ending_template": False,
+        "ending_calls": 2,
+    },
+    "pt_b": {
+        "cost_triage_usd": 0.001,
+        "cost_narrate_usd": 0.02,
+        "turns": 1,
+        "ending_template": True,
+    },  # 叙事 0.01 vs 0.02：对不上
 }
 TALKS = {"pt_a": talks(0, 10), "pt_b": talks(100)}
 
@@ -68,7 +81,8 @@ def test_hand_computed_report() -> None:
     assert a["liveUsd"] == pytest.approx(s5.LIVE.turn(0) + s5.LIVE.turn(1), abs=1e-6)
     assert a["evalUsd"] == pytest.approx(0.3)  # 单列，不算进单局
     assert a["metricsMismatch"] == {} and b["metricsMismatch"] == {"narrate": {"ledger": 0.01, "metrics": 0.02}}
-    assert a["counts"] == {"turns": 2, "actions": 1}
+    assert a["counts"] == {"turns": 2, "actions": 1, "ending_template": 0, "ending_calls": 2}  # B-9 的布尔记 1 / 0
+    assert b["counts"]["ending_template"] == 1 and r["endingsTemplated"] == 1
     # 每轮：pt_a 第 1 轮 0.061、第 2 轮 0.106（ending 不算），pt_b 第 1 轮 0.011
     t = r["perTurn"]
     assert t["points"] == 3 and t["mean"] == pytest.approx((0.061 + 0.106 + 0.011) / 3)
@@ -80,6 +94,8 @@ def test_hand_computed_report() -> None:
     assert forty["world"] == pytest.approx(0.31 / 12 * (7 + 40 / 8), rel=1e-4)
     assert forty["ending"] == pytest.approx(0.12) and forty["live"] == pytest.approx(s5.LIVE.cost(40), rel=1e-4)
     assert sum(forty["share"].values()) == pytest.approx(1.0 - 0.12 / forty["totalUsd"], abs=1e-3)
+    # Q-B8「减少世界推进」：世界推进减半时的合计（PM #117）
+    assert forty["worldCutUsd"] == pytest.approx(forty["totalUsd"] - forty["world"] / 2, abs=1e-5)
     stress = r["scaled"]["stress"]
     sixty = r["scaled"]["60"]
     # 实测 3 轮里检查 2 次；压力档每轮 2 次：检查那一份乘 2 ÷ (2/3) = 3，别的和 60 轮一样
@@ -110,6 +126,11 @@ def test_live_formula_and_crossing() -> None:
     before = s5.narrator_cost(flat, n - 1) + sum(e.cost(n - 1) for e in s5.MISSING.values()) + live.cost(n - 1)
     assert usd * 150 >= 300 > before * 150
     assert s5.crossing({"mean": 0.0, "slope": 0.0, "intercept": 0.0}, 0.0, 10_000) is None
+    r = s5.report(ROWS, RUNS, METRICS, TALKS, {})
+    assert list(r["crossing"]) == ["240", "300", "350"]  # 350：Q-B8「上限提到 350 円」（PM #117）
+    assert r["crossing"]["240"] <= r["crossing"]["300"] <= r["crossing"]["350"]
+    text = s5.markdown(r)
+    assert "上限提到 350 円时" in text and "世界推进 ×0.5 时合计" in text and "是上限" in text
 
 
 def test_flat_turns_use_the_mean() -> None:

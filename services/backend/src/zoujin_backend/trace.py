@@ -49,6 +49,10 @@ ATTRS = frozenset(
         "by",
         "result",
         "nth",
+        "kind",  # B-12：输出侧监控命中的种类（spoiler / harmful）、事实 ID、RAI 类别、这一句让会话重建了没有
+        "fact_ids",
+        "category",
+        "rebuild",
         "trigger",  # B-9：结局的触发、分类、走没走模板、调了几次
         "outcome",
         "template",
