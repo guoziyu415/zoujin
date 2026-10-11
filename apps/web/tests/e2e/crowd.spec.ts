@@ -31,7 +31,7 @@ type Hook = {
   setClock(t: number): Promise<void>;
   setWorldView(from: Vec3, to: Vec3, fov?: number): Promise<void>;
   crowd(
-    verb?: "wave" | "cheer" | "part" | "show" | "hide",
+    verb?: "wave" | "cheer" | "part" | "settle" | "show" | "hide",
     arg?: [number, number] | [number, number][],
   ): Promise<CrowdInfo | null>;
 };
@@ -58,6 +58,11 @@ test.beforeAll(async ({ browser }) => {
     null,
     { timeout: 240_000 },
   );
+  const stage = await page.evaluate(() =>
+    (window as unknown as { __zoujin: Hook }).__zoujin.load(),
+  );
+  if (stage.stage === "failed")
+    throw new Error(`the plaza didn't load: ${stage.error}`);
   call = <T>(f: (h: Hook) => T | Promise<T>) =>
     page.evaluate(`(${f.toString()})(window.__zoujin)`) as Promise<T>;
 });
@@ -96,7 +101,7 @@ test("twenty people on the execution ground, from behind them towards the post a
   await shot("crowd-1850");
 });
 
-test("three draw calls more, their shadow aside (budget 8)", async () => {
+test("at most 8 draw calls more, their shadow pass included", async () => {
   await call((h) => h.crowd("hide"));
   await call((h) => h.frames(3));
   const without = (await call((h) => h.frame())).calls;
@@ -132,18 +137,44 @@ test("どよめき from the scaffold outwards, the cheer, making way", async () 
     .toBe(true);
   await call((h) => h.frames(3));
   await shot("crowd-cheer");
-  const king = spots["king-west"]!;
-  const front = spots["stake-front"]!;
+  // Melos's way in, from the gate to the scaffold, through the crowd: the people on it turn and step aside
+  const from = spots["gate-street"]!;
+  const to = spots["scaffold"]!;
+  const before = (await call((h) => h.crowd()))!;
   await page.evaluate(
     (path) =>
       (window as unknown as { __zoujin: Hook }).__zoujin.crowd("part", path),
     [
-      [king[0], king[2]],
-      [front[0], front[2]],
+      [from[0], from[2]],
+      [to[0], to[2]],
     ] as [number, number][],
   );
+  await expect
+    .poll(
+      async () =>
+        (await call((h) => h.crowd()))!.clips.filter((x) =>
+          x.startsWith("turn"),
+        ).length,
+      { timeout: 60_000 },
+    )
+    .toBeGreaterThan(0);
   await call((h) => h.frames(6));
+  const after = (await call((h) => h.crowd()))!;
+  const moved = after.at.filter(
+    (p, i) =>
+      Math.hypot(p[0] - before.at[i]![0], p[1] - before.at[i]![1]) > 0.1,
+  ).length;
+  expect(moved).toBeGreaterThan(0);
   await shot("crowd-part");
+  // and quiet again
+  await call((h) => h.crowd("settle"));
+  await expect
+    .poll(
+      async () =>
+        (await call((h) => h.crowd()))!.clips.every((x) => x === "sway"),
+      { timeout: 60_000 },
+    )
+    .toBe(true);
 });
 
 test("no console errors", () => {

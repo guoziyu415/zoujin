@@ -51,6 +51,16 @@ describe("scatter", () => {
     ];
     expect(toPath([5, 2], path)).toMatchObject({ d: 2, side: 1 });
     expect(toPath([5, -1], path)).toMatchObject({ d: 1, side: -1 });
+    expect(
+      toPath(
+        [5, 2],
+        [
+          [0, 0],
+          [2, 0],
+          [2, 10],
+        ],
+      ).s,
+    ).toBeCloseTo(4, 6);
   });
 });
 
@@ -278,5 +288,47 @@ describe("Crowd", () => {
         expect(p.clip).toBe("sway");
       }
     });
+  });
+  it("the cheer for a while, then they sway again; settle() brings back the turned and the cheering", () => {
+    const c = new Crowd(spec);
+    c.update(2);
+    c.cheer(3);
+    c.update(2.6);
+    expect(c.clips().every((x) => x === "cheer")).toBe(true);
+    c.update(6);
+    expect(c.clips().every((x) => x === "sway")).toBe(true);
+    c.cheer();
+    c.part(
+      [
+        [4, -1],
+        [4, 7],
+      ],
+      2,
+    );
+    c.update(7);
+    expect(c.clips().some((x) => x.startsWith("turn"))).toBe(true);
+    c.settle();
+    c.update(7.5);
+    expect(c.clips().every((x) => x === "sway")).toBe(true);
+  });
+
+  it("making way at a walker's pace: the people further along the path move later", () => {
+    const c = new Crowd(spec);
+    c.update(1);
+    const path: Plan[] = [
+      [4, -1],
+      [4, 7],
+    ];
+    const near = c.people
+      .map((p, i) => ({ i, ...toPath(p.at, path) }))
+      .filter((x) => x.d < 2)
+      .sort((a, b) => a.s - b.s);
+    expect(near.length).toBeGreaterThan(1);
+    c.part(path, 2, 1);
+    const first = near[0]!;
+    const last = near.at(-1)!;
+    c.update(1 + Math.max(0, first.s - 0.6) + 0.31);
+    expect(c.clips()[first.i]).toMatch(/^turn/);
+    if (last.s - first.s > 1) expect(c.clips()[last.i]).toBe("sway");
   });
 });

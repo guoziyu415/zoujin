@@ -80,7 +80,9 @@ type Person = {
 
 type Timed = { at: number; person: number; clip: string; loopPhase?: number };
 
-const baked = new WeakMap<Skeleton, Baked>(); // a skeleton's motions, baked once
+// each skeleton's motions, baked once for the page and kept (about 170 KB each): the textures made from them go with
+// each crowd
+const baked = new WeakMap<Skeleton, Baked>();
 
 function boneTexture(b: Baked): DataTexture {
   const tex = new DataTexture(b.data, b.width, b.height, RGBAFormat, FloatType);
@@ -191,10 +193,11 @@ export class Crowd extends Group {
 
   // どよめき: from a point outwards at `speed` m/s, each person starts when it reaches them (a little scatter), then
   // back to swaying
+  // (those who had turned to make way turn back for it)
   wave(from: Plan, speed = 6): void {
     const rnd = mulberry32(Math.floor(this.now * 1000) + 3);
     for (const [i, p] of this.people.entries()) {
-      if (p.clip.startsWith("turn")) continue;
+      this.queue = this.queue.filter((x) => x.person !== i);
       const at =
         this.now +
         Math.hypot(p.at[0] - from[0], p.at[1] - from[1]) / speed +
@@ -210,22 +213,50 @@ export class Crowd extends Group {
     }
   }
 
-  // the cheer: everyone, a few tenths of a second apart
-  cheer(): void {
+  // the cheer: everyone, a few tenths of a second apart; for `seconds`, then they settle, or until settle()
+  cheer(seconds?: number): void {
     const rnd = mulberry32(Math.floor(this.now * 1000) + 5);
-    this.queue = this.queue.filter((t) => t.clip.startsWith("turn"));
-    for (const [i] of this.people.entries())
-      this.queue.push({ at: this.now + rnd() * 0.5, person: i, clip: "cheer" });
+    this.queue = [];
+    for (const [i, p] of this.people.entries()) {
+      const at = this.now + rnd() * 0.5;
+      this.queue.push({ at, person: i, clip: "cheer" });
+      if (seconds !== undefined)
+        this.queue.push({
+          at: at + seconds,
+          person: i,
+          clip: "sway",
+          loopPhase: p.phase,
+        });
+    }
   }
 
-  // making way along a path (the king walking to the scaffold): the people near it turn towards it and step aside
-  part(path: Plan[], width = 2.2): void {
+  // quiet again (the crowd holding its breath, the cheer dying down): everyone back to swaying, facing the post, a
+  // few tenths of a second apart and out of step as at the start; those who made way stay where they stepped to
+  settle(): void {
+    const rnd = mulberry32(Math.floor(this.now * 1000) + 7);
+    this.queue = [];
+    for (const [i, p] of this.people.entries())
+      this.queue.push({
+        at: this.now + rnd() * 0.4,
+        person: i,
+        clip: "sway",
+        loopPhase: p.phase,
+      });
+  }
+
+  // making way along a path: for Melos running in from the gate to the scaffold, and for the king walking to it. The
+  // people near it turn towards it and step aside. With `speed` (m/s, the walker's) each moves as the walker comes
+  // level with them, from the path's start; without, all at once, the nearest first
+  part(path: Plan[], width = 2.2, speed?: number): void {
     for (const [i, p] of this.people.entries()) {
-      const { d, side, along } = toPath(p.at, path);
+      const { d, side, along, s } = toPath(p.at, path);
       if (d >= width) continue;
       const away: Plan = [-along[1] * side, along[0] * side]; // perpendicular, away from the path
       const step = (width - d) * 0.6;
-      const t0 = this.now + (d / width) * 0.3; // the nearest first
+      const t0 =
+        this.now +
+        (speed ? Math.max(0, s / speed - 0.6) : 0) + // a little before the walker reaches them
+        (d / width) * 0.3;
       p.shift = {
         from: p.at,
         to: [p.at[0] + away[0] * step, p.at[1] + away[1] * step],
