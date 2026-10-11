@@ -158,9 +158,10 @@ Grade the reply in the user message:
       Taking the player's news as something just heard (surprise, asking back, "is that so?", doubting it) is not (b).
       (b) is claiming to have known it already, or adding details the player did not say. Words that come from the
       player's line in the user message (repeating them, or answering them as just heard together with what the
-      character already knows) are not (b), as long as the reply takes them as just heard. A reply that sounds as if
-      it knew already is (b): no surprise at all, a standing worry or state ("ずっと", "〜てたまらない"), or details
-      the player did not say. Or
+      character already knows) are not (b), as long as the reply takes them as just heard. It is (b) when the reply
+      takes news that matters and that the character cannot know yet (the promise, the deadline, the hostage, what
+      happens later) without any surprise, as if it knew already, or as a standing worry or state ("ずっと",
+      "〜てたまらない"), or adds details the player did not say. A calm answer to ordinary news is not (b). Or
   (c) states as its present situation a promise with someone in the story, a role it has taken on, waiting for or standing
       in for someone in the story, or a set date or deadline, when neither who it is now, the facts it knows nor the events
       it has lived through contain it; or states as present its own situation from the FUTURE list: a later moment's
@@ -230,8 +231,9 @@ AUDIT_SYSTEM = """\
   いないのに「そうらしい」「聞いている」と話を合わせるのもこれ。プレイヤーから初めて聞いた話として受け止める
   （驚く、聞き返す、「そうなのですか」、疑う）のは other。前から知っていたように言う、プレイヤーが言っていない細部を
   足す、がこれ。プレイヤーがこの一言で言った言葉をくり返す、聞いたばかりの話として自分の知っていることと合わせて答える、
-  のは other。ただし、少しも驚かない、「ずっと」「〜てたまらない」のように前から続いていることとして言う、のは
-  前から知っていたのと同じで unknown_fact
+  のは other。ただし、まだ知らないはずの大事な話（約束、期限、身代わり、これから起きること）を、少しも驚かずに前から
+  分かっていたことのように受ける、または「ずっと」「〜てたまらない」のように前から続いていることとして言う、のは
+  unknown_fact
 - wrong_time：自分の身の上として、物語の人物との約束、引き受けた役目、物語の人物を待っている・身代わりになった、
   日取りや期限が決まった、のどれかを、いまのこととして述べているが、「いまの姿」「いま知っていること」
   「これまでに見聞きした出来事」にない。または「まだ起きていない」一覧にある自分の立場を、いまのこととして述べている。
