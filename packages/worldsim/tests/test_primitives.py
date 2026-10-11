@@ -117,9 +117,10 @@ def test_walking_minutes_take_the_shortest_way() -> None:
     assert m("village", "neighbor-village") == 120  # 邻村没有场景（sceneRef null）
     assert m("neighbor-village", "river") == 180
     assert m("road-to-city", "syracuse-square") == 60
-    # 归途同一场景互相 0 分：已知的缺口，M3 定了归途走法以后改（见 primitives.py 文件头）
-    assert m("river", "road-to-city") == 0
-    assert m("melos-home", "syracuse-square") == 120 + 180 + 0 + 60
+    # 归途每个停留点一个场景（S-081 ②：「ひとりで先へ行く」要花路上的时间），按 adjacent 的步行分钟
+    assert m("river", "mountain-pass") == 100
+    assert m("river", "road-to-city") == 100 + 45 + 120
+    assert m("melos-home", "syracuse-square") == 120 + 180 + 100 + 45 + 120 + 60
     assert m("syracuse-square", "nowhere") is None
 
 
