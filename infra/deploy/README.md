@@ -42,7 +42,7 @@ infra/deploy/deploy.sh invite 5         # 5 个邀请码，写进 ~/.zoujin/depl
 2. `promote`：两个服务都切到新版本（第一次：打开公开访问），对正式地址再冒烟一次，查匿名被拒（REST 401、WebSocket 以 4001 关闭）。
 3. 正式地址冒烟不过：`deploy.sh rollback` 切回上一个版本。
 
-冒烟用的邀请码在 `~/.zoujin/deploy/smoke-code`，是一个专用账号，每天最多开 5 局（S-019）。
+冒烟用的邀请码在 `~/.zoujin/deploy/smoke-code`，是一个专用账号，每天最多开 5 局（S-019，删了也算）；每次 `migrate` 换一个新的，重跑不会撞上次数。`build` 遇到同一个提交已经构建过就跳过，场景包换过要重建加 `ZJ_REBUILD=1`。
 
 ## 平时
 

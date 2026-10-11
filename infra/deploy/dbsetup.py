@@ -1,6 +1,6 @@
 """部署的数据库账号和权限（B-23），由 deploy.sh 经 Cloud SQL 代理在 zg 的 Mac 上跑。
 
-    python dbsetup.py roles    建库 zoujin（属主 zj_owner）、两个应用账号（没有就建，有就改成这次的密码）
+    python dbsetup.py roles    建库 zoujin（属主 zj_owner）、两个应用账号（没有就建，有就只改登录和密码）
     python dbsetup.py grants   迁移以后：两个应用账号对全部表增删改查、序列能用；alembic_version 只读
 
 连接和密码只从环境变量读，不打印：ZJ_OWNER_URL（zj_owner 连 postgres 库的 postgresql://…）、
@@ -49,12 +49,11 @@ def roles(owner_url: str, apps: list[tuple[str, str]]) -> None:
             print(f"建了库 {DB}")
         for user, password in apps:
             exists = c.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (user,)).fetchone() is not None
+            # Cloud SQL 的 zj_owner 不是超级用户，ALTER 带 NOSUPERUSER 这些属性会被拒：属性只在建的时候给，
+            # 已有的只改登录和密码（setup 能重跑）
+            attrs = "LOGIN PASSWORD {}" if exists else "LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD {}"
             verb = "ALTER" if exists else "CREATE"
-            c.execute(
-                sql.SQL(verb + " ROLE {} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD {}").format(
-                    sql.Identifier(user), sql.Literal(password)
-                )
-            )
+            c.execute(sql.SQL(f"{verb} ROLE {{}} {attrs}").format(sql.Identifier(user), sql.Literal(password)))
             print(f"{'改了' if exists else '建了'}账号 {user}")
     with psycopg.connect(with_db(owner_url, DB), autocommit=True) as c:
         c.execute(sql.SQL("REVOKE CREATE ON SCHEMA public FROM PUBLIC"))
