@@ -1,8 +1,8 @@
-# 数据契约（contracts.md）v1.9
+# 数据契约（contracts.md）v1.11
 
-负责人：数据工程 · 状态：**v1.9**（1.5 在 M2-0 冻结（C-2），以后只做加法；1.6 是冻结后第一个加法版本）。v1.0 是基线（S-033），v1.1 是 PM 接受的新基线（S-061〜S-063），已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改。1.1 只做加法：加进 D-012〜D-015 的落地（S-029〜S-032：互助、约定、打算、即兴设定、导演事件、生成的结局、角色结局）、S-034〜S-053 里和数据有关的决定、后端设计 v1.0 第 12 节的 13 条提案和 UX 设计 v1.0 第 18.3 节的要求。1.2 也只做加法：幕末说出的打算（S-031 ③）、作废和出戏的一轮怎么落数据（S-054、S-057）。1.3 加随身的东西（UX 5.1，C-14）。1.4 按 UX 对世界模型的校对和 S-064 加：有条件的台词和设计台词、互助的效果、节拍的变体、过场里的二选一、第四幕按钮上「对梅洛斯的影响」。1.5 给过场的选项也加上「对梅洛斯的影响」和选后的一句（UX 校对 7.3、ux-design 4.5）。1.6 把两条只写在说明文字里的取值条件写成数据（`StateVar.valueRequires`，C-16），结局卡改成 1〜3 人、每一局都出（C-17）。1.7 加位置点（谁站在布局的哪个点）、成群的人物和幕末去处的落地（M2 切片，C-18），以及打算成行时的落点（C-19）、固定演出（S-080 ④）、可调查物和玩家知道什么。1.8 加情境动作做完以后的事件句（`Affordance.pastLabel`），写清事件 `summary` 里玩家一律写身份名、身份名只用来指玩家（UX 在 #61 前端评审后定的文案）。1.9 加「日名要知道哪条事实才说」（`Clock.labels.daysKnownBy`，S-086）。跨角色决定见 `pm/decisions.md`。还在等别人定的事列在第 7 节。
+负责人：数据工程 · 状态：**v1.11**（1.5 在 M2-0 冻结（C-2），以后只做加法；1.6 是冻结后第一个加法版本）。v1.0 是基线（S-033），v1.1 是 PM 接受的新基线（S-061〜S-063），已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改。1.1 只做加法：加进 D-012〜D-015 的落地（S-029〜S-032：互助、约定、打算、即兴设定、导演事件、生成的结局、角色结局）、S-034〜S-053 里和数据有关的决定、后端设计 v1.0 第 12 节的 13 条提案和 UX 设计 v1.0 第 18.3 节的要求。1.2 也只做加法：幕末说出的打算（S-031 ③）、作废和出戏的一轮怎么落数据（S-054、S-057）。1.3 加随身的东西（UX 5.1，C-14）。1.4 按 UX 对世界模型的校对和 S-064 加：有条件的台词和设计台词、互助的效果、节拍的变体、过场里的二选一、第四幕按钮上「对梅洛斯的影响」。1.5 给过场的选项也加上「对梅洛斯的影响」和选后的一句（UX 校对 7.3、ux-design 4.5）。1.6 把两条只写在说明文字里的取值条件写成数据（`StateVar.valueRequires`，C-16），结局卡改成 1〜3 人、每一局都出（C-17）。1.7 加位置点（谁站在布局的哪个点）、成群的人物和幕末去处的落地（M2 切片，C-18），以及打算成行时的落点（C-19）、固定演出（S-080 ④）、可调查物和玩家知道什么。1.8 加情境动作做完以后的事件句（`Affordance.pastLabel`），写清事件 `summary` 里玩家一律写身份名、身份名只用来指玩家（UX 在 #61 前端评审后定的文案）。1.9 加「日名要知道哪条事实才说」（`Clock.labels.daysKnownBy`，S-086）。1.10 加 manifest 要的三样（B-7）：身份给玩家看的一句（`Role.summary`）、注音词表（`WorldModel.ruby`），每个人物都填读音（`Character.reading`）。1.11 加结局要的三样（B-9）：人物「原作では」那一句（`Character.originalEnding`）、结局页列谁（`endings.characters`）、结局走模板时的句子（`endings.templates`、`endings.fates`）。跨角色决定见 `pm/decisions.md`。还在等别人定的事列在第 7 节。
 UX、前端请看第 2.8 节（幕）、第 4 节（记忆）、第 5 节（结局）。1.1 新增或写清的地方都标了「（1.1）」，文末变更记录有汇总。
-最近更新：2026-10-11（1.9：`Clock.labels.daysKnownBy`，不知道约定的人物只拿到时段；1.8：`Affordance.pastLabel`，`summary` 里玩家一律写身份名，下发时服务端换成「あなた」，世界模型自检查身份名只指玩家；1.7：relocate 和 `ActExit` 的 `spot`、`WorldState.spots`、`Character.group`、`ActExit.arrival`、`ActExit.sub`、`Affordance.playerSpot`（C-18）、`Act.plan`（C-19）、`setPieces`（S-080 ④）、`objects`、玩家学到的事实（`learn` 写 `player`）；1.6：`StateVar.valueRequires`（C-16）、结局卡 1〜3 人（C-17））
+最近更新：2026-10-11（1.11：`Character.originalEnding`、`endings.characters` / `templates` / `fates`，B-9 的简化结局用，进结局时一起结算的节拍上的固定演出算进结局演出（S-087）；1.10：`Role.summary`、`ruby`，`reading` 每个人物都填，manifest 用；1.9：`Clock.labels.daysKnownBy`，不知道约定的人物只拿到时段；1.8：`Affordance.pastLabel`，`summary` 里玩家一律写身份名，下发时服务端换成「あなた」，世界模型自检查身份名只指玩家；1.7：relocate 和 `ActExit` 的 `spot`、`WorldState.spots`、`Character.group`、`ActExit.arrival`、`ActExit.sub`、`Affordance.playerSpot`（C-18）、`Act.plan`（C-19）、`setPieces`（S-080 ④）、`objects`、玩家学到的事实（`learn` 写 `player`）；1.6：`StateVar.valueRequires`（C-16）、结局卡 1〜3 人（C-17））
 
 四个契约：**WorldModel**（世界模型，静态、按书版本化）、**Event**（运行时事件，只追加）、**Memory**（角色对玩家的记忆，可删除）、**Ending**（结局）。另有两个支撑结构：**Playthrough**（一局游戏）和 **WorldState**（由事件推出的当前状态）。
 
@@ -102,6 +102,14 @@ type WorldModel = {
   endings: {
     world: WorldEnding[];             // 世界结局的底线分类（S-007、S-034）；1.1 起是「保证能到达的底线」，结局可以按这一局生成（S-031 ①）
     signature?: EndingSignature;      // （1.1）什么叫「结局实质不同」（S-031 ⑤、S-041），见 2.9.1
+    characters?: string[];            // （1.11，B-9）结局页列人物结局的那些人，顺序就是受影响排序同分时的顺序。不写 = talkable 的人物
+    templates?: {                     // （1.11，B-9，S-065）结局走模板时的句子（ux-design 11.4），见 2.9.2
+      outcome: string; when?: Condition[];
+      subtitle: string; title: string; fate?: string;
+      lines: { character: string; line: string }[];
+      contrast: string; note?: string;
+    }[];
+    fates?: { witness: string; elsewhere: string };  // （1.11）模板没写 fate 时的行方，按 Ending.player.fate.id 取
   };
   pacing?: Record<string, number>;    // 时间消耗参数（S-005、S-038），键见 2.6.1
   pacingNote?: string;                // （1.1）pacing 的说明（日语）
@@ -109,6 +117,9 @@ type WorldModel = {
   items?: Item[];                     // （1.1）故事里的物品（R7：给东西要拿得到），见 2.10
   setPieces?: SetPiece[];               // （1.7，S-080 ④）固定演出：挂在节拍或玩家的动作上的地の文和预录句，见 2.11
   objects?: WorldObject[];              // （1.7）场景里可「調べる」的东西，见 2.12
+  ruby?: { word: string; reading: string }[];
+                                        // （1.10，B-7）注音词表：字幕里专有名词和难读词的读音，manifest 原样下发，前端在字幕里按 word 最长匹配、
+                                        // 每个场景第一次出现时注音（frontend-design 7.5、UX 13）。reading 是 word 整个词的平假名；不写 = 没有
 };
 ```
 
@@ -117,7 +128,8 @@ type WorldModel = {
 ```ts
 type Character = {
   id: string;                     // "char.melos"
-  name: string; reading?: string; // 「メロス」「王ディオニス」
+  name: string; reading?: string; // 「メロス」「王ディオニス」。（1.10）reading 每个人物都填：片假名照抄，汉字写平假名（「おうディオニス」），
+                                  // manifest 的人物名和注音用；build_world 查每个人物都有、不带汉字
   summary: string;                // 一两句，中性描述。开场就成立、整局不变的事：summary 不按时点裁剪，后面才发生的事不写（随时间变的写进 traits / goals，带 since / until）
   traits: { text: string; cite: Cite[]; since?: string; until?: string; when?: Condition[] }[];  // 性格，每条有出处
   goals: { text: string; cite: Cite[]; since?: string; until?: string; when?: Condition[] }[];   // 动机（= S-030 的「当下目标」）
@@ -147,6 +159,9 @@ type Character = {
   mutualAid?: MutualAid[];         // 互助：他能为你做的、你能为他做的。能对话的人物两种至少各一条
   promiseTemplates?: PromiseTemplate[];  // 这个人物常见的约定；叙事者写 promise 效果时引用。玩家临时提出的约定不需要模板
   plans?: { act: string; text: string; inferred?: true; cite?: Cite[] }[];  // 每一幕「没人管时的打算」；能对话的人物必填
+  originalEnding?: { text: string; cite: Cite[] };
+                                   // （1.11，B-9）原作里这个人物的结局，一句，≤ 40 字，不写主语，以「。」结尾：结局页「原作では」那一句
+                                   // （第 5 节 CharacterEnding.original），全部人物都没被波及时也是卡上梅洛斯那一行。endings.characters 里的人物都要有
 };
 
 type DesignLine = {                // （1.4）
@@ -395,6 +410,7 @@ type StateVar = {
 type Role = {
   id: string;                      // "role.traveler"
   name: string;
+  summary: string;                 // （1.10，B-7）身份页和 manifest 上给玩家看的一句（日语），文字 UX 定；note 是写给编写者的，不给玩家看
   release: number;                 // 第几版开放。S-002：第一版 = 旅人、石屋の弟子（UX 5.1 改名）、村の牧童；王城の侍女、警吏 = 2
   startAct: string;                // 从哪一幕开始，如牧童从 "act.3"
   startPlace: string; startT: number;
@@ -411,7 +427,9 @@ type Role = {
 
 R7 判「能不能进」：`access` ∪ 此刻条件成立的 `conditionalAccess` ∪ 事件给的许可（被带进去、被召见）。
 
-**（1.8）身份名只用来指玩家。** 事件 `summary` 里玩家写身份名，下发给玩家时服务端把它换成「あなた」（第 3 节 `summary`），所以别的东西不能叫这个名字，否则「一団の旅人」会变成「一団のあなた」。世界模型自检（`build_world`）查：第一版（`release: 1`）身份的 `name` 不出现在世界模型别处的文字里，只有写玩家的地方除外（`roles` 自己、状态变量的 `description`、互助的 `text`）和引文、`note`；身份名之间也不互相包含。第二版的身份撞名先给警告：「警吏」和人物 `char.guards` 同名，开放第二版前给这个身份另起名。『走れメロス』为此把成群的人物「一団の旅人」改叫「旅の一団」，事实、节拍摘要和地点描述里的「旅人」跟着改（1.8）。
+**（1.8）身份名只用来指玩家。** 事件 `summary` 里玩家写身份名，下发给玩家时服务端把它换成「あなた」（第 3 节 `summary`），所以别的东西不能叫这个名字，否则「一団の旅人」会变成「一団のあなた」。世界模型自检（`build_world`）查：第一版（`release: 1`）身份的 `name` 不出现在世界模型别处的文字里，只有写玩家的地方除外（`roles` 自己、状态变量的 `description`、互助的 `text`）和引文、`note`；身份名之间也不互相包含。第二版的身份撞名先给警告：「警吏」包含在人物 `char.guards` 的名字「城の警吏」里，开放第二版前给这个身份另起名。『走れメロス』为此把成群的人物「一団の旅人」改叫「旅の一団」，事实、节拍摘要和地点描述里的「旅人」跟着改（1.8）。
+
+**（1.8 补注）名字不带括号。** 人物、地点、身份、物品、可调查物的 `name` 原样给玩家看：叙事者的事件 `summary` 里人物一律写 `name`（后端的提取提示），manifest 也照发。所以 `name` 里不写括号注释，要注释写进 `summary` 或 `note`；`build_world` 查。『走れメロス』的「警吏（巡邏・刑吏）」改叫「城の警吏」（UX 10-11 定：巡逻的警吏和刑场的刑吏都是王城的人）。地の文和固定演出里的「警吏」照旧，只改名字。
 
 ### 2.8 Act（幕，S-004）
 
@@ -530,6 +548,19 @@ type EndingSignature = {
 
 两局的「世界结局实质不同」= 署名不同：`vars` 的最终值和 `beats` 是否发生，组成的元组不一样。底线类相同、署名不同也算不同的结局。用在两处：结局多样性的统计（S-031 ⑤，data-design 第 9 节）；关键时刻的第三条「预测的世界结局发生实质变化」（S-041，3 节）。『走れメロス』的署名：`vars` = 人质是谁、人质的下场、王的心、梅洛斯的去向、玩家的去向、婚礼；`beats` = 捕缚、召见人质、婚礼、山贼、倒下、（1.4，S-064）セリヌンティウスがちらと疑う、赶到刑场、王改心、緋のマント（beat.04、06、11、19、20、s2、24、26、27）。原著加 22 个改道情景，有 10 种不同的署名。
 
+### 2.9.2 结局模板（1.11，B-9，S-065）
+
+结局校验两次都不过、超时或出错时，结局用世界模型里写好的句子（ux-design 11.4）。后端按这一局的世界结局挑：同一个 `outcome` 有几条时，按列表顺序取第一条 `when` 成立的；每一类的最后一条不带 `when`，当兜底。
+
+- `subtitle`：世界的去向（卡片副题），≤ 26 字。也是这一局尾声的那一句。
+- `title`：称号，带一个 `{role}`，换成开局身份名；去掉 `{role}` 以后 ≤ 9 字（身份名 ≤ 5 字，合起来 ≤ 14）。
+- `fate`：行方。不写就按 `Ending.player.fate.id` 取 `endings.fates` 的 `witness`（结局的地点在场）或 `elsewhere`。`player-substituted`（玩家是人质，`fate.id` 不是这两个）的条目都要写。
+- `lines`：写了句子的人物，按顺序给 `rank` 1、2…，每句 ≤ 40 字；其余人物 `unchanged`。
+- `contrast`：「原作との違い」，≤ 48 字。
+- 模板只写结果，不假设玩家做了什么、在哪里。处刑只间接交代（S-067）：模板、`fates` 和人物的 `originalEnding` 都不用「処刑」「死」「殺」「最期」「亡くな」「命を落と」「息絶え」「絶命」「事切れ」「帰らぬ人」「磔にされ」「磔になっ」（「磔」这个设定本身可以写）。
+
+校验工具查：`outcome` 是底线类；每一类至少一条，只有最后一条不带 `when`；字数；`{role}` 正好一个；`when` 的变量和取值合法；没写 `fate` 的条目要有 `endings.fates`，`player-substituted` 的条目都要写 `fate`；上面那些字眼；`endings.characters`（不写时是 talkable 的人物）里每个人物都有 `originalEnding`，一句、≤ 40 字、以「。」结尾、有出处。
+
 ### 2.10 Affordance 和 Item（1.1，情境动作和物品）
 
 快照里的 `actions`（api-contract 2.3）从这里来（后端评审提案第 7 条）。动作的种类按 UX 的清单（ux-design 18.2、api-contract 3.8）。
@@ -580,7 +611,7 @@ type Item = {
 
 ### 2.11 SetPiece（1.7，固定演出，S-080 ④）
 
-有些地の文和人物的话是写好的、每局都一样（切片：城门的警吏、工房关着的门、群众让路）。它们写在世界模型里，由服务端在对的时机下发，前端不按 ID 写死，也不判断条件。它们只是演出：不是事件，不改世界状态，叙事者不改写。唯一的例外是 `learns`：演出里说出了一件事，听的人就知道了（S-077 ⑪：城门的警吏顺口说出约定）。
+有些地の文和人物的话是写好的、每局都一样（切片：城门的警吏、工房关着的门、刑场收幕）。它们写在世界模型里，由服务端在对的时机下发，前端不按 ID 写死，也不判断条件。它们只是演出：不是事件，不改世界状态，叙事者不改写。唯一的例外是 `learns`：演出里说出了一件事，听的人就知道了（S-077 ⑪：城门的警吏顺口说出约定）。
 
 ```ts
 type SetPiece = {
@@ -613,6 +644,7 @@ type SetPiece = {
 
 - 同一个时机（同一个节拍，或同一种动作和对象、同样的 `refused`）有几条时，按列表顺序取第一条条件全满足、而且（`once` 的）这一局还没演过的，只演这一条。都不满足就不演，照常由叙事者说。
 - `on.act` 的那一条在这个动作的 `action_result` 之后演，代替叙事者对这个动作的叙事（不再另说一遍）；`on.beat` 的演在节拍的那次提交之后。玩家不在场的节拍不演，幕切换第 3 步结算的节拍也不演（2.8.1）。
+- （1.11 写清，B-9，S-087）进结局时一起结算的节拍（触发结局的 watchBeat，和结算到收幕的那几拍）例外：上面的固定演出不看玩家在不在场都演，排在 `ending_started` 后面、算进结局演出，按节拍的顺序（api-contract 3.13）。选哪一条照常按上一条，条件按结算到这一拍时的状态算。
 - 选哪一条和条件怎么算只有一份：共享规则库 `zoujin_worldsim.pick_set_piece(world, state, hook, played)`（`played` 是这一局演过的固定演出 ID，由服务端记）。`knows` 用同一个库的 `knows(world, state, character, fact)`。
 - 校验工具查：ID 唯一；引用的节拍、人物、事实、地点存在；`target` 按动作是存在的人物或地点，`examine` 的是 `objects` 里的可调查物；`played`、`notPlayed` 引用别的固定演出；`learns` 的事实在演的时候一定成立、说的人一定知道（事实的 `trueFrom` 和说话人物 `knows` 的 `since` 都是 `pre` 或写在 `after` 里；只有地の文时只查前一半）；同一个时机上，排在一条没有任何条件的条目后面的永远轮不到，算错。`act` 是不是 api-contract 3.8 的动作、`lines` 的形状由 Schema 查。
 
@@ -1080,8 +1112,20 @@ type CharacterEnding = {           // （1.1）
   - WorldModel：`Affordance.pastLabel`（必填：做完以后的事件句，过去式、带对象，2.10）。叙事者的事件 `summary` 写「{Role.name}は、{pastLabel}」。
   - Event：`summary` 里玩家一律写身份名，不写「旅の人」「彼」等；下发给玩家时服务端换成「あなた」（第 3 节）。例子里「弟子は、」改成「石屋の弟子は、」。
   - 世界模型自检：第一版身份名只用来指玩家，身份名之间不互相包含；第二版的撞名给警告（2.7）。
+  - 补注（10-11，后端 #70 以后，字段不变）：名字不带括号（2.7，`build_world` 查）；人物「警吏（巡邏・刑吏）」改叫「城の警吏」。
   - 『走れメロス』（draft.3）：20 个情境动作都写上 `pastLabel`（UX 看文字）；成群的人物「一団の旅人」改叫「旅の一団」，它的简介、`fact.travelers-rumor`、beat.22 的摘要、`place.road-to-city` 的描述跟着改。
 - **v1.9（2026-10-11）**：只做加法。S-068 重测前的修正（S-086）：人物的提示里不带幕后的文字和他还不该知道的日名。
   - WorldModel：`Clock.labels.daysKnownBy`（可选，事实 ID，2.6）：日名要知道哪条事实才说。不知道的人物，人设和局势里的时间只写时段；界面、tLabel、記憶帳、地の文照旧（UX day0-label）。后端读法见 #91。
   - 写清（2.1）：人设字段和人物知道的事实的 statement 只写人物世界里的话，编写说明和推断依据写进世界模型的 README。
   - 『走れメロス』（draft.3）：`daysKnownBy` 填 `fact.promise`。人设里的编写说明删掉：妹、花婿、若い衆、警吏、少女的 register 改成说话方式本身，四条 goals 去掉「（推定）」，フィロストラトス的 firstPerson「（原文なし）」改成「わたくし」；`fact.six-killed-today` 不写「この日（Day 0）」，`fact.melos-suspects-king` 去掉「原文では真偽不明」，beat.s2 的摘要去掉「時刻は推定」。推断的依据记在世界模型 README 的「S-068 补的」一节。妹、花婿的 register 写上语尾和称呼，`firstPerson` 写「わたし」（UX）。补两条事实：`fact.execution-crowd`（三日目傍晚城里人知道刑场要磔人、人在聚，beat.22 起，老爺、若い衆、群众）、`fact.groom-agreed`（花婿承知婚礼当天真昼举行，beat.10 起，花婿、梅洛斯）。
+- **v1.10（2026-10-11）**：B-7（正式网关的 manifest）要从世界模型生成的三样。
+  - WorldModel：`Role.summary`（必填，2.7）：身份页和 manifest 上给玩家看的一句。和 1.8 的 `pastLabel` 一样，新字段直接必填：manifest 每个身份都要，仓库里的两份世界模型一起补上。
+  - WorldModel：`ruby`（可选）：注音词表 `{ word, reading }[]`，manifest 原样下发。
+  - `Character.reading` 字段不变，写清每个人物都填（manifest 要），`build_world` 查每个人物都有读音、读音不带汉字；注音词表的读音全是平假名、词不重复、词在原文或世界模型里出现过。
+  - 『走れメロス』（draft.3）：13 个人物的读音、5 个身份的一句（第一版三个照 ux-design 5.1 身份卡上的一句，第二版两个待 UX 定）、65 个词的注音词表（44 个读音照青空文库原文的注音，21 个是原文没注音的专有名词和难读词，UX 核读音）。切片版只留旅人的一句，注音词表去掉切片里不出现的词。依据见世界模型 README「1.10 补的」一节。
+- **v1.11（2026-10-11）**：只做加法。B-9（切片的简化结局，#97）要从世界模型读的三样。
+  - WorldModel：`Character.originalEnding`（可选，2.1）、`endings.characters`（可选）、`endings.templates` 和 `endings.fates`（可选，2.9.2）。校验工具的检查见 2.9.2。
+  - 『走れメロス』（draft.3）：S-003 的 7 个人物写「原作では」那一句（数据按原文写，UX 看日语），`endings.characters` 列这 7 个；模板照 ux-design 11.4 的表（A、B 和其余 5 行，共 7 条），`fates` 照 UX 在 #97 评审第 5 题给的两句。
+  - 『走れメロス』：`clock.onDeadline` 第一条（期限到了、梅洛斯没回来、王没改心 → 人质 `executed`）加上「有人质」（`var.hostage.who != none`）。原来约定没立成的局也会被设成 `executed`、分进「間に合わなかった」（B-9 评审第 4 题）。改了以后约定没立成的局 5 类都不成立。
+  - 切片专用的锚点（S-088，PM 10-11）：beat.03、04 设成锚点，约定一定立成，收幕时一定有一类成立。完整版不加（S-033 不变），加锚点还是加第 6 类「約束は交わされなかった」是 M3 的开放项。不锚 beat.05：它写的 `var.hostage.who` 会被锁住（R1），B-4「我来当人质」就做不成；beat.05 的前提由锚点 beat.04 写下，又在切片玩家去不了的王城。
+  - 写清（S-087，字段不变）：进结局时一起结算的节拍（触发结局的 watchBeat 和结算到收幕的节拍）上的固定演出，不看玩家在不在场都演，排在 `ending_started` 后面、算进结局演出（2.11，B-9）。刑场收幕的固定演出本身另一个 PR 加（要和 B-6 的预录清单一起改）。
