@@ -5,12 +5,15 @@
 //   iPrev  = the same for the motion before, faded out over BLEND seconds from iSwitch
 //   iSkin, iCloth, iCloth2, iHair = the colours of the parts (aPart 0 skin, 1 cloth, 2 the outer piece, 3 hair; 4 the
 //   eyes: half the skin's colour, as EYE_SHADE in build_crowd.py; white eyes read as the dead, black ones as sharp
-//   slits: UX)
+//   slits: UX; 5 the men's beard: iFace.x of the way from the skin to the hair)
 //   iPlace = (x, y, z, yaw): where the person stands and which way they face; iScale = (breadth, height)
+//   iFace = (beard, the head's width, its depth): the head scaled round its joint (uHead); with the beards, faces that
+//   differ (UX: all the faces the same). One attribute for the three: WebGL gives a vertex 16 at least, and no more
 import {
   MeshDepthMaterial,
   MeshStandardMaterial,
   type DataTexture,
+  type Vector4,
   type WebGLProgramParametersWithUniforms,
 } from "three";
 import { fogUniforms } from "../shaderPatches";
@@ -24,6 +27,7 @@ export const NEAR = [0.45, 0.75]; // m
 const common = /* glsl */ `
 uniform highp sampler2D uBones;
 uniform float uTime;
+uniform vec4 uHead;
 attribute vec4 skinIndex;
 attribute vec4 skinWeight;
 attribute vec4 iClip;
@@ -31,6 +35,12 @@ attribute vec4 iPrev;
 attribute float iSwitch;
 attribute vec4 iPlace;
 attribute vec2 iScale;
+attribute vec3 iFace;
+vec3 crowdHead(vec3 p) {
+  vec4 on = vec4(equal(skinIndex, vec4(uHead.w)));
+  float w = dot(on, skinWeight);
+  return uHead.xyz + (p - uHead.xyz) * mix(vec3(1.0), vec3(iFace.y, 1.0, iFace.z), w);
+}
 vec3 crowdTurn(vec3 v) {
   float c = cos(iPlace.w);
   float s = sin(iPlace.w);
@@ -66,6 +76,7 @@ mat4 crowdSkin() {
 export type CrowdUniforms = {
   uBones: { value: DataTexture };
   uTime: { value: number };
+  uHead: { value: Vector4 }; // the head joint at rest (x, y, z) and the head bone's index
 };
 
 function patch(
@@ -75,6 +86,7 @@ function patch(
 ): void {
   sh.uniforms.uBones = u.uBones;
   sh.uniforms.uTime = u.uTime;
+  sh.uniforms.uHead = u.uHead;
   sh.vertexShader = sh.vertexShader.replace(
     "#include <common>",
     `#include <common>\n${common}`,
@@ -82,7 +94,7 @@ function patch(
   if (depth) {
     sh.vertexShader = sh.vertexShader.replace(
       "#include <begin_vertex>",
-      "mat4 crowdM = crowdSkin();\nvec3 transformed = crowdPlace( ( crowdM * vec4( position, 1.0 ) ).xyz );",
+      "mat4 crowdM = crowdSkin();\nvec3 transformed = crowdPlace( ( crowdM * vec4( crowdHead( position ), 1.0 ) ).xyz );",
     );
     return;
   }
@@ -94,11 +106,11 @@ function patch(
     )
     .replace(
       "#include <beginnormal_vertex>",
-      "mat4 crowdM = crowdSkin();\nvec3 objectNormal = crowdTurn( normalize( mat3( crowdM ) * normal ) );\nvNear = distance( cameraPosition.xz, ( modelMatrix * vec4( iPlace.xyz, 1.0 ) ).xz );\nvTint = aPart < 0.5 ? iSkin : aPart < 1.5 ? iCloth : aPart < 2.5 ? iCloth2 : aPart < 3.5 ? iHair : iSkin * 0.5;",
+      "mat4 crowdM = crowdSkin();\nvec3 objectNormal = crowdTurn( normalize( mat3( crowdM ) * normal ) );\nvNear = distance( cameraPosition.xz, ( modelMatrix * vec4( iPlace.xyz, 1.0 ) ).xz );\nvTint = aPart < 0.5 ? iSkin : aPart < 1.5 ? iCloth : aPart < 2.5 ? iCloth2 : aPart < 3.5 ? iHair : aPart < 4.5 ? iSkin * 0.5 : mix( iSkin, iHair, iFace.x );",
     )
     .replace(
       "#include <begin_vertex>",
-      "vec3 transformed = crowdPlace( ( crowdM * vec4( position, 1.0 ) ).xyz );",
+      "vec3 transformed = crowdPlace( ( crowdM * vec4( crowdHead( position ), 1.0 ) ).xyz );",
     );
   sh.fragmentShader = sh.fragmentShader
     .replace(

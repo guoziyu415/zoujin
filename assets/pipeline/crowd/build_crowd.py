@@ -9,9 +9,9 @@ the MakeHuman base mesh with the macro details below and the game_engine rig; th
 geometry (the tights for the upper body, the skirt for the robe) and the body under it cut away; decimated to about
 TARGET_TRIS; then the outer pieces copied from it and pushed outwards (short hair; the himation, the veil or the felt
 cap), their edges cut straight along planes; the arms brought down from MPFB's A pose and that made the rest pose (the
-crowd stands). Five parts per vertex (skin, cloth, the outer piece, hair, the eyes) that the runtime colours from the
-palette per instance (the eyes all dark). The third finger joints are merged into the second (card: one level fewer). Everything is fixed: two
-runs write the same bytes.
+crowd stands). Six parts per vertex (skin, cloth, the outer piece, hair, the eyes, the men's beard) that the runtime
+colours from the palette per instance (the eyes all dark, the beard between skin and hair). The third finger joints
+are merged into the second (card: one level fewer). Everything is fixed: two runs write the same bytes.
 
 Coordinates in the pack: three.js (Y up, the person facing +Z, their left at +X), metres.
 """
@@ -39,7 +39,10 @@ BODIES = [
     ("veil", {"gender": 0.0, "age": 0.5, "muscle": 0.45, "weight": 0.52, "height": 0.42}, 0.06, True),
     ("worker", {"gender": 1.0, "age": 0.6, "muscle": 0.68, "weight": 0.58, "height": 0.45}, 0.5, False),
 ]
-SKIN, CLOTH, OUTER, HAIR, EYE = 0, 1, 2, 3, 4
+SKIN, CLOTH, OUTER, HAIR, EYE, BEARD = 0, 1, 2, 3, 4, 5
+BEARDED = ("mantle", "worker")  # the men: the runtime gives each his own beard, from none to full (BEARD faces)
+BEARD_TOP = 0.15  # the beard's top edge this far under the crown (the upper lip)
+BEARD_BACK = 0.1  # and from the front of the face this far back (below the ears)
 EYES = ("helper-l-eye", "helper-r-eye")  # MPFB's eyeballs: the runtime gives them a dark iris colour
 EYE_SHADE = 0.5  # the eyes: the skin's colour this much darker, as the runtime's (three/crowd/shader.ts)
 ARMS_DOWN = math.radians(-38)  # MPFB's A pose has the arms ~48° out; the crowd's hang ~10° from the body
@@ -50,6 +53,8 @@ THUMB_FIST = math.radians(35)
 FOLDS, FOLD_DEPTH = 7, 0.035  # the himation's folds round the body, and their depth at the hem
 SKIRT_WELD = 0.03  # the himation's two pieces round the hips (from the tunic's two layers) joined this near
 MANTLE_WEIGHT_SMOOTH = 12  # passes smoothing the himation's bone weights over it
+VEIL_HALF = 0.15  # and ends at the shoulders, over neither arm (UX: the sides stood out like pads)
+VEIL_FILL = 0.08  # the veil falls straight from the ears this far, then lies on the shoulders (UX: not like pads)
 PILOS_HEIGHT = 0.045  # how far the worker's cap rises above the crown
 HAIR_SLOPE = 0.93  # the hairline drops this much per metre towards the back
 MANTLE_EDGE, MANTLE_SLOPE = (-0.2, 1.05), 1.25  # the himation's edge: (x, z) at the right hip, rising to the left
@@ -160,7 +165,7 @@ def build_costume(base, costume, hem, sleeves, neck):
     bpy.context.collection.objects.link(obj)
     for g in base.vertex_groups:
         obj.vertex_groups.new(name=g.name)
-    for _ in range(5):
+    for _ in range(6):
         out.materials.append(None)
     return obj, top
 
@@ -395,8 +400,8 @@ def add_pieces(obj, costume, top, dry=False):
                     drop = ear - v.co.z
                     if v.co.y > cy:
                         v.co.y = max(v.co.y, back - 0.1 * drop)
-                    if v.co.y > cy - 0.02:
-                        v.co.x = math.copysign(max(abs(v.co.x), side + 0.5 * drop), v.co.x)
+                    if v.co.y > cy - 0.02:  # down to the neck only: over the shoulders it lies on them
+                        v.co.x = math.copysign(max(abs(v.co.x), side + 0.5 * min(drop, VEIL_FILL)), v.co.x)
             smooth(verts, 2, 0.4)
         return shape
 
@@ -456,9 +461,11 @@ def add_pieces(obj, costume, top, dry=False):
         # the ears), down over the shoulders
         brow, chin, cheek, hem = top - 0.05, top - 0.27, -0.075, top - 0.38
         planes = [((0, 0, z), (0, 0, 1)) for z in (brow, chin, hem)] + [((0, cheek, 0), (0, 1, 0))]
-        grow(lambda f, c, bone: f.material_index != EYE and c.z > hem - 0.04 and bone not in ("lowerarm_l", "lowerarm_r"),
+        planes += [((x, 0, 0), (1, 0, 0)) for x in (-VEIL_HALF, VEIL_HALF)]
+        grow(lambda f, c, bone: f.material_index != EYE and c.z > hem - 0.04 and bone not in ARMS,
              planes,
-             lambda c: c.z > hem and (c.z > brow or c.z < chin or c.y > cheek), 0.018, OUTER, hood(top, chin))
+             lambda c: c.z > hem and abs(c.x) < VEIL_HALF and (c.z > brow or c.z < chin or c.y > cheek), 0.018, OUTER,
+             hood(top, chin))
     else:
         # the worker's low round felt cap on the crown, over the hair
         grow(lambda f, c, bone: head(f, bone) and c.z > top - 0.1, [((0, 0, top - 0.07), (0, 0, 1))],
@@ -469,6 +476,37 @@ def add_pieces(obj, costume, top, dry=False):
     bm.to_mesh(obj.data)
     bm.free()
     return 0
+
+
+def beard(obj, top):
+    """The men's lower face, under the upper lip and in front of the ears, as its own part (BEARD): the runtime colours
+    it between the skin and the hair per person, so the crowd's faces differ (UX: all the faces the same). Its edges cut
+    straight along two planes."""
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    dl = bm.verts.layers.deform.active
+    head_g = obj.vertex_groups["head"].index
+    face = [f for f in bm.faces if f.material_index == SKIN
+            and sum(v[dl].get(head_g, 0.0) for v in f.verts) / len(f.verts) > 0.5]
+    front = min(v.co.y for f in face for v in f.verts)
+    z0, y0 = top - BEARD_TOP, front + BEARD_BACK
+    near_edge = (  # only the faces along each edge (the planes go on for ever: more triangles)
+        lambda c: abs(c.z - z0) < 0.03 and c.y < y0 + 0.02,
+        lambda c: abs(c.y - y0) < 0.03 and c.z < z0 + 0.02,
+    )
+    for (co, no), by in zip((((0, 0, z0), (0, 0, 1)), ((0, y0, 0), (0, 1, 0))), near_edge, strict=True):
+        near = [f for f in face if f.is_valid and by(f.calc_center_median())]
+        bmesh.ops.bisect_plane(bm, geom=near + list({e for f in near for e in f.edges})
+                               + list({v for f in near for v in f.verts}),
+                               dist=1e-5, plane_co=Vector(co), plane_no=Vector(no))
+        face = [f for f in bm.faces if f.material_index == SKIN
+                and sum(v[dl].get(head_g, 0.0) for v in f.verts) / len(f.verts) > 0.5]
+    for f in face:
+        c = f.calc_center_median()
+        if c.z < z0 and c.y < y0:
+            f.material_index = BEARD
+    bm.to_mesh(obj.data)
+    bm.free()
 
 
 def stand(rig, obj):
@@ -618,7 +656,8 @@ def export(built, out_dir):
                    "assets/pipeline/crowd/build_crowd.py": script},
         "frame": "three.js: metres, +Y up, the person facing +Z, their left at +X",
         "layout": "per costume at offset: position f32x3, normal i16x3+pad (snorm), skinIndex u8x4, skinWeight u8x4 "
-                  "(sums to 255), part u8 (0 skin, 1 cloth, 2 outer piece, 3 hair, 4 eyes); then u16 indices at indexOffset",
+                  "(sums to 255), part u8 (0 skin, 1 cloth, 2 outer piece, 3 hair, 4 eyes, 5 beard); "
+                  "then u16 indices at indexOffset",
         "bones": skeleton,
         "costumes": costumes,
         "bytes": len(blob),
@@ -639,6 +678,7 @@ def preview(objs, path):
     }
     for cols in looks.values():
         cols.append(tuple(c * EYE_SHADE for c in cols[0]))  # the eyes
+        cols.append(cols[3])  # a full beard
     for k, o in enumerate(objs):
         o.location.x += (k - 1) * 0.9
     cam = bpy.data.objects.new("cam", bpy.data.cameras.new("cam"))
@@ -687,6 +727,8 @@ def main():
         decimate(obj, extra)
         neckline(obj, neck)
         add_pieces(obj, costume, top)
+        if costume in BEARDED:
+            beard(obj, top)
         stand(rig, obj)
         merge_third_joints(obj)
         bpy.data.objects.remove(base)
