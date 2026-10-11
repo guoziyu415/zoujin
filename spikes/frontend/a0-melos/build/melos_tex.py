@@ -27,8 +27,13 @@ O1 = (165, 115, 63)
 # went grey and blue-edged. melos_prep.py grades each part to these again after its dust and AO (PART_MEAN there).
 # UX's bands #8C7A5A and rope #93805F (saturation 36%) rendered at 38% in the noon talk shot, over UX's 25-30%;
 # at 28% they rendered at 17%, at 32% at 24% (the sky light greys the pale strands). The bands and rope keep UX's value
-# and hue at 33.5%
-PART_MEAN = {"bundle": (160, 141, 104), "bands": (140, 123, 93), "rope": (147, 129, 98)}  # #A08D68 #8C7B5D #938162
+# and hue at 33.5%.
+# UX round 6: at 17:30 the rope's lit side came out at 0.41 of the lit tunic beside it, and should be at least 1.5. UX's
+# round 4 colours are as light as the ochre tunic itself (linear luminance 0.20 against O1's 0.21), so no light can
+# make the rope brighter than the tunic. The rope now has W0's lightness (0.50, W0 0.52) and the bands most of it
+# (0.42: twisted corners of the bundle's cloth, handled), both at UX's hue. Under a sky that is no longer cyan the noon
+# sun warms them: at 26-29% they rendered at 37-39% (UX: 25-30%), so 21%
+PART_MEAN = {"bundle": (160, 141, 104), "bands": (186, 171, 147), "rope": (205, 189, 162)}  # #A08D68 #BAAB93 #CDBDA2
 K1 = (110, 74, 46)
 SOLE = (78, 52, 33)
 # keep in step with melos_clothes_v2.NEW_UV (that module needs bpy, so it is not imported here)

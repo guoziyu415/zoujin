@@ -25,9 +25,10 @@ $BPY melos_prep.py <melos.blend> <tex_dir from melos_tex.py> <out.blend>
   The tunic's shoulders are faded by the sun where the cloth faces up.
 - Skin normal map (new in v2; compress.mjs keeps it at 2048 on the high tier and 1024 on std): the larger relief in
   the colour map's own detail (a band-pass of its luminance). No pores (art-direction 5.1).
-- Ambient occlusion baked with Cycles (rest pose, the whole figure as occluder) and multiplied into the skin and
-  tunic colour maps: contact shadow under the rope, the bands, the bundle and the tunic's edges, and in the folds.
-  Not on the bands, rope and sandals themselves: their pieces share UV space, so one bake would land on another.
+- Ambient occlusion baked with Cycles (rest pose, the whole figure as occluder; the skin of the chest, back and upper
+  arms a second time with the arms down, as in the idle and talk poses, and the darker of the two kept) and
+  multiplied into the skin and tunic colour maps: contact shadow under the rope, the bands, the bundle and the
+  tunic's edges, and in the folds. Not on the bands, rope and sandals themselves: their pieces share UV space, so one bake would land on another.
 - Roughness per part (MPFB sets 0.7 everywhere); materials renamed as on the stand-in (skin, eyes, hair, ...):
   compress.mjs and the test page find the skin and the alpha-tested parts by material name.
 - Tunic: the wool (torso and skirt) unwrapped again, angle-based with a seam down his right side, and fitted into its
@@ -40,7 +41,8 @@ $BPY melos_prep.py <melos.blend> <tex_dir from melos_tex.py> <out.blend>
   the skirt, gathered under the rope and deepest at the hem. Turned into a normal map in the wool's UV space (slopes
   measured on the cloth, so the unwrap's stretching doesn't matter), blended (UDN) with melos_tex's weave; the
   valleys a little darker in the colour map, so the folds still read on tier B's 512 normal map.
-- Bundle, bands and rope graded to UX round 4's mean colours (melos_tex.PART_MEAN) after the dust and AO.
+- Bundle, bands and rope graded to their mean colours (melos_tex.PART_MEAN: UX round 4, the bands and rope lighter
+  since round 6) after the dust and AO.
 - Image paths cut down to the file name (the Mac build recorded absolute paths with the user name; the pixels are
   packed), then unused data purged.
 """
@@ -59,6 +61,8 @@ from mathutils import Quaternion
 from mathutils.bvhtree import BVHTree
 
 from melos_clothes_v2 import AXIS_Y, HEM_Z, KNEE_Z, NEW_UV, UV_MARGIN
+from melos_clothes_v4 import _body_weights
+from melos_clothes_v6 import rest_pose, talk_pose
 from melos_tex import PART_MEAN, match_mean
 
 src, tex_dir, out = sys.argv[-3:]
@@ -86,6 +90,12 @@ HAIR = (60, 40, 26)  # warm dark brown (UX round 2: warmer than v2's near black)
 DUST = (152, 134, 110)
 SUN_FADED = (196, 160, 116)
 AO = {"Body": (0.5, 0.06), "Tunic": (0.85, 0.08)}  # strength, distance (m)
+# the skin baked again with the arms down as in the idle and talk poses (UX round 6 B: the side of his chest in the
+# armhole read pale grey. Most of that was the sky's reflection on skin seen edge-on, which the AO in the colour map
+# can't touch). The occlusion that pose adds, on the chest, back and upper arms only, goes out as the skin's glTF
+# occlusion texture: three.js takes it off the light from the environment, its reflection included
+ARMS_DOWN_BONES = ("spine_", "clavicle_", "upperarm_")
+ARMS_DOWN_SIZE = 512
 HAIR_DROP = 0.010  # m off the top (UX round 4)
 HAIR_CURLS = 3  # cards copied onto the forehead (UX round 5: two or three)
 CURL_X = 0.05  # across the forehead only, not the temples
@@ -245,6 +255,31 @@ def darken(img, ao, strength):
     f = 1 - strength * (1 - np.clip(ao, 0, 1))
     px[..., :3] = to_srgb(to_lin(px[..., :3]) * f[..., None])
     img.pixels.foreach_set(px.ravel())
+
+
+def occlusion_texture(ob, ao, name, size):
+    """ao (0..1, rows bottom-up) as ob's glTF occlusion texture, at size x size: a "glTF Material Output" group with
+    an Occlusion input, which the exporter reads. Returns the share of texels it darkens by more than a tenth."""
+    a = np.asarray(Image.fromarray(np.asarray(ao, np.float32), "F").resize((size, size), Image.BILINEAR), np.float32)
+    img = bpy.data.images.new(name, size, size)
+    img.colorspace_settings.name = "Non-Color"
+    px = np.ones((size, size, 4), np.float32)
+    px[..., :3] = np.clip(a, 0, 1)[..., None]
+    img.pixels.foreach_set(px.ravel())
+    img.pack()
+    grp = bpy.data.node_groups.get("glTF Material Output")
+    if grp is None:
+        grp = bpy.data.node_groups.new("glTF Material Output", "ShaderNodeTree")
+        grp.interface.new_socket("Occlusion", in_out="INPUT", socket_type="NodeSocketFloat")
+    nt = ob.data.materials[0].node_tree
+    out = nt.nodes.new("ShaderNodeGroup")
+    out.node_tree = grp
+    t = nt.nodes.new("ShaderNodeTexImage")
+    t.image = img
+    sep = nt.nodes.new("ShaderNodeSeparateColor")
+    nt.links.new(t.outputs["Color"], sep.inputs["Color"])
+    nt.links.new(sep.outputs["Red"], out.inputs["Occlusion"])
+    return round(float((a < 0.9).mean()), 4)
 
 
 def simplify(ob):
@@ -616,7 +651,7 @@ def tunic_folds(ob, base, nrm_in, nrm_out):
 
 
 def grade_parts(ob, img):
-    """The bundle, bands and rope back to UX round 4's mean colours (PART_MEAN) after the dust and AO."""
+    """The bundle, bands and rope back to their mean colours (PART_MEAN) after the dust and AO."""
     px = image_pixels(img)
     out = {}
     for name, target in PART_MEAN.items():
@@ -728,7 +763,23 @@ bz = z_of(body)
 legs = face_mask(body, skin, lambda p: 0.5 * np.clip((KNEE_Z - bz[list(p.vertices)].mean()) / 0.42, 0, 1) ** 0.8, 6)
 mix_towards(skin, legs, DUST)
 OBJ["EyesLow"].hide_render = True  # the low eyes sit in the same place as the high ones
-darken(skin, bake_ao(body, min(2048, skin.size[0]), AO["Body"][1]), AO["Body"][0])
+ao_size = min(2048, skin.size[0])
+ao = np.clip(bake_ao(body, ao_size, AO["Body"][1]), 0, 1)
+talk_pose(OBJ["Rig"])
+ao_down = np.clip(bake_ao(body, ao_size, AO["Body"][1]), 0, 1)
+rest_pose(OBJ["Rig"])
+bw = _body_weights(body, OBJ["Rig"])
+
+
+def _upper(p):
+    return float(np.mean([bool(bw[i]) and max(bw[i], key=bw[i].get).startswith(ARMS_DOWN_BONES) for i in p.vertices]))
+
+
+upper = np.asarray(Image.fromarray(face_mask(body, skin, _upper, 4), "F").resize((ao_size, ao_size), Image.BILINEAR))
+added = np.clip(ao - ao_down, 0, 1) * upper
+report["arms_down_ao_texels"] = int((added > 0.1).sum())
+darken(skin, ao, AO["Body"][0])
+report["arms_down_occlusion"] = occlusion_texture(body, 1 - added, "skin_occlusion", ARMS_DOWN_SIZE)
 OBJ["EyesLow"].hide_render = False
 report["scalp_faces"] = scalp_tint(body, skin, img["Hair"])  # after the AO: the hair's cards darkened it unevenly
 report["curl_root_shadows"] = root_shadows(body, skin, curl_roots)

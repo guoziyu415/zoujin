@@ -119,6 +119,34 @@
 - **产品要一起改**（单独的 PR，附 17:30 第一屏改前、改后各一张给 UX 评审）：环境光加地面、照亮用的天空色、布的反光和背面、`THIN_SHADOW`。
 - 截图在项目文件夹 `frontend/spikes/a0-melos/shots/melos-v6/`。
 
+## 梅洛斯第六版（UX 第 6 轮评审后，2026-10-11）
+
+| 文件 | 下载 | 预算 | 面数 | 材质 | 形变 |
+|---|---|---|---|---|---|
+| 对话版 强机 `talk_high.glb` | **4.86 MB** | ≤ 6.5 MB | 39.1k | 5 | 65 |
+| 对话版 档 B `talk_std.glb` | **2.35 MB** | ≤ 4 MB | 25.3k | 5 | 65 |
+| 走动版 `walk.glb` | **0.32 MB** | ≤ 0.5 MB | 8.0k | 1 | 0 |
+| 共用动作 `anims.glb`（UAL 五段） | **0.25 MB** | ≤ 0.3 MB | — | — | — |
+
+- `build/melos_clothes_v6.py -- <v5 的输出> <out.blend>` 接在第五版后面跑：
+  - **腋下（B）**：正午他左边袖口里那块发白发灰的是胸侧的皮肤；旁边那道黑缝是从皮肤删掉的边上看进去，看到了短衣后片的里面。待机和说话的姿势里手臂放下，袖口比静止姿势张得大。现在按说话姿势，离上臂 7 cm 以内、肩关节往下 6 cm 以下的皮肤不删（25 个顶点，那个姿势里都还在布里面）。
+  - **腰绳的尖 V（C）**：是权重不匀：绳圈上有的点全跟骨盆，旁边的点一半跟脊椎，结有四分之一跟左大腿，待机姿势里各走各的。现在绳圈和结用下面那块布的权重，绕腰平滑过（288 个顶点重新分）。
+  - **两根绳头（C）**：重做，顺着鼓出的下摆垂下去，略弯，一长一短（15、12 cm），最后三分之一收细到一半，头是圆的；离下摆 4 mm，整根跟着结走。试过让下段跟着下摆走：下摆那里骨盆和大腿的权重混着，待机时大腿一动绳头就折成几段、中间陷进布里。
+- `build/melos_prep.py`：
+  - **腋下发白主要是天空的反光**：胸侧的皮肤从正面看是掠射，反射的环境光强，颜色图里烘的遮蔽管不到反射（关掉皮肤的反射，那块从 (96,62,44) 降到 (73,28,0)）。现在按手臂放下的姿势再烘一次皮肤的遮蔽，比静止姿势多出来的那部分（只在胸、背、上臂）作为皮肤的 glTF 遮蔽贴图导出（512，5 KB），three.js 用它同时压掉环境的漫射和反光。
+- `build/melos_tex.py`：**绳子和带子的底色**（`PART_MEAN`）。第 4 轮定的颜色和赭色短衣一样亮（线性亮度 0.20，O1 是 0.21），什么光下绳子都不会比短衣亮。现在绳子是 W0 的亮度（0.52），带子稍暗（0.42），色相照 UX 的，饱和度 21%。
+- `assets/pipeline/compress.mjs`：遮蔽贴图压成 KTX2（线性，每档都是 512）。
+- 测试页：
+  - **照亮场景用的天空**：第五版乘一个固定色，只对一个方向对，影子里朝上的面还是青的。现在每个方向的颜色按蓝红比挪到黑体轨迹上（最蓝 10000 K），亮度不变（拐点按挪之前的颜色算）。产品同样改（#69 第二版）。
+  - **影子调色**：冷色以前只压红，浅色在影子里就偏绿；现在红绿一起压。产品同样改。
+  - `?debug` 的钩子多给场景、调色、太阳、环境图，量的脚本用。
+- 实测（对话镜头，UX 第 6 轮的量法；全表在截图文件夹的 `measure.md`）：
+  - 17:30 影子里的 W0 小卡朝上 (102,97,95)、朝侧面 (109,99,90)，都是 R ≥ G；包袱露出的那一块 (61,52,30)（第 6 轮 (41,52,48)）。
+  - 17:30 腰绳最亮两成是旁边短衣的 2.94 倍（第 6 轮 0.41，要 ≥ 1.5）；带子加绳子对整件短衣 1.74 倍。
+  - 正午腋下皮肤 (94,56,30)，最暗处 (74,41,15)，黑缝没了；腰绳下沿没有蓝的像素。
+  - 正午带子饱和度 33%、腰绳 37%，比第 4 轮的 25〜30% 高，颜色图已经是 21%，再低就比 W0 还灰，留给 UX 定。
+- 截图在项目文件夹 `frontend/spikes/a0-melos/shots/melos-v7/`。
+
 ## 动作（2026-10-10）
 
 - 来源：Quaternius 的 Universal Animation Library 免费版（`UAL1_Standard.glb`，包里的 License.txt 写 CC0 1.0，不用账号）。zg 在 Mac 上下载，放在 `~/Developer/zoujin-art/anims/`，拷到项目文件夹 `frontend/spikes/a0-melos/mac/anims/`（sha256 69591853…4ed67997）。动作文件不进仓库。
@@ -198,7 +226,7 @@
 ## 文件
 
 - `assets/pipeline/`（真梅洛斯和以后的人物都用，不在这个目录）：`lod_export.py`（三个版本＋切头＋导出）、`compress.mjs`（KTX2＋meshopt＋法线检查）、`inspect.mjs`、`morphmem.mjs`。
-- `build/`：`mhload.py`（读 MakeHuman 数据）、`build_standin.py`（搭替身）、`anims.py`（占位动作：待机、走、跑）、`retarget.py`（把 UAL 的动作重定向到 MPFB 骨架，再改跑和冲刺的步幅）、`melos_clothes_v2.py` / `melos_clothes_v3.py` / `melos_clothes_v4.py` / `melos_clothes_v5.py`（衣服、包袱、带子、绳子；v4 是第 4 轮的穿模、腰、布边、肩上的结，v5 是第 5 轮的腰和包袱的结）、`melos_prep.py`、`melos_tex.py`、`preview.py`（Cycles 预览）、`gen_voice.py`（元音模板用的测试声音）、`gen_lines.py`（从 casting 录音剪三句台词）、`lipcheck.py`（离线口型检查）、`pack.py`（打包测试页）、`test_page.mjs`（无头浏览器自测）。
+- `build/`：`mhload.py`（读 MakeHuman 数据）、`build_standin.py`（搭替身）、`anims.py`（占位动作：待机、走、跑）、`retarget.py`（把 UAL 的动作重定向到 MPFB 骨架，再改跑和冲刺的步幅）、`melos_clothes_v2.py` / `melos_clothes_v3.py` / `melos_clothes_v4.py` / `melos_clothes_v5.py` / `melos_clothes_v6.py`（衣服、包袱、带子、绳子；v4 是第 4 轮的穿模、腰、布边、肩上的结，v5 是第 5 轮的腰和包袱的结，v6 是第 6 轮的腋下和腰绳）、`melos_prep.py`、`melos_tex.py`、`preview.py`（Cycles 预览）、`gen_voice.py`（元音模板用的测试声音）、`gen_lines.py`（从 casting 录音剪三句台词）、`lipcheck.py`（离线口型检查）、`pack.py`（打包测试页）、`test_page.mjs`（无头浏览器自测）。
 - `page/index.src.html`：测试页源文件（`/*MANIFEST*/` 由 pack.py 填）。
 - 减面和压缩报告、声音元数据（`reports/`）和截图（`shots/`）只在项目文件夹 `frontend/spikes/a0-melos/` 里，替身的生成物不进仓库。
 
