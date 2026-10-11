@@ -7,9 +7,10 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import Any, cast
 
 import pytest
+from zoujin_backend.gateway.fallback import FakeAudioTranscriber
 from zoujin_backend.gateway.monitor import NOTE_QUESTIONS, NOTE_SPOILER
 from zoujin_backend.models.live import Line
 
@@ -251,3 +252,21 @@ def test_a_plan_with_a_signal_pauses_without_using_a_try(env: Env, sliced: Servi
     p.connect(last_seq=p.last_seq)
     act_end = p.expect("welcome")["pending"]["actEnd"]
     assert act_end is not None and act_end["freeform"]["triesLeft"] == 2  # 幕末页照原样回来
+
+
+def test_a_fallback_final_goes_through_the_monitor(env: Env, inproc: Make, play: Play) -> None:
+    """B-10 的补转写定稿（Live 有声音没文字）也过输出侧监控（后端 3 在 #112 的评审）。"""
+    s = inproc(0.2)
+    s.live.textless = True
+    tr = cast(FakeAudioTranscriber, s.gw.transcriber)
+    tr.text = "メロスの身代わりになる者がおるそうじゃ。"  # 老爺此刻还不知道约定：「身代わり」是剧透
+    p = play(s)
+    p.focus(OLD)
+    t = p.text("ねえ。")
+    final = p.expect("transcript", turnId=t, speaker=OLD, final=True)
+    assert final["source"] == "fallback"
+    p.expect("turn_settled", turnId=t)
+    time.sleep(0.3)
+    m = metrics(env, p.pid)
+    assert (m["output_lines"], m["output_spoilers"]) == (1, 1)
+    assert [h["turn_id"] for h in s.gw.tracer.named("monitor.hit")] == [t]
