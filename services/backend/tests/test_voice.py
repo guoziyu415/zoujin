@@ -109,6 +109,83 @@ def test_lines_match_ux_design_16_2() -> None:
     }
 
 
+# ux-design 16.2 的表，切片以外的五个人物（M3）
+M3_LINES = {
+    "char.king": (["ふん。", "……ほう。", "続けよ。"], ["……聞こえぬ。", "はっきり申せ。"], "……しばし待て。"),
+    "char.selinuntius": (
+        ["うん。", "……そうか。", "なるほどな。"],
+        ["すまない、聞きそびれた。", "もう一度、ゆっくり話してくれ。"],
+        "少し、考えさせてくれ。",
+    ),
+    "char.sister": (
+        ["はい。", "……ええ。", "まあ。"],
+        ["ごめんなさい、よく聞こえなくて……", "もう一度、お願いします。"],
+        "ええと……少しだけ、待ってください。",
+    ),
+    "char.groom": (
+        ["はあ。", "ええ。", "……ふむ。"],
+        ["すみません、聞き取れませんでした。", "もう一度、言ってもらえますか。"],
+        "ちょっと待ってください。考えます。",
+    ),
+    "char.philostratus": (
+        ["はい。", "……さようで。", "ええ、ええ。"],
+        ["申し訳ございません、聞き取れませんでした。", "もう一度、お聞かせくださいまし。"],
+        "少々、お待ちくださいまし。",
+    ),
+}
+
+
+def draft_plan() -> Plan:
+    spec = read_spec("hashire-merosu")
+    spec["world"] = "1.0.0-draft"
+    return plan(spec, world_of(spec, REPO / "worlds"))
+
+
+def test_draft_world_adds_the_six_lines_of_the_other_five_characters() -> None:
+    """切片里只能和メロス、老爺说话，另外五个人的 6 句不录；草稿世界模型（M3）里七个人都录，声音按 D-025。"""
+    s, d = slice_plan(), draft_plan()
+    assert set(s.lines) == {"char.melos", "char.old-man"}
+    assert {k: (v["aizuchi"], v["unheard"], v["wait"][0]) for k, v in d.lines.items() if k in M3_LINES} == M3_LINES
+    assert set(d.lines) == {"char.melos", "char.old-man", *M3_LINES}
+    assert {sid: d.speakers[sid].voice for sid in M3_LINES} == {
+        "char.king": "Algieba",
+        "char.selinuntius": "Iapetus",
+        "char.sister": "Leda",
+        "char.groom": "Sadachbia",
+        "char.philostratus": "Rasalgethi",
+    }
+    assert len(d.recordings) == 7 * 6 + 1  # 草稿没有固定演出：6 句和 arrival_capped
+    assert len(d.refs) == 7 * 2
+    # 切片已录的照旧：签名一样，--resume 不重读
+    old = {r.id: cli.sig(r.speaker.voice, r.system, r.spoken) for r in s.recordings}
+    assert all(old[r.id] == cli.sig(r.speaker.voice, r.system, r.spoken) for r in d.recordings if r.id in old)
+    assert {r.id for r in d.recordings} - set(old) == {
+        f"{c.removeprefix('char.')}-{k}"
+        for c in M3_LINES
+        for k in ("aizuchi-1", "aizuchi-2", "aizuchi-3", "unheard-1", "unheard-2", "wait-1")
+    }
+    # 新人物没有自由对话的响度，等 UX 量了 ref 再定；王的 −16.3 只管收幕那两段
+    assert all(r.loudness is None for r in d.recordings if r.speaker.id in M3_LINES)
+    assert slice_plan().recording("king-king-asks-you-2").loudness == -16.3
+
+
+def test_world_flag_on_a_copy_of_the_slice_run_reads_only_the_five(tmp_path: Path) -> None:
+    """M3：切片那次目录的副本 --world 1.0.0-draft --resume，只读五个人的 6 句（相槌 6 遍，其余 3 遍）和 ref。"""
+    assert run_fake(tmp_path, FakeReader()) == 0
+    run = only_run(tmp_path)
+    again = FakeReader()
+    deps = cli.Deps(again, FakeTranscriber(again), audio.FakeEncoder())
+    assert cli.main(["--world", "1.0.0-draft", "--resume", str(run)], deps, {}) == 0
+    lines = {t: n for t, n in again.reads.items() if any(t in (*a, *u, w) for a, u, w in M3_LINES.values())}
+    assert sum(lines.values()) == 5 * (3 * 6 + 3 * 3)
+    assert set(again.reads) - set(lines)  # 另外的是 ref
+    voices = json.loads((run / "release" / "voices.json").read_text(encoding="utf-8"))
+    # 假声音按拍数定长度：三拍以上的相槌（「続けよ。」「なるほどな。」「……さようで。」「ええ、ええ。」）
+    # 过不了 0.5 秒，那个人整块不进清单（ux-design 16.2：真录也先量，超了 UX 改成两拍）
+    assert set(voices["characters"]) == {"char.melos", "char.old-man", "char.sister", "char.groom"}
+    assert voices["setPieceVoices"] == {}
+
+
 def test_readings_only_in_what_live_reads() -> None:
     r = slice_plan().recording("guards-gate-promise-3")
     assert r.text == PROMISE_3
