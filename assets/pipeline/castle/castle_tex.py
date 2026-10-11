@@ -23,7 +23,7 @@ fbm, colour, normal_from_height, mr, rng, norm01, value_noise = (
     pt.fbm, pt.colour, pt.normal_from_height, pt.mr, pt.rng, pt.norm01, pt.value_noise)
 
 # the high tier (castle.md 6.2): the polished floor, the plastered columns and walls, the curtains, the throne
-pt.HI = {"hallfloor", "plaster", "curtain", "throne"}
+pt.HI = {"hallfloor", "hallaxis", "plaster", "curtain", "throne"}
 
 
 def make(key):
@@ -44,14 +44,18 @@ def make(key):
         out["base"] = c
         out["nrm"] = normal_from_height(h, 3.0)
         out["mr"] = mr(np.clip(0.22 + 0.12 * grain + 0.5 * joint, 0, 1))
+    elif key == "hallaxis":
+        # the same stone a shade paler, for the band on the axis from the door to the steps (castle.md 3.1)
+        base = make("hallfloor")["base"]
+        out["base"] = np.clip(base * 1.45 + 0.03, 0, 1)
     elif key == "curtain":
-        # heavy wool, deep indigo, vertical pile and a faint woven band near the hem
+        # heavy wool, deep indigo (about #2B3550, castle.md 3.1), vertical pile and a faint woven band near the hem
         xx = np.mgrid[0:S, 0:S][1].astype(np.float32) / S
         yy = np.mgrid[0:S, 0:S][0].astype(np.float32) / S
         w = pt.weave(S, 220)
         streak = np.asarray(
             pt.Image.fromarray(value_noise(r, S, 96), "F").resize((S, 6)).resize((S, S), pt.Image.BICUBIC))
-        c = colour((34, 36, 74), (streak - 0.5) * 1.4 + (w - 0.5) * 0.4, w, 0.25)
+        c = colour((43, 53, 80), (streak - 0.5) * 1.4 + (w - 0.5) * 0.4, w, 0.25)
         band = (np.abs(yy - 0.9) < 0.02).astype(np.float32)
         c = c * (1 - 0.4 * band[..., None]) + np.array([0.2, 0.19, 0.3]) * 0.4 * band[..., None]
         out["base"] = c
@@ -98,6 +102,7 @@ pt.NEEDS = {
     "hill": ["base"],
     "cypress": ["base"],
     "hallfloor": ["base", "nrm", "mr"],
+    "hallaxis": ["base"],
     "curtain": ["base", "nrm", "mr"],
     "throne": ["base", "nrm", "mr"],
     "bronze": ["base", "mr"],

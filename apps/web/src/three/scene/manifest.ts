@@ -54,7 +54,7 @@ export type WaterEntry = {
 // the castle (F-14, assets/pipeline/castle/lamps.mjs): the lamps and the lamp-lit room, glTF coordinates
 export type LampEntry = {
   id: string;
-  kind: "chandelier" | "brazier";
+  kind: "chandelier" | "brazier" | "wall";
   indoor: boolean;
   pos: Vec3;
   flames: Vec3[];

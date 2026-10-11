@@ -20,6 +20,7 @@ mat, pbr, tex_exists = bl.mat, bl.pbr, bl.tex_exists
 # ---------------------------------------------------------------- materials (texture keys: castle_tex.py)
 M_FLAGS = pbr('floor', 'floor')           # named floor: the page's ambient ground colour reads materials.floor
 M_HALL = pbr('hallfloor', 'hallfloor')
+M_AXIS = mat('hallaxis', tex_exists('hallaxis_base'), tex_exists('hallfloor_nrm'), tex_exists('hallfloor_mr'))
 M_ASHLAR = pbr('ashlar', 'ashlar')
 M_PLASTER = mat('plaster', tex_exists('plaster_base'), tex_exists('plain_nrm'), tex_exists('plain_mr'))
 M_DADO = mat('dado', tex_exists('dado_base'), tex_exists('plain_nrm'), None, rough=0.8)
@@ -42,11 +43,13 @@ YARD_H = 8.0                                         # the courtyard's walls: th
 # ---------------------------------------------------------------- the ground
 def ground_mat(cx, cy, cz):
     inside = HALL_X[0] - WALL <= cx <= HALL_X[1] + WALL and abs(cy) <= HALL_Y + WALL
+    if inside and HALL_X[0] - WALL <= cx <= 10.0 and abs(cy) <= 1.0:
+        return 2   # the paler stone band on the axis, door to steps (castle.md 3.1)
     return 1 if inside else 0
 
 XS = lines((-34, 24, 1.0), extra=(HALL_X[0] - WALL, HALL_X[0], HALL_X[1], HALL_X[1] + WALL))
 YS = lines((-12, 16, 1.0), extra=(-HALL_Y - WALL, -HALL_Y, HALL_Y, HALL_Y + WALL))
-heightfield('ground', XS, YS, lambda x, y: 0.0, ground_mat, [M_FLAGS, M_HALL], 'ground', tile=3.0)
+heightfield('ground', XS, YS, lambda x, y: 0.0, ground_mat, [M_FLAGS, M_HALL, M_AXIS], 'ground', tile=1.2)
 
 
 # ---------------------------------------------------------------- far: the city below to the west, hills around
@@ -134,7 +137,7 @@ ROW_X = (-20.0, -17.5, -15.0, -12.5, -10.0)
 for x in ROW_X:
     column(f'col_n_{x}', x, 6.0, COL_H, 0.3)
     column(f'col_s_{x}', x, -6.0, COL_H, 0.3)
-for x in (-18.75, -16.25, -13.75, -11.25):              # the north portico's second row, on the mid-spans (layout)
+for x in ROW_X:                                         # the north portico's second row (the hostage's at x -12.5)
     column(f'col_n2_{x}', x, 8.0, COL_H, 0.28)
 for y in (-4.0, -2.0, 2.0, 4.0):
     column(f'col_w_{y}', -20.0, y, COL_H, 0.3)
@@ -149,7 +152,7 @@ for s in (1, -1):
 for x, xa, xb in ((-20.0, X0, -19.75), (-10.0, -10.25, X1)):
     box(f'beam_we{x}', x - 0.25, x + 0.25, -5.75, 5.75, COL_H, EAVE, M_ASHLAR, caster=True)
     box(f'ceil_we{x}', xa, xb, -5.75, 5.75, EAVE, EAVE + 0.25, M_PLASTER, caster=True, bottom=True)
-box('beam_n2', -19.0, -11.0, 7.75, 8.25, COL_H, EAVE, M_ASHLAR)
+box('beam_n2', -20.25, -9.75, 7.75, 8.25, COL_H, EAVE, M_ASHLAR)
 
 def lean_to(name, x0, x1, y_low, y_high, z_low, z_high):
     """a tiled roof plane from the eave line (y_low, z_low) up to the wall (y_high, z_high)"""
@@ -186,9 +189,9 @@ cyl('well', -15.0, 0.0, 0.0, 0.8, 0.9, 0.9, seg=20, m=M_ASHLAR, caster=True, cap
 HX0, HX1 = HALL_X
 WY = HALL_Y
 TOP = HALL_H + 0.6
-WIN_X = (0.5, 5.5, 10.5)       # high windows between the columns, both long walls
-WIN_Z = (6.0, 7.2)
-WIN_W = 1.2
+WIN_X = (-3.0, 1.0, 5.0, 9.0, 13.0)   # high windows, both long walls (castle.md 3.1)
+WIN_Z = (6.3, 7.5)
+WIN_W = 1.6
 
 for s in (1, -1):
     yi, yo = sorted((s * WY, s * (WY + WALL)))
@@ -205,11 +208,11 @@ for s in (1, -1):
     di, do = sorted((s * (WY - 0.03), s * WY))
     box(f'dado{s}', HX0, HX1, di, do, 0, 1.2, M_DADO)
 # east wall, with one high window over the curtain
-box('hallwall_e', HX1, HX1 + WALL, -WY - WALL, -0.6, 0, TOP, M_PLASTER, caster=True)
-box('hallwall_e2', HX1, HX1 + WALL, 0.6, WY + WALL, 0, TOP, M_PLASTER, caster=True)
-box('hallwall_e3', HX1, HX1 + WALL, -0.6, 0.6, 0, 6.2, M_PLASTER, caster=True)
-box('hallwall_e4', HX1, HX1 + WALL, -0.6, 0.6, 7.4, TOP, M_PLASTER, caster=True)
-box('shutter_e', HX1 + 0.25, HX1 + 0.4, -0.6, 0.6, 6.2, 7.4, M_SHUTTER, caster=True)
+box('hallwall_e', HX1, HX1 + WALL, -WY - WALL, -0.8, 0, TOP, M_PLASTER, caster=True)
+box('hallwall_e2', HX1, HX1 + WALL, 0.8, WY + WALL, 0, TOP, M_PLASTER, caster=True)
+box('hallwall_e3', HX1, HX1 + WALL, -0.8, 0.8, 0, 6.8, M_PLASTER, caster=True)
+box('hallwall_e4', HX1, HX1 + WALL, -0.8, 0.8, 7.6, TOP, M_PLASTER, caster=True)
+box('shutter_e', HX1 + 0.25, HX1 + 0.4, -0.8, 0.8, 6.8, 7.6, M_SHUTTER, caster=True)
 box('dado_e', HX1 - 0.03, HX1, -WY, WY, 0, 1.2, M_DADO)
 # west front with the 4 m door, 5 m high
 box('hallfront_s', HX0 - WALL, HX0, -WY - WALL, -2.0, 0, TOP, M_PLASTER, caster=True)
@@ -226,7 +229,7 @@ for s in (1, -1):
     box(f'doorleaf{s}', HX0 + 0.03, HX0 + 0.15, y0, y1, 0, 5.0, M_SHUTTER, caster=True)
 
 # ceiling, its beams, and the pitched tile roof over it
-box('hallceil', HX0 - WALL, HX1 + WALL, -WY - WALL, WY + WALL, HALL_H, TOP, M_PLASTER, caster=True, bottom=True)
+lintel('hallceil', HX0 - WALL, HX1 + WALL, -WY - WALL, WY + WALL, HALL_H, TOP, M_PLASTER)   # no top: no attic floor
 for x in (-3.5, 0.5, 5.5, 10.5, 14.5):
     box(f'hallbeam{x}', x - 0.2, x + 0.2, -WY, WY, HALL_H - 0.45, HALL_H, M_WOOD)
 
@@ -237,7 +240,9 @@ def pitched(name, x0, x1, y0, y1, z, ridge):
     r0, r1 = bm.verts.new((x0, (y0 + y1) / 2, ridge)), bm.verts.new((x1, (y0 + y1) / 2, ridge))
     bm.faces.new((a, b, r1, r0)); bm.faces.new((c, d, r0, r1))
     bm.normal_update(); bl.box_uv_bm(bm, 2.0)
-    bl.obj_from_bm(name, bm, [M_ROOF], 'arch', True)
+    # 'far': lit live, not on the navmesh (its 19° slopes would be a floor over the dais, and nav.mjs takes the first
+    # polygon over a nav root); the ceiling under it casts the hall's shadow
+    bl.obj_from_bm(name, bm, [M_ROOF], 'far')
     bm = bmesh.new()
     for xx, flip in ((x0, True), (x1, False)):
         vs = [bm.verts.new(v) for v in ((xx, y0, z), (xx, y1, z), (xx, (y0 + y1) / 2, ridge))]
@@ -250,16 +255,20 @@ pitched('hallroof', HX0 - WALL - 0.4, HX1 + WALL + 0.4, -WY - WALL - 0.4, WY + W
 # two rows of four columns, up to the ceiling
 for x in (-2.0, 3.0, 8.0, 13.0):
     for y in (-4.0, 4.0):
-        cyl(f'hallcol_{x}_{y}', x, y, 0.3, HALL_H - 0.5, 0.42, 0.38, seg=20, m=M_PLASTER, caster=True)
-        box(f'hallcol_{x}_{y}_base', x - 0.62, x + 0.62, y - 0.62, y + 0.62, 0, 0.3, M_ASHLAR)
-        box(f'hallcol_{x}_{y}_cap', x - 0.6, x + 0.6, y - 0.6, y + 0.6, HALL_H - 0.5, HALL_H - 0.2, M_ASHLAR)
+        cyl(f'hallcol_{x}_{y}', x, y, 0.3, 6.2, 0.4, 0.36, seg=20, m=M_PLASTER, caster=True)
+        box(f'hallcol_{x}_{y}_base', x - 0.58, x + 0.58, y - 0.58, y + 0.58, 0, 0.3, M_ASHLAR)
+        box(f'hallcol_{x}_{y}_cap', x - 0.55, x + 0.55, y - 0.55, y + 0.55, 6.2, 6.5, M_ASHLAR)
+for y in (-4.0, 4.0):   # the stone architrave on each row, carried to the end walls
+    box(f'architrave{y}', HX0, HX1, y - 0.45, y + 0.45, 6.5, 7.1, M_ASHLAR, caster=True)
 
 # the steps and the dais (three steps x 10..12, 0.9 m), the same polished stone
 for k in range(3):
-    box(f'step{k}', 10.0 + k * 2 / 3, HX1, -5.0, 5.0, 0, 0.3 * (k + 1), M_HALL, tile=3.0)
+    box(f'step{k}', 10.0 + k * 2 / 3, HX1, -3.4, 3.4, 0, 0.3 * (k + 1), M_HALL, tile=3.0)
+    box(f'stepedge{k}', 10.0 + k * 2 / 3 - 0.01, 10.0 + k * 2 / 3 + 0.06, -3.4, 3.4, 0.3 * (k + 1) - 0.04,
+        0.3 * (k + 1) + 0.005, M_AXIS)
 
 # the curtains: heavy folds behind the throne and either side of it on the east wall
-def curtain(name, x, y0, y1, z0, z1, depth=0.14, pitch=0.55):
+def curtain(name, x, y0, y1, z0, z1, depth=0.14, pitch=0.35):
     bm = bmesh.new()
     uvl = bm.loops.layers.uv.new('UVMap')
     n = max(2, int(round((y1 - y0) / pitch * 6)))
@@ -281,23 +290,23 @@ def curtain(name, x, y0, y1, z0, z1, depth=0.14, pitch=0.55):
     bm.normal_update()
     return bl.obj_from_bm(name, bm, [M_CURTAIN], 'arch', caster=False)
 
-curtain('curtain_throne', HX1 - 0.05, -4.2, 4.2, 0.9, HALL_H - 0.5)
-curtain('curtain_n', HX1 - 0.05, 4.8, 6.9, 0.0, HALL_H - 0.5)
-curtain('curtain_s', HX1 - 0.05, -6.9, -4.8, 0.0, HALL_H - 0.5)
-box('curtain_rod', HX1 - 0.35, HX1 - 0.25, -6.9, 6.9, HALL_H - 0.55, HALL_H - 0.45, M_BRONZE)
+curtain('curtain_throne', 15.6, -3.2, 3.2, 0.9, 6.4, depth=0.12, pitch=0.35)
+box('curtain_rod', 15.45, 15.55, -3.4, 3.4, 6.4, 6.5, M_BRONZE)
 
 
 # ---------------------------------------------------------------- the throne (its own node: not in the bake, not on the navmesh)
 def throne(x, y):
     z = 0.9
-    box('throne_seat', x - 0.4, x + 0.45, y - 0.55, y + 0.55, z, z + 0.48, M_THRONE, group='dyn')
-    box('throne_back', x + 0.45, x + 0.65, y - 0.6, y + 0.6, z, z + 2.6, M_THRONE, group='dyn')
-    box('throne_crest', x + 0.4, x + 0.7, y - 0.75, y + 0.75, z + 2.45, z + 2.7, M_BRONZE, group='dyn')
+    # castle.md 3.1: 1.6 m wide with the arms, 1.3 m deep, the seat 0.45 m and the back's top 1.9 m over the dais
+    box('throne_seat', x - 0.55, x + 0.5, y - 0.62, y + 0.62, z, z + 0.4, M_THRONE, group='dyn')
+    box('throne_cushion', x - 0.5, x + 0.48, y - 0.58, y + 0.58, z + 0.4, z + 0.47, M_CURTAIN, group='dyn')
+    box('throne_back', x + 0.5, x + 0.72, y - 0.62, y + 0.62, z, z + 1.78, M_THRONE, group='dyn')
+    box('throne_crest', x + 0.46, x + 0.76, y - 0.7, y + 0.7, z + 1.72, z + 1.9, M_BRONZE, group='dyn')
     for s in (1, -1):
-        y0, y1 = sorted((y + s * 0.55, y + s * 0.72))
-        box(f'throne_arm{s}', x - 0.45, x + 0.5, y0, y1, z, z + 0.85, M_THRONE, group='dyn')
-        box(f'throne_knob{s}', x - 0.5, x - 0.38, y0 - 0.02, y1 + 0.02, z + 0.78, z + 0.92, M_BRONZE, group='dyn')
-    box('throne_stool', x - 0.95, x - 0.45, y - 0.4, y + 0.4, z, z + 0.16, M_THRONE, group='dyn')
+        y0, y1 = sorted((y + s * 0.62, y + s * 0.8))
+        box(f'throne_arm{s}', x - 0.58, x + 0.72, y0, y1, z, z + 0.78, M_THRONE, group='dyn')
+        box(f'throne_knob{s}', x - 0.62, x - 0.5, y0 - 0.02, y1 + 0.02, z + 0.72, z + 0.86, M_BRONZE, group='dyn')
+    box('throne_stool', x - 1.05, x - 0.6, y - 0.4, y + 0.4, z, z + 0.16, M_THRONE, group='dyn')
 
 throne(*LAYOUT['spots']['king-throne']['at'])
 
@@ -321,7 +330,13 @@ def brazier(name, x, y, z):
         a = 2 * math.pi * k / 3 + 0.3
         rod(f'{name}_leg{k}', (x + 0.38 * math.cos(a), y + 0.38 * math.sin(a), 0.0),
             (x + 0.16 * math.cos(a), y + 0.16 * math.sin(a), z - 0.35), 0.03, M_BRONZE, group='far')
-    cyl(f'{name}_bowl', x, y, z - 0.4, z - 0.05, 0.16, 0.42, seg=18, m=M_BRONZE, group='far', cap=True, cap_mat=M_EMBER)
+    cyl(f'{name}_bowl', x, y, z - 0.25, z, 0.14, 0.3, seg=18, m=M_BRONZE, group='far', cap=True, cap_mat=M_EMBER)
+
+def wall_lamp(name, x, y, z):
+    """an oil lamp on an iron bracket out from the wall (y = ±7): dim, so the west half of the hall is not dead black"""
+    w = math.copysign(HALL_Y, y)
+    rod(f'{name}_bracket', (x, w, z - 0.25), (x, y, z - 0.05), 0.02, M_BRONZE, group='far', seg=5)
+    cyl(f'{name}_cup', x, y, z - 0.08, z + 0.02, 0.05, 0.09, seg=10, m=M_BRONZE, group='far', cap_mat=M_EMBER)
 
 def chandelier(name, x, y, z, cups, radius):
     seg = 24
@@ -346,9 +361,12 @@ for lamp in LAYOUT['lamps']:
             a = 2 * math.pi * (k + 0.5) / lamp['cups']
             light(f"{lamp['id']}_light{k}", x + lamp['radius'] * math.cos(a), y + lamp['radius'] * math.sin(a), z + 0.18,
                   lamp['watts'], 0.08)
+    elif lamp['kind'] == 'wall':
+        wall_lamp(lamp['id'], x, y, z)
+        light(f"{lamp['id']}_light", x, y, z + 0.2, lamp['watts'], 0.1)
     else:
         brazier(lamp['id'], x, y, z)
-        light(f"{lamp['id']}_light", x, y, z + 0.35, lamp['watts'], 0.3)
+        light(f"{lamp['id']}_light", x, y, z + 0.4, lamp['watts'], 0.3)
 
 
 # ---------------------------------------------------------------- the tower behind the hall's north-east corner

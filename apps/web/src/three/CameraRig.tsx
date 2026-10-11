@@ -118,7 +118,10 @@ export function CameraRig({ blockers }: { blockers: Object3D[] }) {
         .addScaledVector(right, portrait ? 0 : 0.35)
         .setY(face.y - (portrait ? 0.25 : 0.1));
     } else {
-      const f = portrait ? FOLLOW.portrait : FOLLOW.landscape;
+      const f = {
+        ...(portrait ? FOLLOW.portrait : FOLLOW.landscape),
+        ...rig.follow,
+      };
       fov = f.fov;
       // ease back behind the player while walking, unless the view was just dragged
       if (
