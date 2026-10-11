@@ -44,7 +44,7 @@ concurrency:
 jobs:
   world:
     name: unit tests, bundle budget, world screen e2e
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '["self-hosted","zoujin-mac"]') }}
     timeout-minutes: 45
     steps:
       # where the plaza gets built and the web app reads it (scene-dir.ts); the runner context isn't available in job env
@@ -73,8 +73,11 @@ jobs:
       - name: build the plaza (draft lightmaps) when the cache missed
         if: steps.scene.outputs.cache-hit != 'true'
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q --no-install-recommends libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1
+          # 自建机器（infra/ci-runner）的镜像里已经装好，那里也没有 sudo
+          if [ -z "${ZOUJIN_CI_PREINSTALLED:-}" ]; then
+            sudo apt-get update -q
+            sudo apt-get install -y -q --no-install-recommends libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1
+          fi
           uv venv --python 3.13 "$RUNNER_TEMP/bpy"
           uv pip install --python "$RUNNER_TEMP/bpy/bin/python" -r assets/pipeline/plaza/requirements.txt
           BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/plaza/build.sh draft "$ZOUJIN_SCENE_ROOT/syracuse-square"
@@ -85,7 +88,10 @@ jobs:
       - name: bundle budget (shell <= 120 KB, 3D chunk <= 250 KB, brotli)
         run: pnpm --filter @zoujin/web check:bundle
       - name: Chromium for Playwright
-        run: pnpm --filter @zoujin/web exec playwright install --with-deps chromium
+        # 系统依赖：自建机器的镜像里已经装好（没有 sudo），GitHub 自带的机器上用 --with-deps 装
+        run: |
+          if [ -n "${ZOUJIN_CI_PREINSTALLED:-}" ]; then deps=""; else deps="--with-deps"; fi
+          pnpm --filter @zoujin/web exec playwright install $deps chromium
       - name: e2e (world screen; app shell against the mock)
         run: pnpm --filter @zoujin/web e2e
       - name: screenshots for UX
