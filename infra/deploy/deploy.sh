@@ -124,14 +124,19 @@ proxy_up() {
   local adc="$HOME/.config/gcloud/application_default_credentials.json"
   [[ -f "$adc" ]] || die "没有应用默认凭证（$adc）"
   docker rm -f zj-sqlproxy >/dev/null 2>&1 || true
-  run docker run -d --rm --name zj-sqlproxy -p "127.0.0.1:$PROXY_PORT:5432" -v "$adc:/adc.json:ro" "$SQLPROXY_IMAGE" \
-    --address 0.0.0.0 --port 5432 --credentials-file /adc.json "$(conn)"
+  # --quota-project：zg 的应用默认凭证里的配额项目是别的项目，不改全局设置，代理调 API 时记到这个项目上。
+  # --run-connection-test：起来时先真连一次实例，连不上就退出；不加 --rm，退出了还能看日志。
+  run docker run -d --name zj-sqlproxy -p "127.0.0.1:$PROXY_PORT:5432" -v "$adc:/adc.json:ro" "$SQLPROXY_IMAGE" \
+    --address 0.0.0.0 --port 5432 --credentials-file /adc.json --quota-project "$P" --run-connection-test "$(conn)"
   local i
-  for ((i = 0; i < 30; i++)); do
-    nc -z 127.0.0.1 "$PROXY_PORT" 2>/dev/null && sleep 2 && return 0
+  for ((i = 0; i < 60; i++)); do
+    # Docker Desktop 的端口映射先通，nc -z 拦不住代理连不上；看代理自己说准备好了
+    docker logs zj-sqlproxy 2>&1 | grep -q "ready for new connections" && return 0
+    [[ "$(docker inspect -f '{{.State.Running}}' zj-sqlproxy 2>/dev/null)" == true ]] || break
     sleep 1
   done
-  die "Cloud SQL 代理没起来（docker logs zj-sqlproxy）"
+  docker logs --tail 20 zj-sqlproxy 2>&1 | sed "s/$P/<项目>/g" >&2 || true
+  die "Cloud SQL 代理没起来（上面是它最后 20 行日志）"
 }
 proxy_down() { docker rm -f zj-sqlproxy >/dev/null 2>&1 || true; }
 
