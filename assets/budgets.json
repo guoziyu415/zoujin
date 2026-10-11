@@ -18,7 +18,7 @@
     "tierMeanColourMaxDiff": 3
   },
   "scenes": {
-    "about": "Per pack, on top of scene (F-10, homeward-road stops): entryPackMb = the pack's own files, envTotalMb = the first visit with nothing cached (own + road-common). Set from the first final build with placeholder textures (river: own 2.34 / 2.26 MB, first visit 4.29 / 4.22 MB, road-common 1.96 MB) plus about 10%; the card's estimates were 1.8 and 4. Adjust when the CC0 scans and the F-2c iPhone numbers come. village (F-11 card, 〔推算〕): the pack's own files ≤ 3.5 MB, the first visit (own + the road-common files it uses) ≤ 5.7 MB, 50 draw calls; the shepherd boy's first screen, so with the characters and code within the 10 MB first entry. road-common grew with the village's wheat (F-11: 2.21 MB, 6.80 MB with the high tier): 2.4 / 7.0; each pack counts only the shared files it uses, so the river's first visit does not change.",
+    "about": "Per pack, on top of scene (F-10, homeward-road stops): entryPackMb = the pack's own files, envTotalMb = the first visit with nothing cached (own + road-common). Set from the first final build with placeholder textures (river: own 2.34 / 2.26 MB, first visit 4.29 / 4.22 MB, road-common 1.96 MB) plus about 10%; the card's estimates were 1.8 and 4. Adjust when the CC0 scans and the F-2c iPhone numbers come. village (F-11 card, 〔推算〕): the pack's own files ≤ 3.5 MB, the first visit (own + the road-common files it uses) ≤ 5.7 MB, 50 draw calls; the shepherd boy's first screen, so with the characters and code within the 10 MB first entry. road-common grew with the village's wheat (F-11: 2.21 MB, 6.80 MB with the high tier): 2.4 / 7.0; each pack counts only the shared files it uses, so the river's first visit does not change. castle-throne (F-14): not a first screen; one night bake (the lamps), the full lightmaps on top of the plaza's set; first final build with placeholder textures 3.16 MB (high 4.67) plus about 10%.",
     "road-common": {
       "entryPackMb": 2.4,
       "envTotalHighMb": 7.0
@@ -40,6 +40,12 @@
       "envTotalMb": 5.7,
       "envTotalHighMb": 12,
       "maxDrawCalls": 50
+    },
+    "castle-throne": {
+      "entryPackMb": 3.5,
+      "envTotalMb": 3.5,
+      "envTotalHighMb": 5.2,
+      "maxDrawCalls": 60
     }
   },
   "character": {

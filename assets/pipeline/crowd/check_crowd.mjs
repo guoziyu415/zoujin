@@ -1,6 +1,6 @@
 // CI gate for the crowd pack (F-4): the budgets (assets/budgets.json "crowd"), and a pack the runtime
 // (apps/web/src/three/crowd/pack.ts) can read: every offset inside crowd.bin, the weights of a vertex adding to 255,
-// bone and vertex indices in range, the parts 0-4.
+// bone and vertex indices in range, the parts 0-5.
 // node check_crowd.mjs <dir with crowd.json> [--manifest <committed crowd.json>]
 // With crowd.bin next to crowd.json (a fresh build) its size and sha256 are checked and every vertex is read; with
 // crowd.json alone (the committed manifest) the recorded numbers are checked, and the script it was built from must
@@ -79,7 +79,7 @@ if (fs.existsSync(bin)) {
           fail(`${name}: vertex ${v} bone ${buf[idx + v * 4 + k]}`);
       }
       if (sum !== 255) fail(`${name}: vertex ${v} weights add to ${sum}`);
-      if (buf[parts + v] > 4)
+      if (buf[parts + v] > 5)
         fail(`${name}: vertex ${v} part ${buf[parts + v]}`);
       if (errors.length > 20) break;
     }

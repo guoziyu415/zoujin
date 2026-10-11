@@ -1,0 +1,400 @@
+{
+  "about": "F-16: the characters build_cast.py makes from Melos's MPFB build. macro = MPFB macro details (age 0.1875 = 11 y, 0.5 = 25 y, 1 = 90 y); details = MPFB detail targets and their weights; height = metres, the whole figure scaled to it. Colours sRGB hex from the style guide palette (docs/ux/style-guide/README.md). garments: chiton (hem = m above the ground, sleeves none|short, bare = l|r for an exomis), himation (over = l|r shoulder, hem), cloak (shoulder cape, to = m below the neck), veil (over the head), apron, shoes (closed|sandals|none), band (diadem|wreath|scarf), staff.",
+  "palette": {
+    "W0": "#CBBDA3",
+    "L0": "#BDB39D",
+    "O1": "#A5733F",
+    "N1": "#5E4636",
+    "B1": "#4F6A7E",
+    "G1": "#6B6A45",
+    "A1": "#7E776C",
+    "K1": "#6E4A2E",
+    "P1": "#46304A",
+    "D1": "#4A4744",
+    "Y1": "#C89A3A",
+    "GOLD": "#C9A04A",
+    "MYRTLE": "#3F5A2E",
+    "FLEECE": "#D8CDB6"
+  },
+  "characters": {
+    "king": {
+      "id": "char.king",
+      "height": 1.82,
+      "macro": {
+        "gender": 1.0,
+        "age": 0.69,
+        "muscle": 0.5,
+        "weight": 0.36,
+        "height": 0.9,
+        "proportions": 0.75
+      },
+      "details": {
+        "head-oval": 0.5,
+        "head-scale-vert-incr": 0.25,
+        "neck-scale-vert-incr": 0.3,
+        "torso-scale-horiz-incr": 0.15,
+        "head-age-incr": 0.6
+      },
+      "skin": "#B89A86",
+      "hair": {
+        "style": "back",
+        "colour": "#5A5550",
+        "grey": 0.45,
+        "length": 0.012
+      },
+      "beard": {
+        "length": 0.012,
+        "colour": "#6A6560"
+      },
+      "brows": "#4A443F",
+      "garments": [
+        {
+          "kind": "chiton",
+          "colour": "D1",
+          "hem": 0.05,
+          "sleeves": "short"
+        },
+        {
+          "kind": "himation",
+          "colour": "P1",
+          "over": "l",
+          "hem": 0.12,
+          "heavy": true
+        },
+        {
+          "kind": "shoes",
+          "style": "closed",
+          "colour": "N1"
+        },
+        {
+          "kind": "band",
+          "style": "diadem",
+          "colour": "GOLD"
+        }
+      ],
+      "dust": 0.0,
+      "stone": 0.0
+    },
+    "selinuntius": {
+      "id": "char.selinuntius",
+      "height": 1.72,
+      "macro": {
+        "gender": 1.0,
+        "age": 0.43,
+        "muscle": 0.85,
+        "weight": 0.62,
+        "height": 0.45,
+        "proportions": 0.6
+      },
+      "details": {
+        "head-square": 0.5,
+        "torso-scale-horiz-incr": 0.45,
+        "measure-shoulder-dist-incr": 0.6,
+        "neck-scale-horiz-incr": 0.4
+      },
+      "skin": "#9A6A4C",
+      "hair": {
+        "style": "short",
+        "colour": "#3A2A1E",
+        "length": 0.008
+      },
+      "beard": {
+        "length": 0.01,
+        "colour": "#3A2A1E"
+      },
+      "brows": "#33251A",
+      "garments": [
+        {
+          "kind": "chiton",
+          "colour": "W0",
+          "grey": 0.25,
+          "hem": 0.5,
+          "sleeves": "short",
+          "bare": "l"
+        },
+        {
+          "kind": "shoes",
+          "style": "sandals",
+          "colour": "K1"
+        }
+      ],
+      "dust": 0.2,
+      "stone": 0.35
+    },
+    "sister": {
+      "id": "char.sister",
+      "height": 1.56,
+      "macro": {
+        "gender": 0.0,
+        "age": 0.3,
+        "muscle": 0.45,
+        "weight": 0.42,
+        "height": 0.35,
+        "proportions": 0.6
+      },
+      "details": {
+        "head-oval": 0.4
+      },
+      "skin": "#A97A58",
+      "hair": {
+        "style": "bun",
+        "colour": "#3A2618",
+        "length": 0.01
+      },
+      "brows": "#33221A",
+      "garments": [
+        {
+          "kind": "chiton",
+          "colour": "L0",
+          "hem": 0.06,
+          "sleeves": "short"
+        },
+        {
+          "kind": "veil",
+          "colour": "N1",
+          "scarf": true
+        },
+        {
+          "kind": "shoes",
+          "style": "sandals",
+          "colour": "K1"
+        }
+      ],
+      "dust": 0.25,
+      "stone": 0.0,
+      "variants": {
+        "sister-wedding": {
+          "garments": [
+            {
+              "kind": "chiton",
+              "colour": "Y1",
+              "hem": 0.04,
+              "sleeves": "short"
+            },
+            {
+              "kind": "veil",
+              "colour": "Y1",
+              "sheer": true
+            },
+            {
+              "kind": "band",
+              "style": "wreath",
+              "colour": "MYRTLE"
+            },
+            {
+              "kind": "shoes",
+              "style": "sandals",
+              "colour": "K1"
+            }
+          ],
+          "dust": 0.0
+        }
+      }
+    },
+    "groom": {
+      "id": "char.groom",
+      "height": 1.75,
+      "macro": {
+        "gender": 1.0,
+        "age": 0.47,
+        "muscle": 0.72,
+        "weight": 0.55,
+        "height": 0.55,
+        "proportions": 0.6
+      },
+      "details": {
+        "head-round": 0.4,
+        "neck-scale-horiz-incr": 0.3
+      },
+      "skin": "#8F6044",
+      "hair": {
+        "style": "curly",
+        "colour": "#2E2016",
+        "length": 0.012
+      },
+      "beard": {
+        "length": 0.006,
+        "colour": "#2E2016"
+      },
+      "brows": "#2A1E15",
+      "garments": [
+        {
+          "kind": "chiton",
+          "colour": "G1",
+          "hem": 0.48,
+          "sleeves": "short"
+        },
+        {
+          "kind": "cloak",
+          "colour": "W0",
+          "to": 0.42
+        },
+        {
+          "kind": "shoes",
+          "style": "sandals",
+          "colour": "K1"
+        }
+      ],
+      "dust": 0.3,
+      "stone": 0.0,
+      "variants": {
+        "groom-wedding": {
+          "garments": [
+            {
+              "kind": "chiton",
+              "colour": "L0",
+              "hem": 0.3,
+              "sleeves": "short"
+            },
+            {
+              "kind": "himation",
+              "colour": "W0",
+              "over": "l",
+              "hem": 0.35
+            },
+            {
+              "kind": "band",
+              "style": "wreath",
+              "colour": "MYRTLE"
+            },
+            {
+              "kind": "shoes",
+              "style": "sandals",
+              "colour": "K1"
+            }
+          ],
+          "dust": 0.05
+        }
+      }
+    },
+    "philostratus": {
+      "id": "char.philostratus",
+      "height": 1.74,
+      "macro": {
+        "gender": 1.0,
+        "age": 0.41,
+        "muscle": 0.55,
+        "weight": 0.3,
+        "height": 0.6,
+        "proportions": 0.6
+      },
+      "details": {
+        "head-triangular": 0.4,
+        "neck-scale-vert-incr": 0.2
+      },
+      "skin": "#9C6E50",
+      "hair": {
+        "style": "short",
+        "colour": "#2A1D14",
+        "length": 0.009
+      },
+      "brows": "#26190F",
+      "garments": [
+        {
+          "kind": "chiton",
+          "colour": "A1",
+          "hem": 0.5,
+          "sleeves": "short"
+        },
+        {
+          "kind": "shoes",
+          "style": "sandals",
+          "colour": "K1"
+        }
+      ],
+      "dust": 0.35,
+      "stone": 0.25
+    },
+    "apprentice": {
+      "id": "role.apprentice",
+      "height": 1.68,
+      "macro": {
+        "gender": 1.0,
+        "age": 0.33,
+        "muscle": 0.55,
+        "weight": 0.4,
+        "height": 0.45,
+        "proportions": 0.55
+      },
+      "details": {
+        "head-oval": 0.3
+      },
+      "skin": "#A07254",
+      "hair": {
+        "style": "short",
+        "colour": "#2C1E15",
+        "length": 0.01
+      },
+      "brows": "#281B12",
+      "garments": [
+        {
+          "kind": "chiton",
+          "colour": "A1",
+          "hem": 0.52,
+          "sleeves": "short"
+        },
+        {
+          "kind": "apron",
+          "colour": "K1",
+          "hem": 0.55
+        },
+        {
+          "kind": "shoes",
+          "style": "sandals",
+          "colour": "K1"
+        }
+      ],
+      "dust": 0.15,
+      "stone": 0.4
+    },
+    "shepherd-boy": {
+      "id": "role.shepherd-boy",
+      "height": 1.55,
+      "macro": {
+        "gender": 1.0,
+        "age": 0.26,
+        "muscle": 0.5,
+        "weight": 0.35,
+        "height": 0.3,
+        "proportions": 0.5
+      },
+      "details": {
+        "head-round": 0.3
+      },
+      "skin": "#94643F",
+      "hair": {
+        "style": "curly",
+        "colour": "#3A2818",
+        "length": 0.014
+      },
+      "brows": "#33231A",
+      "garments": [
+        {
+          "kind": "chiton",
+          "colour": "W0",
+          "grey": 0.15,
+          "hem": 0.5,
+          "sleeves": "none"
+        },
+        {
+          "kind": "cloak",
+          "colour": "FLEECE",
+          "to": 0.3,
+          "fleece": true
+        },
+        {
+          "kind": "shoes",
+          "style": "none",
+          "colour": "K1"
+        },
+        {
+          "kind": "staff",
+          "colour": "N1",
+          "length": 1.5
+        }
+      ],
+      "dust": 0.45,
+      "stone": 0.0
+    }
+  }
+}

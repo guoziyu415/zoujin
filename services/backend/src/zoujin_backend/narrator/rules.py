@@ -241,6 +241,11 @@ class _Judge:
         if who in (None, "player"):
             return True
         assert who is not None
+        if (self.turn.act or {}).get("kind") == "world":
+            # 世界推进（B-16）：人物在玩家不在的地方做事。行为者只要不是不在场；对象和行为者在同一个地点才碰得到
+            if absent(self.ix, self.state, who):
+                return False
+            return who == self.actor or self.where.get(who) == self.where.get(self.actor, self.ppl)
         if (self.turn.act or {}).get("kind") == "plan":
             # 幕末的打算（B-3）：说的是跳过的这段时间里要做的事，对象在玩家能去的地方就算碰得到（此刻不在场也算）
             return self.where.get(who) in reach(self.ix, self.state, self.cur)

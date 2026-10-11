@@ -80,6 +80,191 @@
         "durationMs": 2040
       },
       "cues": {}
+    },
+    "char.selinuntius": {
+      "aizuchi": [
+        {
+          "url": "/assets/voice/hashire-merosu/selinuntius-aizuchi-1.a5cc6d66.m4a",
+          "text": "うん。",
+          "durationMs": 370
+        },
+        {
+          "url": "/assets/voice/hashire-merosu/selinuntius-aizuchi-2.69848119.m4a",
+          "text": "うむ。",
+          "durationMs": 500
+        },
+        {
+          "url": "/assets/voice/hashire-merosu/selinuntius-aizuchi-3.8c327d6e.m4a",
+          "text": "ああ。",
+          "durationMs": 550
+        }
+      ],
+      "unheard": [
+        {
+          "url": "/assets/voice/hashire-merosu/selinuntius-unheard-1.1197f4d2.m4a",
+          "text": "すまない、聞きそびれた。",
+          "durationMs": 1790
+        },
+        {
+          "url": "/assets/voice/hashire-merosu/selinuntius-unheard-2.8c85ec5d.m4a",
+          "text": "もう一度、ゆっくり話してくれ。",
+          "durationMs": 2580
+        }
+      ],
+      "wait": {
+        "url": "/assets/voice/hashire-merosu/selinuntius-wait-1.d2747e23.m4a",
+        "text": "少し、考えさせてくれ。",
+        "durationMs": 2260
+      },
+      "cues": {}
+    },
+    "char.king": {
+      "aizuchi": [
+        {
+          "url": "/assets/voice/hashire-merosu/king-aizuchi-1.0c5aaa2b.m4a",
+          "text": "ふん。",
+          "durationMs": 360
+        },
+        {
+          "url": "/assets/voice/hashire-merosu/king-aizuchi-2.c4d6d300.m4a",
+          "text": "ほう。",
+          "durationMs": 510
+        },
+        {
+          "url": "/assets/voice/hashire-merosu/king-aizuchi-3.7b531019.m4a",
+          "text": "うむ。",
+          "durationMs": 430
+        }
+      ],
+      "unheard": [
+        {
+          "url": "/assets/voice/hashire-merosu/king-unheard-1.b2753d2d.m4a",
+          "text": "聞こえぬ。",
+          "durationMs": 910
+        },
+        {
+          "url": "/assets/voice/hashire-merosu/king-unheard-2.01c2f79f.m4a",
+          "text": "はっきり申せ。",
+          "durationMs": 1560
+        }
+      ],
+      "wait": {
+        "url": "/assets/voice/hashire-merosu/king-wait-1.e9b5477a.m4a",
+        "text": "……しばし待て。",
+        "durationMs": 1650
+      },
+      "cues": {}
+    },
+    "char.sister": {
+      "aizuchi": [
+        {
+          "url": "/assets/voice/hashire-merosu/sister-aizuchi-1.f1a68030.m4a",
+          "text": "はい。",
+          "durationMs": 410
+        },
+        {
+          "url": "/assets/voice/hashire-merosu/sister-aizuchi-2.afc85141.m4a",
+          "text": "……ええ。",
+          "durationMs": 430
+        },
+        {
+          "url": "/assets/voice/hashire-merosu/sister-aizuchi-3.9d3e5d95.m4a",
+          "text": "まあ。",
+          "durationMs": 530
+        }
+      ],
+      "unheard": [
+        {
+          "url": "/assets/voice/hashire-merosu/sister-unheard-1.ea534cd2.m4a",
+          "text": "ごめんなさい、よく聞こえなくて……",
+          "durationMs": 2040
+        },
+        {
+          "url": "/assets/voice/hashire-merosu/sister-unheard-2.a7307340.m4a",
+          "text": "もう一度、お願いします。",
+          "durationMs": 1670
+        }
+      ],
+      "wait": {
+        "url": "/assets/voice/hashire-merosu/sister-wait-1.3395ffee.m4a",
+        "text": "ええと……少しだけ、待ってください。",
+        "durationMs": 2960
+      },
+      "cues": {}
+    },
+    "char.groom": {
+      "aizuchi": [
+        {
+          "url": "/assets/voice/hashire-merosu/groom-aizuchi-1.0f7cc9df.m4a",
+          "text": "ああ。",
+          "durationMs": 510
+        },
+        {
+          "url": "/assets/voice/hashire-merosu/groom-aizuchi-2.db057ccc.m4a",
+          "text": "ええ。",
+          "durationMs": 430
+        },
+        {
+          "url": "/assets/voice/hashire-merosu/groom-aizuchi-3.8266e6ab.m4a",
+          "text": "……ふむ。",
+          "durationMs": 400
+        }
+      ],
+      "unheard": [
+        {
+          "url": "/assets/voice/hashire-merosu/groom-unheard-1.76872723.m4a",
+          "text": "すみません、聞き取れませんでした。",
+          "durationMs": 2520
+        },
+        {
+          "url": "/assets/voice/hashire-merosu/groom-unheard-2.d2dda298.m4a",
+          "text": "もう一度、言ってもらえますか。",
+          "durationMs": 2220
+        }
+      ],
+      "wait": {
+        "url": "/assets/voice/hashire-merosu/groom-wait-1.7e04ca97.m4a",
+        "text": "ちょっと待ってください。考えます。",
+        "durationMs": 2540
+      },
+      "cues": {}
+    },
+    "char.philostratus": {
+      "aizuchi": [
+        {
+          "url": "/assets/voice/hashire-merosu/philostratus-aizuchi-1.962ae4a7.m4a",
+          "text": "はい。",
+          "durationMs": 370
+        },
+        {
+          "url": "/assets/voice/hashire-merosu/philostratus-aizuchi-2.93d1382a.m4a",
+          "text": "はあ。",
+          "durationMs": 380
+        },
+        {
+          "url": "/assets/voice/hashire-merosu/philostratus-aizuchi-3.2fcd67b6.m4a",
+          "text": "ええ。",
+          "durationMs": 410
+        }
+      ],
+      "unheard": [
+        {
+          "url": "/assets/voice/hashire-merosu/philostratus-unheard-1.fa4e8265.m4a",
+          "text": "申し訳ございません、聞き取れませんでした。",
+          "durationMs": 2970
+        },
+        {
+          "url": "/assets/voice/hashire-merosu/philostratus-unheard-2.9bfbdc9f.m4a",
+          "text": "もう一度、お聞かせくださいまし。",
+          "durationMs": 2440
+        }
+      ],
+      "wait": {
+        "url": "/assets/voice/hashire-merosu/philostratus-wait-1.ab7b3912.m4a",
+        "text": "少々、お待ちくださいまし。",
+        "durationMs": 2000
+      },
+      "cues": {}
     }
   },
   "setPieceVoices": {

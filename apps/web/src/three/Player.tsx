@@ -5,11 +5,14 @@
 // puts the player (the snapshot, a commit's patch.player, a refused move) they stand, without walking.
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
-import { Raycaster, Vector2, Vector3, type Object3D } from "three";
+import { Group, Raycaster, Vector2, Vector3, type Object3D } from "three";
 import { play } from "../net/play";
 import { usePlayer } from "../stores/player";
 import { useWorld } from "../stores/world";
+import { castName } from "./cast/cast";
+import type { CastBody } from "./cast/CastBody";
 import { makeMannequin } from "./mannequin";
+import { useQuality } from "./quality/quality";
 import { NEAR_M, pickNear } from "./nearby";
 import { rig } from "./rig";
 import { planToWorld } from "./scene/frame";
@@ -35,7 +38,40 @@ const personAt = (o: Object3D | null): string | null => {
 export function Player({ scene }: { scene: LoadedScene }) {
   const { camera, gl } = useThree();
   const { nav, manifest } = scene;
-  const body = useMemo(() => makeMannequin(0.36), []);
+  // the player's role in its realistic body where F-16 built one (the apprentice, the shepherd boy), else the stand-in
+  const stand = useMemo(() => makeMannequin(0.36), []);
+  const body = useMemo(() => {
+    const g = new Group();
+    g.add(stand);
+    return g;
+  }, [stand]);
+  const cast = useMemo(
+    () => ({ body: null as CastBody | null, x: 0, z: 0 }),
+    [],
+  );
+  const roleId = useWorld((s) => s.world?.player.roleId ?? null);
+  useEffect(() => {
+    const name = roleId ? castName(roleId) : null;
+    if (!name || !roleId) return;
+    let live = true;
+    void import("./cast/CastBody").then(({ CastBody }) => {
+      if (!live) return;
+      cast.body = new CastBody(
+        gl,
+        name,
+        roleId,
+        body,
+        stand,
+        () => useQuality.getState().assetTier === "high",
+      );
+    });
+    return () => {
+      live = false;
+      cast.body?.dispose();
+      cast.body = null;
+      if (stand.parent !== body) body.add(stand);
+    };
+  }, [roleId, gl, body, stand, cast]);
 
   // the walk to a point / a person, shared by taps, 「近くの人」, the focus and the test hook
   const go = useMemo(() => {
@@ -417,6 +453,15 @@ export function Player({ scene }: { scene: LoadedScene }) {
     p.yaw += angleTo(p.yaw, wantYaw) * Math.min(1, TURN * dt);
     body.position.set(p.x, p.y, p.z);
     body.rotation.y = p.yaw;
+    if (cast.body) {
+      const v = dt > 0 ? Math.hypot(p.x - cast.x, p.z - cast.z) / dt : 0;
+      cast.body.update(dt, v, 0);
+    }
+    cast.x = p.x;
+    cast.z = p.z;
+    // down on one knee by someone sitting (castle.md 3.2); the stand-in just squats
+    body.scale.y +=
+      ((rig.crouch ? 0.62 : 1) - body.scale.y) * Math.min(1, dt * 6);
     if (moving) {
       const place = nav.placeOf(p.poly);
       nav.setPlayerPlace(place);

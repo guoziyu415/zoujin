@@ -211,7 +211,7 @@ export async function loadDetail(
   await Promise.all(jobs);
 }
 
-function textureLoader(
+export function textureLoader(
   scene: LoadedScene,
   renderer: WebGLRenderer,
   onBytes: (n: number) => void,

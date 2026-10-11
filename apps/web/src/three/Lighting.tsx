@@ -48,6 +48,7 @@ export const lightState = {
   night: 0,
   exposure: 1,
   faceExposure: 1,
+  zoneExposure: 1, // a lamp-lit room's own exposure (castle/HallLight.tsx), eased across the threshold
   sunDir: new Vector3(0, 1, 0),
   sunUp: true,
   direct: 0, // the sun's intensity after a scene's ridge (scene/extra.ts sets it; the test hook reads it)

@@ -2,6 +2,7 @@
 # 证明「一条命令跑通」；仓库里的清单要和这次是同一份输入；在另一个目录再生成一遍，两份清单逐字节一致（能复现）。
 # 正式档的光照图要约半小时，不在 CI 里烘。
 # 村子（F-11）同样，另查它用的共用路边包文件。
+# 王城（F-14）同样，一个包。
 # 刑场的群众（F-4）同样：查进仓库的群众包清单，从头生成两遍（MPFB 按钉住的提交现场取），逐字节一致，清单和仓库里的相同。
 name: assets
 
@@ -12,6 +13,7 @@ on:
       - "assets/pipeline/road/**"
       - "assets/pipeline/common/**"
       - "assets/pipeline/village/**"
+      - "assets/pipeline/castle/**"
       - "assets/pipeline/crowd/**"
       - "assets/scenes/**"
       - "assets/budgets.json"
@@ -25,6 +27,7 @@ on:
       - "assets/pipeline/road/**"
       - "assets/pipeline/common/**"
       - "assets/pipeline/village/**"
+      - "assets/pipeline/castle/**"
       - "assets/pipeline/crowd/**"
       - "assets/scenes/**"
       - "assets/budgets.json"
@@ -130,6 +133,43 @@ jobs:
           for f in road-river-calm/scene.json road-river-flood/scene.json road-common/pack.json road-river/scene.json road-river/index.json; do
             cmp "$RUNNER_TEMP/road/$f" "$RUNNER_TEMP/road2/$f"
           done
+
+  castle:
+    name: castle manifest, draft build from scratch
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '["self-hosted","zoujin-mac"]') }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: committed manifest
+        run: node assets/pipeline/plaza/check_scene.mjs assets/scenes/castle-throne
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: assets/pipeline/plaza/requirements.txt
+      - name: Blender as a Python module (bpy) and the X11/GL libraries it links
+        run: |
+          if [ -z "${ZOUJIN_CI_PREINSTALLED:-}" ]; then
+            sudo apt-get update -q
+            sudo apt-get install -y -q --no-install-recommends libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1
+          fi
+          uv venv --python 3.13 "$RUNNER_TEMP/bpy"
+          uv pip install --python "$RUNNER_TEMP/bpy/bin/python" -r assets/pipeline/plaza/requirements.txt
+      - name: build from scratch (draft lightmaps)
+        id: build
+        run: BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/castle/build.sh draft "$RUNNER_TEMP/castle"
+      - name: committed manifest built from the same inputs
+        run: node assets/pipeline/plaza/check_scene.mjs "$RUNNER_TEMP/castle/castle-throne" assets/scenes/castle-throne/layout.json --manifest assets/scenes/castle-throne/scene.json
+      - name: build again in another directory; the manifest must be byte-identical
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: |
+          BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/castle/build.sh draft "$RUNNER_TEMP/castle2"
+          cmp "$RUNNER_TEMP/castle/castle-throne/scene.json" "$RUNNER_TEMP/castle2/castle-throne/scene.json"
 
   crowd:
     name: crowd pack, built from scratch twice

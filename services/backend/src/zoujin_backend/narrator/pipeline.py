@@ -396,6 +396,8 @@ class Pipeline:
         """确定性规则，加效果的形状（不合契约 Effect 的按 R7 否决，免得提交时才出错）和行为者存在。"""
         hits = []
         bad_actor = cand.get("actor") not in ("player", *book.characters)
+        if cand.get("actor") == "system" and (turn.act or {}).get("kind") == "world":
+            bad_actor = False  # B-16：导演的环境变化（钟声、天色、城门）
         if bad_actor or any(self.schemas.effect_errors(e) for e in effects):
             hits.append(Hit(*FORM))
         return hits + judge(book.world, state, cand, effects, turn.rules)
@@ -633,6 +635,52 @@ class Pipeline:
         except CallFailed:
             return None
         return str(r.output["text"])
+
+    # 候选话语（B-21，ux-design 7.8）
+
+    async def suggest(
+        self,
+        book: Book,
+        state: SimState,
+        who: str,
+        spend: Spend,
+        *,
+        player: str | None = None,
+        reply: str | None = None,
+        actions: Sequence[str] = (),
+    ) -> list[Json] | None:
+        """玩家刚和 who 说完一轮（或刚走到他面前）：2〜3 个候选话语 `[{text, kind}]`。全是问句按不合格重发一次；
+        两次都不行返回 None（这一轮不出候选）。"""
+        if who not in book.characters:
+            return None
+        view = state_view(book, state)
+        request: Json = {
+            "worldModelVersion": book.version,
+            "character": who,
+            "persona": persona(book, state, who),
+            "situation": situation(book, state, who, view),
+            "player": player_card(book, state, who),
+            "actions": list(actions),
+        }
+        if player is not None or reply is not None:
+            request["turn"] = {"character": who, "player": player, "reply": reply}
+
+        def not_all_questions(out: Json) -> Mapping[str, Any] | None:
+            if all(x["kind"] == "ask" for x in out["items"]):
+                raise BadOutput("候选全是问句")
+            return {"candidate_count": len(out["items"])}
+
+        try:
+            r = await self.call(
+                "suggest",
+                request,
+                spend,
+                span={"world_model_version": book.version, "character": who},
+                extra=not_all_questions,
+            )
+        except CallFailed:
+            return None
+        return [{"text": str(x["text"]), "kind": str(x["kind"])} for x in r.output["items"]]
 
 
 def checker(model_ran: bool) -> str:

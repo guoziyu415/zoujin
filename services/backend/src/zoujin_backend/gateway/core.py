@@ -99,14 +99,52 @@ class NarratorClient(Protocol):
     async def run(self, pid: str) -> int: ...
 
 
-class HttpNarrator:
-    """本地走 HTTP（两个进程），形状按以后 Cloud Run 服务间调用的样子。transport 给测试接进程内的叙事者。"""
+class IdToken:
+    """Cloud Run 上调叙事者用的 OIDC 令牌（B-23）：受众是叙事者的地址，从元数据服务器拿网关服务账号的，
+    用 50 分钟换新。"""
 
-    def __init__(self, base_url: str, transport: httpx.AsyncBaseTransport | None = None) -> None:
+    REFRESH_S = 50 * 60
+
+    def __init__(self, audience: str, fetch: Callable[[str], str] | None = None) -> None:
+        self.audience = audience
+        self.fetch = fetch or _fetch_id_token
+        self._token = ""
+        self._at = 0.0
+        self._lock = asyncio.Lock()
+
+    async def __call__(self) -> str:
+        async with self._lock:
+            now = time.monotonic()
+            if not self._token or now - self._at > self.REFRESH_S:
+                self._token = await asyncio.to_thread(self.fetch, self.audience)
+                self._at = now
+            return self._token
+
+
+def _fetch_id_token(audience: str) -> str:  # pragma: no cover - 只在 Cloud Run 上
+    import google.auth.transport.requests
+    import google.oauth2.id_token
+
+    token: str = google.oauth2.id_token.fetch_id_token(google.auth.transport.requests.Request(), audience)  # type: ignore[no-untyped-call]
+    return token
+
+
+class HttpNarrator:
+    """本地走 HTTP（两个进程），部署时是 Cloud Run 服务间调用（token 给 OIDC 令牌）。
+    transport 给测试接进程内的叙事者。"""
+
+    def __init__(
+        self,
+        base_url: str,
+        transport: httpx.AsyncBaseTransport | None = None,
+        token: Callable[[], Awaitable[str]] | None = None,
+    ) -> None:
         self.client = httpx.AsyncClient(base_url=base_url, timeout=30.0, transport=transport)
+        self.token = token
 
     async def run(self, pid: str) -> int:
-        r = await self.client.post(f"/internal/v1/playthroughs/{pid}/run")
+        headers = {"Authorization": f"Bearer {await self.token()}"} if self.token is not None else None
+        r = await self.client.post(f"/internal/v1/playthroughs/{pid}/run", headers=headers)
         r.raise_for_status()
         return int(r.json()["processed"])
 
@@ -344,6 +382,8 @@ class Gateway:
         }
         if kinds.get(key) == "talk":
             msg["turnId"] = key
+        if kinds.get(key) == "world":  # B-16：在玩家面前的导演事件，一行地の文
+            msg["narration"] = list(results.get(key, {}).get("narration", []))
         if kinds.get(key) == "confirm":
             done = results.get(key, {})
             if done.get("turnId"):

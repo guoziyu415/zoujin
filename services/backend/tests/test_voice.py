@@ -117,9 +117,9 @@ def test_lines_match_ux_design_16_2() -> None:
 
 # ux-design 16.2 的表，切片以外的五个人物（M3）
 M3_LINES = {
-    "char.king": (["ふん。", "……ほう。", "続けよ。"], ["……聞こえぬ。", "はっきり申せ。"], "……しばし待て。"),
+    "char.king": (["ふん。", "ほう。", "うむ。"], ["聞こえぬ。", "はっきり申せ。"], "……しばし待て。"),
     "char.selinuntius": (
-        ["うん。", "……そうか。", "なるほどな。"],
+        ["うん。", "うむ。", "ああ。"],
         ["すまない、聞きそびれた。", "もう一度、ゆっくり話してくれ。"],
         "少し、考えさせてくれ。",
     ),
@@ -129,20 +129,20 @@ M3_LINES = {
         "ええと……少しだけ、待ってください。",
     ),
     "char.groom": (
-        ["はあ。", "ええ。", "……ふむ。"],
+        ["ああ。", "ええ。", "……ふむ。"],
         ["すみません、聞き取れませんでした。", "もう一度、言ってもらえますか。"],
         "ちょっと待ってください。考えます。",
     ),
     "char.philostratus": (
-        ["はい。", "……さようで。", "ええ、ええ。"],
+        ["はい。", "はあ。", "ええ。"],
         ["申し訳ございません、聞き取れませんでした。", "もう一度、お聞かせくださいまし。"],
         "少々、お待ちくださいまし。",
     ),
 }
 
 
-# 假声音下 6 句全过的人物（三拍以上的相槌超 0.5 秒的人整块不进清单）
-FAKE_CHARACTERS = {"char.melos", "char.old-man", "char.sister", "char.groom"}
+# 假声音下 6 句全过的人物（相槌超 0.5 秒的人整块不进清单；三拍以上的四句 UX 已换成两拍，七个人都过）
+FAKE_CHARACTERS = {"char.melos", "char.old-man", *M3_LINES}
 
 
 def draft_plan() -> Plan:
@@ -172,10 +172,10 @@ def test_all_seven_characters_have_their_six_lines() -> None:
     assert s.recording("king-aizuchi-1").loudness is None
 
 
-def test_draft_world_has_the_same_recordings_without_set_pieces() -> None:
-    """--world 1.0.0-draft：草稿没有固定演出，只有 6 句和 arrival_capped；同一句签名一样，换世界模型不重读。"""
+def test_draft_world_has_the_same_recordings_as_the_slice() -> None:
+    """--world 1.0.0-draft：W-2 起切片的固定演出写在完整版里，录音和切片一样多；同一句签名一样，换世界模型不重读。"""
     s, d = slice_plan(), draft_plan()
-    assert len(d.recordings) == 7 * 6 + 1
+    assert {r.id for r in d.recordings} == {r.id for r in s.recordings}
     old = {r.id: cli.sig(r.speaker.voice, r.system, r.spoken) for r in s.recordings}
     assert all(old[r.id] == cli.sig(r.speaker.voice, r.system, r.spoken) for r in d.recordings)
 
@@ -186,7 +186,7 @@ def test_resume_of_a_run_made_before_b6b_reads_only_the_five(tmp_path: Path) -> 
     src = repo / "services" / "backend" / "voice" / "hashire-merosu.json"
     spec = json.loads(src.read_text(encoding="utf-8"))
     for sid in M3_LINES:  # B-6b 之前的源文件
-        for k in ("lines", "scenes", "ref"):
+        for k in ("lines", "scenes", "ref", "breathyOk"):
             spec["speakers"][sid].pop(k, None)
     src.write_text(json.dumps(spec, ensure_ascii=False), encoding="utf-8")
     first = FakeReader()
@@ -199,8 +199,7 @@ def test_resume_of_a_run_made_before_b6b_reads_only_the_five(tmp_path: Path) -> 
     assert sum(lines.values()) == 5 * (3 * 6 + 3 * 3)
     assert set(again.reads) - set(lines)  # 另外的是 ref
     voices = json.loads((run / "release" / "voices.json").read_text(encoding="utf-8"))
-    # 假声音按拍数定长度：三拍以上的相槌（「続けよ。」「なるほどな。」「……さようで。」「ええ、ええ。」）
-    # 过不了 0.5 秒，那个人整块不进清单（ux-design 16.2：真录也先量，超了换成两拍）
+    # 假声音按拍数定长度，相槌超 0.5 秒的人整块不进清单（FAKE_CHARACTERS）
     assert set(voices["characters"]) == FAKE_CHARACTERS
     assert len(voices["setPieceVoices"]) == len(PIECE_KEYS)
 
@@ -365,6 +364,19 @@ def test_whispered_aizuchi_is_rejected() -> None:
     v = checks.judge("ああ。", {1: (ai_shape(0.35, pitched=0.07), "あっ"), 2: (ai_shape(0.33), "ああ")}, aizuchi=True)
     assert v.chosen == 2
     assert any("音高" in p for p in v.takes[0].problems)
+
+
+def test_breathy_ok_keeps_the_least_breathy_take_and_flags_it() -> None:
+    # 花婿「ああ。」重读了还是气声（12〜36%）：源文件 breathyOk 只对这一句收，挑最不气的一遍标给 UX，不再重读
+    takes = {1: (ai_shape(0.3, pitched=0.12), "ああ"), 2: (ai_shape(0.32, pitched=0.36), "ああ")}
+    assert checks.judge("ああ。", takes, aizuchi=True).chosen is None
+    v = checks.judge("ああ。", takes, aizuchi=True, breathy_ok=True)
+    assert v.chosen == 2 and "音高" in v.flags[0]
+    takes[3] = (ai_shape(0.33), "ああ")  # 有一遍不气的还是挑它
+    assert checks.judge("ああ。", takes, aizuchi=True, breathy_ok=True).chosen == 3
+    groom = [r for r in slice_plan().recordings if r.speaker.id == "char.groom"]
+    assert [r.id for r in groom if r.breathy_ok] == ["groom-aizuchi-1"]
+    assert not any(r.breathy_ok for r in slice_plan().recordings if r.speaker.id != "char.groom")
 
 
 def test_aizuchi_voiced_from_the_first_frame_is_flagged_and_the_other_take_preferred() -> None:
@@ -549,7 +561,8 @@ def test_rate_limit_stops_and_resume_continues_from_there(tmp_path: Path) -> Non
     )
     assert code == 0
     assert again.reads["おう。"] == 6  # 第 3 条从第 1 遍读起（相槌读 6 遍）
-    assert again.reads["うむ。"] == 5  # 第 1 条已经读过第 1 遍
+    # メロス的第 1 条已经读过第 1 遍；王和セリヌンティウス的相槌也有「うむ。」，各读 6 遍
+    assert again.reads["うむ。"] == 5 + 6 + 6
     assert (run / "release" / "voices.json").is_file()
 
 

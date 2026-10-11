@@ -25,6 +25,7 @@ from zoujin_worldsim import OCCURRED, SimState
 
 from zoujin_backend.models.live import Recent
 from zoujin_backend.models.prompts import text
+from zoujin_backend.narrator import roles
 from zoujin_backend.narrator.view import persona, player_card, situation, state_view
 from zoujin_backend.world import Book
 
@@ -125,6 +126,7 @@ def build(
         out += ["", "# 気をつけること"]
         out += [f"- {x}" for x in notes]
     out += ["", "# 話し相手", f"{me['name']}（{'顔見知り' if me['knownToYou'] else '初めて会う相手'}）"]
+    out += roles.brief_lines(book, state, who)  # B-19
     said = [r for r in recent if r.player or r.reply]
     if said:
         out += ["", "# さっきまでの会話"]

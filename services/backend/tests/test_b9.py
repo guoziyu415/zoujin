@@ -20,7 +20,7 @@ from sqlalchemy.pool import NullPool
 from zoujin_backend import eval_api
 from zoujin_backend.config import REPO, async_url
 from zoujin_backend.db.tables import PER_PLAYTHROUGH, endings, turns, utterances
-from zoujin_backend.models.text import FakeText, TextResult, record
+from zoujin_backend.models.text import FakeText, ReplayText, TextResult, record
 from zoujin_backend.narrator import ending as E
 
 from . import test_b3
@@ -273,7 +273,9 @@ def test_replay_fixture_is_the_fake_ending_recorded(game: Callable[..., Game], m
     class Recorder(FakeText):
         async def call(self, kind: str, request: Json) -> TextResult:
             r = await super().call(kind, request)
-            if kind == E.KIND:  # 来不及那条路上还有别的调用，只录结局的
+            # 来不及那条路上还有别的调用，只录结局、结局的模型检查和记忆（B-17：结局的请求里有没删的记忆，回放里
+            # 没有记忆的调用，记忆就写不出来，结局的请求对不上；B-16：选去处时的世界推进也要录，回放才走得到结局）
+            if kind in (E.KIND, E.CHECK_KIND, "memory", "world"):
                 calls.append(record(kind, request, r.output, recorded_at="2026-10-11T00:00:00.000Z"))
             return r
 
@@ -288,17 +290,97 @@ def test_replay_fixture_is_the_fake_ending_recorded(game: Callable[..., Game], m
     text = "".join(json.dumps(c, ensure_ascii=False, sort_keys=True) + "\n" for c in calls)
     if os.environ.get("ZJ_UPDATE_REPLAYS") == "1":
         REPLAYS.write_text(text, encoding="utf-8")
-    assert [(c["kind"], c["request"]["outcome"]["id"]) for c in calls] == [
+    assert [(c["kind"], c["request"]["outcome"]["id"]) for c in calls if c["kind"] not in ("memory", "world")] == [
         ("ending", "canon-reunion"),
+        ("ending-check", "canon-reunion"),
         ("ending", "too-late"),
+        ("ending-check", "too-late"),
     ]
-    assert "e1" in str(calls[0]["request"]["events"]) and "ev_" not in str(calls[0]["request"])  # 事件 ID 用别名
+    ending = next(c for c in calls if c["kind"] == E.KIND)
+    assert "e1" in str(ending["request"]["events"]) and "ev_" not in str(ending["request"])  # 事件 ID 用别名
     assert REPLAYS.read_text(encoding="utf-8") == text, "回放过期：ZJ_UPDATE_REPLAYS=1 重跑这条测试"
 
-    monkeypatch.setenv("ZJ_MODEL", "replay")
     again = game("sc.canon@beat.07", walked=True)
+    again.s.text = ReplayText(REPLAYS.parent)  # 只换文本模型：Model Armor 照旧用假的（记忆要过它）
     again.s.choose(CITY)
     again.s.advance(120)
     got = again.s.ending()
-    assert got["player"]["epilogue"][0]["sentence"] == calls[0]["response"]["epilogue"][0]["sentence"]
+    assert got["player"]["epilogue"][0]["sentence"] == ending["response"]["epilogue"][0]["sentence"]
     assert again.metrics()["ending_template"] is False
+
+
+# —— B-17：模型检查（backend-design 2.9 第 4 步）——
+
+
+def incoherent(times: int | None) -> list[Json]:
+    rule: Json = {"kind": E.CHECK_KIND, "output": {"coherent": False, "fields": ["epilogue[1]"]}}
+    if times is not None:
+        rule["times"] = times
+    return [rule]
+
+
+def test_b17_incoherent_once_is_rewritten(game: Callable[..., Game]) -> None:
+    """模型检查说讲不通：带 coherence 和字段重写一次；第二次讲得通就用它。"""
+    g = game("sc.canon@beat.07", walked=True)
+    g.s.choose(CITY)
+    fake = FakeText(rules=incoherent(1))
+    g.s.text = fake
+    to_sunset(g)
+    calls = [r for k, r in fake.calls if k == E.KIND]
+    assert len(calls) == 2 and calls[1]["problems"] == [{"rule": "coherence", "field": "epilogue[1]"}]
+    checks = [r for k, r in fake.calls if k == E.CHECK_KIND]
+    assert len(checks) == 2 and "ev_" not in str(checks[0]) and "e1" in str(checks[0]["events"])
+    assert [s["status"] for s in g.s.tracer.named(f"narrator.{E.CHECK_KIND}")] == ["rejected", "ok"]
+    m = g.metrics()
+    assert (m["ending_template"], m["ending_calls"]) == (False, 2)
+
+
+def test_b17_incoherent_twice_uses_the_template(game: Callable[..., Game]) -> None:
+    g = game("sc.canon@beat.07", walked=True)
+    g.s.choose(CITY)
+    g.s.text = FakeText(rules=incoherent(None))
+    to_sunset(g)
+    (done,) = g.s.tracer.named("narrator.ending.done")
+    assert (done["template"], done["calls"], done["failed_rules"]) == (True, 2, ["coherence"])
+
+
+def test_b17_check_errors_do_not_block(game: Callable[..., Game]) -> None:
+    """检查本身出错、超时：不拦，结局照用。"""
+    g = game("sc.canon@beat.07", walked=True)
+    g.s.choose(CITY)
+    g.s.text = FakeText(rules=[{"kind": E.CHECK_KIND, "error": "unavailable"}])
+    to_sunset(g)
+    assert [s["status"] for s in g.s.tracer.named(f"narrator.{E.CHECK_KIND}")] == ["skipped"]
+    assert g.metrics()["ending_template"] is False
+
+
+def test_b17_generated_variant_is_saved_and_shown(game: Callable[..., Game]) -> None:
+    """模型写了生成的世界结局：主张和最终状态一致、引用两个事件 → 存进 world.variant，API 的 outcomeId 是它。"""
+    g = game("sc.canon@beat.07", walked=True)
+    g.s.choose(CITY)
+    base = FakeText()
+
+    class Variant(FakeText):
+        async def call(self, kind: str, request: Json) -> TextResult:
+            r = await base.call(kind, request)
+            if kind != E.KIND:
+                return r
+            out = json.loads(json.dumps(r.output))
+            ids = [e["eventId"] for e in request["events"]][-2:]
+            hostage = request["finalVars"]["var.hostage.fate"]
+            out["variant"] = {
+                "id": "gen.friends-walk-home",
+                "title": "ふたりは並んで帰った",
+                "summary": "友は柱から下ろされ、ふたりは並んで市を出た。",
+                "claims": [{"var": "var.hostage.fate", "value": hostage}],
+                "cites": ids,
+            }
+            return TextResult(out, r.kind, r.model, r.prompt_version, r.usage, r.cost_usd)
+
+    g.s.text = Variant()
+    to_sunset(g)
+    got = g.s.ending()
+    SCHEMAS.ending(got)
+    assert got["world"]["variant"]["id"] == "gen.friends-walk-home"
+    assert len(got["world"]["variant"]["causedBy"]) == 2 and got["world"]["outcome"] == "canon-reunion"
+    assert g.metrics()["ending_template"] is False

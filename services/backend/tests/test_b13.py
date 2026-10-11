@@ -125,6 +125,18 @@ def test_small_talk_leaves_an_impression_on_the_one_spoken_to(env: Env, monkeypa
     assert s.memories("char.melos") == [] and s.trust(OLD) == 0
 
 
+def test_small_talk_keeps_one_impression_per_character_per_act(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
+    """同一幕里连着闲聊：印象只留一条，后来的用 updated 改它（数据定的合并规则，UX 的 R1 前要求）。"""
+    s = session(env, monkeypatch)
+    first = s.say(OLD, "こんにちは。")
+    second = s.say(OLD, "いい天気ですね。")
+    (m,) = s.memories(OLD)
+    assert m["kind"] == "impression" and m["trustDelta"] == 0
+    assert m["fromEvents"] == [e["eventId"] for e in first["events"] + second["events"]]
+    (change,) = result_of(env, second["traceId"])["memories"]
+    assert change["change"] == "updated" and change["memoryId"] == m["memoryId"]
+
+
 def test_a_rejected_turn_writes_nothing(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
     """被否决的候选：不写记忆，也不调写记忆的模型（E6-009）。"""
     s = session(env, monkeypatch, {"kind": "check", "fail": {"rule": "R5-persona"}})
@@ -511,4 +523,9 @@ def test_after_deleting_he_no_longer_knows_what_he_learned_in_that_turn(
     gone, st = asyncio.run(look())
     assert gone == {fact}
     system = brief.build(BOOK, st, OLD, memories=[], forgotten=gone).system
+    system = without_aid(system)  # B-19 的开局互助一句（世界模型的，「…家まで送る」）不算
     assert statement not in system and "家まで送る" not in system and "なかったこと" not in system
+
+
+def without_aid(system: str) -> str:
+    return "\n".join(x for x in system.splitlines() if not x.startswith("相手があなたにしてくれそうなこと："))

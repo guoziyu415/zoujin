@@ -1,14 +1,19 @@
-// The scene's characters (frontend-design 8.3, 8.6), grey stand-ins until A-0's people come in: standing on the spots
+// The scene's characters (frontend-design 8.3, 8.6), the realistic ones where F-16 built them (cast/CastBody.ts: grey
+// stand-ins until their files arrive, and for everyone not built yet): standing on the spots
 // the server gives (world.characters[id].place / spot / activity). A new spot is a story move: they walk there on the
 // navmesh, or run when the activity says so; leaving the scene they walk to the nearest exit spot (way.*) first.
 // Picked by the player they stop and face them until the conversation ends (ux-design 6.5). Crowds (group: true) are
 // F-4's; "absent" isn't drawn. Moving about on the spot (8.6 表演走動) comes with the real characters' animations.
 import type { Api } from "@zoujin/contracts";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import { Group } from "three";
 import { usePlayer } from "../stores/player";
 import { useWorld } from "../stores/world";
+import { levels } from "../audio/engine";
+import { useQuality } from "./quality/quality";
+import { castName } from "./cast/cast";
+import type { CastBody } from "./cast/CastBody";
 import { makeMannequin } from "./mannequin";
 import type { NavPoint } from "./nav/navmesh";
 import { rig } from "./rig";
@@ -20,6 +25,7 @@ const TURN = 6; // rad/s
 
 type Person = {
   obj: Group;
+  body: CastBody | null; // the realistic body (F-16), once its code has loaded
   at: NavPoint;
   yaw: number;
   spot: string;
@@ -37,6 +43,7 @@ const drawn = (c: Api.CharacterPresence) =>
 
 export function People({ scene }: { scene: LoadedScene }) {
   const { nav, manifest } = scene;
+  const gl = useThree((s) => s.gl);
   const group = useMemo(() => new Group(), []);
   const people = useMemo(() => new Map<string, Person>(), []);
 
@@ -61,13 +68,33 @@ export function People({ scene }: { scene: LoadedScene }) {
     };
     const remove = (id: string) => {
       const p = people.get(id);
-      if (p) group.remove(p.obj);
+      if (p) {
+        group.remove(p.obj);
+        p.body?.dispose();
+      }
       people.delete(id);
     };
-    const walk = (p: Person, to: NavPoint, run: boolean) => {
-      const path = nav.findPath(p.at, to, true);
-      p.path = path ? path.slice(1) : [to];
-      p.speed = run ? RUN : WALK;
+    const walk = (
+      p: Person,
+      id: string,
+      spot: string,
+      to: NavPoint,
+      run: boolean,
+      entering = false,
+    ) => {
+      const r = rig.route?.(id, spot, entering);
+      p.path = [];
+      let from = p.at;
+      const goals = (r?.via ?? []).map(([x, z]) =>
+        nav.locate(x, z, from.poly, from.y, true),
+      );
+      for (const goal of [...goals, to]) {
+        if (!goal) continue;
+        const path = nav.findPath(from, goal, true);
+        p.path.push(...(path ? path.slice(1) : [goal]));
+        from = goal;
+      }
+      p.speed = r?.speed ?? (run ? RUN : WALK);
     };
     const sync = (chars: Record<string, Api.CharacterPresence>) => {
       for (const c of Object.values(chars)) {
@@ -78,38 +105,60 @@ export function People({ scene }: { scene: LoadedScene }) {
           continue;
         }
         if (!p) {
-          const obj = makeMannequin(0.3);
+          const obj = new Group();
+          const stand = makeMannequin(0.3);
+          obj.add(stand);
           obj.name = c.id;
           obj.userData.character = c.id;
           group.add(obj);
-          people.set(c.id, {
+          // a staged entrance (castle.md 4): they come on at its start spot and walk to theirs
+          const from = rig.route?.(c.id, c.spot!, true)?.from;
+          const start = from ? pointAt(from) : null;
+          const np: Person = {
             obj,
-            at: target[0],
-            yaw: target[1],
+            body: null,
+            at: (start ?? target)[0],
+            yaw: (start ?? target)[1],
             spot: c.spot!,
             path: [],
             speed: WALK,
             endYaw: target[1],
             leaving: false,
-          });
+          };
+          people.set(c.id, np);
+          if (start) walk(np, c.id, c.spot!, target[0], false, true);
+          const name = castName(c.id);
+          if (name)
+            void import("./cast/CastBody").then(({ CastBody }) => {
+              if (people.get(c.id) !== np) return;
+              np.body = new CastBody(
+                gl,
+                name,
+                c.id,
+                obj,
+                stand,
+                () => useQuality.getState().assetTier === "high",
+              );
+            });
           continue;
         }
         p.leaving = false;
         if (p.spot === c.spot) continue;
         p.spot = c.spot!;
         p.endYaw = target[1];
-        walk(p, target[0], c.activity === "run");
+        walk(p, c.id, c.spot!, target[0], c.activity === "run");
       }
       // left the scene (3.4: their place isn't one of this scene's): out by the nearest exit
       for (const [id, p] of people) {
         if (chars[id] || p.leaving) continue;
         let best: NavPoint | null = null;
+        let bestSpot = "";
         let bestD = Infinity;
         for (const e of manifest.exits) {
           const at = pointAt(e.spot)?.[0];
           if (!at) continue;
           const d = Math.hypot(at.x - p.at.x, at.z - p.at.z);
-          if (d < bestD) [best, bestD] = [at, d];
+          if (d < bestD) [best, bestSpot, bestD] = [at, e.spot, d];
         }
         if (!best) {
           remove(id);
@@ -117,7 +166,7 @@ export function People({ scene }: { scene: LoadedScene }) {
         }
         p.leaving = true;
         p.endYaw = null;
-        walk(p, best, false);
+        walk(p, id, bestSpot, best, false);
       }
     };
     sync(useWorld.getState().world?.characters ?? {});
@@ -129,7 +178,7 @@ export function People({ scene }: { scene: LoadedScene }) {
       off();
       for (const id of [...people.keys()]) remove(id);
     };
-  }, [nav, manifest, group, people]);
+  }, [nav, manifest, group, people, gl]);
 
   useFrame((_, dtRaw) => {
     group.visible = !rig.staged; // the ending's staging plays its own people (ending/Staging.tsx)
@@ -137,6 +186,7 @@ export function People({ scene }: { scene: LoadedScene }) {
     const dt = Math.min(0.05, dtRaw);
     const focus = usePlayer.getState().focusCharacter;
     for (const [id, p] of people) {
+      const was = p.at;
       let want = p.yaw;
       if (id === focus || id === rig.talkTo || id === rig.talking) {
         // the player's picked them: stop where they are and face the player
@@ -167,6 +217,7 @@ export function People({ scene }: { scene: LoadedScene }) {
         if (!p.path.length) {
           if (p.leaving) {
             group.remove(p.obj);
+            p.body?.dispose();
             people.delete(id);
             continue;
           }
@@ -176,6 +227,13 @@ export function People({ scene }: { scene: LoadedScene }) {
       p.yaw += angleTo(p.yaw, want) * Math.min(1, TURN * dt);
       p.obj.position.set(p.at.x, p.at.y, p.at.z);
       p.obj.rotation.y = p.yaw;
+      const talking = id === rig.talking;
+      if (p.body) {
+        p.body.setTalking(talking || id === rig.talkTo);
+        const speed =
+          dt > 0 ? Math.hypot(p.at.x - was.x, p.at.z - was.z) / dt : 0;
+        p.body.update(dt, speed, talking ? levels.mouth : 0);
+      }
     }
   }, -4);
 

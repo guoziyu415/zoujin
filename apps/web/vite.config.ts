@@ -1,5 +1,6 @@
 // Vite for the web front end (frontend-design 3). Besides React, the 3D layer needs a scene's generated files at
-// /scenes/<slug>/ (not in git; scene-dir.ts says where they are): served in dev and preview, copied into dist on build.
+// /scenes/<slug>/ and the characters at /cast/ (not in git; scene-dir.ts says where they are): served in dev and preview,
+// copied into dist on build.
 // The manifest's pack URLs carry a version first (/scenes/<8 hex>/<slug>/…, B-7): locally that segment is dropped.
 // three's KTX2Loader brings its Basis transcoder itself (new URL(..., import.meta.url)), so Vite hashes it into assets.
 // The API (/v1, its WebSocket, B-1's /__mock controls and the prerecorded voice files) goes to the mock or a local
@@ -11,9 +12,9 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Connect, Plugin, Rollup } from "vite";
 import { defineConfig } from "vite";
-import { sceneDir } from "./scene-dir.ts";
+import { castDir, sceneDir } from "./scene-dir.ts";
 
-// the plaza, the road's river (F-10: its two packs, the shared roadside pack and the index that picks a pack by act)
+// the plaza, the castle (F-14), the road's river (F-10: its two packs, the shared roadside pack and the index that picks a pack by act)
 // and the village (F-11)
 const SCENES = [
   "syracuse-square",
@@ -22,6 +23,7 @@ const SCENES = [
   "road-river-flood",
   "road-river",
   "village",
+  "castle-throne",
 ];
 const TYPES: Record<string, string> = {
   ".json": "application/json",
@@ -40,8 +42,10 @@ function resolveUnder(dir: string, rel: string): string | null {
 }
 
 function runtimeFiles(): Plugin {
-  const mounts = (): [string, string][] =>
-    SCENES.map((s) => [`/scenes/${s}/`, sceneDir(s)]);
+  const mounts = (): [string, string][] => [
+    ...SCENES.map((s): [string, string] => [`/scenes/${s}/`, sceneDir(s)]),
+    ["/cast/", castDir()],
+  ];
   const serve: Connect.NextHandleFunction = (req, res, next) => {
     for (const [prefix, dir] of mounts()) {
       const url = req.url?.replace(/^\/scenes\/[0-9a-f]{8}\//, "/scenes/");
@@ -80,7 +84,7 @@ function runtimeFiles(): Plugin {
       for (const [prefix, dir] of mounts()) {
         if (!fs.existsSync(dir)) {
           this.warn(
-            `${dir} missing: run assets/pipeline/plaza/build.sh (dist has no ${prefix})`,
+            `${dir} missing: run ${prefix === "/cast/" ? "assets/pipeline/cast" : "assets/pipeline/plaza"}/build.sh (dist has no ${prefix})`,
           );
           continue;
         }
@@ -140,6 +144,32 @@ function serviceWorker(): Plugin {
 }
 
 // React Compiler on the screens and the HUD; not on the 3D layer (react-three-fiber frames, and the 3D chunk's budget)
+// r3f's Canvas registers every three.js class as a JSX element (extend(THREE) on `import * as THREE`), so nothing of
+// three.js can be left out of the build; it registers src/three/catalogue.ts instead, the classes our JSX uses
+// (the 3D chunk 249 -> 217 KB brotli). Build only: the dev server's prebundled r3f keeps the whole namespace, and
+// catalogue.test.ts keeps the list complete. An r3f that no longer has the line fails the build here.
+function threeCatalogue(): Plugin {
+  const from = "import * as THREE from 'three';";
+  const to = `import * as THREE from ${JSON.stringify(path.resolve(import.meta.dirname, "src/three/catalogue.ts"))};`;
+  return {
+    name: "zoujin-three-catalogue",
+    apply: "build",
+    transform(code, id) {
+      if (
+        !/@react-three[\\/]fiber[\\/]dist[\\/]react-three-fiber\.esm\.js$/.test(
+          id,
+        )
+      )
+        return null;
+      if (!code.includes(from) || !code.includes("extend(THREE)"))
+        this.error(
+          `${id}: r3f's Canvas changed, see threeCatalogue in vite.config.ts`,
+        );
+      return { code: code.replace(from, to), map: null };
+    },
+  };
+}
+
 const compiler = reactCompilerPreset();
 compiler.rolldown.filter = {
   ...compiler.rolldown.filter,
@@ -159,6 +189,7 @@ export default defineConfig({
     babel({ presets: [compiler] }),
     runtimeFiles(),
     serviceWorker(),
+    threeCatalogue(),
   ],
   build: {
     manifest: true,
@@ -169,7 +200,7 @@ export default defineConfig({
         // after the plaza, the dev panel, the e2e hook) would otherwise split it into pieces compressed one by one
         // (about 3 KB more brotli). Only the listed modules, not their dependencies (react stays in the shell); the lazy
         // ones stay out (the road's extras and water, the act-end page's prefetch, the ending's staging, the crowd past
-        // its presence check, the team's tools in dev/).
+        // its presence check, the realistic characters' bodies, the castle's lamps, the start probe, the team's tools in dev/).
         codeSplitting: {
           groups: [
             {
@@ -181,7 +212,7 @@ export default defineConfig({
                 )
                   ? !id.includes("libs/basis")
                   : /[\\/]src[\\/]three[\\/]/.test(id) &&
-                    !/scene[\\/](extra|land|clouds|prefetch)|[\\/](water|dev)[\\/]|ending[\\/](?!Guard)|crowd[\\/](?!presence)/.test(
+                    !/scene[\\/](extra|land|clouds|prefetch)|quality[\\/]probe|[\\/](water|dev|castle)[\\/]|cast[\\/]CastBody|ending[\\/](?!Guard)|crowd[\\/](?!presence)/.test(
                       id,
                     ),
             },

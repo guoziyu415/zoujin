@@ -799,6 +799,12 @@
         "name": {
           "type": "string"
         },
+        "shortName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8,
+          "description": "（1.14）短い名前（日语，≤ 8 字）：幕末页去处副题的前半「{地点}・{日子}の{时段}」用它，省略 = 用 name"
+        },
         "description": {
           "type": "string"
         },
@@ -1035,6 +1041,11 @@
             "$ref": "#/$defs/BeatVariant"
           },
           "description": "（1.4）到点发生时，按这一局的状态换成另一种演法"
+        },
+        "arriveBefore": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "（1.14）参与人物比本局排定时间早几分钟到这个节拍的地点（归途的停靠点：梅洛斯先到，玩家看得见他在那里）；省略 = 到点才到"
         },
         "cite": {
           "type": "array",
@@ -1596,6 +1607,41 @@
             "$ref": "#/$defs/ActExit"
           },
           "description": "幕末去处；最后一幕为空，收幕即进入结局"
+        },
+        "endLines": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "when": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Condition"
+                },
+                "description": "这一局的状态要满足；省略 = 总是"
+              },
+              "line": {
+                "type": "string",
+                "minLength": 1,
+                "description": "日语，地の文"
+              }
+            },
+            "required": ["line"],
+            "additionalProperties": false
+          },
+          "description": "（1.15，UX copy-ja 6.1）幕末页的第一行：按顺序取第一条 when 满足的；都不满足（例：节拍被改写）由叙事者写。只写玩家此刻能知道的事"
+        },
+        "closingLine": {
+          "type": "string",
+          "minLength": 1,
+          "description": "（1.15，UX copy-ja 6.1、ux-design 4.3）幕快结束时服务端下发的一行预告（日语）"
+        },
+        "stops": {
+          "type": "array",
+          "items": {
+            "$ref": "common.schema.json#/$defs/PlaceId"
+          },
+          "description": "（1.14，S-081）本幕梅洛斯停下来的地点（归途的停靠点）。跟着他的玩家（companionOf = char.melos）在别的地点随他一起移动；他离开停靠点时不带玩家。省略 = 没有停靠点"
         },
         "plan": {
           "type": "object",

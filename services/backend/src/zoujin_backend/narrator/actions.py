@@ -58,7 +58,7 @@ class Decision:
     affordance: Json | None = None
     checked: list[Checked] = field(default_factory=list)
     minutes: int = 0  # 情境动作的 minutes、go 的路程、提取的动作的 situationalMinMinutes
-    beat: str | None = None  # wait 跳到的节拍
+    beat: str | None = None  # wait 跳到的节拍（None：这个地点没有节拍了，等到收幕）
     at: int = 0  # 它的排定时刻
     counts: Counts = field(default_factory=Counts)
     narration: str | None = None
@@ -174,7 +174,13 @@ async def decide(
     if kind == "wait" and aff is None:
         sched = schedule(book, state)
         beat = next_beat(book, state, sched)
-        return Decision("wait", kind, None, ok=beat is not None, beat=beat, at=sched.get(beat or "", 0))
+        if beat is None:
+            # 这个地点在收幕前没有节拍了：等到收幕（atLatest），途中的节拍照常结算；不然只能靠说话一轮轮推时间
+            end = book.acts[book.act_of(state["vars"])]
+            limit = int(end["end"]["atLatest"]) if end.get("exits") else None
+            ok = limit is not None and state["t"] < limit
+            return Decision("wait", kind, None, ok=ok, at=limit or 0)
+        return Decision("wait", kind, None, beat=beat, at=sched[beat])
     if kind == "go":
         dest = exit_place(book, state, target)
         if dest is None:
@@ -293,7 +299,7 @@ def write(w: Writer, book: Book, turn_id: str, d: Decision) -> Outcome:
         if not d.ok:
             status, failed = "refused", ["R7-capability"]
     elif d.kind == "wait":
-        if d.ok and d.beat is not None:
+        if d.ok:
             w.settle(d.at, stop_after=d.beat)
         else:
             status, failed = "refused", ["R2-precondition"]

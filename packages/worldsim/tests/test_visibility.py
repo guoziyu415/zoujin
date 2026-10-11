@@ -14,7 +14,7 @@ WORLD: dict[str, Any] = json.loads((WORLD_DIR / "world.json").read_text(encoding
 ROLE = "role.traveler"
 WEDDING = "place.melos-home"  # 婚礼（beat.11、13），scene.village
 GROOM = "place.groom-house"  # scene.village
-RAIN = "beat.12"  # 大雨：没有参与人物，落在 place.village（scene.village）
+RAIN = "beat.12"  # 大雨：没有参与人物，W-2 起落在 place.melos-home（scene.village）
 
 
 def at(place: str) -> SimState:
@@ -31,12 +31,12 @@ def beat_event(drafts: list[Any], beat: str) -> dict[str, Any]:
 
 
 def test_the_rain_reaches_the_wedding() -> None:
-    """契约 1.12 的例子：玩家在婚礼上（place.melos-home），beat.12 的大雨落在 place.village。两个地点都在
-    scene.village，算看见了：settle 在大雨的系统事件里给玩家写 learn，后端照同一条规则把它推给玩家。"""
-    drafts, s = settle(WORLD, at(WEDDING), 3660)
+    """契约 1.12 的规则：beat.12 的大雨（W-2 起落在婚礼的 place.melos-home），玩家在同一场景的花婿家（place.groom-house）
+    也算看见了：settle 在大雨的系统事件里给玩家写 learn，后端照同一条规则把它推给玩家。"""
+    drafts, s = settle(WORLD, at(GROOM), 3660)
     rain = beat_event(drafts, RAIN)
-    assert rain["place"] == "place.village" and rain["place"] != WEDDING
-    assert sees(WORLD, WEDDING, rain)
+    assert rain["place"] == WEDDING and rain["place"] != GROOM
+    assert sees(WORLD, GROOM, rain)
     assert {"op": "learn", "character": "player", "fact": "fact.storm"} in rain["effects"]
     assert knows(WORLD, s, "player", "fact.storm")
 

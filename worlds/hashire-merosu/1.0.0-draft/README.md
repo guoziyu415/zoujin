@@ -143,6 +143,22 @@ uv run python -I packages/worldsim/reference/check_evals.py --world worlds/hashi
 - `clock.onDeadline` 第一条加「有人质」：原来约定没立成的局，期限一到也把人质设成 `executed`，分进「間に合わなかった」，可是没有人被处刑（后端 B-9 评审第 4 题）。改了以后这种局 5 类都不成立；现在所有情景都立了约，推演结果不变。
 - `beat.26`（王の改心）的前提加「王还没改心」（`var.king.disposition != reformed`，S-087 的 UX 评审）：刑场以前王的信赖已经过了 70、先放了人质的局，刑场上不再演一次改心和「わしの心に勝った」。改心的局照样按 `var.king.disposition` 分类，现在所有情景都不会提前改心，推演结果不变。
 
+## W-2 补的（契约 1.14，完整世界模型）
+
+- 归途（S-081）：第二幕停靠点 `Act.stops` = 川，第四幕 = 川、峠、泉（野の道是并肩跑的一段）；梅洛斯先到停靠点 `Beat.arriveBefore`：峠 beat.19 20 分、泉 beat.20 5 分、野の道 beat.22 10 分（数据 10-10 给 UX 的数）。川有可调查物 `obj.river-water`（「川を見る」，位置点 `melos-bridgehead`），桥被冲走（beat.17）以后看是 `piece.river-flood`，第二幕由叙事者说。
+- 地点短名 `Place.shortName`：メロスの家、川、泉、野の道、広場、工房（幕末页副题的前半，1.15 照 copy-ja §7.1 把石工の仕事場改成工房）。
+- 切片的城门、工房、刑场收幕固定演出和工房屋门搬进来（切片照抄，生成物不变）；注音加「微笑ん」「市へ続く野の道」「野の道」。
+- 去处：`exit.2.village` 落在 `place.melos-home`（以前落在村子，赶不上 beat.08 和「婚礼は明日」）；加 `exit.2.vigil`、`exit.3.vigil`（人质还被押着、玩家守着他 → 留在王城）；`exit.1.road` 把梅洛斯移到泉；第四幕场景加王座之间。
+- 节拍：beat.07 出发时梅洛斯移到市へ続く野の道（以前守夜的玩家零点还在王城看见他）；beat.12 大雨落在 `place.melos-home`；beat.s1 加变体 `beat.s1.v-you`（人质是玩家：玩家被带到刑场，セリヌンティウス不上柱子）。
+- `role.guard` 改名「警吏の見習い」。
+- 王城的位置点（王座之间的布局 F-14 已进仓库）：beat.04 梅洛斯 `before-king`、beat.06 セリヌンティウス `selinuntius-meet`、beat.07 他被押到 `hostage-column`，三个 vigil 去处落在 `hostage-near`。村子的位置点（beat.08〜14 的 relocate spot、`exit.2.village` 的 `road-arrive`）等村子的布局（F-11）进仓库再写：build_world 按布局查位置点。
+
+## UX 文案（契约 1.15，copy-ja v1.0 §6.1、§7.1）
+
+- 9 个去处的副题后半 `sub` 和落地一句 `arrival` 照 copy-ja 写；`exit.2.vigil`、`exit.3.vigil` 是 W-2 新加的去处，copy-ja 没有，数据照同一口吻补了（「人質のそばで、昼を待つ」「人質のそばで、日没を待つ」），UX 要改直接改 `world.src.json`。
+- 幕末页第一行 `Act.endLines`：第一幕按玩家在王城且发了誓 / 发了誓分两条，第二幕按跟着梅洛斯与否，第三幕按在村子还是城里；都不成立时叙事者照常写。
+- 收幕预告 `Act.closingLine`：夜が更けてきた。／日が高くなってきた。／東の空が白んできた。／日が傾いてきた。
+
 ## 和交接文档不同的地方（已对照原文）
 
 1. **婚礼在 Day 2 正午**，不是到村当天。梅洛斯 Day 1 上午到村，睡到夜里，整夜说服花婿到天亮（S-011 已定）。

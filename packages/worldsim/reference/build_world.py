@@ -37,7 +37,7 @@ from pathlib import Path
 
 from zoujin_worldsim import Sim  # 共用的推演规则（W-1 的包，contracts 2.4.1 / 2.5.1）
 
-CONTRACT_VERSION = "1.13"  # contracts.md 的版本
+CONTRACT_VERSION = "1.15"  # contracts.md 的版本
 errors, warnings = [], []
 
 

@@ -27,6 +27,8 @@ patchShaderChunks();
 
 const CrowdLayer = lazy(() => import("./crowd/CrowdLayer"));
 const Staging = lazy(() => import("./ending/Staging"));
+const HallLight = lazy(() => import("./castle/HallLight"));
+const CastleStage = lazy(() => import("./castle/CastleStage"));
 
 export type LoadStage = "loading" | "walkable" | "ready" | "failed";
 
@@ -175,6 +177,12 @@ export function World({
         </Suspense>
       )}
       <Player scene={scene} />
+      {scene.manifest.lamps && (
+        <Suspense fallback={null}>
+          <HallLight scene={scene} />
+          <CastleStage scene={scene} />
+        </Suspense>
+      )}
       {ending && (
         <StagingGuard>
           <Suspense fallback={null}>

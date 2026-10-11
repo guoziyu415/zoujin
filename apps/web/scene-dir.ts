@@ -14,3 +14,10 @@ export function sceneDir(slug: string): string {
     ? path.resolve(root, slug)
     : path.join(repo, "assets/scenes", slug, "build");
 }
+
+// The characters' files (assets/pipeline/cast/build.sh, F-16; not in git): default assets/cast/build, or
+// ZOUJIN_CAST_ROOT=<dir>.
+export function castDir(): string {
+  const root = process.env.ZOUJIN_CAST_ROOT;
+  return root ? path.resolve(root) : path.join(repo, "assets/cast/build");
+}
