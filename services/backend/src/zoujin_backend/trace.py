@@ -49,6 +49,24 @@ ATTRS = frozenset(
         "by",
         "result",
         "nth",
+        "eval.persona",  # B-5：模拟局的画像 ID、种子（评测入口开局的 Span）
+        "eval.seed",
+        "reason",  # B-10：Live 会话为什么开（warm / switch / rebuild / rebuild_turns / rebuild_goaway / arrival）
+        "prompt_chars",
+        "notes",
+        "first_audio_ms",
+        "audio_s",
+        "session_audio_s",
+        "session_turn",
+        "gap_ms",  # B-11：断线到重连、接手了几条会话、带回几轮最近对话、哪一种、是不是重连、会话是不是接上的
+        "carried",
+        "recent_turns",
+        "resume_kind",
+        "reconnect",
+        "reused",
+        "usage_estimated",  # #111 数据评审：live.turn 的用量是不是按 0.01 美元估的、玩家打断没有、人物字幕的来源
+        "interrupted",
+        "transcript_source",
     }
 )
 

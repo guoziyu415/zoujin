@@ -1,8 +1,8 @@
 """api-contract 第 3、4 节的 WebSocket：握手检查、协议上固定的回应、其余交给剧本。
 
-不靠剧本、mock 自己回的：hello → welcome 和补发的 commit；ping → pong；near / focus → session_preparing /
-session_ready；turn_retract → turn_retract_result（和 turn_settled）；不合 Schema 的消息 → error invalid_request；
-act_choose 选了不存在的去处 → error invalid_choice。
+不靠剧本、mock 自己回的：hello → welcome 和补发的 commit（还没确认收到最近一次幕切换时再推一次 act_transition）；
+ping → pong；near / focus → session_preparing / session_ready；turn_retract → turn_retract_result（和 turn_settled）；
+不合 Schema 的消息 → error invalid_request；act_choose 选了不存在的去处 → error invalid_choice。
 """
 
 from __future__ import annotations
@@ -132,7 +132,7 @@ async def handle(m: Mock, pt: Playthrough, live: Live, msg: Json) -> None:
     pt.on_received(msg)
     if t == "hello":
         await live.emit(pt.welcome())
-        for c in pt.commits_after(msg["lastSeq"]):
+        for c in [*pt.commits_after(msg["lastSeq"]), *pt.act_change_after(msg["lastSeq"])]:
             if live.link is not None:
                 await live.link.send_json(c)  # 发的时候已经自检过
         if live.task is None:

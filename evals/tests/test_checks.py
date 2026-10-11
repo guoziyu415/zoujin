@@ -208,6 +208,21 @@ def test_outcome(make_ctx: MakeCtx) -> None:
     assert run("outcome", ctx, {"world": "canon-reunion"}) is not None
 
 
+def test_no_ending_fails_ending_checks(make_ctx: MakeCtx) -> None:
+    """后端回 None（没进结局）：看结局的检查记不过，不空过；no_pii 的 scope all 只看记忆和摘要。"""
+    ctx = make_ctx(no_ending=True)
+    specs: list[tuple[str, dict[str, Any]]] = [
+        ("outcome", {"world": "too-late"}),
+        ("outcome_consistent", {}),
+        ("epilogue_cites_valid", {}),
+        ("no_verbatim_quotes", {}),
+        ("no_pii", {"scope": "ending", "strings": ["090"]}),
+    ]
+    for name, spec in specs:
+        assert run(name, ctx, spec) == "没有进结局（后端的 ending() 回了 None）", name
+    assert run("no_pii", ctx, {"scope": "all", "strings": ["090"]}) is None
+
+
 # ---------- 记忆、原话、删除 ----------
 
 

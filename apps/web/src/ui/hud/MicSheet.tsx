@@ -47,7 +47,11 @@ export function MicSheet() {
       aria-labelledby="mic-title"
     >
       <h2 id="mic-title">
-        {sheet === "denied" ? copy["mic.denied"] : copy["mic.unavailable"]}
+        {sheet === "denied"
+          ? copy["mic.denied"]
+          : phone === "android"
+            ? copy["mic.unavailable.android"]
+            : copy["mic.unavailable"]}
       </h2>
       {sheet === "denied" && howto && (
         <ul className="howto">

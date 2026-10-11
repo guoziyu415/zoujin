@@ -168,7 +168,8 @@ def _matches(when: Mapping[str, Any], request: Mapping[str, Any]) -> bool:
 class FakeText:
     mode: ModelMode = "fake"
 
-    def __init__(self, rules_dir: Path | None = None, rules: list[Json] | None = None) -> None:
+    def __init__(self, rules_dir: Path | None = None, rules: list[Json] | None = None, seed: int | None = None) -> None:
+        self.seed = seed  # 模拟局的种子（B-5）：现在按输入确定地回答、用不上，以后要随机时用它
         self.rules: list[dict[str, Any]] = []
         self.used: dict[int, int] = {}  # 规则序号 → 用过几次（`times`）
         self.calls: list[tuple[str, Json]] = []  # 测试看调用了什么
@@ -350,12 +351,17 @@ def real_text_model(settings: Settings) -> Routed:
 
 
 def text_model(
-    mode: ModelMode, *, fake_rules: Path | None, replays: Path, settings: Settings | None = None
+    mode: ModelMode,
+    *,
+    fake_rules: Path | None,
+    replays: Path,
+    settings: Settings | None = None,
+    seed: int | None = None,
 ) -> TextModel:
-    """settings 给了、设了 `record_replays`：fake 和 real 的调用录下来（replay 不录）。"""
+    """settings 给了、设了 `record_replays`：fake 和 real 的调用录下来（replay 不录）。seed 只给假模型（B-5）。"""
     inner: TextModel
     if mode == "fake":
-        inner = FakeText(fake_rules)
+        inner = FakeText(fake_rules, seed=seed)
     elif mode == "replay":
         return ReplayText(replays)
     else:
