@@ -1,5 +1,5 @@
 {
- "schemaVersion": "1.12",
+ "schemaVersion": "1.13",
  "worldModelVersion": "hashire-merosu@1.0.0-draft.3",
  "book": {
   "id": "hashire-merosu",
@@ -2262,7 +2262,8 @@
     },
     {
      "fact": "fact.friendship",
-     "since": "beat.06"
+     "since": "beat.06",
+     "inferred": true
     },
     {
      "fact": "fact.selinuntius-steadfast",
