@@ -1084,4 +1084,4 @@ type CharacterEnding = {           // （1.1）
 - **v1.9（2026-10-11）**：只做加法。S-068 重测前的修正（S-086）：人物的提示里不带幕后的文字和他还不该知道的日名。
   - WorldModel：`Clock.labels.daysKnownBy`（可选，事实 ID，2.6）：日名要知道哪条事实才说。不知道的人物，人设和局势里的时间只写时段；界面、tLabel、記憶帳、地の文照旧（UX day0-label）。后端读法见 #91。
   - 写清（2.1）：人设字段和人物知道的事实的 statement 只写人物世界里的话，编写说明和推断依据写进世界模型的 README。
-  - 『走れメロス』（draft.3）：`daysKnownBy` 填 `fact.promise`。人设里的编写说明删掉：妹、花婿、若い衆、警吏、少女的 register 改成说话方式本身，四条 goals 去掉「（推定）」，フィロストラトス的 firstPerson「（原文なし）」删掉；`fact.six-killed-today` 不写「この日（Day 0）」，`fact.melos-suspects-king` 去掉「原文では真偽不明」，beat.s2 的摘要去掉「時刻は推定」。推断的依据记在世界模型 README 的「S-068 补的」一节。
+  - 『走れメロス』（draft.3）：`daysKnownBy` 填 `fact.promise`。人设里的编写说明删掉：妹、花婿、若い衆、警吏、少女的 register 改成说话方式本身，四条 goals 去掉「（推定）」，フィロストラトス的 firstPerson「（原文なし）」改成「わたくし」；`fact.six-killed-today` 不写「この日（Day 0）」，`fact.melos-suspects-king` 去掉「原文では真偽不明」，beat.s2 的摘要去掉「時刻は推定」。推断的依据记在世界模型 README 的「S-068 补的」一节。妹、花婿的 register 写上语尾和称呼，`firstPerson` 写「わたし」（UX）。补两条事实：`fact.execution-crowd`（三日目傍晚城里人知道刑场要磔人、人在聚，beat.22 起，老爺、若い衆、群众）、`fact.groom-agreed`（花婿承知婚礼当天真昼举行，beat.10 起，花婿、梅洛斯）。

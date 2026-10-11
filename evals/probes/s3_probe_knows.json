@@ -155,6 +155,11 @@
      "fact": "fact.selinuntius-doubted-once",
      "statement": "セリヌンティウスは三日の間に一度だけメロスを疑った。",
      "since": "beat.25"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。",
+     "since": "beat.10"
     }
    ]
   },
@@ -262,6 +267,10 @@
     {
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。"
     }
    ],
    "notYet": [
@@ -411,6 +420,10 @@
     {
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。"
     }
    ],
    "notYet": [
@@ -580,6 +593,10 @@
     {
      "fact": "fact.melos-despair",
      "statement": "メロスは力尽きて倒れ、一度は約束を投げ出そうと思った（「悪い夢」）。"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。"
     }
    ],
    "notYet": [
@@ -1455,6 +1472,11 @@
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。",
+     "since": "beat.10"
     }
    ]
   },
@@ -1493,6 +1515,10 @@
     {
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。"
     }
    ],
    "notYet": []
@@ -1532,6 +1558,10 @@
     {
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。"
     }
    ],
    "notYet": []
@@ -1706,7 +1736,13 @@
      "statement": "シラクスの市は夜でもひっそりして、やけに寂しい。二年前は賑やかだった。"
     }
    ],
-   "notYet": []
+   "notYet": [
+    {
+     "fact": "fact.execution-crowd",
+     "statement": "日没に、市の石工が刑場で磔にされることになっていて、広場の一角の刑場に人が集まりはじめている。",
+     "since": "beat.22"
+    }
+   ]
   },
   "p-old-man-day2": {
    "character": "char.old-man",
@@ -1746,7 +1782,13 @@
      "statement": "シラクスの市は夜でもひっそりして、やけに寂しい。二年前は賑やかだった。"
     }
    ],
-   "notYet": []
+   "notYet": [
+    {
+     "fact": "fact.execution-crowd",
+     "statement": "日没に、市の石工が刑場で磔にされることになっていて、広場の一角の刑場に人が集まりはじめている。",
+     "since": "beat.22"
+    }
+   ]
   },
   "p-old-man-day3": {
    "character": "char.old-man",
@@ -1784,6 +1826,10 @@
     {
      "fact": "fact.city-silent",
      "statement": "シラクスの市は夜でもひっそりして、やけに寂しい。二年前は賑やかだった。"
+    },
+    {
+     "fact": "fact.execution-crowd",
+     "statement": "日没に、市の石工が刑場で磔にされることになっていて、広場の一角の刑場に人が集まりはじめている。"
     }
    ],
    "notYet": []

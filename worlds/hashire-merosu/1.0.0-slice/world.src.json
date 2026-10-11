@@ -477,6 +477,10 @@
     {
      "fact": "fact.selinuntius-doubted-once",
      "since": "beat.25"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "since": "beat.10"
     }
    ],
    "initialPlace": "place.syracuse-square",
@@ -1308,7 +1312,8 @@
     }
    ],
    "speech": {
-    "register": "控えめで丁寧な話し方。",
+    "firstPerson": "わたし",
+    "register": "控えめで丁寧な話し方（〜です、〜ます）。兄を「兄さん」と呼ぶ。口数が少なく、照れると言葉が途切れる。",
     "sampleLines": []
    },
    "knows": [
@@ -1445,7 +1450,8 @@
     }
    ],
    "speech": {
-    "register": "実直で慎重な話し方。",
+    "firstPerson": "わたし",
+    "register": "実直で慎重な話し方（〜です、〜ます）。メロスを「メロスさん」と呼ぶ。",
     "sampleLines": [
      {
       "q": "こちらには未だ何の仕度も出来ていない"
@@ -1472,6 +1478,10 @@
     {
      "fact": "fact.storm",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "since": "beat.10"
     }
    ],
    "initialPlace": "place.groom-house",
@@ -1595,6 +1605,7 @@
     }
    ],
    "speech": {
+    "firstPerson": "わたくし",
     "register": "丁寧（〜でございます、〜居りました）。取り乱しやすい。",
     "sampleLines": [
      {
@@ -1782,6 +1793,10 @@
     {
      "fact": "fact.city-silent",
      "since": "pre"
+    },
+    {
+     "fact": "fact.execution-crowd",
+     "since": "beat.22"
     }
    ],
    "initialPlace": "place.syracuse-square",
@@ -1897,6 +1912,10 @@
     {
      "fact": "fact.city-silent",
      "since": "pre"
+    },
+    {
+     "fact": "fact.execution-crowd",
+     "since": "beat.22"
     }
    ],
    "initialPlace": "place.syracuse-square",
@@ -2069,6 +2088,10 @@
     {
      "fact": "fact.selinuntius-steadfast",
      "since": "beat.s1"
+    },
+    {
+     "fact": "fact.execution-crowd",
+     "since": "beat.22"
     }
    ],
    "initialPlace": "place.syracuse-square",
@@ -2675,6 +2698,24 @@
    ]
   },
   {
+   "id": "fact.groom-agreed",
+   "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。",
+   "trueFrom": "beat.10",
+   "visibility": "public",
+   "cite": [
+    {
+     "q": "やっと、どうにか婿をなだめ、すかして、説き伏せた。"
+    },
+    {
+     "q": "結婚式は、真昼に行われた。"
+    }
+   ],
+   "spoilerTerms": [
+    "婚礼を真昼に",
+    "式を真昼に"
+   ]
+  },
+  {
    "id": "fact.groom-wanted-wait",
    "statement": "花婿は仕度ができていないので葡萄の季節まで待ちたかった。",
    "trueFrom": "pre",
@@ -2818,6 +2859,24 @@
    ],
    "spoilerTerms": [
     "磔にかかっている"
+   ]
+  },
+  {
+   "id": "fact.execution-crowd",
+   "statement": "日没に、市の石工が刑場で磔にされることになっていて、広場の一角の刑場に人が集まりはじめている。",
+   "trueFrom": "beat.22",
+   "visibility": "public",
+   "cite": [
+    {
+     "q": "すでに磔の柱が高々と立てられ、縄を打たれたセリヌンティウスは、徐々に釣り上げられてゆく。"
+    },
+    {
+     "q": "大声で刑場の群衆にむかって叫んだ"
+    }
+   ],
+   "spoilerTerms": [
+    "刑場に人が集ま",
+    "磔にされることになって"
    ]
   },
   {
