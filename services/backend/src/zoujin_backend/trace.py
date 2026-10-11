@@ -23,6 +23,7 @@ ATTRS = frozenset(
         "trace_id",
         "character",
         "input_mode",
+        "provider",
         "model",
         "prompt_version",
         "world_model_version",

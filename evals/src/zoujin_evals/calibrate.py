@@ -22,6 +22,8 @@ from pathlib import Path
 from statistics import mean
 from typing import Any, cast
 
+from zoujin_llm import PRICES_PATH
+
 from .judge import (
     EFFORTS,
     PROMPT_VERSION,
@@ -42,7 +44,7 @@ from .live import LIVE_SWITCH
 
 ITEMS = Path("evals/judge/calibration.jsonl")
 REPLAYS = Path("evals/judge/replays")
-PRICES = Path("evals/config/claude-prices.json")
+PRICES = PRICES_PATH  # 共用包 zoujin_llm 里的那一份（B-8）
 LIVE_COST = Path("evals/config/live-cost.json")
 OUT = Path("evals/out/judge")
 LEDGER_ITEM = "judge-calibration"  # 账本里记在这一项下（m2-model-budget「评审员校准」）
