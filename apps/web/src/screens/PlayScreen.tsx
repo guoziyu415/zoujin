@@ -27,6 +27,7 @@ import { TextInput } from "../ui/hud/TextInput";
 import { WorldReactionToast } from "../ui/hud/WorldReactionToast";
 import { SafetyCard } from "../ui/safety/SafetyCard";
 import { HelplinePanel, SafetyHint } from "../ui/safety/SafetyHint";
+import { selectCovered, useStory } from "../stores/story";
 import { StoryLayer } from "../ui/StoryLayer";
 import { StoryMenu } from "../ui/StoryMenu";
 import { useVoiceState } from "../voice/useVoiceState";
@@ -102,6 +103,8 @@ export default function PlayScreen({ pid }: { pid: string }) {
   const events = useWorld((s) => s.world?.events.length);
   const voice = useVoiceState();
   const paused = useVoice((s) => s.paused); // the card is modal: nothing behind it takes a tap or the focus
+  // a story page or the ending's staging over the world: the HUD behind it takes no tap or focus either
+  const covered = useStory((s) => selectCovered(s) || !!s.ending);
 
   return (
     <div
@@ -111,7 +114,7 @@ export default function PlayScreen({ pid }: { pid: string }) {
       data-voice={voice}
     >
       <div className="world-3d" aria-hidden="true" />
-      <div className="hud-top" inert={paused}>
+      <div className="hud-top" inert={paused || covered}>
         <SunBand />
         <StoryMenu />
         <ConnectionBanner />
@@ -130,7 +133,7 @@ export default function PlayScreen({ pid }: { pid: string }) {
           </div>
         )}
       </div>
-      <div className="hud-bottom" inert={paused}>
+      <div className="hud-bottom" inert={paused || covered}>
         <SafetyHint where="portrait" />
         <Subtitles names={names} />
         <Controls names={names} />

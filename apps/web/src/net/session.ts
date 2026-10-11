@@ -385,11 +385,11 @@ export class Session {
     // during the ending's staging the results don't run ahead of it (ux-design 11.1): no light reactions, no key
     // moment; the narration joins the staging's subtitles; the map has the events
     if (useStory.getState().ending) {
-      setWorld(r.world);
+      setWorld(r.world, true);
       addEndingLines(c.narration.map((text) => ({ text, speaker: null })));
       return;
     }
-    setWorld(withReveal(r.world, c.reveal));
+    setWorld(withReveal(r.world, c.reveal), true);
     addNarration(...c.narration);
     showToasts(this.toasts(c));
   }
@@ -443,7 +443,8 @@ export class Session {
   // back after a drop or a reload in the middle of an act end, or before landing (api-contract 4)
   private pendingStory(p: Api.Pending): void {
     const st = useStory.getState();
-    if (p.actEnd && !st.actEnd)
+    // a plan said before the drop gets no result afterwards (3.11): back to the exits, with the server's tries left
+    if (p.actEnd && (!st.actEnd || st.actEnd.phase.k === "thinking"))
       useStory.setState({ actEnd: story.actEnded(p.actEnd) });
     if (!p.actEnd && st.actEnd && st.actEnd.phase.k !== "chosen")
       useStory.setState({ actEnd: null }); // chosen while we were away; act_transition follows in the resend

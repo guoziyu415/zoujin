@@ -35,6 +35,7 @@ import { CARD_SHOTS, shotOf } from "./shots";
 
 export const BINDING_LONG_S = 20; // the map is offered after 20 s of waiting (ux-design 11.1)
 const TICK_MS = 100;
+const NO_LINES_MS = 3000;
 
 // what the staging measured, for data's pacing check (ux-design 11.1: how long it played, taps, auto on or off)
 export const stageStats = { ms: 0, taps: 0, auto: true };
@@ -142,11 +143,15 @@ export function EndingStage({
     return () => document.removeEventListener("visibilitychange", sync);
   }, [overlayOpen, gate]);
 
-  // the ending is written and no closing lines came at all (a set piece was skipped): nothing to wait for
+  // no closing lines at all: the ending is already written, or none come within NO_LINES_MS — a reload in the middle
+  // of the staging (the server sends ending_started again, not the set pieces): the binding line or the ending page
+  const noLines = !ending?.lines.length;
   useEffect(() => {
-    if (ending?.endingId && !(ending.lines.length || pace.current.lines.length))
-      setDone(true);
-  }, [ending?.endingId, ending?.lines.length]);
+    if (!noLines) return;
+    if (ending?.endingId) return setDone(true);
+    const id = setTimeout(() => setDone(true), NO_LINES_MS);
+    return () => clearTimeout(id);
+  }, [noLines, ending?.endingId]);
 
   // the last line had its time: the ending page, or wait for it
   useEffect(() => {

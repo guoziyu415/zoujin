@@ -61,6 +61,8 @@ test("act end: a plan that doesn't go, then the alternative; その頃, the jump
 
   const sk = page.getByRole("dialog", { name: "その頃──" });
   await expect(sk).toBeVisible();
+  // the act change moves the clock by a snapshot: no 「+n時間」 (ux-design 4.5)
+  await expect(page.getByTestId("sunband").locator(".delta")).toHaveCount(0);
   await expect(
     sk.getByText("セリヌンティウスは、黙って縄を打たれた。"),
   ).toBeVisible();
