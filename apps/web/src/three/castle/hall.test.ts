@@ -31,7 +31,7 @@ describe("castle hall", () => {
 
   it("opens up by day inside and changes nothing at night", () => {
     const noon = sunLook(72).exposure;
-    expect(zoneExposure(noon, 1)).toBeCloseTo(HALL_EXPOSURE / noon, 5);
+    expect(zoneExposure(noon, 1)).toBeCloseTo(HALL_EXPOSURE() / noon, 5);
     expect(zoneExposure(noon, 1)).toBeGreaterThan(2);
     expect(zoneExposure(noon, 0)).toBe(1);
     expect(zoneExposure(sunLook(-20).exposure, 1)).toBeCloseTo(1, 5);

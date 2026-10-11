@@ -30,10 +30,14 @@ export function ease(
 
 // the hall is lit by its lamps alone, day or night: its exposure is the night's (the lamps were set for it), so by day
 // stepping in opens up by that much over the day's exposure, and at night nothing changes
-export const HALL_EXPOSURE = sunLook(-20).exposure;
+// (worked out on first use, not at load: village/ imports this module too, and in the production build sun.ts may not
+// be initialised yet when this chunk first runs)
+let hallExposure: number | null = null;
+export const HALL_EXPOSURE = (): number =>
+  (hallExposure ??= sunLook(-20).exposure);
 
 export function zoneExposure(dayExposure: number, inHall: number): number {
-  const ratio = Math.max(1, HALL_EXPOSURE / Math.max(dayExposure, 1e-3));
+  const ratio = Math.max(1, HALL_EXPOSURE() / Math.max(dayExposure, 1e-3));
   return 1 + (ratio - 1) * inHall;
 }
 
