@@ -151,13 +151,11 @@ def test_setup_reads_zj_world_on_every_call(env: Env, monkeypatch: pytest.Monkey
     ("method", "args"),
     [
         ("delete_memory", (OLD, 1)),
-        ("retract", (1,)),
         ("delete_playthrough", ()),
         ("new_playthrough", ()),
         ("silence", (20,)),
         ("memories", (OLD,)),
         ("trust", (OLD,)),
-        ("utterance_cleared", (1,)),
         ("db_absent", (["events"],)),
         ("ending", ()),
     ],

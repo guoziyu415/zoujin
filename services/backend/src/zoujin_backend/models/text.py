@@ -149,7 +149,8 @@ def _summaries(request: Mapping[str, Any]) -> list[str]:
 
 def _matches(when: Mapping[str, Any], request: Mapping[str, Any]) -> bool:
     """fake-text 规则的条件，每个键都满足才算：`playerContains` / `replyContains` 看这一轮的原话里有没有这几个字，
-    `summaryContains` 看候选的摘要，`character` 比这一轮的人物，其他键要等于请求里同名的值。"""
+    `summaryContains` 看候选的摘要，`character` 比这一轮的人物，`confirmOpen` 看提取的请求里有没有在等回答的反问
+    （B-4 的 `<confirm>`），其他键要等于请求里同名的值。"""
     turn = request.get("turn") or {}
     for k, v in when.items():
         if k == "playerContains":
@@ -160,6 +161,8 @@ def _matches(when: Mapping[str, Any], request: Mapping[str, Any]) -> bool:
             ok = any(v in s for s in _summaries(request))
         elif k == "character":
             ok = (turn.get("character") or request.get("character")) == v
+        elif k == "confirmOpen":
+            ok = ("confirm" in request) == v
         else:
             ok = request.get(k) == v
         if not ok:

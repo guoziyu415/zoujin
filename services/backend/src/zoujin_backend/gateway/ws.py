@@ -13,8 +13,19 @@ plan）再叫叙事者；用声音说打算（`activity_start purpose: "act_plan
 收了幕、还没选定时，`text`、`activity_start`（`act_plan` 除外）、`action` 回 `invalid_request`（第 5 节）。
 落地带 `opener` 的，收到 `act_landed` 才让他先开口（`turn_started reason: "arrival"`），这一句不交给叙事者。
 
-B-0 没有真 Live，`hello.fakeVoice` 给不给都用假 Live。还没做的消息（`near`、`turn_retract` 等）忽略，
-只在日志里记类型名。
+B-4 加了作废、识别改正和意图确认（3.6、3.9）：
+- `turn_retract`：这一轮还在连接内存里（玩家还在说、人物还没说完、还没交给叙事者）就停下、写一行 `retracted`；
+  已经交给叙事者、还没提交的在库里改成 `retracted`、原话清空（和叙事者的提交谁先拿到行锁谁算数）；别的 `too_late`。
+  对话的一轮作废以后重建这个人物的会话（`session_preparing reason: "rebuild"` → `session_ready`），新会话只带
+  这条连接上和他最近几轮的文字、跳过作废的（`recent`，只在内存里）。会话就绪之前新的一轮等着（`ready`）。
+- 对话和用声音说的打算交给叙事者时带提交窗口（`turn_complete`、定稿 + 3 秒，按 `ZJ_SPEED` 缩短）。
+- `text { via: "correction" }`：前端先发 `turn_retract`，旧的一轮作废成功时会话已经在重建，新的一轮照常等就绪。
+- 意图确认：叙事者在 `turns.result.confirm` 记下要问的，这里推完那一轮的结果以后，人物还没反问的另起一轮说出
+  反问（`turn_started reason: "confirm"`，原话挂在原来那一轮下面），再推 `confirm`、开 30 秒的计时（按 `ZJ_SPEED`
+  缩短；速度 0 时照 30 秒）。按钮、计时到点都写一行 `kind: "confirm"` 的任务。重连时 `welcome.pending.confirm`
+  带剩余秒数，过期的先关掉。
+
+B-0 没有真 Live，`hello.fakeVoice` 给不给都用假 Live。还没做的消息（`near` 等）忽略，只在日志里记类型名。
 """
 
 from __future__ import annotations
@@ -23,22 +34,25 @@ import asyncio
 import contextlib
 import json
 import logging
+import math
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from datetime import datetime, timedelta
+from typing import Any, cast
 
 from fastapi import WebSocket, WebSocketDisconnect
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from starlette.websockets import WebSocketState
 
 from zoujin_backend import audio
 from zoujin_backend.config import COOKIE
 from zoujin_backend.db import store
 from zoujin_backend.db.store import Run
-from zoujin_backend.db.tables import playthroughs, turns, utterances
+from zoujin_backend.db.tables import drafts, playthroughs, turns, utterances
 from zoujin_backend.gateway import auth
 from zoujin_backend.gateway.core import VOICE_MINUTES, Gateway
-from zoujin_backend.models.live import LiveSession, Transcriber
+from zoujin_backend.models.live import LiveSession, Recent, Transcriber
+from zoujin_backend.narrator import confirm
 from zoujin_backend.narrator.acts import PLAN_TRIES
 from zoujin_backend.narrator.plans import INVALID_REQUEST, NOT_HEARD, REFUSAL_FALLBACK, narrate_fallback
 from zoujin_backend.origin import origin_allowed
@@ -49,11 +63,14 @@ log = logging.getLogger("zoujin.gateway")
 
 Json = Any
 
-SESSION_ETA_MS = 800  # 预热和切换人物（3.5 的例子）
+SESSION_ETA_MS = 800  # 预热、切换人物、重建会话（3.5 的例子）
 FRAME_MIC = 0x01
 VOICE = {"enabled": True, "degraded": False, "minutesLeftToday": VOICE_MINUTES}
-ANSWERED = ("talk", "action", "choose", "plan")  # 判完要给前端一个结果的任务（narrator/core.py 同名）
+# 判完要给前端一个结果的任务（narrator/core.py 同名），加上意图确认的回答（confirm_closed，B-4）
+ANSWERED = ("talk", "action", "choose", "plan", "confirm")
 SERVER_SEQ = 0x80000001  # 服务端发起的轮次的 turnSeq 从这里起，最高位为 1（3.1）
+COMMIT_WINDOW_S = 3.0  # 作废的窗口：叙事者最早在 turn_complete（打算是定稿）之后几秒提交（B-4）
+RECENT_TURNS = 6  # 会话重建时带进新会话的最近几轮
 
 
 def error_msg(code: str, message: str) -> Json:
@@ -67,9 +84,9 @@ class Turn:
     turn_id: str
     turn_seq: int
     character: str
-    mode: str  # voice / text / arrival（落地时人物先开口，B-3）
+    mode: str  # voice / text / arrival（落地时人物先开口，B-3）/ confirm（意图确认的反问，B-4）
     session: LiveSession
-    text: str | None = None  # 文字一轮的原话
+    text: str | None = None  # 文字一轮的原话；confirm：人物要说的反问
     ended: bool = False  # activity_end / text 收到了
     heard: str | None = None  # 玩家字幕：最新的半句，或定稿
     said: str | None = None  # 人物字幕：最新的半句，或定稿
@@ -81,6 +98,15 @@ class Turn:
     quiet: asyncio.Event = field(default_factory=asyncio.Event)  # 这一轮不会再往下发字幕和音频了
     prev: Turn | None = None  # 同一条连接上的前一轮：它交上去以后这一轮才交，叙事者按玩家说的顺序判
     submitted: asyncio.Event = field(default_factory=asyncio.Event)
+    done_at: float | None = None  # 人物说完（turn_complete）或被打断的时刻：提交窗口从这里算（B-4）
+    retracted: bool = False  # 还在内存里时被作废了（B-4）
+    handing: bool = False  # 正在写进库里（交给叙事者）：之后的作废走库里那条路
+    owner: str | None = None  # confirm：原来那一轮（反问的原话挂在它下面）
+    asking: Json | None = None  # confirm：说完以后推的 confirm（turns.result.confirm）
+
+    @property
+    def retractable(self) -> bool:
+        return self.mode in ("voice", "text")
 
     @property
     def speaking(self) -> bool:
@@ -95,6 +121,7 @@ class PlanTurn:
     turn_seq: int
     listener: Transcriber
     partials: list[asyncio.Task[Any]] = field(default_factory=list)  # 推出去的半句：定稿要排在它们后面
+    retracted: bool = False  # 还在说的时候被作废了（B-4）：丢掉，不推定稿、不写任务
 
 
 @dataclass
@@ -108,9 +135,14 @@ class Conn:
     focused: str | None = None
     sessions: dict[str, LiveSession] = field(default_factory=dict)
     ready_at: dict[str, float] = field(default_factory=dict)
+    ready: dict[str, asyncio.Event] = field(default_factory=dict)  # 会话就绪了（session_ready 推过）；新的一轮等它
+    recent: dict[str, list[tuple[str, Recent]]] = field(default_factory=dict)  # 每个人物最近几轮（只在内存里）
+    memory: dict[str, Turn] = field(default_factory=dict)  # 还没交给叙事者的轮次（作废时查）
+    timers: dict[str, asyncio.Task[Any]] = field(default_factory=dict)  # 意图确认的 30 秒计时，按 draftId
     turn: Turn | None = None
     plan: PlanTurn | None = None
     served: int = 0  # 这条连接上服务端发起了几轮（turnSeq 用）
+    retracted_with: dict[str, str] = field(default_factory=dict)  # 作废的轮次是和谁说的（重建会话用）
     settled: set[str] = field(default_factory=set)  # 结果已经推过（或这条连接之前就判完了）的轮次
     closed: asyncio.Event = field(default_factory=asyncio.Event)
     push_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
@@ -200,6 +232,8 @@ class Conn:
             if r.result is not None and "push" in r.result:
                 for m in r.result["push"]:
                     await self.send(m)
+                if r.result.get("confirm"):  # 这一轮留下了草稿：结果推完再反问（B-4）
+                    await self._ask(r.turn_id, r.result["confirm"])
             else:
                 await self._fallback(r)
 
@@ -226,6 +260,8 @@ class Conn:
                     "narration": narrate_fallback("refused"),
                 }
             )
+        elif r.kind == "confirm":  # 回答三次都没处理成：草稿还开着，到期以后叙事者再写超时的任务
+            return
         elif r.kind == "plan":
             run = await self._run()
             left = max(0, PLAN_TRIES - run.plan_tries)
@@ -265,6 +301,7 @@ class Conn:
             self.settled = set(settled)
             last_turn = await self._last_turn(c)
             pt = await self.gw.pt(c, self.pid)
+        asking = await self._pending_confirm()
         if pt is not None:
             self.characters = pt.book.characters
         await self.send(
@@ -273,7 +310,7 @@ class Conn:
                 "lastSeq": last_seq,
                 "voice": dict(VOICE),
                 "lastTurn": last_turn,
-                "pending": pending(pt.run if pt is not None else None),
+                "pending": pending(pt.run if pt is not None else None, asking),
             }
         )
         async with self.push_lock:
@@ -281,6 +318,8 @@ class Conn:
         await self.push()
 
     async def _last_turn(self, c: Any) -> Json | None:
+        """断线前的最后一轮（第 4 节）。作废的一轮 settled、两段文字都是 null（原话已清空，B-4）；人物的话取第一句
+        （意图确认的反问也挂在原来那一轮下面）。"""
         row = (
             await c.execute(
                 select(turns.c.turn_id, turns.c.character, turns.c.status)
@@ -291,17 +330,25 @@ class Conn:
         ).first()
         if row is None:
             return None
-        texts = dict(
-            (
-                await c.execute(
-                    select(utterances.c.speaker, utterances.c.text).where(utterances.c.turn_id == row.turn_id)
-                )
-            ).all()
-        )
+        texts: dict[str, str | None] = {}
+        for speaker, text in (
+            await c.execute(
+                select(utterances.c.speaker, utterances.c.text)
+                .where(utterances.c.turn_id == row.turn_id)
+                .order_by(utterances.c.recorded_at)
+            )
+        ).all():
+            texts.setdefault(speaker, text)
+        if row.status == "retracted":
+            texts = {}
         return {
             "turnId": row.turn_id,
             "character": row.character,
-            "status": "settled" if row.status in ("done", "failed") else "lost" if row.status == "lost" else "pending",
+            "status": "settled"
+            if row.status in ("done", "failed", "retracted")
+            else "lost"
+            if row.status == "lost"
+            else "pending",
             "playerText": texts.get("player"),
             "characterText": texts.get(row.character),
         }
@@ -314,9 +361,8 @@ class Conn:
         self.focused = character
         if character not in self.sessions:
             self.sessions[character] = await self.gw.live.open(character)
-            eta = SESSION_ETA_MS
-            await self.send({"type": "session_preparing", "character": character, "reason": "switch", "etaMs": eta})
-            self.ready_at[character] = time.monotonic() + eta / 1000 * self.gw.settings.speed
+            await self._prepare(character, "switch")
+            return
 
         async def ready() -> None:
             await asyncio.sleep(max(0.0, self.ready_at[character] - time.monotonic()))
@@ -324,6 +370,31 @@ class Conn:
                 await self.send({"type": "session_ready", "character": character, "voiceAvailable": True})
 
         self.gw.spawn(ready())
+
+    async def _prepare(self, character: str, reason: str) -> None:
+        """新开的会话（切换人物、重建）：推 session_preparing，就绪时推 session_ready（还看着这个人物的话），
+        这之前这个人物的新一轮等着（`_stream`）。"""
+        eta = SESSION_ETA_MS
+        await self.send({"type": "session_preparing", "character": character, "reason": reason, "etaMs": eta})
+        self.ready_at[character] = time.monotonic() + eta / 1000 * self.gw.settings.speed
+        ev = self.ready[character] = asyncio.Event()
+
+        async def ready() -> None:
+            await asyncio.sleep(max(0.0, self.ready_at[character] - time.monotonic()))
+            if self.focused == character:
+                await self.send({"type": "session_ready", "character": character, "voiceAvailable": True})
+            ev.set()
+
+        self.gw.spawn(ready())
+
+    async def _rebuild(self, character: str) -> None:
+        """作废以后重建这个人物的会话（backend-design 3.2）：新会话只带最近几轮里没作废的，人物真的没听到那一轮。"""
+        old = self.sessions.pop(character, None)
+        if old is not None:
+            await old.close()
+        recent = [r for _, r in self.recent.get(character, [])]
+        self.sessions[character] = await self.gw.live.open(character, recent)
+        await self._prepare(character, "rebuild")
 
     async def _start(self, msg: Json, mode: str) -> Turn | None:
         if self.focused is None:
@@ -333,6 +404,7 @@ class Conn:
         await self._cut()
         prev = self.turn if self.turn is not None and self.turn.ended else None
         self.turn = Turn(msg["turnId"], msg["turnSeq"], self.focused, mode, self.sessions[self.focused], prev=prev)
+        self.memory[self.turn.turn_id] = self.turn
         return self.turn
 
     async def _cut(self) -> None:
@@ -385,8 +457,16 @@ class Conn:
 
     async def _stream(self, t: Turn) -> None:
         """假 Live 的回答转成下行消息。被打断、断线时这个任务被取消，停在哪就是哪。"""
+        wait = self.ready.get(t.character)
+        if wait is not None and not wait.is_set():  # 会话还在准备（重建）：等就绪再送进去（B-4）
+            await wait.wait()
         released = time.monotonic()
-        said = t.session.speak_first() if t.mode == "arrival" else t.session.respond(t.text)
+        if t.mode == "arrival":
+            said = t.session.speak_first()
+        elif t.mode == "confirm":
+            said = t.session.speak_first(t.text)
+        else:
+            said = t.session.respond(t.text)
         async for ev in said:
             if ev.kind == "input_final":
                 t.heard = ev.text
@@ -405,6 +485,7 @@ class Conn:
             elif ev.kind == "turn_complete":
                 ms = None if t.first_audio is None else round((t.first_audio - released) * 1000)
                 t.complete = True
+                t.done_at = time.monotonic()
                 await self.send(
                     {
                         "type": "turn_complete",
@@ -438,18 +519,25 @@ class Conn:
         failed = not t.stream.cancelled() and t.stream.exception() is not None
         if failed:
             log.error("Live 的回答中途出错（%s）", t.turn_id, exc_info=t.stream.exception())
-        if not t.lost:
+        if t.done_at is None:
+            t.done_at = time.monotonic()
+        if not t.lost and not t.retracted:  # 作废的不补 interrupted 和说到一半的定稿（B-4）
             if t.stream.cancelled() and not t.complete:
                 await self.send({"type": "interrupted", "turnId": t.turn_id})
             if not t.final and t.said is not None:  # 人物还没出字就被打断的，没有定稿（同「没回答」的轮）
                 await self._final(t)
         t.quiet.set()
-        if t.prev is not None:
+        if t.prev is not None and not t.retracted:
             await t.prev.submitted.wait()
             t.prev = None
         try:
-            await self._submit(t)
+            if t.retracted:
+                await self._write_retracted(t)
+            else:
+                t.handing = True  # 从这里起作废走库里那条路
+                await self._submit(t)
         finally:
+            self.memory.pop(t.turn_id, None)
             t.submitted.set()
 
     async def _submit(self, t: Turn) -> None:
@@ -458,14 +546,62 @@ class Conn:
         async with self.gw.engine.begin() as c:
             st = await store.sim_state(c, self.pid)
             now_t = st["t"] if st is not None else 0
-            if t.mode == "arrival":
+            if t.mode in ("arrival", "confirm"):  # 反问挂在原来那一轮下面（B-4）
+                await store.add_utterance(
+                    c,
+                    self.gw.ids,
+                    self.pid,
+                    t.owner or t.turn_id,
+                    speaker=t.character,
+                    text=t.said,
+                    t=now_t,
+                    source="live",
+                )
+            else:
+                exists = await c.scalar(select(turns.c.turn_id).where(turns.c.turn_id == t.turn_id))
+                if exists is not None:
+                    log.info("这一轮已经交过了（%s）", t.turn_id)
+                    return
+                await store.enqueue(
+                    c,
+                    self.gw.ids,
+                    self.pid,
+                    kind="talk",
+                    turn_id=t.turn_id,
+                    input_mode=t.mode,
+                    character=t.character,
+                    turn_seq=t.turn_seq,
+                    status="lost" if t.lost else "pending",
+                    commit_after=self._window(t.done_at),
+                )
+                await store.add_utterance(c, self.gw.ids, self.pid, t.turn_id, speaker="player", text=t.heard, t=now_t)
                 await store.add_utterance(
                     c, self.gw.ids, self.pid, t.turn_id, speaker=t.character, text=t.said, t=now_t, source="live"
                 )
-                return
+        if t.mode == "confirm":
+            if t.asking is not None:
+                await self._push_confirm(t.asking)
+            return
+        if t.mode == "arrival":
+            return
+        if not t.lost:
+            kept = self.recent.setdefault(t.character, [])
+            kept.append((t.turn_id, Recent(t.heard, t.said)))
+            del kept[:-RECENT_TURNS]
+            self.gw.kick(self.pid)
+
+    def _window(self, since: float | None) -> float | None:
+        """提交窗口还剩几秒（turn_complete、定稿 + 3 秒，按 ZJ_SPEED 缩短）；速度 0 时没有窗口。"""
+        full = COMMIT_WINDOW_S * self.gw.settings.speed
+        if full <= 0:
+            return None
+        return max(0.0, full - (time.monotonic() - since)) if since is not None else full
+
+    async def _write_retracted(self, t: Turn) -> None:
+        """还在内存里就作废的一轮：写一行 retracted，不写原话，不交给叙事者（3.6）。"""
+        async with self.gw.engine.begin() as c:
             exists = await c.scalar(select(turns.c.turn_id).where(turns.c.turn_id == t.turn_id))
             if exists is not None:
-                log.info("这一轮已经交过了（%s）", t.turn_id)
                 return
             await store.enqueue(
                 c,
@@ -476,14 +612,14 @@ class Conn:
                 input_mode=t.mode,
                 character=t.character,
                 turn_seq=t.turn_seq,
-                status="lost" if t.lost else "pending",
+                status="retracted",
             )
-            await store.add_utterance(c, self.gw.ids, self.pid, t.turn_id, speaker="player", text=t.heard, t=now_t)
-            await store.add_utterance(
-                c, self.gw.ids, self.pid, t.turn_id, speaker=t.character, text=t.said, t=now_t, source="live"
+            await c.execute(
+                update(turns)
+                .where(turns.c.turn_id == t.turn_id)
+                .values(outcome="retracted", minutes=0, settled_at=func.now())
             )
-        if not t.lost:
-            self.gw.kick(self.pid)
+            await store.count_retracted(c, self.pid)
 
     async def handle(self, msg: Json) -> None:
         t = msg["type"]
@@ -528,8 +664,190 @@ class Conn:
             await self.propose(msg)
         elif t == "act_landed":
             await self.landed(msg)
+        elif t == "turn_retract":
+            await self.retract(msg["turnId"])
+        elif t == "confirm_answer":
+            await self.confirm_answer(msg)
         else:
             log.info("还不处理 %s，忽略", t)
+
+    # —— 作废（B-4，3.6）——
+
+    async def retract(self, turn_id: str) -> None:
+        """作废一轮：按它到了哪一步（卡的那张表）。对话的一轮作废以后推 turn_settled（retracted）、重建会话；
+        用声音说的打算不推 act_plan_result 和 turn_settled，不算一次试次。"""
+        with self.gw.tracer.span("gateway.retract", playthrough_id=self.pid, turn_id=turn_id) as sp:
+            status, kind, stage = await self._retract(turn_id)
+            sp.set(status=status)
+            if kind is not None:
+                sp.set(turn_kind=kind, stage=stage)
+        await self.send({"type": "turn_retract_result", "turnId": turn_id, "status": status})
+        if status != "retracted" or kind != "talk":
+            return
+        self.settled.add(turn_id)
+        await self.send(
+            {"type": "turn_settled", "turnId": turn_id, "outcome": "retracted", "eventIds": [], "minutes": 0}
+        )
+        for kept in self.recent.values():
+            kept[:] = [(x, r) for x, r in kept if x != turn_id]
+        character = self.retracted_with.pop(turn_id, None)
+        if character is not None and character in self.sessions:
+            await self._rebuild(character)
+
+    async def _retract(self, turn_id: str) -> tuple[str, str | None, str | None]:
+        """返回（retracted / too_late，talk / plan，memory / queued）。"""
+        plan = self.plan
+        if plan is not None and plan.turn_id == turn_id:  # 打算还在说：丢掉，不推定稿、不写任务
+            plan.retracted = True
+            self.plan = None
+            async with self.gw.engine.begin() as c:
+                await store.count_retracted(c, self.pid)
+            return "retracted", "plan", "memory"
+        t = self.memory.get(turn_id)
+        if t is not None and t.retractable and not t.handing:
+            t.retracted = True
+            self.retracted_with[turn_id] = t.character
+            if t.stream is not None and not t.stream.done():
+                t.stream.cancel()  # 停止转发这一轮的下行音频
+            if not t.ended:  # 玩家还在说：没有 _finish，这里写那一行
+                t.ended = True
+                t.quiet.set()
+                try:
+                    await self._write_retracted(t)
+                finally:
+                    self.memory.pop(turn_id, None)
+                    t.submitted.set()
+            else:
+                await t.submitted.wait()  # _finish 看到作废，写那一行
+            return "retracted", "talk", "memory"
+        if t is not None and t.handing:
+            await t.submitted.wait()  # 正在写进库里：等写完，走库里那条路
+        async with self.gw.engine.begin() as c:
+            row = await c.scalar(select(turns.c.character).where(turns.c.turn_id == turn_id))
+            kind = await store.retract_queued(c, self.pid, turn_id)
+        if kind is None:
+            return "too_late", None, None
+        if row is not None:
+            self.retracted_with[turn_id] = row
+        return "retracted", kind, "queued"
+
+    # —— 意图确认（B-4，3.9）——
+
+    async def _ask(self, turn_id: str, asking: Json) -> None:
+        """原来那一轮的结果推完以后：人物还没反问的，服务端起一轮说出反问，说完再推 confirm；已经在反问的、
+        玩家已经不看着他、或玩家正在说话的，直接推 confirm。"""
+        who = asking["character"]
+        t = self.turn
+        busy = t is not None and (not t.ended or t.speaking)
+        if asking.get("asked") or self.focused != who or busy or who not in self.sessions:
+            await self._push_confirm(asking)
+            return
+        turn_seq = SERVER_SEQ + self.served
+        self.served += 1
+        qid = self.gw.ids.new("turn")
+        self.settled.add(qid)
+        await self.send(
+            {"type": "turn_started", "turnId": qid, "turnSeq": turn_seq, "speaker": who, "reason": "confirm"}
+        )
+        prev = t if t is not None and t.ended else None
+        self.turn = Turn(qid, turn_seq, who, "confirm", self.sessions[who], text=asking["prompt"], prev=prev)
+        self.turn.owner = turn_id
+        self.turn.asking = asking
+        self.respond(self.turn)
+
+    def _timeout_s(self) -> float:
+        """确认的计时：30 秒按 ZJ_SPEED 缩短；速度 0（测试里人物不等）时照 30 秒。"""
+        return confirm.TIMEOUT_SEC * (self.gw.settings.speed or 1.0)
+
+    async def _push_confirm(self, asking: Json) -> None:
+        """推 confirm，在草稿上记到期的时刻，开计时。草稿已经关掉（收幕、别的回答先到）就不推。"""
+        draft_id = asking["draftId"]
+        seconds = self._timeout_s()
+        async with self.gw.engine.begin() as c:
+            found = await c.scalar(
+                select(drafts.c.draft_id)
+                .where(drafts.c.draft_id == draft_id, drafts.c.playthrough_id == self.pid)
+                .with_for_update()
+            )
+            if found is None or await store.answered(c, self.pid, draft_id):
+                log.info("草稿 %s 已经关掉，不推 confirm", draft_id)
+                return
+            await c.execute(
+                update(drafts)
+                .where(drafts.c.draft_id == draft_id)
+                .values(expires_at=func.clock_timestamp() + timedelta(seconds=seconds))
+            )
+        await self.send(confirm.confirm_msg(draft_id, asking["character"], asking["prompt"]))
+        self._start_timer(draft_id, seconds)
+
+    def _start_timer(self, draft_id: str, seconds: float) -> None:
+        old = self.timers.pop(draft_id, None)
+        if old is not None:
+            old.cancel()
+
+        async def expire() -> None:
+            await asyncio.sleep(seconds)
+            async with self.gw.engine.begin() as c:
+                written = await store.answer_draft(c, self.gw.ids, self.pid, draft_id, None, "timeout")
+            if written is not None:
+                self.gw.kick(self.pid)
+
+        self.timers[draft_id] = self.gw.spawn(expire())
+
+    async def confirm_answer(self, msg: Json) -> None:
+        """按钮回答：不是这一局开着的草稿（已经超时、已经答过、收幕关掉了）就忽略，只记日志。"""
+        draft_id, option = msg["draftId"], msg["optionId"]
+        if option not in confirm.ANSWERS:
+            log.info("confirm_answer 的 optionId 不认识，忽略")
+            return
+        async with self.gw.engine.begin() as c:
+            row = (
+                (
+                    await c.execute(
+                        select(drafts.c.expires_at, func.now().label("now"))
+                        .where(drafts.c.draft_id == draft_id, drafts.c.playthrough_id == self.pid)
+                        .with_for_update()
+                    )
+                )
+                .mappings()
+                .first()
+            )
+            expired = row is not None and row["expires_at"] is not None and row["expires_at"] <= row["now"]
+            written = None
+            if row is not None and not expired:
+                written = await store.answer_draft(c, self.gw.ids, self.pid, draft_id, option, "button")
+        if written is None:
+            log.info("confirm_answer 不是开着的草稿，忽略")
+            return
+        timer = self.timers.pop(draft_id, None)
+        if timer is not None:
+            timer.cancel()
+        self.gw.kick(self.pid)
+
+    async def _pending_confirm(self) -> Json | None:
+        """重连时还没答的确认（第 4 节 pending.confirm，带 remainingSec）。过期了的先关掉（写超时的任务），给 null；
+        还没推出过的（断线时还没轮到）从现在起算 30 秒。"""
+        seconds = self._timeout_s()
+        async with self.gw.engine.begin() as c:
+            draft = await store.open_draft(c, self.pid, lock=True)
+            if draft is None or await store.answered(c, self.pid, draft["draft_id"]):
+                return None
+            now = cast(datetime, await c.scalar(select(func.clock_timestamp())))
+            expires: datetime = draft["expires_at"] or now + timedelta(seconds=seconds)
+            expired = expires <= now
+            if expired:
+                await store.answer_draft(c, self.gw.ids, self.pid, draft["draft_id"], None, "timeout")
+            elif draft["expires_at"] is None:
+                await c.execute(update(drafts).where(drafts.c.draft_id == draft["draft_id"]).values(expires_at=expires))
+        if expired:
+            self.gw.kick(self.pid)
+            return None
+        left = (expires - now).total_seconds()
+        self._start_timer(draft["draft_id"], left)
+        msg = confirm.confirm_msg(draft["draft_id"], draft["character"], draft["prompt"])
+        return {k: msg[k] for k in ("draftId", "character", "prompt", "options", "timeoutSec")} | {
+            "remainingSec": max(0, math.ceil(left))
+        }
 
     # —— 动作和幕末（B-3）——
 
@@ -607,9 +925,12 @@ class Conn:
                 plan.partials.append(task)
 
     async def plan_end(self, plan: PlanTurn) -> None:
-        """用声音说打算：转写的定稿推给前端，再写 plan 任务；结果（act_plan_result）带这一轮的 turnId。"""
+        """用声音说打算：转写的定稿推给前端，再写 plan 任务；结果（act_plan_result）带这一轮的 turnId。
+        提交窗口从定稿推出起算（B-4：玩家看到识别错了，来得及「言い直す」）。"""
         heard = await plan.listener.finish()
         await asyncio.gather(*plan.partials, return_exceptions=True)  # 半句先到，定稿不被半句盖掉
+        if plan.retracted:
+            return
         if not (heard or "").strip():  # 误按、没出声：不写任务、不算试次（3.11）
             left = max(0, PLAN_TRIES - (await self._run()).plan_tries)
             await self.send(
@@ -644,6 +965,7 @@ class Conn:
                 turn_seq=plan.turn_seq if plan is not None else None,
                 client_msg_id=client_msg_id,
                 request=request,
+                commit_after=self._window(time.monotonic()) if plan is not None else None,
             )
             await store.add_utterance(
                 c, self.gw.ids, self.pid, turn_id, speaker="player", text=text, t=st["t"] if st is not None else 0
@@ -727,6 +1049,8 @@ async def endpoint(ws: WebSocket, pid: str) -> None:
         reader.cancel()
         closed.cancel()
         conn.drop()
+        for timer in conn.timers.values():  # 断线时计时不在了：重连的 hello、叙事者取任务前关掉过期的
+            timer.cancel()
         if gw.conns.get(pid) is conn:
             del gw.conns[pid]
         for s in conn.sessions.values():

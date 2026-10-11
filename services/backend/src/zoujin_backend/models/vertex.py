@@ -203,7 +203,9 @@ def render(kind: str, request: Mapping[str, Any], prefix: str) -> str:
         parts.append(render_turn(request["turn"]))
     if "action" in request:  # B-3：提取的输入里玩家做的动作（kind、对象、物品），数据字段
         parts.append("<action>\n" + json.dumps(request["action"], ensure_ascii=False) + "\n</action>")
-    rest = {k: v for k, v in request.items() if k not in ("state", "turn", "action", "worldModelVersion")}
+    if "confirm" in request:  # B-4：提取的输入里在等回答的反问（反问的一句、那件事的摘要），数据字段
+        parts.append("<confirm>\n" + json.dumps(request["confirm"], ensure_ascii=False) + "\n</confirm>")
+    rest = {k: v for k, v in request.items() if k not in ("state", "turn", "action", "confirm", "worldModelVersion")}
     if rest:
         parts.append(f"<{kind}>\n" + json.dumps(rest, ensure_ascii=False) + f"\n</{kind}>")
     return "\n\n".join(parts)

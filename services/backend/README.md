@@ -49,7 +49,7 @@ uv run zoujin-admin replay pt_…    # 用事件重建世界状态，和缓存�
 一轮对话（语音的转写，或一条 `text`）走 backend-design 2.4：分流 → 提取 → 第 3 步确定性规则（R1〜R7，`narrator/rules.py`，和 `evals/s2_check.py` 的 `judge()` 对照）→ 第 4 步模型检查 → 改写、降级或拒绝 → 单事务提交。
 
 - 时限：分流 5 秒，提取、检查、改写各 15 秒。超时、输出不过 Schema、调用失败都重发一次；第二次还不行，分流当「可能」，其余的这一轮只提交时钟事件、候选丢弃，`turns_timed_out` 加一。429（`RateLimited`）和到上限（`BudgetStop`）不重发，整轮放回队列、往上抛。
-- 提取标了要确认、又不可逆的候选（让节拍 `prevented` / `altered`，改人质或玩家的身份处境）先丢掉（B-4 才有确认），`candidates_confirm_dropped` 加一。
+- 提取标了要确认、又不可逆的候选（让节拍 `prevented` / `altered`，改人质或玩家的身份处境）：对话里的存成草稿、问玩家（B-4，见下）；动作里的丢掉，`candidates_confirm_dropped` 加一。
 - `playthrough_metrics` 多了各类提示的花费和这些计数：分流跳过、超时降级、改写、降级、拒绝、因要确认而丢弃（迁移 `0002_b2_metrics`）。
 - 提示：`models/prompts.py` 定义 Schema 和版本号，正文在 `models/prompt_texts/*.txt`。改了正文版本号就变，回放随之过期（`fixtures/README.md`）。
 - Span（`trace.py`，data-design 第 8 节）：每次调文本模型一个，属性只有白名单里的 ID、计数、规则名和耗时，写进日志 `zoujin.trace`。
@@ -74,6 +74,13 @@ uv run zoujin-s2 <标注集.jsonl> --out <目录> --resume                # 中�
 - 每条起局、调 `check(model_checks="all")`，跑 `--runs` 次（默认 3），结果逐行写 `results.jsonl`，跑完或停下写 `report.json` 和 `report.md`（只有条目 ID、判定、规则、理由和 trace ID，不抄原话和摘要）。
 - 真模型要同时有 `ZJ_MODEL=real`、`ZJ_EVAL_LIVE=1`、`ZJ_LEDGER`、项目和地区、`--max-item-usd`、`--max-google-usd` 和 `--confirm`；少一样只打印预计花费和命令，不调用。到上限或第一个 429 退出码 3，回放缺失或配置不对退出码 2。
 - 没有默认的标注集路径。留出集的规矩见 `docs/tasks/m2/B-2.md`。
+
+## 作废和意图确认（B-4）
+
+- 提交窗口：网关交给叙事者时写 `turns.commit_after`（`turn_complete`、或打算的定稿之后 3 秒，乘 `ZJ_SPEED`；速度 0 没有窗口）。叙事者判完等到这个时刻再提交，这期间 `turn_retract` 能把这一轮改成 `retracted`（`store.retract_queued`），叙事者提交时只认 `leased`，谁先拿到行锁谁算数。
+- 还在连接内存里的一轮（人物还没说完）作废：停掉转发、写一行 `retracted`、不交给叙事者。对话的一轮作废以后重建这个人物的会话，新会话只带这条连接上最近几轮里没作废的（只在内存里）。
+- 意图确认（`narrator/confirm.py`）：过了检查的要确认的候选存进 `drafts`（迁移 `0004_b4_confirm`），这一轮照常提交；网关推完那一轮的结果再反问、推 `confirm`、开计时（30 秒乘 `ZJ_SPEED`）。按钮、声音、超时都写一行 `kind: "confirm"` 的任务，叙事者重查以后提交或丢掉，推 `confirm_closed`。叙事者取任务前先给到期的草稿写超时的任务（断线时网关的计时不在）。
+- 评测入口：`say(hold=True)` 先不提交，`retract(n)`、`confirm(answer)`（api-contract 第 7 节）。
 
 ## 预录句（B-6）
 
@@ -101,5 +108,6 @@ DATABASE_URL=postgresql://zoujin:zoujin@127.0.0.1:5432/zoujin_test uv run pytest
 - `tests/test_rules.py`（不要库）：第 3 步对照 `judge()`、每条规则的正反例、不在场的人物、切片（切片世界模型进 main 之前跳过）。`tests/test_pipeline.py`（不要库）：流水线各条路、时限、范围、请求里的别名、Span。
 - `tests/test_vertex.py`（不要库、不联网）：真客户端换上假的传输层，查请求形状、花费、账本和上限、429、回放格式、项目 ID 不外漏。`tests/test_s2.py`：S-2 脚本的报告、`--resume`、到上限、回放、真模型的开关。
 - `tests/test_gateway.py`：起真的 narrator 和 gateway 进程，客户端按契约的 Schema 收发：语音一轮再文字一轮、断线重连补发、登录和 Cookie、Origin、别人的局、4009、幂等键、SIGTERM。
+- `tests/test_b4.py`：意图确认、评测入口的 hold 和作废、提交窗口、作废和提交同时来、不记原话、迁移 0004。`tests/test_gateway_b4.py`：网关和叙事者在测试进程里（后台线程的 uvicorn），查作废和重建（假 Live 收到的最近的对话）、识别改正、幕末的打算、确认的推送顺序、超时和重连。
 - `tests/test_eval_api.py`：评测入口（S-2 的 10 条起点和 `check`、E-0 的替身逐事件比、没做的步骤、回放）。回放 fixture 过期时的重写命令见 `fixtures/README.md`。
 - E-0 的运行器经 `eval_api` 跑，也要 `DATABASE_URL`：`uv run zoujin-eval --mode fake --deterministic-only`。
