@@ -1,6 +1,6 @@
 import type { Api } from "@zoujin/contracts";
 import { describe, expect, it } from "vitest";
-import { corrected, nowIndex, people, shown } from "./view";
+import { corrected, nowDayOf, nowIndex, people, shown } from "./view";
 
 const ev = (
   id: string,
@@ -65,5 +65,24 @@ describe("map", () => {
         { eventId: "ev_3", supersedes: null } as Api.VisibleEvent,
       ]),
     ]).toEqual(["ev_2"]);
+  });
+});
+
+describe("いまここ across days", () => {
+  it("is in the last day with something at or before now, not the last day", () => {
+    const beat = (t: number) =>
+      ({
+        kind: "beat",
+        beatId: "b",
+        t,
+        tLabel: "",
+        known: false,
+      }) as Api.TimelineItem;
+    const days = [
+      { day: 1, label: "一日目", items: [beat(10), beat(20)] },
+      { day: 3, label: "三日目", items: [beat(500)] },
+    ];
+    expect(nowDayOf(days, 30)).toBe(1);
+    expect(nowDayOf(days, 5)).toBeNull();
   });
 });

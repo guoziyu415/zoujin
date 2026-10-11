@@ -101,7 +101,7 @@ export const copy = {
   "ending.world": "世界の結末",
   // —— F-12: the act end, その頃 and the jump page, the map, the memory book, the ending (copy-ja v0.3.6 §5-10, 12) ——
   "menu.open": "本をひらく",
-  "menu.open.label": "本をひらく（連鎖反応マップ・記憶帳・原作・設定）",
+  "menu.open.label": "本をひらく（連鎖反応マップ・記憶帳）", // only what the menu has (copy-ja v0.3.7)
   "menu.memory": "記憶帳",
   "menu.map": "連鎖反応マップ",
   "toast.toMemory": "記憶帳で見る",
@@ -145,7 +145,6 @@ export const copy = {
   "map.title": "連鎖反応マップ",
   "map.legend": "墨の線は原作の筋。緋の線は、あなたが変えたところです。",
   "map.filter.mine": "わたしの行動だけ",
-  "map.you": "あなた",
   "map.forYou": "{name}・あなたのために",
   "map.beat.canon": "原作どおり",
   "map.beat.hastened": "早まった",

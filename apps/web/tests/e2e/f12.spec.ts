@@ -83,6 +83,10 @@ test("act end: a plan that doesn't go, then the alternative; その頃, the jump
     page.getByText("刑場の西のはずれ。", { exact: false }),
   ).toBeVisible();
   await expect(page.getByTestId("sunband")).toHaveText("三日目・夕方");
+  // the new act's subtitle panel starts from the landing line: the first act's last words are gone
+  await expect(
+    page.getByText("すまない、行かねば。", { exact: false }),
+  ).toBeHidden();
   await shot(page, "landing");
 });
 

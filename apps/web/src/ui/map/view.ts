@@ -35,6 +35,16 @@ export function nowIndex(items: Api.TimelineItem[], t: number): number {
   return at;
 }
 
+// the day 「いまここ」 is in: the last one with an item at or before now (null: none)
+export function nowDayOf(
+  days: Api.TimelineResponse["days"],
+  t: number,
+): number | null {
+  let at: number | null = null;
+  for (const d of days) if (d.items.some((it) => it.t <= t)) at = d.day;
+  return at;
+}
+
 // events this page saw corrected (a correction carries supersedes, 2.4): the map marks them 「修正」 (8.5)
 export const corrected = (events: Api.VisibleEvent[]): Set<string> =>
   new Set(events.filter((e) => e.supersedes).map((e) => e.eventId));

@@ -16,6 +16,7 @@ import { FullPage } from "../FullPage";
 import {
   corrected,
   itemId,
+  nowDayOf,
   nowIndex,
   people,
   shown,
@@ -124,8 +125,9 @@ export default function ChainMap({
       <ol className="map-days" ref={list}>
         {q.data?.days.map((d) => {
           const items = shown(d.items, filter);
-          const nowAt = nowIndex(d.items, now);
-          const lastDay = d === q.data.days.at(-1);
+          // 「いまここ」: in the last day with anything at or before now (later days may hold 「？」 beats)
+          const nowAt =
+            d.day === nowDayOf(q.data.days, now) ? nowIndex(d.items, now) : -2;
           return (
             <li key={d.day} className="map-day">
               <h2>{d.label}</h2>
@@ -142,9 +144,7 @@ export default function ChainMap({
                     onToggle={() =>
                       setOpen((o) => (o === itemId(it) ? null : itemId(it)))
                     }
-                    now={
-                      lastDay && d.items.indexOf(it) === nowAt && !filter.mine
-                    }
+                    now={d.items.indexOf(it) === nowAt && !filter.mine}
                     showWhy={whyOf === itemId(it)}
                     onWhy={() => setWhyOf(itemId(it))}
                   />
@@ -226,9 +226,6 @@ function Node({
         <button className="map-row" aria-expanded={isOpen} onClick={onToggle}>
           <span className="map-t">{it.tLabel}</span>
           <span className="map-summary">
-            {it.style === "player" && (
-              <span className="map-tag">{copy["map.you"]}</span>
-            )}
             {it.style === "character" && it.forPlayer && (
               <span className="map-tag">
                 {actor.get(id)

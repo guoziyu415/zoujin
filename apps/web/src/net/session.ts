@@ -415,6 +415,13 @@ export class Session {
       playthroughId: this.playthroughId,
       t: m.snapshot.clock.t,
     });
+    // the new act starts with an empty subtitle panel: the landing line is its first line (4.5)
+    useVoice.setState({
+      player: null,
+      character: null,
+      narration: [],
+      suggestions: null,
+    });
     useStory.setState({ actEnd: null, transition: story.transition(m) });
   }
 
