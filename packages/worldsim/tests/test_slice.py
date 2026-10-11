@@ -227,12 +227,13 @@ def test_the_curtain_when_you_are_the_hostage_says_you() -> None:
 
 def test_the_curtain_plays_only_while_the_friend_is_on_the_cross() -> None:
     """UX #107：王先改心、人质先放了，或者没被引到刑场（beat.s1 没发生），beat.24 不演「釣り上げられてゆく」，
-    交给叙事者。条件在 beat.24 应用以后算，那时 hostage.fate 已经是 released，所以看 beat.s1 和王的心。"""
+    只演兜底的一句。条件在 beat.24 应用以后算，那时 hostage.fate 已经是 released，所以看 beat.s1 和王的心。"""
+    made_it = [["メロスは疾風の如く刑場に突入した。間に合った。"]]
     s = walk_to(GROUND, 5461)
     assert s["beats"]["beat.s1"] == "happened" and s["vars"]["var.hostage.fate"] == "released"
-    assert lines_of([(set_vars(s, king__trust=80, king__disposition="reformed"), {"beat": "beat.24"})]) == [None]
+    assert lines_of([(set_vars(s, king__trust=80, king__disposition="reformed"), {"beat": "beat.24"})]) == made_it
     no_cross = {**s, "beats": {**s["beats"], "beat.s1": "prevented"}}
-    assert lines_of([(no_cross, {"beat": "beat.24"})]) == [None]
+    assert lines_of([(no_cross, {"beat": "beat.24"})]) == made_it
 
 
 def test_a_king_who_already_relented_does_not_relent_again() -> None:

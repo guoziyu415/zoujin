@@ -139,7 +139,7 @@
   },
   {
    "word": "口惜し",
-   "reading": "くちおし"
+   "reading": "くやし"
   },
   {
    "word": "地団駄",
@@ -286,6 +286,10 @@
    "reading": "かじ"
   },
   {
+   "word": "若し",
+   "reading": "もし"
+  },
+  {
    "word": "唸",
    "reading": "うな"
   },
@@ -324,6 +328,10 @@
   {
    "word": "市の少女",
    "reading": "まちのしょうじょ"
+  },
+  {
+   "word": "微笑ん",
+   "reading": "ほほえん"
   }
  ],
  "clock": {
@@ -6979,6 +6987,20 @@
    ],
    "inferred": true,
    "note": "S-087：人质是玩家（B-4）。同 piece.storm-in，柱上、腿、绳子换成「あなた」，梅洛斯不说「彼を人質にした」"
+  },
+  {
+   "id": "piece.made-it",
+   "on": {
+    "beat": "beat.24"
+   },
+   "once": true,
+   "lines": [
+    {
+     "narration": "メロスは疾風の如く刑場に突入した。間に合った。"
+    }
+   ],
+   "inferred": true,
+   "note": "S-087 兜底（UX #107）：友人不在柱上（beat.s1 以前就到了、或王先放了人）时，结局演出不从 beat.25 直接开始。不要「陽は…」那半句，他可能早到"
   },
   {
    "id": "piece.embrace-neither",

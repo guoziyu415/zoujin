@@ -226,6 +226,15 @@ CURTAIN_PIECES: list[dict[str, Any]] = [
         "note": "S-087：人质是玩家（B-4）。同 piece.storm-in，柱上、腿、绳子换成「あなた」，梅洛斯不说「彼を人質にした」",
     },
     {
+        "id": "piece.made-it",
+        "on": {"beat": "beat.24"},
+        "once": True,
+        "lines": [{"narration": "メロスは疾風の如く刑場に突入した。間に合った。"}],
+        "inferred": True,
+        "note": "S-087 兜底（UX #107）：友人不在柱上（beat.s1 以前就到了、或王先放了人）时，结局演出不从 beat.25 直接开始。"
+        "不要「陽は…」那半句，他可能早到",
+    },
+    {
         "id": "piece.embrace-neither",
         "on": {"beat": "beat.25"},
         "when": [
@@ -306,6 +315,9 @@ CURTAIN_PIECES: list[dict[str, Any]] = [
         "note": "S-087：原作第 72〜74 段",
     },
 ]
+# 只在切片的句子里出现、原文没有的注音（UX #107）：原文是「微笑み」，收幕的地の文写成「微笑んだ」。
+# 不放进完整版：「微笑」单独注会把「微笑する」（びしょう）注错，完整版的 build_world 也找不到这个词
+SLICE_RUBY = [{"word": "微笑ん", "reading": "ほほえん"}]
 SLICE_SET_PIECES: list[dict[str, Any]] = [
     {
         "id": "piece.gate-taken-again",
@@ -491,7 +503,7 @@ def make_slice(src: dict[str, Any]) -> dict[str, Any]:
     # 1.10：注音词表只留原文里有、或者切片里还出现的词（别的身份的名字、他们开局带的东西去掉，build_world 查词都出现过）
     if "ruby" in w:
         seen = SOURCE.read_text(encoding="utf-8") + json.dumps({k: v for k, v in w.items() if k != "ruby"}, ensure_ascii=False)
-        w["ruby"] = [x for x in w["ruby"] if x["word"] in seen]
+        w["ruby"] = [x for x in w["ruby"] if x["word"] in seen] + SLICE_RUBY
 
     return w
 
