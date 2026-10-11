@@ -51,6 +51,15 @@ export type WaterEntry = {
   bankM?: number; // how high the banks stand over the water (the same)
 };
 
+// the castle (F-14, assets/pipeline/castle/lamps.mjs): the lamps and the lamp-lit room, glTF coordinates
+export type LampEntry = {
+  id: string;
+  kind: "chandelier" | "brazier";
+  indoor: boolean;
+  pos: Vec3;
+  flames: Vec3[];
+};
+
 export type SceneManifest = {
   version: 1;
   sceneId: string;
@@ -68,6 +77,8 @@ export type SceneManifest = {
   playerStartSpot: string;
   startSpots?: Record<string, string>; // each place's spot for the player (layout.json startSpots)
   spots: Record<string, SpotEntry>;
+  lamps?: LampEntry[];
+  hall?: { min: Vec3; max: Vec3 };
   files: {
     path: string;
     bytes: number;
@@ -80,6 +91,7 @@ export type SceneManifest = {
 export type LightmapEntry = {
   indirect: { file: string; K: number };
   ao: { file: string };
+  full?: { file: string; K: number }; // the whole bake, where it is the lamps' night (the castle)
 };
 
 export function lightmapOf(
