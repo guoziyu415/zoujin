@@ -113,37 +113,37 @@
   "holmoak_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "593344a3edfa91bf50abd593cd595fb3a1adcd33e96efcb61a69880bd2c4d9a8",
+   "sourceSha256": "36df9a0dd3f088611cefee536053a9377482412b061e178aca35e3927c03a877",
    "std": {
     "file": "tex/std/holmoak_base.ktx2",
-    "size": 1024,
+    "size": 512,
     "mean": [
-     51.97,
-     66.55,
-     43.74
+     48.55,
+     63.7,
+     39.85
     ]
    }
   },
   "outcrop_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "4dfc099d584d2f7d92be8b38b92b49e204f037a09abf1a231b9ddbb0dd52e2dc",
+   "sourceSha256": "0c67eb4be4c13311ad0164d4d2816e8ef82e7d02375e65808f5ba0e9f1bd198a",
    "std": {
     "file": "tex/std/outcrop_base.ktx2",
     "size": 1024,
     "mean": [
-     172.18,
-     169.39,
-     156.41
+     189.98,
+     185.21,
+     170.47
     ]
    },
    "hi": {
     "file": "tex/hi/outcrop_base.ktx2",
     "size": 2048,
     "mean": [
-     172.19,
-     169.32,
-     156.45
+     189.94,
+     185.16,
+     170.51
     ]
    }
   },
@@ -164,37 +164,37 @@
   "outcrop_nrm": {
    "slot": "nrm",
    "from": "placeholder",
-   "sourceSha256": "cc35c4f77f1752af6df9dc252a8a73ae08e5cda93f90197ca0e6fe8226a09b8b",
+   "sourceSha256": "435cd8ad4d3f478bd05d9420517cb42ea406f2fffa47230c8c4f78c8ee776043",
    "std": {
     "file": "tex/std/outcrop_nrm.ktx2",
     "size": 512,
     "mean": [
-     127.67,
-     127.69,
-     255
+     127.86,
+     127.86,
+     254.44
     ]
    },
    "hi": {
     "file": "tex/hi/outcrop_nrm.ktx2",
     "size": 1024,
     "mean": [
-     127.52,
-     127.52,
-     255
+     127.38,
+     127.38,
+     254.29
     ]
    }
   },
   "poplar_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "4abf5e79b4bb9e01d0d8bc2b2aed3f7c66dec574e8d2c7b2643c3176a4b548ce",
+   "sourceSha256": "8231defa6ddd3f9bc1bc74cf4e08627cbe36ed23f5500b09ec4a54507dd2a8ad",
    "std": {
     "file": "tex/std/poplar_base.ktx2",
-    "size": 1024,
+    "size": 512,
     "mean": [
-     82.21,
-     104.19,
-     62.43
+     98.96,
+     117.02,
+     85.4
     ]
    }
   },
@@ -274,14 +274,14 @@
   },
   {
    "path": "tex/hi/outcrop_base.ktx2",
-   "bytes": 338956,
-   "sha256": "34e7c6417b89275903caef165417909efd95b1867e8625ca4c862a89ace563b2",
+   "bytes": 480003,
+   "sha256": "b135663b94071279ed55ffdd9ebfc711ac3bb64150b97c150b3a9f5317a1fa2c",
    "pack": "hi"
   },
   {
    "path": "tex/hi/outcrop_nrm.ktx2",
-   "bytes": 807573,
-   "sha256": "a7970b17af6a7eb204dae43baa0dddbf5fe936b32c0ef39fe8dc10327777680e",
+   "bytes": 1142108,
+   "sha256": "011ab68dbf7d5a8d8a9e383d0f7ae11d2dd381ad5188d4e1732870026654801c",
    "pack": "hi"
   },
   {
@@ -334,14 +334,14 @@
   },
   {
    "path": "tex/std/holmoak_base.ktx2",
-   "bytes": 118551,
-   "sha256": "fd074e6c7f76137758085f8548da71109554a34d2446378e78ac100e81f63ddf",
+   "bytes": 74944,
+   "sha256": "a29f47d710480d53a42a8747a47e5bd4fe19e0d3912f5c42a2cdc90fb5dcff05",
    "pack": "entry"
   },
   {
    "path": "tex/std/outcrop_base.ktx2",
-   "bytes": 119373,
-   "sha256": "504a0a08f66a5a5fec02084ca21b47d924fb26bc6c37515bcb0c7f6c913eb72c",
+   "bytes": 163571,
+   "sha256": "4cc10d2aff48a2585447a97534b2a4730994fae98a65588a166a785403e341d9",
    "pack": "entry"
   },
   {
@@ -352,14 +352,14 @@
   },
   {
    "path": "tex/std/outcrop_nrm.ktx2",
-   "bytes": 240648,
-   "sha256": "e6079edf8490684939da2baddf90d6e9e6db43b5b74d7b9ae62865239fc75ac3",
+   "bytes": 301197,
+   "sha256": "5c4846da1277976027deabee9b59a0ed23ee5b47682203e6d284b66ab6ec795a",
    "pack": "entry"
   },
   {
    "path": "tex/std/poplar_base.ktx2",
-   "bytes": 150566,
-   "sha256": "a0c8f9b59241f7f483322f34bac79d4a94f7f500b80782afca0aa763b84fd803",
+   "bytes": 68498,
+   "sha256": "ca507ce2ba7df30be1ddacae233173efecdf7cf9966f60b15b8db76057cec368",
    "pack": "entry"
   },
   {
@@ -382,7 +382,7 @@
   }
  ],
  "bytes": {
-  "entry": 1957733,
-  "hiExtra": 4110189
+  "entry": 1936805,
+  "hiExtra": 4585771
  }
 }

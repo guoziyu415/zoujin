@@ -52,6 +52,8 @@ TEXT: dict[str, TextSpec] = {
     "plan": TextSpec("claude", "sonnet-5.5", 15.0, 4096, thinking="adaptive", effort="low"),
     # B-12：安全筛查（S-072 的 3 秒时限，超时重发一次；B-8 的表定 Haiku、关思考）
     "safety": TextSpec("claude", "haiku-5.5", 3.0, 64, thinking="disabled"),
+    # B-15（S-072 ⑤）：第一遍 signal 的复核（更强的那一档，不先思考；2.5 秒，超时、出错都保留 signal，不重发）
+    "safety_review": TextSpec("claude", "sonnet-5.5", 2.5, 64, thinking="between_tools", effort="low"),
     # B-9：结局要快，不先思考。Mac 探针（10-11，20 次）：首字 p95 约 2 秒、全部 p95 约 10 秒、最长约 11 秒，
     # 输出平均约 970 token；时限 20 秒
     "ending": TextSpec("claude", "sonnet-5.5", 20.0, 4096, thinking="between_tools", effort="low"),
@@ -61,6 +63,8 @@ TEXT: dict[str, TextSpec] = {
     # 后果一句 2 秒（UX 评审：前端等它回来才让按〔忘れてもらう〕），超时回 null、不缓存）
     "memory": TextSpec("claude", "haiku-5.5", 5.0, 256, thinking="disabled"),
     "keeps": TextSpec("claude", "haiku-5.5", 2.0, 128, thinking="disabled"),
+    # B-21：候选话语（backend-design 3.6、8 节：Haiku、关思考；人物说完约 1 秒内要到，3 秒时限，不行就不出）
+    "suggest": TextSpec("claude", "haiku-5.5", 3.0, 256, thinking="disabled"),
 }
 TEXT_MODELS: dict[str, str] = {k: v.model for k, v in TEXT.items()}
 DEADLINES: dict[str, float] = {k: v.deadline for k, v in TEXT.items()}
@@ -157,6 +161,14 @@ def open_release(env: Mapping[str, str] | None = None) -> int:
     return int(value)
 
 
+def narrator_auth(env: Mapping[str, str]) -> Literal["none", "iam"]:
+    """`ZJ_NARRATOR_AUTH`：none（默认，本地）/ iam（Cloud Run：叙事者只开内部入口、只许网关的服务账号调，B-23）。"""
+    value = env.get("ZJ_NARRATOR_AUTH", "") or "none"
+    if value not in ("none", "iam"):
+        raise ConfigError(f"ZJ_NARRATOR_AUTH 只能是 none / iam，得到 {value!r}")
+    return "iam" if value == "iam" else "none"
+
+
 def async_url(url: str) -> str:
     """postgresql://… → SQLAlchemy 的 psycopg 3 驱动写法。"""
     for prefix in ("postgresql://", "postgres://"):
@@ -195,6 +207,10 @@ class Settings:
     ledger_item: str | None = None
     max_item_usd: float | None = None
     record_replays: Path | None = None
+    # 部署（B-23）：网关顺带发前端构建（`ZJ_WEB_DIST`，vite build 的 dist；没设不发）；服务间调用的身份
+    # （`ZJ_NARRATOR_AUTH=iam`：Cloud Run 的 IAM 已经验过网关服务账号的 OIDC 令牌，网关调叙事者时带上令牌）
+    web_dist: Path | None = None
+    narrator_auth: Literal["none", "iam"] = "none"
 
     @property
     def schemas(self) -> Path:
@@ -242,6 +258,8 @@ class Settings:
             max_item_usd=float(e["ZJ_MAX_ITEM_USD"]) if e.get("ZJ_MAX_ITEM_USD") else None,
             record_replays=_path(e, "ZJ_RECORD_REPLAYS"),
             replays=_path(e, "ZJ_REPLAYS") or REPLAYS,
+            web_dist=_dir(e, "ZJ_WEB_DIST"),
+            narrator_auth=narrator_auth(e),
         )
 
 

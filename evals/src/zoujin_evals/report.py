@@ -77,7 +77,47 @@ def build(cases: list[CaseResult], meta: Mapping[str, Any]) -> dict[str, Any]:
     suites = {}
     for suite in sorted({c["suite"] for c in cases}):
         suites[suite] = summarize([c for c in cases if c["suite"] == suite], suite, no_score=no_score)
-    return {"meta": dict(meta), "infra": inf, "suites": suites, "cases": cases}
+    out = {"meta": dict(meta), "infra": inf, "suites": suites, "cases": cases}
+    sim = simulations(cases)
+    if sim is not None:
+        out["simulations"] = sim
+    return out
+
+
+def simulations(cases: Iterable[CaseResult]) -> dict[str, Any] | None:
+    """模拟局的三个统计（data-design 9.1）和问句（README「问句怎么数」）：全部画像一起算，melos-helper 单列。
+    没有跑过模拟局时 None。"""
+    runs = [(c, r) for c in cases for r in c.get("results", []) if "sim" in r]
+    if not runs:
+        return None
+
+    def part(rows: list[tuple[CaseResult, RunResult]]) -> dict[str, Any]:
+        sims = [r["sim"] for _, r in rows]
+        ended = [x for x in sims if x["status"] == "ended"]
+        km = [x["keyMoments"] for x in ended if "keyMoments" in x]
+        lines = sum(x["questions"]["lines"] for x in sims)
+        q = sum(x["questions"]["questions"] for x in sims)
+        return {
+            "runs": len(sims),
+            "ended": len(ended),
+            "stopped": dict(Counter(x["stopped"] for x in sims if x.get("stopped"))),
+            "keyMomentsPerRun": round(sum(km) / len(km), 2) if km else None,
+            "keyMomentsIn3to5": sum(1 for k in km if 3 <= k <= 5),
+            "outcomes": dict(Counter(str((x.get("ending") or {}).get("outcome")) for x in ended)),
+            "variants": sum(1 for x in ended if (x.get("ending") or {}).get("variant")),
+            "beat25": dict(Counter(str(x.get("beat25")) for x in ended)),
+            "beat20Happened": sum(1 for x in ended if x.get("beat20") == "happened"),
+            "questionRate": round(q / lines, 4) if lines else None,
+            "requests": sum(x["questions"]["requests"] for x in sims),
+            "repeatedQuestions": sum(x["questions"]["repeatedQuestions"] for x in sims),
+            "steps": sum(x["steps"] for x in sims),
+        }
+
+    helper = [(c, r) for c, r in runs if r["sim"]["persona"] == "persona.melos-helper"]
+    out = {"all": part(runs)}
+    if helper:
+        out["melosHelper"] = part(helper)
+    return out
 
 
 def infra(cases: Iterable[CaseResult]) -> dict[str, Any]:
@@ -229,6 +269,7 @@ def markdown(report: Mapping[str, Any]) -> str:
     if skipped:
         lines += ["", "## 整例跳过的用例", ""]
         lines += [f"- {_label_of_key(k).removeprefix('跳过：')}：{'、'.join(ids)}" for k, ids in skipped.items()]
+    lines += _sim_lines(report.get("simulations"))
     fails = list(_failures(report["cases"]))
     if fails:
         lines += ["", "## 不过的", ""] + [f"- {f}" for f in fails]
@@ -276,3 +317,32 @@ def _failures(cases: Iterable[CaseResult]) -> Iterable[str]:
             for ck in r["checks"] + ([r["judge"]] if "judge" in r else []):
                 if ck["status"] == "fail":
                     yield f"{where} 检查 {ck['index']} `{ck['type']}`：{ck.get('reason', '')}"
+
+
+def _sim_lines(sim: Mapping[str, Any] | None) -> list[str]:
+    if not sim:
+        return []
+    lines = [
+        "",
+        "## 模拟局（data-design 9.1，观察项）",
+        "",
+        "| | 局数 | 到结局 | 关键时刻 / 局 | 3〜5 次的局 | 世界结局 | 生成的结局 | beat.25 演法 | beat.20 发生 "
+        "| 问句比例 | 请求 | 重复问句 |",
+        "|---|---:|---:|---:|---:|---|---:|---|---:|---:|---:|---:|",
+    ]
+    for key, name in (("all", "全部画像"), ("melosHelper", "melos-helper")):
+        if key not in sim:
+            continue
+        x = sim[key]
+        dist = "，".join(f"{k} {n}" for k, n in sorted(x["outcomes"].items())) or "—"
+        b25 = "，".join(f"{k} {n}" for k, n in sorted(x["beat25"].items())) or "—"
+        kmr = "—" if x["keyMomentsPerRun"] is None else x["keyMomentsPerRun"]
+        lines.append(
+            f"| {name} | {x['runs']} | {x['ended']} | {kmr} | {x['keyMomentsIn3to5']} | {dist} | {x['variants']} "
+            f"| {b25} | {x['beat20Happened']} | {_pct(x['questionRate'])} | {x['requests']} "
+            f"| {x['repeatedQuestions']} |"
+        )
+    stopped = sim["all"]["stopped"]
+    if stopped:
+        lines += ["", "没走到结局就停了：" + "，".join(f"{k} {n} 局" for k, n in sorted(stopped.items()))]
+    return lines

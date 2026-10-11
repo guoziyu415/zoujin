@@ -635,6 +635,19 @@ def disagree(verdict: dict, leak2: str) -> bool:
     return (verdict["leak"] != "none" or bool(verdict["knowledge_violation"])) != (leak2 != "none")
 
 
+def flagged_questions(run: Path) -> set[tuple[str, str]]:
+    """--only-flagged：那一次里有问题的题（情景, 问题）：任一遍算进 E2、两种判定不一致、或改判法以后结论变了。
+    只重判、只重跑这些（zg 10-11：只有一部分错，不全部重跑）。"""
+    rows = [r for r in map(json.loads, (run / "results.jsonl").read_text(encoding="utf-8").splitlines()) if "leak" in r]
+    bad = lambda r: any_leak(r) or r.get("disagree") or ("before" in r and r["before"].get("e2") != any_leak(r))
+    return {(r["scenario"], r["question"]) for r in rows if bad(r)}
+
+
+def keep_flagged(scenarios: list[dict], picked: set[tuple[str, str]]) -> list[dict]:
+    out = [{**sc, "items": [it for it in sc["items"] if (sc["id"], it["q"]) in picked]} for sc in scenarios]
+    return [sc for sc in out if sc["items"]]
+
+
 async def main_async(args, argv: list[str]) -> None:
     world = World(world_path())
     scenarios, keywords = load_specs([x for x in args.spec.split(",") if x], world)
@@ -645,6 +658,8 @@ async def main_async(args, argv: list[str]) -> None:
     if args.rejudge:
         await rejudge(args, argv, world, scenarios)
         return
+    if args.only_flagged:
+        scenarios = keep_flagged(scenarios, flagged_questions(Path(args.only_flagged)))
     if not gate(args, world, scenarios, conditions, argv):
         return
     s = common.settings()
@@ -751,6 +766,12 @@ async def rejudge(args, argv: list[str], world: World, scenarios: list[dict]) ->
                          + "；题集 那次 " + "/".join(v[:12] for v in specs(was))
                          + "、这次 " + "/".join(v[:12] for v in specs(now))
                          + "。世界模型用 ZJ_WORLD 指到那一份；题集给那一份的路径")
+    picked = flagged_questions(Path(args.only_flagged)) if args.only_flagged else None
+    kept = [r for r in old if picked is not None and (r["scenario"], r["question"]) not in picked]
+    old = [r for r in old if picked is None or (r["scenario"], r["question"]) in picked]
+    if picked is not None:
+        print(f"--only-flagged：只重判 {len({(r['scenario'], r['question']) for r in old})} 题、{len(old)} 条，"
+              f"其余 {len(kept)} 条沿用 {src.name} 的结论")
     calls = len(old) * (1 if args.one_judge else 2)
     likely = upper = 0.0
     per_sc = {i: sum(r["scenario"] == i for r in old) for i in by_id}
@@ -781,6 +802,12 @@ async def rejudge(args, argv: list[str], world: World, scenarios: list[dict]) ->
     with open(out / "results.jsonl", "w", encoding="utf-8") as f:
         for row in results:
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
+        for r in kept:  # 没挑中的：结论照旧，before 就是它自己
+            if key(r) not in done:
+                row = {**r, "before": {"leak": r["leak"], "knowledge_violation": r["knowledge_violation"],
+                                       "leak2": r.get("leak2"), "e2": any_leak(r)}}
+                results.append(row)
+                f.write(json.dumps(row, ensure_ascii=False) + "\n")
         f.flush()
         for r in old:
             if key(r) in done:
@@ -1014,6 +1041,9 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--resume", help="接着跑中断的那一次：给 out/s3/<时间> 目录，其余参数和上次一样")
     ap.add_argument("--rejudge", help="S-092：用现在的判法重判这一次（out/s3/<时间>）的回复，不调 Live；"
                                       "世界模型和题集要和那次一样。中断了加 --resume <重判的目录>")
+    ap.add_argument("--only-flagged", metavar="DIR",
+                    help="只做那一次（out/s3/<目录>）里有问题的题：任一遍算进 E2、两种判定不一致、或结论变了。"
+                         "和 --rejudge 一起：只重判这些，其余照抄；单用：只跑这些题（调 Live）")
     ap.add_argument("--max-claude-usd", type=float, help="Claude 那本账的总上限（D-029：100）")
     ap.add_argument("--max-item-usd", type=float, default=30.0, help="这一项（s068-judge）在 Claude 账上的上限")
     ap.add_argument("--confirm", action="store_true", help="看过预计花费、按批过的估算跑")

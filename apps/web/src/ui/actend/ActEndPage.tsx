@@ -26,7 +26,7 @@ import {
 import { openOverlay, useStory } from "../../stores/story";
 import { useVoice } from "../../stores/voice";
 import { voiceSettings } from "../../voice/settings";
-import { copy, fill } from "../copy";
+import { actName, copy, fill } from "../copy";
 import { Lines } from "../Lines";
 import { TEXT_MAX } from "../hud/TextInput";
 
@@ -61,7 +61,7 @@ export function ActEndPage() {
     >
       <div className="page-body">
         <h1 id="ae-title" ref={head} tabIndex={-1}>
-          {copy["actEnd.title"]}
+          {fill(copy["actEnd.title"], { act: actName(end.actId) })}
         </h1>
         {slice && (
           <>
@@ -72,7 +72,7 @@ export function ActEndPage() {
           </>
         )}
         <p className="ae-prompt">
-          {copy["actEnd.prompt"]}
+          {copy[slice ? "actEnd.prompt" : "actEnd.prompt.later"]}
           {phase.k === "thinking" && <span className="ae-dash" aria-hidden />}
         </p>
         {phase.k === "choose" && <Exits a={a} />}

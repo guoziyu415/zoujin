@@ -320,6 +320,17 @@ ENDING_CHECK = Prompt(
 
 # B-13：人物视角的一句记忆（只读事件的摘要和结果，不读原话；长度、个人信息、命令句由 `narrator/memory.py` 再过滤），
 # 和记憶帳删除确认里「不会撤销的后果」一句（没有就是 null）
+# B-15（S-072 ⑤）：第一遍判 signal 时带上下文复核，story = true 才降成 ambiguous
+SAFETY_REVIEW = Prompt(
+    "safety_review",
+    text("safety_review"),
+    {
+        "type": "object",
+        "properties": {"story": {"type": "boolean"}},
+        "required": ["story"],
+        "additionalProperties": False,
+    },
+)
 MEMORY = Prompt(
     "memory",
     text("memory"),
@@ -344,7 +355,49 @@ KEEPS = Prompt(
     },
 )
 
+# B-21：候选话语（ux-design 7.8，api-contract 3.5 的 suggestions）
+SUGGEST = Prompt(
+    "suggest",
+    text("suggest"),
+    {
+        "type": "object",
+        "properties": {
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "text": {"type": "string", "minLength": 1, "maxLength": 40},
+                        "kind": {"enum": ["ask", "act", "accept", "decline"]},
+                    },
+                    "required": ["text", "kind"],
+                    "additionalProperties": False,
+                },
+                "minItems": 2,
+                "maxItems": 3,
+            }
+        },
+        "required": ["items"],
+        "additionalProperties": False,
+    },
+)
+
 PROMPTS: dict[str, Prompt] = {
     p.kind: p
-    for p in (TRIAGE, EXTRACT, CHECK, REWRITE, REPLY, NARRATE, PLAN, ENDING, ENDING_CHECK, SAFETY, MEMORY, KEEPS)
+    for p in (
+        TRIAGE,
+        EXTRACT,
+        CHECK,
+        REWRITE,
+        REPLY,
+        NARRATE,
+        PLAN,
+        ENDING,
+        ENDING_CHECK,
+        SAFETY,
+        SAFETY_REVIEW,
+        MEMORY,
+        KEEPS,
+        SUGGEST,
+    )
 }

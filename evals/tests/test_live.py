@@ -1,4 +1,4 @@
-"""live 模式只有开关和退出（E-0 卡验收最后一条）：没开关退出、少上限退出、不带 --confirm 打印预计花费和命令。
+"""live 模式的开关（E-0 卡验收最后一条，B-5 起真跑）：没开关退出、少上限退出、不带 --confirm 打印预计花费和命令。
 
 花费按两本账分：google（人物的文字回答）、claude（叙事者、评审员和 AI 玩家）。
 """
@@ -19,7 +19,7 @@ PRICES = Prices.from_json(
 ON = {LIVE_SWITCH: "1"}
 
 
-def g(env: dict[str, str], **kw: Any) -> tuple[int, str]:
+def g(env: dict[str, str], **kw: Any) -> tuple[int | None, str]:
     args: dict[str, Any] = {
         "max_item_usd": 1.0,
         "caps": {"google": 30.0, "claude": 10.0},
@@ -60,9 +60,12 @@ def test_without_confirm_prints_estimate_and_command() -> None:
     assert "Claude 合计超过上限" in msg and "Google 合计超过上限" not in msg and "超过单项上限" in msg
 
 
-def test_confirm_still_exits() -> None:
+def test_confirm_needs_the_rest() -> None:
+    """带 --confirm 才查：判分没接（要 --deterministic-only）、--item、账本、AI 玩家的模型（细的在 test_player）。"""
     code, msg = g(ON, confirm=True)
-    assert code == 2 and "M2" in msg
+    assert code == 2 and "--deterministic-only" in msg
+    code, msg = g({**ON, "ZJ_LEDGER": "/x"}, confirm=True, deterministic_only=True, item="s5", player_model="m")
+    assert code is None
 
 
 def test_case_cost() -> None:
