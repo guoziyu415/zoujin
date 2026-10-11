@@ -231,16 +231,29 @@ playthrough_metrics = Table(
     Column("confirms_no", Integer, nullable=False, server_default="0"),
     Column("confirms_timeout", Integer, nullable=False, server_default="0"),
     Column("confirms_rejected", Integer, nullable=False, server_default="0"),
-    # B-12（0005）：只记次数（S-057、S-069 ③）：出戏卡、小提示、没判定、分类器拒答、Model Armor 出错；
-    # 输出侧：剧透命中的句数、Model Armor 判有害的人物输出、问句过多加了提示的次数
+    # B-12（0005）：只记次数（S-057、S-069 ③），列名按数据评审 #112 的表。安全分类器（含重发）和 Model Armor 的花费；
+    # 出戏卡（信号和第二次 ambiguous）、ambiguous 的次数（含出小提示的那次）、小提示、没判定、分类器拒答、
+    # 带注入 / 个人信息 / 有害标记交给叙事者的轮数、Model Armor 出错（输入输出两边）；
+    # 输出侧：过了监控的人物定稿句数（分母）、命中剧透的句数、判有害的句数、剧透重建会话、以问句结尾的句数、
+    # 同一人物重复问同一句、问句过多的提示打开
+    Column("cost_safety_usd", Numeric(12, 6), nullable=False, server_default="0"),
+    Column("cost_armor_usd", Numeric(12, 6), nullable=False, server_default="0"),
     Column("safety_pauses", Integer, nullable=False, server_default="0"),
+    Column("safety_ambiguous", Integer, nullable=False, server_default="0"),
     Column("safety_hints", Integer, nullable=False, server_default="0"),
     Column("safety_unscreened", Integer, nullable=False, server_default="0"),
     Column("safety_refused", Integer, nullable=False, server_default="0"),
+    Column("safety_injection", Integer, nullable=False, server_default="0"),
+    Column("safety_pii", Integer, nullable=False, server_default="0"),
+    Column("safety_harmful", Integer, nullable=False, server_default="0"),
     Column("armor_errors", Integer, nullable=False, server_default="0"),
-    Column("spoiler_hits", Integer, nullable=False, server_default="0"),
+    Column("output_lines", Integer, nullable=False, server_default="0"),
+    Column("output_spoilers", Integer, nullable=False, server_default="0"),
     Column("output_harmful", Integer, nullable=False, server_default="0"),
-    Column("question_notes", Integer, nullable=False, server_default="0"),
+    Column("output_rebuilds", Integer, nullable=False, server_default="0"),
+    Column("output_questions", Integer, nullable=False, server_default="0"),
+    Column("output_questions_repeated", Integer, nullable=False, server_default="0"),
+    Column("output_question_notes", Integer, nullable=False, server_default="0"),
 )
 
 # 意图确认的草稿（B-4，api-contract 3.9）：叙事者提出、还没答的那一个候选（不放原话）。关掉就删行，随整局删除。

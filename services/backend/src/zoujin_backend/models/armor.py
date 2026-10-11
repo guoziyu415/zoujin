@@ -45,6 +45,8 @@ RAI_TYPES = ("dangerous", "harassment", "hate_speech", "sexually_explicit")
 LOCATION = "us-central1"
 PROJECT_ENV = "ZJ_ARMOR_PROJECT"
 TEMPLATE_ENV = "ZJ_ARMOR_TEMPLATE"
+# 每次调用的单价〔推算：按价目表每百万 token 0.10 美元、日语一字约一 token；免费额度是整个账户的，不按局摊〕
+USD_PER_MILLION_CHARS = 0.10
 DEADLINE_S = 1.0  # 第二层：1 秒没回就当没命中（S-4 实测 p50 282 ms、p95 556 ms）
 SCOPE = "https://www.googleapis.com/auth/cloud-platform"
 
@@ -96,6 +98,11 @@ class Armor(Protocol):
 
 
 # —— 模板 ——
+
+
+def cost_usd(armor: Armor, text: str) -> float:
+    """这一次调用记多少（`cost_armor_usd`）：只有真的记，假的和回放是 0。"""
+    return len(text) * USD_PER_MILLION_CHARS / 1_000_000 if armor.mode == "real" else 0.0
 
 
 def armor_template() -> Json:

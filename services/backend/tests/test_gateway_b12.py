@@ -146,7 +146,7 @@ def test_the_first_ambiguous_line_hints_and_the_second_pauses(env: Env, inproc: 
     settled = p.expect("turn_settled", turnId=first)
     assert settled["outcome"] != "paused"
     assert p.find("transcript", turnId=first, speaker=OLD, final=True)["text"]  # 人物照常说完
-    assert turn_row(env, first)["flags"] == ["ambiguous"]
+    assert turn_row(env, first)["flags"] is None  # 交给叙事者的标记，提交时清掉（判定结果不存）
     # 重连不重推
     assert p.ws is not None
     p.ws.close()
@@ -158,7 +158,7 @@ def test_the_first_ambiguous_line_hints_and_the_second_pauses(env: Env, inproc: 
     assert p.find("turn_settled", turnId=second)["outcome"] == "paused"
     assert len([m for m in p.log if m["type"] == "safety_hint"]) == 1
     m = metrics(env, p.pid)
-    assert (m["safety_hints"], m["safety_pauses"]) == (1, 1)
+    assert (m["safety_hints"], m["safety_pauses"], m["safety_ambiguous"]) == (1, 1, 2)
 
 
 def test_injection_and_pii_become_flags(env: Env, inproc: Make, play: Play) -> None:
@@ -169,8 +169,9 @@ def test_injection_and_pii_become_flags(env: Env, inproc: Make, play: Play) -> N
     p.expect("turn_settled", turnId=a)
     b = p.text(PHONE)
     p.expect("turn_settled", turnId=b)
-    assert turn_row(env, a)["flags"] == ["injection"]
-    assert turn_row(env, b)["flags"] == ["pii"]
+    assert turn_row(env, a)["flags"] is None and turn_row(env, b)["flags"] is None  # 提交时清掉
+    m = metrics(env, p.pid)
+    assert (m["safety_injection"], m["safety_pii"], m["safety_harmful"]) == (1, 1, 0)
     player_text = [t for who, t, _ in said(env, b) if who == "player"]
     assert player_text == ["わたしの番号は〔個人情報〕です。"]  # 存下的是掩码后的
     assert not [m for m in p.log if m["type"] in ("safety_pause", "safety_hint")]
@@ -194,9 +195,10 @@ def test_two_spoilers_in_a_row_rebuild_the_session(env: Env, inproc: Make, play:
     settle(p)
     assert p.find("session_preparing", character=OLD, reason="rebuild")  # 第二句以后（可能在 turn_settled 之前）
     who, notes = s.live.notes[-1]
-    assert who == OLD and NOTE_SPOILER.format(term="身代わり") in notes
+    assert who == OLD and NOTE_SPOILER in notes and not [n for n in notes if "身代わり" in n]  # 提示不点名
     assert s.live.opened[-1] == (OLD, [])  # 说漏的两句不带进新会话
-    assert metrics(env, p.pid)["spoiler_hits"] == 2
+    m = metrics(env, p.pid)
+    assert (m["output_spoilers"], m["output_rebuilds"], m["output_lines"]) == (2, 1, 2)
 
 
 def test_too_many_questions_add_a_note(env: Env, inproc: Make, play: Play) -> None:
@@ -210,7 +212,8 @@ def test_too_many_questions_add_a_note(env: Env, inproc: Make, play: Play) -> No
     settle(p)
     time.sleep(0.3)
     assert NOTE_QUESTIONS in s.gw.conns[p.pid].monitor.notes(OLD)
-    assert metrics(env, p.pid)["question_notes"] == 1
+    m = metrics(env, p.pid)
+    assert (m["output_question_notes"], m["output_questions"], m["output_questions_repeated"]) == (1, 6, 5)
 
 
 # —— 幕末的打算 ——

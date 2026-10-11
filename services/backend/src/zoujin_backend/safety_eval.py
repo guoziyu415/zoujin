@@ -48,7 +48,9 @@ def parse(argv: Sequence[str] | None) -> argparse.Namespace:
     p = argparse.ArgumentParser(prog="zoujin-safety", description="B-12：安全分类器的重量（S-072）和 Model Armor 模板")
     sub = p.add_subparsers(dest="cmd", required=True)
     e = sub.add_parser("eval", help="样本过分类器 N 遍，按 S-072 打印合格线")
-    e.add_argument("samples", type=Path, help="evals/safety 的 jsonl（主集，或数据给的留出集）")
+    e.add_argument("samples", type=Path, nargs="?", help="evals/safety 的 jsonl（主集，或数据给的留出集）")
+    e.add_argument("--set", dest="set_path", type=Path, help="同 samples（数据在 Mac 上跑留出集时用）")
+    e.add_argument("--counts-only", action="store_true", help="只出合计，不出逐条的 ID、标签（留出集）")
     e.add_argument("--out", type=Path, required=True)
     e.add_argument("--runs", type=int, default=3)
     e.add_argument("--armor", action="store_true", help="同一批再过一遍 Model Armor（只报命中和延迟）")
@@ -114,13 +116,16 @@ def gate(
     return True
 
 
-async def run(samples: Sequence[Json], runs: int, screener: Screener, out: Path) -> list[Json]:
+async def run(
+    samples: Sequence[Json], runs: int, screener: Screener, out: Path, counts_only: bool = False
+) -> list[Json]:
+    """逐条的结果写 results.jsonl、逐条打印；counts_only（留出集）两样都不出，只在内存里算合计。"""
     rows: list[Json] = []
-    with (out / "results.jsonl").open("w", encoding="utf-8") as f:
+    with (out / "results.jsonl").open("w", encoding="utf-8") if not counts_only else _Null() as f:
         for r in range(1, runs + 1):
             for s in samples:
                 t0 = time.perf_counter()
-                harm, injection, refused, attempts = await screener.classify(s["text"])
+                harm, injection, refused, attempts, _ = await screener.classify(s["text"])
                 row = {
                     "id": s["id"],
                     "label": s["label"],
@@ -135,8 +140,31 @@ async def run(samples: Sequence[Json], runs: int, screener: Screener, out: Path)
                 f.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
                 f.flush()
                 rows.append(row)
-                print(f"第 {r} 遍 {s['id']}（{s['label']}）：{row['selfHarm']}")
+                if not counts_only:
+                    print(f"第 {r} 遍 {s['id']}（{s['label']}）：{row['selfHarm']}")
     return rows
+
+
+class _Null:
+    def __enter__(self) -> _Null:
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        return None
+
+    def write(self, _: str) -> None:
+        return None
+
+    def flush(self) -> None:
+        return None
+
+
+def counts_only(rep: Json) -> Json:
+    """留出集只出合计（数据评审 #112）：ID 的列表换成条数。"""
+    out = dict(rep)
+    for k in ("realMissed", "falseSignals", "storyAmbiguous", "unjudged"):
+        out[k] = len(rep[k])
+    return out
 
 
 def pct(xs: Sequence[float], q: float) -> float:
@@ -178,16 +206,29 @@ def report(samples: Sequence[Json], rows: Sequence[Json]) -> Json:
     }
 
 
+def _n(x: Any) -> int:
+    return x if isinstance(x, int) else len(x)
+
+
+def _ids(x: Any) -> str:
+    return "" if isinstance(x, int) else " ".join(x)
+
+
 def print_report(rep: Json) -> None:
-    missed = "全部每遍判成 signal" if not rep["realMissed"] else "有落下的：" + " ".join(rep["realMissed"])
+    """--counts-only 的报告里 ID 的列表已经换成条数，这里两种都认。"""
+    missed = (
+        "全部每遍判成 signal"
+        if not _n(rep["realMissed"])
+        else f"有落下的 {_n(rep['realMissed'])} 条 {_ids(rep['realMissed'])}"
+    )
     print(f"\n真实信号 {rep['realSignals']} 条：{missed}")
     rate = f"{rep['falseSignalRate']:.1%}"
-    print(f"难句误判成 signal：{len(rep['falseSignals'])} 条（{rate}）{' '.join(rep['falseSignals'])}")
+    print(f"难句误判成 signal：{_n(rep['falseSignals'])} 条（{rate}）{_ids(rep['falseSignals'])}")
     print(f"  主集加留出合计超过 {REVIEW_FALSE_SIGNALS:.0%} 要重新评估（S-072 ②）")
     flag = "，超过 1/6，告诉 PM" if rep["storyAmbiguousRate"] > STORY_AMBIGUOUS else ""
-    print(f"故事组判成 ambiguous：{len(rep['storyAmbiguous'])} 条（{rep['storyAmbiguousRate']:.1%}）{flag}")
-    if rep["unjudged"]:
-        print(f"没判出来（超时两次或拒答）：{' '.join(rep['unjudged'])}")
+    print(f"故事组判成 ambiguous：{_n(rep['storyAmbiguous'])} 条（{rep['storyAmbiguousRate']:.1%}）{flag}")
+    if _n(rep["unjudged"]):
+        print(f"没判出来（超时两次或拒答）：{_n(rep['unjudged'])} 条 {_ids(rep['unjudged'])}")
     lat = rep["latencyMs"]
     print(f"延迟 p50 {lat['p50']:.0f} ms、p95 {lat['p95']:.0f} ms、最长 {lat['max']:.0f} ms")
     print("合格（S-072 ②）" if rep["pass"] else "不合格：按 S-072 先用 v2、安全优先，结果交 PM")
@@ -235,7 +276,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0 if status < 300 else EXIT_FAILED
     try:
         settings = _settings()
-        samples = load(args.samples)
+        path = args.set_path or args.samples
+        if path is None:
+            raise ConfigError("要给样本文件（位置参数或 --set）")
+        samples = load(path)
         if settings.model == "real":
             if not gate(args, settings, os.environ, len(samples), per_call_usd(samples), argv):
                 return 0
@@ -253,7 +297,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     code = 0
     rows: list[Json] = []
     try:
-        rows = asyncio.run(run(samples, args.runs, screener, args.out))
+        rows = asyncio.run(run(samples, args.runs, screener, args.out, args.counts_only))
     except (BudgetStop, RateLimited) as e:
         print(f"停下（{type(e).__name__}）", file=sys.stderr)
         code = EXIT_STOP
@@ -261,6 +305,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"停下（ReplayMissing）：{e}", file=sys.stderr)
         return EXIT_CONFIG
     rep = report(samples, rows)
+    if args.counts_only:
+        rep = counts_only(rep)
     if args.armor and code == 0:
         rep["armor"] = asyncio.run(armor_pass(samples, screener))
     (args.out / "report.json").write_text(json.dumps(rep, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

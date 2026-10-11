@@ -282,7 +282,14 @@ class Narrator:
             res = await c.execute(
                 update(turns)
                 .where(turns.c.turn_id == task.turn_id, turns.c.status == "leased")
-                .values(status="failed", outcome="no_response", minutes=0, lease_until=None, settled_at=func.now())
+                .values(
+                    status="failed",
+                    outcome="no_response",
+                    minutes=0,
+                    lease_until=None,
+                    settled_at=func.now(),
+                    flags=None,
+                )
                 .returning(turns.c.turn_id)
             )
             if res.first() is not None and task.kind in ANSWERED:
@@ -659,6 +666,7 @@ class Narrator:
                     lease_until=None,
                     settled_at=func.now(),
                     result=stored,
+                    flags=None,  # B-12：筛查标记只是交给叙事者的，提交的同一个事务里清掉（S-057、S-069 ③）
                 )
             )
             self.fault("metrics")

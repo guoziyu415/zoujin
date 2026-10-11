@@ -24,7 +24,7 @@ from zoujin_backend.db import store
 from zoujin_backend.db.tables import turns
 from zoujin_backend.models.armor import armor
 from zoujin_backend.models.text import text_model
-from zoujin_backend.safety import NOT_SCREENED, SafetyState, Screen, Screener, decide
+from zoujin_backend.safety import NOT_SCREENED, SafetyState, Screen, Screener, counts_of, decide
 from zoujin_backend.trace import Tracer
 
 if TYPE_CHECKING:
@@ -45,17 +45,6 @@ def build_screener(settings: Settings, tracer: Tracer | None = None) -> Screener
         armor=armor(settings.model, replays=settings.replays),
         tracer=tracer or Tracer(),
     )
-
-
-def counts_of(s: Screen) -> dict[str, int]:
-    out = {}
-    if s.unscreened:
-        out["safety_unscreened"] = 1
-    if s.refused:
-        out["safety_refused"] = 1
-    if s.armor_failed:
-        out["armor_errors"] = 1
-    return out
 
 
 class Guard:
@@ -105,16 +94,13 @@ class Guard:
         conn = self.conn
         async with self.lock, conn.gw.engine.begin() as c:
             st = SafetyState.of(await store.safety_state(c, conn.pid, lock=True))
-            if st.paused:  # 已经暂停了（前一句）：这一句不再算
+            if st.paused:  # 已经暂停了（前一句）：这一句不再算，只记花费
+                costs = {k: v for k, v in counts_of(s, "pass").items() if k.startswith("cost_")}
+                await store.count(c, conn.pid, **costs)
                 return "pass"
             decision = decide(s, st)
             await store.set_safety(c, conn.pid, st.to_json())
-            by = counts_of(s)
-            if decision == "pause":
-                by["safety_pauses"] = 1
-            elif decision == "hint":
-                by["safety_hints"] = 1
-            await store.count(c, conn.pid, **by)
+            await store.count(c, conn.pid, **counts_of(s, decision))
         if decision == "pause":
             self.paused = True
         return decision

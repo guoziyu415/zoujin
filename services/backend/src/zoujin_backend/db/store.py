@@ -105,7 +105,9 @@ async def retract_queued(c: AsyncConnection, pid: str, turn_id: str) -> str | No
                 turns.c.kind.in_(RETRACTABLE),
                 turns.c.status.in_(("pending", "leased")),
             )
-            .values(status="retracted", outcome="retracted", minutes=0, lease_until=None, settled_at=func.now())
+            .values(
+                status="retracted", outcome="retracted", minutes=0, lease_until=None, settled_at=func.now(), flags=None
+            )
             .returning(turns.c.kind)
         )
     ).first()
@@ -126,8 +128,8 @@ async def count_retracted(c: AsyncConnection, pid: str) -> None:
 # —— 意图确认的草稿（B-4，api-contract 3.9）——
 
 
-async def count(c: AsyncConnection, pid: str, **by: int) -> None:
-    """playthrough_metrics 的计数加几（B-12 的安全和输出侧计数；行不存在就不加，局已经删了）。"""
+async def count(c: AsyncConnection, pid: str, **by: float) -> None:
+    """playthrough_metrics 的计数、花费加几（B-12 的安全和输出侧；行不存在就不加，局已经删了）。"""
     if not by:
         return
     await c.execute(

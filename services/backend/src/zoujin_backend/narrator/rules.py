@@ -17,12 +17,22 @@ import copy
 import re
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
-from functools import cached_property
 from typing import Any
 
 from zoujin_backend.ids import IdGen
 from zoujin_backend.safety import pii
-from zoujin_worldsim import OCCURRED, Sim, SimState, activity, apply, check_effects, flat, knows, travel_minutes
+from zoujin_worldsim import (
+    OCCURRED,
+    Sim,
+    SimState,
+    activity,
+    apply,
+    check_effects,
+    flat,
+    knows,
+    spoilers,
+    travel_minutes,
+)
 
 Json = Any
 
@@ -117,10 +127,6 @@ class Index:
         self.anchor_beats = {b["id"] for b in world["beats"] if b["kind"] == "anchor"} | {
             a for a in world["anchors"] if a.startswith("beat.")
         }
-
-    @cached_property
-    def spoilers(self) -> list[tuple[str, list[str]]]:
-        return [(f["id"], list(f["spoilerTerms"])) for f in self.world["facts"] if f.get("spoilerTerms")]
 
     # —— 名字（日语 reason 用） ——
 
@@ -366,14 +372,12 @@ class _Judge:
 
     def op_improv(self, e: Json) -> None:
         ix, ch, text = self.ix, e["character"], e["statement"]
-        for fid, terms in ix.spoilers:
-            said = [x for x in terms if x in text]
-            if said and not knows(ix.world, self.state, ch, fid):
-                self.hit(
-                    "R4-knowledge",
-                    "spoiler",
-                    f"{ix.who(ch)}の話に、まだ知らないはずのこと（{'、'.join(said)}）が入っている",
-                )
+        for said in spoilers(ix.world, self.state, ch, text).values():  # 共享规则库，和输出侧监控、E2 同一个口径
+            self.hit(
+                "R4-knowledge",
+                "spoiler",
+                f"{ix.who(ch)}の話に、まだ知らないはずのこと（{'、'.join(said)}）が入っている",
+            )
 
     def op_hold(self, e: Json) -> None:
         ix, item, to = self.ix, e["item"], e.get("to")

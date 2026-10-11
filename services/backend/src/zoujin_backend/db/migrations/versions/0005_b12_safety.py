@@ -20,14 +20,23 @@ depends_on: str | Sequence[str] | None = None
 
 COUNTS = (
     "safety_pauses",
+    "safety_ambiguous",
     "safety_hints",
     "safety_unscreened",
     "safety_refused",
+    "safety_injection",
+    "safety_pii",
+    "safety_harmful",
     "armor_errors",
-    "spoiler_hits",
+    "output_lines",
+    "output_spoilers",
     "output_harmful",
-    "question_notes",
+    "output_rebuilds",
+    "output_questions",
+    "output_questions_repeated",
+    "output_question_notes",
 )
+COSTS = ("cost_safety_usd", "cost_armor_usd")
 
 
 def upgrade() -> None:
@@ -36,12 +45,14 @@ def upgrade() -> None:
         sa.Column("safety", postgresql.JSONB(), server_default=sa.text("'{}'::jsonb"), nullable=False),
     )
     op.add_column("turns", sa.Column("flags", postgresql.JSONB(), nullable=True))
+    for name in COSTS:
+        op.add_column("playthrough_metrics", sa.Column(name, sa.Numeric(12, 6), server_default="0", nullable=False))
     for name in COUNTS:
         op.add_column("playthrough_metrics", sa.Column(name, sa.Integer(), server_default="0", nullable=False))
 
 
 def downgrade() -> None:
-    for name in reversed(COUNTS):
+    for name in (*reversed(COUNTS), *reversed(COSTS)):
         op.drop_column("playthrough_metrics", name)
     op.drop_column("turns", "flags")
     op.drop_column("playthroughs", "safety")

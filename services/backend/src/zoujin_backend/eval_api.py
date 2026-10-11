@@ -56,7 +56,7 @@ from zoujin_backend.narrator import acts
 from zoujin_backend.narrator.core import Narrator, Result
 from zoujin_backend.narrator.pipeline import CallFailed, Pipeline, Spend, TurnInput
 from zoujin_backend.narrator.writer import Writer, act_closed
-from zoujin_backend.safety import SafetyState, Screener, decide
+from zoujin_backend.safety import SafetyState, Screen, Screener, counts_of, decide
 from zoujin_backend.schemas import SchemaBook
 from zoujin_backend.trace import Tracer
 from zoujin_backend.world import Book, Library
@@ -269,19 +269,20 @@ class Session:
             screen = await self.screener.screen(text, **self.span)
             decision = decide(screen, self.safety)
             if decision == "pause":  # 出戏卡（3.12）：人物的回答不出、这一轮不进叙事者、不花时间、原话不存
-                return await self._paused(engine, to, pre, screen.self_harm)
+                return await self._paused(engine, to, pre, screen)
             if decision == "hint":
                 self.monitor.calm()
             notes = self.monitor.notes(to)
             turn_in = TurnInput(character=to, player=text)
             reply = await self.pipeline.reply(self.book, st, turn_in, spend, notes=notes)
-            watched = self.monitor.observe(to, reply, st)
+            watched = self.monitor.observe(to, reply, st, said=text)
             async with engine.begin() as c:
                 await c.execute(
                     update(playthrough_metrics)
                     .where(playthrough_metrics.c.playthrough_id == self.pid)
                     .values(cost_reply_usd=playthrough_metrics.c.cost_reply_usd + spend.usd.get("reply", 0.0))
                 )
+                await store.count(c, self.pid, **counts_of(screen, decision), **(watched.counts() if reply else {}))
                 turn_id = await store.enqueue(
                     c, self.ids, self.pid, kind="talk", input_mode="text", character=to, flags=screen.flags
                 )
@@ -331,7 +332,7 @@ class Session:
             out["confirm"] = asking
         return out
 
-    async def _paused(self, engine: AsyncEngine, to: str, pre: Sequence[Result], self_harm: str) -> Json:
+    async def _paused(self, engine: AsyncEngine, to: str, pre: Sequence[Result], screen: Screen) -> Json:
         """出戏卡停下的一轮（B-12，3.12）：写一行 outcome = paused、0 分，没有原话，不叫叙事者。评测里玩家下一步
         就算选了「物語に戻る」（canReturn），暂停随即解除。"""
         async with engine.begin() as c:
@@ -343,12 +344,12 @@ class Session:
                 .where(turns_t.c.turn_id == turn_id)
                 .values(outcome="paused", minutes=0, settled_at=func.now())
             )
-            await store.count(c, self.pid, safety_pauses=1)
+            await store.count(c, self.pid, **counts_of(screen, "pause"))
         self.turns[self.steps] = turn_id
         self.safety.paused = False  # 评测的下一步 = 玩家回到了故事
         return {
             "safetyCard": {"shown": True, "paused": True, "canReturn": True},
-            "safety": self_harm,
+            "safety": screen.self_harm,
             "outcome": "paused",
             "reply": None,
             "characterTextMissing": False,
@@ -357,7 +358,7 @@ class Session:
             "traceId": turn_id,
         }
 
-    async def _count(self, **by: int) -> None:
+    async def _count(self, **by: float) -> None:
         engine = self._engine()
         try:
             async with engine.begin() as c:
@@ -432,7 +433,7 @@ class Session:
         decision = decide(screen, self.safety)
         if decision == "pause":  # 不交给叙事者、不算试次；回到故事以后幕末页照原样
             self.safety.paused = False
-            _run(self._count(safety_pauses=1))
+            _run(self._count(**counts_of(screen, decision)))
             return {
                 "safetyCard": {"shown": True, "paused": True, "canReturn": True},
                 "safety": screen.self_harm,
@@ -443,6 +444,7 @@ class Session:
             }
         if decision == "hint":
             self.monitor.calm()
+        _run(self._count(**counts_of(screen, decision)))
         request = {"clientMsgId": f"eval-{self.steps}", "mode": "text"}
         r, t0 = _run(self._task("plan", request, said=screen.masked, flags=screen.flags))
         info = r.info

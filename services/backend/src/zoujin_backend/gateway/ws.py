@@ -53,6 +53,7 @@ from zoujin_backend.gateway import auth
 from zoujin_backend.gateway.core import VOICE_MINUTES, Gateway
 from zoujin_backend.gateway.monitor import Monitor
 from zoujin_backend.gateway.safety import PAUSED_REFUSED, Guard
+from zoujin_backend.models.armor import cost_usd
 from zoujin_backend.models.live import LiveSession, Recent, Transcriber
 from zoujin_backend.narrator import confirm
 from zoujin_backend.narrator.acts import PLAN_TRIES
@@ -301,40 +302,44 @@ class Conn:
         evs = await self.gw.visible_events(self.pid, 0, 10_000)
         return [e["eventId"] for e in evs if e.get("turnId") == turn_id]
 
-    async def _observe(self, character: str, text: str | None) -> None:
-        """人物的一句定稿过输出侧监控（B-12，2.11）：剧透、Model Armor、问句比例；连续两句剧透重建会话。"""
+    async def _observe(self, character: str, text: str | None, said: str | None = None) -> None:
+        """人物的一句定稿过输出侧监控（B-12，2.11）：剧透、Model Armor、问句比例；连续两句剧透重建会话。
+        said = 玩家这一轮的定稿（玩家自己说过的词人物接着说不算剧透）。Span 只有人物 ID、事实 ID 和类别，没有原话。"""
         if not text:
             return
         async with self.gw.engine.connect() as c:
             st = await store.sim_state(c, self.pid)
-        o = self.monitor.observe(character, text, st)
+        o = self.monitor.observe(character, text, st, said=said)
+        armor = self.gw.screener.armor
         harmful = False
+        failed = False
         try:
-            got = await asyncio.wait_for(self.gw.screener.armor.screen_response(text), self.gw.screener.armor_deadline)
+            got = await asyncio.wait_for(armor.screen_response(text), self.gw.screener.armor_deadline)
             harmful = got.harmful
         except Exception:  # 第二层：出错、超时当没命中
+            failed = True
             log.info("人物输出的 Model Armor 没有结果（%s）", character)
-        by: dict[str, int] = {}
+        by = o.counts()
+        if armor_usd := cost_usd(armor, text):
+            by["cost_armor_usd"] = armor_usd
+        if failed:
+            by["armor_errors"] = 1
         if o.spoilers:
-            by["spoiler_hits"] = 1
+            facts = [h.fact for h in o.spoilers]
             with self.gw.tracer.span(
-                "monitor.output",
-                playthrough_id=self.pid,
-                character=character,
-                kind="spoiler",
-                fact_ids=[h.fact for h in o.spoilers],
+                "monitor.hit", playthrough_id=self.pid, character=character, kind="spoiler", fact_ids=facts
             ):
                 pass
         if harmful:
             by["output_harmful"] = 1
-            with self.gw.tracer.span("monitor.output", playthrough_id=self.pid, character=character, kind="harmful"):
+            with self.gw.tracer.span("monitor.hit", playthrough_id=self.pid, character=character, kind="harmful"):
                 pass
-        if o.question_note_added:
-            by["question_notes"] = 1
-        if by:
-            async with self.gw.engine.begin() as c:
-                await store.count(c, self.pid, **by)
-        if o.rebuild and character in self.sessions and not self.guard.paused:
+        rebuild = o.rebuild and character in self.sessions and not self.guard.paused
+        if rebuild:
+            by["output_rebuilds"] = 1
+        async with self.gw.engine.begin() as c:
+            await store.count(c, self.pid, **by)
+        if rebuild:
             self.monitor.rebuilt(character)
             await self._rebuild(character)
 
@@ -570,7 +575,7 @@ class Conn:
             elif ev.kind == "output_final":
                 t.said = ev.text
                 await self._final(t)
-                self.gw.spawn(self._observe(t.character, ev.text))
+                self.gw.spawn(self._observe(t.character, ev.text, t.heard))
 
     async def _final(self, t: Turn) -> None:
         if t.paused:  # 出戏卡停下的一轮没有人物定稿（3.3 的例外）
@@ -652,7 +657,7 @@ class Conn:
                     turn_seq=t.turn_seq,
                     status="lost" if t.lost else "pending",
                     commit_after=self._window(t.done_at),
-                    flags=sorted(screen.flags) if screen is not None else None,
+                    flags=sorted(screen.flags) if screen is not None and not t.lost else None,  # lost 的不交给叙事者
                 )
                 heard = screen.masked if screen is not None and screen.masked is not None else t.heard
                 await store.add_utterance(c, self.gw.ids, self.pid, t.turn_id, speaker="player", text=heard, t=now_t)

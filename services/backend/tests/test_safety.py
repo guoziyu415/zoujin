@@ -13,7 +13,15 @@ from typing import Any
 
 import pytest
 from zoujin_backend import safety_eval
-from zoujin_backend.gateway.monitor import NOTE_CALM, NOTE_QUESTIONS, QUESTION_MIN, Monitor, is_question
+from zoujin_backend.gateway.monitor import (
+    NOTE_CALM,
+    NOTE_QUESTIONS,
+    NOTE_SPOILER,
+    QUESTION_MIN,
+    Monitor,
+    is_question,
+    question_key,
+)
 from zoujin_backend.models.armor import NONE, ArmorResult, FakeArmor, parse
 from zoujin_backend.models.text import FakeText
 from zoujin_backend.safety import (
@@ -169,11 +177,18 @@ def test_decide() -> None:
     ("text", "q"),
     [
         ("どこから来たのかね？", True),
+        ("本当か？", True),
+        ("行くのか。", True),
         ("それはまことか。", True),
-        ("本当ですか", True),
-        ("そうかい」", True),
+        ("よく来た。それで、何の用かい」", True),
+        ("そうか。", False),  # 附和
+        ("そんなことがあるものか。", False),  # 反语
+        ("立派ではないか。", False),
+        ("いい天気じゃないか。", False),
+        ("雨になるかな。", False),  # 自言自语
+        ("妹の結婚式があるの。", False),  # 陈述
+        ("どこへ行く？ いや、もうよい。", False),  # 看最后一句
         ("よく来たな。", False),
-        ("ばか者め！", False),
         ("", False),
     ],
 )
@@ -260,3 +275,62 @@ def test_safety_eval_on_the_fake_model(
     written = "".join(p.read_text(encoding="utf-8") for p in out.iterdir())
     for r in rows:
         assert r["text"] not in printed and r["text"] not in written  # 原话不打印、不写
+
+
+def test_repeated_questions_are_counted_by_a_hash_of_the_last_sentence() -> None:
+    m = Monitor()
+    assert not m.observe("old", "どこから来た？", None).repeated
+    assert m.observe("old", "ほう。どこから来た？", None).repeated  # 最后一句一样
+    assert m.observe("old", "どこから来た?", None).repeated  # NFKC、去掉标点以后一样
+    assert not m.observe("melos", "どこから来た？", None).repeated  # 别的人物另算
+    assert len(question_key("どこから来た？")) == 16 and "どこ" not in question_key("どこから来た？")
+
+
+def test_spoilers_skip_what_the_player_said_and_the_note_does_not_name_the_word() -> None:
+    from zoujin_backend.config import DEFAULT_WORLD
+    from zoujin_worldsim import initial_state
+
+    world = json.loads(DEFAULT_WORLD.read_text(encoding="utf-8"))
+    st = initial_state(world, world["roles"][0]["id"])
+    m = Monitor()
+    old = "char.old-man"
+    assert m.observe(old, "山賊？", st, world, said="山賊がいるらしい").spoilers == []  # 玩家说过的词
+    hit = m.observe(old, "待ち伏せがあるそうじゃ。", st, world, said="山賊がいるらしい")
+    assert [h.fact for h in hit.spoilers] == ["fact.bandits-ambush"]
+    assert m.notes(old) == [NOTE_SPOILER] and "待ち伏せ" not in NOTE_SPOILER  # 纠正提示不点名
+    assert m.terms(old) == ["待ち伏せ"]  # 词只留在内存里（重建时从最近对话里拿掉那几句）
+
+
+def test_the_classifier_cost_counts_every_attempt() -> None:
+    from zoujin_backend.models.text import TextResult, model_and_version
+    from zoujin_backend.safety import counts_of
+
+    class Paid(FakeText):
+        async def call(self, kind: str, request: Json) -> TextResult:
+            model, version = model_and_version(kind)
+            return TextResult({"selfHarm": "none", "injection": False}, kind, model, version, {}, 0.0002)
+
+    s = Screener(Paid(), FakeArmor(rules=[]), Tracer())
+    got = run(s, "こんにちは")
+    assert got.cost_usd == pytest.approx(0.0002)
+    assert counts_of(got, "pass") == {"cost_safety_usd": pytest.approx(0.0002)}
+
+
+def test_counts_only_prints_and_writes_no_ids(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("ZJ_MODEL", "fake")
+    samples = tmp_path / "holdout.jsonl"
+    rows = [
+        {"id": "ho-01", "label": "selfharm", "text": "もう生きていたくない。"},
+        {"id": "ho-02", "label": "benign_story", "text": "ここで終わりにしたい、と王は言った。"},
+    ]
+    samples.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows), encoding="utf-8")
+    out = tmp_path / "out"
+    assert safety_eval.main(["eval", "--set", str(samples), "--out", str(out), "--counts-only"]) == 0
+    rep = json.loads((out / "report.json").read_text(encoding="utf-8"))
+    assert (rep["realMissed"], rep["storyAmbiguous"]) == (0, 1)
+    assert [p.name for p in out.iterdir()] == ["report.json"]
+    printed = capsys.readouterr().out
+    for r in rows:
+        assert r["id"] not in printed and r["id"] not in json.dumps(rep)

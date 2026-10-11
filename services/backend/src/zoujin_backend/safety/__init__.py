@@ -24,7 +24,7 @@ from typing import Literal
 import jsonschema
 
 from zoujin_backend.models.armor import DEADLINE_S as ARMOR_DEADLINE_S
-from zoujin_backend.models.armor import NONE, Armor, ArmorFailed, ArmorResult
+from zoujin_backend.models.armor import NONE, Armor, ArmorFailed, ArmorResult, cost_usd
 from zoujin_backend.models.prompts import PROMPTS
 from zoujin_backend.models.text import (
     BadOutput,
@@ -59,6 +59,8 @@ class Screen:
     armor: ArmorResult = NONE
     attempts: int = 0
     duration_ms: float = 0.0
+    cost_usd: float = 0.0  # 分类器（含重发、超时取消的那次）
+    armor_usd: float = 0.0
 
     @property
     def unscreened(self) -> bool:
@@ -81,7 +83,7 @@ class Screener:
         if not said or not said.strip():
             return Screen("none", frozenset(), said)
         t0 = time.perf_counter()
-        (self_harm, injection, refused, attempts), got = await asyncio.gather(
+        (self_harm, injection, refused, attempts, cost), got = await asyncio.gather(
             self.classify(said, **span), self._armor(said)
         )
         armor_failed = got is None
@@ -107,14 +109,17 @@ class Screener:
             armor=ar,
             attempts=attempts,
             duration_ms=(time.perf_counter() - t0) * 1000,
+            cost_usd=cost,
+            armor_usd=cost_usd(self.armor, said),
         )
 
-    async def classify(self, said: str, **span: object) -> tuple[SelfHarm, bool, bool, int]:
-        """(selfHarm, injection, refused, 调了几次)。拒答不重发（同一句再问还是拒答），按有害输入处理。"""
+    async def classify(self, said: str, **span: object) -> tuple[SelfHarm, bool, bool, int, float]:
+        """(selfHarm, injection, refused, 调了几次, 花费)。拒答不重发（同一句再问还是拒答），按有害输入处理。"""
         kind = "safety"
         model, version = model_and_version(kind)
         request = {"turn": {"player": said}}
         deadline = self.deadline if self.deadline is not None else spec(kind).deadline
+        cost = 0.0
         for attempt in (1, 2):
             with self.tracer.span(
                 "safety.classify",
@@ -129,12 +134,18 @@ class Screener:
                     jsonschema.validate(r.output, PROMPTS[kind].schema)
                 except TimeoutError:
                     sp.set(status="timeout")
+                    cost += self.text.cancelled_cost(kind, request)
                     continue
-                except Refused:
+                except Refused as e:
                     sp.set(status="refused")
-                    return "none", False, True, attempt
-                except (BadOutput, jsonschema.ValidationError):
+                    return "none", False, True, attempt, cost + e.cost_usd
+                except BadOutput as e:
                     sp.set(status="invalid")
+                    cost += e.cost_usd
+                    continue
+                except jsonschema.ValidationError:
+                    sp.set(status="invalid")
+                    cost += r.cost_usd
                     continue
                 except ModelCallFailed:
                     sp.set(status="error")
@@ -148,10 +159,11 @@ class Screener:
                     if self.raise_stops:
                         raise
                     sp.set(status="stopped")
-                    return "unscreened", False, False, attempt
+                    return "unscreened", False, False, attempt, cost
+                cost += r.cost_usd
                 sp.set(status="ok", cost_usd=round(r.cost_usd, 6))
-                return r.output["selfHarm"], bool(r.output["injection"]), False, attempt
-        return "unscreened", False, False, 2
+                return r.output["selfHarm"], bool(r.output["injection"]), False, attempt, cost
+        return "unscreened", False, False, 2, cost
 
     async def _armor(self, said: str) -> ArmorResult | None:
         """第二层：1 秒没回、出错 → None（当没命中，记一次 armor_failed）。回放查不到照样抛出去。"""
@@ -195,3 +207,30 @@ def decide(screen: Screen, st: SafetyState) -> Decision:
             st.hinted = True
             return "hint"
     return "pass"
+
+
+def counts_of(s: Screen, decision: str) -> dict[str, float]:
+    """`playthrough_metrics` 加的几样（列名按数据评审 #112）。标记的轮数只算交给了叙事者的（暂停的不算）。"""
+    out: dict[str, float] = {}
+    if s.cost_usd:
+        out["cost_safety_usd"] = s.cost_usd
+    if s.armor_usd:
+        out["cost_armor_usd"] = s.armor_usd
+    for flag, col in (
+        ("unscreened", "safety_unscreened"),
+        ("refused", "safety_refused"),
+        ("armor_failed", "armor_errors"),
+    ):
+        if getattr(s, flag):
+            out[col] = 1
+    if s.self_harm == "ambiguous":
+        out["safety_ambiguous"] = 1
+    if decision == "pause":
+        out["safety_pauses"] = 1
+        return out
+    if decision == "hint":
+        out["safety_hints"] = 1
+    for flag in (INJECTION, PII, HARMFUL):
+        if flag in s.flags:
+            out[f"safety_{flag}"] = 1
+    return out
