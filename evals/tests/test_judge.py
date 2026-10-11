@@ -13,7 +13,6 @@ from zoujin_evals import calibrate
 from zoujin_evals.judge import (
     BudgetStop,
     ClaudeLedger,
-    ClaudePrices,
     Failed,
     Item,
     Judge,
@@ -29,10 +28,11 @@ from zoujin_evals.judge import (
     user_text,
 )
 from zoujin_evals.live import LIVE_SWITCH
+from zoujin_llm import claude_prices
 
 REPO = Path(__file__).resolve().parents[2]
 ITEMS: list[dict[str, Any]] = calibrate.load_items(REPO / "evals" / "judge" / "calibration.jsonl")
-PRICES = ClaudePrices.from_json(json.loads((REPO / "evals" / "config" / "claude-prices.json").read_text("utf-8")))
+PRICES = claude_prices()  # 共用包 zoujin_llm 里的那一份（B-8）
 MODEL = "test-opus-9-9"  # 假的模型 ID：认得出档名和版本就行
 TAG = "opus-9.9"
 USAGE = {"inputTokens": 1000, "outputTokens": 300, "cacheReadTokens": 0, "cacheWriteTokens": 0}
