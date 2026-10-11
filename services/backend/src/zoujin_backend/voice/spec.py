@@ -1,9 +1,9 @@
 """要生成哪些录音（B-6 卡「生成什么、用哪个声音」）。
 
 源文件 `services/backend/voice/<book>.json` 定每个说话人的声音、人物说明（`direction`）、人物的 6 句和要录的
-`cues`、目标响度（`loudness`，构建时调音量用，不进签名、改了不用重录）、自由对话的音高和语速（`talkPitchHz`、
-`talkMoraPerS`，挑「听不清」「等一下」哪一遍用）；固定演出的句子和 `arrival_capped` 的文字从
-世界模型读。文字、声音和场面都相同的几个键合成一条录音。
+`cues`、目标响度（`loudness`，某段固定演出另定的写 `pieceLoudness`；构建时调音量用，不进签名、改了不用重录）、
+自由对话的音高和语速（`talkPitchHz`、`talkMoraPerS`，挑「听不清」「等一下」哪一遍用）；固定演出的句子和
+`arrival_capped` 的文字从世界模型读。文字、声音和场面都相同的几个键合成一条录音。
 """
 
 from __future__ import annotations
@@ -47,6 +47,8 @@ class Speaker:
     # 同一人物自由对话的音高中位（Hz）和语速（拍/秒）：「听不清」「等一下」要像它
     talk: tuple[float, float] | None = None
     offsets: dict[str, float] = field(default_factory=dict, hash=False, compare=False)  # 键 → 目标响度的偏移（dB）
+    # 固定演出 ID → 这个人在那段里的目标响度（pieceLoudness：收幕那一串几个人拉到同一个电平，UX）
+    pieces: dict[str, float] = field(default_factory=dict, hash=False, compare=False)
 
     @property
     def slug(self) -> str:
@@ -67,11 +69,13 @@ class Recording:
 
     @property
     def loudness(self) -> float | None:
-        """目标响度：说话人的 loudness 加这一句的 loudnessOffset（原作写明声音小的句子，UX）。"""
-        if self.speaker.loudness is None:
+        """目标响度：这句所在固定演出的 pieceLoudness，没有就用说话人的 loudness；再加这一句的 loudnessOffset
+        （原作写明声音小的句子，UX）。"""
+        sp = self.speaker
+        base = next((sp.pieces[k.split("/")[0]] for k in self.keys if k.split("/")[0] in sp.pieces), sp.loudness)
+        if base is None:
             return None
-        offsets = self.speaker.offsets
-        return self.speaker.loudness + next((offsets[k] for k in self.keys if k in offsets), 0.0)
+        return base + next((sp.offsets[k] for k in self.keys if k in sp.offsets), 0.0)
 
     @property
     def system(self) -> str:
@@ -170,10 +174,9 @@ def plan(spec: Json, world: Json) -> Plan:
         loud = s.get("loudness")
         talk = (float(s["talkPitchHz"]), float(s["talkMoraPerS"])) if "talkPitchHz" in s else None
         offsets = {k: float(v) for k, v in s.get("loudnessOffset", {}).items()}
-        if offsets and loud is None:
-            raise SpecError(f"{sid} 有 loudnessOffset 但没有 loudness")
+        pieces = {k: float(v) for k, v in s.get("pieceLoudness", {}).items()}
         speakers[sid] = Speaker(
-            sid, s["name"], s["voice"], s["direction"], None if loud is None else float(loud), talk, offsets
+            sid, s["name"], s["voice"], s["direction"], None if loud is None else float(loud), talk, offsets, pieces
         )
     readings: dict[str, str] = spec.get("readings", {})
     scenes: dict[str, str] = spec.get("scenes", {})
@@ -238,6 +241,13 @@ def plan(spec: Json, world: Json) -> Plan:
     bad = sorted(f"{sid} 的 {k}" for sid, sp in speakers.items() for k in sp.offsets if (sid, k) not in keys)
     if bad:
         raise SpecError(f"源文件 loudnessOffset 里的键对不上任何一句：{', '.join(bad)}")
+    owned = {(r.speaker.id, k.split("/")[0]) for r in recs for k in r.keys}
+    bad = sorted(f"{sid} 的 {k}" for sid, sp in speakers.items() for k in sp.pieces if (sid, k) not in owned)
+    if bad:
+        raise SpecError(f"源文件 pieceLoudness 里的固定演出这个人没有句子：{', '.join(bad)}")
+    bad = sorted(r.id for r in recs if r.loudness is None and any(k in r.speaker.offsets for k in r.keys))
+    if bad:
+        raise SpecError(f"有 loudnessOffset 但没有目标响度（loudness 或 pieceLoudness）：{', '.join(bad)}")
     unused = sorted(set(scenes) - used_scenes) + sorted(
         f"{sid} 的 {k}" for sid, own in own_scenes.items() for k in own if (sid, k) not in used_own
     )

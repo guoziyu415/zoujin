@@ -138,8 +138,20 @@
    "reading": "やつばら"
   },
   {
+   "word": "口惜し",
+   "reading": "くやし"
+  },
+  {
    "word": "地団駄",
    "reading": "じだんだ"
+  },
+  {
+   "word": "佳き",
+   "reading": "よき"
+  },
+  {
+   "word": "首肯き",
+   "reading": "うなずき"
   },
   {
    "word": "困憊",
@@ -152,6 +164,10 @@
   {
    "word": "怺",
    "reading": "こら"
+  },
+  {
+   "word": "首肯い",
+   "reading": "うなずい"
   },
   {
    "word": "薄明",
@@ -188,6 +204,10 @@
   {
    "word": "繋舟",
    "reading": "けいしゅう"
+  },
+  {
+   "word": "掻",
+   "reading": "か"
   },
   {
    "word": "憐愍",
@@ -264,6 +284,14 @@
   {
    "word": "齧",
    "reading": "かじ"
+  },
+  {
+   "word": "若し",
+   "reading": "もし"
+  },
+  {
+   "word": "唸",
+   "reading": "うな"
   },
   {
    "word": "歔欷",
@@ -801,6 +829,10 @@
     {
      "fact": "fact.storm",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "since": "beat.13"
     },
     {
      "fact": "fact.bridge-destroyed",
@@ -1845,6 +1877,10 @@
     {
      "fact": "fact.storm",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "since": "beat.13"
     }
    ],
    "initialPlace": "place.melos-home",
@@ -2015,6 +2051,10 @@
     {
      "fact": "fact.storm",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "since": "beat.13"
     },
     {
      "fact": "fact.groom-agreed",
@@ -3515,6 +3555,19 @@
     "大雨",
     "豪雨",
     "車軸を流す"
+   ]
+  },
+  {
+   "id": "fact.melos-farewell",
+   "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+   "trueFrom": "beat.13",
+   "visibility": "public",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 33,
+     "quote": "眼が覚めたら、すぐに市に出かける。大切な用事があるのだ。"
+    }
    ]
   },
   {
@@ -5432,6 +5485,13 @@
      "value": 1,
      "inferred": true,
      "note": "王の信頼（0〜100、初期 5）が 0 まで落ちていたら改心しない。プレイヤーが嘲りや欺きで王の心を閉ざした場合（推断。S-007「間に合ったが王は変わらない」への道）"
+    },
+    {
+     "var": "var.king.disposition",
+     "op": "!=",
+     "value": "reformed",
+     "inferred": true,
+     "note": "刑場に来る前に王がもう改心していた局（信頼が 70 を超え、身代りを先に放した）では、刑場でもう一度改心しない（UX の評審、S-087）"
     }
    ],
    "outcomes": [

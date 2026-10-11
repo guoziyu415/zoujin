@@ -117,6 +117,11 @@
      "since": "beat.12"
     },
     {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+     "since": "beat.13"
+    },
+    {
      "fact": "fact.bridge-destroyed",
      "statement": "前日の豪雨で川が氾濫し、橋が流された。",
      "since": "beat.17"
@@ -267,6 +272,10 @@
     {
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。"
     },
     {
      "fact": "fact.groom-agreed",
@@ -422,6 +431,10 @@
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。"
     },
     {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。"
+    },
+    {
      "fact": "fact.groom-agreed",
      "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。"
     }
@@ -573,6 +586,10 @@
     {
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。"
     },
     {
      "fact": "fact.bridge-destroyed",
@@ -1336,6 +1353,11 @@
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+     "since": "beat.13"
     }
    ]
   },
@@ -1382,6 +1404,11 @@
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+     "since": "beat.13"
     }
    ]
   },
@@ -1426,6 +1453,10 @@
     {
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。"
     }
    ],
    "notYet": []
@@ -1472,6 +1503,11 @@
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+     "since": "beat.13"
     },
     {
      "fact": "fact.groom-agreed",
@@ -1521,7 +1557,13 @@
      "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。"
     }
    ],
-   "notYet": []
+   "notYet": [
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+     "since": "beat.13"
+    }
+   ]
   },
   "p-groom-after-departure": {
    "character": "char.groom",
@@ -1558,6 +1600,10 @@
     {
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。"
     },
     {
      "fact": "fact.groom-agreed",
@@ -1951,6 +1997,11 @@
      "since": "beat.12"
     },
     {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+     "since": "beat.13"
+    },
+    {
      "fact": "fact.bridge-destroyed",
      "statement": "前日の豪雨で川が氾濫し、橋が流された。",
      "since": "beat.17"
@@ -2112,6 +2163,11 @@
      "since": "beat.12"
     },
     {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+     "since": "beat.13"
+    },
+    {
      "fact": "fact.bridge-destroyed",
      "statement": "前日の豪雨で川が氾濫し、橋が流された。",
      "since": "beat.17"
@@ -2257,6 +2313,10 @@
     {
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。"
     },
     {
      "fact": "fact.bridge-destroyed",
@@ -2796,6 +2856,11 @@
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+     "since": "beat.13"
     }
    ]
   },
@@ -2845,6 +2910,11 @@
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+     "since": "beat.13"
     }
    ]
   },
@@ -2889,6 +2959,10 @@
     {
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。"
     }
    ],
    "notYet": []
@@ -2935,6 +3009,11 @@
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+     "since": "beat.13"
     },
     {
      "fact": "fact.groom-agreed",
@@ -2986,6 +3065,11 @@
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+     "since": "beat.13"
     }
    ]
   },
@@ -3024,6 +3108,10 @@
     {
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。"
     },
     {
      "fact": "fact.groom-agreed",

@@ -50,6 +50,8 @@ TEXT: dict[str, TextSpec] = {
     "reply": TextSpec("google", "gemini-3.8-flash", 15.0, 1024, thinking="LOW", temperature=0.8),
     "narrate": TextSpec("claude", "sonnet-5.5", 10.0, 1024, thinking="between_tools", effort="low"),
     "plan": TextSpec("claude", "sonnet-5.5", 15.0, 4096, thinking="adaptive", effort="low"),
+    # B-9：结局要快，不先思考；输出约 1,500 token〔推算〕，时限 30 秒等 Mac 探针实测再改
+    "ending": TextSpec("claude", "sonnet-5.5", 30.0, 4096, thinking="between_tools", effort="low"),
 }
 TEXT_MODELS: dict[str, str] = {k: v.model for k, v in TEXT.items()}
 DEADLINES: dict[str, float] = {k: v.deadline for k, v in TEXT.items()}

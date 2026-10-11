@@ -118,6 +118,61 @@ NARRATE_LINES = {  # 假模型的一行地の文：每种 status 一句（为测
     "refused": "それは、いまはかなわなかった。",
 }
 
+FAKE_FATES = {"witness": "刑場で、日没を見届けた。", "elsewhere": "刑場には行かず、日没を迎えた。"}
+
+
+def _ending(request: Mapping[str, Any]) -> Json:
+    """假模型的结局（B-9）：按输入确定地写一份能过校验的。尾声从最后几个事件的摘要拼，每句引用那个事件；
+    这一局有人被处刑时跳过带禁用写法的摘要。"""
+    forbidden = list(request.get("forbidden", []))
+    events = [
+        e
+        for e in request.get("events", [])
+        if not any(w in str(e.get("summary", "")) for w in forbidden)
+        and (e.get("beat") or {}).get("to", "happened") == "happened"  # 没照原作发生的节拍，summary 是原作那一句
+    ]
+    events = events or list(request.get("events", []))
+    last = [str(events[-1]["eventId"])] if events else []
+    picked = events[-3:]
+    epilogue = [{"sentence": f"{str(e['summary']).rstrip('。')}。", "cites": [str(e["eventId"])]} for e in picked]
+    while len(epilogue) < 3:
+        epilogue.insert(0, {"sentence": "その日も、日は西へ傾いていった。", "cites": last})
+    beats = request.get("changedBeats") or []
+    fate = (request.get("place") or {}).get("fate", "elsewhere")
+    return {
+        "epilogue": epilogue,
+        "contrast": {
+            "original": "原作では、物語は書かれたとおりに進んだ。",
+            "yours": "あなたの世界では、別の日没が来た。" if beats else "あなたの世界でも、物語は同じ結末を迎えた。",
+            "beat": beats[0]["beat"] if beats else None,
+        },
+        "subtitle": str((request.get("outcome") or {}).get("label", "物語は終わった"))[:26],
+        "cardContrast": "原作との違いは、あなたがそこにいたことだった。",
+        "you": {
+            "title": {"text": f"見届けた{request.get('role', '旅の者')}"[:14], "cites": last},
+            "fate": {"text": FAKE_FATES.get(str(fate), FAKE_FATES["elsewhere"]), "cites": last},
+            "didForYou": [],
+            "youDid": [],
+        },
+        "characters": [
+            {
+                "character": c["character"],
+                "yours": [{"sentence": f"{c['name']}の一日は、こうして暮れた。", "cites": last}],
+            }
+            for c in request.get("characters", [])
+            if not c.get("unchanged")
+        ],
+    }
+
+
+def _ending_broken(request: Mapping[str, Any]) -> Json:
+    """`broken: true` 的结局：引用全空（cite-empty），测重写和模板。"""
+    out = _ending(request)
+    for row in out["epilogue"]:
+        row["cites"] = []
+    return out
+
+
 DEFAULTS: dict[str, Callable[[Mapping[str, Any]], Json]] = {
     "triage": lambda r: {"route": "maybe"},
     "extract": lambda r: {"candidates": []},  # 没有候选事件：只走时钟
@@ -133,6 +188,7 @@ DEFAULTS: dict[str, Callable[[Mapping[str, Any]], Json]] = {
         "narration": ["その道は、いまは開けていなかった。"],
         "alternative": {"exit": r["options"][0]["optionId"]} if r.get("options") else None,
     },
+    "ending": _ending,
 }
 ERRORS = ("rate-limit", "invalid", "unavailable")
 
@@ -168,7 +224,8 @@ def _matches(when: Mapping[str, Any], request: Mapping[str, Any]) -> bool:
 class FakeText:
     mode: ModelMode = "fake"
 
-    def __init__(self, rules_dir: Path | None = None, rules: list[Json] | None = None) -> None:
+    def __init__(self, rules_dir: Path | None = None, rules: list[Json] | None = None, seed: int | None = None) -> None:
+        self.seed = seed  # 模拟局的种子（B-5）：现在按输入确定地回答、用不上，以后要随机时用它
         self.rules: list[dict[str, Any]] = []
         self.used: dict[int, int] = {}  # 规则序号 → 用过几次（`times`）
         self.calls: list[tuple[str, Json]] = []  # 测试看调用了什么
@@ -215,6 +272,8 @@ class FakeText:
                 output = copy.deepcopy(rule["output"])
             elif "fail" in rule and kind == "check":
                 output = _check_failing(request, rule)
+            elif rule.get("broken") and kind == "ending":
+                output = _ending_broken(request)
         return TextResult(output, kind, model, version, dict(NO_USAGE), 0.0)
 
     def cancelled_cost(self, kind: str, request: Json) -> float:
@@ -350,12 +409,17 @@ def real_text_model(settings: Settings) -> Routed:
 
 
 def text_model(
-    mode: ModelMode, *, fake_rules: Path | None, replays: Path, settings: Settings | None = None
+    mode: ModelMode,
+    *,
+    fake_rules: Path | None,
+    replays: Path,
+    settings: Settings | None = None,
+    seed: int | None = None,
 ) -> TextModel:
-    """settings 给了、设了 `record_replays`：fake 和 real 的调用录下来（replay 不录）。"""
+    """settings 给了、设了 `record_replays`：fake 和 real 的调用录下来（replay 不录）。seed 只给假模型（B-5）。"""
     inner: TextModel
     if mode == "fake":
-        inner = FakeText(fake_rules)
+        inner = FakeText(fake_rules, seed=seed)
     elif mode == "replay":
         return ReplayText(replays)
     else:

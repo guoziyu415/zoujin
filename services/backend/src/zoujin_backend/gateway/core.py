@@ -3,6 +3,7 @@
 推给前端的东西都由数据库里的事件现算（projection.py）：
 - 快照 = world_state 缓存的 SimState 的投影，加上局上记的位置点和待处理的（B-3，`store.Run`）；
 - commit = 同一次提交写的一段事件（幂等键前一段相同，`commit_key`），patch 是这一段前后两个快照的差。
+  进结局的那次提交（B-9）：`turns.result.before` 里的 `ending_started` 排在它的 commit 前面。
   意图确认答「是」的那次提交（B-4）：`turnId` 是原来那一轮，重查没过时 `narration` 带一句（`turns.result`）。
   玩家的位置点不进 WorldState（契约 3.1）：做完情境动作、幕切换落地的 `patch.player.spot` 按这次提交的结果给
   （`turns.result.playerSpot`），动作（`move`、`go`）的不带（B-3 第 1 条）。
@@ -31,7 +32,7 @@ from zoujin_backend.ids import IdGen
 from zoujin_backend.manifest import Manifest
 from zoujin_backend.models.ledger import Ledger
 from zoujin_backend.models.live import LiveModel
-from zoujin_backend.projection import is_visible, patch, snapshot, visible_event, with_locations
+from zoujin_backend.projection import is_visible, patch, snapshot, visible_event, visible_events, with_locations
 from zoujin_backend.schemas import SchemaBook
 from zoujin_backend.trace import Tracer
 from zoujin_backend.world import Book, Library
@@ -183,6 +184,7 @@ class Gateway:
         sent = after_seq
         for seg in segments:
             msg, state = self._commit(book, pt, state, seg, kinds, results)
+            out.extend(results.get(commit_key(seg[0]["idempotencyKey"]), {}).get("before", []))  # B-9：ending_started
             out.append(msg)
             sent = seg[-1]["seq"]
         return out, sent
@@ -246,15 +248,7 @@ class Gateway:
             if pt is None:
                 return []
             log_ = await store.event_log(c, pid, pt.book.version)
-        state = initial_state(pt.book.world, pt.role_id)
-        out = []
-        for ev in log_:
-            if ev["seq"] > after_seq and is_visible(pt.book, ev, state["vars"]["var.player.location"]):
-                out.append(visible_event(pt.book, ev, pt.role_id))
-                if len(out) >= limit:
-                    break
-            state = apply(pt.book.world, state, ev)
-        return out
+        return visible_events(pt.book, pt.role_id, log_, after_seq, limit)
 
     async def on_commit(self, payload: Json) -> None:
         """叙事者提交后的 NOTIFY（hub.py 转过来）：这一局开着连接就推。"""

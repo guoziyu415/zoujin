@@ -1042,6 +1042,72 @@
       },
       "title": "TelemetryConnectionRestored"
     },
+    "TelemetryEndingPerformed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "clientTs", "props"],
+      "properties": {
+        "name": {
+          "const": "ending_performed"
+        },
+        "playthroughId": {
+          "description": "没有局时省略",
+          "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "clientTs": {
+          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "$ref": "../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "t": {
+          "description": "故事时间，有的话",
+          "$ref": "../data/common.schema.json#/$defs/StoryTime"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "trigger",
+            "playMs",
+            "pausedMs",
+            "taps",
+            "lines",
+            "autoAdvance"
+          ],
+          "properties": {
+            "trigger": {
+              "description": "ending_started.trigger",
+              "type": "string",
+              "enum": ["deadline", "story-closed"]
+            },
+            "playMs": {
+              "description": "演出实际跑的毫秒，不含暂停（后台、全屏页面、「タップして続ける」等着的那段）",
+              "type": "integer",
+              "minimum": 0
+            },
+            "pausedMs": {
+              "description": "暂停的毫秒合计",
+              "type": "integer",
+              "minimum": 0
+            },
+            "taps": {
+              "description": "起作用的点按：补全一句或换下一句；0.5 秒保护期里的、「タップして続ける」那一下不算",
+              "type": "integer",
+              "minimum": 0
+            },
+            "lines": {
+              "description": "这次演出的句数",
+              "type": "integer",
+              "minimum": 0
+            },
+            "autoAdvance": {
+              "description": "「結末を自動で進める」开着（开演时的值，开演以后改不了）",
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "title": "TelemetryEndingPerformed"
+    },
     "TelemetryEndingViewed": {
       "type": "object",
       "additionalProperties": false,
@@ -1333,6 +1399,9 @@
         },
         {
           "$ref": "#/$defs/TelemetryConnectionRestored"
+        },
+        {
+          "$ref": "#/$defs/TelemetryEndingPerformed"
         },
         {
           "$ref": "#/$defs/TelemetryEndingViewed"

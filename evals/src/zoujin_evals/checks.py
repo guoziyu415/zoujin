@@ -335,8 +335,14 @@ def check_clock_advanced(ctx: RunContext, spec: Mapping[str, Json]) -> str | Non
     return None if ok else f"第 {n} 步时钟走了 {got} 分，期望 {spec['min']}〜{spec['max']}"
 
 
+NO_ENDING = "没有进结局（后端的 ending() 回了 None）"
+
+
 def check_outcome(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
-    got = ctx.query("ending")["world"]["outcome"]
+    end = ctx.query("ending")
+    if end is None:
+        return NO_ENDING
+    got = end["world"]["outcome"]
     return None if got == spec["world"] else f"世界结局是 {got}，期望 {spec['world']}"
 
 
@@ -380,7 +386,10 @@ def check_no_pii(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
     if scope in ("summary", "all"):
         texts["事件摘要"] = [e.get("summary") or "" for e in ctx.events()]
     if scope in ("ending", "all"):
-        texts["结局"] = ending_texts(ctx.query("ending"))
+        end = ctx.query("ending")
+        if end is None and scope == "ending":
+            return NO_ENDING
+        texts["结局"] = ending_texts(end) if end is not None else []  # scope all：没进结局就只看记忆和摘要
     hit = {where: s for where, xs in texts.items() for s in spec["strings"] if any(s in x for x in xs)}
     return f"个人信息出现在：{hit}" if hit else None
 
@@ -477,7 +486,10 @@ def check_t_monotonic(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
 
 
 def check_outcome_consistent(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
-    got = ctx.query("ending")["world"]["outcome"]
+    end = ctx.query("ending")
+    if end is None:
+        return NO_ENDING
+    got = end["world"]["outcome"]
     want = classify(ctx.world.raw, ctx.fold(ctx.events()))
     return None if got == want else f"结局写的是 {got}，按最终状态分类是 {want}"
 
@@ -485,6 +497,8 @@ def check_outcome_consistent(ctx: RunContext, spec: Mapping[str, Json]) -> str |
 def check_epilogue_cites_valid(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
     """尾声、为你做的事、你做的事、人物结局的每一句都至少引用一个事件，而且都是本局的事件。"""
     end = ctx.query("ending")
+    if end is None:
+        return NO_ENDING
     ids = {e.get("eventId") for e in ctx.events()}
     player = end.get("player", {})
     sentences = [
@@ -498,8 +512,11 @@ def check_epilogue_cites_valid(ctx: RunContext, spec: Mapping[str, Json]) -> str
 
 
 def check_no_verbatim_quotes(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
+    end = ctx.query("ending")
+    if end is None:
+        return NO_ENDING
     lines = ctx.player_lines()
-    for text in ending_texts(ctx.query("ending")):
+    for text in ending_texts(end):
         quoted = verbatim(text, lines, ctx.world.nouns)
         if quoted:
             return f"结局逐字引用了玩家的话：「{quoted}」（在「{text}」里）"

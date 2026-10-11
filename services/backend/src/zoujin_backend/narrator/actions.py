@@ -394,7 +394,7 @@ async def run_action(n: Narrator, task: Task) -> Result:
         run = Run.of(pt)
         book = n.library.version(pt["world_model_version"])
         if run.act_end is not None:  # 收幕以后：0 分、不写事件、不调模型（B-3 第 4 条）
-            return await n._commit(task, pt["last_seq"], lambda w, b: ended(w, req))
+            return await n._commit(task, pt["last_seq"], lambda w, b: ended(req))
         spend = task.spend  # 跟着任务走：重来的、没提交的也算（B-8 第 7 条）
         span = {"playthrough_id": task.pid, "turn_id": task.turn_id, "world_model_version": book.version}
         d = await decide(n, book, state, req, spend, span)
@@ -457,7 +457,7 @@ def written(n: Narrator, w: Writer, book: Book, task: Task, req: Mapping[str, An
     return Planned(minutes=out.minutes, checked=d.checked, push=push, info=info, extra=extra, actions=1)
 
 
-def ended(w: Writer, req: Mapping[str, Any]) -> Planned:
+def ended(req: Mapping[str, Any]) -> Planned:
     """收幕以后才轮到的动作：refused、0 分、没有事件，一句固定的话（前端靠 clientMsgId 收掉待定的动作）。"""
     from zoujin_backend.narrator.core import Planned
 

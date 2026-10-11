@@ -46,7 +46,15 @@ Json = Any
 
 ITEM = "b8-probe"
 # 每次调用输出的 token（含思考）〔推算，B-8 卡单局成本表〕：只用来算「推算的」那个数，账本按输出上限判
-TYPICAL_OUTPUT = {"triage": 30, "extract": 300, "check": 1200, "rewrite": 400, "narrate": 120, "plan": 600}
+TYPICAL_OUTPUT = {
+    "triage": 30,
+    "extract": 300,
+    "check": 1200,
+    "rewrite": 400,
+    "narrate": 120,
+    "plan": 600,
+    "ending": 1500,  # 三层的文字加少量思考（B-9）
+}
 NEEDED_ENV = ("ANTHROPIC_API_KEY", "ZJ_CLAUDE_HAIKU", "ZJ_CLAUDE_SONNET", "ZJ_LEDGER")
 ROWS, SUMMARY = "probe.jsonl", "summary.json"
 
