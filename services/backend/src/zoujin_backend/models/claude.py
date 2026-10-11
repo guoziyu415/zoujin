@@ -22,11 +22,9 @@
 
 from __future__ import annotations
 
-import asyncio
 import copy
 import json
 import os
-import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from functools import cache
@@ -281,38 +279,23 @@ class ClaudeText:
         tag, version = model_and_version(kind)
         p = self.params(kind, request)
         guess = estimate_usd(self.prices, kind, p)
-        self.ledger.before(guess)
-        start = time.perf_counter()
-        try:
+        with self.ledger.timed(kind=kind, model=tag, estimate=guess) as bill:
             got = await self.transport.create(p)
-        except asyncio.CancelledError:  # 时限到了被取消：可能已经计费，按预计记
-            self.ledger.record(kind=kind, model=tag, usage={}, cost=guess, ms=_ms(start), status="timeout")
-            raise
-        except Exception:  # 没有回应（连不上、5xx、429）：记一行，花费 0
-            self.ledger.record(kind=kind, model=tag, usage={}, cost=0.0, ms=_ms(start), status="error")
-            raise
-        ms = _ms(start)
-        cost = self.prices.cost(tag, got.usage)
-        bad: str | None = None
-        output: Json = None
-        if got.stop_reason in ("refusal", "max_tokens"):
-            bad = f"{kind}：Claude 停在 {got.stop_reason}"
-        else:
-            try:
-                output = json.loads(got.text or "")
-                jsonschema.validate(output, PROMPTS[kind].schema)
-            except (ValueError, jsonschema.ValidationError):
-                bad = f"{kind} 的输出不是合 Schema 的 JSON"
-        self.ledger.record(
-            kind=kind, model=tag, usage=got.usage, cost=cost, ms=ms, status="bad-output" if bad else "ok"
-        )
+            cost = self.prices.cost(tag, got.usage)
+            bad: str | None = None
+            output: Json = None
+            if got.stop_reason in ("refusal", "max_tokens"):
+                bad = f"{kind}：Claude 停在 {got.stop_reason}"
+            else:
+                try:
+                    output = json.loads(got.text or "")
+                    jsonschema.validate(output, PROMPTS[kind].schema)
+                except (ValueError, jsonschema.ValidationError):
+                    bad = f"{kind} 的输出不是合 Schema 的 JSON"
+            bill.done(got.usage, cost, ok=bad is None)
         if bad is not None:
             raise BadOutput(bad, cost)
         return TextResult(output, kind, tag, version, dict(got.usage), cost)
-
-
-def _ms(start: float) -> float:
-    return (time.perf_counter() - start) * 1000
 
 
 def claude_ids(env: Mapping[str, str]) -> tuple[dict[str, str], list[str]]:

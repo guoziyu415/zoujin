@@ -12,11 +12,12 @@ from zoujin_llm.claude import (
     tier_of,
 )
 from zoujin_llm.errors import BudgetStop, ModelCallFailed, RateLimited, Stop
-from zoujin_llm.ledger import STATUSES, Ledger, mark_playthrough, now_z, playthrough, read_lines, use_of
+from zoujin_llm.ledger import STATUSES, Bill, Ledger, mark_playthrough, now_z, playthrough, read_lines, use_of
 
 __all__ = [
     "PRICES_PATH",
     "STATUSES",
+    "Bill",
     "BudgetStop",
     "ClaudePrices",
     "Ledger",

@@ -15,7 +15,6 @@ B-8 以后只剩 `config.TEXT` 里 provider 是 google 的提示（评测里替 
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import os
@@ -176,30 +175,17 @@ class RealText:
         user = self._user(kind, request)
         req = body(kind, user)
         guess = self._guess(kind, user)
-        self.ledger.before(guess)
-        start = time.perf_counter()
-        try:
+        with self.ledger.timed(kind=kind, model=model, estimate=guess) as bill:
             got = await self.transport.generate(model, req)
-        except asyncio.CancelledError:  # 时限到了被取消：可能已经计费，按预计记
-            self.ledger.record(kind=kind, model=model, usage={}, cost=guess, ms=_ms(start), status="timeout")
-            raise
-        except Exception:  # 没有回应（连不上、5xx、429）：记一行，花费 0
-            self.ledger.record(kind=kind, model=model, usage={}, cost=0.0, ms=_ms(start), status="error")
-            raise
-        ms = _ms(start)
-        cost = cost_usd(model, got.usage, regional=self.regional)
-        try:
-            output = json.loads(got.text)
-            jsonschema.validate(output, PROMPTS[kind].schema)
-        except (ValueError, jsonschema.ValidationError):
-            self.ledger.record(kind=kind, model=model, usage=got.usage, cost=cost, ms=ms, status="bad-output")
-            raise BadOutput(f"{kind} 的输出不是合 Schema 的 JSON", cost) from None
-        self.ledger.record(kind=kind, model=model, usage=got.usage, cost=cost, ms=ms, status="ok")
+            cost = cost_usd(model, got.usage, regional=self.regional)
+            try:
+                output = json.loads(got.text)
+                jsonschema.validate(output, PROMPTS[kind].schema)
+            except (ValueError, jsonschema.ValidationError):
+                bill.done(got.usage, cost, ok=False)
+                raise BadOutput(f"{kind} 的输出不是合 Schema 的 JSON", cost) from None
+            bill.done(got.usage, cost)
         return TextResult(output, kind, model, version, dict(got.usage), cost)
-
-
-def _ms(start: float) -> float:
-    return (time.perf_counter() - start) * 1000
 
 
 def vertex_env(env: Mapping[str, str] | None = None) -> tuple[str, str]:

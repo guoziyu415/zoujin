@@ -109,6 +109,39 @@ def test_ledger_time_status_and_playthrough(tmp_path: Path) -> None:
     assert "playthroughId" not in read_lines(path)[-1]  # 那个事件循环的上下文没带出来
 
 
+def test_timed_records_time_and_status(tmp_path: Path) -> None:
+    """数据评审第 4 题：调用包在 `timed()` 里，耗时和状态自动记（评审员、AI 玩家、叙事者同一个）。"""
+    path = tmp_path / "ledger.jsonl"
+    ledger = Ledger(path, "claude", 1.0)
+    with ledger.timed(kind="judge", model="opus-5.5", estimate=0.1) as bill:
+        bill.done({"inputTokens": 5}, 0.02)
+    with pytest.raises(ValueError), ledger.timed(kind="judge", model="opus-5.5", estimate=0.1) as bill:
+        bill.done({"inputTokens": 5}, 0.03, ok=False)  # 回来了但不能用：钱照记
+        raise ValueError("不合 Schema")
+    with pytest.raises(ModelCallFailed), ledger.timed(kind="player", model="sonnet-5.5", estimate=0.1):
+        raise ModelCallFailed("Claude HTTP 500")
+
+    async def slow() -> None:
+        with ledger.timed(kind="extract", model="sonnet-5.5", estimate=0.07):
+            await asyncio.sleep(1)
+
+    async def cut() -> None:
+        await asyncio.wait_for(slow(), 0.02)
+
+    with pytest.raises(TimeoutError):
+        asyncio.run(cut())
+    with pytest.raises(BudgetStop), ledger.timed(kind="judge", model="opus-5.5", estimate=5.0):
+        pass  # 超上限：不发、不记
+    rows = read_lines(path)
+    assert [(r["status"], r["costUsd"]) for r in rows] == [
+        ("ok", 0.02),
+        ("bad-output", 0.03),
+        ("error", 0.0),
+        ("timeout", 0.07),  # 取消的按预计记
+    ]
+    assert all(isinstance(r["ms"], int) for r in rows) and rows[3]["ms"] >= 15
+
+
 def test_model_tag_and_tier() -> None:
     assert model_tag("test-sonnet-5-5") == "sonnet-5.5" and model_tag("x-HAIKU-5-5-y") == "haiku-5.5"
     assert tier_of("sonnet-5.5") == "sonnet" and tier_of("test-opus-9-9") == "opus"
