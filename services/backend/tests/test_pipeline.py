@@ -9,9 +9,11 @@ import asyncio
 import copy
 import json
 from collections.abc import Mapping, Sequence
+from pathlib import Path
 from typing import Any
 
 import pytest
+from zoujin_backend.clock import PART_OF_DAY, Labels
 from zoujin_backend.config import DEADLINES
 from zoujin_backend.ids import IdGen
 from zoujin_backend.models.text import BudgetStop, FakeText, RateLimited, TextResult, canonical
@@ -401,6 +403,20 @@ def test_reply_recent_beats_count_days_from_now() -> None:
     )
     assert (ago(600, 1440 + 600), ago(1300, 1440 + 600), ago(600, 3 * 1440 + 600)) == ("昨日", "昨夜", "三日前")
     assert ago(10, 6000) is None
+
+
+def test_part_of_day_covers_every_world() -> None:
+    """S-092：worlds/ 下每个世界模型的每个时段名都在 PART_OF_DAY 里，第一段从零点开始、第二段（夜明け）算「朝」；
+    数据改了时段名或加了一段先碰到这里。查不到不回退成「今日」，直接报错。"""
+    worlds = sorted((Path(__file__).resolve().parents[3] / "worlds").glob("*/*/world.json"))
+    assert worlds
+    for path in worlds:
+        labels = Labels(path)
+        assert labels.bands[0][0] == 0 and PART_OF_DAY[labels.bands[1][1]] == "朝", path
+    raw = json.loads(worlds[0].read_text(encoding="utf-8"))
+    raw["clock"]["labels"]["bands"] = [*raw["clock"]["labels"]["bands"], [1430, "丑三つ"]]
+    with pytest.raises(ValueError, match="丑三つ"):
+        Labels(raw)
 
 
 # —— Span 不含原话 ——

@@ -609,8 +609,31 @@ class Offline(unittest.TestCase):
                         FakeClaude(audit_claims=denial))
         self.assertEqual(len(claude.calls), 8)
         self.assertEqual(len((out / "results.jsonl").read_text().splitlines()), 10)
-        # Another world model than the run's: refused before anything is called.
+        # --resume into another run's directory: refused.
+        with self.assertRaises(SystemExit) as stop:
+            run_s3(["--only", "king-after-promise", "--rejudge", str(src), "--resume", str(src)], client)
+        self.assertIn("--resume", str(stop.exception))
+        # The question set given as a path is checked by content: the same file passes the check (and its key is the
+        # file name, not the local path); a changed one is refused before anything is called.
+        same = TMP / "specs" / "s3_scenarios.json"
+        same.parent.mkdir(parents=True, exist_ok=True)
+        same.write_bytes(s3_spoiler.spec_path("scenarios").read_bytes())
+        changed = TMP / "specs" / "changed.json"
+        changed.write_text(same.read_text().replace("king-after-promise", "king-after-promise", 1) + " ")
+        with mock.patch.object(s3_spoiler, "ready", return_value=False) as ready:
+            run_s3(["--only", "king-after-promise", "--rejudge", str(src), "--spec", str(same)], client)
+        self.assertTrue(ready.called)
+        self.assertEqual(set(s3_spoiler.inputs(s3_spoiler.argparse.Namespace(spec=str(same)))), {"world", "s3_scenarios.json"})
+        with self.assertRaises(SystemExit) as stop:
+            run_s3(["--only", "king-after-promise", "--rejudge", str(src), "--spec", str(changed)], client)
+        self.assertIn("题集", str(stop.exception))
+        # A run that did not record its question sets: refused.
         summary = json.loads((src / "summary.json").read_text())
+        (src / "summary.json").write_text(json.dumps({**summary, "inputs": {"world": summary["inputs"]["world"]}}))
+        with self.assertRaises(SystemExit) as stop:
+            run_s3(["--only", "king-after-promise", "--rejudge", str(src)], client)
+        self.assertIn("没记题集", str(stop.exception))
+        # Another world model than the run's: refused before anything is called.
         summary["inputs"]["world"] = "0" * 64
         (src / "summary.json").write_text(json.dumps(summary))
         with self.assertRaises(SystemExit) as stop:

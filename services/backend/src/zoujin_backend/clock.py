@@ -37,6 +37,9 @@ class Labels:
         self.bands: list[tuple[int, str]] = [(int(m), str(b)) for m, b in labels["bands"]]
         self.format: str = labels["format"]
         self.days_known_by: str | None = labels.get("daysKnownBy")
+        missing = [b for _, b in self.bands if b not in PART_OF_DAY]
+        if missing:
+            raise ValueError(f"时段名不在 PART_OF_DAY 里：{missing}（S-092，表由数据维护）")
 
     def band(self, t: int) -> str:
         return [b for m, b in self.bands if m <= t % 1440][-1]
@@ -45,9 +48,9 @@ class Labels:
         """从 `now` 看 `then` 是什么时候：今朝、今日の昼、今日の夕方、今夜、昨日、昨夜、おととい、三日前；再早 None。"""
         dawn = self.bands[1][0] if self.bands[0][0] == 0 and len(self.bands) > 1 else 0
         n = (now - dawn) // 1440 - (then - dawn) // 1440
-        part = PART_OF_DAY.get(self.band(then))
+        part = PART_OF_DAY[self.band(then)]
         if n == 0:
-            return TODAY.get(part or "", "今日")
+            return TODAY[part]
         if n == 1:
             return "昨夜" if part == "夜" else "昨日"
         return {2: "おととい", 3: "三日前"}.get(n)

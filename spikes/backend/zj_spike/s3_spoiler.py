@@ -540,8 +540,10 @@ def estimate(world: World, scenarios: list[dict], conditions: list[str], repeat:
 
 
 def inputs(args) -> dict:
-    """sha256 of the world model and the question sets this run read (data on #89: the version label stays draft.3)."""
-    return {"world": sha(world_path()), **{name: sha(spec_path(name)) for name in args.spec.split(",") if name}}
+    """sha256 of the world model and the question sets this run read (data on #89: the version label stays draft.3).
+    The key of a question set given as a path is its file name, never the full local path."""
+    return {"world": sha(world_path()),
+            **{Path(name).name: sha(spec_path(name)) for name in args.spec.split(",") if name}}
 
 
 def gate(args, world: World, scenarios: list[dict], conditions: list[str], argv: list[str]) -> bool:
@@ -691,9 +693,13 @@ async def rejudge(args, argv: list[str], world: World, scenarios: list[dict]) ->
     if "world" not in was:
         raise SystemExit("原来那次的 summary.json 没记世界模型的 sha256，对不上是哪一份，不重判")
     now = inputs(args)
-    differ = [k for k in now if k in was and was[k] != now[k]]
-    if differ:
-        raise SystemExit("重判要读原来那次的文件：" + "，".join(f"{k} 那次 {was[k][:12]}、这次 {now[k][:12]}" for k in differ)
+    specs = lambda d: sorted(v for k, v in d.items() if k != "world")  # by content: a set given by path has another key
+    if not specs(was):
+        raise SystemExit("原来那次的 summary.json 没记题集的 sha256，对不上是哪一份，不重判")
+    if was["world"] != now["world"] or specs(was) != specs(now):
+        raise SystemExit("重判要读原来那次的文件：世界模型 那次 " + was["world"][:12] + "、这次 " + now["world"][:12]
+                         + "；题集 那次 " + "/".join(v[:12] for v in specs(was))
+                         + "、这次 " + "/".join(v[:12] for v in specs(now))
                          + "。世界模型用 ZJ_WORLD 指到那一份；题集给那一份的路径")
     calls = len(old) * (1 if args.one_judge else 2)
     likely = upper = 0.0
@@ -714,6 +720,8 @@ async def rejudge(args, argv: list[str], world: World, scenarios: list[dict]) ->
     results: list[dict] = []
     if args.resume:
         out = Path(args.resume)
+        if not out.name.startswith(f"{src.name}-rejudge-"):
+            raise SystemExit(f"--resume 要给这一次（{src.name}）重判的目录")
         results = [r for r in map(json.loads, (out / "results.jsonl").read_text(encoding="utf-8").splitlines()) if "before" in r]
     else:
         out = src.parent / f"{src.name}-rejudge-{time.strftime('%Y%m%d-%H%M%S')}"
