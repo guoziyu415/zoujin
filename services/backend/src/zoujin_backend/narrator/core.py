@@ -83,6 +83,9 @@ class Task:
     client_msg_id: str | None = None  # B-3：动作、幕末的 clientMsgId
     request: Json | None = None  # B-3：动作和幕末的请求（turns.request）
     window_until: float | None = None  # B-4：提交窗口到什么时候（time.monotonic()）；None = 没有窗口
+    # 这次处理已经花的钱（B-8 第 7 条）：从检查重来（Stale）的几遍合在一起；提交了就随提交写进 playthrough_metrics，
+    # 没提交（作废了、出错了、停下了）由 `Narrator.charge` 补记，每局的花费才和账本对得上
+    spend: Spend = field(default_factory=Spend, compare=False)
 
 
 # 叙事者的事件带 turnId 的任务（契约 Event.turnId：这一轮、这个动作、这次幕末）
@@ -154,9 +157,10 @@ class Narrator:
     before_commit: Callable[[Task], Awaitable[None]] | None = None
     tracer: Tracer = field(default_factory=Tracer)
     deadlines: Mapping[str, float] = field(default_factory=lambda: dict(DEADLINES))
+    on_rate_limit: str = "stop"  # 服务玩家的叙事者（narrator/app.py）是 "degrade"，见 Pipeline
 
     def __post_init__(self) -> None:
-        self.pipeline = Pipeline(self.text, self.schemas, self.ids, self.tracer, self.deadlines)
+        self.pipeline = Pipeline(self.text, self.schemas, self.ids, self.tracer, self.deadlines, self.on_rate_limit)
 
     # —— 取任务 ——
 
@@ -172,13 +176,29 @@ class Narrator:
                 done.append(await self.process(task))
             except Gone:
                 log.info("任务 %s 已经不用做了", task.turn_id)
+                await self.charge(task)
             except (Stop, ReplayMissing) as e:  # 不重试：放回队列，整次停下
                 log.warning("任务 %s 停下：%s", task.turn_id, type(e).__name__)
+                await self.charge(task)
                 await self.release(task, failed=False)
                 raise
             except Exception:
                 log.exception("任务 %s 第 %d 次失败", task.turn_id, task.attempts)
+                await self.charge(task)
                 await self.release(task, failed=task.attempts >= MAX_ATTEMPTS)
+
+    async def charge(self, task: Task) -> None:
+        """这次处理没提交（这一轮被作废、局被删、出错重来、停下），已经花的钱照样记进这一局的 `playthrough_metrics`
+        （B-8 第 7 条：作废的一轮在窗口里花的、失败后重来的那几次）。局已经删了就没处记（0 行）。"""
+        if not any(task.spend.usd.values()):
+            return
+        async with self.engine.begin() as c:
+            await c.execute(
+                update(playthrough_metrics)
+                .where(playthrough_metrics.c.playthrough_id == task.pid)
+                .values(cost_values(task.spend))
+            )
+        task.spend.usd.clear()
 
     async def expire(self, pid: str) -> None:
         """到期的草稿写超时的任务（B-4：网关的 30 秒计时随连接断了也能关掉）。"""
@@ -314,7 +334,7 @@ class Narrator:
             reply=lines.get("character"),
             mode=task.input_mode or "voice",
         )
-        spend = Spend()
+        spend = task.spend  # 跟着任务走：重来的、没提交的也算（B-8 第 7 条）
         span = {"playthrough_id": task.pid, "turn_id": task.turn_id}
         draft = await self._waiting(task)
         asking = {"prompt": draft["prompt"], "summary": draft["candidate"]["summary"]} if draft else None
@@ -693,6 +713,12 @@ PLANNED_COLUMNS = {  # B-3：动作的次数（收幕时队列里回 refused 的
 }
 
 
+def cost_values(spend: Spend) -> dict[str, Any]:
+    """各类提示的花费加到这一局已有的数上（data-design 第 3 节：每局费用 = 所有 cost_*_usd 之和）。"""
+    m = playthrough_metrics.c
+    return {COST_COLUMNS[kind]: m[COST_COLUMNS[kind]] + usd for kind, usd in spend.usd.items()}
+
+
 def metrics(task: Task, spend: Spend, counts: Counts, planned: Planned | None = None) -> dict[str, Any]:
     m = playthrough_metrics.c
     out: dict[str, Any] = {"turns": m.turns + (1 if task.kind == "talk" else 0)}
@@ -700,9 +726,7 @@ def metrics(task: Task, spend: Spend, counts: Counts, planned: Planned | None = 
         n = getattr(planned, k) if planned is not None else 0
         if n:
             out[col] = m[col] + n
-    for kind, usd in spend.usd.items():
-        col = COST_COLUMNS[kind]
-        out[col] = m[col] + usd
+    out |= cost_values(spend)
     for k, col in COUNT_COLUMNS.items():
         n = getattr(counts, k)
         if n:

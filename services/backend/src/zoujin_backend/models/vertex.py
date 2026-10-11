@@ -1,4 +1,5 @@
 """真文本模型：Vertex AI 上的 Gemini（`ZJ_MODEL=real`，只在 zg 的 Mac 上跑，G-7）。项目里的线程和 CI 从不调用。
+B-8 以后只剩 `config.TEXT` 里 provider 是 google 的提示（评测里替 Live 当人物的 `reply`），其余走 `models/claude.py`。
 
 - 认证用 Mac 上 gcloud 登录的应用默认凭证（ADC，`google-auth`，可选依赖组 `real`），没有 API Key。
 - **项目 ID 和地区只从显式设的环境变量读**（`ZJ_VERTEX_PROJECT`、`ZJ_VERTEX_LOCATION`），只在 real 时读；没设就退出，
@@ -25,27 +26,20 @@ from typing import Any, Protocol
 import httpx
 import jsonschema
 
-from zoujin_backend.config import THINKING, ConfigError, ModelMode, Settings
+from zoujin_backend.config import ConfigError, ModelMode, Settings
 from zoujin_backend.models.ledger import Ledger, cost_usd
 from zoujin_backend.models.prompts import PROMPTS
-from zoujin_backend.models.text import BadOutput, ModelCallFailed, RateLimited, TextResult, model_and_version
+from zoujin_backend.models.render import render, render_turn, world_prefix
+from zoujin_backend.models.text import BadOutput, ModelCallFailed, RateLimited, TextResult, model_and_version, spec
 from zoujin_backend.world import Library
+
+__all__ = ["RealText", "body", "estimate_usd", "real_text", "render", "render_turn", "world_prefix"]
 
 Json = Any
 
 PROJECT_ENV = "ZJ_VERTEX_PROJECT"
 LOCATION_ENV = "ZJ_VERTEX_LOCATION"
 SCOPE = "https://www.googleapis.com/auth/cloud-platform"
-MAX_OUTPUT = {  # 含思考
-    "triage": 256,
-    "extract": 4096,
-    "check": 4096,
-    "rewrite": 4096,
-    "reply": 1024,
-    "narrate": 1024,
-    "plan": 2048,
-}
-TEMPERATURE = {"triage": 0.0, "extract": 0.2, "check": 0.0, "rewrite": 0.4, "reply": 0.8, "narrate": 0.7, "plan": 0.3}
 
 
 @dataclass(frozen=True)
@@ -123,104 +117,17 @@ class RestTransport:
         return Generated(text, usage)
 
 
-# —— 提示的渲染 ——
-
-
-def _escape(text: str | None) -> str:
-    """原话放进 <utterance> 数据字段前，把尖括号换成全角，不能借它关掉标签。"""
-    return (text or "").replace("<", "＜").replace(">", "＞")
-
-
-def world_prefix(world: Json) -> str:
-    """世界模型前缀：只留叙事者要的字段，去掉出处（`cite`、`inferred`、`note`），同一版本内容不变，放在最前吃隐式缓存。"""
-    keep = {
-        "characters": (
-            "id",
-            "name",
-            "summary",
-            "traits",
-            "goals",
-            "knows",
-            "initialPlace",
-            "group",
-            "talkable",
-            "mutualAid",
-            "promiseTemplates",
-            "plans",
-            "items",
-        ),
-        "places": ("id", "name", "description", "adjacent", "sceneRef"),
-        "facts": ("id", "statement", "trueFrom", "visibility", "spoilerTerms"),
-        "beats": (
-            "id",
-            "order",
-            "title",
-            "summary",
-            "kind",
-            "window",
-            "place",
-            "participants",
-            "preconditions",
-            "outcomes",
-        ),
-        "stateVars": ("id", "type", "values", "min", "max", "default", "description", "valueRequires"),
-        "affordances": ("id", "kind", "label", "place", "roles", "when", "target", "minutes", "effects"),
-        "items": ("id", "name", "portable", "at"),
-        "roles": ("id", "name", "access", "initialKnowledge"),
-    }
-    doc: Json = {"worldModelVersion": world["worldModelVersion"], "anchors": world["anchors"]}
-    for key, fields in keep.items():
-        doc[key] = [{k: x[k] for k in fields if k in x} for x in world.get(key, [])]
-    doc["globalRules"] = [
-        {k: g[k] for k in ("id", "text", "statement") if k in g} for g in world.get("globalRules", [])
-    ]
-    return "<world>\n" + json.dumps(_plain(doc), ensure_ascii=False, separators=(",", ":")) + "\n</world>"
-
-
-def _plain(x: Json) -> Json:
-    if isinstance(x, dict):
-        return {k: _plain(v) for k, v in x.items() if k not in ("cite", "inferred", "note")}
-    if isinstance(x, list):
-        return [_plain(v) for v in x]
-    return x
-
-
-def render_turn(turn: Mapping[str, Any]) -> str:
-    who = turn.get("character") or ""
-    lines = [f'<utterance speaker="player">{_escape(turn.get("player"))}</utterance>']
-    if turn.get("reply") is not None:
-        lines.append(f'<utterance speaker="{who}">{_escape(turn.get("reply"))}</utterance>')
-    rest = {k: v for k, v in turn.items() if k not in ("player", "reply")}
-    return "<turn>\n" + json.dumps(rest, ensure_ascii=False) + "\n" + "\n".join(lines) + "\n</turn>"
-
-
-def render(kind: str, request: Mapping[str, Any], prefix: str) -> str:
-    """一次调用的用户内容：前缀 → 状态 → 这一轮 → 这种提示自己的字段（都是数据）。"""
-    parts = [prefix]
-    if "state" in request:
-        parts.append("<state>\n" + json.dumps(request["state"], ensure_ascii=False) + "\n</state>")
-    if "turn" in request:
-        parts.append(render_turn(request["turn"]))
-    if "action" in request:  # B-3：提取的输入里玩家做的动作（kind、对象、物品），数据字段
-        parts.append("<action>\n" + json.dumps(request["action"], ensure_ascii=False) + "\n</action>")
-    if "confirm" in request:  # B-4：提取的输入里在等回答的反问（反问的一句、那件事的摘要），数据字段
-        parts.append("<confirm>\n" + json.dumps(request["confirm"], ensure_ascii=False) + "\n</confirm>")
-    rest = {k: v for k, v in request.items() if k not in ("state", "turn", "action", "confirm", "worldModelVersion")}
-    if rest:
-        parts.append(f"<{kind}>\n" + json.dumps(rest, ensure_ascii=False) + f"\n</{kind}>")
-    return "\n\n".join(parts)
-
-
 def body(kind: str, user: str) -> Json:
-    prompt = PROMPTS[kind]
+    prompt, sp = PROMPTS[kind], spec(kind)
     config: Json = {
         "responseMimeType": "application/json",
         "responseJsonSchema": prompt.schema,
-        "maxOutputTokens": MAX_OUTPUT[kind],
-        "temperature": TEMPERATURE[kind],
+        "maxOutputTokens": sp.max_output,
     }
-    if THINKING.get(kind):
-        config["thinkingConfig"] = {"thinkingLevel": THINKING[kind]}
+    if sp.temperature is not None:
+        config["temperature"] = sp.temperature
+    if sp.thinking:
+        config["thinkingConfig"] = {"thinkingLevel": sp.thinking}
     return {
         "systemInstruction": {"parts": [{"text": prompt.text}]},
         "contents": [{"role": "user", "parts": [{"text": user}]}],
@@ -230,7 +137,7 @@ def body(kind: str, user: str) -> Json:
 
 def estimate_usd(model: str, kind: str, chars: int, *, regional: bool) -> float:
     """调用前的预计花费，偏高：输入按一字一个 token，输出按上限。"""
-    usage = {"inputTokens": chars, "outputTokens": MAX_OUTPUT[kind]}
+    usage = {"inputTokens": chars, "outputTokens": spec(kind).max_output}
     return cost_usd(model, usage, regional=regional)
 
 

@@ -145,7 +145,7 @@ async def run_choose(n: Narrator, task: Task) -> Result:
         got = choice_of(book, state, run, req)
         if got is None:
             return await n._commit(task, pt["last_seq"], lambda w, b: invalid(INVALID_CHOICE, "invalid_choice"))
-        spend = Spend()
+        spend = task.spend  # 跟着任务走：重来的、没提交的也算（B-8 第 7 条）
         span = {"playthrough_id": task.pid, "turn_id": task.turn_id, "world_model_version": book.version}
         who = await seen(n, book, task.pid, pt["role_id"])
         if got[0] == "plan":
@@ -332,7 +332,7 @@ async def run_plan(n: Narrator, task: Task, said: str | None) -> Result:
         book = n.library.version(pt["world_model_version"])
         if run.act_end is None or run.plan_tries >= 2:
             return await n._commit(task, pt["last_seq"], lambda w, b: invalid(INVALID_REQUEST, "invalid_request"))
-        spend = Spend()
+        spend = task.spend  # 跟着任务走：重来的、没提交的也算（B-8 第 7 条）
         span = {"playthrough_id": task.pid, "turn_id": task.turn_id, "world_model_version": book.version}
         text = said or ""
         request = plan_request(book, state, run, text, req.get("mode", "text"))

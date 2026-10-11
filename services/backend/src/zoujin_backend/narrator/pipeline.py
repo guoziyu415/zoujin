@@ -8,7 +8,9 @@
 - **时限**：每次调用有截止时间（`config.DEADLINES`），超时、输出不过 Schema、调用失败就取消、立刻重发一次。
   第二次还不行：分流当作「可能」继续；提取、检查、改写的，这一轮只提交时钟事件、候选丢弃，
   `playthrough_metrics` 记一次超时。
-  `BudgetStop`、`RateLimited`（`models.text.Stop`）不重发，往上抛，整次停下。
+  `BudgetStop` 不重发，往上抛，整次停下。`RateLimited`（429、529）看 `on_rate_limit`：Mac 上的跑（S-2、评测、小测）
+  是 "stop"，第一个就停（S-079）；服务玩家时是 "degrade"，按上面的时限规则重发一次，还不行就这一轮只提交时钟事件，
+  `playthrough_metrics` 记一次超时（backend-design 2.4 的降级，B-8）。
 - **ID**：约定和即兴设定的 ID 在第 3 步前分配（试算要用），但不进给模型的请求：请求里的状态和候选用别名
   （`narrator/view.py`），同样的局面请求一样，回放的键才对得上。
 - **第 3、4 步的顺序**：先按顺序跑第 3 步（前面通过的先试算进状态），再把过了第 3 步、`effects` 不为空的候选合在一次
@@ -30,7 +32,15 @@ import jsonschema
 from zoujin_backend.config import DEADLINES
 from zoujin_backend.ids import IdGen
 from zoujin_backend.models.prompts import MODEL_RULES, PROMPTS
-from zoujin_backend.models.text import BadOutput, ModelCallFailed, TextModel, TextResult, model_and_version
+from zoujin_backend.models.text import (
+    BadOutput,
+    ModelCallFailed,
+    RateLimited,
+    TextModel,
+    TextResult,
+    model_and_version,
+    spec,
+)
 from zoujin_backend.narrator.rules import (
     CHECKER,
     RULES,
@@ -250,6 +260,7 @@ class Pipeline:
     ids: IdGen
     tracer: Tracer = field(default_factory=Tracer)
     deadlines: Mapping[str, float] = field(default_factory=lambda: dict(DEADLINES))
+    on_rate_limit: str = "stop"  # "stop"：跑（第一个 429、529 就停）；"degrade"：服务玩家（当作这一次失败）
 
     # 调用：时限、重发一次、Schema、Span
 
@@ -266,7 +277,12 @@ class Pipeline:
         model, version = model_and_version(kind)
         for attempt in (1, 2):
             with self.tracer.span(
-                f"narrator.{kind}", model=model, prompt_version=version, attempt=attempt, **span
+                f"narrator.{kind}",
+                provider=spec(kind).provider,
+                model=model,
+                prompt_version=version,
+                attempt=attempt,
+                **span,
             ) as sp:
                 got: TextResult | None = None
                 try:
@@ -290,12 +306,17 @@ class Pipeline:
                 except ModelCallFailed:
                     sp.set(status="error")
                     continue
+                except RateLimited:
+                    if self.on_rate_limit == "stop":
+                        raise
+                    sp.set(status="rate_limited")
+                    continue
                 sp.set(
                     status="ok",
                     tokens_in=r.usage.get("inputTokens", 0),
                     tokens_out=r.usage.get("outputTokens", 0),
-                    tokens_cached=r.usage.get("cachedTokens", 0),
-                    tokens_thought=r.usage.get("thoughtTokens", 0),
+                    tokens_cached=r.usage.get("cachedTokens", r.usage.get("cacheReadTokens", 0)),
+                    tokens_thought=r.usage.get("thoughtTokens", r.usage.get("thinkingTokens", 0)),
                     cost_usd=round(r.cost_usd, 6),
                     **(attrs or {}),
                 )

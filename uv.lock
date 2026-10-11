@@ -8,6 +8,7 @@ members = [
     "zoujin-backend",
     "zoujin-contracts",
     "zoujin-evals",
+    "zoujin-llm",
     "zoujin-worldsim",
 ]
 
@@ -1176,12 +1177,14 @@ dependencies = [
     { name = "uvicorn" },
     { name = "websockets" },
     { name = "zoujin-contracts" },
+    { name = "zoujin-llm" },
     { name = "zoujin-worldsim" },
 ]
 
 [package.optional-dependencies]
 real = [
     { name = "google-auth", extra = ["requests"] },
+    { name = "zoujin-llm", extra = ["real"] },
 ]
 
 [package.dev-dependencies]
@@ -1202,6 +1205,8 @@ requires-dist = [
     { name = "uvicorn", specifier = ">=0.38" },
     { name = "websockets", specifier = ">=15" },
     { name = "zoujin-contracts", editable = "packages/contracts" },
+    { name = "zoujin-llm", editable = "packages/llm" },
+    { name = "zoujin-llm", extras = ["real"], marker = "extra == 'real'", editable = "packages/llm" },
     { name = "zoujin-worldsim", editable = "packages/worldsim" },
 ]
 provides-extras = ["real"]
@@ -1239,8 +1244,27 @@ name = "zoujin-evals"
 version = "0.0.0"
 source = { editable = "evals" }
 dependencies = [
+    { name = "zoujin-llm" },
     { name = "zoujin-worldsim" },
 ]
+
+[package.optional-dependencies]
+real = [
+    { name = "zoujin-llm", extra = ["real"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "zoujin-llm", editable = "packages/llm" },
+    { name = "zoujin-llm", extras = ["real"], marker = "extra == 'real'", editable = "packages/llm" },
+    { name = "zoujin-worldsim", editable = "packages/worldsim" },
+]
+provides-extras = ["real"]
+
+[[package]]
+name = "zoujin-llm"
+version = "0.0.0"
+source = { editable = "packages/llm" }
 
 [package.optional-dependencies]
 real = [
@@ -1248,10 +1272,7 @@ real = [
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "anthropic", marker = "extra == 'real'", specifier = ">=1,<2" },
-    { name = "zoujin-worldsim", editable = "packages/worldsim" },
-]
+requires-dist = [{ name = "anthropic", marker = "extra == 'real'", specifier = ">=1,<2" }]
 provides-extras = ["real"]
 
 [[package]]
