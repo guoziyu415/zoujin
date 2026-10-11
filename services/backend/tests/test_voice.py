@@ -186,7 +186,7 @@ def test_resume_of_a_run_made_before_b6b_reads_only_the_five(tmp_path: Path) -> 
     src = repo / "services" / "backend" / "voice" / "hashire-merosu.json"
     spec = json.loads(src.read_text(encoding="utf-8"))
     for sid in M3_LINES:  # B-6b 之前的源文件
-        for k in ("lines", "scenes", "ref"):
+        for k in ("lines", "scenes", "ref", "breathyOk"):
             spec["speakers"][sid].pop(k, None)
     src.write_text(json.dumps(spec, ensure_ascii=False), encoding="utf-8")
     first = FakeReader()
@@ -364,6 +364,19 @@ def test_whispered_aizuchi_is_rejected() -> None:
     v = checks.judge("ああ。", {1: (ai_shape(0.35, pitched=0.07), "あっ"), 2: (ai_shape(0.33), "ああ")}, aizuchi=True)
     assert v.chosen == 2
     assert any("音高" in p for p in v.takes[0].problems)
+
+
+def test_breathy_ok_keeps_the_least_breathy_take_and_flags_it() -> None:
+    # 花婿「ああ。」重读了还是气声（12〜36%）：源文件 breathyOk 只对这一句收，挑最不气的一遍标给 UX，不再重读
+    takes = {1: (ai_shape(0.3, pitched=0.12), "ああ"), 2: (ai_shape(0.32, pitched=0.36), "ああ")}
+    assert checks.judge("ああ。", takes, aizuchi=True).chosen is None
+    v = checks.judge("ああ。", takes, aizuchi=True, breathy_ok=True)
+    assert v.chosen == 2 and "音高" in v.flags[0]
+    takes[3] = (ai_shape(0.33), "ああ")  # 有一遍不气的还是挑它
+    assert checks.judge("ああ。", takes, aizuchi=True, breathy_ok=True).chosen == 3
+    groom = [r for r in slice_plan().recordings if r.speaker.id == "char.groom"]
+    assert [r.id for r in groom if r.breathy_ok] == ["groom-aizuchi-1"]
+    assert not any(r.breathy_ok for r in slice_plan().recordings if r.speaker.id != "char.groom")
 
 
 def test_aizuchi_voiced_from_the_first_frame_is_flagged_and_the_other_take_preferred() -> None:
