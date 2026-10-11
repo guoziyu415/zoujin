@@ -532,6 +532,15 @@ def classify(world: World, state: SimState) -> str | None:
     return Sim(world).classify(flat(state))
 
 
+def signature(world: World, state: SimState) -> dict[str, Any]:
+    """2.9.1 结局署名：`endings.signature.vars` 的最终值，`beats` 是否照原著发生（happened，altered 不算）。
+    结局的 `world.signature`、数据的多样性统计都用这一份（关键时刻的第三条以后也用它）。世界模型没写署名时是空的。"""
+    sig = world.get("endings", {}).get("signature") or {}
+    out: dict[str, Any] = {v: copy.deepcopy(state["vars"].get(v)) for v in sig.get("vars", [])}
+    out |= {b: state["beats"].get(b) == "happened" for b in sig.get("beats", [])}
+    return out
+
+
 def predict(world: World, state: SimState) -> str | None:
     """预测（backend-design 2.5）：玩家不再做任何事，在状态的副本上结算到底再分类。"""
     return classify(world, settle(world, state, None)[1])

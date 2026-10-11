@@ -2,7 +2,7 @@
 后端自己的表（turns、sessions、invite_codes、idempotency_keys）按 backend-design 3.4、3.5、5.2。
 
 建表走 Alembic（`migrations/versions/`），这里的定义给查询用，两边要一致（测试比对）。
-其余的表（memory_items、promises、run_facts、briefs、approach_log、endings）由用到它们的 M2 卡建。
+其余的表（memory_items、promises、run_facts、briefs、approach_log）由用到它们的 M2 卡建。
 """
 
 from __future__ import annotations
@@ -227,6 +227,13 @@ playthrough_metrics = Table(
     Column("confirms_no", Integer, nullable=False, server_default="0"),
     Column("confirms_timeout", Integer, nullable=False, server_default="0"),
     Column("confirms_rejected", Integer, nullable=False, server_default="0"),
+    # B-9（0005）：结局开演的时刻、世界结局的分类、走没走模板（S-065）、调了几次模型、生成用了多久、结局的花费
+    _ts("ending_started_at"),
+    Column("ending_outcome", Text),
+    Column("ending_template", Boolean),
+    Column("ending_calls", Integer),
+    Column("ending_ms", Integer),
+    Column("cost_ending_usd", Numeric(12, 6), nullable=False, server_default="0"),
 )
 
 # 意图确认的草稿（B-4，api-contract 3.9）：叙事者提出、还没答的那一个候选（不放原话）。关掉就删行，随整局删除。
@@ -246,5 +253,25 @@ drafts = Table(
     Index("drafts_playthrough", "playthrough_id"),
 )
 
+# 结局（B-9，data-design 第 84 行）：一局一行，body 是数据契约第 5 节的 Ending，随整局删除
+endings = Table(
+    "endings",
+    metadata,
+    Column("ending_id", Text, primary_key=True),  # end_ + ULID
+    _pt_fk(),
+    Column("body", JSONB, nullable=False),
+    _ts("decided_at", nullable=False, now=True),
+    UniqueConstraint("playthrough_id", name="endings_playthrough"),
+)
+
 # data-design 5.3 的删除清单里，已经建了的表（eval_api 的 db_absent 查这些）
-PER_PLAYTHROUGH = ("playthroughs", "turns", "utterances", "events", "world_state", "playthrough_metrics", "drafts")
+PER_PLAYTHROUGH = (
+    "playthroughs",
+    "turns",
+    "utterances",
+    "events",
+    "world_state",
+    "playthrough_metrics",
+    "drafts",
+    "endings",
+)

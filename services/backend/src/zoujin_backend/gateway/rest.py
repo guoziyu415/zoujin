@@ -19,10 +19,11 @@ from sqlalchemy.exc import IntegrityError
 
 from zoujin_backend.config import COOKIE, SESSION_DAYS
 from zoujin_backend.db import store
-from zoujin_backend.db.tables import idempotency_keys, playthroughs
+from zoujin_backend.db.tables import endings, idempotency_keys, playthrough_metrics, playthroughs, turns
 from zoujin_backend.gateway import auth
 from zoujin_backend.gateway.core import RUNS_PER_DAY, VOICE_MINUTES, Gateway
 from zoujin_backend.manifest import CACHE, FILE_CACHE, media_type
+from zoujin_backend.narrator import ending as ending_mod
 from zoujin_backend.schemas import SchemaError
 
 log = logging.getLogger("zoujin.gateway")
@@ -360,3 +361,26 @@ async def get_events(request: Request, pid: str) -> Response:
     async with gw.engine.connect() as c:
         last_seq = await c.scalar(select(playthroughs.c.last_seq).where(playthroughs.c.playthrough_id == pid))
     return ok(gw, "events", 200, {"events": evs, "lastSeq": int(last_seq or 0)})
+
+
+@router.get("/v1/playthroughs/{pid}/ending")
+async def get_ending(request: Request, pid: str) -> Response:
+    """2.8：还没进结局 404；结局任务还没好 202（etaSeconds = 30 减去已经过的秒数，最少 5）；好了 200 EndingView。"""
+    gw = gw_of(request)
+    await owned(request, pid)
+    async with gw.engine.connect() as c:
+        body = await c.scalar(select(endings.c.body).where(endings.c.playthrough_id == pid))
+        if body is not None:
+            return ok(gw, "ending", 200, ending_mod.view(body))
+        started = await c.scalar(
+            select(func.extract("epoch", func.now() - playthrough_metrics.c.ending_started_at)).where(
+                playthrough_metrics.c.playthrough_id == pid
+            )
+        )
+        queued = await c.scalar(
+            select(turns.c.turn_id).where(turns.c.playthrough_id == pid, turns.c.kind == ending_mod.KIND).limit(1)
+        )
+    if queued is None:
+        raise Fail("not_found")
+    elapsed = float(started) if started is not None else 0.0
+    return ok(gw, "ending", 202, {"status": "pending", "etaSeconds": ending_mod.eta(0.0, elapsed)})

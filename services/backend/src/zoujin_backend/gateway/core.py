@@ -3,6 +3,7 @@
 推给前端的东西都由数据库里的事件现算（projection.py）：
 - 快照 = world_state 缓存的 SimState 的投影，加上局上记的位置点和待处理的（B-3，`store.Run`）；
 - commit = 同一次提交写的一段事件（幂等键前一段相同，`commit_key`），patch 是这一段前后两个快照的差。
+  进结局的那次提交（B-9）：`turns.result.before` 里的 `ending_started` 排在它的 commit 前面。
   意图确认答「是」的那次提交（B-4）：`turnId` 是原来那一轮，重查没过时 `narration` 带一句（`turns.result`）。
   玩家的位置点不进 WorldState（契约 3.1）：做完情境动作、幕切换落地的 `patch.player.spot` 按这次提交的结果给
   （`turns.result.playerSpot`），动作（`move`、`go`）的不带（B-3 第 1 条）。
@@ -183,6 +184,7 @@ class Gateway:
         sent = after_seq
         for seg in segments:
             msg, state = self._commit(book, pt, state, seg, kinds, results)
+            out.extend(results.get(commit_key(seg[0]["idempotencyKey"]), {}).get("before", []))  # B-9：ending_started
             out.append(msg)
             sent = seg[-1]["seq"]
         return out, sent
