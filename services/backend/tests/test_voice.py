@@ -489,11 +489,12 @@ def test_mock_manifest_uses_voices_json(tmp_path: Path) -> None:
     assert doc["setPieceVoices"] == voices["setPieceVoices"]
 
 
-def test_mock_without_voices_json_keeps_the_placeholder(tmp_path: Path) -> None:
+def test_mock_without_voices_json_has_no_prerecorded_lines(tmp_path: Path) -> None:
+    """B-7：mock 不再有示意的预录句，和正式网关一样照没有预录处理。"""
     with TestClient(create_app(Config(speed=0, strict=True, voices=tmp_path))) as c:
         c.post("/v1/auth/login", json={"inviteCode": "mock"}, headers={"Origin": str(c.base_url)})
         doc = c.get("/v1/books/hashire-merosu/manifest").json()
-    assert "prerecorded" in {x["id"]: x for x in doc["characters"]}["char.philostratus"]
+    assert not [x["id"] for x in doc["characters"] if "prerecorded" in x]
     assert "setPieceVoices" not in doc
 
 

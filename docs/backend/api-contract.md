@@ -1,9 +1,9 @@
-# 前后端接口约定（api-contract.md）v1.0.8
+# 前后端接口约定（api-contract.md）v1.0.9
 
-负责人：后端 · 状态：**v1.0.8，冻结**（v1.0 在 C-1 冻结；v1.0.1 把 C-1 评审定下的写进正文；v1.0.2 把 B-1 评审定下的几处顺序写进正文；v1.0.3 把 B-0、F-2b 评审和 S-077 ⑫ 定下的写进正文；v1.0.4 把数据契约 1.7 里前端要拿到的几样加进接口；v1.0.5 按 B-3 卡放宽三处 Schema、补一条错误说明；v1.0.6 按 UX 定的文案改下发的事件句和一句叙事，不改形状；v1.0.7 按 B-4 卡写明作废、意图确认的顺序和评测入口的三项，不改形状；v1.0.8 按 B-6 写明录音文件的格式，不改形状）：之后只做加法（第 0 节「版本」），每种消息和响应的 JSON Schema 在 `packages/contracts/schemas/api/`。v0.3 吸收了前端评审 17 条（`frontend/reviews/backend-v0.1.md` 和 frontend-design 第 14 节 1〜17）、数据评审 16 条（`data/reviews/backend-v0.1.md`）、ux-design 18.2 的接口要求，以及 decisions S-022〜S-053、D-012〜D-015。v0.3.2 和数据契约 v1.2 对齐。逐条对照见第 9 节。
+负责人：后端 · 状态：**v1.0.9，冻结**（v1.0 在 C-1 冻结；v1.0.1 把 C-1 评审定下的写进正文；v1.0.2 把 B-1 评审定下的几处顺序写进正文；v1.0.3 把 B-0、F-2b 评审和 S-077 ⑫ 定下的写进正文；v1.0.4 把数据契约 1.7 里前端要拿到的几样加进接口；v1.0.5 按 B-3 卡放宽三处 Schema、补一条错误说明；v1.0.6 按 UX 定的文案改下发的事件句和一句叙事，不改形状；v1.0.7 按 B-4 卡写明作废、意图确认的顺序和评测入口的三项，不改形状；v1.0.8 按 B-6 写明录音文件的格式，不改形状；v1.0.9 按 B-7 写明 manifest 的缓存和生成规则、开局时次数和进行中的局谁先查，不改形状）：之后只做加法（第 0 节「版本」），每种消息和响应的 JSON Schema 在 `packages/contracts/schemas/api/`。v0.3 吸收了前端评审 17 条（`frontend/reviews/backend-v0.1.md` 和 frontend-design 第 14 节 1〜17）、数据评审 16 条（`data/reviews/backend-v0.1.md`）、ux-design 18.2 的接口要求，以及 decisions S-022〜S-053、D-012〜D-015。v0.3.2 和数据契约 v1.2 对齐。逐条对照见第 9 节。
 数据字段以 `data/contracts.md` 为准（v1.7；标「契约 1.1」「契约 1.2」「契约 1.4」的字段是这几个小版本加的；1.3 加的随身物品不进接口，物品只出现在 `give` 类按钮上；1.6 的结局卡见 2.8；1.7 的位置点、幕末副题和落地、固定演出、可调查物见 2.3、3.8、3.11、3.14），本文只定义传输形状。字段名 camelCase；WebSocket 消息类型 snake_case。
 相关：`backend/backend-design.md` v1.0.9（为什么这么设计）· `frontend/frontend-design.md` · `ux/ux-design.md`
-最近更新：2026-10-11（v1.0.8）
+最近更新：2026-10-11（v1.0.9）
 
 ---
 
@@ -57,25 +57,28 @@
 ## 2. REST
 
 ### 2.1 `GET /v1/books/{bookId}/manifest`
-不变的内容，由世界模型和资源清单在构建时生成，URL 带版本，`Cache-Control: public, max-age=31536000, immutable`。
+不变的内容，全部由仓库里的东西生成，不手写（v1.0.9，B-7）：世界模型、B-6 的声音清单、前端的场景包。正式网关和 mock 用同一个生成器（`services/backend/src/zoujin_backend/manifest.py`），网关开进程时生成一次，换世界模型、声音或场景包都要重启。要登录（邀请制，没有会话回 401）；书不是网关开新局用的那本回 404 `not_found`。
+
+- 缓存（v1.0.9）：地址不带版本。响应头 `ETag: "<manifestVersion>"`、`Cache-Control: private, no-cache`；前端每次带 `If-None-Match` 问，没变回 304、不带内容。录音和场景包的文件自己长缓存（见下）。
+- `manifestVersion`（v1.0.9）：`{worldModelVersion}+{hash}`，hash 是除它以外整份 manifest（键排序的 JSON）的 sha256 前 8 位。世界模型里给玩家的那些字段、声音清单、任何一个场景包的入口文件变了，它就变；同样的输入每次一样。只用来比相等，不要解析。
 ```json
 {
-  "manifestVersion": "hashire-merosu@1.0.0+m4",
+  "manifestVersion": "hashire-merosu@1.0.0-slice.3+4f3a91c2",
   "book": { "id": "hashire-merosu", "title": "走れメロス", "author": "太宰治" },
   "roles": [
     { "roleId": "role.traveler", "name": "旅人", "summary": "…", "startSceneId": "scene.syracuse-square", "startActId": "act.1" }
   ],
   "scenes": [
     { "sceneId": "scene.syracuse-square", "places": ["place.syracuse-square", "place.stonemason-workshop", "place.execution-ground"],
-      "assetUrl": "/assets/scenes/syracuse-square.4f3a.glb", "assetVersion": "4f3a" }
+      "assetUrl": "/scenes/syracuse-square/80778e4c/scene.json", "assetVersion": "80778e4c" }
   ],
   "characters": [
     { "id": "char.melos", "name": "メロス", "reading": "メロス", "talkable": true,
       "prerecorded": {
-        "aizuchi": [{ "url": "/assets/voice/melos/aizuchi-1.9c1e.m4a", "text": "…", "durationMs": 420 }, "…", "…"],
-        "unheard": [{ "url": "/assets/voice/melos/unheard-1.9c1e.m4a", "text": "…", "durationMs": 1300 }, "…"],
-        "wait": { "url": "/assets/voice/melos/wait-1.9c1e.m4a", "text": "…", "durationMs": 900 },
-        "cues": { "arrival_capped": { "url": "/assets/voice/melos/arrival-capped-1.9c1e.m4a", "text": "……これなら、間に合う。", "durationMs": 2100 } }
+        "aizuchi": [{ "url": "/assets/voice/hashire-merosu/melos-aizuchi-1.9c1e2b7a.m4a", "text": "…", "durationMs": 420 }, "…", "…"],
+        "unheard": [{ "url": "/assets/voice/hashire-merosu/melos-unheard-1.03d4e5f6.m4a", "text": "…", "durationMs": 1300 }, "…"],
+        "wait": { "url": "/assets/voice/hashire-merosu/melos-wait-1.5a6b7c8d.m4a", "text": "…", "durationMs": 900 },
+        "cues": { "arrival_capped": { "url": "/assets/voice/hashire-merosu/melos-arrival-capped.e1f2a3b4.m4a", "text": "……これなら、間に合う。", "durationMs": 2100 } }
       } }
   ],
   "acts": [ { "actId": "act.1", "title": "約束の日", "sceneIds": ["scene.syracuse-square", "scene.castle-throne"] } ],
@@ -85,16 +88,24 @@
   },
   "ruby": [ { "word": "邪智暴虐", "reading": "じゃちぼうぎゃく" } ],
   "setPieceVoices": {
-    "piece.gate-taken/2": { "url": "/assets/voice/pieces/gate-taken-2.7d2a.m4a", "text": "下がれ、旅の者。ここから先は、通さぬ。", "durationMs": 2600 }
+    "piece.gate-taken/2": { "url": "/assets/voice/hashire-merosu/guards-gate-taken-2.7d2a9c10.m4a", "text": "下がれ、旅の者。ここから先は、通さぬ。", "durationMs": 2600 }
   }
 }
 ```
-- 生成规则（数据评审第 1 条）：`scenes[].places` = 世界模型里 `sceneRef` 指向它的地点；`roles[].startSceneId` = `Role.startPlace` 的 `sceneRef`；`acts[].sceneIds` = `Act.scenes`。
-- `prerecorded`：ux-design 16.2 的 6 句（相槌 3、听不清 2、等一下 1），后端用这个角色的声音在构建时生成（backend-design 3.6），前端在场景加载时解码。每一句是 `{ url, text, durationMs }`：`text` 是剧本原文（字幕用它，`source: "script"`，S-071），`durationMs` 是实际音频长度，前端按它分段跟着声音出字幕。现在所有固定台词都是预录的；以后若有服务端经 WebSocket 推的固定台词，`transcript {final: true, source: "script"}` 会在第一个音频包之前到。声音定了以后才有（Q-004）。`cues`：由服务端在某个时刻触发的固定台词，键是 `commit.cue.kind`（3.4）；现在只有梅洛斯的 `arrival_capped`。
+- 生成规则（数据评审第 1 条；v1.0.9 写明只出真能加载的）：
+  - `book` 只有 `id`、`title`、`author`；世界模型的内部字段（`note`、`cite`、`inferred`、变量）不出。
+  - `roles`：`release` 不大于开放版次（网关的配置 `ZJ_RELEASE`，第一版 1）、而且开局场景有场景包的身份，世界模型里的顺序。`summary` = `Role.summary`；`startSceneId` = `Role.startPlace` 的 `sceneRef`；`startActId` = `Role.startAct`。
+  - `scenes`：有场景包的场景，世界模型里的顺序；`places` = 世界模型里 `sceneRef` 指向它的地点。
+  - `acts[].sceneIds` = `Act.scenes` 里有场景包的；一个都没有的幕不出（每一幕至少一个场景）。
+  - `characters`：世界模型的全部人物（不只这一版出场的），`reading`、`talkable` 照世界模型。
+  - `clock`：`deadlineT` = `clock.deadline.t`，`days` = `clock.labels.days`。`ruby` 照世界模型的注音词表。
+- 场景包（v1.0.9）：场景 `scene.x` 看场景包目录里的 `x/`，入口文件是 `index.json`（F-10，一个场景几个包），没有就是 `scene.json`（广场）。`assetVersion` 是入口文件的 sha256 前 8 位（入口文件里列着包里每个文件的 sha256，任何一个变了入口就变）；`assetUrl` = `/scenes/<目录>/<assetVersion>/<入口文件>`，版本在路径里，不用查询参数。包里别的文件的地址相对 `assetUrl` 算，`/scenes/<目录>/<版本>/` 下的文件都长缓存（`immutable`）；拿着旧 manifest 的玩家照样能加载旧版的包。两个入口都没有的场景没有包，不出现在 `scenes` 和任何一幕的 `sceneIds` 里。玩家走到没有包的场景时，前端留在当前画面，只出字幕和旁白。
+- `prerecorded`：ux-design 16.2 的 6 句（相槌 3、听不清 2、等一下 1），后端用这个角色的声音在构建时生成（backend-design 3.6），前端在场景加载时解码。每一句是 `{ url, text, durationMs }`：`text` 是剧本原文（字幕用它，`source: "script"`，S-071），`durationMs` 是实际音频长度，前端按它分段跟着声音出字幕。现在所有固定台词都是预录的；以后若有服务端经 WebSocket 推的固定台词，`transcript {final: true, source: "script"}` 会在第一个音频包之前到。声音定了以后才有（Q-004）。`cues`：由服务端在某个时刻触发的固定台词，键是 `commit.cue.kind`（3.4）；现在只有梅洛斯的 `arrival_capped`，只放在世界模型 `clock.deadline.earliestArrivalCue.speaker` 那个人物身上，文字和它的 `line` 一字不差（同一条里的 `narration` 是地の文，没有声音）。只有能对话的人物带 `prerecorded`（v1.0.9 写明）。
 - `ruby`：注音词表，词由数据工程出（F-11）。
-- `setPieceVoices`（v1.0.4）：固定演出（3.14）里人物的预录句，前端在场景加载时和 `prerecorded` 一起解码。键是「{固定演出 ID}/{序号}」，序号是这一句在那条固定演出 `lines` 里的位置（从 1 起，地の文也算；上面的例子是 `piece.gate-taken` 的第 2 行，警吏的那句）。和 `prerecorded` 一样构建时用这个人物的声音生成（ux-design 16.2，声音按 UX 的文案表），不能对话的人物（警吏）也有；声音还没生成的句子没有键。世界模型没有固定演出时省略。
-- 录音文件（v1.0.8，B-6）：AAC-LC（`.m4a`），单声道，24 kHz；文件名带内容 hash，长缓存。文字和声音都相同的几个 `setPieceVoices` 键可以指向同一个 `url`（例：`piece.gate-taken/2` 和 `piece.gate-turned-away/2` 是警吏同一句）。一个人物的 6 句里有一句没生成成（自动检查三遍都不过）时，这个人物这次没有 `prerecorded`（Schema 要求 3/2/1 齐全），前端照没有预录处理；`cues` 和 `setPieceVoices` 少一句只少那个键。
-- 第一版只有 3 个身份（S-002、S-039 U-3），没开放的身份不出现在 `roles` 里。
+- `setPieceVoices`（v1.0.4）：固定演出（3.14）里人物的预录句，前端在场景加载时和 `prerecorded` 一起解码。键是「{固定演出 ID}/{序号}」，序号是这一句在那条固定演出 `lines` 里的位置（从 1 起，地の文也算；上面的例子是 `piece.gate-taken` 的第 2 行，警吏的那句）。和 `prerecorded` 一样构建时用这个人物的声音生成（ux-design 16.2，声音按 UX 的文案表），不能对话的人物（警吏）也有；声音还没生成的句子没有键。世界模型没有固定演出时省略。生成时逐句和世界模型核对（v1.0.9）：那条固定演出的第 n 行是人物说的话、`text` 和它一字不差才出，对不上的、录音文件不在的只少那个键；声音清单是别的世界模型版本的也照这样核对。
+- 录音文件（v1.0.8，B-6）：AAC-LC（`.m4a`），单声道，24 kHz；文件名带内容 hash，长缓存。文字和声音都相同的几个 `setPieceVoices` 键可以指向同一个 `url`（例：`piece.gate-taken/2` 和 `piece.gate-turned-away/2` 是警吏同一句）。一个人物的 6 句里有一句没生成成（自动检查三遍都不过）时，这个人物这次没有 `prerecorded`（Schema 要求 3/2/1 齐全），前端照没有预录处理；`cues` 和 `setPieceVoices` 少一句只少那个键。地址是 `/assets/voice/{bookId}/{文件名}`（v1.0.9 写明）：网关只发 manifest 里列着的文件，不要登录，`Cache-Control: public, max-age=31536000, immutable`，`Content-Type: audio/mp4`；清单外的、`voices.json` 本身、别的书回 404。
+- 第一版只有 3 个身份（S-002、S-039 U-3），没开放的身份不出现在 `roles` 里。开局（2.2）只收 `roles` 里有的身份，别的回 400 `invalid_request`。
+- manifest 只描述开新局用的那个世界模型版本。一局锁定的版本和它不同（评审部署期间换了版本）时，老局的人物名、场景可能和 manifest 有出入（backend-design 第 12 节）。
 
 ### 2.2 `POST /v1/playthroughs`（开局）
 头：`Idempotency-Key`
@@ -106,7 +117,7 @@
 ```
 错误：
 - `409 active_playthrough_exists`：每账号同时只能有 1 局，响应里带 `activePlaythrough`（同 `/v1/me`，放在 `error` 外面，和它并列，第 5 节）。玩家选「新しく始める」时，前端先 `DELETE` 旧局（2.9），再开局。
-- `429 daily_limit`。
+- `429 daily_limit`（v1.0.9 写明顺序）：今天的开局次数用完时先回它，不回 409。不然玩家选「新しく始める」，前端先删了旧局，开新局才回 429，旧局没了新局也开不了。正式网关和 mock 现在都不拦次数（`/v1/me` 只显示），拦次数的卡照这个顺序做。
 
 ### 2.3 `GET /v1/playthroughs/{id}/snapshot`
 当前场景的世界投影（开局、续玩、重连后对齐、幕切换后）。
@@ -836,6 +847,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 
 ## 修订记录
 
+- v1.0.9（2026-10-11）：传输形状和 Schema 都不变，按 B-7 卡（#93）改 2.1、补 2.2 一句，和 B-7 的代码同一个 PR：manifest 的地址不带版本，`ETag` 是 `manifestVersion`、`Cache-Control: private, no-cache`、`If-None-Match` 对上回 304（原来写的「URL 带版本、`immutable`」作废）；`manifestVersion` 的形状；只出真能加载的东西（开放版次以内、开局场景有包的身份，有包的场景，`acts[].sceneIds` 跟着，没有场景的幕不出）；`assetUrl` = `/scenes/<目录>/<assetVersion>/<入口文件>`；`characters` 是世界模型的全部人物；`arrival_capped` 只在说这句的人物身上；预录句逐句核对；录音文件的地址和响应头；开局只收 manifest 里的身份；到了没有包的场景前端只出字幕和旁白。2.2：次数用完先回 429 `daily_limit`，再看 409。例子跟着改；`packages/contracts/examples/` 里的合法例子不动。mock 的 manifest 从 fixture 改成同一个生成器（`fixtures/mock/rest/manifest/` 删掉），按切片的世界模型。
 - v1.0.8（2026-10-11）：传输形状和 Schema 都不变，2.1 加一条录音文件的说明（B-6）：格式是 AAC（`.m4a`）、单声道、24 kHz；几个 `setPieceVoices` 键可以指向同一个 `url`；一个人物的 6 句缺一句时这个人物没有 `prerecorded`。
 - v1.0.7（2026-10-11）：传输形状和 Schema 都不变，按 B-4 卡（#65）把作废、意图确认的顺序和评测入口写进正文，前端同意以后和 B-4 的代码同一个 PR 改：幕末用声音说的打算也能作废，作废了不推 `act_plan_result`、`turn_settled`，不算试次；文字的一轮也有提交窗口；服务端发起的一轮回 `too_late`（3.6）；意图确认的推送顺序、反问那一轮没有 `turn_settled`、一局最多 3 次、同一时间一个草稿、用声音回答的一轮照常 10 分钟、收幕时不留草稿（3.9）；作废的一轮在 `lastTurn` 里是 `settled`、文字为 `null`（4）；评测入口的 `say(hold)`、`retract(step)`、`confirm(answer)` 和 `StepResult` 的 `held`、`confirm`（7）。mock 的 `confirm` 剧本照新的顺序改，两次确认的选项都用 3.9 的固定两项。
 - v1.0.6（2026-10-10）：传输形状和 Schema 都不变，只改下发的文字（UX 10-10 定的，后端同意）：事件的 `summary`（2.4、2.5、2.6、`commit`）、`recapLines` 和「その頃」的 `line` 里，玩家写成「あなた」，不再用身份名；`recapLines` 和「その頃」句末补「。」，`summary` 不补。库里存的事件照旧用身份名。用声音说的打算转写为空时那句叙事改为「声が届かなかったようです。もう一度、聞かせてください。」（3.11）。2.4、2.5、2.6 的例子和 `packages/contracts/examples/` 里对应的合法例子跟着改，mock（`fixtures/sessions/`、`fixtures/mock/rest/`）也改了。跟契约 1.8（#70）：2.4、3.4 例子里 `visibleEffects` 的 `label` 改成「王はあなたを覚えた」（世界模型里写玩家的标签本来就用「あなた」）；mock 里送老爺回家那条事件句照 `pastLabel` 写成「あなたは、老爺を家まで送った」。
