@@ -2,6 +2,41 @@
   "version": 1,
   "source": "assets/pipeline/cast/build.sh (F-16)",
   "characters": {
+    "apprentice": {
+      "id": "role.apprentice",
+      "variant": null,
+      "files": {
+        "talk_high": {
+          "bytes": 1911960,
+          "sha256": "4f90d510420914203f2e8a5e56a8f9090a5d706a1d547d46b6d83ff69c8b9320",
+          "tris": 32299,
+          "morphs": 65
+        },
+        "talk_std": {
+          "bytes": 1581988,
+          "sha256": "37ceac4dcc29d2a28e889505dd513446c9454034cbeba3f0ae395dfece016eeb",
+          "tris": 25072,
+          "morphs": 65
+        },
+        "walk": {
+          "bytes": 305532,
+          "sha256": "e540fa15a104ab1355ed9deae206dd5db3bb2aa213b1dd9219eaab2605e19f54",
+          "tris": 7999
+        },
+        "anims": {
+          "bytes": 243716,
+          "sha256": "78b79009c155cfd48efa8949d5cdba7dea05a8d1b503bd49375e20b5d054d1e9",
+          "tris": 0,
+          "clips": [
+            "idle",
+            "talk",
+            "walk",
+            "run",
+            "sprint"
+          ]
+        }
+      }
+    },
     "groom": {
       "id": "char.groom",
       "variant": null,
@@ -166,6 +201,76 @@
         "anims": {
           "bytes": 243952,
           "sha256": "6ccc12a259a65c53ceff9014b9dd655f200c7fa6c811d39479f7f579ee2a71da",
+          "tris": 0,
+          "clips": [
+            "idle",
+            "talk",
+            "walk",
+            "run",
+            "sprint"
+          ]
+        }
+      }
+    },
+    "shepherd-boy": {
+      "id": "role.shepherd-boy",
+      "variant": null,
+      "files": {
+        "talk_high": {
+          "bytes": 1737516,
+          "sha256": "c36ab052b05657dc5c30a9885c86f513413a95261a589813031ad0a274cf96de",
+          "tris": 34415,
+          "morphs": 65
+        },
+        "talk_std": {
+          "bytes": 1415580,
+          "sha256": "1e508ef15768273d24395ebb84454c06a6dd6ef4e9eaa04429faba56cea0298b",
+          "tris": 24872,
+          "morphs": 65
+        },
+        "walk": {
+          "bytes": 293124,
+          "sha256": "e017be9cb13a278169e3ebca1be85a69b22f280dc543ef0c8b6fda32ad27c1f2",
+          "tris": 7999
+        },
+        "anims": {
+          "bytes": 244700,
+          "sha256": "d14921f11d7f18a3ec785ba35fe22f39dbf1a32ad3018364fe1e8b0023dc8839",
+          "tris": 0,
+          "clips": [
+            "idle",
+            "talk",
+            "walk",
+            "run",
+            "sprint"
+          ]
+        }
+      }
+    },
+    "sister": {
+      "id": "char.sister",
+      "variant": null,
+      "files": {
+        "talk_high": {
+          "bytes": 1973592,
+          "sha256": "6d6069a597cf0d2b8a29cb84af66777e864a118ac6f1dfe491b883fd05a66e50",
+          "tris": 37609,
+          "morphs": 65
+        },
+        "talk_std": {
+          "bytes": 1573192,
+          "sha256": "cb85dc689ea4b9a3797d306a18e57bf28a448e1e8b600de1ff6aa3b846d9943a",
+          "tris": 25080,
+          "morphs": 65
+        },
+        "walk": {
+          "bytes": 303456,
+          "sha256": "dfddb5eee5d1446b2317b8f55e993a8d5e9a9fd748e80340902f46ffac6e65cf",
+          "tris": 8000
+        },
+        "anims": {
+          "bytes": 243412,
+          "sha256": "f03e8ede4dc2a3139efaf00050107b85a1a02087c2f002b4295ea83154113008",
           "tris": 0,
           "clips": [
             "idle",
