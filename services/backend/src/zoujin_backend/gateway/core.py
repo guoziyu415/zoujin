@@ -34,7 +34,7 @@ from zoujin_backend.ids import IdGen
 from zoujin_backend.manifest import Manifest
 from zoujin_backend.models.ledger import Ledger
 from zoujin_backend.models.live import LiveModel
-from zoujin_backend.projection import is_visible, patch, snapshot, visible_event, visible_events, with_locations
+from zoujin_backend.projection import Away, is_visible, patch, snapshot, visible_event, visible_events, with_locations
 from zoujin_backend.safety import Screener
 from zoujin_backend.schemas import SchemaBook
 from zoujin_backend.trace import Tracer
@@ -260,8 +260,9 @@ class Gateway:
     ) -> tuple[Json, SimState]:
         state = before
         visible = []
+        away = Away()  # 幕切换是一轮写完的，第 2〜4 步在同一段里
         for ev in seg:
-            if is_visible(book, ev, state["vars"]["var.player.location"]):
+            if not away(ev) and is_visible(book, ev, state["vars"]["var.player.location"]):
                 visible.append(visible_event(book, ev, pt.role_id))
             state = apply(book.world, state, ev)
         from_seq = seg[0]["seq"]

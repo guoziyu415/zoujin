@@ -12,7 +12,19 @@
       "beatId": "beat.03",
       "tLabel": "約束の日・夜",
       "summary": "メロスは王の暴虐を知り、激怒した",
-      "change": "altered"
+      "change": "altered",
+      "cite": [
+        {
+          "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+          "para": 2,
+          "quote": "王様は、人を殺します。"
+        },
+        {
+          "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+          "para": 9,
+          "quote": "聞いて、メロスは激怒した。"
+        }
+      ]
     }
   ],
   "collapsed": 0

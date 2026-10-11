@@ -52,8 +52,9 @@ TEXT: dict[str, TextSpec] = {
     "plan": TextSpec("claude", "sonnet-5.5", 15.0, 4096, thinking="adaptive", effort="low"),
     # B-12：安全筛查（S-072 的 3 秒时限，超时重发一次；B-8 的表定 Haiku、关思考）
     "safety": TextSpec("claude", "haiku-5.5", 3.0, 64, thinking="disabled"),
-    # B-9：结局要快，不先思考；输出约 1,500 token〔推算〕，时限 30 秒等 Mac 探针实测再改
-    "ending": TextSpec("claude", "sonnet-5.5", 30.0, 4096, thinking="between_tools", effort="low"),
+    # B-9：结局要快，不先思考。Mac 探针（10-11，20 次）：首字 p95 约 2 秒、全部 p95 约 10 秒、最长约 11 秒，
+    # 输出平均约 970 token；时限 20 秒
+    "ending": TextSpec("claude", "sonnet-5.5", 20.0, 4096, thinking="between_tools", effort="low"),
     # B-13：记忆一句、「不会撤销的后果」一句（B-8 的表：Haiku、关思考；记忆 5 秒，超时不重发，这一轮不写；
     # 后果一句 2 秒（UX 评审：前端等它回来才让按〔忘れてもらう〕），超时回 null、不缓存）
     "memory": TextSpec("claude", "haiku-5.5", 5.0, 256, thinking="disabled"),

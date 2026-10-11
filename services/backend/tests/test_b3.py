@@ -28,7 +28,7 @@ from zoujin_backend.models.text import FakeText
 from zoujin_backend.narrator.actions import ACT_ENDED_LINE, CHECKER_MOVE
 from zoujin_backend.narrator.core import Result
 from zoujin_backend.narrator.plans import LABEL_FALLBACK, REFUSAL_FALLBACK
-from zoujin_backend.projection import snapshot
+from zoujin_backend.projection import is_visible, snapshot
 from zoujin_backend.trace import Tracer
 from zoujin_worldsim import settle
 
@@ -411,6 +411,7 @@ def test_act_ends_after_beat_07_and_queued_turns_get_no_world(game: Callable[...
     options = by_id(ended["options"], "optionId")
     assert list(options) == [CITY, HOME]
     assert {o["where"] for o in options.values()} == {"刑場・三日目の夕方"}
+    assert {o["toActId"] for o in options.values()} == {"act.4"}  # v1.0.14：ActExit.toAct，预取下一幕的包
     assert (options[CITY]["sub"], options[HOME]["sub"]) == ("西の門が見える所で", "老爺があなたを覚えている")
     assert (options[CITY]["with"], options[HOME]["with"]) == ([], [OLD])
     assert ended["freeform"] == {"allowed": True, "triesLeft": 2} and ended["recapLines"] == []
@@ -526,6 +527,7 @@ def test_a_plan_that_does_not_go(game: Callable[..., Game]) -> None:
     one = g.s.propose(REFUSED)
     assert (one["accepted"], one["events"], one["triesLeft"]) == (False, [], 1) and g.seq == seq
     assert one["alternative"]["optionId"] == CITY and one["alternatives"] == [one["alternative"]]
+    assert one["alternative"]["toActId"] == "act.4"
     assert g.row()["act_end"]["freeform"] == {"allowed": True, "triesLeft": 1}
     two = g.s.propose(REFUSED)
     assert two["triesLeft"] == 0 and g.row()["act_end"]["freeform"] == {"allowed": False, "triesLeft": 0}
@@ -556,6 +558,7 @@ def test_choosing_another_plan_as_the_alternative(game: Callable[..., Game]) -> 
     step = g.s.propose(REFUSED)
     alt = step["alternative"]
     assert alt["optionId"].startswith("plan_") and alt["label"] == "刑場のそばで、夕方を待つ"
+    assert alt["toActId"] == "act.4"  # 打算落地的那一幕（Act.plan.toAct）
     chosen = g.s.choose(alt["optionId"])
     (move,) = [e for e in chosen["events"] if e["actor"] == "player"]
     assert move["plan"]["label"] == "刑場のそばで、夕方を待つ" and "exitId" not in move
@@ -612,6 +615,29 @@ def test_skipped_beats_where_the_player_was_teach_nothing(game: Callable[..., Ga
         e for ev in step["events"][1:] for e in ev["effects"] if e["op"] == "learn" and e["character"] == "player"
     ]
     assert learns == [] and step["pieces"] == []
+
+
+def test_skipped_beats_are_not_pushed_live_or_on_reconnect(game: Callable[..., Game]) -> None:
+    """幕切换第 3 步结算的事件不推（契约 2.8.1，数据 #149）：落在玩家原来地点的婚礼节拍，在场的话会推；第 3 步里
+    commit 不带、补推（2.4 的 view）也不带，只进「その頃」。"""
+    g = game("sc.canon@beat.07", place="place.melos-home")
+    seq = g.s.view()["events"][-1]["seq"] if g.s.view()["events"] else 0
+    step = g.s.choose(CITY)
+    evs = step["events"]
+    player, system = evs[0], evs[-1]
+    assert (player["actor"], player["type"], system["actor"], system["type"]) == (
+        "player",
+        "act-transition",
+        "system",
+        "act-transition",
+    )
+    skipped = evs[1:-1]
+    assert any(is_visible(g.s.book, e, "place.melos-home") for e in skipped)  # 以前的判法会推
+    hidden = {e["eventId"] for e in skipped}
+    msgs = g.commits(seq)
+    assert msgs and msgs[-1]["seq"] == system["seq"]
+    assert not hidden & {e["eventId"] for m in msgs for e in m["events"]}
+    assert not hidden & {e["eventId"] for e in g.s.view(seq)["events"]}
 
 
 # —— 第 6 组：不记原话 ——

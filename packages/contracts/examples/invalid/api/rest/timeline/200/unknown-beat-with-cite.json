@@ -1,0 +1,53 @@
+{
+  "days": [
+    {
+      "day": 0,
+      "label": "約束の日",
+      "items": [
+        {
+          "kind": "event",
+          "eventId": "ev_01K7AZ00000000000000000041",
+          "t": 1290,
+          "tLabel": "約束の日・夜",
+          "summary": "あなたがメロスの身元を保証した",
+          "place": "place.castle",
+          "style": "player",
+          "causedByPlayer": true,
+          "forPlayer": false,
+          "knownBy": ["char.king", "char.melos"]
+        },
+        {
+          "kind": "beat",
+          "beatId": "beat.05",
+          "t": 1320,
+          "tLabel": "約束の日・夜",
+          "title": "王との問答と約束",
+          "status": "altered",
+          "known": true,
+          "cite": [
+            {
+              "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+              "para": 22,
+              "quote": "願いを、聞いた。その身代りを呼ぶがよい。"
+            }
+          ]
+        },
+        {
+          "kind": "beat",
+          "beatId": "beat.06",
+          "t": 1410,
+          "tLabel": "約束の日・夜",
+          "known": false,
+          "cite": [
+            {
+              "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+              "para": 22,
+              "quote": "願いを、聞いた。その身代りを呼ぶがよい。"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "lastSeq": 42
+}

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from sqlalchemy import select
@@ -20,7 +20,7 @@ from zoujin_backend.models.armor import FakeArmor
 from zoujin_backend.models.text import FakeText
 from zoujin_backend.narrator import memory
 from zoujin_backend.trace import Tracer
-from zoujin_worldsim import initial_state
+from zoujin_worldsim import SimState, initial_state
 
 from .conftest import BOOK, OLD, SCHEMAS, Env
 
@@ -310,6 +310,17 @@ def test_lowering_his_trust_is_harm() -> None:
     st = _state(**{"char.king": "place.syracuse-square"})
     hit = _ev(effects=[{"op": "inc", "var": "var.king.trust", "by": -1}])
     assert _seeds(st, hit) == [("char.king", "harm", "witnessed")]
+
+
+def test_a_beat_the_player_sees_is_shared_by_those_who_lived_it() -> None:
+    st = _state(**{OLD: "place.syracuse-square", "char.melos": "place.syracuse-square"})
+    after = cast(SimState, {**st, "beats": {**st["beats"], "beat.03": "happened"}})
+    ev = _ev(actor="char.melos", origin="schedule", effects=[{"op": "beat", "beat": "beat.03", "to": "happened"}])
+    rows = memory._event_rows(BOOK, st, after, ev, None)
+    assert {c: (memory.ROWS[i], v) for c, (i, v, _) in rows.items()} == {
+        "char.melos": (memory.BEAT, "witnessed"),
+        OLD: (memory.BEAT, "witnessed"),
+    }  # 市の若い衆是一群人，不写
 
 
 def test_the_model_weight_raises_salience_up_to_one() -> None:

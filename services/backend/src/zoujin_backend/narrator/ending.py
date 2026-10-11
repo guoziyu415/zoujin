@@ -48,7 +48,7 @@ Json = Any
 
 KIND = "ending"
 MAX_CALLS = 2  # 一次调用 + 重写（或超时重发）一次，之后用模板（backend-design 第 138 行）
-ETA_SECONDS = 30  # 202 的 etaSeconds = 30 减去已经过的秒数，最少 5（api-contract 2.8）
+ETA_SECONDS = 15  # 202 的 etaSeconds = 15 减去已经过的秒数，最少 5（api-contract 2.8；Mac 探针一次 p95 约 10 秒）
 ETA_MIN = 5
 
 # 演出里的几个人（『走れメロス』的切片；状态表按他们分，见卡「做」第 2 条）

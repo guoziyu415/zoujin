@@ -35,7 +35,7 @@ from zoujin_backend.narrator.rules import has_pii
 from zoujin_backend.projection import committed, visible_effects
 from zoujin_backend.trace import Tracer
 from zoujin_backend.world import Book
-from zoujin_worldsim import SimState, apply, sees
+from zoujin_worldsim import SimState, apply, lived, sees
 
 Json = Any
 
@@ -64,7 +64,7 @@ PROMISE_BROKEN = ("harm", -15, 0.9)  # 玩家违背了和他的约定
 HELPED = ("help", 10, 0.7)  # actor = player、beneficiary = 他
 HARMED = ("harm", -10, 0.7)  # actor = player，他的信任类变量降了、他被带走（beneficiary 不是他）
 HELPED_YOU = ("shared-moment", 3, 0.5)  # actor = 他、beneficiary = player
-BEAT = ("shared-moment", 2, 0.6)  # 节拍发生、玩家看得到、他亲历（参与或在场）
+BEAT = ("shared-moment", 2, 0.6)  # 节拍发生、玩家看得到、他亲历（`zoujin_worldsim.lived`）
 CLAIM = ("claim", 0, 0.5)  # 玩家说自己的事（learn 效果写明他学到了）
 IMPRESSION = ("impression", 0, 0.3)  # 其余 actor = player 的事件（说话、动作）
 ROWS = (PROMISE_MADE, PROMISE_KEPT, PROMISE_BROKEN, HELPED, HARMED, HELPED_YOU, BEAT, CLAIM, IMPRESSION)
@@ -148,17 +148,16 @@ def _trust_var(character: str, var: str) -> bool:
     return var.endswith(".trust") and short in var.split(".")
 
 
-def _beat_participants(book: Book, ev: Json) -> set[str]:
-    beats = {b["id"]: b for b in book.world["beats"]}
-    out: set[str] = set()
-    for e in ev["effects"]:
-        if e.get("op") == "beat" and e.get("beat") in beats:
-            out |= set(beats[e["beat"]].get("participants", []))
-    return out
+def _lived(book: Book, after: SimState, ev: Json) -> set[str]:
+    """这条节拍事件里亲历了节拍的人物（`zoujin_worldsim.lived`，#154）。after = 这条事件之后的状态。"""
+    beats = [e["beat"] for e in ev["effects"] if e.get("op") == "beat"]
+    return {c for c in book.characters if any(lived(book.world, after, c, x) for x in beats)}
 
 
-def _event_rows(book: Book, state: SimState, ev: Json, addressee: str | None) -> dict[str, tuple[int, str, str | None]]:
-    """一条事件给谁哪一行：人物 → (行号, via, promiseId)。state 是这条事件之前的状态。"""
+def _event_rows(
+    book: Book, state: SimState, after: SimState, ev: Json, addressee: str | None
+) -> dict[str, tuple[int, str, str | None]]:
+    """一条事件给谁哪一行：人物 → (行号, via, promiseId)。state / after 是这条事件之前 / 之后的状态。"""
     if not committed(ev) or ev["type"] in SKIP_TYPES:
         return {}
     player_place = state["vars"]["var.player.location"]
@@ -166,11 +165,11 @@ def _event_rows(book: Book, state: SimState, ev: Json, addressee: str | None) ->
         return {}
     present = _present(state, ev["place"])
     beat = ev.get("origin") == "schedule" and any(e.get("op") == "beat" for e in ev["effects"])
-    lived = _beat_participants(book, ev) if beat else set()
+    lived_ = _lived(book, after, ev) if beat else set()
     told = {e["character"] for e in ev["effects"] if e.get("op") == "learn"}
 
     def via(c: str) -> str | None:
-        if c == ev["actor"] or c in present or c in lived:
+        if c == ev["actor"] or c in present or c in lived_:
             return "witnessed"
         if c in told:
             return "told"
@@ -221,7 +220,7 @@ def _event_rows(book: Book, state: SimState, ev: Json, addressee: str | None) ->
     elif b == "player":
         put(ev["actor"], HELPED_YOU)
     if beat:
-        for c in sorted(lived | present):
+        for c in sorted(lived_):
             put(c, BEAT)
     return out
 
@@ -233,11 +232,12 @@ def seeds(book: Book, before: SimState, events: Sequence[Json], addressee: str |
     best: dict[str, tuple[int, str, str | None, Json]] = {}
     evs: dict[str, list[Json]] = {}
     for ev in events:
-        for c, (i, v, pr) in _event_rows(book, state, ev, addressee).items():
+        after = apply(book.world, state, ev)
+        for c, (i, v, pr) in _event_rows(book, state, after, ev, addressee).items():
             evs.setdefault(c, []).append(ev)
             if c not in best or i < best[c][0]:
                 best[c] = (i, v, pr, ev)
-        state = apply(book.world, state, ev)
+        state = after
     out: list[Seed] = []
     for c, (i, v, pr, ev) in best.items():
         kind, delta, salience = ROWS[i]

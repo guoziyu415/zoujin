@@ -7,7 +7,8 @@
 - 叙事者规则的原语：knows（R4，谁此刻知道一件事）、travel_minutes（R3，两地之间最少走几分钟）、
   activity（R7 和快照，人物此刻在做什么，absent 的不能对话）、spoilers（R4 和输出侧监控，话里有没有此刻不该知道的事）；
 - （1.7）固定演出选哪一条：pick_set_piece（契约 2.11）；
-- （1.12）玩家看不看得到一个事件：sees（契约第 3 节，写 learn、推事件、固定演出的在场都用它）。
+- （1.12）玩家看不看得到一个事件：sees（契约第 3 节，写 learn、推事件、固定演出的在场都用它）；
+- （1.12 补）人物亲历了哪些节拍：lived（叙事者给人物的最近的节拍），place_at（节拍那一刻人物按节拍该在哪）。
 
 规则要改先改参考实现，再重跑 tests/golden/gen_golden.py。
 """
@@ -29,7 +30,7 @@ from .incremental import (
 )
 from .opening import Opened, Until, opening, parse_checkpoint
 from .pieces import pick_set_piece
-from .primitives import activity, knows, spoilers, travel_minutes
+from .primitives import activity, knows, lived, place_at, spoilers, travel_minutes
 from .sim import OCCURRED, Sim, role_of
 from .visibility import same_scene, sees
 
@@ -49,9 +50,11 @@ __all__ = [
     "flat",
     "initial_state",
     "knows",
+    "lived",
     "opening",
     "parse_checkpoint",
     "pick_set_piece",
+    "place_at",
     "predict",
     "role_of",
     "same_scene",
