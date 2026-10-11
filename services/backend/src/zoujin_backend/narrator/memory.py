@@ -332,13 +332,7 @@ _KEEPS_BANNED = re.compile(r"彼(?![方岸])|覚え|忘れ")  # 「彼方」「�
 
 def keeps_ok(text: str) -> bool:
     t = text.strip()
-    return (
-        bool(t)
-        and length(t) <= MAX_KEEPS
-        and not has_pii(t)
-        and not command_like(t)
-        and not _KEEPS_BANNED.search(t)
-    )
+    return bool(t) and length(t) <= MAX_KEEPS and not has_pii(t) and not command_like(t) and not _KEEPS_BANNED.search(t)
 
 
 def persona(book: Book, character: str) -> Json:
