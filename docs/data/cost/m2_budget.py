@@ -133,6 +133,8 @@ def budget(plan, prices):
         ("google", "数据", "画像模拟局：人物回答", "22 局 × 15 轮", 22 * persona_g),
         ("google", "后端", "S-5 模拟局：人物回答", "10 局 × 40 轮", 10 * s5_g),
         ("google", "后端", "Live 自测（网关接上以后，内部玩几局）", "10 局 × 20 分钟", 10 * cm.live_cost(cm.BASE)),
+        # Model Armor（S-085 ②）每月头 200 万 token 不收钱，之后每百万 $0.10（价目页 2026-10-11）。开发期每月约几十万 token
+        ("google", "后端", "Model Armor（接上以后，第二层）", "每月 200 万 token 以内不收钱", 0.0),
     ]
     return rows
 
