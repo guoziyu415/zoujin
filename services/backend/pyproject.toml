@@ -27,6 +27,7 @@ zoujin-s2 = "zoujin_backend.s2:main"
 zoujin-probe = "zoujin_backend.probe:main"
 zoujin-voice = "zoujin_backend.voice.cli:main"
 zoujin-safety = "zoujin_backend.safety_eval:main"
+zoujin-live = "zoujin_backend.live_cli:main"
 
 [project.optional-dependencies]
 real = [

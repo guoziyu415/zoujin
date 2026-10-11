@@ -58,6 +58,7 @@ describe("Caption (frontend-design 7.5: the words follow the voice)", () => {
   it("fallback shows the whole line at once; a failed one shows nothing", () => {
     const c = new Caption();
     c.finish("聞き取れた言葉", "fallback", 0);
+    expect(c.update(0, 0)).toBe(true); // reported as a change, even after the voice has played out
     expect(c.shown).toBe("聞き取れた言葉");
     const failed = new Caption();
     failed.finish(null, "fallback", 0);

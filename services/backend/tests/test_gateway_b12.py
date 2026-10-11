@@ -194,8 +194,9 @@ def test_two_spoilers_in_a_row_rebuild_the_session(env: Env, inproc: Make, play:
     time.sleep(0.3)
     settle(p)
     assert p.find("session_preparing", character=OLD, reason="rebuild")  # 第二句以后（可能在 turn_settled 之前）
-    who, notes = s.live.notes[-1]
-    assert who == OLD and NOTE_SPOILER in notes and not [n for n in notes if "身代わり" in n]  # 提示不点名
+    last = s.live.opened[-1]  # 提示放在新会话系统指令的「気をつけること」里（brief.build）
+    assert last.character == OLD and f"- {NOTE_SPOILER}" in last.system
+    assert "身代わり" not in last.system.split("# 気をつけること")[1].split("\n#")[0]  # 提示不点名
     assert s.live.opened[-1] == (OLD, [])  # 说漏的两句不带进新会话
     m = metrics(env, p.pid)
     assert (m["output_spoilers"], m["output_rebuilds"], m["output_lines"]) == (2, 1, 2)

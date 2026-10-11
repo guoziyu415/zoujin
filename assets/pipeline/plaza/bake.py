@@ -5,16 +5,21 @@ from mathutils import Vector, Matrix
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 Q = argv[0] if argv else 'final'          # 'draft' or 'final'
 OUT = os.environ['PLAZA_OUT']  # work dir (build.sh sets it); nothing here is committed
-bpy.ops.wm.open_mainfile(filepath=f'{OUT}/plaza_raw.blend')
+STEM = os.environ.get('SCENE_STEM', 'plaza')   # file names in the work dir: <stem>_raw.blend, <stem>_raw.glb
+bpy.ops.wm.open_mainfile(filepath=f'{OUT}/{STEM}_raw.blend')
 scene = bpy.context.scene
 vl = bpy.context.view_layer
-ROT = Matrix.Rotation(math.radians(144.0), 4, 'Z')
+ROT = Matrix.Rotation(math.radians(float(os.environ.get('SCENE_ROT_DEG', '144'))), 4, 'Z')
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from sunpos import sun_local
 SUN_LOCAL, _E, _A = sun_local(); SUN_ELEV = math.radians(_E)
 print(f'sun at {_E:.2f} deg elevation, azimuth {_A:.1f}')
-SUN_E, SUN_C = 6.0, (1.0, 0.58, 0.32)
-RES = {'ground': 2048, 'arch': 2048} if Q == 'final' else {'ground': 512, 'arch': 512}
+SUN_E, SUN_C = 6.0, (1.0, 0.58, 0.32)   # the 18:30 sun; another time of day passes its own (BAKE_SUN_E 0 = no direct sun)
+SUN_E = float(os.environ.get('BAKE_SUN_E', SUN_E))
+if os.environ.get('BAKE_SUN_RGB'):
+    SUN_C = tuple(float(c) for c in os.environ['BAKE_SUN_RGB'].split(','))
+_R = int(os.environ.get('BAKE_RES', '2048'))   # final lightmap size; a smaller scene can take less (the road's river: 1024)
+RES = {'ground': _R, 'arch': _R} if Q == 'final' else {'ground': 512, 'arch': 512}
 SPP = {'full': 96, 'sundirect': 24, 'ao': 32} if Q == 'final' else {'full': 8, 'sundirect': 4, 'ao': 4}
 
 # ---------- world + sun (same as preview.py; three.js uses the same numbers)
@@ -151,12 +156,12 @@ for m in bpy.data.materials:
     if m.node_tree and '__bake__' in m.node_tree.nodes:
         m.node_tree.nodes.remove(m.node_tree.nodes['__bake__'])
 
-bpy.ops.wm.save_as_mainfile(filepath=f'{OUT}/plaza_baked.blend')
+bpy.ops.wm.save_as_mainfile(filepath=f'{OUT}/{STEM}_baked.blend')
 for o in dyn:
     o.hide_render = False
 select_only([ground, arch, far, proxy] + dyn)
 proxy.hide_render = False
-bpy.ops.export_scene.gltf(filepath=f'{OUT}/plaza_raw.glb', export_format='GLB', use_selection=True,
+bpy.ops.export_scene.gltf(filepath=f'{OUT}/{STEM}_raw.glb', export_format='GLB', use_selection=True,
                           export_texcoords=True, export_normals=True, export_materials='EXPORT',
                           export_image_format='AUTO', export_apply=True, export_yup=True, export_extras=False)
 print('exported')
