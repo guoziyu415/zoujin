@@ -31,7 +31,7 @@ import {
   type Pace,
   type StageLine,
 } from "./pace";
-import { CARD_SHOTS, shotOf } from "./shots";
+import { cardShot, shotOf } from "./shots";
 
 export const BINDING_LONG_S = 20; // the map is offered after 20 s of waiting (ux-design 11.1)
 const TICK_MS = 100;
@@ -58,7 +58,7 @@ export function EndingStage({
   const started = useRef(performance.now());
   const [, render] = useReducer((n: number) => n + 1, 0);
   const [done, setDone] = useState(false);
-  const best = useRef(Infinity); // the card shot captured so far (index in CARD_SHOTS)
+  const seen = useRef(new Set<number>()); // the shots so far; the card's frame is taken when its best one comes
 
   const clipOf = (l: StageLine) => (l.key ? (voices?.[l.key] ?? null) : null);
 
@@ -76,13 +76,12 @@ export function EndingStage({
       } else if (e.k === "fade") audio.fadeOut(200);
       else if (e.k === "shot") {
         stageBridge().shot(e.n);
-        const rank = CARD_SHOTS.indexOf(e.n);
-        if (rank >= 0 && rank < best.current) {
-          best.current = rank;
+        const had = cardShot(seen.current);
+        seen.current.add(e.n);
+        if (cardShot(seen.current) === e.n && had !== e.n)
           void stageBridge()
             .captureFrame()
             .then((b) => b && endingFrame.set(b));
-        }
       } else if (e.k === "drained") setDone(true);
     }
   }

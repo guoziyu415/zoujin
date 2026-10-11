@@ -135,6 +135,16 @@ test("memory book: tabs, sections, forgetting a promise moves the relation and t
   await expect(mb.getByText("王のことを、メロスに告げた")).toBeVisible();
   await shot(page, "memory-book");
 
+  // a promise opens the map at the event that made it, like the deeds
+  await mb.getByRole("button", { name: /^メロスの力になる/ }).click();
+  const map = page.getByRole("dialog", { name: "連鎖反応マップ" });
+  await expect(map).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(map).toBeHidden();
+  await page.getByRole("button", { name: /^本をひらく/ }).click();
+  await page.getByRole("button", { name: "記憶帳", exact: true }).click();
+  await expect(mb).toBeVisible();
+
   const card = mb
     .getByRole("listitem")
     .filter({ hasText: "力になると約束してくれた旅の人" });

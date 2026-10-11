@@ -932,10 +932,17 @@ button {
   transition: all 0.4s;
 }
 .mb-promise {
+  width: 100%;
+  min-height: 44px;
   display: flex;
   flex-wrap: wrap;
+  align-items: baseline;
   gap: 4px 12px;
   padding: 6px 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  line-height: 1.6;
 }
 .mb-promise::before {
   content: "◯";
@@ -1302,4 +1309,13 @@ button {
 .hud-top[hidden],
 .hud-bottom[hidden] {
   display: none;
+}
+.mb-go {
+  margin-left: auto;
+}
+.knot {
+  display: inline-block;
+  vertical-align: -2px;
+  margin-right: 4px;
+  color: var(--umi);
 }
