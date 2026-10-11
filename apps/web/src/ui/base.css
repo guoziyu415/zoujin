@@ -614,6 +614,12 @@ button {
     justify-self: start;
   }
 }
+.act-time {
+  color: var(--ink-2);
+}
+.act .primary[aria-disabled="true"] {
+  opacity: 0.4;
+}
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -1416,4 +1422,16 @@ li {
 }
 .ae-heard.partial {
   color: var(--ink-2);
+}
+
+.map-fold {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
 }

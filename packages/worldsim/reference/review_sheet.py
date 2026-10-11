@@ -140,7 +140,7 @@ def main():
                  f"{lines(sp['sampleLines'])} | |")
         if sp.get("designLines"):
             L.append(f"| 设计台词 | {design_lines(sp['designLines'])} | — | |")
-        L.append(f"| 知道 | {'、'.join(k['fact'].removeprefix('fact.') + '@' + k['since'] for k in c['knows']) or '—'} | — | |")
+        L.append(f"| 知道 | {'、'.join(k['fact'].removeprefix('fact.') + '@' + k['since'] + ('〔推断〕' if k.get('inferred') else '') for k in c['knows']) or '—'} | — | |")
         for x in c.get("mutualAid", []):
             kind = "他能为你" if x["direction"] == "forYou" else "你能为他"
             op = (f"〔开局互助：{x['opening']}〕" if x.get("opening") else "") + ("〔大事：兑现时算关键时刻〕" if x.get("major") else "")

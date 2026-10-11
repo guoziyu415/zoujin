@@ -19,6 +19,7 @@ import { copy, fill } from "../copy";
 import { FullPage } from "../FullPage";
 import {
   corrected,
+  foldedDays,
   keptPromises,
   voidedPromises,
   itemId,
@@ -100,6 +101,12 @@ export default function ChainMap({
   }, [q.data, eventId]);
 
   const chips = q.data ? people(q.data.days) : [];
+  const nowDay = q.data ? nowDayOf(q.data.days, now) : null;
+  const folded = useMemo(
+    () => (q.data ? foldedDays(q.data.days, nowDay, filter, eventId) : null),
+    [q.data, nowDay, filter, eventId],
+  );
+  const [unfolded, setUnfolded] = useState<ReadonlySet<number>>(new Set());
   return (
     <FullPage
       title={copy["map.title"]}
@@ -146,8 +153,24 @@ export default function ChainMap({
         {q.data?.days.map((d) => {
           const items = shown(d.items, filter);
           // 「いまここ」: in the last day with anything at or before now (later days may hold 「？」 beats)
-          const nowAt =
-            d.day === nowDayOf(q.data.days, now) ? nowIndex(d.items, now) : -2;
+          const nowAt = d.day === nowDay ? nowIndex(d.items, now) : -2;
+          if (folded?.has(d.day) && !unfolded.has(d.day))
+            return (
+              <li key={d.day} className="map-day">
+                <h2>
+                  <button
+                    className="map-fold"
+                    aria-expanded={false}
+                    onClick={() => setUnfolded((u) => new Set([...u, d.day]))}
+                  >
+                    {d.label}
+                    <span className="small">
+                      {fill(copy["map.day.folded"], { n: items.length })}
+                    </span>
+                  </button>
+                </h2>
+              </li>
+            );
           return (
             <li key={d.day} className="map-day">
               <h2>{d.label}</h2>
@@ -235,6 +258,12 @@ function Node({
           </button>
           {isOpen && (
             <div className="map-detail">
+              {it.place && places.get(it.place) && (
+                <p>
+                  <span className="map-label">{copy["map.detail.where"]}</span>
+                  {places.get(it.place)}
+                </p>
+              )}
               <Source cite={it.cite} />
               <button className="quiet" onClick={onWhy}>
                 {copy["map.why"]}

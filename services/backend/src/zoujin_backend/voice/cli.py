@@ -5,6 +5,7 @@
     ZJ_MODEL=real ZJ_LEDGER=<账本> ZJ_VERTEX_PROJECT=… ZJ_VERTEX_LOCATION=… \\
         uv run --all-packages --extra real zoujin-voice --max-google-usd <Google 那本账的总上限> [--max-usd 1] --confirm
     uv run zoujin-voice --resume out/b6/<时间> [--only <键> …]  # 都读过了就不调用，重挑、重出 release
+    uv run zoujin-voice --world 1.0.0-draft --resume <切片那次的副本>  # M3：只读草稿里另外五个人物的 6 句和 ref
 
 - 每句读 3 遍、相槌 6 遍（每遍一条会话，不在同一条会话里连读）；同一遍里，声音和系统指令相同的句子在同一条会话里
   一句一轮。每读完一句马上补转写。串行，遇到第一个 429 就停；账本到上限（总上限，或这一次跑的上限 `--max-usd`，
@@ -14,6 +15,9 @@
   release 里的句子调到说话人的目标响度（源文件的 `loudness`），真峰值压到 −1 dBTP 以下；音量不进签名，改了只重出。
 - `--resume <目录>` 接着跑，读过的不再花钱；源文件改了的句子（声音、说明、文字变了）自动重读。`--only` 只重读给定的
   句子（录音 ID 或键，旧的几遍挪进 `takes/discarded/`），清单照样按全部句子重出。
+- 人物的 6 句只录世界模型里能对话（`talkable`）的人物：切片只有メロス和老爺。`--world` 换世界模型：草稿里另外五个
+  人物（M3）拿切片那次目录的副本 `--resume`，读过的不再读，只读五个人的 6 句和 ref；草稿没有固定演出，那次的清单
+  不带固定演出，只给 UX 量和听，进仓库的清单等完整世界模型。
 - 日志和账里不写台词的文字，只写键、条数、长度和花费；`audit.md` 里有选中那遍和 ref 的补转写（我们自己的台词稿和对
   固定问题的回答，不是玩家的话）。
 - 退出码：0 跑完；2 配置不对；3 到上限或 429 停下（`--resume` 接着跑）；130 Ctrl-C。
@@ -72,6 +76,9 @@ MANIFEST = "api/rest/manifest.schema.json"
 def parse(argv: Sequence[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(prog="zoujin-voice", description="B-6：预录句的生成（照读三遍、自动检查、声音清单）")
     p.add_argument("--book", default="hashire-merosu")
+    p.add_argument(
+        "--world", help="世界模型的版本目录（worlds/<book>/<这个>），默认用源文件的 world；M3 的人物用 1.0.0-draft"
+    )
     p.add_argument("--out", type=Path, default=Path("out") / "b6", help="新跑的上一级目录（默认 out/b6）")
     p.add_argument("--resume", type=Path, help="接着跑的目录（out/b6/<时间>）")
     p.add_argument(
@@ -589,6 +596,8 @@ def main(argv: Sequence[str] | None = None, deps: Deps | None = None, env: Mappi
     try:
         real = model_mode(env) == "real"
         spec = read_spec(args.book, deps.repo / "services" / "backend" / "voice")
+        if args.world:
+            spec["world"] = args.world
         p = plan(spec, world_of(spec, deps.repo / "worlds"))
         recs = p.select(args.only) if args.only else p.recordings
         if args.resume is None and not args.out.is_absolute():

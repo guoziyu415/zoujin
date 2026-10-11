@@ -4,7 +4,8 @@
 //   iClip  = (first row, frames (negative: plays once and holds the last), start, speed)   the motion now
 //   iPrev  = the same for the motion before, faded out over BLEND seconds from iSwitch
 //   iSkin, iCloth, iCloth2, iHair = the colours of the parts (aPart 0 skin, 1 cloth, 2 the outer piece, 3 hair; 4 the
-//   eyes, all the same dark iris: UX, white eyes read as the dead)
+//   eyes: half the skin's colour, as EYE_SHADE in build_crowd.py; white eyes read as the dead, black ones as sharp
+//   slits: UX)
 //   iPlace = (x, y, z, yaw): where the person stands and which way they face; iScale = (breadth, height)
 import {
   MeshDepthMaterial,
@@ -93,7 +94,7 @@ function patch(
     )
     .replace(
       "#include <beginnormal_vertex>",
-      "mat4 crowdM = crowdSkin();\nvec3 objectNormal = crowdTurn( normalize( mat3( crowdM ) * normal ) );\nvNear = distance( cameraPosition.xz, ( modelMatrix * vec4( iPlace.xyz, 1.0 ) ).xz );\nvTint = aPart < 0.5 ? iSkin : aPart < 1.5 ? iCloth : aPart < 2.5 ? iCloth2 : aPart < 3.5 ? iHair : vec3(0.09, 0.07, 0.06);",
+      "mat4 crowdM = crowdSkin();\nvec3 objectNormal = crowdTurn( normalize( mat3( crowdM ) * normal ) );\nvNear = distance( cameraPosition.xz, ( modelMatrix * vec4( iPlace.xyz, 1.0 ) ).xz );\nvTint = aPart < 0.5 ? iSkin : aPart < 1.5 ? iCloth : aPart < 2.5 ? iCloth2 : aPart < 3.5 ? iHair : iSkin * 0.5;",
     )
     .replace(
       "#include <begin_vertex>",
