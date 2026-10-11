@@ -18,6 +18,7 @@ from typing import Any
 HERE = Path(__file__).resolve().parent
 DRAFT = HERE.parent / "1.0.0-draft" / "world.src.json"
 OUT = HERE / "world.src.json"
+SOURCE = HERE.parent / "sources" / "melos_plain.txt"
 
 ROLE = "role.traveler"
 T_JUMP = 5370  # 三日目 17:30（S-077 ⑤）
@@ -267,6 +268,11 @@ def make_slice(src: dict[str, Any]) -> dict[str, Any]:
     # 上面去掉身份和情境动作以后没人拿得到的物品（别的身份开局带的）也去掉
     rest = json.dumps({k: v for k, v in w.items() if k != "items"}, ensure_ascii=False)
     w["items"] = [x for x in w["items"] if f'"{x["id"]}"' in rest]
+
+    # 1.10：注音词表只留原文里有、或者切片里还出现的词（别的身份的名字、他们开局带的东西去掉，build_world 查词都出现过）
+    if "ruby" in w:
+        seen = SOURCE.read_text(encoding="utf-8") + json.dumps({k: v for k, v in w.items() if k != "ruby"}, ensure_ascii=False)
+        w["ruby"] = [x for x in w["ruby"] if x["word"] in seen]
 
     return w
 
