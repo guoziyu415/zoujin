@@ -387,5 +387,27 @@
       "face": [46, 2],
       "about": "the road out east (exit.3.road, day 3 04:30)"
     }
-  }
+  },
+  "cameraZones": [
+    {
+      "id": "melos-house",
+      "about": "inside Melos's house (village.md 3): the near follow camera; the walls' inner faces",
+      "polygon": [
+        [-13.75, -13.75],
+        [-2.25, -13.75],
+        [-2.25, -8.75],
+        [-13.75, -8.75]
+      ],
+      "portrait": {
+        "back": 4,
+        "up": 2.4,
+        "fov": 70
+      },
+      "landscape": {
+        "back": 3.4,
+        "up": 2.3,
+        "fov": 55
+      }
+    }
+  ]
 }

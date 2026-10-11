@@ -19,6 +19,7 @@ import {
   InstancedMesh,
   Matrix4,
   Mesh,
+  MeshBasicMaterial,
   MeshStandardMaterial,
   PlaneGeometry,
   PointLight,
@@ -136,6 +137,26 @@ void main() { if (vA < 0.5) discard; gl_FragColor = vec4(uColor * 0.35, 0.35); }
   return m;
 }
 
+// the lit door: the pack's quads (the light on the ground before the door, the windows) drawn as added light, so they
+// are nothing until the feast's night lights them
+function glow(node: Object3D | undefined) {
+  if (!node) return undefined;
+  const mat = new MeshBasicMaterial({
+    blending: AdditiveBlending,
+    transparent: true,
+    depthWrite: false,
+    fog: false,
+  });
+  node.traverse((o) => {
+    if (!(o instanceof Mesh)) return;
+    (o.material as MeshStandardMaterial).dispose();
+    o.material = mat;
+    o.castShadow = o.receiveShadow = false;
+  });
+  node.visible = false;
+  return { node, mat };
+}
+
 export default function VillageLife({ scene }: { scene: LoadedScene }) {
   const { scene: three, camera, size } = useThree();
   const { manifest } = scene;
@@ -171,7 +192,7 @@ export default function VillageLife({ scene }: { scene: LoadedScene }) {
     return {
       altar: find("altar-dressing"),
       myrtle: find("myrtle-leaves"),
-      door: find("door-glow"),
+      door: glow(find("door-glow")),
       vine,
       lantern,
       rain: rainMesh(),
@@ -290,12 +311,10 @@ export default function VillageLife({ scene }: { scene: LoadedScene }) {
     parts.vine.intensity = l.vine ? 6 * wave : 0;
     parts.lantern.intensity = l.lantern ? 9 * flicker(clock.elapsedTime, 3) : 0;
     if (l.lantern) parts.lantern.position.set(p.x + 0.3, p.y + 1.1, p.z);
-    parts.door?.traverse((o) => {
-      if (o instanceof Mesh && o.material instanceof MeshStandardMaterial) {
-        o.material.emissive.copy(WARM);
-        o.material.emissiveIntensity = l.door ? 2.5 * wave : 0;
-      }
-    });
+    if (parts.door) {
+      parts.door.node.visible = l.door;
+      parts.door.mat.color.copy(WARM).multiplyScalar(0.6 * wave);
+    }
   });
 
   return <Interior scene={scene} />;

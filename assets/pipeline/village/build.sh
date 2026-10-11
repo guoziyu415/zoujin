@@ -26,7 +26,7 @@ PACK=village
 echo "work dir $WORK, output ${OUT:-$SCENES/<pack>/build} ($Q)"
 
 # what pack_scene.mjs records as this scene's own inputs (in place of the plaza's build.sh and scene script)
-export SCENE_INPUTS="assets/pipeline/village/build.sh,assets/pipeline/common/road_tex.py,assets/pipeline/plaza/placeholder_tex.py,assets/pipeline/common/bl.py,assets/pipeline/village/build_village.py,assets/pipeline/village/merge_inst.mjs,assets/pipeline/common/roadside.mjs,assets/pipeline/common/small_tex.mjs"
+export SCENE_INPUTS="assets/pipeline/village/build.sh,assets/pipeline/common/road_tex.py,assets/pipeline/plaza/placeholder_tex.py,assets/pipeline/common/bl.py,assets/pipeline/village/build_village.py,assets/pipeline/village/merge_inst.mjs,assets/pipeline/common/roadside.mjs,assets/pipeline/common/small_tex.mjs,assets/pipeline/village/zones.mjs"
 export SCENE_BUILD="assets/pipeline/village/build.sh"
 export SCENE_ROT_DEG=0 SCENE_MINUS_X_AZ=270   # plan +x = east, no rotation (village.md 1)
 export BAKE_RES=1024   # 90 x 70 m of ground; the sun's shadows are drawn live, the bake is sky light and occlusion
@@ -43,6 +43,7 @@ step "bake";   (cd "$WORK" && "$PY" "$PLAZA/bake.py" -- "$Q")
 step "instances"; node "$HERE/merge_inst.mjs" "$WORK" "$PACK"
 step "encode"; "$PY" "$PLAZA/encode.py"
 step "pack";   node "$PLAZA/pack_scene.mjs" "$WORK" "$SCENES/$PACK/layout.json" "$(dest "$PACK")"
+node "$HERE/zones.mjs" "$SCENES/$PACK/layout.json" "$(dest "$PACK")"
 node "$COMMON/small_tex.mjs" "$WORK" "$(dest "$PACK")"
 step "share (road-common)"
 # a final build adds to the committed road-common (the road's keys stay listed even when its build dir is not here)

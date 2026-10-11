@@ -7,15 +7,16 @@
  "placeholderTextures": true,
  "inputs": {
   "files": {
-   "assets/scenes/village/layout.json": "c39b8c9aa69b4cbd535be08e0bfa5ff8934fac7d0b60c1900fcd064a53ae6a74",
-   "assets/pipeline/village/build.sh": "d34bbaa46672e1321edd8940dd6e021b2922a4ac643f6ec7be2dbc0d92c39c1f",
+   "assets/scenes/village/layout.json": "030b0868d23895885925a2ed52c933a04b280c84191bef128f9c7a1abd0a6815",
+   "assets/pipeline/village/build.sh": "bd88a42b6d44893d72a7a1a771d31c5153b6cd76aeb97b0d1de4e569101c6e07",
    "assets/pipeline/common/road_tex.py": "a31a2a76e5421dccc6f5fa6e8ed272578569ea1133e8c581a05a13a4f0abdad6",
    "assets/pipeline/plaza/placeholder_tex.py": "aabda4df4f3974b2eb65b227ed3b5ae2d606a489441d665b3f2f108c5cd1343e",
    "assets/pipeline/common/bl.py": "4bffdacd1d0b1876b9244e30b0f98ce00154911aa30c1130566723b55a1c9f22",
-   "assets/pipeline/village/build_village.py": "e5abf41d67eeab0f9cf6de61f135da1ec863f6f2aeb8a531bcff7fd4f612dc96",
+   "assets/pipeline/village/build_village.py": "4f0ec62f2656c45c970e86a259bc7aac9a3570c637b419a74a555266474ca502",
    "assets/pipeline/village/merge_inst.mjs": "067e0f998a085aff9456ed69f4cd892e2ebf3b8046db148dad7d02ca572317e9",
    "assets/pipeline/common/roadside.mjs": "5f847f5f67e51ff3ec7745e6986f73f516712b2507c6a135ae6065dcb0cb679f",
    "assets/pipeline/common/small_tex.mjs": "2510e7083721b8d59d94651bf0ea91e7e2df07407c9e092471146b966be34b2c",
+   "assets/pipeline/village/zones.mjs": "6860381bf57b2b6c2262a537aad2c5ba482235bebbb0e46901e9abc19a9284b0",
    "assets/pipeline/plaza/requirements.txt": "0a234e44f52fb462c7e8694ecd82b99aca8e534ac610dde2dd749bb1e2cbe0e3",
    "assets/pipeline/plaza/sky.py": "971584f110b8a924e737d195f30eab114cb35d7345909e364ed21ec3e77aab27",
    "assets/pipeline/plaza/sunpos.py": "807e1774526b33ef4f2329dbabf906c44f9517605a80f9ca930ecfb9ff6287ba",
@@ -102,10 +103,18 @@
   "sceneRotationDeg": 0
  },
  "nodes": {
+  "altar-dressing": {
+   "prims": 2,
+   "tris": 308
+  },
   "arch": {
    "prims": 10,
    "tris": 16721,
    "lightmap": "arch"
+  },
+  "door-glow": {
+   "prims": 1,
+   "tris": 6
   },
   "far": {
    "prims": 11,
@@ -115,6 +124,10 @@
    "prims": 5,
    "tris": 7300,
    "lightmap": "ground"
+  },
+  "myrtle-leaves": {
+   "prims": 1,
+   "tris": 1400
   },
   "proxy": {
    "prims": 1,
@@ -138,8 +151,26 @@
    "tris": 14
   }
  },
- "tris": 43259,
+ "tris": 44973,
  "materials": {
+  "myrtle": {
+   "color": [
+    0.1599999964237213,
+    0.25999999046325684,
+    0.11999999731779099
+   ],
+   "roughness": 0.699999988079071,
+   "metalness": 0
+  },
+  "pot": {
+   "color": [
+    0.5600000023841858,
+    0.36000001430511475,
+    0.23999999463558197
+   ],
+   "roughness": 0.699999988079071,
+   "metalness": 0
+  },
   "outcrop": {
    "color": [
     1,
@@ -246,6 +277,15 @@
    "metalness": 0,
    "base": "holmoak_base"
   },
+  "doorglow": {
+   "color": [
+    0,
+    0,
+    0
+   ],
+   "roughness": 1,
+   "metalness": 0
+  },
   "grass": {
    "color": [
     1,
@@ -290,15 +330,6 @@
    "roughness": 0.949999988079071,
    "metalness": 0,
    "base": "thatch_base"
-  },
-  "pot": {
-   "color": [
-    0.5600000023841858,
-    0.36000001430511475,
-    0.23999999463558197
-   ],
-   "roughness": 0.699999988079071,
-   "metalness": 0
   },
   "vine": {
    "color": [
@@ -1220,8 +1251,8 @@
  "files": [
   {
    "path": "geo.glb",
-   "bytes": 1277732,
-   "sha256": "7d539ebe8504dedd4a0281c39edfd5f92af7b0ab55700edfd0c7e41177fb7474",
+   "bytes": 1329228,
+   "sha256": "29a4b95ce2804bb6c3ddc6b4606555c4a22b59b247d1118e72ac5a812d11bc46",
    "pack": "entry"
   },
   {
@@ -1498,15 +1529,48 @@
   }
  ],
  "bytes": {
-  "entry": 3348695,
+  "entry": 3400191,
   "hiExtra": 804959,
   "shared": {
    "entry": 2063714,
    "hiExtra": 4585771
   },
-  "envStd": 5412409,
-  "envHi": 10803139
+  "envStd": 5463905,
+  "envHi": 10854635
  },
+ "cameraZones": [
+  {
+   "id": "melos-house",
+   "polygon": [
+    [
+     -13.75,
+     13.75
+    ],
+    [
+     -2.25,
+     13.75
+    ],
+    [
+     -2.25,
+     8.75
+    ],
+    [
+     -13.75,
+     8.75
+    ]
+   ],
+   "portrait": {
+    "back": 4,
+    "up": 2.4,
+    "fov": 70
+   },
+   "landscape": {
+    "back": 3.4,
+    "up": 2.3,
+    "fov": 55
+   }
+  }
+ ],
  "sharedPacks": [
   "road-common"
  ]
