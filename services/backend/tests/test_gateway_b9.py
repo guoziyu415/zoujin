@@ -138,7 +138,7 @@ def test_ending_over_the_socket(env: Env, sliced: Services) -> None:
         finally:
             q.close()
 
-        # 结局任务还没好：202，etaSeconds 在 5〜30
+        # 结局任务还没好：202，etaSeconds 在 5〜15
         async def unready() -> None:
             engine = env.engine()
             try:
@@ -154,7 +154,7 @@ def test_ending_over_the_socket(env: Env, sliced: Services) -> None:
 
         asyncio.run(unready())
         pending = p.call("ending", 202, "GET", ending)
-        assert pending["status"] == "pending" and 5 <= pending["etaSeconds"] <= 30
+        assert pending["status"] == "pending" and 5 <= pending["etaSeconds"] <= 15
     finally:
         p.close()
 

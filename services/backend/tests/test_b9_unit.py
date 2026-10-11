@@ -349,7 +349,7 @@ def test_view_drops_internal_fields() -> None:
 
 
 def test_eta() -> None:
-    assert (E.eta(0, 0), E.eta(0, 10.5), E.eta(0, 29), E.eta(0, 90)) == (30, 20, 5, 5)
+    assert (E.eta(0, 0), E.eta(0, 5.5), E.eta(0, 12), E.eta(0, 90)) == (15, 10, 5, 5)
 
 
 def test_prompt_schema_fits_the_claude_limits() -> None:
