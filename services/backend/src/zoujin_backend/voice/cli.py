@@ -166,14 +166,16 @@ class Work:
         return not (self.reads or self.transcribe_only or self.refs)
 
 
-def pending(run: Run, recs: Sequence[Recording], with_refs: bool) -> Work:
+def pending(run: Run, recs: Sequence[Recording], with_refs: bool, redo: frozenset[str] = frozenset()) -> Work:
+    """redo：--only 的录音 ID，读过的也全部重读。"""
     reads: list[tuple[int, Recording]] = []
     only: list[tuple[int, Recording]] = []
     for n in range(1, TAKES + 1):
         for r in recs:
-            if run.done(r, n):
+            again = r.id in redo
+            if not again and run.done(r, n):
                 continue
-            (only if run.needs_transcript(r, n) else reads).append((n, r))
+            (only if not again and run.needs_transcript(r, n) else reads).append((n, r))
     refs = [x for x in run.plan.refs if with_refs and not (run.refs / f"{x.id}.json").is_file()]
     return Work(reads, only, refs)
 
@@ -575,10 +577,8 @@ def main(argv: Sequence[str] | None = None, deps: Deps | None = None, env: Mappi
         if args.resume is None and not args.out.is_absolute():
             args.out = Path.cwd() / args.out
         run = open_run(args, p)
-        if args.only:
-            for r in recs:
-                run.discard(r)
-        work = pending(run, recs, with_refs=not args.only)
+        redo = frozenset(r.id for r in recs) if args.only else frozenset()
+        work = pending(run, recs, with_refs=not args.only, redo=redo)
         regional = env.get("ZJ_VERTEX_LOCATION", "global") != "global"
         print(describe(run, recs, work, estimate(work, regional=regional)))
         print(f"这一次跑的上限 ${args.max_usd:.2f}（账本里记在 {run.item} 下，--resume 接着跑的也算进去）")
@@ -605,6 +605,9 @@ def main(argv: Sequence[str] | None = None, deps: Deps | None = None, env: Mappi
                 print("都读过了：不调用模型，只用已录的重挑、重出 release")
         encoder = deps.encoder or audio.FfmpegEncoder()
         schemas = SchemaBook(deps.repo / "packages" / "contracts" / "schemas")
+        # 只打印估价的那次不动旧的几遍：真跑才挪
+        for r in recs if args.only else []:
+            run.discard(r)
     except (ConfigError, SpecError, RuntimeError) as e:
         print(f"zoujin-voice：{e}", file=sys.stderr)
         return EXIT_CONFIG

@@ -361,6 +361,20 @@ def test_only_rereads_the_given_keys(tmp_path: Path) -> None:
     assert len(voices["setPieceVoices"]) == 8 and set(voices["characters"]) == {"char.melos", "char.old-man"}
 
 
+def test_only_estimate_without_confirm_leaves_the_old_takes(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    # Mac 上先不带 --confirm 看估价：旧的几遍不挪，估价照重读算
+    assert run_fake(tmp_path, FakeReader()) == 0
+    run = only_run(tmp_path)
+    capsys.readouterr()
+    env = {"ZJ_MODEL": "real", "ZJ_LEDGER": str(tmp_path / "ledger.jsonl")}
+    argv = ["--resume", str(run), "--only", "melos-aizuchi-2", "old-man-aizuchi-3"]
+    assert cli.main(argv, cli.Deps(encoder=audio.FakeEncoder()), env) == 0
+    out = capsys.readouterr().out
+    assert "照读 6 轮" in out and "只打印，不调用" in out
+    assert not (run / "takes" / "discarded").exists()
+    assert len(list((run / "takes").glob("melos-aizuchi-2.*.wav"))) == 3
+
+
 def test_only_rejects_unknown_keys(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert run_fake(tmp_path, FakeReader(), "--only", "piece.nope/1") == cli.EXIT_CONFIG
     assert "认不出" in capsys.readouterr().err
