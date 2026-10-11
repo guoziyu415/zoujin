@@ -739,8 +739,8 @@ class Narrator:
             await c.execute(
                 update(playthrough_metrics).where(playthrough_metrics.c.playthrough_id == task.pid).values(values)
             )
+            self.fault("notify")  # 有记忆要写时 NOTIFY 在写完记忆以后（`_remember`），注入点照旧在提交的事务里
             if not todo:
-                self.fault("notify")
                 await self._notify(c, task, seq=w.state["seq"], outcome=result.outcome)
             self.fault("commit")
         log.info(

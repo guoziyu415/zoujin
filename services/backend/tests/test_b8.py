@@ -103,8 +103,8 @@ def test_timeouts_and_a_failed_attempt_still_cost(env: Env) -> None:
             )
             (result,) = await n.run(pid)
             assert result.task.turn_id == turn_id and result.task.attempts == 2
-            # 第一次：分流、提取（超时）、提取；重来：分流、提取
-            assert [k for k, _ in priced.calls] == ["triage", "extract", "extract", "triage", "extract"]
+            # 第一次：分流、提取（超时）、提取；重来：分流、提取；提交以后给说话的对象写一条印象（B-13）
+            assert [k for k, _ in priced.calls] == ["triage", "extract", "extract", "triage", "extract", "memory"]
             assert await spent(engine, pid) == pytest.approx(COST * 5)
         finally:
             await engine.dispose()

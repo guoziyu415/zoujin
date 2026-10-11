@@ -259,7 +259,8 @@ def test_two_extract_timeouts_commit_only_the_clock(env: Env) -> None:
         fast = dict.fromkeys(("triage", "extract", "check", "rewrite"), 0.05)
         n = Narrator(engine=engine, library=LIBRARY, text=slow, schemas=SCHEMAS, ids=env.ids, deadlines=fast)
         (result,) = await n.run(pid)
-        assert [kind for kind, _ in slow.calls] == ["triage", "extract", "extract"]  # 第一次超时重发一次，没有检查
+        # 第一次超时重发一次，没有检查；提交了只推时钟的一句，给说话的对象写一条印象（B-13）
+        assert [kind for kind, _ in slow.calls] == ["triage", "extract", "extract", "memory"]
         assert [(e["actor"], e["type"], e["effects"], e["dt"]) for e in result.events] == [("player", "say", [], 10)]
         assert (result.outcome, result.minutes) == ("no_change", 10)  # 客户端收到的和提取没有候选时一样
         n_events, last, cached = await counts(env, pid)
