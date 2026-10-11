@@ -1,5 +1,5 @@
 """api-contract 第 1 节和 2.1〜2.4 的 REST，加上预录句的录音文件（2.1）、结局（2.8，B-9）、記憶帳（2.7）和删除整局
-（2.9，B-13）。其余 `/v1` 接口不挂路由，按第 5 节回 404 not_found（app.py）。
+（2.9，B-13）、前端遥测（2.11）。其余 `/v1` 接口不挂路由，按第 5 节回 404 not_found（app.py）。
 
 每个响应先用 C-1 生成的类型构造、按 Schema 校验再回；不合契约就回 500 internal，并在日志里记。
 """
@@ -30,6 +30,7 @@ from zoujin_backend.narrator import memory
 from zoujin_backend.schemas import SchemaError
 
 log = logging.getLogger("zoujin.gateway")
+tlog = logging.getLogger("zoujin.telemetry")
 
 Json = Any
 
@@ -175,6 +176,18 @@ async def login(request: Request) -> Response:
     resp = ok(gw, "auth-login", 200, me_doc_)
     set_cookie(gw, resp, token)
     return resp
+
+
+@router.post("/v1/telemetry")
+async def telemetry(request: Request) -> Response:
+    """2.11：登录前（app_open）也收，所以不查会话。还没有遥测表（data-design 9.3 只定了字段）：每条一行 JSON
+    写进日志（Cloud Run 收进 Cloud Logging），公共属性抄到每条。Schema 已经挡住音频、原话和记忆文本。"""
+    gw = gw_of(request)
+    doc = await body_of(request)
+    check_request(gw, "telemetry", "request", doc)
+    for event in doc["events"]:
+        tlog.info("telemetry %s", json.dumps({**event, "common": doc["common"]}, ensure_ascii=False, sort_keys=True))
+    return Response(status_code=204)
 
 
 @router.post("/v1/auth/logout")
