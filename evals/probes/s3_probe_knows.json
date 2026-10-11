@@ -1901,7 +1901,7 @@
     },
     {
      "fact": "fact.six-killed-today",
-     "statement": "この日（Day 0）、六人が殺された。"
+     "statement": "王の命令で、一日のうちに六人が殺された。"
     }
    ],
    "notYet": [
@@ -1967,7 +1967,7 @@
     },
     {
      "fact": "fact.melos-suspects-king",
-     "statement": "メロスは山賊を王の差し金だと考えた（原文では真偽不明。語り手は断定しない）。",
+     "statement": "メロスは山賊を王の差し金だと考えた。",
      "since": "beat.19"
     },
     {
@@ -1989,6 +1989,11 @@
      "fact": "fact.selinuntius-doubted-once",
      "statement": "セリヌンティウスは三日の間に一度だけメロスを疑った。",
      "since": "beat.25"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。",
+     "since": "beat.10"
     }
    ]
   },
@@ -2060,7 +2065,7 @@
     },
     {
      "fact": "fact.six-killed-today",
-     "statement": "この日（Day 0）、六人が殺された。"
+     "statement": "王の命令で、一日のうちに六人が殺された。"
     },
     {
      "fact": "fact.melos-dagger",
@@ -2089,6 +2094,10 @@
     {
      "fact": "fact.groom-wanted-wait",
      "statement": "花婿は仕度ができていないので葡萄の季節まで待ちたかった。"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。"
     }
    ],
    "notYet": [
@@ -2119,7 +2128,7 @@
     },
     {
      "fact": "fact.melos-suspects-king",
-     "statement": "メロスは山賊を王の差し金だと考えた（原文では真偽不明。語り手は断定しない）。",
+     "statement": "メロスは山賊を王の差し金だと考えた。",
      "since": "beat.19"
     },
     {
@@ -2211,7 +2220,7 @@
     },
     {
      "fact": "fact.six-killed-today",
-     "statement": "この日（Day 0）、六人が殺された。"
+     "statement": "王の命令で、一日のうちに六人が殺された。"
     },
     {
      "fact": "fact.melos-dagger",
@@ -2263,7 +2272,7 @@
     },
     {
      "fact": "fact.melos-suspects-king",
-     "statement": "メロスは山賊を王の差し金だと考えた（原文では真偽不明。語り手は断定しない）。"
+     "statement": "メロスは山賊を王の差し金だと考えた。"
     },
     {
      "fact": "fact.melos-despair",
@@ -2276,6 +2285,10 @@
     {
      "fact": "fact.selinuntius-steadfast",
      "statement": "セリヌンティウスは刑場に引き出され、王にからかわれても「メロスは来ます」とだけ答えた。"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。"
     }
    ],
    "notYet": [
@@ -2322,7 +2335,7 @@
     },
     {
      "fact": "fact.six-killed-today",
-     "statement": "この日（Day 0）、六人が殺された。"
+     "statement": "王の命令で、一日のうちに六人が殺された。"
     },
     {
      "fact": "fact.melos-dagger",
@@ -2403,7 +2416,7 @@
     },
     {
      "fact": "fact.six-killed-today",
-     "statement": "この日（Day 0）、六人が殺された。"
+     "statement": "王の命令で、一日のうちに六人が殺された。"
     },
     {
      "fact": "fact.melos-dagger",
@@ -2478,7 +2491,7 @@
     },
     {
      "fact": "fact.six-killed-today",
-     "statement": "この日（Day 0）、六人が殺された。"
+     "statement": "王の命令で、一日のうちに六人が殺された。"
     },
     {
      "fact": "fact.melos-dagger",
@@ -2750,7 +2763,7 @@
      "兄を心配する"
     ],
     "goals": [
-     "結婚する（推定：原文に本人の言葉はない）",
+     "結婚する",
      "婚礼は近いが、日取りはまだ決まっていない"
     ]
    },
@@ -2801,7 +2814,7 @@
      "兄を心配する"
     ],
     "goals": [
-     "結婚する（推定：原文に本人の言葉はない）"
+     "結婚する"
     ]
    },
    "knows": [
@@ -2922,6 +2935,11 @@
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。",
+     "since": "beat.10"
     }
    ]
   },
@@ -2952,6 +2970,10 @@
     {
      "fact": "fact.groom-wanted-wait",
      "statement": "花婿は仕度ができていないので葡萄の季節まで待ちたかった。"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。"
     }
    ],
    "notYet": [
@@ -3002,6 +3024,10 @@
     {
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。"
     }
    ],
    "notYet": []
@@ -3151,7 +3177,7 @@
      "人目をはばかり、怯えている"
     ],
     "goals": [
-     "目をつけられずに生き延びる（推定）"
+     "目をつけられずに生き延びる"
     ]
    },
    "knows": [
@@ -3169,14 +3195,20 @@
     },
     {
      "fact": "fact.six-killed-today",
-     "statement": "この日（Day 0）、六人が殺された。"
+     "statement": "王の命令で、一日のうちに六人が殺された。"
     },
     {
      "fact": "fact.city-silent",
      "statement": "シラクスの市は夜でもひっそりして、やけに寂しい。二年前は賑やかだった。"
     }
    ],
-   "notYet": []
+   "notYet": [
+    {
+     "fact": "fact.execution-crowd",
+     "statement": "日没に、市の石工が刑場で磔にされることになっていて、広場の一角の刑場に人が集まりはじめている。",
+     "since": "beat.22"
+    }
+   ]
   },
   "p2-old-man-dawn": {
    "character": "char.old-man",
@@ -3191,7 +3223,7 @@
      "人目をはばかり、怯えている"
     ],
     "goals": [
-     "目をつけられずに生き延びる（推定）"
+     "目をつけられずに生き延びる"
     ]
    },
    "knows": [
@@ -3209,14 +3241,20 @@
     },
     {
      "fact": "fact.six-killed-today",
-     "statement": "この日（Day 0）、六人が殺された。"
+     "statement": "王の命令で、一日のうちに六人が殺された。"
     },
     {
      "fact": "fact.city-silent",
      "statement": "シラクスの市は夜でもひっそりして、やけに寂しい。二年前は賑やかだった。"
     }
    ],
-   "notYet": []
+   "notYet": [
+    {
+     "fact": "fact.execution-crowd",
+     "statement": "日没に、市の石工が刑場で磔にされることになっていて、広場の一角の刑場に人が集まりはじめている。",
+     "since": "beat.22"
+    }
+   ]
   },
   "p2-old-man-sunset": {
    "character": "char.old-man",
@@ -3231,7 +3269,7 @@
      "人目をはばかり、怯えている"
     ],
     "goals": [
-     "目をつけられずに生き延びる（推定）"
+     "目をつけられずに生き延びる"
     ]
    },
    "knows": [
@@ -3249,11 +3287,15 @@
     },
     {
      "fact": "fact.six-killed-today",
-     "statement": "この日（Day 0）、六人が殺された。"
+     "statement": "王の命令で、一日のうちに六人が殺された。"
     },
     {
      "fact": "fact.city-silent",
      "statement": "シラクスの市は夜でもひっそりして、やけに寂しい。二年前は賑やかだった。"
+    },
+    {
+     "fact": "fact.execution-crowd",
+     "statement": "日没に、市の石工が刑場で磔にされることになっていて、広場の一角の刑場に人が集まりはじめている。"
     }
    ],
    "notYet": []
