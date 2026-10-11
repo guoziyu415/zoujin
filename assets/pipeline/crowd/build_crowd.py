@@ -42,8 +42,16 @@ BODIES = [
 SKIN, CLOTH, OUTER, HAIR = 0, 1, 2, 3
 ARMS_DOWN = math.radians(-38)  # MPFB's A pose has the arms ~48° out; the crowd's hang ~10° from the body
 FOREARM_BEND = math.radians(12)
+# a fist: each finger bone bent about its own X axis (MPFB's game_engine rig: +X closes the hand on both sides)
+FIST = {"01": math.radians(80), "02": math.radians(95)}
+THUMB_FIST = math.radians(35)
+FOLDS, FOLD_DEPTH = 7, 0.035  # the himation's folds round the body, and their depth at the hem
+PILOS_HEIGHT = 0.045  # how far the worker's cap rises above the crown
 HAIR_SLOPE = 0.93  # the hairline drops this much per metre towards the back
 MANTLE_EDGE, MANTLE_SLOPE = (-0.2, 1.05), 1.25  # the himation's edge: (x, z) at the right hip, rising to the left
+MANTLE_HEM, MANTLE_HEM_SLOPE = 0.5, 0.45  # its hem at x = 0, lower on the right (z falls 0.45 per metre towards -x)
+NECKLINE, NECK_TILT = 0.02, 0.35  # the clothes' neckline: this far under the neck joint at the side, lower in front
+NECK_SKIN = {"spine_03", "clavicle_l", "clavicle_r", "neck_01"}
 UPPER = {"pelvis", "spine_01", "spine_02", "spine_03", "clavicle_l", "clavicle_r", "upperarm_l", "upperarm_r"}
 FOREARM = {"lowerarm_l", "lowerarm_r"}
 LEGS = {"thigh_l", "thigh_r", "calf_l", "calf_r"}
@@ -86,8 +94,10 @@ def in_group(v, gi):
     return any(g.group == gi and g.weight > 0.5 for g in v.groups)
 
 
-def build_costume(base, costume, hem, sleeves):
-    """One mesh: skin where it shows, the costume from the helpers, the outer piece; material index = part."""
+def build_costume(base, costume, hem, sleeves, neck):
+    """One mesh: skin where it shows, the costume from the helpers, the outer piece; material index = part. The
+    clothes' top edge is cut straight along the neckline (a plane through `neck`, the neck joint's height, lower in
+    front); the skin under it is kept a little way down so the cut edge never shows a gap."""
     me = base.data
     names = {g.index: g.name for g in base.vertex_groups if g.name in BONE_NAMES}
     body_g = base.vertex_groups["body"].index
@@ -104,6 +114,8 @@ def build_costume(base, costume, hem, sleeves):
             hidden = d in covered or (d in LEGS and v.co.z > hem + 0.04)
             if costume == "worker" and d in LEGS:
                 hidden = v.co.z > hem + 0.04  # bare calves below the knee-length tunic
+            if hidden and d in NECK_SKIN and v.co.z > neck - 0.14:
+                hidden = False  # under the neckline
             if not hidden:
                 keep_skin.add(v.index)
         elif in_group(v, tights_g):
@@ -120,6 +132,16 @@ def build_costume(base, costume, hem, sleeves):
         ids = {v.index for v in f.verts}
         f.material_index = SKIN if ids <= keep_skin else CLOTH if ids <= keep_cloth else 9
     bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.material_index == 9], context="FACES_ONLY")
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+    # the neckline: the clothes cut along a plane, not along their faces' steps
+    z0, no = neck - NECKLINE, Vector((0, -NECK_TILT, 1)).normalized()
+    cloth = [f for f in bm.faces if f.material_index == CLOTH]
+    geom = bmesh.ops.bisect_plane(bm, geom=cloth + list({e for f in cloth for e in f.edges})
+                                  + list({v for f in cloth for v in f.verts}),
+                                  dist=1e-5, plane_co=Vector((0, 0, z0)), plane_no=no)["geom"]
+    above = [g for g in geom if isinstance(g, bmesh.types.BMFace) and g.material_index == CLOTH
+             and no.dot(g.calc_center_median() - Vector((0, 0, z0))) > 0]
+    bmesh.ops.delete(bm, geom=above, context="FACES")
     bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
 
     out = bpy.data.meshes.new(f"crowd-{costume}")
@@ -155,7 +177,7 @@ def add_pieces(obj, costume, top, dry=False):
     def is_ear(f):
         return any(v[dl].get(ears, 0.0) > 0.5 for v in f.verts)
 
-    def grow(pick, planes, keep, push, part):
+    def grow(pick, planes, keep, push, part, shape=None):
         """Copy the faces `pick` takes, split the copy along `planes` (a point and a normal each) and keep the pieces
         whose centre `keep` takes, so its edges run straight along the planes rather than along the faces' steps;
         push it out along its normals by `push`."""
@@ -171,13 +193,111 @@ def add_pieces(obj, costume, top, dry=False):
         bmesh.ops.delete(bm, geom=[f for f in faces if not keep(f.calc_center_median())], context="FACES")
         faces = [f for f in faces if f.is_valid]
         bm.normal_update()
-        for v in {v for f in faces for v in f.verts}:
+        verts = list({v for f in faces for v in f.verts})
+        for v in verts:
             v.co += v.normal * push
+        if shape:
+            start = {v: (v.co.copy(), v.normal.copy()) for v in verts}
+            shape(verts)
+            for v, (co, no) in start.items():  # never back in under where it was pushed out to (the body would show)
+                d = (v.co - co).dot(no)
+                if d < 0:
+                    v.co -= no * d
+            # and cut along the planes again: the shaping moved the edges off them
+            geom = faces + list({e for f in faces for e in f.edges}) + verts
+            for co, no in planes:
+                geom = bmesh.ops.bisect_plane(bm, geom=geom, dist=1e-5, plane_co=Vector(co),
+                                              plane_no=Vector(no).normalized())["geom"]
+            faces = [g for g in geom if isinstance(g, bmesh.types.BMFace)]
+            bmesh.ops.delete(bm, geom=[f for f in faces if not keep(f.calc_center_median())], context="FACES")
+            faces = [f for f in faces if f.is_valid]
+            bmesh.ops.delete(bm, geom=[v for v in verts if v.is_valid and not v.link_faces], context="VERTS")
         for f in faces:
             f.material_index = part
 
     def head(f, bone):
         return f.material_index == SKIN and bone == "head" and not is_ear(f)
+
+    def smooth(verts, times, factor=0.5):
+        """Laplacian smoothing; the edge is smoothed along itself, so it stays a clean line."""
+        inner = [v for v in verts if not v.is_boundary]
+        rim = {v: [e.other_vert(v) for e in v.link_edges if e.is_boundary] for v in verts if v.is_boundary}
+        for _ in range(times):
+            bmesh.ops.smooth_vert(bm, verts=inner, factor=factor, use_axis_x=True, use_axis_y=True, use_axis_z=True)
+            moved = {v: sum((n.co for n in ns), Vector()) / len(ns) for v, ns in rim.items() if len(ns) == 2}
+            for v, to in moved.items():
+                v.co += (to - v.co) * factor
+
+    def drape(verts):
+        """The himation hangs: no body under it (smoothed), from the hips straight down rather than in round the
+        legs, a few big folds that deepen towards the hem."""
+        smooth(verts, 6)
+        cx = sum(v.co.x for v in verts) / len(verts)
+        cy = sum(v.co.y for v in verts) / len(verts)
+        hips = 0.95
+        reach = {}  # the widest it gets at the hips, by direction
+        for v in verts:
+            if abs(v.co.z - hips) < 0.06:
+                a = round(math.atan2(v.co.y - cy, v.co.x - cx) / (math.pi / 12))
+                reach[a] = max(reach.get(a, 0.0), math.hypot(v.co.x - cx, v.co.y - cy))
+        def reach_at(a):  # between the bins, and nothing where the himation doesn't reach the hips
+            f = a / (math.pi / 12)
+            lo, hi = math.floor(f), math.floor(f) + 1
+            if lo not in reach or hi not in reach:
+                return 0.0
+            return reach[lo] + (reach[hi] - reach[lo]) * (f - lo)
+
+        for v in verts:
+            dx, dy = v.co.x - cx, v.co.y - cy
+            r, a = math.hypot(dx, dy), math.atan2(dy, dx)
+            if r < 1e-6:
+                continue
+            if v.co.z < hips:
+                fall = min(1.0, (hips - v.co.z) / 0.25)  # eased in under the hips
+                r = max(r, r + (0.95 * reach_at(a) - r) * fall)
+            v.co.x, v.co.y = cx + r * math.cos(a), cy + r * math.sin(a)
+        smooth(verts, 1, 0.3)
+        for v in verts:  # the folds last, so the smoothing doesn't take them out
+            a = math.atan2(v.co.y - cy, v.co.x - cx)
+            depth = FOLD_DEPTH * min(1.0, max(0.0, (hips + 0.25 - v.co.z) / (hips + 0.25 - MANTLE_HEM)))
+            v.co.x += depth * math.sin(FOLDS * a + 0.6) * math.cos(a)
+            v.co.y += depth * math.sin(FOLDS * a + 0.6) * math.sin(a)
+
+    def hood(top, chin):
+        def shape(verts):
+            """The veil stands off the head and falls to the shoulders: smoothed (no ears or nape under it), pushed out
+            a little more over the skull, and the back and sides below the ears filled out to a straight fall."""
+            smooth(verts, 8)
+            cy = sum(v.co.y for v in verts) / len(verts)
+            ear = top - 0.13
+            head = [v for v in verts if v.co.z > ear]
+            back = max(v.co.y for v in head)
+            side = max(abs(v.co.x) for v in head)
+            for v in verts:
+                if v.co.z > ear:
+                    v.co.x *= 1.06
+                    v.co.y = cy + (v.co.y - cy) * 1.06
+                    v.co.z += 0.012
+                else:
+                    drop = ear - v.co.z
+                    if v.co.y > cy:
+                        v.co.y = max(v.co.y, back - 0.1 * drop)
+                    if v.co.y > cy - 0.02:
+                        v.co.x = math.copysign(max(abs(v.co.x), side + 0.5 * drop), v.co.x)
+            smooth(verts, 2, 0.4)
+        return shape
+
+    def pilos(top):
+        def shape(verts):
+            """The felt cap rises to a blunt point (a pilos)."""
+            smooth(verts, 2)
+            cx = sum(v.co.x for v in verts) / len(verts)
+            cy = sum(v.co.y for v in verts) / len(verts)
+            reach = max(math.hypot(v.co.x - cx, v.co.y - cy) for v in verts)
+            for v in verts:
+                k = 1 - math.hypot(v.co.x - cx, v.co.y - cy) / reach
+                v.co.z += PILOS_HEIGHT * max(0.0, k) ** 1.4
+        return shape
 
     counted = []
     bm.normal_update()
@@ -201,19 +321,22 @@ def add_pieces(obj, costume, top, dry=False):
             on_arm = bone in ARMS and not (bone == "upperarm_l" and c.z > 1.22)
             return f.material_index == CLOTH and not on_arm and c.z > 0.5 and below(c) > -0.08
 
-        grow(wrapped, [((x0, 0, z0), (-MANTLE_SLOPE, 0, 1)), ((0, 0, 0.56), (0, 0, 1))],
-             lambda c: below(c) > 0 and c.z > 0.56, 0.03, OUTER)
+        def hem_z(c):
+            return MANTLE_HEM + MANTLE_HEM_SLOPE * c.x
+
+        grow(wrapped, [((x0, 0, z0), (-MANTLE_SLOPE, 0, 1)), ((0, 0, MANTLE_HEM), (-MANTLE_HEM_SLOPE, 0, 1))],
+             lambda c: below(c) > 0 and c.z > hem_z(c), 0.03, OUTER, drape)
     elif costume == "veil":
         # over the head, round the face (open from the forehead, 5 cm under the crown, to under the chin, in front of
         # the ears), down over the shoulders
         brow, chin, cheek, hem = top - 0.05, top - 0.27, -0.075, top - 0.38
         planes = [((0, 0, z), (0, 0, 1)) for z in (brow, chin, hem)] + [((0, cheek, 0), (0, 1, 0))]
         grow(lambda f, c, bone: c.z > hem - 0.04 and bone not in ("lowerarm_l", "lowerarm_r"), planes,
-             lambda c: c.z > hem and (c.z > brow or c.z < chin or c.y > cheek), 0.018, OUTER)
+             lambda c: c.z > hem and (c.z > brow or c.z < chin or c.y > cheek), 0.018, OUTER, hood(top, chin))
     else:
         # the worker's low round felt cap on the crown, over the hair
         grow(lambda f, c, bone: head(f, bone) and c.z > top - 0.1, [((0, 0, top - 0.07), (0, 0, 1))],
-             lambda c: c.z > top - 0.07, 0.016, OUTER)
+             lambda c: c.z > top - 0.07, 0.016, OUTER, pilos(top))
     if dry:
         bm.free()
         return sum(counted)
@@ -278,6 +401,19 @@ def to_three(v):
     return (v.x, v.z, -v.y)
 
 
+def fist(rig, skeleton):
+    """Each finger bone's bend at a fist: its index, its X axis at rest (three's axes) and the angle."""
+    out = []
+    for i, b in enumerate(skeleton):
+        kind, *rest = b["name"].split("_")
+        if kind not in ("index", "middle", "ring", "pinky", "thumb"):
+            continue
+        x = (rig.matrix_world.to_3x3() @ rig.data.bones[b["name"]].matrix_local.to_3x3()).col[0].normalized()
+        angle = THUMB_FIST if kind == "thumb" else FIST[rest[0]]
+        out.append([i, *(round(c, 4) for c in to_three(x)), round(angle, 4)])
+    return out
+
+
 def export(built, out_dir):
     rig = built[0][1]
     bones = [b for b in rig.data.bones if not (b.name.endswith(("_03_l", "_03_r")) and "spine" not in b.name)]
@@ -338,6 +474,8 @@ def export(built, out_dir):
             # each body's own joints (the rest pose: arms down), in the order of "bones"
             "joints": [[round(c, 5) for c in to_three(rig.matrix_world @ rig.data.bones[b["name"]].head_local)]
                        for b in skeleton],
+            # the fingers' bend at a fist: bone, axis (at rest, three's axes), angle
+            "fist": fist(rig, skeleton),
         }
     os.makedirs(out_dir, exist_ok=True)
     with open(os.path.join(out_dir, "crowd.bin"), "wb") as f:
@@ -415,7 +553,8 @@ def main():
     built = []
     for costume, macro, hem, sleeves in BODIES:
         base, rig = make_human(macro)
-        obj, top = build_costume(base, costume, hem, sleeves)
+        neck = (rig.matrix_world @ rig.data.bones["neck_01"].head_local).z
+        obj, top = build_costume(base, costume, hem, sleeves, neck)
         extra = add_pieces(obj, costume, top, dry=True)
         decimate(obj, extra)
         add_pieces(obj, costume, top)

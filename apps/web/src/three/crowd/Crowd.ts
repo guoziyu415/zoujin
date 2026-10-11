@@ -21,6 +21,7 @@ import { body, COSTUMES, type Costume } from "./bodies";
 import type { CrowdPack } from "./pack";
 import {
   bake,
+  CHEERS,
   CLIPS,
   STAND_IN,
   type Baked,
@@ -92,6 +93,7 @@ type Timed = { at: number; person: number; clip: string; loopPhase?: number };
 // each skeleton's motions, baked once for the page and kept (about 170 KB each): the textures made from them go with
 // each crowd. A pack's skeletons only ever bake with that pack's motions.
 const baked = new WeakMap<Skeleton, Baked>();
+const isCheer = (clip: string) => CHEERS.includes(clip);
 const TALKING = 4; // one in so many talks among themselves, when the pack's motions have the talk
 
 function boneTexture(b: Baked): DataTexture {
@@ -235,13 +237,16 @@ export class Crowd extends Group {
     }
   }
 
-  // the cheer: everyone, a few tenths of a second apart; for `seconds`, then they settle, or until settle()
+  // the cheer: everyone, each their own way (both fists, one, at the shoulders) and up to most of a second apart; for
+  // `seconds`, then they settle, or until settle()
   cheer(seconds?: number): void {
     const rnd = mulberry32(Math.floor(this.now * 1000) + 5);
     this.queue = [];
     for (const [i, p] of this.people.entries()) {
-      const at = this.now + rnd() * 0.5;
-      this.queue.push({ at, person: i, clip: "cheer" });
+      const at = this.now + rnd() * 0.9;
+      const way = rnd();
+      const clip = CHEERS[way < 0.35 ? 0 : way < 0.65 ? 1 : way < 0.8 ? 2 : 3]!;
+      this.queue.push({ at, person: i, clip });
       if (seconds !== undefined)
         this.queue.push({
           at: at + seconds,
@@ -270,6 +275,20 @@ export class Crowd extends Group {
   // people near it turn towards it and step aside. With `speed` (m/s, the walker's) each moves as the walker comes
   // level with them, from the path's start; without, all at once, the nearest first
   part(path: Plan[], width = 2.2, speed?: number): void {
+    // making way and the cheer don't overlap (UX on #139: 「万歳」 comes after the crowd has parted): anyone cheering
+    // or about to drops their arms first
+    const rnd = mulberry32(Math.floor(this.now * 1000) + 11);
+    for (const [i, p] of this.people.entries()) {
+      const queued = this.queue.some((x) => x.person === i && isCheer(x.clip));
+      if (!isCheer(p.clip) && !queued) continue;
+      this.queue = this.queue.filter((x) => x.person !== i);
+      this.queue.push({
+        at: this.now + rnd() * 0.3,
+        person: i,
+        clip: p.idle,
+        loopPhase: p.phase,
+      });
+    }
     for (const [i, p] of this.people.entries()) {
       const { d, side, along, s } = toPath(p.at, path);
       if (d >= width) continue;

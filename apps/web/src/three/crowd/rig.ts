@@ -19,10 +19,20 @@ export type Role =
   | "armR"
   | "foreR";
 
-// a pose: each role's rotation (x, y, z radians, applied in XYZ order, from the rest pose) and the hips' offset
+// a pose: each role's rotation (x, y, z radians, applied in XYZ order, from the rest pose) and the hips' offset; with a
+// pack's skeleton, how far each hand is closed (0 open, 1 a fist)
 export type Pose = {
   rot: Partial<Record<Role, Vec3>>;
   hips?: Vec3;
+  fist?: [left: number, right: number];
+};
+
+// a finger bone's bend at a full fist: about `axis` (at rest, the world's axes) by `angle`; side 0 left, 1 right
+export type FingerBend = {
+  bone: number;
+  axis: Vec3;
+  angle: number;
+  side: 0 | 1;
 };
 
 // front = +Z, the person's left = +X; at rest every bone has the world's axes, so a rotation means the same on any
@@ -32,6 +42,7 @@ export type Skeleton = {
   joints: Vec3[]; // where each bone turns, at rest
   roles: Partial<Record<Role, number>>;
   rest: Pose["rot"]; // added to every pose: the stand-in's arms hang straight in its bind pose
+  fist?: FingerBend[]; // the pack's finger bones (the stand-in has no fingers)
 };
 
 // the stand-in (as the grey stand-ins, three/mannequin.ts)
@@ -79,6 +90,7 @@ const MPFB_ROLES: Record<Role, string> = {
 export function packSkeleton(
   bones: { name: string; parent: number }[],
   joints: Vec3[],
+  fist: [bone: number, x: number, y: number, z: number, angle: number][] = [],
 ): Skeleton {
   const index = new Map(bones.map((b, i) => [b.name, i]));
   const roles: Skeleton["roles"] = {};
@@ -86,7 +98,18 @@ export function packSkeleton(
     const i = index.get(name);
     if (i !== undefined) roles[role as Role] = i;
   }
-  return { parents: bones.map((b) => b.parent), joints, roles, rest: {} };
+  return {
+    parents: bones.map((b) => b.parent),
+    joints,
+    roles,
+    rest: {},
+    fist: fist.map(([bone, x, y, z, angle]) => ({
+      bone,
+      axis: [x, y, z],
+      angle,
+      side: bones[bone]!.name.endsWith("_r") ? 1 : 0,
+    })),
+  };
 }
 
 const TAU = Math.PI * 2;
@@ -94,6 +117,8 @@ const ease = (x: number) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
 // up for `rise`, held, down for `fall`, inside a clip of length 1
 const bump = (t: number, rise: number, hold: number, fall: number) =>
   ease(t / rise) * (1 - ease((t - rise - hold) / fall));
+
+export const CHEERS = ["cheer", "cheerR", "cheerL", "cheerLow"];
 
 export type Clip = {
   name: string;
@@ -146,8 +171,9 @@ export const CLIPS: Clip[] = [
       };
     },
   },
+  // the cheer after the king's change of heart (「万歳、王様万歳。」), four ways so that no two raise their arms alike
+  // (UX on #139): both fists up, one fist up (either hand), fists shaken at the shoulders; each its own beat
   {
-    // the cheer after the king's change of heart: both arms up, pumping, a small bounce; 1.2 s, loops
     name: "cheer",
     seconds: 1.2,
     loop: true,
@@ -155,14 +181,64 @@ export const CLIPS: Clip[] = [
       const p = Math.sin((TAU * t) / 1.2);
       return {
         hips: [0, 0.025 * Math.abs(p), 0],
+        fist: [1, 1],
         rot: {
           spine: [-0.05, 0, 0],
           chest: [-0.1, 0, 0],
           head: [-0.25 + 0.05 * p, 0, 0],
-          armL: [-2.5 - 0.25 * p, 0, 0.27],
-          foreL: [-0.15 - 0.2 * p, 0, 0],
-          armR: [-2.5 + 0.25 * p, 0, -0.27],
-          foreR: [-0.15 + 0.2 * p, 0, 0],
+          armL: [-2.45 - 0.25 * p, 0, 0.3],
+          foreL: [-0.35 - 0.25 * p, 0, 0],
+          armR: [-2.45 + 0.25 * p, 0, -0.3],
+          foreR: [-0.35 + 0.25 * p, 0, 0],
+        },
+      };
+    },
+  },
+  ...([1, -1] as const).map((s): Clip => ({
+    // one fist up and pumping, the other hand half raised; R: the right hand up
+    name: s > 0 ? "cheerR" : "cheerL",
+    seconds: s > 0 ? 1.0 : 1.1,
+    loop: true,
+    pose: (t) => {
+      const p = Math.sin((TAU * t) / (s > 0 ? 1.0 : 1.1));
+      const up = {
+        arm: [-2.6 + 0.3 * p, 0, -0.2 * s],
+        fore: [-0.3 - 0.35 * p, 0, 0],
+      };
+      const low = { arm: [-0.35, 0, 0.12 * s], fore: [-1.0 - 0.1 * p, 0, 0] };
+      const [l, r] = s > 0 ? [low, up] : [up, low];
+      return {
+        hips: [0, 0.02 * Math.abs(p), 0],
+        fist: s > 0 ? [0.4, 1] : [1, 0.4],
+        rot: {
+          spine: [-0.03, 0, 0.03 * s],
+          chest: [-0.08, -0.08 * s, 0.03 * s],
+          head: [-0.2 + 0.04 * p, -0.1 * s, 0],
+          armL: l.arm as Vec3,
+          foreL: l.fore as Vec3,
+          armR: r.arm as Vec3,
+          foreR: r.fore as Vec3,
+        },
+      };
+    },
+  })),
+  {
+    // fists shaken at shoulder height, elbows out
+    name: "cheerLow",
+    seconds: 1.4,
+    loop: true,
+    pose: (t) => {
+      const p = Math.sin((TAU * 2 * t) / 1.4);
+      return {
+        hips: [0, 0.01 * Math.abs(p), 0],
+        fist: [1, 1],
+        rot: {
+          chest: [-0.05, 0, 0],
+          head: [-0.15, 0.05 * Math.sin((TAU * t) / 1.4), 0],
+          armL: [-1.1 - 0.12 * p, 0, 0.45],
+          foreL: [-1.4 - 0.15 * p, 0, 0],
+          armR: [-1.1 - 0.12 * p, 0, -0.45],
+          foreR: [-1.4 - 0.15 * p, 0, 0],
         },
       };
     },
@@ -199,17 +275,23 @@ export type Baked = {
 const e = new Euler();
 const q = new Quaternion();
 const one = new Vector3(1, 1, 1);
+const axis = new Vector3();
 
 // the skin matrices (bone world × inverse bind) of one pose
 export function skinMatrices(pose: Pose, skel: Skeleton = STAND_IN): Matrix4[] {
   const role: (Role | undefined)[] = skel.parents.map(() => undefined);
   for (const [r, i] of Object.entries(skel.roles)) role[i] = r as Role;
+  const bend: (FingerBend | undefined)[] = [];
+  for (const f of skel.fist ?? []) bend[f.bone] = f;
   const world: Matrix4[] = [];
   return skel.joints.map((at, i) => {
     const r = role[i];
     const a = (r && pose.rot[r]) || [0, 0, 0];
     const b = (r && skel.rest[r]) || [0, 0, 0];
     q.setFromEuler(e.set(a[0] + b[0], a[1] + b[1], a[2] + b[2], "XYZ"));
+    const f = bend[i];
+    const k = f && pose.fist ? pose.fist[f.side] : 0;
+    if (f && k) q.setFromAxisAngle(axis.set(...f.axis), f.angle * k);
     const p = skel.parents[i]!;
     const from: Vec3 = p >= 0 ? skel.joints[p]! : [0, 0, 0];
     const t = new Vector3(at[0] - from[0], at[1] - from[1], at[2] - from[2]);
