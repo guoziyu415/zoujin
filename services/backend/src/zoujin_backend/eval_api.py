@@ -184,8 +184,10 @@ class Session:
                     now=recorded_at(),
                 )
                 play_setup(w, _scenarios(self._world_dir()), self.setup_doc)
-                trigger = ending.closed(self.book, w.state)
-                if trigger is not None:  # 情景模式一口气推到了收幕（B-9 第 11 条）：起点就进结局，和叙事者提交时一样
+                # 情景模式一口气推到了收幕（B-9 第 11 条）：起点就进结局，和叙事者提交时一样。只看最后一幕收没收，
+                # 检查点停在 beat.24 以后、还在前面几幕的不进（数据评审 #124）
+                trigger = ending.closed(self.book, w.state) if ending.curtain_fell(self.book, w.state) else None
+                if trigger is not None:
                     w.ending = ending.enter(w, self.book, trigger)
                 for ev in w.events:
                     self.schemas.event(ev)

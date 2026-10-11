@@ -182,6 +182,12 @@ def test_scenario_run_to_the_close_enters_the_ending_at_setup(env: Env, monkeypa
     assert got is not None and got["world"]["outcome"] == "too-late" and got["world"]["signature"]
 
 
+def test_checkpoint_past_beat_24_does_not_enter_the_ending(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
+    """检查点停在 beat.24 以后、玩家还没换幕：beat.27 没结果，不进结局，照旧可以对话（数据评审 #124）。"""
+    monkeypatch.setenv("DATABASE_URL", env.url)
+    assert eval_api.setup({"role": "role.traveler", "checkpoint": "sc.canon@beat.26"}, mode="text").ending() is None
+
+
 def test_persona_and_planted_memory_raise_in_setup(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", env.url)
     with pytest.raises(eval_api.EvalNotImplemented, match="persona"):

@@ -98,13 +98,22 @@ def due(book: Book, state: SimState) -> str | None:
 
 
 def closed(book: Book, state: SimState) -> str | None:
-    """不看在哪一幕：期限盯的节拍有了结果，或期限结算过了。评测的情景模式一口气推到收幕时用（玩家没跟着换幕）。"""
+    """不看在哪一幕：期限盯的节拍有了结果，或期限结算过了。评测 setup 在 `curtain_fell` 之后用它取 trigger（情景模式
+    一口气推到收幕时，玩家没跟着换幕）。"""
     watch = book.world["clock"]["deadline"].get("watchBeat")
     if watch in state["beats"]:
         return "story-closed" if state["beats"][watch] in OCCURRED else "deadline"
     if state["deadline"]:
         return "deadline"
     return None
+
+
+def curtain_fell(book: Book, state: SimState) -> bool:
+    """最后一幕（没有 exits 的那一幕）的 `end` 满足了：`onBeats` 有一个有了结果，或到了 `atLatest`。评测 setup 用：
+    情景一口气推到底才算，检查点停在 beat.24 以后、还没换幕的老用例不算（照旧可以对话，数据评审 #124）。"""
+    last = next(a for a in book.world["acts"] if not a.get("exits"))
+    end = last["end"]
+    return any(b in state["beats"] for b in end.get("onBeats", [])) or state["t"] >= end["atLatest"]
 
 
 def outcome_of(book: Book, state: SimState) -> tuple[str, bool]:

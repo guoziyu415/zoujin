@@ -133,6 +133,10 @@ def test_due_only_in_the_last_act() -> None:
     act3 = state(var__act__current="act.3")
     act3["beats"]["beat.24"] = "happened"
     assert E.due(BOOK, act3) is None
+    # 评测 setup：最后一幕的 end（beat.27 有结果，或到了 atLatest）满足了才算收幕，不看玩家在哪一幕
+    assert not E.curtain_fell(BOOK, act3)
+    act3["beats"]["beat.27"] = "happened"
+    assert E.curtain_fell(BOOK, act3)
 
 
 # —— 排序（验收第 3 条）——
@@ -151,6 +155,9 @@ def test_rank_scores_ties_and_unchanged() -> None:
     assert (got[OLD]["rank"], got[OLD]["score"]) == (1, 2)  # 1（beneficiary）+ 5（relocate，origin action）
     assert (got[KING]["rank"], got[KING]["score"]) == (2, 1)  # hold 的 to；3 是 origin plan，不算
     assert got[MELOS] == {"character": MELOS, "rank": None, "unchanged": True, "score": 0}
+    # hold 的 from 也算和他有关：玩家从王手里拿走东西
+    took = [ev(1, actor="player", effects=[{"op": "hold", "item": "item.x", "from": KING, "to": "player"}])]
+    assert E.rank(BOOK, st, took, [])[KING]["score"] == 1
     # 同分按 endings.characters 的顺序：梅洛斯在老爺前面
     tie = E.rank(BOOK, st, [ev(1, beneficiary=OLD), ev(2, beneficiary=MELOS)], [])
     assert (tie[MELOS]["rank"], tie[OLD]["rank"]) == (1, 2)

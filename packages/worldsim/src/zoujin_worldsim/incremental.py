@@ -531,7 +531,7 @@ def classify(world: World, state: SimState) -> str | None:
 
 def signature(world: World, state: SimState) -> dict[str, Any]:
     """2.9.1 结局署名：`endings.signature.vars` 的最终值，`beats` 是否照原著发生（happened，altered 不算）。
-    结局的 `world.signature`、数据的多样性统计、关键时刻的第三条都用这一份。世界模型没写署名时是空的。"""
+    结局的 `world.signature`、数据的多样性统计都用这一份（关键时刻的第三条以后也用它）。世界模型没写署名时是空的。"""
     sig = world.get("endings", {}).get("signature") or {}
     out: dict[str, Any] = {v: copy.deepcopy(state["vars"].get(v)) for v in sig.get("vars", [])}
     out |= {b: state["beats"].get(b) == "happened" for b in sig.get("beats", [])}
