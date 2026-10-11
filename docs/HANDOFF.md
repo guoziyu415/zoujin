@@ -61,7 +61,27 @@ infra/deploy/deploy.sh check       # 只读，查看现状
 
 ## 4. 已知问题和没做完的事（按优先级）
 
-1. **5 个角色没有真人模型，显示成灰色胶囊**：旅人（玩家自己）、メロス、市の老爺、市の若い衆、市の少女。`assets/cast/cast.json` 里现在只有 apprentice、groom(-wedding)、king、philostratus、selinuntius、shepherd-boy、sister(-wedding)。没有模型的人物由 `apps/web/src/three/mannequin.ts` 画成胶囊。前端 5 刚开始补，分支和进度：**（待补）**。补的方法是在 `assets/pipeline/cast/characters.json` 加人物，跑 `cast/build.sh <名字>`，再重新部署。
+1. **5 个角色没有真人模型，显示成灰色胶囊**：旅人（玩家自己）、メロス、市の老爺、市の若い衆、市の少女。没有模型的人物由 `apps/web/src/three/mannequin.ts` 画成胶囊。
+   - **main 上已有 9 套**，线上部署的就是这 9 套：王、セリヌンティウス、妹、花婿、フィロストラトス、徒弟、牧童，加上妹和花婿的婚礼装（#237、#239、#250）。
+   - **补到一半的分支** `claude/f16-characters-trl9n4`（`f070434`，还没合并，基于当时的 main）。分支上已经做了：
+     - 5 个人的设定：`role.traveler`、`char.melos`、老爺、若い衆、少女，写在 `assets/pipeline/cast/characters.json`。
+     - 新的服装件帽子和腰带，写在 `build_cast.py`。
+     - `build.sh` 里的メロス直接从 A-0 的 `melos_v2.blend` 导出。
+     - 运行时的 CAST 加上了这 5 人（`apps/web/src/three/cast/cast.ts`）。
+     - 结局舞台 `ending/Staging.tsx` 也换成了真人。
+     - 291 个单元测试都过了，类型检查也过了，3D 主块 226/250 KB。
+   - **这 5 套模型还没生成**，构建中途停了。剩下的步骤：
+     1. 在仓库根目录生成这 5 套。每人大约 20〜25 分钟，可以每人开一个进程并行跑：
+        `BPY_PYTHON=<带 bpy 5.2、numpy、pillow 的 python> MELOS_BLEND=<共享文件夹 app-team/frontend/spikes/a0-melos/mac/melos_v2.blend> UAL_GLB=<同一目录下的 anims/UAL1_Standard.glb> bash assets/pipeline/cast/build.sh traveler melos old-man young-man maiden`
+        全部跑完后，再跑一次 `node assets/pipeline/cast/check_cast.mjs assets/cast/build assets/cast/cast.json`。
+     2. 提交 `assets/cast/cast.json`，把分支合进 main。
+     3. 把 `assets/cast/build/` 下的 14 个目录打成 tar，拷到 Mac 上，然后重新部署。
+   - **注意**：
+     - `lod_export.py` 里必须先导入 bpy，再导入 bmesh。
+     - 旅人的帽子和腰带是新写的，还没有人看过成品，位置可能要调。
+   - **还没做的**：
+     - 群众层只有广场有包。城の警吏、山賊、旅の一団，以及其他场景的群众，都还没有真人模型。
+     - 侍女、警吏見習い计划放到第二版。
 2. **角色站位重叠**（截图：セリヌンティウス身边紧挨着一个胶囊）。没修，下面是查的方向：
    - **站位由服务端分配**：`services/backend/src/zoujin_backend/projection.py` 的 `snapshot()`（约 300〜315 行）调用 `world.py` 的 `Scene.character_spots()`。规则是人物按顺序占自己所在地点里还空着的点，跳过 `way.*` 和 `auto: false` 的点，玩家站的点算占着。**点不够时，多出来的人和别人重叠在第一个可用点上**（`world.py` 约 55〜67 行）。前端 `apps/web/src/three/People.tsx` 只是照服务端给的 spot 画。
    - **最可能的原因是石工房的点太少**：读的是生成的 `assets/scenes/syracuse-square/scene.json`，不是 `layout.json`，一个点属于哪个地点由 navmesh 判定。石工房 `place.stonemason-workshop` 能自动分配的点只有 `workshop-yard` 和 `workshop-bench` 两个：`workshop-gate` 判给了广场，`workshop-door` 是 `auto: false`。セリヌンティウス和フィロストラトス开局都在石工房（`worlds/hashire-merosu/1.0.0-slice/world.json` 的 `initialPlace`）。玩家一走进石工房就占了 `workshop-yard`（`startSpots`），剩下两个人只能挤在 `workshop-bench`。节拍再把メロス之类的人移进来，也会出现同样的情况。
