@@ -1,7 +1,8 @@
 """要生成哪些录音（B-6 卡「生成什么、用哪个声音」）。
 
 源文件 `services/backend/voice/<book>.json` 定每个说话人的声音、人物说明（`direction`）、人物的 6 句和要录的
-`cues`、目标响度（`loudness`，构建时调音量用，不进签名、改了不用重录）；固定演出的句子和 `arrival_capped` 的文字从
+`cues`、目标响度（`loudness`，构建时调音量用，不进签名、改了不用重录）、自由对话的音高和语速（`talkPitchHz`、
+`talkMoraPerS`，挑「听不清」「等一下」哪一遍用）；固定演出的句子和 `arrival_capped` 的文字从
 世界模型读。文字、声音和场面都相同的几个键合成一条录音。
 """
 
@@ -43,6 +44,9 @@ class Speaker:
     voice: str
     direction: str
     loudness: float | None = None  # 目标响度（有声 RMS，dBFS）：同一人物自由对话的响度；None = 不调
+    talk: tuple[float, float] | None = (
+        None  # 同一人物自由对话的音高中位（Hz）和语速（拍/秒）：「听不清」「等一下」要像它
+    )
 
     @property
     def slug(self) -> str:
@@ -68,6 +72,14 @@ class Recording:
     @property
     def aizuchi(self) -> bool:
         return any(k.startswith("aizuchi/") for k in self.keys)
+
+    @property
+    def talk(self) -> tuple[float, float] | None:
+        """人物的「听不清」「等一下」要和同一人物的自由对话接得上（B-6 卡：音高 ±2 半音、语速 ±25%）；相槌、cue、
+        固定演出不比。"""
+        if any(k.startswith(("unheard/", "wait/")) for k in self.keys):
+            return self.speaker.talk
+        return None
 
     @property
     def group(self) -> tuple[str, str]:
@@ -147,7 +159,8 @@ def plan(spec: Json, world: Json) -> Plan:
         if sid not in chars:
             raise SpecError(f"世界模型里没有人物 {sid}")
         loud = s.get("loudness")
-        speakers[sid] = Speaker(sid, s["name"], s["voice"], s["direction"], None if loud is None else float(loud))
+        talk = (float(s["talkPitchHz"]), float(s["talkMoraPerS"])) if "talkPitchHz" in s else None
+        speakers[sid] = Speaker(sid, s["name"], s["voice"], s["direction"], None if loud is None else float(loud), talk)
     readings: dict[str, str] = spec.get("readings", {})
     scenes: dict[str, str] = spec.get("scenes", {})
     # 说话人块里的 scenes 只管这个人的句子，键可以写「aizuchi/3」这种不分人的槽位；同一个键两处都有时说话人的优先

@@ -2,7 +2,7 @@
 
 - 有声的范围按 10 毫秒一帧的 RMS 判：高于 `SILENCE_DBFS` 算有声。截断和裁头尾用它。
 - 截断：原始那一遍最后 0.1 秒还有声音（没落到静音）。
-- 裁头尾：先查截断再裁，有声范围前后各留 80 毫秒；原始那遍头尾不够 80 毫秒的补静音。
+- 裁头尾：先查截断再裁，有声范围前后各留 80 毫秒（相槌头 20、尾 80；硬起头的各 50）；原始那遍头尾不够的补静音。
 - 响度和相槌的长度照 UX 量测的做法（`level`）：40 毫秒的窗、10 毫秒一跳，比最响的窗低 30 dB 以内（且高于 −55 dBFS）
   的算有声；响度 = 这些窗的 RMS。音高（`pitched`）：YIN 找得到周期的窗占几成，耳语找不到。
 - 音量：有目标响度的说话人（源文件的 `loudness`，同一人物自由对话的响度）整句调到目标；没有的不动。真峰值都压到
@@ -15,6 +15,7 @@ from __future__ import annotations
 import io
 import math
 import shutil
+import statistics
 import subprocess
 import sys
 import tempfile
@@ -29,10 +30,17 @@ FRAME = RATE // 100  # 10 ms
 SILENCE_DBFS = -45.0
 TAIL_S = 0.1
 PAD_S = 0.08
+# 相槌两头合计只留 0.1 秒：UX 的「有声 ≤ 0.5 秒、整个文件 ≤ 0.6 秒」两条才是一个意思（两头各 80 毫秒时文件那条更紧，
+# 有声只能到 0.44 秒；Mac 上第二次真跑 15 遍里好几遍只差这一点）。头 20 毫秒、尾 80 毫秒（声音早出来，尾巴留着收音）；
+# 起头有台阶的（第一帧有声就离最响的帧不到 6 dB，硬起头）头尾各 50 毫秒（UX）
+AIZUCHI_PADS = (0.02, 0.08)
+AIZUCHI_STEP_PADS = (0.05, 0.05)
+ONSET_STEP_DB = 6.0
 PEAK_DBFS = -1.0  # 真峰值的上限（dBTP）
 WIN = 4  # level 的窗：4 帧 = 40 毫秒
 REL_GATE_DB = 30.0
 FLOOR_DBFS = -55.0
+MERGE_GAP_S = 0.06
 PITCH_RATE = 8_000  # 音高降到 8 kHz 算（纯 Python，快三倍）
 PITCH_GATE_DB = 20.0
 YIN_THRESH = 0.15
@@ -72,9 +80,12 @@ class Shape:
     voiced_end: float  # 最后一帧有声的结束
     tail_voiced: bool  # 最后 0.1 秒还有声音：截断
     peak_dbfs: float
+    onset_db: float | None = None  # 第一帧有声比最响的一帧低多少 dB（≥ 0）；None = 没有声音
     span: float | None = None  # level 量的有声范围（UX 的做法）；None = 没量，按 speech
     loudness_dbfs: float | None = None
-    pitched: float | None = None  # 有音高的窗占几成；None = 没量（只给相槌量，慢）
+    pitched: float | None = None  # 有音高的窗占几成；None = 没量（只给要比的句子量，慢）
+    pitch_hz: float | None = None  # 有音高的窗的基频中位数
+    sounding: float | None = None  # 不算停顿的有声时间
 
     @property
     def speech(self) -> float:
@@ -85,42 +96,47 @@ class Shape:
 def shape(pcm: bytes, *, pitch: bool = False) -> Shape:
     a = samples(pcm)
     n = len(a)
-    voiced = [dbfs(_rms(a, i, min(n, i + FRAME))) > SILENCE_DBFS for i in range(0, n, FRAME)]
+    frame_db = [dbfs(_rms(a, i, min(n, i + FRAME))) for i in range(0, n, FRAME)]
+    voiced = [d > SILENCE_DBFS for d in frame_db]
     first = next((i for i, v in enumerate(voiced) if v), None)
     last = next((i for i in range(len(voiced) - 1, -1, -1) if voiced[i]), None)
     tail = max(0, n - int(RATE * TAIL_S))
     peak = max((abs(x) for x in a), default=0)
     lv = level(pcm)
+    pt = pitch_of(pcm) if pitch else None
     return Shape(
         seconds=n / RATE,
         voiced_start=(first * FRAME / RATE) if first is not None else n / RATE,
         voiced_end=min(n, (last + 1) * FRAME) / RATE if last is not None else n / RATE,
         tail_voiced=n > 0 and dbfs(_rms(a, tail, n)) > SILENCE_DBFS,
         peak_dbfs=dbfs(peak),
+        onset_db=None if first is None else round(max(frame_db) - frame_db[first], 1),
         span=lv.span,
         loudness_dbfs=lv.loudness_dbfs,
-        pitched=pitched(pcm) if pitch else None,
+        sounding=lv.sounding,
+        pitched=pt.pitched if pt else None,
+        pitch_hz=pt.median_hz if pt else None,
     )
 
 
-def trim(pcm: bytes, s: Shape) -> bytes:
-    """有声范围前后各留 80 毫秒。原始那遍一开头就有声（UX 量到メロス「ああ。」头 10 毫秒 −29 dB）或结尾不够 80 毫秒的，
-    补静音补够。"""
+def trim(pcm: bytes, s: Shape, pads: tuple[float, float] = (PAD_S, PAD_S)) -> bytes:
+    """有声范围前后各留 80 毫秒（相槌见 `aizuchi_pads`）。原始那遍一开头就有声（UX 量到メロス「ああ。」头 10 毫秒
+    −29 dB）或结尾不够的，补静音补够。"""
     n = len(pcm) // 2
-    pad = round(PAD_S * RATE)
-    start = round(s.voiced_start * RATE) - pad
-    end = round(s.voiced_end * RATE) + pad
+    start = round(s.voiced_start * RATE) - round(pads[0] * RATE)
+    end = round(s.voiced_end * RATE) + round(pads[1] * RATE)
     body = pcm[max(0, start) * 2 : min(n, end) * 2]
     return bytes(2 * max(0, -start)) + body + bytes(2 * max(0, end - n))
 
 
-AAC_FRAME = 1024
+def aizuchi_pads(s: Shape) -> tuple[float, float]:
+    step = s.onset_db is not None and s.onset_db < ONSET_STEP_DB
+    return AIZUCHI_STEP_PADS if step else AIZUCHI_PADS
 
 
-def released_seconds(s: Shape) -> float:
-    """裁好、补够静音以后的长度，按 AAC 一帧 1024 个采样往上补齐（解码出来就这么长，ffprobe 的 durationMs 略短）。"""
-    n = round(s.voiced_end * RATE) - round(s.voiced_start * RATE) + 2 * round(PAD_S * RATE)
-    return math.ceil(n / AAC_FRAME) * AAC_FRAME / RATE
+def released_seconds(s: Shape, pads: tuple[float, float]) -> float:
+    """裁好、补够静音以后的长度。按 AAC 补帧之前算（补的是静音，UX）。"""
+    return round(s.speech + pads[0] + pads[1], 3)
 
 
 def head_voiced(s: Shape) -> bool:
@@ -132,6 +148,7 @@ def head_voiced(s: Shape) -> bool:
 class Level:
     span: float  # 第一个有声的窗到最后一个（秒），中间的停顿也算
     loudness_dbfs: float  # 有声的窗的 RMS
+    sounding: float = 0.0  # 不算停顿的有声时间（不到 60 毫秒的停顿并起来）：语速用
 
 
 def _block_energy(a: array[int]) -> list[float]:
@@ -150,27 +167,58 @@ def level(pcm: bytes) -> Level:
     on = [k for k, d in enumerate(db) if d > gate]
     if not on:
         return Level(0.0, -120.0)
-    span = (on[-1] - on[0]) * FRAME / RATE + WIN * FRAME / RATE
-    return Level(round(span, 3), round(dbfs(math.sqrt(sum(wins[k] for k in on) / len(on))), 2))
+    hop, win = FRAME / RATE, WIN * FRAME / RATE
+    segs = [[on[0], on[0]]]
+    for k in on[1:]:
+        if (k - segs[-1][1] - 1) * hop < MERGE_GAP_S:
+            segs[-1][1] = k
+        else:
+            segs.append([k, k])
+    sounding = sum((b - a) * hop + win for a, b in segs)
+    span = (on[-1] - on[0]) * hop + win
+    loud = dbfs(math.sqrt(sum(wins[k] for k in on) / len(on)))
+    return Level(round(span, 3), round(loud, 2), round(sounding, 3))
 
 
-def _yin(fr: list[float], rate: int) -> bool:
-    """这一窗找不找得到周期（YIN，累计均值归一化差值低于阈值）。"""
+def _yin(fr: list[float], rate: int) -> float | None:
+    """这一窗的基频（Hz）；找不到周期（累计均值归一化差值都不低于阈值）为 None。和 UX 的一样：过阈以后再往下走到谷底，
+    抛物线插值。"""
     w = len(fr)
     mean = sum(fr) / w
     x = [v - mean for v in fr]
     tmin, tmax = int(rate / F0_RANGE[1]), min(int(rate / F0_RANGE[0]), w // 2)
+    cmnd = [1.0]
     total = 0.0
+    found: int | None = None
     for tau in range(1, tmax + 1):
         d = sum((x[i] - x[i + tau]) ** 2 for i in range(w - tau))
         total += d
-        if tau >= tmin and total > 0 and d * tau / total < YIN_THRESH:
-            return True
-    return False
+        cmnd.append(d * tau / total if total > 0 else 1.0)
+        if found is None and tau >= tmin and cmnd[tau] < YIN_THRESH:
+            found = tau
+        elif found is not None and cmnd[tau] >= cmnd[tau - 1]:
+            break
+    if found is None:
+        return None
+    best = found
+    while best + 1 < len(cmnd) and cmnd[best + 1] < cmnd[best]:
+        best += 1
+    off = 0.0
+    if best + 1 < len(cmnd):
+        a, b, c = cmnd[best - 1], cmnd[best], cmnd[best + 1]
+        den = a - 2 * b + c
+        off = 0.5 * (a - c) / den if den else 0.0
+    return rate / (best + off)
 
 
-def pitched(pcm: bytes) -> float:
-    """有音高的窗占几成：比最响的窗低 20 dB 以内的窗里，YIN（阈 0.15、60〜400 Hz）找得到周期的。三个采样取平均降到
+@dataclass(frozen=True)
+class Pitch:
+    pitched: float  # 有音高的窗占几成
+    median_hz: float | None  # 有音高的窗的基频中位数
+
+
+def pitch_of(pcm: bytes) -> Pitch:
+    """比最响的窗低 20 dB 以内的窗里，YIN（阈 0.15、60〜400 Hz）找得到周期的占几成、基频中位数。三个采样取平均降到
     8 kHz 再算（纯 Python）。耳语、气声找不到周期（UX 量到メロス「ああ。」只有头 0.09 秒有音高）。"""
     a = samples(pcm)
     step = RATE // PITCH_RATE
@@ -178,10 +226,15 @@ def pitched(pcm: bytes) -> float:
     hop, win = PITCH_RATE // 100, WIN * PITCH_RATE // 100
     frames = [x[k : k + win] for k in range(0, len(x) - win + 1, hop)]
     if not frames:
-        return 0.0
+        return Pitch(0.0, None)
     db = [dbfs(math.sqrt(sum(v * v for v in f) / win)) for f in frames]
     loud = [f for f, d in zip(frames, db, strict=True) if d > max(db) - PITCH_GATE_DB]
-    return round(sum(_yin(f, PITCH_RATE) for f in loud) / len(loud), 2)
+    f0 = [f for f in (_yin(fr, PITCH_RATE) for fr in loud) if f is not None]
+    return Pitch(round(len(f0) / len(loud), 2), round(statistics.median(f0), 1) if f0 else None)
+
+
+def pitched(pcm: bytes) -> float:
+    return pitch_of(pcm).pitched
 
 
 def wav(pcm: bytes, rate: int = RATE) -> bytes:
