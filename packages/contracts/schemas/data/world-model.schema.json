@@ -254,7 +254,13 @@
                     "type": "string"
                   }
                 },
-                "required": ["outcome", "subtitle", "title", "lines", "contrast"],
+                "required": [
+                  "outcome",
+                  "subtitle",
+                  "title",
+                  "lines",
+                  "contrast"
+                ],
                 "additionalProperties": false
               },
               "description": "（1.11，B-9，S-065）结局走模板时用的句子（ux-design 11.4）。同一个 outcome 有几条时取第一条 when 成立的，最后一条不带 when"

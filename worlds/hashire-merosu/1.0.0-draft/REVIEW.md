@@ -371,10 +371,10 @@
 | place.melos-home メロスの家と羊小屋 | scene.village | village 5 |  | |
 | place.groom-house 花婿の家 | scene.village | village 10 |  | |
 | place.neighbor-village 隣村 | （无场景） | village 120、river 180 | 第一版に場面はない。ここを通る移動と、ここで起きる節拍（beat.15、beat.16）は叙事者の語りで伝える。 | |
-| place.river 川と橋 | scene.homeward-road | neighbor-village 180、mountain-pass 100 |  | |
-| place.mountain-pass 峠 | scene.homeward-road | river 100、spring 45 |  | |
-| place.spring 峠下の草原と泉 | scene.homeward-road | mountain-pass 45、road-to-city 120 |  | |
-| place.road-to-city 市へ続く野の道 | scene.homeward-road | spring 120、syracuse-square 60 |  | |
+| place.river 川と橋 | scene.road-river | neighbor-village 180、mountain-pass 100 |  | |
+| place.mountain-pass 峠 | scene.road-pass | river 100、spring 45 |  | |
+| place.spring 峠下の草原と泉 | scene.road-spring | mountain-pass 45、road-to-city 120 |  | |
+| place.road-to-city 市へ続く野の道 | scene.road-field | spring 120、syracuse-square 60 |  | |
 | place.syracuse-square シラクスの広場と大路 | scene.syracuse-square | road-to-city 60、castle 10、stonemason-workshop 2、execution-ground 2 |  | |
 | place.castle 王城 | scene.castle-throne | syracuse-square 10、execution-ground 5 |  | |
 | place.execution-ground 刑場 | scene.syracuse-square | castle 5、syracuse-square 2 |  | |
@@ -395,9 +395,9 @@
 | 幕 | 时间 | 场景 | 收幕 | 幕末去处 | 校对 |
 |---|---|---|---|---|---|
 | act.1 約束の日 | D0 17:30〜（最迟 D1 02:00） | syracuse-square、castle-throne | beat.07 | メロスと夜の道を行く → act.2 · spring · D1 02:45<br>城に残り、セリヌンティウスのそばにいる → act.2 · castle · D1 00:00<br>市に残る → act.2 · syracuse-square · D1 00:00 | |
-| act.2 その夜 | D1 00:00〜（最迟 D1 14:00） | homeward-road、syracuse-square、castle-throne | beat.08 | メロスと村に着く → act.3 · village · D1 10:00<br>市でその時を待つ → act.3 · syracuse-square · D1 10:00 | |
+| act.2 その夜 | D1 00:00〜（最迟 D1 14:00） | road-spring、road-pass、road-river、road-field、syracuse-square、castle-throne | beat.08 | メロスと村に着く → act.3 · village · D1 10:00<br>市でその時を待つ → act.3 · syracuse-square · D1 10:00 | |
 | act.3 村の二日 | D1 09:00〜（最迟 D3 09:40） | village、syracuse-square、castle-throne | beat.14 | 雨の中、メロスと走り出る → act.4 · river · D3 11:20<br>　过场：「隣村で、メロスは歩をゆるめた。」〔急かす（40分早まる）〕beat.16 prevented、melos.stamina -15，选后：「メロスは足を速めた。河原には、思ったより早く着いた。」 / 〔好きにさせる〕（原作どおり）<br>市で日没を待つ → act.4 · syracuse-square · D3 04:30 | |
-| act.4 三日目 | D3 04:30〜（最迟 D3 20:00） | homeward-road、syracuse-square | beat.27 | （进入结局） | |
+| act.4 三日目 | D3 04:30〜（最迟 D3 20:00） | road-river、road-pass、road-spring、road-field、syracuse-square | beat.27 | （进入结局） | |
 
 ### 情境动作（contracts 2.10；第四幕每处既能让他慢，也能帮他快，S-036 ②）
 
