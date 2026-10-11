@@ -22,7 +22,7 @@
 | fact.king-killings | 王は妹婿、世嗣、妹、妹の子、皇后、賢臣アレキスを殺した。 | 「はい、はじめは王様の妹婿さまを。」(6)<br>「それから、賢臣のアレキス様を。」(6)<br>「悪心を抱いている、というのですが」(4) | |
 | fact.king-distrust | 王は乱心ではなく、人を信ずることができないのだという。 | 「いいえ、乱心ではございませぬ。人を、信ずる事が出来ぬ、というのです。」(8) | |
 | fact.hostage-decree | 王は派手な暮しの臣下に人質を一人ずつ差し出させ、拒めば十字架にかける。 | 「少しく派手な暮しをしている者には、人質ひとりずつ差し出すことを命じて居ります。」(8) | |
-| fact.six-killed-today | この日（Day 0）、六人が殺された。 | 「きょうは、六人殺されました。」(8) | |
+| fact.six-killed-today | 王の命令で、一日のうちに六人が殺された。 | 「きょうは、六人殺されました。」(8) | |
 | fact.groom-wanted-wait | 花婿は仕度ができていないので葡萄の季節まで待ちたかった。 | 「こちらには未だ何の仕度も出来ていない、葡萄の季節まで待ってくれ」(32) | |
 
 ## 2. 节拍
@@ -76,7 +76,7 @@
 | fact.king-killings | 王は妹婿、世嗣、妹、妹の子、皇后、賢臣アレキスを殺した。 | pre | private | 「はい、はじめは王様の妹婿さまを。」(6)<br>「それから、賢臣のアレキス様を。」(6)<br>「悪心を抱いている、というのですが」(4) | |
 | fact.king-distrust | 王は乱心ではなく、人を信ずることができないのだという。 | pre | private | 「いいえ、乱心ではございませぬ。人を、信ずる事が出来ぬ、というのです。」(8) | |
 | fact.hostage-decree | 王は派手な暮しの臣下に人質を一人ずつ差し出させ、拒めば十字架にかける。 | pre | private | 「少しく派手な暮しをしている者には、人質ひとりずつ差し出すことを命じて居ります。」(8) | |
-| fact.six-killed-today | この日（Day 0）、六人が殺された。 | pre | private | 「きょうは、六人殺されました。」(8) | |
+| fact.six-killed-today | 王の命令で、一日のうちに六人が殺された。 | pre | private | 「きょうは、六人殺されました。」(8) | |
 | fact.melos-dagger | メロスは短剣を懐に王城へ入り、警吏に捕らえられた。 | beat.04 | public | 「メロスの懐中からは短剣が出て来たので」(10) | |
 | fact.melos-reason | メロスは妹に亭主を持たせるため、三日の猶予を願った。 | beat.05 | public | 「たった一人の妹に、亭主を持たせてやりたいのです。」(18) | |
 | fact.promise | 王はメロスに三日目の日没までに戻れと命じ、遅れたら身代りを殺すと言った。身代りはセリヌンティウス。 | beat.05 | public | 「三日目には日没までに帰って来い。おくれたら、その身代りを、きっと殺すぞ。」(22) | |
@@ -84,15 +84,17 @@
 | fact.king-intent | 王はメロスが帰らないと決めつけ、身代りを殺して「人は信じられぬ」と見せつけるつもりでいる。 | beat.05 | private | 「どうせ帰って来ないにきまっている。」(21) | |
 | fact.selinuntius-hostage | セリヌンティウスは深夜王城に召され、身代りとして縄打たれた。 | beat.06 | public | 「セリヌンティウスは、縄打たれた。」(26) | |
 | fact.wedding-tomorrow | メロスは妹に、婚礼をあすにすると告げた（理由は話していない）。 | beat.08 | public | 「あす、おまえの結婚式を挙げる。」(28)<br>「「なんでも無い。」メロスは無理に笑おうと努めた。」(28) | |
+| fact.groom-agreed | 花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。 | beat.10 | public | 「やっと、どうにか婿をなだめ、すかして、説き伏せた。」(32)<br>「結婚式は、真昼に行われた。」(32) | |
 | fact.groom-wanted-wait | 花婿は仕度ができていないので葡萄の季節まで待ちたかった。 | pre | private | 「こちらには未だ何の仕度も出来ていない、葡萄の季節まで待ってくれ」(32) | |
 | fact.wedding-held | 婚礼は真昼に行われた。 | beat.11 | public | 「結婚式は、真昼に行われた。」(32) | |
 | fact.storm | 婚礼の宣誓のころから車軸を流すような大雨になった。 | beat.12 | public | 「やがて車軸を流すような大雨となった。」(32) | |
 | fact.bridge-destroyed | 前日の豪雨で川が氾濫し、橋が流された。 | beat.17 | public | 「きのうの豪雨で山の水源地は氾濫し」(38)<br>「猛勢一挙に橋を破壊し」(38) | |
 | fact.no-boats | 繋ぎ舟はすべて浪にさらわれ、渡し守もいない。 | beat.17 | public | 「繋舟は残らず浪に浚われて影なく、渡守りの姿も見えない。」(38) | |
 | fact.bandits-ambush | 峠で一隊の山賊が待ち伏せている。 | beat.19 | public | 「突然、目の前に一隊の山賊が躍り出た。」(39) | |
-| fact.melos-suspects-king | メロスは山賊を王の差し金だと考えた（原文では真偽不明。語り手は断定しない）。 | beat.19 | private | 「さては、王の命令で、ここで私を待ち伏せしていたのだな。」(45) | |
+| fact.melos-suspects-king | メロスは山賊を王の差し金だと考えた。 | beat.19 | private | 「さては、王の命令で、ここで私を待ち伏せしていたのだな。」(45) | |
 | fact.melos-despair | メロスは力尽きて倒れ、一度は約束を投げ出そうと思った（「悪い夢」）。 | beat.20 | private | 「ああ、もういっそ、悪徳者として生き伸びてやろうか。」(47)<br>「私は、途中で一度、悪い夢を見た。」(63) | |
 | fact.travelers-rumor | 旅の一団は、身代りの男がいまごろ磔にかかっていると噂した。 | beat.22 | public | 「いまごろは、あの男も、磔にかかっているよ。」(50) | |
+| fact.execution-crowd | 日没に、市の石工が刑場で磔にされることになっていて、広場の一角の刑場に人が集まりはじめている。 | beat.22 | public | 「すでに磔の柱が高々と立てられ、縄を打たれたセリヌンティウスは、徐々に釣り上げられてゆく。」(61)<br>「大声で刑場の群衆にむかって叫んだ」(61) | |
 | fact.selinuntius-steadfast | セリヌンティウスは刑場に引き出され、王にからかわれても「メロスは来ます」とだけ答えた。 | beat.s1 | public | 「刑場に引き出されても、平気でいました。」(57) | |
 | fact.selinuntius-doubted-once | セリヌンティウスは三日の間に一度だけメロスを疑った。 | beat.s2 | private | 「私はこの三日の間、たった一度だけ、ちらと君を疑った。」(65) | |
 
@@ -117,7 +119,7 @@
 | 动机 | 王に人の信実を見せる〔since beat.05〕〔until beat.26〕 | 「あの王に、人の信実の存するところを見せてやろう。」(37) | |
 | 动机 | 市を暴君の手から救う〔since beat.03〕〔until beat.26〕 | 「市を暴君の手から救うのだ。」(12) | |
 | 说话 | 一人称「私」；率直で激しい。古風な断定（〜ぬ、〜のだ）。目上にも物怖じしない。；开局在做：idle | 「人の心を疑うのは、最も恥ずべき悪徳だ。」(14)<br>「そうです。帰って来るのです。」(20)〔since beat.05〕<br>「いや、まだ陽は沈まぬ。」(54)〔since beat.23〕<br>「信じられているから走るのだ。」(58)〔since beat.23〕<br>「私にはいのちの他には何も無い。」(43)〔since beat.19〕<br>「私は信頼されている。私は信頼されている。」(49)〔since beat.21〕<br>「私は、途中で一度、悪い夢を見た。」(63)〔since beat.25〕〔条件 melos.doubted == True〕 | |
-| 知道 | melos-shepherd@pre、melos-family@pre、sister-engaged@pre、melos-errand@pre、friendship@pre、selinuntius-stonemason@pre、city-silent@beat.02、king-killings@beat.03、king-distrust@beat.03、hostage-decree@beat.03、six-killed-today@beat.03、melos-dagger@beat.04、promise@beat.05、melos-reason@beat.05、king-whisper@beat.05、selinuntius-hostage@beat.06、wedding-tomorrow@beat.08、groom-wanted-wait@beat.10、wedding-held@beat.11、storm@beat.12、bridge-destroyed@beat.17、no-boats@beat.17、bandits-ambush@beat.19、melos-suspects-king@beat.19、melos-despair@beat.20、travelers-rumor@beat.22、selinuntius-steadfast@beat.23、selinuntius-doubted-once@beat.25 | — | |
+| 知道 | melos-shepherd@pre、melos-family@pre、sister-engaged@pre、melos-errand@pre、friendship@pre、selinuntius-stonemason@pre、city-silent@beat.02、king-killings@beat.03、king-distrust@beat.03、hostage-decree@beat.03、six-killed-today@beat.03、melos-dagger@beat.04、promise@beat.05、melos-reason@beat.05、king-whisper@beat.05、selinuntius-hostage@beat.06、wedding-tomorrow@beat.08、groom-wanted-wait@beat.10、wedding-held@beat.11、storm@beat.12、bridge-destroyed@beat.17、no-boats@beat.17、bandits-ambush@beat.19、melos-suspects-king@beat.19、melos-despair@beat.20、travelers-rumor@beat.22、selinuntius-steadfast@beat.23、selinuntius-doubted-once@beat.25、groom-agreed@beat.10 | — | |
 | 他能为你 | 水をくれた牧童を覚えていて、三日のうちに戻るという約束を初めて話し、家まで連れて行く〔开局互助：role.shepherd-boy〕〔推断〕 | 「三日のうちに」(18) | |
 | 你能为他 | よろめいて村に戻ったメロスに水を一杯差し出す〔开局互助：role.shepherd-boy〕〔推断〕 | 「よろめいて歩いて来る兄の、疲労困憊の姿を見つけて驚いた。」(27) | |
 | 他能为你 | 王の前で、あなたのことを口にする（条件：melos.custody == arrested）〔大事：兑现时算关键时刻〕〔推断〕 | — | |
@@ -196,9 +198,9 @@
 | 性格 | 結婚を喜び、恥じらう | 「妹は頬をあからめた。」(29) | |
 | 性格 | 兄を心配する | 「そうして、うるさく兄に質問を浴びせた。」(27) | |
 | 性格 | 兄の言葉に夢見心地でうなずく〔since beat.13〕 | 「花嫁は、夢見心地で首肯いた。」(34) | |
-| 动机 | 結婚する（推定：原文に本人の言葉はない）〔until beat.11〕 | 「花婿として迎える事になっていた。」(1) | |
+| 动机 | 結婚する〔until beat.11〕 | 「花婿として迎える事になっていた。」(1) | |
 | 动机 | 婚礼は近いが、日取りはまだ決まっていない〔until beat.08〕 | 「結婚式も間近かなのである。」(1) | |
-| 说话 | 一人称「—」；原文に台詞なし。控えめで丁寧な話し方として設計（推定）。；开局在做：work | — | |
+| 说话 | 一人称「わたし」；控えめで丁寧な話し方（〜です、〜ます）。兄を「兄さん」と呼ぶ。口数が少なく、照れると言葉が途切れる。；开局在做：work | — | |
 | 知道 | melos-family@pre、sister-engaged@pre、melos-errand@pre、wedding-tomorrow@beat.08、wedding-held@beat.11、storm@beat.12 | — | |
 | 他能为你 | 兄にあなたを引き合わせる〔推断〕 | — | |
 | 他能为你 | 兄の出発のとき、あなたにも弁当を持たせる〔交给你：item.provisions〕〔推断〕 | — | |
@@ -218,8 +220,8 @@
 | 性格 | 頑強に譲らない〔until beat.10〕 | 「婿の牧人も頑強であった。」(32) | |
 | 性格 | 照れ屋 | 「花婿は揉み手して、てれていた。」(36) | |
 | 动机 | 仕度を整え、葡萄の季節に婚礼を挙げたい〔until beat.10〕 | 「葡萄の季節まで待ってくれ」(32) | |
-| 说话 | 一人称「—」；原文は間接話法のみ。実直で慎重な話し方として設計（推定）。；开局在做：work | 「こちらには未だ何の仕度も出来ていない」(32) | |
-| 知道 | sister-engaged@pre、melos-family@pre、groom-wanted-wait@pre、wedding-held@beat.11、storm@beat.12 | — | |
+| 说话 | 一人称「わたし」；実直で慎重な話し方（〜です、〜ます）。メロスを「メロスさん」と呼ぶ。；开局在做：work | 「こちらには未だ何の仕度も出来ていない」(32) | |
+| 知道 | sister-engaged@pre、melos-family@pre、groom-wanted-wait@pre、wedding-held@beat.11、storm@beat.12、groom-agreed@beat.10 | — | |
 | 他能为你 | あなたが支度を手伝ったか、自分の口で頼んだから、婚礼を早めることに同意する（メロスの説得だけで承知したなら、あなたのためとは数えない）（条件：wedding.status == scheduled）〔大事：兑现时算关键时刻〕〔推断〕 | 「やっと、どうにか婿をなだめ、すかして、説き伏せた。」(32) | |
 | 他能为你 | 灯や上着を貸す〔交给你：item.lantern〕〔推断〕 | — | |
 | 他能为你 | 牧人だけが知る、峠の脇道と町へ抜ける野道を教える〔效果：player.knowsShortcut = True〕〔推断〕 | — | |
@@ -236,7 +238,7 @@
 | 性格 | セリヌンティウスの弟子の若い石工 | 「貴方のお友達セリヌンティウス様の弟子でございます。」(53)<br>「その若い石工も」(53) | |
 | 性格 | 師を慕い、メロスを恨みつつも命を案じる〔since beat.23〕 | 「おうらみ申します。」(55)<br>「いまはご自分のお命が大事です。」(57) | |
 | 动机 | 師を救いたかった。今はメロスの命を守りたい〔since beat.23〕 | 「いまはご自分のお命が大事です。」(57) | |
-| 说话 | 一人称「（原文なし）」；丁寧（〜でございます、〜居りました）。取り乱しやすい。；开局在做：work | 「もう、駄目でございます。」(53)〔since beat.23〕<br>「ああ、あなたは遅かった。」(55)〔since beat.23〕<br>「ひょっとしたら、間に合わぬものでもない。」(59)〔since beat.23〕 | |
+| 说话 | 一人称「わたくし」；丁寧（〜でございます、〜居りました）。取り乱しやすい。；开局在做：work | 「もう、駄目でございます。」(53)〔since beat.23〕<br>「ああ、あなたは遅かった。」(55)〔since beat.23〕<br>「ひょっとしたら、間に合わぬものでもない。」(59)〔since beat.23〕 | |
 | 知道 | selinuntius-stonemason@pre、king-killings@pre、hostage-decree@pre、selinuntius-hostage@beat.06、promise@beat.06、selinuntius-steadfast@beat.s1 | — | |
 | 他能为你 | 刑場の今の様子を教える〔推断〕 | 「刑場に引き出されても、平気でいました。」(57) | |
 | 他能为你 | 刑場へ先に走って伝言を届ける〔大事：兑现时算关键时刻〕〔推断〕 | — | |
@@ -254,10 +256,10 @@
 | 项 | 内容 | 原文 | 校对 |
 |---|---|---|---|
 | 性格 | 人目をはばかり、怯えている | 「老爺は、あたりをはばかる低声で、わずか答えた。」(1) | |
-| 动机 | 目をつけられずに生き延びる（推定） | 「老爺は答えなかった。」(1) | |
+| 动机 | 目をつけられずに生き延びる | 「老爺は答えなかった。」(1) | |
 | 说话 | 一人称「—」；へりくだった丁寧語（〜ます、〜居りませぬ、〜ございませぬ）。年寄りらしい語尾（〜くだされ、〜ですぞ、〜なされ）も使う。；开局在做：idle | 「王様は、人を殺します。」(2)<br>「いいえ、乱心ではございませぬ。」(8)<br>「誰もそんな、悪心を持っては居りませぬ。」(4) | |
 | 设计台词 | 「旅の方、日が落ちますぞ。早う宿へお入りなされ。」〔until beat.07〕〔推断〕（第一幕の夕方（ux-design 16.2 の予録台詞））<br>「旅の方、暗うなる前に、すまぬが家の前まで手を貸してくだされ。」〔until beat.07〕〔推断〕（S-044 ② の開口例：老爺の方から旅人に頼む（aid.old-man.listen）） | — | |
-| 知道 | king-killings@pre、king-distrust@pre、hostage-decree@pre、six-killed-today@pre、city-silent@pre | — | |
+| 知道 | king-killings@pre、king-distrust@pre、hostage-decree@pre、six-killed-today@pre、city-silent@pre、execution-crowd@beat.22 | — | |
 | 你能为他 | 怯える老爺の話を最後まで聞き、暗くなる道を家まで送る〔开局互助：role.traveler〕〔效果：player.walkedOldManHome = True〕〔推断〕 | 「老爺は、あたりをはばかる低声で、わずか答えた。」(1) | |
 | 他能为你 | 声をひそめて王の所業を打ち明け、メロスが来たら引き合わせる〔开局互助：role.traveler〕〔推断〕 | 「王様は、人を殺します。」(2) | |
 | 他能为你 | 警吏に目をつけられない道を教える〔推断〕 | — | |
@@ -272,9 +274,9 @@
 | 项 | 内容 | 原文 | 校对 |
 |---|---|---|---|
 | 性格 | 恐れて口を閉ざす | 「若い衆は、首を振って答えなかった。」(1) | |
-| 动机 | 関わり合いを避ける（推定） | 「若い衆は、首を振って答えなかった。」(1) | |
-| 说话 | 一人称「—」；原文に台詞なし（推定）。；开局在做：idle | — | |
-| 知道 | king-killings@pre、hostage-decree@pre、city-silent@pre | — | |
+| 动机 | 関わり合いを避ける | 「若い衆は、首を振って答えなかった。」(1) | |
+| 说话 | 一人称「—」；口が重く、ぶっきらぼうな話し方。；开局在做：idle | — | |
+| 知道 | king-killings@pre、hostage-decree@pre、city-silent@pre、execution-crowd@beat.22 | — | |
 
 ### 警吏（巡邏・刑吏）（char.guards）
 
@@ -283,8 +285,8 @@
 | 项 | 内容 | 原文 | 校对 |
 |---|---|---|---|
 | 性格 | 王の命令に従う | 「たちまち彼は、巡邏の警吏に捕縛された。」(10) | |
-| 动机 | 命令を遂行する（推定） | 「私だ、刑吏！」(62) | |
-| 说话 | 一人称「—」；原文に台詞なし（推定）。；开局在做：idle | — | |
+| 动机 | 命令を遂行する | 「私だ、刑吏！」(62) | |
+| 说话 | 一人称「—」；役人らしく、短く命令口調の話し方。；开局在做：idle | — | |
 | 知道 | hostage-decree@pre、melos-dagger@beat.04、promise@beat.05、selinuntius-hostage@beat.06 | — | |
 
 ### 峠の山賊（char.bandits）
@@ -316,7 +318,7 @@
 |---|---|---|---|
 | 性格 | 感情の振れ幅が大きい | 「群衆は、どよめいた。」(62) | |
 | 说话 | 一人称「—」；叫び。；开局在做：absent | 「万歳、王様万歳。」(71) | |
-| 知道 | selinuntius-steadfast@beat.s1 | — | |
+| 知道 | selinuntius-steadfast@beat.s1、execution-crowd@beat.22 | — | |
 
 ### 市の少女（char.maiden）
 
@@ -325,7 +327,7 @@
 | 项 | 内容 | 原文 | 校对 |
 |---|---|---|---|
 | 性格 | メロスの裸体を人に見られるのを口惜しがる〔since beat.27〕 | 「この可愛い娘さんは、メロスの裸体を、皆に見られるのが、たまらなく口惜しいのだ。」(73) | |
-| 说话 | 一人称「—」；原文に台詞なし（推定）。；开局在做：absent | — | |
+| 说话 | 一人称「—」；素朴で、言葉少なな話し方。；开局在做：absent | — | |
 | 知道 | — | — | |
 
 ## 5. 因果边
