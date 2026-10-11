@@ -332,6 +332,86 @@ box('altar', -6.6, -5.4, -4.9, -4.1, -0.2, 1.0, M_ROCK, tile=1.0, caster=True)
 box('altar_top', -6.7, -5.3, -5.0, -4.0, 1.0, 1.08, M_ROCK, tile=1.0, caster=True)
 box('altar_step', -6.8, -5.2, -5.1, -3.9, -0.2, 0.12, M_ROCK, tile=1.0)
 
+# ---------------------------------------------------------------- what the page shows by the clock (card 1, 5): own
+# nodes in 'dyn' (not baked), found by name in the page (three/village/VillageLife.tsx)
+M_MYRTLE = mat('myrtle', color=(0.16, 0.26, 0.12), rough=0.7)    # dark glossy myrtle leaves
+M_GLOW = mat('doorglow', color=(0.0, 0.0, 0.0), rough=1.0)       # the page draws it as added warm light
+
+
+def node(name, objs):
+    """join objs into one object named name, moved to the 'dyn' collection"""
+    bpy.ops.object.select_all(action='DESELECT')
+    for o in objs:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = objs[0]
+    if len(objs) > 1:
+        bpy.ops.object.join()
+    o = bpy.context.view_layer.objects.active
+    o.name = o.data.name = name
+    for c in list(o.users_collection):
+        c.objects.unlink(o)
+    bl.coll('dyn').objects.link(o)
+    o['caster'] = 0
+    return o
+
+
+def leaf_quads(name, spots, size, m, z, seed):
+    """small flat leaves lying on the ground: one quad each at (x, y), random turn"""
+    import bmesh
+    r = random.Random(seed)
+    bm = bmesh.new()
+    for x, y in spots:
+        a = r.uniform(0, math.pi)
+        c, s_ = math.cos(a), math.sin(a)
+        l, w = size * r.uniform(0.8, 1.2), size * 0.45
+        q = [(x + c * dx - s_ * dy, y + s_ * dx + c * dy, z + r.uniform(0, 0.004))
+             for dx, dy in ((-l, -w), (l, -w), (l, w), (-l, w))]
+        bm.faces.new([bm.verts.new(p) for p in q])
+    bm.normal_update(); bl.box_uv_bm(bm, 0.2)
+    return bl.obj_from_bm(name, bm, [m], 'dyn')
+
+
+# the altar dressed for the wedding (beat.09 「神々の祭壇を飾り」, from 一日目 10:30): myrtle garlands along the top's
+# edges and hanging in swags at the front, three bowls on the top
+_dress = []
+for i, (a, b) in enumerate((((-6.7, -5.0), (-5.3, -5.0)), ((-5.3, -5.0), (-5.3, -4.0)), ((-5.3, -4.0), (-6.7, -4.0)),
+                            ((-6.7, -4.0), (-6.7, -5.0)))):
+    _dress.append(rod(f'garland{i}', Vector((*a, 1.1)), Vector((*b, 1.1)), 0.045, M_MYRTLE))
+for i, x in enumerate((-6.6, -6.0, -5.4)):
+    for side, y in (('s', -5.03), ('n', -3.97)):
+        _dress.append(rod(f'swag{i}{side}a', Vector((x, y, 1.06)), Vector((x + 0.3, y, 0.82)), 0.035, M_MYRTLE))
+        _dress.append(rod(f'swag{i}{side}b', Vector((x + 0.3, y, 0.82)), Vector((x + 0.6, y, 1.06)), 0.035, M_MYRTLE))
+for i, x in enumerate((-6.4, -6.0, -5.6)):
+    _dress.append(cyl(f'altarbowl{i}', x, -4.5, 1.08, 1.16, 0.07, 0.11, 10, M_POT))
+node('altar-dressing', _dress)
+
+# myrtle leaves strewn over the yard on the wedding day (from 二日目 06:00): thick round the altar, along the way from
+# the gate (x -7.5..-5.5 on the north wall) and before the house door
+_r = random.Random(23)
+_spots = []
+while len(_spots) < 700:
+    x, y = _r.uniform(-13.5, 1.5), _r.uniform(-8.1, -1.0)
+    near = max(math.exp(-((x + 6.0) ** 2 + (y + 4.5) ** 2) / 6.0), math.exp(-((x + 6.5) ** 2) / 1.5) * (y > -4.0),
+               math.exp(-((x + 8.0) ** 2 + (y + 7.3) ** 2) / 1.2))
+    if _r.random() < 0.08 + 0.92 * near:
+        _spots.append((x, y))
+leaf_quads('myrtle-leaves', _spots, 0.035, M_MYRTLE, 0.006, 5)
+
+# the house's warm door on the rainy wedding night (二日目 18:30 to 三日目 06:00, village.md 5.1): the light spilling
+# from the open door onto the wet ground, and the two windows' shutters glowing at their cracks; flat, facing out,
+# drawn by the page as added light (nothing by day)
+import bmesh
+_bm = bmesh.new()
+for q in ([(-8.6, -8.24, 0.012), (-7.4, -8.24, 0.012), (-7.2, -6.4, 0.012), (-8.8, -6.4, 0.012)],
+          [(-11.85, -8.235, 1.2), (-11.15, -8.235, 1.2), (-11.15, -8.235, 1.9), (-11.85, -8.235, 1.9)],
+          [(-4.85, -8.235, 1.2), (-4.15, -8.235, 1.2), (-4.15, -8.235, 1.9), (-4.85, -8.235, 1.9)]):
+    f = _bm.faces.new([_bm.verts.new(p) for p in q])
+    f.normal_update()
+    if f.normal.z < 0.5 and f.normal.y < 0.5:   # the windows face north (out), the spill up
+        f.normal_flip()
+_bm.normal_update(); bl.box_uv_bm(_bm, 1.0)
+bl.obj_from_bm('door-glow', _bm, [M_GLOW], 'dyn')
+
 # the sheepfold: stone walls on the south, east and west, open to the north (the pen), a thatched lean-to roof,
 # hay inside (village.md 2: seen from outside)
 for i, (x0, x1, y0, y1) in enumerate(((2.0, 7.0, -14.0, -13.6), (2.0, 2.4, -13.6, -10.2), (6.8, 7.2, -13.6, -10.2))):
