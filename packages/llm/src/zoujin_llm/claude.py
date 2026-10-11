@@ -147,6 +147,15 @@ def thinking_tokens(usage: Any) -> int:
     return int(getattr(details, "thinking_tokens", 0) or 0)
 
 
+# API 错误的类型（`error.type`，如 authentication_error）：没有 ID 和 Key，用来分清是 Key、请求还是额度的问题
+ERROR_TYPE = re.compile(r"[a-z_]{1,40}")
+
+
+def error_type(e: BaseException) -> str:
+    t = getattr(e, "type", None)
+    return f" {t}" if isinstance(t, str) and ERROR_TYPE.fullmatch(t) else ""
+
+
 def translate(e: BaseException) -> Exception:
     """SDK 的错误 → 不带原消息的异常。调用方 `raise translate(e) from None`，原消息不进日志和 Trace。"""
     import anthropic
@@ -154,7 +163,7 @@ def translate(e: BaseException) -> Exception:
     if isinstance(e, anthropic.APIStatusError):
         if e.status_code in LIMITS:
             return RateLimited(f"Claude 回 {e.status_code}（限流或过载），停下")
-        return ModelCallFailed(f"Claude HTTP {e.status_code}（消息不记）")
+        return ModelCallFailed(f"Claude HTTP {e.status_code}{error_type(e)}（消息不记）")
     if isinstance(e, anthropic.APIError):  # 连接断开、超时
         return ModelCallFailed(f"Claude 连不上：{type(e).__name__}（消息不记）")
     return ModelCallFailed(f"Claude 调用出错：{type(e).__name__}（消息不记）")

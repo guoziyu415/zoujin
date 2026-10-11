@@ -528,7 +528,7 @@ Model Armor 没有自伤类别，所以自伤靠文本模型；S-4 用 44 条样
 
 所有模型写在配置里，不散落在代码中。`gemini-2.5-flash` 2026-10-20 退役〔官方〕，不使用。数据的评审员用 Opus 5.5，和叙事者的检查不是同一个型号。
 
-**Claude 的调用**（`models/claude.py`）：世界模型前缀和这种提示的说明放 system，两段后面各打一个缓存点；Schema 发给 API 前去掉不支持的关键字、对象一律 `additionalProperties: false`，收到以后照旧用完整的 Schema 在本地验；不传 `temperature`（Messages API 没有这个参数）。429、529：Mac 上的跑第一次就停；服务玩家时当作这一次失败，按 2.4 的时限规则重发一次，还不行这一轮只提交时钟事件。
+**Claude 的调用**（`models/claude.py`）：世界模型前缀和这种提示的说明放 system，两段后面各打一个缓存点；Schema 发给 API 前去掉不支持的关键字、对象一律 `additionalProperties: false`，收到以后照旧用完整的 Schema 在本地验；不传 `temperature`（Anthropic 的 Python SDK 1.13.0 的 `messages.create` 没有这个参数，`top_p`、`top_k` 也没有；用 `inspect.signature` 看过同步、异步两个签名，传进去直接报 `TypeError`）。SDK 的错误只留状态码和 API 的错误类型（如 `authentication_error`），原消息不记。429、529：Mac 上的跑第一次就停；服务玩家时当作这一次失败，按 2.4 的时限规则重发一次，还不行这一轮只提交时钟事件。
 
 ---
 

@@ -126,5 +126,10 @@ def test_sdk_errors_lose_their_message() -> None:
         assert isinstance(e, RateLimited) and str(code) in str(e) and secret not in str(e)
     e = translate(status(500))
     assert isinstance(e, ModelCallFailed) and "500" in str(e) and secret not in str(e)
+    for kind, shown in (("authentication_error", " authentication_error"), (f"key {secret}", "")):
+        resp = httpx.Response(400, request=req, json={})
+        body = {"type": "error", "error": {"type": kind, "message": f"key {secret}"}}
+        e = translate(anthropic.APIStatusError(f"boom {secret}", response=resp, body=body))
+        assert str(e) == f"Claude HTTP 400{shown}（消息不记）"  # 错误的类型带上，认不出的不带
     e = translate(anthropic.APIConnectionError(message=f"down {secret}", request=req))
     assert isinstance(e, ModelCallFailed) and secret not in str(e)

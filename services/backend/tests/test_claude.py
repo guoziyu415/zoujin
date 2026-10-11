@@ -338,7 +338,8 @@ def test_sdk_errors_and_the_key_never_leave(
         if code == 200:
             out: Json = {"route": "maybe"} if json.loads(r.content)["model"] == IDS["haiku"] else {"candidates": []}
             return httpx.Response(200, json=message(out))
-        return httpx.Response(code, json={"type": "error", "error": {"type": "x", "message": f"bad key {KEY}"}})
+        kind = {429: "rate_limit_error", 529: "overloaded_error", 500: "api_error"}.get(code, "invalid_request_error")
+        return httpx.Response(code, json={"type": "error", "error": {"type": kind, "message": f"bad key {KEY}"}})
 
     tracer = Tracer()
     rt = Recording(client(AsyncTransport(sdk_client(handler)), tmp_path), tmp_path / "rec")
@@ -361,8 +362,8 @@ def test_sdk_errors_and_the_key_never_leave(
     assert [str(e) for e in errors] == [
         "Claude 回 429（限流或过载），停下",
         "Claude 回 529（限流或过载），停下",
-        "Claude HTTP 500（消息不记）",
-        "Claude HTTP 400（消息不记）",
+        "Claude HTTP 500 api_error（消息不记）",
+        "Claude HTTP 400 invalid_request_error（消息不记）",
     ]
     assert all(e.__cause__ is None and e.__suppress_context__ for e in errors)  # 原异常不跟着打印
     spans = json.dumps([s.attrs for s in tracer.spans], ensure_ascii=False)
