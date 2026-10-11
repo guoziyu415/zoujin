@@ -25,6 +25,10 @@ B-4 加了作废、识别改正和意图确认（3.6、3.9）：
   缩短；速度 0 时照 30 秒）。按钮、计时到点都写一行 `kind: "confirm"` 的任务。重连时 `welcome.pending.confirm`
   带剩余秒数，过期的先关掉。
 
+重连（第 4 节）：补发 `hello.lastSeq` 之后的 `commit`；这条连接之前判完的轮次结果不补，只有一种例外（v1.0.12）：
+最后一次提交是幕切换、客户端还没确认收到它（`lastSeq` 不晚于那次的 `seq`）时，补发的 `commit` 后面再推一次那次的
+`act_transition`（打算成行的连同 `act_plan_result`），不然幕末页在断线时选了去处，就等不到幕切换（`again`）。
+
 B-0 没有真 Live，`hello.fakeVoice` 给不给都用假 Live。还没做的消息（`near` 等）忽略，只在日志里记类型名。
 """
 
@@ -71,6 +75,20 @@ ANSWERED = ("talk", "action", "choose", "plan", "confirm")
 SERVER_SEQ = 0x80000001  # 服务端发起的轮次的 turnSeq 从这里起，最高位为 1（3.1）
 COMMIT_WINDOW_S = 3.0  # 作废的窗口：叙事者最早在 turn_complete（打算是定稿）之后几秒提交（B-4）
 RECENT_TURNS = 6  # 会话重建时带进新会话的最近几轮
+
+
+def again(results: list[Json], client_seq: int, last_seq: int) -> list[Json]:
+    """重连时要再推一次的幕切换（第 4 节，v1.0.12）。results：判完的轮次的 `turns.result`，按判完的先后。
+    最近一次幕切换就是最后一次提交（之后没有别的提交），而客户端的 `lastSeq` 不晚于它：那次的 `act_plan_result`
+    （打算成行时才有）和 `act_transition`，照原来的顺序。前端只在幕末页还在等幕切换时用，别的时候忽略。"""
+    for r in reversed(results):
+        push = (r or {}).get("push") or []
+        if any(m["type"] == "act_transition" for m in push):
+            seq = r.get("seq")
+            if seq != last_seq or client_seq > seq:
+                return []
+            return [m for m in push if m["type"] in ("act_plan_result", "act_transition")]
+    return []
 
 
 def error_msg(code: str, message: str) -> Json:
@@ -284,21 +302,24 @@ class Conn:
     # —— 收 ——
 
     async def hello(self, msg: Json) -> None:
+        await self.gw.handed(self.pid)  # 旧连接断线那一轮先写下来，lastTurn 才是它（lost 或照常交了）
         async with self.gw.engine.connect() as c:
             last_seq = int(
                 await c.scalar(select(playthroughs.c.last_seq).where(playthroughs.c.playthrough_id == self.pid)) or 0
             )
-            settled = (
+            done = (
                 await c.execute(
-                    select(turns.c.turn_id).where(
+                    select(turns.c.turn_id, turns.c.result)
+                    .where(
                         turns.c.playthrough_id == self.pid,
                         turns.c.kind.in_(ANSWERED),
                         turns.c.status.in_(("done", "failed")),
                     )
+                    .order_by(turns.c.settled_at)
                 )
-            ).scalars()
+            ).all()
             # 这条连接之前判完的不再推结果：固定演出不补发（3.14），幕末和落地由 welcome.pending 补上（第 4 节）
-            self.settled = set(settled)
+            self.settled = {r.turn_id for r in done}
             last_turn = await self._last_turn(c)
             pt = await self.gw.pt(c, self.pid)
         asking = await self._pending_confirm()
@@ -315,7 +336,12 @@ class Conn:
         )
         async with self.push_lock:
             self.sent_seq = min(int(msg["lastSeq"]), last_seq)
+        resend = again([r.result for r in done], self.sent_seq, last_seq)
         await self.push()
+        if resend:
+            async with self.push_lock:
+                for m in resend:
+                    await self.send(m)
 
     async def _last_turn(self, c: Any) -> Json | None:
         """断线前的最后一轮（第 4 节）。作废的一轮 settled、两段文字都是 null（原话已清空，B-4）；人物的话取第一句
@@ -417,12 +443,19 @@ class Conn:
             await old.quiet.wait()
 
     def drop(self) -> None:
-        """连接断了：人物还没说完的一轮记成 lost；已经说完、等定稿的照常交。"""
+        """连接断了：人物还没说完的一轮记成 lost；已经说完、等定稿的照常交。玩家还按着说话键就断了的一轮
+        （没有 activity_end，人物还没开口）也是 lost，不然 lastTurn 是上一轮，前端说不出「もう一度」（#109 评审）。"""
         old = self.turn
-        if old is not None and old.speaking:
+        if old is None:
+            return
+        if old.speaking:
             assert old.stream is not None
             old.lost = True
             old.stream.cancel()
+        elif not old.ended and old.mode == "voice" and old.turn_id in self.memory:
+            old.ended = old.lost = True
+            old.stream = asyncio.ensure_future(asyncio.sleep(0))  # 没有回答可等，_finish 直接写 lost 那一行
+            self.gw.hand(self.pid, self._finish(old))
 
     def audio_in(self, frame: bytes) -> None:
         if self.plan is not None and len(frame) >= 5 and int.from_bytes(frame[1:5], "big") == self.plan.turn_seq:
@@ -453,7 +486,7 @@ class Conn:
         if t.mode == "text":
             t.heard = t.text
         t.stream = asyncio.ensure_future(self._stream(t))
-        self.gw.spawn(self._finish(t))
+        self.gw.hand(self.pid, self._finish(t))
 
     async def _stream(self, t: Turn) -> None:
         """假 Live 的回答转成下行消息。被打断、断线时这个任务被取消，停在哪就是哪。"""
@@ -1040,6 +1073,7 @@ async def endpoint(ws: WebSocket, pid: str) -> None:
     old = gw.conns.get(pid)
     gw.conns[pid] = conn
     if old is not None:
+        old.drop()  # 先把旧连接上没说完、还按着的那一轮交出去，下面 hello 的 handed() 才等得到它
         await old.close(4009, "opened elsewhere")  # 同一局在别的标签页打开：新连接踢掉旧连接
     reader = asyncio.ensure_future(read_loop(conn))
     closed = asyncio.ensure_future(conn.closed.wait())

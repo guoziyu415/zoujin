@@ -1,4 +1,4 @@
-"""叙事者的确定性规则要用、推演里原来没有的三个原语（B-2 卡：后端提，数据加，后端评审）。
+"""叙事者的确定性规则要用、推演里原来没有的几个原语（B-2 卡：后端提，数据加，后端评审；spoilers 是 B-12 评审时加的）。
 
 - knows()：R4（契约 2.1 防剧透规则）。人物 C 此刻知道的 = `C.knows` 里 `since` 已发生的（或 `pre`）+ 这一局 `learn`
   学到的（含别人的即兴设定）+ C 自己的即兴设定；（1.7）玩家 = 身份的 `initialKnowledge` + 这一局学到的（人物告诉的，
@@ -7,11 +7,15 @@
 - travel_minutes()：R3 的路程（契约 2.2 `adjacent`，api-contract 3.7、3.8）。按 `places.adjacent` 的步行分钟取最短路；
   同一场景里的两个地点之间按 `pacing.sceneWalkMinutes`（S-038：场景内走动 0 分）。只量玩家的移动和排程以外的
   `relocate`；按排程走的人物看排程（backend-design 2.4）。
+- spoilers()：人物说的话里有没有他此刻不该知道的事实（`Fact.spoilerTerms` 出现在话里，而他不 `knows` 这条事实）。
+  叙事者 R4 查即兴设定、网关的输出侧监控（B-12，backend-design 2.11）、评测入口的 `monitor.spoilers` 共用这一个；
+  和评测 E2 的 `not_mention_fact` 同一个口径（E2 只看出题时指定的那一条，自检保证人物在检查点不知道它）。
 - activity()：人物此刻在做什么（契约 2.4 的 Activity，1.1）。R7（对象不在场、`absent` 的人物不能对话）和快照的
   `characters[].activity` 用（api-contract 2.3）。只算世界模型给的那一部分，叙事者按对话再推（backend-design 2.7）。
 
-不在这里的：`crossing`（过河的分钟）和归途的走法。归途四个地点同在 `scene.homeward-road`，按上面的规则互相 0 分，
-和真实路程（45〜180 分）对不上：UX 设计归途走法时已经提出，PM 定了走法以后（M3）和 `crossing` 一起改。切片没有归途。
+不在这里的：`crossing`（过河的分钟，M3 和归途的停留点一起做）。归途的四个地点（川、峠、泉、野の道）各是一个场景
+（S-081：停留点之间是跑的路段，「ひとりで先へ行く」要花路上的时间），所以按 `adjacent` 的步行分钟算，不是场景内的 0 分。
+切片没有归途。
 """
 
 from __future__ import annotations
@@ -40,6 +44,20 @@ def knows(world: World, state: SimState, who: str, fact: str) -> bool:
     return c is not None and any(
         k["fact"] == fact and (k["since"] == "pre" or beats.get(k["since"]) in OCCURRED) for k in c.get("knows", [])
     )
+
+
+def spoilers(world: World, state: SimState, who: str, text: str, said: str = "") -> dict[str, list[str]]:
+    """who 说的 text 里，他此刻不知道的事实的剧透词：{事实 ID: 出现的词}，按世界模型里事实的顺序，没有就是空的。
+
+    「不知道」就是 `not knows()`，已经含「这条事实这一局还没成立」（契约 2.3，1.4）。比对是原样的子串，不做假名、
+    全角的归一，和 E2、S-2 的 `s2_check.py` 一样。said = 同一轮玩家说的话：玩家自己说出的词，人物接着说不算（E2 出题
+    也是这个规则：玩家的问题里不能有剧透词）。"""
+    hits: dict[str, list[str]] = {}
+    for f in world["facts"]:
+        terms = [t for t in f.get("spoilerTerms") or () if t in text and t not in said]
+        if terms and not knows(world, state, who, f["id"]):
+            hits[f["id"]] = terms
+    return hits
 
 
 def travel_minutes(world: World, src: str, dst: str) -> int | None:

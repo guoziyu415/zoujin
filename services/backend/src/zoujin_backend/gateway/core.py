@@ -43,6 +43,7 @@ Json = Any
 
 RUNS_PER_DAY = 5  # 每账号每天开局数（backend-design 5.2）；B-0 只显示，不拦
 VOICE_MINUTES = 60  # 预算是 M2 的卡
+HANDOFF_WAIT_S = 5.0  # 重连的 hello 最多等旧连接把断线那一轮写完几秒（正常是毫秒级）
 
 
 class NarratorClient(Protocol):
@@ -91,6 +92,8 @@ class Gateway:
     conns: dict[str, Conn] = field(default_factory=dict)  # 一局一条连接（第 4 节 4009）
     draining: bool = False
     tasks: set[asyncio.Task[Any]] = field(default_factory=set)
+    # 每局还在交给叙事者的对话轮次（`_finish`）：重连的 hello 先等旧连接的这些写完，lastTurn 才准（第 4 节）
+    handing: dict[str, set[asyncio.Task[Any]]] = field(default_factory=dict)
     tracer: Tracer = field(default_factory=Tracer)  # B-4：gateway.retract
     # 测试用：每条发出的服务端消息（已过 Schema）
     on_send: Callable[[Json], None] | None = None
@@ -259,6 +262,29 @@ class Gateway:
         self.tasks.add(task)
         task.add_done_callback(self.tasks.discard)
         return task
+
+    def hand(self, pid: str, coro: Awaitable[Any]) -> asyncio.Task[Any]:
+        """把一轮交给叙事者（`_finish`），按局记着，写完就去掉。"""
+        task = self.spawn(coro)
+        mine = self.handing.setdefault(pid, set())
+        mine.add(task)
+
+        def done(t: asyncio.Task[Any]) -> None:
+            mine.discard(t)
+            if not mine and self.handing.get(pid) is mine:
+                del self.handing[pid]
+
+        task.add_done_callback(done)
+        return task
+
+    async def handed(self, pid: str) -> None:
+        """等这一局还在交的轮次写完，最多 `HANDOFF_WAIT_S` 秒。快速重连时旧连接断线那一轮还没写下来，
+        hello 算的 lastTurn 会落后一轮，前端照规矩重发，人物就答两次（#100 评审）。"""
+        pending = self.handing.get(pid)
+        if pending:
+            _, late = await asyncio.wait(set(pending), timeout=HANDOFF_WAIT_S)
+            if late:
+                log.warning("重连时还有 %d 轮没交完（%s）", len(late), pid)
 
     # —— 关机 ——
 
