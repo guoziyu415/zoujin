@@ -7,8 +7,10 @@
 ZOUJIN_SCENE_ROOT、网关的 ZJ_SCENE_PACKS 都读它），`cast` → `assets/cast/build`（ZOUJIN_CAST_ROOT），再查：
 
 - 缺：仓库里有清单（scene.json、index.json、pack.json）的场景目录没有 build/，或 cast.json 列的人物文件没有；
-- 旧：build 里的清单和部署的这个提交里的不一样（流水线的 final 会把清单刷回仓库，一样才说明是同一次生成），人物文件的
-  sha256 和 cast.json 对不上。
+- 旧：build 不是照部署的这个提交的流水线生成的。清单有 inputs（布局、脚本的 sha256、工具版本、环境变量）就只比
+  inputs，和流水线自己的 check_scene.mjs 一样；没有 inputs 的（road-common、光照子包、index.json）比结构：键、
+  文件名、档名一样就算同一版，数字和 sha256 不比。贴图 PNG、烘焙这些派生的字节换台机器会差一点（pack_scene.mjs
+  的 inputs 注释），zg 的 Mac 上重建的和提交里的对不上不算旧。人物文件的 sha256 和 cast.json 对不上算旧。
 
 有缺或旧就打印是哪几个、该跑哪条命令：有缺退出码 1，只有旧退出码 2；全齐退出码 0。
 """
@@ -17,6 +19,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -47,6 +50,27 @@ def builder(name: str) -> str:
     return f"（不知道哪条流水线生成 {name}，问前端）"
 
 
+HEX64 = re.compile(r"[0-9a-f]{64}")
+
+
+def shape(v: object) -> object:
+    """清单去掉派生的值：数字、布尔、sha256 都换成占位，只留键、文件名、档名这些"""
+    if isinstance(v, dict):
+        return {k: shape(x) for k, x in v.items()}
+    if isinstance(v, list):
+        return [shape(x) for x in v]
+    if isinstance(v, str):
+        return "#" if HEX64.fullmatch(v) else v
+    return "#" if v is not None else None
+
+
+def same_build(committed: bytes, built: bytes) -> bool:
+    a, b = json.loads(committed), json.loads(built)
+    if isinstance(a, dict) and isinstance(b, dict) and "inputs" in a:
+        return a["inputs"] == b.get("inputs")
+    return shape(a) == shape(b)
+
+
 def sha256(path: Path) -> str:
     with path.open("rb") as f:
         return hashlib.file_digest(f, "sha256").hexdigest()
@@ -72,8 +96,8 @@ def scenes(commit: Path, built: Path, out: Path) -> list[tuple[str, str]]:
             b = build / c.name
             if not b.is_file():
                 problems.append((d.name, f"缺 build/{c.name}"))
-            elif b.read_bytes() != c.read_bytes():
-                problems.append((d.name, f"旧（build/{c.name} 和提交的不一样）"))
+            elif not same_build(c.read_bytes(), b.read_bytes()):
+                problems.append((d.name, f"旧（build/{c.name} 不是照这个提交的流水线生成的）"))
     return problems
 
 

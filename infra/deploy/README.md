@@ -21,7 +21,7 @@ infra/deploy/deploy.sh invite 5         # 5 个邀请码，写进 ~/.zoujin/depl
 - Docker 在跑（构建镜像、Cloud SQL 代理都在 Docker 里）；
 - 钥匙串里的 `zoujin-claude`（第一次 setup 存进 Secret Manager）；
 - Claude 两档的模型 ID：终端里 export 的 `ZJ_CLAUDE_HAIKU`、`ZJ_CLAUDE_SONNET`，或写进 `~/.zoujin/deploy/config.env`；
-- 场景包和人物模型：前端的流水线在这个仓库里生成过的 `assets/scenes/<目录>/build/` 和 `assets/cast/build/`（不进 git，S-075）。`build` 先用 `packs.py` 和这次部署的提交里的清单比，缺的、旧的（清单不一样、sha256 对不上）列出来并给出要跑的流水线命令，停下；只有「旧」、确定照旧部署时加 `ZJ_ALLOW_STALE=1`。
+- 场景包和人物模型：前端的流水线在这个仓库里生成过的 `assets/scenes/<目录>/build/` 和 `assets/cast/build/`（不进 git，S-075）。`build` 先用 `packs.py` 和这次部署的提交里的清单比，缺的、旧的（不是照这个提交的流水线生成的：有 inputs 比 inputs，没有的比结构；人物文件比 sha256。贴图、烘焙的字节换台机器会差一点，不算旧）列出来并给出要跑的流水线命令，停下；只有「旧」、确定照旧部署时加 `ZJ_ALLOW_STALE=1`。
 
 ## 拓扑
 
