@@ -170,9 +170,9 @@ export type EdgeId = string;
  */
 export type EventId = string;
 /**
- * 写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival / sub、Affordance.playerSpot（C-18）、Act.plan（C-19）、WorldModel.setPieces（S-080 ④）、WorldModel.objects。1.8：Affordance.pastLabel，事件 summary 里玩家一律写身份名。1.9：Clock.labels.daysKnownBy
+ * 写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival / sub、Affordance.playerSpot（C-18）、Act.plan（C-19）、WorldModel.setPieces（S-080 ④）、WorldModel.objects。1.8：Affordance.pastLabel，事件 summary 里玩家一律写身份名。1.9：Clock.labels.daysKnownBy。1.10：Role.summary、WorldModel.ruby，Character.reading 每个人物都填
  */
-export type SchemaVersion = "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5" | "1.6" | "1.7" | "1.8" | "1.9";
+export type SchemaVersion = "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5" | "1.6" | "1.7" | "1.8" | "1.9" | "1.10";
 /**
  * 结局：`end_` 加 ULID（26 位 Crockford base32，大写）
  */
@@ -595,6 +595,9 @@ export interface CausalEdge {
 export interface Character {
   id: CharacterId;
   name: string;
+  /**
+   * 名字的读法：片假名照抄，汉字写成平假名，例「おうディオニス」。（1.10）manifest 要每个人物都有，build_world 查每个人物都填了、不带汉字
+   */
   reading?: string;
   /**
    * 一两句，中性描述
@@ -1443,6 +1446,10 @@ export interface Role {
   id: RoleId;
   name: string;
   /**
+   * （1.10）身份页和 manifest 上给玩家看的一句（日语），文字 UX 定。note 是写给编写者的，不给玩家看
+   */
+  summary: string;
+  /**
    * 第几版开放
    */
   release: number;
@@ -1841,6 +1848,19 @@ export interface WorldModel {
    * （1.7）场景里可「調べる」的东西，见 2.12
    */
   objects?: WorldObject[];
+  /**
+   * （1.10）注音词表：字幕里专有名词和难读词的读音（frontend-design 7.5、UX 13），manifest 原样下发。不写 = 没有
+   */
+  ruby?: {
+    /**
+     * 字幕里的写法，前端按最长匹配找
+     */
+    word: string;
+    /**
+     * word 整个词的读音，平假名
+     */
+    reading: string;
+  }[];
 }
 /**
  * （1.7）可调查物（2.12）：场景里可「調べる」的东西。服务端按它出快照的 interactables（kind examine，0 分），不写死；场景出口照布局的 exits
