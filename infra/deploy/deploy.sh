@@ -106,10 +106,10 @@ has_api() { gcloud services list --enabled "${PA[@]}" --format='value(config.nam
 has_repo() { gcloud artifacts repositories describe "$AR_REPO" --location="$REGION" "${PA[@]}" >/dev/null 2>&1; }
 has_sa() { gcloud iam service-accounts describe "$1" "${PA[@]}" >/dev/null 2>&1; }
 has_sql() { gcloud sql instances describe "$SQL" "${PA[@]}" >/dev/null 2>&1; }
-has_# 有能接流量的版本才能 --no-traffic；第一次上线失败留下的空服务按第一次处理（还是私有的）
+# 有能接流量的版本才能 --no-traffic；第一次上线失败留下的空服务按第一次处理（还是私有的）
 has_ready() { [[ -n "$(gcloud run services describe "$1" --region="$REGION" "${PA[@]}" \
   --format='value(status.latestReadyRevisionName)' 2>/dev/null)" ]]; }
-secret() { gcloud secrets describe "$1" "${PA[@]}" >/dev/null 2>&1; }
+has_secret() { gcloud secrets describe "$1" "${PA[@]}" >/dev/null 2>&1; }
 has_service() { gcloud run services describe "$1" --region="$REGION" "${PA[@]}" >/dev/null 2>&1; }
 secret() { gcloud secrets versions access latest --secret="$1" "${PA[@]}"; }
 conn() { gcloud sql instances describe "$SQL" "${PA[@]}" --format='value(connectionName)'; }
