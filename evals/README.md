@@ -23,7 +23,7 @@
 | `safety/s4_selfharm_holdout.jsonl`、`gen_selfharm_holdout.py` | 自伤分类器的留出验证样本 25 条和它的编写源。**只用来验已定稿的 v3，不拿它改提示**；跑法见脚本开头。S-072（2026-10-07）已经用它验过 v3，用过一次，所以搬进了仓库；下一版分类器要另写新的留出样本 |
 | `s2/`、`gen_s2_dev.py`、`s2_check.py` | S-2 叙事者自检准确率：公开样例 10 条、生成器、格式自检和确定性规则的最简判法。格式和计分见 `s2/README.md` |
 | `src/zoujin_evals/`、`pyproject.toml` | 评测运行器（E-0）：读用例、经后端的 `eval_api` 跑、28 种确定性检查、报告、`live` 的开关。用法见下面「运行器」 |
-| `config/live-cost.json` | `live` 模式估算花费用的单价，按两本账分（`google` 产品路径、`claude` 评审员和 AI 玩家）；推算值，M2 跑完第一批后换成账本的实数 |
+| `config/live-cost.json` | `live` 模式估算花费用的单价，按两本账分（D-028 以后：`google` 人物的文字回答，`claude` 叙事者、评审员和 AI 玩家）；推算值，由 `docs/data/cost/m2_budget.py` 算出，M2 跑完第一批后换成账本的实数 |
 | `judge/calibration.jsonl` | 评审员的校准样本 50 条（data-design 7.3）：切片 25 个判分用例各 2 条回答，数据标的分和理由；`zgSample` 的 20 条给 zg 盲标。手写的，见下面「评审员」 |
 | `judge/replays/` | 评审员判过的回放（Mac 上跑完再提交）。Claude 那本账按模型档的单价 B-8 起在共用包里：`packages/llm/src/zoujin_llm/claude-prices.json`，叙事者和评审员只用这一份 |
 | `tests/`、`tests/snapshots/fake/` | 运行器的测试；`--mode fake --deterministic-only` 的预期报告（快照） |
@@ -251,8 +251,8 @@ uv run zoujin-eval --mode fake --deterministic-only --quiet --out evals/tests/sn
 1. 没有 `ZJ_EVAL_LIVE=1` 就退出（退出码 2），打印原因。
 2. 上限都要显式给，没有默认值，少一个就退出：
    - `--max-item-usd`：单项上限，两本账合起来算；
-   - `--max-google-usd`：Google 账的总上限（产品路径：人物、叙事者、结局）；
-   - `--max-claude-usd`：Claude 账的总上限（评审员、AI 玩家）。
+   - `--max-google-usd`：Google 账的总上限（人物的文字回答、Live、预录句；D-027 定 50 美元）；
+   - `--max-claude-usd`：Claude 账的总上限（叙事者、评审员、AI 玩家；D-029 定 100 美元）。
    分两本账是 PM 2026-10-10 定的（zg 的 Claude 额度只付 Claude 的调用）。
 3. 不带 `--confirm`：按 `config/live-cost.json` 打印每个套件在两本账上的预计花费（用例 × `runs` ×（会调模型的步数 × 每步单价 + 判分）；模拟局按每局单价），标出超过上限的，再打印完整命令，退出码 0。由协调把这两样给 zg 看，zg 同意后才带 `--confirm` 再跑。
 4. 带 `--confirm`：退出，打印「真模型的客户端还没有，M2 接上」。
@@ -277,8 +277,23 @@ uv run zoujin-judge agree --zg evals/judge/labels-zg.json              # zg 盲�
 
 - **标准答案**：`judge/calibration.jsonl` 的 50 条，数据线程标的分（过 26、不过 24，每个判分用例过和不过的都有）。数据线程也是 Claude，所以其中 20 条（过、不过各 10，每例最多一条，不含现实危机那例）请 zg 盲标：zg 只看评分细则、场景和回答，不看数据的分。人物的话和真跑出来的一样不带括号里的动作，动作单独写成一行「ナレーション」（UX 评审 #74）。`agree` 要 ≥ 18/20 过 / 不过一样，这 50 条才当标准答案用；对不上的条目数据和 zg 对过再改标注。
 - **评审员**：`calibrate` 把 50 条各判 `--repeat` 次（默认 3），每一次都和标注比过 / 不过，一致率 ≥ 90% 才用这个模型和 effort。报告 `evals/out/judge/calibration.md` 列出一致率、分数一样和差 1 分以内的次数、几次判得不一样的条目、输出 token（用来改 m2-model-budget 的估算），和每一条对不上的（评审员的理由和标注的理由并排）。过不了先看是标注的问题还是提示的问题；再过不了试 Fable 5.1（data-design 7.3）。
-- **在 Mac 上真跑**：和 `zoujin-eval` 的 `live` 一样，要 `ZJ_EVAL_LIVE=1`、`ZJ_LEDGER`、`--max-claude-usd`、`--max-item-usd`。不带 `--confirm` 只打印要调几次、预计花费和完整命令（50 × 3 次不走 Batch 约 $3.6，推算）；zg 同意后带 `--confirm` 跑。可以先 `--only J01 --only J02 --repeat 1` 试两条，量一下真实的输出 token。Key zg 已在 Anthropic 控制台建好，放在 Mac 的钥匙串里，跑的时候读进 `ANTHROPIC_API_KEY`（`export ANTHROPIC_API_KEY="$(security find-generic-password -s zoujin-claude -w)"`），不进仓库、文档和聊天。
+- **在 Mac 上真跑**：和 `zoujin-eval` 的 `live` 一样，要 `ZJ_EVAL_LIVE=1`、`ZJ_LEDGER`、`--max-claude-usd`、`--max-item-usd`。不带 `--confirm` 只打印要调几次、预计花费和完整命令；zg 同意后带 `--confirm` 跑。已有回放的不重判，所以改了几条样本或细则以后再跑一遍 `calibrate`，只判少的那几条。Key zg 已在 Anthropic 控制台建好，放在 Mac 的钥匙串里，跑的时候读进 `ANTHROPIC_API_KEY`（`export ANTHROPIC_API_KEY="$(security find-generic-password -s zoujin-claude -w)"`），不进仓库、文档和聊天。
 - 跑完把 `judge/replays/judge.jsonl` 和报告交回来提交（回放里只有合成的对话和分数，不含 Key 和账本）。
+
+#### 10-11 第一次校准：过
+
+- opus-5.5，effort `low`，输出上限 2048，提示 judge-1，50 条 × 3 次，不走 Batch。
+- 一致率 148/150 = 98.7%（要 ≥ 90%）；分数一样 97/150，差 1 分以内 148/150。
+- 实花约 $0.93，一次约 $0.006。进 951〜1,234 token（平均 1,035），出（含思考）平均 102、最多 220。`docs/data/cost` 的判分按这个改（#80）。
+- 只有 J23（E4-105）对不上：标 5，评审员判 3、5、3。J23 的回答和细则的例句一字不差，评审员有两次说它和玩家的原话太近、接近照抄。**结论：是细则的毛病，标注不改。** 细则要「あなたは、〜ことにした。」的一句话，又说不照抄玩家的话，却没说什么算照抄，它自己的例句就和玩家的话很近。真跑时后端的幕末打算也写成「あなたは、{label}ことにした。」，label 常和玩家的话很近，评审员照这样判，做对了的叙事者也会不过。所以 E4-105 和种子 E4-011 的细则补了一句：只在玩家的话前面加「あなたは、」、语尾（「〜します」）也照留才算丸写し；改成「〜ことにした。」就不算，哪怕用词很近。J24（真照抄，标 1）三次都判 1。
+- 细则改了，J23、J24 的请求跟着变，这两条在 Mac 上重判了 6 次（$0.0392），回放里换掉旧的 6 条。
+
+#### 10-11 重判 J23、J24 以后：过
+
+- 一致率 150/150 = 100%；分数一样 99/150，差 1 分以内 150/150；几次判得不一样的条目没有。J23 三次都判 5，J24 三次都判 1。
+- 出（含思考）平均 101.8、最多 156 token。
+- 回放就是现在的 `judge/replays/judge.jsonl`（50 条 × 3 次），`calibrate --mode replay` 能原样算出上面的数。测试 `test_committed_replays_are_the_current_calibration_and_pass_the_bar` 守住：改了样本、细则或评审员的提示，回放就对不上，要在 Mac 上再跑一遍 `calibrate`（只判少的）。
+- 两次合计花了约 $0.97。Mac 上的报告原样放在项目文件夹 `data/evals/judge-calibration/run2/`。
 
 ## 需要别人定的
 
