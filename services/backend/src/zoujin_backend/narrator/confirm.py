@@ -154,7 +154,7 @@ async def run_confirm(n: Narrator, task: Task) -> Result:
             log.info("草稿 %s 已经关掉，忽略这次回答", draft_id)
             return await n._commit(task, None, lambda w, b: Planned(info={"result": "ignored"}))
         span = {"playthrough_id": task.pid, "turn_id": draft["turn_id"], "world_model_version": book.version}
-        spend = Spend()
+        spend = task.spend  # 跟着任务走：重来的、没提交的也算（B-8 第 7 条）
         checked: Checked | None = None
         narration: list[str] = []
         if option == "yes" and not gone:

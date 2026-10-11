@@ -19,6 +19,7 @@ from .conftest import Env
 Json = Any
 
 DEV = REPO / "evals" / "s2" / "s2_dev.jsonl"
+KEY = "sk-ant-test-marker-0000"  # 假的；查它不打印出来
 
 
 def run(monkeypatch: pytest.MonkeyPatch, env: Env, out: Path, *extra: str, runs: int = 3) -> int:
@@ -121,9 +122,10 @@ def test_replays_recorded_from_the_fake_give_the_same_report(
 @pytest.mark.parametrize(
     ("live", "args"),
     [
-        (None, ["--max-item-usd", "0.5", "--max-google-usd", "30", "--confirm"]),  # 没设 ZJ_EVAL_LIVE
-        ("1", ["--max-google-usd", "30", "--confirm"]),  # 少一个上限
-        ("1", ["--max-item-usd", "0.5", "--max-google-usd", "30"]),  # 不带 --confirm
+        (None, ["--max-item-usd", "0.5", "--max-claude-usd", "30", "--confirm"]),  # 没设 ZJ_EVAL_LIVE
+        ("1", ["--max-claude-usd", "30", "--confirm"]),  # 少一个上限
+        ("1", ["--max-item-usd", "0.5", "--max-claude-usd", "30"]),  # 不带 --confirm
+        ("no-key", ["--max-item-usd", "0.5", "--max-claude-usd", "30", "--confirm"]),  # 没把 Key 读进环境
     ],
 )
 def test_live_gate_only_prints(
@@ -136,10 +138,14 @@ def test_live_gate_only_prints(
     monkeypatch.setenv("DATABASE_URL", "postgresql://nobody@127.0.0.1:1/none")
     monkeypatch.setenv("ZJ_MODEL", "real")
     monkeypatch.setenv("ZJ_LEDGER", str(tmp_path / "ledger.jsonl"))
-    monkeypatch.setenv("ZJ_VERTEX_PROJECT", "proj-marker-0000")
-    monkeypatch.setenv("ZJ_VERTEX_LOCATION", "global")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", KEY)
+    monkeypatch.setenv("ZJ_CLAUDE_HAIKU", "test-haiku-5-5-marker")
+    monkeypatch.setenv("ZJ_CLAUDE_SONNET", "test-sonnet-5-5-marker")
     if live is None:
         monkeypatch.delenv("ZJ_EVAL_LIVE", raising=False)
+    elif live == "no-key":
+        monkeypatch.setenv("ZJ_EVAL_LIVE", "1")
+        monkeypatch.delenv("ANTHROPIC_API_KEY")
     else:
         monkeypatch.setenv("ZJ_EVAL_LIVE", live)
 
@@ -150,5 +156,6 @@ def test_live_gate_only_prints(
     assert s2.main([str(DEV), "--out", str(tmp_path / "out"), *args]) == 0
     printed = capsys.readouterr().out
     assert "预计花费" in printed and "只打印，不调用" in printed and "zoujin-s2" in printed
-    assert "proj-marker-0000" not in printed  # 只打印变量名
+    assert KEY not in printed and "marker" not in printed  # 只打印变量名，Key 和模型 ID 不打印
+    assert "sonnet-5.5" in printed  # 档名加版本可以
     assert not (tmp_path / "out").exists() and not (tmp_path / "ledger.jsonl").exists()

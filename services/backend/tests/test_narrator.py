@@ -59,7 +59,7 @@ def test_minimal_script(env: Env) -> None:
             (OLD, "rejected", False),
             ("player", "passed", False),  # 这一轮的 10 分钟：只推进时钟的 say
         ]
-        assert evs[0]["check"]["checker"].startswith("rules@") and "+gemini-3.8-flash/p" in evs[0]["check"]["checker"]
+        assert evs[0]["check"]["checker"].startswith("rules@") and "+sonnet-5.5/p" in evs[0]["check"]["checker"]
         assert evs[1]["check"]["failedRules"] == ["R2-precondition"] and evs[1]["check"]["attempts"] == 3
         assert evs[1]["check"]["checker"] == "rules@b3.1"  # 第 3 步就没过，没跑第 4 步
         assert [e["seq"] for e in evs] == [3, 4, 5] and evs[-1]["dt"] == 10
