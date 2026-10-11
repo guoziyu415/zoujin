@@ -170,9 +170,9 @@ export type EdgeId = string;
  */
 export type EventId = string;
 /**
- * 写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival / sub、Affordance.playerSpot（C-18）、Act.plan（C-19）、WorldModel.setPieces（S-080 ④）、WorldModel.objects。1.8：Affordance.pastLabel，事件 summary 里玩家一律写身份名
+ * 写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival / sub、Affordance.playerSpot（C-18）、Act.plan（C-19）、WorldModel.setPieces（S-080 ④）、WorldModel.objects。1.8：Affordance.pastLabel，事件 summary 里玩家一律写身份名。1.9：Clock.labels.daysKnownBy
  */
-export type SchemaVersion = "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5" | "1.6" | "1.7" | "1.8";
+export type SchemaVersion = "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5" | "1.6" | "1.7" | "1.8" | "1.9";
 /**
  * 结局：`end_` 加 ULID（26 位 Crockford base32，大写）
  */
@@ -939,6 +939,10 @@ export interface Clock {
      * （1.1）模板，含 {day} 和 {band}
      */
     format: string;
+    /**
+     * （1.9）日名（days）带着情节时，要知道哪条事实才说日名。不知道这条事实的人物，给他的时间只写时段（band），如「夜」；界面、tLabel、記憶帳、地の文照旧用完整说法（S-086）。不写 = 谁都给完整说法
+     */
+    daysKnownBy?: FactId;
     inferred: true;
     note?: string;
     /**
