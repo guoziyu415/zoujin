@@ -16,6 +16,7 @@ import {
   type MeshStandardMaterial,
   NearestFilter,
   RGBAFormat,
+  Vector4,
 } from "three";
 import { body, COSTUMES, type Costume } from "./bodies";
 import type { CrowdPack } from "./pack";
@@ -45,6 +46,13 @@ const SECOND: (keyof typeof CLOTH)[] = ["N1", "A1", "B1", "G1", "W0"];
 const SKIN = ["#8F6449", "#9A6A4C", "#A07A5F", "#A47B5F", "#86593E"];
 // dark brown to near black, now and then grey (the cast's: melos.md, ending-cast.md)
 const HAIR = ["#2A2018", "#33261C", "#1F1A16", "#4A3D33", "#2A2018", "#6E665E"];
+// the palette a little greyer on them than on the cloth swatches (UX on #156: the crowd too saturated at sunset): this
+// much of the way to the colour's own grey
+const MUTE = { cloth: 0.3, skin: 0.15 };
+// the men's beards: none, short, full (of the way from the skin's colour to the hair's)
+const BEARDS = [0, 0.3, 0.55, 0.8, 0.8, 0.9];
+// the head's width and depth: each face its own proportions, within a few percent
+const HEAD = 0.06;
 // 3–4 body shapes (art-direction 5.5): [breadth, height]
 const SHAPES: [number, number][] = [
   [1, 1],
@@ -166,9 +174,13 @@ export class Crowd extends Group {
       const n = per[k]!;
       if (!n) return;
       const geo = pack ? pack[c].geometry.clone() : body(c);
+      const sk = skeleton(c);
+      const hb = sk.roles.head ?? 0;
+      const [hx, hy, hz] = sk.joints[hb] ?? [0, 0, 0];
       const uniforms: CrowdUniforms = {
-        uBones: { value: boneTexture(bakedFor(skeleton(c))) },
+        uBones: { value: boneTexture(bakedFor(sk)) },
         uTime: this.time,
+        uHead: { value: new Vector4(hx, hy, hz, hb) },
       };
       const { material, depth } = crowdMaterials(uniforms);
       const attr = (size: number) =>
@@ -180,6 +192,7 @@ export class Crowd extends Group {
       geo.setAttribute("iCloth", attr(3));
       geo.setAttribute("iCloth2", attr(3));
       geo.setAttribute("iHair", attr(3));
+      geo.setAttribute("iFace", attr(3));
       geo.setAttribute("iPlace", attr(4));
       geo.setAttribute("iScale", attr(2));
       geo.instanceCount = n;
@@ -193,10 +206,13 @@ export class Crowd extends Group {
       this.add(mesh);
     });
     const col = new Color();
+    const grey3 = new Color();
     for (const [i, p] of this.people.entries()) {
       const g = this.meshes[p.mesh]!.geometry;
-      const set = (name: string, hex: string) => {
+      const set = (name: string, hex: string, mute = MUTE.cloth) => {
         col.set(hex);
+        const grey = col.r * 0.2126 + col.g * 0.7152 + col.b * 0.0722;
+        col.lerp(grey3.setRGB(grey, grey, grey), mute);
         (g.getAttribute(name) as InstancedBufferAttribute).setXYZ(
           p.slot,
           col.r,
@@ -204,10 +220,16 @@ export class Crowd extends Group {
           col.b,
         );
       };
-      set("iSkin", pick(SKIN));
+      set("iSkin", pick(SKIN), MUTE.skin);
       set("iCloth", CLOTH[pick(MAIN)]);
       set("iCloth2", CLOTH[pick(SECOND)]);
-      set("iHair", pick(HAIR));
+      set("iHair", pick(HAIR), 0);
+      (g.getAttribute("iFace") as InstancedBufferAttribute).setXYZ(
+        p.slot,
+        pick(BEARDS),
+        1 + (rnd() - 0.5) * 2 * HEAD,
+        1 + (rnd() - 0.5) * 2 * HEAD,
+      );
       this.place(i);
       this.start(i, p.idle, -1e3, p.phase);
     }
