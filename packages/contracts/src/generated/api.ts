@@ -270,6 +270,10 @@ export interface ActOption {
   optionId: Data.ExitId;
   label: string;
   sceneId: Data.SceneId;
+  /**
+   * （v1.0.13）这个去处通往的幕（世界模型 ActExit.toAct；打算是它落地的那一幕）：幕末页一出现就能预取下一幕的场景包。老的服务端不给
+   */
+  toActId?: Data.ActId;
   tLabel: Data.TLabel;
   /**
    * （v1.0.4）副题的前半「{地点}・{日子}の{时段}」（ux-design 4.4）：服务端算好，地点是落点的 Place.name，日子和时段是落点时刻（和 tLabel 同一个时刻）在 clock.labels 的 days、bands 里的叫法，中间用「の」，不套 clock.labels.format。例「刑場・三日目の夕方」
@@ -373,6 +377,10 @@ export interface PlanAlternative {
   optionId: PlanOptionId | Data.ExitId;
   label: string;
   sceneId: Data.SceneId;
+  /**
+   * （v1.0.13）这个去处通往的幕（世界模型 ActExit.toAct；打算是它落地的那一幕）：幕末页一出现就能预取下一幕的场景包。老的服务端不给
+   */
+  toActId?: Data.ActId;
   tLabel: Data.TLabel;
 }
 /**

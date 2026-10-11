@@ -1,6 +1,6 @@
 # 前后端接口约定（api-contract.md）v1.0.13
 
-负责人：后端 · 状态：**v1.0.13，冻结**（v1.0 在 C-1 冻结；v1.0.1 把 C-1 评审定下的写进正文；v1.0.2 把 B-1 评审定下的几处顺序写进正文；v1.0.3 把 B-0、F-2b 评审和 S-077 ⑫ 定下的写进正文；v1.0.4 把数据契约 1.7 里前端要拿到的几样加进接口；v1.0.5 按 B-3 卡放宽三处 Schema、补一条错误说明；v1.0.6 按 UX 定的文案改下发的事件句和一句叙事，不改形状；v1.0.7 按 B-4 卡写明作废、意图确认的顺序和评测入口的三项，不改形状；v1.0.8 按 B-6 写明录音文件的格式，不改形状；v1.0.9 按 B-7 写明 manifest 的缓存和生成规则、开局时次数和进行中的局谁先查，会话没就绪时缓存整段按住的音频，不改形状；v1.0.10〜v1.0.12 在 B-9、B-5 和重连补发的 PR 里；v1.0.13 加 manifest 的地名、地图和「なぜ」的节拍出处，只做加法）：之后只做加法（第 0 节「版本」），每种消息和响应的 JSON Schema 在 `packages/contracts/schemas/api/`。v0.3 吸收了前端评审 17 条（`frontend/reviews/backend-v0.1.md` 和 frontend-design 第 14 节 1〜17）、数据评审 16 条（`data/reviews/backend-v0.1.md`）、ux-design 18.2 的接口要求，以及 decisions S-022〜S-053、D-012〜D-015。v0.3.2 和数据契约 v1.2 对齐。逐条对照见第 9 节。
+负责人：后端 · 状态：**v1.0.13，冻结**（v1.0 在 C-1 冻结；v1.0.1 把 C-1 评审定下的写进正文；v1.0.2 把 B-1 评审定下的几处顺序写进正文；v1.0.3 把 B-0、F-2b 评审和 S-077 ⑫ 定下的写进正文；v1.0.4 把数据契约 1.7 里前端要拿到的几样加进接口；v1.0.5 按 B-3 卡放宽三处 Schema、补一条错误说明；v1.0.6 按 UX 定的文案改下发的事件句和一句叙事，不改形状；v1.0.7 按 B-4 卡写明作废、意图确认的顺序和评测入口的三项，不改形状；v1.0.8 按 B-6 写明录音文件的格式，不改形状；v1.0.9 按 B-7 写明 manifest 的缓存和生成规则、开局时次数和进行中的局谁先查，会话没就绪时缓存整段按住的音频，不改形状；v1.0.10〜v1.0.12 在 B-9、B-5 和重连补发的 PR 里；v1.0.13 加 manifest 的地名、地图和「なぜ」的节拍出处、幕末去处通往的幕，只做加法）：之后只做加法（第 0 节「版本」），每种消息和响应的 JSON Schema 在 `packages/contracts/schemas/api/`。v0.3 吸收了前端评审 17 条（`frontend/reviews/backend-v0.1.md` 和 frontend-design 第 14 节 1〜17）、数据评审 16 条（`data/reviews/backend-v0.1.md`）、ux-design 18.2 的接口要求，以及 decisions S-022〜S-053、D-012〜D-015。v0.3.2 和数据契约 v1.2 对齐。逐条对照见第 9 节。
 数据字段以 `data/contracts.md` 为准（v1.7；标「契约 1.1」「契约 1.2」「契约 1.4」的字段是这几个小版本加的；1.3 加的随身物品不进接口，物品只出现在 `give` 类按钮上；1.6 的结局卡见 2.8；1.7 的位置点、幕末副题和落地、固定演出、可调查物见 2.3、3.8、3.11、3.14），本文只定义传输形状。字段名 camelCase；WebSocket 消息类型 snake_case。
 相关：`backend/backend-design.md` v1.0.9（为什么这么设计）· `frontend/frontend-design.md` · `ux/ux-design.md`
 最近更新：2026-10-11（v1.0.13）
@@ -585,14 +585,15 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
   "recapLines": [ "あなたは、メロスに王のことを告げた。", "あなたは、老爺を家まで送った。" ],
   "options": [
     { "optionId": "exit.1.city", "label": "市に残り、メロスの帰りを待つ",
-      "sceneId": "scene.syracuse-square", "tLabel": "三日目・夕方", "where": "刑場・三日目の夕方", "sub": "西の門が見える所で",
+      "sceneId": "scene.syracuse-square", "toActId": "act.4", "tLabel": "三日目・夕方", "where": "刑場・三日目の夕方", "sub": "西の門が見える所で",
       "with": [], "because": null },
     { "optionId": "exit.1.old-man", "label": "老爺の家に身を寄せる",
-      "sceneId": "scene.syracuse-square", "tLabel": "三日目・夕方", "where": "刑場・三日目の夕方", "sub": "老爺があなたを覚えている",
+      "sceneId": "scene.syracuse-square", "toActId": "act.4", "tLabel": "三日目・夕方", "where": "刑場・三日目の夕方", "sub": "老爺があなたを覚えている",
       "with": ["char.old-man"], "because": null }
   ],
   "freeform": { "allowed": true, "triesLeft": 2 } }
 ```
+- `toActId`（v1.0.13）：这个去处通往的幕（`ActExit.toAct`），幕末页一出现前端就能预取下一幕的场景包（不用等 `act_transition`）。替代去处（`act_plan_result.alternative`）也带：给定去处照它的 `ActExit.toAct`，另一个打算是它落地的那一幕（`Act.plan.toAct`）。可选，前端没收到时照旧等 `act_transition`。
 - `options` 来自世界模型的 `ActExit`，按 `roles`、`requires` 过滤（例子是切片的第一幕：送过老爺回家才有第二个去处）。`recapLines` 是「この幕であなたが動かしたこと」（0〜4 行；玩家这一幕什么都没动时为空，前端显示 `actEnd.summary.empty`，v1.0.5）：每行是事件的 `summary`，玩家写成「あなた」（2.4），句末补「。」（v1.0.6）。
 - **副题**（v1.0.4，ux-design 4.4）：`where` 是前半「{地点}・{日子}の{时段}」，服务端算好：地点是落点 `ActExit.place` 的 `Place.name`，日子和时段是落点时刻（和 `tLabel` 同一个时刻）在世界模型 `clock.labels` 的 `days`、`bands` 里的叫法，中间用「の」，不套 `clock.labels.format`。`sub` 是后半，世界模型的 `ActExit.sub`（≤ 16 字），没有就省略。前端照 UX 拼成一行，例「刑場・三日目の夕方　西の門が見える所で」，不按去处 ID 写死。`because` 现在一律 `null`：世界模型的 `ActExit` 没有写理由的字段，条件去处的说明写在 `sub` 里（例「老爺があなたを覚えている」）。
 - 选给定去处：`act_choose { optionId }`。
@@ -614,7 +615,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
   ```json
   { "type": "act_plan_result", "clientMsgId": "…", "accepted": false,
     "narration": [ "夜の城門は、もう閉ざされている。", "夜明けを待って、門が開くとともに村へ向かうこともできる。" ],
-    "alternative": { "optionId": "plan_…", "label": "夜明けを待って村へ向かう", "sceneId": "scene.village", "tLabel": "一日目・朝" },
+    "alternative": { "optionId": "plan_…", "label": "夜明けを待って村へ向かう", "sceneId": "scene.village", "toActId": "act.2", "tLabel": "一日目・朝" },
     "triesLeft": 1 }
   ```
   `accepted: true` 时 `narration` 是「あなたは、〜ことにした。」，紧接着进入幕切换（服务端写一条玩家的 `act-transition` 事件，不带 `exitId`，带 `plan { label, toAct, place, t, with? }`，`label` 是叙事者的转述、不逐字引用玩家原话，契约 1.2 的 2.8.1；不成行不写事件，选了替代去处按成行处理）；`false` 时给最接近的替代去处，玩家可以 `act_choose { optionId: alternative.optionId }`；替代去处是另一个打算时 `optionId` 是 `plan_…`，是某个给定去处时就是那个去处的 ID（v1.0.5）。`triesLeft` 到 0 后 `freeform.allowed = false`，只能选给定去处（同一次幕末最多试 2 次）。用声音说的打算没有 `clientMsgId`，`act_plan_result` 改带那一轮的 `turnId`（3.3）；转写是空的（误按、没出声）不算一次：服务端不判，直接回 `act_plan_result { turnId, accepted: false, narration: ["声が届かなかったようです。もう一度、聞かせてください。"], triesLeft }`，`triesLeft` 不变、不带 `alternative`（v1.0.5；这句是 UX 10-10 定的，v1.0.6）。
@@ -856,7 +857,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 
 ## 修订记录
 
-- v1.0.13（2026-10-11）：只做加法，前端 3 做地图（F-12 之后）时提的。2.1：manifest 加必有的 `places`（地点 ID、地名、所在场景；场景没出的为 `null`），生成器照世界模型出。2.5：时间线的节拍项加可选的 `cite`（世界模型 `Beat.cite` 原样，数据契约的 `Cite`），只在 `known: true` 时给，`known: false` 的 Schema 不许带。2.6：「なぜ」链的节拍那一步也加可选的 `cite`。mock 的时间线、「なぜ」带上切片世界模型的出处；`examples/` 里的合法例子跟着加。v1.0.10〜v1.0.12 在别的 PR 里（B-9、B-5 #117、重连补发 #120），号先留着。
+- v1.0.13（2026-10-11）：只做加法，前端 3 做地图（F-12 之后）时提的。2.1：manifest 加必有的 `places`（地点 ID、地名、所在场景；场景没出的为 `null`），生成器照世界模型出。2.5：时间线的节拍项加可选的 `cite`（世界模型 `Beat.cite` 原样，数据契约的 `Cite`），只在 `known: true` 时给，`known: false` 的 Schema 不许带。2.6：「なぜ」链的节拍那一步也加可选的 `cite`。3.11：`ActOption`、`PlanAlternative` 加可选的 `toActId`（去处通往的幕），幕末页一出现就能预取下一幕的包（前端 3 提的）。mock 的时间线、「なぜ」带上切片世界模型的出处；`examples/` 里的合法例子跟着加。v1.0.10〜v1.0.12 在别的 PR 里（B-9、B-5 #117、重连补发 #120），号先留着。
 - v1.0.9（2026-10-11）：传输形状和 Schema 都不变，按 B-7 卡（#93）改 2.1、补 2.2 一句，和 B-7 的代码同一个 PR：manifest 的地址不带版本，`ETag` 是 `manifestVersion`、`Cache-Control: private, no-cache`、`If-None-Match` 对上回 304（原来写的「URL 带版本、`immutable`」作废）；`manifestVersion` 的形状；只出真能加载的东西（开放版次以内、开局场景有包的身份，有包的场景，`acts[].sceneIds` 跟着，没有场景的幕不出）；`assetUrl` = `/scenes/<assetVersion>/<目录>/<入口文件>`，`assetVersion` 是入口能走到的目录里全部文件的 hash；`characters` 是世界模型的全部人物；`arrival_capped` 只在说这句的人物身上；预录句逐句核对；录音文件的地址和响应头；开局只收 manifest 里的身份；到了没有包的场景前端只出字幕和旁白。3.2、3.6：会话没就绪时前端缓存按住的整段音频（最多 15 秒，原来 2 秒，前端和 UX 在 #109 提的），`session_ready` 后一次发出，服务端按顺序转。2.2：次数用完先回 429 `daily_limit`，再看 409。例子跟着改；`packages/contracts/examples/` 里的合法例子不动。mock 的 manifest 从 fixture 改成同一个生成器（`fixtures/mock/rest/manifest/` 删掉），按切片的世界模型。
 - v1.0.8（2026-10-11）：传输形状和 Schema 都不变，2.1 加一条录音文件的说明（B-6）：格式是 AAC（`.m4a`）、单声道、24 kHz；几个 `setPieceVoices` 键可以指向同一个 `url`；一个人物的 6 句缺一句时这个人物没有 `prerecorded`。
 - v1.0.7（2026-10-11）：传输形状和 Schema 都不变，按 B-4 卡（#65）把作废、意图确认的顺序和评测入口写进正文，前端同意以后和 B-4 的代码同一个 PR 改：幕末用声音说的打算也能作废，作废了不推 `act_plan_result`、`turn_settled`，不算试次；文字的一轮也有提交窗口；服务端发起的一轮回 `too_late`（3.6）；意图确认的推送顺序、反问那一轮没有 `turn_settled`、一局最多 3 次、同一时间一个草稿、用声音回答的一轮照常 10 分钟、收幕时不留草稿（3.9）；作废的一轮在 `lastTurn` 里是 `settled`、文字为 `null`（4）；评测入口的 `say(hold)`、`retract(step)`、`confirm(answer)` 和 `StepResult` 的 `held`、`confirm`（7）。mock 的 `confirm` 剧本照新的顺序改，两次确认的选项都用 3.9 的固定两项。

@@ -1358,6 +1358,10 @@
         "sceneId": {
           "$ref": "../data/common.schema.json#/$defs/SceneId"
         },
+        "toActId": {
+          "description": "（v1.0.13）这个去处通往的幕（世界模型 ActExit.toAct；打算是它落地的那一幕）：幕末页一出现就能预取下一幕的场景包。老的服务端不给",
+          "$ref": "../data/common.schema.json#/$defs/ActId"
+        },
         "tLabel": {
           "$ref": "../data/common.schema.json#/$defs/TLabel"
         },
@@ -1466,6 +1470,10 @@
         },
         "sceneId": {
           "$ref": "../data/common.schema.json#/$defs/SceneId"
+        },
+        "toActId": {
+          "description": "（v1.0.13）这个去处通往的幕（世界模型 ActExit.toAct；打算是它落地的那一幕）：幕末页一出现就能预取下一幕的场景包。老的服务端不给",
+          "$ref": "../data/common.schema.json#/$defs/ActId"
         },
         "tLabel": {
           "$ref": "../data/common.schema.json#/$defs/TLabel"

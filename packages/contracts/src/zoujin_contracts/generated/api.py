@@ -3276,6 +3276,10 @@ class PlanAlternative(BaseModel):
     """
     label: Annotated[str, Field(min_length=1)]
     sceneId: SceneId
+    toActId: ActId | None = None
+    """
+    （v1.0.13）这个去处通往的幕（世界模型 ActExit.toAct；打算是它落地的那一幕）：幕末页一出现就能预取下一幕的场景包。老的服务端不给
+    """
     tLabel: TLabel
 
 
@@ -3530,6 +3534,10 @@ class ActOption(BaseModel):
     optionId: ExitId
     label: Annotated[str, Field(min_length=1)]
     sceneId: SceneId
+    toActId: ActId | None = None
+    """
+    （v1.0.13）这个去处通往的幕（世界模型 ActExit.toAct；打算是它落地的那一幕）：幕末页一出现就能预取下一幕的场景包。老的服务端不给
+    """
     tLabel: TLabel
     where: Annotated[str, Field(min_length=1)]
     """
