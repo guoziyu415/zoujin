@@ -217,6 +217,32 @@ describe("Session", () => {
     expect(useUi.getState().toasts).toEqual([]);
   });
 
+  it("a commit's cue plays once (a resent commit doesn't again); set_piece lines go to the voice", () => {
+    const { sock } = open(2);
+    const c = commit(3, 3, {
+      cue: {
+        kind: "arrival_capped",
+        speaker: null,
+        text: "この足なら、陽の沈む前に着く。",
+      },
+    });
+    sock.receive(c);
+    sock.receive(c);
+    expect(useVoice.getState().narration).toEqual([
+      "この足なら、陽の沈む前に着く。",
+    ]);
+    vi.advanceTimersByTime(5000);
+    sock.receive({
+      type: "set_piece",
+      pieceId: "piece.workshop-knock",
+      lines: [{ narration: "戸は閉ざされたままだ。" }],
+    });
+    expect(useVoice.getState().narration).toEqual([
+      "この足なら、陽の沈む前に着く。",
+      "戸は閉ざされたままだ。",
+    ]);
+  });
+
   it("fills a gap from /events and the snapshot, then applies what came meanwhile", async () => {
     const { sock } = open(2);
     const missing = [event({ seq: 3 }), event({ seq: 4 })];
@@ -393,6 +419,34 @@ describe("Session, for the 3D", () => {
     expect(usePlayer.getState().place).toBe("place.syracuse-square");
     expect(useVoice.getState().narration).toEqual(["門は閉ざされている。"]);
     expect(sock.sent.filter((x) => x.type === "action")).toHaveLength(1);
+  });
+
+  it("a move whose result was lost in a drop: after the welcome the snapshot says where the player is", async () => {
+    const { s, sock } = open();
+    usePlayer.setState({ place: "place.stonemason-workshop" });
+    s.move("place.stonemason-workshop", "place.syracuse-square");
+    const fetch = vi.fn<(url: string) => Promise<Response>>(
+      async () =>
+        new Response(JSON.stringify(snapshot({ lastSeq: 0 })), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetch);
+    sock.drop(); // refused while down: no action_result now, no commit either
+    vi.advanceTimersByTime(1000);
+    const again = FakeSocket.last();
+    again.open();
+    again.receive(welcome(0));
+    await vi.waitFor(() =>
+      expect(usePlayer.getState().place).toBe("place.syracuse-square"),
+    );
+    expect(fetch.mock.calls.map((c) => c[0])).toEqual([
+      `/v1/playthroughs/${PID}/snapshot`,
+    ]);
+    // the next welcome has nothing waiting: no snapshot
+    again.drop();
+    vi.advanceTimersByTime(1000);
+    FakeSocket.last().open();
+    FakeSocket.last().receive(welcome(0));
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it("near and far go out as they are; after a reconnect near, focus and a move made while down go again", () => {

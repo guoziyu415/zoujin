@@ -73,10 +73,11 @@ export function lightmapOf(
     : undefined;
 }
 
-// Where a scene's pack is: the book manifest's scenes[].assetUrl (B-7: /scenes/<slug>/<version>/scene.json, the
-// version in the path so every file of a version caches for good), else /scenes/<slug>/ (vite.config.ts serves the
-// build at both; the mock's manifest has a placeholder URL). A scene of several packs (index.json) comes with F-10.
-const PACK = /^\/scenes\/[a-z0-9-]+\/[0-9a-f]{8}\/scene\.json$/;
+// Where a scene's pack is: the book manifest's scenes[].assetUrl (B-7: /scenes/<version>/<slug>/scene.json, the
+// version in the path so every file of a version caches for good, and first so an index.json's ../<other pack>/
+// stays inside it), else /scenes/<slug>/ (vite.config.ts serves the build at both). A scene of several packs
+// (index.json) comes with F-10.
+const PACK = /^\/scenes\/[0-9a-f]{8}\/[a-z0-9-]+\/scene\.json$/;
 
 export function sceneBase(
   sceneId: string,
