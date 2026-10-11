@@ -6,6 +6,7 @@ import { flags } from "../app/flags";
 import { useStory } from "../stores/story";
 import { useWorld } from "../stores/world";
 import { CameraRig } from "./CameraRig";
+import { StagingGuard } from "./ending/Guard";
 import { crowdCount } from "./crowd/presence";
 import { groundAlbedo, Lighting } from "./Lighting";
 import { People } from "./People";
@@ -160,9 +161,11 @@ export function World({
       )}
       <Player scene={scene} />
       {ending && (
-        <Suspense fallback={null}>
-          <Staging scene={scene} />
-        </Suspense>
+        <StagingGuard>
+          <Suspense fallback={null}>
+            <Staging scene={scene} />
+          </Suspense>
+        </StagingGuard>
       )}
       <CameraRig blockers={scene.blockers} />
       <PostFX />
