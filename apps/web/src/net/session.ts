@@ -208,6 +208,31 @@ export class Session {
     if (sent) useStory.setState({ actEnd: story.proposed(a, { clientMsgId }) });
   }
 
+  // the plan said aloud (3.11): the talk key's voice with purpose act_plan, nobody to focus; from the release the
+  // page waits for act_plan_result with that turn's ID. A slip or a slide away leaves the page as it was.
+  actPlanPress(): void {
+    const a = useStory.getState().actEnd;
+    if (!a || a.phase.k !== "propose") return;
+    useStory.setState({ actEnd: story.clearNotHeard(a) });
+    this.voice.planPress();
+  }
+
+  actPlanRelease(): void {
+    const turnId = this.voice.planRelease();
+    const a = useStory.getState().actEnd;
+    if (turnId && a)
+      useStory.setState({ actEnd: story.proposed(a, { turnId }) });
+  }
+
+  // took the spoken plan back while it was being judged (3.6 ⑦): no result comes, no try is used
+  actPlanRetract(): void {
+    const a = useStory.getState().actEnd;
+    const turnId = a?.phase.k === "thinking" ? a.phase.turnId : undefined;
+    if (!a || !turnId) return;
+    this.voice.retract();
+    useStory.setState({ actEnd: story.proposeRetracted(a, turnId) });
+  }
+
   // shown the landing line of an arrival with an opener: the server lets the opener speak first
   actLanded(actId: string): void {
     this.live.send({ type: "act_landed", actId });
@@ -283,6 +308,7 @@ export class Session {
       case "act_ended":
         return this.actEnded(msg);
       case "act_plan_result": {
+        if (msg.turnId) this.voice.planDone(msg.turnId);
         const a = useStory.getState().actEnd;
         if (!a) return;
         const next = story.planResult(a, msg);
