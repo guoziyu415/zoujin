@@ -18,7 +18,7 @@ from typing import Any, cast
 
 from zoujin_backend.db.store import Run
 from zoujin_backend.ids import IdGen
-from zoujin_backend.projection import is_visible
+from zoujin_backend.projection import Away, is_visible
 from zoujin_backend.world import Book
 from zoujin_worldsim import OCCURRED, SimState, apply, pick_set_piece, settle
 
@@ -65,6 +65,7 @@ class Writer:
         self.run = Run()  # 局上记的（提交的事务里读进来，写回去）
         self.pieces: list[Json] = []  # 这次提交里节拍时机演的固定演出（set_piece 消息）
         self.seen: list[str] = []  # 玩家可见的事件 ID（turn_settled.eventIds，api-contract 2.4）
+        self.away = Away()  # 幕切换第 3 步结算的不算玩家看到（和网关推 commit、补推同一条规则）
         # 这一幕在这次提交开始时还开着（有去处的幕）：结算按收幕拦住
         self.guard = has_exits(book, state) and not act_closed(book, state)
         self.ending: Json | None = None  # B-9：这次提交进了结局（`ending.enter` 的结果）
@@ -121,7 +122,7 @@ class Writer:
         """按 seq 应用并记下。ev 由 full() 生成；W-1 的 apply 不收就抛 ValueError（整轮回滚）。"""
         if ev["seq"] != self.state["seq"] + 1:
             raise ValueError(f"seq 不连续：{ev['seq']}，上一个是 {self.state['seq']}")
-        if is_visible(self.book, ev, self.player_place):
+        if not self.away(ev) and is_visible(self.book, ev, self.player_place):
             self.seen.append(ev["eventId"])
         self.state = apply(self.book.world, self.state, ev)
         self.events.append(ev)

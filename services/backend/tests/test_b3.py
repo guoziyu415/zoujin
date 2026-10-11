@@ -28,7 +28,7 @@ from zoujin_backend.models.text import FakeText
 from zoujin_backend.narrator.actions import ACT_ENDED_LINE, CHECKER_MOVE
 from zoujin_backend.narrator.core import Result
 from zoujin_backend.narrator.plans import LABEL_FALLBACK, REFUSAL_FALLBACK
-from zoujin_backend.projection import snapshot
+from zoujin_backend.projection import is_visible, snapshot
 from zoujin_backend.trace import Tracer
 from zoujin_worldsim import settle
 
@@ -612,6 +612,29 @@ def test_skipped_beats_where_the_player_was_teach_nothing(game: Callable[..., Ga
         e for ev in step["events"][1:] for e in ev["effects"] if e["op"] == "learn" and e["character"] == "player"
     ]
     assert learns == [] and step["pieces"] == []
+
+
+def test_skipped_beats_are_not_pushed_live_or_on_reconnect(game: Callable[..., Game]) -> None:
+    """幕切换第 3 步结算的事件不推（契约 2.8.1，数据 #149）：落在玩家原来地点的婚礼节拍，在场的话会推；第 3 步里
+    commit 不带、补推（2.4 的 view）也不带，只进「その頃」。"""
+    g = game("sc.canon@beat.07", place="place.melos-home")
+    seq = g.s.view()["events"][-1]["seq"] if g.s.view()["events"] else 0
+    step = g.s.choose(CITY)
+    evs = step["events"]
+    player, system = evs[0], evs[-1]
+    assert (player["actor"], player["type"], system["actor"], system["type"]) == (
+        "player",
+        "act-transition",
+        "system",
+        "act-transition",
+    )
+    skipped = evs[1:-1]
+    assert any(is_visible(g.s.book, e, "place.melos-home") for e in skipped)  # 以前的判法会推
+    hidden = {e["eventId"] for e in skipped}
+    msgs = g.commits(seq)
+    assert msgs and msgs[-1]["seq"] == system["seq"]
+    assert not hidden & {e["eventId"] for m in msgs for e in m["events"]}
+    assert not hidden & {e["eventId"] for e in g.s.view(seq)["events"]}
 
 
 # —— 第 6 组：不记原话 ——

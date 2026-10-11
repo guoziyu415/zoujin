@@ -79,6 +79,21 @@ def promise_change(effects: Sequence[Mapping[str, Any]]) -> Json | None:
     return None
 
 
+class Away:
+    """幕切换第 3 步（契约 2.8.1）结算的事件，玩家一律算不在场，不推（留给「その頃」）。从事件本身判：第 2 步玩家的
+    `act-transition`（origin act）之后、第 4 步系统的 `act-transition` 之前，origin 不是 act 的那些（数据在 #149 定的，
+    不加字段）。按 seq 顺序每条都喂（推不推的范围以外的也喂）；返回 True 的不推。"""
+
+    def __init__(self) -> None:
+        self.on = False
+
+    def __call__(self, ev: Mapping[str, Any]) -> bool:
+        if ev.get("origin") == "act" and ev.get("type") == "act-transition":
+            self.on = ev.get("actor") == "player"
+            return False
+        return self.on and ev.get("origin") != "act"
+
+
 def is_visible(book: Book, ev: Mapping[str, Any], player_place: str) -> bool:
     """第 0 节：改的是可见变量或节拍走向（或约定），并且玩家看得到（数据契约 1.12 第 3 节的 `sees()`：玩家做的、
     玩家在事件的地点，或者是没有参与人物的节拍、落在和玩家同一个场景）。player_place 是这个事件之前玩家的地点。
@@ -143,9 +158,11 @@ def visible_events(
     """2.4：一局事件里玩家可见的、seq 大于 after_seq 的，最多 limit 条（网关的 `GET …/events` 和评测的 `view()`
     同一个）。在不在场按这一条之前的状态算；只改时间的、玩家不在场的、被否决的占 seq 但不在这里。"""
     state = initial_state(book.world, role_id)
+    away = Away()
     out: list[Json] = []
     for ev in log:
-        if ev["seq"] > after_seq and is_visible(book, ev, state["vars"]["var.player.location"]):
+        skipped = away(ev)
+        if ev["seq"] > after_seq and not skipped and is_visible(book, ev, state["vars"]["var.player.location"]):
             out.append(visible_event(book, ev, role_id))
             if limit is not None and len(out) >= limit:
                 break
