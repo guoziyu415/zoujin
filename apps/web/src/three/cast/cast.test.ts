@@ -12,10 +12,11 @@ import {
 
 describe("cast (F-16)", () => {
   it("maps the seven characters and roles to their built names", () => {
-    expect(Object.keys(CAST)).toHaveLength(7);
+    expect(Object.keys(CAST)).toHaveLength(12);
     expect(castName("char.king")).toBe("king");
     expect(castName("role.shepherd-boy")).toBe("shepherd-boy");
-    expect(castName("char.melos")).toBeNull(); // A-0's own pack, not this one
+    expect(castName("char.melos")).toBe("melos"); // A-0's own file, exported the same way
+    expect(castName("role.traveler")).toBe("traveler");
     expect(castName("char.crowd")).toBeNull();
   });
 

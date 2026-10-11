@@ -11,6 +11,11 @@ export const CAST: Readonly<Record<string, string>> = {
   "char.philostratus": "philostratus",
   "role.apprentice": "apprentice",
   "role.shepherd-boy": "shepherd-boy",
+  "role.traveler": "traveler",
+  "char.melos": "melos",
+  "char.old-man": "old-man",
+  "char.young-man": "young-man",
+  "char.maiden": "maiden",
 };
 
 // wedding clothes (village.md: the saffron dress and veil Melos bought in town; the groom's myrtle wreath)

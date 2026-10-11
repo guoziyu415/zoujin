@@ -62,9 +62,15 @@ for row in "${ALL[@]}"; do
   echo "== $name"
   work="$RES/$name"
   mkdir -p "$work" "$OUT/$name"
-  BLENDER_USER_RESOURCES="$RES" "$PY" -I "$HERE/build_cast.py" -- "$MELOS_BLEND" "$id" "$work/$name.blend" ${variant:+"$variant"} \
-    > "$work/build.log" 2>&1 || { tail -30 "$work/build.log" >&2; exit 1; }
-  grep '^CAST_REPORT ' "$work/build.log" | cut -d' ' -f2- > "$OUT/$name/build_report.json"
+  if [ "$name" = melos ]; then
+    # Melos is the A-0 file itself: straight to the export
+    cp "$MELOS_BLEND" "$work/$name.blend"
+    echo '{"id": "char.melos", "source": "melos_v2.blend"}' > "$OUT/$name/build_report.json"
+  else
+    BLENDER_USER_RESOURCES="$RES" "$PY" -I "$HERE/build_cast.py" -- "$MELOS_BLEND" "$id" "$work/$name.blend" ${variant:+"$variant"} \
+      > "$work/build.log" 2>&1 || { tail -30 "$work/build.log" >&2; exit 1; }
+    grep '^CAST_REPORT ' "$work/build.log" | cut -d' ' -f2- > "$OUT/$name/build_report.json"
+  fi
   "$PY" -I "$PIPE/lod_export.py" "$work/$name.blend" "$work/raw" > "$work/lod.log" 2>&1 \
     || { tail -30 "$work/lod.log" >&2; exit 1; }
   cp "$work/raw/lod_report.json" "$OUT/$name/"
