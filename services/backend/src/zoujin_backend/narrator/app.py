@@ -1,8 +1,9 @@
 """叙事者服务（`zoujin-narrator`）：只有网关调的内部接口，形状按以后 Cloud Run 服务间调用的样子（B-0 第 7 条第 7 步）。
 
 `POST /internal/v1/playthroughs/{pid}/run`：把这一局排着的任务按顺序做完，回 `{"processed": n}`。别的进程正在做
-这一局时直接回 0（那边做完会接着取）。调用方的身份校验（OIDC）是部署时的事：开发开关打开时不查；关着时 B-0 一律
-回 401，免得没配好就对外开着。
+这一局时直接回 0（那边做完会接着取）。调用方的身份校验（OIDC）由 Cloud Run 做（B-23）：服务只开内部入口、不许匿名，
+只有网关的服务账号有调用权限，`ZJ_NARRATOR_AUTH=iam` 表示是这样部署的。开发开关打开时不查；两样都没有一律回 401，
+免得没配好就对外开着。
 """
 
 from __future__ import annotations
@@ -57,8 +58,8 @@ def create_app(settings: Settings, narrator: Narrator | None = None) -> FastAPI:
 
     @app.post("/internal/v1/playthroughs/{pid}/run")
     async def run(request: Request, pid: str) -> Response:
-        if not settings.dev:
-            log.warning("没有开发开关，调用方的身份校验（OIDC）还没做，拒绝")
+        if not settings.dev and settings.narrator_auth != "iam":
+            log.warning("没有开发开关，也不是 ZJ_NARRATOR_AUTH=iam 的部署，拒绝")
             return JSONResponse({"error": "unauthenticated"}, status_code=401)
         done = await n.run(pid)
         return JSONResponse({"processed": len(done)})
