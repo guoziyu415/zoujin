@@ -1,0 +1,151 @@
+// The Japanese strings these screens use, copied from docs/ux/copy-ja.md by key (F-0 takes them as they are; UX's
+// copy card owns the wording). Keys stay the same as copy-ja, so a later pass can generate this file from it.
+export const copy = {
+  "login.title": "招待コード",
+  "login.lead": "お知らせした招待コードを入れてください。",
+  "login.submit": "すすむ",
+  "login.wrong": "招待コードが違うようです",
+  "login.tooMany": "少し時間をおいて、もう一度お試しください",
+  "cover.title": "走れメロス",
+  "cover.tagline": "一万人いれば、一万の結末。",
+  "cover.note.violence": "この物語には、処刑や暴力が描かれます。",
+  "cover.note.ai": "登場人物の声とことばは、AIがその場で生み出しています。",
+  "cover.note.earphones": "声で物語の人物と話します。イヤホンでどうぞ。",
+  "cover.open": "書をひらく",
+  "cover.resume": "続きから",
+  "cover.resumeMeta": "{role}として・{day}の{band}",
+  "cover.new": "新しく始める",
+  "inapp.notice": "LINEの中のブラウザでは、声で話せないことがあります。",
+  "inapp.textOnly": "このまま文字で遊ぶ",
+  "start.conflict": "続きの物語があります",
+  "start.conflict.resume": "続きから",
+  "start.conflict.new": "新しく始める",
+  "start.conflict.confirm": "いまの物語は消えます。新しく始めますか。",
+  "start.conflict.confirmYes": "新しく始める",
+  "start.dailyLimit": "今日はここまでです。{n}時間後に、また物語をひらけます。",
+  "common.cancel": "やめる",
+  "common.close": "閉じる",
+  "common.continue": "つづける",
+  "role.title": "あなたは、誰としてこの町に入りますか。",
+  "role.lead":
+    "原作にはいない、もう一人の登場人物になります。誰になるかで、出会う人と始まる場所が変わります。",
+  "role.start": "{role}として、はじめる",
+  "clock.label": "{day}・{band}",
+  "clock.delta.min": "+{n}分",
+  "clock.delta.hours": "+{n}時間",
+  "clock.delta.hoursHalf": "+{n}時間半",
+  "nearby.button": "近くの人",
+  "nearby.title": "近くの人と、調べられるもの",
+  "nearby.talk": "話しかける",
+  "nearby.examine": "調べる",
+  "nearby.empty": "近くに話せる人がいません。人の近くへ歩いてください。",
+  "talk.hold": "押して話す",
+  "talk.tap": "タップで話す",
+  "talk.listening": "聞いています",
+  "talk.slideCancel": "指を離すと取り消します",
+  "talk.tooShort": "押したまま話してください",
+  "talk.thinking": "考えています",
+  "talk.disabled": "人に近づくと話せます",
+  "talk.reconnecting": "つながり直しています",
+  "talk.end": "話を終える",
+  "talk.preparing": "準備中", // frontend-design 7.1 (not in copy-ja yet)
+  "text.open": "文字で話す",
+  "text.placeholder": "言いたいことを書く",
+  "text.send": "送る",
+  "text.backToVoice": "声に戻す",
+  "text.limit": "200字までです",
+  "primer.title": "声で話しかけますか",
+  "primer.body1": "ボタンを押しているあいだだけ、声を聞き取ります。",
+  "primer.body2":
+    "声そのものは保存しません。話したことばは文字にして、この物語のなかだけで使い、結末ができたら消します。学習には使いません。",
+  "primer.use": "マイクを使う",
+  "primer.text": "文字で話す",
+  "primer.ready": "準備ができました。ボタンを押しながら、話してください。",
+  "wait.again": "もう一度話す",
+  "wait.text": "文字で送る",
+  "retract.cancel": "取り消す",
+  "retract.redo": "言い直す",
+  "retract.tooLate": "……もう伝わってしまった。",
+  "sub.me": "あなた",
+  "sub.fromChip": "候補から",
+  "sub.source": "原作のことば",
+  "sub.transcribed": "書き起こし",
+  "sub.pending": "……",
+  "sub.failed": "（字幕を出せませんでした）",
+  "reconnect.lostTurn": "もう一度、話しかけてください。",
+  "toast.memory": "{name}は覚えた",
+  "toast.promise": "{name}と約束した",
+  "toast.aid": "{name}が、あなたのために動いた",
+  "toast.promiseKept": "約束は果たされた",
+  "toast.promiseBroken": "約束は破られた",
+  "toast.event": "物語が動いた",
+  "toast.more": "ほか{n}件",
+  "voice.degraded":
+    "ここからは文字でお話しください。人物のことばは字幕で表示します。",
+  "mic.denied": "マイクが使えません。文字で話しても、物語は最後まで進みます。",
+  "mic.denied.ios":
+    "iPhone：アドレスバーの「ぁあ」→「Webサイトの設定」→「マイク」を「許可」",
+  "mic.denied.android": "Android：鍵のアイコン →「権限」→「マイク」を「許可」",
+  "mic.unavailable":
+    "マイクがうまく動いていません。Safariを一度終了して開き直すと、直ることがあります。",
+  "mic.textContinue": "文字で続ける",
+  "mic.howto": "設定のしかた",
+  "net.reconnecting": "つながり直しています",
+  "net.lost":
+    "通信が切れました。ここまでの物語は保存されています。つながったら、同じ場面から続きます。",
+  "net.retry": "もう一度つなぐ",
+  "net.failed": "通信できませんでした。",
+  "tab.taken": "別の画面でこの物語が開かれました",
+  "tab.takeBack": "この画面で続ける",
+  "resume.tap": "タップして続ける",
+  "ending.world": "世界の結末",
+  "safety.hint": "つらいときは、話を聞いてくれる窓口があります。",
+  "safety.hint.landscape": "つらいときの相談窓口",
+  "safety.hint.open": "窓口を見る",
+  "safety.hint.close": "この知らせを閉じる",
+  "safety.panel.title": "話を聞いてくれる窓口",
+  "safety.panel.body":
+    "物語とは別に、いま誰かに話したいことがあれば、聞いてもらえます。",
+  "safety.panel.why": "物語の中の言葉でも、この知らせが出ることがあります。",
+  "safety.back": "物語に戻る",
+  "safety.pause.q": "いま、つらい気持ちを抱えていませんか。",
+  "safety.pause.body":
+    "物語は、ここで少し止めておきます。話を聞いてくれる窓口があります。",
+  "safety.pause.list": "窓口の一覧",
+  "safety.pause.why": "物語の中の言葉でも、この画面が出ることがあります。",
+} as const;
+
+// the helplines of copy-ja 13 (ux-design 14.3; UX checked them with each operator 2026-10-10, again before launch).
+// Chat before phone (the players are 18-34 with earphones in); the number is also text, selectable, unbroken.
+export const helplines = [
+  {
+    name: "あなたのいばしょ",
+    how: "チャット・24時間",
+    button: "チャットで話す",
+    href: "https://talkme.jp/",
+  },
+  {
+    name: "#いのちSOS",
+    how: "電話・24時間・無料",
+    number: "0120-061-338",
+    button: "電話する",
+    href: "tel:0120061338",
+  },
+  {
+    name: "まもろうよ こころ",
+    how: "厚生労働省・ほかの電話とSNSの窓口",
+    button: "一覧を見る",
+    href: "https://www.mhlw.go.jp/mamorouyokokoro/",
+  },
+] as const;
+
+export type CopyKey = keyof typeof copy;
+
+// {name} → the value; unknown placeholders stay as they are
+export const fill = (
+  s: string,
+  vars: Record<string, string | number>,
+): string =>
+  s.replace(/\{(\w+)\}/g, (all, k: string) =>
+    k in vars ? String(vars[k]) : all,
+  );

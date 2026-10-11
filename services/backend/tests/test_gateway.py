@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import os
 import signal
@@ -535,7 +536,8 @@ def test_cut_in_while_the_character_speaks(env: Env, slow: Services) -> None:
 
 
 def test_disconnect_while_speaking_leaves_the_turn_lost(env: Env, slow: Services) -> None:
-    """人物还没说完就断线：这一轮不交给叙事者，重连时 lastTurn.status = lost（第 4 节）。"""
+    """人物还没说完就断线：这一轮不交给叙事者，重连时 lastTurn.status = lost（第 4 节）。
+    断了马上重连也一样：hello 先等旧连接把这一轮写下来，不会拿上一轮当 lastTurn、让前端重发（#100 评审）。"""
     p = Player(slow.base)
     p.login(invite(env))
     try:
@@ -547,21 +549,77 @@ def test_disconnect_while_speaking_leaves_the_turn_lost(env: Env, slow: Services
         p.expect("transcript", turnId=t, speaker=OLD, final=False)
         assert p.ws is not None
         p.ws.close()
-        deadline = time.monotonic() + 10
-        while True:  # 网关处理断线、写下这一轮要一点时间
-            p.log, p.pos = [], 0
-            p.connect(last_seq=p.last_seq)
-            last = p.expect("welcome")["lastTurn"]
-            if last is not None or time.monotonic() > deadline:
-                break
-            assert p.ws is not None
-            p.ws.close()
-            time.sleep(0.2)
+        p.log, p.pos = [], 0
+        p.connect(last_seq=p.last_seq)  # 不等：网关这时可能还没处理完断线
+        last = p.expect("welcome")["lastTurn"]
         assert last is not None and last["turnId"] == t and last["status"] == "lost"
         assert last["playerText"] == "こんばんは。"
         p.send({"type": "ping"})
         p.expect("pong")
         assert not [m for m in p.log if m.get("turnId") == t]  # 没有 commit、turn_settled
+    finally:
+        p.close()
+
+
+def test_reconnect_while_the_old_connection_is_still_open_sees_the_lost_turn(env: Env, slow: Services) -> None:
+    """换了网络、服务端还没发现旧连接断了，前端就连上来：新连接踢掉旧的（4009），hello 等旧连接把人物没说完的
+    那一轮写成 lost 再回 welcome。lastTurn 不能是上一轮，否则前端照规矩重发，人物答两次（#100 评审）。"""
+    p = Player(slow.base)
+    p.login(invite(env))
+    try:
+        p.start()
+        p.connect(last_seq=p.last_seq)
+        p.expect("welcome")
+        p.focus(OLD)
+        first = p.text("こんばんは。")
+        p.expect("turn_settled", turnId=first, timeout=30)
+        t = p.text("待ってください。")
+        p.expect("transcript", turnId=t, speaker=OLD, final=False)
+        old = p.ws
+        assert old is not None
+        p.log, p.pos = [], 0
+        p.connect(last_seq=p.last_seq)
+        last = p.expect("welcome")["lastTurn"]
+        assert last is not None and last["turnId"] == t and last["status"] == "lost", last
+        p.send({"type": "ping"})
+        p.expect("pong")
+        assert not [m for m in p.log if m.get("turnId") == t]
+        with contextlib.suppress(Exception):
+            old.close()
+    finally:
+        p.close()
+
+
+def test_reconnect_while_the_player_is_still_holding_sees_the_lost_turn(env: Env, slow: Services) -> None:
+    """玩家按着说话键时断了线（没有 activity_end）：这一轮也记成 lost，重连的 lastTurn 是它，前端才会让人物说
+    「もう一度」；它不交给叙事者，不会有 turn_settled（#109 评审）。"""
+    p = Player(slow.base)
+    p.login(invite(env))
+    try:
+        p.start()
+        p.connect(last_seq=p.last_seq)
+        p.expect("welcome")
+        p.focus(OLD)
+        first = p.text("こんばんは。")
+        p.expect("turn_settled", turnId=first, timeout=30)
+        t, seq = p.turn_id(), p.seq + 1
+        p.seq = seq
+        p.send({"type": "activity_start", "turnId": t, "turnSeq": seq})
+        old = p.ws
+        assert old is not None
+        for _ in range(3):
+            old.send(bytes([0x01]) + seq.to_bytes(4, "big") + bytes(1280))
+        p.send({"type": "ping"})
+        p.expect("pong")
+        p.log, p.pos = [], 0
+        p.connect(last_seq=p.last_seq)
+        last = p.expect("welcome")["lastTurn"]
+        assert last is not None and last["turnId"] == t and last["status"] == "lost", last
+        p.send({"type": "ping"})
+        p.expect("pong")
+        assert not [m for m in p.log if m.get("turnId") == t]
+        with contextlib.suppress(Exception):
+            old.close()
     finally:
         p.close()
 

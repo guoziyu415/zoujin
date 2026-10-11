@@ -744,6 +744,12 @@ def main():
         warn(f"{rid}: 第二版的身份名「{role_names[rid][0]}」在世界模型里还指别的（{len(paths)} 处，例 {paths[0]}），"
              f"开放第二版前给这个身份另起名（contracts 2.7）")
 
+    # 名字原样给玩家看（事件句、manifest），不带写世界模型时的括号注释（1.8 补注：「警吏（巡邏・刑吏）」→「城の警吏」）
+    for sec in ("characters", "places", "roles", "items", "objects"):
+        for x in world.get(sec, []):
+            if re.search(r"[（）()［］\[\]【】「」『』]", x.get("name", "")):
+                err(f"{x['id']}: 名字「{x['name']}」带括号。名字原样进事件句和 manifest，注释写进 note（contracts 2.7）")
+
     # ---------- 可调查物（contracts 2.12，1.7） ----------
     objects = {x["id"]: x for x in world.get("objects", [])}
     for ob in objects.values():

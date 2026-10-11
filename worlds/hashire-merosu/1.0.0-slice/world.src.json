@@ -2222,8 +2222,8 @@
   },
   {
    "id": "char.guards",
-   "name": "警吏（巡邏・刑吏）",
-   "reading": "けいり（じゅんら・けいり）",
+   "name": "城の警吏",
+   "reading": "しろのけいり",
    "summary": "王城を巡邏する役人たち。王の命令で人を捕らえ、刑場で磔を執り行う。",
    "traits": [
     {
@@ -2556,7 +2556,7 @@
      "q": "猛勢一挙に橋を破壊し"
     }
    ],
-   "sceneRef": "scene.homeward-road"
+   "sceneRef": "scene.road-river"
   },
   {
    "id": "place.mountain-pass",
@@ -2579,7 +2579,7 @@
      "q": "ぜいぜい荒い呼吸をしながら峠をのぼり"
     }
    ],
-   "sceneRef": "scene.homeward-road"
+   "sceneRef": "scene.road-pass"
   },
   {
    "id": "place.spring",
@@ -2605,7 +2605,7 @@
      "q": "岩の裂目から滾々と、何か小さく囁きながら清水が湧き出ているのである。"
     }
    ],
-   "sceneRef": "scene.homeward-road"
+   "sceneRef": "scene.road-spring"
   },
   {
    "id": "place.road-to-city",
@@ -2628,7 +2628,7 @@
      "q": "はるか向うに小さく、シラクスの市の塔楼が見える。"
     }
    ],
-   "sceneRef": "scene.homeward-road"
+   "sceneRef": "scene.road-field"
   },
   {
    "id": "place.syracuse-square",
@@ -5281,11 +5281,32 @@
    "note": "家、婚礼の祭壇、羊小屋、花婿の家。"
   },
   {
-   "id": "scene.homeward-road",
-   "name": "帰り道",
+   "id": "scene.road-river",
+   "name": "帰り道・川と橋",
    "release": 1,
    "inferred": true,
-   "note": "川と橋、峠、泉、市へ続く道を一つの場面にまとめる。第二幕（夜）は橋が残り、第四幕は流されている。"
+   "note": "第二幕（夜明け）は橋が残り、第四幕は流されている（var.bridge）。前端は状態で二つの包を使い分ける（S-081 ④）。帰り道は停留点ごとに一つの場面：場面の間は adjacent の歩行分で移る（S-081 ②）"
+  },
+  {
+   "id": "scene.road-pass",
+   "name": "帰り道・峠",
+   "release": 1,
+   "inferred": true,
+   "note": "第四幕の停留点。第二幕は夜道の一部として通る（S-081）"
+  },
+  {
+   "id": "scene.road-spring",
+   "name": "帰り道・泉",
+   "release": 1,
+   "inferred": true,
+   "note": "第四幕の停留点、第二幕の夜道の起点（S-081）"
+  },
+  {
+   "id": "scene.road-field",
+   "name": "帰り道・市へ続く野の道",
+   "release": 1,
+   "inferred": true,
+   "note": "停留点ではなく、二人で走る区間（S-081 ②）"
   }
  ],
  "acts": [
@@ -5419,7 +5440,10 @@
     "atLatest": 2280
    },
    "scenes": [
-    "scene.homeward-road",
+    "scene.road-spring",
+    "scene.road-pass",
+    "scene.road-river",
+    "scene.road-field",
     "scene.syracuse-square",
     "scene.castle-throne"
    ],
