@@ -1,9 +1,9 @@
-# 前后端接口约定（api-contract.md）v1.0.12
+# 前后端接口约定（api-contract.md）v1.0.13
 
-负责人：后端 · 状态：**v1.0.12，冻结**（v1.0 在 C-1 冻结；v1.0.1 把 C-1 评审定下的写进正文；v1.0.2 把 B-1 评审定下的几处顺序写进正文；v1.0.3 把 B-0、F-2b 评审和 S-077 ⑫ 定下的写进正文；v1.0.4 把数据契约 1.7 里前端要拿到的几样加进接口；v1.0.5 按 B-3 卡放宽三处 Schema、补一条错误说明；v1.0.6 按 UX 定的文案改下发的事件句和一句叙事，不改形状；v1.0.7 按 B-4 卡写明作废、意图确认的顺序和评测入口的三项，不改形状；v1.0.8 按 B-6 写明录音文件的格式，不改形状；v1.0.9 按 B-7 写明 manifest 的缓存和生成规则、开局时次数和进行中的局谁先查，会话没就绪时缓存整段按住的音频，不改形状；v1.0.10 按 B-9 写明切片结局的取法、推送顺序和站位，不改形状；v1.0.12 写明重连时补推断线期间做完的幕切换，不改形状；v1.0.11 按 B-5 写明模拟局的起点、AI 玩家看的 `view()` 和 `manifest()`、每一步的耗时，只动评测入口）：之后只做加法（第 0 节「版本」），每种消息和响应的 JSON Schema 在 `packages/contracts/schemas/api/`。v0.3 吸收了前端评审 17 条（`frontend/reviews/backend-v0.1.md` 和 frontend-design 第 14 节 1〜17）、数据评审 16 条（`data/reviews/backend-v0.1.md`）、ux-design 18.2 的接口要求，以及 decisions S-022〜S-053、D-012〜D-015。v0.3.2 和数据契约 v1.2 对齐。逐条对照见第 9 节。
+负责人：后端 · 状态：**v1.0.13，冻结**（v1.0 在 C-1 冻结；v1.0.1 把 C-1 评审定下的写进正文；v1.0.2 把 B-1 评审定下的几处顺序写进正文；v1.0.3 把 B-0、F-2b 评审和 S-077 ⑫ 定下的写进正文；v1.0.4 把数据契约 1.7 里前端要拿到的几样加进接口；v1.0.5 按 B-3 卡放宽三处 Schema、补一条错误说明；v1.0.6 按 UX 定的文案改下发的事件句和一句叙事，不改形状；v1.0.7 按 B-4 卡写明作废、意图确认的顺序和评测入口的三项，不改形状；v1.0.8 按 B-6 写明录音文件的格式，不改形状；v1.0.9 按 B-7 写明 manifest 的缓存和生成规则、开局时次数和进行中的局谁先查，会话没就绪时缓存整段按住的音频，不改形状；v1.0.10 按 B-9 写明切片结局的取法、推送顺序和站位，不改形状；v1.0.12 写明重连时补推断线期间做完的幕切换，不改形状；v1.0.11 按 B-5 写明模拟局的起点、AI 玩家看的 `view()` 和 `manifest()`、每一步的耗时，只动评测入口；v1.0.13 按 B-9 的 Mac 探针把 `etaSeconds` 的起算从 30 秒改成 15 秒，不改形状）：之后只做加法（第 0 节「版本」），每种消息和响应的 JSON Schema 在 `packages/contracts/schemas/api/`。v0.3 吸收了前端评审 17 条（`frontend/reviews/backend-v0.1.md` 和 frontend-design 第 14 节 1〜17）、数据评审 16 条（`data/reviews/backend-v0.1.md`）、ux-design 18.2 的接口要求，以及 decisions S-022〜S-053、D-012〜D-015。v0.3.2 和数据契约 v1.2 对齐。逐条对照见第 9 节。
 数据字段以 `data/contracts.md` 为准（v1.7；标「契约 1.1」「契约 1.2」「契约 1.4」的字段是这几个小版本加的；1.3 加的随身物品不进接口，物品只出现在 `give` 类按钮上；1.6 的结局卡见 2.8；1.7 的位置点、幕末副题和落地、固定演出、可调查物见 2.3、3.8、3.11、3.14），本文只定义传输形状。字段名 camelCase；WebSocket 消息类型 snake_case。
 相关：`backend/backend-design.md` v1.0.9（为什么这么设计）· `frontend/frontend-design.md` · `ux/ux-design.md`
-最近更新：2026-10-11（v1.0.12）
+最近更新：2026-10-11（v1.0.13）
 
 ---
 
@@ -265,7 +265,7 @@
 - `sessionRebuilt: true`：这个人物的语音会话被重建，WebSocket 上先收到 `session_preparing { reason: "rebuild" }`，约 1 秒后 `session_ready`。
 
 ### 2.8 结局
-`GET /v1/playthroughs/{id}/ending` → 结局还没开始（还没有 `ending_started`）时 `404 not_found`；开始了、还没生成时 `202 { "status": "pending", "etaSeconds": 10 }`（`etaSeconds` = 30 减去从 `ending_started` 起已经过的秒数，最少 5）；生成后 `200`；别人的局 `403`：
+`GET /v1/playthroughs/{id}/ending` → 结局还没开始（还没有 `ending_started`）时 `404 not_found`；开始了、还没生成时 `202 { "status": "pending", "etaSeconds": 10 }`（`etaSeconds` = 15 减去从 `ending_started` 起已经过的秒数，最少 5）；生成后 `200`；别人的局 `403`：
 ```json
 {
   "endingId": "end_…",
@@ -858,6 +858,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 
 ## 修订记录
 
+- v1.0.13（2026-10-11）：传输形状和 Schema 都不变，2.8 的 `etaSeconds` 从「30 减去已经过的秒数」改成「15 减去」，最少还是 5。B-9 验收第 13 条的 Mac 探针（切片两条结局路各 10 次）：一次生成全部 p95 约 10 秒、最长约 11 秒；服务端一次调用的时限跟着从 30 秒改成 20 秒（backend-design 2.9）。
 - v1.0.12（2026-10-11）：传输形状和 Schema 都不变，写明重连时补推断线期间做完的幕切换（3.11、第 4 节，前端 3 的 F-12 评审）：最后一次提交是幕切换、`hello.lastSeq` 不晚于它时，补发的 `commit` 后面再推一次那次的 `act_transition`（打算成行的连同 `act_plan_result`）；前端只在幕末页还在等时用。以前断线期间做完的幕切换不补推，选了去处就断线的玩家会一直停在幕末页。v1.0.9 是 B-7（#114），v1.0.10 是 B-9（#124），v1.0.11 是 B-5（#117）。
 - v1.0.11（2026-10-11）：只动第 7 节的评测入口，网关和前端看到的形状都不变，按 B-5 卡（#99），和 B-5 的代码同一个 PR（v1.0.10 是 B-9 的结局，那边的 PR 写）：`persona` + `seed` 的起点就是正式开局（不用 `opening()` 推演），`persona` 只进 Trace，`seed` 给假模型，不和 `checkpoint`、`scenario`、`events` 一起给；AI 玩家看的 `view()`、`manifest()`；每一步的 `elapsedMs`；模拟局到 `view().snapshot.status = "ended"` 为止；评测的一局里记的账带 `playthroughId`。
 - v1.0.10（2026-10-11）：传输形状和 Schema 都不变，按 B-9 卡（#97）把切片结局写进正文，和 B-9 的代码同一个 PR 改：2.8 写明 `etaSeconds` 的算法、`fallbackImageUrl` 的固定地址、`characters` 按 `endings.characters` 列、`card.subtitle` 是世界的去向（例子跟着改）、切片的简化排序；3.13 的例子按站位表改（日没时梅洛斯没到是 `absent`），写明 `state` 是「从哪到哪」、触发那一次的推送顺序（`ending_started` 在 `commit` 前面，收幕的 `set_piece` 算进演出）、结局开始以后不收输入、人物这一句说完再关 Live、重连时补推。
