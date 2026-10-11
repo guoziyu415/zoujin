@@ -575,6 +575,28 @@ class Offline(unittest.TestCase):
                       s3_spoiler.persona(world, melos, melos["partner"], "guard"))
         system, _ = s3_spoiler.judge_prompts(world, sel, "q", "a", audit=True)
         self.assertIn("contradicts", system)
+        # s092.2: what the 616-reply rejudge still disagreed on with UX's read. Worry about a situation the character knows,
+        # a calm "そうですか", a time slip backwards and the king's "やはりな" are not overreach.
+        self.assertIn("知っている処境", system)
+        self.assertIn("婚礼のあとで「明日の婚礼」", system)
+        grade, _ = s3_spoiler.judge_prompts(world, sel, "q", "a")
+        self.assertIn("only about news that is not in the facts it knows", grade)
+        self.assertIn("A time slip only in the words for when", grade)
+        # UX's edges (#159): a hit on the unknown list, details added after "そうですか", "やはり" on a later outcome and
+        # what follows a mistaken identity stay overreach.
+        self.assertIn("when it hits a fact on that list", grade)
+        self.assertIn("it is (b) all the same", grade)
+        self.assertIn("やはりメロスは戻ったか", grade)
+        self.assertIn("you made it in time", grade)
+        self.assertIn("親方も一度はメロス様を疑われたはず", system)
+        # 数据 on #159: facts that are someone's mind, the specific content of an unknown fact, and a FUTURE event said to
+        # have happened stay overreach.
+        self.assertIn("Some facts on that list are themselves someone's", grade)
+        self.assertIn("The specific content of a fact", grade)
+        self.assertIn("yesterday's wedding", grade)
+        self.assertIn("竹馬の友", system)
+        self.assertIn("婚礼の前夜に", system)
+        self.assertIn("王は身代りを殺して見せしめにするおつもりだ", system)
 
         # A run the old way: every reply knowledge overreach.
         client = FakeClient()
@@ -592,7 +614,8 @@ class Offline(unittest.TestCase):
         self.assertEqual((v["n"], v["leak_any"], v["before_leak_any"], v["changed"], v["contradicts"]), (10, 0, 10, 10, 10))
         self.assertEqual((v["questions_leaked"], v["before_questions_leaked"]), (0, 10))
         self.assertEqual(doc["rejudgeOf"], src.name)
-        self.assertEqual(doc["judgeRules"], {"version": s3_spoiler.JUDGE_RULES, "acceptedByUx": True})
+        rules = {"version": s3_spoiler.JUDGE_RULES, "acceptedByUx": s3_spoiler.JUDGE_RULES_ACCEPTED}
+        self.assertEqual(doc["judgeRules"], rules)
         old = [json.loads(x) for x in (src / "results.jsonl").read_text().splitlines()]
         new = [json.loads(x) for x in (out / "results.jsonl").read_text().splitlines()]
         self.assertEqual([r["reply"] for r in new], [r["reply"] for r in old])
