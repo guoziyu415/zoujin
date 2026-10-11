@@ -53,7 +53,7 @@ export function CameraRig({ blockers }: { blockers: Object3D[] }) {
     const dt = Math.min(0.05, dtRaw);
     const cam = camera as PerspectiveCamera;
     const portrait = size.height >= size.width;
-    const fixed = rig.fixedView ?? rig.opening;
+    const fixed = rig.fixedView ?? rig.stage ?? rig.opening;
     if (fixed !== tmp.lastFixed) {
       // a fixed shot starts or ends: the test hook's views, the first screen giving way to the follow view
       tmp.lastFixed = fixed;
@@ -65,8 +65,8 @@ export function CameraRig({ blockers }: { blockers: Object3D[] }) {
       setFov(cam, fixed.fov);
       tmp.cur.copy(cam.position);
       tmp.curLook.set(...fixed.to);
-      tmp.first = !!rig.fixedView; // the test hook's views cut back; the first screen glides
-      tmp.opening = !rig.fixedView;
+      tmp.first = fixed !== rig.opening; // the test hook's views and the ending's shots cut back; the first screen glides
+      tmp.opening = fixed === rig.opening;
       return;
     }
     const still = reducedMotion();
