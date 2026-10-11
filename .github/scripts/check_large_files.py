@@ -1,6 +1,7 @@
 """不在 LFS 里的文件超过 1 MB 就红（dev-plan 2.4）。锁文件除外。
 
-美术大文件按 .gitattributes 走 LFS；有人绕过 LFS 直接提交大文件时，这里拦住。
+美术大文件按 .gitattributes 走 LFS；有人绕过 LFS 直接提交大文件时，这里拦住。预录音频（assets/voice/）走普通 git
+（S-084），同样受 1 MB 管着。
 匹配 LFS 规则的路径，进 git 的必须是 LFS 指针：没装 git-lfs 的地方提交 glb，会当普通文件进 git（S-075 ③）。
 """
 
@@ -58,6 +59,10 @@ def main() -> int:
         if size > LIMIT:
             big.append((p, size))
     for p, size in big:
+        if p.startswith("assets/voice/"):
+            # 预录音频走普通 git（S-084），一条应该只有几十 KB：超过 1 MB 多半是没转 AAC（WAV 原样进来了）
+            print(f"{p}: {size / LIMIT:.1f} MB。预录音频不走 LFS，要用 zoujin-voice 转好的 .m4a（每条远小于 1 MB）")
+            continue
         print(f"{p}: {size / LIMIT:.1f} MB，不在 LFS 里（超过 1 MB 的美术和音频文件要按 .gitattributes 走 LFS）")
     if big or raw:
         return 1

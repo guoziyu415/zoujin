@@ -1065,6 +1065,14 @@
      "since": "beat.06"
     },
     {
+     "fact": "fact.melos-errand",
+     "since": "beat.06"
+    },
+    {
+     "fact": "fact.melos-dagger",
+     "since": "beat.06"
+    },
+    {
      "fact": "fact.selinuntius-doubted-once",
      "since": "beat.s2"
     },
@@ -1309,6 +1317,10 @@
     },
     {
      "fact": "fact.sister-engaged",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.melos-errand",
      "since": "pre"
     },
     {
