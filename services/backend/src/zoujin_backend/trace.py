@@ -49,6 +49,10 @@ ATTRS = frozenset(
         "by",
         "result",
         "nth",
+        "trigger",  # B-9：结局的触发、分类、走没走模板、调了几次
+        "outcome",
+        "template",
+        "calls",
     }
 )
 
@@ -80,7 +84,7 @@ class Tracer:
         try:
             yield s
         finally:
-            s.set(duration_ms=round((time.perf_counter() - start) * 1000, 1))
+            s.attrs.setdefault("duration_ms", round((time.perf_counter() - start) * 1000, 1))  # 记事的 Span 自己给耗时
             self.spans.append(s)
             del self.spans[: -self.keep]
             log.info("%s %s", name, json.dumps(s.attrs, ensure_ascii=False, sort_keys=True))

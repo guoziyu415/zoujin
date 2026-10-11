@@ -10,7 +10,8 @@
   起点的事件和 world_state，之后的步骤走和网关同一个叙事者（`Narrator.run`）。
 - 做了的：setup 的 `role`、`place`、`budgetTier`（只记下）、`scenario`、`checkpoint`、`events`；步骤 `say`（人物用文字
   回答，再走叙事者整条流水线，B-2）、`advance`；`act`、`propose`、`choose`（B-3：和 WebSocket 同一条路，写任务、
-  叫叙事者）；`check`（第 3 步 + 按 `model_checks` 跑第 4 步，不改写、不提交）；查询 `state()`、`events()`。
+  叫叙事者）；`check`（第 3 步 + 按 `model_checks` 跑第 4 步，不改写、不提交）；查询 `state()`、`events()`；
+  B-9：`ending()`（还没进结局返回 None）；情景推到收幕的 setup 起点就进结局，结局任务在 setup 里同步跑完。
   检查点停在这一幕的收幕节拍上（例 `sc.canon@beat.07`）时，setup 之后就是幕末待选。
 - B-4：`say(hold=True)` 只写这一轮、拿人物的回答，返回 `held: true`、没有事件（作废的窗口还开着）；下一次调用（任何
   步骤或查询）开始时先让叙事者提交它，事件算在那一次里。`retract(n)` 作废还 hold 着的第 n 步（`retracted`），
@@ -36,7 +37,7 @@ from functools import cache
 from pathlib import Path
 from typing import Any, NoReturn
 
-from sqlalchemy import insert, select, update
+from sqlalchemy import func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
 from zoujin_worldsim import Opened, SimState, initial_state, opening, parse_checkpoint, world_state
@@ -44,12 +45,12 @@ from zoujin_worldsim import Opened, SimState, initial_state, opening, parse_chec
 from zoujin_backend.config import Settings
 from zoujin_backend.db import store
 from zoujin_backend.db.events import recorded_at, to_row
+from zoujin_backend.db.tables import endings, playthrough_metrics, playthroughs, users, utterances
 from zoujin_backend.db.tables import events as events_t
-from zoujin_backend.db.tables import playthrough_metrics, playthroughs, users, utterances
 from zoujin_backend.db.tables import world_state as world_state_t
 from zoujin_backend.ids import IdGen
 from zoujin_backend.models.text import BudgetStop, RateLimited, ReplayMissing, TextModel, text_model
-from zoujin_backend.narrator import acts
+from zoujin_backend.narrator import acts, ending
 from zoujin_backend.narrator.core import Narrator, Result
 from zoujin_backend.narrator.pipeline import CallFailed, Pipeline, Spend, TurnInput
 from zoujin_backend.narrator.writer import Writer, act_closed
@@ -183,6 +184,9 @@ class Session:
                     now=recorded_at(),
                 )
                 play_setup(w, _scenarios(self._world_dir()), self.setup_doc)
+                trigger = ending.closed(self.book, w.state)
+                if trigger is not None:  # 情景模式一口气推到了收幕（B-9 第 11 条）：起点就进结局，和叙事者提交时一样
+                    w.ending = ending.enter(w, self.book, trigger)
                 for ev in w.events:
                     self.schemas.event(ev)
                 if w.events:
@@ -195,6 +199,20 @@ class Session:
                     .where(playthroughs.c.playthrough_id == self.pid)
                     .values(last_seq=w.state["seq"], act_end=setup_act_end(self.book, w, self.setup_doc))
                 )
+                if w.ending is not None:
+                    await c.execute(
+                        update(playthroughs)
+                        .where(playthroughs.c.playthrough_id == self.pid)
+                        .values(status="ended", ended_at=func.now())
+                    )
+                    await c.execute(
+                        update(playthrough_metrics)
+                        .where(playthrough_metrics.c.playthrough_id == self.pid)
+                        .values(ending_started_at=func.now())
+                    )
+                    await store.enqueue(c, self.ids, self.pid, kind=ending.KIND, request=w.ending["request"])
+            if w.ending is not None:  # 结局任务在 setup 里同步跑完
+                await self._narrator(engine).run(self.pid)
         finally:
             await engine.dispose()
 
@@ -587,7 +605,19 @@ class Session:
         self._no("db_absent")
 
     def ending(self) -> Json:
-        self._no("ending")
+        """B-9：存的 Ending（数据契约第 5 节的完整形状，含 `signature`）；还没进结局（或结局任务还没做完）返回 None。
+        结局任务和别的任务一样，在触发它的那一步里同步跑完。"""
+        _run(self._flush())
+        return _run(self._ending())
+
+    async def _ending(self) -> Json:
+        engine = self._engine()
+        try:
+            async with engine.connect() as c:
+                body = await c.scalar(select(endings.c.body).where(endings.c.playthrough_id == self.pid))
+        finally:
+            await engine.dispose()
+        return copy.deepcopy(body) if body is not None else None
 
 
 def play_setup(w: Writer, scenarios: Mapping[str, Json], setup: Mapping[str, Json]) -> None:

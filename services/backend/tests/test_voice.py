@@ -348,7 +348,11 @@ def test_heard_as_accepts_a_known_transcript_spelling_for_that_line_only() -> No
     assert r.heard_as == ("ちょっと、待ってくだされ。",)
     heard = "ちょっと 待っ て くださ れ 。"
     assert checks.judge(text, {1: (shape(1.8), heard)}, aizuchi=False).chosen is None
-    assert checks.judge(text, {1: (shape(1.8), heard)}, aizuchi=False, heard_as=r.heard_as).chosen == 1
+    v = checks.judge(text, {1: (shape(1.8), heard)}, aizuchi=False, heard_as=r.heard_as)
+    assert v.chosen == 1 and v.takes[0].heard_as
+    assert [f for f in v.flags if "heardAs" in f]  # 只靠 heardAs 过的那遍在 audit.md 标出来（UX）
+    ok = checks.judge(text, {1: (shape(1.8), "ちと、待って くだされ。")}, aizuchi=False, heard_as=r.heard_as)
+    assert ok.chosen == 1 and not ok.takes[0].heard_as and not ok.flags
     assert slice_plan().recording("old-man-unheard-1").heard_as == ()
     spec = read_spec("hashire-merosu")
     spec["heardAs"] = {"ないせりふ。": ["x"]}

@@ -122,6 +122,7 @@ class TakeCheck:
     soft: list[str] = field(default_factory=list)  # 不扔、标给 UX 的（相槌只在字错率上不过、开头就有声）
     talk: str | None = None  # 和自由对话比的音高、语速（要比的句子才有）
     talk_off: float = 0.0  # 离范围多远：两样各除以允许的差取大的，≤ 1 在范围里
+    heard_as: bool = False  # 字错率只靠源文件 heardAs 的写法才过（对原文和读音替换后的都不过）
 
     @property
     def ok(self) -> bool:
@@ -184,8 +185,10 @@ def judge(
             c.problems.append("没有补转写")
         else:
             refs = [text] if not spoken or spoken == text else [text, spoken]  # 补转写可能写汉字也可能写假名
+            plain = min(cer(r, heard) for r in refs)
             refs += heard_as  # 源文件 heardAs：补转写固定写错的（「ちと」写成「ちょっと」），只对这一句
             c.cer = min(cer(r, heard) for r in refs)
+            c.heard_as = plain > MAX_CER >= c.cer
             if any(read_twice(r, heard) for r in refs):
                 c.problems.append("补转写里原文出现两遍（读两遍）")
             elif c.cer > MAX_CER:
@@ -205,6 +208,8 @@ def judge(
     if chosen is not None:
         pick = next(c for c in checks if c.take == chosen)
         flags = [f"相槌{why}，不扔，请听一下" for why in pick.soft]
+        if pick.heard_as:
+            flags.append(f"补转写「{pick.transcript}」只对上 heardAs 的写法才过，请听一下读的是不是原文")
         if pick.talk_off > 1:
             flags.append(f"和自由对话比 {pick.talk}，过了的几遍都不在范围里，挑了最近的一遍，请听一下")
     return Verdict(checks, median, (round(lo, 2), round(hi, 2)), chosen, flags)
