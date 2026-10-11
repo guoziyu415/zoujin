@@ -91,6 +91,16 @@ EOF
   source "$CONFIG"
   ZJ_CLAUDE_HAIKU="${ZJ_CLAUDE_HAIKU:-$haiku}"
   ZJ_CLAUDE_SONNET="${ZJ_CLAUDE_SONNET:-$sonnet}"
+  # export 进来的模型 ID 记进设置文件，以后单独跑 up 不用再 export
+  local k v
+  for k in ZJ_CLAUDE_HAIKU ZJ_CLAUDE_SONNET; do
+    v="${!k}"
+    if [[ -n "$v" ]] && grep -qx "$k=" "$CONFIG"; then
+      awk -v k="$k" -v v="$v" '$0 == k "=" { print k "=" v; next } { print }' "$CONFIG" >"$CONFIG.tmp" &&
+        mv "$CONFIG.tmp" "$CONFIG"
+      echo "把 $k 记进了 $CONFIG"
+    fi
+  done
   # shellcheck disable=SC1090
   [[ -f "$STATE_ENV" ]] && source "$STATE_ENV"
   GW="${GW:-}" NR="${NR:-}" SQL="${SQL:-}" IMAGE="${IMAGE:-}" OPENED="${OPENED:-}"
@@ -328,6 +338,9 @@ cmd_up() {
     --env-vars-file="$STATE/env-narrator.yaml" \
     --set-secrets="DATABASE_URL=$SEC_NR:latest,ANTHROPIC_API_KEY=$SEC_CLAUDE:latest" \
     --cpu=1 --memory=1Gi --concurrency=40 --min-instances=0 --max-instances=3 --timeout=300 --cpu-boost
+  local fresh=0 # 网关调叙事者的权限是这次新加的：IAM 要一两分钟才生效，生效前叙事者回 403、开局 500
+  gcloud run services get-iam-policy "$NR" --region="$REGION" "${PA[@]}" --format=json 2>/dev/null |
+    grep -q "serviceAccount:$SA_GW_EMAIL" || fresh=1
   run gcloud run services add-iam-policy-binding "$NR" --region="$REGION" "${PA[@]}" \
     --member="serviceAccount:$SA_GW_EMAIL" --role=roles/run.invoker
   # 候选网关调叙事者的正式地址（还是上一个版本）；promote 两个一起切，再冒烟一次
@@ -347,7 +360,9 @@ cmd_up() {
   url="$(tag_url "$GW")"
   url="${url:-$(url_of "$GW")}"
   [[ -n "$OPENED" ]] || bearer="$(gcloud auth print-identity-token)" # 还是私有服务：带 zg 的身份过 IAM
-  smoke smoke "$url" "$bearer" ||
+  if [[ $fresh -eq 1 ]]; then say "等调用权限生效（90 秒）"; sleep 90; fi
+  # 再不过等一分钟重试一次（两次各开一局，promote 再一局，一天 5 局够用）
+  smoke smoke "$url" "$bearer" || { say "冒烟没过，一分钟后重试一次"; sleep 60; smoke smoke "$url" "$bearer"; } ||
     die "冒烟没过：新版本没接流量（或服务还是私有的），线上不受影响；修好再跑 all（是 429 次数用完就先跑 migrate 换冒烟账号）"
   save CANDIDATE "$IMAGE"
   say "up 完成：下一步 promote"
