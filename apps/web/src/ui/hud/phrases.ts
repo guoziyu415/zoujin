@@ -1,15 +1,28 @@
 // Japanese text broken only between phrases (UX R1): 指を離すと / 取り消します, never 準備していま / す; the talk key,
 // the subtitles. A phrase starts at each word that begins with a kanji or katakana; the words after it (particles,
 // endings) stay with it. word-break: auto-phrase does this in Chrome but not in Safari, hence by hand.
-const SEGMENTER = new Intl.Segmenter("ja", { granularity: "word" });
+const SEGMENTER =
+  typeof Intl.Segmenter === "function"
+    ? new Intl.Segmenter("ja", { granularity: "word" })
+    : null;
 const CONTENT = /^[\p{Script=Han}\p{Script=Katakana}]/u;
+// without Intl.Segmenter (Safari before 14.1, Firefox before 125): runs of kanji / katakana and of everything else
+// (no dictionary there: a compound verb breaks in two, 取り / 消します; the kana after a kanji stay with it)
+const RUNS =
+  /[\p{Script=Han}\p{Script=Katakana}ー]+|[^\p{Script=Han}\p{Script=Katakana}ー]+/gu;
+
+function words(text: string): string[] {
+  return SEGMENTER
+    ? [...SEGMENTER.segment(text)].map((s) => s.segment)
+    : (text.match(RUNS) ?? []);
+}
 const KANJI = /\p{Script=Han}/u;
 const KANA = /\p{Script=Hiragana}/u;
 
 // max: a phrase longer than this is broken once more where its kanji give way to kana (準備 / しています)
 export function phrases(text: string, max = Infinity): string[] {
   const out: string[] = [];
-  for (const { segment } of SEGMENTER.segment(text)) {
+  for (const segment of words(text)) {
     if (!out.length || CONTENT.test(segment)) out.push(segment);
     else out[out.length - 1] += segment;
   }

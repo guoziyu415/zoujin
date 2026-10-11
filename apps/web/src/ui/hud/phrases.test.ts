@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { keyFontPx, phrases } from "./phrases";
 
 describe("the talk key's phrases", () => {
@@ -31,5 +31,31 @@ describe("the talk key's phrases", () => {
     expect(keyFontPx(phrases("聞いています", 6))).toBeUndefined();
     expect(keyFontPx(phrases("準備しています", 6))).toBeUndefined();
     expect(keyFontPx(["ひとつながりの言葉"])).toBe(11);
+  });
+});
+
+describe("without Intl.Segmenter (older Safari and Firefox)", () => {
+  it("still breaks only before kanji and katakana, never inside the kana after them", async () => {
+    vi.resetModules();
+    vi.stubGlobal("Intl", { ...Intl, Segmenter: undefined });
+    try {
+      const { phrases: plain } = await import("./phrases");
+      // no dictionary: a compound verb splits (取り / 消します), but never inside a word's kana
+      expect(plain("指を離すと取り消します")).toEqual([
+        "指を",
+        "離すと",
+        "取り",
+        "消します",
+      ]);
+      expect(plain("人を殺しているそうです")).toEqual([
+        "人を",
+        "殺しているそうです",
+      ]);
+      expect(plain("メロスだ！")).toEqual(["メロスだ！"]);
+      expect(plain("")).toEqual([]);
+    } finally {
+      vi.unstubAllGlobals();
+      vi.resetModules();
+    }
   });
 });
