@@ -53,7 +53,14 @@
           "tLabel": "約束の日・日没",
           "title": "市の異変",
           "status": "canon",
-          "known": true
+          "known": true,
+          "cite": [
+            {
+              "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+              "para": 1,
+              "quote": "歩いているうちにメロスは、まちの様子を怪しく思った。"
+            }
+          ]
         },
         {
           "kind": "beat",
@@ -62,7 +69,19 @@
           "tLabel": "約束の日・夜",
           "title": "王の暴虐を知る",
           "status": "altered",
-          "known": true
+          "known": true,
+          "cite": [
+            {
+              "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+              "para": 2,
+              "quote": "王様は、人を殺します。"
+            },
+            {
+              "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+              "para": 9,
+              "quote": "聞いて、メロスは激怒した。"
+            }
+          ]
         },
         {
           "kind": "beat",

@@ -411,6 +411,7 @@ def test_act_ends_after_beat_07_and_queued_turns_get_no_world(game: Callable[...
     options = by_id(ended["options"], "optionId")
     assert list(options) == [CITY, HOME]
     assert {o["where"] for o in options.values()} == {"刑場・三日目の夕方"}
+    assert {o["toActId"] for o in options.values()} == {"act.4"}  # v1.0.13：ActExit.toAct，预取下一幕的包
     assert (options[CITY]["sub"], options[HOME]["sub"]) == ("西の門が見える所で", "老爺があなたを覚えている")
     assert (options[CITY]["with"], options[HOME]["with"]) == ([], [OLD])
     assert ended["freeform"] == {"allowed": True, "triesLeft": 2} and ended["recapLines"] == []
@@ -526,6 +527,7 @@ def test_a_plan_that_does_not_go(game: Callable[..., Game]) -> None:
     one = g.s.propose(REFUSED)
     assert (one["accepted"], one["events"], one["triesLeft"]) == (False, [], 1) and g.seq == seq
     assert one["alternative"]["optionId"] == CITY and one["alternatives"] == [one["alternative"]]
+    assert one["alternative"]["toActId"] == "act.4"
     assert g.row()["act_end"]["freeform"] == {"allowed": True, "triesLeft": 1}
     two = g.s.propose(REFUSED)
     assert two["triesLeft"] == 0 and g.row()["act_end"]["freeform"] == {"allowed": False, "triesLeft": 0}
@@ -556,6 +558,7 @@ def test_choosing_another_plan_as_the_alternative(game: Callable[..., Game]) -> 
     step = g.s.propose(REFUSED)
     alt = step["alternative"]
     assert alt["optionId"].startswith("plan_") and alt["label"] == "刑場のそばで、夕方を待つ"
+    assert alt["toActId"] == "act.4"  # 打算落地的那一幕（Act.plan.toAct）
     chosen = g.s.choose(alt["optionId"])
     (move,) = [e for e in chosen["events"] if e["actor"] == "player"]
     assert move["plan"]["label"] == "刑場のそばで、夕方を待つ" and "exitId" not in move
