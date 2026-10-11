@@ -63,6 +63,31 @@ export function installTestHook(): void {
           from && to ? { from: toWorld(from), to: toWorld(to), fov } : null;
         await nextFrames(2);
       },
+      // the same in glTF world coordinates (scene.json spots)
+      setWorldView: async (from: Vec3, to: Vec3, fov = 60) => {
+        rig.fixedView = { from, to, fov };
+        await nextFrames(2);
+      },
+      // the crowd (?crowd=N, F-4): what it is doing, and the staging's verbs
+      crowd: async (
+        verb?: "wave" | "cheer" | "part" | "show" | "hide",
+        arg?: [number, number] | [number, number][],
+      ) => {
+        const { crowdRef } = await import("../crowd/CrowdLayer");
+        const c = crowdRef.current;
+        if (!c) return null;
+        if (verb === "wave") c.wave(arg as [number, number]);
+        if (verb === "cheer") c.cheer();
+        if (verb === "part") c.part(arg as [number, number][]);
+        if (verb === "show" || verb === "hide") c.visible = verb === "show";
+        return {
+          count: c.people.length,
+          meshes: c.meshes.filter(Boolean).length,
+          clips: c.clips(),
+          started: { ...c.started },
+          at: c.people.map((p) => p.at),
+        };
+      },
       player: () => ({
         ...rig.player,
         place: usePlayer.getState().place,

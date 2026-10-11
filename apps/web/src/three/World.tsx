@@ -1,7 +1,8 @@
 // The 3D layer of the world screen (frontend-design 4, 8): loads the scene in two steps, then sun, sky, player,
 // camera and post-processing. Reads the store only; never touches the network.
 import { useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { flags } from "../app/flags";
 import { useWorld } from "../stores/world";
 import { CameraRig } from "./CameraRig";
 import { groundAlbedo, Lighting } from "./Lighting";
@@ -20,6 +21,8 @@ import { sceneBase } from "./scene/manifest";
 import { patchShaderChunks } from "./shaderPatches";
 
 patchShaderChunks();
+
+const CrowdLayer = lazy(() => import("./crowd/CrowdLayer"));
 
 export type LoadStage = "loading" | "walkable" | "ready" | "failed";
 
@@ -145,6 +148,11 @@ export function World({
         nav={scene.nav.data}
       />
       <People scene={scene} />
+      {flags.crowd > 0 && (
+        <Suspense fallback={null}>
+          <CrowdLayer scene={scene} count={flags.crowd} />
+        </Suspense>
+      )}
       <Player scene={scene} />
       <CameraRig blockers={scene.blockers} />
       <PostFX />

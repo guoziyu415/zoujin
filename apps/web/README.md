@@ -30,6 +30,7 @@ uv run --all-packages zoujin-mock --scenario full-turn   # 一轮完整的对话
 - `?dev`：同上，再加一个面板：拖时钟、放一遍日落（18:00 → 19:10）、开关石匠作坊、看帧时间和 draw call。给团队用，不给玩家。
 - `?test`：挂上 `window.__zoujin`（`src/three/dev/testHook.ts`），Playwright 用它定时钟、摆固定机位、让玩家走到某处、找点哪里能点到地面或人物。画质固定在 L1，每次画面一样；`?test&quality=auto` 照玩家那样跑起始档自测和升降档。和 `?world` 一起用是只有广场；单用时进外壳，走到世界屏幕时挂上（Playwright 也可以在页面脚本前设 `window.__zoujinTest = true`）。只测 HUD 的检查设 `window.__zoujinNo3d = true`，世界屏幕不加载 3D。
 - `?quality=L0`〜`L3`：固定一级画质，不自测、不升降。
+- `?crowd=20`：在刑场站 20 个群众（F-4，`src/three/crowd/`），和 `?world` 一起用。结局演出接上以前只有这个开关会加载群众那一块。
 - `?measure`：计测页（见下面「画质」）。
 
 操作：点地面走、点人走到他跟前（能说话的人同时开始对话）；横向拖动转镜头；桌面上 WASD / 方向键走，按住 Shift 跑。
