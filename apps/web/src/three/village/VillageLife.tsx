@@ -3,6 +3,7 @@
 //   latest), cleared in beat.15's window (time.ts). The clouds take the sun's direct light towards nothing, the sky's
 //   light down and colder (through Lighting's adjust, settled again as they move); the rain is one instanced mesh of
 //   streaks round the camera (fewer with reduced motion);
+// - on the ground: splash rings round the camera and puddles by the spots, filling and drying (rainGround.ts);
 // - the light sets: which baked set the outside and the house show now (villageLight, for the pack's light sub-packs:
 //   code 2), the house dimmed with the daylight and its exposure eased in over about a second at the door;
 // - the house's camera zone (scene.json cameraZones): the near follow camera, with 0.5 m either way at the threshold;
@@ -40,6 +41,7 @@ import {
   type RoomSet,
   type Weather,
 } from "./time";
+import { fill, puddles, splashMesh } from "./rainGround";
 import { inZone, type CameraZone } from "./zones";
 
 // what the page shows now, for the light sub-packs (code 2) and the test hook; force: the test page's weather switch
@@ -134,7 +136,14 @@ export default function VillageLife({ scene }: { scene: LoadedScene }) {
   const { scene: three, camera, size } = useThree();
   const { manifest } = scene;
   const zones = (manifest as { cameraZones?: CameraZone[] }).cameraZones ?? [];
-  const st = useRef({ inside: false, k: 0, cloud: -1, settled: 0 });
+  const st = useRef({
+    inside: false,
+    k: 0,
+    cloud: -1,
+    settled: 0,
+    wet: 0,
+    lastT: -1,
+  });
 
   const parts = useMemo(() => {
     const find = (name: string): Object3D | undefined =>
@@ -150,11 +159,14 @@ export default function VillageLife({ scene }: { scene: LoadedScene }) {
       vine,
       lantern,
       rain: rainMesh(),
+      splash: splashMesh(),
+      puddles: puddles(manifest.spots, scene.walkable),
     };
   }, [scene, manifest]);
 
   useEffect(() => {
-    three.add(parts.vine, parts.lantern, parts.rain);
+    three.add(parts.vine, parts.lantern, parts.rain, parts.splash);
+    for (const m of parts.puddles) three.add(m);
     // the clouds on the sun and the sky after the clock (and after any adjust before this one)
     const prev = lighting.adjust;
     lighting.adjust = (pos, sun, skies) => {
@@ -171,9 +183,16 @@ export default function VillageLife({ scene }: { scene: LoadedScene }) {
     lighting.settle();
     return () => {
       lighting.adjust = prev;
-      three.remove(parts.vine, parts.lantern, parts.rain);
-      parts.rain.geometry.dispose();
-      (parts.rain.material as ShaderMaterial).dispose();
+      three.remove(parts.vine, parts.lantern, parts.rain, parts.splash);
+      for (const m of [parts.rain, parts.splash]) {
+        m.geometry.dispose();
+        (m.material as ShaderMaterial).dispose();
+      }
+      for (const m of parts.puddles) {
+        three.remove(m);
+        m.geometry.dispose();
+        (m.material as MeshStandardMaterial).dispose();
+      }
       parts.vine.dispose();
       parts.lantern.dispose();
       lightState.zoneExposure = 1;
@@ -205,6 +224,28 @@ export default function VillageLife({ scene }: { scene: LoadedScene }) {
     u.uAmount!.value = w.rain * (reducedMotion() ? 0.35 : 1);
     parts.rain.visible = w.rain > 0.01;
     parts.rain.position.copy(camera.position);
+
+    // on the ground: splashes at the player's feet round the camera, puddles filling and drying with the story clock
+    // (a jump in the clock, a page loaded mid-storm or the test page's switch, sets them at once)
+    const su = (parts.splash.material as ShaderMaterial).uniforms;
+    su.uTime!.value = clock.elapsedTime;
+    su.uAmount!.value = u.uAmount!.value;
+    parts.splash.visible = parts.rain.visible;
+    parts.splash.position.set(
+      camera.position.x,
+      rig.player.y + 0.02,
+      camera.position.z,
+    );
+    const step = s.lastT < 0 ? Infinity : t - s.lastT;
+    s.lastT = t;
+    s.wet =
+      villageLight.force || step < 0 || step > 60
+        ? w.rain
+        : fill(s.wet, w.rain, step);
+    for (const m of parts.puddles) {
+      m.visible = s.wet > 0.02;
+      (m.material as MeshStandardMaterial).opacity = 0.85 * s.wet;
+    }
 
     // the house: the near camera for the player inside, the exposure for the camera inside
     const p = rig.player;
