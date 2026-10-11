@@ -82,6 +82,14 @@ export class FakeAudio implements AudioPort {
     return true;
   }
 
+  pauseClip(): void {
+    this.log.push("clip:pause");
+  }
+
+  resumeClip(): void {
+    this.log.push("clip:resume");
+  }
+
   // —— the audio engine's side ——
   audible(tag: number, at = performance.now()): void {
     this.ev!.onStarted(tag, at);
