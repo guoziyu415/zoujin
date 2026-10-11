@@ -72,3 +72,26 @@ export const voidedPromises = (events: Api.VisibleEvent[]): Set<string> =>
       e.promise?.change === "voided" ? [e.promise.promiseId] : [],
     ),
   );
+
+// the whole game's map is long (F-17): with more than FOLD_OVER items, the days before 「いまここ」's day start folded
+// (a tap opens one), except the day of the event it was opened for; a filter shows everything it keeps
+export const FOLD_OVER = 24;
+
+export function foldedDays(
+  days: Api.TimelineResponse["days"],
+  nowDay: number | null,
+  f: Filter,
+  eventId?: string,
+): Set<number> {
+  const out = new Set<number>();
+  const total = days.reduce((n, d) => n + d.items.length, 0);
+  if (f.character || f.mine || nowDay === null || total <= FOLD_OVER)
+    return out;
+  for (const d of days)
+    if (
+      d.day < nowDay &&
+      !d.items.some((it) => it.kind === "event" && it.eventId === eventId)
+    )
+      out.add(d.day);
+  return out;
+}

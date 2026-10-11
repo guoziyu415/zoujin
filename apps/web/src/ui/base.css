@@ -1423,3 +1423,15 @@ li {
 .ae-heard.partial {
   color: var(--ink-2);
 }
+
+.map-fold {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+}

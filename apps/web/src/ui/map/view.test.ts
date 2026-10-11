@@ -1,6 +1,14 @@
 import type { Api } from "@zoujin/contracts";
 import { describe, expect, it } from "vitest";
-import { corrected, nowDayOf, nowIndex, people, shown } from "./view";
+import {
+  corrected,
+  FOLD_OVER,
+  foldedDays,
+  nowDayOf,
+  nowIndex,
+  people,
+  shown,
+} from "./view";
 
 const ev = (
   id: string,
@@ -84,5 +92,24 @@ describe("いまここ across days", () => {
     ];
     expect(nowDayOf(days, 30)).toBe(1);
     expect(nowDayOf(days, 5)).toBeNull();
+  });
+});
+
+describe("folding the earlier days (F-17)", () => {
+  const day = (n: number, k: number) => ({
+    day: n,
+    label: `d${n}`,
+    items: Array.from({ length: k }, (_, i) =>
+      ev(`ev_${n}_${i}`, n * 1440 + i, false, []),
+    ),
+  });
+  const none = { character: null, mine: false };
+  it("folds the days before now's only on a long map, keeps the target's day, not while filtering", () => {
+    expect(foldedDays([day(0, 3), day(1, 3)], 1, none).size).toBe(0);
+    const long = [day(0, FOLD_OVER), day(1, 2), day(2, 2), day(3, 1)];
+    expect([...foldedDays(long, 2, none)]).toEqual([0, 1]);
+    expect([...foldedDays(long, 2, none, "ev_1_0")]).toEqual([0]);
+    expect(foldedDays(long, 2, { character: null, mine: true }).size).toBe(0);
+    expect(foldedDays(long, null, none).size).toBe(0);
   });
 });
