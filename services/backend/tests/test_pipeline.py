@@ -385,7 +385,7 @@ def test_reply_time_is_band_only_for_who_does_not_know_the_day_names() -> None:
 
 
 def test_reply_recent_beats_count_days_from_now() -> None:
-    """S-092：局势带他亲历的节拍是什么时候（UX 的说法，一天从夜明け算起，不用日名）；没参与的、更早的不给。"""
+    """S-092：局势带他亲历的节拍是什么时候（UX 的说法，一天从夜明け算起，不用日名）；没亲历的、更早的不给。"""
 
     def recent(t: int, who: str) -> list[tuple[str, str]]:
         s = at(checkpoint=f"sc.canon@t={t}")
@@ -394,6 +394,9 @@ def test_reply_recent_beats_count_days_from_now() -> None:
     assert recent(1400, "char.king") == [("beat.05", "今夜")] and recent(1400, "char.selinuntius") == []
     assert recent(2000, "char.selinuntius") == [("beat.06", "昨夜")]
     assert recent(3600, "char.selinuntius") == [("beat.06", "おととい")]
+    # 亲历（worldsim 的 lived()）：大雨（beat.12，没有参与人物，在村子）同一场景的人都算，别的场景的不算
+    assert "beat.12" in [b for b, _ in recent(3700, "char.groom")]
+    assert "beat.12" not in [b for b, _ in recent(3700, "char.selinuntius")]
     ago = BOOK.labels.ago
     assert ago(1440 + 60, 1410) == "今夜"  # 天亮前的深夜还算前一天
     assert (ago(1440 + 300, 1440 + 600), ago(1440 + 600, 1440 + 700), ago(1440 + 1000, 1440 + 1100)) == (
