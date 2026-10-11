@@ -2,6 +2,7 @@
   "id": "aff.walk-old-man-home",
   "kind": "help",
   "label": "家まで送る",
+  "pastLabel": "老爺を家まで送った",
   "place": "place.syracuse-square",
   "act": "act.1",
   "target": "char.old-man",

@@ -1,5 +1,5 @@
 {
- "schemaVersion": "1.7",
+ "schemaVersion": "1.8",
  "worldModelVersion": "hashire-merosu@1.0.0-draft.3",
  "book": {
   "id": "hashire-merosu",
@@ -2241,8 +2241,8 @@
   },
   {
    "id": "char.travelers",
-   "name": "一団の旅人",
-   "summary": "メロスとすれちがう旅人たち。処刑の噂を口にする。",
+   "name": "旅の一団",
+   "summary": "メロスとすれちがう旅の一団。処刑の噂を口にする。",
    "traits": [
     {
      "text": "噂話をする",
@@ -2558,7 +2558,7 @@
   {
    "id": "place.road-to-city",
    "name": "市へ続く野の道",
-   "description": "野原の酒宴や旅人とすれちがう道。遠くにシラクスの塔楼が見える。",
+   "description": "野原の酒宴や旅の一団とすれちがう道。遠くにシラクスの塔楼が見える。",
    "adjacent": [
     {
      "place": "place.spring",
@@ -3156,7 +3156,7 @@
   },
   {
    "id": "fact.travelers-rumor",
-   "statement": "旅人たちは身代りの男がいまごろ磔にかかっていると噂した。",
+   "statement": "旅の一団は、身代りの男がいまごろ磔にかかっていると噂した。",
    "trueFrom": "beat.22",
    "visibility": "public",
    "cite": [
@@ -4569,7 +4569,7 @@
    "id": "beat.22",
    "order": 22,
    "title": "黒い風のように",
-   "summary": "人を押しのけ、酒宴を駈け抜け、ほとんど裸で血を吐きながら走る。旅人の噂を耳にする。",
+   "summary": "人を押しのけ、酒宴を駈け抜け、ほとんど裸で血を吐きながら走る。すれちがった旅の一団の噂話を耳にする。",
    "window": {
     "earliest": 5130,
     "latest": 5460,
@@ -6006,6 +6006,7 @@
    "id": "aff.river-hold",
    "kind": "block",
    "label": "引き止める",
+   "pastLabel": "メロスを引き止めた",
    "place": "place.river",
    "act": "act.4",
    "target": "char.melos",
@@ -6026,6 +6027,7 @@
    "id": "aff.river-shallows",
    "kind": "help",
    "label": "流れの緩い浅瀬を探す",
+   "pastLabel": "メロスのために、流れの緩い浅瀬を探した",
    "place": "place.river",
    "act": "act.4",
    "target": "char.melos",
@@ -6055,6 +6057,7 @@
    "id": "aff.pass-hold",
    "kind": "block",
    "label": "引き止める",
+   "pastLabel": "メロスを引き止めた",
    "place": "place.mountain-pass",
    "act": "act.4",
    "target": "char.melos",
@@ -6075,6 +6078,7 @@
    "id": "aff.pass-detour",
    "kind": "shortcut",
    "label": "峠を避けて、脇道を行く",
+   "pastLabel": "峠を避けて、メロスを脇道へ案内した",
    "place": "place.mountain-pass",
    "act": "act.4",
    "target": "char.melos",
@@ -6104,6 +6108,7 @@
    "id": "aff.pass-detour-told",
    "kind": "shortcut",
    "label": "峠を避けて、脇道を行く",
+   "pastLabel": "峠を避けて、メロスを脇道へ案内した",
    "place": "place.mountain-pass",
    "act": "act.4",
    "target": "char.melos",
@@ -6143,6 +6148,7 @@
    "id": "aff.pass-scout",
    "kind": "hasten",
    "label": "先に登って様子を見る",
+   "pastLabel": "先に峠へ登り、様子を見てきた",
    "place": "place.mountain-pass",
    "act": "act.4",
    "target": "char.melos",
@@ -6171,6 +6177,7 @@
    "id": "aff.spring-rest",
    "kind": "block",
    "label": "休ませる",
+   "pastLabel": "メロスを休ませた",
    "place": "place.spring",
    "act": "act.4",
    "target": "char.melos",
@@ -6191,6 +6198,7 @@
    "id": "aff.spring-water",
    "kind": "give",
    "label": "水を汲んで渡す",
+   "pastLabel": "水を汲んで、メロスに渡した",
    "place": "place.spring",
    "act": "act.4",
    "target": "char.melos",
@@ -6219,6 +6227,7 @@
    "id": "aff.road-hold",
    "kind": "block",
    "label": "引き止める",
+   "pastLabel": "メロスを引き止めた",
    "place": "place.road-to-city",
    "act": "act.4",
    "target": "char.melos",
@@ -6239,6 +6248,7 @@
    "id": "aff.road-shortcut",
    "kind": "shortcut",
    "label": "近道を教える",
+   "pastLabel": "メロスに近道を教えた",
    "place": "place.road-to-city",
    "act": "act.4",
    "roles": [
@@ -6264,6 +6274,7 @@
    "id": "aff.road-shortcut-told",
    "kind": "shortcut",
    "label": "近道を教える",
+   "pastLabel": "メロスに近道を教えた",
    "place": "place.road-to-city",
    "act": "act.4",
    "roles": [
@@ -6299,6 +6310,7 @@
    "id": "aff.road-run-ahead",
    "kind": "hasten",
    "label": "先に走って知らせる",
+   "pastLabel": "先に刑場へ走り、メロスが来ると知らせた",
    "place": "place.road-to-city",
    "act": "act.4",
    "target": "char.melos",
@@ -6343,6 +6355,7 @@
    "id": "aff.vouch",
    "kind": "help",
    "label": "メロスの身元を保証する",
+   "pastLabel": "メロスの身元を保証した",
    "place": "place.castle",
    "act": "act.1",
    "roles": [
@@ -6371,6 +6384,7 @@
    "id": "aff.walk-old-man-home",
    "kind": "help",
    "label": "家まで送る",
+   "pastLabel": "老爺を家まで送った",
    "place": "place.syracuse-square",
    "act": "act.1",
    "target": "char.old-man",
@@ -6404,6 +6418,7 @@
    "id": "aff.keep-workshop",
    "kind": "help",
    "label": "工房を預かる",
+   "pastLabel": "セリヌンティウスの工房を預かった",
    "place": "place.stonemason-workshop",
    "act": "act.1",
    "roles": [
@@ -6429,6 +6444,7 @@
    "id": "aff.stay-by-master",
    "kind": "help",
    "label": "親方のそばにいる",
+   "pastLabel": "セリヌンティウスのそばに付き添った",
    "place": "place.castle",
    "roles": [
     "role.apprentice"
@@ -6472,6 +6488,7 @@
    "id": "aff.village-water",
    "kind": "give",
    "label": "水を一杯差し出す",
+   "pastLabel": "メロスに水を一杯差し出した",
    "place": "place.village",
    "act": "act.3",
    "roles": [
@@ -6489,6 +6506,7 @@
    "id": "aff.wedding-prep",
    "kind": "help",
    "label": "婚礼の支度を手伝う",
+   "pastLabel": "メロスの妹を手伝い、婚礼の支度をした",
    "place": "place.melos-home",
    "act": "act.3",
    "target": "char.sister",
@@ -6501,6 +6519,7 @@
    "id": "aff.groom-prep",
    "kind": "help",
    "label": "花婿の支度を手伝う",
+   "pastLabel": "花婿の支度を手伝った",
    "place": "place.groom-house",
    "act": "act.3",
    "target": "char.groom",
@@ -6556,6 +6575,7 @@
    "id": "aff.wake-melos",
    "kind": "hasten",
    "label": "夜明け前にメロスを起こす",
+   "pastLabel": "夜明け前にメロスを起こした",
    "place": "place.melos-home",
    "act": "act.3",
    "target": "char.melos",

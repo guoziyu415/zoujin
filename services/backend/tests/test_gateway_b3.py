@@ -114,6 +114,8 @@ def test_actions_act_end_choose_and_arrival(env: Env, sliced: Services, player: 
     assert p.log.index(settled) < p.log.index(ended)
     assert [o["optionId"] for o in ended["options"]] == ["exit.1.city", HOME]
     assert ended["freeform"] == {"allowed": True, "triesLeft": 2}
+    # 「この幕であなたが動かしたこと」：玩家写成「あなた」，句末补「。」
+    assert ended["recapLines"] == ["あなたは、家まで送ることにした。", "あなたは刑場へ移った。"]
 
     # 收了幕：对话、动作都回 invalid_request，不写任务
     p.text("……")

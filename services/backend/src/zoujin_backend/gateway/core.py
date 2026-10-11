@@ -183,7 +183,7 @@ class Gateway:
         visible = []
         for ev in seg:
             if is_visible(book, ev, state["vars"]["var.player.location"]):
-                visible.append(visible_event(book, ev))
+                visible.append(visible_event(book, ev, pt.role_id))
             state = apply(book.world, state, ev)
         from_seq = seg[0]["seq"]
         key = commit_key(seg[0]["idempotencyKey"])
@@ -228,7 +228,7 @@ class Gateway:
         out = []
         for ev in log_:
             if ev["seq"] > after_seq and is_visible(pt.book, ev, state["vars"]["var.player.location"]):
-                out.append(visible_event(pt.book, ev))
+                out.append(visible_event(pt.book, ev, pt.role_id))
                 if len(out) >= limit:
                     break
             state = apply(pt.book.world, state, ev)

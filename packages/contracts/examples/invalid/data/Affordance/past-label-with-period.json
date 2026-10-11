@@ -1,0 +1,33 @@
+{
+  "id": "aff.walk-old-man-home",
+  "kind": "help",
+  "label": "家まで送る",
+  "pastLabel": "老爺を家まで送った。",
+  "place": "place.syracuse-square",
+  "act": "act.1",
+  "target": "char.old-man",
+  "minutes": 30,
+  "when": [
+    {
+      "var": "var.player.walkedOldManHome",
+      "op": "==",
+      "value": false
+    }
+  ],
+  "aid": "aid.old-man.listen",
+  "playerSpot": "old-man-house-side",
+  "effects": [
+    {
+      "op": "set",
+      "var": "var.player.walkedOldManHome",
+      "value": true
+    },
+    {
+      "op": "relocate",
+      "character": "char.old-man",
+      "place": "place.syracuse-square",
+      "spot": "old-man-house"
+    }
+  ],
+  "inferred": true
+}

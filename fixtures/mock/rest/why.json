@@ -5,7 +5,7 @@
       "eventId": "{{id:ev:tell-melos}}",
       "seq": 1,
       "tLabel": "約束の日・夕方",
-      "summary": "旅人がメロスに、王が人を殺していると告げた",
+      "summary": "あなたがメロスに、王が人を殺していると告げた",
       "actor": "player"
     },
     {

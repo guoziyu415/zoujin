@@ -1753,6 +1753,13 @@
           "type": "string",
           "description": "按钮上的动词短语（日语），不写耗时"
         },
+        "pastLabel": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 30,
+          "pattern": "^[^。]*[ただ]$",
+          "description": "（1.8）做完以后的事件句（日语，过去式，带对象，不带主语和「。」），例「老爺を家まで送った」。叙事者写成 summary「{Role.name}は、{pastLabel}」，下发给玩家时服务端换成「あなた」"
+        },
         "place": {
           "$ref": "common.schema.json#/$defs/PlaceId",
           "description": "在哪个地点出现"
@@ -1828,6 +1835,7 @@
         "id",
         "kind",
         "label",
+        "pastLabel",
         "place",
         "minutes",
         "effects",
