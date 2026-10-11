@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useStory } from "../stores/story";
 import { useUi } from "../stores/ui";
 import { useVoice } from "../stores/voice";
 import { useWorld } from "../stores/world";
@@ -243,6 +244,46 @@ describe("Session", () => {
       "この足なら、陽の沈む前に着く。",
       "戸は閉ざされたままだ。",
     ]);
+  });
+
+  it("after ending_started, the closing set piece and the action's narration go to the staging, not the voice", () => {
+    const { sock } = open(2);
+    sock.receive({
+      type: "ending_started",
+      trigger: "story-closed",
+      staging: { place: "place.execution-ground", characters: [] },
+    });
+    sock.receive({
+      type: "set_piece",
+      pieceId: "piece.curtain",
+      lines: [
+        { narration: "群衆がどよめいた。" },
+        { speaker: "char.melos", line: "セリヌンティウス。" },
+      ],
+    });
+    sock.receive({
+      type: "action_result",
+      actionId: "act_wait",
+      outcome: "done",
+      narration: "陽が沈んだ。",
+    });
+    expect(useStory.getState().ending!.lines).toEqual([
+      {
+        text: "群衆がどよめいた。",
+        speaker: null,
+        pieceId: "piece.curtain",
+        n: 1,
+      },
+      {
+        text: "セリヌンティウス。",
+        speaker: "char.melos",
+        pieceId: "piece.curtain",
+        n: 2,
+      },
+      { text: "陽が沈んだ。", speaker: null, early: true },
+    ]);
+    expect(useVoice.getState().narration).toEqual([]);
+    useStory.setState({ ending: null });
   });
 
   it("fills a gap from /events and the snapshot, then applies what came meanwhile", async () => {

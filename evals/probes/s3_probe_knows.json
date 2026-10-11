@@ -1,5 +1,5 @@
 {
- "about": "防剧透探针（evals/probes/s3_spoiler_probes.json）每个情景里，人物此刻是什么人、知道什么（PM S-086 ⑥）。由 evals/gen_probe_knows.py 从世界模型 1.0.0-draft 按情景的 after 生成，不要手改。判定用法：回答里人物说的身份、处境要和 now 对得上；只能把 knows 里的事当成知道的；把 notYet 里的事当成已经知道（说本来就知道、确认是真的、当成前提接着说）就算知情越界或时点串了。玩家刚说出的事，人物当作第一次听到（「そうですか」「初めて聞きました」、顺着问下去）不算；说自己本来就知道，或者补出玩家没说的细节，才算（S-068 人工复核的分法，UX #87 评审）。",
+ "about": "防剧透探针（evals/probes/s3_spoiler_probes.json 和第二组 s3_spoiler_probes_2.json）每个情景里，人物此刻是什么人、知道什么（PM S-086 ⑥）。由 evals/gen_probe_knows.py 从世界模型 1.0.0-draft 按情景的 after 生成，不要手改。判定用法：回答里人物说的身份、处境要和 now 对得上；只能把 knows 里的事当成知道的；把 notYet 里的事当成已经知道（说本来就知道、确认是真的、当成前提接着说）就算知情越界或时点串了。玩家刚说出的事，人物当作第一次听到（「そうですか」「初めて聞きました」、顺着问下去）不算；说自己本来就知道，或者补出玩家没说的细节，才算（S-068 人工复核的分法，UX #87 评审）。",
  "worldModelVersion": "hashire-merosu@1.0.0-draft.3",
  "scenarios": {
   "p-melos-castle-promise": {
@@ -115,6 +115,11 @@
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+     "since": "beat.13"
     },
     {
      "fact": "fact.bridge-destroyed",
@@ -267,6 +272,10 @@
     {
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。"
     },
     {
      "fact": "fact.groom-agreed",
@@ -422,6 +431,10 @@
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。"
     },
     {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。"
+    },
+    {
      "fact": "fact.groom-agreed",
      "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。"
     }
@@ -573,6 +586,10 @@
     {
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。"
     },
     {
      "fact": "fact.bridge-destroyed",
@@ -1336,6 +1353,11 @@
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+     "since": "beat.13"
     }
    ]
   },
@@ -1382,6 +1404,11 @@
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+     "since": "beat.13"
     }
    ]
   },
@@ -1426,6 +1453,10 @@
     {
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。"
     }
    ],
    "notYet": []
@@ -1472,6 +1503,11 @@
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+     "since": "beat.13"
     },
     {
      "fact": "fact.groom-agreed",
@@ -1521,7 +1557,13 @@
      "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。"
     }
    ],
-   "notYet": []
+   "notYet": [
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+     "since": "beat.13"
+    }
+   ]
   },
   "p-groom-after-departure": {
    "character": "char.groom",
@@ -1558,6 +1600,10 @@
     {
      "fact": "fact.storm",
      "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。"
     },
     {
      "fact": "fact.groom-agreed",
@@ -1796,6 +1842,1514 @@
    "after": "beat.22",
    "afterTitle": "黒い風のように",
    "when": "三日目の夕方",
+   "place": "シラクスの広場と大路",
+   "now": {
+    "summary": "シラクスの市に住む老人。王の所業を知っていて、怯えている。",
+    "traits": [
+     "人目をはばかり、怯えている"
+    ],
+    "goals": [
+     "目をつけられずに生き延びる"
+    ]
+   },
+   "knows": [
+    {
+     "fact": "fact.king-killings",
+     "statement": "王は妹婿、世嗣、妹、妹の子、皇后、賢臣アレキスを殺した。"
+    },
+    {
+     "fact": "fact.king-distrust",
+     "statement": "王は乱心ではなく、人を信ずることができないのだという。"
+    },
+    {
+     "fact": "fact.hostage-decree",
+     "statement": "王は派手な暮しの臣下に人質を一人ずつ差し出させ、拒めば十字架にかける。"
+    },
+    {
+     "fact": "fact.six-killed-today",
+     "statement": "王の命令で、一日のうちに六人が殺された。"
+    },
+    {
+     "fact": "fact.city-silent",
+     "statement": "シラクスの市は夜でもひっそりして、やけに寂しい。二年前は賑やかだった。"
+    },
+    {
+     "fact": "fact.execution-crowd",
+     "statement": "日没に、市の石工が刑場で磔にされることになっていて、広場の一角の刑場に人が集まりはじめている。"
+    }
+   ],
+   "notYet": []
+  },
+  "p2-melos-square-night": {
+   "character": "char.melos",
+   "name": "メロス",
+   "after": "beat.03",
+   "afterTitle": "王の暴虐を知る",
+   "when": "約束の日の夜",
+   "place": "シラクスの広場と大路",
+   "now": {
+    "summary": "村の牧人。十六の内気な妹と二人暮らし。政治はわからないが、邪悪には人一倍敏感。",
+    "traits": [
+     "政治がわからない",
+     "邪悪に人一倍敏感",
+     "単純で、思い立ったらすぐ動く",
+     "呑気なところがある",
+     "人を疑う事と嘘をつく事が一番きらい",
+     "未練の情もある",
+     "死を覚悟しても命乞いはしない"
+    ],
+    "goals": [
+     "妹に亭主を持たせる（婚礼を挙げる）",
+     "婚礼の品を買いそろえて村へ帰る。婚礼は近いが、日取りはまだ決まっていない",
+     "市を暴君の手から救う"
+    ]
+   },
+   "knows": [
+    {
+     "fact": "fact.melos-shepherd",
+     "statement": "メロスは村の牧人である。"
+    },
+    {
+     "fact": "fact.melos-family",
+     "statement": "メロスには父母も妻もなく、十六の妹と二人暮しである。"
+    },
+    {
+     "fact": "fact.sister-engaged",
+     "statement": "妹の花婿は、村の律気な一牧人である。"
+    },
+    {
+     "fact": "fact.melos-errand",
+     "statement": "メロスは花嫁の衣裳と祝宴の御馳走を買いに市へ来た。"
+    },
+    {
+     "fact": "fact.friendship",
+     "statement": "メロスとセリヌンティウスは竹馬の友で、二年会っていなかった。"
+    },
+    {
+     "fact": "fact.selinuntius-stonemason",
+     "statement": "セリヌンティウスはシラクスの市で石工をしている。"
+    },
+    {
+     "fact": "fact.city-silent",
+     "statement": "シラクスの市は夜でもひっそりして、やけに寂しい。二年前は賑やかだった。"
+    },
+    {
+     "fact": "fact.king-killings",
+     "statement": "王は妹婿、世嗣、妹、妹の子、皇后、賢臣アレキスを殺した。"
+    },
+    {
+     "fact": "fact.king-distrust",
+     "statement": "王は乱心ではなく、人を信ずることができないのだという。"
+    },
+    {
+     "fact": "fact.hostage-decree",
+     "statement": "王は派手な暮しの臣下に人質を一人ずつ差し出させ、拒めば十字架にかける。"
+    },
+    {
+     "fact": "fact.six-killed-today",
+     "statement": "王の命令で、一日のうちに六人が殺された。"
+    }
+   ],
+   "notYet": [
+    {
+     "fact": "fact.melos-dagger",
+     "statement": "メロスは短剣を懐に王城へ入り、警吏に捕らえられた。",
+     "since": "beat.04"
+    },
+    {
+     "fact": "fact.promise",
+     "statement": "王はメロスに三日目の日没までに戻れと命じ、遅れたら身代りを殺すと言った。身代りはセリヌンティウス。",
+     "since": "beat.05"
+    },
+    {
+     "fact": "fact.melos-reason",
+     "statement": "メロスは妹に亭主を持たせるため、三日の猶予を願った。",
+     "since": "beat.05"
+    },
+    {
+     "fact": "fact.king-whisper",
+     "statement": "王はメロスに「ちょっとおくれて来い、そうすれば罪をゆるす」とささやいた。",
+     "since": "beat.05"
+    },
+    {
+     "fact": "fact.selinuntius-hostage",
+     "statement": "セリヌンティウスは深夜王城に召され、身代りとして縄打たれた。",
+     "since": "beat.06"
+    },
+    {
+     "fact": "fact.wedding-tomorrow",
+     "statement": "メロスは妹に、婚礼をあすにすると告げた（理由は話していない）。",
+     "since": "beat.08"
+    },
+    {
+     "fact": "fact.groom-wanted-wait",
+     "statement": "花婿は仕度ができていないので葡萄の季節まで待ちたかった。",
+     "since": "beat.10"
+    },
+    {
+     "fact": "fact.wedding-held",
+     "statement": "婚礼は真昼に行われた。",
+     "since": "beat.11"
+    },
+    {
+     "fact": "fact.storm",
+     "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。",
+     "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+     "since": "beat.13"
+    },
+    {
+     "fact": "fact.bridge-destroyed",
+     "statement": "前日の豪雨で川が氾濫し、橋が流された。",
+     "since": "beat.17"
+    },
+    {
+     "fact": "fact.no-boats",
+     "statement": "繋ぎ舟はすべて浪にさらわれ、渡し守もいない。",
+     "since": "beat.17"
+    },
+    {
+     "fact": "fact.bandits-ambush",
+     "statement": "峠で一隊の山賊が待ち伏せている。",
+     "since": "beat.19"
+    },
+    {
+     "fact": "fact.melos-suspects-king",
+     "statement": "メロスは山賊を王の差し金だと考えた。",
+     "since": "beat.19"
+    },
+    {
+     "fact": "fact.melos-despair",
+     "statement": "メロスは力尽きて倒れ、一度は約束を投げ出そうと思った（「悪い夢」）。",
+     "since": "beat.20"
+    },
+    {
+     "fact": "fact.travelers-rumor",
+     "statement": "旅の一団は、身代りの男がいまごろ磔にかかっていると噂した。",
+     "since": "beat.22"
+    },
+    {
+     "fact": "fact.selinuntius-steadfast",
+     "statement": "セリヌンティウスは刑場に引き出され、王にからかわれても「メロスは来ます」とだけ答えた。",
+     "since": "beat.23"
+    },
+    {
+     "fact": "fact.selinuntius-doubted-once",
+     "statement": "セリヌンティウスは三日の間に一度だけメロスを疑った。",
+     "since": "beat.25"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。",
+     "since": "beat.10"
+    }
+   ]
+  },
+  "p2-melos-groom-dawn": {
+   "character": "char.melos",
+   "name": "メロス",
+   "after": "beat.10",
+   "afterTitle": "花婿を夜通し説く",
+   "when": "二日目の薄明",
+   "place": "花婿の家",
+   "now": {
+    "summary": "村の牧人。十六の内気な妹と二人暮らし。政治はわからないが、邪悪には人一倍敏感。",
+    "traits": [
+     "政治がわからない",
+     "邪悪に人一倍敏感",
+     "単純で、思い立ったらすぐ動く",
+     "呑気なところがある",
+     "人を疑う事と嘘をつく事が一番きらい",
+     "未練の情もある",
+     "死を覚悟しても命乞いはしない"
+    ],
+    "goals": [
+     "妹に亭主を持たせる（婚礼を挙げる）",
+     "約束どおり戻り、身代りの友を救う",
+     "王に人の信実を見せる",
+     "市を暴君の手から救う"
+    ]
+   },
+   "knows": [
+    {
+     "fact": "fact.melos-shepherd",
+     "statement": "メロスは村の牧人である。"
+    },
+    {
+     "fact": "fact.melos-family",
+     "statement": "メロスには父母も妻もなく、十六の妹と二人暮しである。"
+    },
+    {
+     "fact": "fact.sister-engaged",
+     "statement": "妹の花婿は、村の律気な一牧人である。"
+    },
+    {
+     "fact": "fact.melos-errand",
+     "statement": "メロスは花嫁の衣裳と祝宴の御馳走を買いに市へ来た。"
+    },
+    {
+     "fact": "fact.friendship",
+     "statement": "メロスとセリヌンティウスは竹馬の友で、二年会っていなかった。"
+    },
+    {
+     "fact": "fact.selinuntius-stonemason",
+     "statement": "セリヌンティウスはシラクスの市で石工をしている。"
+    },
+    {
+     "fact": "fact.city-silent",
+     "statement": "シラクスの市は夜でもひっそりして、やけに寂しい。二年前は賑やかだった。"
+    },
+    {
+     "fact": "fact.king-killings",
+     "statement": "王は妹婿、世嗣、妹、妹の子、皇后、賢臣アレキスを殺した。"
+    },
+    {
+     "fact": "fact.king-distrust",
+     "statement": "王は乱心ではなく、人を信ずることができないのだという。"
+    },
+    {
+     "fact": "fact.hostage-decree",
+     "statement": "王は派手な暮しの臣下に人質を一人ずつ差し出させ、拒めば十字架にかける。"
+    },
+    {
+     "fact": "fact.six-killed-today",
+     "statement": "王の命令で、一日のうちに六人が殺された。"
+    },
+    {
+     "fact": "fact.melos-dagger",
+     "statement": "メロスは短剣を懐に王城へ入り、警吏に捕らえられた。"
+    },
+    {
+     "fact": "fact.promise",
+     "statement": "王はメロスに三日目の日没までに戻れと命じ、遅れたら身代りを殺すと言った。身代りはセリヌンティウス。"
+    },
+    {
+     "fact": "fact.melos-reason",
+     "statement": "メロスは妹に亭主を持たせるため、三日の猶予を願った。"
+    },
+    {
+     "fact": "fact.king-whisper",
+     "statement": "王はメロスに「ちょっとおくれて来い、そうすれば罪をゆるす」とささやいた。"
+    },
+    {
+     "fact": "fact.selinuntius-hostage",
+     "statement": "セリヌンティウスは深夜王城に召され、身代りとして縄打たれた。"
+    },
+    {
+     "fact": "fact.wedding-tomorrow",
+     "statement": "メロスは妹に、婚礼をあすにすると告げた（理由は話していない）。"
+    },
+    {
+     "fact": "fact.groom-wanted-wait",
+     "statement": "花婿は仕度ができていないので葡萄の季節まで待ちたかった。"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。"
+    }
+   ],
+   "notYet": [
+    {
+     "fact": "fact.wedding-held",
+     "statement": "婚礼は真昼に行われた。",
+     "since": "beat.11"
+    },
+    {
+     "fact": "fact.storm",
+     "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。",
+     "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+     "since": "beat.13"
+    },
+    {
+     "fact": "fact.bridge-destroyed",
+     "statement": "前日の豪雨で川が氾濫し、橋が流された。",
+     "since": "beat.17"
+    },
+    {
+     "fact": "fact.no-boats",
+     "statement": "繋ぎ舟はすべて浪にさらわれ、渡し守もいない。",
+     "since": "beat.17"
+    },
+    {
+     "fact": "fact.bandits-ambush",
+     "statement": "峠で一隊の山賊が待ち伏せている。",
+     "since": "beat.19"
+    },
+    {
+     "fact": "fact.melos-suspects-king",
+     "statement": "メロスは山賊を王の差し金だと考えた。",
+     "since": "beat.19"
+    },
+    {
+     "fact": "fact.melos-despair",
+     "statement": "メロスは力尽きて倒れ、一度は約束を投げ出そうと思った（「悪い夢」）。",
+     "since": "beat.20"
+    },
+    {
+     "fact": "fact.travelers-rumor",
+     "statement": "旅の一団は、身代りの男がいまごろ磔にかかっていると噂した。",
+     "since": "beat.22"
+    },
+    {
+     "fact": "fact.selinuntius-steadfast",
+     "statement": "セリヌンティウスは刑場に引き出され、王にからかわれても「メロスは来ます」とだけ答えた。",
+     "since": "beat.23"
+    },
+    {
+     "fact": "fact.selinuntius-doubted-once",
+     "statement": "セリヌンティウスは三日の間に一度だけメロスを疑った。",
+     "since": "beat.25"
+    }
+   ]
+  },
+  "p2-melos-road-sunset": {
+   "character": "char.melos",
+   "name": "メロス",
+   "after": "beat.23",
+   "afterTitle": "フィロストラトス",
+   "when": "三日目の日没前",
+   "place": "市へ続く野の道",
+   "now": {
+    "summary": "村の牧人。十六の内気な妹と二人暮らし。政治はわからないが、邪悪には人一倍敏感。",
+    "traits": [
+     "政治がわからない",
+     "邪悪に人一倍敏感",
+     "単純で、思い立ったらすぐ動く",
+     "呑気なところがある",
+     "人を疑う事と嘘をつく事が一番きらい",
+     "未練の情もある",
+     "死を覚悟しても命乞いはしない"
+    ],
+    "goals": [
+     "約束どおり戻り、身代りの友を救う",
+     "王に人の信実を見せる",
+     "市を暴君の手から救う"
+    ]
+   },
+   "knows": [
+    {
+     "fact": "fact.melos-shepherd",
+     "statement": "メロスは村の牧人である。"
+    },
+    {
+     "fact": "fact.melos-family",
+     "statement": "メロスには父母も妻もなく、十六の妹と二人暮しである。"
+    },
+    {
+     "fact": "fact.sister-engaged",
+     "statement": "妹の花婿は、村の律気な一牧人である。"
+    },
+    {
+     "fact": "fact.melos-errand",
+     "statement": "メロスは花嫁の衣裳と祝宴の御馳走を買いに市へ来た。"
+    },
+    {
+     "fact": "fact.friendship",
+     "statement": "メロスとセリヌンティウスは竹馬の友で、二年会っていなかった。"
+    },
+    {
+     "fact": "fact.selinuntius-stonemason",
+     "statement": "セリヌンティウスはシラクスの市で石工をしている。"
+    },
+    {
+     "fact": "fact.city-silent",
+     "statement": "シラクスの市は夜でもひっそりして、やけに寂しい。二年前は賑やかだった。"
+    },
+    {
+     "fact": "fact.king-killings",
+     "statement": "王は妹婿、世嗣、妹、妹の子、皇后、賢臣アレキスを殺した。"
+    },
+    {
+     "fact": "fact.king-distrust",
+     "statement": "王は乱心ではなく、人を信ずることができないのだという。"
+    },
+    {
+     "fact": "fact.hostage-decree",
+     "statement": "王は派手な暮しの臣下に人質を一人ずつ差し出させ、拒めば十字架にかける。"
+    },
+    {
+     "fact": "fact.six-killed-today",
+     "statement": "王の命令で、一日のうちに六人が殺された。"
+    },
+    {
+     "fact": "fact.melos-dagger",
+     "statement": "メロスは短剣を懐に王城へ入り、警吏に捕らえられた。"
+    },
+    {
+     "fact": "fact.promise",
+     "statement": "王はメロスに三日目の日没までに戻れと命じ、遅れたら身代りを殺すと言った。身代りはセリヌンティウス。"
+    },
+    {
+     "fact": "fact.melos-reason",
+     "statement": "メロスは妹に亭主を持たせるため、三日の猶予を願った。"
+    },
+    {
+     "fact": "fact.king-whisper",
+     "statement": "王はメロスに「ちょっとおくれて来い、そうすれば罪をゆるす」とささやいた。"
+    },
+    {
+     "fact": "fact.selinuntius-hostage",
+     "statement": "セリヌンティウスは深夜王城に召され、身代りとして縄打たれた。"
+    },
+    {
+     "fact": "fact.wedding-tomorrow",
+     "statement": "メロスは妹に、婚礼をあすにすると告げた（理由は話していない）。"
+    },
+    {
+     "fact": "fact.groom-wanted-wait",
+     "statement": "花婿は仕度ができていないので葡萄の季節まで待ちたかった。"
+    },
+    {
+     "fact": "fact.wedding-held",
+     "statement": "婚礼は真昼に行われた。"
+    },
+    {
+     "fact": "fact.storm",
+     "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。"
+    },
+    {
+     "fact": "fact.bridge-destroyed",
+     "statement": "前日の豪雨で川が氾濫し、橋が流された。"
+    },
+    {
+     "fact": "fact.no-boats",
+     "statement": "繋ぎ舟はすべて浪にさらわれ、渡し守もいない。"
+    },
+    {
+     "fact": "fact.bandits-ambush",
+     "statement": "峠で一隊の山賊が待ち伏せている。"
+    },
+    {
+     "fact": "fact.melos-suspects-king",
+     "statement": "メロスは山賊を王の差し金だと考えた。"
+    },
+    {
+     "fact": "fact.melos-despair",
+     "statement": "メロスは力尽きて倒れ、一度は約束を投げ出そうと思った（「悪い夢」）。"
+    },
+    {
+     "fact": "fact.travelers-rumor",
+     "statement": "旅の一団は、身代りの男がいまごろ磔にかかっていると噂した。"
+    },
+    {
+     "fact": "fact.selinuntius-steadfast",
+     "statement": "セリヌンティウスは刑場に引き出され、王にからかわれても「メロスは来ます」とだけ答えた。"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。"
+    }
+   ],
+   "notYet": [
+    {
+     "fact": "fact.selinuntius-doubted-once",
+     "statement": "セリヌンティウスは三日の間に一度だけメロスを疑った。",
+     "since": "beat.25"
+    }
+   ]
+  },
+  "p2-king-arrest": {
+   "character": "char.king",
+   "name": "王ディオニス",
+   "after": "beat.04",
+   "afterTitle": "王城で捕縛",
+   "when": "約束の日の夜",
+   "place": "王城",
+   "now": {
+    "summary": "シラクスの王。これまでに身内や臣下を次々に殺してきた。",
+    "traits": [
+     "人を信じることができない",
+     "静かで威厳がある。顔は蒼白で眉間の皺が深い",
+     "孤独を抱えている",
+     "残虐で、人を試して嘲る",
+     "本当は平和を望んでいると言う",
+     "人の腹の底が見えると思い込んでいる"
+    ],
+    "goals": [
+     "人は信じられないと世に見せつける"
+    ]
+   },
+   "knows": [
+    {
+     "fact": "fact.king-killings",
+     "statement": "王は妹婿、世嗣、妹、妹の子、皇后、賢臣アレキスを殺した。"
+    },
+    {
+     "fact": "fact.king-distrust",
+     "statement": "王は乱心ではなく、人を信ずることができないのだという。"
+    },
+    {
+     "fact": "fact.hostage-decree",
+     "statement": "王は派手な暮しの臣下に人質を一人ずつ差し出させ、拒めば十字架にかける。"
+    },
+    {
+     "fact": "fact.six-killed-today",
+     "statement": "王の命令で、一日のうちに六人が殺された。"
+    },
+    {
+     "fact": "fact.melos-dagger",
+     "statement": "メロスは短剣を懐に王城へ入り、警吏に捕らえられた。"
+    }
+   ],
+   "notYet": [
+    {
+     "fact": "fact.promise",
+     "statement": "王はメロスに三日目の日没までに戻れと命じ、遅れたら身代りを殺すと言った。身代りはセリヌンティウス。",
+     "since": "beat.05"
+    },
+    {
+     "fact": "fact.melos-reason",
+     "statement": "メロスは妹に亭主を持たせるため、三日の猶予を願った。",
+     "since": "beat.05"
+    },
+    {
+     "fact": "fact.king-whisper",
+     "statement": "王はメロスに「ちょっとおくれて来い、そうすれば罪をゆるす」とささやいた。",
+     "since": "beat.05"
+    },
+    {
+     "fact": "fact.king-intent",
+     "statement": "王はメロスが帰らないと決めつけ、身代りを殺して「人は信じられぬ」と見せつけるつもりでいる。",
+     "since": "beat.05"
+    },
+    {
+     "fact": "fact.selinuntius-hostage",
+     "statement": "セリヌンティウスは深夜王城に召され、身代りとして縄打たれた。",
+     "since": "beat.06"
+    },
+    {
+     "fact": "fact.friendship",
+     "statement": "メロスとセリヌンティウスは竹馬の友で、二年会っていなかった。",
+     "since": "beat.06"
+    },
+    {
+     "fact": "fact.selinuntius-steadfast",
+     "statement": "セリヌンティウスは刑場に引き出され、王にからかわれても「メロスは来ます」とだけ答えた。",
+     "since": "beat.s1"
+    }
+   ]
+  },
+  "p2-king-day2-night": {
+   "character": "char.king",
+   "name": "王ディオニス",
+   "after": "beat.13",
+   "afterTitle": "祝宴と別れの言葉",
+   "when": "二日目の夜",
+   "place": "王城",
+   "now": {
+    "summary": "シラクスの王。これまでに身内や臣下を次々に殺してきた。",
+    "traits": [
+     "人を信じることができない",
+     "静かで威厳がある。顔は蒼白で眉間の皺が深い",
+     "孤独を抱えている",
+     "残虐で、人を試して嘲る",
+     "本当は平和を望んでいると言う",
+     "人の腹の底が見えると思い込んでいる"
+    ],
+    "goals": [
+     "人は信じられないと世に見せつける"
+    ]
+   },
+   "knows": [
+    {
+     "fact": "fact.king-killings",
+     "statement": "王は妹婿、世嗣、妹、妹の子、皇后、賢臣アレキスを殺した。"
+    },
+    {
+     "fact": "fact.king-distrust",
+     "statement": "王は乱心ではなく、人を信ずることができないのだという。"
+    },
+    {
+     "fact": "fact.hostage-decree",
+     "statement": "王は派手な暮しの臣下に人質を一人ずつ差し出させ、拒めば十字架にかける。"
+    },
+    {
+     "fact": "fact.six-killed-today",
+     "statement": "王の命令で、一日のうちに六人が殺された。"
+    },
+    {
+     "fact": "fact.melos-dagger",
+     "statement": "メロスは短剣を懐に王城へ入り、警吏に捕らえられた。"
+    },
+    {
+     "fact": "fact.promise",
+     "statement": "王はメロスに三日目の日没までに戻れと命じ、遅れたら身代りを殺すと言った。身代りはセリヌンティウス。"
+    },
+    {
+     "fact": "fact.melos-reason",
+     "statement": "メロスは妹に亭主を持たせるため、三日の猶予を願った。"
+    },
+    {
+     "fact": "fact.king-whisper",
+     "statement": "王はメロスに「ちょっとおくれて来い、そうすれば罪をゆるす」とささやいた。"
+    },
+    {
+     "fact": "fact.king-intent",
+     "statement": "王はメロスが帰らないと決めつけ、身代りを殺して「人は信じられぬ」と見せつけるつもりでいる。"
+    },
+    {
+     "fact": "fact.selinuntius-hostage",
+     "statement": "セリヌンティウスは深夜王城に召され、身代りとして縄打たれた。"
+    },
+    {
+     "fact": "fact.friendship",
+     "statement": "メロスとセリヌンティウスは竹馬の友で、二年会っていなかった。"
+    }
+   ],
+   "notYet": [
+    {
+     "fact": "fact.selinuntius-steadfast",
+     "statement": "セリヌンティウスは刑場に引き出され、王にからかわれても「メロスは来ます」とだけ答えた。",
+     "since": "beat.s1"
+    }
+   ]
+  },
+  "p2-king-day3-evening": {
+   "character": "char.king",
+   "name": "王ディオニス",
+   "after": "beat.22",
+   "afterTitle": "黒い風のように",
+   "when": "三日目の夕方",
+   "place": "王城",
+   "now": {
+    "summary": "シラクスの王。これまでに身内や臣下を次々に殺してきた。",
+    "traits": [
+     "人を信じることができない",
+     "静かで威厳がある。顔は蒼白で眉間の皺が深い",
+     "孤独を抱えている",
+     "残虐で、人を試して嘲る",
+     "本当は平和を望んでいると言う",
+     "人の腹の底が見えると思い込んでいる"
+    ],
+    "goals": [
+     "人は信じられないと世に見せつける"
+    ]
+   },
+   "knows": [
+    {
+     "fact": "fact.king-killings",
+     "statement": "王は妹婿、世嗣、妹、妹の子、皇后、賢臣アレキスを殺した。"
+    },
+    {
+     "fact": "fact.king-distrust",
+     "statement": "王は乱心ではなく、人を信ずることができないのだという。"
+    },
+    {
+     "fact": "fact.hostage-decree",
+     "statement": "王は派手な暮しの臣下に人質を一人ずつ差し出させ、拒めば十字架にかける。"
+    },
+    {
+     "fact": "fact.six-killed-today",
+     "statement": "王の命令で、一日のうちに六人が殺された。"
+    },
+    {
+     "fact": "fact.melos-dagger",
+     "statement": "メロスは短剣を懐に王城へ入り、警吏に捕らえられた。"
+    },
+    {
+     "fact": "fact.promise",
+     "statement": "王はメロスに三日目の日没までに戻れと命じ、遅れたら身代りを殺すと言った。身代りはセリヌンティウス。"
+    },
+    {
+     "fact": "fact.melos-reason",
+     "statement": "メロスは妹に亭主を持たせるため、三日の猶予を願った。"
+    },
+    {
+     "fact": "fact.king-whisper",
+     "statement": "王はメロスに「ちょっとおくれて来い、そうすれば罪をゆるす」とささやいた。"
+    },
+    {
+     "fact": "fact.king-intent",
+     "statement": "王はメロスが帰らないと決めつけ、身代りを殺して「人は信じられぬ」と見せつけるつもりでいる。"
+    },
+    {
+     "fact": "fact.selinuntius-hostage",
+     "statement": "セリヌンティウスは深夜王城に召され、身代りとして縄打たれた。"
+    },
+    {
+     "fact": "fact.friendship",
+     "statement": "メロスとセリヌンティウスは竹馬の友で、二年会っていなかった。"
+    }
+   ],
+   "notYet": [
+    {
+     "fact": "fact.selinuntius-steadfast",
+     "statement": "セリヌンティウスは刑場に引き出され、王にからかわれても「メロスは来ます」とだけ答えた。",
+     "since": "beat.s1"
+    }
+   ]
+  },
+  "p2-selinuntius-dusk": {
+   "character": "char.selinuntius",
+   "name": "セリヌンティウス",
+   "after": "pre",
+   "afterTitle": "原作の始まり",
+   "when": "約束の日の日没前",
+   "place": "セリヌンティウスの石工の仕事場",
+   "now": {
+    "summary": "メロスの竹馬の友。シラクスの市の石工。",
+    "traits": [
+     "多くを語らず、友を信じる",
+     "気がきく"
+    ],
+    "goals": []
+   },
+   "knows": [
+    {
+     "fact": "fact.friendship",
+     "statement": "メロスとセリヌンティウスは竹馬の友で、二年会っていなかった。"
+    },
+    {
+     "fact": "fact.selinuntius-stonemason",
+     "statement": "セリヌンティウスはシラクスの市で石工をしている。"
+    },
+    {
+     "fact": "fact.king-killings",
+     "statement": "王は妹婿、世嗣、妹、妹の子、皇后、賢臣アレキスを殺した。"
+    },
+    {
+     "fact": "fact.king-distrust",
+     "statement": "王は乱心ではなく、人を信ずることができないのだという。"
+    },
+    {
+     "fact": "fact.hostage-decree",
+     "statement": "王は派手な暮しの臣下に人質を一人ずつ差し出させ、拒めば十字架にかける。"
+    }
+   ],
+   "notYet": [
+    {
+     "fact": "fact.promise",
+     "statement": "王はメロスに三日目の日没までに戻れと命じ、遅れたら身代りを殺すと言った。身代りはセリヌンティウス。",
+     "since": "beat.06"
+    },
+    {
+     "fact": "fact.melos-reason",
+     "statement": "メロスは妹に亭主を持たせるため、三日の猶予を願った。",
+     "since": "beat.06"
+    },
+    {
+     "fact": "fact.selinuntius-hostage",
+     "statement": "セリヌンティウスは深夜王城に召され、身代りとして縄打たれた。",
+     "since": "beat.06"
+    },
+    {
+     "fact": "fact.melos-errand",
+     "statement": "メロスは花嫁の衣裳と祝宴の御馳走を買いに市へ来た。",
+     "since": "beat.06"
+    },
+    {
+     "fact": "fact.melos-dagger",
+     "statement": "メロスは短剣を懐に王城へ入り、警吏に捕らえられた。",
+     "since": "beat.06"
+    },
+    {
+     "fact": "fact.selinuntius-doubted-once",
+     "statement": "セリヌンティウスは三日の間に一度だけメロスを疑った。",
+     "since": "beat.s2"
+    },
+    {
+     "fact": "fact.melos-despair",
+     "statement": "メロスは力尽きて倒れ、一度は約束を投げ出そうと思った（「悪い夢」）。",
+     "since": "beat.25"
+    }
+   ]
+  },
+  "p2-selinuntius-bound": {
+   "character": "char.selinuntius",
+   "name": "セリヌンティウス",
+   "after": "beat.07",
+   "afterTitle": "満天の星の下を発つ",
+   "when": "約束の日の夜",
+   "place": "王城",
+   "now": {
+    "summary": "メロスの竹馬の友。シラクスの市の石工。",
+    "traits": [
+     "多くを語らず、友を信じる",
+     "気がきく"
+    ],
+    "goals": [
+     "友を信じて待つ"
+    ]
+   },
+   "knows": [
+    {
+     "fact": "fact.friendship",
+     "statement": "メロスとセリヌンティウスは竹馬の友で、二年会っていなかった。"
+    },
+    {
+     "fact": "fact.selinuntius-stonemason",
+     "statement": "セリヌンティウスはシラクスの市で石工をしている。"
+    },
+    {
+     "fact": "fact.king-killings",
+     "statement": "王は妹婿、世嗣、妹、妹の子、皇后、賢臣アレキスを殺した。"
+    },
+    {
+     "fact": "fact.king-distrust",
+     "statement": "王は乱心ではなく、人を信ずることができないのだという。"
+    },
+    {
+     "fact": "fact.hostage-decree",
+     "statement": "王は派手な暮しの臣下に人質を一人ずつ差し出させ、拒めば十字架にかける。"
+    },
+    {
+     "fact": "fact.promise",
+     "statement": "王はメロスに三日目の日没までに戻れと命じ、遅れたら身代りを殺すと言った。身代りはセリヌンティウス。"
+    },
+    {
+     "fact": "fact.melos-reason",
+     "statement": "メロスは妹に亭主を持たせるため、三日の猶予を願った。"
+    },
+    {
+     "fact": "fact.selinuntius-hostage",
+     "statement": "セリヌンティウスは深夜王城に召され、身代りとして縄打たれた。"
+    },
+    {
+     "fact": "fact.melos-errand",
+     "statement": "メロスは花嫁の衣裳と祝宴の御馳走を買いに市へ来た。"
+    },
+    {
+     "fact": "fact.melos-dagger",
+     "statement": "メロスは短剣を懐に王城へ入り、警吏に捕らえられた。"
+    }
+   ],
+   "notYet": [
+    {
+     "fact": "fact.selinuntius-doubted-once",
+     "statement": "セリヌンティウスは三日の間に一度だけメロスを疑った。",
+     "since": "beat.s2"
+    },
+    {
+     "fact": "fact.melos-despair",
+     "statement": "メロスは力尽きて倒れ、一度は約束を投げ出そうと思った（「悪い夢」）。",
+     "since": "beat.25"
+    }
+   ]
+  },
+  "p2-selinuntius-after-doubt": {
+   "character": "char.selinuntius",
+   "name": "セリヌンティウス",
+   "after": "beat.s2",
+   "afterTitle": "ちらと友を疑う",
+   "when": "三日目の夕方",
+   "place": "王城",
+   "now": {
+    "summary": "メロスの竹馬の友。シラクスの市の石工。",
+    "traits": [
+     "多くを語らず、友を信じる",
+     "気がきく"
+    ],
+    "goals": [
+     "友を信じて待つ"
+    ]
+   },
+   "knows": [
+    {
+     "fact": "fact.friendship",
+     "statement": "メロスとセリヌンティウスは竹馬の友で、二年会っていなかった。"
+    },
+    {
+     "fact": "fact.selinuntius-stonemason",
+     "statement": "セリヌンティウスはシラクスの市で石工をしている。"
+    },
+    {
+     "fact": "fact.king-killings",
+     "statement": "王は妹婿、世嗣、妹、妹の子、皇后、賢臣アレキスを殺した。"
+    },
+    {
+     "fact": "fact.king-distrust",
+     "statement": "王は乱心ではなく、人を信ずることができないのだという。"
+    },
+    {
+     "fact": "fact.hostage-decree",
+     "statement": "王は派手な暮しの臣下に人質を一人ずつ差し出させ、拒めば十字架にかける。"
+    },
+    {
+     "fact": "fact.promise",
+     "statement": "王はメロスに三日目の日没までに戻れと命じ、遅れたら身代りを殺すと言った。身代りはセリヌンティウス。"
+    },
+    {
+     "fact": "fact.melos-reason",
+     "statement": "メロスは妹に亭主を持たせるため、三日の猶予を願った。"
+    },
+    {
+     "fact": "fact.selinuntius-hostage",
+     "statement": "セリヌンティウスは深夜王城に召され、身代りとして縄打たれた。"
+    },
+    {
+     "fact": "fact.melos-errand",
+     "statement": "メロスは花嫁の衣裳と祝宴の御馳走を買いに市へ来た。"
+    },
+    {
+     "fact": "fact.melos-dagger",
+     "statement": "メロスは短剣を懐に王城へ入り、警吏に捕らえられた。"
+    },
+    {
+     "fact": "fact.selinuntius-doubted-once",
+     "statement": "セリヌンティウスは三日の間に一度だけメロスを疑った。"
+    }
+   ],
+   "notYet": [
+    {
+     "fact": "fact.melos-despair",
+     "statement": "メロスは力尽きて倒れ、一度は約束を投げ出そうと思った（「悪い夢」）。",
+     "since": "beat.25"
+    }
+   ]
+  },
+  "p2-sister-dusk": {
+   "character": "char.sister",
+   "name": "メロスの妹",
+   "after": "pre",
+   "afterTitle": "原作の始まり",
+   "when": "約束の日の日没前",
+   "place": "メロスの家と羊小屋",
+   "now": {
+    "summary": "メロスの妹。十六の内気な娘で、兄と二人で村に暮らしている。",
+    "traits": [
+     "十六歳、内気",
+     "結婚を喜び、恥じらう",
+     "兄を心配する"
+    ],
+    "goals": [
+     "結婚する",
+     "婚礼は近いが、日取りはまだ決まっていない"
+    ]
+   },
+   "knows": [
+    {
+     "fact": "fact.melos-family",
+     "statement": "メロスには父母も妻もなく、十六の妹と二人暮しである。"
+    },
+    {
+     "fact": "fact.sister-engaged",
+     "statement": "妹の花婿は、村の律気な一牧人である。"
+    },
+    {
+     "fact": "fact.melos-errand",
+     "statement": "メロスは花嫁の衣裳と祝宴の御馳走を買いに市へ来た。"
+    }
+   ],
+   "notYet": [
+    {
+     "fact": "fact.wedding-tomorrow",
+     "statement": "メロスは妹に、婚礼をあすにすると告げた（理由は話していない）。",
+     "since": "beat.08"
+    },
+    {
+     "fact": "fact.wedding-held",
+     "statement": "婚礼は真昼に行われた。",
+     "since": "beat.11"
+    },
+    {
+     "fact": "fact.storm",
+     "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。",
+     "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+     "since": "beat.13"
+    }
+   ]
+  },
+  "p2-sister-day1-morning": {
+   "character": "char.sister",
+   "name": "メロスの妹",
+   "after": "beat.09",
+   "afterTitle": "支度をして眠る",
+   "when": "一日目の午前",
+   "place": "メロスの家と羊小屋",
+   "now": {
+    "summary": "メロスの妹。十六の内気な娘で、兄と二人で村に暮らしている。",
+    "traits": [
+     "十六歳、内気",
+     "結婚を喜び、恥じらう",
+     "兄を心配する"
+    ],
+    "goals": [
+     "結婚する"
+    ]
+   },
+   "knows": [
+    {
+     "fact": "fact.melos-family",
+     "statement": "メロスには父母も妻もなく、十六の妹と二人暮しである。"
+    },
+    {
+     "fact": "fact.sister-engaged",
+     "statement": "妹の花婿は、村の律気な一牧人である。"
+    },
+    {
+     "fact": "fact.melos-errand",
+     "statement": "メロスは花嫁の衣裳と祝宴の御馳走を買いに市へ来た。"
+    },
+    {
+     "fact": "fact.wedding-tomorrow",
+     "statement": "メロスは妹に、婚礼をあすにすると告げた（理由は話していない）。"
+    }
+   ],
+   "notYet": [
+    {
+     "fact": "fact.wedding-held",
+     "statement": "婚礼は真昼に行われた。",
+     "since": "beat.11"
+    },
+    {
+     "fact": "fact.storm",
+     "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。",
+     "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+     "since": "beat.13"
+    }
+   ]
+  },
+  "p2-sister-feast-night": {
+   "character": "char.sister",
+   "name": "メロスの妹",
+   "after": "beat.13",
+   "afterTitle": "祝宴と別れの言葉",
+   "when": "二日目の夜",
+   "place": "メロスの家と羊小屋",
+   "now": {
+    "summary": "メロスの妹。十六の内気な娘で、兄と二人で村に暮らしている。",
+    "traits": [
+     "十六歳、内気",
+     "結婚を喜び、恥じらう",
+     "兄を心配する",
+     "兄の言葉に夢見心地でうなずく"
+    ],
+    "goals": []
+   },
+   "knows": [
+    {
+     "fact": "fact.melos-family",
+     "statement": "メロスには父母も妻もなく、十六の妹と二人暮しである。"
+    },
+    {
+     "fact": "fact.sister-engaged",
+     "statement": "妹の花婿は、村の律気な一牧人である。"
+    },
+    {
+     "fact": "fact.melos-errand",
+     "statement": "メロスは花嫁の衣裳と祝宴の御馳走を買いに市へ来た。"
+    },
+    {
+     "fact": "fact.wedding-tomorrow",
+     "statement": "メロスは妹に、婚礼をあすにすると告げた（理由は話していない）。"
+    },
+    {
+     "fact": "fact.wedding-held",
+     "statement": "婚礼は真昼に行われた。"
+    },
+    {
+     "fact": "fact.storm",
+     "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。"
+    }
+   ],
+   "notYet": []
+  },
+  "p2-groom-dusk": {
+   "character": "char.groom",
+   "name": "花婿",
+   "after": "pre",
+   "afterTitle": "原作の始まり",
+   "when": "約束の日の日没前",
+   "place": "花婿の家",
+   "now": {
+    "summary": "村の律気な牧人。メロスの妹の結婚相手。",
+    "traits": [
+     "律気",
+     "頑強に譲らない",
+     "照れ屋"
+    ],
+    "goals": [
+     "仕度を整え、葡萄の季節に婚礼を挙げたい"
+    ]
+   },
+   "knows": [
+    {
+     "fact": "fact.sister-engaged",
+     "statement": "妹の花婿は、村の律気な一牧人である。"
+    },
+    {
+     "fact": "fact.melos-family",
+     "statement": "メロスには父母も妻もなく、十六の妹と二人暮しである。"
+    },
+    {
+     "fact": "fact.groom-wanted-wait",
+     "statement": "花婿は仕度ができていないので葡萄の季節まで待ちたかった。"
+    }
+   ],
+   "notYet": [
+    {
+     "fact": "fact.wedding-held",
+     "statement": "婚礼は真昼に行われた。",
+     "since": "beat.11"
+    },
+    {
+     "fact": "fact.storm",
+     "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。",
+     "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+     "since": "beat.13"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。",
+     "since": "beat.10"
+    }
+   ]
+  },
+  "p2-groom-dawn": {
+   "character": "char.groom",
+   "name": "花婿",
+   "after": "beat.10",
+   "afterTitle": "花婿を夜通し説く",
+   "when": "二日目の薄明",
+   "place": "花婿の家",
+   "now": {
+    "summary": "村の律気な牧人。メロスの妹の結婚相手。",
+    "traits": [
+     "律気",
+     "照れ屋"
+    ],
+    "goals": []
+   },
+   "knows": [
+    {
+     "fact": "fact.sister-engaged",
+     "statement": "妹の花婿は、村の律気な一牧人である。"
+    },
+    {
+     "fact": "fact.melos-family",
+     "statement": "メロスには父母も妻もなく、十六の妹と二人暮しである。"
+    },
+    {
+     "fact": "fact.groom-wanted-wait",
+     "statement": "花婿は仕度ができていないので葡萄の季節まで待ちたかった。"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。"
+    }
+   ],
+   "notYet": [
+    {
+     "fact": "fact.wedding-held",
+     "statement": "婚礼は真昼に行われた。",
+     "since": "beat.11"
+    },
+    {
+     "fact": "fact.storm",
+     "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。",
+     "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+     "since": "beat.13"
+    }
+   ]
+  },
+  "p2-groom-feast-night": {
+   "character": "char.groom",
+   "name": "花婿",
+   "after": "beat.13",
+   "afterTitle": "祝宴と別れの言葉",
+   "when": "二日目の夜",
+   "place": "メロスの家と羊小屋",
+   "now": {
+    "summary": "村の律気な牧人。メロスの妹の結婚相手。",
+    "traits": [
+     "律気",
+     "照れ屋"
+    ],
+    "goals": []
+   },
+   "knows": [
+    {
+     "fact": "fact.sister-engaged",
+     "statement": "妹の花婿は、村の律気な一牧人である。"
+    },
+    {
+     "fact": "fact.melos-family",
+     "statement": "メロスには父母も妻もなく、十六の妹と二人暮しである。"
+    },
+    {
+     "fact": "fact.groom-wanted-wait",
+     "statement": "花婿は仕度ができていないので葡萄の季節まで待ちたかった。"
+    },
+    {
+     "fact": "fact.wedding-held",
+     "statement": "婚礼は真昼に行われた。"
+    },
+    {
+     "fact": "fact.storm",
+     "statement": "婚礼の宣誓のころから車軸を流すような大雨になった。"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。"
+    }
+   ],
+   "notYet": []
+  },
+  "p2-philostratus-night": {
+   "character": "char.philostratus",
+   "name": "フィロストラトス",
+   "after": "beat.03",
+   "afterTitle": "王の暴虐を知る",
+   "when": "約束の日の夜",
+   "place": "セリヌンティウスの石工の仕事場",
+   "now": {
+    "summary": "セリヌンティウスの弟子の若い石工。",
+    "traits": [
+     "セリヌンティウスの弟子の若い石工"
+    ],
+    "goals": []
+   },
+   "knows": [
+    {
+     "fact": "fact.selinuntius-stonemason",
+     "statement": "セリヌンティウスはシラクスの市で石工をしている。"
+    },
+    {
+     "fact": "fact.king-killings",
+     "statement": "王は妹婿、世嗣、妹、妹の子、皇后、賢臣アレキスを殺した。"
+    },
+    {
+     "fact": "fact.hostage-decree",
+     "statement": "王は派手な暮しの臣下に人質を一人ずつ差し出させ、拒めば十字架にかける。"
+    }
+   ],
+   "notYet": [
+    {
+     "fact": "fact.selinuntius-hostage",
+     "statement": "セリヌンティウスは深夜王城に召され、身代りとして縄打たれた。",
+     "since": "beat.06"
+    },
+    {
+     "fact": "fact.promise",
+     "statement": "王はメロスに三日目の日没までに戻れと命じ、遅れたら身代りを殺すと言った。身代りはセリヌンティウス。",
+     "since": "beat.06"
+    },
+    {
+     "fact": "fact.selinuntius-steadfast",
+     "statement": "セリヌンティウスは刑場に引き出され、王にからかわれても「メロスは来ます」とだけ答えた。",
+     "since": "beat.s1"
+    }
+   ]
+  },
+  "p2-philostratus-dawn": {
+   "character": "char.philostratus",
+   "name": "フィロストラトス",
+   "after": "beat.14",
+   "afterTitle": "薄明、雨中を走り出る",
+   "when": "三日目の薄明",
+   "place": "セリヌンティウスの石工の仕事場",
+   "now": {
+    "summary": "セリヌンティウスの弟子の若い石工。",
+    "traits": [
+     "セリヌンティウスの弟子の若い石工"
+    ],
+    "goals": []
+   },
+   "knows": [
+    {
+     "fact": "fact.selinuntius-stonemason",
+     "statement": "セリヌンティウスはシラクスの市で石工をしている。"
+    },
+    {
+     "fact": "fact.king-killings",
+     "statement": "王は妹婿、世嗣、妹、妹の子、皇后、賢臣アレキスを殺した。"
+    },
+    {
+     "fact": "fact.hostage-decree",
+     "statement": "王は派手な暮しの臣下に人質を一人ずつ差し出させ、拒めば十字架にかける。"
+    },
+    {
+     "fact": "fact.selinuntius-hostage",
+     "statement": "セリヌンティウスは深夜王城に召され、身代りとして縄打たれた。"
+    },
+    {
+     "fact": "fact.promise",
+     "statement": "王はメロスに三日目の日没までに戻れと命じ、遅れたら身代りを殺すと言った。身代りはセリヌンティウス。"
+    }
+   ],
+   "notYet": [
+    {
+     "fact": "fact.selinuntius-steadfast",
+     "statement": "セリヌンティウスは刑場に引き出され、王にからかわれても「メロスは来ます」とだけ答えた。",
+     "since": "beat.s1"
+    }
+   ]
+  },
+  "p2-philostratus-sunset": {
+   "character": "char.philostratus",
+   "name": "フィロストラトス",
+   "after": "beat.s1",
+   "afterTitle": "刑場に引き出される友",
+   "when": "三日目の日没前",
+   "place": "セリヌンティウスの石工の仕事場",
+   "now": {
+    "summary": "セリヌンティウスの弟子の若い石工。",
+    "traits": [
+     "セリヌンティウスの弟子の若い石工"
+    ],
+    "goals": []
+   },
+   "knows": [
+    {
+     "fact": "fact.selinuntius-stonemason",
+     "statement": "セリヌンティウスはシラクスの市で石工をしている。"
+    },
+    {
+     "fact": "fact.king-killings",
+     "statement": "王は妹婿、世嗣、妹、妹の子、皇后、賢臣アレキスを殺した。"
+    },
+    {
+     "fact": "fact.hostage-decree",
+     "statement": "王は派手な暮しの臣下に人質を一人ずつ差し出させ、拒めば十字架にかける。"
+    },
+    {
+     "fact": "fact.selinuntius-hostage",
+     "statement": "セリヌンティウスは深夜王城に召され、身代りとして縄打たれた。"
+    },
+    {
+     "fact": "fact.promise",
+     "statement": "王はメロスに三日目の日没までに戻れと命じ、遅れたら身代りを殺すと言った。身代りはセリヌンティウス。"
+    },
+    {
+     "fact": "fact.selinuntius-steadfast",
+     "statement": "セリヌンティウスは刑場に引き出され、王にからかわれても「メロスは来ます」とだけ答えた。"
+    }
+   ],
+   "notYet": []
+  },
+  "p2-old-man-midnight": {
+   "character": "char.old-man",
+   "name": "市の老爺",
+   "after": "beat.06",
+   "afterTitle": "深夜、友が召される",
+   "when": "約束の日の夜",
+   "place": "シラクスの広場と大路",
+   "now": {
+    "summary": "シラクスの市に住む老人。王の所業を知っていて、怯えている。",
+    "traits": [
+     "人目をはばかり、怯えている"
+    ],
+    "goals": [
+     "目をつけられずに生き延びる"
+    ]
+   },
+   "knows": [
+    {
+     "fact": "fact.king-killings",
+     "statement": "王は妹婿、世嗣、妹、妹の子、皇后、賢臣アレキスを殺した。"
+    },
+    {
+     "fact": "fact.king-distrust",
+     "statement": "王は乱心ではなく、人を信ずることができないのだという。"
+    },
+    {
+     "fact": "fact.hostage-decree",
+     "statement": "王は派手な暮しの臣下に人質を一人ずつ差し出させ、拒めば十字架にかける。"
+    },
+    {
+     "fact": "fact.six-killed-today",
+     "statement": "王の命令で、一日のうちに六人が殺された。"
+    },
+    {
+     "fact": "fact.city-silent",
+     "statement": "シラクスの市は夜でもひっそりして、やけに寂しい。二年前は賑やかだった。"
+    }
+   ],
+   "notYet": [
+    {
+     "fact": "fact.execution-crowd",
+     "statement": "日没に、市の石工が刑場で磔にされることになっていて、広場の一角の刑場に人が集まりはじめている。",
+     "since": "beat.22"
+    }
+   ]
+  },
+  "p2-old-man-dawn": {
+   "character": "char.old-man",
+   "name": "市の老爺",
+   "after": "beat.14",
+   "afterTitle": "薄明、雨中を走り出る",
+   "when": "三日目の薄明",
+   "place": "シラクスの広場と大路",
+   "now": {
+    "summary": "シラクスの市に住む老人。王の所業を知っていて、怯えている。",
+    "traits": [
+     "人目をはばかり、怯えている"
+    ],
+    "goals": [
+     "目をつけられずに生き延びる"
+    ]
+   },
+   "knows": [
+    {
+     "fact": "fact.king-killings",
+     "statement": "王は妹婿、世嗣、妹、妹の子、皇后、賢臣アレキスを殺した。"
+    },
+    {
+     "fact": "fact.king-distrust",
+     "statement": "王は乱心ではなく、人を信ずることができないのだという。"
+    },
+    {
+     "fact": "fact.hostage-decree",
+     "statement": "王は派手な暮しの臣下に人質を一人ずつ差し出させ、拒めば十字架にかける。"
+    },
+    {
+     "fact": "fact.six-killed-today",
+     "statement": "王の命令で、一日のうちに六人が殺された。"
+    },
+    {
+     "fact": "fact.city-silent",
+     "statement": "シラクスの市は夜でもひっそりして、やけに寂しい。二年前は賑やかだった。"
+    }
+   ],
+   "notYet": [
+    {
+     "fact": "fact.execution-crowd",
+     "statement": "日没に、市の石工が刑場で磔にされることになっていて、広場の一角の刑場に人が集まりはじめている。",
+     "since": "beat.22"
+    }
+   ]
+  },
+  "p2-old-man-sunset": {
+   "character": "char.old-man",
+   "name": "市の老爺",
+   "after": "beat.s1",
+   "afterTitle": "刑場に引き出される友",
+   "when": "三日目の日没前",
    "place": "シラクスの広場と大路",
    "now": {
     "summary": "シラクスの市に住む老人。王の所業を知っていて、怯えている。",

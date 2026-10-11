@@ -168,6 +168,7 @@ export const copy = {
   "map.future": "？",
   "map.now": "いまここ",
   "map.why": "なぜこうなった？",
+  "map.kept": "約束が果たされた",
   "map.corrected": "修正",
   "map.detail.who": "知っている人",
   "deadline.crisis": "このままでは、日没に間に合わない",
