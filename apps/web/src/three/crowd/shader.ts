@@ -10,6 +10,9 @@
 //   iScale = (breadth, height, the outer piece, what they carry): the outer piece 0 none (the executioner, bareheaded),
 //   1 as built, 2 the working man's cap drawn up into the guards' cone helmet (uCap: its centre, rim and height);
 //   carried 1 the spear (parts 6, 7), 2 the bundle (8), anything else folded away (props.ts)
+// The cloth has no texture to download (the pack has no UVs): the fragment shader gives it its weave and wear from the
+// rest position, each person's own (offset by where they stand): long streaks up and down where it hangs, a coarser
+// mottle, and darker towards the hem where the dust is (UX on #156: flat colour; card: texture)
 //   iFace = (beard, the head's width, its depth): the head scaled round its joint (uHead); with the beards, faces that
 //   differ (UX: all the faces the same). One attribute for the three: WebGL gives a vertex 16 at least, and no more
 import {
@@ -94,6 +97,27 @@ mat4 crowdSkin() {
 }
 `;
 
+// value noise, then the cloth's shade at a rest position: 0.8-1.15 from the weave and wear, a fifth darker at the hem
+const cloth = /* glsl */ `
+float crowdHash(vec3 p) {
+  return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+}
+float crowdNoise(vec3 p) {
+  vec3 i = floor(p);
+  vec3 f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(crowdHash(i), crowdHash(i + vec3(1, 0, 0)), f.x),
+                 mix(crowdHash(i + vec3(0, 1, 0)), crowdHash(i + vec3(1, 1, 0)), f.x), f.y),
+             mix(mix(crowdHash(i + vec3(0, 0, 1)), crowdHash(i + vec3(1, 0, 1)), f.x),
+                 mix(crowdHash(i + vec3(0, 1, 1)), crowdHash(i + vec3(1, 1, 1)), f.x), f.y), f.z);
+}
+float crowdCloth(vec3 q) {
+  float n = 0.6 * crowdNoise(q * vec3(10.0, 1.2, 10.0)) + 0.4 * crowdNoise(q * 5.0);
+  float hem = smoothstep(0.6, 0.05, q.y);
+  return (0.8 + 0.35 * n) * (1.0 - 0.18 * hem);
+}
+`;
+
 export type CrowdUniforms = {
   uBones: { value: DataTexture };
   uTime: { value: number };
@@ -125,11 +149,11 @@ function patch(
   sh.vertexShader = sh.vertexShader
     .replace(
       "#include <common>",
-      "#include <common>\nattribute vec3 iSkin;\nattribute vec3 iCloth;\nattribute vec3 iCloth2;\nattribute vec3 iHair;\nvarying vec3 vTint;\nvarying float vNear;",
+      "#include <common>\nattribute vec3 iSkin;\nattribute vec3 iCloth;\nattribute vec3 iCloth2;\nattribute vec3 iHair;\nvarying vec3 vTint;\nvarying float vNear;\nvarying vec4 vCloth;",
     )
     .replace(
       "#include <beginnormal_vertex>",
-      "mat4 crowdM = crowdSkin();\nvec3 objectNormal = crowdTurn( normalize( mat3( crowdM ) * normal ) );\nvNear = distance( cameraPosition.xz, ( modelMatrix * vec4( iPlace.xyz, 1.0 ) ).xz );\nvTint = aPart < 0.5 ? iSkin : aPart < 1.5 ? iCloth : aPart < 2.5 ? iCloth2 : aPart < 3.5 ? iHair : aPart < 4.5 ? iSkin * 0.5 : aPart < 5.5 ? mix( iSkin, iHair, iFace.x ) : aPart < 6.5 ? vec3( 0.16, 0.1, 0.06 ) : aPart < 7.5 ? vec3( 0.05, 0.05, 0.05 ) : iCloth * 0.85;",
+      "mat4 crowdM = crowdSkin();\nvec3 objectNormal = crowdTurn( normalize( mat3( crowdM ) * normal ) );\nvNear = distance( cameraPosition.xz, ( modelMatrix * vec4( iPlace.xyz, 1.0 ) ).xz );\nvCloth = vec4( position + vec3( iPlace.x * 3.1, 0.0, iPlace.z * 2.7 ), ( aPart > 0.5 && aPart < 2.5 ) || aPart > 7.5 ? 1.0 : 0.0 );\nvTint = aPart < 0.5 ? iSkin : aPart < 1.5 ? iCloth : aPart < 2.5 ? iCloth2 : aPart < 3.5 ? iHair : aPart < 4.5 ? iSkin * 0.5 : aPart < 5.5 ? mix( iSkin, iHair, iFace.x ) : aPart < 6.5 ? vec3( 0.16, 0.1, 0.06 ) : aPart < 7.5 ? vec3( 0.05, 0.05, 0.05 ) : iCloth * 0.85;",
     )
     .replace(
       "#include <begin_vertex>",
@@ -138,7 +162,7 @@ function patch(
   sh.fragmentShader = sh.fragmentShader
     .replace(
       "#include <common>",
-      "#include <common>\nvarying vec3 vTint;\nvarying float vNear;",
+      `#include <common>\nvarying vec3 vTint;\nvarying float vNear;\nvarying vec4 vCloth;\n${cloth}`,
     )
     .replace(
       "#include <clipping_planes_fragment>",
@@ -146,7 +170,10 @@ function patch(
       `#include <clipping_planes_fragment>
 if ( smoothstep( ${NEAR[0]!.toFixed(2)}, ${NEAR[1]!.toFixed(2)}, vNear ) < fract( 52.9829189 * fract( dot( gl_FragCoord.xy, vec2( 0.06711056, 0.00583715 ) ) ) ) ) discard;`,
     )
-    .replace("#include <color_fragment>", "diffuseColor.rgb *= vTint;");
+    .replace(
+      "#include <color_fragment>",
+      "diffuseColor.rgb *= vTint;\nif ( vCloth.w > 0.5 ) diffuseColor.rgb *= crowdCloth( vCloth.xyz );",
+    );
 }
 
 export function crowdMaterials(u: CrowdUniforms): {

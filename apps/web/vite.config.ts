@@ -163,7 +163,7 @@ export default defineConfig({
         // after the plaza, the dev panel, the e2e hook) would otherwise split it into pieces compressed one by one
         // (about 3 KB more brotli). Only the listed modules, not their dependencies (react stays in the shell); the lazy
         // ones stay out (the road's extras and water, the act-end page's prefetch, the ending's staging, the crowd past
-        // its presence check, the team's tools in dev/).
+        // its presence check, the castle's lamps, the start probe, the team's tools in dev/).
         codeSplitting: {
           groups: [
             {
@@ -175,7 +175,7 @@ export default defineConfig({
                 )
                   ? !id.includes("libs/basis")
                   : /[\\/]src[\\/]three[\\/]/.test(id) &&
-                    !/scene[\\/](extra|land|clouds|prefetch)|[\\/](water|dev)[\\/]|ending[\\/](?!Guard)|crowd[\\/](?!presence)/.test(
+                    !/scene[\\/](extra|land|clouds|prefetch)|quality[\\/]probe|[\\/](water|dev|castle)[\\/]|ending[\\/](?!Guard)|crowd[\\/](?!presence)/.test(
                       id,
                     ),
             },
