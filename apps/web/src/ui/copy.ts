@@ -288,6 +288,6 @@ export const fill = (
     k in vars ? String(vars[k]) : all,
   );
 
-// an act's name on the pages (「第二幕　その夜」); an act the client doesn't know shows nothing rather than an id
+// an act's name on the pages (「第二幕 その夜」); an act the client doesn't know shows nothing rather than an id
 export const actName = (actId: string): string =>
   (copy as Record<string, string>)[actId] ?? "";
