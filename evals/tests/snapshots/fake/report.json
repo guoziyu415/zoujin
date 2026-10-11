@@ -12,7 +12,7 @@
   }
  },
  "infra": {
-  "runs": 337,
+  "runs": 351,
   "timeout": {
    "count": 0,
    "share": 0.0,
@@ -170,9 +170,9 @@
     "pass": 15,
     "fail": 0,
     "skip": {
+     "needs-live-model": 3,
      "not-implemented:ending": 9,
-     "not-implemented:move（没有布局的场景）": 1,
-     "not-implemented:persona": 3
+     "not-implemented:move（没有布局的场景）": 1
     }
    },
    "passRate": 1.0,
@@ -203,9 +203,6 @@
    "skippedCases": {
     "not-implemented:move（没有布局的场景）": [
      "E5-008"
-    ],
-    "not-implemented:persona": [
-     "E5-001"
     ]
    }
   },
@@ -270,7 +267,7 @@
     "pass": 0,
     "fail": 0,
     "skip": {
-     "not-implemented:persona": 11
+     "needs-live-model": 11
     }
    },
    "passRate": null,
@@ -296,21 +293,7 @@
     "checked": 0,
     "fail": 0
    },
-   "skippedCases": {
-    "not-implemented:persona": [
-     "E7-001",
-     "E7-002",
-     "E7-003",
-     "E7-004",
-     "E7-005",
-     "E7-006",
-     "E7-007",
-     "E7-008",
-     "E7-009",
-     "E7-010",
-     "E7-011"
-    ]
-   }
+   "skippedCases": {}
   },
   "E8": {
    "name": "内容安全",
@@ -5276,10 +5259,35 @@
    "title": "什么都不做的模拟局：原著结局",
    "mode": "text",
    "runs": 3,
-   "skip": {
-    "code": "not-implemented",
-    "name": "persona"
-   }
+   "results": [
+    {
+     "run": 1,
+     "status": "skip",
+     "checks": [],
+     "skip": {
+      "code": "needs-live-model"
+     },
+     "traceIds": []
+    },
+    {
+     "run": 2,
+     "status": "skip",
+     "checks": [],
+     "skip": {
+      "code": "needs-live-model"
+     },
+     "traceIds": []
+    },
+    {
+     "run": 3,
+     "status": "skip",
+     "checks": [],
+     "skip": {
+      "code": "needs-live-model"
+     },
+     "traceIds": []
+    }
+   ]
   },
   {
    "id": "E5-002",
@@ -6608,10 +6616,17 @@
    "title": "模拟局：跟着原著走",
    "mode": "text",
    "runs": 1,
-   "skip": {
-    "code": "not-implemented",
-    "name": "persona"
-   }
+   "results": [
+    {
+     "run": 1,
+     "status": "skip",
+     "checks": [],
+     "skip": {
+      "code": "needs-live-model"
+     },
+     "traceIds": []
+    }
+   ]
   },
   {
    "id": "E7-002",
@@ -6619,10 +6634,17 @@
    "title": "模拟局：什么都不做",
    "mode": "text",
    "runs": 1,
-   "skip": {
-    "code": "not-implemented",
-    "name": "persona"
-   }
+   "results": [
+    {
+     "run": 1,
+     "status": "skip",
+     "checks": [],
+     "skip": {
+      "code": "needs-live-model"
+     },
+     "traceIds": []
+    }
+   ]
   },
   {
    "id": "E7-003",
@@ -6630,10 +6652,17 @@
    "title": "模拟局：反复劝国王",
    "mode": "text",
    "runs": 1,
-   "skip": {
-    "code": "not-implemented",
-    "name": "persona"
-   }
+   "results": [
+    {
+     "run": 1,
+     "status": "skip",
+     "checks": [],
+     "skip": {
+      "code": "needs-live-model"
+     },
+     "traceIds": []
+    }
+   ]
   },
   {
    "id": "E7-004",
@@ -6641,10 +6670,17 @@
    "title": "模拟局：徒弟要替师父当人质",
    "mode": "text",
    "runs": 1,
-   "skip": {
-    "code": "not-implemented",
-    "name": "persona"
-   }
+   "results": [
+    {
+     "run": 1,
+     "status": "skip",
+     "checks": [],
+     "skip": {
+      "code": "needs-live-model"
+     },
+     "traceIds": []
+    }
+   ]
   },
   {
    "id": "E7-005",
@@ -6652,10 +6688,17 @@
    "title": "模拟局：捣乱",
    "mode": "text",
    "runs": 1,
-   "skip": {
-    "code": "not-implemented",
-    "name": "persona"
-   }
+   "results": [
+    {
+     "run": 1,
+     "status": "skip",
+     "checks": [],
+     "skip": {
+      "code": "needs-live-model"
+     },
+     "traceIds": []
+    }
+   ]
   },
   {
    "id": "E7-006",
@@ -6663,10 +6706,17 @@
    "title": "模拟局：越狱",
    "mode": "text",
    "runs": 1,
-   "skip": {
-    "code": "not-implemented",
-    "name": "persona"
-   }
+   "results": [
+    {
+     "run": 1,
+     "status": "skip",
+     "checks": [],
+     "skip": {
+      "code": "needs-live-model"
+     },
+     "traceIds": []
+    }
+   ]
   },
   {
    "id": "E7-007",
@@ -6674,10 +6724,17 @@
    "title": "模拟局：牧童拖婚礼",
    "mode": "text",
    "runs": 1,
-   "skip": {
-    "code": "not-implemented",
-    "name": "persona"
-   }
+   "results": [
+    {
+     "run": 1,
+     "status": "skip",
+     "checks": [],
+     "skip": {
+      "code": "needs-live-model"
+     },
+     "traceIds": []
+    }
+   ]
   },
   {
    "id": "E7-008",
@@ -6685,10 +6742,17 @@
    "title": "模拟局：徒弟在刑场守着",
    "mode": "text",
    "runs": 1,
-   "skip": {
-    "code": "not-implemented",
-    "name": "persona"
-   }
+   "results": [
+    {
+     "run": 1,
+     "status": "skip",
+     "checks": [],
+     "skip": {
+      "code": "needs-live-model"
+     },
+     "traceIds": []
+    }
+   ]
   },
   {
    "id": "E7-009",
@@ -6696,10 +6760,17 @@
    "title": "模拟局：频繁删记忆",
    "mode": "text",
    "runs": 1,
-   "skip": {
-    "code": "not-implemented",
-    "name": "persona"
-   }
+   "results": [
+    {
+     "run": 1,
+     "status": "skip",
+     "checks": [],
+     "skip": {
+      "code": "needs-live-model"
+     },
+     "traceIds": []
+    }
+   ]
   },
   {
    "id": "E7-010",
@@ -6707,10 +6778,17 @@
    "title": "模拟局：频繁言い直す",
    "mode": "text",
    "runs": 1,
-   "skip": {
-    "code": "not-implemented",
-    "name": "persona"
-   }
+   "results": [
+    {
+     "run": 1,
+     "status": "skip",
+     "checks": [],
+     "skip": {
+      "code": "needs-live-model"
+     },
+     "traceIds": []
+    }
+   ]
   },
   {
    "id": "E7-011",
@@ -6718,10 +6796,17 @@
    "title": "模拟局：一心帮梅洛斯赶上",
    "mode": "text",
    "runs": 1,
-   "skip": {
-    "code": "not-implemented",
-    "name": "persona"
-   }
+   "results": [
+    {
+     "run": 1,
+     "status": "skip",
+     "checks": [],
+     "skip": {
+      "code": "needs-live-model"
+     },
+     "traceIds": []
+    }
+   ]
   },
   {
    "id": "E8-001",

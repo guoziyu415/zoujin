@@ -31,7 +31,7 @@ from zoujin_backend.ids import IdGen
 from zoujin_backend.manifest import Manifest
 from zoujin_backend.models.ledger import Ledger
 from zoujin_backend.models.live import LiveModel
-from zoujin_backend.projection import is_visible, patch, snapshot, visible_event, with_locations
+from zoujin_backend.projection import is_visible, patch, snapshot, visible_event, visible_events, with_locations
 from zoujin_backend.schemas import SchemaBook
 from zoujin_backend.trace import Tracer
 from zoujin_backend.world import Book, Library
@@ -246,15 +246,7 @@ class Gateway:
             if pt is None:
                 return []
             log_ = await store.event_log(c, pid, pt.book.version)
-        state = initial_state(pt.book.world, pt.role_id)
-        out = []
-        for ev in log_:
-            if ev["seq"] > after_seq and is_visible(pt.book, ev, state["vars"]["var.player.location"]):
-                out.append(visible_event(pt.book, ev, pt.role_id))
-                if len(out) >= limit:
-                    break
-            state = apply(pt.book.world, state, ev)
-        return out
+        return visible_events(pt.book, pt.role_id, log_, after_seq, limit)
 
     async def on_commit(self, payload: Json) -> None:
         """叙事者提交后的 NOTIFY（hub.py 转过来）：这一局开着连接就推。"""
