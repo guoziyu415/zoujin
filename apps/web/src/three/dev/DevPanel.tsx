@@ -1,4 +1,4 @@
-// ?dev: move the world clock, play the sunset (art-direction 10 check 2: 18:00 -> 19:10), shut the workshop, and a
+// ?dev: move the world clock (in the village over the whole day, any of its three days, and its weather), play the sunset (art-direction 10 check 2: 18:00 -> 19:10), shut the workshop, and a
 // frame-time / draw-call readout with the quality level. For the team, not players; the numbers for decisions come
 // from the measuring page (?measure).
 import { useEffect, useRef, useState } from "react";
@@ -8,6 +8,15 @@ import { usePlayer } from "../../stores/player";
 import { useWorld } from "../../stores/world";
 import { sandbox } from "./sandbox";
 import type { LoadStage } from "../World";
+
+// the village's test page (F-11): the weather held, or back to the clock and the commits
+const WEATHER = { clear: [0, 0], cloud: [1, 0], rain: [1, 1] } as const;
+async function villageWeather(w: keyof typeof WEATHER | null) {
+  const { villageLight } = await import("../village/VillageLife");
+  villageLight.force =
+    w === null ? null : { cloud: WEATHER[w][0], rain: WEATHER[w][1] };
+}
+const village = new URLSearchParams(location.search).get("scene") === "village";
 
 const hhmm = (t: number) => {
   const m = ((t % 1440) + 1440) % 1440;
@@ -85,13 +94,33 @@ export function DevPanel({ stage }: { stage: LoadStage }) {
       <input
         aria-label="clock"
         type="range"
-        min={270}
-        max={1230}
+        min={village ? 0 : 270}
+        max={village ? 1435 : 1230}
         step={5}
         value={t % 1440}
-        onChange={(e) => sandbox.setClock(Number(e.target.value))}
+        onChange={(e) =>
+          sandbox.setClock(Math.floor(t / 1440) * 1440 + Number(e.target.value))
+        }
         style={{ width: "100%" }}
       />
+      {village && (
+        <div>
+          {[1, 2, 3].map((d) => (
+            <button
+              key={d}
+              onClick={() => sandbox.setClock(d * 1440 + (t % 1440))}
+            >
+              {d}日目
+            </button>
+          ))}{" "}
+          {(["clear", "cloud", "rain"] as const).map((w) => (
+            <button key={w} onClick={() => void villageWeather(w)}>
+              {w}
+            </button>
+          ))}
+          <button onClick={() => void villageWeather(null)}>clock</button>
+        </div>
+      )}
       <button onClick={sunset}>18:00 → 19:10</button>{" "}
       <button
         onClick={() =>
