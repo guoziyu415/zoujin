@@ -52,8 +52,11 @@ jobs:
           cache-dependency-glob: assets/pipeline/plaza/requirements.txt
       - name: Blender as a Python module (bpy) and the X11/GL libraries it links
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q --no-install-recommends libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1
+          # 自建机器（infra/ci-runner）的镜像里已经装好，那里也没有 sudo
+          if [ -z "${ZOUJIN_CI_PREINSTALLED:-}" ]; then
+            sudo apt-get update -q
+            sudo apt-get install -y -q --no-install-recommends libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1
+          fi
           uv venv --python 3.13 "$RUNNER_TEMP/bpy"
           uv pip install --python "$RUNNER_TEMP/bpy/bin/python" -r assets/pipeline/plaza/requirements.txt
       - name: build the plaza from scratch (draft lightmaps)
@@ -70,7 +73,7 @@ jobs:
 
   road:
     name: road river manifests, draft build from scratch
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '["self-hosted","zoujin-mac"]') }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
@@ -90,8 +93,11 @@ jobs:
           cache-dependency-glob: assets/pipeline/plaza/requirements.txt
       - name: Blender as a Python module (bpy) and the X11/GL libraries it links
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q --no-install-recommends libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1
+          # 自建机器（infra/ci-runner）的镜像里已经装好，那里也没有 sudo
+          if [ -z "${ZOUJIN_CI_PREINSTALLED:-}" ]; then
+            sudo apt-get update -q
+            sudo apt-get install -y -q --no-install-recommends libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1
+          fi
           uv venv --python 3.13 "$RUNNER_TEMP/bpy"
           uv pip install --python "$RUNNER_TEMP/bpy/bin/python" -r assets/pipeline/plaza/requirements.txt
       - name: build both packs from scratch (draft lightmaps)
@@ -105,6 +111,10 @@ jobs:
           # the index and the merged layout hold no baked numbers: the committed ones are the fresh ones
           cmp assets/scenes/road-river/index.json "$RUNNER_TEMP/road/road-river/index.json"
           cmp assets/scenes/road-river/scene.json "$RUNNER_TEMP/road/road-river/scene.json"
+      - name: navigation unit tests on the fresh packs (card F-10; skipped in web.yml, which builds only the plaza)
+        run: |
+          test -f "$RUNNER_TEMP/road/road-river-calm/nav.json" && test -f "$RUNNER_TEMP/road/road-river-flood/nav.json"
+          ZOUJIN_SCENE_ROOT="$RUNNER_TEMP/road" pnpm --filter web exec vitest run src/three/nav/navmesh.river.test.ts
       - name: build again in other directories; every manifest must be byte-identical
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: |

@@ -2,7 +2,7 @@
 # runs its whole scene on import, so they are kept here for the road scripts rather than imported from there.
 # Groups as the plaza's bake.py expects them: 'ground' (one object named ground, planar lightmap), 'arch' (baked,
 # objects with caster = 1 also go into the shadow proxy), 'far' (not baked), 'dyn' (own nodes, hidden in the bake).
-import bpy, bmesh, math, os
+import bpy, bmesh, math, os, random
 from mathutils import Vector, Matrix, noise
 
 T = None    # texture dir, set by setup()
@@ -167,43 +167,38 @@ def rock(name, x, y, z, r, m, squash=0.6, seed=0, group='arch', caster=True):
     return obj_from_bm(name, bm, [m], group, caster)
 
 
-def uv_sphere(bm, us, vs):
-    """unit lat-long sphere, poles single vertices; built by hand because bmesh.ops.create_uvsphere's face order changes
-    from one Blender process to the next (Blender 5.2), which made two builds differ"""
-    top = bm.verts.new((0, 0, 1))
-    rings = [[bm.verts.new((math.sin(math.pi * j / vs) * math.cos(2 * math.pi * i / us),
-                            math.sin(math.pi * j / vs) * math.sin(2 * math.pi * i / us),
-                            math.cos(math.pi * j / vs))) for i in range(us)] for j in range(1, vs)]
-    bot = bm.verts.new((0, 0, -1))
-    for i in range(us):
-        k = (i + 1) % us
-        bm.faces.new((top, rings[0][i], rings[0][k]))
-        for j in range(vs - 2):
-            bm.faces.new((rings[j][i], rings[j + 1][i], rings[j + 1][k], rings[j][k]))
-        bm.faces.new((rings[-1][i], bot, rings[-1][k]))
-
-
 def tree(name, x, y, h, r, m_leaf, m_bark, shape='round', z=0.0, group='arch', lean=(0.0, 0.0)):
-    """poplar (shape 'column': tall and narrow), holm oak ('round'), willow ('weep': wide, hanging, leaning trunk)"""
-    th = h * (0.3 if shape == 'column' else 0.45)
+    """white poplar ('spread': broad, ragged, see-through crown on a leaning trunk; not the columnar Lombardy poplar,
+    a later cultivar), holm oak ('round'), willow ('weep': wide, hanging, leaning trunk)"""
+    th = h * 0.45
     tx, ty = x + lean[0] * th, y + lean[1] * th
-    rod(name + '_trunk', (x, y, z - 0.3), (tx, ty, z + th), 0.22 if shape != 'column' else 0.18, m_bark, group, caster=True)
+    rod(name + '_trunk', (x, y, z - 0.3), (tx, ty, z + th), 0.22, m_bark, group, caster=True)
     bm = bmesh.new()
-    if shape == 'column':
-        uv_sphere(bm, 12, 10)
-        for v in bm.verts:
-            t = (v.co.z + 1) / 2
-            w = r * (0.5 + 0.6 * math.sin(math.pi * min(1, t * 1.1))) * (1 - 0.55 * t)
-            n = noise.noise(Vector((v.co.x * 2 + x, v.co.y * 2 + y, v.co.z * 3))) * 0.22
-            v.co = Vector((tx + v.co.x * w * (1 + n), ty + v.co.y * w * (1 + n), z + h * 0.14 + t * h * 0.9))
+    if shape == 'spread':
+        # scattered blobs with gaps between them, from mid-height up; two main limbs fork off the trunk.
+        # Seeded from the position (str hashes change from one process to the next)
+        rr = random.Random(int(round(x * 100)) * 7919 + int(round(y * 100)))
+        for i, a in enumerate((rr.uniform(0, math.pi), None)):
+            a = a if a is not None else a_prev + math.pi * rr.uniform(0.7, 1.1)
+            a_prev = a
+            rod(f'{name}_limb{i}', (tx, ty, z + th - 0.2),
+                (tx + math.cos(a) * r * 0.4, ty + math.sin(a) * r * 0.4, z + h * 0.62), 0.12, m_bark, group, caster=True)
+        for i in range(7):
+            a = 2 * math.pi * i / 7 + rr.uniform(-0.35, 0.35)
+            d = r * rr.uniform(0.15, 0.7)
+            cx, cy, cz = tx + math.cos(a) * d, ty + math.sin(a) * d, z + h * rr.uniform(0.45, 0.92)
+            g = bmesh.ops.create_icosphere(bm, subdivisions=2, radius=r * rr.uniform(0.34, 0.48))
+            for v in g['verts']:
+                n = noise.noise(v.co * 1.9 + Vector((x, y, i))) * 0.35
+                v.co = Vector((cx + v.co.x * (1 + n), cy + v.co.y * (1 + n), cz + v.co.z * 0.85 * (1 + n)))
     else:
-        k = 6 if shape == 'weep' else 5
+        k = 8 if shape == 'weep' else 5
         for i in range(k):
             a = 2 * math.pi * i / k + noise.noise(Vector((x, y, i))) * 0.6
-            rr = r * (0.55 if shape == 'weep' else 0.62)
+            rr = r * (0.45 if shape == 'weep' else 0.62)
             cx, cy = tx + math.cos(a) * r * 0.5, ty + math.sin(a) * r * 0.5
             cz = z + (h * 0.62 if shape == 'weep' else h * 0.66) + noise.noise(Vector((i, x, y))) * h * 0.08
-            g = bmesh.ops.create_icosphere(bm, subdivisions=1, radius=rr)
+            g = bmesh.ops.create_icosphere(bm, subdivisions=2 if shape == 'weep' else 1, radius=rr)
             for v in g['verts']:
                 n = noise.noise(v.co * 1.7 + Vector((x, y, i))) * 0.3
                 sz = 1.35 if shape == 'weep' else 0.75
@@ -213,6 +208,8 @@ def tree(name, x, y, h, r, m_leaf, m_bark, shape='round', z=0.0, group='arch', l
                 if v.co.z < z + h * 0.62:
                     d = Vector((v.co.x - tx, v.co.y - ty, 0))
                     v.co += d * 0.15 + Vector((0, 0, -(z + h * 0.62 - v.co.z) * 0.6))
+    for f in bm.faces:   # smooth: the faceted blobs read as low-poly rocks, not foliage
+        f.smooth = True
     bm.normal_update()
     box_uv_bm(bm, 1.6)
     return obj_from_bm(name + '_leaves', bm, [m_leaf], group, True)
@@ -238,9 +235,10 @@ def gable(name, x0, x1, y0, y1, z, m_roof, m_wall, pitch_deg=35, over=0.35, grou
     obj_from_bm(name + '_gable', bm, [m_wall], group, True)
 
 
-def heightfield(name, xs, ys, hfun, matfun, mats, group, skip=None, tile=3.0):
+def heightfield(name, xs, ys, hfun, matfun, mats, group, skip=None, tile=3.0, tris=False):
     """a grid on the lines xs × ys; hfun(x, y) -> z; matfun(cx, cy, cz) -> index into mats for each quad;
-    skip(cx, cy) drops a quad (the far ring leaves a hole where the near ground is)"""
+    skip(cx, cy) drops a quad (the far ring leaves a hole where the near ground is); tris splits every quad on its
+    (x0, y0)-(x1, y1) diagonal, so grid_height() gives the exact surface (something laid on it, the far road)"""
     bm = bmesh.new()
     V = [[bm.verts.new((x, y, hfun(x, y))) for x in xs] for y in ys]
     for j in range(len(ys) - 1):
@@ -249,13 +247,26 @@ def heightfield(name, xs, ys, hfun, matfun, mats, group, skip=None, tile=3.0):
             if skip and skip(cx, cy):
                 continue
             q = (V[j][i], V[j][i + 1], V[j + 1][i + 1], V[j + 1][i])
-            f = bm.faces.new(q)
-            f.material_index = matfun(cx, cy, sum(v.co.z for v in q) / 4)
+            m = matfun(cx, cy, sum(v.co.z for v in q) / 4)
+            for f in ((bm.faces.new((q[0], q[1], q[2])), bm.faces.new((q[0], q[2], q[3]))) if tris else (bm.faces.new(q),)):
+                f.material_index = m
     loose = [v for v in bm.verts if not v.link_faces]
     bmesh.ops.delete(bm, geom=loose, context='VERTS')
     bm.normal_update()
     box_uv_bm(bm, tile)
     return obj_from_bm(name, bm, mats, group)
+
+
+def grid_height(xs, ys, hfun, x, y):
+    """the height of heightfield(..., tris=True) at (x, y): the plane of the triangle under the point"""
+    import bisect
+    i = min(max(bisect.bisect_right(xs, x) - 1, 0), len(xs) - 2)
+    j = min(max(bisect.bisect_right(ys, y) - 1, 0), len(ys) - 2)
+    u = (x - xs[i]) / (xs[i + 1] - xs[i]); v = (y - ys[j]) / (ys[j + 1] - ys[j])
+    z00, z10, z11, z01 = hfun(xs[i], ys[j]), hfun(xs[i + 1], ys[j]), hfun(xs[i + 1], ys[j + 1]), hfun(xs[i], ys[j + 1])
+    if u >= v:   # triangle (00, 10, 11)
+        return z00 + u * (z10 - z00) + v * (z11 - z10)
+    return z00 + v * (z01 - z00) + u * (z11 - z01)   # triangle (00, 11, 01)
 
 
 def lines(*spans, extra=()):

@@ -12,8 +12,8 @@
    "assets/pipeline/road/build.sh": "2ac8b2e79ecf2e994e65c8e67d134c67909c38c2b5badcacfe017e41b8d031a6",
    "assets/pipeline/road/road_tex.py": "db91de0e11dbfa7f6bc82764d27005795edffc888bc035248ccea97b30ed207c",
    "assets/pipeline/plaza/placeholder_tex.py": "aabda4df4f3974b2eb65b227ed3b5ae2d606a489441d665b3f2f108c5cd1343e",
-   "assets/pipeline/road/bl.py": "ab473048aa242384359777e346e1e37f433e9afc8f75861a02f81a2dd0f2045c",
-   "assets/pipeline/road/build_road_river.py": "4407409e930e01648c266850676ea5bb0abe6cbeee8739a5c9fbd8fb73a3f81d",
+   "assets/pipeline/road/bl.py": "6f2a9a708c2a92f715c30439795edbbdf54b787bf9498265d1aaf1f2d130bb17",
+   "assets/pipeline/road/build_road_river.py": "2f7e43b1fe74ee223a6c399927d4fc52b3de8d60403f426f3459780cb8528119",
    "assets/pipeline/road/merge_river.mjs": "1e41b37b401bda2130895dc2a6b67ae45ae866e4352d33f2e89314214f760edc",
    "assets/pipeline/plaza/requirements.txt": "0a234e44f52fb462c7e8694ecd82b99aca8e534ac610dde2dd749bb1e2cbe0e3",
    "assets/pipeline/plaza/sky.py": "971584f110b8a924e737d195f30eab114cb35d7345909e364ed21ec3e77aab27",
@@ -99,29 +99,29 @@
  "nodes": {
   "arch": {
    "prims": 7,
-   "tris": 3402,
+   "tris": 6210,
    "lightmap": "arch"
   },
   "far": {
    "prims": 5,
-   "tris": 3920
+   "tris": 4016
   },
   "ground": {
    "prims": 5,
-   "tris": 9520,
+   "tris": 10710,
    "lightmap": "ground"
   },
   "proxy": {
    "prims": 1,
-   "tris": 3364,
+   "tris": 6172,
    "shadowCasterOnly": true
   },
   "water": {
    "prims": 1,
-   "tris": 880
+   "tris": 1120
   }
  },
- "tris": 21086,
+ "tris": 28228,
  "materials": {
   "outcrop": {
    "color": [
@@ -763,7 +763,7 @@
   "ground": {
    "indirect": {
     "file": "lm/ground_indirect.ktx2",
-    "K": 0.3749191324929228
+    "K": 0.3708822266324532
    },
    "ao": {
     "file": "lm/ground_ao.ktx2"
@@ -773,7 +773,7 @@
   "arch": {
    "indirect": {
     "file": "lm/arch_indirect.ktx2",
-    "K": 0.3599704491399527
+    "K": 0.36020739850671873
    },
    "ao": {
     "file": "lm/arch_ao.ktx2"
@@ -783,7 +783,7 @@
  },
  "nav": {
   "file": "nav.json",
-  "polys": 112,
+  "polys": 97,
   "agent": {
    "radius": 0.3,
    "height": 1.8,
@@ -816,7 +816,7 @@
    ],
    "yaw": 1.5708,
    "place": "place.river",
-   "poly": 45
+   "poly": 43
   },
   "melos-bridgehead": {
    "pos": [
@@ -826,7 +826,7 @@
    ],
    "yaw": 1.5708,
    "place": "place.river",
-   "poly": 58
+   "poly": 56
   },
   "road-east": {
    "pos": [
@@ -836,7 +836,7 @@
    ],
    "yaw": -1.5708,
    "place": "place.river",
-   "poly": 48
+   "poly": 46
   },
   "far-bank": {
    "pos": [
@@ -846,7 +846,7 @@
    ],
    "yaw": 1.5708,
    "place": "place.river",
-   "poly": 48
+   "poly": 46
   },
   "melos-pray": {
    "pos": [
@@ -856,7 +856,7 @@
    ],
    "yaw": 1.5708,
    "place": "place.river",
-   "poly": 57,
+   "poly": 55,
    "auto": false
   },
   "swim-in": {
@@ -867,18 +867,18 @@
    ],
    "yaw": 1.5742,
    "place": "place.river",
-   "poly": 57,
+   "poly": 55,
    "auto": false
   },
   "swim-out": {
    "pos": [
-    11,
+    11.03,
     -0.06,
-    12
+    11.87
    ],
-   "yaw": -1.5708,
+   "yaw": -1.5575,
    "place": "place.river",
-   "poly": 98,
+   "poly": 64,
    "auto": false
   },
   "shallows-in": {
@@ -905,13 +905,13 @@
   },
   "melos-wash": {
    "pos": [
-    7.01,
+    7,
     -1.83,
-    2.59
+    2.58
    ],
-   "yaw": -1.5791,
+   "yaw": -1.5783,
    "place": "place.river",
-   "poly": 64,
+   "poly": 61,
    "auto": false
   },
   "way.west": {
@@ -922,7 +922,7 @@
    ],
    "yaw": -1.5708,
    "place": "place.river",
-   "poly": 45
+   "poly": 43
   },
   "way.east": {
    "pos": [
@@ -932,14 +932,14 @@
    ],
    "yaw": 1.5708,
    "place": "place.river",
-   "poly": 48
+   "poly": 46
   }
  },
  "files": [
   {
    "path": "geo.glb",
-   "bytes": 497924,
-   "sha256": "75f3eafc5b93fb9c6ad85cca92b3b7c7998b470f6615e7ad84c26c3849ad69d5",
+   "bytes": 631056,
+   "sha256": "53479ecfb2723ec5598c2778182c16f591664946184fca1ce99cf7a442ac817e",
    "pack": "entry"
   },
   {
@@ -1180,44 +1180,44 @@
   },
   {
    "path": "lm/ground_indirect.ktx2",
-   "bytes": 111073,
-   "sha256": "a6da17b25119190b79430b87996b9f4b7b9d472d0b5c91d322644ac05f25885c",
+   "bytes": 121081,
+   "sha256": "287773e47f2664fd32ebeeeb8733fe7554846f668efc70c940048f1ff9b81e6c",
    "pack": "entry"
   },
   {
    "path": "lm/ground_ao.ktx2",
-   "bytes": 103078,
-   "sha256": "ee1060712224633a92381bc4eb5228c71ac4754a8042cee88036904cba3744da",
+   "bytes": 102920,
+   "sha256": "e1d049a4dc911fecbedec1bc4143f5a1e2b2716e1f8e945e866bd4c2b54ef656",
    "pack": "entry"
   },
   {
    "path": "lm/arch_indirect.ktx2",
-   "bytes": 187878,
-   "sha256": "ed49e2109ccb71b1c63274cffafc06bd24240b7470d31f676fdf7174df2513cd",
+   "bytes": 205361,
+   "sha256": "5f9637c67c96d8cd7a2df3263ed874b413644c7ede3813310c7650cccd6e66ef",
    "pack": "entry"
   },
   {
    "path": "lm/arch_ao.ktx2",
-   "bytes": 158121,
-   "sha256": "67f689d35cb057957e501f56beada33a240e8d9e41354093df5f6dcc9e6e6290",
+   "bytes": 176540,
+   "sha256": "13ecbb7f80e84b71dccff30797103721d9b986f5ec0a33b05f6ab5ca248bdc4d",
    "pack": "entry"
   },
   {
    "path": "nav.json",
-   "bytes": 38826,
-   "sha256": "50022a7dfdd50deb1651b0961cbb253a95be8f284bedbe33dcebf2d6da86300c",
+   "bytes": 36171,
+   "sha256": "76745cbf0697e61d890cbe8924bb36d98040a98a2e1cb0adb42390020efacd86",
    "pack": "entry"
   }
  ],
  "bytes": {
-  "entry": 2341440,
+  "entry": 2517669,
   "hiExtra": 1142841,
   "shared": {
    "entry": 1957733,
    "hiExtra": 4110189
   },
-  "envStd": 4299173,
-  "envHi": 9552203
+  "envStd": 4475402,
+  "envHi": 9728432
  },
  "sharedPacks": [
   "road-common"

@@ -62,6 +62,8 @@ CAMS = {   # name: (eye, target, lens)
     'flood-west': ((-16, -1, EYE), (10, 0, 0.5), 24),        # from road-west: the broken piles, the water, the willow
     'flood-south': ((-6.5, 2, EYE), (-2, -40, -0.5), 26),    # 11:45 into the light downstream
     'flood-bank': ((-6, 0.8, EYE), (8, -2, -0.2), 30),       # melos-bridgehead
+    'flood-north': ((-6, 0.5, EYE), (6, 60, 5.0), 24),       # upstream: the rain cloud on the mountains, the shallows
+    'flood-willow': ((-16, -1, EYE), (12, -12.4, 2.5), 40),  # from road-west: the willow leaning out (swim-out)
 }
 for name, (p, t, lens) in CAMS.items():
     if name.startswith('calm') == FLOOD or (which and name not in which):

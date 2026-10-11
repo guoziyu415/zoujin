@@ -37,7 +37,7 @@ M_HOLM = mat('holmoak', tex_exists('holmoak_base'), None, None, rough=0.85)
 M_REED = mat('reed', tex_exists('reed_base'), None, None, rough=0.8)
 M_HILL = mat('hill', tex_exists('hill_base'), tex_exists('outcrop_nrm'), None, rough=0.95)
 M_WATER = mat('water', color=(0.16, 0.12, 0.07) if FLOOD else (0.04, 0.06, 0.06), rough=0.08)   # the page's shader replaces it
-M_CLOUD = mat('raincloud', color=(0.2, 0.21, 0.23), rough=1.0)
+M_CLOUD = mat('raincloud', color=(0.13, 0.14, 0.16), rough=1.0)
 
 WATER = -0.25 if FLOOD else -2.0    # layout.json water.levelM
 
@@ -69,8 +69,19 @@ BREAKS_X = sorted({x for x, _ in P_MAIN + P_SHALLOW})
 def w_shallows(y):
     return ss(y, 6.5, 9.0) * (1 - ss(y, 16.0, 18.5))
 
-def bar(x, y):   # the pebble bar, x 3..7, y 10..15, dry 15 cm above the calm water
-    return ss(x, 2.2, 3.0) * (1 - ss(x, 7.0, 7.8)) * ss(y, 9.2, 10.0) * (1 - ss(y, 15.0, 15.8))
+BAR_Y = (9.4, 15.8)
+def bar(x, y):
+    """the pebble bar (about x 3..7, y 10..15): drawn out along the flow, pointed at both ends, a ragged edge, crowned
+    in the middle (top 15 cm above the calm water) and sliding under the water at its edges.
+    Returns (weight, crown): how far to lift the bed, and 0..1 across the bar"""
+    t = (y - BAR_Y[0]) / (BAR_Y[1] - BAR_Y[0])
+    if not 0 < t < 1:
+        return 0.0, 0.0
+    half = 2.1 * math.sin(math.pi * t) ** 0.8 * (1 + 0.18 * noise.noise(Vector((y / 1.7, 0.3, 3.3))))
+    dx = abs(x - (5.0 + 0.5 * math.sin(t * 2.4)))
+    if dx >= half:
+        return 0.0, 0.0
+    return ss(half - dx, 0.0, 0.9), 1 - (dx / half) ** 2
 
 def wiggle(y):
     """away from the bridge, the jetty and the shallows the channel wanders a little, so it never reads as a canal"""
@@ -80,9 +91,10 @@ def terrain(x, y):
     x -= wiggle(y)
     w = w_shallows(y)
     z = pl(x, P_MAIN) * (1 - w) + pl(x, P_SHALLOW) * w
-    b = bar(x, y)
-    if b > 0 and z < -1.85:
-        z += (-1.85 - z) * b
+    b, crown = bar(x, y)
+    top = -2.05 + 0.2 * crown
+    if b > 0 and z < top:
+        z += (top - z) * b
     # off the road and away from the banks the grass rolls a little; the road east climbs towards the pass
     land = 1 - ss(x, -13.0, -11.5) * (1 - ss(x, 12.5, 14.0))
     z += 0.18 * noise.noise(Vector((x / 7, y / 7, 0.4))) * ss(abs(y), 2.0, 5.0) * land
@@ -93,8 +105,10 @@ def meander(y):
     """beyond the near ground the river bends away: east going upstream, west going down (plan metres)"""
     return math.copysign(1, y) * 32 * ss(abs(y), 40, 170) ** 2
 
-def valley(x, y):   # the hills keep off the river valley (it runs north-south, bending away)
-    return ss(abs(x - 3 - meander(y)), 30, 150)
+def valley(x, y):
+    """the hills keep off the river valley (it runs north-south, bending away) until, at both ends, the valley turns
+    in among them: no open horizon up or down the river"""
+    return max(ss(abs(x - 3 - meander(y)), 30, 150), ss(abs(y), 150, 250))
 
 def ridge_tan(ang):
     """tan of the horizon's elevation seen from the bridge, by plan angle (0 = east, 90° = north).
@@ -104,9 +118,22 @@ def ridge_tan(ang):
     def bump(c, wdt):
         d = abs((a - c + 180) % 360 - 180)
         return max(0.0, math.cos(min(math.pi, d / wdt * math.pi / 2))) if d < wdt else 0.0
-    e = 3.0 + 3.8 * bump(10, 70) + 6.0 * bump(95, 45) + 1.0 * bump(200, 60) - 1.0 * bump(270, 50)
+    e = 3.0 + 3.8 * bump(10, 70) + 9.0 * bump(95, 45) + 1.0 * bump(200, 60) - 1.0 * bump(270, 50)
     e -= 2.6 * bump(0, 9)      # the notch (the road to the pass)
+    # a ragged skyline (peaks and saddles) everywhere but on the east ridge, whose 7° the page's sun test uses
+    r = math.radians(a)
+    rag = noise.noise(Vector((math.cos(r) * 2.2, math.sin(r) * 2.2, 7.7))) + 0.5 * noise.noise(Vector((math.cos(r) * 6, math.sin(r) * 6, 3.1)))
+    e *= 1 + 0.32 * rag * (1 - bump(15, 65))
     return math.tan(math.radians(e))
+
+def road_y(x):
+    """the road beyond the near ground follows the land: west of about 45 m it swings south and out of sight behind
+    the low hills; east it climbs in loose bends towards the notch (the pass), never in a ruled line"""
+    if x < -40:
+        return -0.012 * (x + 40) ** 2
+    if x > 40:
+        return 9 * ss(x, 40, 110) * math.sin((x - 40) / 28) - 4 * ss(x, 120, 220)
+    return 0.0
 
 def far_height(x, y):
     d = math.hypot(x, y)
@@ -114,8 +141,12 @@ def far_height(x, y):
     if d > 40:
         n = noise.noise(Vector((x / 60, y / 60, 2.2))) * 0.5 + 0.5
         n2 = noise.noise(Vector((x / 17, y / 17, 5.1)))   # spurs and gullies on the slopes
-        hill = d * ridge_tan(math.atan2(y, x)) * ss(d, 90, 260) * (0.82 + 0.25 * n + 0.08 * n2)
-        road = 1 - 0.5 * (1 - ss(abs(y), 4, 16)) * ss(x, 40, 80)   # the road east keeps a shallow cut
+        # peaks and saddles on the far skyline (60 m and up, the far grid's 30 m), not on the east ridge (the sun test)
+        de = abs((math.degrees(math.atan2(y, x)) - 15 + 180) % 360 - 180)
+        east = math.cos(de / 65 * math.pi / 2) if de < 65 else 0.0
+        n3 = noise.noise(Vector((x / 45, y / 45, 9.1))) * ss(d, 180, 300) * (1 - east)
+        hill = d * ridge_tan(math.atan2(y, x)) * ss(d, 90, 260) * (0.82 + 0.25 * n + 0.08 * n2 + 0.45 * n3)
+        road = 1 - 0.5 * (1 - ss(abs(y - road_y(x)), 4, 16)) * ss(x, 40, 80)   # the road east keeps a shallow cut
         h += hill * valley(x, y) * road
     return h
 
@@ -124,8 +155,8 @@ ROAD_Y = 1.5      # the road is 3 m wide, gravel verges to 1.6 (homeward-road.md
 def ground_mat(cx, cy, cz):
     if cz < -0.45:
         return 4 if -2.0 < cz < -1.7 else 3   # the low beaches and the bar: pebbles; the rest of the channel: bank
-    if FLOOD and -0.32 < cz < -0.04 and (cx < -6 or cx > 9):
-        return 5      # fresh silt along the flood line
+    if FLOOD and -0.32 < cz < -0.04 and (cx < -6 or cx > 9) and abs(cy) > 1.1:
+        return 5      # fresh silt along the flood line, off the road: the road runs on into the water
     if abs(cy) < 1.1 and not (-5 < cx < 11):
         return 0
     if abs(cy) < 1.6 and not (-5 < cx < 11):
@@ -134,25 +165,45 @@ def ground_mat(cx, cy, cz):
 
 GMATS = [M_ROAD, M_GRAVEL, M_GRASS, M_BANK, M_PEBBLE, M_SILT]
 XS = lines((-40, -14, 2.0), (-14, -6, 1.0), (-6, 12, 0.5), (12, 14, 1.0), (14, 40, 2.0), extra=BREAKS_X)
-YS = lines((-40, -20, 4.0), (-20, 20, 1.0), (20, 40, 4.0), extra=(-1.6, -1.1, 1.1, 1.6, 6.5, 9.0, 16.0, 18.5))
+YS = lines((-40, -20, 4.0), (-20, 9, 1.0), (9, 16, 0.5), (16, 20, 1.0), (20, 40, 4.0),
+           extra=(-1.6, -1.1, 1.1, 1.6, 6.5, 18.5))
 heightfield('ground', XS, YS, terrain, ground_mat, GMATS, 'ground', tile=3.0)
 
 def far_mat(cx, cy, cz):
     if cz < -0.45:
         return 2
-    if abs(cy) < 1.6 and abs(cx) > 30:
-        return 0
     return 3 if cz > 2.5 else 1
 
 FX = lines((-340, -100, 30.0), (-100, 100, 12.0), (100, 340, 30.0), extra=[x for x in BREAKS_X] + [-40, 40])
-FY = lines((-340, -100, 30.0), (-100, 100, 12.0), (100, 340, 30.0), extra=(-1.6, 1.6, -40, 40))
+FY = lines((-340, -100, 30.0), (-100, 100, 12.0), (100, 340, 30.0), extra=(-40, 40))
 heightfield('far_land', FX, FY, far_height, far_mat, [M_ROAD, M_GRASS, M_BANK, M_HILL], 'far',
-            skip=lambda cx, cy: abs(cx) < 40 and abs(cy) < 40, tile=12.0)
+            skip=lambda cx, cy: abs(cx) < 40 and abs(cy) < 40, tile=12.0, tris=True)
+
+def far_road():
+    """the road past the near ground, a 3 m ribbon laid 12 cm over the far land's triangles along road_y (far group: not
+    baked)"""
+    import bmesh
+    bm = bmesh.new()
+    for xs in (lines((-150, -40, 3.0)), lines((40, 240, 3.0))):
+        prev = None
+        for x in xs:
+            y = road_y(x)
+            dx = 0.01
+            t = Vector((dx, road_y(x + dx) - y, 0)).normalized()
+            n = Vector((-t.y, t.x, 0)) * 1.5
+            pair = [bm.verts.new((x + n.x * k, y + n.y * k, bl.grid_height(FX, FY, far_height, x + n.x * k, y + n.y * k) + 0.12)) for k in (-1, 1)]
+            if prev:
+                bm.faces.new((prev[0], pair[0], pair[1], prev[1]))
+            prev = pair
+    bm.normal_update()
+    bl.box_uv_bm(bm, 3.0)
+    bl.obj_from_bm('far_road', bm, [M_ROAD], 'far')
+far_road()
 
 # ---------------------------------------------------------------- water (its own node: the page's shader)
 def water():
     xs = lines((-11.5, 15.5, 1.0)) if FLOOD else lines((-4.5, 9.5, 1.4))
-    ys = lines((-150, -45, 15.0), (-45, 45, 1.0 if FLOOD else 3.0), (45, 150, 15.0))
+    ys = lines((-240, -45, 15.0), (-45, 45, 1.0 if FLOOD else 3.0), (45, 240, 15.0))   # runs in under the closing hills
     o = heightfield('water', xs, ys, lambda x, y: WATER, lambda *a: 0, [M_WATER], 'dyn', tile=4.0)
     for v in o.data.vertices:   # follow the bends
         v.co.x += meander(v.co.y)
@@ -267,10 +318,18 @@ jetty()
 hut()
 
 # ---------------------------------------------------------------- trees, rocks, walls, reeds (homeward-road.md 1.1, 0.4)
+# white poplars: broad ragged crowns about 15 m up, a head above the holm oaks, trunks often leaning
 for i, (x, y) in enumerate(((-8, 7), (-9, 13), (-7, -17), (13, 5), (14.2, 11), (13, -17))):
-    tree(f'poplar{i}', x, y, random.uniform(15, 18), 1.7, M_POPLAR, M_BARK, 'column', z=terrain(x, y))
-# the willow on the east bank, leaning over the water (swim-out, where Melos gets hold of it in act 4)
-tree('willow', 12.3, -12.4, 8.5, 3.4, M_WILLOW, M_BARK, 'weep', z=terrain(12.3, -12.4), lean=(-0.35, 0.0))
+    tree(f'poplar{i}', x, y, random.uniform(14, 16), 4.5, M_POPLAR, M_BARK, 'spread', z=terrain(x, y),
+         lean=(random.uniform(-0.12, 0.12), random.uniform(-0.12, 0.12)))
+# the willow on the east bank, about 10 m, leaning out over the water, its roots bared by the river (swim-out, where
+# Melos gets hold of it in act 4)
+WX, WY = 12.3, -12.4
+tree('willow', WX, WY, 10.0, 3.6, M_WILLOW, M_BARK, 'weep', z=terrain(WX, WY), lean=(-0.55, 0.0))
+for i, a in enumerate((150, 185, 215, 250)):
+    r = math.radians(a)
+    ex, ey = WX + math.cos(r) * 1.6, WY + math.sin(r) * 1.3
+    rod(f'willow_root{i}', (WX, WY, terrain(WX, WY) + 0.25), (ex, ey, terrain(ex, ey) - 0.15), 0.09, M_BARK, caster=True)
 for i, (x, y) in enumerate(((28, 12), (-30, 9), (31, -10))):
     tree(f'holmoak{i}', x, y, random.uniform(6, 8), 2.6, M_HOLM, M_BARK, 'round', z=terrain(x, y))
 for i, (x, y, r) in enumerate(((-9.5, -5.5, 1.3), (14.5, -8.0, 1.6), (-13.5, 9.5, 1.1), (16.5, 13.0, 1.8),
@@ -308,21 +367,24 @@ if not FLOOD:
     reeds()
 
 def rain_clouds():
-    """act 4: the dark rain cloud still sitting on the mountains upstream (north), a few layered cards"""
+    """act 4: the dark rain cloud still sitting on the mountains upstream (north), a few layered cards whose lower edge
+    follows the slopes below the skyline, so the cloud lies on the mountains, not above an empty horizon"""
     import bmesh
     bm = bmesh.new()
     uvl = bm.loops.layers.uv.new('UVMap')
     rr = random.Random(9)
     for k in range(4):
         d = 260 + 25 * k
-        z0 = 18 + 6 * k
         pts = []
-        for i in range(25):
-            a = math.radians(55 + 70 * i / 24)
-            top = z0 + 30 + 18 * math.sin(i * 0.9 + k) * (0.6 + 0.4 * rr.random()) + 10 * rr.random()
-            pts.append((d * math.cos(a), d * math.sin(a), top))
-        for (x0, y0, t0), (x1, y1, t1) in zip(pts, pts[1:]):
-            vs = [bm.verts.new((x1, y1, z0)), bm.verts.new((x0, y0, z0)), bm.verts.new((x0, y0, t0)), bm.verts.new((x1, y1, t1))]
+        for i in range(49):
+            a = math.radians(55 + 70 * i / 48)
+            x, y = d * math.cos(a), d * math.sin(a)
+            low = 0.7 * far_height(x, y) + 4 * k
+            # rounded billows (two slow swells and a little noise), not a saw-tooth that reads as more mountains
+            top = low + 45 + 14 * math.sin(i * 0.3 + 1.7 * k) + 6 * math.sin(i * 0.7 + k) + 2 * rr.random()
+            pts.append((x, y, low, top))
+        for (x0, y0, b0, t0), (x1, y1, b1, t1) in zip(pts, pts[1:]):
+            vs = [bm.verts.new((x1, y1, b1)), bm.verts.new((x0, y0, b0)), bm.verts.new((x0, y0, t0)), bm.verts.new((x1, y1, t1))]
             f = bm.faces.new(vs)
             for l, uv in zip(f.loops, ((0, 0), (1, 0), (1, 1), (0, 1))):
                 l[uvl].uv = uv
