@@ -1,4 +1,5 @@
 // The crowd without a GPU (F-4): where people stand, the baked motions, and the staging's verbs on a clock.
+import type { Api } from "@zoujin/contracts";
 import {
   Matrix4,
   type InstancedBufferGeometry,
@@ -13,6 +14,7 @@ import {
   type CrowdPackJson,
   type MotionsJson,
 } from "./pack";
+import { CROWD, crowdCount } from "./presence";
 import {
   bake,
   BONES,
@@ -405,5 +407,21 @@ describe("Crowd", () => {
     c.update(1 + Math.max(0, first.s - 0.6) + 0.31);
     expect(c.clips()[first.i]).toMatch(/^turn/);
     if (last.s - first.s > 1) expect(c.clips()[last.i]).toBe("sway");
+  });
+});
+
+describe("crowdCount", () => {
+  const at = (
+    place: string,
+    activity: Api.CharacterPresence["activity"] = "idle",
+  ): Record<string, Api.CharacterPresence> => ({
+    [CROWD.id]: { id: CROWD.id, place, activity, talkable: false, group: true },
+  });
+  it("the crowd while the world model has it on the execution ground, else none; ?crowd= overrides", () => {
+    expect(crowdCount(undefined)).toBe(0);
+    expect(crowdCount(at("place.syracuse"))).toBe(0);
+    expect(crowdCount(at(CROWD.place))).toBe(CROWD.count);
+    expect(crowdCount(at(CROWD.place, "absent"))).toBe(0);
+    expect(crowdCount(at("place.syracuse"), 12)).toBe(12);
   });
 });

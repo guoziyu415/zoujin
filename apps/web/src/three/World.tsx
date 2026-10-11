@@ -5,6 +5,7 @@ import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { flags } from "../app/flags";
 import { useWorld } from "../stores/world";
 import { CameraRig } from "./CameraRig";
+import { crowdCount } from "./crowd/presence";
 import { groundAlbedo, Lighting } from "./Lighting";
 import { People } from "./People";
 import { Player } from "./Player";
@@ -52,6 +53,7 @@ export function World({
 }) {
   const { gl, scene: three, camera } = useThree();
   const sceneId = useWorld((s) => s.world?.sceneId);
+  const crowd = useWorld((s) => crowdCount(s.world?.characters, flags.crowd));
   const base = sceneId ? sceneBase(sceneId, packs) : null;
   const [scene, setScene] = useState<LoadedScene | null>(null);
   const checkHigh = useRef<() => void>(() => {});
@@ -148,9 +150,9 @@ export function World({
         nav={scene.nav.data}
       />
       <People scene={scene} />
-      {flags.crowd > 0 && (
+      {crowd > 0 && (
         <Suspense fallback={null}>
-          <CrowdLayer scene={scene} count={flags.crowd} />
+          <CrowdLayer scene={scene} count={crowd} />
         </Suspense>
       )}
       <Player scene={scene} />
