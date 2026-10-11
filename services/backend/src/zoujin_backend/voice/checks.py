@@ -123,6 +123,7 @@ class TakeCheck:
     talk: str | None = None  # 和自由对话比的音高、语速（要比的句子才有）
     talk_off: float = 0.0  # 离范围多远：两样各除以允许的差取大的，≤ 1 在范围里
     heard_as: bool = False  # 字错率只靠源文件 heardAs 的写法才过（对原文和读音替换后的都不过）
+    breathy: float = 0.0  # 源文件 breathyOk 的相槌：有音高的比例离下限差多少（挑最不气的一遍）；别的都是 0
 
     @property
     def ok(self) -> bool:
@@ -146,6 +147,7 @@ def judge(
     spoken: str | None = None,
     talk: tuple[float, float] | None = None,
     heard_as: tuple[str, ...] = (),
+    breathy_ok: bool = False,
 ) -> Verdict:
     """takes：第几遍 → (形状, 补转写) 或出错的原因。补转写对原文 `text` 和送给 Live 的 `spoken`（读音替换后）都比，
     取小的；拍数按 `spoken` 估（替换后的假名更准）。"""
@@ -176,7 +178,7 @@ def judge(
             elif s.speech > hi:
                 c.problems.append(f"比拍数估的上限 {hi:.2f}s 长")
             if aizuchi:
-                _aizuchi(s, c)
+                _aizuchi(s, c, breathy_ok)
             if talk is not None:
                 _talk(s, c, talk, mora(spoken or text))
         if s.tail_voiced:
@@ -202,7 +204,7 @@ def judge(
         # 没有软问题的优先；其次在自由对话的范围里的，都不在就挑最近的；再其次长度最接近中位数
         chosen = min(
             passed,
-            key=lambda c: (bool(c.soft), max(1.0, c.talk_off), abs((c.speech or 0) - median), c.take),
+            key=lambda c: (bool(c.soft), c.breathy, max(1.0, c.talk_off), abs((c.speech or 0) - median), c.take),
         ).take
     flags = []
     if chosen is not None:
@@ -233,7 +235,7 @@ def _talk(s: Shape, c: TakeCheck, talk: tuple[float, float], moras: float) -> No
     c.talk, c.talk_off = "，".join(parts), round(off, 3)
 
 
-def _aizuchi(s: Shape, c: TakeCheck) -> None:
+def _aizuchi(s: Shape, c: TakeCheck, breathy_ok: bool = False) -> None:
     span = s.span if s.span is not None else s.speech
     if span > AIZUCHI_MAX_S:
         c.problems.append(f"相槌有声 {span:.2f}s，超过 {AIZUCHI_MAX_S}s")
@@ -241,6 +243,11 @@ def _aizuchi(s: Shape, c: TakeCheck) -> None:
     if file_s > AIZUCHI_FILE_MAX_S:
         c.problems.append(f"相槌裁好是 {file_s:.2f}s，超过 {AIZUCHI_FILE_MAX_S}s")
     if s.pitched is not None and s.pitched < AIZUCHI_MIN_PITCHED:
-        c.problems.append(f"有音高的只有 {s.pitched:.0%}（耳语或气声？）")
+        why = f"有音高的只有 {s.pitched:.0%}（耳语或气声？）"
+        if breathy_ok:  # 源文件 breathyOk：不扔，挑最不气的一遍标给 UX
+            c.soft.append(why)
+            c.breathy = round(AIZUCHI_MIN_PITCHED - s.pitched, 3)
+        else:
+            c.problems.append(why)
     if head_voiced(s):
         c.soft.append("原始那遍一开头就有声（可能切了头；已在前面补够静音）")

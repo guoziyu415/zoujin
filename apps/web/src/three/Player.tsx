@@ -459,6 +459,9 @@ export function Player({ scene }: { scene: LoadedScene }) {
     }
     cast.x = p.x;
     cast.z = p.z;
+    // down on one knee by someone sitting (castle.md 3.2); the stand-in just squats
+    body.scale.y +=
+      ((rig.crouch ? 0.62 : 1) - body.scale.y) * Math.min(1, dt * 6);
     if (moving) {
       const place = nav.placeOf(p.poly);
       nav.setPlayerPlace(place);

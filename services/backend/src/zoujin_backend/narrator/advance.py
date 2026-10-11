@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import func, select
 from zoujin_backend.db import store
 from zoujin_backend.db.tables import turns
+from zoujin_backend.narrator.ending import alias_map
 from zoujin_backend.narrator.pipeline import CallFailed, Spend, TurnInput, _Try, normalize, result
 from zoujin_backend.narrator.rules import absent, fill_ids, index, judge, trial
 from zoujin_backend.narrator.view import state_view
@@ -184,6 +185,15 @@ def request(
     }
 
 
+def swap(x: Json, ids: Mapping[str, str]) -> Json:
+    """把正好是事件 ID（或别名）的字符串换掉，别的原样。"""
+    if isinstance(x, dict):
+        return {k: swap(v, ids) for k, v in x.items()}
+    if isinstance(x, list):
+        return [swap(v, ids) for v in x]
+    return ids.get(x, x) if isinstance(x, str) else x
+
+
 # —— 候选和检查 ——
 
 
@@ -299,15 +309,17 @@ async def prepare(
     q = quota(window, log_, shown, busy=busy)
     if window.reason != "act" and not has_work(book, state, window, q):
         return Prepared()
-    req = request(book, state, log_, shown, window, q)
+    to_alias, back = alias_map(log_)  # 请求里的事件 ID 用别名 `e<seq>`（同一局面同一个请求：回放、缓存）
+    req = swap(request(book, state, log_, shown, window, q), to_alias)
     try:
         r = await n.pipeline.call(KIND, req, spend, span={**span, "reason": window.reason})
     except CallFailed:
         log.info("世界推进（%s）两次都没成，这次不推", window.reason)
         return Prepared(called=True)
+    out = swap(r.output, back)
     by_id = {e["eventId"]: e for e in log_ if committed(e)}
     turn = TurnInput(character=None, player=None, act=WORLD_ACT)
-    raws = sorted(r.output["events"], key=lambda x: int(x.get("t", window.start)))
+    raws = sorted(out["events"], key=lambda x: int(x.get("t", window.start)))
     now = state
     taken = {"present": 0, "absent": 0}
     tries: list[tuple[_Try, bool]] = []

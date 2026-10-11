@@ -35,12 +35,12 @@
 | beat.04 王城で捕縛 | D0 20:00（D0 19:30〜D0 22:00） | execution-ground | メロス、城の警吏 | mutable | melos.knowsTyranny == True | melos.custody = arrested、melos → castle、item.dagger 被拿走 | 「買い物を、背負ったままで、のそのそ王城にはいって行った。」(10)<br>「調べられて、メロスの懐中からは短剣が出て来たので、騒ぎが大きくなってしまった。」(10) | |
 | beat.05 王との問答と約束 | D0 20:30（D0 20:00〜D0 23:00） | castle | メロス、王ディオニス | mutable | melos.custody == arrested | promise.made = True、hostage.who = char.selinuntius | 「処刑までに三日間の日限を与えて下さい。」(18)<br>「あれを、人質としてここに置いて行こう。」(20)<br>「願いを、聞いた。その身代りを呼ぶがよい。」(22)<br>「メロスは口惜しく、地団駄踏んだ。」(25) | |
 | beat.06 深夜、友が召される | D0 23:30（D0 21:30〜D1 01:00） | castle | セリヌンティウス、メロス、王ディオニス | mutable | promise.made == True | hostage.fate = held、selinuntius → castle | 「竹馬の友、セリヌンティウスは、深夜、王城に召された。」(26) | |
-| beat.07 満天の星の下を発つ | D0 23:45（D0 21:40〜D1 02:00） | castle | メロス | mutable | hostage.fate == held | melos.custody = on-parole、melos.stamina -30 | 「メロスは、すぐに出発した。初夏、満天の星である。」(26) | |
+| beat.07 満天の星の下を発つ | D0 23:45（D0 21:40〜D1 02:00） | castle | メロス | mutable | hostage.fate == held | melos.custody = on-parole、melos.stamina -30、selinuntius → castle、melos → road-to-city | 「メロスは、すぐに出発した。初夏、満天の星である。」(26) | |
 | beat.08 村に着き、婚礼を告げる | D1 10:00（D1 07:00〜D1 14:00） | melos-home | メロス、メロスの妹 | mutable | melos.custody == on-parole | melos → melos-home、wedding.status = scheduled | 「村へ到着したのは、翌る日の午前」(27)<br>「あす、おまえの結婚式を挙げる。」(28)<br>「村の人たちに知らせて来い。結婚式は、あすだと。」(30) | |
 | beat.09 支度をして眠る | D1 10:30（D1 10:00〜D1 20:00） | melos-home | メロス | mutable | — | melos.stamina +35 | 「間もなく床に倒れ伏し、呼吸もせぬくらいの深い眠りに落ちてしまった。」(31) | |
 | beat.10 花婿を夜通し説く | D2 04:30（D1 20:00〜D2 08:00） | groom-house | メロス、花婿 | mutable | wedding.status == scheduled | groom.agreed = True、melos.stamina -10 | 「眼が覚めたのは夜だった。」(32)<br>「夜明けまで議論をつづけて、やっと、どうにか婿をなだめ、すかして、説き伏せた。」(32) | |
 | beat.11 真昼の婚礼 | D2 12:00（D2 07:00〜D2 18:40） | melos-home | メロス、メロスの妹、花婿 | mutable | groom.agreed == True | wedding.status = held | 「結婚式は、真昼に行われた。」(32) | |
-| beat.12 大雨 | D2 12:30（D2 12:20〜D2 13:00） | village | — | anchor | — | weather = storm | 「黒雲が空を覆い、ぽつりぽつり雨が降り出し」(32) | |
+| beat.12 大雨 | D2 12:30（D2 12:20〜D2 13:00） | melos-home | — | anchor | — | weather = storm | 「黒雲が空を覆い、ぽつりぽつり雨が降り出し」(32) | |
 | beat.13 祝宴と別れの言葉 | D2 21:00（D2 13:40〜D2 23:40） | melos-home | メロス、メロスの妹、花婿 | mutable | wedding.status == held | — | 「メロスは、一生このままここにいたい、と思った。」(32)<br>「もう一つ、メロスの弟になったことを誇ってくれ。」(35) | |
 | beat.14 薄明、雨中を走り出る | D3 04:30（D3 01:20〜D3 09:40） | melos-home | メロス | mutable | melos.custody == on-parole | melos.stamina +30、melos → village | 「眼が覚めたのは翌る日の薄明の頃である。」(37)<br>「雨中、矢の如く走り出た。」(37) | |
 | beat.17 濁流、橋が流される | D3 06:00（D3 04:40〜D3 08:00） | river | — | anchor | — | bridge = destroyed | 「猛勢一挙に橋を破壊し」(38) | |
@@ -53,6 +53,7 @@
 | beat.21 泉 | D3 16:30（D3 12:30〜D3 19:00） | spring | メロス | mutable | — | melos.stamina +30、melos.resolve = 100 | 「水を両手で掬って、一くち飲んだ。」(48)<br>「走れ！　メロス。」(48)<br>「先刻の、あの悪魔の囁きは、あれは夢だ。」(49) | |
 | beat.22 黒い風のように | D3 17:30（D3 13:30〜D3 19:00） | road-to-city | メロス、旅の一団 | mutable | — | melos.clothing = nearly-naked | 「メロスは黒い風のように走った。」(50)<br>「メロスは、いまは、ほとんど全裸体であった。」(50) | |
 | beat.s1 刑場に引き出される友 | D3 18:00（D3 17:00〜D3 18:55） | execution-ground | セリヌンティウス、王ディオニス、市の群衆、城の警吏 | mutable | hostage.fate == held | hostage.fate = on-cross、selinuntius → execution-ground、maiden → execution-ground、king → execution-ground、crowd → execution-ground、guards → execution-ground | 「王様が、さんざんあの方をからかっても、メロスは来ます、とだけ答え」(57) | |
+| ↳ 变体 beat.s1.v-you〔推断〕 | — | — | — | — | hostage.who == player | 身代わりを買って出た者が、縄を打たれて刑場に引き出される。セリヌンティウスは柱に上らず、群衆の中にいる。 hostage.fate = on-cross、maiden → execution-ground、king → execution-ground、crowd → execution-ground、guards → execution-ground、player.location = place.execution-ground | — | |
 | beat.23 フィロストラトス | D3 18:30（D3 14:30〜D3 19:00） | road-to-city | メロス、フィロストラトス | mutable | — | — | 「もう、駄目でございます。」(53)<br>「それだから、走るのだ。信じられているから走るのだ。」(58)<br>「いや、まだ陽は沈まぬ。」(56) | |
 | beat.24 日没、刑場へ | D3 19:00（D3 16:00〜D3 19:00） | execution-ground | メロス、セリヌンティウス、市の群衆、城の警吏 | mutable | melos.custody == on-parole | melos.custody = returned、hostage.fate = released、melos → execution-ground | 「メロスは疾風の如く刑場に突入した。間に合った。」(60)<br>「セリヌンティウスの縄は、ほどかれたのである。」(62) | |
 | beat.25 殴り合いと抱擁 | D3 19:05（D3 16:00〜D3 20:00） | execution-ground | メロス、セリヌンティウス | mutable | hostage.fate == released、hostage.who == char.selinuntius〔推断〕 | — | 「私を殴れ。ちから一ぱいに頬を殴れ。」(63)<br>「「ありがとう、友よ。」二人同時に言い」(67)<br>「刑場一ぱいに鳴り響くほど音高くメロスの右頬を殴った。」(64)<br>「メロスは腕に唸りをつけてセリヌンティウスの頬を殴った。」(66) | |
@@ -389,16 +390,16 @@
 | role.apprentice | 石屋の弟子 | 第 1 版 | act.1 · stonemason-workshop · D0 17:30 | セリヌンティウス、フィロストラトス | stonemason-workshop、syracuse-square、execution-ground | castle：player.companionOf == char.selinuntius | 原文ではフィロストラトスが「セリヌンティウスの弟子の若い石工」。重複を避けるため、フィロストラトスの弟弟子とする（UX 5.1 は「セリヌンティウス親方の工房で、石を刻んでいる」）。 | |
 | role.castle-maid | 王城の侍女 | 第 2 版 | act.1 · castle · D0 17:30 | 王ディオニス、城の警吏 | castle、execution-ground、syracuse-square | — | 王の耳打ち（fact.king-whisper）を立ち聞きできる唯一の身分。 | |
 | role.shepherd-boy | 村の牧童 | 第 1 版 | act.3 · village · D1 09:00 | メロス、メロスの妹、花婿 | village、melos-home、groom-house、neighbor-village、river、mountain-pass、spring、road-to-city、syracuse-square、execution-ground | — | 一日目の午前、村の畑から始まる（メロスが村に着く前）。村・帰り道・広場に行ける（UX 5.1）。婚礼と出発の時刻に影響できる。 | |
-| role.guard | 警吏 | 第 2 版 | act.1 · castle · D0 17:30 | 城の警吏、王ディオニス | castle、execution-ground、syracuse-square | — | 王の側に立つ。メロスを捕らえる側から始まる。 | |
+| role.guard | 警吏の見習い | 第 2 版 | act.1 · castle · D0 17:30 | 城の警吏、王ディオニス | castle、execution-ground、syracuse-square | — | 王の側に立つ。メロスを捕らえる側から始まる。 | |
 
 ### 幕
 
 | 幕 | 时间 | 场景 | 收幕 | 幕末去处 | 校对 |
 |---|---|---|---|---|---|
 | act.1 約束の日 | D0 17:30〜（最迟 D1 02:00） | syracuse-square、castle-throne | beat.07 | メロスと夜の道を行く → act.2 · spring · D1 02:45<br>城に残り、セリヌンティウスのそばにいる → act.2 · castle · D1 00:00<br>市に残る → act.2 · syracuse-square · D1 00:00 | |
-| act.2 その夜 | D1 00:00〜（最迟 D1 14:00） | road-spring、road-pass、road-river、road-field、syracuse-square、castle-throne | beat.08 | メロスと村に着く → act.3 · village · D1 10:00<br>市でその時を待つ → act.3 · syracuse-square · D1 10:00 | |
-| act.3 村の二日 | D1 09:00〜（最迟 D3 09:40） | village、syracuse-square、castle-throne | beat.14 | 雨の中、メロスと走り出る → act.4 · river · D3 11:20<br>　过场：「隣村で、メロスは歩をゆるめた。」〔急かす（40分早まる）〕beat.16 prevented、melos.stamina -15，选后：「メロスは足を速めた。河原には、思ったより早く着いた。」 / 〔好きにさせる〕（原作どおり）<br>市で日没を待つ → act.4 · syracuse-square · D3 04:30 | |
-| act.4 三日目 | D3 04:30〜（最迟 D3 20:00） | road-river、road-pass、road-spring、road-field、syracuse-square | beat.27 | （进入结局） | |
+| act.2 その夜 | D1 00:00〜（最迟 D1 14:00） | road-spring、road-pass、road-river、road-field、syracuse-square、castle-throne | beat.08 | メロスと村に着く → act.3 · melos-home · D1 10:00<br>城で、セリヌンティウスのそばにいる → act.3 · castle · D1 10:00<br>市でその時を待つ → act.3 · syracuse-square · D1 10:00 | |
+| act.3 村の二日 | D1 09:00〜（最迟 D3 09:40） | village、syracuse-square、castle-throne | beat.14 | 雨の中、メロスと走り出る → act.4 · river · D3 11:20<br>　过场：「隣村で、メロスは歩をゆるめた。」〔急かす（40分早まる）〕beat.16 prevented、melos.stamina -15，选后：「メロスは足を速めた。河原には、思ったより早く着いた。」 / 〔好きにさせる〕（原作どおり）<br>城で、セリヌンティウスのそばにいる → act.4 · castle · D3 04:30<br>市で日没を待つ → act.4 · syracuse-square · D3 04:30 | |
+| act.4 三日目 | D3 04:30〜（最迟 D3 20:00） | road-river、road-pass、road-spring、road-field、syracuse-square、castle-throne | beat.27 | （进入结局） | |
 
 ### 情境动作（contracts 2.10；第四幕每处既能让他慢，也能帮他快，S-036 ②）
 

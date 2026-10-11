@@ -274,8 +274,8 @@ def test_replay_fixture_is_the_fake_ending_recorded(game: Callable[..., Game], m
         async def call(self, kind: str, request: Json) -> TextResult:
             r = await super().call(kind, request)
             # 来不及那条路上还有别的调用，只录结局、结局的模型检查和记忆（B-17：结局的请求里有没删的记忆，回放里
-            # 没有记忆的调用，记忆就写不出来，结局的请求对不上）
-            if kind in (E.KIND, E.CHECK_KIND, "memory"):
+            # 没有记忆的调用，记忆就写不出来，结局的请求对不上；B-16：选去处时的世界推进也要录，回放才走得到结局）
+            if kind in (E.KIND, E.CHECK_KIND, "memory", "world"):
                 calls.append(record(kind, request, r.output, recorded_at="2026-10-11T00:00:00.000Z"))
             return r
 
@@ -290,7 +290,7 @@ def test_replay_fixture_is_the_fake_ending_recorded(game: Callable[..., Game], m
     text = "".join(json.dumps(c, ensure_ascii=False, sort_keys=True) + "\n" for c in calls)
     if os.environ.get("ZJ_UPDATE_REPLAYS") == "1":
         REPLAYS.write_text(text, encoding="utf-8")
-    assert [(c["kind"], c["request"]["outcome"]["id"]) for c in calls if c["kind"] != "memory"] == [
+    assert [(c["kind"], c["request"]["outcome"]["id"]) for c in calls if c["kind"] not in ("memory", "world")] == [
         ("ending", "canon-reunion"),
         ("ending-check", "canon-reunion"),
         ("ending", "too-late"),

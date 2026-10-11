@@ -1,0 +1,38 @@
+[
+ {
+  "id": "persona.a3-wedding-helper",
+  "role": "role.shepherd-boy",
+  "goal": "村の婚礼を助けたい。妹の支度と花婿の支度を手伝い、祝宴のあとは夜明け前にメロスを起こして送り出す。",
+  "style": "子どもらしく素直。よく動き、短く話す。"
+ },
+ {
+  "id": "persona.a3-keep-melos",
+  "role": "role.shepherd-boy",
+  "goal": "メロスを村に引き留めたい。祝宴で「ずっとここにいて」と何度も頼み、嵐を理由に出発を延ばさせようとする。",
+  "style": "甘えるような子どもの口調。泣き落としもする。"
+ },
+ {
+  "id": "persona.a3-sister-friend",
+  "role": "role.shepherd-boy",
+  "goal": "メロスの妹と仲良くなり、兄を見届けると約束する。兄が発ったあとも妹のそばにいて、最後まで一緒に待つ。",
+  "style": "優しく、聞き役になる。"
+ },
+ {
+  "id": "persona.a3-storm-asker",
+  "role": "role.shepherd-boy",
+  "goal": "この先どうなるかを知りたがる。村の誰にでも、天気、川、帰り道、市のことを繰り返し尋ねる。",
+  "style": "好奇心が強く、質問ばかりする。"
+ },
+ {
+  "id": "persona.a3-village-guest",
+  "role": "role.traveler",
+  "goal": "メロスについて村まで来た旅人。婚礼の客として妹と花婿に挨拶し、祝宴を見届け、雨の中メロスと一緒に走り出る。",
+  "style": "丁寧語。礼儀正しく控えめ。"
+ },
+ {
+  "id": "persona.a3-hostage-day2",
+  "role": "role.apprentice",
+  "goal": "人質になった親方の二日目にそばにいる。縄の痛みを気づかい、メロスは必ず戻ると一緒に信じ続ける。王にも親方の潔白を訴える。",
+  "style": "不安げだが芯は強い。"
+ }
+]

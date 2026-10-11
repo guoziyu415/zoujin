@@ -74,10 +74,27 @@ export function People({ scene }: { scene: LoadedScene }) {
       }
       people.delete(id);
     };
-    const walk = (p: Person, to: NavPoint, run: boolean) => {
-      const path = nav.findPath(p.at, to, true);
-      p.path = path ? path.slice(1) : [to];
-      p.speed = run ? RUN : WALK;
+    const walk = (
+      p: Person,
+      id: string,
+      spot: string,
+      to: NavPoint,
+      run: boolean,
+      entering = false,
+    ) => {
+      const r = rig.route?.(id, spot, entering);
+      p.path = [];
+      let from = p.at;
+      const goals = (r?.via ?? []).map(([x, z]) =>
+        nav.locate(x, z, from.poly, from.y, true),
+      );
+      for (const goal of [...goals, to]) {
+        if (!goal) continue;
+        const path = nav.findPath(from, goal, true);
+        p.path.push(...(path ? path.slice(1) : [goal]));
+        from = goal;
+      }
+      p.speed = r?.speed ?? (run ? RUN : WALK);
     };
     const sync = (chars: Record<string, Api.CharacterPresence>) => {
       for (const c of Object.values(chars)) {
@@ -94,23 +111,27 @@ export function People({ scene }: { scene: LoadedScene }) {
           obj.name = c.id;
           obj.userData.character = c.id;
           group.add(obj);
-          const person: Person = {
+          // a staged entrance (castle.md 4): they come on at its start spot and walk to theirs
+          const from = rig.route?.(c.id, c.spot!, true)?.from;
+          const start = from ? pointAt(from) : null;
+          const np: Person = {
             obj,
             body: null,
-            at: target[0],
-            yaw: target[1],
+            at: (start ?? target)[0],
+            yaw: (start ?? target)[1],
             spot: c.spot!,
             path: [],
             speed: WALK,
             endYaw: target[1],
             leaving: false,
           };
-          people.set(c.id, person);
+          people.set(c.id, np);
+          if (start) walk(np, c.id, c.spot!, target[0], false, true);
           const name = castName(c.id);
           if (name)
             void import("./cast/CastBody").then(({ CastBody }) => {
-              if (people.get(c.id) !== person) return;
-              person.body = new CastBody(
+              if (people.get(c.id) !== np) return;
+              np.body = new CastBody(
                 gl,
                 name,
                 c.id,
@@ -125,18 +146,19 @@ export function People({ scene }: { scene: LoadedScene }) {
         if (p.spot === c.spot) continue;
         p.spot = c.spot!;
         p.endYaw = target[1];
-        walk(p, target[0], c.activity === "run");
+        walk(p, c.id, c.spot!, target[0], c.activity === "run");
       }
       // left the scene (3.4: their place isn't one of this scene's): out by the nearest exit
       for (const [id, p] of people) {
         if (chars[id] || p.leaving) continue;
         let best: NavPoint | null = null;
+        let bestSpot = "";
         let bestD = Infinity;
         for (const e of manifest.exits) {
           const at = pointAt(e.spot)?.[0];
           if (!at) continue;
           const d = Math.hypot(at.x - p.at.x, at.z - p.at.z);
-          if (d < bestD) [best, bestD] = [at, d];
+          if (d < bestD) [best, bestSpot, bestD] = [at, e.spot, d];
         }
         if (!best) {
           remove(id);
@@ -144,7 +166,7 @@ export function People({ scene }: { scene: LoadedScene }) {
         }
         p.leaving = true;
         p.endYaw = null;
-        walk(p, best, false);
+        walk(p, id, bestSpot, best, false);
       }
     };
     sync(useWorld.getState().world?.characters ?? {});
