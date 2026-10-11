@@ -144,6 +144,7 @@ def judge(
     aizuchi: bool,
     spoken: str | None = None,
     talk: tuple[float, float] | None = None,
+    heard_as: tuple[str, ...] = (),
 ) -> Verdict:
     """takes：第几遍 → (形状, 补转写) 或出错的原因。补转写对原文 `text` 和送给 Live 的 `spoken`（读音替换后）都比，
     取小的；拍数按 `spoken` 估（替换后的假名更准）。"""
@@ -183,6 +184,7 @@ def judge(
             c.problems.append("没有补转写")
         else:
             refs = [text] if not spoken or spoken == text else [text, spoken]  # 补转写可能写汉字也可能写假名
+            refs += heard_as  # 源文件 heardAs：补转写固定写错的（「ちと」写成「ちょっと」），只对这一句
             c.cer = min(cer(r, heard) for r in refs)
             if any(read_twice(r, heard) for r in refs):
                 c.problems.append("补转写里原文出现两遍（读两遍）")

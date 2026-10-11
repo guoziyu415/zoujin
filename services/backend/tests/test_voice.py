@@ -316,6 +316,34 @@ def test_only_unheard_and_wait_are_compared_with_free_talk() -> None:
         assert p.recording(rid).talk is None
 
 
+def test_heard_as_accepts_a_known_transcript_spelling_for_that_line_only() -> None:
+    # 老爺「ちと」补转写总写成「ちょっと」（字错率 22%）：源文件 heardAs 只对这一句，不放宽 20%
+    text = "ちと、待ってくだされ。"
+    r = slice_plan().recording("old-man-wait-1")
+    assert r.heard_as == ("ちょっと、待ってくだされ。",)
+    heard = "ちょっと 待っ て くださ れ 。"
+    assert checks.judge(text, {1: (shape(1.8), heard)}, aizuchi=False).chosen is None
+    assert checks.judge(text, {1: (shape(1.8), heard)}, aizuchi=False, heard_as=r.heard_as).chosen == 1
+    assert slice_plan().recording("old-man-unheard-1").heard_as == ()
+    spec = read_spec("hashire-merosu")
+    spec["heardAs"] = {"ないせりふ。": ["x"]}
+    with pytest.raises(SpecError, match="heardAs"):
+        plan(spec, world_of(spec, REPO / "worlds"))
+
+
+def test_loudness_offset_lowers_one_line_only() -> None:
+    # 原作写明声音小的句子（S-087 メロス「嗄れた声が幽かに」）：目标响度按键再低 6 dB
+    spec = read_spec("hashire-merosu")
+    spec["speakers"]["char.melos"]["loudnessOffset"] = {"wait/1": -6}
+    p = plan(spec, world_of(spec, REPO / "worlds"))
+    assert p.recording("melos-wait-1").loudness == pytest.approx(-22.3)
+    assert p.recording("melos-unheard-1").loudness == pytest.approx(-16.3)
+    assert p.recording("crowd-crowd-makes-way-1").loudness is None
+    spec["speakers"]["char.melos"]["loudnessOffset"] = {"wait/9": -6}
+    with pytest.raises(SpecError, match="loudnessOffset"):
+        plan(spec, world_of(spec, REPO / "worlds"))
+
+
 def test_all_three_fail_goes_to_audit_not_voices(tmp_path: Path) -> None:
     reader = FakeReader(faults={"二度は言わぬ。下がれ。": ["truncated", "silent", "error"]})
     assert run_fake(tmp_path, reader) == 0

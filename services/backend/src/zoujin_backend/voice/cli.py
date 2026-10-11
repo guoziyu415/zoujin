@@ -364,7 +364,7 @@ def judge_all(run: Run) -> list[Chosen]:
                 continue
             pcm = audio.read_wav(run.takes / f"{r.id}.{n}.wav")
             takes[n] = (audio.shape(pcm, pitch=r.aizuchi or r.talk is not None), m.get("transcript"))
-        verdict = checks.judge(r.text, takes, aizuchi=r.aizuchi, spoken=r.spoken, talk=r.talk)
+        verdict = checks.judge(r.text, takes, aizuchi=r.aizuchi, spoken=r.spoken, talk=r.talk, heard_as=r.heard_as)
         out.append(Chosen(r, verdict))
     return out
 
@@ -385,7 +385,7 @@ def build_release(run: Run, chosen: list[Chosen], encoder: audio.Encoder, schema
         s = audio.shape(raw)
         pcm = audio.trim(raw, s, audio.aizuchi_pads(s) if c.rec.aizuchi else (audio.PAD_S, audio.PAD_S))
         before = audio.level(pcm).loudness_dbfs
-        target = c.rec.speaker.loudness
+        target = c.rec.loudness
         gain = 0.0 if target is None else round(target - before, 2)
         enc = encoder.encode(pcm, gain)
         c.file = f"{c.rec.id}.{hashlib.sha256(enc.data).hexdigest()[:8]}{encoder.suffix}"

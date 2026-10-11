@@ -44,9 +44,9 @@ class Speaker:
     voice: str
     direction: str
     loudness: float | None = None  # 目标响度（有声 RMS，dBFS）：同一人物自由对话的响度；None = 不调
-    talk: tuple[float, float] | None = (
-        None  # 同一人物自由对话的音高中位（Hz）和语速（拍/秒）：「听不清」「等一下」要像它
-    )
+    # 同一人物自由对话的音高中位（Hz）和语速（拍/秒）：「听不清」「等一下」要像它
+    talk: tuple[float, float] | None = None
+    offsets: dict[str, float] = field(default_factory=dict, hash=False, compare=False)  # 键 → 目标响度的偏移（dB）
 
     @property
     def slug(self) -> str:
@@ -63,6 +63,15 @@ class Recording:
     spoken: str  # 送给 Live 的文字（读音替换后）
     scene: str | None  # 場面
     keys: list[str] = field(default_factory=list)
+    heard_as: tuple[str, ...] = ()  # 补转写对得上也算的写法（源文件 heardAs）
+
+    @property
+    def loudness(self) -> float | None:
+        """目标响度：说话人的 loudness 加这一句的 loudnessOffset（原作写明声音小的句子，UX）。"""
+        if self.speaker.loudness is None:
+            return None
+        offsets = self.speaker.offsets
+        return self.speaker.loudness + next((offsets[k] for k in self.keys if k in offsets), 0.0)
 
     @property
     def system(self) -> str:
@@ -160,7 +169,12 @@ def plan(spec: Json, world: Json) -> Plan:
             raise SpecError(f"世界模型里没有人物 {sid}")
         loud = s.get("loudness")
         talk = (float(s["talkPitchHz"]), float(s["talkMoraPerS"])) if "talkPitchHz" in s else None
-        speakers[sid] = Speaker(sid, s["name"], s["voice"], s["direction"], None if loud is None else float(loud), talk)
+        offsets = {k: float(v) for k, v in s.get("loudnessOffset", {}).items()}
+        if offsets and loud is None:
+            raise SpecError(f"{sid} 有 loudnessOffset 但没有 loudness")
+        speakers[sid] = Speaker(
+            sid, s["name"], s["voice"], s["direction"], None if loud is None else float(loud), talk, offsets
+        )
     readings: dict[str, str] = spec.get("readings", {})
     scenes: dict[str, str] = spec.get("scenes", {})
     # 说话人块里的 scenes 只管这个人的句子，键可以写「aizuchi/3」这种不分人的槽位；同一个键两处都有时说话人的优先
@@ -214,6 +228,16 @@ def plan(spec: Json, world: Json) -> Plan:
             sp = speakers[who]
             add(f"{sp.slug}-{piece['id'].removeprefix('piece.')}-{n}", sp, line["line"], f"{piece['id']}/{n}")
 
+    heard: dict[str, list[str]] = spec.get("heardAs", {})
+    said = {r.text for r in recs}
+    if set(heard) - said:
+        raise SpecError(f"源文件 heardAs 里的句子对不上任何一条录音：{', '.join(sorted(set(heard) - said))}")
+    for r in recs:
+        r.heard_as = tuple(heard.get(r.text, ()))
+    keys = {(r.speaker.id, k) for r in recs for k in r.keys}
+    bad = sorted(f"{sid} 的 {k}" for sid, sp in speakers.items() for k in sp.offsets if (sid, k) not in keys)
+    if bad:
+        raise SpecError(f"源文件 loudnessOffset 里的键对不上任何一句：{', '.join(bad)}")
     unused = sorted(set(scenes) - used_scenes) + sorted(
         f"{sid} 的 {k}" for sid, own in own_scenes.items() for k in own if (sid, k) not in used_own
     )
