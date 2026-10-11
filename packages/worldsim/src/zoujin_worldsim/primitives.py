@@ -10,6 +10,10 @@
 - spoilers()：人物说的话里有没有他此刻不该知道的事实（`Fact.spoilerTerms` 出现在话里，而他不 `knows` 这条事实）。
   叙事者 R4 查即兴设定、网关的输出侧监控（B-12，backend-design 2.11）、评测入口的 `monitor.spoilers` 共用这一个；
   和评测 E2 的 `not_mention_fact` 同一个口径（E2 只看出题时指定的那一条，自检保证人物在检查点不知道它）。
+- lived()（1.12 补）：人物亲历了哪个已发生的节拍，叙事者给人物的「最近的节拍」用（S-092）。和 sees()（1.12）同一条
+  场景规则，但人物只算参与的节拍和没有参与人物、落在同一场景的节拍（天气、天灾），不算「人在节拍的地点」：人物知道
+  什么按 `Character.knows`（原作的在场已写好）和 `learn`，不按在场自动学（契约 2.1 ②），在场却不参与的节拍给了他，
+  他就会说出不知道的事。节拍那一刻他在哪用 place_at()：和 activity() 同一套重放，是「按节拍该在哪」。
 - activity()：人物此刻在做什么（契约 2.4 的 Activity，1.1）。R7（对象不在场、`absent` 的人物不能对话）和快照的
   `characters[].activity` 用（api-contract 2.3）。只算世界模型给的那一部分，叙事者按对话再推（backend-design 2.7）。
 
@@ -25,6 +29,7 @@ from typing import Any
 
 from .incremental import SimState
 from .sim import OCCURRED, World, role_of
+from .visibility import same_scene
 
 
 def knows(world: World, state: SimState, who: str, fact: str) -> bool:
@@ -91,9 +96,48 @@ def activity(world: World, state: SimState, who: str) -> str:
     不再 absent）。SimState 不记事件的历史，所以按发生时刻重放已发生的节拍，算出他按节拍「该在」的地点；
     此刻的 `locations` 和它不同 = 节拍以外（人物的事件、叙事者）挪过他 = idle。
     """
+    r = _replay(world, state, who)
+    if r is None:
+        return "idle"
+    place, act = r
+    return act if state["locations"].get(who) == place else "idle"
+
+
+def place_at(world: World, state: SimState, who: str, beat: str) -> str | None:
+    """beat 发生那一刻 who（人物 ID）按节拍该在的地点：按发生时刻重放 beat 之前已发生的节拍（和 activity() 同一套）。
+
+    SimState 不记事件的历史，节拍以外（人物的事件、叙事者的 relocate）挪过他的那几次算不出来，
+    所以这是「按节拍该在哪」，不是他真的在哪。不是人物（含 "player"）、beat 不存在或这一局没发生给 None。
+    """
+    beats = {b["id"]: b for b in world["beats"]}
+    if beat not in beats or state["beats"].get(beat) not in OCCURRED:
+        return None
+    r = _replay(world, state, who, (state["times"].get(beat, 0), beats[beat]["order"]))
+    return None if r is None else r[0]
+
+
+def lived(world: World, state: SimState, who: str, beat: str) -> bool:
+    """人物 who 亲历了 beat：这一局发生了（happened / altered），而且他是参与人物，或者 beat 没有参与人物、
+    落在他当时（place_at）所在的同一个场景。没发生的、不是人物的（含 "player"）都是 False。"""
+    b = next((x for x in world["beats"] if x["id"] == beat), None)
+    if b is None or state["beats"].get(beat) not in OCCURRED:
+        return False
+    if who in b["participants"]:
+        return True
+    if b["participants"]:
+        return False
+    where = place_at(world, state, who, beat)
+    return where is not None and same_scene(world, b["place"], where)
+
+
+def _replay(world: World, state: SimState, who: str, before: tuple[int, int] | None = None) -> tuple[str, str] | None:
+    """按发生时刻（同一时刻按 `order`）重放已发生的节拍，给 who 按节拍该在的（地点, activity）。
+
+    before 给了就只重放排在它前面的节拍（(时刻, order)）。不是人物给 None。
+    """
     c = next((x for x in world["characters"] if x["id"] == who), None)
     if c is None:
-        return "idle"
+        return None
     act: str = c.get("initialActivity", "idle")
     place: str = c["initialPlace"]
     beats = {b["id"]: b for b in world["beats"]}
@@ -103,6 +147,8 @@ def activity(world: World, state: SimState, who: str) -> str:
     )
     for b in done:
         x = beats[b]
+        if before is not None and (state["times"].get(b, 0), x["order"]) >= before:
+            break
         after = x["place"] if who in x["participants"] else place  # 参与人物先移到节拍地点（契约 3.1）
         for e in _outcomes(x, state):
             if e.get("op") == "relocate" and e.get("character") == who:
@@ -113,7 +159,7 @@ def activity(world: World, state: SimState, who: str) -> str:
         elif after != place:
             act = "idle"
         place = after
-    return act if state["locations"].get(who) == place else "idle"
+    return place, act
 
 
 def _outcomes(beat: dict[str, Any], state: SimState) -> list[dict[str, Any]]:
