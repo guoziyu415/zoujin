@@ -1319,3 +1319,11 @@ button {
   margin-right: 4px;
   color: var(--umi);
 }
+/* Japanese text breaks between phrases where the browser can (Chrome's auto-phrase; Safari keeps per character),
+   and a paragraph's last line isn't left with one or two characters (UX review of #113, item 14) */
+p,
+dd,
+li {
+  text-wrap: pretty;
+  word-break: auto-phrase;
+}
