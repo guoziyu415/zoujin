@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from zoujin_worldsim import SimState, apply, initial_state, knows, same_scene, sees, settle
+from zoujin_worldsim import SimState, apply, initial_state, knows, lived, place_at, same_scene, sees, settle
 
 WORLD_DIR = Path(__file__).resolve().parents[3] / "worlds" / "hashire-merosu" / "1.0.0-draft"
 WORLD: dict[str, Any] = json.loads((WORLD_DIR / "world.json").read_text(encoding="utf-8"))
@@ -78,3 +78,28 @@ def test_an_act_change_still_counts_the_player_away() -> None:
     drafts, s = settle(WORLD, at(WEDDING), 3660, player_present=False)
     assert not any(e.get("character") == "player" for d in drafts for e in d["event"]["effects"])
     assert not knows(WORLD, s, "player", "fact.storm")
+
+
+def test_lived_counts_the_rain_for_the_wedding_guests() -> None:
+    """契约 1.12 补的 lived()：婚礼上的妹妹、花婿没参与 beat.12，但大雨没有参与人物、落在同一个场景（scene.village），
+    算亲历；参与的节拍照样算。城里的王、在刑场的警吏不算。"""
+    _, s = settle(WORLD, at(WEDDING), 3660)
+    assert place_at(WORLD, s, "char.groom", RAIN) == WEDDING  # beat.11 把他带到婚礼上
+    assert place_at(WORLD, s, "char.groom", "beat.10") == GROOM  # 节拍之前的地点，不含这个节拍
+    for who in ("char.sister", "char.groom", "char.melos"):
+        assert lived(WORLD, s, who, RAIN)
+    assert lived(WORLD, s, "char.sister", "beat.11")
+    assert not lived(WORLD, s, "char.king", RAIN)
+    assert not lived(WORLD, s, "char.guards", RAIN)
+
+
+def test_lived_is_not_presence() -> None:
+    """lived() 不算「人在节拍的地点」：人物知道什么按 knows 和 learn，在场却不参与的节拍不给他（契约 2.1 ②）。
+    没发生的节拍、玩家都是 False。"""
+    _, s = settle(WORLD, at(WEDDING), 3660)
+    assert place_at(WORLD, s, "char.sister", "beat.09") == WEDDING  # beat.09 在她家，参与的只有梅洛斯
+    assert not lived(WORLD, s, "char.sister", "beat.09")
+    assert not lived(WORLD, s, "char.sister", "beat.13")  # 3660 时还没发生
+    assert place_at(WORLD, s, "char.sister", "beat.13") is None
+    assert not lived(WORLD, s, "player", RAIN)
+    assert place_at(WORLD, s, "player", RAIN) is None
