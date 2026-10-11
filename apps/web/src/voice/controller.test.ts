@@ -746,6 +746,21 @@ describe("fixed lines the server stages (api-contract 3.4, 3.14)", () => {
     ]);
   });
 
+  it("the crowd's line is played as a crowd (several voices over the one recording)", () => {
+    const { v, audio } = setup();
+    v.setClips(
+      {},
+      { "piece.crowd-makes-way/1": clip("/p/crowd-1.m4a", "メロスだ！", 900) },
+    );
+    v.setPiece({
+      type: "set_piece",
+      pieceId: "piece.crowd-makes-way",
+      lines: [{ speaker: "char.crowd", line: "メロスだ！" }],
+    });
+    tick(STAGED_NARRATION_MS);
+    expect(audio.log).toContain("clip:/p/crowd-1.m4a:crowd");
+  });
+
   it("no recording: the words alone at reading pace", () => {
     const { v, audio } = setup();
     v.setPiece(KNOCK);
