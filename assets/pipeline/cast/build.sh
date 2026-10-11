@@ -45,8 +45,9 @@ else
   mv "$RES/mpfb2/src/mpfb" "$RES/extensions/user_default/mpfb"
 fi
 
-# name -> "character [variant]"
-mapfile -t ALL < <("$PY" -I -c '
+# name -> "character [variant]" (a read loop, not mapfile: the Mac's bash is 3.2)
+ALL=()
+while IFS= read -r row; do ALL+=("$row"); done < <("$PY" -I -c '
 import json, sys
 c = json.load(open(sys.argv[1]))["characters"]
 for k, v in c.items():
