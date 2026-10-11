@@ -29,6 +29,7 @@ from zoujin_backend.manifest import generate
 from zoujin_backend.models.live import FakeLive
 from zoujin_backend.origin import csrf_problem
 from zoujin_backend.schemas import SchemaBook
+from zoujin_backend.voice.spec import read_spec
 from zoujin_backend.world import Library
 
 log = logging.getLogger("zoujin.gateway")
@@ -44,7 +45,7 @@ def build(settings: Settings, narrator: NarratorClient | None = None) -> Gateway
     manifest = generate(
         library.current, schemas, packs=settings.packs, voices=settings.voice_dir, release=settings.release
     )
-    return Gateway(
+    gw = Gateway(
         settings=settings,
         engine=create_async_engine(settings.database_url, pool_size=10),
         library=library,
@@ -53,6 +54,35 @@ def build(settings: Settings, narrator: NarratorClient | None = None) -> Gateway
         narrator=narrator or HttpNarrator(settings.narrator_url),
         manifest=manifest,
     )
+    if settings.live == "real":  # pragma: no cover - 只在 Mac 上（B-10）
+        real_live(gw, settings)
+    return gw
+
+
+def voices_of(book: str = "hashire-merosu") -> dict[str, str]:
+    """人物 → 声音（D-025）：只在 B-6 的源文件里定一处。"""
+    spec = read_spec(book)
+    return {k: v["voice"] for k, v in spec["speakers"].items() if v.get("voice")}
+
+
+def real_live(gw: Gateway, settings: Settings) -> None:  # pragma: no cover - 只在 Mac 上
+    """`ZJ_LIVE=real`：真 Live、真补转写、Live 的账本（Google 那本，同 B-2 的上限设置）。"""
+    import os
+
+    from zoujin_backend.config import ConfigError
+    from zoujin_backend.gateway.fallback import VertexTranscriber
+    from zoujin_backend.models import gemini_live
+    from zoujin_backend.models.ledger import Ledger
+    from zoujin_backend.voice.models import LIVE_MODEL, real_models
+
+    if settings.ledger is None or settings.max_google_usd is None:
+        raise ConfigError("ZJ_LIVE=real 要账本和 Google 的总上限：ZJ_LEDGER、ZJ_MAX_GOOGLE_USD，没有默认值")
+    _, rest = real_models(os.environ)
+    tr = VertexTranscriber(rest)
+    gw.transcriber = tr
+    gw.live = gemini_live.real_live(os.environ, voices_of(), tr)
+    gw.live_ledger = Ledger(settings.ledger, settings.max_google_usd, settings.max_item_usd, settings.ledger_item)
+    gw.live_model_name = LIVE_MODEL
 
 
 def create_app(settings: Settings, gw: Gateway | None = None) -> FastAPI:

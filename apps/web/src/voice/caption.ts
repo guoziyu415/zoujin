@@ -57,8 +57,8 @@ export class Caption {
       return;
     }
     if (source === "fallback") {
-      this.due = [];
-      this.shown = text;
+      this.due = [{ text, at: 0 }]; // shows at the next update, which reports it as a change
+      this.script = null;
     } else if (source === "script") {
       this.due = [];
       this.script = { text, parts: segments(text), lengthMs: null };

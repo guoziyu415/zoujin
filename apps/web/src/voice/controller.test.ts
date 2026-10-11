@@ -15,6 +15,7 @@ import {
   GIVE_UP_MS,
   HOLD_BACK_MS,
   NO_RESPONSE_MS,
+  PREPARING_MS,
   STAGED_NARRATION_MS,
   VoiceController,
   type Wire,
@@ -295,15 +296,18 @@ describe("interrupting (frontend-design 7.4)", () => {
 });
 
 describe("before the session is ready (frontend-design 7.1)", () => {
-  it("up to 2 s of frames wait with activity_end, then go in order; past 2 s the key says 準備中", () => {
+  it("the whole press (up to 15 s) waits with activity_end, then goes in order; past 2 s the key says 準備しています", () => {
     const { v, audio, wire } = setup({ ready: false });
     v.press();
     expect(wire.types()).toEqual(["activity_start"]);
-    const frames = HOLD_BACK_MS / 40 + 10;
-    for (let i = 0; i < frames; i++) audio.micFrame();
-    expect(wire.binary).toHaveLength(0);
+    for (let i = 0; i < PREPARING_MS / 40 - 1; i++) audio.micFrame();
+    expect(useVoice.getState().hold?.preparing).toBe(false);
+    audio.micFrame();
     expect(useVoice.getState().hold?.preparing).toBe(true);
-    tick(3000);
+    const frames = HOLD_BACK_MS / 40 + 10;
+    for (let i = PREPARING_MS / 40; i < frames; i++) audio.micFrame();
+    expect(wire.binary).toHaveLength(0);
+    tick(16_000);
     v.release();
     expect(wire.types()).toEqual(["activity_start"]);
     v.message({
@@ -410,6 +414,26 @@ describe("turn_complete (frontend-design 7.5, 7.6)", () => {
     expect(useVoice.getState().character).toMatchObject({
       text: null,
       final: true,
+    });
+  });
+
+  it("a fallback line that comes after the voice has played out shows", () => {
+    const { v, audio, wire } = setup();
+    v.say("この市の王は");
+    const t = wire.last("text");
+    v.binary(voiceFrame(t.turnSeq, 1200));
+    audio.audible(t.turnSeq);
+    audio.hear(t.turnSeq, 1200);
+    v.message(complete(t.turnId));
+    audio.drain(t.turnSeq);
+    tick(1500);
+    v.message(
+      transcript(t.turnId, "王は人を信じない。", true, MELOS, "fallback"),
+    );
+    expect(useVoice.getState().character).toMatchObject({
+      text: "王は人を信じない。",
+      final: true,
+      source: "fallback",
     });
   });
 });
@@ -689,6 +713,17 @@ describe("the connection", () => {
     expect(wire.sent.filter((m) => m.type === "text")).toHaveLength(1);
   });
 
+  it("under the safety card an invalid_request says nothing, and the words that set it off don't go again", () => {
+    const { v, wire } = setup();
+    v.say("もう疲れた");
+    v.message({ type: "safety_pause" });
+    v.undelivered();
+    expect(useVoice.getState().narration).toEqual([]);
+    v.down();
+    v.connected(null, { safetyPause: true });
+    expect(wire.sent.filter((m) => m.type === "text")).toHaveLength(1);
+  });
+
   it("too_late for our own 12 s give-up adds no narrator line (the character already said it didn't hear)", () => {
     const { v, wire } = setup({ clips: true });
     v.say("聞こえますか");
@@ -710,6 +745,30 @@ describe("the connection", () => {
     expect(useVoice.getState().hold).toBeNull();
     expect(wire.types()).toContain("activity_end");
     expect(v.state()).toBe("degraded");
+  });
+
+  it("degraded while the voice still waits for the session: dropped, the turn retracted, nothing sent later", () => {
+    const { v, audio, wire } = setup({ ready: false });
+    v.press();
+    for (let i = 0; i < 20; i++) audio.micFrame();
+    tick(800);
+    v.release();
+    const id = wire.last("activity_start").turnId;
+    expect(wire.types()).toEqual(["activity_start"]);
+    v.message({ type: "degraded", voice: false, reason: "service" });
+    expect(wire.last("turn_retract")).toMatchObject({ turnId: id });
+    expect(useVoice.getState().turn).toBeNull();
+    v.message({
+      type: "session_ready",
+      character: MELOS,
+      voiceAvailable: false,
+    });
+    expect(wire.binary).toHaveLength(0);
+    expect(wire.types()).not.toContain("activity_end");
+    v.message({ type: "turn_retract_result", turnId: id, status: "too_late" });
+    expect(useVoice.getState().narration).toEqual([copy["voice.degraded"]]);
+    tick(GIVE_UP_MS);
+    expect(wire.types().filter((t) => t === "turn_retract")).toHaveLength(1);
   });
 });
 
