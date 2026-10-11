@@ -173,6 +173,7 @@ export const copy = {
   "map.beat.altered": "変わった",
   "map.future": "？",
   "map.now": "いまここ",
+  "map.day.folded": "（{n}件）", // a folded earlier day (F-17)
   "map.why": "なぜこうなった？",
   "map.kept": "約束が果たされた",
   "map.corrected": "修正",
