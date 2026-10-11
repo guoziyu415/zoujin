@@ -526,7 +526,8 @@ class Offline(unittest.TestCase):
         self.assertIn("Events the character has lived through", first["system"][0]["text"])
         self.assertIn("beat.05", first["system"][0]["text"])
         self.assertIn("Who the character is now", first["system"][0]["text"])
-        self.assertIn("Taking it as news", first["system"][0]["text"])
+        self.assertIn("Taking the player's news as something just heard", first["system"][0]["text"])
+        self.assertIn("Everyday details of its own life and work", first["system"][0]["text"])
         self.assertIn("Player said:", first["messages"][0]["content"])
         audit = claude.calls[1]
         self.assertIn("この人物がこれまでに見聞きした出来事", audit["system"][0]["text"])
@@ -597,12 +598,26 @@ class Offline(unittest.TestCase):
         self.assertIn("いまは夕方、", melos)
         self.assertNotIn("約束の日", melos)
         self.assertIn("いまは約束の日の夜、", king)  # the king made the promise at beat.05
-        for line in ("「聞いていない」「知らない」と答えて", "書かれていない約束や役目は、いまのあなたにはありません"):
+        for line in ("初めて聞いた話として受け止めてください", "書かれていない取り決めや役目は、いまのあなたにはありません"):
             self.assertIn(line, melos)
+        self.assertEqual(melos.count("約束"), 0)
         read_all = (out / "read-all.md").read_text()
         self.assertIn("## melos-square（10 条）", read_all)
+        self.assertIn("- 时点：約束の日の夕方（beat.01 之后；人设里只写「夕方」）", read_all)
+        self.assertIn("- 还不知道：约定", read_all)
         self.assertNotIn("king-after-promise", read_all)
-        self.assertEqual(read_all.count("- 人工结论："), 10)
+        self.assertEqual(read_all.count("  - 人工结论："), 10)
+        self.assertEqual(read_all.count("### 问："), 10)
+        self.assertIn("判定 E2：评分判定 是，复核判定 是", read_all)
+        self.assertIn("复核判定：wrong_time「友の身代わりで待っている」", read_all)
+        # Each reply carries its line in results.jsonl.
+        lines = (out / "results.jsonl").read_text().splitlines()
+        first = next(x for x in read_all.splitlines() if x.startswith("- L"))
+        n = int(first[3:].split(" ")[0])
+        self.assertEqual(json.loads(lines[n - 1])["scenario"], "melos-square")
+        inputs = json.loads((out / "summary.json").read_text())["inputs"]
+        self.assertEqual(set(inputs), {"world", "scenarios"})
+        self.assertEqual(len(inputs["world"]), 64)
         rows = [json.loads(x) for x in (out / "results.jsonl").read_text().splitlines()]
         self.assertEqual({r["scenario"]: r["unaware"] for r in rows}, {"melos-square": True, "king-after-promise": False})
         # Every day of the clock is cut; a label that cannot be cut stops the run before anything is called.
