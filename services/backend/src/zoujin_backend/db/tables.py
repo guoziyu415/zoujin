@@ -2,7 +2,7 @@
 后端自己的表（turns、sessions、invite_codes、idempotency_keys）按 backend-design 3.4、3.5、5.2。
 
 建表走 Alembic（`migrations/versions/`），这里的定义给查询用，两边要一致（测试比对）。
-其余的表（memory_items、promises、run_facts、briefs、drafts、approach_log、endings）由用到它们的 M2 卡建。
+其余的表（memory_items、promises、run_facts、briefs、approach_log、endings）由用到它们的 M2 卡建。
 """
 
 from __future__ import annotations
@@ -94,7 +94,8 @@ playthroughs = Table(
 
 # 叙事者的任务表（backend-design 3.4）：只存 ID、状态、租约，不存原话。
 # kind：open（开局）、talk（一轮对话，语音或文字）、advance（快进，只给测试和评测）；B-3：action（动作）、
-# choose（幕末选去处）、plan（幕末说出打算）、arrival（落地后人物先开口，只留记录，叙事者不处理）
+# choose（幕末选去处）、plan（幕末说出打算）、arrival（落地后人物先开口，只留记录，叙事者不处理）；
+# B-4：confirm（回答意图确认，request 带 draftId、optionId、by）
 turns = Table(
     "turns",
     metadata,
@@ -118,6 +119,7 @@ turns = Table(
     Column("result", JSONB),
     _ts("created_at", nullable=False, now=True),
     _ts("settled_at"),
+    _ts("commit_after"),  # B-4（0004）：叙事者最早什么时候提交这一轮（turn_complete、打算的定稿 + 3 秒，作废的窗口）
     UniqueConstraint("playthrough_id", "idempotency_key", name="turns_idempotency"),
     Index("turns_queue", "playthrough_id", "status", "created_at"),
 )
@@ -219,7 +221,30 @@ playthrough_metrics = Table(
     Column("actions_act_ended", Integer, nullable=False, server_default="0"),
     Column("plans_accepted", Integer, nullable=False, server_default="0"),
     Column("plans_refused", Integer, nullable=False, server_default="0"),
+    # B-4（0004）：推出的意图确认（= yes + no + timeout，局终了时最多还开着 1 个），答「是」以后重查没过的
+    Column("confirms_asked", Integer, nullable=False, server_default="0"),
+    Column("confirms_yes", Integer, nullable=False, server_default="0"),
+    Column("confirms_no", Integer, nullable=False, server_default="0"),
+    Column("confirms_timeout", Integer, nullable=False, server_default="0"),
+    Column("confirms_rejected", Integer, nullable=False, server_default="0"),
 )
 
-# data-design 5.3 的删除清单里，B-0 建了的表（eval_api 的 db_absent 查这些）
-PER_PLAYTHROUGH = ("playthroughs", "turns", "utterances", "events", "world_state", "playthrough_metrics")
+# 意图确认的草稿（B-4，api-contract 3.9）：叙事者提出、还没答的那一个候选（不放原话）。关掉就删行，随整局删除。
+# turn_id 是提出它的那一轮（确认以后的事件挂在那一轮上，记憶帳删那一轮时草稿按「不是」丢掉）
+drafts = Table(
+    "drafts",
+    metadata,
+    Column("draft_id", Text, primary_key=True),  # draft_ + ULID
+    _pt_fk(),
+    Column("turn_id", Text, ForeignKey("turns.turn_id", ondelete="CASCADE"), nullable=False),
+    Column("character", Text, nullable=False),  # 反问的人物
+    Column("candidate", JSONB, nullable=False),  # 过了检查的候选：actor、type、summary、effects、place 等
+    Column("prompt", Text, nullable=False),  # 人物反问的那一句（confirm.prompt）
+    Column("asked", Boolean, nullable=False),  # 人物这一轮的回答已经在反问（不另起一轮）
+    _ts("created_at", nullable=False, now=True),
+    _ts("expires_at"),  # 推出 confirm 时写：推出 + 30 秒
+    Index("drafts_playthrough", "playthrough_id"),
+)
+
+# data-design 5.3 的删除清单里，已经建了的表（eval_api 的 db_absent 查这些）
+PER_PLAYTHROUGH = ("playthroughs", "turns", "utterances", "events", "world_state", "playthrough_metrics", "drafts")

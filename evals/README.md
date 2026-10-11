@@ -25,7 +25,7 @@
 | `src/zoujin_evals/`、`pyproject.toml` | 评测运行器（E-0）：读用例、经后端的 `eval_api` 跑、28 种确定性检查、报告、`live` 的开关。用法见下面「运行器」 |
 | `config/live-cost.json` | `live` 模式估算花费用的单价，按两本账分（`google` 产品路径、`claude` 评审员和 AI 玩家）；推算值，M2 跑完第一批后换成账本的实数 |
 | `judge/calibration.jsonl` | 评审员的校准样本 50 条（data-design 7.3）：切片 25 个判分用例各 2 条回答，数据标的分和理由；`zgSample` 的 20 条给 zg 盲标。手写的，见下面「评审员」 |
-| `judge/replays/`、`config/claude-prices.json` | 评审员判过的回放（Mac 上跑完再提交）；Claude 那本账按模型档的单价 |
+| `judge/replays/` | 评审员判过的回放（Mac 上跑完再提交）。Claude 那本账按模型档的单价 B-8 起在共用包里：`packages/llm/src/zoujin_llm/claude-prices.json`，叙事者和评审员只用这一份 |
 | `tests/`、`tests/snapshots/fake/` | 运行器的测试；`--mode fake --deterministic-only` 的预期报告（快照） |
 | `holdout/`（不在仓库里） | 还没用过的留出测量集（现在是 S-2 的 50 条），只放在项目文件夹的 `data/evals/holdout/`，用过一次再搬进来（CONTRIBUTING「不进仓库的」）。**被测的一方在提示定稿前不读**，见那里的 `README.md` |
 
@@ -262,7 +262,7 @@ uv run zoujin-eval --mode fake --deterministic-only --quiet --out evals/tests/sn
 判分交给 Claude（PM 10-10 定 Opus 5.5，比被测的叙事者高一档；D-028 以后叙事者也是 Claude，独立性怎么查见 data-design 7.3）。客户端在 `src/zoujin_evals/judge.py`，用官方 SDK（`evals` 的可选依赖 `real`）；B-8 以后和后端共用。
 
 - **输入**：评分细则（用例的 `expect.judge.rubric`）、判定线、场景、对话记录（玩家、人物、叙事者）。提示是中文的，回答是日语。输出用 JSON Schema 定死：`{"reason", "score": 1〜5}`；通用的 1〜5 分说法写在提示里，和给 zg 的盲标页一样。
-- **模型和花费**：模型 ID 运行时给（`--model` 或 `ZJ_JUDGE_MODEL`），仓库里不写；回放、报告和账本里只写档名加版本（如 `opus-5.5`），认不出档名和版本就不调；单价按模型档查 `config/claude-prices.json`，认不出就不调。思考关不掉，深浅用 `--effort`（校准先试 `low`）。
+- **模型和花费**：模型 ID 运行时给（`--model` 或 `ZJ_JUDGE_MODEL`），仓库里不写；回放、报告和账本里只写档名加版本（如 `opus-5.5`），认不出档名和版本就不调；单价按模型档查共用包的 `claude-prices.json`（`zoujin_llm`，B-8），认不出就不调。思考关不掉，深浅用 `--effort`（校准先试 `low`）。
 - **回放**：判出分的都存进 `judge/replays/judge.jsonl`（`kind: "judge"`，键 = `claude|档名加版本|提示版本|请求的 sha256`），同一条判几次用请求里的 `sample` 区分。再跑先查回放，不重判、不花钱；拒答、截断、JSON 坏了不存，下次重判。
 - **账本**：每次调用前查 `ZJ_LEDGER`（和后端同一个文件、同一种行，`provider: "claude"`、`kind: "judge"`、`use: "eval"`）：Claude 的累计加这次的预计（输出按上限估，偏高）超过 `--max-claude-usd`，或这一项两本账合起来超过 `--max-item-usd`，就不发。429、529 第一次就停，SDK 不自己重试；已判的在回放里，再跑接着判。
 - **Batch**（半价）：评测跑完对话以后整批交给评审员（M2 接进运行器）。批号写进 `pending-batch.json`，断了再跑接着收这一批，不重交。

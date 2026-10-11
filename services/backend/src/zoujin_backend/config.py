@@ -1,14 +1,16 @@
 """网关和叙事者的配置，只从环境变量读（B-0、B-2）。
 
-没有任何云凭证、项目 ID 的配置项：`ZJ_MODEL=real` 时真客户端自己读 Mac 上显式设的项目和地区（`models/vertex.py`），
-别的模式不读。模型 ID、思考档、时限和价目只写在这里。本地开发用 `compose.yaml` 里的值。
+没有任何云凭证、项目 ID、Key 的配置项：`ZJ_MODEL=real` 时真客户端自己读 Mac 上显式设的项目和地区
+（`models/vertex.py`）、Claude 的模型 ID 和 Key（`models/claude.py`），别的模式不读。每种提示走哪家、哪个模型（Claude
+只写档名加版本）、思考多深、时限多长只写在这里（B-8）。本地开发用 `compose.yaml` 里的值。
 """
 
 from __future__ import annotations
 
 import os
+import re
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Literal
 
@@ -18,36 +20,64 @@ REPO = Path(__file__).resolve().parents[4]
 type ModelMode = Literal["fake", "replay", "real"]
 MODEL_MODES: tuple[ModelMode, ...] = ("fake", "replay", "real")
 
-# 提示类型 → 文本模型和思考档（backend-design 2.4、第 7 节）。fake、replay 只用它们算回放的键
-TEXT_MODELS: dict[str, str] = {
-    "triage": "gemini-3.5-flash-lite",
-    "extract": "gemini-3.8-flash",
-    "check": "gemini-3.8-flash",
-    "rewrite": "gemini-3.8-flash",
-    "reply": "gemini-3.8-flash",
-    "narrate": "gemini-3.8-flash",
-    "plan": "gemini-3.8-flash",
+type Provider = Literal["google", "claude"]
+
+
+@dataclass(frozen=True)
+class TextSpec:
+    """一种提示怎么调（B-8 卡的清单）。fake、replay 只用 provider 和 model 算回放的键。"""
+
+    provider: Provider
+    # Google：模型 ID；Claude：档名加版本（`zoujin_llm.model_tag` 的写法）。回放的键、账本、`check.checker` 用它；
+    # Claude 的模型 ID 只在 Mac 上用环境变量给（CLAUDE_TIERS），认出来的档名加版本要和这里一样才调
+    model: str
+    deadline: float  # 每次调用的时限（秒），超时取消、立刻重发一次（backend-design 2.4）〔暂定，S-5 定〕
+    max_output: int  # 输出上限，含思考
+    # Google：thinkingLevel（LOW、MEDIUM），None = 不设；
+    # Claude：disabled（Haiku 能关）、between_tools（不先思考，Sonnet 最低就是它）、adaptive（自适应）
+    thinking: str | None = None
+    effort: str | None = None  # Claude：output_config.effort（low、medium…），None = 不传
+    temperature: float | None = None  # 只有 Google 用：Claude 的 Messages API 没有这个参数（SDK 1.13 起）
+
+
+# 提示类型 → 怎么调（B-8，D-028：能用 Claude 的全部用 Claude；`reply` 只在评测里替 Live 当人物，留在 Google，S-085 ①）。
+# 提取和检查先用 Sonnet，S-2 和第一遍切片评测再量一遍 Haiku，按 S-085 ③ 定换不换
+TEXT: dict[str, TextSpec] = {
+    "triage": TextSpec("claude", "haiku-5.5", 5.0, 256, thinking="disabled"),
+    "extract": TextSpec("claude", "sonnet-5.5", 15.0, 4096, thinking="between_tools", effort="low"),
+    "check": TextSpec("claude", "sonnet-5.5", 15.0, 8192, thinking="adaptive", effort="medium"),
+    "rewrite": TextSpec("claude", "sonnet-5.5", 15.0, 4096, thinking="between_tools", effort="low"),
+    "reply": TextSpec("google", "gemini-3.8-flash", 15.0, 1024, thinking="LOW", temperature=0.8),
+    "narrate": TextSpec("claude", "sonnet-5.5", 10.0, 1024, thinking="between_tools", effort="low"),
+    "plan": TextSpec("claude", "sonnet-5.5", 15.0, 4096, thinking="adaptive", effort="low"),
 }
-THINKING: dict[str, str | None] = {
-    "triage": None,
-    "extract": "LOW",
-    "check": "MEDIUM",
-    "rewrite": "LOW",
-    "reply": "LOW",
-    "narrate": "LOW",
-    "plan": "LOW",
-}
-# 每次调用的时限（秒），超时取消、立刻重发一次（backend-design 2.4）。〔暂定，S-5 定〕
-DEADLINES: dict[str, float] = {
-    "triage": 5.0,
-    "extract": 15.0,
-    "check": 15.0,
-    "rewrite": 15.0,
-    "reply": 15.0,
-    "narrate": 10.0,
-    "plan": 15.0,
-}
-# 每 100 万 token 的美元（docs/data/cost/pricing-2026-10-06.md，global 端点）。按账单上的标价记：3.8 Flash 到 2026 年底
+TEXT_MODELS: dict[str, str] = {k: v.model for k, v in TEXT.items()}
+DEADLINES: dict[str, float] = {k: v.deadline for k, v in TEXT.items()}
+# Claude 的档 → Mac 上给模型 ID 的环境变量（ID 不进仓库，和数据的评审员一样）
+CLAUDE_TIERS: dict[str, str] = {"haiku": "ZJ_CLAUDE_HAIKU", "sonnet": "ZJ_CLAUDE_SONNET"}
+# 临时换档（S-085 ③：S-2 和切片评测再用 Haiku 量一遍）：`ZJ_TEXT_MODELS=check=haiku-5.5,extract=haiku-5.5`。
+# 只能换 Claude 那几种的档名加版本，思考和 effort 照旧；回放的键、账本、`check.checker` 跟着变
+OVERRIDE_ENV = "ZJ_TEXT_MODELS"
+_TAG = re.compile(r"(haiku|sonnet)-\d+\.\d+")
+
+
+def text_spec(kind: str, env: Mapping[str, str] | None = None) -> TextSpec:
+    """这种提示这次怎么调：`TEXT` 加上 `ZJ_TEXT_MODELS` 的换档。"""
+    base = TEXT[kind]
+    value = (os.environ if env is None else env).get(OVERRIDE_ENV, "")
+    for part in (x.strip() for x in value.split(",")):
+        name, _, tag = part.partition("=")
+        if name.strip() != kind:
+            continue
+        tag = tag.strip()
+        if base.provider != "claude" or not _TAG.fullmatch(tag):
+            raise ConfigError(f"{OVERRIDE_ENV} 只能把 Claude 的提示换成 haiku-x.y 或 sonnet-x.y，得到 {part!r}")
+        return replace(base, model=tag)
+    return base
+
+
+# Google 的单价：每 100 万 token 的美元（docs/data/cost/pricing-2026-10-06.md，global 端点）。Claude 的单价在共用包
+# `zoujin_llm` 的 claude-prices.json，只有那一份。按账单上的标价记：3.8 Flash 到 2026 年底
 # 的五折是事后返还，账本不扣，到上限停得比实花早，不会晚。地区端点（非 global）贵 10%
 PRICES: dict[str, dict[str, float]] = {
     "gemini-3.8-flash": {"input": 1.50, "cachedInput": 0.15, "output": 7.50},
@@ -114,10 +144,12 @@ class Settings:
     replays: Path = REPLAYS  # ZJ_REPLAYS 换成别的目录（例：留出集的回放，不进仓库）
     world: Path = DEFAULT_WORLD  # 开新局用的世界模型；已有的局按自己锁定的版本
     deadlines: Mapping[str, float] = field(default_factory=lambda: dict(DEADLINES))
-    # real 时：账本（JSONL，和 E-0 live 的 Google 账本同一个文件）、Google 那本账的总上限、记在哪一项下和这一项的上限、
-    # 录回放的目录。上限由运行器从命令行参数设进环境（S-2 的 zoujin-s2、E-0 的 live），没有默认值
+    # real 时：账本（JSONL，两本账同一个文件，和 E-0 live、评审员同一个）、两家各自的总上限（跨所有跑次累计：D-027 的
+    # Google 50 美元、D-029 的 Claude 100 美元）、记在哪一项下和这一项的上限、录回放的目录。上限由运行器从命令行参数
+    # 设进环境（S-2 的 zoujin-s2、E-0 的 live），没有默认值
     ledger: Path | None = None
     max_google_usd: float | None = None
+    max_claude_usd: float | None = None
     ledger_item: str | None = None
     max_item_usd: float | None = None
     record_replays: Path | None = None
@@ -151,6 +183,7 @@ class Settings:
             world=world_path(e),
             ledger=_path(e, "ZJ_LEDGER"),
             max_google_usd=float(e["ZJ_MAX_GOOGLE_USD"]) if e.get("ZJ_MAX_GOOGLE_USD") else None,
+            max_claude_usd=float(e["ZJ_MAX_CLAUDE_USD"]) if e.get("ZJ_MAX_CLAUDE_USD") else None,
             ledger_item=e.get("ZJ_LEDGER_ITEM") or None,
             max_item_usd=float(e["ZJ_MAX_ITEM_USD"]) if e.get("ZJ_MAX_ITEM_USD") else None,
             record_replays=_path(e, "ZJ_RECORD_REPLAYS"),
