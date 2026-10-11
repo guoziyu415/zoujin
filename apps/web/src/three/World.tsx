@@ -1,10 +1,10 @@
 // The 3D layer of the world screen (frontend-design 4, 8): loads the scene in two steps, then sun, sky, player,
 // camera and post-processing. Reads the store only; never touches the network.
 import { useThree } from "@react-three/fiber";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CameraRig } from "./CameraRig";
 import { useWorld } from "./dev/fakeStore";
-import { Lighting } from "./Lighting";
+import { groundAlbedo, Lighting } from "./Lighting";
 import { Player } from "./Player";
 import { PostFX } from "./PostFX";
 import { quality, useQuality } from "./quality/quality";
@@ -119,10 +119,18 @@ export function World({ onStage }: { onStage: (s: LoadStage) => void }) {
     return offLevel;
   }, [scene, gl]);
 
-  if (!scene) return null;
+  const ground = useMemo(
+    () => (scene ? groundAlbedo(scene.manifest) : null),
+    [scene],
+  );
+  if (!scene || !ground) return null;
   return (
     <>
-      <Lighting sun={scene.manifest.sun} />
+      <Lighting
+        sun={scene.manifest.sun}
+        ground={ground}
+        blockers={scene.blockers}
+      />
       <Player scene={scene} />
       <CameraRig blockers={scene.blockers} />
       <PostFX />
