@@ -188,8 +188,8 @@
     },
     {
       "id": "char.crowd",
-      "name": "刑場の群衆",
-      "reading": "けいじょうのぐんしゅう",
+      "name": "市の群衆",
+      "reading": "いちのぐんしゅう",
       "talkable": false
     },
     {
@@ -200,8 +200,8 @@
     },
     {
       "id": "char.maiden",
-      "name": "緋のマントの少女",
-      "reading": "ひのまんとのしょうじょ",
+      "name": "市の少女",
+      "reading": "いちのしょうじょ",
       "talkable": false
     },
     {

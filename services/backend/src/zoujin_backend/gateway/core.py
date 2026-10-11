@@ -3,6 +3,7 @@
 推给前端的东西都由数据库里的事件现算（projection.py）：
 - 快照 = world_state 缓存的 SimState 的投影，加上局上记的位置点和待处理的（B-3，`store.Run`）；
 - commit = 同一次提交写的一段事件（幂等键前一段相同，`commit_key`），patch 是这一段前后两个快照的差。
+  意图确认答「是」的那次提交（B-4）：`turnId` 是原来那一轮，重查没过时 `narration` 带一句（`turns.result`）。
   玩家的位置点不进 WorldState（契约 3.1）：做完情境动作、幕切换落地的 `patch.player.spot` 按这次提交的结果给
   （`turns.result.playerSpot`），动作（`move`、`go`）的不带（B-3 第 1 条）。
 """
@@ -29,6 +30,7 @@ from zoujin_backend.ids import IdGen
 from zoujin_backend.models.live import LiveModel
 from zoujin_backend.projection import is_visible, patch, snapshot, visible_event, with_locations
 from zoujin_backend.schemas import SchemaBook
+from zoujin_backend.trace import Tracer
 from zoujin_backend.world import Book, Library
 
 if TYPE_CHECKING:
@@ -87,6 +89,7 @@ class Gateway:
     conns: dict[str, Conn] = field(default_factory=dict)  # 一局一条连接（第 4 节 4009）
     draining: bool = False
     tasks: set[asyncio.Task[Any]] = field(default_factory=set)
+    tracer: Tracer = field(default_factory=Tracer)  # B-4：gateway.retract
     # 测试用：每条发出的服务端消息（已过 Schema）
     on_send: Callable[[Json], None] | None = None
 
@@ -215,6 +218,11 @@ class Gateway:
         }
         if kinds.get(key) == "talk":
             msg["turnId"] = key
+        if kinds.get(key) == "confirm":
+            done = results.get(key, {})
+            if done.get("turnId"):
+                msg["turnId"] = done["turnId"]
+            msg["narration"] = list(done.get("narration", []))
         return msg, state
 
     async def visible_events(self, pid: str, after_seq: int, limit: int) -> list[Json]:

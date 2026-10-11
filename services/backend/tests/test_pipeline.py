@@ -97,7 +97,7 @@ def test_extracted_and_all_pass() -> None:
     ex, v, _ = run_turn(p, at())
     assert kinds(fake) == ["triage", "extract", "check"]  # 两个候选合在一次检查里
     assert statuses(v) == [("passed", 1, []), ("passed", 1, [])]
-    assert all("+gemini-3.8-flash/p" in x.check["checker"] for x in v.checked)
+    assert all("+sonnet-5.5/p" in x.check["checker"] for x in v.checked)
     assert v.checked[0].effects[0]["factId"].startswith("rf_")  # 提交时的 ID 已分配
     (_, check_req) = fake.calls[2]
     assert "factId" not in canonical(check_req) and "rf_" not in canonical(check_req)  # 请求里没有随机的 ID
@@ -341,7 +341,7 @@ def test_scope_scoped_and_all() -> None:
         assert (kinds(fake) == ["check"]) is called, (x["effects"], scope)
         r5 = {r["rule"]: r["status"] for r in got.rules}["R5-persona"]
         assert r5 == ("pass" if called else "skipped")
-        assert ("+gemini-3.8-flash/p" in got.check["checker"]) is called
+        assert ("+sonnet-5.5/p" in got.check["checker"]) is called
 
 
 # —— 文字模式的人物回答 ——

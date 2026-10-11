@@ -14,6 +14,7 @@ dependencies = [
     "uvicorn>=0.38",
     "websockets>=15",
     "zoujin-contracts",
+    "zoujin-llm",
     "zoujin-worldsim",
 ]
 
@@ -23,10 +24,13 @@ zoujin-gateway = "zoujin_backend.gateway.app:main"
 zoujin-narrator = "zoujin_backend.narrator.app:main"
 zoujin-admin = "zoujin_backend.admin:main"
 zoujin-s2 = "zoujin_backend.s2:main"
+zoujin-probe = "zoujin_backend.probe:main"
+zoujin-voice = "zoujin_backend.voice.cli:main"
 
 [project.optional-dependencies]
 real = [
     "google-auth[requests]>=2.40",
+    "zoujin-llm[real]",
 ]
 
 [build-system]
@@ -35,6 +39,7 @@ build-backend = "uv_build"
 
 [tool.uv.sources]
 zoujin-contracts = { workspace = true }
+zoujin-llm = { workspace = true }
 zoujin-worldsim = { workspace = true }
 
 [dependency-groups]

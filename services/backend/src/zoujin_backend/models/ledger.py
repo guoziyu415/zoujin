@@ -1,24 +1,21 @@
-"""Google 那本账（B-2 卡「账本」，dev-plan Z-8）：真客户端每次调用前查、调用后记。
+"""账本（B-2 卡「账本」，dev-plan Z-8）：真客户端每次调用前查、调用后记。B-8 起账本类在共用包 `zoujin_llm.ledger`
+（叙事者和数据的评审员同一个类），这里留 Google 那本的写法和单价。
 
-- 一个 JSONL 文件，和 E-0 live 的 Google 账本是**同一个文件、同一种行格式**：Z-8 的第一段是后端调提示、S-2、
-  第一遍切片评测和 S-5 合用的，所以总上限比的是文件里已有的累计花费加这一次，不只是这一次跑的。
-- 一行：`at`（UTC，Z 结尾）、`provider`（"google"）、`kind`（提示类型）、`model`、`usage`、`costUsd`，
-  有的话 `item`（记在哪一项下：S-2 的条目 ID、E-0 的用例 ID）。不写请求和回答的内容，也不写项目 ID。
+- 一个 JSONL 文件，两本账、E-0 live、评审员都记在同一个文件、同一种行（`zoujin_llm.ledger` 的说明）：Z-8 的上限是
+  后端调提示、S-2、评测和 S-5 合用的，总上限比的是文件里已有的累计加这一次，不只是这一次跑的。
 - 调用前用预计花费（按输入长度和输出上限估，偏高）判上限，到了抛 `BudgetStop`，这次不发；调用后记实际的花费。
-- 总上限只算 `google` 的行；单项上限只在给了 `item` 时判：同一个 item 在账本里**两本账合起来**的花费加这一次
-  （数据 #49，m2-model-budget「建议」）。
-- Claude 那本账的行由数据的运行器写（评审员、AI 玩家），后端只在单项上限里读。
+- 总上限只算自己那家的行；单项上限只在给了 `item` 时判：同一个 item 两本账合起来（数据 #49）。
+- 每行带 `use`：叙事者各步、预录句、Live 是 "product"，在评测里跑也是（S-5 的单局成本只加 product）。
 """
 
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping
-from dataclasses import dataclass
 from pathlib import Path
 
+from zoujin_llm import Ledger as _Ledger
+
 from zoujin_backend.config import PRICES, REGIONAL_MARKUP
-from zoujin_backend.models.text import BudgetStop, now_z
 
 PROVIDER = "google"
 
@@ -33,55 +30,19 @@ def cost_usd(model: str, usage: Mapping[str, int], *, regional: bool) -> float:
     return usd * (REGIONAL_MARKUP if regional else 1.0)
 
 
-@dataclass
-class Ledger:
-    path: Path
-    max_total_usd: float
-    max_item_usd: float | None = None
-    item: str | None = None
+class Ledger(_Ledger):
+    """Google 那本账（共用的账本类，provider 写 google）。构造的参数和 B-2 时一样，B-6 的预录句也用它。"""
 
-    def _lines(self) -> list[dict[str, object]]:
-        if not self.path.is_file():
-            return []
-        return [json.loads(x) for x in self.path.read_text(encoding="utf-8").splitlines() if x.strip()]
+    def __init__(
+        self,
+        path: Path,
+        max_total_usd: float,
+        max_item_usd: float | None = None,
+        item: str | None = None,
+        use: str = "product",
+    ) -> None:
+        super().__init__(path, PROVIDER, max_total_usd, max_item_usd, item, use)
 
     def spent(self, item: str | None = None) -> float:
-        """没给 item：Google 这本账的累计（总上限）。给了 item：这一项两本账合起来的花费（单项上限）。
-        每次重读文件（E-0 可能同时在记）。"""
-        total = 0.0
-        for line in self._lines():
-            if item is None and line.get("provider", PROVIDER) != PROVIDER:
-                continue
-            if item is not None and line.get("item") != item:
-                continue
-            total += float(line.get("costUsd", 0.0))  # type: ignore[arg-type]
-        return total
-
-    def before(self, estimate_usd: float) -> None:
-        """调用前：累计 + 这一次的预计超过上限就抛 BudgetStop（不发这次调用）。"""
-        so_far = self.spent()
-        if so_far + estimate_usd > self.max_total_usd:
-            raise BudgetStop(
-                f"Google 账本已花 ${so_far:.4f}，加上这次预计 ${estimate_usd:.4f} 超过总上限 ${self.max_total_usd:.2f}"
-            )
-        if self.item is not None and self.max_item_usd is not None:
-            on_item = self.spent(self.item)
-            if on_item + estimate_usd > self.max_item_usd:
-                raise BudgetStop(
-                    f"这一项已花 ${on_item:.4f}，加上这次预计 ${estimate_usd:.4f} 超过单项上限 ${self.max_item_usd:.2f}"
-                )
-
-    def add(self, *, kind: str, model: str, usage: Mapping[str, int], cost: float) -> None:
-        line: dict[str, object] = {
-            "at": now_z(),
-            "provider": PROVIDER,
-            "kind": kind,
-            "model": model,
-            "usage": dict(usage),
-            "costUsd": round(cost, 8),
-        }
-        if self.item is not None:
-            line["item"] = self.item
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self.path.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(line, ensure_ascii=False, sort_keys=True) + "\n")
+        """没给 item：Google 这本账的累计（总上限）。给了 item：这一项两本账合起来的花费（单项上限）。"""
+        return self.spent_total() if item is None else self.spent_on(item)
