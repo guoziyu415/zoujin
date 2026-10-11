@@ -10,8 +10,9 @@
 - activity()：人物此刻在做什么（契约 2.4 的 Activity，1.1）。R7（对象不在场、`absent` 的人物不能对话）和快照的
   `characters[].activity` 用（api-contract 2.3）。只算世界模型给的那一部分，叙事者按对话再推（backend-design 2.7）。
 
-不在这里的：`crossing`（过河的分钟）和归途的走法。归途四个地点同在 `scene.homeward-road`，按上面的规则互相 0 分，
-和真实路程（45〜180 分）对不上：UX 设计归途走法时已经提出，PM 定了走法以后（M3）和 `crossing` 一起改。切片没有归途。
+不在这里的：`crossing`（过河的分钟，M3 和归途的停留点一起做）。归途的四个地点（川、峠、泉、野の道）各是一个场景
+（S-081：停留点之间是跑的路段，「ひとりで先へ行く」要花路上的时间），所以按 `adjacent` 的步行分钟算，不是场景内的 0 分。
+切片没有归途。
 """
 
 from __future__ import annotations
