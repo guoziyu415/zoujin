@@ -168,7 +168,10 @@ def test_rate_limit_and_errors(tmp_path: Path) -> None:
 
     with pytest.raises(BadOutput) as e3:
         asyncio.run(client(garbage, tmp_path).call("extract", REQ))
-    (line,) = lines(tmp_path / "ledger.jsonl")  # 不合 Schema 的那次也花了钱，记账
+    limit, fail, line = lines(tmp_path / "ledger.jsonl")
+    assert [(x["status"], x["costUsd"]) for x in (limit, fail)] == [("error", 0), ("error", 0)]  # 没有回应：花费 0
+    assert PROJECT not in json.dumps([limit, fail])
+    assert line["status"] == "bad-output" and line["ms"] >= 0  # 不合 Schema 的那次也花了钱，记账
     assert line["costUsd"] > 0 and e3.value.cost_usd == pytest.approx(line["costUsd"])  # 叙事者拿它加进这一轮的花费
 
 

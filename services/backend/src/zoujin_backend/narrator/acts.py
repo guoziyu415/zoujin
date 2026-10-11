@@ -123,6 +123,7 @@ def option(book: Book, state: SimState, ex: Mapping[str, Any]) -> Json:
         "optionId": ex["id"],
         "label": ex["label"],
         "sceneId": book.scene_of(ex["place"], ex["toAct"]),
+        "toActId": ex["toAct"],
         "tLabel": book.label(t),
         "where": where(book, ex["place"], t),
     }

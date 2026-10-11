@@ -14,17 +14,17 @@ B-3：
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, cast
 
 from zoujin_backend.db.store import Run
 from zoujin_backend.ids import IdGen
-from zoujin_backend.projection import is_visible
+from zoujin_backend.projection import Away, is_visible
 from zoujin_backend.world import Book
 from zoujin_worldsim import OCCURRED, SimState, apply, pick_set_piece, settle
 
 Json = Any
 
-SCHEMA_VERSION = "1.11"  # 写入时的数据契约版本：契约 `SchemaVersion` 里最新的那个（test_world 管着）
+SCHEMA_VERSION = "1.12"  # 写入时的数据契约版本：契约 `SchemaVersion` 里最新的那个（test_world 管着）
 CHECKER_SYSTEM = "w1-settle"
 CHECKER_PIECE = "set-piece"
 
@@ -65,8 +65,10 @@ class Writer:
         self.run = Run()  # 局上记的（提交的事务里读进来，写回去）
         self.pieces: list[Json] = []  # 这次提交里节拍时机演的固定演出（set_piece 消息）
         self.seen: list[str] = []  # 玩家可见的事件 ID（turn_settled.eventIds，api-contract 2.4）
+        self.away = Away()  # 幕切换第 3 步结算的不算玩家看到（和网关推 commit、补推同一条规则）
         # 这一幕在这次提交开始时还开着（有去处的幕）：结算按收幕拦住
         self.guard = has_exits(book, state) and not act_closed(book, state)
+        self.ending: Json | None = None  # B-9：这次提交进了结局（`ending.enter` 的结果）
 
     @property
     def player_place(self) -> str:
@@ -120,7 +122,7 @@ class Writer:
         """按 seq 应用并记下。ev 由 full() 生成；W-1 的 apply 不收就抛 ValueError（整轮回滚）。"""
         if ev["seq"] != self.state["seq"] + 1:
             raise ValueError(f"seq 不连续：{ev['seq']}，上一个是 {self.state['seq']}")
-        if is_visible(self.book, ev, self.player_place):
+        if not self.away(ev) and is_visible(self.book, ev, self.player_place):
             self.seen.append(ev["eventId"])
         self.state = apply(self.book.world, self.state, ev)
         self.events.append(ev)
@@ -132,12 +134,19 @@ class Writer:
         return self.guard and act_closed(self.book, self.state)
 
     def settle(
-        self, t2: int | None, *, stop_after: str | None = None, present: bool = True, guard: bool = True
+        self,
+        t2: int | None,
+        *,
+        stop_after: str | None = None,
+        present: bool = True,
+        guard: bool = True,
+        anywhere: bool = False,
     ) -> list[Json]:
         """结算到 t2（None = 到底）。stop_after 给了节拍时，写完它的系统事件就停（评测的检查点「刚发生之后」）。
 
         guard：这一幕开始时还开着，就只结算到收幕为止（收幕节拍那一刻的都结完）；幕已经收了就不再结算。
-        present=False：幕切换的第 3 步，玩家不在场（W-1 settle 的 player_present），不问固定演出。"""
+        present=False：幕切换的第 3 步，玩家不在场（W-1 settle 的 player_present），不问固定演出。
+        anywhere：节拍的固定演出不看玩家在不在节拍的地点（B-9：进结局时收幕的那几段算进结局演出，镜头在刑场）。"""
         if guard and self.guard:
             if self.closed:
                 return []
@@ -155,7 +164,7 @@ class Writer:
                 self._learns(learns)
             out.append(self.add(self.from_draft(d)))
             if present and d["beat"] is not None:
-                self._beat_piece(d["beat"], t, learns)
+                self._beat_piece(d["beat"], t, learns, anywhere=anywhere)
             if stop_after is not None and d["beat"] == stop_after:
                 break
             if guard and self.closed and closed_at is None:
@@ -164,8 +173,19 @@ class Writer:
         self.system.extend(out)
         return out
 
-    def _beat_piece(self, beat: str, t: int, learns: list[Json]) -> None:
-        piece = pick_set_piece(self.book.world, self.state, {"beat": beat}, self.run.played)
+    def curtain(self, beat: str) -> bool:
+        """最后一幕里期限盯的节拍和它之后的节拍（B-9：收幕的固定演出算进结局演出，不看玩家在哪）。"""
+        watch = self.book.world["clock"]["deadline"].get("watchBeat")
+        if watch is None or has_exits(self.book, self.state):
+            return False
+        return float(self.book.beats[beat]["order"]) >= float(self.book.beats[watch]["order"])
+
+    def _beat_piece(self, beat: str, t: int, learns: list[Json], *, anywhere: bool = False) -> None:
+        state = self.state
+        if anywhere or self.curtain(beat):  # W-1 只在玩家在节拍的地点时给：问的时候把玩家当作站在那里
+            vars_ = {**state["vars"], "var.player.location": self.book.beats[beat]["place"]}
+            state = cast(SimState, {**state, "vars": vars_})
+        piece = pick_set_piece(self.book.world, state, {"beat": beat}, self.run.played)
         if piece is None:
             return
         self.play(piece)

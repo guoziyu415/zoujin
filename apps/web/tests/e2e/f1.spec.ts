@@ -577,6 +577,19 @@ test.describe("LINE's browser", () => {
     await expect(note).toHaveText(
       /LINEの中のブラウザでは、声で話せないことがあります。/,
     );
+    // how to get out of LINE (copy-ja 1): this phone's steps, the link to paste, the invite code again
+    await note.getByRole("button", { name: "Safariで開く方法" }).click();
+    await expect(note).toContainText("「Safariで開く」を選んでください。");
+    await expect(note).toContainText(
+      "Safariのアドレス欄に貼り付けてください。",
+    );
+    await expect(note).toContainText("招待コードをもう一度入れてください。");
+    await expect(note).not.toContainText("Chrome");
+    await note.getByRole("button", { name: "リンクをコピー" }).click();
+    // no clipboard permission here: the address shows as text to select instead
+    await expect(
+      note.getByText("コピーしました").or(note.getByText(/^http:\/\/[^/]+\/$/)),
+    ).toBeVisible();
     await note.getByRole("button", { name: "このまま文字で遊ぶ" }).click();
     await expect(note).toHaveCount(0);
     await page.getByRole("button", { name: "書をひらく" }).click();
