@@ -59,8 +59,10 @@ export function scatter(
 export function toPath(
   p: Plan,
   path: Plan[],
-): { d: number; side: number; along: Plan } {
-  let best = { d: Infinity, side: 1, along: [1, 0] as Plan };
+): { d: number; side: number; along: Plan; s: number } {
+  // s: how far along the path (from its start) the nearest point is
+  let best = { d: Infinity, side: 1, along: [1, 0] as Plan, s: 0 };
+  let walked = 0;
   for (let i = 0; i + 1 < path.length; i++) {
     const [ax, az] = path[i]!;
     const [bx, bz] = path[i + 1]!;
@@ -75,8 +77,14 @@ export function toPath(
     if (d < best.d) {
       const cross = dx * (p[1] - az) - dz * (p[0] - ax);
       const len = Math.sqrt(len2);
-      best = { d, side: cross >= 0 ? 1 : -1, along: [dx / len, dz / len] };
+      best = {
+        d,
+        side: cross >= 0 ? 1 : -1,
+        along: [dx / len, dz / len],
+        s: walked + t * len,
+      };
     }
+    walked += Math.sqrt(len2);
   }
   return best;
 }

@@ -8,5 +8,9 @@ const g = globalThis as { __zoujinTest?: boolean; __zoujinNo3d?: boolean };
 export const flags = {
   test: params.has("test") || g.__zoujinTest === true,
   no3d: g.__zoujinNo3d === true,
-  crowd: Number(params.get("crowd")) || 0,
+  // whole people, at most 40 (?crowd=Infinity would never finish scattering)
+  crowd: Math.min(
+    40,
+    Math.max(0, Math.floor(Number(params.get("crowd")) || 0)),
+  ),
 };

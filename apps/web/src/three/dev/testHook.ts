@@ -70,7 +70,7 @@ export function installTestHook(): void {
       },
       // the crowd (?crowd=N, F-4): what it is doing, and the staging's verbs
       crowd: async (
-        verb?: "wave" | "cheer" | "part" | "show" | "hide",
+        verb?: "wave" | "cheer" | "part" | "settle" | "show" | "hide",
         arg?: [number, number] | [number, number][],
       ) => {
         const { crowdRef } = await import("../crowd/CrowdLayer");
@@ -79,6 +79,7 @@ export function installTestHook(): void {
         if (verb === "wave") c.wave(arg as [number, number]);
         if (verb === "cheer") c.cheer();
         if (verb === "part") c.part(arg as [number, number][]);
+        if (verb === "settle") c.settle();
         if (verb === "show" || verb === "hide") c.visible = verb === "show";
         return {
           count: c.people.length,
