@@ -1,7 +1,7 @@
 // F-12's act end with the voice: the plan said aloud (ux-design 4.4, api-contract 3.11) against B-1's mock, with
 // Chromium's fake microphone (a tone) and its prompt answered yes, as in f1. Screenshots go to test-results/f12/.
 import { expect, test, type Page } from "@playwright/test";
-import { mock, ORIGIN, resetMock, startStory } from "./shell";
+import { mock, ORIGIN, resetMock, startStory, without3d } from "./shell";
 
 test.use({
   launchOptions: {
@@ -34,6 +34,7 @@ test.beforeEach(async ({ page, context }) => {
       problems.push(`console: ${m.text()}`);
   });
   await context.clearCookies();
+  await without3d(context); // the act-end page over the world, as in f12.spec
   await resetMock(page);
 });
 
