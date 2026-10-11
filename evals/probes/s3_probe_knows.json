@@ -1,5 +1,5 @@
 {
- "about": "防剧透探针（evals/probes/s3_spoiler_probes.json）每个情景里，人物此刻是什么人、知道什么（PM S-086 ⑥）。由 evals/gen_probe_knows.py 从世界模型 1.0.0-draft 按情景的 after 生成，不要手改。判定用法：回答里人物说的身份、处境要和 now 对得上；只能把 knows 里的事当成知道的；把 notYet 里的事当成已经知道（确认、复述、当成前提）就算知情越界或时点串了。",
+ "about": "防剧透探针（evals/probes/s3_spoiler_probes.json）每个情景里，人物此刻是什么人、知道什么（PM S-086 ⑥）。由 evals/gen_probe_knows.py 从世界模型 1.0.0-draft 按情景的 after 生成，不要手改。判定用法：回答里人物说的身份、处境要和 now 对得上；只能把 knows 里的事当成知道的；把 notYet 里的事当成已经知道（说本来就知道、确认是真的、当成前提接着说）就算知情越界或时点串了。玩家刚说出的事，人物当作第一次听到（「そうですか」「初めて聞きました」、顺着问下去）不算；说自己本来就知道，或者补出玩家没说的细节，才算（S-068 人工复核的分法，UX #87 评审）。",
  "worldModelVersion": "hashire-merosu@1.0.0-draft.3",
  "scenarios": {
   "p-melos-castle-promise": {
@@ -1034,6 +1034,16 @@
      "since": "beat.06"
     },
     {
+     "fact": "fact.melos-errand",
+     "statement": "メロスは花嫁の衣裳と祝宴の御馳走を買いに市へ来た。",
+     "since": "beat.06"
+    },
+    {
+     "fact": "fact.melos-dagger",
+     "statement": "メロスは短剣を懐に王城へ入り、警吏に捕らえられた。",
+     "since": "beat.06"
+    },
+    {
      "fact": "fact.selinuntius-doubted-once",
      "statement": "セリヌンティウスは三日の間に一度だけメロスを疑った。",
      "since": "beat.s2"
@@ -1094,6 +1104,14 @@
     {
      "fact": "fact.selinuntius-hostage",
      "statement": "セリヌンティウスは深夜王城に召され、身代りとして縄打たれた。"
+    },
+    {
+     "fact": "fact.melos-errand",
+     "statement": "メロスは花嫁の衣裳と祝宴の御馳走を買いに市へ来た。"
+    },
+    {
+     "fact": "fact.melos-dagger",
+     "statement": "メロスは短剣を懐に王城へ入り、警吏に捕らえられた。"
     }
    ],
    "notYet": [
@@ -1158,6 +1176,14 @@
     {
      "fact": "fact.selinuntius-hostage",
      "statement": "セリヌンティウスは深夜王城に召され、身代りとして縄打たれた。"
+    },
+    {
+     "fact": "fact.melos-errand",
+     "statement": "メロスは花嫁の衣裳と祝宴の御馳走を買いに市へ来た。"
+    },
+    {
+     "fact": "fact.melos-dagger",
+     "statement": "メロスは短剣を懐に王城へ入り、警吏に捕らえられた。"
     }
    ],
    "notYet": [
@@ -1225,6 +1251,14 @@
      "statement": "セリヌンティウスは深夜王城に召され、身代りとして縄打たれた。"
     },
     {
+     "fact": "fact.melos-errand",
+     "statement": "メロスは花嫁の衣裳と祝宴の御馳走を買いに市へ来た。"
+    },
+    {
+     "fact": "fact.melos-dagger",
+     "statement": "メロスは短剣を懐に王城へ入り、警吏に捕らえられた。"
+    },
+    {
      "fact": "fact.selinuntius-doubted-once",
      "statement": "セリヌンティウスは三日の間に一度だけメロスを疑った。"
     }
@@ -1264,6 +1298,10 @@
     {
      "fact": "fact.sister-engaged",
      "statement": "妹の花婿は、村の律気な一牧人である。"
+    },
+    {
+     "fact": "fact.melos-errand",
+     "statement": "メロスは花嫁の衣裳と祝宴の御馳走を買いに市へ来た。"
     }
    ],
    "notYet": [
@@ -1310,6 +1348,10 @@
      "statement": "妹の花婿は、村の律気な一牧人である。"
     },
     {
+     "fact": "fact.melos-errand",
+     "statement": "メロスは花嫁の衣裳と祝宴の御馳走を買いに市へ来た。"
+    },
+    {
      "fact": "fact.wedding-tomorrow",
      "statement": "メロスは妹に、婚礼をあすにすると告げた（理由は話していない）。"
     },
@@ -1351,6 +1393,10 @@
     {
      "fact": "fact.sister-engaged",
      "statement": "妹の花婿は、村の律気な一牧人である。"
+    },
+    {
+     "fact": "fact.melos-errand",
+     "statement": "メロスは花嫁の衣裳と祝宴の御馳走を買いに市へ来た。"
     },
     {
      "fact": "fact.wedding-tomorrow",
