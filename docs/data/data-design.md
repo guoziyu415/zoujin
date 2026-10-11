@@ -2,7 +2,7 @@
 
 负责人：数据工程 · 状态：**v1.2.5**。v1.0 已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改；1.1 跟上契约 1.1、PM 的 S-022〜S-053 和世界模型 draft.3；1.2 跟上契约 1.2 和 S-054〜S-063，补齐前端、UX 要的埋点（9.3）和市场调研要的试玩导出（9.5）。跨角色决定见 `pm/decisions.md`。待别人定的事见第 13 节。
 相关：[contracts.md](contracts.md) v1.7（四个数据契约，本文所有字段以它为准）· `backend/backend-design.md` · `pm/prd.md`
-最近更新：2026-10-11（v1.2.6：7.3 写清评审员的校准样本和一致率怎么算，跟上 D-028 改独立性和真人对话那句；v1.2.5：跟上 B-3（#61）：第 3 节动作和打算的花费、计数和局上的新列，5.3 `turns.result.seq`，第 8 节 `narrator.action` / `narrate` / `plan`；v1.2.4：按后端 #56 的评审改第 3、8 节四处说法，5.3 写清 B-3 加的 `turns.request` / `result` 和打算文字怎么清；v1.2.3：第 3 节 B-2 加的花费和计数列，第 8 节叙事者的五种 Span；v1.2.2：7.3 评审员定为 Claude Opus 5.5，写清校准和独立性；7.1 模拟局的 AI 玩家用 Claude；9.3 画质遥测的两处读法）
+最近更新：2026-10-11（v1.2.7：第 3 节 `turns.status` 的 `lost` 跟上后端 #106；v1.2.6：7.3 写清评审员的校准样本和一致率怎么算，跟上 D-028 改独立性和真人对话那句；v1.2.5：跟上 B-3（#61）：第 3 节动作和打算的花费、计数和局上的新列，5.3 `turns.result.seq`，第 8 节 `narrator.action` / `narrate` / `plan`；v1.2.4：按后端 #56 的评审改第 3、8 节四处说法，5.3 写清 B-3 加的 `turns.request` / `result` 和打算文字怎么清；v1.2.3：第 3 节 B-2 加的花费和计数列，第 8 节叙事者的五种 Span；v1.2.2：7.3 评审员定为 Claude Opus 5.5，写清校准和独立性；7.1 模拟局的 AI 玩家用 Claude；9.3 画质遥测的两处读法）
 
 数据工程负责六件事：世界模型（含『走れメロス』v1）、新增一本书的流水线、事件日志与世界状态、記憶帳与删除、评测与可观测数据、分析与成本测算。
 
@@ -96,7 +96,7 @@ endings(ending_id PK, playthrough_id FK CASCADE, body jsonb, decided_at)
   - `actions_act_ended`：收幕以后才轮到、直接回 `refused` 的动作（`turns.result.reason = "act-ended"`，0 分、不写事件、不调模型）。不进 `actions`，也不算进拒绝率：是玩家在收幕那一刻还排着的，不是动作做不成。
   - `plans_accepted` / `plans_refused`：幕末说出的打算成行、不成行的次数（同一次幕末最多 2 次）。成行率 = accepted ÷ (accepted + refused)。不算的：用声音说、转写是空的（误按、没出声，不写任务、不算试次，api-contract 3.11）；试次用完或没在幕末时发来的（回 `invalid_request`）。选了不成行时给的替代去处是一次 `choose`，不算进这两列；它写的玩家 `act-transition` 和成行一样带 `plan`，要数「最后按自己的打算走了」的局，从事件数。
 - 局上的六列（B-3）是叙事者在幕末和落地之间用的运行状态，分析不读：`player_spot`（玩家站在布局的哪个点）、`played_pieces`（演过的固定演出）、`act_end`（收幕后待选的那一份）、`plan_tries`、`plan_alternative`（不成行时给的替代去处，幕切换时清掉，5.3）、`arrival`（落地后谁先开口）。
-- 分析会读后端 `turns` 表的 `status`：pending / leased / done / retracted / failed / lost。`lost` 是断线时人物还没说完的一轮：叙事者不处理，不判、不花时间、没有 `turn_settled`（api-contract v1.0.3 第 4 节），也不算进 `playthrough_metrics.turns`。算「一局几轮」用 `playthrough_metrics.turns`，`lost` 的轮数单独看（9.1「续玩」的断线）。
+- 分析会读后端 `turns` 表的 `status`：pending / leased / done / retracted / failed / lost。`lost` 是断线时人物还没说完的一轮（后端 #106 起，也包括玩家还按着说话键就断线的一轮）：叙事者不处理，不判、不花时间、没有 `turn_settled`（api-contract v1.0.3 第 4 节），也不算进 `playthrough_metrics.turns`。算「一局几轮」用 `playthrough_metrics.turns`，`lost` 的轮数单独看（9.1「续玩」的断线）。
 
 `events` 不允许 UPDATE / DELETE：narrator 角色只有 INSERT、SELECT；只有「删除整局」走单独的特权流程（backend-design 2.1）。
 
@@ -521,6 +521,7 @@ BigQuery 每天一个定时查询，用 `EXTERNAL_QUERY` 直接读 Cloud SQL，�
 
 修订记录：
 
+- **v1.2.7（2026-10-11）**：第 3 节分析读 `turns.status` 那一条：`lost` 也包括玩家还按着说话键就断线的一轮（后端 #106），照样不处理、不算进 `playthrough_metrics.turns`。
 - **v1.2.6（2026-10-11）**：7.3 写清评审员的校准样本（`evals/judge/calibration.jsonl` 50 条，zg 盲标其中 20 条）和两种一致率怎么算，命令 `zoujin-judge`。跟上 D-028（叙事者的文字各步换 Claude）：独立性不再让 Gemini 2.5 Pro 再判，改成第一次真跑以后 zg 再盲标 20 条真回答、评审员比叙事者高一档；R1 起真人对话可以交给 Claude 判（隐私说明写明以后）；评审员和后端共用 Claude 客户端（B-8）。
 - **v1.2.4（2026-10-10）**：按后端 #56 的评审改四处：`turns_timed_out` 也算改写两次都失败；Span 的 token 四项只在 ok 时有，`cost_usd` 在 ok、timeout、invalid 时有；check 的 Span 也带 `failed_rules`；评测入口的 `say` 也带 playthrough_id、turn_id，只有 `check()` 带 trace_id。5.3 `turns` 那一行跟上 B-3 卡（#58）：`request`、`result`，打算的文字随 L1 和结局清空。打算的文字写入前过和事件 `summary` 一样的过滤（B-3 卡第 4 条）。
 - **v1.2.3（2026-10-10）**：跟上 B-2（#47）。第 3 节 `playthrough_metrics` 加分流、改写的花费和六个计数（迁移 0002），写清每个计数怎么算、否决率的分母从哪数；第 8 节的 Span 表换成叙事者的五种（triage、extract、check、rewrite、reply）和它们的属性，写明 Span 只收白名单属性、B-2 先写进日志。
