@@ -176,3 +176,11 @@ def test_impact_is_null_and_not_cached_when_the_model_fails(env: Env, inproc: Ma
     assert p.call("memory-impact", 200, "GET", path)["keeps"] is None
     assert p.call("memory-impact", 200, "GET", path)["keeps"] is None
     assert keeps_calls(s) == 2  # 出错的那次没缓存，第二次又算了
+
+
+def test_a_forgotten_fact_he_knows_anyway_stays() -> None:
+    """数据复看：删了的记忆里学到的事，按世界模型（knows，since 是 pre 或节拍已发生）他本来就知道的，照给。"""
+    st = initial_state(BOOK.world, "role.traveler")
+    known = "fact.king-killings"  # 老爺 since pre
+    statement = next(f["statement"] for f in BOOK.world["facts"] if f["id"] == known)
+    assert statement in "".join(brief.situation_facts(BOOK, st, OLD, frozenset({known})))

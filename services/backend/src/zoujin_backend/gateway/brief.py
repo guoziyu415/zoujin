@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from functools import cache
 from typing import Any
 
-from zoujin_worldsim import SimState
+from zoujin_worldsim import OCCURRED, SimState
 
 from zoujin_backend.models.live import Recent
 from zoujin_backend.models.prompts import text
@@ -52,6 +52,15 @@ def _names(book: Book) -> dict[str, str]:
     return out
 
 
+def _by_world(book: Book, state: SimState, who: str, fact: str) -> bool:
+    """按世界模型（`Character.knows`）他此刻本来就知道：since 是 pre，或那个节拍已经发生 / 改写了。"""
+    beats = state["beats"]
+    return any(
+        k["fact"] == fact and (k["since"] == "pre" or beats.get(k["since"]) in OCCURRED)
+        for k in book.characters[who].get("knows", [])
+    )
+
+
 def situation_facts(book: Book, state: SimState, who: str, forgotten: frozenset[str] = frozenset()) -> tuple[str, ...]:
     view = state_view(book, state)
     s = situation(book, state, who, view)
@@ -63,7 +72,7 @@ def situation_facts(book: Book, state: SimState, who: str, forgotten: frozenset[
     lines.append("近くにいる人：" + ("、".join(here) if here else "（いない）"))
     for k in s["knows"]:
         real = view.real(k)
-        if real in forgotten:
+        if real in forgotten and not _by_world(book, state, who, real):  # 世界模型让他知道的照给（数据复看）
             continue
         if real in statements:
             lines.append("知っていること：" + statements[real])
