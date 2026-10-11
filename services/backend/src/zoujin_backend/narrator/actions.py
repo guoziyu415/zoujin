@@ -193,7 +193,7 @@ async def decide(
             "actor": "player",
             "type": "action",
             "origin": "action",
-            "summary": f"{who}は、{aff['label']}ことにした",
+            "summary": f"{who}は、{aff['pastLabel']}",  # 契约 1.8：做完以后的句子，带对象（下发时身份名换成「あなた」）
             "causes": [],
             "effects": copy.deepcopy(aff.get("effects", [])),
         }
@@ -220,7 +220,7 @@ async def decide(
             "actor": "player",
             "type": "action",
             "origin": "action",
-            "summary": f"{who}は、{to}に{known['name'] if known else '持っていない物'}を渡そうとした",
+            "summary": f"{who}は、{to}に{known['name'] if known else '持っていない物'}を渡した",  # 做不到的检查会拒
             "causes": [],
             "effects": [{"op": "hold", "item": item or "item.unknown", "to": target}],
         }
@@ -356,7 +356,8 @@ async def narrate(
         "failedRules": out.failed,
     }
     try:
-        r = await n.pipeline.call("narrate", request, spend, span={**span, "status": out.status})
+        # Span 的 status 是这次调用的状态；动作的结果在 narrator.action 上（data-design 第 8 节）
+        r = await n.pipeline.call("narrate", request, spend, span=span)
     except CallFailed:
         return narrate_fallback(out.status)
     return clean(str(r.output["text"]), "", frozenset(), limit=60) or narrate_fallback(out.status)
