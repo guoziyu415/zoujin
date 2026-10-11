@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import asyncio
+import copy
 import json
 from collections.abc import Mapping, Sequence
 from typing import Any
@@ -16,8 +17,9 @@ from zoujin_backend.ids import IdGen
 from zoujin_backend.models.text import BudgetStop, FakeText, RateLimited, TextResult, canonical
 from zoujin_backend.narrator import rules
 from zoujin_backend.narrator.pipeline import Counts, Extracted, Pipeline, Spend, TurnInput, Verified
-from zoujin_backend.narrator.view import aliases, state_view
+from zoujin_backend.narrator.view import aliases, situation, state_view
 from zoujin_backend.trace import Tracer
+from zoujin_backend.world import Book
 from zoujin_worldsim import SimState
 
 from .conftest import SCHEMAS
@@ -97,7 +99,7 @@ def test_extracted_and_all_pass() -> None:
     ex, v, _ = run_turn(p, at())
     assert kinds(fake) == ["triage", "extract", "check"]  # 两个候选合在一次检查里
     assert statuses(v) == [("passed", 1, []), ("passed", 1, [])]
-    assert all("+gemini-3.8-flash/p" in x.check["checker"] for x in v.checked)
+    assert all("+sonnet-5.5/p" in x.check["checker"] for x in v.checked)
     assert v.checked[0].effects[0]["factId"].startswith("rf_")  # 提交时的 ID 已分配
     (_, check_req) = fake.calls[2]
     assert "factId" not in canonical(check_req) and "rf_" not in canonical(check_req)  # 请求里没有随机的 ID
@@ -341,7 +343,7 @@ def test_scope_scoped_and_all() -> None:
         assert (kinds(fake) == ["check"]) is called, (x["effects"], scope)
         r5 = {r["rule"]: r["status"] for r in got.rules}["R5-persona"]
         assert r5 == ("pass" if called else "skipped")
-        assert ("+gemini-3.8-flash/p" in got.check["checker"]) is called
+        assert ("+sonnet-5.5/p" in got.check["checker"]) is called
 
 
 # —— 文字模式的人物回答 ——
@@ -356,6 +358,28 @@ def test_reply_request_has_persona_and_situation() -> None:
     assert "fact.city-silent" in req["situation"]["knows"] and "char.crowd" not in req["situation"]["present"]
     p, _ = pipe([{"kind": "reply", "error": "invalid"}])
     assert asyncio.run(p.reply(BOOK, at(), TurnInput(character=OLD, player=LINE), Spend())) is None
+
+
+def test_reply_time_is_band_only_for_who_does_not_know_the_day_names() -> None:
+    """S-086：日名带着情节（`clock.labels.daysKnownBy`）时，不知道那条事实的人物只拿到时段；没这个字段时照旧。"""
+
+    def book(by: str | None) -> Book:
+        w = copy.deepcopy(BOOK.world)
+        w["clock"]["labels"].pop("daysKnownBy", None)
+        if by:
+            w["clock"]["labels"]["daysKnownBy"] = by
+        return Book(BOOK.book_id, w, BOOK.scenes)
+
+    def time(b: Book, s: SimState, who: str) -> str:
+        t: str = situation(b, s, who, state_view(b, s))["time"]
+        return t
+
+    promise, plain = book("fact.promise"), book(None)
+    night, day1 = at(checkpoint="sc.canon@t=1400"), at(checkpoint="sc.canon@t=2000")  # beat.05 之后；beat.06 之后
+    assert time(promise, night, "char.king") == time(plain, night, OLD) == "約束の日・夜"
+    assert time(promise, night, OLD) == time(promise, night, "char.selinuntius") == "夜"
+    assert time(promise, day1, "char.selinuntius") == "一日目・午前" and time(promise, day1, OLD) == "午前"
+    assert time(promise, at(), "char.king") == "日没前"  # 约定还没立，谁都不算知道
 
 
 # —— Span 不含原话 ——

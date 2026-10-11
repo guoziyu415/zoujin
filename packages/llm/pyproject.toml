@@ -1,0 +1,16 @@
+# 叙事者（后端）和评审员（evals）共用的模型调用部分（B-8）：账本、Claude 的单价和档名、回放的键、Anthropic 的连接。
+# 后端和 evals 互不依赖，都依赖这个包。
+[project]
+name = "zoujin-llm"
+version = "0.0.0"
+description = "共用的账本、Claude 单价、回放的键和 Anthropic 客户端（B-8）"
+requires-python = ">=3.13,<3.14"
+dependencies = []
+
+# real：Anthropic 的 SDK（只在 zg 的 Mac 上真调；CI 装上只为类型检查和不联网的单元测试）
+[project.optional-dependencies]
+real = ["anthropic>=1,<2"]
+
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"

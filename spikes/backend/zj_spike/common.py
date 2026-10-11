@@ -45,6 +45,10 @@ class QuotaHit(RuntimeError):
     """Raised on the first 429 / RESOURCE_EXHAUSTED. Never retried."""
 
 
+class Stopped(RuntimeError):
+    """Any other reason to stop the whole run (e.g. the Claude judge refused a request); resume later."""
+
+
 @dataclass(frozen=True)
 class Settings:
     project: str
@@ -277,6 +281,9 @@ def run(main) -> None:
     except QuotaHit as e:
         print(f"\n[停止] 遇到配额限制（429），按规则立即停止，不重试：{e}", file=sys.stderr)
         sys.exit(4)
+    except Stopped as e:
+        print(f"\n[停止] {e}。已经跑完的照样写在 out/ 里，修好后用 --resume 接着跑。", file=sys.stderr)
+        sys.exit(5)
     except KeyboardInterrupt:
         print("\n[停止] 手动中断。", file=sys.stderr)
         sys.exit(130)

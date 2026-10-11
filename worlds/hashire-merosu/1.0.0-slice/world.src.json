@@ -1,5 +1,5 @@
 {
- "schemaVersion": "1.8",
+ "schemaVersion": "1.9",
  "worldModelVersion": "hashire-merosu@1.0.0-slice.3",
  "_authoring": "切片版。由 1.0.0-slice/make_slice.py 从 1.0.0-draft/world.src.json 生成，不要手改。出典は {\"q\": 原文の逐字引用, \"p\": 段落番号（省略可）} で書く。spikes/pipeline/build_world.py が段落を特定・検証して world.json を出力する。",
  "book": {
@@ -149,6 +149,7 @@
     ]
    ],
    "format": "{day}・{band}",
+   "daysKnownBy": "fact.promise",
    "inferred": true,
    "note": "UX ux-design 4.2 の表（S-037）。日没前 = 日没の 1 時間前から、日没 = 日没から 29 分まで（sunsetMinuteOfDay=1140 前提）。文言は UX、境目は数据が維持",
    "cite": [
@@ -211,7 +212,7 @@
   {
    "id": "char.melos",
    "name": "メロス",
-   "summary": "村の牧人。政治はわからないが邪悪には人一倍敏感。妹の婚礼の買い物に市へ来て、王の暴虐を知る。",
+   "summary": "村の牧人。十六の内気な妹と二人暮らし。政治はわからないが、邪悪には人一倍敏感。",
    "traits": [
     {
      "text": "政治がわからない",
@@ -476,6 +477,10 @@
     {
      "fact": "fact.selinuntius-doubted-once",
      "since": "beat.25"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "since": "beat.10"
     }
    ],
    "initialPlace": "place.syracuse-square",
@@ -615,7 +620,7 @@
   {
    "id": "char.king",
    "name": "王ディオニス",
-   "summary": "シラクスの王。人を信じることができず、身内や臣下を次々に殺している暴君。",
+   "summary": "シラクスの王。これまでに身内や臣下を次々に殺してきた。",
    "traits": [
     {
      "text": "人を信じることができない",
@@ -874,7 +879,7 @@
   {
    "id": "char.selinuntius",
    "name": "セリヌンティウス",
-   "summary": "メロスの竹馬の友。シラクスの市の石工。深夜に王城へ召され、メロスの身代りになる。",
+   "summary": "メロスの竹馬の友。シラクスの市の石工。",
    "traits": [
     {
      "text": "多くを語らず、友を信じる",
@@ -1065,6 +1070,14 @@
      "since": "beat.06"
     },
     {
+     "fact": "fact.melos-errand",
+     "since": "beat.06"
+    },
+    {
+     "fact": "fact.melos-dagger",
+     "since": "beat.06"
+    },
+    {
      "fact": "fact.selinuntius-doubted-once",
      "since": "beat.s2"
     },
@@ -1242,7 +1255,7 @@
   {
    "id": "char.sister",
    "name": "メロスの妹",
-   "summary": "十六歳で内気。村の律気な牧人との結婚が近い。兄の代わりに羊の番をしている。",
+   "summary": "メロスの妹。十六の内気な娘で、兄と二人で村に暮らしている。",
    "traits": [
     {
      "text": "十六歳、内気",
@@ -1274,12 +1287,13 @@
       {
        "q": "花嫁は、夢見心地で首肯いた。"
       }
-     ]
+     ],
+     "since": "beat.13"
     }
    ],
    "goals": [
     {
-     "text": "結婚する（推定：原文に本人の言葉はない）",
+     "text": "結婚する",
      "cite": [
       {
        "q": "花婿として迎える事になっていた。"
@@ -1298,7 +1312,8 @@
     }
    ],
    "speech": {
-    "register": "原文に台詞なし。控えめで丁寧な話し方として設計（推定）。",
+    "firstPerson": "わたし",
+    "register": "控えめで丁寧な話し方（〜です、〜ます）。兄を「兄さん」と呼ぶ。口数が少なく、照れると言葉が途切れる。",
     "sampleLines": []
    },
    "knows": [
@@ -1308,6 +1323,10 @@
     },
     {
      "fact": "fact.sister-engaged",
+     "since": "pre"
+    },
+    {
+     "fact": "fact.melos-errand",
      "since": "pre"
     },
     {
@@ -1391,7 +1410,7 @@
   {
    "id": "char.groom",
    "name": "花婿",
-   "summary": "村の律気な牧人。仕度が整わないので葡萄の季節まで婚礼を待ちたいと言うが、夜通しの説得に折れる。",
+   "summary": "村の律気な牧人。メロスの妹の結婚相手。",
    "traits": [
     {
      "text": "律気",
@@ -1431,7 +1450,8 @@
     }
    ],
    "speech": {
-    "register": "原文は間接話法のみ。実直で慎重な話し方として設計（推定）。",
+    "firstPerson": "わたし",
+    "register": "実直で慎重な話し方（〜です、〜ます）。メロスを「メロスさん」と呼ぶ。",
     "sampleLines": [
      {
       "q": "こちらには未だ何の仕度も出来ていない"
@@ -1458,6 +1478,10 @@
     {
      "fact": "fact.storm",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "since": "beat.10"
     }
    ],
    "initialPlace": "place.groom-house",
@@ -1543,7 +1567,7 @@
   {
    "id": "char.philostratus",
    "name": "フィロストラトス",
-   "summary": "セリヌンティウスの弟子の若い石工。終盤、走るメロスに「もう、駄目でございます」と告げる。",
+   "summary": "セリヌンティウスの弟子の若い石工。",
    "traits": [
     {
      "text": "セリヌンティウスの弟子の若い石工",
@@ -1581,7 +1605,7 @@
     }
    ],
    "speech": {
-    "firstPerson": "（原文なし）",
+    "firstPerson": "わたくし",
     "register": "丁寧（〜でございます、〜居りました）。取り乱しやすい。",
     "sampleLines": [
      {
@@ -1700,7 +1724,7 @@
   {
    "id": "char.old-man",
    "name": "市の老爺",
-   "summary": "メロスにゆすぶられ、王の所業を低い声で教える老人。",
+   "summary": "シラクスの市に住む老人。王の所業を知っていて、怯えている。",
    "traits": [
     {
      "text": "人目をはばかり、怯えている",
@@ -1713,7 +1737,7 @@
    ],
    "goals": [
     {
-     "text": "目をつけられずに生き延びる（推定）",
+     "text": "目をつけられずに生き延びる",
      "cite": [
       {
        "q": "老爺は答えなかった。"
@@ -1769,6 +1793,10 @@
     {
      "fact": "fact.city-silent",
      "since": "pre"
+    },
+    {
+     "fact": "fact.execution-crowd",
+     "since": "beat.22"
     }
    ],
    "initialPlace": "place.syracuse-square",
@@ -1847,7 +1875,7 @@
   {
    "id": "char.young-man",
    "name": "市の若い衆",
-   "summary": "メロスに問われても首を振って答えない若者。",
+   "summary": "シラクスの市の若い衆。",
    "traits": [
     {
      "text": "恐れて口を閉ざす",
@@ -1860,7 +1888,7 @@
    ],
    "goals": [
     {
-     "text": "関わり合いを避ける（推定）",
+     "text": "関わり合いを避ける",
      "cite": [
       {
        "q": "若い衆は、首を振って答えなかった。"
@@ -1869,7 +1897,7 @@
     }
    ],
    "speech": {
-    "register": "原文に台詞なし（推定）。",
+    "register": "口が重く、ぶっきらぼうな話し方。",
     "sampleLines": []
    },
    "knows": [
@@ -1884,6 +1912,10 @@
     {
      "fact": "fact.city-silent",
      "since": "pre"
+    },
+    {
+     "fact": "fact.execution-crowd",
+     "since": "beat.22"
     }
    ],
    "initialPlace": "place.syracuse-square",
@@ -1896,8 +1928,8 @@
   },
   {
    "id": "char.guards",
-   "name": "警吏（巡邏・刑吏）",
-   "summary": "王城を巡邏し、メロスを捕らえる役人たち。刑場で磔を執り行う。",
+   "name": "城の警吏",
+   "summary": "王城を巡邏する役人たち。王の命令で人を捕らえ、刑場で磔を執り行う。",
    "traits": [
     {
      "text": "王の命令に従う",
@@ -1910,7 +1942,7 @@
    ],
    "goals": [
     {
-     "text": "命令を遂行する（推定）",
+     "text": "命令を遂行する",
      "cite": [
       {
        "q": "私だ、刑吏！"
@@ -1919,7 +1951,7 @@
     }
    ],
    "speech": {
-    "register": "原文に台詞なし（推定）。",
+    "register": "役人らしく、短く命令口調の話し方。",
     "sampleLines": []
    },
    "knows": [
@@ -1952,7 +1984,7 @@
   {
    "id": "char.bandits",
    "name": "峠の山賊",
-   "summary": "峠でメロスの前に躍り出た一隊の山賊。棍棒を振るう。",
+   "summary": "棍棒を持った一隊の山賊。",
    "traits": [
     {
      "text": "棍棒で襲う",
@@ -1994,7 +2026,7 @@
   {
    "id": "char.travelers",
    "name": "旅の一団",
-   "summary": "メロスとすれちがう旅の一団。処刑の噂を口にする。",
+   "summary": "街道を行く旅の一団。",
    "traits": [
     {
      "text": "噂話をする",
@@ -2031,8 +2063,8 @@
   },
   {
    "id": "char.crowd",
-   "name": "刑場の群衆",
-   "summary": "刑場に集まった市の人々。最後に王を讃える。",
+   "name": "市の群衆",
+   "summary": "シラクスの市の人々。",
    "traits": [
     {
      "text": "感情の振れ幅が大きい",
@@ -2056,6 +2088,10 @@
     {
      "fact": "fact.selinuntius-steadfast",
      "since": "beat.s1"
+    },
+    {
+     "fact": "fact.execution-crowd",
+     "since": "beat.22"
     }
    ],
    "initialPlace": "place.syracuse-square",
@@ -2070,8 +2106,8 @@
   },
   {
    "id": "char.maiden",
-   "name": "緋のマントの少女",
-   "summary": "最後にメロスへ緋のマントを捧げる少女。",
+   "name": "市の少女",
+   "summary": "シラクスの市の少女。",
    "traits": [
     {
      "text": "メロスの裸体を人に見られるのを口惜しがる",
@@ -2079,12 +2115,13 @@
       {
        "q": "この可愛い娘さんは、メロスの裸体を、皆に見られるのが、たまらなく口惜しいのだ。"
       }
-     ]
+     ],
+     "since": "beat.27"
     }
    ],
    "goals": [],
    "speech": {
-    "register": "原文に台詞なし（推定）。",
+    "register": "素朴で、言葉少なな話し方。",
     "sampleLines": []
    },
    "knows": [],
@@ -2525,7 +2562,7 @@
   },
   {
    "id": "fact.six-killed-today",
-   "statement": "この日（Day 0）、六人が殺された。",
+   "statement": "王の命令で、一日のうちに六人が殺された。",
    "trueFrom": "pre",
    "visibility": "private",
    "cite": [
@@ -2661,6 +2698,24 @@
    ]
   },
   {
+   "id": "fact.groom-agreed",
+   "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。",
+   "trueFrom": "beat.10",
+   "visibility": "public",
+   "cite": [
+    {
+     "q": "やっと、どうにか婿をなだめ、すかして、説き伏せた。"
+    },
+    {
+     "q": "結婚式は、真昼に行われた。"
+    }
+   ],
+   "spoilerTerms": [
+    "婚礼を真昼に",
+    "式を真昼に"
+   ]
+  },
+  {
    "id": "fact.groom-wanted-wait",
    "statement": "花婿は仕度ができていないので葡萄の季節まで待ちたかった。",
    "trueFrom": "pre",
@@ -2761,7 +2816,7 @@
   },
   {
    "id": "fact.melos-suspects-king",
-   "statement": "メロスは山賊を王の差し金だと考えた（原文では真偽不明。語り手は断定しない）。",
+   "statement": "メロスは山賊を王の差し金だと考えた。",
    "trueFrom": "beat.19",
    "visibility": "private",
    "cite": [
@@ -2804,6 +2859,24 @@
    ],
    "spoilerTerms": [
     "磔にかかっている"
+   ]
+  },
+  {
+   "id": "fact.execution-crowd",
+   "statement": "日没に、市の石工が刑場で磔にされることになっていて、広場の一角の刑場に人が集まりはじめている。",
+   "trueFrom": "beat.22",
+   "visibility": "public",
+   "cite": [
+    {
+     "q": "すでに磔の柱が高々と立てられ、縄を打たれたセリヌンティウスは、徐々に釣り上げられてゆく。"
+    },
+    {
+     "q": "大声で刑場の群衆にむかって叫んだ"
+    }
+   ],
+   "spoilerTerms": [
+    "刑場に人が集ま",
+    "磔にされることになって"
    ]
   },
   {
@@ -4024,7 +4097,7 @@
    "id": "beat.s2",
    "order": 20.5,
    "title": "ちらと友を疑う",
-   "summary": "三日目の午後、日が傾いてもメロスは戻らない。城で縄を打たれたセリヌンティウスは、生れてはじめて、ちらと友を疑う（時刻は推定。原作では刑場で本人が打ち明けるだけ）。",
+   "summary": "三日目の午後、日が傾いてもメロスは戻らない。城で縄を打たれたセリヌンティウスは、生れてはじめて、ちらと友を疑う。",
    "window": {
     "earliest": 5160,
     "latest": 5390,

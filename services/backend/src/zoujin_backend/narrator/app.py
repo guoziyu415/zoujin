@@ -34,6 +34,7 @@ def build(settings: Settings) -> Narrator:
         text=text_model(settings.model, fake_rules=settings.fake_text, replays=settings.replays, settings=settings),
         schemas=SchemaBook(settings.schemas),
         deadlines=settings.deadlines,
+        on_rate_limit="degrade",  # 服务玩家：429、529 不停服，按时限的规则处理（B-8）
     )
 
 
