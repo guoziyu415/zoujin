@@ -11,7 +11,7 @@
       "actor": "narrator",
       "forPlayer": false,
       "place": "place.castle",
-      "summary": "警吏は旅人を城門で止めていた",
+      "summary": "警吏はあなたを城門で止めていた",
       "causes": ["ev_01K7AZ00000000000000000044"],
       "visibleEffects": [
         {
@@ -34,7 +34,7 @@
       "actor": "char.selinuntius",
       "forPlayer": true,
       "place": "place.castle",
-      "summary": "セリヌンティウスが旅人の願いを引き受けた",
+      "summary": "セリヌンティウスがあなたの願いを引き受けた",
       "causes": ["ev_01K7AZ00000000000000000041"],
       "visibleEffects": [],
       "promise": {

@@ -88,7 +88,31 @@ def is_visible(book: Book, ev: Mapping[str, Any], player_place: str) -> bool:
     return bool(ev["actor"] == "player" or ev["place"] == player_place)
 
 
-def visible_event(book: Book, ev: Mapping[str, Any]) -> Json:
+YOU = "あなた"
+ENDS = ("。", "！", "？", "!", "?")
+
+
+def as_you(book: Book, role_id: str, text: str, *, period: bool = False) -> str:
+    """下发给前端的事件句里，玩家一律是「あなた」：把这一局的身份名换掉（存的 summary 照旧用身份名，模型、检查、
+    评测读那一份）。名字里含身份名的人物不换（兜底：契约 1.8 起数据的自检不让人物名含身份名）。
+    period：句末没有「。」就补上（recapLines、「その頃」；commit 的 summary 不补，前端放在括号里）。"""
+    name = str(book.roles[role_id]["name"])
+    keep = sorted(
+        {str(c["name"]) for c in book.characters.values() if name in str(c["name"]) and c["name"] != name},
+        key=len,
+        reverse=True,
+    )
+    for i, k in enumerate(keep):
+        text = text.replace(k, f"\x00{i}\x00")
+    text = text.replace(name, YOU)
+    for i, k in enumerate(keep):
+        text = text.replace(f"\x00{i}\x00", k)
+    if period and text and not text.endswith(ENDS):
+        text += "。"
+    return text
+
+
+def visible_event(book: Book, ev: Mapping[str, Any], role_id: str) -> Json:
     out: Json = {
         "eventId": ev["eventId"],
         "seq": ev["seq"],
@@ -99,7 +123,7 @@ def visible_event(book: Book, ev: Mapping[str, Any]) -> Json:
         "actor": ev["actor"],
         "forPlayer": ev.get("beneficiary") == "player",
         "place": ev["place"],
-        "summary": ev["summary"],
+        "summary": as_you(book, role_id, str(ev["summary"])),
         "causes": list(ev["causes"]),
         "visibleEffects": visible_effects(book, ev["effects"]),
         "promise": promise_change(ev["effects"]),

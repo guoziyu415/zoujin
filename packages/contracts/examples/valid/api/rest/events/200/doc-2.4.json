@@ -11,7 +11,7 @@
       "actor": "player",
       "forPlayer": false,
       "place": "place.castle",
-      "summary": "旅人がメロスの身元を保証した",
+      "summary": "あなたがメロスの身元を保証した",
       "causes": ["ev_01K7AZ00000000000000000030"],
       "visibleEffects": [
         {
