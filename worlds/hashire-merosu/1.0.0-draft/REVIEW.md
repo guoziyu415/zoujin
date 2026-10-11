@@ -32,7 +32,7 @@
 | beat.01 未明、村を発つ | D0 04:00（D0 03:00〜D0 05:00） | village | メロス | anchor | — | — | 「きょう未明メロスは村を出発し」(1) | |
 | beat.02 市の異変 | D0 19:10（D0 19:00〜D0 20:00） | syracuse-square | メロス | anchor | — | — | 「歩いているうちにメロスは、まちの様子を怪しく思った。」(1) | |
 | beat.03 王の暴虐を知る | D0 19:30（D0 19:10〜D0 21:00） | syracuse-square | メロス、市の若い衆、市の老爺 | mutable | — | melos.knowsTyranny = True | 「王様は、人を殺します。」(2)<br>「聞いて、メロスは激怒した。」(9) | |
-| beat.04 王城で捕縛 | D0 20:00（D0 19:30〜D0 22:00） | execution-ground | メロス、警吏（巡邏・刑吏） | mutable | melos.knowsTyranny == True | melos.custody = arrested、melos → castle、item.dagger 被拿走 | 「買い物を、背負ったままで、のそのそ王城にはいって行った。」(10)<br>「調べられて、メロスの懐中からは短剣が出て来たので、騒ぎが大きくなってしまった。」(10) | |
+| beat.04 王城で捕縛 | D0 20:00（D0 19:30〜D0 22:00） | execution-ground | メロス、城の警吏 | mutable | melos.knowsTyranny == True | melos.custody = arrested、melos → castle、item.dagger 被拿走 | 「買い物を、背負ったままで、のそのそ王城にはいって行った。」(10)<br>「調べられて、メロスの懐中からは短剣が出て来たので、騒ぎが大きくなってしまった。」(10) | |
 | beat.05 王との問答と約束 | D0 20:30（D0 20:00〜D0 23:00） | castle | メロス、王ディオニス | mutable | melos.custody == arrested | promise.made = True、hostage.who = char.selinuntius | 「処刑までに三日間の日限を与えて下さい。」(18)<br>「あれを、人質としてここに置いて行こう。」(20)<br>「願いを、聞いた。その身代りを呼ぶがよい。」(22)<br>「メロスは口惜しく、地団駄踏んだ。」(25) | |
 | beat.06 深夜、友が召される | D0 23:30（D0 21:30〜D1 01:00） | castle | セリヌンティウス、メロス、王ディオニス | mutable | promise.made == True | hostage.fate = held、selinuntius → castle | 「竹馬の友、セリヌンティウスは、深夜、王城に召された。」(26) | |
 | beat.07 満天の星の下を発つ | D0 23:45（D0 21:40〜D1 02:00） | castle | メロス | mutable | hostage.fate == held | melos.custody = on-parole、melos.stamina -30 | 「メロスは、すぐに出発した。初夏、満天の星である。」(26) | |
@@ -52,9 +52,9 @@
 | beat.s2 ちらと友を疑う | D3 16:00（D3 14:00〜D3 17:50） | castle | セリヌンティウス | mutable | hostage.who == char.selinuntius、hostage.fate == held、selinuntius.faith <= 2〔推断〕 | selinuntius.doubted = True | 「私はこの三日の間、たった一度だけ、ちらと君を疑った。」(65) | |
 | beat.21 泉 | D3 16:30（D3 12:30〜D3 19:00） | spring | メロス | mutable | — | melos.stamina +30、melos.resolve = 100 | 「水を両手で掬って、一くち飲んだ。」(48)<br>「走れ！　メロス。」(48)<br>「先刻の、あの悪魔の囁きは、あれは夢だ。」(49) | |
 | beat.22 黒い風のように | D3 17:30（D3 13:30〜D3 19:00） | road-to-city | メロス、旅の一団 | mutable | — | melos.clothing = nearly-naked | 「メロスは黒い風のように走った。」(50)<br>「メロスは、いまは、ほとんど全裸体であった。」(50) | |
-| beat.s1 刑場に引き出される友 | D3 18:00（D3 17:00〜D3 18:55） | execution-ground | セリヌンティウス、王ディオニス、市の群衆、警吏（巡邏・刑吏） | mutable | hostage.fate == held | hostage.fate = on-cross、selinuntius → execution-ground、maiden → execution-ground、king → execution-ground | 「王様が、さんざんあの方をからかっても、メロスは来ます、とだけ答え」(57) | |
+| beat.s1 刑場に引き出される友 | D3 18:00（D3 17:00〜D3 18:55） | execution-ground | セリヌンティウス、王ディオニス、市の群衆、城の警吏 | mutable | hostage.fate == held | hostage.fate = on-cross、selinuntius → execution-ground、maiden → execution-ground、king → execution-ground | 「王様が、さんざんあの方をからかっても、メロスは来ます、とだけ答え」(57) | |
 | beat.23 フィロストラトス | D3 18:30（D3 14:30〜D3 19:00） | road-to-city | メロス、フィロストラトス | mutable | — | — | 「もう、駄目でございます。」(53)<br>「それだから、走るのだ。信じられているから走るのだ。」(58)<br>「いや、まだ陽は沈まぬ。」(56) | |
-| beat.24 日没、刑場へ | D3 19:00（D3 16:00〜D3 19:00） | execution-ground | メロス、セリヌンティウス、市の群衆、警吏（巡邏・刑吏） | mutable | melos.custody == on-parole | melos.custody = returned、hostage.fate = released、melos → execution-ground | 「メロスは疾風の如く刑場に突入した。間に合った。」(60)<br>「セリヌンティウスの縄は、ほどかれたのである。」(62) | |
+| beat.24 日没、刑場へ | D3 19:00（D3 16:00〜D3 19:00） | execution-ground | メロス、セリヌンティウス、市の群衆、城の警吏 | mutable | melos.custody == on-parole | melos.custody = returned、hostage.fate = released、melos → execution-ground | 「メロスは疾風の如く刑場に突入した。間に合った。」(60)<br>「セリヌンティウスの縄は、ほどかれたのである。」(62) | |
 | beat.25 殴り合いと抱擁 | D3 19:05（D3 16:00〜D3 20:00） | execution-ground | メロス、セリヌンティウス | mutable | hostage.fate == released、hostage.who == char.selinuntius〔推断〕 | — | 「私を殴れ。ちから一ぱいに頬を殴れ。」(63)<br>「「ありがとう、友よ。」二人同時に言い」(67)<br>「刑場一ぱいに鳴り響くほど音高くメロスの右頬を殴った。」(64)<br>「メロスは腕に唸りをつけてセリヌンティウスの頬を殴った。」(66) | |
 | ↳ 变体 beat.25.v-neither〔推断〕 | — | — | — | — | melos.doubted == False、selinuntius.doubted == False | どちらも相手を疑わなかった。殴り合うことはなく、二人は「ありがとう、友よ」と言って抱き合い、声を放って泣く。  | 「「ありがとう、友よ。」二人同時に言い」(67) | |
 | ↳ 变体 beat.25.v-melos-only〔推断〕 | — | — | — | — | selinuntius.doubted == False | メロスだけが途中の悪い夢を打ち明け、セリヌンティウスに殴られる。セリヌンティウスは一度も疑わなかったと言い、殴られないまま二人は抱き合う。  | 「私は、途中で一度、悪い夢を見た。」(63) | |
@@ -278,7 +278,7 @@
 | 说话 | 一人称「—」；口が重く、ぶっきらぼうな話し方。；开局在做：idle | — | |
 | 知道 | king-killings@pre、hostage-decree@pre、city-silent@pre、execution-crowd@beat.22 | — | |
 
-### 警吏（巡邏・刑吏）（char.guards）
+### 城の警吏（char.guards）
 
 王城を巡邏する役人たち。王の命令で人を捕らえ、刑場で磔を執り行う。
 
@@ -386,9 +386,9 @@
 |---|---|---|---|---|---|---|---|---|
 | role.traveler | 旅人 | 第 1 版 | act.1 · syracuse-square · D0 17:30 | — | syracuse-square、stonemason-workshop、execution-ground | castle：player.companionOf == char.melos、melos.custody == arrested<br>castle：player.custody == arrested<br>castle：player.companionOf == char.selinuntius | 誰も知らない。最初のプレイ向け（S-002）。王城にはメロスの連れとして連れて行かれた時に入れる（縛られない、UX 5.1）。 | |
 | role.apprentice | 石屋の弟子 | 第 1 版 | act.1 · stonemason-workshop · D0 17:30 | セリヌンティウス、フィロストラトス | stonemason-workshop、syracuse-square、execution-ground | castle：player.companionOf == char.selinuntius | 原文ではフィロストラトスが「セリヌンティウスの弟子の若い石工」。重複を避けるため、フィロストラトスの弟弟子とする（UX 5.1 は「セリヌンティウス親方の工房で、石を刻んでいる」）。 | |
-| role.castle-maid | 王城の侍女 | 第 2 版 | act.1 · castle · D0 17:30 | 王ディオニス、警吏（巡邏・刑吏） | castle、execution-ground、syracuse-square | — | 王の耳打ち（fact.king-whisper）を立ち聞きできる唯一の身分。 | |
+| role.castle-maid | 王城の侍女 | 第 2 版 | act.1 · castle · D0 17:30 | 王ディオニス、城の警吏 | castle、execution-ground、syracuse-square | — | 王の耳打ち（fact.king-whisper）を立ち聞きできる唯一の身分。 | |
 | role.shepherd-boy | 村の牧童 | 第 1 版 | act.3 · village · D1 09:00 | メロス、メロスの妹、花婿 | village、melos-home、groom-house、neighbor-village、river、mountain-pass、spring、road-to-city、syracuse-square、execution-ground | — | 一日目の午前、村の畑から始まる（メロスが村に着く前）。村・帰り道・広場に行ける（UX 5.1）。婚礼と出発の時刻に影響できる。 | |
-| role.guard | 警吏 | 第 2 版 | act.1 · castle · D0 17:30 | 警吏（巡邏・刑吏）、王ディオニス | castle、execution-ground、syracuse-square | — | 王の側に立つ。メロスを捕らえる側から始まる。 | |
+| role.guard | 警吏 | 第 2 版 | act.1 · castle · D0 17:30 | 城の警吏、王ディオニス | castle、execution-ground、syracuse-square | — | 王の側に立つ。メロスを捕らえる側から始まる。 | |
 
 ### 幕
 
