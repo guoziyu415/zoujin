@@ -261,7 +261,7 @@ def option_ref(book: Book, run: Run, option_id: str) -> Json | None:
     o = next((x for x in (run.act_end or {}).get("options", []) if x["optionId"] == option_id), None)
     if o is None:
         return None
-    return {"optionId": o["optionId"], "label": o["label"], "sceneId": o["sceneId"], "tLabel": o["tLabel"]}
+    return {k: o[k] for k in PUBLIC if k in o}
 
 
 def plan_request(book: Book, state: SimState, run: Run, said: str, mode: str) -> Json:
@@ -422,6 +422,7 @@ def alternative(
                 "optionId": n.ids.new("plan"),
                 "label": label,
                 "sceneId": book.scene_of(land["place"], land["toAct"]),
+                "toActId": land["toAct"],
                 "tLabel": book.label(int(land["t"])),
                 "kind": "plan",
                 "with": [c for c in raw.get("with", []) if c in book.characters],
@@ -432,7 +433,7 @@ def alternative(
     return {**ref, "kind": "exit"}
 
 
-PUBLIC = ("optionId", "label", "sceneId", "tLabel")
+PUBLIC = ("optionId", "label", "sceneId", "toActId", "tLabel")  # toActId：v1.0.14，局上记的老替代去处没有
 
 
 def refused(w: Writer, task: Task, req: Mapping[str, Any], lines: list[str], alt: Json) -> Planned:
@@ -445,7 +446,7 @@ def refused(w: Writer, task: Task, req: Mapping[str, Any], lines: list[str], alt
     left = max(0, 2 - run.plan_tries)
     if run.act_end is not None:
         run.act_end = {**run.act_end, "freeform": {"allowed": left > 0, "triesLeft": left}}
-    public = {k: alt[k] for k in PUBLIC}
+    public = {k: alt[k] for k in PUBLIC if k in alt}
     msg = {
         "type": "act_plan_result",
         **reply_to(task, req),

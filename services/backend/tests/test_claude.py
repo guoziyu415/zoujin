@@ -312,7 +312,9 @@ def test_cancelled_call_is_billed_at_the_estimate(tmp_path: Path) -> None:
     billed = lines(tmp_path / "ledger.jsonl")
     assert [x["kind"] for x in billed] == ["triage", "triage", "extract", "extract"]
     assert all(x["costUsd"] > 0 and x["usage"] == {} and x["provider"] == "claude" for x in billed)
-    assert all(x["status"] == "timeout" and x["ms"] >= 40 for x in billed)  # 记到取消为止（时限 50 毫秒）
+    # 记到取消为止：慢回答要 1 秒，时限 50 毫秒。`ms` 从额度检查之后才计时，比 `wait_for` 起算得晚，
+    # 负载高时差得更多，所以不卡下限
+    assert all(x["status"] == "timeout" and 0 < x["ms"] < 1000 for x in billed)
     assert billed[2]["costUsd"] == pytest.approx(rt.cancelled_cost("extract", extract_request()))
     assert spend.usd == pytest.approx(by_kind(billed))  # 这一轮的花费（playthrough_metrics）和账本对得上
 

@@ -48,6 +48,7 @@ export type SceneManifest = {
   places: { id: string; polygon: [number, number][] }[];
   exits: { place: string; spot: string }[];
   playerStartSpot: string;
+  startSpots?: Record<string, string>; // each place's spot for the player (layout.json startSpots)
   spots: Record<string, SpotEntry>;
   files: {
     path: string;
@@ -72,9 +73,21 @@ export function lightmapOf(
     : undefined;
 }
 
-// scene.syracuse-square -> /scenes/syracuse-square/ (vite.config.ts serves the build there)
-export const sceneBase = (sceneId: string): string =>
-  `${import.meta.env.BASE_URL}scenes/${sceneId.replace(/^scene\./, "")}/`;
+// Where a scene's pack is: the book manifest's scenes[].assetUrl (B-7: /scenes/<version>/<slug>/scene.json, the
+// version in the path so every file of a version caches for good, and first so an index.json's ../<other pack>/
+// stays inside it), else /scenes/<slug>/ (vite.config.ts serves the build at both). A scene of several packs
+// (index.json) comes with F-10.
+const PACK = /^\/scenes\/[0-9a-f]{8}\/[a-z0-9-]+\/scene\.json$/;
+
+export function sceneBase(
+  sceneId: string,
+  scenes: readonly { sceneId: string; assetUrl: string }[] = [],
+): string {
+  const url = scenes.find((s) => s.sceneId === sceneId)?.assetUrl;
+  if (url && PACK.test(url))
+    return `${import.meta.env.BASE_URL}${url.slice(1, url.lastIndexOf("/") + 1)}`;
+  return `${import.meta.env.BASE_URL}scenes/${sceneId.replace(/^scene\./, "")}/`;
+}
 
 export async function fetchJson<T>(url: string): Promise<T> {
   const r = await fetch(url);

@@ -365,7 +365,7 @@ async def get_events(request: Request, pid: str) -> Response:
 
 @router.get("/v1/playthroughs/{pid}/ending")
 async def get_ending(request: Request, pid: str) -> Response:
-    """2.8：还没进结局 404；结局任务还没好 202（etaSeconds = 30 减去已经过的秒数，最少 5）；好了 200 EndingView。"""
+    """2.8：还没进结局 404；结局任务还没好 202（etaSeconds = 15 减去已经过的秒数，最少 5）；好了 200 EndingView。"""
     gw = gw_of(request)
     await owned(request, pid)
     async with gw.engine.connect() as c:

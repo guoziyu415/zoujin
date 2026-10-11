@@ -666,8 +666,6 @@ class Conn:
                 elif ev.text is not None:
                     t.said = ev.text
                     await self._final(t)
-                if t.said is not None:
-                    self.gw.spawn(self._observe(t.turn_id, t.character, t.said, t.heard))
             elif ev.kind == "usage":
                 await self.voices.account(t, ev, session, before_s)
 
@@ -709,6 +707,8 @@ class Conn:
                 "source": "fallback",
             }
         )
+        if heard is not None:
+            self._watch(t)
 
     async def _final(self, t: Turn) -> None:
         if t.paused:  # 出戏卡停下的一轮没有人物定稿（3.3 的例外）
@@ -724,6 +724,12 @@ class Conn:
                 "source": "live",
             }
         )
+        self._watch(t)
+
+    def _watch(self, t: Turn) -> None:
+        """人物的定稿（Live 的、补转写的、被打断时说到一半的）都过输出侧监控（B-12）；不等它。"""
+        if t.said:
+            self.gw.spawn(self._observe(t.turn_id, t.character, t.said, t.heard))
 
     async def _finish(self, t: Turn) -> None:
         """等人物说完（或被打断、断线），再把这一轮交给叙事者。被打断的补 interrupted 和说到一半的定稿（3.3）；

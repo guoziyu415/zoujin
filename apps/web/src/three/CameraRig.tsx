@@ -8,6 +8,7 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import { PerspectiveCamera, Raycaster, Vector3, type Object3D } from "three";
+import { reducedMotion } from "./motion";
 import { quality } from "./quality/quality";
 import { rig } from "./rig";
 
@@ -155,12 +156,6 @@ export function CameraRig({ blockers }: { blockers: Object3D[] }) {
   }, -2);
   return null;
 }
-
-const motionQuery =
-  typeof window !== "undefined" && window.matchMedia
-    ? window.matchMedia("(prefers-reduced-motion: reduce)")
-    : null;
-const reducedMotion = () => motionQuery?.matches ?? false;
 
 function setFov(cam: PerspectiveCamera, fov: number) {
   if (Math.abs(cam.fov - fov) < 1e-3) return;
