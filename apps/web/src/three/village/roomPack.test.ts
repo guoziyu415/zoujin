@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hallBox, interiorBase, personLight } from "./interior";
+import { hallBox, interiorBase, personLight } from "./roomPack";
 
 describe("village interior", () => {
   it("sits next to the village's pack", () => {
