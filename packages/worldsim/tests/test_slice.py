@@ -191,53 +191,14 @@ def test_the_workshop_light_goes_out_once() -> None:
     assert got[2:] == [None, ["工房の灯は、いつのまにか消えていた。"], None]
 
 
-UNNOTICED = "群衆は、ひとりとして彼の到着に気がつかない。"
-SHOUT = ["メロスだ！　メロスが帰って来た！", "人々が振り返り、道をあけた。"]
-
-
-def set_vars(s: SimState, **vs: Any) -> SimState:
-    effects = [{"op": "set", "var": f"var.{k.replace('__', '.')}", "value": v} for k, v in vs.items()]
-    return apply(SLICE, s, {"t": s["t"], "dt": 0, "origin": "turn", "effects": effects})
-
-
-def test_the_curtain_follows_the_book_and_the_crowd_makes_way_only_if_told() -> None:
-    """S-087：beat.24 照原作第 60〜62 段演；群众知道约定（S-080 ④）时，梅洛斯第一声以后群众里的女人认出他、人群让路。"""
+def test_the_crowd_makes_way_only_if_told() -> None:
     s = walk_to(GROUND, 5461)
     assert s["beats"]["beat.24"] == "happened" and not knows(SLICE, s, "char.crowd", "fact.promise")
-    (plain,) = lines_of([(s, {"beat": "beat.24"})])
-    assert plain is not None and plain[3] == UNNOTICED and not set(SHOUT) & set(plain)
-    assert plain[-1] == "セリヌンティウスの縄は、ほどかれたのである。"
+    assert lines_of([(s, {"beat": "beat.24"})]) == [None]
     s = apply(SLICE, s, {"t": s["t"], "dt": 0, "origin": "turn",
                          "effects": [{"op": "learn", "character": "char.crowd", "fact": "fact.promise"}]})  # fmt: skip
-    (told,) = lines_of([(s, {"beat": "beat.24"})])
-    assert told is not None and told[3:5] == SHOUT and UNNOTICED not in told  # 键 piece.crowd-makes-way/4（B-6）
-    assert told[:3] == plain[:3] and told[5:] == plain[4:]
-
-
-def test_the_curtain_when_you_are_the_hostage_says_you() -> None:
-    """B-4 让玩家能当人质：柱上、腿、绳子换成「あなた」，梅洛斯不说「彼を人質にした」。"""
-    s = set_vars(walk_to(GROUND, 5461), hostage__who="player")
-    (you,) = lines_of([(s, {"beat": "beat.24"})])
-    assert you is not None and "あなたの縄は、ほどかれたのである。" in you
-    assert not any("セリヌンティウス" in x or "彼を人質にした" in x for x in you)
-
-
-@pytest.mark.parametrize(
-    ("melos", "seli", "piece"),
-    [
-        (True, True, "piece.embrace"),
-        (True, False, "piece.embrace-melos-doubted"),
-        (False, True, "piece.embrace-selinuntius-doubted"),
-        (False, False, "piece.embrace-neither"),
-    ],
-)
-def test_the_embrace_follows_who_doubted(melos: bool, seli: bool, piece: str) -> None:
-    """beat.25 的三种变体各一条固定演出，条件和变体一样：疑过的那个人请对方打自己。"""
-    s = set_vars(walk_to(GROUND, 5461), melos__doubted=melos, selinuntius__doubted=seli)
-    p = pick_set_piece(SLICE, s, {"beat": "beat.25"}, set())
-    assert p is not None and p["id"] == piece
-    asks = {x["speaker"] for x in p["lines"] if "私を殴れ" in x.get("line", "")}
-    assert asks == ({"char.melos"} if melos else set()) | ({"char.selinuntius"} if seli else set())
+    (shout,) = lines_of([(s, {"beat": "beat.24"})])
+    assert shout == ["メロスだ！　メロスが帰って来た！", "人々が振り返り、道をあけた。"]
 
 
 @pytest.mark.parametrize(

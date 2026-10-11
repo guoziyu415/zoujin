@@ -658,6 +658,8 @@ def main():
                     err(f"{w2}: {ln['character']} 那一句 ≤ 40 字（现在 {len(ln['line'])}）")
             if "fate" not in tp and not ends.get("fates"):
                 err(f"{w2}: 没写 fate，就要有 endings.fates")
+            if "fate" not in tp and tp["outcome"] == "player-substituted":  # 玩家是人质，fate.id 不是 witness / elsewhere
+                err(f"{w2}: player-substituted 的模板要写 fate（endings.fates 只有 witness、elsewhere）")
             for k in ("subtitle", "title", "fate", "contrast"):
                 if k in tp:
                     no_death_words(tp[k], f"{w2}.{k}")

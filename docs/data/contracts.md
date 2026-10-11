@@ -552,12 +552,12 @@ type EndingSignature = {
 
 - `subtitle`：世界的去向（卡片副题），≤ 26 字。也是这一局尾声的那一句。
 - `title`：称号，带一个 `{role}`，换成开局身份名；去掉 `{role}` 以后 ≤ 9 字（身份名 ≤ 5 字，合起来 ≤ 14）。
-- `fate`：行方。不写就按 `Ending.player.fate.id` 取 `endings.fates` 的 `witness`（结局的地点在场）或 `elsewhere`。
+- `fate`：行方。不写就按 `Ending.player.fate.id` 取 `endings.fates` 的 `witness`（结局的地点在场）或 `elsewhere`。`player-substituted`（玩家是人质，`fate.id` 不是这两个）的条目都要写。
 - `lines`：写了句子的人物，按顺序给 `rank` 1、2…，每句 ≤ 40 字；其余人物 `unchanged`。
 - `contrast`：「原作との違い」，≤ 48 字。
 - 模板只写结果，不假设玩家做了什么、在哪里。处刑只间接交代（S-067）：模板、`fates` 和人物的 `originalEnding` 都不用「処刑」「死」「殺」「最期」「亡くな」「命を落と」「息絶え」「絶命」「事切れ」「帰らぬ人」「磔にされ」「磔になっ」（「磔」这个设定本身可以写）。
 
-校验工具查：`outcome` 是底线类；每一类至少一条，只有最后一条不带 `when`；字数；`{role}` 正好一个；`when` 的变量和取值合法；没写 `fate` 的条目要有 `endings.fates`；上面那些字眼；`endings.characters`（不写时是 talkable 的人物）里每个人物都有 `originalEnding`，一句、≤ 40 字、以「。」结尾、有出处。
+校验工具查：`outcome` 是底线类；每一类至少一条，只有最后一条不带 `when`；字数；`{role}` 正好一个；`when` 的变量和取值合法；没写 `fate` 的条目要有 `endings.fates`，`player-substituted` 的条目都要写 `fate`；上面那些字眼；`endings.characters`（不写时是 talkable 的人物）里每个人物都有 `originalEnding`，一句、≤ 40 字、以「。」结尾、有出处。
 
 ### 2.10 Affordance 和 Item（1.1，情境动作和物品）
 
@@ -1124,5 +1124,5 @@ type CharacterEnding = {           // （1.1）
   - WorldModel：`Character.originalEnding`（可选，2.1）、`endings.characters`（可选）、`endings.templates` 和 `endings.fates`（可选，2.9.2）。校验工具的检查见 2.9.2。
   - 『走れメロス』（draft.3）：S-003 的 7 个人物写「原作では」那一句（数据按原文写，UX 看日语），`endings.characters` 列这 7 个；模板照 ux-design 11.4 的表（A、B 和其余 5 行，共 7 条），`fates` 照 UX 在 #97 评审第 5 题给的两句。
   - 『走れメロス』：`clock.onDeadline` 第一条（期限到了、梅洛斯没回来、王没改心 → 人质 `executed`）加上「有人质」（`var.hostage.who != none`）。原来约定没立成的局也会被设成 `executed`、分进「間に合わなかった」（B-9 评审第 4 题）。改了以后约定没立成的局 5 类都不成立。
-  - 切片（S-088，PM 10-11）：beat.03、04 设成锚点，约定一定立成，收幕时一定有一类成立。不锚 beat.05：它写的 `var.hostage.who` 会被锁住（R1），B-4「我来当人质」就做不成；beat.05 的前提由锚点 beat.04 写下，又在切片玩家去不了的王城。
-  - 写清（S-087，字段不变）：进结局时一起结算的节拍（触发结局的 watchBeat 和结算到收幕的节拍）上的固定演出，不看玩家在不在场都演，排在 `ending_started` 后面、算进结局演出（2.11，B-9）。切片 beat.24〜27 加刑场收幕的固定演出，句子照原作第 60〜74 段；人质是玩家、beat.25 的三种变体各有一条。
+  - 切片专用的锚点（S-088，PM 10-11）：beat.03、04 设成锚点，约定一定立成，收幕时一定有一类成立。完整版不加（S-033 不变），加锚点还是加第 6 类「約束は交わされなかった」是 M3 的开放项。不锚 beat.05：它写的 `var.hostage.who` 会被锁住（R1），B-4「我来当人质」就做不成；beat.05 的前提由锚点 beat.04 写下，又在切片玩家去不了的王城。
+  - 写清（S-087，字段不变）：进结局时一起结算的节拍（触发结局的 watchBeat 和结算到收幕的节拍）上的固定演出，不看玩家在不在场都演，排在 `ending_started` 后面、算进结局演出（2.11，B-9）。刑场收幕的固定演出本身另一个 PR 加（要和 B-6 的预录清单一起改）。
