@@ -23,7 +23,7 @@
           "eventId": "{{id:ev:walk-home}}",
           "t": 1080,
           "tLabel": "約束の日・日没前",
-          "summary": "あなたが老爺を家まで送った",
+          "summary": "あなたは、老爺を家まで送った",
           "place": "place.syracuse-square",
           "style": "player",
           "causedByPlayer": true,

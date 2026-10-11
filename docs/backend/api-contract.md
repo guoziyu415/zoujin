@@ -159,7 +159,7 @@
       "type": "action", "actor": "player", "forPlayer": false,
       "place": "place.castle", "summary": "あなたがメロスの身元を保証した",
       "causes": ["ev_…"],
-      "visibleEffects": [ { "kind": "beat", "beat": "beat.05", "change": "altered", "label": "王は旅人を覚えた" } ],
+      "visibleEffects": [ { "kind": "beat", "beat": "beat.05", "change": "altered", "label": "王はあなたを覚えた" } ],
       "promise": null,
       "keyMoment": true, "supersedes": null }
   ],
@@ -823,7 +823,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 
 ## 修订记录
 
-- v1.0.6（2026-10-10）：传输形状和 Schema 都不变，只改下发的文字（UX 10-10 定的，后端同意）：事件的 `summary`（2.4、2.5、2.6、`commit`）、`recapLines` 和「その頃」的 `line` 里，玩家写成「あなた」，不再用身份名；`recapLines` 和「その頃」句末补「。」，`summary` 不补。库里存的事件照旧用身份名。用声音说的打算转写为空时那句叙事改为「声が届かなかったようです。もう一度、聞かせてください。」（3.11）。2.4、2.5、2.6 的例子和 `packages/contracts/examples/` 里对应的合法例子跟着改，mock（`fixtures/sessions/`、`fixtures/mock/rest/`）也改了。
+- v1.0.6（2026-10-10）：传输形状和 Schema 都不变，只改下发的文字（UX 10-10 定的，后端同意）：事件的 `summary`（2.4、2.5、2.6、`commit`）、`recapLines` 和「その頃」的 `line` 里，玩家写成「あなた」，不再用身份名；`recapLines` 和「その頃」句末补「。」，`summary` 不补。库里存的事件照旧用身份名。用声音说的打算转写为空时那句叙事改为「声が届かなかったようです。もう一度、聞かせてください。」（3.11）。2.4、2.5、2.6 的例子和 `packages/contracts/examples/` 里对应的合法例子跟着改，mock（`fixtures/sessions/`、`fixtures/mock/rest/`）也改了。跟契约 1.8（#70）：2.4、3.4 例子里 `visibleEffects` 的 `label` 改成「王はあなたを覚えた」（世界模型里写玩家的标签本来就用「あなた」）；mock 里送老爺回家那条事件句照 `pastLabel` 写成「あなたは、老爺を家まで送った」。
 - v1.0.5（2026-10-10）：按 B-3 卡（#58）放宽 Schema 三处、补一条说明，前端同意以后和 B-3 的代码同一个 PR 改：`recapLines` 允许 0〜4 条（`ActEndedMessage` 和 `ActEnd` 两处；这一幕什么都没动时为空，前端显示 `actEnd.summary.empty`）；`act_plan_result.alternative.optionId` 也可以是给定去处的 ID（`PlanAlternative.optionId` 改成 `PlanOptionId` 或 `ExitId`，例：E4-106 期望的替代去处就是给定去处）；第 5 节 `invalid_request` 加一条：收幕以后、选定之前发 `text`、`activity_start`（`act_plan` 除外）、`action`；用声音说的打算转写为空时不算试次（3.11，前端评审 #61）；`commit.patch.characters[]` 加 `group`（`CharacterPresencePatch` 原来漏了它：群众、警吏进场的那次 `commit` 带完整的 `CharacterPresence`，含 `group: true`，生成的类型不收，B-3 的 WebSocket 测试查出来的）。
 - v1.0.4（2026-10-10）：只做加法，把数据契约 1.7（#34）里前端要拿到的几样加进接口（F-2b 的 #37 评审和 ux-design v1.0.1 4.4 提的）：幕末去处的副题 `where`（服务端按 `Place.name` 和 `clock.labels` 拼好的前半）和 `sub`（`ActExit.sub`），`because` 写明一律 `null`（3.11）；落地：`act_transition.arrival { line, opener? }`、新的客户端消息 `act_landed`、`turn_started.reason` 加 `arrival`、`pending.arrival`（3.11、第 4 节）；固定演出：新的服务端消息 `set_piece`，`action_result` 加 `setPiece`、这时不带 `narration`（两个正好给一个），manifest 加 `setPieceVoices`（3.14、2.1）；`Affordance.playerSpot` 走 `commit.patch.player { spot }`（3.8）；快照里 `group` 的人物没有 `spot`、写明 `player.spot` 和 `examine` 的来源（2.3）。Schema 跟着改：`ActOption.where` 必有；`action_result.narration` 从必有改成和 `setPiece` 二选一；`CharacterPresence.spot` 从必有改成 `group` 的人物没有。mock 的 `act-end` 剧本按这些改，加 `set-piece` 剧本。服务端在 B-3 做。
 - v1.0.3（2026-10-10）：传输形状不变，Schema 只改 `description`。把 B-0（#26）、F-2b（#32）评审和 S-077 ⑫ 定下的写进正文：期限一行和预报在玩家知道约定（契约 1.7 `knows(player, fact.promise)`）以后才出，不再跟着 beat.05 的提交出；玩家不知道约定时不出 `eta`（2.3、3.4.1）；人物一个字没说就被打断的轮没有人物定稿，被打断的轮没有 `turn_complete`、照常交给叙事者，人物说完以后按下说话不算打断（3.3）；地点关上时玩家在里面，那次 `commit` 带 `patch.player` 把人放到外面，`move` 进关着的地点回 `refused`（3.8）；`lost` 的轮不判、没有 `turn_settled`（4）；WebSocket 上 `invalid_request` 的三种情况（5）。服务端：打断、`lost`、`invalid_request` 在 B-0 做了；关地点、期限一行的条件在 B-3 做。

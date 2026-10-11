@@ -104,7 +104,7 @@ def test_delivered_lines_call_the_player_anata() -> None:
 
     from .conftest import BOOK
 
-    assert as_you(BOOK, "role.traveler", "旅人は、老爺を家まで送ることにした") == "あなたは、老爺を家まで送ることにした"
+    assert as_you(BOOK, "role.traveler", "旅人は、老爺を家まで送った") == "あなたは、老爺を家まで送った"
     assert as_you(BOOK, "role.traveler", "メロスが走り出した。", period=True) == "メロスが走り出した。"
     assert as_you(BOOK, "role.traveler", "旅人は刑場へ移った", period=True) == "あなたは刑場へ移った。"
     assert as_you(BOOK, "role.traveler", "", period=True) == ""
