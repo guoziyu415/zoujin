@@ -360,7 +360,7 @@ class Conn:
             by["output_rebuilds"] = 1
         hit = {"playthrough_id": self.pid, "turn_id": turn_id, "character": character, "rebuild": rebuild}
         if o.spoilers:
-            with self.gw.tracer.span("monitor.hit", **hit, kind="spoiler", fact=[h.fact for h in o.spoilers]):
+            with self.gw.tracer.span("monitor.hit", **hit, kind="spoiler", fact_ids=[h.fact for h in o.spoilers]):
                 pass
         if harmful:
             by["output_harmful"] = 1

@@ -50,7 +50,7 @@ ATTRS = frozenset(
         "result",
         "nth",
         "kind",  # B-12：输出侧监控命中的种类（spoiler / harmful）、事实 ID、RAI 类别、这一句让会话重建了没有
-        "fact",
+        "fact_ids",
         "category",
         "rebuild",
         "reason",  # B-10：Live 会话为什么开（warm / switch / rebuild / rebuild_turns / rebuild_goaway / arrival）

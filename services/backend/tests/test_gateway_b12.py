@@ -201,7 +201,7 @@ def test_two_spoilers_in_a_row_rebuild_the_session(env: Env, inproc: Make, play:
     m = metrics(env, p.pid)
     assert (m["output_spoilers"], m["output_rebuilds"], m["output_lines"]) == (2, 1, 2)
     hits = s.gw.tracer.named("monitor.hit")  # data-design 第 8 节：一句一个，不带原话和词
-    assert [(h["turn_id"], h["kind"], h["fact"], h["rebuild"]) for h in hits] == [
+    assert [(h["turn_id"], h["kind"], h["fact_ids"], h["rebuild"]) for h in hits] == [
         (a, "spoiler", ["fact.promise"], False),
         (b, "spoiler", ["fact.promise"], True),
     ]
