@@ -10,6 +10,7 @@
     "optionId": "plan_01K7AZ00000000000000000001",
     "label": "夜明けを待って村へ向かう",
     "sceneId": "scene.village",
+    "toActId": "act.2",
     "tLabel": "一日目・朝"
   },
   "triesLeft": 1

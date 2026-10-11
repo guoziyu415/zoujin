@@ -627,7 +627,7 @@ def test_reconnect_while_the_player_is_still_holding_sees_the_lost_turn(env: Env
 def test_routes_b0_does_not_mount_are_404(player: Player) -> None:
     p = player
     p.start()
-    for path in (f"/v1/playthroughs/{p.pid}/timeline", "/v1/books/hashire-merosu/manifest", "/v1/nothing"):
+    for path in (f"/v1/playthroughs/{p.pid}/timeline", "/v1/nothing"):
         r = p.http.get(path)
         assert r.status_code == 404 and r.json()["error"]["code"] == "not_found", path
     r = p.http.get("/v1/playthroughs/pt_00000000000000000000000000/snapshot")

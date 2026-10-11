@@ -96,6 +96,7 @@ type Gate = {
   moves(): string[];
   clock(): number | null;
   placeAt(spot: string): Promise<void>;
+  frames(n: number): Promise<void>;
   follow(towards: [number, number]): Promise<void>;
   tapPoint(to: string | [number, number]): [number, number] | null;
   tapCharacter(id: string): [number, number] | null;
@@ -303,6 +304,8 @@ test("M2-0 gate: invite → role → plaza → walk (move) → tap メロス (fo
     "……なんだと。そんな王を、許しておけるものか。",
     { timeout: 60_000 },
   );
+  // the camera eases into the conversation shot; software rendering is slow, so let it get there for UX's screenshot
+  await page.evaluate(() => (window.__zoujin as unknown as Gate).frames(30));
   await shot(page, "5-answer");
 
   // 6. the commit: the light reaction, the clock 10 minutes on; then turn_settled and the key is free again

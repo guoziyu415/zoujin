@@ -1,8 +1,8 @@
-# 数据契约（contracts.md）v1.11
+# 数据契约（contracts.md）v1.12
 
-负责人：数据工程 · 状态：**v1.11**（1.5 在 M2-0 冻结（C-2），以后只做加法；1.6 是冻结后第一个加法版本）。v1.0 是基线（S-033），v1.1 是 PM 接受的新基线（S-061〜S-063），已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改。1.1 只做加法：加进 D-012〜D-015 的落地（S-029〜S-032：互助、约定、打算、即兴设定、导演事件、生成的结局、角色结局）、S-034〜S-053 里和数据有关的决定、后端设计 v1.0 第 12 节的 13 条提案和 UX 设计 v1.0 第 18.3 节的要求。1.2 也只做加法：幕末说出的打算（S-031 ③）、作废和出戏的一轮怎么落数据（S-054、S-057）。1.3 加随身的东西（UX 5.1，C-14）。1.4 按 UX 对世界模型的校对和 S-064 加：有条件的台词和设计台词、互助的效果、节拍的变体、过场里的二选一、第四幕按钮上「对梅洛斯的影响」。1.5 给过场的选项也加上「对梅洛斯的影响」和选后的一句（UX 校对 7.3、ux-design 4.5）。1.6 把两条只写在说明文字里的取值条件写成数据（`StateVar.valueRequires`，C-16），结局卡改成 1〜3 人、每一局都出（C-17）。1.7 加位置点（谁站在布局的哪个点）、成群的人物和幕末去处的落地（M2 切片，C-18），以及打算成行时的落点（C-19）、固定演出（S-080 ④）、可调查物和玩家知道什么。1.8 加情境动作做完以后的事件句（`Affordance.pastLabel`），写清事件 `summary` 里玩家一律写身份名、身份名只用来指玩家（UX 在 #61 前端评审后定的文案）。1.9 加「日名要知道哪条事实才说」（`Clock.labels.daysKnownBy`，S-086）。1.10 加 manifest 要的三样（B-7）：身份给玩家看的一句（`Role.summary`）、注音词表（`WorldModel.ruby`），每个人物都填读音（`Character.reading`）。1.11 加结局要的三样（B-9）：人物「原作では」那一句（`Character.originalEnding`）、结局页列谁（`endings.characters`）、结局走模板时的句子（`endings.templates`、`endings.fates`）。跨角色决定见 `pm/decisions.md`。还在等别人定的事列在第 7 节。
+负责人：数据工程 · 状态：**v1.12**（1.5 在 M2-0 冻结（C-2），以后只做加法；1.6 是冻结后第一个加法版本）。v1.0 是基线（S-033），v1.1 是 PM 接受的新基线（S-061〜S-063），已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改。1.1 只做加法：加进 D-012〜D-015 的落地（S-029〜S-032：互助、约定、打算、即兴设定、导演事件、生成的结局、角色结局）、S-034〜S-053 里和数据有关的决定、后端设计 v1.0 第 12 节的 13 条提案和 UX 设计 v1.0 第 18.3 节的要求。1.2 也只做加法：幕末说出的打算（S-031 ③）、作废和出戏的一轮怎么落数据（S-054、S-057）。1.3 加随身的东西（UX 5.1，C-14）。1.4 按 UX 对世界模型的校对和 S-064 加：有条件的台词和设计台词、互助的效果、节拍的变体、过场里的二选一、第四幕按钮上「对梅洛斯的影响」。1.5 给过场的选项也加上「对梅洛斯的影响」和选后的一句（UX 校对 7.3、ux-design 4.5）。1.6 把两条只写在说明文字里的取值条件写成数据（`StateVar.valueRequires`，C-16），结局卡改成 1〜3 人、每一局都出（C-17）。1.7 加位置点（谁站在布局的哪个点）、成群的人物和幕末去处的落地（M2 切片，C-18），以及打算成行时的落点（C-19）、固定演出（S-080 ④）、可调查物和玩家知道什么。1.8 加情境动作做完以后的事件句（`Affordance.pastLabel`），写清事件 `summary` 里玩家一律写身份名、身份名只用来指玩家（UX 在 #61 前端评审后定的文案）。1.9 加「日名要知道哪条事实才说」（`Clock.labels.daysKnownBy`，S-086）。1.10 加 manifest 要的三样（B-7）：身份给玩家看的一句（`Role.summary`）、注音词表（`WorldModel.ruby`），每个人物都填读音（`Character.reading`）。1.11 加结局要的三样（B-9）：人物「原作では」那一句（`Character.originalEnding`）、结局页列谁（`endings.characters`）、结局走模板时的句子（`endings.templates`、`endings.fates`）。1.12 字段不变，改玩家在不在场的判法：没有参与人物的节拍（天气、天灾）在同一个场景就算玩家在场，三处共用一条规则（`zoujin_worldsim.sees`）。跨角色决定见 `pm/decisions.md`。还在等别人定的事列在第 7 节。
 UX、前端请看第 2.8 节（幕）、第 4 节（记忆）、第 5 节（结局）。1.1 新增或写清的地方都标了「（1.1）」，文末变更记录有汇总。
-最近更新：2026-10-11（1.11：`Character.originalEnding`、`endings.characters` / `templates` / `fates`，B-9 的简化结局用，进结局时一起结算的节拍上的固定演出算进结局演出（S-087）；1.10：`Role.summary`、`ruby`，`reading` 每个人物都填，manifest 用；1.9：`Clock.labels.daysKnownBy`，不知道约定的人物只拿到时段；1.8：`Affordance.pastLabel`，`summary` 里玩家一律写身份名，下发时服务端换成「あなた」，世界模型自检查身份名只指玩家；1.7：relocate 和 `ActExit` 的 `spot`、`WorldState.spots`、`Character.group`、`ActExit.arrival`、`ActExit.sub`、`Affordance.playerSpot`（C-18）、`Act.plan`（C-19）、`setPieces`（S-080 ④）、`objects`、玩家学到的事实（`learn` 写 `player`）；1.6：`StateVar.valueRequires`（C-16）、结局卡 1〜3 人（C-17））
+最近更新：2026-10-11（1.12：没有参与人物的节拍同一场景就算玩家在场，推事件、写 `learn`、固定演出共用 `zoujin_worldsim.sees`；1.11：`Character.originalEnding`、`endings.characters` / `templates` / `fates`，B-9 的简化结局用，进结局时一起结算的节拍上的固定演出算进结局演出（S-087）；1.10：`Role.summary`、`ruby`，`reading` 每个人物都填，manifest 用；1.9：`Clock.labels.daysKnownBy`，不知道约定的人物只拿到时段；1.8：`Affordance.pastLabel`，`summary` 里玩家一律写身份名，下发时服务端换成「あなた」，世界模型自检查身份名只指玩家；1.7：relocate 和 `ActExit` 的 `spot`、`WorldState.spots`、`Character.group`、`ActExit.arrival`、`ActExit.sub`、`Affordance.playerSpot`（C-18）、`Act.plan`（C-19）、`setPieces`（S-080 ④）、`objects`、玩家学到的事实（`learn` 写 `player`）；1.6：`StateVar.valueRequires`（C-16）、结局卡 1〜3 人（C-17））
 
 四个契约：**WorldModel**（世界模型，静态、按书版本化）、**Event**（运行时事件，只追加）、**Memory**（角色对玩家的记忆，可删除）、**Ending**（结局）。另有两个支撑结构：**Playthrough**（一局游戏）和 **WorldState**（由事件推出的当前状态）。
 
@@ -197,7 +197,7 @@ type PromiseTemplate = {           // （1.1）
 
 **防剧透规则（叙事者、局势说明和评测共用）：** 在故事时间 `t`，角色 C 能提起的事实 = `C.knows` 里 `since` 已发生的那些 + 运行时通过事件 `learn` 学到的那些（1.1：包括别人的即兴设定）+ C 自己的即兴设定（3 节 `improv`）。别的一律当「不知道」。
 
-**（1.7）玩家知道什么（R4 的行为者是玩家时）：** 玩家能提起的事实 = 身份的 `initialKnowledge` + 这一局学到的（`learn` 的 `character` 写 `"player"`）。学到有两条路：① 人物告诉玩家：叙事者从这一轮提取 `learn`，R4 查说的人知不知道；② 亲眼看到：节拍发生（`happened` / `altered`）时玩家在节拍的地点（`var.player.location` = `Beat.place`，按这个事件之前的状态），共享规则库在这个节拍的系统事件里追加 `learn`，事实 = `trueFrom` 是这个节拍、`visibility: "public"`、玩家还不知道的那些（2.3：public 在场的人都会知道）。幕切换第 3 步结算的那段，玩家一律算不在场，不写这条 `learn`（2.8.1 第 3 步）。`trueFrom` 这一局没发生的事实，玩家也不算知道（2.3）。人物不按在场自动学：`Character.knows` 已按原作的在场写好，原作以外的在场靠 `learn`（例：群众要玩家传话才知道约定，S-077）。人物和玩家都由共享规则库的 `zoujin_worldsim.knows(world, state, who, fact)` 判。
+**（1.7）玩家知道什么（R4 的行为者是玩家时）：** 玩家能提起的事实 = 身份的 `initialKnowledge` + 这一局学到的（`learn` 的 `character` 写 `"player"`）。学到有两条路：① 人物告诉玩家：叙事者从这一轮提取 `learn`，R4 查说的人知不知道；② 亲眼看到：节拍发生（`happened` / `altered`）时玩家看得到它（按这个事件之前的 `var.player.location`；1.12 起按第 3 节的 `sees()`：玩家在节拍的地点，或者节拍没有参与人物、落在和玩家同一个场景），共享规则库在这个节拍的系统事件里追加 `learn`，事实 = `trueFrom` 是这个节拍、`visibility: "public"`、玩家还不知道的那些（2.3：public 在场的人都会知道）。幕切换第 3 步结算的那段，玩家一律算不在场，不写这条 `learn`（2.8.1 第 3 步）。`trueFrom` 这一局没发生的事实，玩家也不算知道（2.3）。人物不按在场自动学：`Character.knows` 已按原作的在场写好，原作以外的在场靠 `learn`（例：群众要玩家传话才知道约定，S-077）。人物和玩家都由共享规则库的 `zoujin_worldsim.knows(world, state, who, fact)` 判。
 
 **互助、约定、打算怎么用（1.1，S-029、S-030、S-048）：**
 
@@ -385,7 +385,9 @@ type StateVar = {
 
 『走れメロス』有三条：`var.king.disposition` 设 `wavering` 要 `var.king.trust` ≥ 40，设 `reformed` 要 ≥ 70（刑场的改心是到点的 `beat.26`，不判）；`var.river.crossing` 设 `bridge` 要 `var.bridge` = `intact`。
 
-**玩家看得到哪些变化：** （1.4 写清，S-067）`valueLabels` 里没写的取值，当场不显示、不进状态栏、也不进「その頃」，只在结局里交代（例：`player.custody` / `hostage.fate` 的 `executed`，结局里间接说，不写「処刑」「死」）。一个事件的 effect 只有同时满足两条才进 `visibleEffects`：① 改的是 `visibleToPlayer` 的变量（文字取 `valueLabels`），或者是节拍走向的改变（文字 =「{beat.title}」+ 改变的说法）；② 玩家当时在这个事件的地点，或者事件就是玩家做的；幕切换第 3 步结算的事件除外（玩家算不在场，2.8.1）。其他变化不实时显示，留到幕切换时的「その頃」回顾（2.8.1），以免把玩家不可能知道的事提前说出来。
+**玩家看得到哪些变化：** （1.4 写清，S-067）`valueLabels` 里没写的取值，当场不显示、不进状态栏、也不进「その頃」，只在结局里交代（例：`player.custody` / `hostage.fate` 的 `executed`，结局里间接说，不写「処刑」「死」）。一个事件的 effect 只有同时满足两条才进 `visibleEffects`：① 改的是 `visibleToPlayer` 的变量（文字取 `valueLabels`），或者是节拍走向的改变（文字 =「{beat.title}」+ 改变的说法）；② 玩家看得到这个事件：事件就是玩家做的；或者玩家当时在这个事件的地点；或者（1.12）事件是没有参与人物的节拍（天气、天灾），落在和玩家同一个场景（两个地点的 `sceneRef` 都不是空、而且相同；没有场景的地点不和谁算同一场景）。幕切换第 3 步结算的事件除外（玩家算不在场，2.8.1）。这条判法只有一份，共享规则库的 `zoujin_worldsim.sees(world, player_place, event)`：推不推这个事件（`visibleEffects`）、给玩家写 2.1 ② 的 `learn`、节拍上的固定演出算不算在场（2.11），三处都用它，免得推了雨却没告诉玩家、或告诉了玩家却没推雨。其他变化不实时显示，留到幕切换时的「その頃」回顾（2.8.1），以免把玩家不可能知道的事提前说出来。
+
+**人物亲历了哪些节拍：** （1.12 补，字段和 `schemaVersion` 不变，S-092）叙事者给人物的「最近的节拍」只给他亲历的：这一局已发生（`happened` / `altered`），而且 ① 他是节拍的参与人物，或者 ② 节拍没有参与人物（天气、天灾），落在和他当时所在的地点同一个场景（和上面 ② 的同一场景规则一样）。人物不算「人在节拍的地点」那一种：人物知道什么按 `Character.knows`（原作的在场已写好）和 `learn`，不按在场自动学（2.1 ②），在场却不参与的节拍给了他，他就会说出不知道的事。「当时所在的地点」按发生时刻重放已发生的节拍（参与人物移到节拍地点，再按 `relocate`），和 2.4 的 `activity` 同一套；节拍以外挪过他的那几次不算。判法只写一份：共享规则库 `zoujin_worldsim.lived(world, state, who, beat)`，地点用 `zoujin_worldsim.place_at(world, state, who, beat)`。例：婚礼上的妹妹、花婿（`place.melos-home`）没参与 beat.12，大雨落在 `place.village`，同一个 `scene.village`，算亲历；王在城里不算；梅洛斯一个人在家的 beat.09，妹妹人在家也不算。
 
 『走れメロス』的时段（ux-design 4.2）：深夜 0:00、薄明 4:00、朝 5:30、午前 9:00、真昼 11:30、午後 13:00、夕方 16:00、日没前 18:00、日没 19:00、夜 19:30。例：`t=1050` →「約束の日・夕方」，`t=1440` →「一日目・深夜」。
 
@@ -617,7 +619,7 @@ type Item = {
 type SetPiece = {
   id: string;                      // "piece.gate-taken"
   on: { beat: string } | { act: string; target?: string; refused?: true };
-                                   // beat：这个节拍发生（happened / altered）时玩家在节拍的地点（在场，2.4.1 第 4 条）；
+                                   // beat：这个节拍发生（happened / altered）时玩家在场（1.12 起按第 3 节的 sees()，2.4.1 第 4 条）；
                                    // act：玩家的这种动作（api-contract 3.8 的 kind）判定之后。target：对人物的动作写人物 ID，move 写地点 ID，
                                    // go 写出口通往的地点（布局 exits[].place），examine 写可调查物的 ID（obj.*，2.12）；省略 = 不看对象。
                                    // refused = 只在被拒时，省略 = 只在做成时（done / partial）
@@ -1128,4 +1130,10 @@ type CharacterEnding = {           // （1.1）
   - 『走れメロス』（draft.3）：S-003 的 7 个人物写「原作では」那一句（数据按原文写，UX 看日语），`endings.characters` 列这 7 个；模板照 ux-design 11.4 的表（A、B 和其余 5 行，共 7 条），`fates` 照 UX 在 #97 评审第 5 题给的两句。
   - 『走れメロス』：`clock.onDeadline` 第一条（期限到了、梅洛斯没回来、王没改心 → 人质 `executed`）加上「有人质」（`var.hostage.who != none`）。原来约定没立成的局也会被设成 `executed`、分进「間に合わなかった」（B-9 评审第 4 题）。改了以后约定没立成的局 5 类都不成立。
   - 切片专用的锚点（S-088，PM 10-11）：beat.03、04 设成锚点，约定一定立成，收幕时一定有一类成立。完整版不加（S-033 不变），加锚点还是加第 6 类「約束は交わされなかった」是 M3 的开放项。不锚 beat.05：它写的 `var.hostage.who` 会被锁住（R1），B-4「我来当人质」就做不成；beat.05 的前提由锚点 beat.04 写下，又在切片玩家去不了的王城。
-  - 写清（S-087，字段不变）：进结局时一起结算的节拍（触发结局的 watchBeat 和结算到收幕的节拍）上的固定演出，不看玩家在不在场都演，排在 `ending_started` 后面、算进结局演出（2.11，B-9）。刑场收幕的固定演出本身另一个 PR 加（要和 B-6 的预录清单一起改）。
+  - 写清（S-087，字段不变）：进结局时一起结算的节拍（触发结局的 watchBeat 和结算到收幕的节拍）上的固定演出，不看玩家在不在场都演，排在 `ending_started` 后面、算进结局演出（2.11，B-9）。『走れメロス』切片 beat.24〜27 加刑场收幕的固定演出（`make_slice.py`），说话人的句子和 B-6 的预录清单一起改。
+- **v1.12（2026-10-11）**：字段不变，改玩家在不在场的判法（数据和后端商定，PM 排在前端 2 做村子页面之前）。
+  - 第 3 节「玩家看得到哪些变化」② 加一种：没有参与人物的节拍（天气、天灾）落在和玩家同一个场景，就算玩家在场；同一个场景 = 两个地点的 `sceneRef` 都不是空、而且相同。以前只看地点，村子里的大雨落在 `place.village`，婚礼上的玩家（`place.melos-home`）既收不到这一事件，也不知道下雨了。
+  - 判法只写一份：共享规则库 `zoujin_worldsim.sees(world, player_place, event)`，按顺序看 ① 玩家做的 ② 同一地点 ③ 没有参与人物的节拍 + 同一个非空场景。三处都用它：settle 给玩家写 2.1 ② 的 `learn`（数据，这一版）；后端推不推事件（`projection.is_visible`）和节拍上的固定演出算不算在场（2.11）（后端，跟着改）。幕切换第 3 步照旧一律不在场（2.8.1）。
+  - 例：玩家在婚礼上（`place.melos-home`，`scene.village`），`t=3630` beat.12 大雨落在 `place.village`（`scene.village`）→ 同一场景，算看见了：这一事件推给玩家（节拍走向的改变「大雨」），系统事件里写 `learn player fact.storm`，beat.12 上有固定演出也照演。玩家在没有场景的 `place.neighbor-village` 时，只有落在那里的节拍才算看见（beat.15 雨が上がる）。有参与人物的节拍照旧只看地点：玩家在同一场景的花婿家（`place.groom-house`），婚礼（beat.11，`place.melos-home`）不算看见。
+  - 『走れメロス』：`schemaVersion` 1.12，内容不变。归途四个地点 #85 分成各自的场景以后，beat.17（濁流）只有河边看得见。
+  - 补（字段和 `schemaVersion` 不变）：第 3 节加「人物亲历了哪些节拍」，同一场景规则给人物用：参与的节拍，加上没有参与人物、落在同一场景的节拍；不算在场。共享规则库 `zoujin_worldsim.lived` / `place_at`，后端叙事者给人物的最近的节拍（S-092，`narrator/view.py` 的 `recent`）跟着换。

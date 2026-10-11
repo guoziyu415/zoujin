@@ -22,6 +22,7 @@ Json = Any
 SERVER = "api/ws/server.schema.json"
 CLIENT = "api/ws/client.schema.json"
 EVENT = "data/event.schema.json"
+ENDING = "data/ending.schema.json"
 
 
 class SchemaError(Exception):
@@ -95,6 +96,10 @@ class SchemaBook:
     def event(self, doc: Json) -> Json:
         """数据契约的 Event（叙事者写库前）。"""
         return self.build(EVENT, "#/$defs/Event", doc)
+
+    def ending(self, doc: Json) -> Json:
+        """数据契约的 Ending（结局写库前，B-9）。"""
+        return self.build(ENDING, "#/$defs/Ending", doc)
 
     def effect_errors(self, effect: Json) -> list[str]:
         """一个效果合不合契约的 Effect（叙事者第 3 步：模型提出的效果形状不对，按 R7 否决，不让提交时才出错）。"""

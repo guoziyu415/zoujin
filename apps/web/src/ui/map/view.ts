@@ -51,3 +51,24 @@ export const corrected = (events: Api.VisibleEvent[]): Set<string> =>
 
 export const itemId = (it: Api.TimelineItem): string =>
   it.kind === "event" ? it.eventId : it.beatId;
+
+// events that kept a promise get the knot (ux-design 6.3); one whose promise was voided since (its memory forgotten,
+// 10.2) keeps its place on the map but loses the knot
+export function keptPromises(
+  events: Api.VisibleEvent[],
+  voided: ReadonlySet<string> = new Set(),
+): Set<string> {
+  const out = new Set<string>();
+  for (const e of events)
+    if (e.promise?.change === "kept" && !voided.has(e.promise.promiseId))
+      out.add(e.eventId);
+  return out;
+}
+
+// promises voided by a later event (the forgetting sends one)
+export const voidedPromises = (events: Api.VisibleEvent[]): Set<string> =>
+  new Set(
+    events.flatMap((e) =>
+      e.promise?.change === "voided" ? [e.promise.promiseId] : [],
+    ),
+  );

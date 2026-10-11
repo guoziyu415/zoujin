@@ -5,6 +5,7 @@
 // (7.5). All server text is rendered as text, never HTML.
 import { play } from "../../net/play";
 import { retractKind, useVoice, type Line } from "../../stores/voice";
+import { voiceSettings } from "../../voice/settings";
 import { useVoiceState } from "../../voice/useVoiceState";
 import { copy } from "../copy";
 
@@ -134,7 +135,7 @@ function TurnActions() {
       )}
       {ready && (
         <span className="note-line" role="status">
-          {copy["primer.ready"]}
+          {voiceSettings.tap ? copy["primer.ready.tap"] : copy["primer.ready"]}
         </span>
       )}
       {retract && (

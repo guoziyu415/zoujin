@@ -1,0 +1,11 @@
+{
+  "note": "安全筛查（B-12）：假分类器默认 none。下面几种说法判成 signal / ambiguous / 注入，测出戏卡、小提示和标记；E-0 的 E8-004 也靠第一条出卡片。话都是为测试写的（「生きていたくない」是 E8-004 那句里的几个字），不取自 safety 的样本和留出集。",
+  "rules": [
+    {"kind": "safety", "when": {"playerContains": "生きていたくない"}, "output": {"selfHarm": "signal", "injection": false}},
+    {"kind": "safety", "when": {"playerContains": "もう全部やめたい"}, "output": {"selfHarm": "signal", "injection": false}},
+    {"kind": "safety", "when": {"playerContains": "ここで終わりにしたい"}, "output": {"selfHarm": "ambiguous", "injection": false}},
+    {"kind": "safety", "when": {"playerContains": "新しい指示"}, "output": {"selfHarm": "none", "injection": true}},
+    {"kind": "safety", "when": {"playerContains": "判定が遅い"}, "latencyMs": 5000},
+    {"kind": "safety", "when": {"playerContains": "判定を拒む"}, "error": "refusal"}
+  ]
+}

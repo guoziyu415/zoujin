@@ -37,3 +37,13 @@ export function afterDelete(
     ),
   };
 }
+
+export const memoriesKey = (pid: string) => ["memories", pid] as const;
+
+// promises forgotten with their memory (10.2), as far as this page knows: the map takes the knot off them
+export const voidedIn = (d: Api.MemoriesResponse | undefined): Set<string> =>
+  new Set(
+    (d?.characters ?? []).flatMap((c) =>
+      c.promises.filter((p) => p.status === "voided").map((p) => p.promiseId),
+    ),
+  );
