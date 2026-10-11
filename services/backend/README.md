@@ -75,6 +75,18 @@ uv run zoujin-s2 <标注集.jsonl> --out <目录> --resume                # 中�
 - 真模型要同时有 `ZJ_MODEL=real`、`ZJ_EVAL_LIVE=1`、`ZJ_LEDGER`、项目和地区、`--max-item-usd`、`--max-google-usd` 和 `--confirm`；少一样只打印预计花费和命令，不调用。到上限或第一个 429 退出码 3，回放缺失或配置不对退出码 2。
 - 没有默认的标注集路径。留出集的规矩见 `docs/tasks/m2/B-2.md`。
 
+## 预录句（B-6）
+
+```sh
+uv run zoujin-voice                                        # 假模型：合成的声音，看流程和输出，不花钱（要 ffmpeg）
+uv run zoujin-voice --resume out/b6/<时间> [--only <键> …]  # 接着跑；只重读某几句
+```
+
+- 源文件 `voice/<book>.json`：每个说话人的声音（D-025）、人物说明 `direction`、人物的 6 句（ux-design 16.2）、`cues`、场面说明 `scenes` 和读音替换 `readings`；固定演出的句子和 `arrival_capped` 的文字从世界模型读。换声音改这里，再 `--only` 重跑那个人物。
+- 每句读 3 遍（3 条会话），自动检查（长度、截断、补转写对原文）后挑一遍，裁头尾静音、限峰值、转 AAC。输出在 `out/b6/<时间>/release/`：`.m4a`、`voices.json`（manifest 的 `characters[].prerecorded` 和 `setPieceVoices` 两块）、`audit.md`、`ref/`，另打 zip、打印 sha256。
+- 真模型（只在 Mac 上）：`ZJ_MODEL=real`、`ZJ_LEDGER`、`ZJ_VERTEX_PROJECT`、`ZJ_VERTEX_LOCATION`（补转写）、`--max-google-usd` 和 `--confirm`；Live 的地区默认 us-central1（`ZJ_LIVE_LOCATION` 换）。少一样只打印预计花费和命令。这一次跑的上限 `--max-usd` 默认 $1。到上限、第一个 429 或连接失败退出码 3（`--resume` 接着跑）。
+- mock 的 manifest 读 `assets/voice/<book>/voices.json`（有的话），`/assets/voice/<book>/<文件>` 只发清单里的文件。
+
 ## 测试
 
 ```sh

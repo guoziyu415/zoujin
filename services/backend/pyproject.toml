@@ -23,6 +23,7 @@ zoujin-gateway = "zoujin_backend.gateway.app:main"
 zoujin-narrator = "zoujin_backend.narrator.app:main"
 zoujin-admin = "zoujin_backend.admin:main"
 zoujin-s2 = "zoujin_backend.s2:main"
+zoujin-voice = "zoujin_backend.voice.cli:main"
 
 [project.optional-dependencies]
 real = [
