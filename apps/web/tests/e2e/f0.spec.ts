@@ -104,7 +104,10 @@ test("starting while a story is open (409): continue it, or delete it and start 
   await expect(dialog).toContainText(
     "いまの物語は消えます。新しく始めますか。",
   );
+  // やめる clears the whole prompt: every role can be picked again
   await dialog.getByRole("button", { name: "やめる" }).click();
+  await expect(dialog).toHaveCount(0);
+  await page.getByRole("button", { name: "旅人として、はじめる" }).click();
   await dialog.getByRole("button", { name: "新しく始める" }).click();
   await dialog.getByRole("button", { name: "新しく始める" }).click();
   await expect(page).toHaveURL(PT);

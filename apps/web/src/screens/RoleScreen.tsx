@@ -92,7 +92,7 @@ export default function RoleScreen() {
                 enter(problem.active.playthroughId);
               }}
               onNew={() => setProblem({ ...problem, confirming: true })}
-              onCancel={() => setProblem({ ...problem, confirming: false })}
+              onCancel={() => setProblem(null)} // the whole prompt goes; every role can be picked again
               onConfirm={() => void replace(problem.active, r.roleId)}
             />
           ) : (
