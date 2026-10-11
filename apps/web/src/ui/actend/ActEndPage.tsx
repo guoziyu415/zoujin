@@ -200,10 +200,13 @@ function Propose({ notHeard }: { notHeard: boolean }) {
   );
 }
 
+const SLIDE_PX = 60;
+
 // hold to say the plan, let go to send (the talk key's rules; tap mode: two taps); Space or Enter from a keyboard
 function PlanKey() {
   const hold = useVoice((s) => s.hold);
   const tap = voiceSettings.tap;
+  const startY = useRef(0);
   function down(e: PointerEvent<HTMLButtonElement>) {
     if (e.button !== 0) return;
     e.preventDefault();
@@ -213,7 +216,13 @@ function PlanKey() {
     } catch {
       // synthetic events
     }
+    startY.current = e.clientY;
     play.actPlanPress();
+  }
+  // past 60 px up while holding: letting go cancels (7.1)
+  function move(e: PointerEvent<HTMLButtonElement>) {
+    if (!tap && useVoice.getState().hold)
+      play.slide(startY.current - e.clientY > SLIDE_PX);
   }
   function up() {
     if (!tap) play.actPlanRelease();
@@ -232,6 +241,7 @@ function PlanKey() {
       data-testid="plan-talk"
       aria-pressed={!!hold}
       onPointerDown={down}
+      onPointerMove={move}
       onPointerUp={up}
       onPointerCancel={up}
       onKeyDown={(e) => key(e, true)}
@@ -239,7 +249,9 @@ function PlanKey() {
       onContextMenu={(e) => e.preventDefault()}
     >
       {hold
-        ? copy["talk.listening"]
+        ? hold.slide
+          ? copy["talk.slideCancel"]
+          : copy["talk.listening"]
         : tap
           ? copy["talk.tap"]
           : copy["talk.hold"]}
@@ -250,9 +262,10 @@ function PlanKey() {
 // the spoken plan as heard (4.4): live in grey while held, then fixed in 「」 until the answer (a refused one keeps it
 // above the reason, to compare)
 function PlanWords({ turnId }: { turnId?: string }) {
-  const w = useVoice((s) => s.planWords);
-  if (!w || (turnId && w.turnId !== turnId)) return null;
-  // while held (no turnId to match yet): as it comes; once let go: fixed, in 「」 (the final words replace it)
+  const w = useVoice((s) => s.player);
+  const held = useVoice((s) => s.turn?.turnId);
+  if (!w?.text || w.turnId !== (turnId ?? held)) return null;
+  // while held (no turnId on the page yet): as it comes; once let go: fixed, in 「」 (the final words replace it)
   return turnId ? (
     <p className="ae-heard">「{w.text}」</p>
   ) : (

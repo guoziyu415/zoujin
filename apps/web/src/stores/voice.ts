@@ -53,15 +53,13 @@ type VoiceStore = {
   mic: Mic;
   sheet: "primer" | "denied" | "unavailable" | null; // the half page over the HUD (ux-design 7.3, 12)
   micReady: boolean; // just granted: 「準備ができました…」 once
-  hold: { slide: boolean; preparing: boolean } | null; // the key is down; slide: past 60 px up; preparing: > 2 s held back
+  hold: { slide: boolean; preparing: boolean } | null; // the key is down; slide: past 60 px up; preparing: ≥ 2 s held back, still no session
   note: "tooShort" | null; // 「押したまま話してください」 for a moment
   textOpen: boolean; // the text field is open (文字で話す, 文字で送る, a correction)
   draft: { text: string; replaces: string | null } | null; // the field's starting text; replaces: a correction
   paused: boolean; // the safety card (frontend-design 12)
   hint: boolean; // the quiet safety note (12, ux-design 14.2)
   helpline: "hint" | null; // the helpline panel, opened from the note
-  // the act end's spoken plan as the server hears it (ux-design 4.4): live while held, kept until the result
-  planWords: { turnId: string; text: string; final: boolean } | null;
 };
 
 export const NARRATION_KEEP = 3;
@@ -86,7 +84,6 @@ export const initialVoice = (): VoiceStore => ({
   paused: false,
   hint: false,
   helpline: null,
-  planWords: null,
 });
 
 export const useVoice = create<VoiceStore>()(initialVoice);

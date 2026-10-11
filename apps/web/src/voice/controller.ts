@@ -16,9 +16,10 @@ import { canPress, voiceState, type VoiceState } from "./state";
 import { voiceSettings } from "./settings";
 
 export const TOO_SHORT_MS = 250; // ux-design 7.1: a shorter press is a slip
-export const HOLD_BACK_MS = 2000; // frontend-design 7.1: at most 2 s of voice waits for the session
+export const HOLD_BACK_MS = 15_000; // api-contract 3.2 (v1.0.9): the whole press waits for the session, up to 15 s
+export const PREPARING_MS = 2000; // frontend-design 7.1: still waiting after 2 s of voice → the key says so
 export const AIZUCHI_MS = 700; // 7.8: still silent after 0.7 s → an aizuchi
-export const AIZUCHI_HOLD_MS = 500; // the real answer waits for it at most 0.5 s
+export const AIZUCHI_HOLD_MS = 600; // the real answer waits for it at most this: a whole clip, its edges too (ux-design 16.2)
 export const NO_RESPONSE_MS = 6000; // 7.6 no-response
 export const GIVE_UP_MS = 12_000; // 7.8: the turn is retracted, the character says it didn't hear
 export const CAPTION_WAIT_MS = 8000; // 7.5: no final line 8 s after turn_complete → as if it failed
@@ -56,6 +57,7 @@ type Rec = {
   caption: Caption;
   filler: string | null; // an aizuchi's words, until the real answer's first words show
   retract?: "cancel" | "redo" | "timeout" | "correction";
+  plan?: boolean; // the act end's spoken plan: nobody but the narrator listens (api-contract 3.11)
   timers: ReturnType<typeof setTimeout>[];
 };
 
@@ -73,8 +75,6 @@ export class VoiceController {
   private cur: Rec | null = null;
   private recs = new Map<string, Rec>();
   private holding: Rec | null = null;
-  private planHold: { id: string; seq: number; pressAt: number } | null = null; // the act end's spoken plan being held (see planPress)
-  private planTurn: string | null = null; // the last spoken plan sent: its transcript shows on the page
   private heldBack: (ArrayBuffer | Api.ClientMessage)[] = []; // after activity_start, before session_ready
   private heldBackMs = 0;
   private outbox: Rec[] = []; // typed while the socket was down
@@ -331,8 +331,31 @@ export class VoiceController {
   // —— the talk key (ux-design 7.1) ——
 
   press(): void {
-    const st = this.state();
-    if (this.holding || !canPress(st)) return;
+    if (this.holding || !canPress(this.state())) return;
+    this.hold(false);
+  }
+
+  // —— the act end's spoken plan (ux-design 4.4, api-contract 3.11) ——
+  // The same key, but nobody listens except the narrator: no focus, no session to wait for (the voice goes out as it
+  // is said), no aizuchi and no waiting ladder. What comes back is the player's own words (transcript, in the
+  // voice store's player line) and act_plan_result with this turn's ID, which the act-end page takes; planDone()
+  // ends the turn then. A slip or a slide away is retracted as on the talk key.
+  planPress(): void {
+    if (this.holding) return;
+    this.hold(true);
+  }
+
+  // the turn's ID when it went (activity_end sent), null for a slip or a cancel
+  planRelease(): string | null {
+    return this.holding?.plan ? this.release() : null;
+  }
+
+  planDone(turnId: string): void {
+    const r = this.recs.get(turnId);
+    if (r?.plan && !r.drop) this.endTurn(r, {});
+  }
+
+  private hold(plan: boolean): void {
     this.wake();
     const v = useVoice.getState();
     if (v.mic === "unknown") {
@@ -344,6 +367,10 @@ export class VoiceController {
     this.cutCurrent(); // local silence first (≤ 50 ms), then tell the server
     const seq = this.nextSeq();
     const r = this.newRec("voice", seq);
+    if (plan) {
+      r.plan = true;
+      r.character = null;
+    }
     r.pressAt = now;
     this.holding = r;
     this.heldBack = [];
@@ -357,7 +384,12 @@ export class VoiceController {
       micReady: false,
       note: null,
     });
-    this.wire.send({ type: "activity_start", turnId: r.id, turnSeq: seq });
+    this.wire.send({
+      type: "activity_start",
+      turnId: r.id,
+      turnSeq: seq,
+      ...(plan ? { purpose: "act_plan" as const } : {}),
+    });
     if (this.audio.micOpen() && voiceSettings.micMode === "session")
       this.audio.setSending(true);
     else
@@ -367,67 +399,6 @@ export class VoiceController {
       });
   }
 
-  // —— the act end's spoken plan (ux-design 4.4, api-contract 3.11): nobody listens, the server only transcribes and
-  // the narrator answers with act_plan_result for this turn's id. Same key rules as the talk key (a slip under
-  // 250 ms is no turn); no waiting ladder, no character on the line ——
-
-  planPress(): boolean {
-    if (this.planHold || this.holding || useVoice.getState().mic !== "granted")
-      return false;
-    this.wake();
-    this.cutCurrent();
-    const seq = this.nextSeq();
-    const id = newTurnId();
-    this.planHold = { id, seq, pressAt: performance.now() };
-    this.planTurn = id;
-    useVoice.setState({
-      hold: { slide: false, preparing: false },
-      note: null,
-      planWords: null,
-    });
-    this.wire.send({
-      type: "activity_start",
-      turnId: id,
-      turnSeq: seq,
-      purpose: "act_plan",
-    });
-    if (this.audio.micOpen() && voiceSettings.micMode === "session")
-      this.audio.setSending(true);
-    else
-      void this.audio.openMic().then((res) => {
-        if (!res.ok) {
-          if (this.planHold?.id === id) this.planEnd();
-          return this.micFailed(res.result, res.reason, false);
-        }
-        if (this.planHold?.id === id) this.audio.setSending(true);
-      });
-    return true;
-  }
-
-  // let go: the turn's id when it went to the server, null for a slip (nothing to wait for)
-  planRelease(): string | null {
-    const h = this.planEnd();
-    if (!h) return null;
-    if (!voiceSettings.tap && performance.now() - h.pressAt < TOO_SHORT_MS) {
-      this.wire.send({ type: "turn_retract", turnId: h.id });
-      this.planTurn = null;
-      useVoice.setState({ planWords: null });
-      return null;
-    }
-    this.wire.send({ type: "activity_end", turnId: h.id, turnSeq: h.seq });
-    return h.id;
-  }
-
-  private planEnd(): { id: string; seq: number; pressAt: number } | null {
-    const h = this.planHold;
-    this.planHold = null;
-    if (!h) return null;
-    this.audio.setSending(false);
-    if (voiceSettings.micMode === "perTurn") this.audio.releaseMic();
-    useVoice.setState({ hold: null });
-    return h;
-  }
-
   // past 60 px up while holding: letting go cancels (ux-design 7.1)
   slide(armed: boolean): void {
     const h = useVoice.getState().hold;
@@ -435,9 +406,9 @@ export class VoiceController {
       useVoice.setState({ hold: { ...h, slide: armed } });
   }
 
-  release(): void {
+  release(): string | null {
     const r = this.holding;
-    if (!r) return;
+    if (!r) return null;
     const now = performance.now();
     const slid = useVoice.getState().hold?.slide ?? false;
     this.holding = null;
@@ -461,12 +432,13 @@ export class VoiceController {
         r.retract = "cancel";
         this.endTurn(r, { cancelled: true });
       }
-      return;
+      return null;
     }
     r.startAt = now;
-    this.post({ type: "activity_end", turnId: r.id, turnSeq: r.seq });
+    this.post(r, { type: "activity_end", turnId: r.id, turnSeq: r.seq });
     this.setTurn(r, { phase: "waiting" });
-    this.ladder(r);
+    if (!r.plan) this.ladder(r);
+    return r.id;
   }
 
   // pagehide, a drop: a turn being held ends where it is (9.5: as if let go); the session won't hear the rest
@@ -478,39 +450,56 @@ export class VoiceController {
     this.audio.setSending(false);
     useVoice.setState({ hold: null });
     if (this.wire.ready())
-      this.post({ type: "activity_end", turnId: r.id, turnSeq: r.seq });
+      this.post(r, { type: "activity_end", turnId: r.id, turnSeq: r.seq });
     r.startAt = performance.now();
     this.setTurn(r, { phase: "waiting" });
-    this.ladder(r);
+    if (!r.plan) this.ladder(r);
+  }
+
+  // degraded with the turn's voice still waiting for a session that won't come: nobody heard it. The turn is
+  // retracted (no story time), the words kept on screen go, and the narrator's degraded line says the rest
+  private dropUnsent(): void {
+    if (!this.heldBack.some((m) => m instanceof ArrayBuffer)) return;
+    const r = this.holding ?? this.cur;
+    this.heldBack = [];
+    this.heldBackMs = 0;
+    if (!r || r.kind !== "voice") return;
+    if (this.holding === r) {
+      this.holding = null;
+      this.audio.setSending(false);
+      if (voiceSettings.micMode === "perTurn") this.audio.releaseMic();
+    }
+    r.retract = "timeout"; // ours: no too_late line if it comes back
+    if (this.wire.ready())
+      this.wire.send({ type: "turn_retract", turnId: r.id });
+    this.endTurn(r, {});
+    useVoice.setState((s) => ({
+      hold: null,
+      player: s.player?.turnId === r.id ? null : s.player,
+    }));
   }
 
   // the microphone's 40 ms frames while the key is down
   frame(pcm: Int16Array): void {
-    // the act end's plan: no character session to wait for, the frames go at once
-    if (this.planHold) {
-      this.wire.sendBinary(micFrame(this.planHold.seq, pcm));
-      return;
-    }
     const r = this.holding;
     if (!r) return;
     const f = micFrame(r.seq, pcm);
-    if (this.sessionReady() && !this.heldBack.length) {
+    if ((r.plan || this.sessionReady()) && !this.heldBack.length) {
       this.wire.sendBinary(f);
       return;
     }
-    if (this.heldBackMs >= HOLD_BACK_MS) {
-      const h = useVoice.getState().hold;
-      if (h && !h.preparing)
-        useVoice.setState({ hold: { ...h, preparing: true } }); // 「準備中」
-      return;
-    }
+    if (this.heldBackMs >= HOLD_BACK_MS) return; // past 15 s the rest isn't kept
     this.heldBack.push(f);
     this.heldBackMs += MIC_FRAME_MS;
+    const h = useVoice.getState().hold;
+    if (this.heldBackMs >= PREPARING_MS && h && !h.preparing)
+      useVoice.setState({ hold: { ...h, preparing: true } }); // 「準備しています」
   }
 
   // what comes after activity_start waits with the held-back voice until the session is ready
-  private post(m: Api.ClientMessage): void {
-    if (this.sessionReady() && !this.heldBack.length) this.wire.send(m);
+  private post(r: Rec, m: Api.ClientMessage): void {
+    if ((r.plan || this.sessionReady()) && !this.heldBack.length)
+      this.wire.send(m);
     else this.heldBack.push(m);
   }
 
@@ -677,7 +666,6 @@ export class VoiceController {
   }
 
   down(): void {
-    this.planEnd(); // a plan held when the line went: the server heard nothing usable, the page stays on the input
     if (this.holding) {
       const r = this.holding;
       this.holding = null;
@@ -702,6 +690,7 @@ export class VoiceController {
 
   // error invalid_request: what we sent didn't fit the schema, so that turn didn't happen (api-contract 5)
   undelivered(): void {
+    if (useVoice.getState().paused) return; // under the safety card: no line (api-contract v1.0.9, B-12)
     const r = this.inflight;
     const waiting = useVoice.getState().turn?.phase === "waiting";
     if (!r && !waiting) return; // not one of our turns (an action, say): nothing to tell the player
@@ -829,6 +818,7 @@ export class VoiceController {
           addNarration(copy["voice.degraded"]);
           track("degraded_shown", { reason: m.reason });
         }
+        this.dropUnsent();
         if (this.holding) this.abortHold();
         useVoice.setState({ degraded: true });
         return;
@@ -1055,16 +1045,6 @@ export class VoiceController {
   }
 
   private transcript(t: Api.TranscriptMessage): void {
-    if (t.turnId === this.planTurn) {
-      // the plan's words: shown under 「どうしますか。」, not in the subtitles; an empty one shows nothing
-      if (t.speaker === "player")
-        useVoice.setState({
-          planWords: t.text
-            ? { turnId: t.turnId, text: t.text, final: t.final }
-            : null,
-        });
-      return;
-    }
     const r = this.recs.get(t.turnId);
     const current = this.cur === r && !!r;
     if (t.speaker === "player") {
@@ -1308,8 +1288,10 @@ export class VoiceController {
       this.heldBack = [];
       this.forget(h);
     }
-    // the words that set it off aren't sent again after a drop (turn_settled paused clears this too, if it came)
+    // the words that set it off aren't sent again after a drop (turn_settled paused clears this too, if it came),
+    // in flight or still waiting to go (api-contract v1.0.9, B-12)
     this.inflight = null;
+    if (r) this.outbox = this.outbox.filter((o) => o !== r);
     this.audio.setSending(false);
     this.audio.releaseMic();
     // 6. the card: the HUD dims, then clears this turn's lines in the dark (ui/safety/SafetyCard.tsx)
