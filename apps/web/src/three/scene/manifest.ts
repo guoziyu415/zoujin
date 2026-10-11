@@ -60,12 +60,26 @@ export type LampEntry = {
   flames: Vec3[];
 };
 
+// a run segment of the road (F-15, layout.json runway): the tile repeats every tileLengthM along plan +x; the page
+// lays copies end to end and scrolls the `scroll` nodes back under the runners (road/runway.ts)
+export type RunwayEntry = {
+  tileLengthM: number;
+  scroll: string[]; // node names; "tile_*" = every node starting with tile_
+  static: string[];
+  speedMps?: number;
+  setPieces?: Record<
+    string,
+    { atMinute?: number; fromMinute?: number; about?: string }
+  >;
+};
+
 export type SceneManifest = {
   version: 1;
   sceneId: string;
   sun: SunParams;
   ridgeElevationDeg?: number; // the sun gives no direct light below this, on the east side (F-10)
   water?: WaterEntry;
+  runway?: RunwayEntry;
   nodes: Record<string, NodeEntry>;
   materials: Record<string, MaterialEntry>;
   textures: Record<string, TextureEntry>;

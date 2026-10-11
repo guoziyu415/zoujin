@@ -134,6 +134,53 @@ jobs:
             cmp "$RUNNER_TEMP/road/$f" "$RUNNER_TEMP/road2/$f"
           done
 
+  road-rest:
+    name: road pass, spring, field and run manifests, draft build from scratch
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '["self-hosted","zoujin-mac"]') }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: committed manifests (the packs, their share of road-common, the three scenes' index and layout)
+        run: bash assets/pipeline/road/check_committed.sh
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: assets/pipeline/plaza/requirements.txt
+      - name: Blender as a Python module (bpy) and the X11/GL libraries it links
+        run: |
+          # 自建机器（infra/ci-runner）的镜像里已经装好，那里也没有 sudo
+          if [ -z "${ZOUJIN_CI_PREINSTALLED:-}" ]; then
+            sudo apt-get update -q
+            sudo apt-get install -y -q --no-install-recommends libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1
+          fi
+          uv venv --python 3.13 "$RUNNER_TEMP/bpy"
+          uv pip install --python "$RUNNER_TEMP/bpy/bin/python" -r assets/pipeline/plaza/requirements.txt
+      - name: build the packs from scratch (draft lightmaps)
+        id: build
+        run: BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/road/build_rest.sh draft "$RUNNER_TEMP/road"
+      - name: committed manifests built from the same inputs
+        run: |
+          for p in road-pass-day road-spring-day road-field-day road-run-r1 road-run-r2 road-run-r2s road-run-r3 road-run-night; do
+            node assets/pipeline/plaza/check_scene.mjs "$RUNNER_TEMP/road/$p" assets/scenes/$p/layout.json --manifest assets/scenes/$p/scene.json
+          done
+          # the indexes and the merged layouts hold no baked numbers: the committed ones are the fresh ones
+          for s in road-pass road-spring road-field; do
+            cmp assets/scenes/$s/index.json "$RUNNER_TEMP/road/$s/index.json"
+            cmp assets/scenes/$s/scene.json "$RUNNER_TEMP/road/$s/scene.json"
+          done
+      - name: build again in other directories; every manifest must be byte-identical
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: |
+          BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/road/build_rest.sh draft "$RUNNER_TEMP/road2"
+          cd "$RUNNER_TEMP/road"
+          for f in road-common/pack.json road-*/scene.json road-*/index.json; do cmp "$f" "$RUNNER_TEMP/road2/$f"; done
+
   castle:
     name: castle manifest, draft build from scratch
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '["self-hosted","zoujin-mac"]') }}

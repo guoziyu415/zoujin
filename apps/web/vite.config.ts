@@ -14,9 +14,9 @@ import type { Connect, Plugin, Rollup } from "vite";
 import { defineConfig } from "vite";
 import { castDir, sceneDir } from "./scene-dir.ts";
 
-// the plaza, the castle (F-14), the road's river (F-10: its two packs, the shared roadside pack and the index that picks a pack by act)
-// and the village (F-11) with its sub-packs (pack.json, no scene.json): the room inside Melos's house, the sunset,
-// night and rain lights
+// the plaza, the castle (F-14), the road (F-10, F-15: its packs, the shared roadside pack and each road scene's index
+// that picks a pack by act) and the village (F-11) with its sub-packs (pack.json, no scene.json): the room inside
+// Melos's house, the sunset, night and rain lights
 const SCENES = [
   "syracuse-square",
   "road-common",
@@ -29,6 +29,17 @@ const SCENES = [
   "village-light-night",
   "village-light-rain",
   "castle-throne",
+  "road-pass-day",
+  "road-pass",
+  "road-spring-day",
+  "road-spring",
+  "road-field-day",
+  "road-field",
+  "road-run-r1",
+  "road-run-r2",
+  "road-run-r2s",
+  "road-run-r3",
+  "road-run-night",
 ];
 const TYPES: Record<string, string> = {
   ".json": "application/json",
@@ -204,7 +215,7 @@ export default defineConfig({
         // the 3D layer stays one chunk (S-083 ⑤ budgets it as one): the lazy chunks that import from it (the scenes
         // after the plaza, the dev panel, the e2e hook) would otherwise split it into pieces compressed one by one
         // (about 3 KB more brotli). Only the listed modules, not their dependencies (react stays in the shell); the lazy
-        // ones stay out (the road's extras and water, the act-end page's prefetch, the ending's staging, the crowd past
+        // ones stay out (the road's extras, water and run segments, the act-end page's prefetch, the ending's staging, the crowd past
         // its presence check, the realistic characters' bodies, the castle's lamps, the start probe, the team's tools in dev/).
         codeSplitting: {
           groups: [
@@ -217,7 +228,7 @@ export default defineConfig({
                 )
                   ? !id.includes("libs/basis")
                   : /[\\/]src[\\/]three[\\/]/.test(id) &&
-                    !/scene[\\/](extra|land|clouds|prefetch)|quality[\\/]probe|[\\/](water|dev|castle)[\\/]|cast[\\/]CastBody|ending[\\/](?!Guard)|crowd[\\/](?!presence)/.test(
+                    !/scene[\\/](extra|land|clouds|prefetch)|quality[\\/]probe|[\\/](water|dev|castle|road)[\\/]|cast[\\/]CastBody|ending[\\/](?!Guard)|crowd[\\/](?!presence)/.test(
                       id,
                     ),
             },

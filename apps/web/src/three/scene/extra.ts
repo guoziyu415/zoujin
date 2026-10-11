@@ -12,6 +12,7 @@ import {
   type Texture,
 } from "three";
 import { lighting, lightState } from "../Lighting";
+import { attachRunway } from "../road/runway";
 import { sunLook } from "../sun";
 import { attachWater } from "../water/water";
 import { clouds } from "./clouds";
@@ -22,7 +23,7 @@ import type { SceneManifest } from "./manifest";
 type Index = { packs: { pack: string; act: string; manifest: string }[] };
 
 // the folder of the pack for this act: base is the scene's (manifest.ts sceneBase); its index.json (written by the
-// road's merge_river.mjs) names a pack per act, each a folder next to it. A scene with no index is its own pack.
+// road's merge_road.mjs) names a pack per act, each a folder next to it. A scene with no index is its own pack.
 export async function packFor(base: string, act?: string): Promise<string> {
   const r = await fetch(`${base}index.json`);
   if (!r.ok) return base;
@@ -99,6 +100,10 @@ const FOLIAGE = new Set([
   "wheat",
   "vine",
   "fig",
+  // F-15: the pass, the spring, the field road and the run segments
+  "plane",
+  "palm",
+  "fern",
 ]);
 function foliage(s: LoadedScene): void {
   const done = new Set<Material>();
@@ -140,7 +145,10 @@ export async function load(
   foliage(s);
   const sky = clouds(s);
   const off = s.manifest.water ? attachWater(s, three) : () => {};
+  // a run segment (F-15): the tile laid end to end and scrolled under the runners
+  const belt = s.manifest.runway ? attachRunway(s) : () => {};
   s.dispose = () => {
+    belt();
     off();
     sky?.();
     ridge(undefined);

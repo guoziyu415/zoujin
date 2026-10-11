@@ -1,0 +1,160 @@
+{
+  "sceneId": "road-spring-day",
+  "partOf": "scene.road-spring",
+  "select": {
+    "act": "act.4"
+  },
+  "about": "Hand-written layout of the spring (F-15; ux/scenes/homeward-road.md 3): plan metres, +x = towards Syracuse = azimuth 100°, +y = its left, the landing ground at z = 0. Rotation 0. Act 4, 14:55 to 16:30 (beat.20, beat.21); in act 2 the spring is the night road's first stretch (road-night, index.json). water: the clear pool and its trickle (the page draws it as calm water for now). Spots marked auto: false are for set pieces only.",
+  "rotationDeg": 0,
+  "defaultPlace": "place.spring",
+  "playerStartSpot": "road-spring",
+  "startSpots": {
+    "place.spring": "road-spring"
+  },
+  "water": {
+    "kind": "calm",
+    "node": "water",
+    "levelM": 0.27,
+    "speedMps": 0.02,
+    "horizonDeg": 8,
+    "bankM": 0.15,
+    "about": "the spring's pool (centre (0, 5.3), 1.2 m across) and the ribbon of its trickle; no mist"
+  },
+  "hiTextures": {
+    "base": ["road", "grass", "outcrop"],
+    "nrm": ["road", "grass", "outcrop"]
+  },
+  "walkable": [
+    {
+      "name": "the road, the meadow up to y 16 and the spring (the pool and the ledge are blocked by their own height) (3.1)",
+      "polygon": [
+        [
+          -30,
+          -6
+        ],
+        [
+          24,
+          -6
+        ],
+        [
+          24,
+          16
+        ],
+        [
+          -16,
+          16
+        ],
+        [
+          -30,
+          -2
+        ]
+      ]
+    }
+  ],
+  "places": [],
+  "exits": [
+    {
+      "place": "place.road-to-city",
+      "spot": "way.east",
+      "about": "the road on east towards the field road and the city"
+    },
+    {
+      "place": "place.mountain-pass",
+      "spot": "way.west",
+      "about": "the road back up to the pass"
+    }
+  ],
+  "spots": {
+    "road-spring": {
+      "at": [
+        -12,
+        -4
+      ],
+      "face": [
+        -2,
+        -4
+      ],
+      "about": "landing; the default camera 9 m behind it (-21, -4) sees only the road (3.2)"
+    },
+    "melos-stagger": {
+      "at": [
+        -5,
+        -3.5
+      ],
+      "face": [
+        5,
+        -3.5
+      ],
+      "about": "Melos staggers two or three steps on the road"
+    },
+    "melos-down": {
+      "at": [
+        2.5,
+        3.8
+      ],
+      "face": [
+        4.2,
+        2.8
+      ],
+      "about": "15:00: he falls here, on his back, head to the south-east, the trickle at his feet",
+      "auto": false
+    },
+    "melos-drink": {
+      "at": [
+        -0.2,
+        4.4
+      ],
+      "face": [
+        -0.2,
+        7
+      ],
+      "about": "16:30: kneeling at the pool",
+      "auto": false
+    },
+    "player-crouch": {
+      "at": [
+        3.3,
+        2.6
+      ],
+      "face": [
+        3.3,
+        5
+      ],
+      "about": "you crouch south of his head; the low camera behind your shoulder (3.45, 1.7, 0.95 m)",
+      "auto": false
+    },
+    "spring-side": {
+      "at": [
+        1.4,
+        4.6
+      ],
+      "face": [
+        0,
+        5.3
+      ],
+      "about": "standing by the pool (「水を汲んで渡す」)"
+    },
+    "way.west": {
+      "at": [
+        -26,
+        -4
+      ],
+      "face": [
+        -36,
+        -4
+      ],
+      "about": "the road back up to the pass"
+    },
+    "way.east": {
+      "at": [
+        22,
+        -4
+      ],
+      "face": [
+        32,
+        -4
+      ],
+      "about": "the road on east"
+    }
+  }
+}

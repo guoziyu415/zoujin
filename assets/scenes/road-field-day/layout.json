@@ -1,0 +1,149 @@
+{
+  "sceneId": "road-field-day",
+  "partOf": "scene.road-field",
+  "select": {
+    "act": "act.4"
+  },
+  "runway": {
+    "tileLengthM": 36,
+    "scroll": [
+      "ground",
+      "arch",
+      "proxy",
+      "tile_*"
+    ],
+    "static": [
+      "far"
+    ],
+    "about": "the tile repeats every tileLengthM along plan +x: the page lays copies end to end and scrolls them back under the runners (scroll), the far land stays put; set_* nodes are set pieces placed on one tile",
+    "setPieces": {
+      "feast": {
+        "atMinute": 5370,
+        "about": "F2 17:30 (beat.22): the harvest feast spread over the road"
+      },
+      "brook": {
+        "atMinute": 5373,
+        "about": "F3 just after: the brook Melos leaps"
+      },
+      "shortcut": {
+        "about": "F1': in place of a stretch of F1 when the player showed the short cut"
+      },
+      "tombs": {
+        "atMinute": 5445,
+        "about": "F5 about 18:45: tombs and cypresses outside the city"
+      },
+      "gate": {
+        "atMinute": 5455,
+        "about": "F6 about 18:55: the city wall and the west gate; then the plaza"
+      },
+      "city": {
+        "fromMinute": 5390,
+        "about": "the city far ahead (from the crest about 17:50): wall and towers, 1 unit = 1 m there; the page scales it by the distance left (6 km at 17:50, 2 km at 18:30, 300 m at 18:50) and makes it at least 8 px tall"
+      }
+    }
+  },
+  "about": "Hand-written layout of the field road (F-15; ux/scenes/homeward-road.md 4): the whole stop is a run. +x = towards Syracuse = azimuth 114°, the road on y = 0. F1 (wheat on both sides) is the tile; the other stretches are set pieces shown by the clock (runway.setPieces, minutes from the start of day 1). Act 4 only, 17:20 to 18:55; in act 2 nobody comes here (index.json gives road-night). way.east is the gate into the city.",
+  "rotationDeg": 0,
+  "defaultPlace": "place.road-to-city",
+  "playerStartSpot": "run-player",
+  "startSpots": {
+    "place.road-to-city": "run-player"
+  },
+  "hiTextures": {
+    "base": ["road", "grass", "outcrop"],
+    "nrm": ["road", "grass", "outcrop"]
+  },
+  "walkable": [
+    {
+      "name": "the road and its verges, the length of the tile",
+      "polygon": [
+        [
+          -17.5,
+          -3
+        ],
+        [
+          17.5,
+          -3
+        ],
+        [
+          17.5,
+          3
+        ],
+        [
+          -17.5,
+          3
+        ]
+      ]
+    }
+  ],
+  "places": [],
+  "exits": [
+    {
+      "place": "place.syracuse-square",
+      "spot": "way.east",
+      "about": "the west gate, into the city"
+    },
+    {
+      "place": "place.spring",
+      "spot": "way.west",
+      "about": "the road back towards the spring"
+    }
+  ],
+  "spots": {
+    "run-player": {
+      "at": [
+        0,
+        -0.8
+      ],
+      "face": [
+        10,
+        -0.8
+      ],
+      "about": "where you run on the spot"
+    },
+    "run-melos": {
+      "at": [
+        0,
+        0.8
+      ],
+      "face": [
+        10,
+        0.8
+      ],
+      "about": "where Melos runs on the spot"
+    },
+    "run-third": {
+      "at": [
+        -0.6,
+        2.2
+      ],
+      "face": [
+        9.4,
+        2.2
+      ],
+      "about": "a third runner (Philostratus in the field road)"
+    },
+    "way.east": {
+      "at": [
+        16,
+        0
+      ],
+      "face": [
+        26,
+        0
+      ],
+      "about": "the gate"
+    },
+    "way.west": {
+      "at": [
+        -16,
+        0
+      ],
+      "face": [
+        -26,
+        0
+      ],
+      "about": "back the way you came"
+    }
+  }
+}
