@@ -20,8 +20,16 @@ describe("the talk key's phrases", () => {
     expect(phrases("聞いています")).toEqual(["聞いています"]);
     expect(phrases("")).toEqual([]);
   });
-  it("a phrase longer than a line gets smaller type", () => {
-    expect(keyFontPx(phrases("聞いています"))).toBeUndefined();
-    expect(keyFontPx(phrases("準備しています"))).toBe(10);
+  it("a phrase longer than a line breaks where its kanji give way to kana", () => {
+    expect(phrases("準備しています", 6)).toEqual(["準備", "しています"]);
+    expect(phrases("準備しています")).toEqual(["準備しています"]);
+    expect(phrases("キャンセルされました", 6)).toEqual([
+      "キャンセルされました",
+    ]); // no kanji: stays whole
+  });
+  it("a phrase still longer than a line gets smaller type, never under 11 px", () => {
+    expect(keyFontPx(phrases("聞いています", 6))).toBeUndefined();
+    expect(keyFontPx(phrases("準備しています", 6))).toBeUndefined();
+    expect(keyFontPx(["ひとつながりの言葉"])).toBe(11);
   });
 });
