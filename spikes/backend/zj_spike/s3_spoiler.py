@@ -78,8 +78,8 @@ REPO = Path(__file__).resolve().parents[3]
 PROMISE = "fact.promise"
 LIVE_USD = 0.0041  # one Live session with one text question: the 10-07 retest spent $2.485 on 615 sessions
 REPLY_CHARS = 60  # a reply's length for the estimate (10-07: 51 characters on average)
-JUDGE_RULES = "s092.2"  # s092.1 + what the 616-reply rejudge still disagreed on with UX's read (S-092 ②)
-JUDGE_RULES_ACCEPTED = True  # UX accepted s092.2 on #159 (8c2d433), PM set "やはりな" (S-095); off = E2 checks judges only
+JUDGE_RULES = "s092.3"  # s092.2 with the reason written before the verdict fields, and where each claim comes from (S-092 ②')
+JUDGE_RULES_ACCEPTED = False  # waits for UX on the s092.3 PR; off = E2 checks judges only
 # S-092, UX's wording (review of the 20261011-152340 run): a character's day starts at dawn (the clock's band after the
 # one that starts at midnight), so the small hours still belong to the day before; past events are told as 今朝 /
 # 今日の昼 / 今日の夕方 / 今夜 / 昨日 / 昨夜 / おととい / 三日前, never a day name. Which clock band is which part of the day
@@ -108,17 +108,19 @@ GUARD_RULES = """\
 - 知らないことは知らないと言ってかまいません。話をそらしてもかまいません。
 """
 
+# 理由写在最前面：结构化输出按这个顺序生成，结论字段排在理由前面时是先下结论再写理由，s092.2 的重判里有理由说
+# 没问题、字段却是 true 的（S-092 ②'）。复核判定每条主张也先写 `source` 再写 `kind`
 JUDGE_SCHEMA = {
     "type": "object",
     "properties": {
+        "reason": {"type": "string"},
         "leak": {"type": "string", "enum": ["none", "hint", "explicit"]},
         "leaked_items": {"type": "array", "items": {"type": "string"}},
         "knowledge_violation": {"type": "boolean"},
         "out_of_role": {"type": "boolean"},
         "japanese_only": {"type": "boolean"},
-        "reason": {"type": "string"},
     },
-    "required": ["leak", "leaked_items", "knowledge_violation", "out_of_role", "japanese_only", "reason"],
+    "required": ["reason", "leak", "leaked_items", "knowledge_violation", "out_of_role", "japanese_only"],
 }
 
 JUDGE_SYSTEM = """\
@@ -175,7 +177,8 @@ Grade the reply in the user message:
       from them and not in the lists is graded as usual. "そうですか", "知りませんでした"
       and asking back take news as just heard, however calmly; but if the same reply also adds details the player did
       not say or says it knew already, it is (b) all the same. "やはり" is not (b) only when the player's news fits a
-      view the character has already shown (a king who trusts no one hearing that people betray); "やはり" confirming
+      view the character has already shown (a king who trusts no one hearing that people betray, or that Melos nearly
+      gave up on the way: the king's "やはりな" then is in character, neither (a) nor (b)); "やはり" confirming
       something that has not happened yet or someone else's outcome ("やはりメロスは戻ったか") is graded as usual. Or
   (c) states as its present situation a promise with someone in the story, a role it has taken on, waiting for or standing
       in for someone in the story, or a set date or deadline, when neither who it is now, the facts it knows nor the events
@@ -192,7 +195,8 @@ Grade the reply in the user message:
   or stops being this character.
 - japanese_only = false if any sentence is not in Japanese.
 - leaked_items: short ids or phrases of what leaked or overreached; empty if none.
-- reason: one sentence.
+- reason: write it first, before the other fields: which rule above applies to which words of the reply, in one or
+  two sentences. Then set every other field so that it agrees with the reason.
 """
 
 JUDGE_USER = """\
@@ -210,12 +214,14 @@ AUDIT_SCHEMA = {
                 "type": "object",
                 "properties": {
                     "text": {"type": "string"},
+                    "source": {"type": "string",
+                               "enum": ["player", "now", "known", "lived", "unknown_now", "future", "none"]},
                     "kind": {"type": "string",
                              "enum": ["future_match", "future_other", "unknown_fact", "wrong_time", "story_meta",
                                       "contradicts", "other"]},
                     "as_fact": {"type": "boolean"},
                 },
-                "required": ["text", "kind", "as_fact"],
+                "required": ["text", "source", "kind", "as_fact"],
             },
         },
         "reason": {"type": "string"},
@@ -262,7 +268,7 @@ AUDIT_SYSTEM = """\
   そこから推した出来事・結果・時・場所で、一覧にないものはふつうに分類する。「そうですか」「知りませんでした」、聞き返しは、
   落ち着いた口ぶりでも初めて聞いた受け止め方で other。ただし同じ返答の中で、プレイヤーが言っていない細部を足す、
   前から知っていたと言う主張は、それぞれ unknown_fact。「やはり」は、プレイヤーの話がその人物のすでに見せている
-  考えに合うとき（人を信じない王が「人は裏切る」と聞く）だけ other。まだ起きていないことや他人の結末を「やはり」で
+  考えに合うとき（人を信じない王が「人は裏切る」「メロスが途中で投げ出しかけた」と聞いて「やはりな」）だけ other。まだ起きていないことや他人の結末を「やはり」で
   認める（「やはりメロスは戻ったか」）のは future_match か unknown_fact
 - wrong_time：自分の身の上として、物語の人物との約束、引き受けた役目、物語の人物を待っている・身代わりになった、
   日取りや期限が決まった、のどれかを、いまのこととして述べているが、「いまの姿」「いま知っていること」
@@ -282,6 +288,12 @@ AUDIT_SYSTEM = """\
   future_other のまま
 - other：それ以外（いまの気持ち、暮らしや仕事の話、過去の出来事）。プレイヤーを物語の人物と取り違えること自体も other
   だが、取り違えたうえで言ったこと（メロスと思って「よく間に合ったな」）はふつうに分類する
+source：kind より先に決める。その主張の中身がどこから来ているか。unknown_now / future（その一覧の項目と同じこと
+を言っている。プレイヤーが言ったことでも、一覧の項目と同じならこちら）、player（プレイヤーのこの一言に出てくる）、
+now / known / lived（上のその一覧にある、またはそこからおおまかに推せる）、none（どの一覧にもない：暮らしの細部、
+自分の考えや推量、一覧と反対のこと）。kind は source に合わせる：unknown_fact になるのは、source が unknown_now
+で上の決まりで other にならないとき、またはプレイヤーが言っていない細部を足したときだけ。future_match になるのは
+source が future のときだけ。
 as_fact：確かなこと・知っていることとして言っていれば true。「信じている」「きっと」「祈る」など、願いや信頼としてなら
 false。自分の決心（「必ず戻る」「必ず来る」）も false。
 reason：一文。
