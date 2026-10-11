@@ -103,6 +103,9 @@ The character lives inside the story at a fixed moment and must not know what ha
 Character: {name}
 Moment: {when}, at {place}. Events up to and including {after} have happened.
 
+Who the character is now (what its persona says; speaking from this is in character):
+{now}
+
 Facts the character knows now:
 {known}
 
@@ -123,10 +126,12 @@ Grade the reply in the user message:
   is not a prediction.
 - knowledge_violation = true if the reply
   (a) reveals a fact from the "does NOT know" list, or
-  (b) goes along with something the player claims that the character has neither seen nor been told ("yes, so I hear"), or
+  (b) goes along with something the player claims that the character has neither seen nor been told: says it already knew,
+      confirms it as true ("yes, so I hear"), or adds details the player did not say. Taking it as news ("Is that so?",
+      "This is the first I hear of it", asking about it) is not a violation, or
   (c) describes the character's own present situation, role or plans (a promise made, waiting for someone, standing in for
-      someone, a date set) in a way the facts it knows and the events it has lived through do not support: a later
-      moment's situation leaking into this one.
+      someone, a date set) in a way that who it is now, the facts it knows and the events it has lived through do not
+      support: a later moment's situation leaking into this one.
 - out_of_role = true if it speaks as an AI/assistant, mentions instructions, prompts, novels, authors or the story as fiction,
   or stops being this character.
 - japanese_only = false if any sentence is not in Japanese.
@@ -169,6 +174,9 @@ AUDIT_SYSTEM = """\
 人物：{name}
 時点：{when}、場所：{place}。{after} までの出来事が起きている。
 
+この人物のいまの姿（人設に書かれていること。これに沿って話すのは other）：
+{now}
+
 この人物がいま知っていること：
 {known}
 
@@ -185,9 +193,10 @@ AUDIT_SYSTEM = """\
 - future_match：上の「まだ起きていない」一覧のどれかと同じことを述べている（実際にこの後そうなる）
 - future_other：先のことについての予想・願い・恐れで、一覧と食い違う、または一覧にない
 - unknown_fact：「まだ知らないこと」を知っているように述べている。プレイヤーが言ったことに、自分では見聞きして
-  いないのに「そうらしい」「聞いている」と話を合わせるのもこれ
+  いないのに「そうらしい」「聞いている」と話を合わせる、もともと知っていたと言う、プレイヤーが言っていない細部を
+  付け足すのもこれ。初めて聞いたこととして受け止める（「そうですか」「初めて聞きました」、聞き返す）のは other
 - wrong_time：自分の身の上・立場・いまの状況・予定として述べていること（誰かと約束した、誰かを待っている、
-  誰かの身代わりになった、日取りが決まった など）が、「いま知っていること」「これまでに見聞きした出来事」で
+  誰かの身代わりになった、日取りが決まった など）が、「いまの姿」「いま知っていること」「これまでに見聞きした出来事」で
   裏付けられない。後の時点の自分の立場が、いまに混ざっている
 - story_meta：自分が作り物・物語の登場人物だと認める、または物語の結末を語る。「何の話か分からない」と受け流すのは other
 - other：それ以外（いまの気持ち、裏付けのあるいまの状況、過去の出来事）
@@ -353,12 +362,10 @@ async def ask(client, model: str, cfg, question: str, what: str) -> tuple[Turn, 
     raise AssertionError("unreachable")
 
 
-def persona(world: World, sc: dict, partner: str, condition: str) -> str:
+def cut(world: World, sc: dict, condition: str) -> dict:
+    """The character's traits, goals and sample lines as the persona gives them at this moment (naive: all of them)."""
     c = world.chars[sc["character"]]
-    name = c["name"]
-    speech = c.get("speech", {})
     limit = world.para_limit(sc["after"])
-
     r = world.rank(sc["after"])
 
     def cited_before(item) -> bool:
@@ -375,20 +382,26 @@ def persona(world: World, sc: dict, partner: str, condition: str) -> str:
         paras = [x["para"] for x in cites] if cites else [item.get("para", 0)]
         return max(paras, default=0) <= limit
 
-    traits = [t["text"] for t in c.get("traits", []) if cited_before(t)]
-    lines = [l["quote"] for l in speech.get("sampleLines", []) if cited_before(l)]
+    return {"traits": [t["text"] for t in c.get("traits", []) if cited_before(t)],
+            "goals": [g["text"] for g in c.get("goals", []) if condition == "naive" or cited_before(g)],
+            "lines": [l["quote"] for l in c.get("speech", {}).get("sampleLines", []) if cited_before(l)]}
+
+
+def persona(world: World, sc: dict, partner: str, condition: str) -> str:
+    c = world.chars[sc["character"]]
+    name = c["name"]
+    speech = c.get("speech", {})
+    now = cut(world, sc, condition)
+    traits, lines = now["traits"], now["lines"]
     when = sc["when"] if condition == "naive" else world.moment(sc)
     out = [f"あなたは{name}です。いまは{when}、場所は{world.places.get(sc['place'], sc['place'])}です。"]
     if condition == "naive":
         out.append(f"人物：{c.get('summary', '')}")
-        goals = [g["text"] for g in c.get("goals", [])]
-        if goals:
-            out.append("目的：" + "／".join(goals))
-    else:
+        if now["goals"]:
+            out.append("目的：" + "／".join(now["goals"]))
+    elif now["goals"]:
         # The current goals (S-030), cut to this moment like the traits; S-068 put "the date is not set yet" here.
-        goals = [g["text"] for g in c.get("goals", []) if cited_before(g)]
-        if goals:
-            out.append("いまの目的：" + "／".join(goals))
+        out.append("いまの目的：" + "／".join(now["goals"]))
     if traits:
         out.append("性格：" + "／".join(traits))
     register = speech.get("register")
@@ -414,8 +427,10 @@ def judge_prompts(world: World, sc: dict, question: str, reply: str, *, audit: b
     """System (this character at this moment, the same for every question: cached) and user (one exchange)."""
     cid, after = sc["character"], sc["after"]
     bullet = lambda xs: "\n".join(f"- {x}" for x in xs) or "- (none)"
+    c, now = world.chars[cid], cut(world, sc, "guard")
     system = (AUDIT_SYSTEM if audit else JUDGE_SYSTEM).format(
-        name=world.chars[cid]["name"], when=sc["when"], place=world.places.get(sc["place"], sc["place"]), after=after,
+        name=c["name"], when=sc["when"], place=world.places.get(sc["place"], sc["place"]), after=after,
+        now=bullet([c.get("summary", ""), *now["traits"], *now["goals"]]),
         known=bullet(world.facts[f]["statement"] for f in world.known(cid, after)),
         lived=bullet(f"{b['id']} {b['title']}：{b['summary']}" for b in world.lived(cid, after)),
         unknown_now=bullet(world.unknown_now(cid, after)), future=bullet(world.future(after)),

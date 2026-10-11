@@ -522,12 +522,15 @@ class Offline(unittest.TestCase):
         self.assertEqual(first["output_config"]["effort"], "low")
         schema = first["output_config"]["format"]["schema"]
         self.assertFalse(schema["additionalProperties"])
-        # The judge sees what the character knows and has lived through at this moment (S-086 ⑥).
+        # The judge sees who the character is, what it knows and what it has lived through at this moment (S-086 ⑥).
         self.assertIn("Events the character has lived through", first["system"][0]["text"])
         self.assertIn("beat.05", first["system"][0]["text"])
+        self.assertIn("Who the character is now", first["system"][0]["text"])
+        self.assertIn("Taking it as news", first["system"][0]["text"])
         self.assertIn("Player said:", first["messages"][0]["content"])
         audit = claude.calls[1]
         self.assertIn("この人物がこれまでに見聞きした出来事", audit["system"][0]["text"])
+        self.assertIn("この人物のいまの姿", audit["system"][0]["text"])
         self.assertIn("wrong_time", json.dumps(audit["output_config"]["format"]["schema"]))
         # The same character at the same moment: the same system text for every question (one cache entry per judge).
         self.assertEqual({c["system"][0]["text"] for c in claude.calls[::2]}, {first["system"][0]["text"]})
@@ -541,6 +544,26 @@ class Offline(unittest.TestCase):
         self.assertNotIn(KEY, written)
         self.assertNotIn("idmark", written)
         self.assertEqual(json.loads((res / "summary.json").read_text())["judge"], "sonnet-5.5")
+
+    @unittest.skipUnless(WORLD.exists() and s3_spoiler.spec_path("probes").exists(), "world or probes not found")
+    def test_s3_judge_sees_the_moment_as_data_cut_it(self):
+        # Data's evals/probes/s3_probe_knows.json (#87) is cut from the same world model by the same rule; the judges
+        # cut it themselves, so the two must agree wherever that file exists.
+        world = s3_spoiler.World(WORLD)
+        scenarios, _ = s3_spoiler.load_specs(["probes"], world)
+        knows = s3_spoiler.REPO / "evals" / "probes" / "s3_probe_knows.json"
+        if knows.exists():
+            theirs = json.loads(knows.read_text(encoding="utf-8"))["scenarios"]
+            for sc in scenarios:
+                self.assertEqual(world.known(sc["character"], sc["after"]), [k["fact"] for k in theirs[sc["id"]]["knows"]],
+                                 sc["id"])
+        # The workshop moment: nothing of the hostage in what the judge is told the character is now.
+        sc = next(x for x in scenarios if x["id"] == "p-selinuntius-workshop")
+        system, _ = s3_spoiler.judge_prompts(world, sc, "q", "a")
+        now = system.split("Who the character is now")[1].split("Facts the character knows now")[0]
+        self.assertNotIn("待つ", now)
+        self.assertNotIn("身代", now)
+        self.assertEqual(s3_spoiler.cut(world, sc, "guard")["goals"], [])
 
     @unittest.skipUnless(WORLD.exists(), "world.json not found")
     def test_s3_claude_stops_the_run(self):
