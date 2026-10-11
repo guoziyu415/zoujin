@@ -264,8 +264,8 @@ REPLAYS = REPO / "fixtures" / "model-replays" / "b9-ending.jsonl"
 
 
 def test_replay_fixture_is_the_fake_ending_recorded(game: Callable[..., Game], monkeypatch: pytest.MonkeyPatch) -> None:
-    """b9-ending.jsonl = 「市に残り」走到日没那一局的结局调用，输出取假模型的（真模型的等 Mac 探针）。提示、请求或假模型
-    的输出改了，这条不过；重写：
+    """b9-ending.jsonl = 切片两条路的结局调用：「市に残り」走到日没（大団円），梅洛斯来不及（期限结算）。
+    输出取假模型的；Mac 探针（验收第 13 条）拿这两个请求量真模型。提示、请求或假模型的输出改了，这条不过；重写：
     ZJ_UPDATE_REPLAYS=1 DATABASE_URL=… uv run pytest services/backend/tests/test_b9.py -k fixture
     """
     calls: list[Json] = []
@@ -273,17 +273,25 @@ def test_replay_fixture_is_the_fake_ending_recorded(game: Callable[..., Game], m
     class Recorder(FakeText):
         async def call(self, kind: str, request: Json) -> TextResult:
             r = await super().call(kind, request)
-            calls.append(record(kind, request, r.output, recorded_at="2026-10-11T00:00:00.000Z"))
+            if kind == E.KIND:  # 来不及那条路上还有别的调用，只录结局的
+                calls.append(record(kind, request, r.output, recorded_at="2026-10-11T00:00:00.000Z"))
             return r
 
     g = game("sc.canon@beat.07", walked=True)
     g.s.text = Recorder()
     g.s.choose(CITY)
     g.s.advance(120)
+    late = game("sc.canon@beat.07", events=[LATE])
+    late.s.text = Recorder()
+    late.s.choose(CITY)
+    to_sunset(late)
     text = "".join(json.dumps(c, ensure_ascii=False, sort_keys=True) + "\n" for c in calls)
     if os.environ.get("ZJ_UPDATE_REPLAYS") == "1":
         REPLAYS.write_text(text, encoding="utf-8")
-    assert [c["kind"] for c in calls] == ["ending"]
+    assert [(c["kind"], c["request"]["outcome"]["id"]) for c in calls] == [
+        ("ending", "canon-reunion"),
+        ("ending", "too-late"),
+    ]
     assert "e1" in str(calls[0]["request"]["events"]) and "ev_" not in str(calls[0]["request"])  # 事件 ID 用别名
     assert REPLAYS.read_text(encoding="utf-8") == text, "回放过期：ZJ_UPDATE_REPLAYS=1 重跑这条测试"
 

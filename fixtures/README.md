@@ -20,6 +20,6 @@
   ```
 
   它跑一遍最小剧本那一轮（旅人在广场对老爺说一句），把假模型的各次调用（回答、分流、提取、检查、改写）按回放格式写下来。评审时看差异。
-  结局的回放 `b9-ending.jsonl`（切片「市に残り」走到日没那一局的 `ending` 调用）同样重写：`… pytest services/backend/tests/test_b9.py -k fixture`。真模型的结局回放等 Mac 探针（B-9 验收第 13 条）。
+  结局的回放 `b9-ending.jsonl`（切片两条路的 `ending` 调用：「市に残り」走到日没的大団円，梅洛斯来不及的期限结算；Mac 探针拿这两个请求量）同样重写：`… pytest services/backend/tests/test_b9.py -k fixture`。真模型的结局回放等 Mac 探针（B-9 验收第 13 条）。
 - 真模型录的回放在 M2 只在 zg 的 Mac 上录（G-7）：设 `ZJ_RECORD_REPLAYS=<目录>`，格式和上面一样，`request` 里只有合成的输入。留出集的回放不进仓库，用 `ZJ_REPLAYS` 指过去读。
 - 改了假模型的输出也会改 E-0 的报告：同一个 PR 里更新 `evals/tests/snapshots/fake`（命令在 `evals/tests/test_cli.py` 开头）。
