@@ -48,3 +48,28 @@ export function inZone(
   const far = edgeDistance(poly, x, z) >= MARGIN;
   return wasIn ? inside || !far : inside && far;
 }
+
+// the card's numbers for the room (F-11 card 6: the same 12.7° down as outside, the view widened as 62 -> 50)
+export const ROOM_VIEW = {
+  portrait: { back: 4, up: 2.4, fov: 70 },
+  landscape: { back: 3.4, up: 2.3, fov: 55 },
+};
+
+// a zone over a room's box (village-interior pack.json room, glTF x, z), for a pack without cameraZones
+export function roomZone(room: {
+  min: readonly number[];
+  max: readonly number[];
+}): CameraZone {
+  const [x0, , z0] = room.min as [number, number, number];
+  const [x1, , z1] = room.max as [number, number, number];
+  return {
+    id: "melos-home",
+    polygon: [
+      [x0, z0],
+      [x1, z0],
+      [x1, z1],
+      [x0, z1],
+    ],
+    ...ROOM_VIEW,
+  };
+}

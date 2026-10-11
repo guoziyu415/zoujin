@@ -12,7 +12,7 @@
 // - the room inside the house, its sub-pack and its own light (Interior.tsx).
 // The pack's nodes it looks for by name: altar-dressing, myrtle-leaves, door-glow (any missing is left alone).
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AdditiveBlending,
   Color,
@@ -31,6 +31,8 @@ import { lighting, lightState } from "../Lighting";
 import { reducedMotion } from "../motion";
 import { rig } from "../rig";
 import type { LoadedScene } from "../scene/loadScene";
+import { fetchJson } from "../scene/manifest";
+import { interiorBase, type InteriorPack } from "./interior";
 import {
   flicker,
   lamps,
@@ -44,7 +46,7 @@ import {
 } from "./time";
 import { fill, puddles, splashMesh } from "./rainGround";
 import Interior from "./Interior";
-import { inZone, type CameraZone } from "./zones";
+import { inZone, roomZone, type CameraZone } from "./zones";
 
 // what the page shows now, for the light sub-packs (code 2) and the test hook; force: the test page's weather switch
 export const villageLight = {
@@ -137,7 +139,19 @@ void main() { if (vA < 0.5) discard; gl_FragColor = vec4(uColor * 0.35, 0.35); }
 export default function VillageLife({ scene }: { scene: LoadedScene }) {
   const { scene: three, camera, size } = useThree();
   const { manifest } = scene;
-  const zones = (manifest as { cameraZones?: CameraZone[] }).cameraZones ?? [];
+  // scene.json's cameraZones (the layout's, card 6); until the pack carries them, the room's box from village-interior
+  const listed = (manifest as { cameraZones?: CameraZone[] }).cameraZones;
+  const [zones, setZones] = useState<CameraZone[]>(listed ?? []);
+  useEffect(() => {
+    if (listed?.length) return;
+    let live = true;
+    fetchJson<InteriorPack>(`${interiorBase(scene.base)}pack.json`)
+      .then((p) => live && setZones([roomZone(p.room)]))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [listed, scene.base]);
   const st = useRef({
     inside: false,
     k: 0,

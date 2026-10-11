@@ -64,6 +64,13 @@ describe("the house's camera zone (F-11 card 6)", () => {
     [4, 6],
     [0, 6],
   ];
+  it("takes the room's box when the pack has no zones", async () => {
+    const { roomZone } = await import("./zones");
+    const z = roomZone({ min: [-13.7, 0, 8.8], max: [-2.3, 4.1, 13.7] });
+    expect(inZone(z.polygon, -8, 11, false)).toBe(true);
+    expect(inZone(z.polygon, -8, 7, false)).toBe(false);
+    expect(z.portrait.fov).toBe(70);
+  });
   it("counts as in 0.5 m past the wall and as out 0.5 m past it the other way", () => {
     expect(inZone(room, 0.2, 3, false)).toBe(false); // on the threshold: still out
     expect(inZone(room, 0.6, 3, false)).toBe(true);
