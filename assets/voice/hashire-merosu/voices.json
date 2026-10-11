@@ -1,0 +1,217 @@
+{
+  "worldModelVersion": "hashire-merosu@1.0.0-slice.3",
+  "characters": {
+    "char.melos": {
+      "aizuchi": [
+        {
+          "url": "/assets/voice/hashire-merosu/melos-aizuchi-1.2abdbc5f.m4a",
+          "text": "うむ。",
+          "durationMs": 460
+        },
+        {
+          "url": "/assets/voice/hashire-merosu/melos-aizuchi-2.4b38b7b7.m4a",
+          "text": "ああ。",
+          "durationMs": 450
+        },
+        {
+          "url": "/assets/voice/hashire-merosu/melos-aizuchi-3.159a7924.m4a",
+          "text": "おう。",
+          "durationMs": 520
+        }
+      ],
+      "unheard": [
+        {
+          "url": "/assets/voice/hashire-merosu/melos-unheard-1.86bde0ff.m4a",
+          "text": "すまない、風の音で聞こえなかった。",
+          "durationMs": 2560
+        },
+        {
+          "url": "/assets/voice/hashire-merosu/melos-unheard-2.1185b51c.m4a",
+          "text": "……もう一度、頼む。",
+          "durationMs": 1110
+        }
+      ],
+      "wait": {
+        "url": "/assets/voice/hashire-merosu/melos-wait-1.16d223f6.m4a",
+        "text": "待ってくれ。少し、考えさせてくれ。",
+        "durationMs": 3580
+      },
+      "cues": {
+        "arrival_capped": {
+          "url": "/assets/voice/hashire-merosu/melos-arrival_capped-1.493cfad0.m4a",
+          "text": "……これなら、間に合う。",
+          "durationMs": 1330
+        }
+      }
+    },
+    "char.old-man": {
+      "aizuchi": [
+        {
+          "url": "/assets/voice/hashire-merosu/old-man-aizuchi-1.80b912c6.m4a",
+          "text": "へえ。",
+          "durationMs": 390
+        },
+        {
+          "url": "/assets/voice/hashire-merosu/old-man-aizuchi-2.ed7002b2.m4a",
+          "text": "……ふむ。",
+          "durationMs": 550
+        },
+        {
+          "url": "/assets/voice/hashire-merosu/old-man-aizuchi-3.14040b2a.m4a",
+          "text": "ああ。",
+          "durationMs": 510
+        }
+      ],
+      "unheard": [
+        {
+          "url": "/assets/voice/hashire-merosu/old-man-unheard-1.765c8ed2.m4a",
+          "text": "……すまぬ、耳が遠うてな。",
+          "durationMs": 2640
+        },
+        {
+          "url": "/assets/voice/hashire-merosu/old-man-unheard-2.2787c390.m4a",
+          "text": "もう一度、言うてくだされ。",
+          "durationMs": 2720
+        }
+      ],
+      "wait": {
+        "url": "/assets/voice/hashire-merosu/old-man-wait-1.4f391a94.m4a",
+        "text": "ちと、待ってくだされ。",
+        "durationMs": 2040
+      },
+      "cues": {}
+    }
+  },
+  "setPieceVoices": {
+    "piece.crowd-makes-way-you/4": {
+      "url": "/assets/voice/hashire-merosu/melos-crowd-makes-way-4.d693570b.m4a",
+      "text": "待て。その人を殺してはならぬ。メロスが帰って来た。約束のとおり、いま、帰って来た。",
+      "durationMs": 6330
+    },
+    "piece.crowd-makes-way-you/5": {
+      "url": "/assets/voice/hashire-merosu/crowd-crowd-makes-way-5.ee315fa7.m4a",
+      "text": "メロスだ！　メロスが帰って来た！",
+      "durationMs": 2590
+    },
+    "piece.crowd-makes-way-you/7": {
+      "url": "/assets/voice/hashire-merosu/melos-crowd-makes-way-you-7.e5ef27cc.m4a",
+      "text": "私だ、刑吏！　殺されるのは、私だ。メロスだ。私は、ここにいる！",
+      "durationMs": 6750
+    },
+    "piece.crowd-makes-way/4": {
+      "url": "/assets/voice/hashire-merosu/melos-crowd-makes-way-4.d693570b.m4a",
+      "text": "待て。その人を殺してはならぬ。メロスが帰って来た。約束のとおり、いま、帰って来た。",
+      "durationMs": 6330
+    },
+    "piece.crowd-makes-way/5": {
+      "url": "/assets/voice/hashire-merosu/crowd-crowd-makes-way-5.ee315fa7.m4a",
+      "text": "メロスだ！　メロスが帰って来た！",
+      "durationMs": 2590
+    },
+    "piece.crowd-makes-way/7": {
+      "url": "/assets/voice/hashire-merosu/melos-crowd-makes-way-7.826dfba8.m4a",
+      "text": "私だ、刑吏！　殺されるのは、私だ。メロスだ。彼を人質にした私は、ここにいる！",
+      "durationMs": 7890
+    },
+    "piece.embrace-melos-doubted/2": {
+      "url": "/assets/voice/hashire-merosu/melos-embrace-melos-doubted-2.3a0af63e.m4a",
+      "text": "セリヌンティウス。私を殴れ。ちから一ぱいに頬を殴れ。私は、途中で一度、悪い夢を見た。君が若し私を殴ってくれなかったら、私は君と抱擁する資格さえ無いのだ。殴れ。",
+      "durationMs": 15070
+    },
+    "piece.embrace-selinuntius-doubted/2": {
+      "url": "/assets/voice/hashire-merosu/selinuntius-embrace-selinuntius-doubted-2.b8cc2bf9.m4a",
+      "text": "メロス、私を殴れ。音高く私の頬を殴れ。私はこの三日の間、たった一度だけ、ちらと君を疑った。生れて、はじめて君を疑った。君が私を殴ってくれなければ、私は君と抱擁できない。",
+      "durationMs": 19280
+    },
+    "piece.embrace/2": {
+      "url": "/assets/voice/hashire-merosu/melos-embrace-melos-doubted-2.3a0af63e.m4a",
+      "text": "セリヌンティウス。私を殴れ。ちから一ぱいに頬を殴れ。私は、途中で一度、悪い夢を見た。君が若し私を殴ってくれなかったら、私は君と抱擁する資格さえ無いのだ。殴れ。",
+      "durationMs": 15070
+    },
+    "piece.embrace/4": {
+      "url": "/assets/voice/hashire-merosu/selinuntius-embrace-4.972b01a1.m4a",
+      "text": "メロス、私を殴れ。同じくらい音高く私の頬を殴れ。私はこの三日の間、たった一度だけ、ちらと君を疑った。生れて、はじめて君を疑った。君が私を殴ってくれなければ、私は君と抱擁できない。",
+      "durationMs": 18630
+    },
+    "piece.gate-again/1": {
+      "url": "/assets/voice/hashire-merosu/guards-gate-taken-again-2.8c9dd45f.m4a",
+      "text": "二度は言わぬ。下がれ。",
+      "durationMs": 2160
+    },
+    "piece.gate-promise/2": {
+      "url": "/assets/voice/hashire-merosu/guards-gate-promise-2.7db5e480.m4a",
+      "text": "下がれ。メロスとかいう羊飼いなら、王と約束をした。",
+      "durationMs": 4510
+    },
+    "piece.gate-promise/3": {
+      "url": "/assets/voice/hashire-merosu/guards-gate-promise-3.b0cedb20.m4a",
+      "text": "三日目の日没までに戻らねば、身代わりの石工セリヌンティウスが磔だ。",
+      "durationMs": 5200
+    },
+    "piece.gate-taken-again/2": {
+      "url": "/assets/voice/hashire-merosu/guards-gate-taken-again-2.8c9dd45f.m4a",
+      "text": "二度は言わぬ。下がれ。",
+      "durationMs": 2160
+    },
+    "piece.gate-taken/2": {
+      "url": "/assets/voice/hashire-merosu/guards-gate-taken-2.77e1866f.m4a",
+      "text": "下がれ、旅の者。ここから先は、通さぬ。",
+      "durationMs": 3690
+    },
+    "piece.gate-turned-away/2": {
+      "url": "/assets/voice/hashire-merosu/guards-gate-taken-2.77e1866f.m4a",
+      "text": "下がれ、旅の者。ここから先は、通さぬ。",
+      "durationMs": 3690
+    },
+    "piece.king-asks-you/2": {
+      "url": "/assets/voice/hashire-merosu/king-king-asks-you-2.c5a53b5c.m4a",
+      "text": "おまえらの望みは叶ったぞ。おまえらは、わしの心に勝ったのだ。信実とは、決して空虚な妄想ではなかった。どうか、わしをも仲間に入れてくれまいか。どうか、わしの願いを聞き入れて、おまえらの仲間の一人にしてほしい。",
+      "durationMs": 20720
+    },
+    "piece.king-asks-you/4": {
+      "url": "/assets/voice/hashire-merosu/crowd-king-asks-you-4.22f16a11.m4a",
+      "text": "万歳、王様万歳。",
+      "durationMs": 2010
+    },
+    "piece.king-asks/2": {
+      "url": "/assets/voice/hashire-merosu/king-king-asks-you-2.c5a53b5c.m4a",
+      "text": "おまえらの望みは叶ったぞ。おまえらは、わしの心に勝ったのだ。信実とは、決して空虚な妄想ではなかった。どうか、わしをも仲間に入れてくれまいか。どうか、わしの願いを聞き入れて、おまえらの仲間の一人にしてほしい。",
+      "durationMs": 20720
+    },
+    "piece.king-asks/4": {
+      "url": "/assets/voice/hashire-merosu/crowd-king-asks-you-4.22f16a11.m4a",
+      "text": "万歳、王様万歳。",
+      "durationMs": 2010
+    },
+    "piece.scarlet-cloak/2": {
+      "url": "/assets/voice/hashire-merosu/selinuntius-scarlet-cloak-2.db6010ae.m4a",
+      "text": "メロス、君は、まっぱだかじゃないか。早くそのマントを着るがいい。この可愛い娘さんは、メロスの裸体を、皆に見られるのが、たまらなく口惜しいのだ。",
+      "durationMs": 12720
+    },
+    "piece.storm-in-you/4": {
+      "url": "/assets/voice/hashire-merosu/melos-crowd-makes-way-4.d693570b.m4a",
+      "text": "待て。その人を殺してはならぬ。メロスが帰って来た。約束のとおり、いま、帰って来た。",
+      "durationMs": 6330
+    },
+    "piece.storm-in-you/7": {
+      "url": "/assets/voice/hashire-merosu/melos-crowd-makes-way-you-7.e5ef27cc.m4a",
+      "text": "私だ、刑吏！　殺されるのは、私だ。メロスだ。私は、ここにいる！",
+      "durationMs": 6750
+    },
+    "piece.storm-in/4": {
+      "url": "/assets/voice/hashire-merosu/melos-crowd-makes-way-4.d693570b.m4a",
+      "text": "待て。その人を殺してはならぬ。メロスが帰って来た。約束のとおり、いま、帰って来た。",
+      "durationMs": 6330
+    },
+    "piece.storm-in/7": {
+      "url": "/assets/voice/hashire-merosu/melos-crowd-makes-way-7.826dfba8.m4a",
+      "text": "私だ、刑吏！　殺されるのは、私だ。メロスだ。彼を人質にした私は、ここにいる！",
+      "durationMs": 7890
+    },
+    "piece.workshop-knock/1": {
+      "url": "/assets/voice/hashire-merosu/selinuntius-workshop-knock-1.6cb3a38e.m4a",
+      "text": "もう遅い。用があるなら、明日にしてくれ。",
+      "durationMs": 3860
+    }
+  }
+}
