@@ -1,4 +1,5 @@
-"""knows()（R4）、travel_minutes()（R3 的路程）和 activity()（R7、快照）：叙事者的确定性规则和评测 S-2 用同一份。"""
+"""knows()（R4）、spoilers()（R4、输出侧监控）、travel_minutes()（R3 的路程）和 activity()（R7、快照）：
+叙事者的确定性规则和评测 S-2 用同一份。"""
 
 from __future__ import annotations
 
@@ -7,7 +8,17 @@ import json
 from pathlib import Path
 from typing import Any
 
-from zoujin_worldsim import SimState, activity, apply, check_effects, initial_state, knows, settle, travel_minutes
+from zoujin_worldsim import (
+    SimState,
+    activity,
+    apply,
+    check_effects,
+    initial_state,
+    knows,
+    settle,
+    spoilers,
+    travel_minutes,
+)
 
 WORLD_DIR = Path(__file__).resolve().parents[3] / "worlds" / "hashire-merosu" / "1.0.0-draft"
 WORLD: dict[str, Any] = json.loads((WORLD_DIR / "world.json").read_text(encoding="utf-8"))
@@ -54,6 +65,31 @@ def test_a_fact_that_is_not_true_this_run_is_known_by_nobody() -> None:
     for s2, known in [(None, False), ("prevented", False), ("happened", True)]:  # trueFrom 是 beat.s2
         beats = late["beats"] if s2 is None else {**late["beats"], "beat.s2": s2}
         assert knows(WORLD, {**late, "beats": beats}, "char.melos", "fact.selinuntius-doubted-once") is known
+
+
+def test_spoilers_are_terms_of_facts_the_speaker_does_not_know() -> None:
+    """B-12：人物话里有他此刻不知道的事实的剧透词就算；知道的、这一局已经成立又学到的不算。"""
+    start, later = at(0), at(1500)  # 1500：beat.01〜07 已发生
+    assert spoilers(WORLD, start, "char.old-man", "今日は六人殺された") == {}  # 老爷 since pre
+    assert spoilers(WORLD, start, "char.melos", "今日は六人殺された") == {"fact.six-killed-today": ["六人"]}
+    assert spoilers(WORLD, later, "char.melos", "今日は六人殺された") == {}  # 梅洛斯 since beat.03
+    # 约定 beat.05 才成立：之前谁说都算；之后知道的（セリヌンティウス since beat.06）不算，不知道的（老爷）照算
+    line = "わたしが身代わりになろう。三日目の日没までに帰る"
+    hit = {"fact.promise": ["身代わり", "三日目の日没", "日没までに帰"]}
+    assert spoilers(WORLD, start, "char.selinuntius", line) == hit
+    assert spoilers(WORLD, later, "char.selinuntius", line) == {}
+    assert spoilers(WORLD, later, "char.old-man", line) == hit
+    assert spoilers(WORLD, start, "char.melos", "いい天気だ") == {}
+
+
+def test_spoilers_skip_what_the_player_just_said() -> None:
+    """玩家这一轮自己说出的词，人物接着说不算（E2 出题的规则：玩家的问题里不能有剧透词）；没说的词照算。"""
+    s = at(0)
+    assert spoilers(WORLD, s, "char.old-man", "山賊？ 待ち伏せなど聞いたことがない", said="山賊がいるらしい") == {
+        "fact.bandits-ambush": ["待ち伏せ"]
+    }
+    assert spoilers(WORLD, s, "char.old-man", "山賊？", said="山賊がいるらしい") == {}
+    assert spoilers(WORLD, s, "player", "大雨になる") == {"fact.storm": ["大雨"]}  # 玩家也按 knows 判
 
 
 def test_the_player_knows_what_the_role_knows_and_what_they_learn() -> None:
