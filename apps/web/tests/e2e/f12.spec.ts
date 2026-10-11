@@ -237,6 +237,12 @@ test("ending: the staging hands over to the ending page; world, you, the people;
   page,
 }) => {
   await mock(page, "scenario", { name: "ending" });
+  // the telemetry batches that go out (every 10 s): ending_performed is among them once the staging has played
+  const sent: { name: string; props: Record<string, unknown> }[] = [];
+  page.on("request", (r) => {
+    if (r.method() === "POST" && r.url().endsWith("/v1/telemetry"))
+      sent.push(...(r.postDataJSON() as { events: typeof sent }).events);
+  });
   const pid = await startStory(page);
   // the staging: the HUD goes, only the 3D and the subtitles stay (11.1)
   await expect(page.locator(".hud-bottom")).toBeHidden({ timeout: 60_000 });
@@ -256,6 +262,17 @@ test("ending: the staging hands over to the ending page; world, you, the people;
     await page.waitForTimeout(600);
   }
   await expect(page).toHaveURL(ending, { timeout: 30_000 });
+  // what the staging measured, for data (data-design 9.3)
+  await expect
+    .poll(() => sent.find((e) => e.name === "ending_performed")?.props, {
+      timeout: 15_000,
+    })
+    .toMatchObject({
+      trigger: "story-closed",
+      lines: expect.any(Number),
+      taps: expect.any(Number),
+      autoAdvance: expect.any(Boolean),
+    });
   await expect(
     page.getByRole("heading", { name: "原作どおりの大団円" }),
   ).toBeVisible();

@@ -218,6 +218,7 @@ export type TelemetryEvent =
   | TelemetryContinueStarted
   | TelemetryConnectionLost
   | TelemetryConnectionRestored
+  | TelemetryEndingPerformed
   | TelemetryEndingViewed
   | TelemetryEndingClosed
   | TelemetryEndingCardSaved
@@ -2237,6 +2238,47 @@ export interface TelemetryConnectionRestored {
   t?: Data.StoryTime;
   props: {
     downMs: number;
+  };
+}
+export interface TelemetryEndingPerformed {
+  name: "ending_performed";
+  /**
+   * 没有局时省略
+   */
+  playthroughId?: Data.PlaythroughId;
+  /**
+   * 真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
+   */
+  clientTs: Data.RecordedAt;
+  /**
+   * 故事时间，有的话
+   */
+  t?: Data.StoryTime;
+  props: {
+    /**
+     * ending_started.trigger
+     */
+    trigger: "deadline" | "story-closed";
+    /**
+     * 演出实际跑的毫秒，不含暂停（后台、全屏页面、「タップして続ける」等着的那段）
+     */
+    playMs: number;
+    /**
+     * 暂停的毫秒合计
+     */
+    pausedMs: number;
+    /**
+     * 起作用的点按：补全一句或换下一句；0.5 秒保护期里的、「タップして続ける」那一下不算
+     */
+    taps: number;
+    /**
+     * 这次演出的句数
+     */
+    lines: number;
+    /**
+     * 「結末を自動で進める」开着（开演时的值，开演以后改不了）
+     */
+    autoAdvance: boolean;
   };
 }
 export interface TelemetryEndingViewed {

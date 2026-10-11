@@ -206,4 +206,73 @@ SAFETY = Prompt(
     },
 )
 
-PROMPTS: dict[str, Prompt] = {p.kind: p for p in (TRIAGE, EXTRACT, CHECK, REWRITE, REPLY, NARRATE, PLAN, SAFETY)}
+# B-9：切片的简化结局（三层，每句引用这一局的事件；条数、字数、引用由 `narrator/ending.py` 的校验管，这里只管形状）
+CITED = {
+    "type": "object",
+    "properties": {
+        "sentence": {"type": "string", "minLength": 1},
+        "cites": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": ["sentence", "cites"],
+    "additionalProperties": False,
+}
+CITED_TEXT = {
+    "type": "object",
+    "properties": {
+        "text": {"type": "string", "minLength": 1},
+        "cites": {"type": "array", "items": {"type": "string"}},
+    },
+    "required": ["text", "cites"],
+    "additionalProperties": False,
+}
+ENDING = Prompt(
+    "ending",
+    text("ending"),
+    {
+        "type": "object",
+        "properties": {
+            "epilogue": {"type": "array", "items": CITED},
+            "contrast": {
+                "type": "object",
+                "properties": {
+                    "original": {"type": "string", "minLength": 1},
+                    "yours": {"type": "string", "minLength": 1},
+                    "beat": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+                },
+                "required": ["original", "yours", "beat"],
+                "additionalProperties": False,
+            },
+            "subtitle": {"type": "string", "minLength": 1},
+            "cardContrast": {"type": "string", "minLength": 1},
+            "you": {
+                "type": "object",
+                "properties": {
+                    "title": CITED_TEXT,
+                    "fate": CITED_TEXT,
+                    "didForYou": {"type": "array", "items": CITED},
+                    "youDid": {"type": "array", "items": CITED},
+                },
+                "required": ["title", "fate", "didForYou", "youDid"],
+                "additionalProperties": False,
+            },
+            "characters": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "character": {"type": "string", "minLength": 1},
+                        "yours": {"type": "array", "items": CITED},
+                    },
+                    "required": ["character", "yours"],
+                    "additionalProperties": False,
+                },
+            },
+        },
+        "required": ["epilogue", "contrast", "subtitle", "cardContrast", "you", "characters"],
+        "additionalProperties": False,
+    },
+)
+
+PROMPTS: dict[str, Prompt] = {
+    p.kind: p for p in (TRIAGE, EXTRACT, CHECK, REWRITE, REPLY, NARRATE, PLAN, ENDING, SAFETY)
+}

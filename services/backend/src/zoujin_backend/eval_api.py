@@ -10,14 +10,20 @@
   起点的事件和 world_state，之后的步骤走和网关同一个叙事者（`Narrator.run`）。
 - 做了的：setup 的 `role`、`place`、`budgetTier`（只记下）、`scenario`、`checkpoint`、`events`；步骤 `say`（人物用文字
   回答，再走叙事者整条流水线，B-2）、`advance`；`act`、`propose`、`choose`（B-3：和 WebSocket 同一条路，写任务、
-  叫叙事者）；`check`（第 3 步 + 按 `model_checks` 跑第 4 步，不改写、不提交）；查询 `state()`、`events()`。
+  叫叙事者）；`check`（第 3 步 + 按 `model_checks` 跑第 4 步，不改写、不提交）；查询 `state()`、`events()`；
+  B-9：`ending()`（还没进结局返回 None）；情景推到收幕的 setup 起点就进结局，结局任务在 setup 里同步跑完。
   检查点停在这一幕的收幕节拍上（例 `sc.canon@beat.07`）时，setup 之后就是幕末待选。
 - B-4：`say(hold=True)` 只写这一轮、拿人物的回答，返回 `held: true`、没有事件（作废的窗口还开着）；下一次调用（任何
   步骤或查询）开始时先让叙事者提交它，事件算在那一次里。`retract(n)` 作废还 hold 着的第 n 步（`retracted`），
   已经提交的 `too_late`；`utterance_cleared(n)`。这一步留下了意图确认的草稿时 `StepResult.confirm` 有值，草稿最多等
   一步：下一步 `confirm(answer)` 按它答，`say` 由叙事者判是不是在回答，别的步骤（或那句 `say` 不是在回答）按超时关掉。
   评测的提交窗口是 0。
-- 没做的步骤和查询、带 `persona` 的 setup、带 `memory` 的布置事件、没有布局的场景里的 `move` 抛
+- B-5 模拟局：`setup({"role": …, "persona": …, "seed": …})` 照正式开局起一局（和网关 `POST /v1/playthroughs` 同一条
+  路：写局和 `open` 任务、叫叙事者做），不用 `opening()` 推演；`persona`、`seed` 只记在 Trace（`eval.setup`）上，
+  `seed` 给假模型。AI 玩家只看 `view()`（2.3 的快照和 2.4 的玩家可见事件，和网关同一个投影）、`manifest()`（B-7 的
+  生成器）和每一步结果里玩家听得到、看得到的字段。每一步的结果带 `elapsedMs`（进来到返回）。这一局里记的账带
+  `playthroughId`（`zoujin_llm.playthrough`）。
+- 没做的步骤和查询、带 `memory` 的布置事件、没有布局的场景里的 `move` 抛
   `EvalNotImplemented("<名字>")`；
   回放里查不到抛 `ReplayMissing`。账本到上限抛 `BudgetStop`，模型回 429 抛 `RateLimited`：这两个要整次停下，不是跳过
   这一例。运行器按类名认。
@@ -30,32 +36,37 @@ from __future__ import annotations
 import asyncio
 import copy
 import json
-from collections.abc import Coroutine, Iterable, Mapping, Sequence
+import time
+from collections.abc import Callable, Coroutine, Iterable, Mapping, Sequence
 from dataclasses import replace
-from functools import cache
+from functools import cache, wraps
 from pathlib import Path
 from typing import Any, NoReturn
 
 from sqlalchemy import func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
+from zoujin_llm import mark_playthrough, playthrough
 from zoujin_worldsim import Opened, SimState, initial_state, opening, parse_checkpoint, world_state
 
 from zoujin_backend.config import Settings
 from zoujin_backend.db import store
 from zoujin_backend.db.events import recorded_at, to_row
+from zoujin_backend.db.store import Run
+from zoujin_backend.db.tables import endings, playthrough_metrics, playthroughs, users, utterances
 from zoujin_backend.db.tables import events as events_t
-from zoujin_backend.db.tables import playthrough_metrics, playthroughs, users, utterances
 from zoujin_backend.db.tables import turns as turns_t
 from zoujin_backend.db.tables import world_state as world_state_t
 from zoujin_backend.gateway.monitor import Monitor
 from zoujin_backend.ids import IdGen
+from zoujin_backend.manifest import Manifest, generate
 from zoujin_backend.models.armor import Armor, armor
 from zoujin_backend.models.text import BudgetStop, RateLimited, ReplayMissing, TextModel, text_model
-from zoujin_backend.narrator import acts
+from zoujin_backend.narrator import acts, ending
 from zoujin_backend.narrator.core import Narrator, Result
 from zoujin_backend.narrator.pipeline import CallFailed, Pipeline, Spend, TurnInput
 from zoujin_backend.narrator.writer import Writer, act_closed
+from zoujin_backend.projection import snapshot, visible_events
 from zoujin_backend.safety import SafetyState, Screen, Screener, counts_of, decide
 from zoujin_backend.schemas import SchemaBook
 from zoujin_backend.trace import Tracer
@@ -96,10 +107,29 @@ def _run[T](coro: Coroutine[Any, Any, T]) -> T:
     return asyncio.run(coro)
 
 
+def _timed(step: Callable[..., Json]) -> Callable[..., Json]:
+    """每一步的结果加 `elapsedMs`：从调用进来到返回，含叙事者各次模型调用和提交（B-5）。"""
+
+    @wraps(step)
+    def timed(*args: Any, **kwargs: Any) -> Json:
+        start = time.perf_counter()
+        out = step(*args, **kwargs)
+        out["elapsedMs"] = round((time.perf_counter() - start) * 1000)
+        return out
+
+    return timed
+
+
+# 带 persona 的模拟局从正式开局玩起，不和这几样一起给
+NOT_WITH_PERSONA = ("checkpoint", "scenario", "events")
+
+
 def setup(setup: Mapping[str, Json], *, mode: str = "text") -> Session:
     """开一局。setup 是用例的 setup 原样，mode 是 text / voice（B-0 两种都走文字的叙事者流程）。"""
     if "persona" in setup:
-        raise EvalNotImplemented("persona")
+        mixed = [k for k in NOT_WITH_PERSONA if k in setup]
+        if mixed:
+            raise ValueError(f"persona 不和 {'、'.join(mixed)} 一起给：模拟局从正式开局玩起")
     if any("memory" in e for e in setup.get("events", [])):
         raise EvalNotImplemented("memory")
     settings = Settings.from_env()
@@ -110,7 +140,7 @@ def setup(setup: Mapping[str, Json], *, mode: str = "text") -> Session:
     if setup["role"] not in book.roles:
         raise ValueError(f"没有这个身份：{setup['role']}")
     s = Session(settings, library, book, setup, mode)
-    _run(s._setup())
+    s._run(s._open() if s.persona is not None else s._setup())
     return s
 
 
@@ -123,9 +153,11 @@ class Session:
         self.mode = mode
         self.role: str = setup["role"]
         self.budget_tier: str = setup.get("budgetTier", "normal")  # 只记下（预算是 M2 的卡）
+        self.persona: str | None = setup.get("persona")  # 模拟局的画像 ID，只进 Trace（B-5）
+        self.seed: int | None = setup.get("seed")
         self.ids = IdGen()
         self.text: TextModel = text_model(
-            settings.model, fake_rules=settings.fake_text, replays=settings.replays, settings=settings
+            settings.model, fake_rules=settings.fake_text, replays=settings.replays, settings=settings, seed=self.seed
         )
         self.schemas = _schemas(settings.schemas)
         self.tracer = Tracer()
@@ -140,6 +172,12 @@ class Session:
         self.safety = SafetyState()
         self.monitor = Monitor(library)
         self.monitor.attach(book)
+        self._manifest: Manifest | None = None
+
+    def _run[T](self, coro: Coroutine[Any, Any, T]) -> T:
+        """每次调用一个事件循环；这期间记的账带这一局的 playthroughId。"""
+        with playthrough(self.pid or None):
+            return asyncio.run(coro)
 
     # —— 连接和叙事者：每次调用新建（各自的事件循环） ——
 
@@ -197,6 +235,11 @@ class Session:
                     now=recorded_at(),
                 )
                 play_setup(w, _scenarios(self._world_dir()), self.setup_doc)
+                # 情景模式一口气推到了收幕（B-9 第 11 条）：起点就进结局，和叙事者提交时一样。只看最后一幕收没收，
+                # 检查点停在 beat.24 以后、还在前面几幕的不进（数据评审 #124）
+                trigger = ending.closed(self.book, w.state) if ending.curtain_fell(self.book, w.state) else None
+                if trigger is not None:
+                    w.ending = ending.enter(w, self.book, trigger)
                 for ev in w.events:
                     self.schemas.event(ev)
                 if w.events:
@@ -209,6 +252,38 @@ class Session:
                     .where(playthroughs.c.playthrough_id == self.pid)
                     .values(last_seq=w.state["seq"], act_end=setup_act_end(self.book, w, self.setup_doc))
                 )
+                if w.ending is not None:
+                    await c.execute(
+                        update(playthroughs)
+                        .where(playthroughs.c.playthrough_id == self.pid)
+                        .values(status="ended", ended_at=func.now())
+                    )
+                    await c.execute(
+                        update(playthrough_metrics)
+                        .where(playthrough_metrics.c.playthrough_id == self.pid)
+                        .values(ending_started_at=func.now())
+                    )
+                    await store.enqueue(c, self.ids, self.pid, kind=ending.KIND, request=w.ending["request"])
+            if w.ending is not None:  # 结局任务在 setup 里同步跑完
+                await self._narrator(engine).run(self.pid)
+        finally:
+            await engine.dispose()
+
+    async def _open(self) -> None:
+        """模拟局（B-5）：照正式开局，和网关 `POST /v1/playthroughs` 同一条路（`store.create_playthrough` 写局、指标行
+        和 `open` 任务，叙事者做：startT、startAct、到点的节拍）。"""
+        engine = self._engine()
+        try:
+            async with engine.begin() as c:
+                user_id = self.ids.new("usr")
+                await c.execute(insert(users).values(user_id=user_id))
+                self.pid = await store.create_playthrough(
+                    c, self.ids, user_id=user_id, book=self.book, role_id=self.role
+                )
+            mark_playthrough(self.pid)
+            attrs = {"eval.persona": self.persona, "eval.seed": self.seed}
+            with self.tracer.span("eval.setup", playthrough_id=self.pid, mode=self.mode, **attrs):
+                await self._narrator(engine).run(self.pid)
         finally:
             await engine.dispose()
 
@@ -218,10 +293,11 @@ class Session:
 
     # —— 步骤 ——
 
+    @_timed
     def say(self, to: str, text: str, hold: bool = False) -> Json:
         """文字代替语音：人物用文字回答（`reply`），原话和这一轮写进去，走叙事者整条流水线。hold：先不提交（B-4）。"""
         self.steps += 1
-        return _run(self._say(to, text, hold))
+        return self._run(self._say(to, text, hold))
 
     # —— B-4：hold 着的一轮、等回答的草稿 ——
 
@@ -374,12 +450,13 @@ class Session:
             return None
         return {"draftId": draft["draft_id"], "character": draft["character"], "prompt": draft["prompt"]}
 
+    @_timed
     def confirm(self, answer: str | None) -> Json:
         """回答上一步留下的意图确认：yes / no / None（没答、超时）。没有草稿在等时 `error: "no_draft"`。"""
         if answer not in ("yes", "no", None):
             raise ValueError(f"answer 只能是 yes / no / None，得到 {answer!r}")
         self.steps += 1
-        return _run(self._confirm(answer))
+        return self._run(self._confirm(answer))
 
     async def _confirm(self, answer: str | None) -> Json:
         engine = self._engine()
@@ -399,18 +476,19 @@ class Session:
                 out["narration"] = mine[-1].info["narration"]
         return out
 
+    @_timed
     def act(self, kind: str, target: str | None, params: Mapping[str, Json]) -> Json:
         """动作（api-contract 3.8）：和 `action` 消息一样写一行任务，叙事者判定。还没有 3D 布局的场景里的 `move`
         （归途、村子：路程和过河跟 S-081 的停靠点一起做，M3）抛 `EvalNotImplemented`，用例记成跳过。"""
         if kind == "move":
-            here = _run(self._state())["vars"]["var.player.location"]
+            here = self._run(self._state())["vars"]["var.player.location"]
             if self.book.places.get(here, {}).get("sceneRef") not in self.book.scenes:
                 raise EvalNotImplemented("move（没有布局的场景）")
         self.steps += 1
         request: Json = {"clientMsgId": f"eval-{self.steps}", "kind": kind, "params": dict(params or {})}
         if target is not None:
             request["target"] = target
-        r, t0 = _run(self._task("action", request))
+        r, t0 = self._run(self._task("action", request))
         info = r.info
         out: Json = {
             "events": self._step_events(r),
@@ -425,15 +503,16 @@ class Session:
                 out[k] = info[k]
         return out
 
+    @_timed
     def propose(self, text: str) -> Json:
         """幕末用文字说出打算（3.11）：原话存进 utterances，叙事者的 plan 判能不能成行。收幕以前、试过 2 次以后
         返回 `error: "invalid_request"`、没有事件（网关这时回 invalid_request，不写任务）。"""
         self.steps += 1
-        screen = _run(self.screener.screen(text, **self.span))  # 幕末的打算也筛（UX 在 #112 的评审）
+        screen = self._run(self.screener.screen(text, **self.span))  # 幕末的打算也筛（UX 在 #112 的评审）
         decision = decide(screen, self.safety)
         if decision == "pause":  # 不交给叙事者、不算试次；回到故事以后幕末页照原样
             self.safety.paused = False
-            _run(self._count(**counts_of(screen, decision)))
+            self._run(self._count(**counts_of(screen, decision)))
             return {
                 "safetyCard": {"shown": True, "paused": True, "canReturn": True},
                 "safety": screen.self_harm,
@@ -444,9 +523,9 @@ class Session:
             }
         if decision == "hint":
             self.monitor.calm()
-        _run(self._count(**counts_of(screen, decision)))
+        self._run(self._count(**counts_of(screen, decision)))
         request = {"clientMsgId": f"eval-{self.steps}", "mode": "text"}
-        r, t0 = _run(self._task("plan", request, said=screen.masked, flags=screen.flags))
+        r, t0 = self._run(self._task("plan", request, said=screen.masked, flags=screen.flags))
         info = r.info
         moved = [e for e in r.events if e["type"] == "act-transition" and e["actor"] == "player"]
         alt = info.get("alternative")
@@ -466,6 +545,7 @@ class Session:
             out["error"] = info["error"]
         return out
 
+    @_timed
     def choose(self, exit: str, en_route: int | None = None) -> Json:
         """幕末选去处（3.11）：给定去处，或打算不成行时的替代去处（`plan_…`）。不在选项里返回
         `error: "invalid_choice"`、没有事件（E4-103）。"""
@@ -473,7 +553,7 @@ class Session:
         request: Json = {"clientMsgId": f"eval-{self.steps}", "optionId": exit}
         if en_route is not None:
             request["enRouteChoice"] = en_route
-        r, t0 = _run(self._task("choose", request))
+        r, t0 = self._run(self._task("choose", request))
         out: Json = {
             "events": self._step_events(r),
             "clockMinutes": r.state["t"] - t0,
@@ -530,9 +610,10 @@ class Session:
             minutes=sum(p.minutes for p in pre) + r.minutes,
         )
 
+    @_timed
     def advance(self, minutes: int) -> Json:
         self.steps += 1
-        return _run(self._advance(minutes))
+        return self._run(self._advance(minutes))
 
     async def _advance(self, minutes: int) -> Json:
         engine = self._engine()
@@ -570,14 +651,16 @@ class Session:
         不为空的；`all` = 都跑），不改写、不提交。没跑第 4 步的 R5 和 R6 其余部分记 skipped。"""
         if model_checks not in ("scoped", "all"):
             raise ValueError(f"model_checks 只能是 scoped / all，得到 {model_checks!r}")
-        st = _run(self._state())
+        st = self._run(self._state())
         t = TurnInput(
             character=turn.get("to"),
             player=turn.get("player"),
             reply=turn.get("reply"),
             act=turn.get("act"),
         )
-        checked = _run(self.pipeline.check_only(self.book, st, dict(candidate), t, model_checks, Spend(), self.span))
+        checked = self._run(
+            self.pipeline.check_only(self.book, st, dict(candidate), t, model_checks, Spend(), self.span)
+        )
         return {"check": checked.check, "rules": checked.rules}
 
     # —— 查询 ——
@@ -594,18 +677,46 @@ class Session:
 
     def state(self) -> Json:
         """契约 3.1 的 WorldState（W-1 的 world_state()）。"""
-        _run(self._flush())
-        return world_state(self.book.world, _run(self._state()), self.pid)
+        self._run(self._flush())
+        return world_state(self.book.world, self._run(self._state()), self.pid)
 
     def events(self) -> list[Json]:
         """这一局的全部事件（含评测布置的、被否决的），按 seq。"""
-        _run(self._flush())
-        return _run(self._events())
+        self._run(self._flush())
+        return self._run(self._events())
 
+    def view(self, after_seq: int = 0) -> Json:
+        """AI 玩家看的（B-5）：2.3 的快照和 2.4 的玩家可见事件（seq 大于 after_seq 的），和网关 `GET …/snapshot`、
+        `GET …/events` 同一个投影。没有变量、节拍结果、不可见的事件。"""
+        self._run(self._flush())
+        return self._run(self._view(after_seq))
+
+    async def _view(self, after_seq: int) -> Json:
+        engine = self._engine()
+        try:
+            async with engine.connect() as c:
+                row = await store.playthrough(c, self.pid)
+                st = await store.sim_state(c, self.pid)
+                log_ = await store.event_log(c, self.pid, self.book.version)
+        finally:
+            await engine.dispose()
+        assert row is not None and st is not None
+        snap = snapshot(self.book, self.pid, self.role, row["status"], st, st["seq"], Run.of(row))
+        return {"snapshot": snap, "events": visible_events(self.book, self.role, log_, after_seq)}
+
+    def manifest(self) -> Json:
+        """2.1 的 manifest（B-7 的生成器），和正式网关 `GET /v1/books/{id}/manifest` 一样：身份的说明、人物的名字
+        和读法。"""
+        if self._manifest is None:
+            s = self.settings
+            self._manifest = generate(self.book, self.schemas, packs=s.packs, voices=s.voice_dir, release=s.release)
+        return copy.deepcopy(self._manifest.doc)
+
+    @_timed
     def retract(self, step: int) -> Json:
         """作废第 step 步那一轮（B-4）：还 hold 着就作废（原话清空、不产生事件），已经提交了 `too_late`。"""
         self.steps += 1
-        return _run(self._retract(step))
+        return self._run(self._retract(step))
 
     async def _retract(self, step: int) -> Json:
         engine = self._engine()
@@ -630,11 +741,11 @@ class Session:
 
     def utterance_cleared(self, step: int) -> bool:
         """第 step 步那一轮玩家和人物的原话都清空了（B-4：作废的一轮当场清空）。"""
-        _run(self._flush())
+        self._run(self._flush())
         turn_id = self.turns.get(step)
         if turn_id is None:
             raise ValueError(f"第 {step} 步不是对话")
-        return _run(self._cleared(turn_id))
+        return self._run(self._cleared(turn_id))
 
     async def _cleared(self, turn_id: str) -> bool:
         engine = self._engine()
@@ -680,7 +791,19 @@ class Session:
         self._no("db_absent")
 
     def ending(self) -> Json:
-        self._no("ending")
+        """B-9：存的 Ending（数据契约第 5 节的完整形状，含 `signature`）；还没进结局（或结局任务还没做完）返回 None。
+        结局任务和别的任务一样，在触发它的那一步里同步跑完。"""
+        _run(self._flush())
+        return _run(self._ending())
+
+    async def _ending(self) -> Json:
+        engine = self._engine()
+        try:
+            async with engine.connect() as c:
+                body = await c.scalar(select(endings.c.body).where(endings.c.playthrough_id == self.pid))
+        finally:
+            await engine.dispose()
+        return copy.deepcopy(body) if body is not None else None
 
 
 def play_setup(w: Writer, scenarios: Mapping[str, Json], setup: Mapping[str, Json]) -> None:

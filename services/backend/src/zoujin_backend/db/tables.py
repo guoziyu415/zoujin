@@ -2,7 +2,7 @@
 后端自己的表（turns、sessions、invite_codes、idempotency_keys）按 backend-design 3.4、3.5、5.2。
 
 建表走 Alembic（`migrations/versions/`），这里的定义给查询用，两边要一致（测试比对）。
-其余的表（memory_items、promises、run_facts、briefs、approach_log、endings）由用到它们的 M2 卡建。
+其余的表（memory_items、promises、run_facts、briefs、approach_log）由用到它们的 M2 卡建。
 """
 
 from __future__ import annotations
@@ -88,7 +88,7 @@ playthroughs = Table(
     Column("plan_tries", Integer, nullable=False, server_default="0"),  # 这次幕末说过几次打算
     Column("plan_alternative", JSONB),  # 打算不成行时给的替代去处（幕切换时清掉）
     Column("arrival", JSONB),  # 落地带 opener、还没收到 act_landed：{actId, line, opener}
-    # B-12（0005）：安全筛查的这一局状态 {paused, hinted, ambiguous}（出戏卡开着、小提示推过、似是而非几次），只有网关写
+    # B-12（0006）：安全筛查的这一局状态 {paused, hinted, ambiguous}（出戏卡开着、小提示推过、似是而非几次），只有网关写
     Column("safety", JSONB, nullable=False, server_default=text("'{}'::jsonb")),
     # 每账号同时 1 局（backend-design 5.2）
     Index("playthroughs_one_active", "user_ref", unique=True, postgresql_where=text("status = 'active'")),
@@ -122,7 +122,7 @@ turns = Table(
     _ts("created_at", nullable=False, now=True),
     _ts("settled_at"),
     _ts("commit_after"),  # B-4（0004）：叙事者最早什么时候提交这一轮（turn_complete、打算的定稿 + 3 秒，作废的窗口）
-    # B-12（0005）：第 0 步安全筛查给叙事者的标记（injection / pii / harmful / unscreened / ambiguous），不放判定的分数
+    # B-12（0006）：第 0 步安全筛查给叙事者的标记（injection / pii / harmful / unscreened / ambiguous），不放判定的分数
     Column("flags", JSONB),
     UniqueConstraint("playthrough_id", "idempotency_key", name="turns_idempotency"),
     Index("turns_queue", "playthrough_id", "status", "created_at"),
@@ -231,7 +231,14 @@ playthrough_metrics = Table(
     Column("confirms_no", Integer, nullable=False, server_default="0"),
     Column("confirms_timeout", Integer, nullable=False, server_default="0"),
     Column("confirms_rejected", Integer, nullable=False, server_default="0"),
-    # B-12（0005）：只记次数（S-057、S-069 ③），列名按数据评审 #112 的表。安全分类器（含重发）和 Model Armor 的花费；
+    # B-9（0005）：结局开演的时刻、世界结局的分类、走没走模板（S-065）、调了几次模型、生成用了多久、结局的花费
+    _ts("ending_started_at"),
+    Column("ending_outcome", Text),
+    Column("ending_template", Boolean),
+    Column("ending_calls", Integer),
+    Column("ending_ms", Integer),
+    Column("cost_ending_usd", Numeric(12, 6), nullable=False, server_default="0"),
+    # B-12（0006）：只记次数（S-057、S-069 ③），列名按数据评审 #112 的表。安全分类器（含重发）和 Model Armor 的花费；
     # 出戏卡（信号和第二次 ambiguous）、ambiguous 的次数（含出小提示的那次）、小提示、没判定、分类器拒答、
     # 带注入 / 个人信息 / 有害标记交给叙事者的轮数、Model Armor 出错（输入输出两边）；
     # 输出侧：过了监控的人物定稿句数（分母）、命中剧透的句数、判有害的句数、剧透重建会话、以问句结尾的句数、
@@ -273,5 +280,25 @@ drafts = Table(
     Index("drafts_playthrough", "playthrough_id"),
 )
 
+# 结局（B-9，data-design 第 84 行）：一局一行，body 是数据契约第 5 节的 Ending，随整局删除
+endings = Table(
+    "endings",
+    metadata,
+    Column("ending_id", Text, primary_key=True),  # end_ + ULID
+    _pt_fk(),
+    Column("body", JSONB, nullable=False),
+    _ts("decided_at", nullable=False, now=True),
+    UniqueConstraint("playthrough_id", name="endings_playthrough"),
+)
+
 # data-design 5.3 的删除清单里，已经建了的表（eval_api 的 db_absent 查这些）
-PER_PLAYTHROUGH = ("playthroughs", "turns", "utterances", "events", "world_state", "playthrough_metrics", "drafts")
+PER_PLAYTHROUGH = (
+    "playthroughs",
+    "turns",
+    "utterances",
+    "events",
+    "world_state",
+    "playthrough_metrics",
+    "drafts",
+    "endings",
+)

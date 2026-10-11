@@ -14,14 +14,14 @@
   幕末打算的联合类型压到和提取差不多（`PLAN_EFFECT`、`PLAN_ALTERNATIVE_API`）。
   收到以后照旧用完整的 Schema 在本地验，不过就 `BadOutput`，按时限的规则重发。
 - 调用前按预计花费查账本（`BudgetStop`），调用后按实际用量记账（`provider: "claude"`、`use: "product"`）；被时限
-  取消的按预计记（可能已经计费，宁多记）。`refusal`、`max_tokens` 也算这次失败，钱照记。
+  取消的按预计记（可能已经计费，宁多记）。`refusal`、`max_tokens` 也算这次失败，钱照记。每行带耗时和状态（B-5：
+  `ok`、`timeout`、`bad-output`；没有回应的记 `error`、花费 0）。
 - 429、529 → `RateLimited`（Mac 上的跑第一个就停；服务玩家时叙事者按时限的规则处理，`Pipeline.on_rate_limit`）；
   别的 HTTP 错误 → `ModelCallFailed`，只有状态码。
 """
 
 from __future__ import annotations
 
-import asyncio
 import copy
 import json
 import os
@@ -279,23 +279,25 @@ class ClaudeText:
         tag, version = model_and_version(kind)
         p = self.params(kind, request)
         guess = estimate_usd(self.prices, kind, p)
-        self.ledger.before(guess)
-        try:
+        with self.ledger.timed(kind=kind, model=tag, estimate=guess) as bill:
             got = await self.transport.create(p)
-        except asyncio.CancelledError:  # 时限到了被取消：可能已经计费，按预计记
-            self.ledger.add(kind=kind, model=tag, usage={}, cost=guess)
-            raise
-        cost = self.prices.cost(tag, got.usage)
-        self.ledger.add(kind=kind, model=tag, usage=got.usage, cost=cost)
-        if got.stop_reason == "refusal":
+            cost = self.prices.cost(tag, got.usage)
+            bad: str | None = None
+            output: Json = None
+            refused = got.stop_reason == "refusal"
+            if got.stop_reason in ("refusal", "max_tokens"):
+                bad = f"{kind}：Claude 停在 {got.stop_reason}"
+            else:
+                try:
+                    output = json.loads(got.text or "")
+                    jsonschema.validate(output, PROMPTS[kind].schema)
+                except (ValueError, jsonschema.ValidationError):
+                    bad = f"{kind} 的输出不是合 Schema 的 JSON"
+            bill.done(got.usage, cost, ok=bad is None)
+        if refused:  # 安全筛查按有害输入处理（5.5，B-12）；别的提示和 BadOutput 一样重发
             raise Refused(f"{kind}：Claude 拒答", cost)
-        if got.stop_reason == "max_tokens":
-            raise BadOutput(f"{kind}：Claude 停在 {got.stop_reason}", cost)
-        try:
-            output = json.loads(got.text or "")
-            jsonschema.validate(output, PROMPTS[kind].schema)
-        except (ValueError, jsonschema.ValidationError):
-            raise BadOutput(f"{kind} 的输出不是合 Schema 的 JSON", cost) from None
+        if bad is not None:
+            raise BadOutput(bad, cost)
         return TextResult(output, kind, tag, version, dict(got.usage), cost)
 
 
