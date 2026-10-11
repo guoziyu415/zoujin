@@ -329,7 +329,9 @@ class Session:
 
     def act(self, kind: str, target: str | None, params: Mapping[str, Json]) -> Json:
         """动作（api-contract 3.8）：和 `action` 消息一样写一行任务，叙事者判定。还没有 3D 布局的场景里的 `move`
-        （归途、村子：路程和过河跟 S-081 的停靠点一起做，M3）抛 `EvalNotImplemented`，用例记成跳过。"""
+        （归途、村子：路程和过河跟 S-081 的停靠点一起做，M3）抛 `EvalNotImplemented`，用例记成跳过。`move` 的
+        `params.crossing`（过河的走法，E5-008）是评测专用参数：契约 3.8 的 `move` 没有 params，正式客户端不发；走不通时
+        记一条被否决的 move（R2-precondition）。"""
         if kind == "move":
             here = _run(self._state())["vars"]["var.player.location"]
             if self.book.places.get(here, {}).get("sceneRef") not in self.book.scenes:
