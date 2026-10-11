@@ -13,6 +13,7 @@ from typing import Any
 import pytest
 from zoujin_backend import eval_api, s2
 from zoujin_backend.config import REPO
+from zoujin_backend.models.prompts import PROMPTS
 
 from .conftest import Env
 
@@ -51,8 +52,9 @@ def test_fake_model_on_the_public_ten(env: Env, monkeypatch: pytest.MonkeyPatch,
     assert [x["failedRules"] for x in by_id["s2d-06"]["runs"]] == [["R7-capability"]] * 3
     assert all(x["traceId"].startswith("trc_") for x in by_id["s2d-01"]["runs"])
     assert rep["meta"]["checkPromptVersion"].startswith("p") and rep["meta"]["dataset"] == "s2_dev.jsonl"
+    assert rep["meta"]["checkPromptFinal"] is True
     md = (tmp_path / "out" / "report.md").read_text(encoding="utf-8")
-    assert "| 一致率（最差的一次） | 80.0% |" in md and "s2d-02 第 1 次" in md
+    assert "| 一致率（最差的一次） | 80.0% |" in md and "s2d-02 第 1 次" in md and f"`{s2.CHECK_FINAL}`（定稿）" in md
     for item in (json.loads(x) for x in DEV.read_text(encoding="utf-8").splitlines()):
         assert item["turn"]["player"] not in md and item["candidate"]["summary"] not in md  # 不抄原话和摘要
 
@@ -119,6 +121,19 @@ def test_replays_recorded_from_the_fake_give_the_same_report(
     assert run(monkeypatch, env, tmp_path / "missing", runs=1) == s2.EXIT_CONFIG  # 回放缺失：停下
 
 
+def live_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("DATABASE_URL", "postgresql://nobody@127.0.0.1:1/none")
+    monkeypatch.setenv("ZJ_MODEL", "real")
+    monkeypatch.setenv("ZJ_LEDGER", str(tmp_path / "ledger.jsonl"))
+    monkeypatch.setenv("ANTHROPIC_API_KEY", KEY)
+    monkeypatch.setenv("ZJ_CLAUDE_HAIKU", "test-haiku-5-5-marker")
+    monkeypatch.setenv("ZJ_CLAUDE_SONNET", "test-sonnet-5-5-marker")
+
+
+def never(*a: Any, **k: Any) -> None:
+    raise AssertionError("不该起局、调用")
+
+
 @pytest.mark.parametrize(
     ("live", "args"),
     [
@@ -135,12 +150,7 @@ def test_live_gate_only_prints(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    monkeypatch.setenv("DATABASE_URL", "postgresql://nobody@127.0.0.1:1/none")
-    monkeypatch.setenv("ZJ_MODEL", "real")
-    monkeypatch.setenv("ZJ_LEDGER", str(tmp_path / "ledger.jsonl"))
-    monkeypatch.setenv("ANTHROPIC_API_KEY", KEY)
-    monkeypatch.setenv("ZJ_CLAUDE_HAIKU", "test-haiku-5-5-marker")
-    monkeypatch.setenv("ZJ_CLAUDE_SONNET", "test-sonnet-5-5-marker")
+    live_env(monkeypatch, tmp_path)
     if live is None:
         monkeypatch.delenv("ZJ_EVAL_LIVE", raising=False)
     elif live == "no-key":
@@ -148,14 +158,33 @@ def test_live_gate_only_prints(
         monkeypatch.delenv("ANTHROPIC_API_KEY")
     else:
         monkeypatch.setenv("ZJ_EVAL_LIVE", live)
-
-    def never(*a: Any, **k: Any) -> None:
-        raise AssertionError("不该起局、调用")
-
     monkeypatch.setattr(eval_api, "setup", never)
     assert s2.main([str(DEV), "--out", str(tmp_path / "out"), *args]) == 0
     printed = capsys.readouterr().out
     assert "预计花费" in printed and "只打印，不调用" in printed and "zoujin-s2" in printed
     assert KEY not in printed and "marker" not in printed  # 只打印变量名，Key 和模型 ID 不打印
     assert "sonnet-5.5" in printed  # 档名加版本可以
+    assert not (tmp_path / "out").exists() and not (tmp_path / "ledger.jsonl").exists()
+
+
+def test_check_prompt_is_the_final_one() -> None:
+    # 定稿以后改了 check 的文本或 Schema，S-2 的结果就不代表新提示：要数据出新的测量集，再改 s2.CHECK_FINAL（B-2 卡）
+    assert PROMPTS["check"].version == s2.CHECK_FINAL
+
+
+def test_live_runs_other_sets_only_with_the_final_check_prompt(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    live_env(monkeypatch, tmp_path)
+    monkeypatch.setenv("ZJ_EVAL_LIVE", "1")
+    monkeypatch.setattr(eval_api, "setup", never)
+    monkeypatch.setattr(s2, "CHECK_FINAL", "p000000000000")  # 假装提示在定稿以后改过
+    other = tmp_path / "s2_other.jsonl"
+    other.write_bytes(DEV.read_bytes())
+    caps = ["--max-item-usd", "0.5", "--max-claude-usd", "30"]
+    assert s2.main([str(other), "--out", str(tmp_path / "out"), *caps, "--confirm"]) == s2.EXIT_CONFIG
+    got = capsys.readouterr()
+    assert "不是定稿的 p000000000000" in got.err and "预计花费" not in got.out
+    assert s2.main([str(DEV), "--out", str(tmp_path / "out"), *caps]) == 0  # 公开的 10 条照样能调提示
+    assert "预计花费" in capsys.readouterr().out
     assert not (tmp_path / "out").exists() and not (tmp_path / "ledger.jsonl").exists()
