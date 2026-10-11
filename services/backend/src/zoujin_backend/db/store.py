@@ -17,6 +17,7 @@ from zoujin_worldsim import SimState, apply, initial_state
 from zoujin_backend.db.events import from_row
 from zoujin_backend.db.tables import drafts, events, playthrough_metrics, playthroughs, turns, utterances, world_state
 from zoujin_backend.ids import IdGen
+from zoujin_backend.narrator import roles
 from zoujin_backend.world import Book
 
 Json = Any
@@ -33,6 +34,7 @@ async def create_playthrough(c: AsyncConnection, ids: IdGen, *, user_id: str, bo
             world_model_version=book.version,
             role_id=role_id,
             status="active",
+            arrival=roles.start_arrival(book, role_id),  # B-19：开局先开口的人（和幕切换落地同一套）
         )
     )
     await c.execute(insert(playthrough_metrics).values(playthrough_id=pid))
