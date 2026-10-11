@@ -352,10 +352,12 @@ UX 的设计层校对（`ux/reviews/data-world-draft3.md`）已按契约 1.4 落
 | Span | 属性 |
 |---|---|
 | `turn` | playthrough_id、turn_id、character、input_mode（voice / text）、character_text_missing（等满仍没有人物的文字） |
-| `live.session`（B-10，开一次 Live 会话一个） | playthrough_id、character、reason（为什么开：warm / switch / rebuild / rebuild_turns / rebuild_goaway / arrival …，以 `trace.py` 为准）、prompt_version（系统指令文本的哈希）、prompt_chars（系统指令的字数）、status（ok / failed）、duration_ms（建会话用了多久） |
-| `live.turn`（B-10，Live 回答的一轮一个） | playthrough_id、turn_id、character、mode（voice / text）、first_audio_ms（松开到首个音频）、audio_s（这一轮回答的音频秒数）、session_audio_s（会话里这一轮之前已有的音频秒数）、session_turn（会话第几轮）、cost_usd、duration_ms。B-10 评审要再加：tokens_in、tokens_out（对账要分开输入和输出）、interrupted、usage_estimated（用量没到、按预计记的轮）、transcript_source（live / fallback） |
+| `live.session`（B-10，开一次 Live 会话一个） | playthrough_id、character、reason（为什么开：warm / switch / reconnect（B-11 续玩以后第一次开，9.1「续玩」按它分开数）/ arrival / `rebuild_<原因>`（rebuild_turns、rebuild_goaway …）；全部取值以 `trace.py` 为准）、prompt_version（系统指令文本的哈希）、prompt_chars（系统指令的字数）、status（ok / failed）、duration_ms（建会话用了多久） |
+| `live.turn`（B-10，Live 回答的一轮一个） | playthrough_id、turn_id、character、mode（voice / text）、first_audio_ms（松开到首个音频）、audio_s（这一轮回答的音频秒数）、session_audio_s（会话里这一轮之前已有的音频秒数）、session_turn（会话第几轮）、cost_usd、duration_ms、tokens_in、tokens_out（对账要分开输入和输出）、usage_estimated（用量没到、按预计记的轮）、interrupted（玩家打断了）、transcript_source（live / fallback）。Live 断了、人物还没说完的一轮也出一个，带 status="lost"，只有 playthrough_id、turn_id、character、mode、first_audio_ms。没有首个音频时 first_audio_ms 记 -1：算首音 p50 / p95 先去掉 -1 和 lost |
 | `live.note`（B-10，中途给会话送局势变化一次一个） | playthrough_id、character、notes（送了几条） |
-| `monitor.hit`（B-12，人物的一句定稿命中输出监控一次一个） | playthrough_id、turn_id、character、kind（spoiler / harmful）、fact（spoiler 时：事实 ID，命中几条就几个）、category（harmful 时：RAI 的类别）、rebuild（这一句让会话重建了）。不带原话，也不带命中的词 |
+| `monitor.hit`（B-12，人物的一句定稿命中输出监控一次一个） | playthrough_id、turn_id、character、kind（spoiler / harmful）、fact_ids（spoiler 时：命中的事实 ID 列表）、category（harmful 时：RAI 的类别名）、rebuild（这一句让会话重建了）。不带原话，也不带命中的词 |
+| `gateway.resume`（B-11，重连后接手一次一个） | playthrough_id、reconnect（这一局已经说过话，不是开局后第一次连上）、gap_ms（服务端看到的断线到 hello；没有可接手的记 -1）、carried（接手了几个 Live 会话）、recent_turns（带回几轮最近对话）、resume_kind（carried / recent / cold） |
+| `gateway.resume_ready`（B-11，重连后第一次就绪一个） | playthrough_id、duration_ms（hello 到重新就绪，服务端这一段）、reused（Live 会话是接上的，不是新开的） |
 | `narrator.triage` / `narrator.extract` / `narrator.check` / `narrator.rewrite` / `narrator.reply`（B-2；每次调用一个，重发是第二个） | 都有：world_model_version、model、prompt_version、attempt、status（ok / timeout / invalid / error）、duration_ms。tokens_in、tokens_out、tokens_cached、tokens_thought 只在 ok 时有；cost_usd 在 ok、timeout（取消时按预计记账的数）、invalid（已经花掉的）时有，error 没有。叙事者处理的一轮（含评测入口的 `say`）的前四种另有 playthrough_id、turn_id；评测入口的 `check()`（S-2）不带，带运行器给的 trace_id。另加：triage 的 route；extract 的 candidate_count（模型给的候选数）；check 的 candidate_count（这一轮一起送检的候选数）和 failed_rules（模型判 fail 的规则名，ok 时也带）；rewrite 的 mode（rewrite / downgrade）和 failed_rules（只有规则名）；reply 的 character（reply 现在只用在评测入口的 `say`） |
 | `narrator.action`（B-3，一个动作一个） | playthrough_id、turn_id、world_model_version、action_kind（`move` / `examine` / `help` / `give` …）、status（动作的结果：done / refused / partial）、failed_rules（不过的规则名）、piece_id（演了固定演出时）。收幕以后才轮到的动作不判，没有这个 Span |
 | `narrator.narrate`（B-3，动作的一行叙事，每次调用一个） | 同上面五种的公共属性，另有 playthrough_id、turn_id。status 是这次调用的状态，动作的结果看 `narrator.action`。挂着固定演出的动作不叙事，没有这个 Span |
@@ -398,12 +400,12 @@ UX 的设计层校对（`ux/reviews/data-world-draft3.md`）已按契约 1.4 落
 | 结局演出的节奏对不对（S-089） | 演出实际时长（`playMs`）的分布，按 `trigger` 拆；每句点几次（`taps ÷ lines`）；关掉「結末を自動で進める」的比例。R1 用来调「字数 ÷ 7」和「不少于 1.5 秒」（ux-design 11.1）：点得多说明字幕留得太久 | 遥测 `ending_performed` |
 | 意图确认是不是太多（S-040） | 「いや、違う」和超时的比例（UX：> 50% 说明触发太多） | 遥测 `confirm_answered` |
 | 声音交互好不好用 | 麦克风说明后的授权率；语音 / 文字比例（按时段）；取消率、言い直し率、识别改正率（S-025）；无回应率（6 秒档）；松开到听到 p50 / p95（S-017）；打断次数 | Trace、遥测 |
-| 续玩（S-024） | 切后台回来：离开时长、页面被回收的比例、恢复到能操作的用时、WebGL 上下文丢失；从封面「続きから」回到同一局的比例；断线次数和恢复用时 | 遥测 `app_resumed`、`continue_started`、`connection_*` |
+| 续玩（S-024） | 切后台回来：离开时长、页面被回收的比例、恢复到能操作的用时、WebGL 上下文丢失；从封面「続きから」回到同一局的比例；断线次数和恢复用时 | 遥测 `app_resumed`、`continue_started`、`connection_*`（报数用这些，是玩家感受到的）；拆原因看 Trace `gateway.resume`（接手了没有：resume_kind）、`gateway.resume_ready`（服务端那一段）和 `live.session` reason=reconnect |
 | 手机体验（S-014） | LCP、INP、CLS（Safari 和 Chrome 的 INP 口径不同，分开看）；帧时间按渲染器、画质级（L0〜L3）、屏幕尺寸类（`deviceClass`）拆分；每局的起始级、升降次数、最后停在哪一级（D-019，用来校准前端 10.6.3 的升降档阈值和 iPhone 12 的推算系数；iOS 认不出具体机型，这个系数要靠 `probeGpuMs` 的分布加旧机实测一起校）；上下文丢失次数 | 遥测 `web_vitals`、`perf_sample`、`quality_changed` 等 |
 | 成本可持续吗 | 每局费用分布、降级触发率（目标 < 2%，S-019） | `playthrough_metrics` |
 | 玩家知道结局为什么这样吗（PRD §7.5） | 来自试玩问卷；数据按局导出可判分的字段（9.5），「试玩编号 ↔ 局」的对照表由市场调研保管，不进数据库 | 问卷 + 9.5 |
 
-（B-12）「以问句结尾」按人物的一次定稿算（S-023 关心的是把话头推回给玩家，所以只看最后一句）：去掉末尾的引号、括号和空白后以「？」「?」结尾；或者再去掉句号、感叹号、省略号以后以「か」「かい」「かね」「かしら」「のか」「だろうか」「でしょうか」「ですか」「ますか」结尾，但「そうか」「ものか」「ではないか」「じゃないか」不算（附和、反问）。「〜の。」（多半是陈述）和「〜かな。」（自言自语）不算。
+（B-12）「以问句结尾」按人物的一次定稿算（S-023 关心的是把话头推回给玩家，所以只看最后一句）：去掉末尾的引号、括号和空白后以「？」「?」结尾；或者再去掉句号、感叹号、省略号以后以「か」「かい」「かね」「かしら」「のか」「だろうか」「でしょうか」「ですか」「ますか」结尾，但「そうか」「ものか」「ではないか」「じゃないか」「ではありませんか」「じゃありませんか」不算（附和、反问）。Live 的转写可能不带「？」，靠语调的问句会数少，R1 之后人读核一次。「〜の。」（多半是陈述）和「〜かな。」（自言自语）不算。
 
 为了统计幕末选择，`act-transition` 事件带 `exitId`，说出自己的打算时带 `plan`（contracts 第 3 节、2.8.1）。ux-design 17.1 的指标都在上表里，目标值以 ux-design 17.1 为准。
 
@@ -557,7 +559,7 @@ BigQuery 每天一个定时查询，用 `EXTERNAL_QUERY` 直接读 Cloud SQL，�
 
 修订记录：
 
-- **v1.2.9（2026-10-11）**：（v1.2.8 留给契约 1.12 的 #116。）9.3 加 `ending_performed`（UX 11.1 要的三个数：实际播了多久、点了几次、自动往下开没开；另带 `trigger`、`pausedMs`、`lines`），Schema 进 `api/telemetry.schema.json`；9.1 加「结局演出的节奏」，写清问句怎么算。第 3 节 B-12 的列：安全筛查的花费和次数、人物输出监控的次数和分母；`turns.flags` 提交时置空。第 8 节 `live.response` 换成 B-10 代码里的 `live.session` / `live.turn` / `live.note`（另记 B-10 评审要加的五个属性），加 B-12 的 `monitor.hit`，写明安全筛查不出 Span。
+- **v1.2.9（2026-10-11）**：（v1.2.8 留给契约 1.12 的 #116。）9.3 加 `ending_performed`（UX 11.1 要的三个数：实际播了多久、点了几次、自动往下开没开；另带 `trigger`、`pausedMs`、`lines`），Schema 进 `api/telemetry.schema.json`；9.1 加「结局演出的节奏」，写清问句怎么算。第 3 节 B-12 的列：安全筛查的花费和次数、人物输出监控的次数和分母；`turns.flags` 提交时置空。第 8 节 `live.response` 换成 B-10 代码里的 `live.session` / `live.turn` / `live.note`（含 lost 的一轮和 first_audio_ms = -1），加 B-11 的 `gateway.resume` / `gateway.resume_ready`、B-12 的 `monitor.hit`（fact_ids 是列表），写明安全筛查不出 Span。
 - **v1.2.7（2026-10-11）**：第 10 节单局成本按 D-028 和 B-8 每一步的 token 重算（`cost/cost_model.py` 加 Claude 那一版，Gemini 的旧版留给后端的 `cost_addons.py`）：提取、检查用 Sonnet 约 305 日元，超过 300 日元的上限；都换 Haiku 约 183 日元。开发期两本账另见 `cost/m2-model-budget.md`（由新的 `cost/m2_budget.py` 算出）。
 - **v1.2.6（2026-10-11）**：7.3 写清评审员的校准样本（`evals/judge/calibration.jsonl` 50 条，zg 盲标其中 20 条）和两种一致率怎么算，命令 `zoujin-judge`。跟上 D-028（叙事者的文字各步换 Claude）：独立性不再让 Gemini 2.5 Pro 再判，改成第一次真跑以后 zg 再盲标 20 条真回答、评审员比叙事者高一档；R1 起真人对话可以交给 Claude 判（隐私说明写明以后）；评审员和后端共用 Claude 客户端（B-8）。
 - **v1.2.4（2026-10-10）**：按后端 #56 的评审改四处：`turns_timed_out` 也算改写两次都失败；Span 的 token 四项只在 ok 时有，`cost_usd` 在 ok、timeout、invalid 时有；check 的 Span 也带 `failed_rules`；评测入口的 `say` 也带 playthrough_id、turn_id，只有 `check()` 带 trace_id。5.3 `turns` 那一行跟上 B-3 卡（#58）：`request`、`result`，打算的文字随 L1 和结局清空。打算的文字写入前过和事件 `summary` 一样的过滤（B-3 卡第 4 条）。
