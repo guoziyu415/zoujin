@@ -1,10 +1,12 @@
-// The book's cover (frontend-design 5, ux-design 2): 「書をひらく」, or 「続きから」 when a story is open (S-024).
+// The book's cover (frontend-design 5, ux-design 2, 3): 「書をひらく」, or 「続きから」 when a story is open (S-024) with a
+// quiet 「新しく始める」 under it (another role: the start asks before the open story is deleted). Not read: try again.
 // F-1 unlocks audio in this tap; F-2d starts downloading the 3D chunk here.
 import { useQuery } from "@tanstack/react-query";
 import { navigate } from "../app/router";
 import { meQuery } from "../app/queries";
 import { track } from "../telemetry/telemetry";
 import { copy, fill } from "../ui/copy";
+import { ReadFailed, readFailed } from "../ui/ReadFailed";
 
 // 「約束の日・夕方」 → day 約束の日, band 夕方
 export function dayBand(tLabel: string): { day: string; band: string } {
@@ -49,12 +51,16 @@ export default function CoverScreen() {
                 ...dayBand(active.tLabel),
               })}
             </p>
+            <button className="quiet" onClick={() => navigate("/roles")}>
+              {copy["cover.new"]}
+            </button>
           </>
         ) : (
           <button className="primary" onClick={() => navigate("/roles")}>
             {copy["cover.open"]}
           </button>
         ))}
+      {readFailed(me) && <ReadFailed onRetry={() => void me.refetch()} />}
     </main>
   );
 }

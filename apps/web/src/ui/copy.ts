@@ -14,6 +14,7 @@ export const copy = {
   "cover.open": "書をひらく",
   "cover.resume": "続きから",
   "cover.resumeMeta": "{role}として・{day}の{band}",
+  "cover.new": "新しく始める",
   "start.conflict": "続きの物語があります",
   "start.conflict.resume": "続きから",
   "start.conflict.new": "新しく始める",
@@ -64,6 +65,7 @@ export const copy = {
   "net.lost":
     "通信が切れました。ここまでの物語は保存されています。つながったら、同じ場面から続きます。",
   "net.retry": "もう一度つなぐ",
+  "net.failed": "通信できませんでした。",
   "tab.taken": "別の画面でこの物語が開かれました",
   "tab.takeBack": "この画面で続ける",
   "resume.tap": "タップして続ける",

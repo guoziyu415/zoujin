@@ -146,6 +146,31 @@ test("starting while a story is open (409): continue it, or delete it and start 
   await expect(page).toHaveURL(`${ORIGIN}/play/${fresh}`);
 });
 
+test("an open story: the cover offers a quiet 新しく始める; a snapshot that doesn't come can be read again", async ({
+  page,
+}) => {
+  const pid = await startStory(page);
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "続きから" })).toBeVisible();
+  await page.getByRole("button", { name: "新しく始める" }).click();
+  await expect(page).toHaveURL(`${ORIGIN}/roles`);
+
+  // the story page can't read the snapshot once, then can
+  expectedStatus = ["401", "409", "503"];
+  let down = true;
+  await page.route(`**/v1/playthroughs/${pid}/snapshot`, (route) =>
+    down ? route.fulfill({ status: 503, body: "" }) : route.continue(),
+  );
+  await page.goto(`/play/${pid}`);
+  const lost = page.getByRole("alert").filter({ hasText: "通信が切れました" });
+  await expect(lost).toBeVisible();
+  down = false;
+  await lost.getByRole("button", { name: "もう一度つなぐ" }).click();
+  await expect(lost).toHaveCount(0);
+  await expect(page.getByTestId("sunband")).toHaveText("約束の日・夕方");
+  await expect(page.getByText("人に近づくと話せます")).toBeVisible();
+});
+
 test("one typed turn: subtitles, a light reaction, the clock moves", async ({
   page,
 }) => {

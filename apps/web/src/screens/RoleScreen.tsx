@@ -1,5 +1,6 @@
 // Who the player enters the town as (frontend-design 5, ux-design 3), then the start (2.2). A story already open
-// (409) asks 「続きから」 or 「新しく始める」; the latter confirms in place, deletes the old one, then starts.
+// (409) asks once, on the role the player picked, 「続きから」 or 「新しく始める」; the latter confirms in place, deletes
+// the old one, then starts that role. The other roles wait meanwhile. The roles not read: try again.
 import type { Api } from "@zoujin/contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -9,10 +10,16 @@ import { uuid } from "../net/ids";
 import { ApiError, rest } from "../net/rest";
 import { track } from "../telemetry/telemetry";
 import { copy, fill } from "../ui/copy";
+import { ReadFailed, readFailed } from "../ui/ReadFailed";
 import { dayBand } from "./CoverScreen";
 
 type Problem =
-  | { kind: "conflict"; active: Api.ActivePlaythrough; confirming: boolean }
+  | {
+      kind: "conflict";
+      roleId: string; // the role whose start met the open story
+      active: Api.ActivePlaythrough;
+      confirming: boolean;
+    }
   | { kind: "message"; text: string };
 
 export default function RoleScreen() {
@@ -36,7 +43,7 @@ export default function RoleScreen() {
       void qc.invalidateQueries({ queryKey: meQuery.queryKey });
       enter(res.playthroughId);
     } catch (err) {
-      setProblem(problemOf(err));
+      setProblem(problemOf(err, roleId));
     } finally {
       setBusy(false);
     }
@@ -53,7 +60,7 @@ export default function RoleScreen() {
         (err.status === 404 || err.code === "not_found")
       )) {
         setBusy(false);
-        setProblem(problemOf(err));
+        setProblem(problemOf(err, roleId));
         return;
       }
     }
@@ -65,11 +72,14 @@ export default function RoleScreen() {
     <main className="screen">
       <h1 style={{ fontSize: 20 }}>{copy["role.title"]}</h1>
       <p className="note">{copy["role.lead"]}</p>
+      {readFailed(manifest) && (
+        <ReadFailed onRetry={() => void manifest.refetch()} />
+      )}
       {roles.map((r) => (
         <section className="card" key={r.roleId}>
           <strong>{r.name}</strong>
           <p className="note">{r.summary}</p>
-          {problem?.kind === "conflict" ? (
+          {problem?.kind === "conflict" && problem.roleId === r.roleId ? (
             <Conflict
               problem={problem}
               busy={busy}
@@ -81,7 +91,7 @@ export default function RoleScreen() {
           ) : (
             <button
               className="primary"
-              disabled={busy}
+              disabled={busy || problem?.kind === "conflict"}
               onClick={() => void start(r.roleId)}
             >
               {fill(copy["role.start"], { role: r.name })}
@@ -145,11 +155,12 @@ function Conflict(p: {
 }
 
 // api-contract 5 → what the screen says; the server's message is already a short Japanese line
-function problemOf(err: unknown): Problem {
+function problemOf(err: unknown, roleId: string): Problem {
   if (err instanceof ApiError) {
     if (err.code === "active_playthrough_exists" && err.body?.activePlaythrough)
       return {
         kind: "conflict",
+        roleId,
         active: err.body.activePlaythrough,
         confirming: false,
       };

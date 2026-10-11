@@ -24,6 +24,7 @@ export default function PlayScreen({ pid }: { pid: string }) {
   const qc = useQueryClient();
   const manifest = useQuery(manifestQuery);
   const [failed, setFailed] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0); // 「もう一度つなぐ」 reads the snapshot again
   const names = useMemo(
     () =>
       Object.fromEntries(
@@ -79,7 +80,7 @@ export default function PlayScreen({ pid }: { pid: string }) {
         resumeGate: false,
       });
     };
-  }, [pid, qc]);
+  }, [pid, qc, attempt]);
 
   useEffect(() => play.setNames(names), [names]);
   useResume();
@@ -96,7 +97,15 @@ export default function PlayScreen({ pid }: { pid: string }) {
         <WorldReactionToast />
         {failed && (
           <div className="banner" role="alert">
-            {failed}
+            <span>{failed}</span>
+            <button
+              onClick={() => {
+                setFailed(null);
+                setAttempt((n) => n + 1);
+              }}
+            >
+              {copy["net.retry"]}
+            </button>
           </div>
         )}
       </div>

@@ -55,6 +55,15 @@ button {
   border-radius: 24px;
   border: 1px solid var(--accent);
 }
+.quiet {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  color: var(--paper-2);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
 .primary {
   background: var(--accent);
   color: var(--ink);
