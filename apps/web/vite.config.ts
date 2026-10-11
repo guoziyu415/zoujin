@@ -218,6 +218,8 @@ export default defineConfig({
         // (about 3 KB more brotli). Only the listed modules, not their dependencies (react stays in the shell); the lazy
         // ones stay out (the road's extras, water and run segments, the act-end page's prefetch, the ending's staging, the crowd past
         // its presence check, the realistic characters' bodies, the castle's lamps, the start probe, the team's tools in dev/).
+        // castle/hall.ts stays in: the village's interiors import it eagerly and it calls sunLook at load, so a separate
+        // chunk would import world while world imports it, and the cycle crashes on entering the world.
         codeSplitting: {
           groups: [
             {
@@ -229,7 +231,7 @@ export default defineConfig({
                 )
                   ? !id.includes("libs/basis")
                   : /[\\/]src[\\/]three[\\/]/.test(id) &&
-                    !/scene[\\/](extra|land|clouds|prefetch)|quality[\\/]probe|[\\/](water|dev|castle|road)[\\/]|cast[\\/]CastBody|ending[\\/](?!Guard)|crowd[\\/](?!presence)/.test(
+                    !/scene[\\/](extra|land|clouds|prefetch)|quality[\\/]probe|[\\/](water|dev|road)[\\/]|castle[\\/](?!hall\.)|cast[\\/]CastBody|ending[\\/](?!Guard)|crowd[\\/](?!presence)/.test(
                       id,
                     ),
             },
