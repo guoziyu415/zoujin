@@ -180,12 +180,18 @@ cmd_setup() {
       --region="$REGION" --storage-type=SSD --storage-size=10 --availability-type=zonal \
       --backup-start-time=18:00 --deletion-protection --root-password="$(rand_hex 24)" "${PA[@]}"
   fi
+  local i state=""
+  for ((i = 0; i < 60; i++)); do # 上次 gcloud 等不及先退出了，实例可能还在建
+    state="$(gcloud sql instances describe "$SQL" "${PA[@]}" --format='value(state)')"
+    [[ "$state" == RUNNABLE ]] && break
+    sleep 20
+  done
+  [[ "$state" == RUNNABLE ]] || die "数据库实例还没好（$state），过一会儿再跑"
   say "密钥"
-  if ! has_secret "$SEC_OWNER"; then
-    local pw
-    pw="$(rand_hex 24)"
-    printf '%s' "$pw" | new_secret "$SEC_OWNER"
-    run gcloud sql users create zj_owner --instance="$SQL" --password="$pw" "${PA[@]}"
+  has_secret "$SEC_OWNER" || rand_hex 24 | tr -d '\n' | new_secret "$SEC_OWNER"
+  # 账号单独查：上次可能存了密钥、没建成账号
+  if ! gcloud sql users list --instance="$SQL" "${PA[@]}" --format='value(name)' | grep -qx zj_owner; then
+    run gcloud sql users create zj_owner --instance="$SQL" --password="$(secret "$SEC_OWNER")" "${PA[@]}"
   fi
   local c
   c="$(conn)"
@@ -216,6 +222,10 @@ cmd_build() {
   say "取 $ref"
   run git -C "$REPO" fetch origin main
   sha="$(git -C "$REPO" rev-parse "$ref^{commit}")"
+  if [[ -n "$IMAGE" && "${BUILT_SHA:-}" == "$sha" && "${ZJ_REBUILD:-}" != 1 ]]; then
+    say "提交 ${sha:0:7} 的镜像已经构建过，跳过（场景包换过要重建：ZJ_REBUILD=1）"
+    return 0
+  fi
   if [[ -d "$WT" ]]; then
     run git -C "$WT" checkout --detach --force "$sha"
     run git -C "$WT" clean -fdx -e node_modules -e .venv
@@ -272,10 +282,11 @@ cmd_migrate() {
   say "两个应用账号的权限"
   ZJ_OWNER_URL="$(owner_url)" ZJ_GW_URL="$(secret "$SEC_GW")" ZJ_NR_URL="$(secret "$SEC_NR")" \
     in_wt python -I "$HERE/dbsetup.py" grants
-  if [[ ! -s "$STATE/smoke-code" ]]; then # 冒烟专用的账号：每次部署开一局再删掉
-    DATABASE_URL="$(owner_url "$DB")" in_wt zoujin-admin invite create --count 1 >"$STATE/smoke-code" ||
-      die "冒烟用的邀请码没建成"
-  fi
+  # 冒烟专用的账号：up、promote 各开一局再删掉，删了也算一天 5 局的次数（S-019），所以每次 migrate 换一个新的，
+  # 重跑几次也不会撞上 429
+  DATABASE_URL="$(owner_url "$DB")" in_wt zoujin-admin invite create --count 1 >"$STATE/smoke-code.new" &&
+    [[ -s "$STATE/smoke-code.new" ]] || die "冒烟用的邀请码没建成"
+  mv "$STATE/smoke-code.new" "$STATE/smoke-code"
   proxy_down
   trap - EXIT
   say "migrate 完成"
@@ -330,7 +341,8 @@ cmd_up() {
   url="$(tag_url "$GW")"
   url="${url:-$(url_of "$GW")}"
   [[ -n "$OPENED" ]] || bearer="$(gcloud auth print-identity-token)" # 还是私有服务：带 zg 的身份过 IAM
-  smoke smoke "$url" "$bearer" || die "冒烟没过：新版本没接流量（或服务还是私有的），线上不受影响；修好再跑 build、up"
+  smoke smoke "$url" "$bearer" ||
+    die "冒烟没过：新版本没接流量（或服务还是私有的），线上不受影响；修好再跑 all（是 429 次数用完就先跑 migrate 换冒烟账号）"
   save CANDIDATE "$IMAGE"
   say "up 完成：下一步 promote"
 }
