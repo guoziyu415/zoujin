@@ -16,6 +16,9 @@ $BPY melos_prep.py <melos.blend> <tex_dir from melos_tex.py> <out.blend>
   instead of a smooth helmet). Round 4: 1 cm thinner on top, still round; a few of the front cards copied smaller
   onto the forehead and temples, so the hairline is no longer a straight line; the scalp tinted after the AO bake,
   to the hair's colour a little darker (the roots), since between the cards it showed reddish and lighter than them.
+  Round 5: three curls on the forehead, each tapering to a point, with a small contact shadow painted at its root.
+- Brows (round 5): graded to the hair's colour as drawn (every texel past the alpha cut); graded on the dense middle
+  only, as the hair is, they showed three times lighter than the hair.
 - Specular: the tunic and the hair reflect half as much at grazing angles (KHR_materials_specular 0.5); at the
   default the bands and the card edges caught the blue sky as a rim (UX round 4). The tunic is fully rough.
 - Dust from a day on the road, by height on the body: feet and shins below the knee, the tunic's hem, the sandals.
@@ -42,6 +45,7 @@ $BPY melos_prep.py <melos.blend> <tex_dir from melos_tex.py> <out.blend>
   packed), then unused data purged.
 """
 
+import math
 import os
 import sys
 
@@ -83,7 +87,10 @@ DUST = (152, 134, 110)
 SUN_FADED = (196, 160, 116)
 AO = {"Body": (0.5, 0.06), "Tunic": (0.85, 0.08)}  # strength, distance (m)
 HAIR_DROP = 0.010  # m off the top (UX round 4)
-HAIR_CURLS = 14  # cards copied onto the forehead and temples
+HAIR_CURLS = 3  # cards copied onto the forehead (UX round 5: two or three)
+CURL_X = 0.05  # across the forehead only, not the temples
+CURL_TAPER = 0.75  # how far a curl's lower corners are drawn together
+CURL_ROOT_R, CURL_ROOT_DARK = 0.002, 0.35  # the contact shadow at a curl's root: radius (m), darkening at its middle
 ROOTS = 0.8  # the scalp: the hair's mean colour times this
 FOLD_DARK = 0.1  # fold valleys in the colour map
 AO_SAMPLES = 48
@@ -352,31 +359,58 @@ def hair_thin_top(hair, body, z0, drop=HAIR_DROP):
     return {"top": round(top, 4), "top_after": round(float(new[:, 2].max()), 4), "pull": round(pull, 3)}
 
 
-def hairline_curls(hair, body, eye, n=HAIR_CURLS, seed=11):
-    """UX round 4: the cards' lower edge drew a straight line across the forehead. n of the lowest cards along it are
-    copied, half to two thirds the size, 0.4-1.4 cm lower on the forehead and temples, turned at random about the
-    skin's normal: an uneven hairline with a few small curls. Corners kept 3 mm off the skin (it moves with the brows,
-    the hair doesn't)."""
+def hairline_curls(hair, body, eye, tex, n=HAIR_CURLS, seed=11):
+    """UX round 4: the cards' lower edge drew a straight line across the forehead. A few of the lowest cards along it
+    are copied, half the size, a little lower on the forehead, turned at random about the skin's normal: an uneven
+    hairline. Round 5: three of them, one each on the left, middle and right of the forehead (a stray one on the
+    temple read as a scratch); each tapers to a point (its lower corners drawn together), so the end fades out
+    instead of stopping blunt. Corners kept 3 mm off the skin (it moves with the brows, the hair doesn't). Returns
+    the root of each (where it leaves the hairline), for root_shadows(). Of the lowest cards in each strip, the one
+    with the most hair drawn on it (alpha past the cut): a sparse one showed as a faint dash under a root shadow that
+    read as a mole."""
     bvh = _skin_bvh(body)
     rng = np.random.default_rng(seed)
     bm = bmesh.new()
     bm.from_mesh(hair.data)
+    uvl = bm.loops.layers.uv.active
+    alpha = image_pixels(tex)[..., 3]  # rows bottom-up, like v
+    th, tw = alpha.shape
+
+    def drawn(f):
+        uv = [lp[uvl].uv for lp in f.loops]
+        if len(uv) != 4:
+            return 0.0
+        s = np.linspace(0.1, 0.9, 7)
+        pts = [(uv[0] * (1 - a) + uv[1] * a) * (1 - b) + (uv[3] * (1 - a) + uv[2] * a) * b for a in s for b in s]
+        return float(np.mean([alpha[min(th - 1, int(p.y * th)) % th, min(tw - 1, int(p.x * tw)) % tw] > 0.5 for p in pts]))
+
     cards = [f for f in bm.faces if all(len(e.link_faces) == 1 for e in f.edges)]
     cen = np.array([f.calc_center_median()[:] for f in cards])
-    idx = np.flatnonzero((cen[:, 1] < eye[1] + 0.05) & (np.abs(cen[:, 0]) < 0.085))
-    strips = np.digitize(cen[idx, 0], np.linspace(-0.085, 0.085, 8))
-    pool = [j for b in np.unique(strips) for j in idx[strips == b][np.argsort(cen[idx[strips == b], 2])[:3]]]
-    lowest = []
-    for i in rng.choice(pool, size=min(n, len(pool)), replace=False):
+    idx = np.flatnonzero((cen[:, 1] < eye[1] + 0.05) & (np.abs(cen[:, 0]) < CURL_X))
+    strips = np.digitize(cen[idx, 0], np.linspace(-CURL_X, CURL_X, n + 1)[1:-1])
+    pick = []
+    for b in range(n):
+        mine = idx[strips == b]
+        if len(mine):
+            low = mine[np.argsort(cen[mine, 2])[:4]]
+            pick.append(int(max(low, key=lambda i: drawn(cards[i]))))
+    scores = [round(drawn(cards[i]), 2) for i in pick]
+    lowest, roots = [], []
+    for i in pick:
         c = Vector(cen[i])
         _, n0, _, d0 = bvh.find_nearest(c)
-        q1, n1, _, _ = bvh.find_nearest(c - Vector((0, 0, rng.uniform(0.004, 0.014))))
+        q1, n1, _, _ = bvh.find_nearest(c - Vector((0, 0, rng.uniform(0.003, 0.008))))
         rot = Quaternion(n1, rng.uniform(-0.6, 0.6)) @ n0.rotation_difference(n1)
-        size = rng.uniform(0.5, 0.7)
+        size = rng.uniform(0.45, 0.6)
         centre = q1 + n1 * min(d0, 0.008)
         verts = [g for g in bmesh.ops.duplicate(bm, geom=[cards[i]])["geom"] if isinstance(g, bmesh.types.BMVert)]
         for v in verts:
             v.co = centre + rot @ ((v.co - c) * size)
+        # the tip: the two lowest corners drawn most of the way together
+        low = sorted(verts, key=lambda v: v.co.z)[:2]
+        mid = (low[0].co + low[1].co) / 2
+        for v in low:
+            v.co = mid + (v.co - mid) * (1 - CURL_TAPER)
         lift = 0.0
         for v in verts:
             q, nq, _, _ = bvh.find_nearest(v.co)
@@ -384,10 +418,42 @@ def hairline_curls(hair, body, eye, n=HAIR_CURLS, seed=11):
         for v in verts:
             v.co += n1 * lift
         lowest.append(min(v.co.z for v in verts))
+        top = sorted(verts, key=lambda v: -v.co.z)[:2]
+        roots.append(bvh.find_nearest((top[0].co + top[1].co) / 2)[0])
     bm.to_mesh(hair.data)
     bm.free()
     hair.data.update()
-    return {"cards": len(lowest), "pool": len(pool), "lowest_z": round(min(lowest), 4)}
+    return {"cards": len(lowest), "lowest_z": round(min(lowest), 4), "drawn": scores}, roots
+
+
+def root_shadows(body, skin, roots, radius=CURL_ROOT_R, dark=CURL_ROOT_DARK):
+    """A little contact shadow on the skin where each forehead curl leaves the hairline (UX round 5: 1-2 mm): the
+    colour map darkened in a soft spot round each root."""
+    bvh = _skin_bvh(body)
+    me = body.data
+    uvl = me.uv_layers[0].data
+    w, h = skin.size
+    px = image_pixels(skin)  # rows bottom-up, like the UV v axis
+    yy, xx = np.mgrid[0:h, 0:w]
+    done = 0
+    for r in roots:
+        _, _, fi, _ = bvh.find_nearest(r)
+        p = me.polygons[fi]
+        co = [me.vertices[i].co for i in p.vertices]
+        uv = [Vector(uvl[i].uv) for i in p.loop_indices]
+        wts = [1.0 / max(1e-5, (c - r).length) for c in co]
+        at = sum((u * k for u, k in zip(uv, wts)), Vector((0, 0))) / sum(wts)
+        uv_area = abs(sum(uv[k].x * uv[(k + 1) % len(uv)].y - uv[(k + 1) % len(uv)].x * uv[k].y
+                          for k in range(len(uv)))) / 2
+        texels_per_m = math.sqrt(uv_area * w * h / max(p.area, 1e-9))
+        rad = max(1.5, radius * texels_per_m)
+        d2 = ((xx - at.x * w) ** 2 + (yy - at.y * h) ** 2) / rad**2
+        m = (np.exp(-2 * d2) * dark)[..., None]
+        px[..., :3] *= 1 - m
+        done += 1
+    skin.pixels.foreach_set(px.ravel())
+    skin.pack()
+    return done
 
 
 def wool_uv(ob):
@@ -595,6 +661,16 @@ def tunic_textures(ob):
     for name, k in (("wool", 1.0), ("bundle", 0.55)):  # the bundle's contact with the back and its knot left dark stains
         u0, u1, v0, v1 = NEW_UV[name]
         own[(u >= u0) & (u < u1) & (v >= v0) & (v < v1)] = k
+    # the layers behind the rope (melos_clothes_v5.py marks them): hidden at bake time, their AO is nearly black, and
+    # where they come through the skirt top in a pose they made a dark band under the rope (UX round 5, item 2). They
+    # take the skirt's colour
+    attr = ob.data.attributes.get("__inner")
+    if attr is not None:
+        flags = np.zeros(len(ob.data.polygons), np.int32)
+        attr.data.foreach_get("value", flags)
+        inner = face_mask(ob, base, lambda p: 1.0 if flags[p.index] else None, 1)
+        own *= 1.0 - inner
+        report["tunic_inner_faces"] = int(flags.sum())
     darken(base, bake_ao(ob, size, AO["Tunic"][1]), AO["Tunic"][0] * own)
     report["part_means"] = grade_parts(ob, base)
     for img in (base, nrm):
@@ -633,8 +709,13 @@ for name in ("Body", "Eyes", "EyesLow", "Teeth", "Tongue", "Hair", "Brows", "Las
         report["cornea_faces_removed"] = drop_cornea(OBJ[name], img[name])
 body, skin = OBJ["Body"], img["Body"]
 report["skin_gain"] = grade(skin, face_mask(body, skin, lambda p: 1.0, 0) > 0.5, SKIN, SKIN_SAT)
-for name in ("Hair", "Brows"):
-    report[name.lower() + "_gain"] = grade(img[name], image_pixels(img[name])[..., 3] > 0.9, HAIR)
+report["hair_gain"] = grade(img["Hair"], image_pixels(img["Hair"])[..., 3] > 0.9, HAIR)
+# the brows the hair's colour as it is drawn (UX round 5: they read three times lighter than the hair): what shows is
+# every texel past the alpha cut, not only the dense middle the hair grade looks at
+hp = image_pixels(img["Hair"])
+hair_drawn = tuple(float(x) for x in (to_srgb(to_lin(hp[hp[..., 3] > 0.5, :3]).mean(0)) * 255))
+report["brows_gain"] = grade(img["Brows"], image_pixels(img["Brows"])[..., 3] > 0.5, hair_drawn)
+report["brows_target"] = [round(x) for x in hair_drawn]
 nrm_path = os.path.join(os.path.dirname(os.path.abspath(out)), "skin_nrm.png")
 cover = face_mask(body, skin, lambda p: 1.0, 0)[::-1] > 0.5
 report["skin_normal_lean_deg"] = skin_normal(skin, nrm_path, cover)
@@ -642,7 +723,7 @@ attach_normal(body, nrm_path)
 report["hair_clumps_max_m"] = hair_clumps(OBJ["Hair"])
 eye = np.mean([v.co[:] for v in OBJ["Eyes"].data.vertices], axis=0)
 report["hair_top"] = hair_thin_top(OBJ["Hair"], body, float(eye[2]))
-report["hair_curls"] = hairline_curls(OBJ["Hair"], body, eye)
+report["hair_curls"], curl_roots = hairline_curls(OBJ["Hair"], body, eye, img["Hair"])
 bz = z_of(body)
 legs = face_mask(body, skin, lambda p: 0.5 * np.clip((KNEE_Z - bz[list(p.vertices)].mean()) / 0.42, 0, 1) ** 0.8, 6)
 mix_towards(skin, legs, DUST)
@@ -650,6 +731,7 @@ OBJ["EyesLow"].hide_render = True  # the low eyes sit in the same place as the h
 darken(skin, bake_ao(body, min(2048, skin.size[0]), AO["Body"][1]), AO["Body"][0])
 OBJ["EyesLow"].hide_render = False
 report["scalp_faces"] = scalp_tint(body, skin, img["Hair"])  # after the AO: the hair's cards darkened it unevenly
+report["curl_root_shadows"] = root_shadows(body, skin, curl_roots)
 skin.pack()
 report["wool_uv"] = wool_uv(OBJ["Tunic"])
 tunic_textures(OBJ["Tunic"])
