@@ -106,7 +106,10 @@ has_api() { gcloud services list --enabled "${PA[@]}" --format='value(config.nam
 has_repo() { gcloud artifacts repositories describe "$AR_REPO" --location="$REGION" "${PA[@]}" >/dev/null 2>&1; }
 has_sa() { gcloud iam service-accounts describe "$1" "${PA[@]}" >/dev/null 2>&1; }
 has_sql() { gcloud sql instances describe "$SQL" "${PA[@]}" >/dev/null 2>&1; }
-has_secret() { gcloud secrets describe "$1" "${PA[@]}" >/dev/null 2>&1; }
+has_# 有能接流量的版本才能 --no-traffic；第一次上线失败留下的空服务按第一次处理（还是私有的）
+has_ready() { [[ -n "$(gcloud run services describe "$1" --region="$REGION" "${PA[@]}" \
+  --format='value(status.latestReadyRevisionName)' 2>/dev/null)" ]]; }
+secret() { gcloud secrets describe "$1" "${PA[@]}" >/dev/null 2>&1; }
 has_service() { gcloud run services describe "$1" --region="$REGION" "${PA[@]}" >/dev/null 2>&1; }
 secret() { gcloud secrets versions access latest --secret="$1" "${PA[@]}"; }
 conn() { gcloud sql instances describe "$SQL" "${PA[@]}" --format='value(connectionName)'; }
@@ -262,6 +265,9 @@ EOF
   rm -rf "$ctx/web/scenes" # 场景包由网关按带版本的地址从 /app/scenes 发（B-7），dist 里那份不要
   cp -RL "$packs" "$ctx/scenes"
   find "$ctx/scenes" -name '*.md' -delete
+  # 脚本的 umask 077 让拼出来的都是 700/600，COPY 会照搬，镜像里的 app 用户（uid 10001）就读不到代码和场景包；
+  # 构建目录里只有提交的代码、前端构建和场景包，没有密钥
+  chmod -R u=rwX,go=rX "$ctx"
   say "构建镜像（linux/amd64）并推送"
   local img
   img="$REGION-docker.pkg.dev/$P/$AR_REPO/app:${sha:0:7}-$(date +%Y%m%d%H%M%S)"
@@ -315,7 +321,7 @@ cmd_up() {
   c="$(conn)"
   common_env >"$STATE/env-narrator.yaml"
   say "叙事者（只许网关的服务账号调）"
-  if has_service "$NR"; then flags=(--no-traffic --tag="$TAG"); else flags=(--no-allow-unauthenticated); fi
+  if has_ready "$NR"; then flags=(--no-traffic --tag="$TAG"); else flags=(--no-allow-unauthenticated); fi
   run gcloud run deploy "$NR" --image="$IMAGE" --region="$REGION" "${PA[@]}" "${flags[@]}" \
     --service-account="$SA_NR_EMAIL" --ingress=all --add-cloudsql-instances="$c" \
     --command=/app/.venv/bin/zoujin-narrator --args=--host,0.0.0.0,--port,8080 --port=8080 \
@@ -330,7 +336,7 @@ cmd_up() {
     printf '%s: "%s"\n' ZJ_LIVE real ZJ_NARRATOR_URL "$(url_of "$NR")" FORWARDED_ALLOW_IPS "*"
   } >"$STATE/env-gateway.yaml"
   say "网关（新版本不接流量；第一次是私有服务）"
-  if has_service "$GW"; then flags=(--no-traffic --tag="$TAG"); else flags=(--no-allow-unauthenticated); fi
+  if has_ready "$GW"; then flags=(--no-traffic --tag="$TAG"); elif [[ -z "$OPENED" ]]; then flags=(--no-allow-unauthenticated); else flags=(--allow-unauthenticated); fi # bash 3.2 + set -u：空数组展开会报错
   run gcloud run deploy "$GW" --image="$IMAGE" --region="$REGION" "${PA[@]}" "${flags[@]}" \
     --service-account="$SA_GW_EMAIL" --ingress=all --add-cloudsql-instances="$c" --port=8080 \
     --env-vars-file="$STATE/env-gateway.yaml" \
