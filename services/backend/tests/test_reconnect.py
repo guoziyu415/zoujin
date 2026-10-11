@@ -8,15 +8,15 @@ from zoujin_backend.gateway.ws import again
 
 Json = Any
 
-TALK = {"push": [{"type": "turn_settled", "turnId": "turn_a"}], "seq": 4}
-CHOSEN = {
+TALK: Json = {"push": [{"type": "turn_settled", "turnId": "turn_a"}], "seq": 4}
+CHOSEN: Json = {
     "push": [
         {"type": "set_piece", "pieceId": "piece.x", "lines": []},
         {"type": "act_transition", "fromActId": "act.1", "toActId": "act.4"},
     ],
     "seq": 9,
 }
-PLANNED = {
+PLANNED: Json = {
     "push": [
         {"type": "act_plan_result", "clientMsgId": "c1", "accepted": True},
         {"type": "act_transition", "fromActId": "act.1", "toActId": "act.4"},
