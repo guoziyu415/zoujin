@@ -46,7 +46,7 @@ uv run zoujin-admin replay pt_…    # 用事件重建世界状态，和缓存�
 
 ## Live 会话（B-10）
 
-- `ZJ_LIVE`（`fake` / `real`，没设跟 `ZJ_MODEL`）：`real` 只在 zg 的 Mac 上，要 `ZJ_VERTEX_PROJECT`、`ZJ_VERTEX_LOCATION`（同 B-2）和 ZJ_LEDGER、ZJ_MAX_GOOGLE_USD（同 B-2）。`ZJ_LIVE_REBUILD_TURNS`（7〜10，默认 8）、`ZJ_LIVE_THINKING`（默认 minimal）、`ZJ_LIVE_TRANSCRIBE_HINTS=0`（setup 被拒时去掉 ja-JP 和偏置词）、`ZJ_LIVE_LOCATION`（默认 us-central1）。
+- `ZJ_LIVE`（`fake` / `real`，没设跟 `ZJ_MODEL`）：`real` 只在 zg 的 Mac 上，要 `ZJ_VERTEX_PROJECT`、`ZJ_VERTEX_LOCATION`（同 B-2）和 ZJ_LEDGER、ZJ_MAX_GOOGLE_USD（同 B-2）。`ZJ_LIVE_REBUILD_TURNS`（7〜10，默认 8）、`ZJ_LIVE_THINKING`（默认不设：设了思考等级 Vertex 以 1007「项目不在允许名单」拒，S-090 的 `zoujin-live probe` 实测；拿到名单后可设 minimal）、`ZJ_LIVE_TRANSCRIBE_HINTS=0`（setup 被拒时去掉 ja-JP 和偏置词）、`ZJ_LIVE_LOCATION`（默认 us-central1）。
 - 代码：`models/gemini_live.py`（真 Live 客户端，直接用 websockets）、`gateway/voice.py`（预热、切换、每 N 轮和 GoAway 的无感重建、中途断了、中途更新局势、闲置、花费）、`gateway/brief.py`（系统指令，规则在 `models/prompt_texts/live.txt`）、`gateway/fallback.py`（补转写）。测试里的假 Vertex Live 服务是 `tests/fake_vertex_live.py`。
 - `uv run zoujin-live check [--confirm]`：Mac 上开一条真会话说两轮，打印时间和用量。`uv run zoujin-live reconcile --ledger … --item b10 --out …`：S-090 的对账。
 
