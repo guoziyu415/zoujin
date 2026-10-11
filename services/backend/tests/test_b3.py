@@ -404,6 +404,17 @@ def test_wait_settles_to_the_next_beat_and_its_result_waits_for_the_commit(game:
     assert early == [] and types(late) == types(result["push"]) == ["set_piece", "action_result"]
 
 
+def test_wait_with_no_beat_left_here_waits_until_the_act_closes(game: Callable[..., Game]) -> None:
+    """beat.04 以后广场上没有节拍了（beat.05〜07 在王城）：`wait` 等到收幕，途中的节拍照常结算，出幕末。"""
+    g = game("sc.canon@beat.04", place="place.syracuse-square")
+    step = g.s.act("wait", None, {})
+    assert step["status"] == "done"
+    st = g.s.state()
+    assert st["beats"].get("beat.07") == "happened" or st["t"] == 1560  # 第一幕 end：onBeats beat.07 / atLatest 1560
+    assert g.row()["act_end"] is not None
+    assert g.s.act("wait", None, {})["status"] == "refused"  # 收了幕不再等
+
+
 # —— 第 4 组：收幕和幕末 ——
 
 

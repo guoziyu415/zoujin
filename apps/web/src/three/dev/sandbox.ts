@@ -19,13 +19,20 @@ const PLACES = [
   "place.execution-ground",
 ];
 
+// a scene whose player lands somewhere else than the plaza's corner, and the clock it opens on unless ?t says
+const LANDING: Record<string, { place: string; spot: string; t: number }> = {
+  // the night of the promise, 20:30 (beat.05, F-14)
+  "castle-throne": { place: "place.castle", spot: "gate-in", t: 1230 },
+};
+
 export function startSandbox(): void {
   const q = new URLSearchParams(location.search);
   const scene = q.get("scene");
+  const landing = scene ? LANDING[scene] : undefined;
   const player = {
     roleId: "role.traveler",
-    place: "place.syracuse-square",
-    spot: "plaza-southwest",
+    place: landing?.place ?? "place.syracuse-square",
+    spot: landing?.spot ?? "plaza-southwest",
   };
   const world: WorldData = {
     playthroughId: "pt_SANDBOX",
@@ -34,14 +41,19 @@ export function startSandbox(): void {
     actId: q.get("act") ?? "act.1",
     sceneId: scene ? `scene.${scene}` : "scene.syracuse-square",
     clock: {
-      t: Number(q.get("t") ?? 1050),
+      t: Number(q.get("t") ?? landing?.t ?? 1050),
       tLabel: "約束の日・夕方",
       deadlineT: 5460,
     },
     deadline: { shown: false },
     forecast: null,
     player,
-    places: Object.fromEntries(PLACES.map((id) => [id, { enabled: true }])),
+    places: Object.fromEntries(
+      [...PLACES, ...(landing ? [landing.place] : [])].map((id) => [
+        id,
+        { enabled: true },
+      ]),
+    ),
     characters: {},
     interactables: [],
     actions: [],

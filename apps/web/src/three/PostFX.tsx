@@ -31,7 +31,8 @@ export function PostFX() {
 
   useFrame(() => {
     post.out.uniforms.uNight!.value = lightState.night;
-    gl.toneMappingExposure = lightState.exposure * lightState.faceExposure;
+    gl.toneMappingExposure =
+      lightState.exposure * lightState.faceExposure * lightState.zoneExposure;
     // under half a millimetre and a hundredth of a degree: the follow camera's easing has settled
     const still =
       camera.position.distanceToSquared(last.pos) < 2.5e-7 &&

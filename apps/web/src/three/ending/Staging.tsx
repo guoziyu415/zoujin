@@ -40,6 +40,7 @@ import {
   toMark,
   toWorld,
 } from "./script";
+import type { CastId } from "../crowd/Crowd";
 
 const TURN = 5; // rad/s
 const CARD = { w: 1080, h: 640 }; // the ending card's picture (S-055)
@@ -171,9 +172,21 @@ export default function Staging({ scene }: { scene: LoadedScene }) {
     group.add(rope);
     stage.rope = rope;
 
-    stage.crowd = import("../crowd/CrowdLayer").then((m) =>
-      crowdVerbs(m.whenCrowd(), frame),
-    );
+    // the guards, the executioner and the maiden on the crowd's bodies once it stands (F-4: helmet and spear, bare
+    // arms, veil and bundle), their stand-ins hidden; without the crowd's pack they stay stand-ins
+    let unbind = () => {};
+    stage.crowd = import("../crowd/CrowdLayer").then((m) => {
+      void m.whenCrowd().then((c) => {
+        const bound: CastId[] = [];
+        for (const [id, a] of stage.actors)
+          if (CAST.includes(id as CastId) && c.cast(id as CastId, a.obj)) {
+            bound.push(id as CastId);
+            for (const o of a.obj.children) o.visible = false;
+          }
+        unbind = () => bound.forEach((id) => c.cast(id, null));
+      });
+      return crowdVerbs(m.whenCrowd(), frame);
+    });
 
     const bridge: StageBridge = {
       shot: (n) => startShot(n),
@@ -265,6 +278,7 @@ export default function Staging({ scene }: { scene: LoadedScene }) {
     startShot(1);
     setStageBridge(bridge);
     return () => {
+      unbind();
       offStory();
       setStageBridge(null);
       rig.stage = null;
@@ -417,6 +431,8 @@ export default function Staging({ scene }: { scene: LoadedScene }) {
 
   return null;
 }
+
+const CAST: CastId[] = ["guardN", "guardS", "executioner", "maiden"];
 
 // the crowd's verbs in the stage's marks (F-4: Crowd.wave / cheer / part / settle take world x, z)
 type CrowdVerbs = {

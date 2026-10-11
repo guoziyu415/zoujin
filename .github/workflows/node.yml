@@ -71,3 +71,5 @@ jobs:
       - run: |
           for p in road-river-calm road-river-flood; do node assets/pipeline/plaza/check_scene.mjs assets/scenes/$p; done
           node assets/pipeline/road/check_road.mjs assets/scenes/road-common assets/scenes/road-river-calm assets/scenes/road-river-flood assets/scenes/road-river
+      # 王城（F-14）
+      - run: node assets/pipeline/plaza/check_scene.mjs assets/scenes/castle-throne

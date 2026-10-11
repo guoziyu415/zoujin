@@ -126,7 +126,7 @@ def build(
         out += ["", "# 気をつけること"]
         out += [f"- {x}" for x in notes]
     out += ["", "# 話し相手", f"{me['name']}（{'顔見知り' if me['knownToYou'] else '初めて会う相手'}）"]
-    out += roles.brief_lines(book, state["role"], who, state["t"])  # B-19
+    out += roles.brief_lines(book, state, who)  # B-19
     said = [r for r in recent if r.player or r.reply]
     if said:
         out += ["", "# さっきまでの会話"]

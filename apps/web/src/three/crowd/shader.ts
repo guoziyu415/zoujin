@@ -6,7 +6,10 @@
 //   iSkin, iCloth, iCloth2, iHair = the colours of the parts (aPart 0 skin, 1 cloth, 2 the outer piece, 3 hair; 4 the
 //   eyes: half the skin's colour, as EYE_SHADE in build_crowd.py; white eyes read as the dead, black ones as sharp
 //   slits: UX; 5 the men's beard: iFace.x of the way from the skin to the hair)
-//   iPlace = (x, y, z, yaw): where the person stands and which way they face; iScale = (breadth, height)
+//   iPlace = (x, y, z, yaw): where the person stands and which way they face
+//   iScale = (breadth, height, the outer piece, what they carry): the outer piece 0 none (the executioner, bareheaded),
+//   1 as built, 2 the working man's cap drawn up into the guards' cone helmet (uCap: its centre, rim and height);
+//   carried 1 the spear (parts 6, 7), 2 the bundle (8), anything else folded away (props.ts)
 //   iFace = (beard, the head's width, its depth): the head scaled round its joint (uHead); with the beards, faces that
 //   differ (UX: all the faces the same). One attribute for the three: WebGL gives a vertex 16 at least, and no more
 import {
@@ -28,14 +31,32 @@ const common = /* glsl */ `
 uniform highp sampler2D uBones;
 uniform float uTime;
 uniform vec4 uHead;
+uniform vec4 uCap;
+attribute float aPart;
 attribute vec4 skinIndex;
 attribute vec4 skinWeight;
 attribute vec4 iClip;
 attribute vec4 iPrev;
 attribute float iSwitch;
 attribute vec4 iPlace;
-attribute vec2 iScale;
+attribute vec4 iScale;
 attribute vec3 iFace;
+bool crowdGone() {
+  if (aPart > 1.5 && aPart < 2.5) return iScale.z < 0.5;
+  if (aPart > 5.5 && aPart < 7.5) return abs(iScale.w - 1.0) > 0.5;
+  if (aPart > 7.5) return abs(iScale.w - 2.0) > 0.5;
+  return false;
+}
+vec3 crowdShape(vec3 p) {
+  if (crowdGone()) return uHead.xyz;
+  if (aPart > 1.5 && aPart < 2.5 && iScale.z > 1.5) {
+    float h = max(p.y - uCap.y, 0.0);
+    float k = clamp(h / uCap.w, 0.0, 1.0);
+    p.xz = uCap.xz + (p.xz - uCap.xz) * (1.06 - 0.7 * k * k);
+    p.y = uCap.y + h * 2.4;
+  }
+  return p;
+}
 vec3 crowdHead(vec3 p) {
   vec4 on = vec4(equal(skinIndex, vec4(uHead.w)));
   float w = dot(on, skinWeight);
@@ -77,6 +98,7 @@ export type CrowdUniforms = {
   uBones: { value: DataTexture };
   uTime: { value: number };
   uHead: { value: Vector4 }; // the head joint at rest (x, y, z) and the head bone's index
+  uCap: { value: Vector4 }; // the outer piece's centre x, its lowest y, centre z, its height (the cap's, for the helmet)
 };
 
 function patch(
@@ -87,6 +109,7 @@ function patch(
   sh.uniforms.uBones = u.uBones;
   sh.uniforms.uTime = u.uTime;
   sh.uniforms.uHead = u.uHead;
+  sh.uniforms.uCap = u.uCap;
   sh.vertexShader = sh.vertexShader.replace(
     "#include <common>",
     `#include <common>\n${common}`,
@@ -94,7 +117,7 @@ function patch(
   if (depth) {
     sh.vertexShader = sh.vertexShader.replace(
       "#include <begin_vertex>",
-      "mat4 crowdM = crowdSkin();\nvec3 transformed = crowdPlace( ( crowdM * vec4( crowdHead( position ), 1.0 ) ).xyz );",
+      "mat4 crowdM = crowdSkin();\nvec3 transformed = crowdPlace( ( crowdM * vec4( crowdHead( crowdShape( position ) ), 1.0 ) ).xyz );",
     );
     return;
   }
@@ -102,15 +125,15 @@ function patch(
   sh.vertexShader = sh.vertexShader
     .replace(
       "#include <common>",
-      "#include <common>\nattribute float aPart;\nattribute vec3 iSkin;\nattribute vec3 iCloth;\nattribute vec3 iCloth2;\nattribute vec3 iHair;\nvarying vec3 vTint;\nvarying float vNear;",
+      "#include <common>\nattribute vec3 iSkin;\nattribute vec3 iCloth;\nattribute vec3 iCloth2;\nattribute vec3 iHair;\nvarying vec3 vTint;\nvarying float vNear;",
     )
     .replace(
       "#include <beginnormal_vertex>",
-      "mat4 crowdM = crowdSkin();\nvec3 objectNormal = crowdTurn( normalize( mat3( crowdM ) * normal ) );\nvNear = distance( cameraPosition.xz, ( modelMatrix * vec4( iPlace.xyz, 1.0 ) ).xz );\nvTint = aPart < 0.5 ? iSkin : aPart < 1.5 ? iCloth : aPart < 2.5 ? iCloth2 : aPart < 3.5 ? iHair : aPart < 4.5 ? iSkin * 0.5 : mix( iSkin, iHair, iFace.x );",
+      "mat4 crowdM = crowdSkin();\nvec3 objectNormal = crowdTurn( normalize( mat3( crowdM ) * normal ) );\nvNear = distance( cameraPosition.xz, ( modelMatrix * vec4( iPlace.xyz, 1.0 ) ).xz );\nvTint = aPart < 0.5 ? iSkin : aPart < 1.5 ? iCloth : aPart < 2.5 ? iCloth2 : aPart < 3.5 ? iHair : aPart < 4.5 ? iSkin * 0.5 : aPart < 5.5 ? mix( iSkin, iHair, iFace.x ) : aPart < 6.5 ? vec3( 0.16, 0.1, 0.06 ) : aPart < 7.5 ? vec3( 0.05, 0.05, 0.05 ) : iCloth * 0.85;",
     )
     .replace(
       "#include <begin_vertex>",
-      "vec3 transformed = crowdPlace( ( crowdM * vec4( crowdHead( position ), 1.0 ) ).xyz );",
+      "vec3 transformed = crowdPlace( ( crowdM * vec4( crowdHead( crowdShape( position ) ), 1.0 ) ).xyz );",
     );
   sh.fragmentShader = sh.fragmentShader
     .replace(

@@ -65,4 +65,11 @@ def test_the_opening_aid_leaves_the_brief_after_the_start_act() -> None:
 
 def test_other_characters_get_only_the_address() -> None:
     state = initial_state(BOOK.world, "role.apprentice")
-    assert roles.brief_lines(BOOK, "role.apprentice", "char.king", state["t"]) == ["呼び方：おまえ／弟子よ"]
+    assert roles.brief_lines(BOOK, state, "char.king") == ["呼び方：おまえ／弟子よ"]
+
+
+def test_a_done_aid_leaves_the_brief() -> None:
+    state = initial_state(BOOK.world, "role.traveler")
+    assert any("家まで送る" in x for x in roles.brief_lines(BOOK, state, "char.old-man"))
+    state["vars"]["var.player.walkedOldManHome"] = True
+    assert roles.brief_lines(BOOK, state, "char.old-man") == ["呼び方：旅の方"]
