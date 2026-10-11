@@ -145,6 +145,7 @@ def _ending(request: Mapping[str, Any]) -> Json:
     beats = request.get("changedBeats") or []
     fate = (request.get("place") or {}).get("fate", "elsewhere")
     return {
+        "variant": None,
         "epilogue": epilogue,
         "contrast": {
             "original": "原作では、物語は書かれたとおりに進んだ。",
@@ -163,6 +164,7 @@ def _ending(request: Mapping[str, Any]) -> Json:
             {
                 "character": c["character"],
                 "yours": [{"sentence": f"{c['name']}の一日は、こうして暮れた。", "cites": last}],
+                "claims": [],
             }
             for c in request.get("characters", [])
             if not c.get("unchanged")
@@ -207,6 +209,7 @@ DEFAULTS: dict[str, Callable[[Mapping[str, Any]], Json]] = {
         "alternative": {"exit": r["options"][0]["optionId"]} if r.get("options") else None,
     },
     "ending": _ending,
+    "ending-check": lambda r: {"coherent": True, "fields": []},  # B-17：默认讲得通
     "memory": _memory,  # B-13：事件的摘要截短（假模型不分人物视角）
     "keeps": _keeps,
 }
