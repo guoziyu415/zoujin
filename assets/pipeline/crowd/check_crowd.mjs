@@ -1,6 +1,6 @@
 // CI gate for the crowd pack (F-4): the budgets (assets/budgets.json "crowd"), and a pack the runtime
 // (apps/web/src/three/crowd/pack.ts) can read: every offset inside crowd.bin, the weights of a vertex adding to 255,
-// bone and vertex indices in range, the parts 0-3.
+// bone and vertex indices in range, the parts 0-4.
 // node check_crowd.mjs <dir with crowd.json> [--manifest <committed crowd.json>]
 // With crowd.bin next to crowd.json (a fresh build) its size and sha256 are checked and every vertex is read; with
 // crowd.json alone (the committed manifest) the recorded numbers are checked, and the script it was built from must
@@ -42,7 +42,12 @@ for (const [name, c] of costumes) {
     fail(`${name}: ${c.joints?.length} joints for ${bones.length} bones`);
   if (c.vertices > 65535) fail(`${name}: too many vertices for u16 indices`);
   for (const [b, x, y, z] of c.fist ?? [])
-    if (!(b < bones.length) || Math.abs(Math.hypot(x, y, z) - 1) > 0.01)
+    if (
+      !Number.isInteger(b) ||
+      b < 0 ||
+      b >= bones.length ||
+      Math.abs(Math.hypot(x, y, z) - 1) > 0.01
+    )
       fail(`${name}: fist bone ${b} or its axis`);
 }
 
@@ -74,7 +79,7 @@ if (fs.existsSync(bin)) {
           fail(`${name}: vertex ${v} bone ${buf[idx + v * 4 + k]}`);
       }
       if (sum !== 255) fail(`${name}: vertex ${v} weights add to ${sum}`);
-      if (buf[parts + v] > 3)
+      if (buf[parts + v] > 4)
         fail(`${name}: vertex ${v} part ${buf[parts + v]}`);
       if (errors.length > 20) break;
     }

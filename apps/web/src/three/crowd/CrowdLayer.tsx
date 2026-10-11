@@ -26,13 +26,22 @@ const SPOTS = [
   "ground-west",
   "king-west",
 ];
-const GAP = 0.75;
+const GAP = 0.7;
+// how far to either side of the line from the post to the gate: the crowd a block in front of the scaffold, from its
+// front and the foot of its steps back, between it and whoever comes from the gate (UX on #139 and #148: 「群衆を
+// かきわけ」 needs a wall of people in front of the post, not a few spread wide)
+const WIDTH = 3.5;
+// the scaffold, ahead of the stake spot / to either side (assets/pipeline/plaza/build_plaza.py: the platform's front
+// 0.8 m ahead, 1.5 m to the side; the steps to 2.2 m ahead, 0.9 m to the side), with half a body's room
+const PLATFORM = [1.25, 1.95];
+const STEPS = [2.6, 1.25];
 
 // the scene's crowd, for the staging and the test hook
 export const crowdRef: { current: Crowd | null } = { current: null };
 let waiting: ((c: Crowd) => void)[] = [];
 // the crowd once it stands (its pack may still be on the way when the staging starts): a cue given before then is
-// played as soon as it's there, not dropped (data on #139)
+// played as soon as it's there, not dropped (data on #139). The staging chains its cue on it (whenCrowd().then), never
+// awaits it in line; a scene left before its crowd stood drops what was waiting (CrowdLayer unmounts)
 export function whenCrowd(): Promise<Crowd> {
   const c = crowdRef.current;
   return c ? Promise.resolve(c) : new Promise((done) => waiting.push(done));
@@ -44,13 +53,13 @@ export function crowdSpec(scene: LoadedScene, count: number, seed = 1) {
     Plan[] | undefined;
   const post = manifest.spots[POST]?.pos;
   if (!zone || !post) return null;
-  const clear: Clear[] = [{ at: [post[0], post[2]], r: 3 }];
+  const clear: Clear[] = [];
   for (const s of SPOTS) {
     const p = manifest.spots[s]?.pos;
     if (p) clear.push({ at: [p[0], p[2]], r: GAP + 0.15 });
   }
-  // in front of the post, on the gate's side of it: from a metre and a half on, to a metre short of where the king
-  // watches from (king-west: 「群衆の背後から」, C-18)
+  // in front of the post, on the gate's side of it: off the scaffold and its steps, to a metre short of where the king
+  // watches from (king-west: 「群衆の背後から」, C-18), and at most WIDTH to either side
   const gate = manifest.spots[GATE]?.pos;
   const king = manifest.spots["king-west"]?.pos;
   let keep: ((p: Plan) => boolean) | undefined;
@@ -59,8 +68,17 @@ export function crowdSpec(scene: LoadedScene, count: number, seed = 1) {
     const [gx, gz] = [(gate[0] - post[0]) / len, (gate[2] - post[2]) / len];
     const ahead = (x: number, z: number) =>
       (x - post[0]) * gx + (z - post[2]) * gz;
+    const side = (x: number, z: number) =>
+      Math.abs((z - post[2]) * gx - (x - post[0]) * gz);
     const far = king ? ahead(king[0], king[2]) - 1 : Infinity;
-    keep = ([x, z]: Plan) => ahead(x, z) > 1.5 && ahead(x, z) < far;
+    const off = (a: number, s: number, [front, half]: number[]) =>
+      a >= front! || s >= half!;
+    keep = ([x, z]: Plan) => {
+      const [a, s] = [ahead(x, z), side(x, z)];
+      return (
+        a > 0 && a < far && s < WIDTH && off(a, s, PLATFORM) && off(a, s, STEPS)
+      );
+    };
   }
   return {
     zone,
@@ -110,6 +128,12 @@ export default function CrowdLayer({
       crowd?.dispose();
     };
   }, [crowd]);
+  useEffect(
+    () => () => {
+      waiting = [];
+    },
+    [],
+  );
   useFrame(({ clock }) => crowd?.update(clock.elapsedTime));
   return crowd ? <primitive object={crowd} /> : null;
 }

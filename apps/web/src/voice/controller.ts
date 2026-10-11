@@ -3,7 +3,7 @@
 // messages about turns and the character's voice frames; the HUD calls its verbs through net/play.ts. It writes the
 // voice store and drives the audio through AudioPort, so its tests run without a browser's audio.
 import type { Api } from "@zoujin/contracts";
-import type { AudioPort, Clip } from "../audio/engine";
+import { isCrowd, type AudioPort, type Clip } from "../audio/engine";
 import { micFrame, MIC_FRAME_MS, readVoice } from "../audio/frames";
 import { turnId as newTurnId } from "../net/ids";
 import { addNarration, useVoice, type Line, type Turn } from "../stores/voice";
@@ -955,13 +955,13 @@ export class VoiceController {
 
   // a prerecorded line on its own (not an answer): its words follow it, segment by segment
   private sayClip(character: string, clip: Clip): void {
-    if (this.audio.playClip(clip))
+    if (this.audio.playClip(clip, undefined, isCrowd(character)))
       this.showLine(character, clip.text, clip.durationMs, `clip:${clip.url}`);
   }
 
   // a fixed line with its recording, or with no recording its words alone at reading pace; how long it takes
   private sayLine(character: string, text: string, clip?: Clip): number {
-    if (clip && this.audio.playClip(clip)) {
+    if (clip && this.audio.playClip(clip, undefined, isCrowd(character))) {
       this.showLine(character, text, clip.durationMs, `clip:${clip.url}`);
       return clip.durationMs;
     }

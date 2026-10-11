@@ -6,10 +6,10 @@
    "version": "2.0.18",
    "commit": "d0a32e57a7f915cb2f2b95410e2117648c7bbb7e"
   },
-  "assets/pipeline/crowd/build_crowd.py": "9e25b2539c6a1d588ef643946a66ab356b0ef4cc9f1eeb50109d044eeb14c968"
+  "assets/pipeline/crowd/build_crowd.py": "da19c7e94f895e880ac2671625be076dbdc890afc0d473a72b02b98b37110550"
  },
  "frame": "three.js: metres, +Y up, the person facing +Z, their left at +X",
- "layout": "per costume at offset: position f32x3, normal i16x3+pad (snorm), skinIndex u8x4, skinWeight u8x4 (sums to 255), part u8 (0 skin, 1 cloth, 2 outer piece, 3 hair); then u16 indices at indexOffset",
+ "layout": "per costume at offset: position f32x3, normal i16x3+pad (snorm), skinIndex u8x4, skinWeight u8x4 (sums to 255), part u8 (0 skin, 1 cloth, 2 outer piece, 3 hair, 4 eyes); then u16 indices at indexOffset",
  "bones": [
   {
    "name": "pelvis",
@@ -182,18 +182,18 @@
  ],
  "costumes": {
   "mantle": {
-   "vertices": 1871,
+   "vertices": 1880,
    "offset": 0,
-   "indices": 9804,
-   "indexOffset": 54260,
-   "triangles": 3268,
+   "indices": 9813,
+   "indexOffset": 54520,
+   "triangles": 3271,
    "min": [
     -0.2794,
     -0.0006,
-    -0.1364
+    -0.1362
    ],
    "max": [
-    0.2823,
+    0.2879,
     1.7405,
     0.3203
    ],
@@ -553,15 +553,15 @@
    ]
   },
   "veil": {
-   "vertices": 1887,
-   "offset": 73868,
-   "indices": 9600,
-   "indexOffset": 128592,
-   "triangles": 3200,
+   "vertices": 1763,
+   "offset": 74148,
+   "indices": 9000,
+   "indexOffset": 125276,
+   "triangles": 3000,
    "min": [
     -0.2285,
     0.0003,
-    -0.126
+    -0.1147
    ],
    "max": [
     0.2296,
@@ -924,18 +924,18 @@
    ]
   },
   "worker": {
-   "vertices": 1695,
-   "offset": 147792,
-   "indices": 9060,
-   "indexOffset": 196948,
-   "triangles": 3020,
+   "vertices": 1696,
+   "offset": 143276,
+   "indices": 9048,
+   "indexOffset": 192460,
+   "triangles": 3016,
    "min": [
-    -0.2451,
+    -0.2481,
     -0.0006,
     -0.103
    ],
    "max": [
-    0.2465,
+    0.2481,
     1.7575,
     0.3133
    ],
@@ -1295,6 +1295,6 @@
    ]
   }
  },
- "bytes": 215068,
- "sha256": "700b3cd5ffd1ab6436fbe465574c5342f92c0c00add33862b6383f581ebc9829"
+ "bytes": 210556,
+ "sha256": "c55df50d191ad7ae9c4eee307c31d36a5692ce4693edd5b07caf2710d6c67700"
 }
