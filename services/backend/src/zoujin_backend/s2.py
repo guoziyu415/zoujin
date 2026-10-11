@@ -20,6 +20,7 @@
   每条的花费记在 `s2/<这次的标签>/<条目 ID>` 下，单项上限按它算（同一条的几次合计）。
 - 账本到上限（`BudgetStop`）、第一个 429 或 529（`RateLimited`）：停下，已跑的照样出报告，退出码 3。回放缺失、配置不对：
   退出码 2。
+- 检查提示定稿以后（`CHECK_FINAL`），公开的 10 条以外的标注集（留出集）只用定稿的提示跑真模型，不是定稿的退出码 2。
 - 没有默认的标注集路径，也不知道留出集在哪：路径由跑的人给。报告里只有条目 ID、标注的判定和规则、自检的判定、规则、
   理由和 trace ID，不抄条目的原话和摘要；留出集跑出来的报告和回放先交数据（B-2 卡「留出样本的规矩」）。
 """
@@ -52,6 +53,11 @@ GATE_AGREEMENT = 0.90
 LIVE_ENV = "ZJ_EVAL_LIVE"
 RESULTS = "results.jsonl"
 META = "meta.json"
+# 检查提示定稿（B-2 卡「定稿」）：2026-10-11 在 Mac 上跑公开的 10 条 × 3 次，Sonnet 三次都 100%，Haiku 最差的一次 90%，
+# 锚点都没漏，两档都过门槛。定稿以后再改 check 的文本或 Schema，这次 S-2 就不代表新提示：要数据出新的测量集
+# （`evals/s2/README.md`），再改这里。
+CHECK_FINAL = "p48aa3f14c44b"
+DEV_SET = "s2_dev.jsonl"  # 公开的 10 条：调提示用，不管定稿没有
 
 
 def parse(argv: Sequence[str] | None) -> argparse.Namespace:
@@ -155,6 +161,7 @@ def start(args: argparse.Namespace, items: Sequence[Json], settings: Settings) -
         "items": len(items),
         "runs": args.runs,
         "checkPromptVersion": PROMPTS["check"].version,
+        "checkPromptFinal": PROMPTS["check"].version == CHECK_FINAL,
         "checker": checker(True),
         "model": settings.model,
     }
@@ -212,6 +219,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         items = load(args.dataset)
         live = settings.model == "real"
         if live:
+            version = PROMPTS["check"].version
+            if args.dataset.name != DEV_SET and version != CHECK_FINAL:
+                raise ConfigError(f"检查提示 {version} 不是定稿的 {CHECK_FINAL}：公开的 10 条以外只用定稿的提示跑")
             if not gate(args, settings, os.environ, len(items), argv):
                 return 0
             os.environ["ZJ_MAX_CLAUDE_USD"] = repr(args.max_claude_usd)
@@ -403,7 +413,8 @@ def markdown(rep: Json) -> str:
         "",
         f"- 标注集：`{m['dataset']}`（sha256 {m['datasetSha256'][:12]}），{n} 条："
         f"违规 {s['violations']}、合规 {n - s['violations']}",
-        f"- 检查提示：`{m['checkPromptVersion']}`（checker `{m['checker']}`），"
+        f"- 检查提示：`{m['checkPromptVersion']}`{'（定稿）' if m.get('checkPromptFinal') else '（不是定稿）'}"
+        f"（checker `{m['checker']}`），"
         f"模型模式 {m['model']}，每条 {m['runs']} 次",
         f"- 状态：{status}。开始 {m['startedAt']}，结束 {rep['finishedAt']}",
         "",
