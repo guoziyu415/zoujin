@@ -2,7 +2,7 @@
 
 1. 没有 Mac 上的开关（环境变量 ZJ_EVAL_LIVE=1，只在 zg 的 Mac 上设）就退出，打印原因。
 2. 上限必须显式传入，没有默认值：--max-item-usd（单项）和两本账各一个总上限 --max-google-usd、--max-claude-usd。
-   少一个就退出。两本账（PM 2026-10-10，Claude 额度）：产品路径的 Gemini 记 google，评审员和 AI 玩家记 claude。
+   少一个就退出。两本账（D-028 以后）：Live、预录句和文字模式的人物回答记 google，叙事者、评审员和 AI 玩家记 claude。
 3. 不带 --confirm：打印预计花费和完整命令后退出。由协调拿给 zg 看，zg 同意后才带 --confirm 再跑。
 4. 带 --confirm：退出，打印「真模型的客户端还没有，M2 接上」。
 """
@@ -34,9 +34,9 @@ def _cost(d: Mapping[str, Any]) -> Cost:
 
 @dataclass(frozen=True)
 class Prices:
-    turn: Cost  # 一步：人物回答 + 叙事者提取、检查、记忆（产品路径）
+    turn: Cost  # 一步：人物回答（google）+ 叙事者各步（claude）
     judge: Cost  # 判分一次（评审员）
-    simulated_playthrough: Cost  # 一局模拟局：产品路径 + AI 玩家 + 结局
+    simulated_playthrough: Cost  # 一局模拟局：人物回答（google）+ 叙事者、结局、AI 玩家（claude）
 
     @classmethod
     def from_json(cls, d: Mapping[str, Any]) -> Prices:
