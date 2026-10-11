@@ -42,8 +42,10 @@ export default function EndingScreen({ pid }: { pid: string }) {
       ),
     [manifest.data],
   );
-  // the role of this playthrough (kept from the staging); after a reload, the only role if there is one; else none
-  const roleId = useStory((s) => s.ending?.roleId ?? null);
+  // the role of this playthrough (kept from the staging, and in this tab's storage for a reload: the whole game has
+  // three roles, F-17); else the only role if there is one; else none
+  const staged = useStory((s) => s.ending?.roleId ?? null);
+  const roleId = useMemo(() => keptRole(pid, staged), [pid, staged]);
   const roles = manifest.data?.roles ?? [];
   const role =
     roles.find((r) => r.roleId === roleId)?.name ??
@@ -304,4 +306,15 @@ function CharacterEnd({
       )}
     </div>
   );
+}
+
+// sessionStorage can be missing or throw (private windows): the role then falls back as above
+function keptRole(pid: string, staged: string | null): string | null {
+  const key = `zoujin.role.${pid}`;
+  try {
+    if (staged) sessionStorage.setItem(key, staged);
+    return staged ?? sessionStorage.getItem(key);
+  } catch {
+    return staged;
+  }
 }

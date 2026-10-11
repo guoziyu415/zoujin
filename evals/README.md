@@ -10,7 +10,7 @@
 |---|---|
 | `seeds/E1.jsonl` 〜 `seeds/E8.jsonl` | 用例，一行一例（生成出来的，不要手改） |
 | `gen_seeds.py` | 用例的编写源。改用例改这里，再跑 `python3 -I evals/gen_seeds.py evals/seeds` |
-| `slice/E*.jsonl`、`gen_slice.py` | 切片用例（S-077 ⑨，世界模型 `1.0.0-slice`）：现有用例里切片玩得到的 27 例（旅人、原著路径、第一幕或跳到三日目 17:30 以后、旅人能去的地点、只和老爺和梅洛斯说话），加切片专用 12 例（编号 101 起：送老爺回家（说话和按钮）、两个去处的跳转和落点、没送过时没有那个去处、幕末打算成行和不成行、城门口进不去也不会被抓、跳过去以后照原作到日没、老爺还记得你）。生成出来的，不要手改；改了种子要重跑 `gen_slice.py` |
+| `slice/E*.jsonl`、`gen_slice.py` | 切片用例（S-077 ⑨，世界模型 `1.0.0-slice`）：现有用例里切片玩得到的 27 例（旅人、原著路径、第一幕或跳到三日目 17:30 以后、旅人能去的地点、只和老爺和梅洛斯说话），加切片专用 22 例（编号 101 起：送老爺回家（说话和按钮）、两个去处的跳转和落点、没送过时没有那个去处、幕末打算成行和不成行、城门口进不去也不会被抓、跳过去以后照原作到日没、老爺还记得你；E7-101〜110 是 S-5 的 10 局模拟局）。生成出来的，不要手改；改了种子要重跑 `gen_slice.py` |
 | `personas.json` | 模拟局用的 AI 玩家画像，11 个（E5、E7 和后端 spike S-5 用）；（1.5）`persona.melos-helper` 一心帮梅洛斯赶上，用来看刑场一幕的演法分布 |
 | `../packages/worldsim/reference/check_evals.py` | 用例自检（不调模型） |
 | `../packages/worldsim/` | 推演规则（contracts 2.4.1、2.5.1）的包 `zoujin_worldsim`（W-1）。世界模型校验、用例自检和叙事者共用这一份，所以这里的脚本用 `uv run python` 跑 |
@@ -22,7 +22,7 @@
 | `gen_selfharm.py` | 上面样本的编写源，自带自检。改样本改这里，再跑 `python3 -I evals/gen_selfharm.py evals/safety/s4_selfharm.jsonl --existing ../backend/spikes/zj_spike/data/s4_samples.jsonl` |
 | `safety/s4_selfharm_holdout.jsonl`、`gen_selfharm_holdout.py` | 自伤分类器的留出验证样本 25 条和它的编写源。**只用来验已定稿的 v3，不拿它改提示**；跑法见脚本开头。S-072（2026-10-07）已经用它验过 v3，用过一次，所以搬进了仓库；下一版分类器要另写新的留出样本 |
 | `s2/`、`gen_s2_dev.py`、`s2_check.py` | S-2 叙事者自检准确率：公开样例 10 条、生成器、格式自检和确定性规则的最简判法。格式和计分见 `s2/README.md` |
-| `src/zoujin_evals/`、`pyproject.toml` | 评测运行器（E-0）：读用例、经后端的 `eval_api` 跑、28 种确定性检查、报告、`live` 的开关。用法见下面「运行器」 |
+| `src/zoujin_evals/`、`pyproject.toml` | 评测运行器（E-0）：读用例、经后端的 `eval_api` 跑、28 种确定性检查、报告、`live`、模拟局的 AI 玩家。用法见下面「运行器」 |
 | `config/live-cost.json` | `live` 模式估算花费用的单价，按两本账分（D-028 以后：`google` 人物的文字回答，`claude` 叙事者、评审员和 AI 玩家）；推算值，由 `docs/data/cost/m2_budget.py` 算出，M2 跑完第一批后换成账本的实数 |
 | `judge/calibration.jsonl` | 评审员的校准样本 48 条（data-design 7.3）：切片 24 个判分用例各 2 条回答，数据标的分和理由；`zgSample` 的 20 条给 zg 盲标。手写的，见下面「评审员」 |
 | `judge/replays/` | 评审员判过的回放（Mac 上跑完再提交）。Claude 那本账按模型档的单价 B-8 起在共用包里：`packages/llm/src/zoujin_llm/claude-prices.json`，叙事者和评审员只用这一份 |
@@ -213,7 +213,7 @@ uv run zoujin-eval --slice --mode fake --deterministic-only   # 切片用例（e
 - **后端还没有 `eval_api` 时**每例都记「跳过：后端未实现（eval_api）」，不崩。setup 或某一步抛 `EvalNotImplemented("名字")`（或会话上没有那个方法）= 整例跳过，只试一次；某个查询没实现 = 只有用到它的检查跳过。
 - **一次运行**：步骤从 1 起按顺序编号（检查里的 `step`、`fromStep` 就是这个号）。后端抛 `ReplayMissing` 或超时（文字 600 秒、语音和模拟局 1800 秒，超时重试一次）只跳过这一次；别的异常算这一次不过，报告里写出异常。
 - **检查的结果**是过、不过、跳过三种之一，跳过带原因：后端未实现（名字）、要真模型、回放缺失或过期、无原话（`characterTextMissing`）、超时。一次运行：有一条不过就是不过；没有不过、有跳过（或什么都没判）就是跳过；全过才是过。
-- **模拟局**（`persona` + `seed`）：后端只按它定身份、起点和假模型的种子，AI 玩家在运行器里按画像逐步走，玩家说过的话运行器自己记（2026-10-10 和后端定）。AI 玩家要真模型，现在后端接受了这种 setup 也记「跳过：要真模型」；B-0 还不接受，整例记「后端未实现（persona）」。
+- **模拟局**（`persona` + `seed`）：后端只按它定身份、起点和假模型的种子，AI 玩家在运行器里按画像逐步走，玩家说过的话运行器自己记（2026-10-10 和后端定）。见下面「模拟局的 AI 玩家」；不给 `--player` 时 fake、replay 里记「跳过：要真模型」。
 - **判分**现在一律记「跳过：要真模型」；`--deterministic-only` 不跑判分。只有判分的用例在 `--deterministic-only` 下整次跳过。
 
 ### 报告格式
@@ -256,16 +256,29 @@ uv run zoujin-eval --mode fake --deterministic-only --quiet --out evals/tests/sn
 
 ### `live`（只在 zg 的 Mac 上）
 
-真模型的客户端 M2 才接，现在只有开关和退出（E-0 卡第 3 条）：
-
 1. 没有 `ZJ_EVAL_LIVE=1` 就退出（退出码 2），打印原因。
 2. 上限都要显式给，没有默认值，少一个就退出：
    - `--max-item-usd`：单项上限，两本账合起来算；
-   - `--max-google-usd`：Google 账的总上限（人物的文字回答、Live、预录句；D-027 定 50 美元）；
-   - `--max-claude-usd`：Claude 账的总上限（叙事者、评审员、AI 玩家；D-029 定 100 美元）。
-   分两本账是 PM 2026-10-10 定的（zg 的 Claude 额度只付 Claude 的调用）。
-3. 不带 `--confirm`：按 `config/live-cost.json` 打印每个套件在两本账上的预计花费（用例 × `runs` ×（会调模型的步数 × 每步单价 + 判分）；模拟局按每局单价），标出超过上限的，再打印完整命令，退出码 0。由协调把这两样给 zg 看，zg 同意后才带 `--confirm` 再跑。
-4. 带 `--confirm`：退出，打印「真模型的客户端还没有，M2 接上」。
+   - `--max-google-usd`：Google 账的总上限（人物的文字回答、Live、预录句）；
+   - `--max-claude-usd`：Claude 账的总上限（叙事者、评审员、AI 玩家；D-034 起总数是 zg 的 200 美元）。
+3. 不带 `--confirm`：按 `config/live-cost.json` 打印每个套件在两本账上的预计花费（用例 × `runs` ×（会调模型的步数 × 每步单价 + 判分）；模拟局按每局单价），标出超过上限的，再打印完整命令，退出码 0。在单项上限以内就带 `--confirm` 跑（D-030）。
+4. 带 `--confirm`（B-5 起真跑）：还要
+   - `--deterministic-only`（判分还没接进运行器，评审员走 `zoujin-calibrate`）；
+   - `--item`（账本里记在哪一项下，如 `s5`）和账本文件 `ZJ_LEDGER`；
+   - 有模拟局时，AI 玩家的模型 ID：`--player-model` 或 `ZJ_PLAYER_MODEL`（仓库里不写）。
+   都齐了，运行器把 `ZJ_MODEL=real`、`ZJ_LEDGER_ITEM`、三个上限设进环境（后端的 `config.Settings` 读），照常跑完写报告。账本到上限、429 / 529 第一次就整次停下。
+5. 开发期间不跑（D-040）：整个游戏做完以后和 CI 一起跑一次。S-5（切片 10 局，`--slice --suite E7 --item s5`）也在那时跑。
+
+### 模拟局的 AI 玩家（B-5，`src/zoujin_evals/player.py`）
+
+- **只看玩家看得到的**：`view()`（快照和玩家可见事件）、`manifest()`（身份、人物和地点的名字），加上每一步返回里真玩家也听得到、看得到的几项（人物的回答、叙事、固定演出、动作成没成、幕末打算的结果和替代去处、确认、错误）。每一步的 `events`、`state()`、`events()`、`ending()` 只给检查，AI 玩家不读。
+- **能走的步骤由快照列出**：和此刻同一地点、能说话的人物说话；快照里的情境动作、調べる、出口；走到同场景里开着的地点；時を進める；上一步是对话时可以言い直す；幕末时只有选去处（带过场二选一的拆成两个）和说出打算。AI 玩家从编号列表里挑一个，要说话时写一两句日语。走到快照 `status` 不是 `active`（结局开始了）为止，最多 80 步。
+- **两种玩家**（`--player`）：
+  - `scripted`：不调模型，按画像写死的走法，随机的部分按 `seed`；fake、replay 里用，CI 能跑；
+  - `claude`：Claude（data-design 7.1，Sonnet 5.5；模型 ID 运行时给）。规则和画像放在 system 里走缓存；输出用 JSON Schema 定死 `{"why", "move", "text"}`。账本记 `kind: "player"`、`use: "eval"`（不算进 S-5 的单局成本）。每一步的选择存成回放（`kind: "player"`，键 = `claude|档名加版本|player-1|请求的 sha256`），目录是 `--player-replays`（默认 `--out` 下的 `player-replays`）；replay 模式只读回放，查不到这一局记「回放缺失或过期」。拒答、截断、JSON 坏了不存，这一步当作等。
+  - 不给 `--player`：live 用 `claude`；fake、replay 里模拟局照旧记「要真模型」（CI 的快照就是这样）。
+- **报告**：每一局的 `results[]` 多 `playthroughId`（S-5 的报告脚本按它对账本）和 `sim`：画像、走了几步、怎么停的、关键时刻几次、世界结局和生成的结局、`beat.25` 的演法、`beat.20`、问句（人物发言以问句结尾的比例、请求的条数、同一人物重复同一问句的次数；只出数，不出原话）。`report.json` 的 `simulations` 和 `report.md` 的「模拟局」一节把这些按全部画像、`persona.melos-helper` 单列加总（data-design 9.1，观察项，不是门槛）。
+- **切片的 10 局**：`slice/E7.jsonl`（`gen_slice.py` 生成，E7-101〜110）：旅人能跑、不要记忆的 7 个画像各 1 局，守原著、帮梅洛斯、劝国王换 `seed` 再各 1 局（B-5 卡「S-5 怎么跑」的默认）。
 
 ## 评审员（data-design 7.3）
 

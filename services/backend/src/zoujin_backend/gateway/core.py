@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol
@@ -24,6 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 from zoujin_worldsim import SimState, apply, initial_state
 
+from zoujin_backend import budget
 from zoujin_backend.config import Settings
 from zoujin_backend.db import store
 from zoujin_backend.db.events import commit_key, recorded_at
@@ -43,13 +45,13 @@ from zoujin_backend.world import Book, Library
 if TYPE_CHECKING:
     from zoujin_backend.gateway.voice import Parked
     from zoujin_backend.gateway.ws import Conn
+    from zoujin_backend.narrator.pipeline import Pipeline
 
 log = logging.getLogger("zoujin.gateway")
 
 Json = Any
 
-RUNS_PER_DAY = 5  # 每账号每天开局数（backend-design 5.2）；B-0 只显示，不拦
-VOICE_MINUTES = 60  # 预算是 M2 的卡
+VOICE_SWITCH_TTL_S = 30.0  # B-14：全局语音开关多久读一次库
 HANDOFF_WAIT_S = 5.0  # 重连的 hello 最多等旧连接把断线那一轮写完几秒（正常是毫秒级）
 
 
@@ -150,6 +152,11 @@ class Gateway:
     live_model_name: str = "fake-live"
     # B-12：玩家每一句的安全筛查（文本模型和 Model Armor 按 ZJ_MODEL；不给就按 settings 建，测试可以换）
     screener: Screener = field(default=None)  # type: ignore[assignment]
+    # B-14：降级以后人物用文字回答（叙事者的 `reply`）
+    replier: Pipeline = field(default=None)  # type: ignore[assignment]
+    # B-14：全局语音开关的缓存（读的时刻、开没开）；测试设 voice_ttl_s = 0
+    voice_cache: tuple[float, bool] | None = None
+    voice_ttl_s: float = VOICE_SWITCH_TTL_S
     # 测试用：每条发出的服务端消息（已过 Schema）
     on_send: Callable[[Json], None] | None = None
 
@@ -158,6 +165,45 @@ class Gateway:
             from zoujin_backend.gateway.safety import build_screener
 
             self.screener = build_screener(self.settings, self.tracer)
+        if self.replier is None:  # 降级以后人物的文字回答（B-14）：和筛查同一个文本模型
+            from zoujin_backend.narrator.pipeline import Pipeline
+
+            self.replier = Pipeline(
+                text=self.screener.text, schemas=self.schemas, ids=self.ids, tracer=self.tracer, on_rate_limit="degrade"
+            )
+
+    # —— 预算和降级（B-14，`zoujin_backend/budget.py`）——
+
+    async def voice_on(self) -> bool:
+        """全局语音开关，最多每 `voice_ttl_s` 秒读一次库（运维改了以后不用重新部署）。"""
+        now = time.monotonic()
+        if self.voice_cache is not None and now - self.voice_cache[0] < self.voice_ttl_s:
+            return self.voice_cache[1]
+        async with self.engine.connect() as c:
+            on = await budget.voice_enabled(c)
+        self.voice_cache = (now, on)
+        return on
+
+    async def voice_block(self, pid: str, user_id: str) -> str | None:
+        """这一局现在不能用语音的原因（`degraded.reason`）：全局开关关了 service；花到上限 budget；今天的语音时间用完
+        daily。都没有回 None。"""
+        if not await self.voice_on():
+            return "service"
+        async with self.engine.begin() as c:
+            tier = await budget.refresh(c, pid, self.tracer)
+            used = await budget.voice_seconds_today(c, user_id)
+        if tier == "degraded":
+            return "budget"
+        if budget.minutes_left(used) <= 0:
+            return "daily"
+        return None
+
+    async def voice_state(self, c: AsyncConnection, pid: str, user_id: str) -> Json:
+        """`welcome.voice`、快照的 `voice`（契约 3.x）：enabled = 全局开关；degraded = 这一局已经改文字。"""
+        on = await self.voice_on()
+        left = budget.minutes_left(await budget.voice_seconds_today(c, user_id))
+        tier = await budget.tier_of(c, pid)
+        return {"enabled": on, "degraded": not on or tier == "degraded" or left <= 0, "minutesLeftToday": left}
 
     # —— 局 ——
 
@@ -185,7 +231,10 @@ class Gateway:
             if pt is None:
                 return None
             if st is not None:
-                return snapshot(pt.book, pid, pt.role_id, pt.status, st, st["seq"], pt.run)
+                snap = snapshot(pt.book, pid, pt.role_id, pt.status, st, st["seq"], pt.run)
+                async with self.engine.connect() as c:
+                    snap["voice"] = await self.voice_state(c, pid, pt.user_id)
+                return snap
             if attempt == 0:
                 await self.narrator.run(pid)
         raise RuntimeError(f"{pid}：叙事者没写开局")

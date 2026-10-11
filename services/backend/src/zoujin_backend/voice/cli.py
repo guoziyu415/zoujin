@@ -14,6 +14,8 @@
   release 里的句子调到说话人的目标响度（源文件的 `loudness`），真峰值压到 −1 dBTP 以下；音量不进签名，改了只重出。
 - `--resume <目录>` 接着跑，读过的不再花钱；源文件改了的句子（声音、说明、文字变了）自动重读。`--only` 只重读给定的
   句子（录音 ID 或键，旧的几遍挪进 `takes/discarded/`），清单照样按全部句子重出。
+- 源文件写了 6 句的人物都录（B-6b：七个人）；世界模型里此刻不能对话的，manifest 不给。`--world` 换世界模型（例
+  `1.0.0-draft`）：读过的不再读；没有固定演出的世界模型，清单里也没有固定演出。
 - 日志和账里不写台词的文字，只写键、条数、长度和花费；`audit.md` 里有选中那遍和 ref 的补转写（我们自己的台词稿和对
   固定问题的回答，不是玩家的话）。
 - 退出码：0 跑完；2 配置不对；3 到上限或 429 停下（`--resume` 接着跑）；130 Ctrl-C。
@@ -72,6 +74,7 @@ MANIFEST = "api/rest/manifest.schema.json"
 def parse(argv: Sequence[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(prog="zoujin-voice", description="B-6：预录句的生成（照读三遍、自动检查、声音清单）")
     p.add_argument("--book", default="hashire-merosu")
+    p.add_argument("--world", help="世界模型的版本目录（worlds/<book>/<这个>），默认用源文件的 world")
     p.add_argument("--out", type=Path, default=Path("out") / "b6", help="新跑的上一级目录（默认 out/b6）")
     p.add_argument("--resume", type=Path, help="接着跑的目录（out/b6/<时间>）")
     p.add_argument(
@@ -589,6 +592,8 @@ def main(argv: Sequence[str] | None = None, deps: Deps | None = None, env: Mappi
     try:
         real = model_mode(env) == "real"
         spec = read_spec(args.book, deps.repo / "services" / "backend" / "voice")
+        if args.world:
+            spec["world"] = args.world
         p = plan(spec, world_of(spec, deps.repo / "worlds"))
         recs = p.select(args.only) if args.only else p.recordings
         if args.resume is None and not args.out.is_absolute():

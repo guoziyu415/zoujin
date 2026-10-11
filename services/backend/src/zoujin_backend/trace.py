@@ -57,6 +57,9 @@ ATTRS = frozenset(
         "outcome",
         "template",
         "calls",
+        "run_cost_jpy_so_far",  # B-14：预算档变的时候（budget）、降级的原因
+        "tier",
+        "degraded",
         "eval.persona",  # B-5：模拟局的画像 ID、种子（评测入口开局的 Span）
         "eval.seed",
         "reason",  # B-10：Live 会话为什么开（warm / switch / rebuild / rebuild_turns / rebuild_goaway / arrival）

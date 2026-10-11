@@ -51,9 +51,9 @@ def slice_plan() -> Plan:
 # —— 1. 清单 ——
 
 
-def test_slice_has_28_recordings_and_26_set_piece_keys() -> None:
+def test_slice_has_58_recordings_and_26_set_piece_keys() -> None:
     p = slice_plan()
-    assert len(p.recordings) == 28
+    assert len(p.recordings) == 58  # 切片 28 条 + B-6b 五个人的 6 句
     by_speaker: dict[str, int] = {}
     for r in p.recordings:
         by_speaker[r.speaker.id] = by_speaker.get(r.speaker.id, 0) + 1
@@ -62,8 +62,11 @@ def test_slice_has_28_recordings_and_26_set_piece_keys() -> None:
         "char.old-man": 6,
         "char.guards": 4,
         "char.crowd": 2,
-        "char.selinuntius": 4,
-        "char.king": 1,
+        "char.selinuntius": 4 + 6,
+        "char.king": 1 + 6,
+        "char.sister": 6,
+        "char.groom": 6,
+        "char.philostratus": 6,
     }
     pieces = [r for r in p.recordings if any(k.startswith("piece.") for k in r.keys)]
     assert {k for r in pieces for k in r.keys} == PIECE_KEYS
@@ -89,6 +92,9 @@ def test_slice_has_28_recordings_and_26_set_piece_keys() -> None:
         "char.crowd": "Despina",
         "char.selinuntius": "Iapetus",
         "char.king": "Algieba",
+        "char.sister": "Leda",
+        "char.groom": "Sadachbia",
+        "char.philostratus": "Rasalgethi",
     }
     assert p.recording("melos-arrival_capped-1").text == "……これなら、間に合う。"  # 从世界模型读
 
@@ -107,6 +113,96 @@ def test_lines_match_ux_design_16_2() -> None:
         "unheard": ["……すまぬ、耳が遠うてな。", "もう一度、言うてくだされ。"],
         "wait": ["ちと、待ってくだされ。"],
     }
+
+
+# ux-design 16.2 的表，切片以外的五个人物（M3）
+M3_LINES = {
+    "char.king": (["ふん。", "……ほう。", "続けよ。"], ["……聞こえぬ。", "はっきり申せ。"], "……しばし待て。"),
+    "char.selinuntius": (
+        ["うん。", "……そうか。", "なるほどな。"],
+        ["すまない、聞きそびれた。", "もう一度、ゆっくり話してくれ。"],
+        "少し、考えさせてくれ。",
+    ),
+    "char.sister": (
+        ["はい。", "……ええ。", "まあ。"],
+        ["ごめんなさい、よく聞こえなくて……", "もう一度、お願いします。"],
+        "ええと……少しだけ、待ってください。",
+    ),
+    "char.groom": (
+        ["はあ。", "ええ。", "……ふむ。"],
+        ["すみません、聞き取れませんでした。", "もう一度、言ってもらえますか。"],
+        "ちょっと待ってください。考えます。",
+    ),
+    "char.philostratus": (
+        ["はい。", "……さようで。", "ええ、ええ。"],
+        ["申し訳ございません、聞き取れませんでした。", "もう一度、お聞かせくださいまし。"],
+        "少々、お待ちくださいまし。",
+    ),
+}
+
+
+# 假声音下 6 句全过的人物（三拍以上的相槌超 0.5 秒的人整块不进清单）
+FAKE_CHARACTERS = {"char.melos", "char.old-man", "char.sister", "char.groom"}
+
+
+def draft_plan() -> Plan:
+    spec = read_spec("hashire-merosu")
+    spec["world"] = "1.0.0-draft"
+    return plan(spec, world_of(spec, REPO / "worlds"))
+
+
+def test_all_seven_characters_have_their_six_lines() -> None:
+    """B-6b：七个人的 6 句都录，声音按 D-025、D-036；切片里不能和五个新人物说话，manifest 照旧不给（test_manifest）。"""
+    s = slice_plan()
+    assert {k: (v["aizuchi"], v["unheard"], v["wait"][0]) for k, v in s.lines.items() if k in M3_LINES} == M3_LINES
+    assert set(s.lines) == {"char.melos", "char.old-man", *M3_LINES}
+    assert {sid: s.speakers[sid].voice for sid in M3_LINES} == {
+        "char.king": "Algieba",
+        "char.selinuntius": "Iapetus",
+        "char.sister": "Leda",
+        "char.groom": "Sadachbia",
+        "char.philostratus": "Rasalgethi",
+    }
+    assert len(s.refs) == 7 * 2
+    # 新人物没有自由对话的响度，等量了 ref 再定；王的 −16.3 只管收幕那两段
+    assert all(
+        r.loudness is None for r in s.recordings if r.speaker.id in M3_LINES and not r.keys[0].startswith("piece.")
+    )
+    assert s.recording("king-king-asks-you-2").loudness == -16.3
+    assert s.recording("king-aizuchi-1").loudness is None
+
+
+def test_draft_world_has_the_same_recordings_without_set_pieces() -> None:
+    """--world 1.0.0-draft：草稿没有固定演出，只有 6 句和 arrival_capped；同一句签名一样，换世界模型不重读。"""
+    s, d = slice_plan(), draft_plan()
+    assert len(d.recordings) == 7 * 6 + 1
+    old = {r.id: cli.sig(r.speaker.voice, r.system, r.spoken) for r in s.recordings}
+    assert all(old[r.id] == cli.sig(r.speaker.voice, r.system, r.spoken) for r in d.recordings)
+
+
+def test_resume_of_a_run_made_before_b6b_reads_only_the_five(tmp_path: Path) -> None:
+    """Mac 上切片那次的目录 --resume：只读五个新人物的 6 句（相槌 6 遍，其余 3 遍）和 ref，切片的 28 条不重读。"""
+    repo = fake_repo(tmp_path)
+    src = repo / "services" / "backend" / "voice" / "hashire-merosu.json"
+    spec = json.loads(src.read_text(encoding="utf-8"))
+    for sid in M3_LINES:  # B-6b 之前的源文件
+        for k in ("lines", "scenes", "ref"):
+            spec["speakers"][sid].pop(k, None)
+    src.write_text(json.dumps(spec, ensure_ascii=False), encoding="utf-8")
+    first = FakeReader()
+    deps = cli.Deps(first, FakeTranscriber(first), audio.FakeEncoder(), repo=repo)
+    assert cli.main(["--out", str(tmp_path / "out")], deps, {}) == 0
+    run = only_run(tmp_path)
+    again = FakeReader()
+    assert cli.main(["--resume", str(run)], cli.Deps(again, FakeTranscriber(again), audio.FakeEncoder()), {}) == 0
+    lines = {t: n for t, n in again.reads.items() if any(t in (*a, *u, w) for a, u, w in M3_LINES.values())}
+    assert sum(lines.values()) == 5 * (3 * 6 + 3 * 3)
+    assert set(again.reads) - set(lines)  # 另外的是 ref
+    voices = json.loads((run / "release" / "voices.json").read_text(encoding="utf-8"))
+    # 假声音按拍数定长度：三拍以上的相槌（「続けよ。」「なるほどな。」「……さようで。」「ええ、ええ。」）
+    # 过不了 0.5 秒，那个人整块不进清单（ux-design 16.2：真录也先量，超了换成两拍）
+    assert set(voices["characters"]) == FAKE_CHARACTERS
+    assert len(voices["setPieceVoices"]) == len(PIECE_KEYS)
 
 
 def test_readings_only_in_what_live_reads() -> None:
@@ -165,16 +261,13 @@ def test_refs_go_to_release_ref_not_into_voices(tmp_path: Path) -> None:
     reader = FakeReader()
     assert run_fake(tmp_path, reader) == 0
     rel = only_run(tmp_path) / "release"
-    assert sorted(p.name for p in (rel / "ref").iterdir()) == [
-        "melos-ref-1.wav",
-        "melos-ref-2.wav",
-        "old-man-ref-1.wav",
-        "old-man-ref-2.wav",
-    ]
+    assert sorted(p.name for p in (rel / "ref").iterdir()) == sorted(
+        f"{c.removeprefix('char.')}-ref-{i}.wav" for c in ("char.melos", "char.old-man", *M3_LINES) for i in (1, 2)
+    )
     voices = (rel / "voices.json").read_text(encoding="utf-8")
     assert "ref" not in voices
     talk = [s for _, s in reader.sessions if "旅の者と話しています" in s]
-    assert len(talk) == 2 and all("場面：" not in s for s in talk)  # 一个人物一条会话，人物那层、不带场面
+    assert len(talk) == 7 and all("場面：" not in s for s in talk)  # 一个人物一条会话，人物那层、不带场面
     audit = (rel / "audit.md").read_text(encoding="utf-8")
     assert "こんにちは。あなたはどんな方ですか。" in audit
 
@@ -407,7 +500,7 @@ def test_character_missing_one_line_drops_the_whole_block(tmp_path: Path) -> Non
     reader = FakeReader(faults={"へえ。": ["silent"] * 6})  # 相槌读 6 遍
     assert run_fake(tmp_path, reader) == 0
     voices = json.loads((only_run(tmp_path) / "release" / "voices.json").read_text(encoding="utf-8"))
-    assert set(voices["characters"]) == {"char.melos"}
+    assert set(voices["characters"]) == FAKE_CHARACTERS - {"char.old-man"}
     audit = (only_run(tmp_path) / "release" / "audit.md").read_text(encoding="utf-8")
     assert "市の老爺（char.old-man）的 6 句有没过的" in audit
 
@@ -486,7 +579,7 @@ def test_only_rereads_the_given_keys(tmp_path: Path) -> None:
     assert len(list((run / "takes" / "discarded").rglob("*.wav"))) == 6
     voices = json.loads((run / "release" / "voices.json").read_text(encoding="utf-8"))
     assert len(voices["setPieceVoices"]) == len(PIECE_KEYS)
-    assert set(voices["characters"]) == {"char.melos", "char.old-man"}
+    assert set(voices["characters"]) == FAKE_CHARACTERS
 
 
 def test_only_estimate_without_confirm_leaves_the_old_takes(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

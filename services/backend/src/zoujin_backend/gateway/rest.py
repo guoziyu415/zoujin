@@ -10,7 +10,6 @@ import hashlib
 import json
 import logging
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Request, Response
@@ -18,13 +17,13 @@ from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import delete, func, insert, select, text, update
 from sqlalchemy.exc import IntegrityError
 
-from zoujin_backend import memory_delete
+from zoujin_backend import budget, memory_delete
 from zoujin_backend import timeline as timeline_mod
 from zoujin_backend.config import COOKIE, SESSION_DAYS
 from zoujin_backend.db import store
 from zoujin_backend.db.tables import endings, idempotency_keys, memory_items, playthrough_metrics, playthroughs, turns
 from zoujin_backend.gateway import auth, memory_book
-from zoujin_backend.gateway.core import RUNS_PER_DAY, VOICE_MINUTES, Gateway
+from zoujin_backend.gateway.core import Gateway
 from zoujin_backend.manifest import CACHE, FILE_CACHE, media_type
 from zoujin_backend.narrator import ending as ending_mod
 from zoujin_backend.narrator import memory
@@ -46,6 +45,7 @@ MESSAGES = {
     "active_playthrough_exists": "進行中の物語があります。",
     "idempotency_conflict": "もう一度お試しください。",
     "rate_limited": "少し時間をおいてから、もう一度お試しください。",
+    "daily_limit": "今日はここまでです",
     "internal": "エラーが起きました。",
 }
 STATUS = {
@@ -57,15 +57,17 @@ STATUS = {
     "active_playthrough_exists": 409,
     "idempotency_conflict": 422,
     "rate_limited": 429,
+    "daily_limit": 429,
     "internal": 500,
 }
 
 
 class Fail(Exception):
-    def __init__(self, code: str, *, active: Json | None = None) -> None:
+    def __init__(self, code: str, *, active: Json | None = None, retry_after: int | None = None) -> None:
         super().__init__(code)
         self.code = code
         self.active = active
+        self.retry_after = retry_after
 
 
 def gw_of(request: Request) -> Gateway:
@@ -73,13 +75,13 @@ def gw_of(request: Request) -> Gateway:
     return gw
 
 
-def error_body(gw: Gateway, code: str, active: Json | None = None) -> Json:
+def error_body(gw: Gateway, code: str, active: Json | None = None, retry_after: int | None = None) -> Json:
     doc: Json = {
         "error": {
             "code": code,
             "message": MESSAGES[code],
             "retryable": code in ("rate_limited", "internal"),
-            "retryAfterSeconds": None,
+            "retryAfterSeconds": retry_after,
         }
     }
     if active is not None:
@@ -88,7 +90,7 @@ def error_body(gw: Gateway, code: str, active: Json | None = None) -> Json:
 
 
 def fail_response(gw: Gateway, f: Fail) -> JSONResponse:
-    return JSONResponse(error_body(gw, f.code, f.active), status_code=STATUS[f.code])
+    return JSONResponse(error_body(gw, f.code, f.active, f.retry_after), status_code=STATUS[f.code])
 
 
 def ok(gw: Gateway, endpoint: str, status: int, doc: Json) -> JSONResponse:
@@ -186,16 +188,13 @@ async def logout(request: Request) -> Response:
 
 
 async def me_doc(gw: Gateway, c: Any, user_id: str) -> Json:
-    today = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
-    runs = await c.scalar(
-        select(func.count())
-        .select_from(playthroughs)
-        .where(playthroughs.c.user_ref == user_id, playthroughs.c.started_at >= today)
-    )
+    """limits 按日本时间的今天（B-14，`account_days`）：删掉的局也算次数。"""
+    runs = await budget.runs_today(c, user_id)
+    left = budget.minutes_left(await budget.voice_seconds_today(c, user_id))
     active = await active_pt(gw, c, user_id)
     return {
         "user": {"userRef": user_id},
-        "limits": {"runsToday": int(runs or 0), "runsPerDay": RUNS_PER_DAY, "voiceMinutesLeft": VOICE_MINUTES},
+        "limits": {"runsToday": runs, "runsPerDay": budget.RUNS_PER_DAY, "voiceMinutesLeft": left},
         "activePlaythrough": active,
     }
 
@@ -299,6 +298,11 @@ async def _create(gw: Gateway, request: Request, user_id: str, key: str, fp: str
         raise Fail("invalid_request")
 
     async with gw.engine.begin() as c:
+        # 次数用完先回 429，不回 409（契约 2.2 v1.0.9：不然前端先删了旧局，新局也开不了）
+        if await budget.runs_today(c, user_id) >= budget.RUNS_PER_DAY:
+            resp = fail_response(gw, Fail("daily_limit", retry_after=budget.seconds_to_midnight()))
+            await remember(c, user_id, key, fp, resp)
+            return resp
         active = await active_pt(gw, c, user_id)
         if active is not None:
             resp = fail_response(gw, Fail("active_playthrough_exists", active=active))
@@ -307,6 +311,7 @@ async def _create(gw: Gateway, request: Request, user_id: str, key: str, fp: str
         try:
             async with c.begin_nested():
                 pid = await store.create_playthrough(c, gw.ids, user_id=user_id, book=book, role_id=doc["roleId"])
+                await budget.count_run(c, user_id)
         except IntegrityError:
             raise Fail("active_playthrough_exists", active=await active_pt(gw, c, user_id)) from None
     try:

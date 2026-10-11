@@ -30,6 +30,7 @@
 | [characters/shepherd-boy.md](characters/shepherd-boy.md) | 玩家・村の牧童 |
 | [characters/m3-extras.md](characters/m3-extras.md) | 山贼、群臣、村里的人、归途上的人、羊、狗、驴；群演「不放」的总表 |
 | [characters/m3-cast.svg](characters/m3-cast.svg) | M3 人物的正面颜色、两个新身份的背影、60 px 剪影、村子和工房里「一起看」 |
+| [characters/m3-views.svg](characters/m3-views.svg) | 交前端 5（F-16）的三视图：王、セリヌンティウス（工房）、妹（平日、婚礼）、花婿、フィロストラトス、石屋の弟子、村の牧童，正 / 侧 / 背 |
 
 ## 所有人物共用的规则
 
@@ -138,4 +139,4 @@ M3 加的：
 
 - 王城の侍女、警吏の見習い两个身份（第二版，ux-design 5.2）。
 - 旅人的外套披上的样子（夜里、下雨）：等有夜景和雨景的身份再定（traveler.md）。
-- 图（m3-cast.svg）由项目文件夹 `ux/tools/style-guide/m3_cast.py` 生成，和 gen_views.py、ending_cast.py 同一个人台。
+- 图（m3-cast.svg、m3-views.svg）由项目文件夹 `ux/tools/style-guide/m3_cast.py`、`m3_views.py` 生成，和 gen_views.py、ending_cast.py 同一个人台。

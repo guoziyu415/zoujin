@@ -5,7 +5,7 @@
 // undo. At the bottom: what is kept and for how long, and deleting the whole story.
 import type { Api } from "@zoujin/contracts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { navigate } from "../../app/router";
 import { uuid } from "../../net/ids";
 import { closePlay } from "../../net/play";
@@ -54,6 +54,35 @@ export default function MemoryBook({
   const name = (id: string) => names[id] ?? id;
   const people = q.data?.characters ?? [];
   const cur = people.find((c) => c.character === tab) ?? people[0];
+  // the whole game's people don't fit on a phone's width (F-17): the chosen tab scrolls into sight, arrows move along
+  const tabs = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!cur) return;
+    tabs.current
+      ?.querySelector(`#mb-tab-${CSS.escape(cur.character)}`)
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [cur]);
+  const onKey = (e: KeyboardEvent) => {
+    if (!cur) return;
+    const i = people.indexOf(cur);
+    const to =
+      e.key === "ArrowRight"
+        ? (i + 1) % people.length
+        : e.key === "ArrowLeft"
+          ? (i - 1 + people.length) % people.length
+          : e.key === "Home"
+            ? 0
+            : e.key === "End"
+              ? people.length - 1
+              : -1;
+    const next = people[to];
+    if (!next) return;
+    e.preventDefault();
+    setTab(next.character);
+    tabs.current
+      ?.querySelector<HTMLElement>(`#mb-tab-${CSS.escape(next.character)}`)
+      ?.focus();
+  };
 
   return (
     <FullPage
@@ -68,13 +97,14 @@ export default function MemoryBook({
       {q.isError && <p className="error">{copy["net.failed"]}</p>}
       {q.data && !people.length && <p>{copy["memory.empty"]}</p>}
       {people.length > 0 && (
-        <div className="mb-tabs" role="tablist">
+        <div className="mb-tabs" role="tablist" ref={tabs} onKeyDown={onKey}>
           {people.map((c) => (
             <button
               key={c.character}
               role="tab"
               id={`mb-tab-${c.character}`}
               aria-selected={c === cur}
+              tabIndex={c === cur ? 0 : -1}
               aria-controls="mb-panel"
               onClick={() => setTab(c.character)}
             >

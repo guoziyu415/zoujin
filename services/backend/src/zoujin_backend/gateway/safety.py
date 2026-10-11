@@ -9,6 +9,9 @@
 - 暂停期间对话、动作、幕末都回 `invalid_request`；`focus` 不开会话、不回错误；`safety_resume` → `safety_resumed`。
 - 交给叙事者之前等筛查的结果（`Guard.result`），不会先提交再暂停。
 - 判定结果不存、不进日志（S-057），`playthrough_metrics` 只记次数。
+- B-15：筛查带上下文（这一轮的人物、玩家所在的地点、这个人物在内存里的上一句）；同一局第二次 ambiguous 先复核
+  （`Screener.second_look`），复核说是故事里的话就不升级。复核期间人物还没发的声音和字幕先扣住（`Turn.flowing`）：
+  暂停就丢掉，不暂停就放出。
 """
 
 from __future__ import annotations
@@ -24,8 +27,9 @@ from zoujin_backend.db import store
 from zoujin_backend.db.tables import turns
 from zoujin_backend.models.armor import armor
 from zoujin_backend.models.text import text_model
-from zoujin_backend.safety import NOT_SCREENED, SafetyState, Screen, Screener, counts_of, decide
+from zoujin_backend.safety import NOT_SCREENED, Context, SafetyState, Screen, Screener, counts_of, decide
 from zoujin_backend.trace import Tracer
+from zoujin_backend.world import Book
 
 if TYPE_CHECKING:
     from zoujin_backend.gateway.ws import Conn, Turn
@@ -79,13 +83,47 @@ class Guard:
             log.exception("安全筛查出错（%s）", t.turn_id)
             return NOT_SCREENED
 
+    async def context(self, character: str | None) -> Context:
+        """B-15：分类器和复核看的上下文。读不到的项就不给。"""
+        conn = self.conn
+        async with conn.gw.engine.connect() as c:
+            pt = await conn.gw.pt(c, conn.pid)
+            st = await store.sim_state(c, conn.pid)
+        if pt is None or st is None:
+            return Context()
+        return context_of(pt.book, st["vars"]["var.player.location"], character, self._previous(character))
+
+    def _previous(self, character: str | None) -> str | None:
+        said = [r.reply for _, r in self.conn.recent.get(character or "", []) if r.reply]
+        return said[-1] if said else None
+
+    async def _second_look(self, s: Screen, said: str, ctx: Context, t: Turn | None = None, **span: object) -> Screen:
+        """这一句是 ambiguous、这一局已经有过一次（这次要升级）：先复核（卡第 6 节的 C）。"""
+        if s.self_harm != "ambiguous" or s.reviewed is not None:
+            return s
+        async with self.conn.gw.engine.connect() as c:
+            st = SafetyState.of(await store.safety_state(c, self.conn.pid))
+        if st.ambiguous < 1 or st.paused:
+            return s
+        if t is not None:
+            t.flowing.clear()  # 这次要升级：复核期间人物也先停住
+        return await self.screener.second_look(s, said, ctx, **span)
+
     async def _run(self, t: Turn, said: str) -> Screen:
         conn = self.conn
-        s = await self.screener.screen(said, playthrough_id=conn.pid, turn_id=t.turn_id)
-        decision = await self._decide(s)
-        if decision == "pause":
-            await self.pause(t)
-        elif decision == "hint":
+        ctx = await self.context(t.character)
+        span = {"playthrough_id": conn.pid, "turn_id": t.turn_id}
+        try:
+            s = await self.screener.screen(said, ctx, t.flowing.clear, **span)
+            s = await self._second_look(s, said, ctx, t, **span)
+            decision = await self._decide(s)
+            if decision == "pause":
+                await self.pause(t)  # 扣住的部分随这一轮一起丢掉
+                return s
+        finally:
+            if not t.paused:
+                t.flowing.set()  # 复核降下来、保留但这一局已经暂停过：放出扣住的部分
+        if decision == "hint":
             conn.monitor.calm()
             await conn.send({"type": "safety_hint"})
         return s
@@ -109,7 +147,9 @@ class Guard:
         """幕末说的打算也筛（玩家的每一句）：signal → 暂停，打算不交给叙事者。没有人物在说，不用等人物的回答。"""
         if not said:
             return NOT_SCREENED
-        s = await self.screener.screen(said, playthrough_id=self.conn.pid)
+        ctx = await self.context(None)
+        s = await self.screener.screen(said, ctx, playthrough_id=self.conn.pid)
+        s = await self._second_look(s, said, ctx, playthrough_id=self.conn.pid)
         decision = await self._decide(s)
         if decision == "pause":
             await self.pause(None)
@@ -180,3 +220,10 @@ class Guard:
             await store.set_safety(c, conn.pid, st.to_json())
         self.paused = False
         await conn.send({"type": "safety_resumed"})
+
+
+def context_of(book: Book, place: str | None, character: str | None, previous: str | None) -> Context:
+    """B-15：人物、地点换成显示名（网关和评测入口共用）。"""
+    places = {p["id"]: p["name"] for p in book.world["places"]}
+    who = book.characters.get(character or "", {}).get("name")
+    return Context(character=who, place=places.get(place or ""), previous=previous)

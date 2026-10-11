@@ -6,9 +6,10 @@
 // backend on ZOUJIN_API (default B-1's port); the Host header passes through so the server's Origin check holds.
 import babel from "@rolldown/plugin-babel";
 import react, { reactCompilerPreset } from "@vitejs/plugin-react";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import type { Connect, Plugin } from "vite";
+import type { Connect, Plugin, Rollup } from "vite";
 import { defineConfig } from "vite";
 import { sceneDir } from "./scene-dir.ts";
 
@@ -85,6 +86,52 @@ function runtimeFiles(): Plugin {
   };
 }
 
+// The service worker (src/sw/worker.ts, F-19) as /sw.js: a chunk of its own, with the files it stores when it installs
+// (the shell and the 3D screen, each with what it imports and its CSS) and a build id from every file's name put in
+function serviceWorker(): Plugin {
+  return {
+    name: "zoujin-service-worker",
+    apply: "build",
+    buildStart() {
+      if (process.env.VITEST) return;
+      this.emitFile({
+        type: "chunk",
+        id: path.resolve(import.meta.dirname, "src/sw/worker.ts"),
+        fileName: "sw.js",
+      });
+    },
+    generateBundle(_, bundle) {
+      const sw = bundle["sw.js"];
+      if (sw?.type !== "chunk") return;
+      const files = new Set<string>();
+      const add = (name: string) => {
+        const c = bundle[name];
+        if (!c || files.has(name)) return;
+        files.add(name);
+        if (c.type !== "chunk") return;
+        c.imports.forEach(add);
+        c.viteMetadata?.importedCss.forEach((f) => files.add(f));
+      };
+      const start = (c: Rollup.OutputChunk) =>
+        (c.isEntry && c !== sw) ||
+        !!c.facadeModuleId?.endsWith("/src/screens/WorldScreen.tsx");
+      for (const c of Object.values(bundle))
+        if (c.type === "chunk" && start(c)) add(c.fileName);
+      const build = createHash("sha256")
+        .update(Object.keys(bundle).sort().join("\n"))
+        .digest("hex")
+        .slice(0, 12);
+      const list = JSON.stringify(JSON.stringify([...files].sort())).slice(
+        1,
+        -1,
+      );
+      sw.code = sw.code
+        .replace("__ZOUJIN_PRECACHE__", () => list)
+        .replaceAll("__ZOUJIN_BUILD__", build);
+    },
+  };
+}
+
 // React Compiler on the screens and the HUD; not on the 3D layer (react-three-fiber frames, and the 3D chunk's budget)
 const compiler = reactCompilerPreset();
 compiler.rolldown.filter = {
@@ -100,7 +147,12 @@ const proxy = {
 };
 
 export default defineConfig({
-  plugins: [react(), babel({ presets: [compiler] }), runtimeFiles()],
+  plugins: [
+    react(),
+    babel({ presets: [compiler] }),
+    runtimeFiles(),
+    serviceWorker(),
+  ],
   build: {
     manifest: true,
     target: "es2022",
