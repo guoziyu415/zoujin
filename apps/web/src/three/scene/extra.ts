@@ -87,14 +87,18 @@ function ridge(deg: number | undefined): void {
   };
 }
 
-// the foliage (UX round 2 ④): leaf clusters, the willow's strands and the reeds are alpha-tested cards and crowns,
-// seen from both sides; until the texture is there nothing is drawn (a card in its flat colour would be a green tile)
+// the foliage (UX round 2 ④): leaf clusters, the willow's strands, the reeds, and in the village the wheat, the vines
+// and the fig are alpha-tested cards and crowns, seen from both sides; until the texture is there nothing is drawn (a
+// card in its flat colour would be a green tile)
 const FOLIAGE = new Set([
   "poplar",
   "holmoak",
   "willow",
   "willowstrand",
   "reed",
+  "wheat",
+  "vine",
+  "fig",
 ]);
 function foliage(s: LoadedScene): void {
   const done = new Set<Material>();

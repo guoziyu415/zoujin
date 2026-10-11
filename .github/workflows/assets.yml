@@ -1,6 +1,7 @@
 # 场景资产（F-2；归途的川 F-10 照同样的做法）：查进仓库的清单（预算、两档颜色、位置点和布局、世界模型），再在干净环境里用草稿档从头生成广场，
 # 证明「一条命令跑通」；仓库里的清单要和这次是同一份输入；在另一个目录再生成一遍，两份清单逐字节一致（能复现）。
 # 正式档的光照图要约半小时，不在 CI 里烘。
+# 村子（F-11）同样，另查它用的共用路边包文件。
 # 王城（F-14）同样，一个包。
 # 刑场的群众（F-4）同样：查进仓库的群众包清单，从头生成两遍（MPFB 按钉住的提交现场取），逐字节一致，清单和仓库里的相同。
 name: assets
@@ -10,6 +11,8 @@ on:
     paths:
       - "assets/pipeline/plaza/**"
       - "assets/pipeline/road/**"
+      - "assets/pipeline/common/**"
+      - "assets/pipeline/village/**"
       - "assets/pipeline/castle/**"
       - "assets/pipeline/crowd/**"
       - "assets/scenes/**"
@@ -22,6 +25,8 @@ on:
     paths:
       - "assets/pipeline/plaza/**"
       - "assets/pipeline/road/**"
+      - "assets/pipeline/common/**"
+      - "assets/pipeline/village/**"
       - "assets/pipeline/castle/**"
       - "assets/pipeline/crowd/**"
       - "assets/scenes/**"
@@ -201,3 +206,49 @@ jobs:
           BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/crowd/build.sh "$RUNNER_TEMP/crowd2"
           cmp "$RUNNER_TEMP/crowd/crowd.bin" "$RUNNER_TEMP/crowd2/crowd.bin"
           cmp "$RUNNER_TEMP/crowd/crowd.json" "$RUNNER_TEMP/crowd2/crowd.json"
+
+  village:
+    name: village manifest, draft build from scratch
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '["self-hosted","zoujin-mac"]') }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: committed manifest (budgets, spots and places, its share of road-common)
+        run: |
+          node assets/pipeline/plaza/check_scene.mjs assets/scenes/village
+          node assets/pipeline/village/check_village.mjs assets/scenes/road-common assets/scenes/village
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: assets/pipeline/plaza/requirements.txt
+      - name: Blender as a Python module (bpy) and the X11/GL libraries it links
+        run: |
+          # 自建机器（infra/ci-runner）的镜像里已经装好，那里也没有 sudo
+          if [ -z "${ZOUJIN_CI_PREINSTALLED:-}" ]; then
+            sudo apt-get update -q
+            sudo apt-get install -y -q --no-install-recommends libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1
+          fi
+          uv venv --python 3.13 "$RUNNER_TEMP/bpy"
+          uv pip install --python "$RUNNER_TEMP/bpy/bin/python" -r assets/pipeline/plaza/requirements.txt
+      - name: build the village from scratch (draft lightmaps)
+        id: build
+        run: BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/village/build.sh draft "$RUNNER_TEMP/village"
+      - name: committed manifest built from the same inputs
+        run: node assets/pipeline/plaza/check_scene.mjs "$RUNNER_TEMP/village/village" assets/scenes/village/layout.json --manifest assets/scenes/village/scene.json
+      - name: navigation unit tests on the fresh pack (card F-11)
+        run: |
+          test -f "$RUNNER_TEMP/village/village/nav.json"
+          ZOUJIN_SCENE_ROOT="$RUNNER_TEMP/village" pnpm --filter @zoujin/web exec vitest run src/three/nav/navmesh.village.test.ts
+      - name: build again in another directory; every manifest must be byte-identical
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: |
+          BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/village/build.sh draft "$RUNNER_TEMP/village2"
+          for f in village/scene.json road-common/pack.json; do
+            cmp "$RUNNER_TEMP/village/$f" "$RUNNER_TEMP/village2/$f"
+          done

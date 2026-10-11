@@ -9,6 +9,7 @@ on:
       - "apps/web/**"
       - "assets/pipeline/plaza/**"
       - "assets/pipeline/road/**"
+      - "assets/pipeline/common/**"
       - "assets/pipeline/crowd/**"
       - "assets/pipeline/package.json"
       - "assets/scenes/**"
@@ -26,6 +27,7 @@ on:
       - "apps/web/**"
       - "assets/pipeline/plaza/**"
       - "assets/pipeline/road/**"
+      - "assets/pipeline/common/**"
       - "assets/pipeline/crowd/**"
       - "assets/pipeline/package.json"
       - "assets/scenes/**"
@@ -75,7 +77,7 @@ jobs:
             ${{ runner.temp }}/scenes/road-river-calm
             ${{ runner.temp }}/scenes/road-river-flood
             ${{ runner.temp }}/scenes/road-river
-          key: road-draft-${{ hashFiles('assets/pipeline/road/**', 'assets/pipeline/plaza/**', 'assets/scenes/road-river-calm/layout.json', 'assets/scenes/road-river-flood/layout.json', 'assets/pipeline/package.json', 'pnpm-lock.yaml') }}
+          key: road-draft-${{ hashFiles('assets/pipeline/road/**', 'assets/pipeline/common/**', 'assets/pipeline/plaza/**', 'assets/scenes/road-river-calm/layout.json', 'assets/scenes/road-river-flood/layout.json', 'assets/pipeline/package.json', 'pnpm-lock.yaml') }}
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true

@@ -7,7 +7,7 @@
 import bpy, os, sys, math, json   # bpy first: it brings mathutils
 import bmesh
 from mathutils import Vector, Matrix, noise
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'road'))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'common'))
 import bl
 from bl import box, cyl, rod, heightfield, lines
 

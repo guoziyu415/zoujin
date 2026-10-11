@@ -8,11 +8,11 @@
  "inputs": {
   "files": {
    "assets/scenes/castle-throne/layout.json": "684e5f70f6fff6c8865f2d5cf17a69930877349ef6635a7d815fc93ac822532e",
-   "assets/pipeline/castle/build.sh": "95caaec94c6e41deb153a222ba55b980581134471f4571eaf807bc78645ccc0d",
+   "assets/pipeline/castle/build.sh": "fa640af6fb3d0e8d23ce0a2b0ae4585ac33bc476131ef7a050d0707265f0a358",
    "assets/pipeline/castle/castle_tex.py": "a31268db486a0862a33953aab488c147b3ad51397e7d199554d94b089a839222",
    "assets/pipeline/plaza/placeholder_tex.py": "aabda4df4f3974b2eb65b227ed3b5ae2d606a489441d665b3f2f108c5cd1343e",
-   "assets/pipeline/road/bl.py": "08a5e8b769f887ea76c72acea86b93dc40d11c421b30a28e6313649d64424d28",
-   "assets/pipeline/castle/build_castle.py": "c5936b95cc017acc6fb35ea22f0adfc72c367cb44029d34c63d5dbe3fcc58f34",
+   "assets/pipeline/common/bl.py": "4bffdacd1d0b1876b9244e30b0f98ce00154911aa30c1130566723b55a1c9f22",
+   "assets/pipeline/castle/build_castle.py": "d7b7cf5d713e4776a3bedb0323321494c78fc948efc1cbf6fd549b0f785b4d09",
    "assets/pipeline/castle/lamps.mjs": "aad62d58d093acc4378d78d2af4342b44af06d5dcafd2aa65e77b0e084f77a8c",
    "assets/pipeline/plaza/requirements.txt": "0a234e44f52fb462c7e8694ecd82b99aca8e534ac610dde2dd749bb1e2cbe0e3",
    "assets/pipeline/plaza/sky.py": "971584f110b8a924e737d195f30eab114cb35d7345909e364ed21ec3e77aab27",

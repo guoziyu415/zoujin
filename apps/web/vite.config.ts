@@ -14,13 +14,15 @@ import type { Connect, Plugin, Rollup } from "vite";
 import { defineConfig } from "vite";
 import { castDir, sceneDir } from "./scene-dir.ts";
 
-// the plaza, the castle (F-14), and the road's river (F-10): its two packs, the shared roadside pack and the index that picks a pack by act
+// the plaza, the castle (F-14), the road's river (F-10: its two packs, the shared roadside pack and the index that picks a pack by act)
+// and the village (F-11)
 const SCENES = [
   "syracuse-square",
   "road-common",
   "road-river-calm",
   "road-river-flood",
   "road-river",
+  "village",
   "castle-throne",
 ];
 const TYPES: Record<string, string> = {
@@ -50,7 +52,12 @@ function runtimeFiles(): Plugin {
       if (!url?.startsWith(prefix)) continue;
       const rel = url.slice(prefix.length);
       const file = resolveUnder(dir, rel);
-      if (!file) break;
+      if (!file) {
+        // a 404, not the app's index.html: scene/extra.ts asks for an index.json a single-pack scene does not have
+        res.statusCode = 404;
+        res.end();
+        return;
+      }
       res.setHeader(
         "Content-Type",
         TYPES[path.extname(file)] ?? "application/octet-stream",

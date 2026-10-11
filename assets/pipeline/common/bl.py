@@ -1,4 +1,4 @@
-# Blender helpers for the road stops (F-10). The same materials and mesh helpers as ../plaza/build_plaza.py, which
+# Blender helpers for the road stops (F-10) and the village (F-11). The same materials and mesh helpers as ../plaza/build_plaza.py, which
 # runs its whole scene on import, so they are kept here for the road scripts rather than imported from there.
 # Groups as the plaza's bake.py expects them: 'ground' (one object named ground, planar lightmap), 'arch' (baked,
 # objects with caster = 1 also go into the shadow proxy), 'far' (not baked), 'dyn' (own nodes, hidden in the bake).
