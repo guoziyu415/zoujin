@@ -16,7 +16,7 @@ dev = [
 package = false
 
 [tool.uv.workspace]
-members = ["services/backend", "packages/worldsim", "packages/contracts", "evals"]
+members = ["services/backend", "packages/worldsim", "packages/contracts", "packages/llm", "evals"]
 exclude = ["spikes/*"]
 
 [tool.ruff]
@@ -50,6 +50,8 @@ files = [
     "services/backend/tests",
     "packages/worldsim/src",
     "packages/contracts/src",
+    "packages/llm/src",
+    "packages/llm/tests",
     "evals/src",
     "evals/tests",
 ]
