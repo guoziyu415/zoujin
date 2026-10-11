@@ -14,6 +14,8 @@ runner 不直接装在 Mac 上，而是跑在 Docker 里的一个 Linux 容器�
 - 不给任何 Key 的环境变量；CI 照旧只用假模型和回放。
 - 只注册在这个仓库，标签 `zoujin-mac`，只有这个仓库的工作流能用它。
 - 每个 job 跑完清掉工作目录和临时目录（`job-done.sh`）。
+- 没挡住的一点：容器能上网，也能经 `host.docker.internal` 连到 Mac 上开在本机的端口（比如 5432 的开发库、
+  8001/8787 的本地服务）。那些服务里没有 Key；CI 自己的库在容器里，工作流不连 Mac 的端口。
 - 容器里没有 Docker，所以工作流不能用 `services:`；db job 用 `.github/scripts/start_postgres.sh` 在 job 里起
   PostgreSQL 17，只监听容器自己的 127.0.0.1，和 Mac 上 5432 端口的开发库互不相干。
 
