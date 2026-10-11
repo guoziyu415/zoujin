@@ -208,6 +208,31 @@ export class Session {
     if (sent) useStory.setState({ actEnd: story.proposed(a, { clientMsgId }) });
   }
 
+  // the plan said aloud (3.11): the talk key's voice with purpose act_plan, nobody to focus; from the release the
+  // page waits for act_plan_result with that turn's ID. A slip or a slide away leaves the page as it was.
+  actPlanPress(): void {
+    const a = useStory.getState().actEnd;
+    if (!a || a.phase.k !== "propose") return;
+    useStory.setState({ actEnd: story.clearNotHeard(a) });
+    this.voice.planPress();
+  }
+
+  actPlanRelease(): void {
+    const turnId = this.voice.planRelease();
+    const a = useStory.getState().actEnd;
+    if (turnId && a)
+      useStory.setState({ actEnd: story.proposed(a, { turnId }) });
+  }
+
+  // took the spoken plan back while it was being judged (3.6 ⑦): turn_retract_result says whether it was in time
+  actPlanRetract(): void {
+    const a = useStory.getState().actEnd;
+    const turnId = a?.phase.k === "thinking" ? a.phase.turnId : undefined;
+    if (!a || !turnId) return;
+    this.voice.retract();
+    useStory.setState({ actEnd: story.retracting(a, turnId) });
+  }
+
   // shown the landing line of an arrival with an opener: the server lets the opener speak first
   actLanded(actId: string): void {
     this.live.send({ type: "act_landed", actId });
@@ -252,6 +277,11 @@ export class Session {
     switch (msg.type) {
       case "welcome":
         return this.welcome(msg);
+      case "turn_retract_result": {
+        const a = useStory.getState().actEnd;
+        if (a) useStory.setState({ actEnd: story.retractResult(a, msg) });
+        return this.voice.message(msg);
+      }
       case "session_preparing":
       case "session_ready":
       case "turn_started":
@@ -260,7 +290,6 @@ export class Session {
       case "turn_complete":
       case "suggestions":
       case "turn_settled":
-      case "turn_retract_result":
       case "safety_pause":
       case "safety_hint":
       case "safety_resumed":
@@ -286,6 +315,7 @@ export class Session {
       case "act_ended":
         return this.actEnded(msg);
       case "act_plan_result": {
+        if (msg.turnId) this.voice.planDone(msg.turnId);
         const a = useStory.getState().actEnd;
         if (!a) return;
         const next = story.planResult(a, msg);
@@ -331,7 +361,11 @@ export class Session {
         return;
       case "error":
         // invalid_request: what we sent didn't fit the schema; the turn didn't happen (api-contract 5)
-        if (msg.error.code === "invalid_request") this.voice.undelivered();
+        if (msg.error.code === "invalid_request") {
+          this.voice.undelivered();
+          const a = useStory.getState().actEnd;
+          if (a) useStory.setState({ actEnd: story.planRefused(a) });
+        }
         // invalid_choice: the act-end page as it was, the exits again (3.11)
         if (msg.error.code === "invalid_choice") {
           const a = useStory.getState().actEnd;
