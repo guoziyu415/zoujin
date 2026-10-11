@@ -46,6 +46,18 @@ def test_load_takes_only_claude_kinds_once(requests: Path) -> None:
     assert [k for k, _ in picked].count("rewrite") == 3 and len(picked) == 12
 
 
+def test_ending_requests_print_an_estimate(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """B-9 验收第 13 条：切片两条路的结局请求（b9-ending.jsonl）各 10 次，不带 --confirm 只打印估价。"""
+    d = tmp_path / "requests"
+    d.mkdir()
+    (d / "b9.jsonl").write_text((FIXTURE.parent / "b9-ending.jsonl").read_text(encoding="utf-8"), encoding="utf-8")
+    assert [len(v) for v in probe.load(d).values()] == [2]
+    argv = ["--requests", str(d), "--out", str(tmp_path / "out"), "--kind", "ending", "--per-kind", "20"]
+    assert probe.main([*argv, "--max-item-usd", "1", "--max-claude-usd", "100"], env=ENV) == 0
+    printed = capsys.readouterr().out
+    assert "小测：20 次调用" in printed and "预计花费" in printed and not (tmp_path / "out").exists()
+
+
 def test_holdout_is_never_read(tmp_path: Path) -> None:
     d = tmp_path / "data" / "evals" / "holdout" / "requests"
     d.mkdir(parents=True)

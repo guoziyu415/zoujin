@@ -157,7 +157,6 @@ def test_setup_reads_zj_world_on_every_call(env: Env, monkeypatch: pytest.Monkey
         ("memories", (OLD,)),
         ("trust", (OLD,)),
         ("db_absent", (["events"],)),
-        ("ending", ()),
     ],
 )
 def test_steps_b0_does_not_do_raise(
@@ -168,6 +167,25 @@ def test_steps_b0_does_not_do_raise(
     with pytest.raises(eval_api.EvalNotImplemented) as e:
         getattr(s, method)(*args)
     assert e.value.args == (method,)
+
+
+def test_ending_is_none_before_the_story_ends(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DATABASE_URL", env.url)
+    assert eval_api.setup(MINIMAL, mode="text").ending() is None  # B-9：还没进结局（走到结局的在 test_b9）
+
+
+def test_scenario_run_to_the_close_enters_the_ending_at_setup(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
+    """情景模式一口气推到收幕（E5 的 outcome 检查）：玩家没跟着换幕，起点就进结局，结局任务在 setup 里跑完。"""
+    monkeypatch.setenv("DATABASE_URL", env.url)
+    s = eval_api.setup({"role": "role.traveler", "scenario": "sc.river-delay"}, mode="text")
+    got = s.ending()
+    assert got is not None and got["world"]["outcome"] == "too-late" and got["world"]["signature"]
+
+
+def test_checkpoint_past_beat_24_does_not_enter_the_ending(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
+    """检查点停在 beat.24 以后、玩家还没换幕：beat.27 没结果，不进结局，照旧可以对话（数据评审 #124）。"""
+    monkeypatch.setenv("DATABASE_URL", env.url)
+    assert eval_api.setup({"role": "role.traveler", "checkpoint": "sc.canon@beat.26"}, mode="text").ending() is None
 
 
 def test_planted_memory_raises_in_setup(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:

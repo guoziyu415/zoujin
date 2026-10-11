@@ -40,7 +40,7 @@ from zoujin_backend.db.tables import drafts, playthrough_metrics, playthroughs, 
 from zoujin_backend.db.tables import events as events_t
 from zoujin_backend.ids import IdGen
 from zoujin_backend.models.text import ReplayMissing, Stop, TextModel
-from zoujin_backend.narrator import acts, confirm
+from zoujin_backend.narrator import acts, confirm, ending
 from zoujin_backend.narrator.pipeline import Counts, Pipeline, Spend, TurnInput, Verified
 from zoujin_backend.narrator.rules import Checked
 from zoujin_backend.narrator.writer import Writer
@@ -290,6 +290,10 @@ class Narrator:
     # —— 处理 ——
 
     async def process(self, task: Task) -> Result:
+        if task.kind == ending.KIND:
+            return await ending.run_ending(self, task)
+        if await self._ended(task.pid):  # 进了结局以后才轮到的：不写事件、不调模型（B-9）
+            return await self._commit(task, None, lambda w, book: self._after_end(task))
         if task.kind == "open":
             return await self._commit(task, None, lambda w, book: self._open(w, book))
         if task.kind == "advance":
@@ -313,6 +317,26 @@ class Narrator:
             return await confirm.run_confirm(self, task)
         raise ValueError(f"不认识的任务 {task.kind}")
 
+    async def _ended(self, pid: str) -> bool:
+        async with self.engine.connect() as c:
+            status = await c.scalar(select(playthroughs.c.status).where(playthroughs.c.playthrough_id == pid))
+        if status is None:
+            raise Gone(pid)
+        return bool(status != "active")
+
+    def _after_end(self, task: Task) -> Planned:
+        """结局开始以后才轮到的任务：对话 no_response，动作 refused，幕末 invalid_request，别的什么都不推。"""
+        from zoujin_backend.narrator.actions import ended
+        from zoujin_backend.narrator.plans import INVALID_REQUEST, invalid
+
+        if task.kind == "talk":
+            return self._ended_talk(task)
+        if task.kind == "action":
+            return ended(dict(task.request or {}))
+        if task.kind in ("choose", "plan"):
+            return invalid(INVALID_REQUEST, "invalid_request")
+        return Planned()
+
     async def read(self, pid: str) -> tuple[dict[str, Any], SimState]:
         async with self.engine.connect() as c:
             pt = (await c.execute(select(playthroughs).where(playthroughs.c.playthrough_id == pid))).mappings().one()
@@ -325,7 +349,7 @@ class Narrator:
         pt, state = await self.read(task.pid)
         if pt["act_end"] is not None:  # 收幕以后才轮到：no_response、0 分、不调模型
             await self.wait_window(task)
-            return await self._commit(task, pt["last_seq"], lambda w, book: self._ended_talk(w, task))
+            return await self._commit(task, pt["last_seq"], lambda w, book: self._ended_talk(task))
         book = self.library.version(pt["world_model_version"])
         lines = await self._lines(task.turn_id)
         turn = TurnInput(
@@ -517,7 +541,7 @@ class Narrator:
         }
         return Planned(outcome=outcome, minutes=minutes, checked=checked, push=[settled], proposals=proposals)
 
-    def _ended_talk(self, w: Writer, task: Task) -> Planned:
+    def _ended_talk(self, task: Task) -> Planned:
         settled = {
             "type": "turn_settled",
             "turnId": task.turn_id,
@@ -580,8 +604,19 @@ class Narrator:
             planned = plan(w, book)
             if planned.close_draft is not None:  # 回答了的草稿关掉就删（B-4）
                 await c.execute(delete(drafts).where(drafts.c.draft_id == planned.close_draft))
+            trigger = ending.due(book, w.state) if pt["status"] == "active" else None
+            if trigger is not None:  # 进结局（B-9）：结算到收幕、分类、站位
+                w.ending = ending.enter(w, book, trigger)
             closing, asking = await confirm.in_commit(self, c, task, w, planned)
             push = list(w.pieces) + list(planned.push)
+            before: list[Json] = []  # 网关排在这次提交的 commit 前面推的（B-9：ending_started）
+            if w.ending is not None:
+                push.extend(closing)
+                if w.events:
+                    before.append(w.ending["message"])
+                else:
+                    push.insert(0, w.ending["message"])
+                await store.enqueue(c, self.ids, task.pid, kind=ending.KIND, request=w.ending["request"])
             if w.closed:  # 这一幕在这次提交里收了：幕末的去处记在局上，推 act_ended（api-contract 3.11）
                 start = await c.scalar(
                     select(func.max(events_t.c.seq)).where(
@@ -610,7 +645,7 @@ class Narrator:
                 planned.outcome,
                 planned.minutes,
                 planned.checked,
-                push,
+                [*before, *push],  # 评测和测试看到的顺序就是网关推的顺序（ending_started → commit 之后的）
                 planned.info,
                 pieces,
             )
@@ -634,13 +669,16 @@ class Narrator:
                     .values(as_of_seq=w.state["seq"], state=w.state)
                 )
             self.fault("playthrough")
+            ended: dict[str, Any] = {"status": "ended", "ended_at": func.now()} if w.ending is not None else {}
             await c.execute(
                 update(playthroughs)
                 .where(playthroughs.c.playthrough_id == task.pid)
-                .values(last_seq=w.state["seq"], last_active_at=func.now(), **w.run.values())
+                .values(last_seq=w.state["seq"], last_active_at=func.now(), **w.run.values(), **ended)
             )
             self.fault("turn")
             stored = {"push": push, "pieces": pieces, "seq": w.state["seq"], **planned.extra}
+            if before:
+                stored["before"] = before
             if asking is not None:  # 网关推完这一轮的结果以后让人物反问、推 confirm（B-4）
                 stored["confirm"] = asking
             await c.execute(
@@ -657,10 +695,11 @@ class Narrator:
             )
             self.fault("metrics")
             counts = (counts or Counts()) + Counts(confirm_dropped=planned.dropped)
+            values = metrics(task, spend or Spend(), counts, planned)
+            if w.ending is not None:
+                values["ending_started_at"] = func.now()
             await c.execute(
-                update(playthrough_metrics)
-                .where(playthrough_metrics.c.playthrough_id == task.pid)
-                .values(metrics(task, spend or Spend(), counts, planned))
+                update(playthrough_metrics).where(playthrough_metrics.c.playthrough_id == task.pid).values(values)
             )
             self.fault("notify")
             await self._notify(c, task, seq=w.state["seq"], outcome=result.outcome)
@@ -689,6 +728,7 @@ COST_COLUMNS = {
     "reply": "cost_reply_usd",
     "narrate": "cost_narrate_usd",
     "plan": "cost_plan_usd",
+    "ending": "cost_ending_usd",
 }
 COUNT_COLUMNS = {
     "triage_skipped": "turns_triage_skipped",
