@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import Any
 
 from zoujin_backend.world import Book
+from zoujin_worldsim import SimState
 
 Json = Any
 
@@ -59,11 +60,18 @@ def act_at(book: Book, t: int) -> str | None:
     return cur
 
 
-def brief_lines(book: Book, role: str, character: str, t: int) -> list[str]:
+def done(state: SimState, aid: Json) -> bool:
+    """这条互助已经做成了：它的效果（`set`）在这一局都已成立。没有效果的看不出来，当没做成。"""
+    sets = [e for e in aid.get("effects", []) if e.get("op") == "set"]
+    return bool(sets) and all(state["vars"].get(e["var"]) == e["value"] for e in sets)
+
+
+def brief_lines(book: Book, state: SimState, character: str) -> list[str]:
     """Live 局势说明「# 話し相手」下面的几行：怎么称呼对方；开局那一幕里对方能为你做的小互助（人物视角）。
 
     「他为你」的那条不给人物：那是之后才会发生的事（例：深夜被召之前托付工房），说出来就是剧透（S-092）；
     叙事者看世界模型里的 `mutualAid` 判。"""
+    role, t = state["role"], state["t"]
     out: list[str] = []
     if role in ADDRESS:
         out.append(f"呼び方：{ADDRESS[role]}")
@@ -72,6 +80,6 @@ def brief_lines(book: Book, role: str, character: str, t: int) -> list[str]:
     if start is not None and now is not None and now != start:
         return out
     for _, a in opening_aids(book, role, character):
-        if a.get("direction") == "fromYou":
+        if a.get("direction") == "fromYou" and not done(state, a):
             out.append(f"相手があなたにしてくれそうなこと：{a['text']}")
     return out
