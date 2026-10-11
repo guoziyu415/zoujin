@@ -1,5 +1,5 @@
 {
- "schemaVersion": "1.9",
+ "schemaVersion": "1.10",
  "worldModelVersion": "hashire-merosu@1.0.0-slice.3",
  "book": {
   "id": "hashire-merosu",
@@ -16,6 +16,260 @@
    "license": "public-domain"
   }
  },
+ "ruby": [
+  {
+   "word": "邪智暴虐",
+   "reading": "じゃちぼうぎゃく"
+  },
+  {
+   "word": "暴虐",
+   "reading": "ぼうぎゃく"
+  },
+  {
+   "word": "牧人",
+   "reading": "ぼくじん"
+  },
+  {
+   "word": "律気",
+   "reading": "りちぎ"
+  },
+  {
+   "word": "花婿",
+   "reading": "はなむこ"
+  },
+  {
+   "word": "衣裳",
+   "reading": "いしょう"
+  },
+  {
+   "word": "竹馬の友",
+   "reading": "ちくばのとも"
+  },
+  {
+   "word": "石工",
+   "reading": "いしく"
+  },
+  {
+   "word": "若い衆",
+   "reading": "わかいしゅ"
+  },
+  {
+   "word": "老爺",
+   "reading": "ろうや"
+  },
+  {
+   "word": "世嗣",
+   "reading": "よつぎ"
+  },
+  {
+   "word": "賢臣",
+   "reading": "けんしん"
+  },
+  {
+   "word": "王城",
+   "reading": "おうじょう"
+  },
+  {
+   "word": "巡邏",
+   "reading": "じゅんら"
+  },
+  {
+   "word": "警吏",
+   "reading": "けいり"
+  },
+  {
+   "word": "蒼白",
+   "reading": "そうはく"
+  },
+  {
+   "word": "眉間",
+   "reading": "みけん"
+  },
+  {
+   "word": "皺",
+   "reading": "しわ"
+  },
+  {
+   "word": "憫笑",
+   "reading": "びんしょう"
+  },
+  {
+   "word": "反駁",
+   "reading": "はんばく"
+  },
+  {
+   "word": "呟",
+   "reading": "つぶや"
+  },
+  {
+   "word": "下賤",
+   "reading": "げせん"
+  },
+  {
+   "word": "磔",
+   "reading": "はりつけ"
+  },
+  {
+   "word": "悧巧",
+   "reading": "りこう"
+  },
+  {
+   "word": "自惚",
+   "reading": "うぬぼ"
+  },
+  {
+   "word": "北叟笑",
+   "reading": "ほくそえ"
+  },
+  {
+   "word": "身代り",
+   "reading": "みがわり"
+  },
+  {
+   "word": "磔刑",
+   "reading": "たっけい"
+  },
+  {
+   "word": "奴輩",
+   "reading": "やつばら"
+  },
+  {
+   "word": "地団駄",
+   "reading": "じだんだ"
+  },
+  {
+   "word": "困憊",
+   "reading": "こんぱい"
+  },
+  {
+   "word": "葡萄",
+   "reading": "ぶどう"
+  },
+  {
+   "word": "怺",
+   "reading": "こら"
+  },
+  {
+   "word": "薄明",
+   "reading": "はくめい"
+  },
+  {
+   "word": "信実",
+   "reading": "しんじつ"
+  },
+  {
+   "word": "奸佞",
+   "reading": "かんねい"
+  },
+  {
+   "word": "呑気",
+   "reading": "のんき"
+  },
+  {
+   "word": "氾濫",
+   "reading": "はんらん"
+  },
+  {
+   "word": "滔々",
+   "reading": "とうとう"
+  },
+  {
+   "word": "木葉微塵",
+   "reading": "こっぱみじん"
+  },
+  {
+   "word": "橋桁",
+   "reading": "はしげた"
+  },
+  {
+   "word": "繋舟",
+   "reading": "けいしゅう"
+  },
+  {
+   "word": "憐愍",
+   "reading": "れんびん"
+  },
+  {
+   "word": "棍棒",
+   "reading": "こんぼう"
+  },
+  {
+   "word": "流石",
+   "reading": "さすが"
+  },
+  {
+   "word": "灼熱",
+   "reading": "しゃくねつ"
+  },
+  {
+   "word": "眩暈",
+   "reading": "めまい"
+  },
+  {
+   "word": "韋駄天",
+   "reading": "いだてん"
+  },
+  {
+   "word": "稀代",
+   "reading": "きたい"
+  },
+  {
+   "word": "芋虫",
+   "reading": "いもむし"
+  },
+  {
+   "word": "不貞腐",
+   "reading": "ふてくさ"
+  },
+  {
+   "word": "潺々",
+   "reading": "せんせん"
+  },
+  {
+   "word": "滾々",
+   "reading": "こんこん"
+  },
+  {
+   "word": "囁",
+   "reading": "ささや"
+  },
+  {
+   "word": "恢復",
+   "reading": "かいふく"
+  },
+  {
+   "word": "刑場",
+   "reading": "けいじょう"
+  },
+  {
+   "word": "刑吏",
+   "reading": "けいり"
+  },
+  {
+   "word": "齧",
+   "reading": "かじ"
+  },
+  {
+   "word": "歔欷",
+   "reading": "きょき"
+  },
+  {
+   "word": "緋",
+   "reading": "ひ"
+  },
+  {
+   "word": "身代わり",
+   "reading": "みがわり"
+  },
+  {
+   "word": "牧童",
+   "reading": "ぼくどう"
+  },
+  {
+   "word": "外套",
+   "reading": "がいとう"
+  }
+ ],
  "clock": {
   "startT": 1110,
   "sunsetMinuteOfDay": 1140,
@@ -229,6 +483,7 @@
   {
    "id": "char.melos",
    "name": "メロス",
+   "reading": "メロス",
    "summary": "村の牧人。十六の内気な妹と二人暮らし。政治はわからないが、邪悪には人一倍敏感。",
    "traits": [
     {
@@ -694,6 +949,7 @@
   {
    "id": "char.king",
    "name": "王ディオニス",
+   "reading": "おうディオニス",
    "summary": "シラクスの王。これまでに身内や臣下を次々に殺してきた。",
    "traits": [
     {
@@ -989,6 +1245,7 @@
   {
    "id": "char.selinuntius",
    "name": "セリヌンティウス",
+   "reading": "セリヌンティウス",
    "summary": "メロスの竹馬の友。シラクスの市の石工。",
    "traits": [
     {
@@ -1401,6 +1658,7 @@
   {
    "id": "char.sister",
    "name": "メロスの妹",
+   "reading": "メロスのいもうと",
    "summary": "メロスの妹。十六の内気な娘で、兄と二人で村に暮らしている。",
    "traits": [
     {
@@ -1574,6 +1832,7 @@
   {
    "id": "char.groom",
    "name": "花婿",
+   "reading": "はなむこ",
    "summary": "村の律気な牧人。メロスの妹の結婚相手。",
    "traits": [
     {
@@ -1749,6 +2008,7 @@
   {
    "id": "char.philostratus",
    "name": "フィロストラトス",
+   "reading": "フィロストラトス",
    "summary": "セリヌンティウスの弟子の若い石工。",
    "traits": [
     {
@@ -1930,6 +2190,7 @@
   {
    "id": "char.old-man",
    "name": "市の老爺",
+   "reading": "しのろうや",
    "summary": "シラクスの市に住む老人。王の所業を知っていて、怯えている。",
    "traits": [
     {
@@ -2099,6 +2360,7 @@
   {
    "id": "char.young-man",
    "name": "市の若い衆",
+   "reading": "しのわかいしゅ",
    "summary": "シラクスの市の若い衆。",
    "traits": [
     {
@@ -2159,6 +2421,7 @@
   {
    "id": "char.guards",
    "name": "警吏（巡邏・刑吏）",
+   "reading": "けいり（じゅんら・けいり）",
    "summary": "王城を巡邏する役人たち。王の命令で人を捕らえ、刑場で磔を執り行う。",
    "traits": [
     {
@@ -2220,6 +2483,7 @@
   {
    "id": "char.bandits",
    "name": "峠の山賊",
+   "reading": "とうげのさんぞく",
    "summary": "棍棒を持った一隊の山賊。",
    "traits": [
     {
@@ -2270,6 +2534,7 @@
   {
    "id": "char.travelers",
    "name": "旅の一団",
+   "reading": "たびのいちだん",
    "summary": "街道を行く旅の一団。",
    "traits": [
     {
@@ -2314,6 +2579,7 @@
   {
    "id": "char.crowd",
    "name": "市の群衆",
+   "reading": "しのぐんしゅう",
    "summary": "シラクスの市の人々。",
    "traits": [
     {
@@ -2363,6 +2629,7 @@
   {
    "id": "char.maiden",
    "name": "市の少女",
+   "reading": "しのしょうじょ",
    "summary": "シラクスの市の少女。",
    "traits": [
     {
@@ -5440,6 +5707,7 @@
   {
    "id": "role.traveler",
    "name": "旅人",
+   "summary": "はじめてこの市に来た。誰も、あなたを知らない。",
    "startPlace": "place.syracuse-square",
    "startT": 1050,
    "knownCharacters": [],
