@@ -10,6 +10,7 @@ from typing import Any
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import FileResponse, JSONResponse
 
+from zoujin_backend.manifest import CACHE, FILE_CACHE, media_type
 from zoujin_backend.mock import scripts
 from zoujin_backend.mock.core import COOKIE, INVITE_CODE, Mock
 from zoujin_backend.mock.scripts import ScriptError
@@ -210,29 +211,29 @@ async def me(request: Request) -> Response:
 
 @router.get("/v1/books/{book_id}/manifest")
 async def manifest(request: Request, book_id: str) -> Response:
+    """和正式网关一样（B-7）：同一个生成器，ETag 是 manifestVersion，对上了回 304。"""
     m = mock_of(request)
     session_of(request)
     doc = m.manifest(book_id) if not m.book.request_errors("manifest", "params", {"bookId": book_id}) else None
     if doc is None:
         raise Fail("not_found")
+    headers = {"ETag": m.content.etag, "Cache-Control": CACHE}
+    if m.content.fresh(request.headers.get("if-none-match")):
+        return Response(status_code=304, headers=headers)
     resp = ok(m, "manifest", 200, doc)
-    resp.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    resp.headers.update(headers)
     return resp
 
 
 @router.get("/assets/voice/{book_id}/{name}")
 async def voice_file(request: Request, book_id: str, name: str) -> Response:
-    """预录句的录音（B-6，api-contract 2.1）：只发声音清单里列着的文件，文件名带 hash，长缓存。
+    """预录句的录音（B-6，api-contract 2.1）：只发 manifest 里列着的文件，文件名带 hash，长缓存。
     不要登录（同源的静态资源）。"""
     m = mock_of(request)
     path = m.voice_file(book_id, name)
     if path is None:
         return Response(status_code=404)
-    return FileResponse(
-        path,
-        media_type="audio/mp4" if path.suffix == ".m4a" else "audio/wav",
-        headers={"Cache-Control": "public, max-age=31536000, immutable"},
-    )
+    return FileResponse(path, media_type=media_type(path), headers={"Cache-Control": FILE_CACHE})
 
 
 @router.post("/v1/playthroughs")

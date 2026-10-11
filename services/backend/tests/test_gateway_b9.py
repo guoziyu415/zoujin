@@ -102,6 +102,13 @@ def test_ending_over_the_socket(env: Env, sliced: Services) -> None:
         p.send({"type": "act_choose", "clientMsgId": "again", "optionId": CITY})
         assert p.expect("error")["error"]["code"] == "invalid_request"
         assert rows(env, p.pid) == before
+        mark = len(p.log)  # focus、near 不再开会话：不回 session_ready，也不报错
+        p.send({"type": "near", "character": OLD})
+        p.send({"type": "focus", "character": OLD})
+        p.send({"type": "ping"})
+        p.expect("pong")
+        p._read(0.5)
+        assert [m["type"] for m in p.log[mark:]] == ["pong"]
 
         # REST：200，过 Schema（Player.call 查），没有内部字段
         view = p.call("ending", 200, "GET", ending)

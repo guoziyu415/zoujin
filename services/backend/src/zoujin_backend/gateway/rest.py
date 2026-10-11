@@ -1,4 +1,5 @@
-"""api-contract 第 1 节和 2.2〜2.4 的 REST。其余 `/v1` 接口 B-0 不挂路由，按第 5 节回 404 not_found（app.py）。
+"""api-contract 第 1 节和 2.1〜2.4 的 REST，加上预录句的录音文件（2.1）。其余 `/v1` 接口 B-0 不挂路由，
+按第 5 节回 404 not_found（app.py）。
 
 每个响应先用 C-1 生成的类型构造、按 Schema 校验再回；不合契约就回 500 internal，并在日志里记。
 """
@@ -12,7 +13,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import delete, func, insert, select, text
 from sqlalchemy.exc import IntegrityError
 
@@ -21,6 +22,7 @@ from zoujin_backend.db import store
 from zoujin_backend.db.tables import endings, idempotency_keys, playthrough_metrics, playthroughs, turns
 from zoujin_backend.gateway import auth
 from zoujin_backend.gateway.core import RUNS_PER_DAY, VOICE_MINUTES, Gateway
+from zoujin_backend.manifest import CACHE, FILE_CACHE, media_type
 from zoujin_backend.narrator import ending as ending_mod
 from zoujin_backend.schemas import SchemaError
 
@@ -215,6 +217,35 @@ async def me(request: Request) -> Response:
     return ok(gw, "me", 200, doc)
 
 
+# —— 2.1 ——
+
+
+@router.get("/v1/books/{book_id}/manifest")
+async def manifest(request: Request, book_id: str) -> Response:
+    """开进程时生成好的那一份（B-7）。地址不带版本：ETag 是 manifestVersion，对上了回 304。"""
+    gw = gw_of(request)
+    await user_of(request)
+    m = gw.manifest
+    if m is None or book_id != m.book_id:
+        raise Fail("not_found")
+    headers = {"ETag": m.etag, "Cache-Control": CACHE}
+    if m.fresh(request.headers.get("if-none-match")):
+        return Response(status_code=304, headers=headers)
+    resp = ok(gw, "manifest", 200, m.doc)
+    resp.headers.update(headers)
+    return resp
+
+
+@router.get("/assets/voice/{book_id}/{name}")
+async def voice_file(request: Request, book_id: str, name: str) -> Response:
+    """预录句的录音：只发 manifest 里列着的文件，文件名带 hash，长缓存；不要登录（同源的静态资源）。"""
+    m = gw_of(request).manifest
+    path = m.voice_file(book_id, name) if m is not None else None
+    if path is None:
+        return Response(status_code=404)
+    return FileResponse(path, media_type=media_type(path), headers={"Cache-Control": FILE_CACHE})
+
+
 # —— 2.2〜2.4 ——
 
 
@@ -258,7 +289,8 @@ async def _create(gw: Gateway, request: Request, user_id: str, key: str, fp: str
     doc = await body_of(request)
     check_request(gw, "playthroughs-create", "request", doc)
     book = gw.library.book(doc["bookId"])
-    if book is None or doc["roleId"] not in book.roles:
+    closed = gw.manifest is not None and not gw.manifest.has_role(doc["roleId"])  # 不在 manifest 里的身份没开放
+    if book is None or doc["roleId"] not in book.roles or closed:
         log.info("没有这个书或身份")
         raise Fail("invalid_request")
 
