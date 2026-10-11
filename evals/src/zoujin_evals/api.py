@@ -78,7 +78,7 @@ class EvalSession(Protocol):
     def trust(self, character: str) -> int: ...
     def utterance_cleared(self, step: int) -> bool: ...  # 这一步那一轮的原话（玩家和人物的）都清空了
     def db_absent(self, tables: Sequence[str]) -> Mapping[str, int]: ...  # 每张表里还查得到这一局的几行
-    def ending(self) -> dict[str, Json]: ...  # 契约第 5 节的 Ending
+    def ending(self) -> dict[str, Json] | None: ...  # 契约第 5 节的 Ending；没进结局是 None（检查记不过）
 
 
 class EvalApi(Protocol):
