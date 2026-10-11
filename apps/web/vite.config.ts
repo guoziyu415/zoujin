@@ -15,7 +15,7 @@ import { defineConfig } from "vite";
 import { castDir, sceneDir } from "./scene-dir.ts";
 
 // the plaza, the castle (F-14), the road's river (F-10: its two packs, the shared roadside pack and the index that picks a pack by act)
-// and the village (F-11)
+// and the village (F-11) with the room inside Melos's house (a sub-pack: pack.json, no scene.json)
 const SCENES = [
   "syracuse-square",
   "road-common",
@@ -23,6 +23,7 @@ const SCENES = [
   "road-river-flood",
   "road-river",
   "village",
+  "village-interior",
   "castle-throne",
 ];
 const TYPES: Record<string, string> = {

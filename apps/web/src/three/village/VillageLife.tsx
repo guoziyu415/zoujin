@@ -8,7 +8,8 @@
 //   code 2), the house dimmed with the daylight and its exposure eased in over about a second at the door;
 // - the house's camera zone (scene.json cameraZones): the near follow camera, with 0.5 m either way at the threshold;
 // - the yard by the clock (the altar dressed, myrtle on the ground), the vine's lamp at the groom's and the lantern in
-//   the hand (one warm point light each, no shadow, flickering), the feast's warm door on the rainy night.
+//   the hand (one warm point light each, no shadow, flickering), the feast's warm door on the rainy night;
+// - the room inside the house, its sub-pack and its own light (Interior.tsx).
 // The pack's nodes it looks for by name: altar-dressing, myrtle-leaves, door-glow (any missing is left alone).
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
@@ -42,6 +43,7 @@ import {
   type Weather,
 } from "./time";
 import { fill, puddles, splashMesh } from "./rainGround";
+import Interior from "./Interior";
 import { inZone, type CameraZone } from "./zones";
 
 // what the page shows now, for the light sub-packs (code 2) and the test hook; force: the test page's weather switch
@@ -282,5 +284,5 @@ export default function VillageLife({ scene }: { scene: LoadedScene }) {
     });
   });
 
-  return null;
+  return <Interior scene={scene} />;
 }
