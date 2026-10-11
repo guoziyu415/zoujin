@@ -3,7 +3,7 @@
 import type { Api } from "@zoujin/contracts";
 import { Session, type SessionHooks } from "./session";
 
-type Manifest = Pick<Api.ManifestResponse, "characters">;
+type Manifest = Pick<Api.ManifestResponse, "characters" | "setPieceVoices">;
 
 let current: Session | null = null;
 let manifest: Manifest | null = null; // may arrive before or after the session opens
@@ -34,6 +34,7 @@ function apply(s: Session, m: Manifest): void {
         c.prerecorded ? [[c.id, c.prerecorded]] : [],
       ),
     ),
+    m.setPieceVoices,
   );
 }
 
