@@ -45,7 +45,7 @@ async def spent(engine: Any, pid: str) -> float:
             .mappings()
             .one()
         )
-    return sum(float(row[col]) for col in COST_COLUMNS.values())
+    return sum(float(row[col]) for col in set(COST_COLUMNS.values()))  # B-17：结局的模型检查和结局同一列
 
 
 def test_a_retracted_turn_still_costs(env: Env) -> None:

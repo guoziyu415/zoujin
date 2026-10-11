@@ -206,7 +206,8 @@ SAFETY = Prompt(
     },
 )
 
-# B-9：切片的简化结局（三层，每句引用这一局的事件；条数、字数、引用由 `narrator/ending.py` 的校验管，这里只管形状）
+# B-9 / B-17：三层结局（每句引用这一局的事件；条数、字数、引用、主张由 `narrator/ending.py` 的校验管，这里只管形状）。
+# B-17 加：`variant`（这一局生成的世界结局，没有就是 null）和人物结局的 `claims`（主张的最终状态，可以是空数组）
 CITED = {
     "type": "object",
     "properties": {
@@ -225,12 +226,39 @@ CITED_TEXT = {
     "required": ["text", "cites"],
     "additionalProperties": False,
 }
+CLAIM = {
+    "type": "object",
+    "properties": {
+        "var": {"type": "string", "minLength": 1},
+        "value": {"anyOf": [{"type": "string"}, {"type": "integer"}, {"type": "boolean"}, {"type": "null"}]},
+    },
+    "required": ["var", "value"],
+    "additionalProperties": False,
+}
+VARIANT = {
+    "anyOf": [
+        {
+            "type": "object",
+            "properties": {
+                "id": {"type": "string", "minLength": 1},
+                "title": {"type": "string", "minLength": 1},
+                "summary": {"type": "string", "minLength": 1},
+                "claims": {"type": "array", "items": CLAIM},
+                "cites": {"type": "array", "items": {"type": "string"}},
+            },
+            "required": ["id", "title", "summary", "claims", "cites"],
+            "additionalProperties": False,
+        },
+        {"type": "null"},
+    ]
+}
 ENDING = Prompt(
     "ending",
     text("ending"),
     {
         "type": "object",
         "properties": {
+            "variant": VARIANT,
             "epilogue": {"type": "array", "items": CITED},
             "contrast": {
                 "type": "object",
@@ -262,13 +290,30 @@ ENDING = Prompt(
                     "properties": {
                         "character": {"type": "string", "minLength": 1},
                         "yours": {"type": "array", "items": CITED},
+                        "claims": {"type": "array", "items": CLAIM},
                     },
-                    "required": ["character", "yours"],
+                    "required": ["character", "yours", "claims"],
                     "additionalProperties": False,
                 },
             },
         },
-        "required": ["epilogue", "contrast", "subtitle", "cardContrast", "you", "characters"],
+        "required": ["variant", "epilogue", "contrast", "subtitle", "cardContrast", "you", "characters"],
+        "additionalProperties": False,
+    },
+)
+
+# B-17：结局的模型检查（backend-design 2.9 第 4 步）：三层之间讲不讲得通。不通时 fields 写哪些字段（和重写的
+# problems 同一种写法，如 "epilogue[1]"、"characters.char.king[0]"、"variant"）
+ENDING_CHECK = Prompt(
+    "ending-check",
+    text("ending-check"),
+    {
+        "type": "object",
+        "properties": {
+            "coherent": {"type": "boolean"},
+            "fields": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["coherent", "fields"],
         "additionalProperties": False,
     },
 )
@@ -310,7 +355,49 @@ KEEPS = Prompt(
     },
 )
 
+# B-21：候选话语（ux-design 7.8，api-contract 3.5 的 suggestions）
+SUGGEST = Prompt(
+    "suggest",
+    text("suggest"),
+    {
+        "type": "object",
+        "properties": {
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "text": {"type": "string", "minLength": 1, "maxLength": 40},
+                        "kind": {"enum": ["ask", "act", "accept", "decline"]},
+                    },
+                    "required": ["text", "kind"],
+                    "additionalProperties": False,
+                },
+                "minItems": 2,
+                "maxItems": 3,
+            }
+        },
+        "required": ["items"],
+        "additionalProperties": False,
+    },
+)
+
 PROMPTS: dict[str, Prompt] = {
     p.kind: p
-    for p in (TRIAGE, EXTRACT, CHECK, REWRITE, REPLY, NARRATE, PLAN, ENDING, SAFETY, SAFETY_REVIEW, MEMORY, KEEPS)
+    for p in (
+        TRIAGE,
+        EXTRACT,
+        CHECK,
+        REWRITE,
+        REPLY,
+        NARRATE,
+        PLAN,
+        ENDING,
+        ENDING_CHECK,
+        SAFETY,
+        SAFETY_REVIEW,
+        MEMORY,
+        KEEPS,
+        SUGGEST,
+    )
 }

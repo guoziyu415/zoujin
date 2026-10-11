@@ -838,6 +838,7 @@ COST_COLUMNS = {
     "narrate": "cost_narrate_usd",
     "plan": "cost_plan_usd",
     "ending": "cost_ending_usd",
+    "ending-check": "cost_ending_usd",  # B-17：结局的模型检查算进结局那一列
 }
 COUNT_COLUMNS = {
     "triage_skipped": "turns_triage_skipped",
@@ -865,7 +866,10 @@ PLANNED_COLUMNS = {  # B-3：动作的次数（收幕时队列里回 refused 的
 def cost_values(spend: Spend) -> dict[str, Any]:
     """各类提示的花费加到这一局已有的数上（data-design 第 3 节：每局费用 = 所有 cost_*_usd 之和）。"""
     m = playthrough_metrics.c
-    return {COST_COLUMNS[kind]: m[COST_COLUMNS[kind]] + usd for kind, usd in spend.usd.items()}
+    by_col: dict[str, float] = {}
+    for kind, usd in spend.usd.items():
+        by_col[COST_COLUMNS[kind]] = by_col.get(COST_COLUMNS[kind], 0.0) + usd
+    return {col: m[col] + usd for col, usd in by_col.items()}
 
 
 def metrics(task: Task, spend: Spend, counts: Counts, planned: Planned | None = None) -> dict[str, Any]:

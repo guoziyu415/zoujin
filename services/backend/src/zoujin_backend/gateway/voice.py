@@ -226,6 +226,8 @@ class Voices:
                 if ok and conn.focused == character and (announce or reason in ("switch", "reconnect")):
                     await conn.send({"type": "session_ready", "character": character, "voiceAvailable": True})
                     self._resume_ready(reused=False)
+                    if reason in ("switch", "reconnect"):  # 会话刚就绪：也给一次候选话语（B-21）
+                        conn.suggest_later(character)
             finally:
                 ev.set()
 
@@ -351,6 +353,7 @@ class Voices:
                 if conn.focused == character:
                     await conn.send({"type": "session_ready", "character": character, "voiceAvailable": True})
                     self._resume_ready(reused=True)
+                    conn.suggest_later(character)  # 预热命中、续玩接上：也给一次候选话语（B-21）
 
             self._spawn(ready())
             return

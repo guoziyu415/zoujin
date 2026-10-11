@@ -1,10 +1,14 @@
-"""切片的简化结局（B-9；backend-design 2.9 的切片版，api-contract 2.8、3.13，契约第 5 节）。
+"""三层结局（B-9 切片版 + B-17 完整版；backend-design 2.9，api-contract 2.8、3.13，契约第 5 节）。
 
 - **什么时候进**（`due`）：只在最后一幕（没有 exits 的那一幕）。期限盯的节拍（`clock.deadline.watchBeat`）有了结果，
   或期限结算过了，就进。在触发的那次提交里（`enter`）：把这一幕结算到收幕（收幕节拍上的固定演出不看玩家在哪，算进结局
   演出）→ `classify` → 演出站位 `staging` → 局改成 `ended` → 插一条 `kind: "ending"` 的任务 → 推送最前面是
   `ending_started`。
-- **站位、受影响排序、署名、模板、校验**：都是确定性的，全在这里，不交给模型。
+- **站位、受影响排序、署名、模板、校验**：都是确定性的，全在这里，不交给模型。B-17：排序加上约定、互助、记忆和
+  关系的变化；`player.relationships` 由代码按没删的记忆算；世界结局可以是这一局生成的（`world.variant`），它的主张
+  （`claims`）和人物结局的主张都要和最终状态一致；删过记忆的人物不写「记得你」；引用不能只靠作废约定的那条事件。
+- **模型检查**（B-17，backend-design 2.9 第 4 步，提示 `ending-check`）：确定性校验过了以后，再让模型看三层之间
+  讲不讲得通；不通就带上字段名重写，和别的不过一样算一次。检查本身超时、出错、不过 Schema 时不拦，照用这份结局。
 - **生成**（`run_ending`）：Claude 写尾声、你的结局、人物的结局（提示 `ending`，结构化输出），每句引用这一局的事件；
   事件 ID 在请求里写成 `e<seq>`（同样的局面请求一样，回放的键才对得上），收到以后换回真 ID。最多调两次（超时、出错、
   不过 Schema、不过校验都算一次；第二次带上不过的规则名和字段），之后用模板（S-065，ux-design 11.4）。
@@ -29,9 +33,10 @@ from sqlalchemy import func, insert, select, update
 from zoujin_backend.db import store
 from zoujin_backend.db.events import recorded_at
 from zoujin_backend.db.store import Run
-from zoujin_backend.db.tables import endings, playthrough_metrics, playthroughs, turns, utterances
+from zoujin_backend.db.tables import endings, memory_items, playthrough_metrics, playthroughs, turns, utterances
 from zoujin_backend.models.prompts import PROMPTS
 from zoujin_backend.models.text import BadOutput, ModelCallFailed, RateLimited, TextResult, model_and_version, spec
+from zoujin_backend.narrator.memory import initial_trust, item_json, relation
 from zoujin_backend.narrator.pipeline import Spend
 from zoujin_backend.narrator.rules import VERBATIM, has_pii, lcs_len
 from zoujin_backend.narrator.writer import SCHEMA_VERSION, Writer, has_exits
@@ -47,6 +52,7 @@ log = logging.getLogger("zoujin.narrator")
 Json = Any
 
 KIND = "ending"
+CHECK_KIND = "ending-check"  # B-17：三层讲不讲得通（backend-design 2.9 第 4 步）
 MAX_CALLS = 2  # 一次调用 + 重写（或超时重发）一次，之后用模板（backend-design 第 138 行）
 ETA_SECONDS = 15  # 202 的 etaSeconds = 15 减去已经过的秒数，最少 5（api-contract 2.8；Mac 探针一次 p95 约 10 秒）
 ETA_MIN = 5
@@ -82,6 +88,15 @@ EPILOGUE = (3, 5)
 SIDE = (0, 2)  # didForYou、youDid
 YOURS = (1, 3)
 CARD_LINES = 3
+
+# B-17：删过记忆的人物，结局里不写「他记得你」（契约第 4 节删除语义第 2 条）；按子串查他自己的结局和提到他名字的句子
+REMEMBER = ("覚えて", "憶えて", "覚えてい", "忘れなかった", "忘れていなかった", "記憶", "思い出")
+VARIANT_ID = re.compile(r"gen\.[a-z0-9]+(?:-[a-z0-9]+)*")
+VARIANT_CITES = 2  # 生成的世界结局至少两个本局事件（契约第 5 节）
+# 受影响排序的权重（B-17，backend-design 2.9 第 1 步）：玩家的事件里和他有关的、changedBeats 里他是参与者的各 1；
+# 互助（玩家为他、他为玩家）再加 1；和玩家的约定（不算作废的）2；没删的记忆 1 条 1；信任离起始值每 10 加 1
+W_AID, W_PROMISE, W_MEMORY, W_TRUST_STEP = 1, 2, 1, 10
+CHECK_FIELD_MAX = 60  # 模型检查回的字段名最长多少字（只回传给重写，不进日志）
 
 ALIAS = re.compile(r"e([1-9][0-9]*)")
 PLACEHOLDER = ""  # 专有名词的占位符（和评测 text.py 一样：私用区的一个字）
@@ -250,10 +265,31 @@ def listed(book: Book) -> list[str]:
     return [c for c, x in book.characters.items() if x.get("talkable")]
 
 
+def aid(e: Mapping[str, Any], c: str) -> bool:
+    """互助（D-012）：玩家为他做的（玩家的事件、beneficiary 是他），或他为玩家做的（actor 是他、
+    beneficiary 是玩家）。"""
+    return (by_player(e) and e.get("beneficiary") == c) or (e.get("actor") == c and e.get("beneficiary") == "player")
+
+
+def with_player(state: SimState, c: str) -> list[Json]:
+    """他和玩家之间的约定（不算作废的：玩家删了那条记忆，人物和结局都不再提它，ux-design 10.1）。"""
+    return [
+        p
+        for p in state["promises"].values()
+        if p.get("status") != "voided" and {p.get("from"), p.get("to")} == {"player", c}
+    ]
+
+
 def rank(
-    book: Book, state: SimState, events: Sequence[Mapping[str, Any]], changed: Sequence[Mapping[str, Any]]
+    book: Book,
+    state: SimState,
+    events: Sequence[Mapping[str, Any]],
+    changed: Sequence[Mapping[str, Any]],
+    memories: Sequence[Mapping[str, Any]] = (),
+    moved: Mapping[str, int] | None = None,
 ) -> dict[str, Json]:
-    """受影响的排序（切片的简化版）：玩家的事件里和他有关的条数，加上 changedBeats 里他是参与者的节拍数。
+    """受影响的排序（B-17 的加权，权重见 `W_*`）：玩家的事件里和他有关的条数、changedBeats 里他是参与者的节拍数、
+    互助、约定、没删的记忆、信任离起始值多远（`moved`：人物 → 信任的变化）。
     0 分 `unchanged`、`rank: null`；其余按分数从高到低给 1、2…，同分按 `endings.characters` 的顺序。"""
     mine = [e for e in events if by_player(e)]
     names = listed(book)
@@ -261,6 +297,10 @@ def rank(
     for c in names:
         n = sum(1 for e in mine if involves(e, c, state))
         n += sum(1 for x in changed if c in book.beats[x["beat"]].get("participants", []))
+        n += W_AID * sum(1 for e in events if aid(e, c))
+        n += W_PROMISE * len(with_player(state, c))
+        n += W_MEMORY * sum(1 for m in memories if m["character"] == c)
+        n += abs((moved or {}).get(c, 0)) // W_TRUST_STEP
         score[c] = n
     ordered = sorted((c for c in names if score[c] > 0), key=lambda c: (-score[c], names.index(c)))
     out = {c: {"character": c, "rank": None, "unchanged": True, "score": 0} for c in names}
@@ -345,6 +385,11 @@ class Ctx:
     changed: list[Json]
     ranks: dict[str, Json]
     said: list[str] = field(default_factory=list)  # 玩家的原话（校验用，不进请求）
+    memories: list[Json] = field(default_factory=list)  # 没删的记忆（memoryId、character、kind、text、trustDelta）
+    forgot: frozenset[str] = frozenset()  # 删过记忆的人物
+    dropped: frozenset[str] = frozenset()  # 删了的记忆的来源事件（即兴设定不再提）
+    trust: dict[str, int] = field(default_factory=dict)  # 人物 → 现在的信任（起始值 + 没删的记忆）
+    moved: dict[str, int] = field(default_factory=dict)  # 人物 → 信任离起始值多少
 
     @property
     def label(self) -> str:
@@ -371,9 +416,20 @@ def make_ctx(
     request: Mapping[str, Any],
     log_: Sequence[Json],
     said: list[str],
+    memories: Sequence[Mapping[str, Any]] = (),
 ) -> Ctx:
+    """`memories`：这一局的全部记忆行（含删了的，`deletedAt` 有值）。"""
     events = kept(log_)
     changed = changed_beats(book, state, events)
+    alive = [dict(m) for m in memories if not m.get("deletedAt")]
+    gone = [m for m in memories if m.get("deletedAt")]
+    trust: dict[str, int] = {}
+    moved: dict[str, int] = {}
+    for c in listed(book):
+        delta = sum(int(m.get("trustDelta", 0)) for m in alive if m["character"] == c)
+        start = initial_trust(book, role_id, c)
+        trust[c] = max(-100, min(100, start + delta))
+        moved[c] = trust[c] - start
     return Ctx(
         book=book,
         state=state,
@@ -384,9 +440,27 @@ def make_ctx(
         stage=copy.deepcopy(request["staging"]),
         events=events,
         changed=changed,
-        ranks=rank(book, state, events, changed),
+        ranks=rank(book, state, events, changed, alive, moved),
         said=said,
+        memories=alive,
+        forgot=frozenset(str(m["character"]) for m in gone),
+        dropped=frozenset(str(e) for m in gone for e in m.get("fromEvents", [])),
+        trust=trust,
+        moved=moved,
     )
+
+
+def relationships(ctx: Ctx) -> list[Json]:
+    """`player.relationships`（契约第 5 节）：信任离起始值、或有没删的记忆的人物，按排序。文字（`line`）不写。"""
+    out: list[Json] = []
+    order = sorted(ctx.ranks.values(), key=lambda r: (r["rank"] is None, r["rank"] or 0))
+    for r in order:
+        c = r["character"]
+        ids = [str(m["memoryId"]) for m in ctx.memories if m["character"] == c]
+        if not ids and not ctx.moved.get(c):
+            continue
+        out.append({"character": c, "trust": ctx.trust[c], "label": relation(ctx.trust[c])[0], "memoryIds": ids})
+    return out
 
 
 def from_template(ctx: Ctx) -> Json:
@@ -417,7 +491,7 @@ def from_template(ctx: Ctx) -> Json:
         "world": world_part(ctx),
         "player": {
             "fate": {"id": ctx.fate, "label": fate, "causedBy": cites},
-            "relationships": [],
+            "relationships": relationships(ctx),
             "title": {"text": title, "causedBy": cites},
             "epilogue": [{"sentence": t["subtitle"], "cites": cites}],
             "lastScene": last_scene(book, state, ctx.stage),
@@ -455,15 +529,15 @@ def alias_map(events: Sequence[Mapping[str, Any]]) -> tuple[dict[str, str], dict
 
 
 def request_of(ctx: Ctx, problems: Sequence[Mapping[str, str]] = ()) -> Json:
-    """送给模型的 request（回放按它算键）：分类、署名变量的最终值、changedBeats、人物、这一局的事件、身份名。
-    不给原话（S-046），不给记忆。重写时带上一次不过的规则名和字段（不带文字）。"""
+    """送给模型的 request（回放按它算键）：分类、最终状态、changedBeats、人物（排序、信任、删没删过记忆）、没删的记忆、
+    约定（不含作废的）、即兴设定（不含删了的记忆的来源事件记下的）、这一局的事件、身份名。
+    不给原话（S-046）。重写时带上一次不过的规则名和字段（不带文字）。"""
     book = ctx.book
     to_alias, _ = alias_map(ctx.events)
-    sig_vars = book.world["endings"].get("signature", {}).get("vars", [])
     req: Json = {
         "worldModelVersion": book.version,
         "outcome": {"id": ctx.outcome, "label": ctx.label},
-        "finalVars": {v: ctx.state["vars"].get(v) for v in sig_vars},
+        "finalVars": {v: ctx.state["vars"][v] for v in sorted(ctx.state["vars"])},
         "changedBeats": [
             {
                 "beat": x["beat"],
@@ -480,8 +554,27 @@ def request_of(ctx: Ctx, problems: Sequence[Mapping[str, str]] = ()) -> Json:
                 "rank": r["rank"],
                 "unchanged": r["unchanged"],
                 "originalEnding": original(book, c),
+                "relation": relation(ctx.trust[c])[0],
+                "forgotYou": c in ctx.forgot,
             }
             for c, r in ctx.ranks.items()
+        ],
+        "memories": [{"character": m["character"], "kind": m["kind"], "text": m["text"]} for m in ctx.memories],
+        "promises": [
+            {
+                "from": p.get("from"),
+                "to": p.get("to"),
+                "text": p.get("text"),
+                "status": p.get("status"),
+                "madeBy": to_alias.get(str(p.get("madeBy")), None),
+            }
+            for _, p in sorted(ctx.state["promises"].items())
+            if p.get("status") != "voided"
+        ],
+        "improv": [
+            {"character": f.get("character"), "statement": f.get("statement")}
+            for _, f in sorted(ctx.state["runFacts"].items())
+            if f.get("statement") and str(f.get("madeBy")) not in ctx.dropped
         ],
         "events": [
             {
@@ -566,6 +659,8 @@ def _sentences(out: Mapping[str, Any]) -> list[tuple[str, Mapping[str, Any]]]:
     rows += [(f"you.youDid[{i}]", x) for i, x in enumerate(you["youDid"])]
     for c in out["characters"]:
         rows += [(f"characters.{c['character']}[{i}]", x) for i, x in enumerate(c["yours"])]
+    if out.get("variant"):
+        rows.append(("variant", {"sentence": out["variant"]["summary"], "cites": out["variant"]["cites"]}))
     return rows
 
 
@@ -578,6 +673,8 @@ def texts_of(out: Mapping[str, Any]) -> list[tuple[str, str]]:
         ("subtitle", out["subtitle"]),
         ("cardContrast", out["cardContrast"]),
     ]
+    if out.get("variant"):
+        rows.append(("variant.title", out["variant"]["title"]))
     return rows
 
 
@@ -616,6 +713,7 @@ def validate(ctx: Ctx, out: Mapping[str, Any]) -> list[Problem]:
     beat = out["contrast"].get("beat")
     if beat is not None and beat not in {x["beat"] for x in ctx.changed}:
         bad.append(Problem("contrast-beat", "contrast.beat"))
+    bad += validate_b17(ctx, out)
     nouns = proper_nouns(ctx.book.world)
     said = [mask(s, nouns) for s in ctx.said if s]
     forbid = executed(ctx.state)
@@ -626,6 +724,48 @@ def validate(ctx: Ctx, out: Mapping[str, Any]) -> list[Problem]:
             bad.append(Problem("pii", f))
         if forbid and any(w in text for w in FORBIDDEN):
             bad.append(Problem("s067", f))
+    return bad
+
+
+def claims_hold(ctx: Ctx, claims: Sequence[Mapping[str, Any]]) -> bool:
+    """主张都是世界模型里的变量，值等于最终状态（契约第 5 节：`claims` 和 `finalVars` 一致）。"""
+    vars_ = ctx.state["vars"]
+    return all(str(x.get("var")) in vars_ and vars_[str(x["var"])] == x.get("value") for x in claims)
+
+
+def voided_made(ctx: Ctx) -> set[str]:
+    """成立了作废约定的事件。"""
+    return {str(p["madeBy"]) for p in ctx.state["promises"].values() if p.get("status") == "voided" and p.get("madeBy")}
+
+
+def validate_b17(ctx: Ctx, out: Mapping[str, Any]) -> list[Problem]:
+    """B-17 加的确定性校验：生成的世界结局（id、主张、至少两个事件）、人物结局的主张、删过记忆的人物不写「记得你」、
+    引用不能只靠成立作废约定的事件。"""
+    bad: list[Problem] = []
+    v = out.get("variant")
+    if v:
+        if not VARIANT_ID.fullmatch(str(v["id"])):
+            bad.append(Problem("variant-id", "variant.id"))
+        if not v["claims"] or not claims_hold(ctx, v["claims"]):
+            bad.append(Problem("variant-claim", "variant.claims"))
+        if len(set(v["cites"]) & ctx.ids) < VARIANT_CITES:
+            bad.append(Problem("variant-cites", "variant.cites"))
+        if len(v["title"]) > SUBTITLE_MAX:
+            bad.append(Problem("length", "variant.title"))
+    for c in out["characters"]:
+        if not claims_hold(ctx, c.get("claims", [])):
+            bad.append(Problem("character-claim", f"characters.{c['character']}"))
+    voided = voided_made(ctx)
+    for f, x in _sentences(out):
+        cites = set(x.get("cites", []))
+        if cites and cites <= voided:
+            bad.append(Problem("cite-voided", f))
+    names = {c: str(ctx.book.characters[c]["name"]) for c in ctx.forgot if c in ctx.book.characters}
+    for f, x in _sentences(out):
+        text = str(x.get("sentence", x.get("text", "")))
+        own = next((c for c in names if f.startswith(f"characters.{c}[")), None)
+        if any(w in text for w in REMEMBER) and (own or any(n in text for n in names.values())):
+            bad.append(Problem("forgot", f))
     return bad
 
 
@@ -675,11 +815,22 @@ def from_model(ctx: Ctx, out: Mapping[str, Any]) -> Json:
         if not r["unchanged"]:
             row["yours"] = copy.deepcopy(yours[c])
         characters.append(row)
+    world: Json = {**world_part(ctx), "contrast": contrast}
+    v = out.get("variant")
+    if v:
+        world["variant"] = {
+            "id": v["id"],
+            "title": v["title"],
+            "summary": v["summary"],
+            "claims": copy.deepcopy(v["claims"]),
+            "causedBy": list(dict.fromkeys(v["cites"])),
+        }
+        world["summary"] = v["summary"]
     return {
-        "world": {**world_part(ctx), "contrast": contrast},
+        "world": world,
         "player": {
             "fate": {"id": ctx.fate, "label": you["fate"]["text"], "causedBy": list(you["fate"]["cites"])},
-            "relationships": [],
+            "relationships": relationships(ctx),
             "title": {"text": you["title"]["text"], "causedBy": list(you["title"]["cites"])},
             "epilogue": copy.deepcopy(out["epilogue"]),
             "lastScene": last_scene(book, ctx.state, ctx.stage),
@@ -744,6 +895,93 @@ def eta(started: float, now: float) -> int:
 # —— 生成（kind: "ending" 的任务）——
 
 
+def check_request(ctx: Ctx, out: Mapping[str, Any]) -> Json:
+    """模型检查的 request：分类、最终状态、事件（别名）、和这份结局的文字（引用换成别名）。不给原话。"""
+    to_alias, _ = alias_map(ctx.events)
+
+    def cites(x: Mapping[str, Any]) -> list[str]:
+        return [to_alias.get(c, c) for c in x.get("cites", [])]
+
+    def rows(xs: Sequence[Mapping[str, Any]]) -> list[Json]:
+        return [{"sentence": x["sentence"], "cites": cites(x)} for x in xs]
+
+    you = out["you"]
+    v = out.get("variant")
+    return {
+        "worldModelVersion": ctx.book.version,
+        "outcome": {"id": ctx.outcome, "label": ctx.label},
+        "finalVars": {k: ctx.state["vars"][k] for k in sorted(ctx.state["vars"])},
+        "events": [
+            {"eventId": to_alias[e["eventId"]], "actor": e["actor"], "summary": e["summary"]} for e in ctx.events
+        ],
+        "ending": {
+            "variant": None if not v else {"title": v["title"], "summary": v["summary"], "claims": v["claims"]},
+            "epilogue": rows(out["epilogue"]),
+            "contrast": {"original": out["contrast"]["original"], "yours": out["contrast"]["yours"]},
+            "you": {
+                "title": you["title"]["text"],
+                "fate": you["fate"]["text"],
+                "didForYou": rows(you["didForYou"]),
+                "youDid": rows(you["youDid"]),
+            },
+            "characters": [
+                {
+                    "character": c["character"],
+                    "name": ctx.book.characters[c["character"]]["name"],
+                    "forgotYou": c["character"] in ctx.forgot,
+                    "yours": rows(c["yours"]),
+                }
+                for c in out["characters"]
+                if c["character"] in ctx.book.characters
+            ],
+        },
+    }
+
+
+async def coherent(
+    n: Narrator, ctx: Ctx, out: Mapping[str, Any], spend: Spend, span: Mapping[str, Any]
+) -> list[Problem]:
+    """模型检查（backend-design 2.9 第 4 步）：三层之间讲不讲得通。不通 → `coherence` 加字段名；检查本身超时、出错、
+    不过 Schema 时不拦（返回空，Trace 记 `skipped`），结局照用。"""
+    request = check_request(ctx, out)
+    model, version = model_and_version(CHECK_KIND)
+    with n.tracer.span(
+        f"narrator.{CHECK_KIND}", provider=spec(CHECK_KIND).provider, model=model, prompt_version=version, **span
+    ) as sp:
+        try:
+            r = await asyncio.wait_for(
+                n.text.call(CHECK_KIND, request), n.deadlines.get(CHECK_KIND, spec(CHECK_KIND).deadline)
+            )
+            spend.add(r)
+            try:
+                jsonschema.validate(r.output, PROMPTS[CHECK_KIND].schema)
+            except jsonschema.ValidationError:
+                sp.set(status="skipped", reason="invalid")
+                return []
+        except TimeoutError:
+            spend.charge(CHECK_KIND, n.text.cancelled_cost(CHECK_KIND, request))
+            sp.set(status="skipped", reason="timeout")
+            return []
+        except BadOutput as e:
+            spend.charge(CHECK_KIND, e.cost_usd)
+            sp.set(status="skipped", reason="invalid")
+            return []
+        except ModelCallFailed:
+            sp.set(status="skipped", reason="error")
+            return []
+        except RateLimited:
+            if n.on_rate_limit == "stop":
+                raise
+            sp.set(status="skipped", reason="rate_limited")
+            return []
+        ok = bool(r.output["coherent"])
+        sp.set(status="ok" if ok else "rejected", cost_usd=round(r.cost_usd, 6))
+        if ok:
+            return []
+        fields = [str(f)[:CHECK_FIELD_MAX] for f in r.output["fields"] if str(f).strip()] or ["ending"]
+        return [Problem("coherence", f) for f in dict.fromkeys(fields)]
+
+
 @dataclass
 class Generated:
     body: Json
@@ -753,7 +991,8 @@ class Generated:
 
 
 async def generate(n: Narrator, ctx: Ctx, spend: Spend, span: Mapping[str, Any]) -> Generated:
-    """调模型写结局：最多两次（超时、出错、不过 Schema、不过校验都算一次；第二次带不过的规则名），之后用模板。"""
+    """调模型写结局：最多两次（超时、出错、不过 Schema、不过校验、模型检查说讲不通都算一次；第二次带不过的规则名），
+    之后用模板。"""
     _, back = alias_map(ctx.events)
     model, version = model_and_version(KIND)
     problems: list[Problem] = []
@@ -810,6 +1049,8 @@ async def generate(n: Narrator, ctx: Ctx, spend: Spend, span: Mapping[str, Any])
                 cost_usd=round(r.cost_usd, 6),
             )
             if not problems:
+                problems = await coherent(n, ctx, out, spend, span)
+            if not problems:
                 return Generated(from_model(ctx, out), False, calls, [])
     log.info("结局 %s 走模板（调了 %d 次）", ctx.pid, calls)
     return Generated(from_template(ctx), True, calls, problems)
@@ -836,8 +1077,10 @@ async def run_ending(n: Narrator, task: Task) -> Result:
                 )
             ).all()
         ]
+        rows = (await c.execute(select(memory_items).where(memory_items.c.playthrough_id == task.pid))).mappings().all()
+        memories = [item_json(dict(r)) for r in rows]
     request = dict(task.request or {})
-    ctx = make_ctx(book, state, task.pid, pt["role_id"], request, log_, said)
+    ctx = make_ctx(book, state, task.pid, pt["role_id"], request, log_, said, memories)
     spend = task.spend
     span = {"playthrough_id": task.pid, "turn_id": task.turn_id, "world_model_version": book.version}
     if request.get("unclassified"):  # 世界模型的错：5 类都不成立
