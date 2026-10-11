@@ -16,7 +16,7 @@ import { addNarration, initialVoice, useVoice } from "../stores/voice";
 import { usePlayer } from "../stores/player";
 import { showToasts, useUi, type Toast } from "../stores/ui";
 import { setTelemetryContext, track } from "../telemetry/telemetry";
-import { resetStory, useStory } from "../stores/story";
+import { addEndingLines, resetStory, useStory } from "../stores/story";
 import * as story from "./story";
 import { copy, fill } from "../ui/copy";
 
@@ -56,6 +56,7 @@ const KNOWN: Record<Api.ServerMessage["type"], true> = {
 };
 
 export const CLIENT_VERSION = "web-0.1.0";
+export const ENDING_LINE_WAIT_MS = 3000; // the line being spoken when the ending starts finishes, at most this long
 
 export type SessionHooks = {
   onEnded: (why: Ended) => void; // 4001 → the invite page; taken / gone → the screen says so
@@ -76,7 +77,7 @@ export class Session {
     private readonly hooks: SessionHooks,
     url = wsUrl(playthroughId),
     Ctor?: ConstructorParameters<typeof Live>[3],
-    audio: AudioPort = pageAudio,
+    private readonly audio: AudioPort = pageAudio,
   ) {
     this.live = new Live(
       url,
@@ -263,6 +264,8 @@ export class Session {
       case "commit":
         return void this.commit(msg);
       case "narration":
+        if (useStory.getState().ending)
+          return addEndingLines([{ text: msg.line, speaker: null }]);
         return addNarration(msg.line);
       case "action_result":
         if (msg.narration) addNarration(msg.narration);
@@ -288,6 +291,33 @@ export class Session {
       }
       case "act_transition":
         return this.actTransition(msg);
+      case "ending_started":
+        return void this.endingStarted(msg);
+      case "ending_ready": {
+        const e = useStory.getState().ending;
+        if (e) useStory.setState({ ending: { ...e, endingId: msg.endingId } });
+        return;
+      }
+      case "set_piece":
+        if (useStory.getState().ending)
+          addEndingLines(
+            msg.lines.map((l, i) =>
+              "narration" in l
+                ? {
+                    text: l.narration,
+                    speaker: null,
+                    pieceId: msg.pieceId,
+                    n: i + 1,
+                  }
+                : {
+                    text: l.line,
+                    speaker: l.speaker,
+                    pieceId: msg.pieceId,
+                    n: i + 1,
+                  },
+            ),
+          );
+        return;
       case "error":
         // invalid_request: what we sent didn't fit the schema; the turn didn't happen (api-contract 5)
         if (msg.error.code === "invalid_request") this.voice.undelivered();
@@ -348,11 +378,18 @@ export class Session {
       for (const h of held) await this.commit(h);
       return;
     }
-    setWorld(withReveal(r.world, c.reveal));
     setTelemetryContext({
       playthroughId: this.playthroughId,
       t: r.world.clock.t,
     });
+    // during the ending's staging the results don't run ahead of it (ux-design 11.1): no light reactions, no key
+    // moment; the narration joins the staging's subtitles; the map has the events
+    if (useStory.getState().ending) {
+      setWorld(r.world);
+      addEndingLines(c.narration.map((text) => ({ text, speaker: null })));
+      return;
+    }
+    setWorld(withReveal(r.world, c.reveal));
     addNarration(...c.narration);
     showToasts(this.toasts(c));
   }
@@ -379,6 +416,28 @@ export class Session {
       t: m.snapshot.clock.t,
     });
     useStory.setState({ actEnd: null, transition: story.transition(m) });
+  }
+
+  // the ending (ux-design 11.1): input stops at once; a character's line being spoken finishes (at most ~3 s, then a
+  // 0.2 s fade); the microphone is released so the staging plays at full quality. Then the staging takes the screen.
+  private async endingStarted(m: Api.EndingStartedMessage): Promise<void> {
+    if (useStory.getState().ending) return;
+    useStory.setState({
+      ending: {
+        trigger: m.trigger,
+        staging: m.staging,
+        lines: [],
+        endingId: null,
+      },
+      actEnd: null,
+      overlay: null,
+    });
+    if (usePlayer.getState().focusCharacter) this.unfocus("menu");
+    const until = performance.now() + ENDING_LINE_WAIT_MS;
+    while (this.audio.playing() && performance.now() < until)
+      await new Promise((r) => setTimeout(r, 100));
+    if (this.audio.playing()) this.audio.fadeOut(200);
+    this.audio.releaseMic();
   }
 
   // back after a drop or a reload in the middle of an act end, or before landing (api-contract 4)

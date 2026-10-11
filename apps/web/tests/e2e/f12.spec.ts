@@ -193,3 +193,44 @@ test("map: the timeline by day, beats and their state, future beats as ？, filt
   await expect(why).toContainText("メロスは王の暴虐を知り、激怒した");
   await shot(page, "map-why");
 });
+
+test("ending: the staging hands over to the ending page; world, you, the people; a source mark opens the map; the card draws", async ({
+  page,
+}) => {
+  await mock(page, "scenario", { name: "ending" });
+  const pid = await startStory(page);
+  await expect(page).toHaveURL(new RegExp(`/ending/${pid}$`), {
+    timeout: 60_000,
+  });
+  await expect(
+    page.getByRole("heading", { name: "原作どおりの大団円" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "あなたの結末" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "登場人物の結末" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("暗くなる道を、老爺を家まで送った"),
+  ).toBeVisible();
+  // the five the player didn't touch are one line until opened
+  await expect(page.getByRole("heading", { name: "王" })).toBeHidden();
+  await shot(page, "ending");
+
+  await page.getByRole("button", { name: /\[1\]/ }).click();
+  const map = page.getByRole("dialog", { name: "連鎖反応マップ" });
+  await expect(map).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(map).toBeHidden();
+
+  await page.getByRole("button", { name: "結末カード" }).click();
+  const card = page.getByRole("img", { name: /市で待ち続けた旅人/ });
+  await expect(card).toHaveAttribute("data-ready", "true");
+  const png = await card.evaluate((c: HTMLCanvasElement) =>
+    c.toDataURL("image/png"),
+  );
+  expect(png.startsWith("data:image/png;base64,")).toBe(true);
+  expect(png.length).toBeGreaterThan(20_000);
+  await card.screenshot({ path: "test-results/f12/ending-card.png" });
+});

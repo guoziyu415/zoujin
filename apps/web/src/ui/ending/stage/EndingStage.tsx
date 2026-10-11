@@ -1,0 +1,231 @@
+// The ending's staging over the 3D (ux-design 11.1, S-089): the lines of the closing set pieces and the narration,
+// one at a time at the bottom, paced by pace.ts; a tap anywhere completes or moves on. The 3D layer frames the shots
+// (bridge.ts). When the last line has had its time: to the ending page if the ending is written, else
+// 「物語を綴じています（n秒）」 counting up, with the map offered after 20 s.
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useReducer, useRef, useState } from "react";
+import { manifestQuery } from "../../../app/queries";
+import { navigate } from "../../../app/router";
+import { audio } from "../../../audio";
+import {
+  endingFrame,
+  openOverlay,
+  useStory,
+  type EndingLine,
+} from "../../../stores/story";
+import { useUi } from "../../../stores/ui";
+import { copy, fill } from "../../copy";
+import { useEndingAuto } from "../settings";
+import { stageBridge } from "./bridge";
+import {
+  addLines,
+  initPace,
+  pause,
+  resume,
+  setAuto,
+  shotDone,
+  tap,
+  tick,
+  visibleText,
+  type Effect,
+  type Pace,
+  type StageLine,
+} from "./pace";
+import { CARD_SHOTS, shotOf } from "./shots";
+
+export const BINDING_LONG_S = 20; // the map is offered after 20 s of waiting (ux-design 11.1)
+const TICK_MS = 100;
+
+// what the staging measured, for data's pacing check (ux-design 11.1: how long it played, taps, auto on or off)
+export const stageStats = { ms: 0, taps: 0, auto: true };
+
+export function EndingStage({
+  pid,
+  names,
+}: {
+  pid: string;
+  names: Record<string, string>;
+}) {
+  const ending = useStory((s) => s.ending);
+  const overlayOpen = useStory((s) => !!s.overlay);
+  const gate = useUi((s) => s.resumeGate);
+  const auto = useEndingAuto();
+  const manifest = useQuery(manifestQuery);
+  const voices = manifest.data?.setPieceVoices;
+  const pace = useRef<Pace>(initPace(auto));
+  const fed = useRef(0);
+  const started = useRef(performance.now());
+  const [, render] = useReducer((n: number) => n + 1, 0);
+  const [done, setDone] = useState(false);
+  const best = useRef(Infinity); // the card shot captured so far (index in CARD_SHOTS)
+
+  const clipOf = (l: StageLine) => (l.key ? (voices?.[l.key] ?? null) : null);
+
+  function apply(fx: Effect[]) {
+    for (const e of fx) {
+      if (e.k === "play") {
+        const l = pace.current.lines[e.i];
+        const clip = l && clipOf(l);
+        // not loaded (yet): the line shows whole and is timed like narration
+        if (!clip || !audio.playClip(clip)) {
+          const lines = pace.current.lines.slice();
+          lines[e.i] = { ...lines[e.i]!, clipMs: null };
+          pace.current = { ...pace.current, lines, whole: true };
+        }
+      } else if (e.k === "fade") audio.fadeOut(200);
+      else if (e.k === "shot") {
+        stageBridge().shot(e.n);
+        const rank = CARD_SHOTS.indexOf(e.n);
+        if (rank >= 0 && rank < best.current) {
+          best.current = rank;
+          void stageBridge()
+            .captureFrame()
+            .then((b) => b && endingFrame.set(b));
+        }
+      } else if (e.k === "drained") setDone(true);
+    }
+  }
+
+  // new lines from the server
+  useEffect(() => {
+    const lines = ending?.lines ?? [];
+    if (lines.length <= fed.current) return;
+    const more = lines.slice(fed.current).map((l) => toStage(l, voices));
+    fed.current = lines.length;
+    audio.preload(
+      more.flatMap((l) => {
+        const c = l.key ? voices?.[l.key] : undefined;
+        return c ? [c] : [];
+      }),
+    );
+    const [p, fx] = addLines(pace.current, more, performance.now());
+    pace.current = p;
+    if (more.length) setDone(false);
+    apply(fx);
+    render();
+  }, [ending?.lines, voices]);
+
+  // the clock
+  useEffect(() => {
+    const id = setInterval(() => {
+      const [p, fx] = tick(pace.current, performance.now());
+      const changed = p !== pace.current;
+      pace.current = p;
+      apply(fx);
+      if (changed || fx.length) render();
+    }, TICK_MS);
+    const off = stageBridge().onShotDone((n) => {
+      pace.current = shotDone(pace.current, n);
+    });
+    return () => {
+      clearInterval(id);
+      off();
+    };
+  }, []);
+
+  useEffect(() => {
+    pace.current = setAuto(pace.current, auto);
+    stageStats.auto = auto;
+  }, [auto]);
+
+  // in the background, behind a full page, behind the resume gate: the staging and its clock stop
+  useEffect(() => {
+    const sync = () => {
+      const stop = document.visibilityState === "hidden" || overlayOpen || gate;
+      pace.current = stop
+        ? pause(pace.current, performance.now())
+        : resume(pace.current, performance.now());
+      stageBridge().pause(stop);
+    };
+    sync();
+    document.addEventListener("visibilitychange", sync);
+    return () => document.removeEventListener("visibilitychange", sync);
+  }, [overlayOpen, gate]);
+
+  // the ending is written and no closing lines came at all (a set piece was skipped): nothing to wait for
+  useEffect(() => {
+    if (ending?.endingId && !(ending.lines.length || pace.current.lines.length))
+      setDone(true);
+  }, [ending?.endingId, ending?.lines.length]);
+
+  // the last line had its time: the ending page, or wait for it
+  useEffect(() => {
+    if (!done) return;
+    stageStats.ms = Math.round(performance.now() - started.current);
+    stageStats.taps = pace.current.taps;
+    if (ending?.endingId)
+      navigate(`/ending/${encodeURIComponent(pid)}`, { replace: true });
+  }, [done, ending?.endingId, pid]);
+
+  if (!ending) return null;
+  const p = pace.current;
+  const line = p.lines[p.i];
+  const onTap = () => {
+    const [q, fx] = tap(pace.current, performance.now());
+    pace.current = q;
+    apply(fx);
+    render();
+  };
+  return (
+    <div
+      className="end-stage"
+      onClick={onTap}
+      data-line={p.i}
+      data-shot={p.shot ?? ""}
+    >
+      {line && !done && (
+        <p
+          className={`end-sub${line.speaker ? " voiced" : ""}`}
+          aria-live="polite"
+        >
+          {line.speaker && (
+            <span className="who">{names[line.speaker] ?? line.speaker}</span>
+          )}
+          <span>{visibleText(p, performance.now())}</span>
+        </p>
+      )}
+      {done && !ending.endingId && <Binding />}
+    </div>
+  );
+}
+
+function toStage(
+  l: EndingLine,
+  voices: Record<string, { durationMs: number } | undefined> | undefined,
+): StageLine {
+  const key = l.pieceId && l.n ? `${l.pieceId}/${l.n}` : undefined;
+  const clip = l.speaker && key ? voices?.[key] : undefined;
+  const s = l.pieceId && l.n ? shotOf(l.pieceId, l.n, l.text) : { shot: null };
+  return {
+    text: l.text,
+    speaker: l.speaker,
+    clipMs: clip ? clip.durationMs : null,
+    ...s,
+    ...(key ? { key } : {}),
+  };
+}
+
+// 「物語を綴じています（n秒）」 counting up; no fake progress bar
+function Binding() {
+  const [s, setS] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setS((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <div className="end-binding" role="status">
+      <p>{fill(copy["ending.binding"], { n: s })}</p>
+      {s >= BINDING_LONG_S && (
+        <button
+          className="quiet"
+          onClick={(e) => {
+            e.stopPropagation();
+            openOverlay({ kind: "map", from: "ending" });
+          }}
+        >
+          {copy["ending.binding.long"]}
+        </button>
+      )}
+    </div>
+  );
+}
