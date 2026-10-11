@@ -50,7 +50,7 @@ concurrency:
 jobs:
   lint-typecheck:
     name: eslint, prettier, tsc, budgets
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '["self-hosted","zoujin-mac"]') }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
