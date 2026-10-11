@@ -3,8 +3,8 @@
     uv run zoujin-voice                       # 假模型：合成的声音，看流程和输出（CI、项目线程）
     # 真模型：只在 zg 的 Mac 上。先不带 --confirm 跑一次，看条数、遍数和预计花费；在已批的范围内再带 --confirm
     ZJ_MODEL=real ZJ_LEDGER=<账本> ZJ_VERTEX_PROJECT=… ZJ_VERTEX_LOCATION=… \\
-        uv run --extra real zoujin-voice --max-google-usd <Google 那本账的总上限> [--max-usd 1] --confirm
-    uv run zoujin-voice --resume out/b6/<时间> [--only <键> …]
+        uv run --all-packages --extra real zoujin-voice --max-google-usd <Google 那本账的总上限> [--max-usd 1] --confirm
+    uv run zoujin-voice --resume out/b6/<时间> [--only <键> …]  # 都读过了就不调用，重挑、重出 release
 
 - 每句读 3 遍（3 条会话，不在同一条会话里连读）；同一遍里，声音和系统指令相同的句子在同一条会话里一句一轮。每读完一句
   马上补转写。串行，遇到第一个 429 就停；账本到上限（总上限，或这一次跑的上限 `--max-usd`，默认 $1）就停。
@@ -433,7 +433,7 @@ def audit_md(run: Run, chosen: list[Chosen], voices: Json, refs: list[tuple[Ref,
         f"固定演出的键 {len(voices['setPieceVoices'])} 个。",
         "- 检查（backend-design 3.6）：有声长度和三遍的中位数比（一倍以上、一半以下不要），和拍数估的范围比；"
         f"最后 0.1 秒还有声音算截断；补转写字错率超过 {checks.MAX_CER:.0%} 或原文出现两遍不要。"
-        f"相槌超过 {checks.AIZUCHI_MAX_S} 秒只标出来。",
+        f"相槌超过 {checks.AIZUCHI_MAX_S} 秒、比拍数估的上限长、或只在字错率上不过的，不扔，只标出来。",
         "- 补转写是文本模型听音频写的，古语和生僻词常听错（S-071），字错率高的那几遍请听一下原始的那遍再判。",
         "",
         "## 要 UX 看的",
@@ -510,7 +510,7 @@ def gate(args: argparse.Namespace, env: Mapping[str, str], argv: Sequence[str]) 
         missing.append("没带 --confirm")
     cmd = [x for x in argv if x != "--confirm"]
     names = " ".join(f"{k}=…" for k in ("ZJ_MODEL", "ZJ_LEDGER", "ZJ_VERTEX_PROJECT", "ZJ_VERTEX_LOCATION"))
-    print(f"命令：{names} uv run --extra real zoujin-voice {shlex.join(cmd)} --confirm")
+    print(f"命令：{names} uv run --all-packages --extra real zoujin-voice {shlex.join(cmd)} --confirm")
     return missing
 
 

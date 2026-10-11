@@ -190,6 +190,25 @@ def test_long_aizuchi_is_kept_and_flagged() -> None:
     assert v.flags and "0.5" in v.flags[0]
 
 
+def test_slow_aizuchi_over_mora_upper_is_kept_and_flagged() -> None:
+    # 老爷三遍都慢慢地「ああ、ああ」两秒上下（Mac 第一次真跑）：比拍数估的上限长，但三遍一致、补转写对得上
+    v = checks.judge(
+        "ああ、ああ。",
+        {1: (shape(2.14), "あーあー"), 2: (shape(1.88), "ああ ああ"), 3: (shape(2.04), "あーあー")},
+        aizuchi=True,
+    )
+    assert v.chosen == 3  # 最接近中位数
+    assert any("上限" in f and "不扔" in f for f in v.flags)
+    assert any("0.5" in f for f in v.flags)
+    # 读两遍照旧扔：一遍是另两遍的两倍以上
+    v = checks.judge(
+        "へえ。", {1: (shape(0.6), "へえ"), 2: (shape(0.62), "へえ"), 3: (shape(1.9), "へえ")}, aizuchi=True
+    )
+    assert not next(c for c in v.takes if c.take == 3).ok
+    # 不是相槌的照旧扔
+    assert checks.judge("待ってくれ。", {1: (shape(3.5), "待ってくれ")}, aizuchi=False).chosen is None
+
+
 def test_all_three_fail_goes_to_audit_not_voices(tmp_path: Path) -> None:
     reader = FakeReader(faults={"二度は言わぬ。下がれ。": ["truncated", "silent", "error"]})
     assert run_fake(tmp_path, reader) == 0
