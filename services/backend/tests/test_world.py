@@ -95,3 +95,71 @@ def test_zj_world_must_be_an_absolute_path_to_a_file(tmp_path: Path) -> None:
         world_path({"ZJ_WORLD": "worlds/hashire-merosu/1.0.0-draft/world.json"})
     with pytest.raises(ConfigError, match="不存在"):
         world_path({"ZJ_WORLD": str(tmp_path / "nope.json")})
+
+
+def test_delivered_lines_call_the_player_anata() -> None:
+    """下发的事件句里玩家是「あなた」（UX 10-10）；名字里含身份名的人物不换；period 只在没有句末标点时补「。」。"""
+    from zoujin_backend.projection import as_you
+
+    from .conftest import BOOK
+
+    assert as_you(BOOK, "role.traveler", "旅人は、老爺を家まで送ることにした") == "あなたは、老爺を家まで送ることにした"
+    assert as_you(BOOK, "role.traveler", "旅人は一団の旅人に道を聞いた") == "あなたは一団の旅人に道を聞いた"
+    guard = as_you(BOOK, "role.guard", "警吏は警吏（巡邏・刑吏）と話した", period=True)
+    assert guard == "あなたは警吏（巡邏・刑吏）と話した。"
+    assert as_you(BOOK, "role.traveler", "メロスが走り出した。", period=True) == "メロスが走り出した。"
+    assert as_you(BOOK, "role.traveler", "旅人は刑場へ移った", period=True) == "あなたは刑場へ移った。"
+    assert as_you(BOOK, "role.traveler", "", period=True) == ""
+
+
+def test_commit_events_call_the_player_anata_without_a_period() -> None:
+    from zoujin_backend.projection import visible_event
+
+    from .conftest import BOOK
+
+    ev = {
+        "eventId": "evt_test",
+        "seq": 3,
+        "t": 0,
+        "dt": 0,
+        "type": "action",
+        "actor": "player",
+        "place": GROUND,
+        "summary": "旅人は警吏に名を告げた",
+        "causes": [],
+        "effects": [],
+        "keyMoment": False,
+    }
+    out = visible_event(BOOK, ev, "role.traveler")
+    assert out["summary"] == "あなたは警吏に名を告げた" and ev["summary"] == "旅人は警吏に名を告げた"
+
+
+def test_recap_lines_call_the_player_anata_with_a_period() -> None:
+    """「その頃」：line 用 summary，玩家写成「あなた」、句末补「。」。"""
+    from zoujin_backend.narrator.acts import recap
+
+    from .conftest import BOOK
+
+    passed = {"status": "passed"}
+    skipped = [
+        {
+            "eventId": "evt_a",
+            "type": "beat",
+            "actor": "char.melos",
+            "summary": "メロスが走り出した。",
+            "check": passed,
+            "keyMoment": True,
+            "effects": [],
+        },
+        {
+            "eventId": "evt_b",
+            "type": "action",
+            "actor": "char.old-man",
+            "origin": "plan",
+            "check": passed,
+            "summary": "市の老爺が旅人のことを町の人に話した",
+            "effects": [],
+        },
+    ]
+    lines = [r["line"] for r in recap(BOOK, "role.traveler", skipped, {"char.old-man"}, set())]
+    assert lines == ["メロスが走り出した。", "市の老爺があなたのことを町の人に話した。"]

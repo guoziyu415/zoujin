@@ -19,7 +19,7 @@ from typing import Any
 
 from zoujin_backend.narrator.rules import Checked
 from zoujin_backend.narrator.writer import Writer
-from zoujin_backend.projection import committed
+from zoujin_backend.projection import as_you, committed
 from zoujin_backend.world import Book
 from zoujin_worldsim import SimState, arrival_delta, flat, world_state
 
@@ -136,11 +136,11 @@ def option(book: Book, state: SimState, ex: Mapping[str, Any]) -> Json:
     return out
 
 
-def recap_lines(act_events: Iterable[Mapping[str, Any]]) -> list[str]:
+def recap_lines(book: Book, role_id: str, act_events: Iterable[Mapping[str, Any]]) -> list[str]:
     """「この幕であなたが動かしたこと」：这一幕里玩家做的（或人物为玩家做的）、已提交、改了东西的事件的摘要，
-    按 seq 取最后 4 条；一条都没有时为空（前端显示 actEnd.summary.empty）。"""
+    按 seq 取最后 4 条；一条都没有时为空（前端显示 actEnd.summary.empty）。玩家写成「あなた」、句末补「。」。"""
     lines = [
-        str(e["summary"])
+        as_you(book, role_id, str(e["summary"]), period=True)
         for e in act_events
         if committed(e)
         and e["effects"]
@@ -159,7 +159,7 @@ def act_end(book: Book, state: SimState, tries: int, act_events: Iterable[Mappin
     left = max(0, PLAN_TRIES - tries)
     return {
         "actId": book.act_of(state["vars"]),
-        "recapLines": recap_lines(act_events),
+        "recapLines": recap_lines(book, state["role"], act_events),
         "options": [option(book, state, ex) for ex in exits],
         "freeform": {"allowed": left > 0, "triesLeft": left},
     }
@@ -329,10 +329,15 @@ def seen_characters(
 
 
 def recap(
-    book: Book, skipped: Iterable[Mapping[str, Any]], seen: Collection[str], player_promises: Collection[str]
+    book: Book,
+    role_id: str,
+    skipped: Iterable[Mapping[str, Any]],
+    seen: Collection[str],
+    player_promises: Collection[str],
 ) -> list[Json]:
     """「その頃」（契约 2.8.1 第 5 步）：和玩家有关的约定兑现或违背 → keyMoment → 玩家见过的人物自己做的事
-    （origin plan）和导演事件（origin director）。不写 voided 的约定和 forget；line 用 summary。最多 3 件。"""
+    （origin plan）和导演事件（origin director）。不写 voided 的约定和 forget；line 用 summary（玩家写成「あなた」、
+    句末补「。」）。最多 3 件。"""
     promised: list[Json] = []
     key: list[Json] = []
     others: list[Json] = []
@@ -349,7 +354,7 @@ def recap(
             ),
             None,
         )
-        item = {"eventId": e["eventId"], "line": e["summary"]}
+        item = {"eventId": e["eventId"], "line": as_you(book, role_id, str(e["summary"]), period=True)}
         if change is not None:
             promised.append({**item, "promise": change["change"]})
         elif e.get("keyMoment"):
