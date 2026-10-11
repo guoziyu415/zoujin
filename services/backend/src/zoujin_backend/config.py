@@ -50,6 +50,10 @@ TEXT: dict[str, TextSpec] = {
     "reply": TextSpec("google", "gemini-3.8-flash", 15.0, 1024, thinking="LOW", temperature=0.8),
     "narrate": TextSpec("claude", "sonnet-5.5", 10.0, 1024, thinking="between_tools", effort="low"),
     "plan": TextSpec("claude", "sonnet-5.5", 15.0, 4096, thinking="adaptive", effort="low"),
+    # B-12：安全筛查（S-072 的 3 秒时限，超时重发一次；B-8 的表定 Haiku、关思考）
+    "safety": TextSpec("claude", "haiku-5.5", 3.0, 64, thinking="disabled"),
+    # B-9：结局要快，不先思考；输出约 1,500 token〔推算〕，时限 30 秒等 Mac 探针实测再改
+    "ending": TextSpec("claude", "sonnet-5.5", 30.0, 4096, thinking="between_tools", effort="low"),
 }
 TEXT_MODELS: dict[str, str] = {k: v.model for k, v in TEXT.items()}
 DEADLINES: dict[str, float] = {k: v.deadline for k, v in TEXT.items()}
@@ -92,6 +96,7 @@ DEFAULT_WORLD = REPO / "worlds" / "hashire-merosu" / "1.0.0-draft" / "world.json
 REPLAYS = REPO / "fixtures" / "model-replays"
 
 COOKIE = "zj_session"
+LIVE_REBUILD_TURNS = 8  # B-10：每条 Live 会话说完几轮重建（S-073 ⑤）
 SESSION_DAYS = 30  # 会话 Cookie 30 天，每次使用滑动续期（backend-design 5.2）
 
 
@@ -108,6 +113,22 @@ def model_mode(env: Mapping[str, str] | None = None) -> ModelMode:
     raise ConfigError(f"ZJ_MODEL 只能是 {' / '.join(MODEL_MODES)}，得到 {value!r}")
 
 
+def live_mode(env: Mapping[str, str], model: ModelMode) -> Literal["fake", "real"]:
+    """`ZJ_LIVE`：fake / real（B-10）；没设就跟 `ZJ_MODEL`（real 才是 real，replay 的 Live 用假的）。"""
+    value = env.get("ZJ_LIVE", "") or ("real" if model == "real" else "fake")
+    if value not in ("fake", "real"):
+        raise ConfigError(f"ZJ_LIVE 只能是 fake / real，得到 {value!r}")
+    return "real" if value == "real" else "fake"
+
+
+def rebuild_turns(env: Mapping[str, str]) -> int:
+    """`ZJ_LIVE_REBUILD_TURNS`：每条 Live 会话说完几轮在停顿处换新的（B-10，dev-plan：7〜10），默认 8。"""
+    value = env.get("ZJ_LIVE_REBUILD_TURNS", "") or str(LIVE_REBUILD_TURNS)
+    if not value.isdigit() or not 7 <= int(value) <= 10:
+        raise ConfigError(f"ZJ_LIVE_REBUILD_TURNS 只能是 7〜10，得到 {value!r}")
+    return int(value)
+
+
 def world_path(env: Mapping[str, str] | None = None) -> Path:
     """`ZJ_WORLD`：world.json 的绝对路径；没设就是 `DEFAULT_WORLD`。"""
     value = (os.environ if env is None else env).get("ZJ_WORLD", "")
@@ -119,6 +140,14 @@ def world_path(env: Mapping[str, str] | None = None) -> Path:
     if not path.is_file():
         raise ConfigError(f"ZJ_WORLD 指的文件不存在：{value}")
     return path
+
+
+def open_release(env: Mapping[str, str] | None = None) -> int:
+    """`ZJ_RELEASE`：manifest 出 `release` 不大于它的身份；没设是 1（S-002）。"""
+    value = (os.environ if env is None else env).get("ZJ_RELEASE", "1")
+    if not value.isdigit() or int(value) < 1:
+        raise ConfigError(f"ZJ_RELEASE 要写 1 以上的整数，得到 {value!r}")
+    return int(value)
 
 
 def async_url(url: str) -> str:
@@ -139,10 +168,16 @@ class Settings:
     narrator_url: str = "http://127.0.0.1:8002"
     repo: Path = REPO
     speed: float = 1.0  # 假 Live 的间隔乘这个数：0 = 不等（测试）
+    live: Literal["fake", "real"] = "fake"  # B-10：ZJ_LIVE
+    live_rebuild_turns: int = LIVE_REBUILD_TURNS
     fake_voice: Path = field(default=REPO / "fixtures" / "fake-voice")
     fake_text: Path = field(default=REPO / "fixtures" / "fake-text")
     replays: Path = REPLAYS  # ZJ_REPLAYS 换成别的目录（例：留出集的回放，不进仓库）
     world: Path = DEFAULT_WORLD  # 开新局用的世界模型；已有的局按自己锁定的版本
+    # manifest（B-7）：开放到第几版的身份（S-002，第一版 1）、场景包目录（部署时指到构建的输出，S-075）、声音目录
+    release: int = 1
+    scene_packs: Path | None = None  # None = 仓库的 assets/scenes
+    voices: Path | None = None  # None = 仓库的 assets/voice（测试换成临时目录）
     deadlines: Mapping[str, float] = field(default_factory=lambda: dict(DEADLINES))
     # real 时：账本（JSONL，两本账同一个文件，和 E-0 live、评审员同一个）、两家各自的总上限（跨所有跑次累计：D-027 的
     # Google 50 美元、D-029 的 Claude 100 美元）、记在哪一项下和这一项的上限、录回放的目录。上限由运行器从命令行参数
@@ -166,6 +201,14 @@ class Settings:
     def scenes(self) -> Path:
         return self.repo / "assets" / "scenes"
 
+    @property
+    def packs(self) -> Path:
+        return self.scene_packs or self.scenes
+
+    @property
+    def voice_dir(self) -> Path:
+        return self.voices or self.repo / "assets" / "voice"
+
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> Settings:
         e = os.environ if env is None else env
@@ -180,7 +223,11 @@ class Settings:
             allow_origins=origins,
             narrator_url=e.get("ZJ_NARRATOR_URL", cls.narrator_url),
             speed=float(e.get("ZJ_SPEED", "1")),
+            live=live_mode(e, model_mode(e)),
+            live_rebuild_turns=rebuild_turns(e),
             world=world_path(e),
+            release=open_release(e),
+            scene_packs=_dir(e, "ZJ_SCENE_PACKS"),
             ledger=_path(e, "ZJ_LEDGER"),
             max_google_usd=float(e["ZJ_MAX_GOOGLE_USD"]) if e.get("ZJ_MAX_GOOGLE_USD") else None,
             max_claude_usd=float(e["ZJ_MAX_CLAUDE_USD"]) if e.get("ZJ_MAX_CLAUDE_USD") else None,
@@ -198,4 +245,11 @@ def _path(env: Mapping[str, str], name: str) -> Path | None:
     path = Path(value)
     if not path.is_absolute():
         raise ConfigError(f"{name} 要写绝对路径，得到 {value!r}")
+    return path
+
+
+def _dir(env: Mapping[str, str], name: str) -> Path | None:
+    path = _path(env, name)
+    if path is not None and not path.is_dir():
+        raise ConfigError(f"{name} 指的目录不存在：{path}")
     return path

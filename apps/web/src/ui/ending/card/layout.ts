@@ -40,6 +40,21 @@ export function wrap(
     } else line += ch;
   }
   if (line) out.push(line);
+  // no lone 1-2 characters on the last line (「た。」): the end of the line before comes down with them
+  const n = out.length;
+  if (n >= 2) {
+    const prev = [...out[n - 2]!];
+    const last = [...out[n - 1]!];
+    if (last.length <= 2 && prev.length > 3) {
+      let k = 1;
+      while (k < prev.length - 1 && NO_START.has(prev[prev.length - k]!)) k++;
+      const moved = prev.splice(prev.length - k).join("") + last.join("");
+      if (m(moved, px) <= width) {
+        out[n - 2] = prev.join("");
+        out[n - 1] = moved;
+      }
+    }
+  }
   return out;
 }
 

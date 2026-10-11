@@ -24,10 +24,28 @@ const MANIFEST = opt("--manifest");
 const [DIR, LAYOUT_ARG] = args;
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "../../..");
-const budgets = JSON.parse(
-  fs.readFileSync(path.join(HERE, "../../budgets.json"), "utf8"),
-).scene;
 const scene = JSON.parse(fs.readFileSync(path.join(DIR, "scene.json"), "utf8"));
+// budgets.json: `scene` for the plaza; a pack with its own entry under `scenes` (the road, F-10) uses that on top
+const allBudgets = JSON.parse(
+  fs.readFileSync(path.join(HERE, "../../budgets.json"), "utf8"),
+);
+const budgets = {
+  ...allBudgets.scene,
+  ...(allBudgets.scenes?.[scene.sceneId] ?? {}),
+};
+// files a shared pack holds (shared: road-common) sit in that pack's directory: the same place as this pack's
+// directory with the pack name swapped (assets/scenes/<pack>/build, or <out>/<pack> for a draft build)
+const fileDir = (f) => {
+  if (!f.shared) return DIR;
+  const parts = path.resolve(DIR).split(path.sep);
+  const i = parts.lastIndexOf(scene.sceneId);
+  if (i < 0)
+    throw new Error(
+      `${DIR}: no ${scene.sceneId} in the path to find ${f.shared}`,
+    );
+  parts[i] = f.shared;
+  return parts.join(path.sep);
+};
 const layoutPath =
   LAYOUT_ARG ??
   [path.join(DIR, "layout.json"), path.join(DIR, "../layout.json")].find((p) =>
@@ -53,10 +71,12 @@ const limit = (label, bytes, maxMb) => {
 
 // ---- the files themselves, when present
 const byPath = new Map(scene.files.map((f) => [f.path, f]));
-const present = scene.files.every((f) => fs.existsSync(path.join(DIR, f.path)));
+const present = scene.files.every((f) =>
+  fs.existsSync(path.join(fileDir(f), f.path)),
+);
 if (present) {
   for (const f of scene.files) {
-    const buf = fs.readFileSync(path.join(DIR, f.path));
+    const buf = fs.readFileSync(path.join(fileDir(f), f.path));
     if (buf.length !== f.bytes)
       errors.push(
         `${f.path}: ${buf.length} bytes on disk, scene.json says ${f.bytes}`,
@@ -68,7 +88,9 @@ if (present) {
 
 // ---- download budgets
 const bytesOf = (pred) =>
-  scene.files.filter(pred).reduce((s, f) => s + f.bytes, 0);
+  scene.files
+    .filter((f) => !f.shared && pred(f))
+    .reduce((s, f) => s + f.bytes, 0);
 limit("entry pack (walkable)", scene.bytes.entry, budgets.entryPackMb);
 limit(
   "  geometry + navmesh",
@@ -85,6 +107,10 @@ rows.push(
 );
 limit("environment total, standard", scene.bytes.envStd, budgets.envTotalMb);
 limit("environment total, high", scene.bytes.envHi, budgets.envTotalHighMb);
+if (scene.bytes.shared)
+  rows.push(
+    `${`  of which shared (${scene.sharedPacks.join(", ")})`.padEnd(34)} ${(scene.bytes.shared.entry / MB).toFixed(2).padStart(6)} MB`,
+  );
 
 // ---- texture memory (ASTC 4x4 / ETC2 RGBA ≈ 1 byte per texel, mipmaps +1/3)
 const vram = (tier) => {
@@ -105,12 +131,10 @@ for (const [key, t] of Object.entries(scene.textures)) {
   if (!t.hi || t.slot !== "base") continue;
   let [a, b] = [t.std.mean, t.hi.mean];
   if (present) {
-    a = meanRGB(
-      (await decodeKTX2(fs.readFileSync(path.join(DIR, t.std.file)))).rgba,
-    );
-    b = meanRGB(
-      (await decodeKTX2(fs.readFileSync(path.join(DIR, t.hi.file)))).rgba,
-    );
+    const at = (rel) =>
+      path.join(fileDir(byPath.get(rel) ?? { shared: t.shared }), rel);
+    a = meanRGB((await decodeKTX2(fs.readFileSync(at(t.std.file)))).rgba);
+    b = meanRGB((await decodeKTX2(fs.readFileSync(at(t.hi.file)))).rgba);
     if (a.some((v, i) => Math.abs(v - t.std.mean[i]) > 0.5))
       errors.push(
         `${key}: decoded std colour ${a} differs from scene.json ${t.std.mean}`,
@@ -183,6 +207,9 @@ for (const id of placeIds) {
 }
 
 // ---- the world models that use this scene: worlds/<book>/<version>/world.json
+// A pack that is one state of a bigger scene (partOf, the road's river: calm or flooded, F-10) carries that scene's
+// places and exits, so it is checked as that scene.
+const SCENE_ID = scene.partOf ?? scene.sceneId;
 const subdirs = (d) =>
   fs.existsSync(d)
     ? fs
@@ -197,13 +224,11 @@ const worlds = subdirs(path.join(REPO, "worlds"))
 let usedBy = 0;
 for (const f of worlds) {
   const w = JSON.parse(fs.readFileSync(f, "utf8"));
-  if (!w.scenes?.some((sc) => sc.id === scene.sceneId)) continue;
+  if (!w.scenes?.some((sc) => sc.id === SCENE_ID)) continue;
   usedBy++;
   const where = path.relative(REPO, f);
   const byId = new Map(w.places.map((p) => [p.id, p]));
-  const mine = w.places
-    .filter((p) => p.sceneRef === scene.sceneId)
-    .map((p) => p.id);
+  const mine = w.places.filter((p) => p.sceneRef === SCENE_ID).map((p) => p.id);
   for (const id of mine)
     if (!placeIds.has(id))
       errors.push(`${where}: ${id} is in this scene, layout.json lacks it`);
@@ -216,7 +241,7 @@ for (const f of worlds) {
       errors.push(`${where}: exit to unknown place ${e.place}`);
       continue;
     }
-    if (to.sceneRef === scene.sceneId)
+    if (to.sceneRef === SCENE_ID)
       errors.push(`${where}: exit to ${e.place}, which is in this scene`);
     // B-0 lets a player `go` from the place they stand in: adjacency counts from the place of the exit spot
     const from = scene.spots[e.spot]?.place;
@@ -230,10 +255,9 @@ for (const f of worlds) {
       );
   }
 }
-rows.push(`world models using ${scene.sceneId}: ${usedBy}`);
+rows.push(`world models using ${SCENE_ID}: ${usedBy}`);
 // a scene in the repo that no world model uses means a renamed id somewhere, and the checks above checked nothing
-if (usedBy === 0)
-  errors.push(`no world model in worlds/ uses ${scene.sceneId}`);
+if (usedBy === 0) errors.push(`no world model in worlds/ uses ${SCENE_ID}`);
 
 // ---- the committed manifest alone: the layout and scripts it was built from are still the ones in the repo
 if (!present)

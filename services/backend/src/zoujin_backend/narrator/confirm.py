@@ -89,7 +89,7 @@ async def in_commit(
     """这次提交里和草稿有关的：收幕时关掉开着的、丢掉新提出的；声音的回答写一行任务；新提出的存成草稿。
     返回要排在 act_ended 前面推的（confirm_closed），和网关要做的反问（`turns.result.confirm`）。"""
     push: list[Json] = []
-    if w.closed:  # 收幕：不留草稿（数据评审）
+    if w.closed or w.ending is not None:  # 收幕、进结局：不留草稿（数据评审）
         draft = await store.open_draft(c, task.pid, lock=True)
         if draft is not None:
             await c.execute(delete(drafts).where(drafts.c.draft_id == draft["draft_id"]))

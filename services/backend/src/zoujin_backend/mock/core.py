@@ -13,11 +13,13 @@ from typing import Any
 
 from zoujin_backend.clock import Labels
 from zoujin_backend.ids import IdGen
+from zoujin_backend.manifest import Manifest, generate
 from zoujin_backend.mock import scripts
 from zoujin_backend.mock.live import Live
 from zoujin_backend.mock.state import Playthrough, Session
 from zoujin_backend.mock.templates import MISSING, render
 from zoujin_backend.schemas import SchemaBook
+from zoujin_backend.world import Book
 
 log = logging.getLogger("zoujin.mock")
 
@@ -39,6 +41,7 @@ class Config:
     allow_origins: tuple[str, ...] = ()
     seed: int | None = None
     voices: Path | None = None  # 测试用：换掉 assets/voice
+    scene_packs: Path | None = None  # 测试用：换掉 assets/scenes
 
     @property
     def fixtures(self) -> Path:
@@ -62,8 +65,14 @@ class Config:
         return self.voices or self.repo / "assets" / "voice"
 
     @property
+    def packs(self) -> Path:
+        """场景包（B-7）：manifest 的 `scenes[].assetUrl`。"""
+        return self.scene_packs or self.repo / "assets" / "scenes"
+
+    @property
     def world(self) -> Path:
-        return self.repo / "worlds" / "hashire-merosu" / "1.0.0-draft" / "world.json"
+        """mock 演的是切片那一局（旅人、广场、メロス和老爺），manifest 和时钟的标签都按切片的世界模型。"""
+        return self.repo / "worlds" / "hashire-merosu" / "1.0.0-slice" / "world.json"
 
 
 @cache
@@ -83,10 +92,18 @@ class Mock:
     lives: dict[str, Live] = field(default_factory=dict)
     idempotency: dict[tuple[str, str], tuple[str, int, bytes]] = field(default_factory=dict)
     login_failures: int = 0
+    content: Manifest = field(init=False)  # 2.1 的静态内容，开 mock 时生成一次
 
     def __post_init__(self) -> None:
         self.book = SchemaBook(self.config.schemas)
         self.labels = Labels(self.config.world)
+        world = _read(self.config.world)
+        self.content = generate(  # 和正式网关同一个生成器（B-7）
+            Book(book_id=world["book"]["id"], world=world, path=self.config.world),
+            self.book,
+            packs=self.config.packs,
+            voices=self.config.voice_dir,
+        )
         self.ids = IdGen(self.config.seed)
         self.scenario = self.config.scenario
         scripts.load(self.config.sessions_dir, self.scenario)  # 启动时就发现剧本写错
@@ -121,38 +138,10 @@ class Mock:
         return render(self.fixture(rel), lookup)
 
     def manifest(self, book_id: str) -> Json | None:
-        """fixture 的 manifest。有 B-6 的声音清单时，人物的 `prerecorded` 和 `setPieceVoices` 换成清单里真的
-        （清单里没有的人物不带 `prerecorded`）；清单还没有时照旧用 fixture 里示意的。"""
-        path = self.config.rest_dir / "manifest" / f"{book_id}.json"
-        if not path.is_file():
-            return None
-        doc = self.fixture(f"manifest/{book_id}.json")
-        voices = self.voices(book_id)
-        if voices is not None:
-            for c in doc["characters"]:
-                c.pop("prerecorded", None)
-                if c["id"] in voices["characters"]:
-                    c["prerecorded"] = copy.deepcopy(voices["characters"][c["id"]])
-            if voices["setPieceVoices"]:
-                doc["setPieceVoices"] = copy.deepcopy(voices["setPieceVoices"])
-        return doc
-
-    def voices(self, book_id: str) -> Json | None:
-        path = self.config.voice_dir / book_id / "voices.json"
-        return _read(path) if path.is_file() else None
+        return copy.deepcopy(self.content.doc) if book_id == self.content.book_id else None
 
     def voice_file(self, book_id: str, name: str) -> Path | None:
-        """清单里列着的录音文件；别的路径（清单外、带目录的、清单还没有）一律 None。"""
-        voices = self.voices(book_id)
-        if voices is None:
-            return None
-        clips = [x for block in voices["characters"].values() for x in _clips(block)]
-        clips += list(voices["setPieceVoices"].values())
-        url = f"/assets/voice/{book_id}/{name}"
-        if not any(x["url"] == url for x in clips):
-            return None
-        path = self.config.voice_dir / book_id / name
-        return path if path.is_file() else None
+        return self.content.voice_file(book_id, name)
 
     # —— 会话和局 ——
 
@@ -222,8 +211,3 @@ class Mock:
             "reveal": None,
         }
         return commit
-
-
-def _clips(block: Json) -> list[Json]:
-    """一个人物 `Prerecorded` 里的全部录音。"""
-    return [*block["aizuchi"], *block["unheard"], block["wait"], *block["cues"].values()]

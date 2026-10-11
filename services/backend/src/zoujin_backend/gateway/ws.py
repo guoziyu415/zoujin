@@ -25,7 +25,23 @@ B-4 加了作废、识别改正和意图确认（3.6、3.9）：
   缩短；速度 0 时照 30 秒）。按钮、计时到点都写一行 `kind: "confirm"` 的任务。重连时 `welcome.pending.confirm`
   带剩余秒数，过期的先关掉。
 
-B-0 没有真 Live，`hello.fakeVoice` 给不给都用假 Live。还没做的消息（`near` 等）忽略，只在日志里记类型名。
+重连（第 4 节）：补发 `hello.lastSeq` 之后的 `commit`；这条连接之前判完的轮次结果不补，只有一种例外（v1.0.12）：
+最后一次提交是幕切换、客户端还没确认收到它（`lastSeq` 不晚于那次的 `seq`）时，补发的 `commit` 后面再推一次那次的
+`act_transition`（打算成行的连同 `act_plan_result`），不然幕末页在断线时选了去处，就等不到幕切换（`again`）。
+
+B-9 加了结局（3.13）：
+- 进结局的那次提交，`ending_started` 排在它的 commit 前面（`Gateway.commits`）。推出以后这条连接不再收输入：音频帧丢掉，
+  `text`、`activity_start`、`action`、`act_choose` 回 `invalid_request`；人物这一句还在说就接着转发，到说完或最多 3 秒，
+  再关这一局的 Live 会话（`_wind_down`，连同在开的、预热的）；之后的 `focus`、`near` 不再开会话。还没交给叙事者的轮次
+  记成 `lost`，不交。
+- 结局任务提交以后推 `ending_ready`（`turns.result.push`）。重连时局已经 `ended`：`welcome` 之后补推一次
+  `ending_started`（存的那份 `staging`），结局好了再推 `ending_ready`。
+
+B-10 接上真 Live（`models/gemini_live.py`，`ZJ_LIVE=real`），会话的开、换、关都在 `gateway/voice.py`：`near` / `far`
+预热、`focus`、作废后重建、每 N 轮和 Live 的 goAway 的无感重建、Live 中途断了（出过声的 `turn_complete { audio: true }`
+照常交，没出声的 `no_response`，再 `rebuild`）、叙事者提交后中途更新局势、闲置关闭、每轮的花费。人物有声音没文字时
+补转写（`gateway/fallback.py`，定稿 `source: "fallback"`）。B-11：断线时会话和最近对话寄存起来，重连的 `hello` 接手。
+`hello.fakeVoice` 给不给都按网关的设置。还没做的消息忽略，只在日志里记类型名。
 """
 
 from __future__ import annotations
@@ -48,29 +64,49 @@ from zoujin_backend import audio
 from zoujin_backend.config import COOKIE
 from zoujin_backend.db import store
 from zoujin_backend.db.store import Run
-from zoujin_backend.db.tables import drafts, playthroughs, turns, utterances
+from zoujin_backend.db.tables import drafts, endings, playthroughs, turns, utterances
 from zoujin_backend.gateway import auth
 from zoujin_backend.gateway.core import VOICE_MINUTES, Gateway
-from zoujin_backend.models.live import LiveSession, Recent, Transcriber
+from zoujin_backend.gateway.fallback import fallback_text
+from zoujin_backend.gateway.monitor import Monitor
+from zoujin_backend.gateway.safety import PAUSED_REFUSED, Guard
+from zoujin_backend.gateway.voice import Voices
+from zoujin_backend.models.armor import cost_usd
+from zoujin_backend.models.live import LiveLost, LiveSession, Recent, Transcriber
 from zoujin_backend.narrator import confirm
 from zoujin_backend.narrator.acts import PLAN_TRIES
 from zoujin_backend.narrator.plans import INVALID_REQUEST, NOT_HEARD, REFUSAL_FALLBACK, narrate_fallback
 from zoujin_backend.origin import origin_allowed
 from zoujin_backend.projection import pending
+from zoujin_backend.safety import Screen
 from zoujin_backend.schemas import SchemaError
 
 log = logging.getLogger("zoujin.gateway")
 
 Json = Any
 
-SESSION_ETA_MS = 800  # 预热、切换人物、重建会话（3.5 的例子）
 FRAME_MIC = 0x01
 VOICE = {"enabled": True, "degraded": False, "minutesLeftToday": VOICE_MINUTES}
 # 判完要给前端一个结果的任务（narrator/core.py 同名），加上意图确认的回答（confirm_closed，B-4）
-ANSWERED = ("talk", "action", "choose", "plan", "confirm")
+ANSWERED = ("talk", "action", "choose", "plan", "confirm", "ending")
 SERVER_SEQ = 0x80000001  # 服务端发起的轮次的 turnSeq 从这里起，最高位为 1（3.1）
 COMMIT_WINDOW_S = 3.0  # 作废的窗口：叙事者最早在 turn_complete（打算是定稿）之后几秒提交（B-4）
 RECENT_TURNS = 6  # 会话重建时带进新会话的最近几轮
+ENDING_DRAIN_S = 3.0  # 进结局时人物这一句还在说，最多再转发几秒（B-9，按 ZJ_SPEED 缩短）
+
+
+def again(results: list[Json], client_seq: int, last_seq: int) -> list[Json]:
+    """重连时要再推一次的幕切换（第 4 节，v1.0.12）。results：判完的轮次的 `turns.result`，按判完的先后。
+    最近一次幕切换就是最后一次提交（之后没有别的提交），而客户端的 `lastSeq` 不晚于它：那次的 `act_plan_result`
+    （打算成行时才有）和 `act_transition`，照原来的顺序。前端只在幕末页还在等幕切换时用，别的时候忽略。"""
+    for r in reversed(results):
+        push = (r or {}).get("push") or []
+        if any(m["type"] == "act_transition" for m in push):
+            seq = r.get("seq")
+            if seq != last_seq or client_seq > seq:
+                return []
+            return [m for m in push if m["type"] in ("act_plan_result", "act_transition")]
+    return []
 
 
 def error_msg(code: str, message: str) -> Json:
@@ -85,7 +121,7 @@ class Turn:
     turn_seq: int
     character: str
     mode: str  # voice / text / arrival（落地时人物先开口，B-3）/ confirm（意图确认的反问，B-4）
-    session: LiveSession
+    session: LiveSession | None  # 会话还在开（切换、重建）时为 None：上行音频先攒着，就绪后送进去（B-10）
     text: str | None = None  # 文字一轮的原话；confirm：人物要说的反问
     ended: bool = False  # activity_end / text 收到了
     heard: str | None = None  # 玩家字幕：最新的半句，或定稿
@@ -103,6 +139,13 @@ class Turn:
     handing: bool = False  # 正在写进库里（交给叙事者）：之后的作废走库里那条路
     owner: str | None = None  # confirm：原来那一轮（反问的原话挂在它下面）
     asking: Json | None = None  # confirm：说完以后推的 confirm（turns.result.confirm）
+    early: list[bytes] = field(default_factory=list)  # 会话就绪前的上行音频（B-10）
+    released: float | None = None  # 送进 Live 的时刻（松开、文字、先开口）
+    pcm_out: bytearray = field(default_factory=bytearray)  # 人物这一轮的声音（补转写用，只在内存里）
+    source: str = "live"  # 人物定稿的来源：live / fallback（补转写）
+    dropped: bool = False  # Live 中途断了（按被打断收）
+    screen: asyncio.Future[Screen] | None = None  # B-12：玩家这一句的安全筛查（定稿一到就开始）
+    paused: bool = False  # B-12：被出戏卡停下了（不推人物定稿、不交给叙事者）
 
     @property
     def retractable(self) -> bool:
@@ -144,9 +187,26 @@ class Conn:
     served: int = 0  # 这条连接上服务端发起了几轮（turnSeq 用）
     retracted_with: dict[str, str] = field(default_factory=dict)  # 作废的轮次是和谁说的（重建会话用）
     settled: set[str] = field(default_factory=set)  # 结果已经推过（或这条连接之前就判完了）的轮次
+    ending: bool = False  # B-9：这条连接已经推过 ending_started（之后不收输入）
     closed: asyncio.Event = field(default_factory=asyncio.Event)
     push_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     send_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    voices: Voices = field(init=False)
+    guard: Guard = field(init=False)  # B-12：安全筛查（gateway/safety.py）
+    monitor: Monitor = field(init=False)  # B-12：人物输出的监控（gateway/monitor.py）
+
+    def __post_init__(self) -> None:
+        self.voices = Voices(self)
+        self.guard = Guard(self)
+        self.monitor = Monitor(self.gw.library)
+
+    async def close_sessions(self) -> None:
+        """出戏卡：关掉这条连接上所有人物的会话（3.12），预热、正在开的、正在换的也停掉；回到故事以后前端重新
+        focus，开新的会话。"""
+        await self.voices.close_all()
+        self.ready.clear()
+        self.ready_at.clear()
+        self.focused = None
 
     # —— 发 ——
 
@@ -159,6 +219,8 @@ class Conn:
             return
         if self.gw.on_send is not None:
             self.gw.on_send(out)
+        if msg.get("type") == "act_ended":
+            self.monitor.act_ended()
         async with self.send_lock:
             if self.closed.is_set():
                 return
@@ -194,8 +256,43 @@ class Conn:
                 return
             msgs, self.sent_seq = await self.gw.commits(self.pid, self.sent_seq)
             for m in msgs:
+                if m["type"] == "ending_started":
+                    if self.ending:  # 重连时已经补推过
+                        continue
+                    self.start_ending()
                 await self.send(m)
             await self._results()
+
+    # —— 结局（B-9）——
+
+    def start_ending(self) -> None:
+        self.ending = True
+        self.gw.spawn(self._wind_down())
+
+    async def _wind_down(self) -> None:
+        """进了结局：人物这一句还在说就接着转发，到说完或 3 秒（`ENDING_DRAIN_S`）为止，再关这一局的 Live 会话。"""
+        t = self.turn
+        if t is not None and t.speaking:
+            assert t.stream is not None
+            await asyncio.wait({t.stream}, timeout=ENDING_DRAIN_S * self.gw.settings.speed)
+            if t.speaking:
+                t.lost = True
+                t.stream.cancel()
+            await t.quiet.wait()
+        await self.voices.close_all()
+        self.focused = None
+
+    async def _ending_row(self) -> tuple[Json | None, str | None]:
+        """这一局的结局任务的 request（trigger、staging），和存好的结局 ID（还没好是 None）。"""
+        async with self.gw.engine.connect() as c:
+            request = await c.scalar(
+                select(turns.c.request)
+                .where(turns.c.playthrough_id == self.pid, turns.c.kind == "ending")
+                .order_by(turns.c.created_at)
+                .limit(1)
+            )
+            ending_id = await c.scalar(select(endings.c.ending_id).where(endings.c.playthrough_id == self.pid))
+        return request, ending_id
 
     async def _results(self) -> None:
         """判完的轮次推结果：叙事者记在 `turns.result.push` 里的消息（固定演出、turn_settled、action_result、
@@ -260,7 +357,7 @@ class Conn:
                     "narration": narrate_fallback("refused"),
                 }
             )
-        elif r.kind == "confirm":  # 回答三次都没处理成：草稿还开着，到期以后叙事者再写超时的任务
+        elif r.kind in ("confirm", "ending"):  # 回答三次都没处理成：草稿还开着，到期以后叙事者再写超时的任务
             return
         elif r.kind == "plan":
             run = await self._run()
@@ -278,8 +375,51 @@ class Conn:
         evs = await self.gw.visible_events(self.pid, 0, 10_000)
         return [e["eventId"] for e in evs if e.get("turnId") == turn_id]
 
+    async def _observe(self, turn_id: str, character: str, text: str | None, said: str | None = None) -> None:
+        """人物的一句定稿过输出侧监控（B-12，2.11）：剧透、Model Armor、问句比例；连续两句剧透重建会话。
+        said = 玩家这一轮的定稿（玩家自己说过的词人物接着说不算剧透）。
+        Span 只有一局、一轮、人物、事实 ID 和 RAI 类别，没有原话和命中的词（data-design 第 8 节）。"""
+        if not text:
+            return
+        async with self.gw.engine.connect() as c:
+            st = await store.sim_state(c, self.pid)
+        o = self.monitor.observe(character, text, st, said=said)
+        armor = self.gw.screener.armor
+        harmful = False
+        failed = False
+        categories: list[str] = []
+        try:
+            got = await asyncio.wait_for(armor.screen_response(text), self.gw.screener.armor_deadline)
+            harmful = got.harmful
+            categories = [k for k, v in got.rai.items() if v == "HIGH"]
+        except Exception:  # 第二层：出错、超时当没命中
+            failed = True
+            log.info("人物输出的 Model Armor 没有结果（%s）", character)
+        by = o.counts()
+        if armor_usd := cost_usd(armor, text):
+            by["cost_armor_usd"] = armor_usd
+        if failed:
+            by["armor_errors"] = 1
+        rebuild = o.rebuild and character in self.sessions and not self.guard.paused
+        if rebuild:
+            by["output_rebuilds"] = 1
+        hit = {"playthrough_id": self.pid, "turn_id": turn_id, "character": character, "rebuild": rebuild}
+        if o.spoilers:
+            with self.gw.tracer.span("monitor.hit", **hit, kind="spoiler", fact_ids=[h.fact for h in o.spoilers]):
+                pass
+        if harmful:
+            by["output_harmful"] = 1
+            with self.gw.tracer.span("monitor.hit", **hit, kind="harmful", category=sorted(categories)):
+                pass
+        async with self.gw.engine.begin() as c:
+            await store.count(c, self.pid, **by)
+        if rebuild:
+            self.monitor.rebuilt(character)
+            await self._rebuild(character)
+
     async def on_commit(self, payload: Json) -> None:
         await self.push()
+        await self.voices.refresh()
 
     # —— 收 ——
 
@@ -289,34 +429,73 @@ class Conn:
             last_seq = int(
                 await c.scalar(select(playthroughs.c.last_seq).where(playthroughs.c.playthrough_id == self.pid)) or 0
             )
-            settled = (
+            done = (
                 await c.execute(
-                    select(turns.c.turn_id).where(
+                    select(turns.c.turn_id, turns.c.result)
+                    .where(
                         turns.c.playthrough_id == self.pid,
                         turns.c.kind.in_(ANSWERED),
                         turns.c.status.in_(("done", "failed")),
                     )
+                    .order_by(turns.c.settled_at)
                 )
-            ).scalars()
+            ).all()
             # 这条连接之前判完的不再推结果：固定演出不补发（3.14），幕末和落地由 welcome.pending 补上（第 4 节）
-            self.settled = set(settled)
+            self.settled = {r.turn_id for r in done}
             last_turn = await self._last_turn(c)
             pt = await self.gw.pt(c, self.pid)
         asking = await self._pending_confirm()
+        await self.guard.load()
         if pt is not None:
             self.characters = pt.book.characters
+            self.monitor.attach(pt.book)
+        await self._resume(last_turn is not None)
         await self.send(
             {
                 "type": "welcome",
                 "lastSeq": last_seq,
                 "voice": dict(VOICE),
                 "lastTurn": last_turn,
-                "pending": pending(pt.run if pt is not None else None, asking),
+                "pending": pending(pt.run if pt is not None else None, asking, safety_pause=self.guard.paused),
             }
         )
+        ending_id: str | None = None
+        if pt is not None and pt.status == "ended":  # 重连时已经进了结局：补推 ending_started（B-9）
+            request, ending_id = await self._ending_row()
+            if request is not None:
+                await self.send(
+                    {"type": "ending_started", "trigger": request["trigger"], "staging": request["staging"]}
+                )
+                self.start_ending()
         async with self.push_lock:
             self.sent_seq = min(int(msg["lastSeq"]), last_seq)
+        resend = again([r.result for r in done], self.sent_seq, last_seq)
         await self.push()
+        if resend:
+            async with self.push_lock:
+                for m in resend:
+                    await self.send(m)
+        if ending_id is not None:
+            await self.send({"type": "ending_ready", "endingId": ending_id})
+
+    async def _resume(self, reconnect: bool) -> None:
+        """接手断线前寄存的 Live 会话和最近对话（B-11，`Voices.adopt`）。Trace：gateway.resume（不带原话）。
+        reconnect：这一局已经说过话（有 lastTurn），不是开局后第一次连上。"""
+        p = await self.voices.adopt()
+        carried = len(p.sessions) if p is not None else 0
+        recent = sum(len(x) for x in p.recent.values()) if p is not None else 0
+        with self.gw.tracer.span(
+            "gateway.resume",
+            playthrough_id=self.pid,
+            reconnect=reconnect,
+            gap_ms=round((time.monotonic() - p.at) * 1000) if p is not None else -1,
+            carried=carried,
+            recent_turns=recent,
+            resume_kind="carried" if carried else "recent" if recent else "cold",
+        ):
+            pass
+        if reconnect or p is not None:  # 开局后第一次连上不算续玩
+            self.voices.resumed_at = time.monotonic()
 
     async def _last_turn(self, c: Any) -> Json | None:
         """断线前的最后一轮（第 4 节）。作废的一轮 settled、两段文字都是 null（原话已清空，B-4）；人物的话取第一句
@@ -359,52 +538,24 @@ class Conn:
             log.info("focus 的人物不存在或不能说话")
             await self.send(error_msg("invalid_request", "この人とは話せません。"))
             return
-        self.focused = character
-        if character not in self.sessions:
-            self.sessions[character] = await self.gw.live.open(character)
-            await self._prepare(character, "switch")
-            return
-
-        async def ready() -> None:
-            await asyncio.sleep(max(0.0, self.ready_at[character] - time.monotonic()))
-            if self.focused == character:
-                await self.send({"type": "session_ready", "character": character, "voiceAvailable": True})
-
-        self.gw.spawn(ready())
-
-    async def _prepare(self, character: str, reason: str) -> None:
-        """新开的会话（切换人物、重建）：推 session_preparing，就绪时推 session_ready（还看着这个人物的话），
-        这之前这个人物的新一轮等着（`_stream`）。"""
-        eta = SESSION_ETA_MS
-        await self.send({"type": "session_preparing", "character": character, "reason": reason, "etaMs": eta})
-        self.ready_at[character] = time.monotonic() + eta / 1000 * self.gw.settings.speed
-        ev = self.ready[character] = asyncio.Event()
-
-        async def ready() -> None:
-            await asyncio.sleep(max(0.0, self.ready_at[character] - time.monotonic()))
-            if self.focused == character:
-                await self.send({"type": "session_ready", "character": character, "voiceAvailable": True})
-            ev.set()
-
-        self.gw.spawn(ready())
+        await self.voices.focus(character)
 
     async def _rebuild(self, character: str) -> None:
         """作废以后重建这个人物的会话（backend-design 3.2）：新会话只带最近几轮里没作废的，人物真的没听到那一轮。"""
-        old = self.sessions.pop(character, None)
-        if old is not None:
-            await old.close()
-        recent = [r for _, r in self.recent.get(character, [])]
-        self.sessions[character] = await self.gw.live.open(character, recent)
-        await self._prepare(character, "rebuild")
+        await self.voices.rebuild(character)
 
     async def _start(self, msg: Json, mode: str) -> Turn | None:
         if self.focused is None:
             log.info("%s 没有 focus 的人物", msg["type"])
             await self.send(error_msg("invalid_request", "話す相手を選んでください。"))
             return None
+        if not await self.voices.can_speak():
+            await self.send(error_msg("voice_unavailable", "いまは声で話せません。"))
+            return None
         await self._cut()
         prev = self.turn if self.turn is not None and self.turn.ended else None
-        self.turn = Turn(msg["turnId"], msg["turnSeq"], self.focused, mode, self.sessions[self.focused], prev=prev)
+        session = self.sessions.get(self.focused)
+        self.turn = Turn(msg["turnId"], msg["turnSeq"], self.focused, mode, session, prev=prev)
         self.memory[self.turn.turn_id] = self.turn
         return self.turn
 
@@ -433,6 +584,8 @@ class Conn:
             self.gw.hand(self.pid, self._finish(old))
 
     def audio_in(self, frame: bytes) -> None:
+        if self.ending:  # 进了结局：上行音频丢掉
+            return
         if self.plan is not None and len(frame) >= 5 and int.from_bytes(frame[1:5], "big") == self.plan.turn_seq:
             self._plan_audio(self.plan, frame)
             return
@@ -441,6 +594,9 @@ class Conn:
             return
         if int.from_bytes(frame[1:5], "big") != t.turn_seq:
             return  # 已结束轮次的上行分片丢掉（3.1）
+        if t.session is None or not t.session.alive:  # 会话还在开：先攒着（B-10）
+            t.early.append(frame[5:])
+            return
         for ev in t.session.audio_in(frame[5:]):
             if ev.kind == "input_partial":
                 t.heard = ev.text
@@ -460,6 +616,7 @@ class Conn:
         t.ended = True
         if t.mode == "text":
             t.heard = t.text
+            self.guard.start(t, t.text)
         t.stream = asyncio.ensure_future(self._stream(t))
         self.gw.hand(self.pid, self._finish(t))
 
@@ -468,22 +625,33 @@ class Conn:
         wait = self.ready.get(t.character)
         if wait is not None and not wait.is_set():  # 会话还在准备（重建）：等就绪再送进去（B-4）
             await wait.wait()
-        released = time.monotonic()
+        if t.session is None or not t.session.alive:
+            t.session = self.sessions.get(t.character)
+        session = t.session
+        if session is None or not session.alive:
+            raise LiveLost("没有能用的会话")
+        early, t.early = t.early, []
+        for pcm in early:  # 就绪前攒的上行音频（半句字幕这时不推，定稿照常）
+            session.audio_in(pcm)
+        t.released = time.monotonic()
+        before_s = session.audio_seconds
         if t.mode == "arrival":
-            said = t.session.speak_first()
+            said = session.speak_first()
         elif t.mode == "confirm":
-            said = t.session.speak_first(t.text)
+            said = session.speak_first(t.text)
         else:
-            said = t.session.respond(t.text)
+            said = session.respond(t.text)
         async for ev in said:
             if ev.kind == "input_final":
                 t.heard = ev.text
+                self.guard.start(t, ev.text)
                 await self.send(
                     {"type": "transcript", "turnId": t.turn_id, "speaker": "player", "text": ev.text, "final": True}
                 )
             elif ev.kind == "audio":
                 if t.first_audio is None:
                     t.first_audio = time.monotonic()
+                t.pcm_out.extend(ev.pcm)
                 await self.send_bytes(audio.frame(t.turn_seq, ev.pcm))
             elif ev.kind == "output_partial":
                 t.said = ev.text
@@ -491,22 +659,60 @@ class Conn:
                     {"type": "transcript", "turnId": t.turn_id, "speaker": t.character, "text": ev.text, "final": False}
                 )
             elif ev.kind == "turn_complete":
-                ms = None if t.first_audio is None else round((t.first_audio - released) * 1000)
-                t.complete = True
-                t.done_at = time.monotonic()
-                await self.send(
-                    {
-                        "type": "turn_complete",
-                        "turnId": t.turn_id,
-                        "audio": t.first_audio is not None,
-                        "metrics": {"serverReleaseToFirstAudioMs": ms},
-                    }
-                )
+                await self._complete(t)
             elif ev.kind == "output_final":
-                t.said = ev.text
-                await self._final(t)
+                if ev.text is None and t.pcm_out:  # 有声音、一个字的文字都没有：补转写（S-071）
+                    await self._fallback_final(t)
+                elif ev.text is not None:
+                    t.said = ev.text
+                    await self._final(t)
+            elif ev.kind == "usage":
+                await self.voices.account(t, ev, session, before_s)
+
+    async def _complete(self, t: Turn) -> None:
+        """turn_complete：人物这边这一轮说完了（或 Live 断了，到此为止）。"""
+        ms = None if t.first_audio is None or t.released is None else round((t.first_audio - t.released) * 1000)
+        t.complete = True
+        t.done_at = time.monotonic()
+        await self.send(
+            {
+                "type": "turn_complete",
+                "turnId": t.turn_id,
+                "audio": t.first_audio is not None,
+                "metrics": {"serverReleaseToFirstAudioMs": ms},
+            }
+        )
+
+    async def _fallback_final(self, t: Turn) -> None:
+        """补转写（backend-design 3.1）：3 秒截止、不重试；失败也推 `text: null` 的定稿。"""
+        if t.paused:  # 出戏卡停下的一轮没有人物定稿（3.3 的例外，B-12）
+            return
+        t.source = "fallback"
+        heard = await fallback_text(self.gw.transcriber, bytes(t.pcm_out))
+        t.pcm_out = bytearray()
+        if heard is not None:
+            t.said = heard.text
+            if self.gw.live_ledger is not None:
+                self.gw.live_ledger.add(
+                    kind=f"live.fallback/{self.pid}", model="transcribe", usage=heard.usage, cost=heard.cost
+                )
+        t.final = True
+        await self.send(
+            {
+                "type": "transcript",
+                "turnId": t.turn_id,
+                "speaker": t.character,
+                "text": t.said if heard is not None else None,
+                "final": True,
+                "source": "fallback",
+            }
+        )
+        if heard is not None:
+            self._watch(t)
 
     async def _final(self, t: Turn) -> None:
+        if t.paused:  # 出戏卡停下的一轮没有人物定稿（3.3 的例外）
+            return
         t.final = True
         await self.send(
             {
@@ -518,6 +724,12 @@ class Conn:
                 "source": "live",
             }
         )
+        self._watch(t)
+
+    def _watch(self, t: Turn) -> None:
+        """人物的定稿（Live 的、补转写的、被打断时说到一半的）都过输出侧监控（B-12）；不等它。"""
+        if t.said:
+            self.gw.spawn(self._observe(t.turn_id, t.character, t.said, t.heard))
 
     async def _finish(self, t: Turn) -> None:
         """等人物说完（或被打断、断线），再把这一轮交给叙事者。被打断的补 interrupted 和说到一半的定稿（3.3）；
@@ -526,29 +738,54 @@ class Conn:
         await asyncio.wait({t.stream})
         failed = not t.stream.cancelled() and t.stream.exception() is not None
         if failed:
-            log.error("Live 的回答中途出错（%s）", t.turn_id, exc_info=t.stream.exception())
+            exc = t.stream.exception()
+            if isinstance(exc, LiveLost):  # Live 中途断了：按被打断收，交给叙事者，再重开会话（B-10）
+                log.info("Live 中途断了（%s，%s）", t.turn_id, exc)
+                t.dropped = True
+            else:
+                log.error("Live 的回答中途出错（%s）", t.turn_id, exc_info=exc)
         if t.done_at is None:
             t.done_at = time.monotonic()
-        if not t.lost and not t.retracted:  # 作废的不补 interrupted 和说到一半的定稿（B-4）
-            if t.stream.cancelled() and not t.complete:
+        if not t.lost and not t.retracted and not t.paused:  # 作废的不补 interrupted 和说到一半的定稿（B-4）
+            if t.dropped and not t.complete:  # Live 断了：人物这边这一轮到此为止（不是玩家打断，#111 前端评审）
+                await self._complete(t)
+                with self.gw.tracer.span(
+                    "live.turn",
+                    playthrough_id=self.pid,
+                    turn_id=t.turn_id,
+                    character=t.character,
+                    mode=t.mode,
+                    status="lost",
+                    first_audio_ms=-1
+                    if t.first_audio is None or t.released is None
+                    else round((t.first_audio - t.released) * 1000),
+                ):
+                    pass
+                if t.first_audio is not None and not t.final and t.said is None and t.pcm_out:
+                    await self._fallback_final(t)
+            elif t.stream.cancelled() and not t.complete:
                 await self.send({"type": "interrupted", "turnId": t.turn_id})
             if not t.final and t.said is not None:  # 人物还没出字就被打断的，没有定稿（同「没回答」的轮）
                 await self._final(t)
         t.quiet.set()
+        screen = await self.guard.result(t)  # 交给叙事者之前等安全筛查（B-12）：不会先提交再暂停
         if t.prev is not None and not t.retracted:
             await t.prev.submitted.wait()
             t.prev = None
         try:
-            if t.retracted:
+            if t.paused:
+                await self.guard.write_paused(t)
+            elif t.retracted:
                 await self._write_retracted(t)
             else:
                 t.handing = True  # 从这里起作废走库里那条路
-                await self._submit(t)
+                await self._submit(t, screen)
         finally:
             self.memory.pop(t.turn_id, None)
             t.submitted.set()
+            self.voices.after_turn(t.character)
 
-    async def _submit(self, t: Turn) -> None:
+    async def _submit(self, t: Turn, screen: Screen | None = None) -> None:
         """原话和这一轮的任务同一个事务写进去，再叫叙事者（turn_complete 之后）。lost 的只留记录，不叫叙事者。
         落地时人物先开口的那一句只存原话（那一行任务收到 act_landed 时已经写了），不交给叙事者（3.11）。"""
         async with self.gw.engine.begin() as c:
@@ -579,24 +816,43 @@ class Conn:
                     input_mode=t.mode,
                     character=t.character,
                     turn_seq=t.turn_seq,
-                    status="lost" if t.lost else "pending",
+                    status="lost" if t.lost or self.ending else "failed" if self._silent(t) else "pending",
                     commit_after=self._window(t.done_at),
+                    flags=sorted(screen.flags) if screen is not None and not t.lost else None,  # lost 的不交给叙事者
                 )
-                await store.add_utterance(c, self.gw.ids, self.pid, t.turn_id, speaker="player", text=t.heard, t=now_t)
+                if self._silent(t):  # Live 在第一个音频前就断了：没有回答，不交给叙事者（turn_settled no_response）
+                    await c.execute(
+                        update(turns)
+                        .where(turns.c.turn_id == t.turn_id)
+                        .values(outcome="no_response", minutes=0, settled_at=func.now())
+                    )
+                heard = screen.masked if screen is not None and screen.masked is not None else t.heard
+                await store.add_utterance(c, self.gw.ids, self.pid, t.turn_id, speaker="player", text=heard, t=now_t)
                 await store.add_utterance(
-                    c, self.gw.ids, self.pid, t.turn_id, speaker=t.character, text=t.said, t=now_t, source="live"
+                    c, self.gw.ids, self.pid, t.turn_id, speaker=t.character, text=t.said, t=now_t, source=t.source
                 )
+                if t.said is None and t.first_audio is not None:  # 有声音、文字（含补转写）都没有（3.1）
+                    await c.execute(
+                        update(turns).where(turns.c.turn_id == t.turn_id).values(character_text_missing=True)
+                    )
         if t.mode == "confirm":
             if t.asking is not None:
                 await self._push_confirm(t.asking)
             return
         if t.mode == "arrival":
             return
-        if not t.lost:
+        if self._silent(t):
+            await self.push()
+            return
+        if not t.lost and not self.ending:
             kept = self.recent.setdefault(t.character, [])
             kept.append((t.turn_id, Recent(t.heard, t.said)))
             del kept[:-RECENT_TURNS]
             self.gw.kick(self.pid)
+
+    @staticmethod
+    def _silent(t: Turn) -> bool:
+        return t.dropped and t.first_audio is None and not t.lost
 
     def _window(self, since: float | None) -> float | None:
         """提交窗口还剩几秒（turn_complete、定稿 + 3 秒，按 ZJ_SPEED 缩短）；速度 0 时没有窗口。"""
@@ -638,10 +894,23 @@ class Conn:
         elif self.sent_seq < 0:
             log.info("hello 之前的 %s", t)
             await self.send(error_msg("invalid_request", "うまく送れませんでした。"))
+        elif t == "safety_resume":
+            await self.guard.resume()
+        elif self.guard.paused and t in PAUSED_REFUSED:  # 出戏卡开着：故事停着，回到故事之前不收（B-12）
+            log.info("暂停期间的 %s", t)
+            await self.send(error_msg("invalid_request", INVALID_REQUEST))
+        elif t == "focus" and self.guard.paused:
+            log.info("暂停期间的 focus：不开会话")
+        elif t in ("focus", "near") and self.ending:  # 进了结局：不再开会话、不预热（B-9）
+            log.info("结局里的 %s 不处理", t)
         elif t == "focus":
             await self.focus(msg["character"])
         elif t == "unfocus":
-            self.focused = None
+            self.voices.unfocus()
+        elif t == "near":
+            self.voices.near(msg["character"])
+        elif t == "far":
+            self.voices.far(msg["character"])
         elif t == "activity_start":
             if msg.get("purpose") == "act_plan":
                 await self.plan_start(msg)
@@ -758,7 +1027,7 @@ class Conn:
             {"type": "turn_started", "turnId": qid, "turnSeq": turn_seq, "speaker": who, "reason": "confirm"}
         )
         prev = t if t is not None and t.ended else None
-        self.turn = Turn(qid, turn_seq, who, "confirm", self.sessions[who], text=asking["prompt"], prev=prev)
+        self.turn = Turn(qid, turn_seq, who, "confirm", self.sessions.get(who), text=asking["prompt"], prev=prev)
         self.turn.owner = turn_id
         self.turn.asking = asking
         self.respond(self.turn)
@@ -865,8 +1134,8 @@ class Conn:
         return Run.of(row or {})
 
     async def _refuse_if_ended(self) -> bool:
-        """收了幕、还没选定：对话和动作回 invalid_request，不带 turnId（第 5 节）。"""
-        if (await self._run()).act_end is None:
+        """收了幕、还没选定，或进了结局（B-9）：对话和动作回 invalid_request，不带 turnId（第 5 节）。"""
+        if not self.ending and (await self._run()).act_end is None:
             return False
         await self.send(error_msg("invalid_request", INVALID_REQUEST))
         return True
@@ -876,7 +1145,7 @@ class Conn:
         request = {k: msg[k] for k in ("clientMsgId", "kind", "target", "params", "actionId") if k in msg}
         async with self.gw.engine.begin() as c:
             row = await store.playthrough(c, self.pid)
-            ended = row is None or row["act_end"] is not None
+            ended = self.ending or row is None or row["act_end"] is not None or row["status"] != "active"
             if not ended:
                 await store.enqueue(
                     c, self.gw.ids, self.pid, kind="action", client_msg_id=msg["clientMsgId"], request=request
@@ -889,6 +1158,9 @@ class Conn:
     async def choose(self, msg: Json) -> None:
         """选去处（3.11）：叙事者核对它在不在这次的去处里，不在就回 invalid_choice，不写事件。"""
         request = {k: msg[k] for k in ("clientMsgId", "optionId", "enRouteChoice") if k in msg}
+        if self.ending:
+            await self.send(error_msg("invalid_request", INVALID_REQUEST))
+            return
         async with self.gw.engine.begin() as c:
             await store.enqueue(
                 c, self.gw.ids, self.pid, kind="choose", client_msg_id=msg["clientMsgId"], request=request
@@ -905,7 +1177,12 @@ class Conn:
         if not await self._plan_open():
             await self.send(error_msg("invalid_request", INVALID_REQUEST))
             return
-        await self._submit_plan(None, msg["text"], client_msg_id=msg["clientMsgId"])
+        screen = await self.guard.screen_plan(msg["text"])
+        if self.guard.paused:
+            return
+        await self._submit_plan(
+            None, screen.masked or msg["text"], client_msg_id=msg["clientMsgId"], flags=screen.flags
+        )
 
     async def plan_start(self, msg: Json) -> None:
         if not await self._plan_open():
@@ -954,9 +1231,19 @@ class Conn:
         await self.send(
             {"type": "transcript", "turnId": plan.turn_id, "speaker": "player", "text": heard, "final": True}
         )
-        await self._submit_plan(plan, heard)
+        screen = await self.guard.screen_plan(heard)
+        if self.guard.paused:  # 打算的这一句判成了信号：不交给叙事者（B-12）
+            return
+        await self._submit_plan(plan, screen.masked or heard, flags=screen.flags)
 
-    async def _submit_plan(self, plan: PlanTurn | None, text: str | None, *, client_msg_id: str | None = None) -> None:
+    async def _submit_plan(
+        self,
+        plan: PlanTurn | None,
+        text: str | None,
+        *,
+        client_msg_id: str | None = None,
+        flags: frozenset[str] = frozenset(),
+    ) -> None:
         mode = "text" if plan is None else "voice"
         request: Json = {"mode": mode}
         if client_msg_id is not None:
@@ -974,6 +1261,7 @@ class Conn:
                 client_msg_id=client_msg_id,
                 request=request,
                 commit_after=self._window(time.monotonic()) if plan is not None else None,
+                flags=sorted(flags) or None,
             )
             await store.add_utterance(
                 c, self.gw.ids, self.pid, turn_id, speaker="player", text=text, t=st["t"] if st is not None else 0
@@ -1007,15 +1295,15 @@ class Conn:
             await c.execute(update(playthroughs).where(playthroughs.c.playthrough_id == self.pid).values(arrival=None))
         self.settled.add(turn_id)
         await self._cut()
-        if opener not in self.sessions:
-            self.sessions[opener] = await self.gw.live.open(opener)
-            self.ready_at[opener] = time.monotonic()
+        s = self.sessions.get(opener)
+        if s is None or not s.alive:
+            await self.voices.open_now(opener, "arrival")
         self.focused = opener  # arrival 的一轮服务端把 speaker 当作已经 focus 的人物（3.3）
         await self.send(
             {"type": "turn_started", "turnId": turn_id, "turnSeq": turn_seq, "speaker": opener, "reason": "arrival"}
         )
         prev = self.turn if self.turn is not None and self.turn.ended else None
-        self.turn = Turn(turn_id, turn_seq, opener, "arrival", self.sessions[opener], prev=prev)
+        self.turn = Turn(turn_id, turn_seq, opener, "arrival", self.sessions.get(opener), prev=prev)
         self.respond(self.turn)
 
 
@@ -1049,6 +1337,7 @@ async def endpoint(ws: WebSocket, pid: str) -> None:
     gw.conns[pid] = conn
     if old is not None:
         old.drop()  # 先把旧连接上没说完、还按着的那一轮交出去，下面 hello 的 handed() 才等得到它
+        await old.voices.park()  # 新连接的 hello 接手旧连接的会话和最近对话（B-11）
         await old.close(4009, "opened elsewhere")  # 同一局在别的标签页打开：新连接踢掉旧连接
     reader = asyncio.ensure_future(read_loop(conn))
     closed = asyncio.ensure_future(conn.closed.wait())
@@ -1062,8 +1351,7 @@ async def endpoint(ws: WebSocket, pid: str) -> None:
             timer.cancel()
         if gw.conns.get(pid) is conn:
             del gw.conns[pid]
-        for s in conn.sessions.values():
-            await s.close()
+        await conn.voices.park()  # B-11：寄存起来等重连（30 秒内接着用同一条会话）
 
 
 async def read_loop(conn: Conn) -> None:
