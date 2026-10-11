@@ -27,21 +27,24 @@ firewall() {
     "$ipt" -A OUTPUT -d "$ns" -p tcp --dport 53 -j ACCEPT
   done
   local nets="0.0.0.0/8 10.0.0.0/8 100.64.0.0/10 169.254.0.0/16 172.16.0.0/12 192.0.0.0/24 192.168.0.0/16 198.18.0.0/15 224.0.0.0/3"
+  local hosts=""
   for name in host.docker.internal gateway.docker.internal; do
-    nets="$nets $( (getent ahostsv4 "$name" || true) | awk '{print $1}' | sort -u | tr '\n' ' ')"
+    hosts="$hosts $( (getent ahostsv4 "$name" || true) | awk '{print $1}' | sort -u | tr '\n' ' ')"
   done
-  for n in $nets; do "$ipt" -A OUTPUT -d "$n" -j REJECT; done
-  # IPv6 只留本机回环
+  for n in $nets $hosts; do "$ipt" -A OUTPUT -d "$n" -j REJECT; done
+  # IPv6 只留本机回环；容器有回环以外的 IPv6 地址却装不上规则，就不起 runner
   if "$ip6t" -L OUTPUT -n >/dev/null 2>&1; then
     "$ip6t" -F OUTPUT
     "$ip6t" -A OUTPUT -o lo -j ACCEPT
     "$ip6t" -A OUTPUT -j REJECT
-  fi
-  # 自检：连 Mac 本机必须不通
-  if timeout 3 bash -c '</dev/tcp/host.docker.internal/5432' 2>/dev/null; then
-    echo "防火墙没生效：还能连到 host.docker.internal" >&2
+  elif [ -r /proc/net/if_inet6 ] && awk '$6 != "lo" {found = 1} END {exit !found}' /proc/net/if_inet6; then
+    echo "有 IPv6 地址但 ip6tables 用不了" >&2
     exit 1
   fi
+  # 自检：按规则本身查（Mac 上的服务没开时，连不上也说明不了什么）
+  for h in $hosts; do
+    "$ipt" -C OUTPUT -d "$h" -j REJECT || { echo "防火墙没生效：没有拒绝 $h 的规则" >&2; exit 1; }
+  done
   echo "已封：Mac 本机、Docker 虚拟机、局域网；只出公网"
 }
 
