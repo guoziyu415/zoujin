@@ -61,7 +61,11 @@ def test_without_confirm_it_only_prints(requests: Path, tmp_path: Path, capsys: 
     printed = capsys.readouterr().out
     assert "小测：20 次调用" in printed and "预计花费" in printed and "只打印，不调用：没带 --confirm" in printed
     (cmd,) = [x for x in printed.splitlines() if x.startswith("命令：")]
-    assert "uv run zoujin-probe" in cmd and cmd.endswith("--confirm") and cmd.count("--confirm") == 1
+    assert (
+        "uv run --all-packages --extra real zoujin-probe" in cmd
+        and cmd.endswith("--confirm")
+        and cmd.count("--confirm") == 1
+    )
     assert "sonnet-5.5" in printed and KEY not in printed and "idmark" not in printed
     assert probe.main([*argv, "--confirm"], env=ENV) == 0  # 少账本、少总上限：也只打印
     printed = capsys.readouterr().out

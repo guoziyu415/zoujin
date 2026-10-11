@@ -71,6 +71,7 @@ B-8 起每种提示走哪家、哪一档写在 `config.TEXT`：`reply`（评测�
   ```
 
   临时换档量 Haiku（S-085 ③）：`ZJ_TEXT_MODELS=check=haiku-5.5`（逗号分开可以换几种；只能换 Claude 的，思考和 effort 照旧；回放的键、账本、`check.checker` 跟着变）。
+
 - **Google**（`models/vertex.py`）：Vertex AI 上的 Gemini，走 REST，认证用 Mac 上 gcloud 登录的应用默认凭证，没有 API Key。项目 ID 和地区**只**从 `ZJ_VERTEX_PROJECT`、`ZJ_VERTEX_LOCATION` 读，真要调 Google 那几种时才查，没设就退出、不发请求；不用 gcloud 的默认项目。项目 ID 不进日志、Trace、回放和账本。上限 `ZJ_MAX_GOOGLE_USD`（D-027）。
 - 账本（`zoujin_llm.Ledger`，和数据的评审员共用）：两本账同一个文件，一行一次调用，带 `provider` 和 `use`（叙事者各步是 `product`，评审员、AI 玩家是 `eval`）。总上限只算自己那家；`ZJ_MAX_ITEM_USD` 和 `ZJ_LEDGER_ITEM` 是单项的上限和记在哪一项下，单项把同一项的两本账合起来算。调用前按预计花费判，到了就 `BudgetStop`；被时限取消的调用按预计花费记账，输出不合格（含 Claude 的 `refusal`、`max_tokens`）的按实际花费记账，这两种也按同一个数记进这一轮的花费。没提交的那几次（作废的一轮、失败后重来的）也记进这一局的 `playthrough_metrics`。
 - 429、529：Mac 上的跑第一次就停（退出码 3）；服务玩家的叙事者（`narrator/app.py`）当作这一次失败，按时限的规则处理（`Pipeline.on_rate_limit`）。
@@ -94,7 +95,7 @@ uv run zoujin-s2 <标注集.jsonl> --out <目录> --resume                # 中�
 ```sh
 docker compose up -d db
 ZJ_RECORD_REPLAYS="$PWD/out/probe-requests" DATABASE_URL=… uv run zoujin-eval --mode fake --deterministic-only --slice --quiet --out out/probe-e0
-uv run zoujin-probe --requests out/probe-requests --out out/probe --max-item-usd 2 --max-claude-usd 100    # 只打印预计花费和命令
+uv run --all-packages --extra real zoujin-probe --requests out/probe-requests --out out/probe --max-item-usd 2 --max-claude-usd 100    # 只打印预计花费和命令
 ```
 
 - 每种取 `--per-kind` 个（默认 20；同样的请求只算一个，不够就轮着用），串行调，记 Claude 那本账、item 是 `b8-probe`。zg 点头后在打印出来的命令后面带 `--confirm`，环境变量照上面设。

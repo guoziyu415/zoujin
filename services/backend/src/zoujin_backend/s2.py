@@ -6,7 +6,8 @@
     # 检查走 Claude（B-8）：Key 从钥匙串读进这个终端，模型 ID 用环境变量给（不进仓库）
     export ANTHROPIC_API_KEY="$(security find-generic-password -s zoujin-claude -w)"
     ZJ_MODEL=real ZJ_EVAL_LIVE=1 ZJ_LEDGER=<账本> ZJ_CLAUDE_HAIKU=… ZJ_CLAUDE_SONNET=… DATABASE_URL=… \\
-        uv run zoujin-s2 <标注集.jsonl> --out <目录> --max-item-usd <单项> --max-claude-usd <总> --confirm
+        uv run --all-packages --extra real zoujin-s2 <标注集.jsonl> --out <目录> \\
+        --max-item-usd <单项> --max-claude-usd <总> --confirm
     # S-085 ③ 再用 Haiku 量一遍：同样的命令前面加 ZJ_TEXT_MODELS=check=haiku-5.5，换一个 --out
 
 - 每条按 `setup` 起局（`eval_api`），调 `check(candidate, turn, model_checks="all")`，跑 `--runs` 次。先跑完第 1 次的
@@ -118,7 +119,7 @@ def gate(args: argparse.Namespace, settings: Settings, env: Mapping[str, str], n
         if k != "ZJ_TEXT_MODELS" or env.get(k)
     )
     cmd = [x for x in argv if x != "--confirm"]
-    print(f"命令：{names} uv run zoujin-s2 {shlex.join(cmd)} --confirm")
+    print(f"命令：{names} uv run --all-packages --extra real zoujin-s2 {shlex.join(cmd)} --confirm")
     missing = []
     if env.get(LIVE_ENV) != "1":
         missing.append(f"没设 {LIVE_ENV}=1")

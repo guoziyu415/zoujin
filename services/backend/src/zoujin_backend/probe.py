@@ -14,7 +14,8 @@ Mac 上（Key 只在这一个终端里）：
 
     export ANTHROPIC_API_KEY="$(security find-generic-password -s zoujin-claude -w)"
     ZJ_CLAUDE_HAIKU=… ZJ_CLAUDE_SONNET=… ZJ_LEDGER=~/.zoujin/ledger.jsonl \\
-      uv run zoujin-probe --requests <录下的目录> --out <结果目录> --max-item-usd 2 --max-claude-usd 100
+      uv run --all-packages --extra real zoujin-probe --requests <录下的目录> --out <结果目录> \\
+      --max-item-usd 2 --max-claude-usd 100
 """
 
 from __future__ import annotations
@@ -214,7 +215,8 @@ def gate(
         f"按推算要给到 ${likely_total + biggest:.2f}，不够就中途停下，已经跑完的照样写结果"
     )
     names = " ".join(f"{k}=…" for k in NEEDED_ENV) + (" ZJ_TEXT_MODELS=…" if env.get("ZJ_TEXT_MODELS") else "")
-    print(f"命令：{names} uv run zoujin-probe {shlex.join(x for x in argv if x != '--confirm')} --confirm")
+    rest = shlex.join(x for x in argv if x != "--confirm")
+    print(f"命令：{names} uv run --all-packages --extra real zoujin-probe {rest} --confirm")
     missing = [f"没设 {k}" for k in NEEDED_ENV if not env.get(k)]
     if args.max_claude_usd is None:
         missing.append("少 --max-claude-usd")
