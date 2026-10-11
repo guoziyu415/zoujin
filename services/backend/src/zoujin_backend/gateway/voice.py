@@ -12,6 +12,8 @@
 | 开不起来 | 连续 2 次（或配额、账本到上限）：`degraded { voice: false }`，这条连接先不开语音，下一次 `focus` 再试 |
 | 叙事者提交了 | 开着的会话里局势变了就 `note()` 送变了的条目；在说话的一轮里不送，等这一轮交上去 |
 | 闲置 | 离开人物 2 分钟关掉（按 `ZJ_SPEED` 缩短；速度 0 时不关，测试另设） |
+| 断线（B-11） | 会话、最近对话寄存进 `Gateway.parked`；说到一半断的那个人物的关掉。会话 30 秒、对话 10 分钟没人接就丢 |
+| 重连的 `hello` | 接手寄存的：会话装回来（重新 `focus` 立即就绪），最近对话接着用；局势变了送一段说明 |
 
 「停顿」= 这个人物没有还没交上去的一轮（`Turn.submitted`）。换会话前一直等停顿；开新会话期间又说了一轮，新会话里没有
 那一轮，就丢掉重开。
@@ -32,7 +34,7 @@ from zoujin_backend.db import store
 from zoujin_backend.db.tables import playthrough_metrics
 from zoujin_backend.gateway import brief
 from zoujin_backend.models.gemini_live import LiveLostQuota
-from zoujin_backend.models.live import LiveEvent, LiveLost, LiveSession
+from zoujin_backend.models.live import LiveEvent, LiveLost, LiveSession, Recent
 
 if TYPE_CHECKING:
     from zoujin_backend.gateway.ws import Conn, Turn
@@ -47,6 +49,32 @@ IDLE_S = 120.0  # 离开人物 2 分钟关闭（ux-design 7.2）
 MAX_OPEN_FAILS = 2
 SWAP_RETRIES = 3  # 开新会话期间又说了一轮：丢掉重开，最多几次
 NEXT_TURN_USD = 0.03  # 下一轮的预计（账本到上限的判断，偏高：30 轮时每轮约 0.029 美元，S-073 ⑤）
+RESUME_HOLD_S = 30.0  # B-11：断线后寄存的会话留几秒（前端 1、2、4、8 秒退避重连，合计 15 秒）
+RECENT_HOLD_S = 600.0  # B-11：断线后最近对话留几秒（同 Live 单个连接的寿命）
+
+
+@dataclass
+class Parked:
+    """断线后寄存的语音的东西（B-11），只在网关内存里。`recent` 和旧连接的是同一份：断线那一轮交完照常进来。"""
+
+    sessions: dict[str, LiveSession]
+    recent: dict[str, list[tuple[str, Recent]]]
+    facts: dict[str, tuple[str, ...]]
+    at: float
+    timer: asyncio.Task[None] | None = None
+
+    async def close_sessions(self) -> None:
+        sessions = list(self.sessions.values())
+        self.sessions.clear()
+        for s in sessions:
+            await s.close()
+
+    async def drop(self) -> None:
+        if self.timer is not None and self.timer is not asyncio.current_task():
+            self.timer.cancel()
+        await self.close_sessions()
+        self.recent.clear()
+        self.facts.clear()
 
 
 @dataclass
@@ -60,6 +88,8 @@ class Voices:
     warm_for: str | None = None
     idle: dict[str, asyncio.Task[None]] = field(default_factory=dict)
     fails: int = 0
+    resumed_at: float | None = None  # B-11：hello 的时刻，重新 focus 后第一次就绪记 gateway.resume_ready
+    parked_once: bool = False  # B-11：这条连接已经寄存过了（4009 时先寄存、断开时不再寄存）
     off: str | None = None  # 降级的原因（service / budget）；下一次 focus 再试
     idle_s: float | None = None  # None：按 ZJ_SPEED 算；测试直接设
 
@@ -164,6 +194,7 @@ class Voices:
                 await asyncio.sleep(max(0.0, conn.ready_at[character] - time.monotonic()))
                 if ok and conn.focused == character and (announce or reason == "switch"):
                     await conn.send({"type": "session_ready", "character": character, "voiceAvailable": True})
+                    self._resume_ready(reused=False)
             finally:
                 ev.set()
 
@@ -251,6 +282,7 @@ class Voices:
                 await asyncio.sleep(max(0.0, conn.ready_at.get(character, 0.0) - time.monotonic()))
                 if conn.focused == character:
                     await conn.send({"type": "session_ready", "character": character, "voiceAvailable": True})
+                    self._resume_ready(reused=True)
 
             self._spawn(ready())
             return
@@ -436,11 +468,104 @@ class Voices:
         ):
             pass
 
-    async def close_all(self) -> None:
+    # —— 断线和重连（B-11） ——
+
+    def _hold(self, full: float) -> float:
+        return full * self.speed if self.speed > 0 else full
+
+    async def park(self) -> None:
+        """连接断了（或被同一局的新连接踢掉）：活着的会话、最近对话、局势条目寄存起来，不关会话。
+        说到一半断的（`lost`）那个人物的会话关掉：人物听到了一轮叙事者没处理的话（同作废）。"""
+        if self.parked_once:
+            return
+        self.parked_once = True
+        conn, gw = self.conn, self.conn.gw
+        self._cancel_tasks()
+        t = conn.turn
+        lost = {t.character} if t is not None and t.lost and t.character is not None else set()
+        keep: dict[str, LiveSession] = {}
+        shut: list[LiveSession] = []
+        for character, s in self.sessions.items():
+            if s.alive and character not in lost and not gw.draining:
+                s.on_change = _ignore
+                keep[character] = s
+            else:
+                shut.append(s)
+        self.sessions.clear()
+        # 寄存这一步不 await：新连接的 hello 不会夹在中间、拿不到
+        stale = gw.parked.pop(conn.pid, None)  # 上一次寄存的没人接（不该有）：丢掉
+        if not gw.draining and (keep or any(conn.recent.values())):
+            p = Parked(keep, conn.recent, dict(self.facts), time.monotonic())
+            gw.parked[conn.pid] = p
+            p.timer = self._spawn(self._expire(p))
+        for s in shut:
+            await s.close()
+        if stale is not None:
+            await stale.drop()
+
+    async def _expire(self, p: Parked) -> None:
+        """寄存的会话 30 秒、最近对话 10 分钟没人接就丢（按 ZJ_SPEED 缩短）。"""
+        gw, pid = self.conn.gw, self.conn.pid
+        hold = self._hold(RESUME_HOLD_S)
+        await asyncio.sleep(hold)
+        if gw.parked.get(pid) is not p:
+            return
+        await p.close_sessions()
+        await asyncio.sleep(max(0.0, self._hold(RECENT_HOLD_S) - hold))
+        if gw.parked.get(pid) is p:
+            del gw.parked[pid]
+            await p.drop()
+
+    async def adopt(self) -> Parked | None:
+        """重连的 hello：接手这一局寄存的。活着的会话装回来（重新 focus 立即就绪），按闲置规则管；
+        局势在断线期间变了的送一段说明。返回接手的（Trace 用），没有就 None。"""
+        conn, gw = self.conn, self.conn.gw
+        p = gw.parked.pop(conn.pid, None)
+        if p is None:
+            return None
+        if p.timer is not None:
+            p.timer.cancel()
+        conn.recent = p.recent
+        self.facts.update(p.facts)
+        now = time.monotonic()
+        for character, s in list(p.sessions.items()):
+            if not s.alive:
+                p.sessions.pop(character)
+                await s.close()
+                continue
+            conn.sessions[character] = s
+            s.on_change = lambda c=character, s=s: self._changed(c, s)
+            conn.ready_at[character] = now
+            self._schedule_idle(character)
+            if s.going_away:
+                self.after_turn(character)
+            else:
+                self._spawn(self._note(character))
+        return p
+
+    def _resume_ready(self, *, reused: bool) -> None:
+        """重连以后第一次就绪：hello 到 session_ready 的毫秒（服务端这一段，B-11）。"""
+        if self.resumed_at is None:
+            return
+        ms = round((time.monotonic() - self.resumed_at) * 1000)
+        self.resumed_at = None
+        with self.conn.gw.tracer.span(
+            "gateway.resume_ready", playthrough_id=self.conn.pid, duration_ms=ms, reused=reused
+        ):
+            pass
+
+    def _cancel_tasks(self) -> None:
         for task in [*self.opening.values(), *self.swapping.values(), *self.idle.values()]:
             task.cancel()
         if self.warm_task is not None:
             self.warm_task.cancel()
+
+    async def close_all(self) -> None:
+        self._cancel_tasks()
         for s in list(self.sessions.values()):
             await s.close()
         self.sessions.clear()
+
+
+def _ignore() -> None:
+    """寄存期间会话叫过来（GoAway、断了）：不管，接手时活着的才用。"""

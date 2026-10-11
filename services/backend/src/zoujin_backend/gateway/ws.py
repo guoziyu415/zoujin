@@ -299,6 +299,7 @@ class Conn:
 
     async def hello(self, msg: Json) -> None:
         await self.gw.handed(self.pid)  # 旧连接断线那一轮先写下来，lastTurn 才是它（lost 或照常交了）
+        await self._resume(int(msg["lastSeq"]) > 0)
         async with self.gw.engine.connect() as c:
             last_seq = int(
                 await c.scalar(select(playthroughs.c.last_seq).where(playthroughs.c.playthrough_id == self.pid)) or 0
@@ -331,6 +332,23 @@ class Conn:
         async with self.push_lock:
             self.sent_seq = min(int(msg["lastSeq"]), last_seq)
         await self.push()
+
+    async def _resume(self, reconnect: bool) -> None:
+        """接手断线前寄存的 Live 会话和最近对话（B-11，`Voices.adopt`）。Trace：gateway.resume（不带原话）。"""
+        p = await self.voices.adopt()
+        carried = len(p.sessions) if p is not None else 0
+        recent = sum(len(x) for x in p.recent.values()) if p is not None else 0
+        with self.gw.tracer.span(
+            "gateway.resume",
+            playthrough_id=self.pid,
+            reconnect=reconnect,
+            gap_ms=round((time.monotonic() - p.at) * 1000) if p is not None else -1,
+            carried=carried,
+            recent_turns=recent,
+            resume_kind="carried" if carried else "recent" if recent else "cold",
+        ):
+            pass
+        self.voices.resumed_at = time.monotonic()
 
     async def _last_turn(self, c: Any) -> Json | None:
         """断线前的最后一轮（第 4 节）。作废的一轮 settled、两段文字都是 null（原话已清空，B-4）；人物的话取第一句
@@ -1090,6 +1108,7 @@ async def endpoint(ws: WebSocket, pid: str) -> None:
     gw.conns[pid] = conn
     if old is not None:
         old.drop()  # 先把旧连接上没说完、还按着的那一轮交出去，下面 hello 的 handed() 才等得到它
+        await old.voices.park()  # 新连接的 hello 接手旧连接的会话和最近对话（B-11）
         await old.close(4009, "opened elsewhere")  # 同一局在别的标签页打开：新连接踢掉旧连接
     reader = asyncio.ensure_future(read_loop(conn))
     closed = asyncio.ensure_future(conn.closed.wait())
@@ -1103,7 +1122,7 @@ async def endpoint(ws: WebSocket, pid: str) -> None:
             timer.cancel()
         if gw.conns.get(pid) is conn:
             del gw.conns[pid]
-        await conn.voices.close_all()
+        await conn.voices.park()  # B-11：寄存起来等重连（30 秒内接着用同一条会话）
 
 
 async def read_loop(conn: Conn) -> None:

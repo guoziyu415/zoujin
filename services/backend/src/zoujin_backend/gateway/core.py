@@ -36,6 +36,7 @@ from zoujin_backend.trace import Tracer
 from zoujin_backend.world import Book, Library
 
 if TYPE_CHECKING:
+    from zoujin_backend.gateway.voice import Parked
     from zoujin_backend.gateway.ws import Conn
 
 log = logging.getLogger("zoujin.gateway")
@@ -95,6 +96,8 @@ class Gateway:
     # 每局还在交给叙事者的对话轮次（`_finish`）：重连的 hello 先等旧连接的这些写完，lastTurn 才准（第 4 节）
     handing: dict[str, set[asyncio.Task[Any]]] = field(default_factory=dict)
     tracer: Tracer = field(default_factory=Tracer)  # B-4：gateway.retract
+    # B-11：断线后寄存的 Live 会话和最近对话（只在内存里），重连的 hello 接手（`gateway/voice.py`）
+    parked: dict[str, Parked] = field(default_factory=dict)
     # B-10：补转写（人物有声音没文字时）、Live 的账本（真 Live 时）和记账用的模型名
     transcriber: AudioTranscriber = field(default_factory=FakeAudioTranscriber)
     live_ledger: Ledger | None = None
@@ -308,3 +311,11 @@ class Gateway:
             await conn.send({"type": "goaway", "reason": "deploy", "reconnectAfterMs": reconnect_after_ms})
         for conn in conns:
             await conn.close(1012, "service restart")
+        for pid in list(self.parked):  # 换实例以后靠局势说明重建（B-11）
+            await self.forget(pid)
+
+    async def forget(self, pid: str) -> None:
+        """丢掉这一局寄存的会话和最近对话（B-11）：删除这一局、記憶帳删除（B-13）、关机时调。"""
+        p = self.parked.pop(pid, None)
+        if p is not None:
+            await p.drop()
