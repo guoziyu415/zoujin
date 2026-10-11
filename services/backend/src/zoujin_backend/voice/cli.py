@@ -10,6 +10,7 @@
   马上补转写。串行，遇到第一个 429 就停；账本到上限（总上限，或这一次跑的上限 `--max-usd`，默认 $1）就停。
 - 输出在 `out/b6/<时间>/`：`takes/`（每遍的原始 WAV 和检查用的数字，留在 Mac）、`ref/`（对照用的自由对话）、
   `release/`（选中的 `.m4a`、`voices.json`、`audit.md`、`ref/`）和 `release` 的 zip，最后打印 zip 的 sha256。
+  release 里的句子调到说话人的目标响度（源文件的 `loudness`），真峰值压到 −1 dBTP 以下；音量不进签名，改了只重出。
 - `--resume <目录>` 接着跑，读过的不再花钱；源文件改了的句子（声音、说明、文字变了）自动重读。`--only` 只重读给定的
   句子（录音 ID 或键，旧的三遍挪进 `takes/discarded/`），清单照样按全部句子重出。
 - 日志和账里不写台词的文字，只写键、条数、长度和花费；`audit.md` 里有选中那遍和 ref 的补转写（我们自己的台词稿和对
@@ -320,6 +321,21 @@ class Chosen:
     verdict: checks.Verdict
     file: str | None = None  # release/ 里的文件名
     duration_ms: int | None = None
+    mix: Mix | None = None
+
+
+@dataclass(frozen=True)
+class Mix:
+    """构建时的音量：裁好的那段原来多响、目标、调了多少，成品多响、真峰值。"""
+
+    before_dbfs: float
+    target_dbfs: float | None
+    gain_db: float
+    after_dbfs: float
+    true_peak_dbtp: float
+
+
+LOUDNESS_TOL_DB = 1.5  # 和同一人物自由对话差在 ±1.5 dB 以内（UX 量测）
 
 
 def judge_all(run: Run) -> list[Chosen]:
@@ -334,7 +350,7 @@ def judge_all(run: Run) -> list[Chosen]:
                 takes[n] = f"没读成：{m['error']}"
                 continue
             pcm = audio.read_wav(run.takes / f"{r.id}.{n}.wav")
-            takes[n] = (audio.shape(pcm), m.get("transcript"))
+            takes[n] = (audio.shape(pcm, pitch=r.aizuchi), m.get("transcript"))
         out.append(Chosen(r, checks.judge(r.text, takes, aizuchi=r.aizuchi, spoken=r.spoken)))
     return out
 
@@ -352,10 +368,18 @@ def build_release(run: Run, chosen: list[Chosen], encoder: audio.Encoder, schema
         if c.verdict.chosen is None:
             continue
         raw = audio.read_wav(run.takes / f"{c.rec.id}.{c.verdict.chosen}.wav")
-        pcm = audio.limit_peak(audio.trim(raw, audio.shape(raw)))
-        enc = encoder.encode(pcm)
+        pcm = audio.trim(raw, audio.shape(raw))
+        before = audio.level(pcm).loudness_dbfs
+        target = c.rec.speaker.loudness
+        gain = 0.0 if target is None else round(target - before, 2)
+        enc = encoder.encode(pcm, gain)
         c.file = f"{c.rec.id}.{hashlib.sha256(enc.data).hexdigest()[:8]}{encoder.suffix}"
         c.duration_ms = enc.duration_ms
+        c.mix = Mix(before, target, gain, enc.loudness_dbfs, enc.true_peak_dbtp)
+        if target is not None and abs(enc.loudness_dbfs - target) > LOUDNESS_TOL_DB:
+            c.verdict.flags.append(
+                f"调完 {enc.loudness_dbfs:.1f} dBFS，离目标 {target:.1f} 超过 {LOUDNESS_TOL_DB} dB（限幅压下去了？）"
+            )
         (rel / c.file).write_bytes(enc.data)
     voices = voices_doc(run.plan, chosen)
     problems = voices_errors(schemas, voices)
@@ -368,7 +392,7 @@ def build_release(run: Run, chosen: list[Chosen], encoder: audio.Encoder, schema
         if not meta.is_file():
             continue
         raw = audio.read_wav(run.refs / f"{x.id}.wav")
-        enc = encoder.encode(audio.limit_peak(audio.trim(raw, audio.shape(raw))))
+        enc = encoder.encode(audio.trim(raw, audio.shape(raw)))  # 对照用的不调音量，只压真峰值
         name = f"{x.id}{encoder.suffix}"
         (rel / "ref").mkdir(exist_ok=True)
         (rel / "ref" / name).write_bytes(enc.data)
@@ -422,6 +446,15 @@ def _cell(text: str | None) -> str:
     return (text or "—").replace("|", "｜").replace("\n", " ")
 
 
+def _mix_cells(m: Mix | None) -> str:
+    if m is None:
+        return "— | — | —"
+    target = "不调" if m.target_dbfs is None else f"{m.target_dbfs:.1f}"
+    return (
+        f"{m.before_dbfs:.1f} → {m.after_dbfs:.1f} dBFS（{target}） | {m.gain_db:+.1f} dB | {m.true_peak_dbtp:.1f} dBTP"
+    )
+
+
 def audit_md(run: Run, chosen: list[Chosen], voices: Json, refs: list[tuple[Ref, str, str]]) -> str:
     p = run.plan
     passed = [c for c in chosen if c.verdict.chosen is not None]
@@ -433,7 +466,10 @@ def audit_md(run: Run, chosen: list[Chosen], voices: Json, refs: list[tuple[Ref,
         f"固定演出的键 {len(voices['setPieceVoices'])} 个。",
         "- 检查（backend-design 3.6）：有声长度和三遍的中位数比（一倍以上、一半以下不要），和拍数估的范围比；"
         f"最后 0.1 秒还有声音算截断；补转写字错率超过 {checks.MAX_CER:.0%} 或原文出现两遍不要。"
-        f"相槌超过 {checks.AIZUCHI_MAX_S} 秒、比拍数估的上限长、或只在字错率上不过的，不扔，只标出来。",
+        f"相槌另要有声不超过 {checks.AIZUCHI_MAX_S} 秒、裁好不超过 {checks.AIZUCHI_FILE_MAX_S} 秒、有音高的窗至少 "
+        f"{checks.AIZUCHI_MIN_PITCHED:.0%}；只在字错率上不过、或原始那遍一开头就有声的相槌不扔，只标出来。",
+        "- 音量：有目标响度的说话人（同一人物自由对话的响度）整句调到目标，没有的不动；真峰值都压到 "
+        f"{audio.PEAK_DBFS} dBTP 以下。响度是有声的窗的 RMS（UX 量测的做法）。",
         "- 补转写是文本模型听音频写的，古语和生僻词常听错（S-071），字错率高的那几遍请听一下原始的那遍再判。",
         "",
         "## 要 UX 看的",
@@ -455,8 +491,8 @@ def audit_md(run: Run, chosen: list[Chosen], voices: Json, refs: list[tuple[Ref,
         "## 逐句",
         "",
         "| 录音 | 键 | 声音 | 原文 | 拍数估的范围 | 三遍的有声长度 | 选中 | 文件 | 长度 "
-        "| 选中那遍的补转写 | 不过的原因 |",
-        "|---|---|---|---|---|---|---|---|---|---|---|",
+        "| 响度：原 → 成品（目标） | 增益 | 真峰值 | 选中那遍的补转写 | 不过的原因 |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for c in chosen:
         v = c.verdict
@@ -466,7 +502,8 @@ def audit_md(run: Run, chosen: list[Chosen], voices: Json, refs: list[tuple[Ref,
         lines.append(
             f"| `{c.rec.id}` | {'<br>'.join(c.rec.keys)} | {c.rec.speaker.voice} | {_cell(c.rec.text)} "
             f"| {v.expected[0]:.2f}〜{v.expected[1]:.2f}s | {lens} | {v.chosen or '—'} | {c.file or '—'} "
-            f"| {'—' if c.duration_ms is None else f'{c.duration_ms} ms'} | {_cell(pick.transcript if pick else None)} "
+            f"| {'—' if c.duration_ms is None else f'{c.duration_ms} ms'} | {_mix_cells(c.mix)} "
+            f"| {_cell(pick.transcript if pick else None)} "
             f"| {why or '—'} |"
         )
     lines += ["", "## 对照用的自由对话（`ref/`，不进声音清单、不进仓库）", ""]

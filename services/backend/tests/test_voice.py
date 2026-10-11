@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+from array import array
 from pathlib import Path
 from typing import Any
 
@@ -69,14 +70,16 @@ def test_slice_has_19_recordings_and_8_set_piece_keys() -> None:
 
 
 def test_lines_match_ux_design_16_2() -> None:
+    # 相槌两句按 UX 量测改了字（ux/reviews/prerecorded-listen.md）：メロス「……なるほど。」→「そうか。」，
+    # 老爺「ああ、ああ。」→「ああ。」
     p = slice_plan()
     assert p.lines["char.melos"] == {
-        "aizuchi": ["うむ。", "ああ。", "……なるほど。"],
+        "aizuchi": ["うむ。", "ああ。", "そうか。"],
         "unheard": ["すまない、風の音で聞こえなかった。", "……もう一度、頼む。"],
         "wait": ["待ってくれ。少し、考えさせてくれ。"],
     }
     assert p.lines["char.old-man"] == {
-        "aizuchi": ["へえ。", "……ふむ。", "ああ、ああ。"],
+        "aizuchi": ["へえ。", "……ふむ。", "ああ。"],
         "unheard": ["……すまぬ、耳が遠うてな。", "もう一度、言うてくだされ。"],
         "wait": ["ちと、待ってくだされ。"],
     }
@@ -97,20 +100,22 @@ def test_scene_line_only_where_there_is_a_scene() -> None:
 
 
 def test_speaker_scenes_direct_one_slot_of_one_speaker() -> None:
-    # UX 量完相槌以后，只给超过 0.5 秒的那几句加一句演法重录：「aizuchi/3」两人都有，写在说话人块里只管这个人
+    # UX 量完相槌以后，只给要重录的 5 句加一句演法：「aizuchi/3」两人都有，写在说话人块里只管这个人
+    p = slice_plan()
+    redo = ["melos-aizuchi-2", "melos-aizuchi-3", "old-man-aizuchi-1", "old-man-aizuchi-2", "old-man-aizuchi-3"]
+    scene = "\n場面：相づち。聞いているしるしに、短く一度だけ。間を置かず、語尾を上げず、ささやかずに。"
+    assert all(p.recording(rid).system.endswith(scene) for rid in redo)
+    assert "場面：" not in p.recording("melos-aizuchi-1").system
+    assert "場面：" not in p.recording("old-man-unheard-1").system
+    # 改了演法的句子签名变了：--resume 只重读这几句
     spec = read_spec("hashire-merosu")
-    short = "相づち。短く、間を置かずに一度だけ。"
-    spec["speakers"]["char.old-man"]["scenes"] = {"aizuchi/3": short}
-    p = plan(spec, world_of(spec, REPO / "worlds"))
-    assert p.recording("old-man-aizuchi-3").system.endswith("\n場面：" + short)
-    assert "場面：" not in p.recording("melos-aizuchi-3").system
-    assert "場面：" not in p.recording("old-man-aizuchi-2").system
-    # 改了演法的那句签名变了：--resume 只重读这一句
-    before = slice_plan().recording("old-man-aizuchi-3")
-    assert cli.sig(before.speaker.voice, before.system, before.spoken) != cli.sig(
-        before.speaker.voice, p.recording("old-man-aizuchi-3").system, before.spoken
+    spec["speakers"]["char.old-man"].pop("scenes")
+    plain = plan(spec, world_of(spec, REPO / "worlds"))
+    r = p.recording("old-man-aizuchi-2")
+    assert cli.sig(r.speaker.voice, r.system, r.spoken) != cli.sig(
+        r.speaker.voice, plain.recording("old-man-aizuchi-2").system, r.spoken
     )
-    spec["speakers"]["char.old-man"]["scenes"] = {"aizuchi/9": short}
+    spec["speakers"]["char.old-man"]["scenes"] = {"aizuchi/9": "x"}
     with pytest.raises(SpecError, match="char.old-man 的 aizuchi/9"):
         plan(spec, world_of(spec, REPO / "worlds"))
 
@@ -203,28 +208,58 @@ def test_aizuchi_with_other_problems_is_still_rejected() -> None:
     assert v.chosen is None
 
 
-def test_long_aizuchi_is_kept_and_flagged() -> None:
-    v = checks.judge("……なるほど。", {1: (shape(0.62), "なるほど"), 2: (shape(0.6), "なるほど")}, aizuchi=True)
-    assert v.chosen is not None
-    assert v.flags and "0.5" in v.flags[0]
+def ai_shape(span: float, *, pitched: float = 0.7, start: float = 0.3, speech: float | None = None) -> audio.Shape:
+    sp = span if speech is None else speech
+    return audio.Shape(
+        seconds=sp + 0.6, voiced_start=start, voiced_end=start + sp, tail_voiced=False, peak_dbfs=-6,
+        span=span, pitched=pitched,
+    )  # fmt: skip
 
 
-def test_slow_aizuchi_over_mora_upper_is_kept_and_flagged() -> None:
-    # 老爷三遍都慢慢地「ああ、ああ」两秒上下（Mac 第一次真跑）：比拍数估的上限长，但三遍一致、补转写对得上
-    v = checks.judge(
-        "ああ、ああ。",
-        {1: (shape(2.14), "あーあー"), 2: (shape(1.88), "ああ ああ"), 3: (shape(2.04), "あーあー")},
-        aizuchi=True,
-    )
-    assert v.chosen == 3  # 最接近中位数
-    assert any("上限" in f and "不扔" in f for f in v.flags)
-    assert any("0.5" in f for f in v.flags)
+def test_aizuchi_over_half_a_second_is_rejected() -> None:
+    # UX 量测：相槌有声超过 0.5 秒的重录，不再只是标出来
+    v = checks.judge("へえ。", {1: (ai_shape(0.74), "へえ"), 2: (ai_shape(0.4), "へえ")}, aizuchi=True)
+    assert v.chosen == 2 and not v.flags
+    assert any("超过 0.5s" in p for p in v.takes[0].problems)
+    # 有声范围用 UX 的量法（span）；没量的按 speech
+    assert checks.judge("へえ。", {1: (shape(0.62), "へえ")}, aizuchi=True).chosen is None
+    # 三遍都超：不放宽，这句不进清单
+    v = checks.judge("ああ。", {n: (ai_shape(0.6 + n / 100), "ああ") for n in (1, 2, 3)}, aizuchi=True)
+    assert v.chosen is None
+
+
+def test_aizuchi_file_over_0_6_s_is_rejected() -> None:
+    # UX 的量法有声 0.45 秒，但 −45 dBFS 算的有声（裁头尾用的）0.5 秒：裁好加两头 80 毫秒、按 AAC 帧补齐超过 0.6 秒
+    v = checks.judge("うむ。", {1: (ai_shape(0.45, speech=0.5), "うむ")}, aizuchi=True)
+    assert v.chosen is None
+    assert any("裁好" in p and "0.6" in p for p in v.takes[0].problems)
+    assert checks.judge("うむ。", {1: (ai_shape(0.4, speech=0.42), "うむ")}, aizuchi=True).chosen == 1
+
+
+def test_whispered_aizuchi_is_rejected() -> None:
+    # 老爺「ああ、ああ。」是耳语，メロス「ああ。」后面是气声（UX 量到有音高的窗 0.04 / 0.07）
+    v = checks.judge("ああ。", {1: (ai_shape(0.35, pitched=0.07), "あっ"), 2: (ai_shape(0.33), "ああ")}, aizuchi=True)
+    assert v.chosen == 2
+    assert any("音高" in p for p in v.takes[0].problems)
+
+
+def test_aizuchi_voiced_from_the_first_frame_is_flagged_and_the_other_take_preferred() -> None:
+    v = checks.judge("ああ。", {1: (ai_shape(0.3, start=0.0), "ああ"), 2: (ai_shape(0.4), "ああ")}, aizuchi=True)
+    assert v.chosen == 2 and not v.flags
+    v = checks.judge("ああ。", {1: (ai_shape(0.3, start=0.0), "ああ")}, aizuchi=True)
+    assert v.chosen == 1 and v.flags and "开头就有声" in v.flags[0]
+
+
+def test_slow_aizuchi_over_mora_upper_is_rejected_again() -> None:
+    # 1825ca1 让相槌超拍数上限只标不扔；UX 量完改回扔（另有 0.5 秒那条）
+    v = checks.judge("ああ。", {1: (ai_shape(0.45, speech=0.85), "ああ")}, aizuchi=True)
+    assert v.chosen is None
+    assert any("上限" in p for p in v.takes[0].problems)
     # 读两遍照旧扔：一遍是另两遍的两倍以上
     v = checks.judge(
-        "へえ。", {1: (shape(0.6), "へえ"), 2: (shape(0.62), "へえ"), 3: (shape(1.9), "へえ")}, aizuchi=True
+        "へえ。", {1: (shape(0.2), "へえ"), 2: (shape(0.22), "へえ"), 3: (shape(0.45), "へえ")}, aizuchi=True
     )
     assert not next(c for c in v.takes if c.take == 3).ok
-    # 不是相槌的照旧扔
     assert checks.judge("待ってくれ。", {1: (shape(3.5), "待ってくれ")}, aizuchi=False).chosen is None
 
 
@@ -284,7 +319,8 @@ def test_rate_limit_stops_and_resume_continues_from_there(tmp_path: Path) -> Non
     assert [r["kind"] for r in rows] == ["prerecorded", "prerecorded-transcribe"] * 2
     assert all(r["item"].startswith("b6/hashire-merosu/") for r in rows)
     run = only_run(tmp_path)
-    assert sorted(p.name for p in (run / "takes").glob("*.wav")) == ["melos-aizuchi-1.1.wav", "melos-aizuchi-2.1.wav"]
+    # 第一条会话是メロス不带场面的那组（相槌 2、3 有场面，另一组）
+    assert sorted(p.name for p in (run / "takes").glob("*.wav")) == ["melos-aizuchi-1.1.wav", "melos-unheard-1.1.wav"]
     again = FakeReader()
     code = cli.main(
         ["--resume", str(run)],
@@ -292,7 +328,7 @@ def test_rate_limit_stops_and_resume_continues_from_there(tmp_path: Path) -> Non
         {},
     )
     assert code == 0
-    assert again.reads["……なるほど。"] == 3  # 第 3 条从第 1 遍读起
+    assert again.reads["そうか。"] == 3  # 第 3 条从第 1 遍读起
     assert again.reads["うむ。"] == 2  # 第 1 条已经读过第 1 遍
     assert (run / "release" / "voices.json").is_file()
 
@@ -398,6 +434,60 @@ def test_released_audio_is_trimmed_to_80ms_each_side(tmp_path: Path) -> None:
     assert s.seconds - s.voiced_end == pytest.approx(0.08, abs=0.011)
 
 
+def test_trim_pads_a_take_that_starts_and_ends_voiced() -> None:
+    # メロス「ああ。」原始那遍一开头就有声，裁完头上没留出 80 毫秒（UX 量测）：补静音补够
+    pcm = audio.to_bytes(audio_tone(0.3))
+    s = audio.shape(pcm)
+    assert audio.head_voiced(s)
+    out = audio.shape(audio.trim(pcm, s))
+    assert out.voiced_start == pytest.approx(0.08, abs=0.011)
+    assert out.seconds - out.voiced_end == pytest.approx(0.08, abs=0.011)
+    assert not audio.head_voiced(out)
+
+
+def test_level_measures_like_ux() -> None:
+    # 180 Hz、振幅 3000 的正弦：RMS = 3000/√2 → −23.8 dBFS（两头 5 毫秒的淡入淡出再低一点）；前后的静音不算
+    pcm = audio.to_bytes(audio_silence(0.3) + audio_tone(0.4) + audio_silence(0.3))
+    lv = audio.level(pcm)
+    assert lv.loudness_dbfs == pytest.approx(-23.8, abs=0.5)
+    assert lv.span == pytest.approx(0.46, abs=0.02)  # 40 毫秒的窗压着两头的边也算有声：比 0.4 秒多一点，UX 的量法一样
+    # 中间停一下也算在范围里
+    two = audio.to_bytes(audio_tone(0.2) + audio_silence(0.5) + audio_tone(0.2))
+    assert 0.9 <= audio.level(two).span <= 0.96
+
+
+def test_pitched_tells_voice_from_whisper() -> None:
+    import random
+
+    rng = random.Random(6)
+    noise = array("h", (rng.randint(-3000, 3000) for _ in range(audio.RATE // 2)))  # 耳语、气声：没有周期
+    assert audio.pitched(audio.to_bytes(audio_tone(0.4))) > 0.9
+    assert audio.pitched(audio.to_bytes(noise)) < 0.1
+    assert audio.shape(audio.to_bytes(noise)).pitched is None  # 不要就不量（慢）
+
+
+def test_release_is_brought_to_the_speakers_loudness(tmp_path: Path) -> None:
+    assert run_fake(tmp_path, FakeReader()) == 0
+    rel = only_run(tmp_path) / "release"
+    p = slice_plan()
+    for rid, target in [("melos-wait-1", -16.3), ("old-man-unheard-1", -19.4), ("guards-gate-promise-3", -16.5)]:
+        assert p.recording(rid).speaker.loudness == target
+        name = next(rel.glob(f"{rid}.*.wav"))
+        assert audio.level(audio.read_wav(name)).loudness_dbfs == pytest.approx(target, abs=0.2)
+    crowd = audio.read_wav(next(rel.glob("crowd-crowd-makes-way-1.*.wav")))
+    assert audio.level(crowd).loudness_dbfs == pytest.approx(-23.8, abs=0.5)  # 没有目标的不调
+    audit = (rel / "audit.md").read_text(encoding="utf-8")
+    row = next(x for x in audit.splitlines() if x.startswith("| `melos-wait-1`"))
+    assert "→ -16.3 dBFS（-16.3）" in row and "| +7." in row and "dBTP" in row
+    row = next(x for x in audit.splitlines() if x.startswith("| `crowd-crowd-makes-way-1`"))
+    assert "（不调）" in row and "+0.0 dB" in row
+
+
+def test_fake_encoder_gain_never_goes_over_minus_1() -> None:
+    enc = audio.FakeEncoder().encode(audio.to_bytes(audio_tone(0.5)), 30.0)
+    assert enc.true_peak_dbtp <= audio.PEAK_DBFS
+
+
 def test_logs_and_ledger_have_no_line_text(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     ledger_path = tmp_path / "ledger.jsonl"
     assert run_fake(tmp_path, FakeReader(), ledger=Ledger(ledger_path, 50.0)) == 0
@@ -431,10 +521,27 @@ def test_ffmpeg_encoder_makes_a_24k_mono_aac() -> None:
     assert audio.FfmpegEncoder().encode(pcm).data == enc.data  # 可复现：hash 才稳定
 
 
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="没有 ffmpeg（Mac 上有；CI 用假的编码器）")
+def test_ffmpeg_encoder_hits_the_loudness_and_keeps_true_peak_under_minus_1() -> None:
+    loud = audio.to_bytes(array("h", (x * 10 for x in audio_tone(1.0))))  # −0.8 dBFS 的峰，再 +3 dB
+    enc = audio.FfmpegEncoder().encode(loud, 3.0)
+    assert enc.true_peak_dbtp <= audio.PEAK_DBFS
+    quiet = audio.to_bytes(audio_tone(1.0))
+    enc = audio.FfmpegEncoder().encode(quiet, 7.5)
+    assert enc.loudness_dbfs == pytest.approx(audio.level(quiet).loudness_dbfs + 7.5, abs=0.3)
+    assert enc.true_peak_dbtp <= audio.PEAK_DBFS
+
+
 def audio_tone(seconds: float) -> Any:
     from zoujin_backend.voice.models import _tone
 
     return _tone(seconds)
+
+
+def audio_silence(seconds: float) -> Any:
+    from zoujin_backend.voice.models import _silence
+
+    return _silence(seconds)
 
 
 # —— 真客户端的形状（不联网） ——
