@@ -36,7 +36,7 @@ from zoujin_llm import ClaudePrices, Ledger, Reply, canonical, claude_prices, mo
 from zoujin_backend.config import CLAUDE_TIERS, TEXT, ConfigError, ModelMode, Settings
 from zoujin_backend.models.prompts import EFFECT, PLAN_ALTERNATIVE, PROMPTS
 from zoujin_backend.models.render import render_body, world_prefix
-from zoujin_backend.models.text import BadOutput, TextResult, model_and_version, spec
+from zoujin_backend.models.text import BadOutput, Refused, TextResult, model_and_version, spec
 from zoujin_backend.world import Library
 
 Json = Any
@@ -284,6 +284,7 @@ class ClaudeText:
             cost = self.prices.cost(tag, got.usage)
             bad: str | None = None
             output: Json = None
+            refused = got.stop_reason == "refusal"
             if got.stop_reason in ("refusal", "max_tokens"):
                 bad = f"{kind}：Claude 停在 {got.stop_reason}"
             else:
@@ -293,6 +294,8 @@ class ClaudeText:
                 except (ValueError, jsonschema.ValidationError):
                     bad = f"{kind} 的输出不是合 Schema 的 JSON"
             bill.done(got.usage, cost, ok=bad is None)
+        if refused:  # 安全筛查按有害输入处理（5.5，B-12）；别的提示和 BadOutput 一样重发
+            raise Refused(f"{kind}：Claude 拒答", cost)
         if bad is not None:
             raise BadOutput(bad, cost)
         return TextResult(output, kind, tag, version, dict(got.usage), cost)

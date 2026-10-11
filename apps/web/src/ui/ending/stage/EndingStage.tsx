@@ -14,6 +14,7 @@ import {
   type EndingLine,
 } from "../../../stores/story";
 import { useUi } from "../../../stores/ui";
+import { track } from "../../../telemetry/telemetry";
 import { copy, fill } from "../../copy";
 import { useEndingAuto } from "../settings";
 import { stageBridge } from "./bridge";
@@ -22,7 +23,6 @@ import {
   initPace,
   insertLine,
   performed,
-  type Performed,
   pause,
   resume,
   setAuto,
@@ -39,11 +39,6 @@ import { cardShot, shotOf } from "./shots";
 export const BINDING_LONG_S = 20; // the map is offered after 20 s of waiting (ux-design 11.1)
 const TICK_MS = 100;
 const NO_LINES_MS = 3000;
-
-// what the staging measured, for data's pacing check (ux-design 11.1: how long it played, taps, auto on or off)
-export const stageStats: {
-  last: (Performed & { autoAdvance: boolean }) | null;
-} = { last: null };
 
 export function EndingStage({
   pid,
@@ -181,19 +176,24 @@ export function EndingStage({
   }, [noLines, ready, ending?.endingId]);
 
   // the last line had its time: the ending page, or wait for it
+  const trigger = ending?.trigger;
   useEffect(() => {
     if (!done) return;
     const m = reported.current
       ? null
       : performed(pace.current, performance.now());
-    if (m) {
+    // data's pacing check (ux-design 11.1, data-design 9.3): how long it played, taps, auto on or off
+    if (m && trigger) {
       reported.current = true;
-      stageStats.last = { ...m, autoAdvance: autoAtStart.current };
-      // ending_performed (data-design 9.3) is sent from here once its schema is in contracts
+      track("ending_performed", {
+        ...m,
+        trigger,
+        autoAdvance: autoAtStart.current,
+      });
     }
     if (ending?.endingId)
       navigate(`/ending/${encodeURIComponent(pid)}`, { replace: true });
-  }, [done, ending?.endingId, pid]);
+  }, [done, ending?.endingId, trigger, pid]);
 
   if (!ending) return null;
   const p = pace.current;

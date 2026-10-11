@@ -3,6 +3,7 @@
 推给前端的东西都由数据库里的事件现算（projection.py）：
 - 快照 = world_state 缓存的 SimState 的投影，加上局上记的位置点和待处理的（B-3，`store.Run`）；
 - commit = 同一次提交写的一段事件（幂等键前一段相同，`commit_key`），patch 是这一段前后两个快照的差。
+  进结局的那次提交（B-9）：`turns.result.before` 里的 `ending_started` 排在它的 commit 前面。
   意图确认答「是」的那次提交（B-4）：`turnId` 是原来那一轮，重查没过时 `narration` 带一句（`turns.result`）。
   玩家的位置点不进 WorldState（契约 3.1）：做完情境动作、幕切换落地的 `patch.player.spot` 按这次提交的结果给
   （`turns.result.playerSpot`），动作（`move`、`go`）的不带（B-3 第 1 条）。
@@ -32,6 +33,7 @@ from zoujin_backend.manifest import Manifest
 from zoujin_backend.models.ledger import Ledger
 from zoujin_backend.models.live import LiveModel
 from zoujin_backend.projection import is_visible, patch, snapshot, visible_event, visible_events, with_locations
+from zoujin_backend.safety import Screener
 from zoujin_backend.schemas import SchemaBook
 from zoujin_backend.trace import Tracer
 from zoujin_backend.world import Book, Library
@@ -104,8 +106,16 @@ class Gateway:
     transcriber: AudioTranscriber = field(default_factory=FakeAudioTranscriber)
     live_ledger: Ledger | None = None
     live_model_name: str = "fake-live"
+    # B-12：玩家每一句的安全筛查（文本模型和 Model Armor 按 ZJ_MODEL；不给就按 settings 建，测试可以换）
+    screener: Screener = field(default=None)  # type: ignore[assignment]
     # 测试用：每条发出的服务端消息（已过 Schema）
     on_send: Callable[[Json], None] | None = None
+
+    def __post_init__(self) -> None:
+        if self.screener is None:
+            from zoujin_backend.gateway.safety import build_screener
+
+            self.screener = build_screener(self.settings, self.tracer)
 
     # —— 局 ——
 
@@ -183,6 +193,7 @@ class Gateway:
         sent = after_seq
         for seg in segments:
             msg, state = self._commit(book, pt, state, seg, kinds, results)
+            out.extend(results.get(commit_key(seg[0]["idempotencyKey"]), {}).get("before", []))  # B-9：ending_started
             out.append(msg)
             sent = seg[-1]["seq"]
         return out, sent

@@ -611,8 +611,11 @@ class Pipeline:
 
     # 文字模式的人物回答
 
-    async def reply(self, book: Book, state: SimState, turn: TurnInput, spend: Spend) -> str | None:
-        """人物用文字回答（`reply`）。两次都不行返回 None（评测入口的 `characterTextMissing`）。"""
+    async def reply(
+        self, book: Book, state: SimState, turn: TurnInput, spend: Spend, *, notes: Sequence[str] = ()
+    ) -> str | None:
+        """人物用文字回答（`reply`）。两次都不行返回 None（评测入口的 `characterTextMissing`）。
+        notes：B-12 输出侧监控给局势说明加的提示，有才放进 `situation.notes`（没有时请求和以前一样，回放的键不变）。"""
         who = turn.character
         if who is None or who not in book.characters:
             return None
@@ -621,7 +624,7 @@ class Pipeline:
             "worldModelVersion": book.version,
             "character": who,
             "persona": persona(book, state, who),
-            "situation": situation(book, state, who, view),
+            "situation": situation(book, state, who, view) | ({"notes": list(notes)} if notes else {}),
             "player": player_card(book, state, who),
             "turn": {"character": who, "mode": turn.mode, "player": turn.player},
         }

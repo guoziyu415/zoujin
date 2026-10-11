@@ -867,3 +867,51 @@ describe("fixed lines the server stages (api-contract 3.4, 3.14)", () => {
     );
   });
 });
+
+describe("the act end's spoken plan (api-contract 3.11)", () => {
+  const noFocus = () => {
+    usePlayer.setState({ focusCharacter: null });
+    useVoice.setState({ session: { character: null, status: "none" } });
+  };
+
+  it("no focus, no session to wait for: the voice goes as it's said, nothing but the player's words comes back", () => {
+    const { v, audio, wire } = setup();
+    noFocus();
+    v.planPress();
+    expect(wire.last("activity_start")).toMatchObject({ purpose: "act_plan" });
+    for (let i = 0; i < 20; i++) audio.micFrame();
+    expect(wire.binary).toHaveLength(20); // not held back for a session
+    tick(800);
+    const id = v.planRelease();
+    expect(id).toBe(wire.last("activity_start").turnId);
+    expect(wire.last("activity_end")).toMatchObject({ turnId: id });
+    v.message(
+      transcript(id!, "夜明けを待って、村へ向かいたい。", true, "player"),
+    );
+    expect(useVoice.getState().player?.text).toBe(
+      "夜明けを待って、村へ向かいたい。",
+    );
+    tick(AIZUCHI_MS + NO_RESPONSE_MS);
+    expect(audio.log.filter((l) => l.startsWith("clip:"))).toHaveLength(0); // no aizuchi: nobody listens
+    expect(useVoice.getState().turn?.noResponse).toBeFalsy();
+    v.planDone(id!);
+    expect(useVoice.getState().turn).toBeNull();
+    expect(useVoice.getState().player?.text).toBe(
+      "夜明けを待って、村へ向かいたい。",
+    );
+    expect(events("talk_turn")).toHaveLength(0); // talk_turn is for talking to someone
+  });
+
+  it("a slip is retracted and returns nothing; the talk key's release doesn't end a plan", () => {
+    const { v, wire } = setup();
+    noFocus();
+    v.planPress();
+    tick(100);
+    expect(v.planRelease()).toBeNull();
+    expect(wire.last("turn_retract")).toMatchObject({
+      turnId: wire.last("activity_start").turnId,
+    });
+    v.press(); // the talk key with no one in focus doesn't start a plan
+    expect(v.planRelease()).toBeNull();
+  });
+});

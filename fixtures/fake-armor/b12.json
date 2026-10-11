@@ -1,0 +1,10 @@
+{
+  "note": "假 Model Armor（B-12，models/armor.py）：默认全不命中。method 不写 = 玩家输入和人物输出都认；contains 是子串。话都是为测试写的。",
+  "rules": [
+    {"method": "prompt", "contains": "【システム】", "result": {"pi": "HIGH"}},
+    {"method": "prompt", "contains": "ひどく乱暴な言葉", "result": {"rai": {"harassment": "HIGH"}}},
+    {"method": "prompt", "contains": "少し乱暴な言葉", "result": {"rai": {"harassment": "MEDIUM_AND_ABOVE"}}},
+    {"method": "prompt", "contains": "防壁が落ちる", "error": "unavailable"},
+    {"method": "response", "contains": "ひどく乱暴な返事", "result": {"rai": {"harassment": "HIGH"}}}
+  ]
+}

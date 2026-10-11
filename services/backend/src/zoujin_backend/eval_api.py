@@ -10,7 +10,8 @@
   起点的事件和 world_state，之后的步骤走和网关同一个叙事者（`Narrator.run`）。
 - 做了的：setup 的 `role`、`place`、`budgetTier`（只记下）、`scenario`、`checkpoint`、`events`；步骤 `say`（人物用文字
   回答，再走叙事者整条流水线，B-2）、`advance`；`act`、`propose`、`choose`（B-3：和 WebSocket 同一条路，写任务、
-  叫叙事者）；`check`（第 3 步 + 按 `model_checks` 跑第 4 步，不改写、不提交）；查询 `state()`、`events()`。
+  叫叙事者）；`check`（第 3 步 + 按 `model_checks` 跑第 4 步，不改写、不提交）；查询 `state()`、`events()`；
+  B-9：`ending()`（还没进结局返回 None）；情景推到收幕的 setup 起点就进结局，结局任务在 setup 里同步跑完。
   检查点停在这一幕的收幕节拍上（例 `sc.canon@beat.07`）时，setup 之后就是幕末待选。
 - B-4：`say(hold=True)` 只写这一轮、拿人物的回答，返回 `held: true`、没有事件（作废的窗口还开着）；下一次调用（任何
   步骤或查询）开始时先让叙事者提交它，事件算在那一次里。`retract(n)` 作废还 hold 着的第 n 步（`retracted`），
@@ -36,13 +37,13 @@ import asyncio
 import copy
 import json
 import time
-from collections.abc import Callable, Coroutine, Mapping, Sequence
+from collections.abc import Callable, Coroutine, Iterable, Mapping, Sequence
 from dataclasses import replace
 from functools import cache, wraps
 from pathlib import Path
 from typing import Any, NoReturn
 
-from sqlalchemy import insert, select, update
+from sqlalchemy import func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
 from zoujin_llm import mark_playthrough, playthrough
@@ -52,17 +53,21 @@ from zoujin_backend.config import Settings
 from zoujin_backend.db import store
 from zoujin_backend.db.events import recorded_at, to_row
 from zoujin_backend.db.store import Run
+from zoujin_backend.db.tables import endings, playthrough_metrics, playthroughs, users, utterances
 from zoujin_backend.db.tables import events as events_t
-from zoujin_backend.db.tables import playthrough_metrics, playthroughs, users, utterances
+from zoujin_backend.db.tables import turns as turns_t
 from zoujin_backend.db.tables import world_state as world_state_t
+from zoujin_backend.gateway.monitor import Monitor
 from zoujin_backend.ids import IdGen
 from zoujin_backend.manifest import Manifest, generate
+from zoujin_backend.models.armor import Armor, armor
 from zoujin_backend.models.text import BudgetStop, RateLimited, ReplayMissing, TextModel, text_model
-from zoujin_backend.narrator import acts
+from zoujin_backend.narrator import acts, ending
 from zoujin_backend.narrator.core import Narrator, Result
 from zoujin_backend.narrator.pipeline import CallFailed, Pipeline, Spend, TurnInput
 from zoujin_backend.narrator.writer import Writer, act_closed
 from zoujin_backend.projection import snapshot, visible_events
+from zoujin_backend.safety import SafetyState, Screen, Screener, counts_of, decide
 from zoujin_backend.schemas import SchemaBook
 from zoujin_backend.trace import Tracer
 from zoujin_backend.world import Book, Library
@@ -162,6 +167,11 @@ class Session:
         self.turns: dict[int, str] = {}  # 第几步 → 那一轮的 turnId（say；retract、utterance_cleared 用）
         self.held: tuple[int, str] | None = None  # say(hold=True) 还没提交的那一步
         self.draft: tuple[int, str] | None = None  # 第几步留下的、还开着的草稿
+        # B-12：玩家每一句的安全筛查和人物输出的监控，和网关同一套（Model Armor 按 ZJ_MODEL；回放查不到照样抛）
+        self.armor: Armor = armor(settings.model, replays=settings.replays)
+        self.safety = SafetyState()
+        self.monitor = Monitor(library)
+        self.monitor.attach(book)
         self._manifest: Manifest | None = None
 
     def _run[T](self, coro: Coroutine[Any, Any, T]) -> T:
@@ -184,6 +194,11 @@ class Session:
             tracer=self.tracer,
             deadlines=self.settings.deadlines,
         )
+
+    @property
+    def screener(self) -> Screener:
+        """`text` 可能被测试换掉，每次按当前的建。评测里账本到上限、429 照样整次停下。"""
+        return Screener(self.text, self.armor, self.tracer, raise_stops=True)
 
     @property
     def pipeline(self) -> Pipeline:
@@ -220,6 +235,11 @@ class Session:
                     now=recorded_at(),
                 )
                 play_setup(w, _scenarios(self._world_dir()), self.setup_doc)
+                # 情景模式一口气推到了收幕（B-9 第 11 条）：起点就进结局，和叙事者提交时一样。只看最后一幕收没收，
+                # 检查点停在 beat.24 以后、还在前面几幕的不进（数据评审 #124）
+                trigger = ending.closed(self.book, w.state) if ending.curtain_fell(self.book, w.state) else None
+                if trigger is not None:
+                    w.ending = ending.enter(w, self.book, trigger)
                 for ev in w.events:
                     self.schemas.event(ev)
                 if w.events:
@@ -232,6 +252,20 @@ class Session:
                     .where(playthroughs.c.playthrough_id == self.pid)
                     .values(last_seq=w.state["seq"], act_end=setup_act_end(self.book, w, self.setup_doc))
                 )
+                if w.ending is not None:
+                    await c.execute(
+                        update(playthroughs)
+                        .where(playthroughs.c.playthrough_id == self.pid)
+                        .values(status="ended", ended_at=func.now())
+                    )
+                    await c.execute(
+                        update(playthrough_metrics)
+                        .where(playthrough_metrics.c.playthrough_id == self.pid)
+                        .values(ending_started_at=func.now())
+                    )
+                    await store.enqueue(c, self.ids, self.pid, kind=ending.KIND, request=w.ending["request"])
+            if w.ending is not None:  # 结局任务在 setup 里同步跑完
+                await self._narrator(engine).run(self.pid)
         finally:
             await engine.dispose()
 
@@ -308,22 +342,42 @@ class Session:
                 st = await store.sim_state(c, self.pid)
             assert st is not None
             spend = Spend()
-            reply = await self.pipeline.reply(self.book, st, TurnInput(character=to, player=text), spend)
+            screen = await self.screener.screen(text, **self.span)
+            decision = decide(screen, self.safety)
+            if decision == "pause":  # 出戏卡（3.12）：人物的回答不出、这一轮不进叙事者、不花时间、原话不存
+                return await self._paused(engine, to, pre, screen)
+            if decision == "hint":
+                self.monitor.calm()
+            notes = self.monitor.notes(to)
+            turn_in = TurnInput(character=to, player=text)
+            reply = await self.pipeline.reply(self.book, st, turn_in, spend, notes=notes)
+            watched = self.monitor.observe(to, reply, st, said=text)
             async with engine.begin() as c:
                 await c.execute(
                     update(playthrough_metrics)
                     .where(playthrough_metrics.c.playthrough_id == self.pid)
                     .values(cost_reply_usd=playthrough_metrics.c.cost_reply_usd + spend.usd.get("reply", 0.0))
                 )
-                turn_id = await store.enqueue(c, self.ids, self.pid, kind="talk", input_mode="text", character=to)
-                await store.add_utterance(c, self.ids, self.pid, turn_id, speaker="player", text=text, t=st["t"])
+                await store.count(c, self.pid, **counts_of(screen, decision), **(watched.counts() if reply else {}))
+                turn_id = await store.enqueue(
+                    c, self.ids, self.pid, kind="talk", input_mode="text", character=to, flags=screen.flags
+                )
+                await store.add_utterance(
+                    c, self.ids, self.pid, turn_id, speaker="player", text=screen.masked, t=st["t"]
+                )
                 await store.add_utterance(
                     c, self.ids, self.pid, turn_id, speaker=to, text=reply, t=st["t"], source="live"
                 )
             self.turns[self.steps] = turn_id
+            card = {"shown": False, "paused": False, "canReturn": True}
+            monitor = {"spoilers": [h.fact for h in watched.spoilers], "notes": notes}
             if hold:
                 self.held = (self.steps, turn_id)
                 return {
+                    "safetyCard": card,
+                    "safety": screen.self_harm,
+                    "safetyHint": decision == "hint",
+                    "monitor": monitor,
                     "reply": reply,
                     "characterTextMissing": reply is None,
                     "events": self._events_of(pre),
@@ -339,6 +393,10 @@ class Session:
         finally:
             await engine.dispose()
         out: Json = {
+            "safetyCard": card,
+            "safety": screen.self_harm,
+            "safetyHint": decision == "hint",
+            "monitor": monitor,
             "reply": reply,
             "characterTextMissing": reply is None,
             "events": self._events_of([*pre, *done]),
@@ -349,6 +407,40 @@ class Session:
             self.draft = (self.steps, asking["draftId"])
             out["confirm"] = asking
         return out
+
+    async def _paused(self, engine: AsyncEngine, to: str, pre: Sequence[Result], screen: Screen) -> Json:
+        """出戏卡停下的一轮（B-12，3.12）：写一行 outcome = paused、0 分，没有原话，不叫叙事者。评测里玩家下一步
+        就算选了「物語に戻る」（canReturn），暂停随即解除。"""
+        async with engine.begin() as c:
+            turn_id = await store.enqueue(
+                c, self.ids, self.pid, kind="talk", input_mode="text", character=to, status="done"
+            )
+            await c.execute(
+                update(turns_t)
+                .where(turns_t.c.turn_id == turn_id)
+                .values(outcome="paused", minutes=0, settled_at=func.now())
+            )
+            await store.count(c, self.pid, **counts_of(screen, "pause"))
+        self.turns[self.steps] = turn_id
+        self.safety.paused = False  # 评测的下一步 = 玩家回到了故事
+        return {
+            "safetyCard": {"shown": True, "paused": True, "canReturn": True},
+            "safety": screen.self_harm,
+            "outcome": "paused",
+            "reply": None,
+            "characterTextMissing": False,
+            "events": self._events_of(pre),
+            "clockMinutes": sum(r.minutes for r in pre),
+            "traceId": turn_id,
+        }
+
+    async def _count(self, **by: float) -> None:
+        engine = self._engine()
+        try:
+            async with engine.begin() as c:
+                await store.count(c, self.pid, **by)
+        finally:
+            await engine.dispose()
 
     async def _draft_of(self, engine: AsyncEngine, turn_id: str) -> Json | None:
         """这一轮留下的草稿（StepResult.confirm）。"""
@@ -416,7 +508,24 @@ class Session:
         """幕末用文字说出打算（3.11）：原话存进 utterances，叙事者的 plan 判能不能成行。收幕以前、试过 2 次以后
         返回 `error: "invalid_request"`、没有事件（网关这时回 invalid_request，不写任务）。"""
         self.steps += 1
-        r, t0 = self._run(self._task("plan", {"clientMsgId": f"eval-{self.steps}", "mode": "text"}, said=text))
+        screen = self._run(self.screener.screen(text, **self.span))  # 幕末的打算也筛（UX 在 #112 的评审）
+        decision = decide(screen, self.safety)
+        if decision == "pause":  # 不交给叙事者、不算试次；回到故事以后幕末页照原样
+            self.safety.paused = False
+            self._run(self._count(**counts_of(screen, decision)))
+            return {
+                "safetyCard": {"shown": True, "paused": True, "canReturn": True},
+                "safety": screen.self_harm,
+                "outcome": "paused",
+                "events": [],
+                "clockMinutes": 0,
+                "accepted": False,
+            }
+        if decision == "hint":
+            self.monitor.calm()
+        self._run(self._count(**counts_of(screen, decision)))
+        request = {"clientMsgId": f"eval-{self.steps}", "mode": "text"}
+        r, t0 = self._run(self._task("plan", request, said=screen.masked, flags=screen.flags))
         info = r.info
         moved = [e for e in r.events if e["type"] == "act-transition" and e["actor"] == "player"]
         alt = info.get("alternative")
@@ -455,9 +564,12 @@ class Session:
             out["error"] = r.info["error"]
         else:
             out["toAct"] = r.info.get("toAct")
+            self.monitor.act_ended()  # 似是而非之后的提示带到这一幕结束
         return out
 
-    async def _task(self, kind: str, request: Json, said: str | None = None) -> tuple[Result, int]:
+    async def _task(
+        self, kind: str, request: Json, said: str | None = None, flags: Iterable[str] | None = None
+    ) -> tuple[Result, int]:
         """写一行任务（打算还存原话），叫叙事者做完。返回这一步的结果和之前的故事时刻。hold 着的那一轮先提交、
         等回答的草稿按超时关掉，它们的事件放在这一步的前面（B-4）。"""
         engine = self._engine()
@@ -477,6 +589,7 @@ class Session:
                     input_mode="text" if kind == "plan" else None,
                     client_msg_id=request.get("clientMsgId"),
                     request=request,
+                    flags=flags,
                 )
                 if said is not None:
                     await store.add_utterance(c, self.ids, self.pid, turn_id, speaker="player", text=said, t=st["t"])
@@ -678,7 +791,19 @@ class Session:
         self._no("db_absent")
 
     def ending(self) -> Json:
-        self._no("ending")
+        """B-9：存的 Ending（数据契约第 5 节的完整形状，含 `signature`）；还没进结局（或结局任务还没做完）返回 None。
+        结局任务和别的任务一样，在触发它的那一步里同步跑完。"""
+        _run(self._flush())
+        return _run(self._ending())
+
+    async def _ending(self) -> Json:
+        engine = self._engine()
+        try:
+            async with engine.connect() as c:
+                body = await c.scalar(select(endings.c.body).where(endings.c.playthrough_id == self.pid))
+        finally:
+            await engine.dispose()
+        return copy.deepcopy(body) if body is not None else None
 
 
 def play_setup(w: Writer, scenarios: Mapping[str, Json], setup: Mapping[str, Json]) -> None:

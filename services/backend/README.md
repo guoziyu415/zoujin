@@ -119,7 +119,8 @@ uv run --all-packages --extra real zoujin-probe --requests out/probe-requests --
 uv run zoujin-s5 --ledger ~/.zoujin/ledger.jsonl --runs <运行器的 report.json> --out <目录>    # DATABASE_URL 是跑模拟局的库
 ```
 
-- 读账本里 `item: "s5"` 的行（`--item` 换）、测试库的 `playthrough_metrics` 和对话轮的时刻、运行器 `report.json` 里每次运行的 `playthroughId`、`persona`、`seed`、`steps[].elapsedMs`。写 `report.json`、`report.md`，只有数字：每局的产品花费（不算 `reply` 和评审员、AI 玩家；和 `playthrough_metrics` 差超过 1% 标出来），每轮花费随轮数涨时按趋势外推到 40、60 轮和压力档（世界推进单列），越过 240、300 日元的轮数，缓存读取的比例，每种调用的延迟和时限的建议，每一步的耗时，叙事者的计数。Live、切片里还没有的种类是〔推算〕，参数写在 `report.json` 的 `params`。
+- 读账本里 `item: "s5"` 的行（`--item` 换）、测试库的 `playthrough_metrics` 和对话轮的时刻、运行器 `report.json` 里每次运行的 `playthroughId`、`persona`、`seed`、`steps[].elapsedMs`。写 `report.json`、`report.md`，只有数字：每局的产品花费（不算 `reply` 和评审员、AI 玩家；和 `playthrough_metrics` 差超过 1% 标出来），每轮花费随轮数涨时按趋势外推到 40、60 轮和压力档（世界推进单列），越过 240、300 日元和提到 350 日元时的轮数、世界推进减半时的合计（Q-B8 的几个选项），缓存读取的比例，每种调用的延迟和时限的建议，每一步的耗时，叙事者的计数。Live、切片里还没有的种类是〔推算〕，参数写在 `report.json` 的 `params`。
+- 两档（提取、检查用 Sonnet 或 Haiku，S-090 ③）分开出报告：每档运行器各写一份 `report.json`、账本各用一个 `item`（例如 `s5-sonnet`、`s5-haiku`），各跑一次 `zoujin-s5 --item … --runs … --out <各自的目录>`。两档的局混进同一份报告会被算进同一个趋势。
 
 ## 作废和意图确认（B-4）
 
@@ -135,7 +136,7 @@ uv run zoujin-voice                                        # 假模型：合成�
 uv run zoujin-voice --resume out/b6/<时间> [--only <键> …]  # 接着跑；只重读某几句
 ```
 
-- 源文件 `voice/<book>.json`：每个说话人的声音（D-025）、人物说明 `direction`、人物的 6 句（ux-design 16.2）、`cues`、场面说明 `scenes` 和读音替换 `readings`；固定演出的句子和 `arrival_capped` 的文字从世界模型读。换声音改这里，再 `--only` 重跑那个人物。只给某个人的某一句加演法（比如偏长的相槌）写在说话人块的 `scenes` 里，键是槽位（`"aizuchi/3"`），顶层的 `scenes` 不分人；改完 `--resume <目录> --only <录音 ID>` 只重读这几句，别的照用。说话人块的 `loudness` 是目标响度（有声 RMS，dBFS，UX 量的同一人物自由对话），构建时整句调到它；改了不用重录，`--resume <目录>` 重出 release 就行；`loudnessOffset`（键 → dB）给原作写明声音小的句子单独压低。补转写对某一句总写错（「ちと」写成「ちょっと」）时，顶层 `heardAs` 给那一句加一个也算对的写法，只管那一句，不放宽 20% 的线；改了也不用重录。
+- 源文件 `voice/<book>.json`：每个说话人的声音（D-025）、人物说明 `direction`、人物的 6 句（ux-design 16.2）、`cues`、场面说明 `scenes` 和读音替换 `readings`；固定演出的句子和 `arrival_capped` 的文字从世界模型读。换声音改这里，再 `--only` 重跑那个人物。只给某个人的某一句加演法（比如偏长的相槌）写在说话人块的 `scenes` 里，键是槽位（`"aizuchi/3"`），顶层的 `scenes` 不分人；改完 `--resume <目录> --only <录音 ID>` 只重读这几句，别的照用。说话人块的 `loudness` 是目标响度（有声 RMS，dBFS，UX 量的同一人物自由对话），构建时整句调到它；改了不用重录，`--resume <目录>` 重出 release 就行；`pieceLoudness`（固定演出 ID → dBFS）让这个人在某几段里用另一个目标（收幕那一串几个人拉到同一个电平）；`loudnessOffset`（键 → dB）再给原作写明声音小的句子单独压低。补转写对某一句总写错（「ちと」写成「ちょっと」）时，顶层 `heardAs` 给那一句加一个也算对的写法，只管那一句，不放宽 20% 的线；改了也不用重录。
 - 每句读 3 遍（3 条会话），自动检查（长度、截断、补转写对原文；相槌另要有声 ≤ 0.5 秒、裁好 ≤ 0.6 秒、有音高）后挑一遍，裁头尾静音（不够 80 毫秒补静音）、调到目标响度、真峰值压到 −1 dBTP 以下、转 AAC。相槌三遍都不过就 `--resume <目录> --only <录音 ID>` 再跑一次，不放宽。输出在 `out/b6/<时间>/release/`：`.m4a`、`voices.json`（manifest 的 `characters[].prerecorded` 和 `setPieceVoices` 两块）、`audit.md`、`ref/`，另打 zip、打印 sha256。
 - 真模型（只在 Mac 上）：`ZJ_MODEL=real`、`ZJ_LEDGER`、`ZJ_VERTEX_PROJECT`、`ZJ_VERTEX_LOCATION`（补转写）、`--max-google-usd` 和 `--confirm`；Live 的地区默认 us-central1（`ZJ_LIVE_LOCATION` 换）。少一样只打印预计花费和命令。这一次跑的上限 `--max-usd` 默认 $1。到上限、第一个 429 或连接失败退出码 3（`--resume` 接着跑）。
 - 跑完：release 的 zip 和 sha256 交协调拷到 `/mnt/project-files/app-team/backend/b6/`，后端核对 sha 以后交 UX 量、zg 听（B-6 卡「真的生成」）。

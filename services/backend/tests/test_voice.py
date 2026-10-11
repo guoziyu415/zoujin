@@ -30,7 +30,15 @@ PIECE_KEYS = {
     "piece.gate-promise/2",
     "piece.gate-promise/3",
     "piece.workshop-knock/1",
-    "piece.crowd-makes-way/1",
+    # 收幕（S-087）：键从 1 数，地の文也算
+    *(f"{pc}/{n}" for pc in ("piece.crowd-makes-way", "piece.crowd-makes-way-you") for n in (4, 5, 7)),
+    *(f"{pc}/{n}" for pc in ("piece.storm-in", "piece.storm-in-you") for n in (4, 7)),
+    "piece.embrace/2",
+    "piece.embrace/4",
+    "piece.embrace-melos-doubted/2",
+    "piece.embrace-selinuntius-doubted/2",
+    *(f"{pc}/{n}" for pc in ("piece.king-asks", "piece.king-asks-you") for n in (2, 4)),
+    "piece.scarlet-cloak/2",
 }
 PROMISE_3 = "三日目の日没までに戻らねば、身代わりの石工セリヌンティウスが磔だ。"
 
@@ -43,20 +51,35 @@ def slice_plan() -> Plan:
 # —— 1. 清单 ——
 
 
-def test_slice_has_19_recordings_and_8_set_piece_keys() -> None:
+def test_slice_has_28_recordings_and_26_set_piece_keys() -> None:
     p = slice_plan()
-    assert len(p.recordings) == 19
+    assert len(p.recordings) == 28
     by_speaker: dict[str, int] = {}
     for r in p.recordings:
         by_speaker[r.speaker.id] = by_speaker.get(r.speaker.id, 0) + 1
-    assert by_speaker == {"char.melos": 7, "char.old-man": 6, "char.guards": 4, "char.crowd": 1, "char.selinuntius": 1}
+    assert by_speaker == {
+        "char.melos": 11,
+        "char.old-man": 6,
+        "char.guards": 4,
+        "char.crowd": 2,
+        "char.selinuntius": 4,
+        "char.king": 1,
+    }
     pieces = [r for r in p.recordings if any(k.startswith("piece.") for k in r.keys)]
     assert {k for r in pieces for k in r.keys} == PIECE_KEYS
-    assert len(pieces) == 6
-    shared = {tuple(r.keys) for r in pieces if len(r.keys) > 1}
+    assert len(PIECE_KEYS) == 26
+    assert len(pieces) == 15
+    shared = {tuple(sorted(r.keys)) for r in pieces if len(r.keys) > 1}
     assert shared == {
-        ("piece.gate-taken-again/2", "piece.gate-again/1"),
+        ("piece.gate-again/1", "piece.gate-taken-again/2"),
         ("piece.gate-taken/2", "piece.gate-turned-away/2"),
+        ("piece.crowd-makes-way-you/4", "piece.crowd-makes-way/4", "piece.storm-in-you/4", "piece.storm-in/4"),
+        ("piece.crowd-makes-way-you/5", "piece.crowd-makes-way/5"),
+        ("piece.crowd-makes-way/7", "piece.storm-in/7"),
+        ("piece.crowd-makes-way-you/7", "piece.storm-in-you/7"),
+        ("piece.embrace-melos-doubted/2", "piece.embrace/2"),
+        ("piece.king-asks-you/2", "piece.king-asks/2"),
+        ("piece.king-asks-you/4", "piece.king-asks/4"),
     }
     voices = {r.speaker.id: r.speaker.voice for r in p.recordings}
     assert voices == {
@@ -65,6 +88,7 @@ def test_slice_has_19_recordings_and_8_set_piece_keys() -> None:
         "char.guards": "Charon",
         "char.crowd": "Despina",
         "char.selinuntius": "Iapetus",
+        "char.king": "Algieba",
     }
     assert p.recording("melos-arrival_capped-1").text == "……これなら、間に合う。"  # 从世界模型读
 
@@ -324,7 +348,11 @@ def test_heard_as_accepts_a_known_transcript_spelling_for_that_line_only() -> No
     assert r.heard_as == ("ちょっと、待ってくだされ。",)
     heard = "ちょっと 待っ て くださ れ 。"
     assert checks.judge(text, {1: (shape(1.8), heard)}, aizuchi=False).chosen is None
-    assert checks.judge(text, {1: (shape(1.8), heard)}, aizuchi=False, heard_as=r.heard_as).chosen == 1
+    v = checks.judge(text, {1: (shape(1.8), heard)}, aizuchi=False, heard_as=r.heard_as)
+    assert v.chosen == 1 and v.takes[0].heard_as
+    assert [f for f in v.flags if "heardAs" in f]  # 只靠 heardAs 过的那遍在 audit.md 标出来（UX）
+    ok = checks.judge(text, {1: (shape(1.8), "ちと、待って くだされ。")}, aizuchi=False, heard_as=r.heard_as)
+    assert ok.chosen == 1 and not ok.takes[0].heard_as and not ok.flags
     assert slice_plan().recording("old-man-unheard-1").heard_as == ()
     spec = read_spec("hashire-merosu")
     spec["heardAs"] = {"ないせりふ。": ["x"]}
@@ -333,15 +361,32 @@ def test_heard_as_accepts_a_known_transcript_spelling_for_that_line_only() -> No
 
 
 def test_loudness_offset_lowers_one_line_only() -> None:
-    # 原作写明声音小的句子（S-087 メロス「嗄れた声が幽かに」）：目标响度按键再低 6 dB
-    spec = read_spec("hashire-merosu")
-    spec["speakers"]["char.melos"]["loudnessOffset"] = {"wait/1": -6}
-    p = plan(spec, world_of(spec, REPO / "worlds"))
-    assert p.recording("melos-wait-1").loudness == pytest.approx(-22.3)
+    # 原作写明声音小的句子（S-087 メロス「嗄れた声が幽かに」）：目标响度按键再低 6 dB，四个键共用一条录音
+    p = slice_plan()
+    assert p.recording("melos-crowd-makes-way-4").loudness == pytest.approx(-22.3)
+    assert p.recording("melos-crowd-makes-way-7").loudness == pytest.approx(-16.3)
     assert p.recording("melos-unheard-1").loudness == pytest.approx(-16.3)
-    assert p.recording("crowd-crowd-makes-way-1").loudness is None
+    assert p.recording("crowd-crowd-makes-way-5").loudness is None  # 群衆不调
+    spec = read_spec("hashire-merosu")
     spec["speakers"]["char.melos"]["loudnessOffset"] = {"wait/9": -6}
     with pytest.raises(SpecError, match="loudnessOffset"):
+        plan(spec, world_of(spec, REPO / "worlds"))
+    spec = read_spec("hashire-merosu")
+    spec["speakers"]["char.crowd"]["loudnessOffset"] = {"piece.king-asks/4": -3}
+    with pytest.raises(SpecError, match="没有目标响度"):
+        plan(spec, world_of(spec, REPO / "worlds"))
+
+
+def test_piece_loudness_levels_the_curtain() -> None:
+    # 收幕那一串（beat.24〜27）不同的人拉到同一个电平（メロスの −16.3，UX）；セリヌンティウス其余的句子不调
+    p = slice_plan()
+    for rid in ("selinuntius-embrace-4", "selinuntius-embrace-selinuntius-doubted-2", "selinuntius-scarlet-cloak-2"):
+        assert p.recording(rid).loudness == pytest.approx(-16.3)
+    assert p.recording("king-king-asks-you-2").loudness == pytest.approx(-16.3)
+    assert p.recording("selinuntius-workshop-knock-1").loudness is None
+    spec = read_spec("hashire-merosu")
+    spec["speakers"]["char.selinuntius"]["pieceLoudness"]["piece.king-asks"] = -16.3
+    with pytest.raises(SpecError, match="pieceLoudness"):
         plan(spec, world_of(spec, REPO / "worlds"))
 
 
@@ -440,7 +485,8 @@ def test_only_rereads_the_given_keys(tmp_path: Path) -> None:
     assert again.reads == {"二度は言わぬ。下がれ。": 3, "待ってくれ。少し、考えさせてくれ。": 3}
     assert len(list((run / "takes" / "discarded").rglob("*.wav"))) == 6
     voices = json.loads((run / "release" / "voices.json").read_text(encoding="utf-8"))
-    assert len(voices["setPieceVoices"]) == 8 and set(voices["characters"]) == {"char.melos", "char.old-man"}
+    assert len(voices["setPieceVoices"]) == len(PIECE_KEYS)
+    assert set(voices["characters"]) == {"char.melos", "char.old-man"}
 
 
 def test_only_estimate_without_confirm_leaves_the_old_takes(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -586,12 +632,16 @@ def test_release_is_brought_to_the_speakers_loudness(tmp_path: Path) -> None:
         assert p.recording(rid).speaker.loudness == target
         name = next(rel.glob(f"{rid}.*.wav"))
         assert audio.level(audio.read_wav(name)).loudness_dbfs == pytest.approx(target, abs=0.2)
-    crowd = audio.read_wav(next(rel.glob("crowd-crowd-makes-way-1.*.wav")))
+    # 收幕：セリヌンティウス跟着メロス的电平，「待て。…」再低 6 dB
+    for rid, target in [("selinuntius-embrace-4", -16.3), ("melos-crowd-makes-way-4", -22.3)]:
+        name = next(rel.glob(f"{rid}.*.wav"))
+        assert audio.level(audio.read_wav(name)).loudness_dbfs == pytest.approx(target, abs=0.2)
+    crowd = audio.read_wav(next(rel.glob("crowd-crowd-makes-way-5.*.wav")))
     assert audio.level(crowd).loudness_dbfs == pytest.approx(-23.8, abs=0.5)  # 没有目标的不调
     audit = (rel / "audit.md").read_text(encoding="utf-8")
     row = next(x for x in audit.splitlines() if x.startswith("| `melos-wait-1`"))
     assert "→ -16.3 dBFS（-16.3）" in row and "| +7." in row and "dBTP" in row
-    row = next(x for x in audit.splitlines() if x.startswith("| `crowd-crowd-makes-way-1`"))
+    row = next(x for x in audit.splitlines() if x.startswith("| `crowd-crowd-makes-way-5`"))
     assert "（不调）" in row and "+0.0 dB" in row
 
 
