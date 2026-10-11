@@ -61,6 +61,17 @@ def test_near_then_far_within_the_debounce_opens_nothing(env: Env, inproc: Make,
     assert s.live.opened == []
 
 
+def test_focus_during_the_debounce_opens_at_once_and_only_once(env: Env, inproc: Make, play: Play) -> None:
+    s = inproc(0.5)  # 去抖 1 秒
+    p = play(s)
+    p.send({"type": "near", "character": OLD})
+    p.send({"type": "focus", "character": OLD})
+    p.expect("session_preparing", character=OLD, reason="switch")
+    p.expect("session_ready", character=OLD, timeout=3)  # 不等剩下的去抖
+    time.sleep(1.3)  # 去抖到点也不再开
+    assert len(s.live.opened) == 1
+
+
 def test_warming_another_closes_the_old_warm(env: Env, inproc: Make, play: Play) -> None:
     s = inproc(SPEED)
     p = play(s)
@@ -108,17 +119,39 @@ def test_goaway_swaps_at_the_next_pause(env: Env, inproc: Make, play: Play) -> N
     p.expect("turn_settled", turnId=t)
 
 
-def test_live_dropping_mid_reply_is_an_interruption_then_a_rebuild(env: Env, inproc: Make, play: Play) -> None:
+def test_live_dropping_mid_reply_ends_the_turn_then_rebuilds(env: Env, inproc: Make, play: Play) -> None:
     s = inproc(SPEED)
     p = play(s)
     p.focus(OLD)
     s.live.live_sessions(OLD)[0].die(mid_reply=True)
     t = p.text("こんにちは。")
-    p.expect("interrupted", turnId=t)
+    done = p.expect("turn_complete", turnId=t)  # 不是 interrupted：那只表示玩家打断（#111 前端评审）
+    assert done["audio"] is True and done["metrics"]["serverReleaseToFirstAudioMs"] is not None
+    final = p.expect("transcript", turnId=t, speaker=OLD, final=True)
+    assert final["source"] == "fallback"  # 出声了、还没出字：补转写
     p.expect("session_preparing", character=OLD, reason="rebuild")
     p.expect("session_ready", character=OLD)
     p.expect("turn_settled", turnId=t)  # 不是 lost：照常交给叙事者
+    assert not of(p, t, "interrupted")
     assert turn_row(env, t)["status"] != "lost"
+    assert [x for x in spans(s, "live.turn") if x.get("status") == "lost"]
+    again = p.text("聞こえますか。")
+    p.expect("turn_settled", turnId=again)
+
+
+def test_live_dropping_before_any_audio_is_no_response(env: Env, inproc: Make, play: Play) -> None:
+    s = inproc(SPEED)
+    p = play(s)
+    p.focus(OLD)
+    s.live.live_sessions(OLD)[0].die(before_audio=True)
+    t = p.text("こんにちは。")
+    done = p.expect("turn_complete", turnId=t)
+    assert done["audio"] is False
+    settled = p.expect("turn_settled", turnId=t)
+    assert (settled["outcome"], settled["minutes"]) == ("no_response", 0)
+    assert not of(p, t, "interrupted")
+    p.expect("session_preparing", character=OLD, reason="rebuild")
+    p.expect("session_ready", character=OLD)
     again = p.text("聞こえますか。")
     p.expect("turn_settled", turnId=again)
 

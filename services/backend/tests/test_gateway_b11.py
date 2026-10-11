@@ -103,7 +103,7 @@ def test_after_the_hold_a_new_session_carries_recent_dialogue(
     assert p.pid in s.gw.parked  # 最近对话还在
     back(p)
     p.send({"type": "focus", "character": OLD})
-    p.expect("session_preparing", character=OLD, reason="switch")
+    p.expect("session_preparing", character=OLD, reason="reconnect")
     p.expect("session_ready", character=OLD)
     assert len(s.live.opened) == 2
     assert "# さっきまでの会話" in s.live.opened[1].system and "こんにちは。" in s.live.opened[1].system

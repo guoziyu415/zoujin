@@ -24,7 +24,7 @@ from zoujin_backend.voice.models import TRANSCRIBE_MODEL, TRANSCRIBE_PROMPT, Hea
 
 log = logging.getLogger("zoujin.gateway")
 
-FALLBACK_CAP_S = 3.0  # 补转写的截止（3.1）
+FALLBACK_CAP_S = 2.5  # 补转写的截止：收尾最多 3 秒 + 2.5 秒，定稿在 turn_complete 后 6 秒内（#111 前端评审）
 PLAN_CAP_S = 10.0  # 打算的转写：玩家在等结果，但不是 3 秒的字幕
 UP_RATE = 16_000
 DOWN_RATE = 24_000

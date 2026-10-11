@@ -8,36 +8,60 @@ import pytest
 from zoujin_backend import live_cli
 
 
-def line(pid: str, turn: int, before_ms: int, usd: float, first_ms: int = 900, item: str = "b10") -> dict[str, object]:
-    usage = {"sessionTurn": turn, "sessionAudioMsBefore": before_ms, "firstAudioMs": first_ms, "replyAudioMs": 3000}
+def line(
+    pid: str,
+    turn: int,
+    before_ms: int,
+    usd: float,
+    first_ms: int = 900,
+    item: str = "b10",
+    out_usd: float = 0.002,
+    estimated: bool = False,
+) -> dict[str, object]:
+    usage = {
+        "sessionTurn": turn,
+        "sessionAudioMsBefore": before_ms,
+        "firstAudioMs": first_ms,
+        "replyAudioMs": 3000,
+        "inputMicroUsd": round(usd * 1_000_000),
+        "outputMicroUsd": round(out_usd * 1_000_000),
+        "usageEstimated": int(estimated),
+    }
     return {
         "at": f"2026-10-12T00:00:{turn:02d}Z",
         "kind": f"live.turn/{pid}",
         "item": item,
-        "costUsd": usd,
+        "costUsd": usd + out_usd,
         "usage": usage,
     }
 
 
-def test_reconcile_groups_and_formula(tmp_path: Path) -> None:
+def test_reconcile_compares_input_only_and_fits(tmp_path: Path) -> None:
     lines = [
         line("pt_a", 1, 0, 0.001),
         line("pt_a", 2, 10_000, 0.0017),
         line("pt_a", 1, 0, 0.0009, first_ms=-1),  # 重建后的新会话
         line("pt_b", 1, 0, 0.00086, first_ms=1100),
+        line("pt_b", 2, 5_000, 0.0, out_usd=0.01, estimated=True),  # 用量没到：只计数，不比
         line("pt_b", 1, 0, 9.0, item="other"),  # 别的项不算
         {"kind": "live.fallback/pt_a", "item": "b10", "costUsd": 0.0003, "usage": {}},
     ]
     r = live_cli.reconcile(lines, "b10")
-    assert r["total"]["turns"] == 4
-    assert r["total"]["formulaUsd"] == pytest.approx(round(0.00086 * 4 + 0.0000788 * 10, 4))
-    assert r["total"]["fallbackUsd"] == 0.0003
+    t = r["total"]
+    assert (t["turns"], t["estimatedTurns"]) == (5, 1)
+    assert t["inputUsd"] == pytest.approx(round(0.001 + 0.0017 + 0.0009 + 0.00086, 4))
+    assert t["formulaInputUsd"] == pytest.approx(round(0.00086 * 4 + 0.0000788 * 10, 4))
+    assert t["outputUsd"] == pytest.approx(0.008)  # 输出单列，估计的那轮不算
+    assert t["fallbackUsd"] == 0.0003
+    fit = r["fit"]
+    assert fit["n"] == 4 and fit["slopeUsdPerS"] == pytest.approx((0.0017 - 0.00092) / 10, rel=1e-3)
     a = r["games"][0]
-    assert (a["turns"], a["sessions"]) == (3, 2)
-    assert r["releaseToFirstAudioMs"]["n"] == 3 and r["releaseToFirstAudioMs"]["median"] == 900
+    assert (a["turns"], a["sessions"], a["estimatedTurns"]) == (3, 2, 0)
+    assert r["games"][1]["estimatedTurns"] == 1
+    assert r["releaseToFirstAudioMs"]["n"] == 4
     assert {b["sessionTurns"] for b in r["bySessionTurn"]} == {"1–2"}
     md = live_cli.markdown(r)
-    assert "| 1 | 3 | 2 |" in md
+    assert "| 1 | 3 | 0 | 2 |" in md and "拟合（n=4）" in md
 
 
 def test_reconcile_command_writes_files(tmp_path: Path) -> None:

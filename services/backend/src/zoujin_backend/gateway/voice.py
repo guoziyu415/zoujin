@@ -35,6 +35,7 @@ from zoujin_backend.db.tables import playthrough_metrics
 from zoujin_backend.gateway import brief
 from zoujin_backend.models.gemini_live import LiveLostQuota
 from zoujin_backend.models.live import LiveEvent, LiveLost, LiveSession, Recent
+from zoujin_backend.voice.models import live_cost_parts
 
 if TYPE_CHECKING:
     from zoujin_backend.gateway.ws import Conn, Turn
@@ -192,7 +193,7 @@ class Voices:
             try:
                 ok = await self._try_open(character, reason)
                 await asyncio.sleep(max(0.0, conn.ready_at[character] - time.monotonic()))
-                if ok and conn.focused == character and (announce or reason == "switch"):
+                if ok and conn.focused == character and (announce or reason in ("switch", "reconnect")):
                     await conn.send({"type": "session_ready", "character": character, "voiceAvailable": True})
                     self._resume_ready(reused=False)
             finally:
@@ -254,6 +255,9 @@ class Voices:
                 if other not in (character, conn.focused) and not self.busy(other):
                     self.sessions.pop(other, None)
                     await sess.close()
+            s = self.sessions.get(character)
+            if (s is not None and s.alive) or character in self.opening:  # 去抖期间已经开了（focus 了）
+                return
             conn.ready_at[character] = time.monotonic() + SESSION_ETA_MS / 1000 * self.speed
             with contextlib.suppress(LiveLost, OSError):
                 await self._ensure(character, "warm")
@@ -275,6 +279,9 @@ class Voices:
         if self.off is not None:
             self.off = None  # 再试一次
             self.fails = 0
+        if self.warm_for == character and self.warm_task is not None and not self.warm_task.done():
+            self.warm_task.cancel()  # 去抖还没到就点了人物：不等，下面现开（#111 前端评审）
+            self.warm_for = None
         s = self.sessions.get(character)
         if s is not None and s.alive and character not in self.opening:
 
@@ -286,7 +293,8 @@ class Voices:
 
             self._spawn(ready())
             return
-        await self.prepare(character, "switch")
+        # 重连以后第一次 focus、会话已经没了：reason 是 reconnect（契约 3.3）
+        await self.prepare(character, "reconnect" if self.resumed_at is not None else "switch")
 
     def unfocus(self) -> None:
         if self.conn.focused is not None:
@@ -431,9 +439,12 @@ class Voices:
         return self.off is None
 
     async def account(self, t: Turn, ev: LiveEvent, session: LiveSession, before_s: float) -> None:
-        """一轮的花费：账本（真 Live 时）、`cost_live_usd`、Trace 的 live.turn（不带原话）。"""
+        """一轮的花费：账本（真 Live 时）、`cost_live_usd`、Trace 的 live.turn（不带原话）。
+        账本的 usage 另带输入、输出各多少微美元和「用量没到、按估计记」（S-090 对账只比输入，估计的不比）。"""
         conn = self.conn
         usage = dict(ev.usage or {})
+        estimated = not usage
+        in_usd, out_usd = live_cost_parts(usage)
         first_ms = -1 if t.first_audio is None or t.released is None else round((t.first_audio - t.released) * 1000)
         reply_s = max(0.0, session.audio_seconds - before_s)
         if conn.gw.live_ledger is not None:
@@ -442,6 +453,9 @@ class Voices:
                 "sessionAudioMsBefore": round(before_s * 1000),
                 "replyAudioMs": round(reply_s * 1000),
                 "firstAudioMs": first_ms,
+                "inputMicroUsd": round(in_usd * 1_000_000),
+                "outputMicroUsd": round(out_usd * 1_000_000),
+                "usageEstimated": int(estimated),
             }
             conn.gw.live_ledger.add(
                 kind=f"live.turn/{conn.pid}", model=conn.gw.live_model_name, usage=usage | extra, cost=ev.usd
@@ -465,6 +479,11 @@ class Voices:
             session_audio_s=round(before_s, 2),
             session_turn=session.turns,
             cost_usd=round(ev.usd, 6),
+            tokens_in=usage.get("inputTokens", 0),
+            tokens_out=usage.get("outputTokens", 0),
+            usage_estimated=estimated,
+            interrupted=t.stream is not None and t.stream.cancelled(),
+            transcript_source=t.source,
         ):
             pass
 

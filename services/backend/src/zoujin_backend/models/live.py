@@ -120,6 +120,7 @@ class FakeLiveSession:
         self.notes: list[str] = []  # 测试看：送进来的局势更新
         self.closed = False
         self.dying = False  # die(mid_reply=True)：下一段回答说到一半断
+        self.dying_early = False  # die(before_audio=True)：下一段回答出声之前断
         try:
             self.loop: asyncio.AbstractEventLoop | None = asyncio.get_running_loop()
         except RuntimeError:
@@ -149,10 +150,13 @@ class FakeLiveSession:
 
         self._later(go)
 
-    def die(self, *, mid_reply: bool = False) -> None:
-        """测试用：连接断了。mid_reply：等下一段回答出了第一个音频再断。"""
+    def die(self, *, mid_reply: bool = False, before_audio: bool = False) -> None:
+        """测试用：连接断了。mid_reply：等下一段回答出了第一个音频再断；before_audio：下一段回答一开始就断。"""
         if mid_reply:
             self.dying = True
+            return
+        if before_audio:
+            self.dying_early = True
             return
 
         def go() -> None:
@@ -195,6 +199,12 @@ class FakeLiveSession:
         if not self.alive:
             raise LiveLost("假 Live：会话已经断了")
         await self._sleep(FIRST_AUDIO_MS)
+        if self.dying_early:
+            self.dying_early = False
+            self.alive = False
+            if self.on_change is not None:
+                self.on_change()
+            raise LiveLost("假 Live：出声之前断了")
         seconds = max(0.6, len(reply) * SECONDS_PER_CHAR)
         pcm = list(audio.chunks(seconds, CHUNK_MS))
         marks = {len(pcm) // 3: 1, 2 * len(pcm) // 3: 2}

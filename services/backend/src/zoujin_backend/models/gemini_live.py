@@ -37,7 +37,7 @@ log = logging.getLogger("zoujin.live")
 
 IN_RATE = 16_000  # 上行 PCM16（api-contract 3.1）
 OUT_RATE = 24_000  # 下行
-SETUP_TIMEOUT_S = 30.0
+SETUP_TIMEOUT_S = 5.0  # 玩家在等（focus、重建）：契约第 6 节重建 ≤ 1 s，S-1 实测 0.4〜1.1 s（#111 前端评审）
 TURN_TIMEOUT_S = 30.0  # 松开到 turnComplete
 TAIL_QUIET_S = 0.6
 TAIL_CAP_S = 3.0

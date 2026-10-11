@@ -7,6 +7,9 @@
 - 「さっきまでの会話」：网关内存里这个人物最近几轮的文字（跳过作废、删除的），只在内存里，不落库、不进 Trace。
 - 局势的条目（`facts`）也用来算中途更新：和上次送进会话的比，只送变了的（`changes`）。
 - 版本号 = 规则文本的哈希（同 `Prompt.version` 的做法），记进 Trace 的 `live.session`。
+- `live.txt` 和叙事者的 `reply.txt` 是一对（提示文本里不能写注释，写在这里）：S-068 的结论改 `reply.txt` 时，`live.txt`
+  同一个 PR 跟着改（#111 数据评审）。
+- 玩家的称呼用「話し相手」那一段的名字（`player_card` 的 `name`，即身份名；契约 1.8 起身份名只指玩家）。
 """
 
 from __future__ import annotations
@@ -25,7 +28,6 @@ from zoujin_backend.narrator.view import persona, player_card, situation, state_
 from zoujin_backend.world import Book
 
 Json = Any
-PLAYER = "旅の者"  # 「さっきまでの会話」里玩家那一侧的称呼（不用身份名：身份名在「話し相手」里）
 
 
 @cache
@@ -93,7 +95,7 @@ def build(book: Book, state: SimState, who: str, recent: Sequence[Recent] = ()) 
         out += ["", "# さっきまでの会話"]
         for r in said:
             if r.player:
-                out.append(f"{PLAYER}：{_flat(r.player)}")
+                out.append(f"{me['name']}：{_flat(r.player)}")
             if r.reply:
                 out.append(f"あなた：{_flat(r.reply)}")
     return Brief("\n".join(out), facts)

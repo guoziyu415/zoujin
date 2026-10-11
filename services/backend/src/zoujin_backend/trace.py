@@ -62,6 +62,9 @@ ATTRS = frozenset(
         "resume_kind",
         "reconnect",
         "reused",
+        "usage_estimated",  # #111 数据评审：live.turn 的用量是不是按 0.01 美元估的、玩家打断没有、人物字幕的来源
+        "interrupted",
+        "transcript_source",
     }
 )
 

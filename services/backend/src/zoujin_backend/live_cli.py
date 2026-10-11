@@ -7,8 +7,8 @@
   不带 `--confirm` 只打印预计花费（D-030）。打印的只有毫秒、有没有文字、用量和美元，不打印人物说了什么。
 - reconcile 只读账本，不调模型：账本里 `live.turn/<局>` 的每一行带这一轮的用量、会话里已有的音频毫秒、
   会话第几轮、松开到首个音频毫秒（网关记的，`gateway/voice.py`）。
-  公式是 results-s1 8.5 的「每轮约 0.00086 + 0.0000788 × 会话里已有的音频秒数」（S-073 ⑤）。
-  输出 Markdown 和 JSON，没有原话。
+  公式是 results-s1 8.5 的「每轮**输入**约 0.00086 + 0.0000788 × 会话里已有的音频秒数」（S-073 ⑤）：只拿输入那一半比，
+  输出单列，用量没到的轮不比，另给一行输入费用的拟合（截距、斜率）。输出 Markdown 和 JSON，没有原话。
 """
 
 from __future__ import annotations
@@ -58,7 +58,35 @@ def _p95(xs: Sequence[float]) -> float | None:
     return s[min(len(s) - 1, max(0, round(0.95 * len(s)) - 1))]
 
 
+def _fit(points: Sequence[tuple[float, float]]) -> Json:
+    """最小二乘：输入费用 = 截距 + 斜率 × 会话里已有的音频秒数。和公式的 0.00086、0.0000788 并排看。"""
+    n = len(points)
+    if n < 2:
+        return {"n": n, "interceptUsd": None, "slopeUsdPerS": None}
+    mx = sum(x for x, _ in points) / n
+    my = sum(y for _, y in points) / n
+    sxx = sum((x - mx) ** 2 for x, _ in points)
+    if sxx == 0:
+        return {"n": n, "interceptUsd": round(my, 6), "slopeUsdPerS": None}
+    slope = sum((x - mx) * (y - my) for x, y in points) / sxx
+    return {"n": n, "interceptUsd": round(my - slope * mx, 6), "slopeUsdPerS": round(slope, 8)}
+
+
+def _in_usd(x: Mapping[str, Any]) -> float:
+    return int(x["usage"].get("inputMicroUsd", 0)) / 1_000_000
+
+
+def _out_usd(x: Mapping[str, Any]) -> float:
+    return int(x["usage"].get("outputMicroUsd", 0)) / 1_000_000
+
+
+def _audio_s(x: Mapping[str, Any]) -> float:
+    return int(x["usage"].get("sessionAudioMsBefore", 0)) / 1000
+
+
 def reconcile(lines: Sequence[Mapping[str, Any]], item: str | None = None) -> Json:
+    """results-s1 8.5 拟合的是每轮的**输入**费用：只拿输入那一半和公式比，输出单列；用量没到、按估计记的轮
+    （`usageEstimated`）只计数，不进比较（#111 数据评审）。"""
     rows = [
         x for x in lines if str(x.get("kind", "")).startswith("live.turn/") and (item is None or x.get("item") == item)
     ]
@@ -67,6 +95,8 @@ def reconcile(lines: Sequence[Mapping[str, Any]], item: str | None = None) -> Js
         for x in lines
         if str(x.get("kind", "")).startswith("live.fallback/") and (item is None or x.get("item") == item)
     )
+    measured = [x for x in rows if not int(x["usage"].get("usageEstimated", 0))]
+    estimated = len(rows) - len(measured)
     games: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
     for x in rows:
         games[str(x["kind"]).split("/", 1)[1]].append(x)
@@ -74,50 +104,62 @@ def reconcile(lines: Sequence[Mapping[str, Any]], item: str | None = None) -> Js
     first: list[float] = []
     out_games = []
     for n, (_, gl) in enumerate(sorted(games.items(), key=lambda kv: str(kv[1][0].get("at", ""))), 1):
-        actual = sum(float(x.get("costUsd", 0)) for x in gl)
-        expect = sum(formula(int(x["usage"].get("sessionAudioMsBefore", 0)) / 1000) for x in gl)
-        sessions = sum(1 for x in gl if int(x["usage"].get("sessionTurn", 0)) == 1)
+        ok = [x for x in gl if not int(x["usage"].get("usageEstimated", 0))]
+        actual = sum(_in_usd(x) for x in ok)
+        expect = sum(formula(_audio_s(x)) for x in ok)
         out_games.append(
             {
                 "game": n,
                 "turns": len(gl),
-                "sessions": sessions,
-                "actualUsd": round(actual, 4),
-                "formulaUsd": round(expect, 4),
+                "estimatedTurns": len(gl) - len(ok),
+                "sessions": sum(1 for x in gl if int(x["usage"].get("sessionTurn", 0)) == 1),
+                "totalUsd": round(sum(float(x.get("costUsd", 0)) for x in gl), 4),
+                "inputUsd": round(actual, 4),
+                "outputUsd": round(sum(_out_usd(x) for x in ok), 4),
+                "formulaInputUsd": round(expect, 4),
                 "diffPct": _pct(actual, expect),
             }
         )
-        for x in gl:
-            u = x["usage"]
-            k = int(u.get("sessionTurn", 0))
-            label = next((f"{a}–{b}" if b < 10_000 else f"{a}+" for a, b in BUCKETS if a <= k <= b), "?")
-            b = by_bucket.setdefault(label, {"turns": 0, "actualUsd": 0.0, "formulaUsd": 0.0})
-            b["turns"] += 1
-            b["actualUsd"] += float(x.get("costUsd", 0))
-            b["formulaUsd"] += formula(int(u.get("sessionAudioMsBefore", 0)) / 1000)
-            if int(u.get("firstAudioMs", -1)) >= 0:
-                first.append(float(u["firstAudioMs"]))
+    for x in rows:
+        u = x["usage"]
+        if int(u.get("firstAudioMs", -1)) >= 0:
+            first.append(float(u["firstAudioMs"]))
+        if int(u.get("usageEstimated", 0)):
+            continue
+        k = int(u.get("sessionTurn", 0))
+        label = next((f"{a}–{b}" if b < 10_000 else f"{a}+" for a, b in BUCKETS if a <= k <= b), "?")
+        b = by_bucket.setdefault(label, {"turns": 0, "inputUsd": 0.0, "formulaUsd": 0.0, "outputUsd": 0.0})
+        b["turns"] += 1
+        b["inputUsd"] += _in_usd(x)
+        b["outputUsd"] += _out_usd(x)
+        b["formulaUsd"] += formula(_audio_s(x))
     buckets = [
         {
             "sessionTurns": k,
             "turns": int(v["turns"]),
-            "actualPerTurnUsd": round(v["actualUsd"] / v["turns"], 5),
+            "inputPerTurnUsd": round(v["inputUsd"] / v["turns"], 5),
             "formulaPerTurnUsd": round(v["formulaUsd"] / v["turns"], 5),
-            "diffPct": _pct(v["actualUsd"], v["formulaUsd"]),
+            "outputPerTurnUsd": round(v["outputUsd"] / v["turns"], 5),
+            "diffPct": _pct(v["inputUsd"], v["formulaUsd"]),
         }
         for k, v in by_bucket.items()
     ]
-    total_a = sum(float(x.get("costUsd", 0)) for x in rows)
-    total_f = sum(formula(int(x["usage"].get("sessionAudioMsBefore", 0)) / 1000) for x in rows)
+    total_in = sum(_in_usd(x) for x in measured)
+    total_f = sum(formula(_audio_s(x)) for x in measured)
     return {
         "item": item,
+        "formula": {"interceptUsd": FIXED_USD, "slopeUsdPerS": PER_AUDIO_S_USD},
+        "fit": _fit([(_audio_s(x), _in_usd(x)) for x in measured]),
         "games": out_games,
         "bySessionTurn": buckets,
         "total": {
             "turns": len(rows),
-            "actualUsd": round(total_a, 4),
-            "formulaUsd": round(total_f, 4),
-            "diffPct": _pct(total_a, total_f),
+            "estimatedTurns": estimated,
+            "totalUsd": round(sum(float(x.get("costUsd", 0)) for x in rows), 4),
+            "inputUsd": round(total_in, 4),
+            "outputUsd": round(sum(_out_usd(x) for x in measured), 4),
+            "formulaInputUsd": round(total_f, 4),
+            "diffPct": _pct(total_in, total_f),
             "fallbackUsd": round(fallback, 4),
         },
         "releaseToFirstAudioMs": {
@@ -131,18 +173,35 @@ def reconcile(lines: Sequence[Mapping[str, Any]], item: str | None = None) -> Js
 def markdown(r: Json) -> str:
     out = [f"# S-090 Live 对账（{r['item'] or '全部'}）", ""]
     t = r["total"]
-    out.append(f"合计 {t['turns']} 轮：实际 ${t['actualUsd']}，公式 ${t['formulaUsd']}，差 {t['diffPct']}%")
+    out.append(
+        f"合计 {t['turns']} 轮（用量没到、按估计记的 {t['estimatedTurns']} 轮不比）：花费 ${t['totalUsd']}；"
+        f"输入 ${t['inputUsd']}，公式 ${t['formulaInputUsd']}，差 {t['diffPct']}%；输出 ${t['outputUsd']}"
+    )
     out.append(f"补转写 ${t['fallbackUsd']}")
-    f = r["releaseToFirstAudioMs"]
-    out += ["", f"松开到首个音频（服务端，S-073 ①）：n={f['n']}，中位 {f['median']} ms，p95 {f['p95']} ms", ""]
-    out += ["| 局 | 轮数 | 会话数 | 实际 $ | 公式 $ | 差 % |", "|---|---|---|---|---|---|"]
+    f, fit = r["formula"], r["fit"]
+    out.append(
+        f"拟合（n={fit['n']}）：截距 ${fit['interceptUsd']}、斜率 ${fit['slopeUsdPerS']}/秒；"
+        f"公式：截距 ${f['interceptUsd']}、斜率 ${f['slopeUsdPerS']}/秒"
+    )
+    a = r["releaseToFirstAudioMs"]
+    out += ["", f"松开到首个音频（服务端，S-073 ①）：n={a['n']}，中位 {a['median']} ms，p95 {a['p95']} ms", ""]
     out += [
-        f"| {g['game']} | {g['turns']} | {g['sessions']} | {g['actualUsd']} | {g['formulaUsd']} | {g['diffPct']} |"
+        "| 局 | 轮数 | 估计的轮 | 会话数 | 花费 $ | 输入 $ | 公式 $ | 差 % | 输出 $ |",
+        "|---|---|---|---|---|---|---|---|---|",
+    ]
+    out += [
+        f"| {g['game']} | {g['turns']} | {g['estimatedTurns']} | {g['sessions']} | {g['totalUsd']} | {g['inputUsd']} "
+        f"| {g['formulaInputUsd']} | {g['diffPct']} | {g['outputUsd']} |"
         for g in r["games"]
     ]
-    out += ["", "| 会话第几轮 | 轮数 | 实际每轮 $ | 公式每轮 $ | 差 % |", "|---|---|---|---|---|"]
     out += [
-        f"| {b['sessionTurns']} | {b['turns']} | {b['actualPerTurnUsd']} | {b['formulaPerTurnUsd']} | {b['diffPct']} |"
+        "",
+        "| 会话第几轮 | 轮数 | 输入每轮 $ | 公式每轮 $ | 差 % | 输出每轮 $ |",
+        "|---|---|---|---|---|---|",
+    ]
+    out += [
+        f"| {b['sessionTurns']} | {b['turns']} | {b['inputPerTurnUsd']} | {b['formulaPerTurnUsd']} | {b['diffPct']} "
+        f"| {b['outputPerTurnUsd']} |"
         for b in r["bySessionTurn"]
     ]
     return "\n".join(out) + "\n"
