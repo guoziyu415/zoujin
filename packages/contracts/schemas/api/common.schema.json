@@ -1021,6 +1021,14 @@
         },
         "change": {
           "$ref": "#/$defs/BeatChange"
+        },
+        "cite": {
+          "description": "（v1.0.14）原作出处：世界模型 Beat.cite，只在这个节拍在时间线里会是 known 时带，原句带玩家此刻不知道的事实的剧透词的那条不出；没写出处或全过滤掉时省略（api-contract 2.5、2.6）",
+          "type": "array",
+          "items": {
+            "$ref": "../data/common.schema.json#/$defs/Cite"
+          },
+          "minItems": 1
         }
       },
       "title": "WhyBeatStep"
@@ -1350,6 +1358,10 @@
         "sceneId": {
           "$ref": "../data/common.schema.json#/$defs/SceneId"
         },
+        "toActId": {
+          "description": "（v1.0.14）这个去处通往的幕（世界模型 ActExit.toAct；打算是它落地的那一幕）：幕末页一出现就能预取下一幕的场景包。老的服务端不给",
+          "$ref": "../data/common.schema.json#/$defs/ActId"
+        },
         "tLabel": {
           "$ref": "../data/common.schema.json#/$defs/TLabel"
         },
@@ -1458,6 +1470,10 @@
         },
         "sceneId": {
           "$ref": "../data/common.schema.json#/$defs/SceneId"
+        },
+        "toActId": {
+          "description": "（v1.0.14）这个去处通往的幕（世界模型 ActExit.toAct；打算是它落地的那一幕）：幕末页一出现就能预取下一幕的场景包。老的服务端不给",
+          "$ref": "../data/common.schema.json#/$defs/ActId"
         },
         "tLabel": {
           "$ref": "../data/common.schema.json#/$defs/TLabel"

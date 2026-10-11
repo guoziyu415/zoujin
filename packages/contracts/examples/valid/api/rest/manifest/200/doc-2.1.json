@@ -26,6 +26,18 @@
       "assetVersion": "4f3a"
     }
   ],
+  "places": [
+    {
+      "placeId": "place.syracuse-square",
+      "name": "シラクスの広場と大路",
+      "sceneId": "scene.syracuse-square"
+    },
+    {
+      "placeId": "place.neighbor-village",
+      "name": "隣村",
+      "sceneId": null
+    }
+  ],
   "characters": [
     {
       "id": "char.melos",

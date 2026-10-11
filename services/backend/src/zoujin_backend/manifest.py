@@ -1,6 +1,6 @@
 """manifest（api-contract 2.1，B-7）：全部从仓库里的东西生成，不手写；正式网关和 mock 用同一个生成器。
 
-- 世界模型：书、身份、场景和地点、人物、幕、时钟、注音词表；
+- 世界模型：书、身份、场景和地点（地名）、人物、幕、时钟、注音词表；
 - B-6 的声音清单（`<声音目录>/<bookId>/voices.json`，可以没有）：人物的预录句、固定演出的预录句，逐句和世界模型核对；
 - 前端的场景包（`ZJ_SCENE_PACKS`）：每个场景目录的入口文件（`index.json`，没有就 `scene.json`），
   版本是入口能走到的目录里全部文件的 hash。
@@ -179,6 +179,11 @@ def generate(book: Book, schemas: SchemaBook, *, packs: Path, voices: Path, rele
         for s in w["scenes"]
         if s["id"] in found
     ]
+    # 地名全给（地图、详情要显示）；场景没出（没有包）的地点 sceneId 为 null，和 scenes 对得上
+    place_names = [
+        {"placeId": p["id"], "name": p["name"], "sceneId": p.get("sceneRef") if p.get("sceneRef") in found else None}
+        for p in w["places"]
+    ]
     acts = []
     for a in w["acts"]:
         ids = [x for x in a["scenes"] if x in found]
@@ -206,6 +211,7 @@ def generate(book: Book, schemas: SchemaBook, *, packs: Path, voices: Path, rele
         "book": {k: w["book"][k] for k in ("id", "title", "author")},
         "roles": roles,
         "scenes": scenes,
+        "places": place_names,
         "characters": characters,
         "acts": acts,
         "clock": {
