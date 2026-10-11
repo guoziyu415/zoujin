@@ -188,10 +188,8 @@ def test_checkpoint_past_beat_24_does_not_enter_the_ending(env: Env, monkeypatch
     assert eval_api.setup({"role": "role.traveler", "checkpoint": "sc.canon@beat.26"}, mode="text").ending() is None
 
 
-def test_persona_and_planted_memory_raise_in_setup(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_planted_memory_raises_in_setup(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", env.url)
-    with pytest.raises(eval_api.EvalNotImplemented, match="persona"):
-        eval_api.setup({"role": "role.traveler", "persona": "p.curious", "seed": 1}, mode="text")
     planted = {**MINIMAL, "events": [{"effects": [], "memory": {"character": OLD}}]}
     with pytest.raises(eval_api.EvalNotImplemented, match="memory"):
         eval_api.setup(planted, mode="text")

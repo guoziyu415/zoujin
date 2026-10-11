@@ -53,6 +53,8 @@ ATTRS = frozenset(
         "outcome",
         "template",
         "calls",
+        "eval.persona",  # B-5：模拟局的画像 ID、种子（评测入口开局的 Span）
+        "eval.seed",
         "reason",  # B-10：Live 会话为什么开（warm / switch / rebuild / rebuild_turns / rebuild_goaway / arrival）
         "prompt_chars",
         "notes",
