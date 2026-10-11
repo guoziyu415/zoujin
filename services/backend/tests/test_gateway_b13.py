@@ -117,7 +117,8 @@ def test_memory_book_impact_and_delete(env: Env, inproc: Make, play: Play) -> No
     # 新会话里没有删了的那一轮
     (new,) = s.live.opened[opened:]
     assert all(r.player != OFFER for r in new.recent) and REMEMBERED not in new.system
-    assert "家まで送る" not in new.system and "なかったこと" not in new.system  # 约定和 forget 事件也不在（UX 评审）
+    system = without_aid(new.system)  # B-19 的开局互助一句（世界模型的，「…家まで送る」）不算
+    assert "家まで送る" not in system and "なかったこと" not in system  # 约定和 forget 事件也不在（UX 评审）
 
     # 同一个键重放一样；之后查不到、后果 404、换个键再删 404
     assert p.call("memory-delete", 200, "DELETE", f"{base}/{memory_id}", {}, key="del-1") == gone
@@ -184,3 +185,7 @@ def test_a_forgotten_fact_he_knows_anyway_stays() -> None:
     known = "fact.king-killings"  # 老爺 since pre
     statement = next(f["statement"] for f in BOOK.world["facts"] if f["id"] == known)
     assert statement in "".join(brief.situation_facts(BOOK, st, OLD, frozenset({known})))
+
+
+def without_aid(system: str) -> str:
+    return "\n".join(x for x in system.splitlines() if not x.startswith("相手があなたにしてくれそうなこと："))

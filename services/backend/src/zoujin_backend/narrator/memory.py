@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import jsonschema
-from sqlalchemy import func, select
+from sqlalchemy import func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection
 from zoujin_backend.db import store
 from zoujin_backend.db.events import recorded_at
@@ -31,6 +31,7 @@ from zoujin_backend.models.armor import DEADLINE_S as ARMOR_DEADLINE_S
 from zoujin_backend.models.armor import Armor, ArmorFailed, cost_usd
 from zoujin_backend.models.prompts import PROMPTS
 from zoujin_backend.models.text import BadOutput, ModelCallFailed, RateLimited, Stop, TextModel, model_and_version, spec
+from zoujin_backend.narrator.roles import act_at
 from zoujin_backend.narrator.rules import has_pii
 from zoujin_backend.projection import committed, visible_effects
 from zoujin_backend.trace import Tracer
@@ -451,6 +452,48 @@ class Memorizer:
             out.armor_errors += 1
             return True
         return not (ar.injection or ar.harmful or ar.pii or ar.uri)
+
+
+# —— 存 ——
+
+
+async def save(c: AsyncConnection, book: Book, pid: str, rows: Sequence[Json]) -> list[tuple[Json, str]]:
+    """存这一轮写出的记忆：(行, "added" / "updated")。
+
+    印象（`impression`）每个人物每一幕最多留一条没删的（数据定，UX 的 R1 前要求）：这一幕他已经有一条印象，就用新的
+    一句改那一条（`updated`，记憶帳不多一张卡），来源事件接上、salience 取大的、trustDelta 不再加
+    （闲聊不让关系一直涨），后果一句（keeps）清掉重算。别的种类照旧每次新加。"""
+    out: list[tuple[Json, str]] = []
+    for r in rows:
+        old = await _impression_this_act(c, book, pid, r) if r["kind"] == "impression" else None
+        if old is None:
+            await c.execute(insert(memory_items).values(**r))
+            out.append((r, "added"))
+            continue
+        merged = {
+            **old,
+            "text": r["text"],
+            "from_events": [*old["from_events"], *r["from_events"]],
+            "t": r["t"],
+            "salience": max(float(old["salience"]), float(r["salience"])),
+            "keeps": None,
+            "keeps_done": False,
+        }
+        await c.execute(
+            update(memory_items)
+            .where(memory_items.c.memory_id == old["memory_id"])
+            .values({k: merged[k] for k in ("text", "from_events", "t", "salience", "keeps", "keeps_done")})
+        )
+        out.append((merged, "updated"))
+    return out
+
+
+async def _impression_this_act(c: AsyncConnection, book: Book, pid: str, r: Json) -> Json | None:
+    act = act_at(book, int(r["t"]))
+    for m in reversed(await alive(c, pid, r["character"])):
+        if m["kind"] == "impression" and act_at(book, int(m["t"])) == act:
+            return m
+    return None
 
 
 # —— 读 ——

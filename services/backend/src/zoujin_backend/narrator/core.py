@@ -41,7 +41,6 @@ from zoujin_backend.db.events import recorded_at, to_row
 from zoujin_backend.db.store import Run
 from zoujin_backend.db.tables import (
     drafts,
-    memory_items,
     playthrough_metrics,
     playthroughs,
     turns,
@@ -789,21 +788,20 @@ class Narrator:
         )
         if exists is None:
             return []
-        if got.rows:
-            await c.execute(insert(memory_items), got.rows)
+        stored_rows = await memory.save(c, book, task.pid, got.rows)
         changes = []
-        for who in dict.fromkeys(r["character"] for r in got.rows):
+        for who in dict.fromkeys(r["character"] for r, _ in stored_rows):
             label, level = await memory.relation_of(c, book, task.pid, role_id, who)
             changes += [
                 {
                     "character": who,
-                    "change": "added",
+                    "change": change,
                     "memoryId": r["memory_id"],
                     "kind": r["kind"],
                     "relationLabel": label,
                     "relationLevel": level,
                 }
-                for r in got.rows
+                for r, change in stored_rows
                 if r["character"] == who
             ]
         if changes:
