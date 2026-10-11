@@ -1,0 +1,91 @@
+{
+  "note": "意图确认（B-4 卡验收第 4 条）：玩家说「身代わりになる」→ 提取出一个让玩家自己去当人质的候选（改 var.hostage.who、var.player.custody，不可逆），needsConfirm，人物这一轮没在反问（asked: false），由服务端另起一轮问出 question；说「代わりに残る」→ 同样的候选，人物这一轮已经在反问（asked: true），直接推 confirm。草稿开着、对着反问的人物说「本気」→ confirmAnswer: yes；说「やめておく」→ no。卡上写的是「人質」，评测用例里玩家常说这个词（E-0 的快照会变），换成这几个说法。话都是为测试写的。",
+  "rules": [
+    {
+      "kind": "extract",
+      "when": {
+        "playerContains": "身代わりになる"
+      },
+      "output": {
+        "candidates": [
+          {
+            "actor": "player",
+            "type": "say",
+            "origin": "turn",
+            "summary": "旅人は、メロスに代わって人質になると申し出た",
+            "causes": [],
+            "effects": [
+              {
+                "op": "set",
+                "var": "var.hostage.who",
+                "value": "player"
+              },
+              {
+                "op": "set",
+                "var": "var.player.custody",
+                "value": "hostage"
+              }
+            ],
+            "needsConfirm": true,
+            "asked": false,
+            "question": "……君が、私の代わりに人質になるというのか。"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "extract",
+      "when": {
+        "playerContains": "代わりに残る"
+      },
+      "output": {
+        "candidates": [
+          {
+            "actor": "player",
+            "type": "say",
+            "origin": "turn",
+            "summary": "旅人は、人質として町にとどまると申し出た",
+            "causes": [],
+            "effects": [
+              {
+                "op": "set",
+                "var": "var.hostage.who",
+                "value": "player"
+              },
+              {
+                "op": "set",
+                "var": "var.player.custody",
+                "value": "hostage"
+              }
+            ],
+            "needsConfirm": true,
+            "asked": true,
+            "question": "……本気で言っているのか。"
+          }
+        ]
+      }
+    },
+    {
+      "kind": "extract",
+      "when": {
+        "confirmOpen": true,
+        "playerContains": "本気"
+      },
+      "output": {
+        "candidates": [],
+        "confirmAnswer": "yes"
+      }
+    },
+    {
+      "kind": "extract",
+      "when": {
+        "confirmOpen": true,
+        "playerContains": "やめておく"
+      },
+      "output": {
+        "candidates": [],
+        "confirmAnswer": "no"
+      }
+    }
+  ]
+}

@@ -16,7 +16,7 @@ api-contract 第 7 节的 11 种，B-1 卡的 5 种边角情况，加一个「�
 | `small-talk` | 闲聊：只带时钟的 `commit`，`turn_settled` 是 `no_change` | 市の老爺 | 说一句 |
 | `interrupt` | 打断：`interrupted`，剩下的音频不发 | メロス | 说一句；他说话的 6 秒里再按下说话或发文字 |
 | `retract` | 作废（`retracted`、`too_late`）和识别改正 | 市の老爺 | 第 1 轮人物回答后约 4 秒内「言い直す」；第 2 轮判完后再作废；第 3 轮字幕识别错了，`turn_retract` 加 `text { via: "correction" }` |
-| `confirm` | 意图确认：按按钮回答、超时 | メロス | 说两句。第 1 次按按钮（一直等）；第 2 次服务端发起一轮（`turn_started reason: confirm`）再问，不回答，30 秒后超时 |
+| `confirm` | 意图确认：按按钮回答、超时 | メロス | 说两句，原来那一轮先 `commit`（10 分钟）、`turn_settled`，再反问、推 `confirm`。第 1 次人物的回答就是反问，按按钮（一直等），答「是」先推草稿的 `commit` 再 `confirm_closed`；第 2 次服务端发起一轮（`turn_started reason: confirm`）再问，不回答，30 秒后超时，只推 `confirm_closed` |
 | `approach` | 人物走过来，接着一个动作 | 市の老爺 | 收到 `approach` 后发 `approach_arrived`（或 `approach_dismiss`）；他开口后回一句；再点动作「家まで送る」 |
 | `act-end` | 幕末：`leaving` 的一轮、`act_ended`（去处带副题 `where`、`sub`）、说出打算、`act_transition`（带落地 `arrival`） | — | 可以直接 `act_choose`；也可以先 `act_propose` 或用声音（`activity_start purpose: "act_plan"`），拿到不成行和替代去处（只演一次）后再 `act_choose`。选「老爺の家に身を寄せる」时落地带 `opener`：显示完落地那一行发 `act_landed`，老爺先开口（`turn_started reason: arrival`） |
 | `set-piece` | 固定演出（3.14）：`action_result` 带 `setPiece` 不带 `narration`，紧接着 `set_piece`；mock 的 manifest 没有录音，只出字幕 | — | 等 mock 加上「戸を叩く」（`obj.workshop-door`）后点它（`action kind: examine`）；再点一次，回普通的 `narration` |
