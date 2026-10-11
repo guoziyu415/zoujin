@@ -483,4 +483,48 @@ describe("the act end's plan said aloud (api-contract 3.11)", () => {
     expect(useVoice.getState().turn).toBeNull();
     expect(useStory.getState().actEnd!.phase.k).not.toBe("thinking");
   });
+
+  // a try taken back once it had been judged (3.6 ⑦): too late, the result comes all the same and counts
+  it("taken back too late: the result still shows and the try is used", () => {
+    const { s, sock, audio } = open();
+    useVoice.setState({ mic: "granted" });
+    sock.receive({
+      type: "act_ended",
+      actId: "act.1",
+      recapLines: [],
+      options: [],
+      freeform: { allowed: true, triesLeft: 2 },
+    });
+    useStory.setState({
+      actEnd: openPropose(useStory.getState().actEnd!),
+    });
+    s.actPlanPress();
+    const turnId = String(sock.sent.at(-1)!.turnId);
+    for (let i = 0; i < 10; i++) audio.micFrame();
+    vi.advanceTimersByTime(800);
+    s.actPlanRelease();
+    s.actPlanRetract();
+    expect(sock.sent.at(-1)).toMatchObject({ type: "turn_retract", turnId });
+    expect(useStory.getState().actEnd!.phase).toMatchObject({
+      k: "thinking",
+      retracting: true,
+    });
+    sock.receive({ type: "turn_retract_result", turnId, status: "too_late" });
+    expect(useStory.getState().actEnd!.phase.k).toBe("thinking");
+    sock.receive({
+      type: "act_plan_result",
+      turnId,
+      accepted: false,
+      narration: ["城門はもう閉じている。"],
+      alternative: {
+        optionId: "opt.wait",
+        label: "夜明けを待つ",
+        narration: "夜明けを待つことにした。",
+      },
+      triesLeft: 1,
+    });
+    const a = useStory.getState().actEnd!;
+    expect(a.phase).toMatchObject({ k: "result", accepted: false });
+    expect(a.triesLeft).toBe(1);
+  });
 });

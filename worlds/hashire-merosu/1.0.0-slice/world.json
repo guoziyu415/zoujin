@@ -795,6 +795,10 @@
      "since": "beat.12"
     },
     {
+     "fact": "fact.melos-farewell",
+     "since": "beat.13"
+    },
+    {
      "fact": "fact.bridge-destroyed",
      "since": "beat.17"
     },
@@ -1833,6 +1837,10 @@
     {
      "fact": "fact.storm",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "since": "beat.13"
     }
    ],
    "initialPlace": "place.melos-home",
@@ -2003,6 +2011,10 @@
     {
      "fact": "fact.storm",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "since": "beat.13"
     },
     {
      "fact": "fact.groom-agreed",
@@ -3503,6 +3515,19 @@
     "大雨",
     "豪雨",
     "車軸を流す"
+   ]
+  },
+  {
+   "id": "fact.melos-farewell",
+   "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+   "trueFrom": "beat.13",
+   "visibility": "public",
+   "cite": [
+    {
+     "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+     "para": 33,
+     "quote": "眼が覚めたら、すぐに市に出かける。大切な用事があるのだ。"
+    }
    ]
   },
   {
