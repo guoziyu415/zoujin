@@ -29,6 +29,8 @@ OLD_MAN_TO_GROUND = {"op": "relocate", "character": "char.old-man", "place": GRO
 PHILOSTRATUS_TO_ROAD = {"op": "relocate", "character": "char.philostratus", "place": "place.road-to-city"}
 # 幕末页算玩家知道约定（S-077 ⑫，PM 10-10）：三条落地都写。约定没成立（beat.05 没发生）时事实不成立，knows() 照样算不知道
 PLAYER_KNOWS_PROMISE = {"op": "learn", "character": "player", "fact": "fact.promise"}
+# S-088：切片里立约前的两拍是锚点（见 make_slice 里的注释）
+SLICE_ANCHORS = ("beat.03", "beat.04")
 
 # 第一幕的两个去处（S-077 ④⑤；副题的后半：UX 文案表；落点和落地句：前端 #22 的位置点，UX `ux/slice/jump-transition.md`「落地」）
 SLICE_EXITS: list[dict[str, Any]] = [
@@ -247,6 +249,19 @@ def make_slice(src: dict[str, Any]) -> dict[str, Any]:
     custody = by_id(w["stateVars"], "var.player.custody")
     custody["values"].remove("arrested")
     del custody["valueLabels"]["arrested"]
+
+    # S-088（PM 10-11）：切片围着约定做，约定一定要立成，收幕时 5 类结局才一定有一类成立（B-9 数据评审第 4 题）。
+    # 锚点不能阻止、推迟。设的是 beat.03、04，不是 04、05：
+    # - beat.04 的前提「梅洛斯知道王的暴虐」只有 beat.03 给；
+    # - beat.05（立约）的前提「梅洛斯被抓」由锚点 beat.04 写下，叙事者推翻不了（R1），beat.05 又在玩家去不了的王城，所以一定立成；
+    # - beat.05 设成锚点会锁住它写的 var.hostage.who，B-4「我来当人质」就被 R1 拒掉，切片里走不到 player-substituted
+    beats = {b["id"]: b for b in w["beats"]}
+    for bid in SLICE_ANCHORS:
+        beats[bid]["kind"] = "anchor"
+    anchored = {*w["anchors"], *SLICE_ANCHORS}
+    w["anchors"] = sorted((a for a in anchored if a in beats), key=lambda a: beats[a]["order"]) + [
+        a for a in w["anchors"] if a not in beats
+    ]
 
     # ④⑤ 幕末只列市里去得了的两个去处，都跳到三日目 17:30 的刑场；「ほかの考えがある」是前端的固定选项，成行时落在 plan
     acts["act.1"]["exits"] = copy.deepcopy(SLICE_EXITS)
