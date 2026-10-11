@@ -185,13 +185,14 @@ export class Session {
   actChoose(optionId: string, enRouteChoice?: number): void {
     const a = useStory.getState().actEnd;
     if (!a || a.phase.k === "chosen" || a.phase.k === "thinking") return;
-    useStory.setState({ actEnd: story.chosen(a, optionId) });
-    this.live.send({
+    // not sent (offline): the page stays as it is, the buttons still work; the connection banner says why
+    const sent = this.live.send({
       type: "act_choose",
       clientMsgId: uuid(),
       optionId,
       ...(enRouteChoice === undefined ? {} : { enRouteChoice }),
     });
+    if (sent) useStory.setState({ actEnd: story.chosen(a, optionId) });
   }
 
   actPropose(text: string): void {
@@ -199,8 +200,12 @@ export class Session {
     const t = text.trim();
     if (!a || a.phase.k !== "propose" || !t) return;
     const clientMsgId = uuid();
-    useStory.setState({ actEnd: story.proposed(a, { clientMsgId }) });
-    this.live.send({ type: "act_propose", clientMsgId, text: t.slice(0, 200) });
+    const sent = this.live.send({
+      type: "act_propose",
+      clientMsgId,
+      text: t.slice(0, 200),
+    });
+    if (sent) useStory.setState({ actEnd: story.proposed(a, { clientMsgId }) });
   }
 
   // shown the landing line of an arrival with an opener: the server lets the opener speak first
@@ -321,6 +326,11 @@ export class Session {
       case "error":
         // invalid_request: what we sent didn't fit the schema; the turn didn't happen (api-contract 5)
         if (msg.error.code === "invalid_request") this.voice.undelivered();
+        // invalid_choice: the act-end page as it was, the exits again (3.11)
+        if (msg.error.code === "invalid_choice") {
+          const a = useStory.getState().actEnd;
+          if (a) useStory.setState({ actEnd: story.choiceRefused(a) });
+        }
         return;
       default:
         return; // known, handled by later cards (set pieces, confirm, approach, act end, ending: M2)
@@ -403,6 +413,8 @@ export class Session {
   // the next act: the snapshot replaces the world (complete, after the landing); the held commits only add their
   // events, for the map. Then その頃, the slice's jump page and the landing line (4.5).
   private actTransition(m: Api.ActTransitionMessage): void {
+    // resent after a reconnect (v1.0.12) when the page no longer waits for it (already landed, a reload): nothing
+    if (!story.awaitsTransition(useStory.getState().actEnd)) return;
     const world = useWorld.getState().world;
     const held = this.actChange;
     this.actChange = [];
@@ -458,12 +470,16 @@ export class Session {
   // back after a drop or a reload in the middle of an act end, or before landing (api-contract 4)
   private pendingStory(p: Api.Pending): void {
     const st = useStory.getState();
-    // a plan said before the drop gets no result afterwards (3.11): back to the exits, with the server's tries left
-    if (p.actEnd && (!st.actEnd || st.actEnd.phase.k === "thinking"))
-      useStory.setState({ actEnd: story.actEnded(p.actEnd) });
-    if (!p.actEnd && st.actEnd && st.actEnd.phase.k !== "chosen")
-      useStory.setState({ actEnd: null }); // chosen while we were away; act_transition follows in the resend
-    if (p.arrival && !st.transition && !p.actEnd)
+    const r = story.onWelcome(st.actEnd, p.actEnd);
+    if ("set" in r) useStory.setState({ actEnd: r.set });
+    // landed before the drop, the opener not yet sent: the landing again (a page waiting for the act change gets
+    // act_transition instead, see onWelcome)
+    if (
+      p.arrival &&
+      !st.transition &&
+      !p.actEnd &&
+      !story.awaitsTransition(st.actEnd)
+    )
       useStory.setState({
         transition: {
           ...story.transition({

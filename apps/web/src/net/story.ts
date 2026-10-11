@@ -108,6 +108,40 @@ export function chosen(s: ActEndState, optionId: string): ActEndState {
   return { ...s, phase: { k: "chosen", optionId } };
 }
 
+// the server refused the choice (invalid_choice, api-contract 5): the page as it was, the exits again
+export function choiceRefused(s: ActEndState): ActEndState {
+  return s.phase.k === "chosen" ? { ...s, phase: { k: "choose" } } : s;
+}
+
+// the page is waiting for act_transition: an exit chosen, or a plan sent or accepted
+export function awaitsTransition(s: ActEndState | null): boolean {
+  if (!s) return false;
+  const p = s.phase;
+  return (
+    p.k === "chosen" || p.k === "thinking" || (p.k === "result" && p.accepted)
+  );
+}
+
+// after a reconnect, what to do with the act-end page from welcome.pending (3.11, 4):
+// - the server still has the act end: what we sent before the drop got no answer (a plan's result isn't resent; a
+//   choice that never left) — the page again from pending.actEnd, with the server's tries left; a page that shows
+//   something (the exits, the input, a refused plan's alternative) stays as it is
+// - the server has no act end and the page waits for the act change: keep it; act_transition comes after the resent
+//   commits (v1.0.12) — not an arrival built from pending.arrival, whose actId would still be the old act's
+// - otherwise the page goes
+export function onWelcome(
+  s: ActEndState | null,
+  pending: Api.ActEnd | null | undefined,
+): { keep: true } | { set: ActEndState | null } {
+  if (pending) {
+    if (!s || s.phase.k === "thinking" || s.phase.k === "chosen")
+      return { set: actEnded(pending) };
+    return { keep: true };
+  }
+  if (!s || awaitsTransition(s)) return { keep: true };
+  return { set: null };
+}
+
 // 「あなたは、{plan}ことにした。」 comes from the server as the narration of an accepted plan; nothing to build here
 
 // —— the act change (4.5, S-080) ——

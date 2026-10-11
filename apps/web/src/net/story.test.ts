@@ -3,9 +3,12 @@ import { describe, expect, it } from "vitest";
 import {
   actEnded,
   backToExits,
+  awaitsTransition,
   canPropose,
+  choiceRefused,
   chosen,
   clearNotHeard,
+  onWelcome,
   openPropose,
   planResult,
   proposeRetracted,
@@ -135,5 +138,47 @@ describe("act change", () => {
     expect(t.steps).toEqual(["sonokoro", "arrival"]);
     expect(t.recap).toHaveLength(3);
     expect(t.arrival?.opener).toBe("char.old-man");
+  });
+});
+
+describe("the act end across a drop and a refusal (3.11, 4, v1.0.12)", () => {
+  const thinking = proposed(openPropose(actEnded(end)), { clientMsgId: "c1" });
+  const picked = chosen(actEnded(end), "exit.1.city");
+  const later = { ...end, freeform: { allowed: true, triesLeft: 1 } };
+
+  it("invalid_choice: from the chosen exit back to the exits", () => {
+    expect(choiceRefused(picked).phase).toEqual({ k: "choose" });
+    expect(choiceRefused(thinking)).toBe(thinking);
+  });
+
+  it("waits for act_transition after a choice, a plan sent, or a plan accepted", () => {
+    expect(awaitsTransition(picked)).toBe(true);
+    expect(awaitsTransition(thinking)).toBe(true);
+    const ok = planResult(thinking, {
+      type: "act_plan_result",
+      clientMsgId: "c1",
+      accepted: true,
+      narration: ["あなたは、市に残ることにした。"],
+      alternative: null,
+      triesLeft: 1,
+    } as unknown as Api.ActPlanResultMessage);
+    expect(awaitsTransition(ok)).toBe(true);
+    expect(awaitsTransition(actEnded(end))).toBe(false);
+    expect(awaitsTransition(null)).toBe(false);
+  });
+
+  it("the server still has the act end: a sent plan or choice starts over with its tries left", () => {
+    const r = onWelcome(thinking, later);
+    expect(r).toEqual({ set: actEnded(later) });
+    expect(onWelcome(picked, later)).toEqual({ set: actEnded(later) });
+    expect(onWelcome(actEnded(end), later)).toEqual({ keep: true });
+    expect(onWelcome(null, later)).toEqual({ set: actEnded(later) });
+  });
+
+  it("the server has moved on: a waiting page stays for the resent act_transition; any other goes", () => {
+    expect(onWelcome(picked, undefined)).toEqual({ keep: true });
+    expect(onWelcome(thinking, undefined)).toEqual({ keep: true });
+    expect(onWelcome(actEnded(end), undefined)).toEqual({ set: null });
+    expect(onWelcome(null, undefined)).toEqual({ keep: true });
   });
 });
