@@ -155,10 +155,10 @@ def rod(name, a, b, r, m, group='arch', seg=7, caster=False):
     return cyl(name, 0, 0, 0, d.length, r, r * 0.8, seg, m, group, tile=1.0, caster=caster, cap=False, xform=xf)
 
 
-def rock(name, x, y, z, r, m, squash=0.6, seed=0, group='arch', caster=True):
+def rock(name, x, y, z, r, m, squash=0.6, seed=0, group='arch', caster=True, subdiv=2):
     """a limestone outcrop: a lumpy icosahedron, flattened and partly sunk into the ground"""
     bm = bmesh.new()
-    bmesh.ops.create_icosphere(bm, subdivisions=2, radius=1.0)
+    bmesh.ops.create_icosphere(bm, subdivisions=subdiv, radius=1.0)
     for v in bm.verts:
         n = noise.noise(v.co * 1.3 + Vector((seed, seed * 0.7, 3.1))) * 0.35 + noise.noise(v.co * 3.1 + Vector((seed, 1, 0))) * 0.12
         v.co = Vector((x + v.co.x * r * (1 + n), y + v.co.y * r * 0.8 * (1 + n), z + v.co.z * r * squash * (1 + n)))
@@ -170,7 +170,8 @@ def rock(name, x, y, z, r, m, squash=0.6, seed=0, group='arch', caster=True):
 def tree(name, x, y, h, r, m_leaf, m_bark, shape='round', z=0.0, group='arch', lean=(0.0, 0.0)):
     """white poplar ('spread': broad, ragged, see-through crown on a leaning trunk; not the columnar Lombardy poplar,
     a later cultivar), holm oak ('round'), willow ('weep': wide, hanging, leaning trunk)"""
-    th = h * 0.45
+    th = h * (0.33 if shape == 'spread' else 0.45)   # white poplar: the crown starts in the trunk's lower third
+    crowns = []   # (centre, radius, z scale) of every blob, for the leaf cards
     tx, ty = x + lean[0] * th, y + lean[1] * th
     rod(name + '_trunk', (x, y, z - 0.3), (tx, ty, z + th), 0.22, m_bark, group, caster=True)
     bm = bmesh.new()
@@ -182,15 +183,33 @@ def tree(name, x, y, h, r, m_leaf, m_bark, shape='round', z=0.0, group='arch', l
             a = a if a is not None else a_prev + math.pi * rr.uniform(0.7, 1.1)
             a_prev = a
             rod(f'{name}_limb{i}', (tx, ty, z + th - 0.2),
-                (tx + math.cos(a) * r * 0.4, ty + math.sin(a) * r * 0.4, z + h * 0.62), 0.12, m_bark, group, caster=True)
+                (tx + math.cos(a) * r * 0.4, ty + math.sin(a) * r * 0.4, z + h * 0.58), 0.12, m_bark, group, caster=True)
         for i in range(7):
             a = 2 * math.pi * i / 7 + rr.uniform(-0.35, 0.35)
             d = r * rr.uniform(0.15, 0.7)
-            cx, cy, cz = tx + math.cos(a) * d, ty + math.sin(a) * d, z + h * rr.uniform(0.45, 0.92)
-            g = bmesh.ops.create_icosphere(bm, subdivisions=2, radius=r * rr.uniform(0.34, 0.48))
+            cx, cy, cz = tx + math.cos(a) * d, ty + math.sin(a) * d, z + h * rr.uniform(0.36, 0.9)
+            rad = r * rr.uniform(0.34, 0.48)
+            crowns.append((Vector((cx, cy, cz)), rad, 0.85))
+            g = bmesh.ops.create_icosphere(bm, subdivisions=2, radius=rad)
             for v in g['verts']:
                 n = noise.noise(v.co * 1.9 + Vector((x, y, i))) * 0.35
                 v.co = Vector((cx + v.co.x * (1 + n), cy + v.co.y * (1 + n), cz + v.co.z * 0.85 * (1 + n)))
+    elif shape == 'round':
+        # holm oak: one round, dense mass (not the flat-topped clumps of a stone pine): a core and lobes round it,
+        # bulging up as much as out
+        rr = random.Random(int(round(x * 100)) * 7919 + int(round(y * 100)))
+        cz0 = z + h * 0.62
+        lobes = [(0.0, 0.0, 0.0, 0.72)] + [(math.cos(2 * math.pi * i / 6 + 0.4 * i), math.sin(2 * math.pi * i / 6 + 0.4 * i),
+                                             (0.25 if i % 2 else -0.15), 0.5) for i in range(6)]
+        for i, (ux, uy, uz, s_) in enumerate(lobes):
+            cx, cy, cz = tx + ux * r * 0.45, ty + uy * r * 0.45, cz0 + uz * h * 0.25
+            # the core smooth, the lobes coarser (they stand 28 m off and more; the pack's bytes are tight)
+            rad = r * s_ * rr.uniform(0.9, 1.1)
+            crowns.append((Vector((cx, cy, cz)), rad, 0.95))
+            g = bmesh.ops.create_icosphere(bm, subdivisions=2 if i == 0 else 1, radius=rad)
+            for v in g['verts']:
+                n = noise.noise(v.co * 1.7 + Vector((x, y, i))) * 0.22
+                v.co = Vector((cx + v.co.x * (1 + n), cy + v.co.y * (1 + n), cz + v.co.z * 0.95 * (1 + n)))
     else:
         k = 8 if shape == 'weep' else 5
         for i in range(k):
@@ -212,7 +231,56 @@ def tree(name, x, y, h, r, m_leaf, m_bark, shape='round', z=0.0, group='arch', l
         f.smooth = True
     bm.normal_update()
     box_uv_bm(bm, 1.6)
-    return obj_from_bm(name + '_leaves', bm, [m_leaf], group, True)
+    o = obj_from_bm(name + '_leaves', bm, [m_leaf], group, True)
+    if crowns:
+        rr = random.Random(int(round(x * 100)) * 104729 + int(round(y * 100)))
+        leaf_cards(name + '_cards', crowns, 9 if shape == 'spread' else 7, 1.5 if shape == 'spread' else 1.0,
+                   m_leaf, group, rr)
+    return o
+
+
+def leaf_cards(name, crowns, per, size, m, group, rr, droop=False, uv_tile=1.6):
+    """leaf cards over a crown's blobs (UX round 2: the blobs alone read as low-poly balls): small hexagons of the
+    alpha-tested leaf texture (a random piece of its 1.6 m tile, the blobs' scale), standing out of the blob surfaces so
+    the crown's edge is ragged and lets the sky through. Their normals point out of the crown (not across the card), so
+    a crown is lit as one mass. Not shadow casters: the blobs cast the crown's shadow. droop: hanging, facing out
+    sideways (the willow)"""
+    bm = bmesh.new()
+    uvl = bm.loops.layers.uv.new('UVMap')
+    normals = []
+    up = Vector((0, 0, 1))
+    for c, rad, sz in crowns:
+        for _ in range(per):
+            d = Vector((rr.gauss(0, 1), rr.gauss(0, 1), rr.gauss(0, 1) + (0.0 if droop else 0.35))).normalized()
+            p = c + Vector((d.x, d.y, d.z * sz)) * rad * rr.uniform(0.7, 1.05)
+            if droop:
+                nrm = Vector((d.x, d.y, 0.0)).normalized() if d.xy.length > 1e-3 else Vector((1, 0, 0))
+                t = nrm.cross(up).normalized()
+                b = -up
+                a = rr.uniform(-0.35, 0.35)
+            else:
+                nrm = (d + Vector((rr.gauss(0, 0.5), rr.gauss(0, 0.5), rr.gauss(0, 0.5)))).normalized()
+                t = nrm.cross(up if abs(nrm.z) < 0.9 else Vector((1, 0, 0))).normalized()
+                b = nrm.cross(t)
+                a = rr.uniform(0, 2 * math.pi)
+            t, b = t * math.cos(a) + b * math.sin(a), b * math.cos(a) - t * math.sin(a)
+            half = size * 0.5 * rr.uniform(0.8, 1.2)
+            u0, v0 = rr.random(), rr.random()
+            out = (Vector(((p - c).x, (p - c).y, (p - c).z / sz)).normalized() + up * 0.3).normalized()
+            vs, uvs = [], []
+            for k in range(6):
+                q = 2 * math.pi * (k + 0.5) / 6
+                lx, ly = math.cos(q) * half, math.sin(q) * half * (1.4 if droop else 1.0)
+                vs.append(bm.verts.new(p + t * lx + b * ly))
+                uvs.append((u0 + lx / uv_tile, v0 + ly / uv_tile))
+                normals.append(out)
+            f = bm.faces.new(vs)
+            for l, uv in zip(f.loops, uvs):
+                l[uvl].uv = uv
+    bm.normal_update()
+    o = obj_from_bm(name, bm, [m], group, False)
+    o.data.normals_split_custom_set_from_vertices(normals)
+    return o
 
 
 def gable(name, x0, x1, y0, y1, z, m_roof, m_wall, pitch_deg=35, over=0.35, group='arch'):

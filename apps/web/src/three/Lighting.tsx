@@ -44,10 +44,17 @@ export const lightState = {
   faceExposure: 1,
   sunDir: new Vector3(0, 1, 0),
   sunUp: true,
+  direct: 0, // the sun's intensity after the ridge (the test hook reads it)
 };
 
-// the test hook regenerates the environment at once instead of after the debounce
-export const lighting = { settle: () => {} };
+// the test hook regenerates the environment at once instead of after the debounce; sunGain: how much direct sun gets
+// past the scene's ridge (scene/extra.ts, F-10), also taking the glow round the sun out of the sky that lights it
+export const lighting = {
+  settle: () => {},
+  sunGain: ((): number => 1) as (elevDeg: number, azimuthDeg: number) => number,
+  // the sky drawn as for a sun this high, the sun itself where it is (F-10 card 5: act 2's sky as at −1.5°)
+  skyElevDeg: undefined as number | undefined,
+};
 
 const SHADOW_HALF = 36; // metres either side of the shadow box (S7)
 
@@ -358,18 +365,23 @@ export function Lighting({
       lightState.exposure = look.exposure;
       lightState.sunUp = pos.dir[1] > -0.02;
       FOG.sunDir.value.copy(lightState.sunDir);
+      const se = MathUtils.degToRad(lighting.skyElevDeg ?? pos.elevDeg);
+      const sl = sunLook(MathUtils.radToDeg(se));
+      const k = Math.cos(se) / Math.hypot(pos.dir[0], pos.dir[2]);
       for (const s of [sky, envSky]) {
         const u = s.material.uniforms;
-        u.sunPosition!.value.copy(lightState.sunDir);
-        u.uSkyGain!.value = look.skyGain;
-        u.uDusk!.value = look.dusk;
-        u.uNightSky!.value = look.nightSky;
-        u.uBelt!.value = look.belt;
-        u.uAmber!.value = look.amber;
+        u.sunPosition!.value.set(pos.dir[0] * k, Math.sin(se), pos.dir[2] * k);
+        u.uSkyGain!.value = sl.skyGain;
+        u.uDusk!.value = sl.dusk;
+        u.uNightSky!.value = sl.nightSky;
+        u.uBelt!.value = sl.belt;
+        u.uAmber!.value = sl.amber;
       }
       const [r, g, b] = kelvinRGB(look.kelvin);
       sun.color.setRGB(r, g, b, SRGBColorSpace);
-      sun.intensity = look.intensity;
+      const gain = lighting.sunGain(pos.elevDeg, pos.azimuthDeg);
+      lightState.direct = sun.intensity = look.intensity * gain;
+      envSky.material.uniforms.mieDirectionalG!.value = 0.8 * gain;
       const [dr, dg, db] = kelvinRGB(look.kelvin + 300);
       (disc.material as ShaderMaterial).uniforms.uColor!.value.setRGB(
         dr,

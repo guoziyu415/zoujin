@@ -23,7 +23,7 @@ dest() { if [ -n "$OUT" ]; then echo "$OUT/$1"; else echo "$SCENES/$1/build"; fi
 echo "work dir $WORK, output ${OUT:-$SCENES/<pack>/build} ($Q)"
 
 # what pack_scene.mjs records as this scene's own inputs (in place of the plaza's build.sh and scene script)
-export SCENE_INPUTS="assets/pipeline/road/build.sh,assets/pipeline/road/road_tex.py,assets/pipeline/plaza/placeholder_tex.py,assets/pipeline/road/bl.py,assets/pipeline/road/build_road_river.py,assets/pipeline/road/merge_river.mjs"
+export SCENE_INPUTS="assets/pipeline/road/build.sh,assets/pipeline/road/road_tex.py,assets/pipeline/plaza/placeholder_tex.py,assets/pipeline/road/bl.py,assets/pipeline/road/build_road_river.py,assets/pipeline/road/merge_river.mjs,assets/pipeline/road/small_tex.mjs"
 export SCENE_BUILD="assets/pipeline/road/build.sh"
 export SCENE_ROT_DEG=0 SCENE_MINUS_X_AZ=270   # plan +x = east, no rotation (homeward-road.md 0)
 export BAKE_RES=1024   # 80 m of ground at 8 cm a texel; the sun's shadows are drawn live, the bake is sky light and occlusion
@@ -57,6 +57,7 @@ for STATE in calm flood; do
     step "$PACK: bake";  (cd "$W" && "$PY" "$PLAZA/bake.py" -- "$Q")
     step "$PACK: encode"; "$PY" "$PLAZA/encode.py"
     step "$PACK: pack";  node "$PLAZA/pack_scene.mjs" "$W" "$SCENES/$PACK/layout.json" "$(dest "$PACK")"
+    node "$HERE/small_tex.mjs" "$W" "$(dest "$PACK")"
   )
 done
 

@@ -44,6 +44,9 @@ export const highTier = { fetch: (): Promise<void> => Promise.resolve() };
 
 export type ScenePacks = readonly { sceneId: string; assetUrl: string }[];
 
+// the first entry; every other scene loads through scene/extra.ts, its own chunk (F-10)
+const PLAZA = "scene.syracuse-square";
+
 export function World({
   onStage,
   packs,
@@ -55,6 +58,9 @@ export function World({
   const sceneId = useWorld((s) => s.world?.sceneId);
   const crowd = useWorld((s) => crowdCount(s.world?.characters, flags.crowd));
   const base = sceneId ? sceneBase(sceneId, packs) : null;
+  const plaza = sceneId === PLAZA;
+  // the act picks the pack of a scene that has one per act (the road's river)
+  const act = useWorld((s) => (plaza ? undefined : s.world?.actId));
   const [scene, setScene] = useState<LoadedScene | null>(null);
   const checkHigh = useRef<() => void>(() => {});
 
@@ -68,7 +74,10 @@ export function World({
       onStage(s);
     };
     const bytes = (n: number) => (loadInfo.bytes = n);
-    loadWalkable(base, bytes)
+    (plaza
+      ? loadWalkable(base, bytes)
+      : import("./scene/extra").then((m) => m.load(base, act, bytes, three))
+    )
       .then(async (s) => {
         if (!alive) return;
         loaded = s;
@@ -110,9 +119,13 @@ export function World({
       });
     return () => {
       alive = false;
-      if (loaded) three.remove(loaded.root);
+      const l = loaded;
+      if (!l) return;
+      three.remove(l.root);
+      setScene(null);
+      void import("./scene/extra").then((m) => m.dispose(l));
     };
-  }, [base, gl, three, camera, onStage]);
+  }, [base, plaza, act, gl, three, camera, onStage]);
 
   // the high tier's textures: downloaded in the background once the level is L2 / L3, swapped at a cut (quality.ts)
   useEffect(() => {

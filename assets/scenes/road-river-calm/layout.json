@@ -15,12 +15,46 @@
   "ridgeElevationDeg": 7,
   "water": {
     "kind": "calm",
+    "horizonDeg": 4,
+    "bankM": 1.8,
     "node": "water",
     "levelM": -2.0,
     "fog": {
-      "heightM": 2.8,
+      "heightM": 3.4,
       "edgeM": 3
-    }
+    },
+    "about": "plan coordinates (layout.json); the page turns them into glTF. channelPlan: the channel's centre line [x, y] and half width at the calm water's level, every 5 m (build_road_river.py: P_MAIN / P_SHALLOW, wiggle, meander): the mist lies over it; horizonDeg, bankM: how high the hills round the valley stand seen from the water, and the banks over it (what the water mirrors low down, not the bright sky behind them)",
+    "channelPlan": [
+      [2.12, -70, 3.83],
+      [3.5, -65, 3.83],
+      [4.1, -60, 3.83],
+      [3.94, -55, 3.83],
+      [3.46, -50, 3.83],
+      [3.14, -45, 3.83],
+      [3.1, -40, 3.83],
+      [3.08, -35, 3.83],
+      [2.67, -30, 3.83],
+      [1.84, -25, 3.83],
+      [2.31, -20, 3.83],
+      [2.58, -15, 3.83],
+      [2.58, -10, 3.83],
+      [2.58, -5, 3.83],
+      [2.58, 0, 3.83],
+      [2.58, 5, 3.83],
+      [3.58, 10, 7.13],
+      [3.58, 15, 7.13],
+      [2.69, 20, 3.83],
+      [3.31, 25, 3.83],
+      [3.44, 30, 3.83],
+      [3.19, 35, 3.83],
+      [2.4, 40, 3.83],
+      [1.31, 45, 3.83],
+      [0.51, 50, 3.83],
+      [0.53, 55, 3.83],
+      [1.43, 60, 3.83],
+      [2.78, 65, 3.83],
+      [3.98, 70, 3.83]
+    ]
   },
   "hiTextures": {
     "base": ["road", "grass", "outcrop", "bank", "wood"],

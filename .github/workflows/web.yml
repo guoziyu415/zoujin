@@ -8,6 +8,7 @@ on:
     paths:
       - "apps/web/**"
       - "assets/pipeline/plaza/**"
+      - "assets/pipeline/road/**"
       - "assets/pipeline/package.json"
       - "assets/scenes/**"
       - "assets/budgets.json"
@@ -23,6 +24,7 @@ on:
     paths:
       - "apps/web/**"
       - "assets/pipeline/plaza/**"
+      - "assets/pipeline/road/**"
       - "assets/pipeline/package.json"
       - "assets/scenes/**"
       - "assets/budgets.json"
@@ -62,6 +64,16 @@ jobs:
         with:
           path: ${{ runner.temp }}/scenes/syracuse-square
           key: plaza-draft-${{ hashFiles('assets/pipeline/plaza/**', 'assets/scenes/syracuse-square/layout.json', 'assets/pipeline/package.json', 'pnpm-lock.yaml') }}
+      - name: road river draft build from the cache (F-10, river.spec.ts)
+        id: road
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ runner.temp }}/scenes/road-common
+            ${{ runner.temp }}/scenes/road-river-calm
+            ${{ runner.temp }}/scenes/road-river-flood
+            ${{ runner.temp }}/scenes/road-river
+          key: road-draft-${{ hashFiles('assets/pipeline/road/**', 'assets/pipeline/plaza/**', 'assets/scenes/road-river-calm/layout.json', 'assets/scenes/road-river-flood/layout.json', 'assets/pipeline/package.json', 'pnpm-lock.yaml') }}
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
@@ -70,8 +82,8 @@ jobs:
             assets/pipeline/plaza/requirements.txt
       # B-1's mock for the app shell e2e (Playwright starts it)
       - run: uv sync --locked --all-packages
-      - name: build the plaza (draft lightmaps) when the cache missed
-        if: steps.scene.outputs.cache-hit != 'true'
+      - name: build the plaza and the river (draft lightmaps) where the cache missed
+        if: steps.scene.outputs.cache-hit != 'true' || steps.road.outputs.cache-hit != 'true'
         run: |
           # 自建机器（infra/ci-runner）的镜像里已经装好，那里也没有 sudo
           if [ -z "${ZOUJIN_CI_PREINSTALLED:-}" ]; then
@@ -80,7 +92,9 @@ jobs:
           fi
           uv venv --python 3.13 "$RUNNER_TEMP/bpy"
           uv pip install --python "$RUNNER_TEMP/bpy/bin/python" -r assets/pipeline/plaza/requirements.txt
-          BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/plaza/build.sh draft "$ZOUJIN_SCENE_ROOT/syracuse-square"
+          export BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python"
+          if [ "${{ steps.scene.outputs.cache-hit }}" != true ]; then bash assets/pipeline/plaza/build.sh draft "$ZOUJIN_SCENE_ROOT/syracuse-square"; fi
+          if [ "${{ steps.road.outputs.cache-hit }}" != true ]; then bash assets/pipeline/road/build.sh draft "$ZOUJIN_SCENE_ROOT"; fi
       - name: unit tests (navmesh on the built plaza, sun)
         run: pnpm --filter @zoujin/web test
       - name: build
@@ -92,7 +106,7 @@ jobs:
         run: |
           if [ -n "${ZOUJIN_CI_PREINSTALLED:-}" ]; then deps=""; else deps="--with-deps"; fi
           pnpm --filter @zoujin/web exec playwright install $deps chromium
-      - name: e2e (world screen; app shell against the mock)
+      - name: e2e (world screen; the river's two acts; app shell against the mock)
         run: pnpm --filter @zoujin/web e2e
       - name: screenshots for UX
         if: ${{ !cancelled() }}

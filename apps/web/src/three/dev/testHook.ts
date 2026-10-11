@@ -1,7 +1,7 @@
 // window.__zoujin with ?test: what the Playwright checks drive and read (apps/web/tests/e2e). Not loaded otherwise.
 import { Vector3 } from "three";
 import { peek } from "../../telemetry/telemetry";
-import { lighting } from "../Lighting";
+import { lighting, lightState } from "../Lighting";
 import { frameStats } from "../PostFX";
 import type { Level } from "../quality/levels";
 import { quality, useQuality, type AssetTier } from "../quality/quality";
@@ -173,6 +173,14 @@ export function installTestHook(): void {
         await nextFrames(4);
       },
       fetchHigh: () => highTier.fetch(),
+      // F-10: the sun's direct light after the ridge; act 2's sky drawn as for a sun this high (undefined: the real
+      // one)
+      direct: () => lightState.direct,
+      skyElev: async (deg?: number) => {
+        lighting.skyElevDeg = deg;
+        lighting.settle();
+        await nextFrames(2);
+      },
       cut: async () => {
         quality.cut(performance.now());
         await nextFrames(2);

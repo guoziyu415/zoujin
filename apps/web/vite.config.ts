@@ -12,7 +12,14 @@ import type { Connect, Plugin } from "vite";
 import { defineConfig } from "vite";
 import { sceneDir } from "./scene-dir.ts";
 
-const SCENES = ["syracuse-square"];
+// the plaza, and the road's river (F-10): its two packs, the shared roadside pack and the index that picks a pack by act
+const SCENES = [
+  "syracuse-square",
+  "road-common",
+  "road-river-calm",
+  "road-river-flood",
+  "road-river",
+];
 const TYPES: Record<string, string> = {
   ".json": "application/json",
   ".glb": "model/gltf-binary",
@@ -94,7 +101,35 @@ const proxy = {
 
 export default defineConfig({
   plugins: [react(), babel({ presets: [compiler] }), runtimeFiles()],
-  build: { manifest: true, target: "es2022" },
+  build: {
+    manifest: true,
+    target: "es2022",
+    rollupOptions: {
+      output: {
+        // the 3D layer stays one chunk (S-083 ⑤ budgets it as one): the lazy chunks that import from it (the scenes
+        // after the plaza, the dev panel, the e2e hook) would otherwise split it into pieces compressed one by one
+        // (about 3 KB more brotli). Only the listed modules, not their dependencies (react stays in the shell); the lazy
+        // ones stay out (the road's extras and water, the crowd past its presence check, the team's tools in dev/).
+        codeSplitting: {
+          groups: [
+            {
+              name: "world",
+              includeDependenciesRecursively: false,
+              test: (id: string) =>
+                /[\\/]node_modules[\\/](three|@react-three[\\/][^\\/]+|suspend-react|its-fine|react-use-measure)[\\/]/.test(
+                  id,
+                )
+                  ? !id.includes("libs/basis")
+                  : /[\\/]src[\\/]three[\\/]/.test(id) &&
+                    !/scene[\\/](extra|land|clouds)|[\\/]water[\\/]|[\\/]dev[\\/]|crowd[\\/](?!presence)/.test(
+                      id,
+                    ),
+            },
+          ],
+        },
+      },
+    },
+  },
   server: { host: "127.0.0.1", proxy },
   preview: { host: "127.0.0.1", proxy },
 });
