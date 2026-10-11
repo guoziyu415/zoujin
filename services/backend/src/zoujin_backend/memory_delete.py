@@ -1,7 +1,7 @@
 """記憶帳的删除（B-13，契约第 4 节删除语义、data-design 5.2 L1 / L2、api-contract 2.7、2.9）。REST 和评测入口共用。
 
 删一条记忆（L1），同一个事务里：
-1. 这条记忆 `text` 置空、写 `deleted_at`（行留着，审计）；
+1. 这条记忆 `text`、`keeps` 置空、写 `deleted_at`（行留着，审计）；
 2. 顺着 `from_events → events.turn_id → utterances.turn_id` 清空整轮原话（玩家和人物的），这几轮里幕末打算的转述按
    B-3 的写法清掉（`store.clear_plan_texts`），这几轮开着的意图确认草稿丢掉；
 3. `promise_id` 指向开着的约定 → 追加一条 `forget` 事件（`origin: "memory"`、`actor: "player"`、`dt: 0`，
@@ -97,7 +97,9 @@ async def delete_memory(
     book = library.version(pt["world_model_version"])
     who = str(row["character"])
     await c.execute(
-        update(memory_items).where(memory_items.c.memory_id == memory_id).values(text=None, deleted_at=func.now())
+        update(memory_items)
+        .where(memory_items.c.memory_id == memory_id)
+        .values(text=None, keeps=None, deleted_at=func.now())
     )
     turn_ids = tuple(
         sorted(
@@ -165,7 +167,8 @@ async def _forget(
             type="forget",
             origin="memory",
             place=w.player_place,
-            summary=f"{name}は、その約束を覚えていない",
+            # 中立的一句：不写「覚えていない」「忘れた」（UX 评审：删除不能在故事里留下痕迹）；这个人物的局势说明不带它
+            summary=f"{name}との約束は、なかったことになった",
             effects=[{"op": "promise", "promiseId": promise_id, "change": "voided"}],
             check={"status": "passed", "attempts": 1, "failedRules": [], "checker": CHECKER},
         )

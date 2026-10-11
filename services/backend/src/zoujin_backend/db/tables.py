@@ -319,9 +319,12 @@ memory_items = Table(
     Column("keeps_done", Boolean, nullable=False, server_default=text("false")),
     _ts("created_at", nullable=False, now=True),
     _ts("deleted_at"),
-    Index("memory_items_character", "playthrough_id", "character"),
+    # 局势说明和算关系只读没删的（数据评审）
+    Index("memory_items_character", "playthrough_id", "character", postgresql_where=text("deleted_at IS NULL")),
 )
 
+# data-design 5.3 的删除清单里还没建的表（局势说明不存库，每次开会话现拼），eval_api 的 db_absent 答 0
+NOT_BUILT = ("briefs",)
 # data-design 5.3 的删除清单里，已经建了的表（eval_api 的 db_absent 查这些）
 PER_PLAYTHROUGH = (
     "playthroughs",

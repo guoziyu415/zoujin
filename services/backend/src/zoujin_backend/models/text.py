@@ -179,13 +179,15 @@ def _ending_broken(request: Mapping[str, Any]) -> Json:
 
 
 def _memory(request: Mapping[str, Any]) -> Json:
-    return {"text": str(request["event"]["summary"])[:40]}
+    """第一条事件的摘要，身份名换成「あの人」、去掉句末的「。」，截到 30 字。"""
+    said = str(request["events"][0]["summary"]).replace(str(request.get("role") or "\0"), "あの人")
+    return {"text": said.rstrip("。")[:30], "weight": 1}
 
 
 def _keeps(request: Mapping[str, Any]) -> Json:
     """有可见的结果才有一句（没有 = null，删除确认里不显示那一行）。"""
     shown = any(e.get("visibleEffects") for e in request.get("events", []))
-    return {"keeps": "そのとき起きたことは、そのまま残ります。" if shown else None}
+    return {"keeps": "そのとき起きたこと" if shown else None}
 
 
 DEFAULTS: dict[str, Callable[[Mapping[str, Any]], Json]] = {

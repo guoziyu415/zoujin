@@ -200,7 +200,7 @@ def test_replay_fixture_is_the_fake_model_recorded(env: Env, monkeypatch: pytest
     text = "".join(json.dumps(c, ensure_ascii=False, sort_keys=True) + "\n" for c in calls)
     if os.environ.get("ZJ_UPDATE_REPLAYS") == "1":
         REPLAYS.write_text(text, encoding="utf-8")
-    # 被否决的那个：改写两次（假模型原样改回）、降级一次（做不到）
+    # 被否决的那个：改写两次（假模型原样改回）、降级一次（做不到）；提交以后给说话的对象写一条印象（B-13）
     assert [c["kind"] for c in calls] == [
         "safety",
         "reply",
@@ -210,6 +210,7 @@ def test_replay_fixture_is_the_fake_model_recorded(env: Env, monkeypatch: pytest
         "rewrite",
         "rewrite",
         "rewrite",
+        "memory",
     ]
     assert REPLAYS.read_text(encoding="utf-8") == text, "回放过期：ZJ_UPDATE_REPLAYS=1 重跑这条测试"
 

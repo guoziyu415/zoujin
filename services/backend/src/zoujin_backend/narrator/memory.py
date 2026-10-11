@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+import unicodedata
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
@@ -23,6 +24,7 @@ from typing import Any
 import jsonschema
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncConnection
+from zoujin_backend.db import store
 from zoujin_backend.db.events import recorded_at
 from zoujin_backend.db.tables import memory_items
 from zoujin_backend.models.armor import DEADLINE_S as ARMOR_DEADLINE_S
@@ -33,12 +35,13 @@ from zoujin_backend.narrator.rules import has_pii
 from zoujin_backend.projection import committed, visible_effects
 from zoujin_backend.trace import Tracer
 from zoujin_backend.world import Book
-from zoujin_worldsim import SimState, apply
+from zoujin_worldsim import SimState, apply, sees
 
 Json = Any
 
 SCHEMA_VERSION = "1.12"  # 写入时的数据契约版本（同 narrator/writer.py）
-MAX_TEXT = 60  # 一句记忆的长度上限（日语字数，契约没写数，数据评审定）
+MAX_TEXT = 30  # 一句记忆的长度上限（NFKC 以后的字数；UX 评审 30，比数据的 40 严，取 30；超了当过滤没过）
+MAX_KEEPS = 30  # 「不会撤销的后果」一句的上限（UX 评审）
 MAX_PER_COMMIT = 3  # 一次提交最多写几条（按 salience 取前几条）
 BRIEF_LIMIT = 8  # 局势说明里带几条（节约档 4 条，E6-007）
 BRIEF_LIMIT_SAVING = 4
@@ -54,33 +57,43 @@ LEVELS: tuple[tuple[int | None, int, str], ...] = (
     (None, 5, "信じている"),
 )
 
-# 事件 → 记忆的对照表：(kind, trustDelta, salience)。对方 = 约定的另一方、beneficiary、为玩家做事的人物；
-# 旁观 = 在场的别的能对话的人物（只写印象）
-PROMISE_MADE = ("promise", 5, 0.8)  # 和玩家立了约定（谁许下的都算）
-PROMISE_KEPT = ("help", 10, 0.7)  # 玩家兑现了对他的约定 / 他兑现了对玩家的约定
-PROMISE_BROKEN = ("harm", -15, 0.8)  # 玩家违背了对他的约定
-HELPED = ("help", 10, 0.7)  # 玩家为他做的事（beneficiary = 他）
-HELPED_YOU = ("shared-moment", 5, 0.6)  # 他为玩家做的事（beneficiary = player）
-TOLD = ("claim", 0, 0.5)  # 玩家告诉了他一件事（learn 效果写明是他）
-WITNESS = ("impression", 2, 0.3)  # 在场看到了玩家做的事
-WITNESS_HARM = ("impression", -5, 0.4)  # 在场看到了玩家违背约定
+# 事件 → 记忆的对照表（数据定，#153 评审）：(kind, trustDelta, salience)。每个人物、每一轮取最靠前的一行
+PROMISE_MADE = ("promise", 5, 0.8)  # 和他立了约定（谁许下的都算）
+PROMISE_KEPT = ("help", 10, 0.8)  # 玩家兑现了和他的约定
+PROMISE_BROKEN = ("harm", -15, 0.9)  # 玩家违背了和他的约定
+HELPED = ("help", 10, 0.7)  # actor = player、beneficiary = 他
+HARMED = ("harm", -10, 0.7)  # actor = player，他的信任类变量降了、他被带走（beneficiary 不是他）
+HELPED_YOU = ("shared-moment", 3, 0.5)  # actor = 他、beneficiary = player
+BEAT = ("shared-moment", 2, 0.6)  # 节拍发生、玩家看得到、他亲历（参与或在场）
+CLAIM = ("claim", 0, 0.5)  # 玩家说自己的事（learn 效果写明他学到了）
+IMPRESSION = ("impression", 0, 0.3)  # 其余 actor = player 的事件（说话、动作）
+ROWS = (PROMISE_MADE, PROMISE_KEPT, PROMISE_BROKEN, HELPED, HARMED, HELPED_YOU, BEAT, CLAIM, IMPRESSION)
+KEY_MOMENT_BONUS = 0.2  # keyMoment 的 salience 加分（上限 1）
+WEIGHT_STEP = 0.1  # 模型给的 weight 1〜3：salience 再加 0.1 × (weight - 1)，上限 1
+DELTA_MIN, DELTA_MAX = -20, 20  # 契约的 trustDelta 范围
 
 # 引号里的命令句（「〜しろ」之类）：记忆里不该有人对谁下命令
 _COMMAND = re.compile(r"[「『][^」』]{0,40}(?:しろ|せよ|なさい|てくれ|ください|やれ|ろ|け)[」』]")
+# 不写记忆的系统事件（节拍照写）
 SKIP_TYPES = frozenset({"forget", "act-transition", "ending", "correction"})
 
 
 @dataclass(frozen=True)
 class Seed:
-    """要写的一条记忆（文字还没有）。"""
+    """要写的一条记忆（文字还没有）：一个人物一轮最多一条，这一轮和他有关的事件合在一起（`events`）。"""
 
     character: str
     kind: str
-    event: Json
+    events: tuple[Json, ...]
     trust_delta: int
-    salience: float
+    salience: float  # 对照表的值加 keyMoment；模型的 weight 在写的时候再加
     via: str
     promise_id: str | None = None
+    t: int = 0
+
+    @property
+    def event(self) -> Json:
+        return self.events[0]
 
 
 @dataclass
@@ -129,35 +142,52 @@ def _party(p: Mapping[str, Any]) -> str | None:
     return None
 
 
-def _event_seeds(book: Book, state: SimState, ev: Json) -> list[Seed]:
-    """一条事件给谁写什么（state 是这条事件之前的状态）。"""
+def _trust_var(character: str, var: str) -> bool:
+    """`var.<他>.trust` 这类变量（人物 ID 的最后一段）。"""
+    short = character.rsplit(".", 1)[-1]
+    return var.endswith(".trust") and short in var.split(".")
+
+
+def _beat_participants(book: Book, ev: Json) -> set[str]:
+    beats = {b["id"]: b for b in book.world["beats"]}
+    out: set[str] = set()
+    for e in ev["effects"]:
+        if e.get("op") == "beat" and e.get("beat") in beats:
+            out |= set(beats[e["beat"]].get("participants", []))
+    return out
+
+
+def _event_rows(book: Book, state: SimState, ev: Json, addressee: str | None) -> dict[str, tuple[int, str, str | None]]:
+    """一条事件给谁哪一行：人物 → (行号, via, promiseId)。state 是这条事件之前的状态。"""
     if not committed(ev) or ev["type"] in SKIP_TYPES:
-        return []
+        return {}
     player_place = state["vars"]["var.player.location"]
-    if ev["actor"] != "player" and ev["place"] != player_place:  # 玩家不在场的事不写（人物在背后兑现的约定也不写）
-        return []
+    if ev["actor"] != "player" and not sees(book.world, player_place, ev):  # 玩家看不到的事不写
+        return {}
     present = _present(state, ev["place"])
+    beat = ev.get("origin") == "schedule" and any(e.get("op") == "beat" for e in ev["effects"])
+    lived = _beat_participants(book, ev) if beat else set()
     told = {e["character"] for e in ev["effects"] if e.get("op") == "learn"}
 
     def via(c: str) -> str | None:
-        if c == ev["actor"] or c in present:
+        if c == ev["actor"] or c in present or c in lived:
             return "witnessed"
         if c in told:
             return "told"
-        return None
+        return None  # 切片不写 rumor
 
-    direct: dict[str, Seed] = {}
+    out: dict[str, tuple[int, str, str | None]] = {}
 
     def put(c: str | None, row: tuple[str, int, float], promise_id: str | None = None) -> None:
-        if c is None or not talkable(book, c) or c in direct:
+        if c is None or c == "player" or not talkable(book, c):
             return
         v = via(c)
         if v is None:
             return
-        kind, delta, salience = row
-        direct[c] = Seed(c, kind, ev, delta, salience, v, promise_id)
+        i = ROWS.index(row)
+        if c not in out or i < out[c][0]:
+            out[c] = (i, v, promise_id)
 
-    harm = False
     for e in ev["effects"]:
         if e.get("op") != "promise" or not e.get("promiseId"):
             continue
@@ -165,51 +195,85 @@ def _event_seeds(book: Book, state: SimState, ev: Json) -> list[Seed]:
             put(_party(e), PROMISE_MADE, e["promiseId"])
             continue
         p = (state.get("promises") or {}).get(e["promiseId"])
-        if p is None or e["change"] == "voided":
+        if p is None or p.get("from") != "player":
             continue
         if e["change"] == "kept":
             put(_party(p), PROMISE_KEPT)
-        elif e["change"] == "broken" and p.get("from") == "player":
+        elif e["change"] == "broken":
             put(_party(p), PROMISE_BROKEN)
-            harm = True
+    b = ev.get("beneficiary")
     if ev["actor"] == "player":
-        b = ev.get("beneficiary")
-        if b and b != "player":
-            put(b, HELPED)
+        put(b, HELPED)
+        for e in ev["effects"]:
+            if e.get("op") == "inc" and e.get("by", 0) < 0:
+                for c in present | told:
+                    if _trust_var(c, str(e.get("var", ""))):
+                        put(c, HARMED)
+            elif e.get("op") == "relocate" and e.get("character") != b:
+                put(e.get("character"), HARMED)
         if ev["type"] == "say":
             for c in told:
-                put(c, TOLD)
-    elif ev.get("beneficiary") == "player":
+                put(c, CLAIM)
+        # 印象：说话只给说话的对象（这一轮的人物），动作给在场的人
+        hearers = {addressee} if ev["type"] == "say" and addressee else present
+        for c in sorted(hearers):
+            put(c, IMPRESSION)
+    elif b == "player":
         put(ev["actor"], HELPED_YOU)
-
-    out = list(direct.values())
-    if direct and ev["actor"] == "player":  # 旁观的人：只写印象
-        for c in sorted(present - set(direct)):
-            if talkable(book, c):
-                kind, delta, salience = WITNESS_HARM if harm else WITNESS
-                out.append(Seed(c, kind, ev, delta, salience, "witnessed"))
+    if beat:
+        for c in sorted(lived | present):
+            put(c, BEAT)
     return out
 
 
-def seeds(book: Book, before: SimState, events: Sequence[Json]) -> list[Seed]:
-    """一次提交的事件要写的记忆，按 salience 取前 `MAX_PER_COMMIT` 条（同分按事件顺序）。"""
+def seeds(book: Book, before: SimState, events: Sequence[Json], addressee: str | None = None) -> list[Seed]:
+    """一次提交（一轮）要写的记忆：每个人物最多一条，这一轮和他有关的事件合在一起，kind 取对照表最靠前的一行；
+    按 salience 取前 `MAX_PER_COMMIT` 个人物（同分按第一次出现的顺序）。addressee：这一轮玩家对谁说。"""
     state = before
-    out: list[Seed] = []
+    best: dict[str, tuple[int, str, str | None, Json]] = {}
+    evs: dict[str, list[Json]] = {}
     for ev in events:
-        out.extend(_event_seeds(book, state, ev))
+        for c, (i, v, pr) in _event_rows(book, state, ev, addressee).items():
+            evs.setdefault(c, []).append(ev)
+            if c not in best or i < best[c][0]:
+                best[c] = (i, v, pr, ev)
         state = apply(book.world, state, ev)
+    out: list[Seed] = []
+    for c, (i, v, pr, ev) in best.items():
+        kind, delta, salience = ROWS[i]
+        mine = evs[c]
+        if any(e.get("keyMoment") for e in mine):
+            salience = min(1.0, salience + KEY_MOMENT_BONUS)
+        lead = [ev, *(e for e in mine if e is not ev)]
+        out.append(
+            Seed(
+                c,
+                kind,
+                tuple(lead),
+                max(DELTA_MIN, min(DELTA_MAX, delta)),
+                round(salience, 3),
+                v,
+                pr,
+                int(ev["t"]),
+            )
+        )
     ranked = sorted(enumerate(out), key=lambda x: (-x[1].salience, x[0]))
     return [s for _, s in ranked[:MAX_PER_COMMIT]]
 
 
-# setup 直接种的记忆（评测入口）：按 kind 取对照表里同一种的数
+def weighted(s: Seed, weight: int) -> float:
+    """模型给的 weight（1〜3）加到 salience 上，夹在这一行的值到 1 之间。"""
+    return round(max(s.salience, min(1.0, s.salience + WEIGHT_STEP * (max(1, min(3, weight)) - 1))), 3)
+
+
+# setup 直接种的记忆（评测入口）：按 kind 取对照表里第一行同一种的数
 BY_KIND = {
     "promise": PROMISE_MADE,
     "help": HELPED,
     "harm": PROMISE_BROKEN,
     "shared-moment": HELPED_YOU,
-    "claim": TOLD,
-    "impression": WITNESS,
+    "claim": CLAIM,
+    "impression": IMPRESSION,
 }
 
 
@@ -236,10 +300,45 @@ def command_like(text: str) -> bool:
     return _COMMAND.search(text) is not None
 
 
-def rule_ok(text: str) -> bool:
-    """第一、三道过滤：个人信息规则（和 R6 同一套）、长度、引号里的命令句。"""
+def tidy(text: str) -> str:
+    """去掉整句外面的「」『』和句末的「。」（前端会加引号，UX 评审）。"""
     t = text.strip()
-    return bool(t) and len(t) <= MAX_TEXT and not has_pii(t) and not command_like(t)
+    while len(t) >= 2 and t[0] in "「『" and t[-1] in "」』":
+        t = t[1:-1].strip()
+    return t.rstrip("。．.").strip()
+
+
+def length(text: str) -> int:
+    """长度按 NFKC 以后的字数（含标点，数据评审）。"""
+    return len(unicodedata.normalize("NFKC", text))
+
+
+def rule_ok(text: str, role_name: str | None = None) -> bool:
+    """第一、三道过滤：个人信息规则（和 R6 同一套）、长度（超了不截断）、引号里的命令句、身份名（UX 评审：
+    记忆里提到玩家用「あなた」「あの人」，契约 1.8 的身份名替换只管 summary）。"""
+    t = text.strip()
+    return (
+        bool(t)
+        and length(t) <= MAX_TEXT
+        and not has_pii(t)
+        and not command_like(t)
+        and not (role_name and role_name in t)
+    )
+
+
+# 「不会撤销的后果」一句里不能有的：代词（用名字）、记得和忘记（UX 评审）
+_KEEPS_BANNED = ("彼女", "彼", "覚え", "忘れ")
+
+
+def keeps_ok(text: str) -> bool:
+    t = text.strip()
+    return (
+        bool(t)
+        and length(t) <= MAX_KEEPS
+        and not has_pii(t)
+        and not command_like(t)
+        and not any(w in t for w in _KEEPS_BANNED)
+    )
 
 
 def persona(book: Book, character: str) -> Json:
@@ -252,13 +351,14 @@ def persona(book: Book, character: str) -> Json:
 
 
 def request(book: Book, role_id: str, s: Seed) -> Json:
-    """提示 `memory` 的请求：事件的 summary、visibleEffects，人物的人设摘要，via。不给原话。"""
+    """提示 `memory` 的请求：这一轮和他有关的事件的 summary、visibleEffects，人物的人设摘要，via。不给原话。
+    `role` 只让模型知道玩家是谁，提示里要求不写进句子（过滤也挡）。"""
     return {
         "character": persona(book, s.character),
         "role": book.roles[role_id]["name"],
         "kind": s.kind,
         "via": s.via,
-        "event": {"summary": s.event["summary"], "visibleEffects": visible_effects(book, s.event["effects"])},
+        "events": [{"summary": e["summary"], "visibleEffects": visible_effects(book, e["effects"])} for e in s.events],
     }
 
 
@@ -277,9 +377,10 @@ class Memorizer:
     async def write(self, book: Book, pid: str, role_id: str, todo: Sequence[Seed], **span: object) -> Written:
         out = Written()
         got = await asyncio.gather(*(self._one(book, role_id, s, out, **span) for s in todo))
-        for s, text in zip(todo, got, strict=True):
-            if text is None:
+        for s, one in zip(todo, got, strict=True):
+            if one is None:
                 continue
+            text, weight = one
             out.rows.append(
                 {
                     "memory_id": self.ids.new("mem"),
@@ -288,17 +389,17 @@ class Memorizer:
                     "character": s.character,
                     "kind": s.kind,
                     "text": text,
-                    "from_events": [s.event["eventId"]],
-                    "t": s.event["t"],
+                    "from_events": [e["eventId"] for e in s.events],
+                    "t": s.t,
                     "trust_delta": s.trust_delta,
-                    "salience": s.salience,
+                    "salience": weighted(s, weight),
                     "via": s.via,
                     "promise_id": s.promise_id,
                 }
             )
         return out
 
-    async def _one(self, book: Book, role_id: str, s: Seed, out: Written, **span: object) -> str | None:
+    async def _one(self, book: Book, role_id: str, s: Seed, out: Written, **span: object) -> tuple[str, int] | None:
         kind = "memory"
         model, version = model_and_version(kind)
         req = request(book, role_id, s)
@@ -336,13 +437,13 @@ class Memorizer:
                 out.failed += 1
                 sp.set(status="error")
                 return None
-            text = str(r.output["text"]).strip()
-            ok = rule_ok(text) and await self._armor_ok(text, out)
+            text = tidy(str(r.output["text"]))
+            ok = rule_ok(text, book.roles[role_id]["name"]) and await self._armor_ok(text, out)
             sp.set(status="ok" if ok else "filtered", cost_usd=round(r.cost_usd, 6))
             if not ok:
                 out.filtered += 1
                 return None
-            return text
+            return text, int(r.output.get("weight", 1))
 
     async def _armor_ok(self, text: str, out: Written) -> bool:
         """第二道过滤（`sanitizeModelResponse`）：注入、RAI HIGH、SDP、恶意链接任一命中就不写。
@@ -399,7 +500,34 @@ async def memories_for_brief(c: AsyncConnection, pid: str, who: str, limit: int 
             .limit(limit)
         )
     ).all()
-    return [str(r.text) for r in sorted(rows, key=lambda r: r.t) if r.text]
+    return [str(text) for text, _ in sorted(rows, key=lambda r: r[1]) if text]
+
+
+async def forgotten_facts(c: AsyncConnection, book: Book, pid: str, who: str) -> frozenset[str]:
+    """删了的记忆的来源事件里他学到的事实（`learn`）和即兴设定（`improv`），减去别的提交事件也教过他的
+    （局势说明不带，`gateway/brief.py`）。"""
+    gone = (
+        await c.scalars(
+            select(memory_items.c.from_events).where(
+                memory_items.c.playthrough_id == pid,
+                memory_items.c.character == who,
+                memory_items.c.deleted_at.is_not(None),
+            )
+        )
+    ).all()
+    dropped = {str(e) for evs in gone for e in evs}
+    if not dropped:
+        return frozenset()
+    learned: dict[str, set[str]] = {}  # 事实 → 教过他的事件
+    for ev in await store.event_log(c, pid, book.version):
+        if not committed(ev):
+            continue
+        for e in ev["effects"]:
+            if e.get("op") == "learn" and e.get("character") == who:
+                learned.setdefault(str(e["fact"]), set()).add(str(ev["eventId"]))
+            elif e.get("op") == "improv" and e.get("character") == who:  # 即兴设定：玩家告诉他的（rf_ ID）
+                learned.setdefault(str(e["factId"]), set()).add(str(ev["eventId"]))
+    return frozenset(f for f, by in learned.items() if by and by <= dropped)
 
 
 def item_json(row: Mapping[str, Any]) -> Json:
@@ -447,6 +575,8 @@ async def keeps(
         "character": book.characters[row["character"]]["name"],
         "events": [{"summary": e["summary"], "visibleEffects": visible_effects(book, e["effects"])} for e in evs],
         "promise": {"text": promise["text"], "status": promise["status"]} if promise else None,
+        # 约定会作废时，句子里不写这个约定（下一行就是「この約束も、なかったことになります」，UX 评审）
+        "voidsPromise": bool(promise and promise["status"] == "open"),
     }
     with tracer.span("gateway.keeps", provider=spec(kind).provider, model=model, prompt_version=version, **span) as sp:
         try:
@@ -468,8 +598,8 @@ async def keeps(
         got = r.output["keeps"]
         if got is None:
             return None, True, r.cost_usd
-        got = str(got).strip()
-        if not rule_ok(got):
+        got = tidy(str(got))
+        if not keeps_ok(got):
             sp.set(status="filtered")
             return None, False, r.cost_usd
         return got, True, r.cost_usd

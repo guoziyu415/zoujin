@@ -46,7 +46,12 @@ def upgrade() -> None:
         sa.Column("created_at", postgresql.TIMESTAMP(timezone=True), server_default=sa.func.now(), nullable=False),
         sa.Column("deleted_at", postgresql.TIMESTAMP(timezone=True), nullable=True),
     )
-    op.create_index("memory_items_character", "memory_items", ["playthrough_id", "character"])
+    op.create_index(
+        "memory_items_character",
+        "memory_items",
+        ["playthrough_id", "character"],
+        postgresql_where=sa.text("deleted_at IS NULL"),
+    )
     op.add_column(
         "playthrough_metrics", sa.Column("cost_memory_usd", sa.Numeric(12, 6), server_default="0", nullable=False)
     )

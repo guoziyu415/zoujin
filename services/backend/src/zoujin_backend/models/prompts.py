@@ -280,8 +280,11 @@ MEMORY = Prompt(
     text("memory"),
     {
         "type": "object",
-        "properties": {"text": {"type": "string", "minLength": 1}},
-        "required": ["text"],
+        "properties": {
+            "text": {"type": "string", "minLength": 1},
+            "weight": {"type": "integer", "minimum": 1, "maximum": 3},
+        },
+        "required": ["text", "weight"],
         "additionalProperties": False,
     },
 )

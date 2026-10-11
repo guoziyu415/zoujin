@@ -55,6 +55,7 @@ from zoujin_backend.db import store
 from zoujin_backend.db.events import recorded_at, to_row
 from zoujin_backend.db.store import Run
 from zoujin_backend.db.tables import (
+    NOT_BUILT,
     PER_PLAYTHROUGH,
     endings,
     memory_items,
@@ -802,8 +803,8 @@ class Session:
     # —— 记忆和删除（B-13） ——
 
     def delete_memory(self, character: str, from_step: int) -> Json:
-        """删这个人物来源于第 from_step 步提交的事件的那条记忆（和 REST 同一个函数）。没有这样的记忆：什么都不删，
-        `deleted` 是 None（之后的检查照常判）。"""
+        """删这个人物来源于第 from_step 步提交的事件的那条记忆（和 REST 同一个函数；一个人物一轮最多一条，所以唯一）。
+        没有这样的记忆 → ValueError（评测报错，不静默成功）。"""
         self._run(self._flush())
         self.steps += 1
         turn_id = self.turns.get(from_step)
@@ -828,8 +829,8 @@ class Session:
                     (r["memory_id"] for r in await memory.alive(c, self.pid, character) if ids & set(r["from_events"])),
                     None,
                 )
-                if target is None:
-                    return {"events": [], "clockMinutes": 0, "deleted": None}
+                if target is None:  # 不静默成功（数据评审）：评测报错
+                    raise ValueError(f"{character} 没有来源于这一步的记忆")
                 d = await memory_delete.delete_memory(c, self.library, self.ids, self.schemas, self.pid, target)
                 evs = await store.event_log(c, self.pid, self.book.version, after_seq=(d.seq or 1) - 1)
         finally:
@@ -915,7 +916,8 @@ class Session:
             await engine.dispose()
 
     def db_absent(self, tables: Sequence[str]) -> Mapping[str, int]:
-        """每张表里还剩这一局（删了的那一局，没删过就是现在这一局）几行。还没建的表（`briefs` 等）答 0。"""
+        """每张表里还剩这一局（删了的那一局，没删过就是现在这一局）几行。data-design 5.3 里还没建的表
+        （`NOT_BUILT`，局势说明不存库）答 0；名单外不认识的表名不答（评测报「后端没回这张表」，数据评审）。"""
         return self._run(self._db_absent(tables))
 
     async def _db_absent(self, tables: Sequence[str]) -> Mapping[str, int]:
@@ -925,8 +927,9 @@ class Session:
         try:
             async with engine.connect() as c:
                 for name in tables:
-                    if name not in PER_PLAYTHROUGH:
+                    if name in NOT_BUILT:
                         out[name] = 0
+                    if name not in PER_PLAYTHROUGH:
                         continue
                     t = metadata.tables[name]
                     n = await c.scalar(select(func.count()).select_from(t).where(t.c.playthrough_id == pid))

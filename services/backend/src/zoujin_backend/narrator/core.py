@@ -673,7 +673,7 @@ class Narrator:
                             book, task.pid, pt["role_id"], pt["status"], w.state, w.state["seq"], w.run
                         )
             pieces = [m["pieceId"] for m in push if m["type"] == "set_piece"]
-            todo = memory.seeds(book, state, w.events)  # B-13：要写的记忆（文字在事务之后由模型写）
+            todo = memory.seeds(book, state, w.events, task.character)  # B-13：要写的记忆（文字在事务之后由模型写）
             role_id = str(pt["role_id"])
             result = Result(
                 task,

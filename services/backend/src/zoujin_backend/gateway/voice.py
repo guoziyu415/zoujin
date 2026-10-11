@@ -123,10 +123,17 @@ class Voices:
             pt = await gw.pt(c, pid)
             st = await store.sim_state(c, pid)
             remembered = await memory.memories_for_brief(c, pid, character)
-        if pt is None or st is None:
-            raise LiveLost("这一局没有状态")
+            if pt is None or st is None:
+                raise LiveLost("这一局没有状态")
+            forgotten = await memory.forgotten_facts(c, pt.book, pid, character)
         return brief.build(
-            pt.book, st, character, self._recent(character), self.conn.monitor.notes(character), remembered
+            pt.book,
+            st,
+            character,
+            self._recent(character),
+            self.conn.monitor.notes(character),
+            remembered,
+            forgotten,
         )
 
     def _recent(self, character: str) -> list[Recent]:

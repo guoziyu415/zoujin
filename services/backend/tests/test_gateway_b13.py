@@ -15,7 +15,7 @@ from zoujin_worldsim import initial_state
 
 from . import test_gateway_b4 as b4
 from .conftest import BOOK, OLD, Env
-from .test_b13 import EXTRACT, OFFER, SUMMARY
+from .test_b13 import EXTRACT, OFFER, REMEMBERED
 from .test_gateway import Player, invite
 from .test_gateway_b4 import InProc, Make, Play, settle
 
@@ -58,7 +58,7 @@ def test_the_commit_carries_the_new_memory_and_promise(env: Env, inproc: Make, p
     s = inproc(SPEED)
     p, commit, _ = promise_turn(s, play)
     (m,) = commit["memories"]
-    assert m["character"] == OLD and m["change"] == "added" and m["kind"] == "promise" and m["text"] == SUMMARY
+    assert m["character"] == OLD and m["change"] == "added" and m["kind"] == "promise" and m["text"] == REMEMBERED
     (pr,) = commit["promises"]
     assert pr["character"] == OLD and pr["direction"] == "playerToCharacter" and pr["status"] == "open"
 
@@ -116,7 +116,8 @@ def test_memory_book_impact_and_delete(env: Env, inproc: Make, play: Play) -> No
     assert forget["promises"][0]["status"] == "voided"
     # 新会话里没有删了的那一轮
     (new,) = s.live.opened[opened:]
-    assert all(r.player != OFFER for r in new.recent) and SUMMARY not in new.system
+    assert all(r.player != OFFER for r in new.recent) and REMEMBERED not in new.system
+    assert "家まで送る" not in new.system and "なかったこと" not in new.system  # 约定和 forget 事件也不在（UX 评审）
 
     # 同一个键重放一样；之后查不到、后果 404、换个键再删 404
     assert p.call("memory-delete", 200, "DELETE", f"{base}/{memory_id}", {}, key="del-1") == gone
