@@ -61,7 +61,10 @@ def test_setup_is_push_to_talk_japanese_and_never_resumable() -> None:
     assert msg["outputAudioTranscription"] == {}
     assert msg["realtimeInputConfig"]["automaticActivityDetection"] == {"disabled": True}
     assert "sessionResumption" not in msg and "session_resumption" not in str(msg)
-    assert msg["generationConfig"]["thinkingConfig"] == {"thinkingLevel": "MINIMAL"}
+    assert "thinkingConfig" not in msg["generationConfig"]  # S-090：设了思考等级 Vertex 不收（项目不在允许名单）
+    assert setup_message(model_path="m", voice="Fenrir", system="SYS", thinking="minimal")["setup"]["generationConfig"][
+        "thinkingConfig"
+    ] == {"thinkingLevel": "MINIMAL"}
     bare = setup_message(model_path="m", voice="Fenrir", system="SYS", thinking=None, hints=False)["setup"]
     assert bare["inputAudioTranscription"] == {} and "thinkingConfig" not in bare["generationConfig"]
 
@@ -210,3 +213,77 @@ def test_unknown_voice_and_quota() -> None:
                 await m.open("char.melos")
 
     run(main)
+
+
+def thinks(setup: Any) -> bool:
+    return "thinkingConfig" in setup["generationConfig"]
+
+
+def test_setup_refusal_says_code_and_reason_without_project() -> None:
+    async def main() -> None:
+        async with running(Script(reject=thinks)) as fake:
+            await (await model(fake).open("char.melos")).close()  # 默认不设思考：建得起来
+
+            async def dial() -> Any:
+                return await connect(fake.url)
+
+            m = GeminiLive(model_path="projects/p/l", voices=VOICES, connect=dial, thinking="minimal")
+            with pytest.raises(LiveLost) as e:
+                await m.open("char.melos")
+        text = str(e.value)
+        assert "关闭码 1007" in text and "thinkingConfig" in text
+        assert "my-proj" not in text and "projects/…" in text
+
+    run(main)
+
+
+def test_probe_tries_each_setup_without_speaking() -> None:
+    from zoujin_backend.live_cli import run_probe
+
+    async def main() -> None:
+        async with running(Script(reject=thinks)) as fake:
+
+            async def dial() -> Any:
+                return await connect(fake.url)
+
+            rows = dict(await run_probe(dial, "projects/p/locations/l/publishers/google/models/m", "Fenrir"))
+            assert all(len(c.got) == 1 for c in fake.conns)  # 只发了 setup
+        assert rows["现在的配置（不设思考）"] == "ok" and rows["最简（同 B-6 预录）"] == "ok"
+        minimal = rows["思考 MINIMAL（ZJ_LIVE_THINKING=minimal）"]
+        assert minimal.startswith("ConnectionClosed") and "1007" in minimal
+        assert rows["思考 LOW（ZJ_LIVE_THINKING=low）"] != "ok"
+
+    run(main)
+
+
+def test_close_note_scrubs() -> None:
+    class Rcvd:
+        code = 1008
+        reason = (
+            "Denied projects/abc-1/x sa@offline-test.iam.gserviceaccount.com "
+            "models/gx-1 12345678 [Session ID: e79198d3-f582]"
+        )
+
+    e = RuntimeError()
+    e.rcvd = Rcvd()  # type: ignore[attr-defined]
+    note = gemini_live.close_note(e)
+    assert (
+        note.startswith("关闭码 1008")
+        and "abc-1" not in note
+        and "offline-test" not in note
+        and "gx-1" not in note
+        and "12345678" not in note
+        and "e79198d3" not in note
+    )
+
+
+def test_close_note_scrubs_bare_names_from_the_model_path() -> None:
+    class Rcvd:
+        code = 1007
+        reason = "Project zj-proj-x in us-central1 cannot use gx-live-1 (zj-proj-x)"
+
+    e = RuntimeError()
+    e.rcvd = Rcvd()  # type: ignore[attr-defined]
+    note = gemini_live.close_note(e, "projects/zj-proj-x/locations/us-central1/publishers/google/models/gx-live-1")
+    assert "zj-proj-x" not in note and "gx-live-1" not in note and "us-central1" not in note
+    assert note.startswith("关闭码 1007：Project … in … cannot use …")
