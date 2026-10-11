@@ -87,6 +87,7 @@ export function installTestHook(): void {
           clips: c.clips(),
           started: { ...c.started },
           at: c.people.map((p) => p.at),
+          pack: c.fromPack,
         };
       },
       player: () => ({

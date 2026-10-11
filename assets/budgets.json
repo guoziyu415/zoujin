@@ -60,5 +60,13 @@
       "texture": 1024
     },
     "sharedAnimsMb": 0.3
+  },
+  "crowd": {
+    "source": "docs/tasks/m2/F-4.md (art-direction 5.5): about 3k triangles a body, the A-0 skeleton less the third finger joints",
+    "packKb": 300,
+    "maxTrisPerBody": 3500,
+    "maxBones": 60,
+    "extraDrawCalls": 8,
+    "motionsKb": 60
   }
 }

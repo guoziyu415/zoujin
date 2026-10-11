@@ -31,7 +31,7 @@ from zoujin_backend.narrator.actions import ACT_ENDED_LINE, CHECKER_MOVE
 from zoujin_backend.narrator.core import Result
 from zoujin_backend.narrator.plans import LABEL_FALLBACK, REFUSAL_FALLBACK
 from zoujin_backend.narrator.writer import Writer
-from zoujin_backend.projection import snapshot
+from zoujin_backend.projection import is_visible, snapshot
 from zoujin_backend.trace import Tracer
 from zoujin_worldsim import initial_state, settle
 
@@ -287,6 +287,34 @@ def test_move_writes_one_event_and_the_patch_has_no_spot(game: Callable[..., Gam
     assert g.seq == seq and g.commits(seq) == []
     shut = g.s.act("move", "place.stonemason-workshop", {})  # beat.06 之前：门关着的固定演出
     assert shut["setPiece"] == "piece.workshop-door-closed"
+
+
+def test_crossing_that_cannot_be_made_is_refused_with_a_rejected_move(game: Callable[..., Game]) -> None:
+    """E5-008：桥冲毁了还要走桥。带 params.crossing 的 move（只有评测这样发，契约 3.8 的 move 没有 params）走不通：
+    action_result 照旧 refused，但和别的动作被否决一样记一条被否决的 move（effects 空，R2-precondition）。"""
+    river = {
+        "effects": [
+            {"op": "set", "var": "var.player.companionOf", "value": "char.melos"},
+            {"op": "set", "var": "var.player.location", "value": "place.river"},
+        ]
+    }
+    g = game("sc.canon@t=5000", world=DRAFT, role="role.shepherd-boy", events=[river])
+    seq = g.seq
+    step = g.s.act("move", "place.mountain-pass", {"crossing": "bridge"})
+    assert (step["status"], step["clockMinutes"]) == ("refused", 0)
+    (ev,) = step["events"]
+    assert (ev["type"], ev["actor"], ev["dt"], ev["effects"]) == ("move", "player", 0, [])
+    assert ev["check"] == {
+        "status": "rejected",
+        "attempts": 1,
+        "failedRules": ["R2-precondition"],
+        "checker": CHECKER_MOVE,
+    }
+    (commit,) = g.commits(seq)  # 被否决的那条也占一个 seq：和别的动作被否决一样，commit 里没有事件、玩家不动
+    assert commit["events"] == [] and "player" not in commit["patch"]
+    assert g.s.state()["vars"]["var.player.location"] == "place.river"
+    plain = g.s.act("move", "place.mountain-pass", {})  # 不说走法的照旧：不写事件
+    assert (plain["status"], plain["events"]) == ("refused", [])
 
 
 def test_affordance_whose_condition_fails_is_refused_with_a_rejected_event(game: Callable[..., Game]) -> None:
@@ -618,6 +646,29 @@ def test_skipped_beats_where_the_player_was_teach_nothing(game: Callable[..., Ga
         e for ev in step["events"][1:] for e in ev["effects"] if e["op"] == "learn" and e["character"] == "player"
     ]
     assert learns == [] and step["pieces"] == []
+
+
+def test_skipped_beats_are_not_pushed_live_or_on_reconnect(game: Callable[..., Game]) -> None:
+    """幕切换第 3 步结算的事件不推（契约 2.8.1，数据 #149）：落在玩家原来地点的婚礼节拍，在场的话会推；第 3 步里
+    commit 不带、补推（2.4 的 view）也不带，只进「その頃」。"""
+    g = game("sc.canon@beat.07", place="place.melos-home")
+    seq = g.s.view()["events"][-1]["seq"] if g.s.view()["events"] else 0
+    step = g.s.choose(CITY)
+    evs = step["events"]
+    player, system = evs[0], evs[-1]
+    assert (player["actor"], player["type"], system["actor"], system["type"]) == (
+        "player",
+        "act-transition",
+        "system",
+        "act-transition",
+    )
+    skipped = evs[1:-1]
+    assert any(is_visible(g.s.book, e, "place.melos-home") for e in skipped)  # 以前的判法会推
+    hidden = {e["eventId"] for e in skipped}
+    msgs = g.commits(seq)
+    assert msgs and msgs[-1]["seq"] == system["seq"]
+    assert not hidden & {e["eventId"] for m in msgs for e in m["events"]}
+    assert not hidden & {e["eventId"] for e in g.s.view(seq)["events"]}
 
 
 def test_catch_up_counts_the_player_present() -> None:

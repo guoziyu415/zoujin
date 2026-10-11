@@ -240,7 +240,7 @@
 | 性格 | 師を慕い、メロスを恨みつつも命を案じる〔since beat.23〕 | 「おうらみ申します。」(55)<br>「いまはご自分のお命が大事です。」(57) | |
 | 动机 | 師を救いたかった。今はメロスの命を守りたい〔since beat.23〕 | 「いまはご自分のお命が大事です。」(57) | |
 | 说话 | 一人称「わたくし」；丁寧（〜でございます、〜居りました）。取り乱しやすい。；开局在做：work | 「もう、駄目でございます。」(53)〔since beat.23〕<br>「ああ、あなたは遅かった。」(55)〔since beat.23〕<br>「ひょっとしたら、間に合わぬものでもない。」(59)〔since beat.23〕 | |
-| 知道 | selinuntius-stonemason@pre、king-killings@pre、hostage-decree@pre、selinuntius-hostage@beat.06、promise@beat.06、selinuntius-steadfast@beat.s1 | — | |
+| 知道 | selinuntius-stonemason@pre、king-killings@pre、hostage-decree@pre、selinuntius-hostage@beat.06、promise@beat.06、friendship@beat.06、selinuntius-steadfast@beat.s1 | — | |
 | 他能为你 | 刑場の今の様子を教える〔推断〕 | 「刑場に引き出されても、平気でいました。」(57) | |
 | 他能为你 | 刑場へ先に走って伝言を届ける〔大事：兑现时算关键时刻〕〔推断〕 | — | |
 | 你能为他 | 道中のメロスの様子を伝える〔推断〕 | — | |

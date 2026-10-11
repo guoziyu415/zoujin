@@ -16,6 +16,7 @@ import { canPress } from "../../voice/state";
 import { voiceSettings } from "../../voice/settings";
 import { useVoiceState } from "../../voice/useVoiceState";
 import { copy } from "../copy";
+import { keyFontPx, phrases } from "./phrases";
 
 const SLIDE_PX = 60;
 
@@ -65,6 +66,7 @@ export function TalkKey() {
               ? copy["talk.tap"]
               : copy["talk.hold"];
   const enabled = canPress(state) || state === "listening";
+  const parts = phrases(label);
 
   function down(e: PointerEvent<HTMLButtonElement>) {
     if (e.button !== 0) return;
@@ -114,8 +116,13 @@ export function TalkKey() {
       onKeyDown={(e) => key(e, true)}
       onKeyUp={(e) => key(e, false)}
       onContextMenu={(e) => e.preventDefault()}
+      style={{ fontSize: keyFontPx(parts) }}
     >
-      {label}
+      {parts.map((p, i) => (
+        <span key={i} className="phrase">
+          {p}
+        </span>
+      ))}
     </button>
   );
 }
