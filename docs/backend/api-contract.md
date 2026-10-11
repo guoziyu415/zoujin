@@ -1,9 +1,9 @@
 # 前后端接口约定（api-contract.md）v1.0.15
 
-负责人：后端 · 状态：**v1.0.15，冻结**（v1.0 在 C-1 冻结；v1.0.1 把 C-1 评审定下的写进正文；v1.0.2 把 B-1 评审定下的几处顺序写进正文；v1.0.3 把 B-0、F-2b 评审和 S-077 ⑫ 定下的写进正文；v1.0.4 把数据契约 1.7 里前端要拿到的几样加进接口；v1.0.5 按 B-3 卡放宽三处 Schema、补一条错误说明；v1.0.6 按 UX 定的文案改下发的事件句和一句叙事，不改形状；v1.0.7 按 B-4 卡写明作废、意图确认的顺序和评测入口的三项，不改形状；v1.0.8 按 B-6 写明录音文件的格式，不改形状；v1.0.9 按 B-7 写明 manifest 的缓存和生成规则、开局时次数和进行中的局谁先查，会话没就绪时缓存整段按住的音频，不改形状；v1.0.10 按 B-9 写明切片结局的取法、推送顺序和站位，不改形状；v1.0.12 写明重连时补推断线期间做完的幕切换，不改形状；v1.0.11 按 B-5 写明模拟局的起点、AI 玩家看的 `view()` 和 `manifest()`、每一步的耗时，只动评测入口；v1.0.15 按 B-9 的 Mac 探针把 `etaSeconds` 的起算从 30 秒改成 15 秒，不改形状）：之后只做加法（第 0 节「版本」），每种消息和响应的 JSON Schema 在 `packages/contracts/schemas/api/`。v0.3 吸收了前端评审 17 条（`frontend/reviews/backend-v0.1.md` 和 frontend-design 第 14 节 1〜17）、数据评审 16 条（`data/reviews/backend-v0.1.md`）、ux-design 18.2 的接口要求，以及 decisions S-022〜S-053、D-012〜D-015。v0.3.2 和数据契约 v1.2 对齐。逐条对照见第 9 节。
+负责人：后端 · 状态：**v1.0.15，冻结**（v1.0 在 C-1 冻结；v1.0.1 把 C-1 评审定下的写进正文；v1.0.2 把 B-1 评审定下的几处顺序写进正文；v1.0.3 把 B-0、F-2b 评审和 S-077 ⑫ 定下的写进正文；v1.0.4 把数据契约 1.7 里前端要拿到的几样加进接口；v1.0.5 按 B-3 卡放宽三处 Schema、补一条错误说明；v1.0.6 按 UX 定的文案改下发的事件句和一句叙事，不改形状；v1.0.7 按 B-4 卡写明作废、意图确认的顺序和评测入口的三项，不改形状；v1.0.8 按 B-6 写明录音文件的格式，不改形状；v1.0.9 按 B-7 写明 manifest 的缓存和生成规则、开局时次数和进行中的局谁先查，会话没就绪时缓存整段按住的音频，不改形状；v1.0.10 按 B-9 写明切片结局的取法、推送顺序和站位，不改形状；v1.0.12 写明重连时补推断线期间做完的幕切换，不改形状；v1.0.11 按 B-5 写明模拟局的起点、AI 玩家看的 `view()` 和 `manifest()`、每一步的耗时，只动评测入口；v1.0.14 加 manifest 的地名、地图和「なぜ」的节拍出处、幕末去处通往的幕，只做加法；v1.0.15 按 B-9 的 Mac 探针把 `etaSeconds` 的起算从 30 秒改成 15 秒，不改形状）：之后只做加法（第 0 节「版本」），每种消息和响应的 JSON Schema 在 `packages/contracts/schemas/api/`。v0.3 吸收了前端评审 17 条（`frontend/reviews/backend-v0.1.md` 和 frontend-design 第 14 节 1〜17）、数据评审 16 条（`data/reviews/backend-v0.1.md`）、ux-design 18.2 的接口要求，以及 decisions S-022〜S-053、D-012〜D-015。v0.3.2 和数据契约 v1.2 对齐。逐条对照见第 9 节。
 数据字段以 `data/contracts.md` 为准（v1.7；标「契约 1.1」「契约 1.2」「契约 1.4」的字段是这几个小版本加的；1.3 加的随身物品不进接口，物品只出现在 `give` 类按钮上；1.6 的结局卡见 2.8；1.7 的位置点、幕末副题和落地、固定演出、可调查物见 2.3、3.8、3.11、3.14），本文只定义传输形状。字段名 camelCase；WebSocket 消息类型 snake_case。
 相关：`backend/backend-design.md` v1.0.9（为什么这么设计）· `frontend/frontend-design.md` · `ux/ux-design.md`
-最近更新：2026-10-11（v1.0.13）
+最近更新：2026-10-11（v1.0.14）
 
 ---
 
@@ -72,6 +72,10 @@
     { "sceneId": "scene.syracuse-square", "places": ["place.syracuse-square", "place.stonemason-workshop", "place.execution-ground"],
       "assetUrl": "/scenes/80778e4c/syracuse-square/scene.json", "assetVersion": "80778e4c" }
   ],
+  "places": [
+    { "placeId": "place.syracuse-square", "name": "シラクスの広場と大路", "sceneId": "scene.syracuse-square" },
+    { "placeId": "place.neighbor-village", "name": "隣村", "sceneId": null }, "…"
+  ],
   "characters": [
     { "id": "char.melos", "name": "メロス", "reading": "メロス", "talkable": true,
       "prerecorded": {
@@ -93,9 +97,10 @@
 }
 ```
 - 生成规则（数据评审第 1 条；v1.0.9 写明只出真能加载的）：
-  - `book` 只有 `id`、`title`、`author`；世界模型的内部字段（`note`、`cite`、`inferred`、变量）不出。
+  - `book` 只有 `id`、`title`、`author`；世界模型的内部字段（`note`、`cite`、`inferred`）不出。
   - `roles`：`release` 不大于开放版次（网关的配置 `ZJ_RELEASE`，第一版 1）、而且开局场景有场景包的身份，世界模型里的顺序。`summary` = `Role.summary`；`startSceneId` = `Role.startPlace` 的 `sceneRef`；`startActId` = `Role.startAct`。
   - `scenes`：有场景包的场景，世界模型里的顺序；`places` = 世界模型里 `sceneRef` 指向它的地点。
+  - `places`（v1.0.14）：世界模型的全部地点，世界模型里的顺序；`name` = `Place.name`，地图节点详情、「谁知道这件事」旁边等要显示地名的地方用（幕末副题照旧用 `act_transition` 带的字）。`sceneId` = `Place.sceneRef`，没有场景、或那个场景没有包（不在 `scenes` 里）时为 `null`。地点的别的字段（`description`、`note`、`cite`、`inferred`、`crossing`、连通关系）不出。manifest 的 `places` 是全书的静态列表，不表示玩家去过或知道这个地方。
   - `acts[].sceneIds` = `Act.scenes` 里有场景包的；一个都没有的幕不出（每一幕至少一个场景）。
   - `characters`：世界模型的全部人物（不只这一版出场的），`reading`、`talkable` 照世界模型。
   - `clock`：`deadlineT` = `clock.deadline.t`，`days` = `clock.labels.days`。`ruby` 照世界模型的注音词表。
@@ -196,7 +201,8 @@
       { "kind": "event", "eventId": "ev_…", "t": 1290, "tLabel": "約束の日・夜", "summary": "あなたがメロスの身元を保証した",
         "place": "place.castle", "style": "player", "causedByPlayer": true, "forPlayer": false, "knownBy": ["char.king", "char.melos"] },
       { "kind": "beat", "beatId": "beat.05", "t": 1320, "tLabel": "約束の日・夜", "title": "王との問答と約束",
-        "status": "altered", "known": true },
+        "status": "altered", "known": true,
+        "cite": [{ "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f", "para": 22, "quote": "願いを、聞いた。その身代りを呼ぶがよい。" }] },
       { "kind": "beat", "beatId": "beat.06", "t": 1410, "tLabel": "約束の日・夜", "known": false }
     ] }
   ],
@@ -206,6 +212,7 @@
 - `style`：`player`（你的举动）、`caused`（因你而起）、`character`（人物自己做的）、`system`。
 - 节拍 `status`：`canon`（原作どおり）、`hastened`、`delayed`、`prevented`、`altered`、`pending`。`canon` 就是契约 `WorldState.beats` 的 `happened`（照原作发生了），其余五个和契约同名。**还没到、或玩家还不知道的节拍 `known: false`**，只给时刻，不给 `title`（不剧透，ux-design 9.1）。
 - `knownBy`：节点详情里的「谁知道这件事」，只列玩家见过的人物。
+- `cite`（v1.0.14）：节拍的原作出处，世界模型 `Beat.cite`（数据契约第 0 节的 `Cite`：原文版本、段落号、≤ 80 字的原句），节点详情列「原作」用（ux-design 9.1）。只在 `known: true` 时给，世界模型里没写出处的节拍省略。出处按玩家此刻知道的过滤（和 E2 同一个口径）：`Beat.cite` 里原句 `quote` 让 `zoujin_worldsim.spoilers(world, state, "player", quote)` 不为空的那条不出（原句带着玩家此刻不知道的事实的剧透词，例：beat.20「悪徳者として生き伸びてやろうか」带 `fact.melos-despair`，beat.s2「ちらと君を疑った」带 `fact.selinuntius-doubted-once`，都是私密的；玩家当时不在场又还没听说的公开事实也一样），其余原样给，全去掉了就省略 `cite`。例子只列了 beat.05 的一条。
 
 ### 2.6 `GET /v1/playthroughs/{id}/why?target=<eventId | beatId | revealId | forecast>`
 「なぜこうなった？」：从目标往回走到玩家的举动或人物的举动。`target=forecast` 回答「为什么梅洛斯现在来不及」。
@@ -215,11 +222,13 @@
   "chain": [
     { "eventId": "ev_A", "seq": 12, "tLabel": "約束の日・夕方", "summary": "あなたが老爺に王のことを尋ねた", "actor": "player" },
     { "eventId": "ev_B", "seq": 30, "tLabel": "約束の日・夜", "summary": "老爺があなたをメロスに引き合わせた", "actor": "char.old-man", "forPlayer": true },
-    { "beatId": "beat.05", "tLabel": "約束の日・夜", "summary": "王はメロスの願いを聞き入れた", "change": "altered" }
+    { "beatId": "beat.05", "tLabel": "約束の日・夜", "summary": "王はメロスの願いを聞き入れた", "change": "altered",
+      "cite": [{ "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f", "para": 22, "quote": "願いを、聞いた。その身代りを呼ぶがよい。" }] }
   ],
   "collapsed": 0
 }
 ```
+- 节拍那一步带 `cite`（v1.0.14）：只在这个节拍在 2.5 里会是 `known: true` 时带，过滤同 2.5，没写出处或全过滤掉时省略。3.4 的 `reveal.chain` 一样。
 - 链按时间正序，每一步都是**事件或节拍**（不是记忆）；`actor` 按 2.4。最长 12 步，超过时中间折叠，`collapsed` 给折叠了几步。
 - 只讲发生了的事：被否决的候选事件不进链（数据评审第 7 条）。
 - 叙事者「导演」的事件（S-031 ②）在链上和别的事件一样，按它在故事里的行为者显示；它的上一步一定是玩家或人物的举动（S-045、ux-design 8.6）。
@@ -431,7 +440,7 @@
 - **序号**：一局只有一个 `seq` 序列。`commit` 覆盖 `fromSeq`〜`seq` 这一段（含两端），中间不可见的事件（3.7）也算在内。前端记住上一次的 `seq`；新 `commit.fromSeq` ≠ 上次 `seq + 1` 时，用 2.4 补拉再取快照。全是不可见事件的提交（例：玩家不在场的人物打算）也推一条 `events: []` 的 `commit`，让序号接得上。
 - `patch` 的字段都是快照（2.3）字段的增量，按 id 合并（人物进场时带完整的 `CharacterPresence`，`group` 的人物也带 `group: true`，v1.0.5）；`actions` 和 `interactables` 用 `add` / `remove`，`add` 里的 id 已经有了就整条替换（例：`enabled` 变了）。`clock` 必带 `t`、`tLabel`，`deadlineT` 可省。`voice`、`status` 不走 `patch`。
 - `memories[].change`：`added` / `updated` / `deleted`；記憶帳的查询失效重拉。`added`、`updated` 必带 `text` 和 `kind`，`deleted` 不带。
-- `reveal`：关键时刻（S-041 的 4 种，3.4.1），**直接带上因果链**，不用再调 `/why`（前端建议第 8 条）。链和 `/why` 一样最长 12 步，超过时中间折叠，`reveal.collapsed` 给折叠了几步；没折叠时省略。
+- `reveal`：关键时刻（S-041 的 4 种，3.4.1），**直接带上因果链**，不用再调 `/why`（前端建议第 8 条）。链和 `/why` 一样最长 12 步，超过时中间折叠，`reveal.collapsed` 给折叠了几步；没折叠时省略。链里节拍那一步的 `cite` 按 2.6（v1.0.14）。
 - `cue`：服务端在某个时刻触发的一句固定台词，没有时为 `null`。现在只有一种：`{ "kind": "arrival_capped", "speaker": "char.melos", "text": "……これなら、間に合う。" }`——这一局梅洛斯的预计到达第一次落在到达下限（17:30）的那次提交（S-066 ①，ux-design 4.3），只出一次；文字来自世界模型的 `clock.deadline.earliestArrivalCue`。梅洛斯和玩家在同一个地点时 `speaker` 是他，前端播 manifest 里他的 `cues.arrival_capped`（他正在说话就等这句说完）并显示字幕；不在时 `speaker` 为 `null`，`text` 是叙事（「この足なら、陽の沈む前に着く。」），按 `narration` 显示。断线后补发的 `commit` 里的 `cue`，前端按 `seq` 只演一次。
 - 没有 `turnId` 的 `commit` 来自到点的节拍、人物的打算、导演事件或幕切换。
 
@@ -578,14 +587,15 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
   "recapLines": [ "あなたは、メロスに王のことを告げた。", "あなたは、老爺を家まで送った。" ],
   "options": [
     { "optionId": "exit.1.city", "label": "市に残り、メロスの帰りを待つ",
-      "sceneId": "scene.syracuse-square", "tLabel": "三日目・夕方", "where": "刑場・三日目の夕方", "sub": "西の門が見える所で",
+      "sceneId": "scene.syracuse-square", "toActId": "act.4", "tLabel": "三日目・夕方", "where": "刑場・三日目の夕方", "sub": "西の門が見える所で",
       "with": [], "because": null },
     { "optionId": "exit.1.old-man", "label": "老爺の家に身を寄せる",
-      "sceneId": "scene.syracuse-square", "tLabel": "三日目・夕方", "where": "刑場・三日目の夕方", "sub": "老爺があなたを覚えている",
+      "sceneId": "scene.syracuse-square", "toActId": "act.4", "tLabel": "三日目・夕方", "where": "刑場・三日目の夕方", "sub": "老爺があなたを覚えている",
       "with": ["char.old-man"], "because": null }
   ],
   "freeform": { "allowed": true, "triesLeft": 2 } }
 ```
+- `toActId`（v1.0.14）：这个去处通往的幕（`ActExit.toAct`），幕末页一出现前端就能预取下一幕的场景包（不用等 `act_transition`）。替代去处（`act_plan_result.alternative`）也带：给定去处照它的 `ActExit.toAct`，另一个打算是它落地的那一幕（`Act.plan.toAct`）。可选，前端没收到时照旧等 `act_transition`。`toActId` 指的幕可能不在 manifest 的 `acts` 里（没有包的幕不出），这时前端不预取。
 - `options` 来自世界模型的 `ActExit`，按 `roles`、`requires` 过滤（例子是切片的第一幕：送过老爺回家才有第二个去处）。`recapLines` 是「この幕であなたが動かしたこと」（0〜4 行；玩家这一幕什么都没动时为空，前端显示 `actEnd.summary.empty`，v1.0.5）：每行是事件的 `summary`，玩家写成「あなた」（2.4），句末补「。」（v1.0.6）。
 - **副题**（v1.0.4，ux-design 4.4）：`where` 是前半「{地点}・{日子}の{时段}」，服务端算好：地点是落点 `ActExit.place` 的 `Place.name`，日子和时段是落点时刻（和 `tLabel` 同一个时刻）在世界模型 `clock.labels` 的 `days`、`bands` 里的叫法，中间用「の」，不套 `clock.labels.format`。`sub` 是后半，世界模型的 `ActExit.sub`（≤ 16 字），没有就省略。前端照 UX 拼成一行，例「刑場・三日目の夕方　西の門が見える所で」，不按去处 ID 写死。`because` 现在一律 `null`：世界模型的 `ActExit` 没有写理由的字段，条件去处的说明写在 `sub` 里（例「老爺があなたを覚えている」）。
 - 选给定去处：`act_choose { optionId }`。
@@ -607,7 +617,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
   ```json
   { "type": "act_plan_result", "clientMsgId": "…", "accepted": false,
     "narration": [ "夜の城門は、もう閉ざされている。", "夜明けを待って、門が開くとともに村へ向かうこともできる。" ],
-    "alternative": { "optionId": "plan_…", "label": "夜明けを待って村へ向かう", "sceneId": "scene.village", "tLabel": "一日目・朝" },
+    "alternative": { "optionId": "plan_…", "label": "夜明けを待って村へ向かう", "sceneId": "scene.village", "toActId": "act.2", "tLabel": "一日目・朝" },
     "triesLeft": 1 }
   ```
   `accepted: true` 时 `narration` 是「あなたは、〜ことにした。」，紧接着进入幕切换（服务端写一条玩家的 `act-transition` 事件，不带 `exitId`，带 `plan { label, toAct, place, t, with? }`，`label` 是叙事者的转述、不逐字引用玩家原话，契约 1.2 的 2.8.1；不成行不写事件，选了替代去处按成行处理）；`false` 时给最接近的替代去处，玩家可以 `act_choose { optionId: alternative.optionId }`；替代去处是另一个打算时 `optionId` 是 `plan_…`，是某个给定去处时就是那个去处的 ID（v1.0.5）。`triesLeft` 到 0 后 `freeform.allowed = false`，只能选给定去处（同一次幕末最多试 2 次）。用声音说的打算没有 `clientMsgId`，`act_plan_result` 改带那一轮的 `turnId`（3.3）；转写是空的（误按、没出声）不算一次：服务端不判，直接回 `act_plan_result { turnId, accepted: false, narration: ["声が届かなかったようです。もう一度、聞かせてください。"], triesLeft }`，`triesLeft` 不变、不带 `alternative`（v1.0.5；这句是 UX 10-10 定的，v1.0.6）。
@@ -862,6 +872,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 ## 修订记录
 
 - v1.0.15（2026-10-11）：传输形状和 Schema 都不变，2.8 的 `etaSeconds` 从「30 减去已经过的秒数」改成「15 减去」，最少还是 5。B-9 验收第 13 条的 Mac 探针（切片两条结局路各 10 次）：一次生成全部 p95 约 10 秒、最长约 11 秒；服务端一次调用的时限跟着从 30 秒改成 20 秒（backend-design 2.9）。v1.0.13 是 B-12（#112），v1.0.14 是 #129。
+- v1.0.14（2026-10-11）：只做加法，前端 3 做地图（F-12 之后）时提的。2.1：manifest 加必有的 `places`（地点 ID、地名、所在场景；场景没出的为 `null`），生成器照世界模型出。2.5：时间线的节拍项加可选的 `cite`（世界模型 `Beat.cite`，数据契约的 `Cite`），只在 `known: true` 时给，`known: false` 的 Schema 不许带。出处按玩家此刻知道的过滤：原句带他此刻不知道的事实的剧透词（`spoilers()`）的那条不出（数据评审，beat.20、beat.s2）。2.6：「なぜ」链和 `reveal.chain` 的节拍那一步也加可选的 `cite`，只在 2.5 会是 `known: true` 时带，过滤相同。3.11：`ActOption`、`PlanAlternative` 加可选的 `toActId`（去处通往的幕），幕末页一出现就能预取下一幕的包（前端 3 提的）。mock 的时间线、「なぜ」带上切片世界模型的出处；`examples/` 里的合法例子跟着加。v1.0.10 是 B-9，v1.0.11 是 B-5（#117），v1.0.12 是重连补发（#120），v1.0.13 是 B-12（#112）；这一版原先编的 v1.0.13，#112 先合了，改成 v1.0.14。
 - v1.0.13（2026-10-11）：只补正文，形状和 Schema 都不变（B-12）：出戏卡停下的一轮不推 `interrupted` 和人物定稿，语音一轮的暂停最早在定稿以后；幕末的打算也筛；停下的一轮在 `lastTurn` 里同作废的一轮；暂停期间哪些消息回 `invalid_request`、`focus` 不开会话（3.12）。
 - v1.0.12（2026-10-11）：传输形状和 Schema 都不变，写明重连时补推断线期间做完的幕切换（3.11、第 4 节，前端 3 的 F-12 评审）：最后一次提交是幕切换、`hello.lastSeq` 不晚于它时，补发的 `commit` 后面再推一次那次的 `act_transition`（打算成行的连同 `act_plan_result`）；前端只在幕末页还在等时用。以前断线期间做完的幕切换不补推，选了去处就断线的玩家会一直停在幕末页。v1.0.9 是 B-7（#114），v1.0.10 是 B-9（#124），v1.0.11 是 B-5（#117）。
 - v1.0.11（2026-10-11）：只动第 7 节的评测入口，网关和前端看到的形状都不变，按 B-5 卡（#99），和 B-5 的代码同一个 PR（v1.0.10 是 B-9 的结局，那边的 PR 写）：`persona` + `seed` 的起点就是正式开局（不用 `opening()` 推演），`persona` 只进 Trace，`seed` 给假模型，不和 `checkpoint`、`scenario`、`events` 一起给；AI 玩家看的 `view()`、`manifest()`；每一步的 `elapsedMs`；模拟局到 `view().snapshot.status = "ended"` 为止；评测的一局里记的账带 `playthroughId`。

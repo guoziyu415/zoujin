@@ -1,9 +1,11 @@
 // The 3D layer of the world screen (frontend-design 4, 8): loads the scene in two steps, then sun, sky, player,
 // camera and post-processing. Reads the store only; never touches the network.
 import { useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { flags } from "../app/flags";
 import { useWorld } from "../stores/world";
 import { CameraRig } from "./CameraRig";
+import { crowdCount } from "./crowd/presence";
 import { groundAlbedo, Lighting } from "./Lighting";
 import { People } from "./People";
 import { Player } from "./Player";
@@ -20,6 +22,8 @@ import { sceneBase } from "./scene/manifest";
 import { patchShaderChunks } from "./shaderPatches";
 
 patchShaderChunks();
+
+const CrowdLayer = lazy(() => import("./crowd/CrowdLayer"));
 
 export type LoadStage = "loading" | "walkable" | "ready" | "failed";
 
@@ -49,6 +53,7 @@ export function World({
 }) {
   const { gl, scene: three, camera } = useThree();
   const sceneId = useWorld((s) => s.world?.sceneId);
+  const crowd = useWorld((s) => crowdCount(s.world?.characters, flags.crowd));
   const base = sceneId ? sceneBase(sceneId, packs) : null;
   const [scene, setScene] = useState<LoadedScene | null>(null);
   const checkHigh = useRef<() => void>(() => {});
@@ -145,6 +150,11 @@ export function World({
         nav={scene.nav.data}
       />
       <People scene={scene} />
+      {crowd > 0 && (
+        <Suspense fallback={null}>
+          <CrowdLayer scene={scene} count={crowd} />
+        </Suspense>
+      )}
       <Player scene={scene} />
       <CameraRig blockers={scene.blockers} />
       <PostFX />

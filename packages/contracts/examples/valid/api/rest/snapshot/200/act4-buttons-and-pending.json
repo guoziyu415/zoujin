@@ -102,6 +102,7 @@
           "optionId": "exit.3.road",
           "label": "雨の中、メロスと走り出る",
           "sceneId": "scene.road-river",
+          "toActId": "act.4",
           "tLabel": "三日目・午前",
           "where": "川と橋・三日目の午前",
           "with": ["char.melos"],
