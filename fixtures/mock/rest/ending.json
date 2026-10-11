@@ -21,7 +21,7 @@
   },
   "you": {
     "title": "市で待ち続けた旅人",
-    "fate": "市に残り、刑場でメロスの到着を見届けた",
+    "fate": "メロスは間に合い、王は仲間に入れてくれと言った。",
     "didForYou": [],
     "youDid": [
       {
@@ -95,7 +95,7 @@
   ],
   "card": {
     "title": "市で待ち続けた旅人",
-    "subtitle": "市に残り、刑場でメロスの到着を見届けた",
+    "subtitle": "メロスは間に合い、王は仲間に入れてくれと言った。",
     "characterLines": [
       {
         "character": "char.melos",
@@ -107,6 +107,6 @@
       }
     ],
     "contrast": "原作どおりの結末。あなたの世界でも、王は改心した。",
-    "fallbackImageUrl": "/assets/endings/canon-reunion.0001.webp"
+    "fallbackImageUrl": "/endings/canon-reunion.webp"
   }
 }

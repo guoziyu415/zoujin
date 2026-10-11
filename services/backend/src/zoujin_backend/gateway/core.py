@@ -3,6 +3,7 @@
 推给前端的东西都由数据库里的事件现算（projection.py）：
 - 快照 = world_state 缓存的 SimState 的投影，加上局上记的位置点和待处理的（B-3，`store.Run`）；
 - commit = 同一次提交写的一段事件（幂等键前一段相同，`commit_key`），patch 是这一段前后两个快照的差。
+  进结局的那次提交（B-9）：`turns.result.before` 里的 `ending_started` 排在它的 commit 前面。
   意图确认答「是」的那次提交（B-4）：`turnId` 是原来那一轮，重查没过时 `narration` 带一句（`turns.result`）。
   玩家的位置点不进 WorldState（契约 3.1）：做完情境动作、幕切换落地的 `patch.player.spot` 按这次提交的结果给
   （`turns.result.playerSpot`），动作（`move`、`go`）的不带（B-3 第 1 条）。
@@ -26,14 +27,19 @@ from zoujin_backend.db import store
 from zoujin_backend.db.events import commit_key, recorded_at
 from zoujin_backend.db.store import Run
 from zoujin_backend.db.tables import turns
+from zoujin_backend.gateway.fallback import AudioTranscriber, FakeAudioTranscriber
 from zoujin_backend.ids import IdGen
+from zoujin_backend.manifest import Manifest
+from zoujin_backend.models.ledger import Ledger
 from zoujin_backend.models.live import LiveModel
-from zoujin_backend.projection import is_visible, patch, snapshot, visible_event, with_locations
+from zoujin_backend.projection import Away, is_visible, patch, snapshot, visible_event, visible_events, with_locations
+from zoujin_backend.safety import Screener
 from zoujin_backend.schemas import SchemaBook
 from zoujin_backend.trace import Tracer
 from zoujin_backend.world import Book, Library
 
 if TYPE_CHECKING:
+    from zoujin_backend.gateway.voice import Parked
     from zoujin_backend.gateway.ws import Conn
 
 log = logging.getLogger("zoujin.gateway")
@@ -86,6 +92,7 @@ class Gateway:
     schemas: SchemaBook
     live: LiveModel
     narrator: NarratorClient
+    manifest: Manifest | None = None  # 2.1：开进程时由 `Library.current` 生成一次（B-7）；没有就回 404
     ids: IdGen = field(default_factory=IdGen)
     conns: dict[str, Conn] = field(default_factory=dict)  # 一局一条连接（第 4 节 4009）
     draining: bool = False
@@ -93,8 +100,22 @@ class Gateway:
     # 每局还在交给叙事者的对话轮次（`_finish`）：重连的 hello 先等旧连接的这些写完，lastTurn 才准（第 4 节）
     handing: dict[str, set[asyncio.Task[Any]]] = field(default_factory=dict)
     tracer: Tracer = field(default_factory=Tracer)  # B-4：gateway.retract
+    # B-11：断线后寄存的 Live 会话和最近对话（只在内存里），重连的 hello 接手（`gateway/voice.py`）
+    parked: dict[str, Parked] = field(default_factory=dict)
+    # B-10：补转写（人物有声音没文字时）、Live 的账本（真 Live 时）和记账用的模型名
+    transcriber: AudioTranscriber = field(default_factory=FakeAudioTranscriber)
+    live_ledger: Ledger | None = None
+    live_model_name: str = "fake-live"
+    # B-12：玩家每一句的安全筛查（文本模型和 Model Armor 按 ZJ_MODEL；不给就按 settings 建，测试可以换）
+    screener: Screener = field(default=None)  # type: ignore[assignment]
     # 测试用：每条发出的服务端消息（已过 Schema）
     on_send: Callable[[Json], None] | None = None
+
+    def __post_init__(self) -> None:
+        if self.screener is None:
+            from zoujin_backend.gateway.safety import build_screener
+
+            self.screener = build_screener(self.settings, self.tracer)
 
     # —— 局 ——
 
@@ -172,6 +193,7 @@ class Gateway:
         sent = after_seq
         for seg in segments:
             msg, state = self._commit(book, pt, state, seg, kinds, results)
+            out.extend(results.get(commit_key(seg[0]["idempotencyKey"]), {}).get("before", []))  # B-9：ending_started
             out.append(msg)
             sent = seg[-1]["seq"]
         return out, sent
@@ -187,8 +209,9 @@ class Gateway:
     ) -> tuple[Json, SimState]:
         state = before
         visible = []
+        away = Away()  # 幕切换是一轮写完的，第 2〜4 步在同一段里
         for ev in seg:
-            if is_visible(book, ev, state["vars"]["var.player.location"]):
+            if not away(ev) and is_visible(book, ev, state["vars"]["var.player.location"]):
                 visible.append(visible_event(book, ev, pt.role_id))
             state = apply(book.world, state, ev)
         from_seq = seg[0]["seq"]
@@ -235,15 +258,7 @@ class Gateway:
             if pt is None:
                 return []
             log_ = await store.event_log(c, pid, pt.book.version)
-        state = initial_state(pt.book.world, pt.role_id)
-        out = []
-        for ev in log_:
-            if ev["seq"] > after_seq and is_visible(pt.book, ev, state["vars"]["var.player.location"]):
-                out.append(visible_event(pt.book, ev, pt.role_id))
-                if len(out) >= limit:
-                    break
-            state = apply(pt.book.world, state, ev)
-        return out
+        return visible_events(pt.book, pt.role_id, log_, after_seq, limit)
 
     async def on_commit(self, payload: Json) -> None:
         """叙事者提交后的 NOTIFY（hub.py 转过来）：这一局开着连接就推。"""
@@ -302,3 +317,11 @@ class Gateway:
             await conn.send({"type": "goaway", "reason": "deploy", "reconnectAfterMs": reconnect_after_ms})
         for conn in conns:
             await conn.close(1012, "service restart")
+        for pid in list(self.parked):  # 换实例以后靠局势说明重建（B-11）
+            await self.forget(pid)
+
+    async def forget(self, pid: str) -> None:
+        """丢掉这一局寄存的会话和最近对话（B-11）：删除这一局、記憶帳删除（B-13）、关机时调。"""
+        p = self.parked.pop(pid, None)
+        if p is not None:
+            await p.drop()

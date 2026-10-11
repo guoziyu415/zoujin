@@ -26,6 +26,7 @@ from zoujin_worldsim import (
     initial_state,
     predict,
     settle,
+    signature,
     world_state,
 )
 
@@ -82,6 +83,13 @@ def test_incremental_equals_one_shot(sc: dict[str, Any], played: Played) -> None
     assert s["locations"] == one["where"]
     assert classify(WORLD, s) == one["outcome"]
     assert s["deadline"]
+
+
+@pytest.mark.parametrize("sc", SCENARIOS, ids=lambda sc: sc["id"])
+def test_signature_matches_golden(sc: dict[str, Any], played: Played, golden: dict[str, Any]) -> None:
+    # 2.9.1：逐事件推演到底的署名和黄金文件（一口气推演）的一样，变量和节拍放在同一个 dict 里
+    want = golden["runs"][sc["id"]]["signature"]
+    assert signature(WORLD, played(sc["id"])[0]) == {**want["vars"], **want["beats"]}
 
 
 @pytest.mark.parametrize("sc", SCENARIOS, ids=lambda sc: sc["id"])

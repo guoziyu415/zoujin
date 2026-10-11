@@ -78,4 +78,19 @@ describe("ending card layout (S-051)", () => {
     const lines = wrap("ああああ。いい", 10, 40, m);
     expect(lines[1]!.startsWith("。")).toBe(false);
   });
+
+  it("no lone 「た。」 on the last line: the line before gives its last character", () => {
+    // 4 characters a line: 「あいうえ」「おかきく」「た。」 → 「あいうえ」「おかき」「くた。」
+    expect(wrap("あいうえおかきくた。", 10, 40, m)).toEqual([
+      "あいうえ",
+      "おかき",
+      "くた。",
+    ]);
+    // the character that comes down never leaves a 、 to start the line
+    expect(wrap("あいうえおかき、た。", 10, 40, m)).toEqual([
+      "あいうえ",
+      "おか",
+      "き、た。",
+    ]);
+  });
 });

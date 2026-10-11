@@ -14,12 +14,15 @@ import {
   type EndingLine,
 } from "../../../stores/story";
 import { useUi } from "../../../stores/ui";
+import { track } from "../../../telemetry/telemetry";
 import { copy, fill } from "../../copy";
 import { useEndingAuto } from "../settings";
 import { stageBridge } from "./bridge";
 import {
   addLines,
   initPace,
+  insertLine,
+  performed,
   pause,
   resume,
   setAuto,
@@ -31,14 +34,11 @@ import {
   type Pace,
   type StageLine,
 } from "./pace";
-import { CARD_SHOTS, shotOf } from "./shots";
+import { cardShot, shotOf } from "./shots";
 
 export const BINDING_LONG_S = 20; // the map is offered after 20 s of waiting (ux-design 11.1)
 const TICK_MS = 100;
 const NO_LINES_MS = 3000;
-
-// what the staging measured, for data's pacing check (ux-design 11.1: how long it played, taps, auto on or off)
-export const stageStats = { ms: 0, taps: 0, auto: true };
 
 export function EndingStage({
   pid,
@@ -55,10 +55,11 @@ export function EndingStage({
   const voices = manifest.data?.setPieceVoices;
   const pace = useRef<Pace>(initPace(auto));
   const fed = useRef(0);
-  const started = useRef(performance.now());
+  const autoAtStart = useRef(auto); // the setting can't change once the staging began (11.1)
+  const reported = useRef(false);
   const [, render] = useReducer((n: number) => n + 1, 0);
   const [done, setDone] = useState(false);
-  const best = useRef(Infinity); // the card shot captured so far (index in CARD_SHOTS)
+  const seen = useRef(new Set<number>()); // the shots so far; the card's frame is taken when its best one comes
 
   const clipOf = (l: StageLine) => (l.key ? (voices?.[l.key] ?? null) : null);
 
@@ -76,13 +77,12 @@ export function EndingStage({
       } else if (e.k === "fade") audio.fadeOut(200);
       else if (e.k === "shot") {
         stageBridge().shot(e.n);
-        const rank = CARD_SHOTS.indexOf(e.n);
-        if (rank >= 0 && rank < best.current) {
-          best.current = rank;
+        const had = cardShot(seen.current);
+        seen.current.add(e.n);
+        if (cardShot(seen.current) === e.n && had !== e.n)
           void stageBridge()
             .captureFrame()
             .then((b) => b && endingFrame.set(b));
-        }
       } else if (e.k === "drained") setDone(true);
     }
   }
@@ -93,7 +93,8 @@ export function EndingStage({
     if (!ending?.ready) return;
     const lines = ending.lines;
     if (lines.length <= fed.current) return;
-    const more = lines.slice(fed.current).map((l) => toStage(l, voices));
+    const fresh = lines.slice(fed.current);
+    const more = fresh.map((l) => toStage(l, voices));
     fed.current = lines.length;
     audio.preload(
       more.flatMap((l) => {
@@ -101,7 +102,22 @@ export function EndingStage({
         return c ? [c] : [];
       }),
     );
-    const [p, fx] = addLines(pace.current, more, performance.now());
+    const now = performance.now();
+    let p = pace.current;
+    const fx: Effect[] = [];
+    const late = more.filter((_, i) => !fresh[i]!.early);
+    if (late.length) {
+      const [q, f] = addLines(p, late, now);
+      p = q;
+      fx.push(...f);
+    }
+    // the action that ended the story goes before the curtain (3.13, UX review of #127)
+    for (const [i, l] of more.entries()) {
+      if (!fresh[i]!.early) continue;
+      const [q, f] = insertLine(p, l, now);
+      p = q;
+      fx.push(...f);
+    }
     pace.current = p;
     if (more.length) setDone(false);
     apply(fx);
@@ -128,7 +144,7 @@ export function EndingStage({
 
   useEffect(() => {
     pace.current = setAuto(pace.current, auto);
-    stageStats.auto = auto;
+    if (pace.current.t0 === null) autoAtStart.current = auto;
   }, [auto]);
 
   // in the background, behind a full page, behind the resume gate: the staging and its clock stop
@@ -160,13 +176,24 @@ export function EndingStage({
   }, [noLines, ready, ending?.endingId]);
 
   // the last line had its time: the ending page, or wait for it
+  const trigger = ending?.trigger;
   useEffect(() => {
     if (!done) return;
-    stageStats.ms = Math.round(performance.now() - started.current);
-    stageStats.taps = pace.current.taps;
+    const m = reported.current
+      ? null
+      : performed(pace.current, performance.now());
+    // data's pacing check (ux-design 11.1, data-design 9.3): how long it played, taps, auto on or off
+    if (m && trigger) {
+      reported.current = true;
+      track("ending_performed", {
+        ...m,
+        trigger,
+        autoAdvance: autoAtStart.current,
+      });
+    }
     if (ending?.endingId)
       navigate(`/ending/${encodeURIComponent(pid)}`, { replace: true });
-  }, [done, ending?.endingId, pid]);
+  }, [done, ending?.endingId, trigger, pid]);
 
   if (!ending) return null;
   const p = pace.current;

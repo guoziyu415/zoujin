@@ -13,6 +13,7 @@ from zoujin_contracts.generated.data import (
     BeatId,
     CharacterEnding,
     CharacterId,
+    Cite,
     EndingId,
     Event,
     EventId,
@@ -727,6 +728,17 @@ class ManifestResponseScenesItem(BaseModel):
     places: Annotated[list[PlaceId], Field(min_length=1)]
     assetUrl: AssetPath
     assetVersion: Annotated[str, Field(min_length=1)]
+
+
+class ManifestResponsePlacesItem(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+    placeId: PlaceId
+    name: Annotated[str, Field(min_length=1)]
+    sceneId: SceneId | None
 
 
 class ManifestResponseActsItem(BaseModel):
@@ -1781,6 +1793,59 @@ class TelemetryEndingClosed(BaseModel):
     props: Annotated[TelemetryEndingClosedProps, Field(title="TelemetryEndingClosedProps")]
 
 
+class TelemetryEndingPerformedProps(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    trigger: Literal["deadline", "story-closed"]
+    """
+    ending_started.trigger
+    """
+    playMs: Annotated[int, Field(ge=0)]
+    """
+    演出实际跑的毫秒，不含暂停（后台、全屏页面、「タップして続ける」等着的那段）
+    """
+    pausedMs: Annotated[int, Field(ge=0)]
+    """
+    暂停的毫秒合计
+    """
+    taps: Annotated[int, Field(ge=0)]
+    """
+    起作用的点按：补全一句或换下一句；0.5 秒保护期里的、「タップして続ける」那一下不算
+    """
+    lines: Annotated[int, Field(ge=0)]
+    """
+    这次演出的句数
+    """
+    autoAdvance: bool
+    """
+    「結末を自動で進める」开着（开演时的值，开演以后改不了）
+    """
+
+
+class TelemetryEndingPerformed(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+    name: Literal["ending_performed"] = "ending_performed"
+    playthroughId: PlaythroughId | None = None
+    """
+    没有局时省略
+    """
+    clientTs: RecordedAt
+    """
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
+    """
+    t: StoryTime | None = None
+    """
+    故事时间，有的话
+    """
+    props: Annotated[TelemetryEndingPerformedProps, Field(title="TelemetryEndingPerformedProps")]
+
+
 class TelemetryEndingSharedProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -2462,6 +2527,10 @@ class TimelineBeatItem(BaseModel):
     """
     还没到、或玩家还不知道的节拍为 false，只给时刻
     """
+    cite: Annotated[list[Cite] | None, Field(min_length=1)] = None
+    """
+    （v1.0.14）原作出处：世界模型 Beat.cite（数据契约第 0 节的 Cite），地图节点详情列「原作」用。只在 known 时给；原句带玩家此刻不知道的事实的剧透词（spoilers()）的那条不出，世界模型里没写出处或全过滤掉时省略（api-contract 2.5）
+    """
 
 
 class TimelineEventItem(BaseModel):
@@ -2735,6 +2804,10 @@ class WhyBeatStep(BaseModel):
     tLabel: TLabel
     summary: Annotated[str, Field(min_length=1)]
     change: BeatChange
+    cite: Annotated[list[Cite] | None, Field(min_length=1)] = None
+    """
+    （v1.0.14）原作出处：世界模型 Beat.cite，只在这个节拍在时间线里会是 known 时带，原句带玩家此刻不知道的事实的剧透词的那条不出；没写出处或全过滤掉时省略（api-contract 2.5、2.6）
+    """
 
 
 class WhyEventStep(BaseModel):
@@ -3256,6 +3329,10 @@ class PlanAlternative(BaseModel):
     """
     label: Annotated[str, Field(min_length=1)]
     sceneId: SceneId
+    toActId: ActId | None = None
+    """
+    （v1.0.14）这个去处通往的幕（世界模型 ActExit.toAct；打算是它落地的那一幕）：幕末页一出现就能预取下一幕的场景包。老的服务端不给
+    """
     tLabel: TLabel
 
 
@@ -3400,6 +3477,7 @@ type TelemetryEvent = Annotated[
     | TelemetryContinueStarted
     | TelemetryConnectionLost
     | TelemetryConnectionRestored
+    | TelemetryEndingPerformed
     | TelemetryEndingViewed
     | TelemetryEndingClosed
     | TelemetryEndingCardSaved
@@ -3510,6 +3588,10 @@ class ActOption(BaseModel):
     optionId: ExitId
     label: Annotated[str, Field(min_length=1)]
     sceneId: SceneId
+    toActId: ActId | None = None
+    """
+    （v1.0.14）这个去处通往的幕（世界模型 ActExit.toAct；打算是它落地的那一幕）：幕末页一出现就能预取下一幕的场景包。老的服务端不给
+    """
     tLabel: TLabel
     where: Annotated[str, Field(min_length=1)]
     """
@@ -3639,6 +3721,10 @@ class ManifestResponse(BaseModel):
     book: Annotated[ManifestResponseBook, Field(title="ManifestResponseBook")]
     roles: Annotated[list[ManifestResponseRolesItem], Field(min_length=1)]
     scenes: Annotated[list[ManifestResponseScenesItem], Field(min_length=1)]
+    places: Annotated[list[ManifestResponsePlacesItem], Field(min_length=1)]
+    """
+    （v1.0.14）世界模型的全部地点和名字（Place.name），地图节点详情、幕末副题以外要显示地名的地方用。sceneId：地点所在的场景；没有场景、或场景不在 scenes 里（没有场景包）的地点为 null
+    """
     characters: list[ManifestResponseCharactersItem]
     acts: list[ManifestResponseActsItem]
     clock: Annotated[ManifestResponseClock, Field(title="ManifestResponseClock")]

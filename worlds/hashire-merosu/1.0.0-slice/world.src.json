@@ -1,5 +1,5 @@
 {
- "schemaVersion": "1.11",
+ "schemaVersion": "1.12",
  "worldModelVersion": "hashire-merosu@1.0.0-slice.3",
  "_authoring": "切片版。由 1.0.0-slice/make_slice.py 从 1.0.0-draft/world.src.json 生成，不要手改。出典は {\"q\": 原文の逐字引用, \"p\": 段落番号（省略可）} で書く。spikes/pipeline/build_world.py が段落を特定・検証して world.json を出力する。",
  "book": {
@@ -139,8 +139,20 @@
    "reading": "やつばら"
   },
   {
+   "word": "口惜し",
+   "reading": "くやし"
+  },
+  {
    "word": "地団駄",
    "reading": "じだんだ"
+  },
+  {
+   "word": "佳き",
+   "reading": "よき"
+  },
+  {
+   "word": "首肯き",
+   "reading": "うなずき"
   },
   {
    "word": "困憊",
@@ -153,6 +165,10 @@
   {
    "word": "怺",
    "reading": "こら"
+  },
+  {
+   "word": "首肯い",
+   "reading": "うなずい"
   },
   {
    "word": "薄明",
@@ -189,6 +205,10 @@
   {
    "word": "繋舟",
    "reading": "けいしゅう"
+  },
+  {
+   "word": "掻",
+   "reading": "か"
   },
   {
    "word": "憐愍",
@@ -267,6 +287,14 @@
    "reading": "かじ"
   },
   {
+   "word": "若し",
+   "reading": "もし"
+  },
+  {
+   "word": "唸",
+   "reading": "うな"
+  },
+  {
    "word": "歔欷",
    "reading": "きょき"
   },
@@ -301,6 +329,10 @@
   {
    "word": "市の少女",
    "reading": "まちのしょうじょ"
+  },
+  {
+   "word": "微笑ん",
+   "reading": "ほほえん"
   }
  ],
  "clock": {
@@ -737,6 +769,10 @@
     {
      "fact": "fact.storm",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "since": "beat.13"
     },
     {
      "fact": "fact.bridge-destroyed",
@@ -1665,6 +1701,10 @@
     {
      "fact": "fact.storm",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "since": "beat.13"
     }
    ],
    "initialPlace": "place.melos-home",
@@ -1815,6 +1855,10 @@
     {
      "fact": "fact.storm",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "since": "beat.13"
     },
     {
      "fact": "fact.groom-agreed",
@@ -3131,6 +3175,17 @@
     "大雨",
     "豪雨",
     "車軸を流す"
+   ]
+  },
+  {
+   "id": "fact.melos-farewell",
+   "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+   "trueFrom": "beat.13",
+   "visibility": "public",
+   "cite": [
+    {
+     "q": "眼が覚めたら、すぐに市に出かける。大切な用事があるのだ。"
+    }
    ]
   },
   {
@@ -4654,6 +4709,16 @@
      "character": "char.king",
      "place": "place.execution-ground",
      "spot": "king-west"
+    },
+    {
+     "op": "relocate",
+     "character": "char.crowd",
+     "place": "place.execution-ground"
+    },
+    {
+     "op": "relocate",
+     "character": "char.guards",
+     "place": "place.execution-ground"
     }
    ],
    "activities": [
@@ -4917,6 +4982,13 @@
      "value": 1,
      "inferred": true,
      "note": "王の信頼（0〜100、初期 5）が 0 まで落ちていたら改心しない。プレイヤーが嘲りや欺きで王の心を閉ざした場合（推断。S-007「間に合ったが王は変わらない」への道）"
+    },
+    {
+     "var": "var.king.disposition",
+     "op": "!=",
+     "value": "reformed",
+     "inferred": true,
+     "note": "刑場に来る前に王がもう改心していた局（信頼が 70 を超え、身代りを先に放した）では、刑場でもう一度改心しない（UX の評審、S-087）"
     }
    ],
    "outcomes": [
@@ -6183,24 +6255,475 @@
    "on": {
     "beat": "beat.24"
    },
+   "after": [
+    "beat.s1"
+   ],
    "knows": [
     {
      "character": "char.crowd",
      "fact": "fact.promise"
     }
    ],
+   "when": [
+    {
+     "var": "var.hostage.who",
+     "op": "==",
+     "value": "char.selinuntius"
+    },
+    {
+     "var": "var.king.disposition",
+     "op": "!=",
+     "value": "reformed"
+    }
+   ],
    "once": true,
    "lines": [
+    {
+     "narration": "すでに磔の柱が高々と立てられ、縄を打たれたセリヌンティウスは、徐々に釣り上げられてゆく。"
+    },
+    {
+     "narration": "陽は、ゆらゆら地平線に没し、まさに最後の一片の残光も、消えようとした時、メロスは疾風の如く刑場に突入した。"
+    },
+    {
+     "narration": "間に合った。"
+    },
+    {
+     "speaker": "char.melos",
+     "line": "待て。その人を殺してはならぬ。メロスが帰って来た。約束のとおり、いま、帰って来た。"
+    },
     {
      "speaker": "char.crowd",
      "line": "メロスだ！　メロスが帰って来た！"
     },
     {
      "narration": "人々が振り返り、道をあけた。"
+    },
+    {
+     "speaker": "char.melos",
+     "line": "私だ、刑吏！　殺されるのは、私だ。メロスだ。彼を人質にした私は、ここにいる！"
+    },
+    {
+     "narration": "メロスは、ついに磔台に昇り、釣り上げられてゆく友の両足に、齧りついた。"
+    },
+    {
+     "narration": "群衆は、どよめいた。あっぱれ。ゆるせ、と口々にわめいた。"
+    },
+    {
+     "narration": "セリヌンティウスの縄は、ほどかれたのである。"
     }
    ],
    "inferred": true,
-   "note": "第 2 节：玩家把约定告诉了城里的人（learn 群众 fact.promise），梅洛斯赶到时群众里一个女人认出他"
+   "note": "第 2 节：玩家把约定告诉了城里的人（learn 群众 fact.promise），梅洛斯第一声没人听见，群众里一个女人认出他，人群让路，不是「掻きわけ」。其余照原作第 60〜62 段（S-087）"
+  },
+  {
+   "id": "piece.crowd-makes-way-you",
+   "on": {
+    "beat": "beat.24"
+   },
+   "after": [
+    "beat.s1"
+   ],
+   "knows": [
+    {
+     "character": "char.crowd",
+     "fact": "fact.promise"
+    }
+   ],
+   "when": [
+    {
+     "var": "var.hostage.who",
+     "op": "==",
+     "value": "player"
+    },
+    {
+     "var": "var.king.disposition",
+     "op": "!=",
+     "value": "reformed"
+    }
+   ],
+   "once": true,
+   "lines": [
+    {
+     "narration": "すでに磔の柱が高々と立てられ、縄を打たれたあなたは、徐々に釣り上げられてゆく。"
+    },
+    {
+     "narration": "陽は、ゆらゆら地平線に没し、まさに最後の一片の残光も、消えようとした時、メロスは疾風の如く刑場に突入した。"
+    },
+    {
+     "narration": "間に合った。"
+    },
+    {
+     "speaker": "char.melos",
+     "line": "待て。その人を殺してはならぬ。メロスが帰って来た。約束のとおり、いま、帰って来た。"
+    },
+    {
+     "speaker": "char.crowd",
+     "line": "メロスだ！　メロスが帰って来た！"
+    },
+    {
+     "narration": "人々が振り返り、道をあけた。"
+    },
+    {
+     "speaker": "char.melos",
+     "line": "私だ、刑吏！　殺されるのは、私だ。メロスだ。私は、ここにいる！"
+    },
+    {
+     "narration": "メロスは、ついに磔台に昇り、釣り上げられてゆくあなたの両足に、齧りついた。"
+    },
+    {
+     "narration": "群衆は、どよめいた。あっぱれ。ゆるせ、と口々にわめいた。"
+    },
+    {
+     "narration": "あなたの縄は、ほどかれたのである。"
+    }
+   ],
+   "inferred": true,
+   "note": "S-087：玩家把约定告诉了城里的人，人质是玩家（B-4）。柱上、腿、绳子换成「あなた」，梅洛斯不说「彼を人質にした」"
+  },
+  {
+   "id": "piece.storm-in",
+   "on": {
+    "beat": "beat.24"
+   },
+   "after": [
+    "beat.s1"
+   ],
+   "when": [
+    {
+     "var": "var.hostage.who",
+     "op": "==",
+     "value": "char.selinuntius"
+    },
+    {
+     "var": "var.king.disposition",
+     "op": "!=",
+     "value": "reformed"
+    }
+   ],
+   "once": true,
+   "lines": [
+    {
+     "narration": "すでに磔の柱が高々と立てられ、縄を打たれたセリヌンティウスは、徐々に釣り上げられてゆく。"
+    },
+    {
+     "narration": "陽は、ゆらゆら地平線に没し、まさに最後の一片の残光も、消えようとした時、メロスは疾風の如く刑場に突入した。"
+    },
+    {
+     "narration": "間に合った。"
+    },
+    {
+     "speaker": "char.melos",
+     "line": "待て。その人を殺してはならぬ。メロスが帰って来た。約束のとおり、いま、帰って来た。"
+    },
+    {
+     "narration": "群衆は、ひとりとして彼の到着に気がつかない。"
+    },
+    {
+     "narration": "メロスは最後の勇、先刻、濁流を泳いだように群衆を掻きわけ、掻きわけた。"
+    },
+    {
+     "speaker": "char.melos",
+     "line": "私だ、刑吏！　殺されるのは、私だ。メロスだ。彼を人質にした私は、ここにいる！"
+    },
+    {
+     "narration": "メロスは、ついに磔台に昇り、釣り上げられてゆく友の両足に、齧りついた。"
+    },
+    {
+     "narration": "群衆は、どよめいた。あっぱれ。ゆるせ、と口々にわめいた。"
+    },
+    {
+     "narration": "セリヌンティウスの縄は、ほどかれたのである。"
+    }
+   ],
+   "inferred": true,
+   "note": "S-087：原作第 60〜62 段，补了「メロスは、」，「群衆を掻きわけ、掻きわけ」收成一句（镜头 3）。顺序照 ending-shots 的镜头 1〜5（柱子先立起来，梅洛斯再冲进来）"
+  },
+  {
+   "id": "piece.storm-in-you",
+   "on": {
+    "beat": "beat.24"
+   },
+   "after": [
+    "beat.s1"
+   ],
+   "when": [
+    {
+     "var": "var.hostage.who",
+     "op": "==",
+     "value": "player"
+    },
+    {
+     "var": "var.king.disposition",
+     "op": "!=",
+     "value": "reformed"
+    }
+   ],
+   "once": true,
+   "lines": [
+    {
+     "narration": "すでに磔の柱が高々と立てられ、縄を打たれたあなたは、徐々に釣り上げられてゆく。"
+    },
+    {
+     "narration": "陽は、ゆらゆら地平線に没し、まさに最後の一片の残光も、消えようとした時、メロスは疾風の如く刑場に突入した。"
+    },
+    {
+     "narration": "間に合った。"
+    },
+    {
+     "speaker": "char.melos",
+     "line": "待て。その人を殺してはならぬ。メロスが帰って来た。約束のとおり、いま、帰って来た。"
+    },
+    {
+     "narration": "群衆は、ひとりとして彼の到着に気がつかない。"
+    },
+    {
+     "narration": "メロスは最後の勇、先刻、濁流を泳いだように群衆を掻きわけ、掻きわけた。"
+    },
+    {
+     "speaker": "char.melos",
+     "line": "私だ、刑吏！　殺されるのは、私だ。メロスだ。私は、ここにいる！"
+    },
+    {
+     "narration": "メロスは、ついに磔台に昇り、釣り上げられてゆくあなたの両足に、齧りついた。"
+    },
+    {
+     "narration": "群衆は、どよめいた。あっぱれ。ゆるせ、と口々にわめいた。"
+    },
+    {
+     "narration": "あなたの縄は、ほどかれたのである。"
+    }
+   ],
+   "inferred": true,
+   "note": "S-087：人质是玩家（B-4）。同 piece.storm-in，柱上、腿、绳子换成「あなた」，梅洛斯不说「彼を人質にした」"
+  },
+  {
+   "id": "piece.made-it",
+   "on": {
+    "beat": "beat.24"
+   },
+   "once": true,
+   "lines": [
+    {
+     "narration": "メロスは疾風の如く刑場に突入した。間に合った。"
+    }
+   ],
+   "inferred": true,
+   "note": "S-087 兜底（UX #107）：友人不在柱上（beat.s1 以前就到了、或王先放了人）时，结局演出不从 beat.25 直接开始。不要「陽は…」那半句，他可能早到"
+  },
+  {
+   "id": "piece.embrace-neither",
+   "on": {
+    "beat": "beat.25"
+   },
+   "when": [
+    {
+     "var": "var.melos.doubted",
+     "op": "==",
+     "value": false
+    },
+    {
+     "var": "var.selinuntius.doubted",
+     "op": "==",
+     "value": false
+    }
+   ],
+   "once": true,
+   "lines": [
+    {
+     "narration": "二人は、殴り合わなかった。どちらも、一度も相手を疑わなかったのである。"
+    },
+    {
+     "narration": "「ありがとう、友よ。」二人同時に言い、ひしと抱き合い、それから嬉し泣きにおいおい声を放って泣いた。"
+    },
+    {
+     "narration": "群衆の中からも、歔欷の声が聞えた。"
+    }
+   ],
+   "inferred": true,
+   "note": "S-087：beat.25.v-neither。第一句是数据写的，其余照原作第 67、68 段"
+  },
+  {
+   "id": "piece.embrace-melos-doubted",
+   "on": {
+    "beat": "beat.25"
+   },
+   "when": [
+    {
+     "var": "var.selinuntius.doubted",
+     "op": "==",
+     "value": false
+    }
+   ],
+   "once": true,
+   "lines": [
+    {
+     "narration": "メロスは眼に涙を浮べて言った。"
+    },
+    {
+     "speaker": "char.melos",
+     "line": "セリヌンティウス。私を殴れ。ちから一ぱいに頬を殴れ。私は、途中で一度、悪い夢を見た。君が若し私を殴ってくれなかったら、私は君と抱擁する資格さえ無いのだ。殴れ。"
+    },
+    {
+     "narration": "セリヌンティウスは、すべてを察した様子で首肯き、刑場一ぱいに鳴り響くほど音高くメロスの右頬を殴った。殴ってから、優しく微笑んだ。"
+    },
+    {
+     "narration": "セリヌンティウスは、この三日の間、一度もメロスを疑わなかった。"
+    },
+    {
+     "narration": "「ありがとう、友よ。」二人同時に言い、ひしと抱き合い、それから嬉し泣きにおいおい声を放って泣いた。"
+    },
+    {
+     "narration": "群衆の中からも、歔欷の声が聞えた。"
+    }
+   ],
+   "inferred": true,
+   "note": "S-087：beat.25.v-melos-only。セリヌンティウス没疑过，不说「私を殴れ」，第四句是数据写的"
+  },
+  {
+   "id": "piece.embrace-selinuntius-doubted",
+   "on": {
+    "beat": "beat.25"
+   },
+   "when": [
+    {
+     "var": "var.melos.doubted",
+     "op": "==",
+     "value": false
+    }
+   ],
+   "once": true,
+   "lines": [
+    {
+     "narration": "メロスは、道中で一度も、約束を投げ出しかけなかった。"
+    },
+    {
+     "speaker": "char.selinuntius",
+     "line": "メロス、私を殴れ。音高く私の頬を殴れ。私はこの三日の間、たった一度だけ、ちらと君を疑った。生れて、はじめて君を疑った。君が私を殴ってくれなければ、私は君と抱擁できない。"
+    },
+    {
+     "narration": "メロスは腕に唸りをつけてセリヌンティウスの頬を殴った。"
+    },
+    {
+     "narration": "「ありがとう、友よ。」二人同時に言い、ひしと抱き合い、それから嬉し泣きにおいおい声を放って泣いた。"
+    },
+    {
+     "narration": "群衆の中からも、歔欷の声が聞えた。"
+    }
+   ],
+   "inferred": true,
+   "note": "S-087：beat.25.v-selinuntius-only。梅洛斯没疑过，没被打在先，セリヌンティウス的话去掉「同じくらい」；第一句是数据写的"
+  },
+  {
+   "id": "piece.embrace",
+   "on": {
+    "beat": "beat.25"
+   },
+   "once": true,
+   "lines": [
+    {
+     "narration": "メロスは眼に涙を浮べて言った。"
+    },
+    {
+     "speaker": "char.melos",
+     "line": "セリヌンティウス。私を殴れ。ちから一ぱいに頬を殴れ。私は、途中で一度、悪い夢を見た。君が若し私を殴ってくれなかったら、私は君と抱擁する資格さえ無いのだ。殴れ。"
+    },
+    {
+     "narration": "セリヌンティウスは、すべてを察した様子で首肯き、刑場一ぱいに鳴り響くほど音高くメロスの右頬を殴った。殴ってから、優しく微笑んだ。"
+    },
+    {
+     "speaker": "char.selinuntius",
+     "line": "メロス、私を殴れ。同じくらい音高く私の頬を殴れ。私はこの三日の間、たった一度だけ、ちらと君を疑った。生れて、はじめて君を疑った。君が私を殴ってくれなければ、私は君と抱擁できない。"
+    },
+    {
+     "narration": "メロスは腕に唸りをつけてセリヌンティウスの頬を殴った。"
+    },
+    {
+     "narration": "「ありがとう、友よ。」二人同時に言い、ひしと抱き合い、それから嬉し泣きにおいおい声を放って泣いた。"
+    },
+    {
+     "narration": "群衆の中からも、歔欷の声が聞えた。"
+    }
+   ],
+   "inferred": true,
+   "note": "S-087：原作第 63〜68 段。「セリヌンティウス。」和「私を殴れ。…」并成一句；「殴ってから優しく微笑み、」收成一句"
+  },
+  {
+   "id": "piece.king-asks-you",
+   "on": {
+    "beat": "beat.26"
+   },
+   "when": [
+    {
+     "var": "var.hostage.who",
+     "op": "==",
+     "value": "player"
+    }
+   ],
+   "once": true,
+   "lines": [
+    {
+     "narration": "暴君ディオニスは、群衆の背後からメロスとあなたの様を、まじまじと見つめていたが、やがて静かに近づき、顔をあからめて、こう言った。"
+    },
+    {
+     "speaker": "char.king",
+     "line": "おまえらの望みは叶ったぞ。おまえらは、わしの心に勝ったのだ。信実とは、決して空虚な妄想ではなかった。どうか、わしをも仲間に入れてくれまいか。どうか、わしの願いを聞き入れて、おまえらの仲間の一人にしてほしい。"
+    },
+    {
+     "narration": "どっと群衆の間に、歓声が起った。"
+    },
+    {
+     "speaker": "char.crowd",
+     "line": "万歳、王様万歳。"
+    }
+   ],
+   "inferred": true,
+   "note": "S-087：人质是玩家（B-4）时王看的是梅洛斯和「あなた」（UX #107），其余同 piece.king-asks"
+  },
+  {
+   "id": "piece.king-asks",
+   "on": {
+    "beat": "beat.26"
+   },
+   "once": true,
+   "lines": [
+    {
+     "narration": "暴君ディオニスは、群衆の背後から二人の様を、まじまじと見つめていたが、やがて静かに二人に近づき、顔をあからめて、こう言った。"
+    },
+    {
+     "speaker": "char.king",
+     "line": "おまえらの望みは叶ったぞ。おまえらは、わしの心に勝ったのだ。信実とは、決して空虚な妄想ではなかった。どうか、わしをも仲間に入れてくれまいか。どうか、わしの願いを聞き入れて、おまえらの仲間の一人にしてほしい。"
+    },
+    {
+     "narration": "どっと群衆の間に、歓声が起った。"
+    },
+    {
+     "speaker": "char.crowd",
+     "line": "万歳、王様万歳。"
+    }
+   ],
+   "inferred": true,
+   "note": "S-087：原作第 68〜71 段"
+  },
+  {
+   "id": "piece.scarlet-cloak",
+   "on": {
+    "beat": "beat.27"
+   },
+   "once": true,
+   "lines": [
+    {
+     "narration": "ひとりの少女が、緋のマントをメロスに捧げた。メロスは、まごついた。佳き友は、気をきかせて教えてやった。"
+    },
+    {
+     "speaker": "char.selinuntius",
+     "line": "メロス、君は、まっぱだかじゃないか。早くそのマントを着るがいい。この可愛い娘さんは、メロスの裸体を、皆に見られるのが、たまらなく口惜しいのだ。"
+    },
+    {
+     "narration": "勇者は、ひどく赤面した。"
+    }
+   ],
+   "inferred": true,
+   "note": "S-087：原作第 72〜74 段"
   }
  ],
  "objects": [

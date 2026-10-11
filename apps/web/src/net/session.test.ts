@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useStory } from "../stores/story";
 import { useUi } from "../stores/ui";
 import { useVoice } from "../stores/voice";
 import { useWorld } from "../stores/world";
@@ -7,6 +8,7 @@ import { peek, drain } from "../telemetry/telemetry";
 import { FakeAudio, voiceFrame } from "../voice/fakeAudio";
 import { Session } from "./session";
 import { commit, event, FakeSocket, PID, snapshot, welcome } from "./testkit";
+import { openPropose } from "./story";
 
 function open(lastSeq = 0) {
   const onEnded = vi.fn();
@@ -241,6 +243,70 @@ describe("Session", () => {
       "この足なら、陽の沈む前に着く。",
       "戸は閉ざされたままだ。",
     ]);
+  });
+
+  it("after ending_started, the closing set piece and the action's narration go to the staging, not the voice", () => {
+    const { sock } = open(2);
+    sock.receive({
+      type: "ending_started",
+      trigger: "story-closed",
+      staging: { place: "place.execution-ground", characters: [] },
+    });
+    sock.receive({
+      type: "set_piece",
+      pieceId: "piece.curtain",
+      lines: [
+        { narration: "群衆がどよめいた。" },
+        { speaker: "char.melos", line: "セリヌンティウス。" },
+      ],
+    });
+    sock.receive({
+      type: "action_result",
+      actionId: "act_wait",
+      outcome: "done",
+      narration: "陽が沈んだ。",
+    });
+    expect(useStory.getState().ending!.lines).toEqual([
+      {
+        text: "群衆がどよめいた。",
+        speaker: null,
+        pieceId: "piece.curtain",
+        n: 1,
+      },
+      {
+        text: "セリヌンティウス。",
+        speaker: "char.melos",
+        pieceId: "piece.curtain",
+        n: 2,
+      },
+      { text: "陽が沈んだ。", speaker: null, early: true },
+    ]);
+    expect(useVoice.getState().narration).toEqual([]);
+    useStory.setState({ ending: null });
+  });
+
+  it("a spoken plan thinking when the line drops: with no act end on welcome, the resent commits wait for the act change", () => {
+    const { sock } = open(2);
+    sock.receive({
+      type: "act_ended",
+      actId: "act.1",
+      recapLines: [],
+      options: [],
+      freeform: { allowed: true, triesLeft: 2 },
+    });
+    const a = useStory.getState().actEnd!;
+    useStory.setState({ actEnd: { ...a, phase: { k: "thinking" } } });
+    sock.drop();
+    vi.advanceTimersByTime(1000);
+    const again = FakeSocket.last();
+    again.open();
+    again.receive(welcome(2)); // pending.actEnd: null — the plan went during the drop
+    again.receive(commit(3, 3, { narration: ["夜が明けた。"] }));
+    // not applied yet: the page still waits, the subtitles don't run ahead of it
+    expect(useWorld.getState().world!.lastSeq).toBe(2);
+    expect(useVoice.getState().narration).toEqual([]);
+    expect(useStory.getState().actEnd!.phase.k).toBe("thinking");
+    useStory.setState({ actEnd: null });
   });
 
   it("fills a gap from /events and the snapshot, then applies what came meanwhile", async () => {
@@ -483,3 +549,87 @@ function lastTurnOf(m: Record<string, unknown>) {
     characterText: null,
   };
 }
+
+describe("the act end's plan said aloud (api-contract 3.11)", () => {
+  it("held and let go: activity_start purpose act_plan, the page waits for that turn, the result ends it", () => {
+    const { s, sock, audio } = open();
+    useVoice.setState({ mic: "granted" });
+    sock.receive({
+      type: "act_ended",
+      actId: "act.1",
+      recapLines: [],
+      options: [],
+      freeform: { allowed: true, triesLeft: 2 },
+    });
+    useStory.setState({
+      actEnd: openPropose(useStory.getState().actEnd!),
+    });
+    s.actPlanPress();
+    const start = sock.sent.at(-1)!;
+    expect(start).toMatchObject({
+      type: "activity_start",
+      purpose: "act_plan",
+    });
+    for (let i = 0; i < 10; i++) audio.micFrame();
+    vi.advanceTimersByTime(800);
+    s.actPlanRelease();
+    expect(sock.sent.at(-1)).toMatchObject({ type: "activity_end" });
+    expect(useStory.getState().actEnd!.phase).toEqual({
+      k: "thinking",
+      turnId: start.turnId,
+    });
+    sock.receive({
+      type: "act_plan_result",
+      turnId: String(start.turnId),
+      accepted: false,
+      narration: ["声が届かなかったようです。もう一度、聞かせてください。"],
+      triesLeft: 2,
+    });
+    expect(useVoice.getState().turn).toBeNull();
+    expect(useStory.getState().actEnd!.phase.k).not.toBe("thinking");
+  });
+
+  // a try taken back once it had been judged (3.6 ⑦): too late, the result comes all the same and counts
+  it("taken back too late: the result still shows and the try is used", () => {
+    const { s, sock, audio } = open();
+    useVoice.setState({ mic: "granted" });
+    sock.receive({
+      type: "act_ended",
+      actId: "act.1",
+      recapLines: [],
+      options: [],
+      freeform: { allowed: true, triesLeft: 2 },
+    });
+    useStory.setState({
+      actEnd: openPropose(useStory.getState().actEnd!),
+    });
+    s.actPlanPress();
+    const turnId = String(sock.sent.at(-1)!.turnId);
+    for (let i = 0; i < 10; i++) audio.micFrame();
+    vi.advanceTimersByTime(800);
+    s.actPlanRelease();
+    s.actPlanRetract();
+    expect(sock.sent.at(-1)).toMatchObject({ type: "turn_retract", turnId });
+    expect(useStory.getState().actEnd!.phase).toMatchObject({
+      k: "thinking",
+      retracting: true,
+    });
+    sock.receive({ type: "turn_retract_result", turnId, status: "too_late" });
+    expect(useStory.getState().actEnd!.phase.k).toBe("thinking");
+    sock.receive({
+      type: "act_plan_result",
+      turnId,
+      accepted: false,
+      narration: ["城門はもう閉じている。"],
+      alternative: {
+        optionId: "opt.wait",
+        label: "夜明けを待つ",
+        narration: "夜明けを待つことにした。",
+      },
+      triesLeft: 1,
+    });
+    const a = useStory.getState().actEnd!;
+    expect(a.phase).toMatchObject({ k: "result", accepted: false });
+    expect(a.triesLeft).toBe(1);
+  });
+});
