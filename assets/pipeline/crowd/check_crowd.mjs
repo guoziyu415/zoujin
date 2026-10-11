@@ -41,6 +41,9 @@ for (const [name, c] of costumes) {
   if (c.joints?.length !== bones.length)
     fail(`${name}: ${c.joints?.length} joints for ${bones.length} bones`);
   if (c.vertices > 65535) fail(`${name}: too many vertices for u16 indices`);
+  for (const [b, x, y, z] of c.fist ?? [])
+    if (!(b < bones.length) || Math.abs(Math.hypot(x, y, z) - 1) > 0.01)
+      fail(`${name}: fist bone ${b} or its axis`);
 }
 
 const bin = path.join(DIR, "crowd.bin");

@@ -30,6 +30,13 @@ const GAP = 0.75;
 
 // the scene's crowd, for the staging and the test hook
 export const crowdRef: { current: Crowd | null } = { current: null };
+let waiting: ((c: Crowd) => void)[] = [];
+// the crowd once it stands (its pack may still be on the way when the staging starts): a cue given before then is
+// played as soon as it's there, not dropped (data on #139)
+export function whenCrowd(): Promise<Crowd> {
+  const c = crowdRef.current;
+  return c ? Promise.resolve(c) : new Promise((done) => waiting.push(done));
+}
 
 export function crowdSpec(scene: LoadedScene, count: number, seed = 1) {
   const { manifest, nav } = scene;
@@ -94,6 +101,10 @@ export default function CrowdLayer({
   }, [scene, count, pack]);
   useEffect(() => {
     crowdRef.current = crowd;
+    if (crowd) {
+      for (const done of waiting) done(crowd);
+      waiting = [];
+    }
     return () => {
       crowdRef.current = null;
       crowd?.dispose();

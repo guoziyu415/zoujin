@@ -138,7 +138,9 @@ test("どよめき from the scaffold outwards, the cheer, making way", async () 
   await expect
     .poll(
       async () =>
-        (await call((h) => h.crowd()))!.clips.every((x) => x === "cheer"),
+        (await call((h) => h.crowd()))!.clips.every((x) =>
+          x.startsWith("cheer"),
+        ),
       { timeout: 60_000 },
     )
     .toBe(true);

@@ -14,6 +14,7 @@ type Entry = {
   indices: number;
   indexOffset: number;
   joints: Vec3[];
+  fist?: [number, number, number, number, number][]; // finger bone, its bend axis (x, y, z) and angle at a fist
 };
 export type CrowdPackJson = {
   format: string;
@@ -68,7 +69,7 @@ export function parseCrowdPack(
     );
     out[costume] = {
       geometry: g,
-      skeleton: packSkeleton(json.bones, c.joints),
+      skeleton: packSkeleton(json.bones, c.joints, c.fist),
     };
   }
   return out;

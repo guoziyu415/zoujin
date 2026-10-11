@@ -18,6 +18,7 @@ import { CROWD, crowdCount } from "./presence";
 import {
   bake,
   BONES,
+  CHEERS,
   CLIPS,
   FPS,
   packSkeleton,
@@ -336,12 +337,54 @@ describe("Crowd", () => {
     expect(c.clips().every((x) => x === "sway")).toBe(true);
   });
 
-  it("the cheer reaches everyone within half a second", () => {
+  it("the cheer reaches everyone within a second, not all the same way", () => {
     const c = new Crowd(spec);
     c.update(5);
     c.cheer();
-    c.update(5.5);
-    expect(c.clips().every((x) => x === "cheer")).toBe(true);
+    c.update(5.4);
+    expect(c.clips().some((x) => x === "sway")).toBe(true); // not all at once
+    c.update(6);
+    expect(c.clips().every((x) => CHEERS.includes(x))).toBe(true);
+    expect(new Set(c.clips()).size).toBeGreaterThanOrEqual(3);
+  });
+
+  it("making way while they cheer: the cheering stops first, nobody's arms are up as they part", () => {
+    const c = new Crowd(spec);
+    c.update(1);
+    c.cheer();
+    c.update(2.5);
+    c.part(
+      [
+        [4, -1],
+        [4, 7],
+      ],
+      2,
+    );
+    c.update(3);
+    expect(c.clips().some((x) => CHEERS.includes(x))).toBe(false);
+  });
+
+  it("a fist closes the pack's fingers, each hand on its own", () => {
+    const bones = [
+      ...MPFB_BONES,
+      { name: "hand_l", parent: 3 },
+      { name: "index_01_l", parent: 5 },
+    ];
+    const joints: [number, number, number][] = [
+      ...MPFB_JOINTS,
+      [0.2, 0.92, 0.17],
+      [0.19, 0.85, 0.26],
+    ];
+    const skel = packSkeleton(bones, joints, [[6, 1, 0, 0, 1.4]]);
+    expect(skel.fist).toEqual([
+      { bone: 6, axis: [1, 0, 0], angle: 1.4, side: 0 },
+    ]);
+    const open = skinMatrices({ rot: {} }, skel);
+    const shut = skinMatrices({ rot: {}, fist: [1, 0] }, skel);
+    expect(shut[6]!.equals(open[6]!)).toBe(false);
+    expect(shut[5]!.equals(open[5]!)).toBe(true); // the hand itself stays
+    const right = skinMatrices({ rot: {}, fist: [0, 1] }, skel);
+    expect(right[6]!.equals(open[6]!)).toBe(true);
   });
 
   it("making way: the people near the path turn to it and end up further from it; the others stay", () => {
@@ -370,9 +413,9 @@ describe("Crowd", () => {
     const c = new Crowd(spec);
     c.update(2);
     c.cheer(3);
-    c.update(2.6);
-    expect(c.clips().every((x) => x === "cheer")).toBe(true);
-    c.update(6);
+    c.update(3);
+    expect(c.clips().every((x) => CHEERS.includes(x))).toBe(true);
+    c.update(7);
     expect(c.clips().every((x) => x === "sway")).toBe(true);
     c.cheer();
     c.part(
@@ -382,10 +425,10 @@ describe("Crowd", () => {
       ],
       2,
     );
-    c.update(7);
+    c.update(8);
     expect(c.clips().some((x) => x.startsWith("turn"))).toBe(true);
     c.settle();
-    c.update(7.5);
+    c.update(8.5);
     expect(c.clips().every((x) => x === "sway")).toBe(true);
   });
 
