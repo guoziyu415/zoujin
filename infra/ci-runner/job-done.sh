@@ -4,7 +4,7 @@
 set -u
 for d in "${GITHUB_WORKSPACE:-}" "${RUNNER_TEMP:-}"; do
   if [ -n "$d" ] && [ -d "$d" ]; then
-    find "$d" -mindepth 1 -delete 2>/dev/null || sudo find "$d" -mindepth 1 -delete || true
+    find "$d" -mindepth 1 -delete 2>/dev/null || true
   fi
 done
 exit 0
