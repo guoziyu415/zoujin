@@ -11,6 +11,7 @@ import { PerspectiveCamera, Raycaster, Vector3, type Object3D } from "three";
 import { reducedMotion } from "./motion";
 import { quality } from "./quality/quality";
 import { rig } from "./rig";
+import { shoulderSide, TALK } from "./talkShot";
 
 // exploring: metres behind and above the player's feet, vertical field of view; landscape keeps the angle, comes closer.
 // Portrait at 390 x 844: a 1.7 m person about 120 px tall, someone 15 m further on about 50 px (UX: 100-130 and 40-80).
@@ -98,18 +99,24 @@ export function CameraRig({ blockers }: { blockers: Object3D[] }) {
         talking.position.y + 1.56,
         talking.position.z,
       );
-      tmp.dir.subVectors(face, tmp.head).setY(0).normalize();
+      tmp.dir.subVectors(face, tmp.head).setY(0);
+      const apart = tmp.dir.length();
+      tmp.dir.normalize();
       const right = new Vector3(-tmp.dir.z, 0, tmp.dir.x);
+      fov = portrait ? 42 : 34;
+      // portrait: far enough to the side that the player's head is just out of frame and only the shoulder shows
+      const side = portrait
+        ? shoulderSide(apart, fov, size.width / size.height)
+        : 0.55;
       tmp.want
         .copy(tmp.head)
-        .addScaledVector(tmp.dir, -1.1)
-        .addScaledVector(right, portrait ? 0.35 : 0.55)
+        .addScaledVector(tmp.dir, -TALK.back)
+        .addScaledVector(right, side)
         .setY(p.y + 1.62);
       tmp.look
         .copy(face)
         .addScaledVector(right, portrait ? 0 : 0.35)
         .setY(face.y - (portrait ? 0.25 : 0.1));
-      fov = portrait ? 42 : 34;
     } else {
       const f = portrait ? FOLLOW.portrait : FOLLOW.landscape;
       fov = f.fov;
