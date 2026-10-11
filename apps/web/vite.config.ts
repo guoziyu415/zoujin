@@ -1,5 +1,6 @@
 // Vite for the web front end (frontend-design 3). Besides React, the 3D layer needs a scene's generated files at
-// /scenes/<slug>/ (not in git; scene-dir.ts says where they are): served in dev and preview, copied into dist on build.
+// /scenes/<slug>/ and the characters at /cast/ (not in git; scene-dir.ts says where they are): served in dev and preview,
+// copied into dist on build.
 // The manifest's pack URLs carry a version first (/scenes/<8 hex>/<slug>/…, B-7): locally that segment is dropped.
 // three's KTX2Loader brings its Basis transcoder itself (new URL(..., import.meta.url)), so Vite hashes it into assets.
 // The API (/v1, its WebSocket, B-1's /__mock controls and the prerecorded voice files) goes to the mock or a local
@@ -11,7 +12,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { Connect, Plugin, Rollup } from "vite";
 import { defineConfig } from "vite";
-import { sceneDir } from "./scene-dir.ts";
+import { castDir, sceneDir } from "./scene-dir.ts";
 
 // the plaza, the castle (F-14), and the road's river (F-10): its two packs, the shared roadside pack and the index that picks a pack by act
 const SCENES = [
@@ -39,8 +40,10 @@ function resolveUnder(dir: string, rel: string): string | null {
 }
 
 function runtimeFiles(): Plugin {
-  const mounts = (): [string, string][] =>
-    SCENES.map((s) => [`/scenes/${s}/`, sceneDir(s)]);
+  const mounts = (): [string, string][] => [
+    ...SCENES.map((s): [string, string] => [`/scenes/${s}/`, sceneDir(s)]),
+    ["/cast/", castDir()],
+  ];
   const serve: Connect.NextHandleFunction = (req, res, next) => {
     for (const [prefix, dir] of mounts()) {
       const url = req.url?.replace(/^\/scenes\/[0-9a-f]{8}\//, "/scenes/");
@@ -74,7 +77,7 @@ function runtimeFiles(): Plugin {
       for (const [prefix, dir] of mounts()) {
         if (!fs.existsSync(dir)) {
           this.warn(
-            `${dir} missing: run assets/pipeline/plaza/build.sh (dist has no ${prefix})`,
+            `${dir} missing: run ${prefix === "/cast/" ? "assets/pipeline/cast" : "assets/pipeline/plaza"}/build.sh (dist has no ${prefix})`,
           );
           continue;
         }
@@ -190,7 +193,7 @@ export default defineConfig({
         // after the plaza, the dev panel, the e2e hook) would otherwise split it into pieces compressed one by one
         // (about 3 KB more brotli). Only the listed modules, not their dependencies (react stays in the shell); the lazy
         // ones stay out (the road's extras and water, the act-end page's prefetch, the ending's staging, the crowd past
-        // its presence check, the castle's lamps, the start probe, the team's tools in dev/).
+        // its presence check, the realistic characters' bodies, the castle's lamps, the start probe, the team's tools in dev/).
         codeSplitting: {
           groups: [
             {
@@ -202,7 +205,7 @@ export default defineConfig({
                 )
                   ? !id.includes("libs/basis")
                   : /[\\/]src[\\/]three[\\/]/.test(id) &&
-                    !/scene[\\/](extra|land|clouds|prefetch)|quality[\\/]probe|[\\/](water|dev|castle)[\\/]|ending[\\/](?!Guard)|crowd[\\/](?!presence)/.test(
+                    !/scene[\\/](extra|land|clouds|prefetch)|quality[\\/]probe|[\\/](water|dev|castle)[\\/]|cast[\\/]CastBody|ending[\\/](?!Guard)|crowd[\\/](?!presence)/.test(
                       id,
                     ),
             },
