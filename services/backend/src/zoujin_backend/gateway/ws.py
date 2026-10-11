@@ -418,12 +418,19 @@ class Conn:
             await old.quiet.wait()
 
     def drop(self) -> None:
-        """连接断了：人物还没说完的一轮记成 lost；已经说完、等定稿的照常交。"""
+        """连接断了：人物还没说完的一轮记成 lost；已经说完、等定稿的照常交。玩家还按着说话键就断了的一轮
+        （没有 activity_end，人物还没开口）也是 lost，不然 lastTurn 是上一轮，前端说不出「もう一度」（#109 评审）。"""
         old = self.turn
-        if old is not None and old.speaking:
+        if old is None:
+            return
+        if old.speaking:
             assert old.stream is not None
             old.lost = True
             old.stream.cancel()
+        elif not old.ended and old.mode == "voice" and old.turn_id in self.memory:
+            old.ended = old.lost = True
+            old.stream = asyncio.ensure_future(asyncio.sleep(0))  # 没有回答可等，_finish 直接写 lost 那一行
+            self.gw.hand(self.pid, self._finish(old))
 
     def audio_in(self, frame: bytes) -> None:
         if self.plan is not None and len(frame) >= 5 and int.from_bytes(frame[1:5], "big") == self.plan.turn_seq:
@@ -1041,6 +1048,7 @@ async def endpoint(ws: WebSocket, pid: str) -> None:
     old = gw.conns.get(pid)
     gw.conns[pid] = conn
     if old is not None:
+        old.drop()  # 先把旧连接上没说完、还按着的那一轮交出去，下面 hello 的 handed() 才等得到它
         await old.close(4009, "opened elsewhere")  # 同一局在别的标签页打开：新连接踢掉旧连接
     reader = asyncio.ensure_future(read_loop(conn))
     closed = asyncio.ensure_future(conn.closed.wait())

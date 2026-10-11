@@ -590,6 +590,40 @@ def test_reconnect_while_the_old_connection_is_still_open_sees_the_lost_turn(env
         p.close()
 
 
+def test_reconnect_while_the_player_is_still_holding_sees_the_lost_turn(env: Env, slow: Services) -> None:
+    """玩家按着说话键时断了线（没有 activity_end）：这一轮也记成 lost，重连的 lastTurn 是它，前端才会让人物说
+    「もう一度」；它不交给叙事者，不会有 turn_settled（#109 评审）。"""
+    p = Player(slow.base)
+    p.login(invite(env))
+    try:
+        p.start()
+        p.connect(last_seq=p.last_seq)
+        p.expect("welcome")
+        p.focus(OLD)
+        first = p.text("こんばんは。")
+        p.expect("turn_settled", turnId=first, timeout=30)
+        t, seq = p.turn_id(), p.seq + 1
+        p.seq = seq
+        p.send({"type": "activity_start", "turnId": t, "turnSeq": seq})
+        old = p.ws
+        assert old is not None
+        for _ in range(3):
+            old.send(bytes([0x01]) + seq.to_bytes(4, "big") + bytes(1280))
+        p.send({"type": "ping"})
+        p.expect("pong")
+        p.log, p.pos = [], 0
+        p.connect(last_seq=p.last_seq)
+        last = p.expect("welcome")["lastTurn"]
+        assert last is not None and last["turnId"] == t and last["status"] == "lost", last
+        p.send({"type": "ping"})
+        p.expect("pong")
+        assert not [m for m in p.log if m.get("turnId") == t]
+        with contextlib.suppress(Exception):
+            old.close()
+    finally:
+        p.close()
+
+
 def test_routes_b0_does_not_mount_are_404(player: Player) -> None:
     p = player
     p.start()
