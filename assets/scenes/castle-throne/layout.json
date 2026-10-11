@@ -1,0 +1,196 @@
+{
+  "sceneId": "scene.castle-throne",
+  "about": "Hand-written layout of scene.castle-throne (F-14; ux/scenes/castle.md v1.0.2): plan metres, +x = east = into the castle (azimuth 90°), +y = north, the courtyard floor at z = 0. Rotation 0, so glTF x = plan x and glTF z = -plan y. West to east: the gate passage, the courtyard with four porticoes (two rows of columns on the north side), the throne hall (x -6..16, y -7..7, 8 m high) with the throne on a 0.9 m dais facing west. One place (place.castle); spots in UX order: king-throne first (the king has no beat that places him), hostage-visit second, everything else auto: false. The north portico's second row stands on the mid-spans of the first (x -18.75 .. -11.25), not behind its columns, so the hostage's column is seen between two front columns from hostage-near (UX had both rows at x -12.5: the front column hid him); the hostage and the vigil landing moved with it to x -13.75. lamps: the baked lights (build_castle.py) and the page's flames read the same list. hall: the inside of the throne hall, where the page takes out the sky's light (F-14 3).",
+  "rotationDeg": 0,
+  "defaultPlace": "place.castle",
+  "playerStartSpot": "gate-in",
+  "startSpots": {
+    "place.castle": "gate-in"
+  },
+  "hiTextures": {
+    "base": ["hallfloor", "plaster", "curtain", "throne"],
+    "nrm": ["hallfloor", "plaster", "curtain"]
+  },
+  "hall": {
+    "x": [-6.0, 16.0],
+    "y": [-7.0, 7.0],
+    "z": [-0.5, 8.0]
+  },
+  "lamps": [
+    {
+      "id": "chandelier",
+      "at": [11.0, 0.0],
+      "z": 4.5,
+      "kind": "chandelier",
+      "cups": 6,
+      "radius": 0.55,
+      "watts": 110,
+      "indoor": true
+    },
+    {
+      "id": "hall-brazier-n",
+      "at": [9.0, 2.5],
+      "z": 1.15,
+      "kind": "brazier",
+      "watts": 260,
+      "indoor": true
+    },
+    {
+      "id": "hall-brazier-s",
+      "at": [9.0, -2.5],
+      "z": 1.15,
+      "kind": "brazier",
+      "watts": 260,
+      "indoor": true
+    },
+    {
+      "id": "gate-brazier",
+      "at": [-22.4, 3.2],
+      "z": 1.15,
+      "kind": "brazier",
+      "watts": 260,
+      "indoor": false
+    },
+    {
+      "id": "south-brazier-w",
+      "at": [-17.5, -8.2],
+      "z": 1.15,
+      "kind": "brazier",
+      "watts": 260,
+      "indoor": false
+    },
+    {
+      "id": "south-brazier-e",
+      "at": [-12.5, -8.2],
+      "z": 1.15,
+      "kind": "brazier",
+      "watts": 260,
+      "indoor": false
+    },
+    {
+      "id": "hostage-brazier",
+      "at": [-11.8, 4.4],
+      "z": 1.15,
+      "kind": "brazier",
+      "watts": 200,
+      "indoor": false
+    }
+  ],
+  "walkable": [
+    {
+      "name": "the gate apron and the gate passage",
+      "polygon": [
+        [-33.5, -2.0],
+        [-24.0, -2.0],
+        [-24.0, 2.0],
+        [-33.5, 2.0]
+      ]
+    },
+    {
+      "name": "the courtyard and its porticoes",
+      "polygon": [
+        [-24.0, -10.0],
+        [-6.8, -10.0],
+        [-6.8, 10.0],
+        [-24.0, 10.0]
+      ]
+    },
+    {
+      "name": "the hall door",
+      "polygon": [
+        [-6.8, -2.0],
+        [-6.0, -2.0],
+        [-6.0, 2.0],
+        [-6.8, 2.0]
+      ]
+    },
+    {
+      "name": "the throne hall, the steps and the dais",
+      "polygon": [
+        [-6.0, -7.0],
+        [16.0, -7.0],
+        [16.0, 7.0],
+        [-6.0, 7.0]
+      ]
+    }
+  ],
+  "places": [],
+  "exits": [
+    {
+      "place": "place.syracuse-square",
+      "spot": "way.plaza",
+      "about": "out through the gate, down the steps to the square"
+    }
+  ],
+  "spots": {
+    "king-throne": {
+      "at": [13.5, 0.0],
+      "face": [3.5, 0.0],
+      "about": "the king on his throne, on the dais; the first spot characters take on their own (the king has no beat that places him)"
+    },
+    "hostage-visit": {
+      "at": [-14.5, 4.4],
+      "face": [-13.75, 7.35],
+      "about": "in the courtyard, in front of and a little west of the hostage: where people who come to see him stand"
+    },
+    "gate-in": {
+      "at": [-27.0, 0.0],
+      "face": [-17.0, 0.0],
+      "about": "landing from the square (place.castle startSpots); the camera behind it sits in the gate passage, pulled in",
+      "auto": false
+    },
+    "melos-led-in": {
+      "at": [-25.0, 0.0],
+      "face": [-15.0, 0.0],
+      "about": "beat.04: where Melos appears when he is led in, bound, between two guards; he walks the navmesh to before-king",
+      "auto": false
+    },
+    "before-king": {
+      "at": [5.0, 0.0],
+      "face": [15.0, 0.0],
+      "about": "beat.04's relocate: Melos before the steps, a guard on either side at (5, ±1.6)",
+      "auto": false
+    },
+    "companion-aside": {
+      "at": [3.5, -4.8],
+      "face": [13.5, -2.0],
+      "about": "the player who came in with him stands aside here, by the south row of columns; 「保証する」 is said from here",
+      "auto": false
+    },
+    "selinuntius-in": {
+      "at": [-5.0, 0.0],
+      "face": [5.0, 0.0],
+      "about": "beat.06: where Selinuntius appears inside the door, then walks to selinuntius-meet",
+      "auto": false
+    },
+    "selinuntius-meet": {
+      "at": [4.0, 0.6],
+      "face": [5.0, 0.0],
+      "about": "beat.06's relocate: face to face with Melos; they embrace, then he is bound",
+      "auto": false
+    },
+    "hostage-column": {
+      "at": [-13.75, 7.35],
+      "face": [-13.75, 0.0],
+      "about": "beat.07's relocate: Selinuntius bound to the second-row column of the north portico (-13.75, 8), facing the courtyard, in shade all day",
+      "auto": false
+    },
+    "hostage-near": {
+      "at": [-13.75, 5.3],
+      "face": [-13.75, 15.3],
+      "about": "exit.1.vigil landing (「城に残り、セリヌンティウスのそばにいる」), between two front columns; the camera behind it stands in the open courtyard",
+      "auto": false
+    },
+    "hostage-guard": {
+      "at": [-8.5, 9.2],
+      "face": [-12.0, 6.5],
+      "about": "where the page puts the hostage's guards (char.guards is a group and takes no spot; the data does not write this one)",
+      "auto": false
+    },
+    "way.plaza": {
+      "at": [-31.0, 0.0],
+      "face": [-41.0, 0.0],
+      "about": "out through the gate to the square; people leaving fade out here"
+    }
+  }
+}

@@ -13,13 +13,14 @@ import type { Connect, Plugin, Rollup } from "vite";
 import { defineConfig } from "vite";
 import { sceneDir } from "./scene-dir.ts";
 
-// the plaza, and the road's river (F-10): its two packs, the shared roadside pack and the index that picks a pack by act
+// the plaza, the castle (F-14), and the road's river (F-10): its two packs, the shared roadside pack and the index that picks a pack by act
 const SCENES = [
   "syracuse-square",
   "road-common",
   "road-river-calm",
   "road-river-flood",
   "road-river",
+  "castle-throne",
 ];
 const TYPES: Record<string, string> = {
   ".json": "application/json",
