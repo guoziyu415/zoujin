@@ -85,7 +85,7 @@ def test_lines_match_ux_design_16_2() -> None:
 def test_readings_only_in_what_live_reads() -> None:
     r = slice_plan().recording("guards-gate-promise-3")
     assert r.text == PROMISE_3
-    assert r.spoken == "三日目の日没までに戻らねば、みがわりの石工セリヌンティウスがはりつけだ。"
+    assert r.spoken == "三日目の日没までに戻らねば、みがわりのいしくセリヌンティウスがはりつけだ。"
 
 
 def test_scene_line_only_where_there_is_a_scene() -> None:
@@ -157,9 +157,31 @@ def test_misread_and_double_read_are_rejected() -> None:
 
 def test_transcript_in_kana_for_a_replaced_reading_is_not_a_misread() -> None:
     heard = "三日目の日没までに戻らねば、みがわりの石工セリヌンティウスがはりつけだ。"
-    spoken = heard
+    spoken = "三日目の日没までに戻らねば、みがわりのいしくセリヌンティウスがはりつけだ。"
     v = checks.judge(PROMISE_3, {1: (shape(5.5), heard)}, aizuchi=False, spoken=spoken)
     assert v.chosen == 1
+
+
+@pytest.mark.parametrize(
+    ("text", "heard"), [("ああ。", "あー"), ("へえ。", "へー"), ("ああ、ああ。", "あーあー"), ("へえ。", "ヘー")]
+)
+def test_long_vowel_mark_is_not_a_misread(text: str, heard: str) -> None:
+    assert checks.cer(text, heard) == 0.0  # 「ー」换成前一个假名的元音再比（UX #82）
+
+
+def test_aizuchi_failing_only_on_cer_is_kept_and_flagged() -> None:
+    v = checks.judge("うむ。", {1: (shape(0.3), "うん"), 2: (shape(0.3), "うん")}, aizuchi=True)
+    assert v.chosen == 1
+    assert v.flags and "うん" in v.flags[0] and "不扔" in v.flags[0]
+    v = checks.judge("うむ。", {1: (shape(0.3), "うん"), 2: (shape(0.31), "うむ")}, aizuchi=True)
+    assert v.chosen == 2 and not v.flags  # 有补转写对得上的那遍就选它
+    not_aizuchi = checks.judge("もう一度、頼む。", {1: (shape(1.0), "もう一度、たのしむ。。")}, aizuchi=False)
+    assert not_aizuchi.chosen is None  # 不是相槌的照旧扔
+
+
+def test_aizuchi_with_other_problems_is_still_rejected() -> None:
+    v = checks.judge("うむ。", {1: (shape(0.3, tail=True), "うん")}, aizuchi=True)
+    assert v.chosen is None
 
 
 def test_long_aizuchi_is_kept_and_flagged() -> None:

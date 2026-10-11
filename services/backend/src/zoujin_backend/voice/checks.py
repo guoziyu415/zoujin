@@ -5,7 +5,7 @@
    中位数只取长度在拍数范围里的几遍（两遍坏了时不让坏的拉偏中位数）。
 2. 截断：原始那一遍最后 0.1 秒还有声音的不要。
 3. 读错、读两遍：补转写和原文按字算错误率，超过 20% 的不要；补转写里原文出现两遍的不要。
-4. 相槌超过 0.5 秒的不扔，标给 UX 看。
+4. 相槌超过 0.5 秒的不扔，标给 UX 看；相槌只在字错率上不过的也不扔，标给 UX。
 过了的里面挑有声长度最接近中位数的一遍；三遍都不过，这句不进声音清单，审查单写明原因。
 """
 
@@ -56,15 +56,30 @@ def expected_range(text: str) -> tuple[float, float]:
     return (m * SEC_PER_MORA[0], max(MIN_UPPER_S, m * SEC_PER_MORA[1] + pauses(text) * PAUSE_ALLOWANCE_S))
 
 
+_VOWEL_ROWS = {
+    "あ": "あかさたなはまやらわがざだばぱぁゃゎ",
+    "い": "いきしちにひみりぎじぢびぴぃ",
+    "う": "うくすつぬふむゆるぐずづぶぷぅゅっ",
+    "え": "えけせてねへめれげぜでべぺぇ",
+    "お": "おこそとのほもよろをごぞどぼぽぉょ",
+}
+_VOWEL = {ch: v for v, row in _VOWEL_ROWS.items() for ch in row}
+
+
 def _norm(text: str) -> str:
-    """去掉标点和空格，片假名换平假名，全角半角统一（补转写的写法不一样时不算读错）。"""
-    out = []
+    """去掉标点和空格，片假名换平假名，全角半角统一，「ー」换成前一个假名的元音（あー→ああ、へー→へえ）：
+    补转写的写法不一样时不算读错。"""
+    out: list[str] = []
     for ch in unicodedata.normalize("NFKC", text):
-        if ch in _PUNCT:
-            continue
         code = ord(ch)
         if 0x30A1 <= code <= 0x30F6:
             ch = chr(code - 0x60)
+        if ch == "ー":
+            if out and out[-1] in _VOWEL:
+                out.append(_VOWEL[out[-1]])
+            continue
+        if ch in _PUNCT:
+            continue
         out.append(ch)
     return "".join(out)
 
@@ -94,6 +109,7 @@ class TakeCheck:
     transcript: str | None = None
     cer: float | None = None
     problems: list[str] = field(default_factory=list)
+    soft: list[str] = field(default_factory=list)  # 不扔、标给 UX 的（相槌只在字错率上不过）
 
     @property
     def ok(self) -> bool:
@@ -154,15 +170,21 @@ def judge(
             if any(read_twice(r, heard) for r in refs):
                 c.problems.append("补转写里原文出现两遍（读两遍）")
             elif c.cer > MAX_CER:
-                c.problems.append(f"字错率 {c.cer:.0%} 超过 {MAX_CER:.0%}")
+                why = f"字错率 {c.cer:.0%} 超过 {MAX_CER:.0%}"
+                # 相槌（「うむ」听成「うん」）多半是补转写的毛病，不是读错：只在字错率上不过时不扔，标给 UX（UX #82）
+                (c.soft if aizuchi else c.problems).append(why)
         checks.append(c)
     passed = [c for c in checks if c.ok]
     chosen = None
     if passed and median is not None:
-        chosen = min(passed, key=lambda c: (abs((c.speech or 0) - median), c.take)).take
+        # 没有软问题的优先，其次长度最接近中位数
+        chosen = min(passed, key=lambda c: (bool(c.soft), abs((c.speech or 0) - median), c.take)).take
     flags = []
     if chosen is not None and aizuchi:
-        sp = next(c.speech for c in checks if c.take == chosen) or 0.0
+        pick = next(c for c in checks if c.take == chosen)
+        for why in pick.soft:
+            flags.append(f"相槌的补转写「{pick.transcript}」{why}，不扔，请听一下")
+        sp = pick.speech or 0.0
         if sp > AIZUCHI_MAX_S:
             flags.append(f"相槌 {sp:.2f}s，超过 {AIZUCHI_MAX_S}s（ux-design 16.2 第 4 样）")
     return Verdict(checks, median, (round(lo, 2), round(hi, 2)), chosen, flags)
