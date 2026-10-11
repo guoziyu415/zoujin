@@ -384,6 +384,7 @@ async def run_plan(n: Narrator, task: Task, said: str | None) -> Result:
 
             write = refuse
 
+        await n.wait_window(task)  # 用声音说的打算：定稿推出 3 秒以内可以作废（B-4）
         try:
             return await n._commit(task, pt["last_seq"], write, spend=spend)
         except Stale:
