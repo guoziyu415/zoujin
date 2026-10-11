@@ -4257,7 +4257,8 @@
     {
      "op": "relocate",
      "character": "char.melos",
-     "place": "place.castle"
+     "place": "place.castle",
+     "spot": "before-king"
     },
     {
      "op": "hold",
@@ -4380,7 +4381,8 @@
     {
      "op": "relocate",
      "character": "char.selinuntius",
-     "place": "place.castle"
+     "place": "place.castle",
+     "spot": "selinuntius-meet"
     }
    ],
    "activities": [
@@ -4429,6 +4431,12 @@
      "op": "inc",
      "var": "var.melos.stamina",
      "by": -30
+    },
+    {
+     "op": "relocate",
+     "character": "char.selinuntius",
+     "place": "place.castle",
+     "spot": "hostage-column"
     },
     {
      "op": "relocate",
@@ -6325,6 +6333,7 @@
      "label": "城に残り、セリヌンティウスのそばにいる",
      "toAct": "act.2",
      "place": "place.castle",
+     "spot": "hostage-near",
      "t": 1440,
      "requires": [
       {
@@ -6407,6 +6416,7 @@
      "label": "城で、セリヌンティウスのそばにいる",
      "toAct": "act.3",
      "place": "place.castle",
+     "spot": "hostage-near",
      "t": 2040,
      "requires": [
       {
@@ -6536,6 +6546,7 @@
      "label": "城で、セリヌンティウスのそばにいる",
      "toAct": "act.4",
      "place": "place.castle",
+     "spot": "hostage-near",
      "t": 4590,
      "requires": [
       {
