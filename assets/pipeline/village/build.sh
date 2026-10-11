@@ -4,9 +4,11 @@
 #   assets/pipeline/village/build.sh [final|draft] [out_dir]
 # Runs the plaza's steps (../plaza: sky, bake, encode, pack, check) with this scene's frame and light, the way the road
 # does (../road/build.sh); between the bake and the pack merge_inst.mjs adds the instanced wheat, sheaves, vines and
-# sheep; then ../common/roadside.mjs moves the shared textures into road-common, and check_village.mjs checks it all.
+# sheep; then ../common/roadside.mjs moves the shared textures into road-common; relight.py bakes the other lights
+# (sunset, night, rain) on the baked village and pack_sub.mjs packs them as the sub-packs village-light-<set> (the
+# interior sub-pack has its own pipeline, ./interior/build.sh); check_village.mjs checks it all.
 # final (default): writes assets/scenes/village/build/ (and road-common/build/) and refreshes the committed manifests
-#   (village/scene.json, road-common/pack.json).
+#   (village/scene.json, road-common/pack.json, village-light-<set>/pack.json).
 # draft: 512 lightmaps; writes only out_dir/<pack>/ (CI uses this to prove the pipeline still runs and reproduces).
 # Needs: BPY_PYTHON = a Python 3.13 with bpy 5.2, numpy and pillow (default python3); `pnpm install` done.
 # Optional: PLAZA_OUT = work dir (default: a new temp dir), ROAD_SCANS = dir of CC0 scans that replace the
@@ -26,7 +28,7 @@ PACK=village
 echo "work dir $WORK, output ${OUT:-$SCENES/<pack>/build} ($Q)"
 
 # what pack_scene.mjs records as this scene's own inputs (in place of the plaza's build.sh and scene script)
-export SCENE_INPUTS="assets/pipeline/village/build.sh,assets/pipeline/common/road_tex.py,assets/pipeline/plaza/placeholder_tex.py,assets/pipeline/common/bl.py,assets/pipeline/village/build_village.py,assets/pipeline/village/merge_inst.mjs,assets/pipeline/common/roadside.mjs,assets/pipeline/common/small_tex.mjs,assets/pipeline/village/zones.mjs"
+export SCENE_INPUTS="assets/pipeline/village/build.sh,assets/pipeline/common/road_tex.py,assets/pipeline/plaza/placeholder_tex.py,assets/pipeline/common/bl.py,assets/pipeline/village/build_village.py,assets/pipeline/village/merge_inst.mjs,assets/pipeline/common/roadside.mjs,assets/pipeline/common/small_tex.mjs,assets/pipeline/village/zones.mjs,assets/pipeline/village/relight.py,assets/pipeline/village/pack_sub.mjs,assets/pipeline/village/ktx2.mjs"
 export SCENE_BUILD="assets/pipeline/village/build.sh"
 export SCENE_ROT_DEG=0 SCENE_MINUS_X_AZ=270   # plan +x = east, no rotation (village.md 1)
 export BAKE_RES=1024   # 90 x 70 m of ground; the sun's shadows are drawn live, the bake is sky light and occlusion
@@ -51,6 +53,13 @@ if [ "$Q" = final ] && [ -z "$OUT" ] && [ ! -f "$(dest road-common)/pack.json" ]
   mkdir -p "$(dest road-common)"; cp "$SCENES/road-common/pack.json" "$(dest road-common)/pack.json"
 fi
 node "$COMMON/roadside.mjs" "$(dest road-common)" "assets/pipeline/village/build.sh (roadside.mjs)" "$(dest "$PACK")"
+SUBS="village-light-sunset village-light-night village-light-rain"
+step "light: the 18:30 sky"
+PLAZA_OUT="$WORK/light-sunset" PLAZA_BAKE_MINUTE=1110 E_SKY=0.9 AEROSOL=2.5 "$PY" "$PLAZA/sky.py"
+for s in sunset night rain; do
+  step "relight: $s"; "$PY" "$HERE/relight.py" -- "$s" "$Q"
+done
+step "sub-packs"; node "$HERE/pack_sub.mjs" "$WORK" "$SCENES/$PACK/layout.json" "$(dest "$PACK")"
 step "check"
 node "$PLAZA/check_scene.mjs" "$(dest "$PACK")" "$SCENES/$PACK/layout.json"
 node "$HERE/check_village.mjs" "$(dest road-common)" "$(dest "$PACK")"
@@ -58,5 +67,6 @@ node "$HERE/check_village.mjs" "$(dest road-common)" "$(dest "$PACK")"
 if [ "$Q" = final ] && [ -z "$OUT" ]; then
   cp "$(dest "$PACK")/scene.json" "$SCENES/$PACK/scene.json"
   cp "$(dest road-common)/pack.json" "$SCENES/road-common/pack.json"
+  for p in $SUBS; do mkdir -p "$SCENES/$p"; cp "$(dest "$p")/pack.json" "$SCENES/$p/pack.json"; done
   echo "refreshed the manifests in $SCENES/{$PACK,road-common}"
 fi

@@ -296,6 +296,6 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: |
           BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/village/build.sh draft "$RUNNER_TEMP/village2"
-          for f in village/scene.json road-common/pack.json; do
+          for f in village/scene.json road-common/pack.json village-light-sunset/pack.json village-light-night/pack.json village-light-rain/pack.json; do
             cmp "$RUNNER_TEMP/village/$f" "$RUNNER_TEMP/village2/$f"
           done
