@@ -1,5 +1,5 @@
-"""api-contract 第 1 节和 2.1〜2.4 的 REST，加上预录句的录音文件（2.1）。其余 `/v1` 接口 B-0 不挂路由，
-按第 5 节回 404 not_found（app.py）。
+"""api-contract 第 1 节和 2.1〜2.4 的 REST，加上预录句的录音文件（2.1）、结局（2.8，B-9）、記憶帳（2.7）和删除整局
+（2.9，B-13）。其余 `/v1` 接口不挂路由，按第 5 节回 404 not_found（app.py）。
 
 每个响应先用 C-1 生成的类型构造、按 Schema 校验再回；不合契约就回 500 internal，并在日志里记。
 """
@@ -9,21 +9,25 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import FileResponse, JSONResponse
-from sqlalchemy import delete, func, insert, select, text
+from sqlalchemy import delete, func, insert, select, text, update
 from sqlalchemy.exc import IntegrityError
 
+from zoujin_backend import memory_delete
+from zoujin_backend import timeline as timeline_mod
 from zoujin_backend.config import COOKIE, SESSION_DAYS
 from zoujin_backend.db import store
-from zoujin_backend.db.tables import endings, idempotency_keys, playthrough_metrics, playthroughs, turns
-from zoujin_backend.gateway import auth
+from zoujin_backend.db.tables import endings, idempotency_keys, memory_items, playthrough_metrics, playthroughs, turns
+from zoujin_backend.gateway import auth, memory_book
 from zoujin_backend.gateway.core import RUNS_PER_DAY, VOICE_MINUTES, Gateway
 from zoujin_backend.manifest import CACHE, FILE_CACHE, media_type
 from zoujin_backend.narrator import ending as ending_mod
+from zoujin_backend.narrator import memory
 from zoujin_backend.schemas import SchemaError
 
 log = logging.getLogger("zoujin.gateway")
@@ -363,6 +367,42 @@ async def get_events(request: Request, pid: str) -> Response:
     return ok(gw, "events", 200, {"events": evs, "lastSeq": int(last_seq or 0)})
 
 
+async def last_seq_of(gw: Gateway, pid: str) -> int:
+    async with gw.engine.connect() as c:
+        last_seq = await c.scalar(select(playthroughs.c.last_seq).where(playthroughs.c.playthrough_id == pid))
+    return int(last_seq or 0)
+
+
+@router.get("/v1/playthroughs/{pid}/timeline")
+async def get_timeline(request: Request, pid: str) -> Response:
+    """2.5：事件和节拍合在一起、按日子分段，从事件日志现算。"""
+    gw = gw_of(request)
+    await owned(request, pid)
+    got = await gw.log(pid)
+    if got is None:
+        raise Fail("not_found")
+    pt, log_ = got
+    return ok(gw, "timeline", 200, timeline_mod.timeline(pt.book, pt.role_id, log_, await last_seq_of(gw, pid)))
+
+
+@router.get("/v1/playthroughs/{pid}/why")
+async def get_why(request: Request, pid: str) -> Response:
+    """2.6：从目标沿 causes 往回。目标不是玩家看得到的事件、知道的节拍时 404（关键时刻切片还没有）。"""
+    gw = gw_of(request)
+    await owned(request, pid)
+    query = dict(request.query_params)
+    check_request(gw, "why", "query", query)
+    got = await gw.log(pid)
+    if got is None:
+        raise Fail("not_found")
+    pt, log_ = got
+    try:
+        doc = timeline_mod.why(pt.book, pt.role_id, log_, query["target"])
+    except timeline_mod.NotFound:
+        raise Fail("not_found") from None
+    return ok(gw, "why", 200, doc)
+
+
 @router.get("/v1/playthroughs/{pid}/ending")
 async def get_ending(request: Request, pid: str) -> Response:
     """2.8：还没进结局 404；结局任务还没好 202（etaSeconds = 15 减去已经过的秒数，最少 5）；好了 200 EndingView。"""
@@ -384,3 +424,163 @@ async def get_ending(request: Request, pid: str) -> Response:
         raise Fail("not_found")
     elapsed = float(started) if started is not None else 0.0
     return ok(gw, "ending", 202, {"status": "pending", "etaSeconds": ending_mod.eta(0.0, elapsed)})
+
+
+# —— 2.7 記憶帳、2.9 删除整局（B-13） ——
+
+
+async def idempotent(request: Request, user_id: str, run: Callable[[], Awaitable[Response]]) -> Response:
+    """带 `Idempotency-Key` 的写接口（和 POST /v1/playthroughs 同一套）：同一账号、同一个键排队；见过的键、同样的请求
+    回上次的结果，请求不一样回 idempotency_conflict。只记成功的结果（404、403 不记，换个键照样再判）。"""
+    gw = gw_of(request)
+    key = request.headers.get("idempotency-key")
+    if not key or len(key) > 200:
+        log.info("%s %s 没带 Idempotency-Key", request.method, request.url.path)
+        raise Fail("invalid_request")
+    fp = fingerprint(request, await request.body())
+    async with gw.engine.begin() as lock:
+        await lock.execute(LOCK_KEY, {"k": f"idem:{user_id}:{key}"})
+        async with gw.engine.connect() as c:
+            seen = (
+                await c.execute(
+                    select(
+                        idempotency_keys.c.request_hash, idempotency_keys.c.status_code, idempotency_keys.c.response
+                    ).where(idempotency_keys.c.user_id == user_id, idempotency_keys.c.key == key)
+                )
+            ).first()
+        if seen is not None:
+            if seen.request_hash != fp:
+                raise Fail("idempotency_conflict")
+            if seen.status_code == 202:
+                return Response(status_code=202)
+            return JSONResponse(seen.response, status_code=seen.status_code)
+        resp = await run()
+        if 200 <= resp.status_code < 300:
+            async with gw.engine.begin() as c:
+                body = bytes(resp.body) if resp.body else b"{}"
+                await c.execute(
+                    insert(idempotency_keys).values(
+                        user_id=user_id,
+                        key=key,
+                        request_hash=fp,
+                        status_code=resp.status_code,
+                        response=json.loads(body),
+                    )
+                )
+        return resp
+
+
+async def memory_of(request: Request, endpoint: str, pid: str, memory_id: str) -> Json:
+    """这一局（是这个人的）里没删的这条记忆；没有、删了、ID 不合法 → 404。"""
+    gw = gw_of(request)
+    await owned(request, pid)
+    if gw.schemas.request_errors(endpoint, "params", {"id": pid, "memoryId": memory_id}):
+        raise Fail("not_found")
+    async with gw.engine.connect() as c:
+        row = (
+            (
+                await c.execute(
+                    select(memory_items).where(
+                        memory_items.c.memory_id == memory_id,
+                        memory_items.c.playthrough_id == pid,
+                        memory_items.c.deleted_at.is_(None),
+                    )
+                )
+            )
+            .mappings()
+            .first()
+        )
+    if row is None:
+        raise Fail("not_found")
+    return dict(row)
+
+
+@router.get("/v1/playthroughs/{pid}/memories")
+async def get_memories(request: Request, pid: str) -> Response:
+    gw = gw_of(request)
+    await owned(request, pid)
+    async with gw.engine.connect() as c:
+        pt = await gw.pt(c, pid)
+        if pt is None:
+            raise Fail("not_found")
+        doc = await memory_book.view(c, pt.book, pid, pt.role_id)
+    return ok(gw, "memories", 200, doc)
+
+
+@router.get("/v1/playthroughs/{pid}/memories/{memory_id}/impact")
+async def get_memory_impact(request: Request, pid: str, memory_id: str) -> Response:
+    """删除确认里的「不会撤销的后果」一句：第一次请求时由模型写，缓存在这条记忆上
+    （算出 null 也缓存；模型出错不缓存）。"""
+    gw = gw_of(request)
+    row = await memory_of(request, "memory-impact", pid, memory_id)
+    async with gw.engine.connect() as c:
+        pt = await gw.pt(c, pid)
+        if pt is None:
+            raise Fail("not_found")
+        state = await store.sim_state(c, pid)
+        evs = [e for e in await store.event_log(c, pid, pt.book.version) if e["eventId"] in row["from_events"]]
+    promises: dict[str, Json] = dict(state.get("promises") or {}) if state is not None else {}
+    promise = promises.get(row["promise_id"] or "")
+    voids = promise is not None and promise["status"] == "open"
+    keeps = row["keeps"]
+    if not row["keeps_done"]:
+        keeps, cache, cost = await memory.keeps(
+            gw.screener.text, gw.tracer, pt.book, row, evs, promise, playthrough_id=pid, memory_id=memory_id
+        )
+        async with gw.engine.begin() as c:
+            if cache:
+                await c.execute(
+                    update(memory_items)
+                    .where(memory_items.c.memory_id == memory_id, memory_items.c.deleted_at.is_(None))
+                    .values(keeps=keeps, keeps_done=True)
+                )
+            m = playthrough_metrics.c
+            await c.execute(
+                update(playthrough_metrics)
+                .where(m.playthrough_id == pid)
+                .values(cost_memory_usd=m.cost_memory_usd + cost)
+            )
+    return ok(gw, "memory-impact", 200, {"keeps": keeps, "voidsPromise": voids})
+
+
+@router.delete("/v1/playthroughs/{pid}/memories/{memory_id}")
+async def delete_memory(request: Request, pid: str, memory_id: str) -> Response:
+    """当场生效（`memory_delete.delete_memory`）；之后这一局开着连接就丢掉那几轮的最近对话、重建这个人物的会话，
+    断线寄存的会话和最近对话丢掉。"""
+    gw = gw_of(request)
+    user_id = await user_of(request)
+
+    async def run() -> Response:
+        await memory_of(request, "memory-delete", pid, memory_id)
+        try:
+            async with gw.engine.begin() as c:
+                d = await memory_delete.delete_memory(c, gw.library, gw.ids, gw.schemas, pid, memory_id)
+        except memory_delete.NotFound:
+            raise Fail("not_found") from None
+        conn = gw.conns.get(pid)
+        rebuilt = await conn.forgot(d.turn_ids, d.character) if conn is not None else False
+        await gw.forget(pid)
+        with gw.tracer.span("gateway.memory_delete", playthrough_id=pid, memory_id=memory_id) as sp:
+            sp.set(turns=len(d.turn_ids), voided=d.promise_voided is not None, rebuilt=rebuilt)
+        return ok(gw, "memory-delete", 200, d.response(rebuilt=rebuilt))
+
+    return await idempotent(request, user_id, run)
+
+
+@router.delete("/v1/playthroughs/{pid}")
+async def delete_playthrough(request: Request, pid: str) -> Response:
+    """L2（data-design 5.2）：这一局的行全删，开着的 WebSocket 以 4004 关闭，寄存的会话丢掉。之后这一局都是 404。"""
+    gw = gw_of(request)
+    user_id = await user_of(request)
+
+    async def run() -> Response:
+        await owned(request, pid)
+        conn = gw.conns.get(pid)
+        if conn is not None:
+            await conn.close(4004, "deleted")
+        await gw.forget(pid)
+        async with gw.engine.begin() as c:
+            await memory_delete.delete_playthrough(c, pid)
+        return Response(status_code=202)
+
+    return await idempotent(request, user_id, run)

@@ -2,13 +2,14 @@
 
 B-0 或假模型改了输出，快照要在同一个 PR 里更新（要测试库，见 services/backend/README.md）：
     DATABASE_URL=… uv run zoujin-eval --mode fake --deterministic-only --quiet --out evals/tests/snapshots/fake
-评审时看 report.json 的差异。trace ID 每次不一样，比的时候去掉。
+评审时看 report.json 的差异。trace ID 和不过的原因里的事件 ID 每次不一样，比的时候去掉。
 """
 
 from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -20,7 +21,16 @@ SNAPSHOT = Path(__file__).resolve().parent / "snapshots" / "fake"
 ARGS = ["--world", str(REPO / "worlds/hashire-merosu/1.0.0-draft/world.json"), "--cases", str(REPO / "evals/seeds")]
 
 
+EVENT_ID = re.compile(r"ev_[0-9A-HJKMNP-TV-Z]{26}")  # 不过的原因里列出的事件 ID（B-13 起 E6 真跑到这里）每次不一样
+
+
+def ids_masked(s: str) -> str:
+    return EVENT_ID.sub("ev_…", s)
+
+
 def without_traces(x: Any) -> Any:
+    if isinstance(x, str):
+        return ids_masked(x)
     if isinstance(x, dict):
         return {k: without_traces(v) for k, v in x.items() if k != "traceIds"}
     if isinstance(x, list):
@@ -35,7 +45,8 @@ def test_fake_deterministic_matches_snapshot(tmp_path: Path, monkeypatch: pytest
     got = json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))
     want = json.loads((SNAPSHOT / "report.json").read_text(encoding="utf-8"))
     assert without_traces(got) == without_traces(want)
-    assert (tmp_path / "report.md").read_text(encoding="utf-8") == (SNAPSHOT / "report.md").read_text(encoding="utf-8")
+    got_md, want_md = ((d / "report.md").read_text(encoding="utf-8") for d in (tmp_path, SNAPSHOT))
+    assert ids_masked(got_md) == ids_masked(want_md)
     assert got["meta"]["cases"] == 100 and len(got["cases"]) == 100
 
 

@@ -6,10 +6,10 @@
    "version": "2.0.18",
    "commit": "d0a32e57a7f915cb2f2b95410e2117648c7bbb7e"
   },
-  "assets/pipeline/crowd/build_crowd.py": "9e25b2539c6a1d588ef643946a66ab356b0ef4cc9f1eeb50109d044eeb14c968"
+  "assets/pipeline/crowd/build_crowd.py": "f0a06ded625dbb6aabce700abe5ca8d4e3b8db66a14645f7382114a726bd9944"
  },
  "frame": "three.js: metres, +Y up, the person facing +Z, their left at +X",
- "layout": "per costume at offset: position f32x3, normal i16x3+pad (snorm), skinIndex u8x4, skinWeight u8x4 (sums to 255), part u8 (0 skin, 1 cloth, 2 outer piece, 3 hair); then u16 indices at indexOffset",
+ "layout": "per costume at offset: position f32x3, normal i16x3+pad (snorm), skinIndex u8x4, skinWeight u8x4 (sums to 255), part u8 (0 skin, 1 cloth, 2 outer piece, 3 hair, 4 eyes); then u16 indices at indexOffset",
  "bones": [
   {
    "name": "pelvis",
@@ -182,18 +182,18 @@
  ],
  "costumes": {
   "mantle": {
-   "vertices": 1871,
+   "vertices": 1855,
    "offset": 0,
-   "indices": 9804,
-   "indexOffset": 54260,
-   "triangles": 3268,
+   "indices": 9879,
+   "indexOffset": 53796,
+   "triangles": 3293,
    "min": [
     -0.2794,
     -0.0006,
-    -0.1364
+    -0.1574
    ],
    "max": [
-    0.2823,
+    0.3034,
     1.7405,
     0.3203
    ],
@@ -553,18 +553,18 @@
    ]
   },
   "veil": {
-   "vertices": 1887,
-   "offset": 73868,
-   "indices": 9600,
-   "indexOffset": 128592,
-   "triangles": 3200,
+   "vertices": 1895,
+   "offset": 73556,
+   "indices": 9756,
+   "indexOffset": 128512,
+   "triangles": 3252,
    "min": [
     -0.2285,
     0.0003,
-    -0.126
+    -0.116
    ],
    "max": [
-    0.2296,
+    0.2329,
     1.567,
     0.2373
    ],
@@ -924,11 +924,11 @@
    ]
   },
   "worker": {
-   "vertices": 1695,
-   "offset": 147792,
-   "indices": 9060,
-   "indexOffset": 196948,
-   "triangles": 3020,
+   "vertices": 1731,
+   "offset": 148024,
+   "indices": 9294,
+   "indexOffset": 198224,
+   "triangles": 3098,
    "min": [
     -0.2451,
     -0.0006,
@@ -1295,6 +1295,6 @@
    ]
   }
  },
- "bytes": 215068,
- "sha256": "700b3cd5ffd1ab6436fbe465574c5342f92c0c00add33862b6383f581ebc9829"
+ "bytes": 216812,
+ "sha256": "78e1972147ef3a78f0e52a17ed5a71e1f815f687149623793a863541917e59ca"
 }

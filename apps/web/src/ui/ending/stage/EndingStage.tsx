@@ -7,6 +7,7 @@ import { useEffect, useReducer, useRef, useState } from "react";
 import { manifestQuery } from "../../../app/queries";
 import { navigate } from "../../../app/router";
 import { audio } from "../../../audio";
+import { isCrowd } from "../../../audio/engine";
 import {
   endingFrame,
   openOverlay,
@@ -69,7 +70,7 @@ export function EndingStage({
         const l = pace.current.lines[e.i];
         const clip = l && clipOf(l);
         // not loaded (yet): the line shows whole and is timed like narration
-        if (!clip || !audio.playClip(clip)) {
+        if (!clip || !audio.playClip(clip, undefined, isCrowd(l.speaker))) {
           const lines = pace.current.lines.slice();
           lines[e.i] = { ...lines[e.i]!, clipMs: null };
           pace.current = { ...pace.current, lines, whole: true };

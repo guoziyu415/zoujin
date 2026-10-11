@@ -349,6 +349,8 @@ export function Player({ scene }: { scene: LoadedScene }) {
 
   const tmp = useMemo(() => ({ fwd: new Vector3() }), []);
   useFrame((_, dtRaw) => {
+    body.visible = !rig.staged; // in the ending the staging stands the player (ending/Staging.tsx)
+    if (rig.staged) return;
     const dt = Math.min(0.05, dtRaw);
     const p = rig.player;
     const k = rig.keys;

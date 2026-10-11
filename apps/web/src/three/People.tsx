@@ -132,6 +132,8 @@ export function People({ scene }: { scene: LoadedScene }) {
   }, [nav, manifest, group, people]);
 
   useFrame((_, dtRaw) => {
+    group.visible = !rig.staged; // the ending's staging plays its own people (ending/Staging.tsx)
+    if (rig.staged) return;
     const dt = Math.min(0.05, dtRaw);
     const focus = usePlayer.getState().focusCharacter;
     for (const [id, p] of people) {

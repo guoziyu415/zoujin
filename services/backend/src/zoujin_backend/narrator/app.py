@@ -18,6 +18,7 @@ from fastapi.responses import JSONResponse, Response
 from sqlalchemy.ext.asyncio import create_async_engine
 from zoujin_backend import logs
 from zoujin_backend.config import Settings
+from zoujin_backend.models.armor import armor
 from zoujin_backend.models.text import text_model
 from zoujin_backend.narrator.core import Narrator
 from zoujin_backend.schemas import SchemaBook
@@ -35,6 +36,7 @@ def build(settings: Settings) -> Narrator:
         schemas=SchemaBook(settings.schemas),
         deadlines=settings.deadlines,
         on_rate_limit="degrade",  # 服务玩家：429、529 不停服，按时限的规则处理（B-8）
+        armor=armor(settings.model, replays=settings.replays),  # B-13：记忆一句的第二道过滤
     )
 
 

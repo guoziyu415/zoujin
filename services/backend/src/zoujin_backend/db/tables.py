@@ -2,7 +2,7 @@
 后端自己的表（turns、sessions、invite_codes、idempotency_keys）按 backend-design 3.4、3.5、5.2。
 
 建表走 Alembic（`migrations/versions/`），这里的定义给查询用，两边要一致（测试比对）。
-其余的表（memory_items、promises、run_facts、briefs、approach_log）由用到它们的 M2 卡建。
+其余的表（promises、run_facts、briefs、approach_log）由用到它们的 M2 卡建；memory_items 是 B-13（0007）。
 """
 
 from __future__ import annotations
@@ -261,6 +261,13 @@ playthrough_metrics = Table(
     Column("output_questions", Integer, nullable=False, server_default="0"),
     Column("output_questions_repeated", Integer, nullable=False, server_default="0"),
     Column("output_question_notes", Integer, nullable=False, server_default="0"),
+    # B-13（0007）：记忆一句和「不会撤销的后果」一句的花费；写了的记忆、三道过滤没过的、模型出错超时没写的、
+    # 在記憶帳删掉的（Model Armor 的花费和出错照旧记在 cost_armor_usd、armor_errors）
+    Column("cost_memory_usd", Numeric(12, 6), nullable=False, server_default="0"),
+    Column("memories_written", Integer, nullable=False, server_default="0"),
+    Column("memories_filtered", Integer, nullable=False, server_default="0"),
+    Column("memories_failed", Integer, nullable=False, server_default="0"),
+    Column("memories_deleted", Integer, nullable=False, server_default="0"),
 )
 
 # 意图确认的草稿（B-4，api-contract 3.9）：叙事者提出、还没答的那一个候选（不放原话）。关掉就删行，随整局删除。
@@ -291,6 +298,33 @@ endings = Table(
     UniqueConstraint("playthrough_id", name="endings_playthrough"),
 )
 
+# 人物对玩家的记忆（B-13，契约第 4 节）：删了 text 置空、写 deleted_at，行留着（审计）；随整局删除。
+# keeps：删除确认里「不会撤销的后果」一句的缓存，keeps_done = 算过了（算出 null 也缓存）
+memory_items = Table(
+    "memory_items",
+    metadata,
+    Column("memory_id", Text, primary_key=True),  # mem_ + ULID
+    _pt_fk(),
+    Column("schema_version", Text, nullable=False),
+    Column("character", Text, nullable=False),
+    Column("kind", Text, nullable=False),
+    Column("text", Text),
+    Column("from_events", JSONB, nullable=False),
+    Column("t", Integer, nullable=False),
+    Column("trust_delta", Integer, nullable=False),
+    Column("salience", Numeric(4, 3), nullable=False),
+    Column("via", Text),
+    Column("promise_id", Text),
+    Column("keeps", Text),
+    Column("keeps_done", Boolean, nullable=False, server_default=text("false")),
+    _ts("created_at", nullable=False, now=True),
+    _ts("deleted_at"),
+    # 局势说明和算关系只读没删的（数据评审）
+    Index("memory_items_character", "playthrough_id", "character", postgresql_where=text("deleted_at IS NULL")),
+)
+
+# data-design 5.3 的删除清单里还没建的表（局势说明不存库，每次开会话现拼），eval_api 的 db_absent 答 0
+NOT_BUILT = ("briefs",)
 # data-design 5.3 的删除清单里，已经建了的表（eval_api 的 db_absent 查这些）
 PER_PLAYTHROUGH = (
     "playthroughs",
@@ -301,4 +335,5 @@ PER_PLAYTHROUGH = (
     "playthrough_metrics",
     "drafts",
     "endings",
+    "memory_items",
 )

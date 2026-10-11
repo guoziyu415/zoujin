@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { keyFontPx, phrases } from "./phrases";
 
 describe("the talk key's phrases", () => {
@@ -20,8 +20,42 @@ describe("the talk key's phrases", () => {
     expect(phrases("聞いています")).toEqual(["聞いています"]);
     expect(phrases("")).toEqual([]);
   });
-  it("a phrase longer than a line gets smaller type", () => {
-    expect(keyFontPx(phrases("聞いています"))).toBeUndefined();
-    expect(keyFontPx(phrases("準備しています"))).toBe(10);
+  it("a phrase longer than a line breaks where its kanji give way to kana", () => {
+    expect(phrases("準備しています", 6)).toEqual(["準備", "しています"]);
+    expect(phrases("準備しています")).toEqual(["準備しています"]);
+    expect(phrases("キャンセルされました", 6)).toEqual([
+      "キャンセルされました",
+    ]); // no kanji: stays whole
+  });
+  it("a phrase still longer than a line gets smaller type, never under 11 px", () => {
+    expect(keyFontPx(phrases("聞いています", 6))).toBeUndefined();
+    expect(keyFontPx(phrases("準備しています", 6))).toBeUndefined();
+    expect(keyFontPx(["ひとつながりの言葉"])).toBe(11);
+  });
+});
+
+describe("without Intl.Segmenter (older Safari and Firefox)", () => {
+  it("still breaks only before kanji and katakana, never inside the kana after them", async () => {
+    vi.resetModules();
+    vi.stubGlobal("Intl", { ...Intl, Segmenter: undefined });
+    try {
+      const { phrases: plain } = await import("./phrases");
+      // no dictionary: a compound verb splits (取り / 消します), but never inside a word's kana
+      expect(plain("指を離すと取り消します")).toEqual([
+        "指を",
+        "離すと",
+        "取り",
+        "消します",
+      ]);
+      expect(plain("人を殺しているそうです")).toEqual([
+        "人を",
+        "殺しているそうです",
+      ]);
+      expect(plain("メロスだ！")).toEqual(["メロスだ！"]);
+      expect(plain("")).toEqual([]);
+    } finally {
+      vi.unstubAllGlobals();
+      vi.resetModules();
+    }
   });
 });
