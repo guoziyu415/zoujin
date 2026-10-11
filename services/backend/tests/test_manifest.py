@@ -485,8 +485,13 @@ class Direct:
 
 @pytest.mark.db
 def test_gateway_only_opens_roles_in_the_manifest(env: Env, tmp_path: Path) -> None:
-    """草稿世界模型里牧童是第一版的身份，但开局的村没有场景包，manifest 里没有它，开局也不收。"""
-    settings = replace(env.settings, dev=True, voices=tmp_path)
+    """草稿世界模型里牧童是第一版的身份，但开局的村没有场景包时，manifest 里没有它，开局也不收（F-11 起仓库里有村子的
+    包，这里拿掉它们再生成）。"""
+    packs = tmp_path / "scenes"
+    for d in (REPO / "assets" / "scenes").iterdir():
+        if not d.name.startswith("village"):
+            shutil.copytree(d, packs / d.name)
+    settings = replace(env.settings, dev=True, voices=tmp_path, scene_packs=packs)
     narrator = narrator_app.build(settings)
     with TestClient(gateway_app.create_app(settings, gateway_app.build(settings, Direct(narrator)))) as c:
         origin = {"Origin": str(c.base_url)}
