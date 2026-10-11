@@ -286,6 +286,34 @@ def test_move_writes_one_event_and_the_patch_has_no_spot(game: Callable[..., Gam
     assert shut["setPiece"] == "piece.workshop-door-closed"
 
 
+def test_crossing_that_cannot_be_made_is_refused_with_a_rejected_move(game: Callable[..., Game]) -> None:
+    """E5-008：桥冲毁了还要走桥。带 params.crossing 的 move（只有评测这样发，契约 3.8 的 move 没有 params）走不通：
+    action_result 照旧 refused，但和别的动作被否决一样记一条被否决的 move（effects 空，R2-precondition）。"""
+    river = {
+        "effects": [
+            {"op": "set", "var": "var.player.companionOf", "value": "char.melos"},
+            {"op": "set", "var": "var.player.location", "value": "place.river"},
+        ]
+    }
+    g = game("sc.canon@t=5000", world=DRAFT, role="role.shepherd-boy", events=[river])
+    seq = g.seq
+    step = g.s.act("move", "place.mountain-pass", {"crossing": "bridge"})
+    assert (step["status"], step["clockMinutes"]) == ("refused", 0)
+    (ev,) = step["events"]
+    assert (ev["type"], ev["actor"], ev["dt"], ev["effects"]) == ("move", "player", 0, [])
+    assert ev["check"] == {
+        "status": "rejected",
+        "attempts": 1,
+        "failedRules": ["R2-precondition"],
+        "checker": CHECKER_MOVE,
+    }
+    (commit,) = g.commits(seq)  # 被否决的那条也占一个 seq：和别的动作被否决一样，commit 里没有事件、玩家不动
+    assert commit["events"] == [] and "player" not in commit["patch"]
+    assert g.s.state()["vars"]["var.player.location"] == "place.river"
+    plain = g.s.act("move", "place.mountain-pass", {})  # 不说走法的照旧：不写事件
+    assert (plain["status"], plain["events"]) == ("refused", [])
+
+
 def test_affordance_whose_condition_fails_is_refused_with_a_rejected_event(game: Callable[..., Game]) -> None:
     g = game("sc.canon@beat.02", walked=True)
     assert g.snap()["actions"] == []
