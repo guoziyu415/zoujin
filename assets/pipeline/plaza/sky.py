@@ -5,11 +5,16 @@ import bpy, math, sys, os
 import numpy as np
 from mathutils import Vector, Matrix
 OUT = os.environ['PLAZA_OUT']  # work dir (build.sh sets it); nothing here is committed
-ROT = Matrix.Rotation(math.radians(144.0), 4, 'Z')
+ROT = Matrix.Rotation(math.radians(float(os.environ.get('SCENE_ROT_DEG', '144'))), 4, 'Z')   # as build_<scene>.py
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 os.makedirs(f'{OUT}/skytest', exist_ok=True)
 from sunpos import sun_local
 SUN_LOCAL, _E, _A = sun_local(); SUN_ELEV = math.radians(_E)
+# SKY_SUN_ELEV_DEG: draw the sky for another sun height, same direction (the road's dawn river: the earth shadow and
+# the pink band read only with the sun just below the horizon, homeward-road.md 1.5)
+if os.environ.get('SKY_SUN_ELEV_DEG'):
+    SUN_ELEV = math.radians(float(os.environ['SKY_SUN_ELEV_DEG']))
+    print(f'sky drawn for {math.degrees(SUN_ELEV):.2f} deg instead')
 print(f'sun at {_E:.2f} deg elevation, azimuth {_A:.1f}')
 TARGET_E_SKY = float(os.environ.get('E_SKY', '0.9'))     # sky irradiance on a horizontal plane, same units as the lamp's 6.0
 sd = (ROT @ SUN_LOCAL).normalized()

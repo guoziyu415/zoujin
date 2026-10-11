@@ -273,10 +273,13 @@ export class Session {
           return addEndingLines([{ text: msg.line, speaker: null }]);
         return addNarration(msg.line);
       case "action_result":
-        if (msg.narration) addNarration(msg.narration);
-        return;
-      case "set_piece":
-        return this.voice.setPiece(msg);
+        if (!msg.narration) return;
+        // the action that ended the story (3.13: its result comes after the closing set piece): into the staging
+        if (useStory.getState().ending)
+          return addEndingLines([
+            { text: msg.narration, speaker: null, early: true },
+          ]);
+        return addNarration(msg.narration);
       case "limits":
         useVoice.setState({ voiceMinutesLeft: msg.voiceMinutesLeft });
         return;
@@ -306,24 +309,25 @@ export class Session {
         return;
       }
       case "set_piece":
-        if (useStory.getState().ending)
-          addEndingLines(
-            msg.lines.map((l, i) =>
-              "narration" in l
-                ? {
-                    text: l.narration,
-                    speaker: null,
-                    pieceId: msg.pieceId,
-                    n: i + 1,
-                  }
-                : {
-                    text: l.line,
-                    speaker: l.speaker,
-                    pieceId: msg.pieceId,
-                    n: i + 1,
-                  },
-            ),
-          );
+        // outside the ending the voice plays it (#126); the closing set pieces are the ending's staging (3.13)
+        if (!useStory.getState().ending) return this.voice.setPiece(msg);
+        addEndingLines(
+          msg.lines.map((l, i) =>
+            "narration" in l
+              ? {
+                  text: l.narration,
+                  speaker: null,
+                  pieceId: msg.pieceId,
+                  n: i + 1,
+                }
+              : {
+                  text: l.line,
+                  speaker: l.speaker,
+                  pieceId: msg.pieceId,
+                  n: i + 1,
+                },
+          ),
+        );
         return;
       case "error":
         // invalid_request: what we sent didn't fit the schema; the turn didn't happen (api-contract 5)
