@@ -42,8 +42,12 @@ export default function EndingScreen({ pid }: { pid: string }) {
       ),
     [manifest.data],
   );
+  // the role of this playthrough (kept from the staging); after a reload, the only role if there is one; else none
+  const roleId = useStory((s) => s.ending?.roleId ?? null);
+  const roles = manifest.data?.roles ?? [];
   const role =
-    manifest.data?.roles.length === 1 ? manifest.data.roles[0]!.name : "";
+    roles.find((r) => r.roleId === roleId)?.name ??
+    (roles.length === 1 ? roles[0]!.name : "");
   const ending = isReady(q.data) ? q.data : null;
 
   // leaving the page: how long it was read, and the captured frame goes
@@ -74,7 +78,10 @@ export default function EndingScreen({ pid }: { pid: string }) {
           ) : (
             <Binding />
           ))}
-        {ending && <Ending e={ending} names={names} role={role} />}
+        {/* the names come with the manifest: until then the card would draw ids */}
+        {ending && manifest.data && (
+          <Ending e={ending} names={names} role={role} />
+        )}
       </div>
       <Suspense fallback={null}>
         {overlay?.kind === "map" && (
@@ -231,6 +238,12 @@ function Ending({
           onClick={() => openOverlay({ kind: "map", from: "ending" })}
         >
           {copy["ending.map"]}
+        </button>
+        <button
+          className="secondary"
+          onClick={() => openOverlay({ kind: "memory" })}
+        >
+          {copy["menu.memory"]}
         </button>
         <button className="secondary" onClick={() => navigate("/roles")}>
           {copy["ending.again"]}

@@ -33,7 +33,9 @@ export function EndingCard({
         line: p.line,
       })),
       contrast: card.contrast,
-      footer: fill(copy["card.footer"], { role }),
+      footer: role
+        ? fill(copy["card.footer"], { role })
+        : copy["card.footer.noRole"],
       diffLabel: copy["card.diff"],
     }),
     [card, names, role],

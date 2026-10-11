@@ -13,6 +13,7 @@ export function StoryMenu() {
       <button
         aria-expanded={open}
         aria-controls="story-menu-list"
+        aria-label={copy["menu.open.label"]}
         onClick={() => setOpen((o) => !o)}
       >
         {copy["menu.open"]}

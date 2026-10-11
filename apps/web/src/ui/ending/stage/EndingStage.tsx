@@ -89,7 +89,9 @@ export function EndingStage({
 
   // new lines from the server
   useEffect(() => {
-    const lines = ending?.lines ?? [];
+    // before the character on stage has finished, the lines only gather (nothing shown, no shot)
+    if (!ending?.ready) return;
+    const lines = ending.lines;
     if (lines.length <= fed.current) return;
     const more = lines.slice(fed.current).map((l) => toStage(l, voices));
     fed.current = lines.length;
@@ -104,7 +106,7 @@ export function EndingStage({
     if (more.length) setDone(false);
     apply(fx);
     render();
-  }, [ending?.lines, voices]);
+  }, [ending?.lines, ending?.ready, voices]);
 
   // the clock
   useEffect(() => {
@@ -137,6 +139,9 @@ export function EndingStage({
         ? pause(pace.current, performance.now())
         : resume(pace.current, performance.now());
       stageBridge().pause(stop);
+      // the recorded line stops where it is and goes on from there (11.1)
+      if (stop) audio.pauseClip();
+      else audio.resumeClip();
     };
     sync();
     document.addEventListener("visibilitychange", sync);
@@ -146,12 +151,13 @@ export function EndingStage({
   // no closing lines at all: the ending is already written, or none come within NO_LINES_MS — a reload in the middle
   // of the staging (the server sends ending_started again, not the set pieces): the binding line or the ending page
   const noLines = !ending?.lines.length;
+  const ready = !!ending?.ready;
   useEffect(() => {
-    if (!noLines) return;
+    if (!noLines || !ready) return;
     if (ending?.endingId) return setDone(true);
     const id = setTimeout(() => setDone(true), NO_LINES_MS);
     return () => clearTimeout(id);
-  }, [noLines, ending?.endingId]);
+  }, [noLines, ready, ending?.endingId]);
 
   // the last line had its time: the ending page, or wait for it
   useEffect(() => {

@@ -26,7 +26,9 @@ export function SunBand() {
     if (t === undefined) return;
     const before = last.current;
     last.current = t;
-    if (before === null || t <= before || !byCommit) return;
+    // a snapshot clears a 「+n」 still showing (its timer is gone with this effect's rerun)
+    if (!byCommit) return setShown(null);
+    if (before === null || t <= before) return;
     setShown(delta(t - before));
     const id = setTimeout(() => setShown(null), 2000);
     return () => clearTimeout(id);

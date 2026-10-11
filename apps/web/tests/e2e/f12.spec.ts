@@ -118,8 +118,8 @@ test("memory book: tabs, sections, forgetting a promise moves the relation and t
 }) => {
   await mock(page, "scenario", { name: "limits" });
   await startStory(page);
-  await page.getByRole("button", { name: "メニュー" }).click();
-  await page.getByRole("button", { name: "記憶帳" }).click();
+  await page.getByRole("button", { name: /^本をひらく/ }).click();
+  await page.getByRole("button", { name: "記憶帳", exact: true }).click();
   const mb = page.getByRole("dialog", { name: "記憶帳" });
   await expect(mb.getByRole("tab", { name: "メロス" })).toHaveAttribute(
     "aria-selected",
@@ -167,8 +167,10 @@ test("map: the timeline by day, beats and their state, future beats as ？, filt
 }) => {
   await mock(page, "scenario", { name: "limits" });
   await startStory(page);
-  await page.getByRole("button", { name: "メニュー" }).click();
-  await page.getByRole("button", { name: "連鎖反応マップ" }).click();
+  await page.getByRole("button", { name: /^本をひらく/ }).click();
+  await page
+    .getByRole("button", { name: "連鎖反応マップ", exact: true })
+    .click();
   const map = page.getByRole("dialog", { name: "連鎖反応マップ" });
   await expect(map.getByRole("heading", { name: "約束の日" })).toBeVisible();
   await expect(
@@ -202,6 +204,8 @@ test("ending: the staging hands over to the ending page; world, you, the people;
 }) => {
   await mock(page, "scenario", { name: "ending" });
   const pid = await startStory(page);
+  // the staging: the HUD goes, only the 3D and the subtitles stay (11.1)
+  await expect(page.locator(".hud-bottom")).toBeHidden({ timeout: 60_000 });
   await expect(page).toHaveURL(new RegExp(`/ending/${pid}$`), {
     timeout: 60_000,
   });
@@ -230,6 +234,10 @@ test("ending: the staging hands over to the ending page; world, you, the people;
   await expect(map).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(map).toBeHidden();
+
+  await page.getByRole("button", { name: "記憶帳", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "記憶帳" })).toBeVisible();
+  await page.keyboard.press("Escape");
 
   await page.getByRole("button", { name: "結末カード" }).click();
   const card = page.getByRole("img", { name: /市で待ち続けた旅人/ });

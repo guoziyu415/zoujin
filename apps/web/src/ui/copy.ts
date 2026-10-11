@@ -48,7 +48,7 @@ export const copy = {
   "talk.disabled": "人に近づくと話せます",
   "talk.reconnecting": "つながり直しています",
   "talk.end": "話を終える",
-  "talk.preparing": "準備中", // frontend-design 7.1 (not in copy-ja yet)
+  "talk.preparing": "準備しています", // copy-ja v0.3.6
   "text.open": "文字で話す",
   "text.placeholder": "言いたいことを書く",
   "text.send": "送る",
@@ -100,7 +100,8 @@ export const copy = {
   "resume.tap": "タップして続ける",
   "ending.world": "世界の結末",
   // —— F-12: the act end, その頃 and the jump page, the map, the memory book, the ending (copy-ja v0.3.6 §5-10, 12) ——
-  "menu.open": "メニュー",
+  "menu.open": "本をひらく",
+  "menu.open.label": "本をひらく（連鎖反応マップ・記憶帳・原作・設定）",
   "menu.memory": "記憶帳",
   "menu.map": "連鎖反応マップ",
   "toast.toMemory": "記憶帳で見る",
@@ -156,8 +157,8 @@ export const copy = {
   "map.why": "なぜこうなった？",
   "map.corrected": "修正",
   "map.detail.who": "知っている人",
-  "map.crisis": "このままでは、日没に間に合わない",
-  "map.collapsed": "……{n}",
+  "deadline.crisis": "このままでは、日没に間に合わない",
+  "map.collapsed": "……ほか{n}件", // copy-ja v0.3.7 draft
   "memory.title": "記憶帳",
   "memory.lead": "この物語の人々が、あなたについて覚えていること。",
   "memory.empty":
@@ -206,6 +207,7 @@ export const copy = {
   "ending.source": "原作を読む（青空文庫）",
   "card.diff": "原作との違い",
   "card.footer": "太宰治『走れメロス』より・{role}として",
+  "card.footer.noRole": "太宰治『走れメロス』より",
   "card.note":
     "あなたが話したことば、個人の情報、URL や QR コードは載りません。",
   "card.save": "カードを保存・共有",

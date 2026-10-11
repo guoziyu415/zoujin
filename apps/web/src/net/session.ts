@@ -428,6 +428,8 @@ export class Session {
         staging: m.staging,
         lines: [],
         endingId: null,
+        roleId: useWorld.getState().world?.player.roleId ?? null,
+        ready: false,
       },
       actEnd: null,
       overlay: null,
@@ -436,8 +438,14 @@ export class Session {
     const until = performance.now() + ENDING_LINE_WAIT_MS;
     while (this.audio.playing() && performance.now() < until)
       await new Promise((r) => setTimeout(r, 100));
-    if (this.audio.playing()) this.audio.fadeOut(200);
+    if (this.audio.playing()) {
+      this.audio.fadeOut(200);
+      await new Promise((r) => setTimeout(r, 200));
+    }
     this.audio.releaseMic();
+    // until now the staging only gathered its lines (api-contract 3.14: the line being said is finished first)
+    const e = useStory.getState().ending;
+    if (e) useStory.setState({ ending: { ...e, ready: true } });
   }
 
   // back after a drop or a reload in the middle of an act end, or before landing (api-contract 4)

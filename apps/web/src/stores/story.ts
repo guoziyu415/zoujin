@@ -31,6 +31,8 @@ export type EndingState = {
   staging: Api.Staging;
   lines: EndingLine[]; // grows while the staging plays (set pieces come after ending_started, S-087 ②)
   endingId: string | null; // ending_ready
+  roleId: string | null; // this playthrough's role, for the card's footer (the world is gone on the ending page)
+  ready: boolean; // the character on stage finished their line (or was faded out): the staging may begin (11.1)
 };
 
 type StoryStore = {

@@ -91,7 +91,7 @@ export default function ChainMap({
             className="map-deadline crisis"
             onClick={() => setWhyOf("forecast")}
           >
-            {copy["map.crisis"]}
+            {copy["deadline.crisis"]}
           </button>
         ) : (
           <p className="map-deadline">{deadline.line}</p>
