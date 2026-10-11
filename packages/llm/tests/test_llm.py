@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 from typing import Any
@@ -9,13 +10,16 @@ from typing import Any
 import pytest
 from zoujin_llm import (
     PRICES_PATH,
+    STATUSES,
     BudgetStop,
     ClaudePrices,
     Ledger,
     ModelCallFailed,
     RateLimited,
     claude_prices,
+    mark_playthrough,
     model_tag,
+    playthrough,
     read_lines,
     replay_key,
     tier_of,
@@ -70,6 +74,39 @@ def test_ledger_line_and_use(tmp_path: Path) -> None:
         Ledger(path, "openai", 1.0)
     with pytest.raises(ValueError):
         Ledger(path, "claude", 1.0, use="dev")
+
+
+def test_ledger_time_status_and_playthrough(tmp_path: Path) -> None:
+    """B-5 的三列：都可选；评测的一局里记的带 playthroughId，出了那一局就不带；老行照读，上限照算。"""
+    path = tmp_path / "ledger.jsonl"
+    write(path, {"provider": "claude", "kind": "extract", "costUsd": 0.5, "item": "s5"})  # 老行：没有这三列
+    ledger = Ledger(path, "claude", 1.0, max_item_usd=1.0, item="s5")
+    with playthrough("pt_01ABC"):
+        ledger.record(kind="extract", model="sonnet-5.5", usage={}, cost=0.25, ms=812.6, status="ok")
+        with playthrough(None):
+            ledger.record(kind="judge", model="opus-5.5", usage={}, cost=0.0, ms=-1, status="error")
+    ledger.record(kind="check", model="sonnet-5.5", usage={}, cost=0.1, status="timeout")
+    ledger.add(kind="triage", model="haiku-5.5", usage={}, cost=0.0)  # 老写法照旧
+    old, mine, outside, after, legacy = read_lines(path)
+    assert (mine["ms"], mine["status"], mine["playthroughId"]) == (813, "ok", "pt_01ABC")
+    assert (outside["ms"], outside["status"]) == (0, "error") and "playthroughId" not in outside
+    assert "ms" not in after and "playthroughId" not in after and after["status"] == "timeout"
+    assert not {"ms", "status", "playthroughId"} & set(legacy) and "ms" not in old
+    assert ledger.spent_on("s5") == pytest.approx(0.85)
+    with pytest.raises(BudgetStop):
+        ledger.before(0.2)
+    with pytest.raises(ValueError, match="status"):
+        ledger.record(kind="x", model="sonnet-5.5", usage={}, cost=0.0, status="slow")
+    assert STATUSES == ("ok", "timeout", "bad-output", "error")
+
+    async def opened() -> None:  # 开局时 playthroughId 在协程里才有
+        mark_playthrough("pt_02DEF")
+        ledger.record(kind="extract", model="sonnet-5.5", usage={}, cost=0.0)
+
+    asyncio.run(opened())
+    assert read_lines(path)[-1]["playthroughId"] == "pt_02DEF"
+    ledger.record(kind="extract", model="sonnet-5.5", usage={}, cost=0.0)
+    assert "playthroughId" not in read_lines(path)[-1]  # 那个事件循环的上下文没带出来
 
 
 def test_model_tag_and_tier() -> None:

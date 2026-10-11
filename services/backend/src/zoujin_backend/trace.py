@@ -49,6 +49,8 @@ ATTRS = frozenset(
         "by",
         "result",
         "nth",
+        "eval.persona",  # B-5：模拟局的画像 ID、种子（评测入口开局的 Span）
+        "eval.seed",
     }
 )
 

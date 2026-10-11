@@ -9,7 +9,8 @@ B-8 以后只剩 `config.TEXT` 里 provider 是 google 的提示（评测里替 
 - 每次调用：渲染提示（世界模型前缀放最前）→ 账本判上限（`BudgetStop`）→ 调用（429 → `RateLimited`，第一个就停）→
   记账 → 输出过 Schema（不过 → `BadOutput`，由流水线按时限的规则重发）。设了 `ZJ_RECORD_REPLAYS` 时由
   `models.text.Recording` 录一行回放。
-- 被时限取消的调用按预计花费记账（可能已经计费了，宁多记）。
+- 被时限取消的调用按预计花费记账（可能已经计费了，宁多记）。每行带耗时和状态（B-5：`ok`、`timeout`、`bad-output`；
+  没有回应的记 `error`、花费 0）。
 """
 
 from __future__ import annotations
@@ -176,19 +177,29 @@ class RealText:
         req = body(kind, user)
         guess = self._guess(kind, user)
         self.ledger.before(guess)
+        start = time.perf_counter()
         try:
             got = await self.transport.generate(model, req)
         except asyncio.CancelledError:  # 时限到了被取消：可能已经计费，按预计记
-            self.ledger.add(kind=kind, model=model, usage={}, cost=guess)
+            self.ledger.record(kind=kind, model=model, usage={}, cost=guess, ms=_ms(start), status="timeout")
             raise
+        except Exception:  # 没有回应（连不上、5xx、429）：记一行，花费 0
+            self.ledger.record(kind=kind, model=model, usage={}, cost=0.0, ms=_ms(start), status="error")
+            raise
+        ms = _ms(start)
         cost = cost_usd(model, got.usage, regional=self.regional)
-        self.ledger.add(kind=kind, model=model, usage=got.usage, cost=cost)
         try:
             output = json.loads(got.text)
             jsonschema.validate(output, PROMPTS[kind].schema)
         except (ValueError, jsonschema.ValidationError):
+            self.ledger.record(kind=kind, model=model, usage=got.usage, cost=cost, ms=ms, status="bad-output")
             raise BadOutput(f"{kind} 的输出不是合 Schema 的 JSON", cost) from None
+        self.ledger.record(kind=kind, model=model, usage=got.usage, cost=cost, ms=ms, status="ok")
         return TextResult(output, kind, model, version, dict(got.usage), cost)
+
+
+def _ms(start: float) -> float:
+    return (time.perf_counter() - start) * 1000
 
 
 def vertex_env(env: Mapping[str, str] | None = None) -> tuple[str, str]:

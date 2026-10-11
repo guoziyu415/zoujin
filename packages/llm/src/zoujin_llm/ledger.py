@@ -8,12 +8,17 @@
 - 总上限只算自己那家的行（D-027 的 Google 50 美元、D-029 的 Claude 100 美元，都是跨所有跑次的累计）；单项上限只在
   给了 `item` 时判：同一个 item 两本账合起来的花费加这一次（数据 #49）。
 - 每次判上限都重读文件：Mac 上可能有几个跑同时在记。
+- B-5 加的三列，都是可选的，老行没有也照读：`ms`（这一次调用的耗时，发出到收完；超时的记到取消为止，超时重发另记
+  一行）、`status`（`STATUSES`）、`playthroughId`（在评测的一局里调用时才有：评测入口用 `playthrough()` 标上；测试库
+  里的随机 ID，不是个人信息）。带这几列用 `record()` 写，`add()` 是老写法。
 """
 
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -23,6 +28,27 @@ from zoujin_llm.errors import BudgetStop
 
 PROVIDERS = {"google": "Google", "claude": "Claude"}
 EVAL_KINDS = ("judge", "player")  # 老行没有 use 时，这几种算评测，其余算产品
+# ok：回来了、能用；timeout：时限到了被取消（按预计记）；bad-output：回来了但停在 refusal / max_tokens，或不过 Schema；
+# error：没有回应（连接断了、5xx、429），花费 0
+STATUSES = ("ok", "timeout", "bad-output", "error")
+
+# 评测的一局：这期间记的行带 playthroughId（eval_api 每一步标上；asyncio.run 和它建的任务都带着这个上下文）
+_PLAYTHROUGH: ContextVar[str | None] = ContextVar("zoujin_ledger_playthrough", default=None)
+
+
+@contextmanager
+def playthrough(pid: str | None) -> Iterator[None]:
+    """这段时间里记的账带 `playthroughId`（None：不带）。"""
+    token = _PLAYTHROUGH.set(pid)
+    try:
+        yield
+    finally:
+        _PLAYTHROUGH.reset(token)
+
+
+def mark_playthrough(pid: str | None) -> None:
+    """在当前上下文里标上（开局时 playthroughId 在协程里才有）。"""
+    _PLAYTHROUGH.set(pid)
 
 
 def now_z() -> str:
@@ -84,6 +110,22 @@ class Ledger:
                 )
 
     def add(self, *, kind: str, model: str, usage: Mapping[str, int], cost: float) -> None:
+        """B-5 以前的写法（不带耗时和状态），数据的评审员的子类还在用。"""
+        self.record(kind=kind, model=model, usage=usage, cost=cost)
+
+    def record(
+        self,
+        *,
+        kind: str,
+        model: str,
+        usage: Mapping[str, int],
+        cost: float,
+        ms: float | None = None,
+        status: str | None = None,
+    ) -> None:
+        """记一行。ms：发出到收完（超时的到取消为止）；status：`STATUSES` 之一。"""
+        if status is not None and status not in STATUSES:
+            raise ValueError(f"status 只能是 {' / '.join(STATUSES)}，得到 {status!r}")
         line: dict[str, object] = {
             "at": now_z(),
             "provider": self.provider,
@@ -95,6 +137,13 @@ class Ledger:
         }
         if self.item is not None:
             line["item"] = self.item
+        if ms is not None:
+            line["ms"] = max(0, round(ms))
+        if status is not None:
+            line["status"] = status
+        pid = _PLAYTHROUGH.get()
+        if pid:
+            line["playthroughId"] = pid
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(line, ensure_ascii=False, sort_keys=True) + "\n")
