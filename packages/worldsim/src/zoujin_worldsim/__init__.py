@@ -4,7 +4,7 @@
 - 逐事件推演：initial_state / apply / settle / world_state / check_effects，加上 classify / predict / arrival_delta；
 - 开局到起点：opening / parse_checkpoint（eval_api 的 setup 里 checkpoint、scenario、place 三种起点）；
 - 叙事者规则的原语：knows（R4，谁此刻知道一件事）、travel_minutes（R3，两地之间最少走几分钟）、
-  activity（R7 和快照，人物此刻在做什么，absent 的不能对话）；
+  activity（R7 和快照，人物此刻在做什么，absent 的不能对话）、spoilers（R4 和输出侧监控，话里有没有此刻不该知道的事）；
 - （1.7）固定演出选哪一条：pick_set_piece（契约 2.11）。
 
 规则要改先改参考实现，再重跑 tests/golden/gen_golden.py。
@@ -26,7 +26,7 @@ from .incremental import (
 )
 from .opening import Opened, Until, opening, parse_checkpoint
 from .pieces import pick_set_piece
-from .primitives import activity, knows, travel_minutes
+from .primitives import activity, knows, spoilers, travel_minutes
 from .sim import OCCURRED, Sim, role_of
 
 __all__ = [
@@ -51,6 +51,7 @@ __all__ = [
     "predict",
     "role_of",
     "settle",
+    "spoilers",
     "travel_minutes",
     "world_state",
 ]
