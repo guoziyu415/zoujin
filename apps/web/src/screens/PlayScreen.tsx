@@ -1,10 +1,11 @@
-// The world screen (frontend-design 5): the 3D layer underneath (F-0: a placeholder; F-2d mounts the plaza on these
-// stores) and the HUD on top: the talk key in the middle of the controls (or the text field when the voice can't be
+// The world screen (frontend-design 5): the 3D layer underneath (the scene on these stores, its own chunk) and the
+// HUD on top: the talk key in the middle of the controls (or the text field when the voice can't be
 // used), the microphone's half pages, the safety note and card (F-1). Opening it starts from the snapshot and the
 // socket; leaving closes both.
 import type { Api } from "@zoujin/contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { flags } from "../app/flags";
 import { manifestQuery, meQuery, takeSnapshot } from "../app/queries";
 import { audio } from "../audio";
 import { navigate, toLogin } from "../app/router";
@@ -28,6 +29,8 @@ import { WorldReactionToast } from "../ui/hud/WorldReactionToast";
 import { SafetyCard } from "../ui/safety/SafetyCard";
 import { HelplinePanel, SafetyHint } from "../ui/safety/SafetyHint";
 import { useVoiceState } from "../voice/useVoiceState";
+
+const WorldScreen = lazy(() => import("./WorldScreen"));
 
 export default function PlayScreen({ pid }: { pid: string }) {
   const qc = useQueryClient();
@@ -108,7 +111,13 @@ export default function PlayScreen({ pid }: { pid: string }) {
       data-events={events}
       data-voice={voice}
     >
-      <div className="world-3d" aria-hidden="true" />
+      <div className="world-3d" aria-hidden="true">
+        {!flags.no3d && (
+          <Suspense fallback={null}>
+            <WorldScreen embedded packs={manifest.data?.scenes} />
+          </Suspense>
+        )}
+      </div>
       <div className="hud-top" inert={paused}>
         <SunBand />
         <ConnectionBanner />

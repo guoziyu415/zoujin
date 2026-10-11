@@ -116,10 +116,6 @@ button {
 .world-3d {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
-  color: var(--ink-2);
-  font-size: 13px;
 }
 .hud-top {
   position: absolute;
@@ -199,6 +195,10 @@ button {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  pointer-events: none; /* taps between the controls reach the 3D (walk there) */
+}
+.hud-bottom > * {
+  pointer-events: auto;
 }
 .subs {
   background: rgba(241, 233, 216, 0.94);

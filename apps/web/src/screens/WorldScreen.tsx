@@ -1,26 +1,46 @@
-// World screen, F-2b's version: the 3D plaza full screen, a thin loading bar, and with ?dev a panel to move the clock.
-// The conversation UI, the clock band and the rest come with F-0 / F-1 (frontend-design 5).
+// The 3D chunk's way in (frontend-design 4, 5): the scene full size with a thin loading bar. Under the play screen's
+// HUD (`embedded`) it shows the story's world from the stores; on its own (?world, ?dev) it is the team's sandbox with
+// a local world (three/dev/sandbox.ts) and with ?dev a panel to move the clock. ?test adds the e2e hook either way.
+// The team's tools (the panel, the sandbox world, the test hook) are chunks of their own: players don't download them.
 import { Canvas } from "@react-three/fiber";
-import { useCallback, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { PCFShadowMap } from "three";
-import { DevPanel } from "../three/dev/DevPanel";
-import { installTestHook } from "../three/dev/testHook";
+import { flags } from "../app/flags";
 import { levelDpr } from "../three/quality/levels";
 import { QualityProbe } from "../three/quality/QualityProbe";
 import { useQuality } from "../three/quality/quality";
-import { World, type LoadStage } from "../three/World";
+import { World, type LoadStage, type ScenePacks } from "../three/World";
 
-const params = new URLSearchParams(location.search);
-const DEV = params.has("dev");
-if (params.has("test")) installTestHook();
+const DEV = new URLSearchParams(location.search).has("dev");
+const DevPanel = lazy(() =>
+  import("../three/dev/DevPanel").then((m) => ({ default: m.DevPanel })),
+);
+if (flags.test)
+  void import("../three/dev/testHook").then((m) => m.installTestHook());
 
-export default function WorldScreen() {
+export default function WorldScreen({
+  embedded = false,
+  packs,
+}: {
+  embedded?: boolean;
+  packs?: ScenePacks | undefined;
+}) {
+  useEffect(() => {
+    if (!embedded)
+      void import("../three/dev/sandbox").then((m) => m.startSandbox());
+  }, [embedded]);
   const [stage, setStage] = useState<LoadStage>("loading");
   const onStage = useCallback((s: LoadStage) => setStage(s), []);
   // the pixel ratio follows the quality level at once (10.6.3): L0 1.25, L1 1.5, L2 2, L3 the screen's own
   const level = useQuality((s) => s.level);
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#14110e" }}>
+    <div
+      style={{
+        position: embedded ? "absolute" : "fixed",
+        inset: 0,
+        background: "#14110e",
+      }}
+    >
       <Canvas
         dpr={levelDpr(level, devicePixelRatio)}
         shadows={{ type: PCFShadowMap }}
@@ -29,7 +49,7 @@ export default function WorldScreen() {
         style={{ touchAction: "none" }}
       >
         <QualityProbe />
-        <World onStage={onStage} />
+        <World onStage={onStage} packs={packs} />
       </Canvas>
       {stage === "loading" && <LoadingBar />}
       {stage === "failed" && (
@@ -38,7 +58,11 @@ export default function WorldScreen() {
           style={{ position: "fixed", inset: 0, background: "#14110e" }}
         />
       )}
-      {DEV && <DevPanel stage={stage} />}
+      {DEV && !embedded && (
+        <Suspense fallback={null}>
+          <DevPanel stage={stage} />
+        </Suspense>
+      )}
     </div>
   );
 }

@@ -8,7 +8,10 @@ import { quality, useQuality, type AssetTier } from "../quality/quality";
 import { rig } from "../rig";
 import { planToWorld, type Vec3 } from "../scene/frame";
 import { highTier, loadInfo } from "../World";
-import { useWorld, type CharacterState } from "./fakeStore";
+import { play } from "../../net/play";
+import { usePlayer } from "../../stores/player";
+import { useWorld } from "../../stores/world";
+import { sandbox, type SandboxCharacter } from "./sandbox";
 
 type Plan = [number, number, number]; // layout.json plan x, y and height
 
@@ -20,7 +23,28 @@ const nextFrames = (n: number) =>
     tick();
   });
 
+// project a world point into the canvas, in CSS pixels of the page (for real taps, page.mouse.click)
+function toPage(v: Vector3): [number, number] | null {
+  const cam = rig.camera;
+  const canvas = document.querySelector("canvas");
+  if (!cam || !canvas) return null;
+  const r = canvas.getBoundingClientRect();
+  const p = v.clone().project(cam);
+  if (p.z > 1 || Math.abs(p.x) > 1 || Math.abs(p.y) > 1) return null;
+  return [
+    r.left + ((p.x + 1) / 2) * r.width,
+    r.top + ((1 - p.y) / 2) * r.height,
+  ];
+}
+
 export function installTestHook(): void {
+  // every move the 3D sends (play.move), in order: the checks read it with or without a story open
+  const moves: string[] = [];
+  const move = play.move;
+  play.move = (place: string) => {
+    moves.push(place);
+    move(place);
+  };
   const rot = () => loadInfo.sceneRotationDeg;
   const toWorld = ([x, y, h]: Plan): Vec3 => planToWorld(x, y, h, rot());
   Object.assign(window, {
@@ -29,7 +53,7 @@ export function installTestHook(): void {
       frame: () => ({ ...frameStats }),
       frames: nextFrames,
       setClock: async (t: number) => {
-        useWorld.getState().setClock(t);
+        sandbox.setClock(t);
         lighting.settle();
         await nextFrames(2);
       },
@@ -41,12 +65,15 @@ export function installTestHook(): void {
       },
       player: () => ({
         ...rig.player,
-        place: useWorld.getState().player.place,
+        place: usePlayer.getState().place,
         walking: rig.path.length > 0,
+        talking: rig.talking,
+        near: usePlayer.getState().nearCharacter,
       }),
-      moves: () => [...useWorld.getState().moves],
+      moves: () => [...moves],
+      clock: () => useWorld.getState().world?.clock.t ?? null,
       setPlaceEnabled: (place: string, on: boolean) =>
-        useWorld.getState().setPlaceEnabled(place, on),
+        sandbox.setPlaceEnabled(place, on),
       // put the player on one of the scene's spots (no walking, no first-screen shot)
       placeAt: async (spot: string) => {
         window.dispatchEvent(
@@ -80,10 +107,22 @@ export function installTestHook(): void {
           horizon: y(cam.position.clone().addScaledVector(fwd, 1e5)) / h,
         };
       },
-      // the scene's other people (fake store; F-0's snapshot and commits later)
-      setCharacters: async (chars: Record<string, CharacterState>) => {
-        useWorld.setState({ characters: chars });
+      // the scene's other people, in the sandbox (a story has them from the snapshot and the commits)
+      setCharacters: async (chars: Record<string, SandboxCharacter>) => {
+        sandbox.setCharacters(chars);
         await nextFrames(2);
+      },
+      // where on the page to tap for a spot / plan point on the ground, or a character (their chest)
+      tapPoint: (to: string | [number, number]) => {
+        const at =
+          typeof to === "string"
+            ? loadInfo.spots[to]
+            : toWorld([to[0], to[1], 0]);
+        return at ? toPage(new Vector3(...at)) : null;
+      },
+      tapCharacter: (id: string) => {
+        const o = rig.people?.getObjectByName(id);
+        return o ? toPage(o.position.clone().setY(o.position.y + 1.2)) : null;
       },
       // is any of a 1.7 m person standing on this spot inside the current camera's view
       inView: (spot: string) => {

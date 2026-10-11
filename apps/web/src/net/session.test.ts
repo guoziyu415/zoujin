@@ -343,6 +343,83 @@ describe("Session", () => {
   });
 });
 
+describe("Session, for the 3D", () => {
+  it("puts the player where the snapshot says, then where a commit's patch.player says", () => {
+    const { sock } = open(2);
+    expect(usePlayer.getState()).toMatchObject({
+      place: "place.syracuse-square",
+      placed: { place: "place.syracuse-square", spot: "plaza-southwest" },
+    });
+    const n = usePlayer.getState().placed!.n;
+    // a commit without patch.player leaves the player alone
+    sock.receive(
+      commit(3, 3, { patch: { clock: { t: 1060, tLabel: "約束の日・夕方" } } }),
+    );
+    expect(usePlayer.getState().placed!.n).toBe(n);
+    // a situational action's playerSpot: same place, a spot (api-contract 3.8)
+    sock.receive(
+      commit(4, 4, { patch: { player: { spot: "old-man-house" } } }),
+    );
+    expect(usePlayer.getState().placed).toEqual({
+      place: "place.syracuse-square",
+      spot: "old-man-house",
+      n: n + 1,
+    });
+  });
+
+  it("sends move without waiting; a refusal puts the player back where they came from, with no move for it", () => {
+    const { s, sock } = open();
+    usePlayer.setState({ place: "place.stonemason-workshop" });
+    s.move("place.stonemason-workshop", "place.syracuse-square");
+    const m = sock.sent.at(-1)!;
+    expect(m).toMatchObject({
+      type: "action",
+      kind: "move",
+      target: "place.stonemason-workshop",
+    });
+    const n = usePlayer.getState().placed!.n;
+    sock.receive({
+      type: "action_result",
+      clientMsgId: String(m.clientMsgId),
+      status: "refused",
+      eventIds: [],
+      narration: "門は閉ざされている。",
+      minutes: 0,
+    });
+    expect(usePlayer.getState().placed).toEqual({
+      place: "place.syracuse-square",
+      n: n + 1,
+    });
+    expect(usePlayer.getState().place).toBe("place.syracuse-square");
+    expect(useVoice.getState().narration).toEqual(["門は閉ざされている。"]);
+    expect(sock.sent.filter((x) => x.type === "action")).toHaveLength(1);
+  });
+
+  it("near and far go out as they are; after a reconnect near, focus and a move made while down go again", () => {
+    const { s, sock } = open();
+    s.near("char.melos");
+    expect(sock.sent.at(-1)).toEqual({ type: "near", character: "char.melos" });
+    expect(usePlayer.getState().nearCharacter).toBe("char.melos");
+    s.far("char.melos");
+    expect(sock.sent.at(-1)).toEqual({ type: "far", character: "char.melos" });
+    expect(usePlayer.getState().nearCharacter).toBeNull();
+    s.near("char.old-man");
+    s.focus("char.old-man");
+    sock.drop();
+    usePlayer.setState({ place: "place.stonemason-workshop" });
+    s.move("place.stonemason-workshop", "place.syracuse-square");
+    vi.advanceTimersByTime(1000);
+    const again = FakeSocket.last();
+    again.open();
+    again.receive(welcome(0));
+    expect(again.types()).toEqual(["hello", "near", "focus", "action"]);
+    expect(again.sent.at(-1)).toMatchObject({
+      kind: "move",
+      target: "place.stonemason-workshop",
+    });
+  });
+});
+
 function lastTurnOf(m: Record<string, unknown>) {
   return {
     turnId: String(m.turnId),

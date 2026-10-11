@@ -9,7 +9,7 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Color, PCFShadowMap, type WebGLRenderer } from "three";
-import { useWorld } from "../three/dev/fakeStore";
+import { sandbox, startSandbox } from "../three/dev/sandbox";
 import { lighting } from "../three/Lighting";
 import { frameStats } from "../three/PostFX";
 import {
@@ -24,6 +24,8 @@ import { quality, useQuality } from "../three/quality/quality";
 import { rig } from "../three/rig";
 import { planToWorld, type Vec3 } from "../three/scene/frame";
 import { loadInfo, World, type LoadStage } from "../three/World";
+
+startSandbox(); // no story here: the plaza's world is a local one (three/dev/sandbox.ts)
 
 quality.manual = true; // the page sets the levels itself; no governor
 
@@ -264,7 +266,7 @@ async function shootLooks(
   const shots: Shot[] = [];
   const rot = loadInfo.sceneRotationDeg;
   for (const look of LOOKS) {
-    useWorld.getState().setClock(look.t);
+    sandbox.setClock(look.t);
     lighting.settle();
     setFire(look.fire);
     rig.fixedView = {
@@ -280,7 +282,7 @@ async function shootLooks(
     }
   }
   setFire(false);
-  useWorld.getState().setClock(1050);
+  sandbox.setClock(1050);
   lighting.settle();
   return shots;
 }
