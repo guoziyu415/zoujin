@@ -3,7 +3,7 @@
 - `invite create [--count N]`：生成邀请码。明文只打印这一次，库里只存哈希。
 - `replay <playthroughId>`：从 W-1 的 initial_state 加全部事件按 seq 用 apply 重建 SimState，和 world_state 表里的比。
   一致退出 0，不一致退出 1（打印不一致的字段名，不打印值），没有这一局退出 2。
-- `voice off|on|status`（B-15）：全局语音开关（backend-design 5.3 的熔断）。关了以后网关 30 秒内读到，新会话全部
+- `voice off|on|status`（B-14）：全局语音开关（backend-design 5.3 的熔断）。关了以后网关 30 秒内读到，新会话全部
   文字模式（`degraded { reason: "service" }`）。
 """
 
@@ -90,7 +90,7 @@ def main(argv: list[str] | None = None) -> None:
     create.add_argument("--count", type=int, default=1)
     rp = sub.add_parser("replay", help="用事件重建世界状态，和缓存比")
     rp.add_argument("playthrough_id")
-    vo = sub.add_parser("voice", help="全局语音开关（B-15）")
+    vo = sub.add_parser("voice", help="全局语音开关（B-14）")
     vo.add_argument("action", choices=("off", "on", "status"))
     args = p.parse_args(argv)
     if args.cmd == "invite" and args.count < 1:

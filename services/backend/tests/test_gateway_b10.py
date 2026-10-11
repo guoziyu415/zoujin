@@ -166,7 +166,7 @@ def test_two_failed_opens_degrade_then_focus_retries(env: Env, inproc: Make, pla
     assert p.expect("session_ready", character=OLD)["voiceAvailable"] is False
     p.voice()  # 降级以后按住说话不行
     assert p.expect("error")["error"]["code"] == "voice_unavailable"
-    t = p.text("こんにちは。")  # 文字照常，人物文字回答（B-15）
+    t = p.text("こんにちは。")  # 文字照常，人物文字回答（B-14）
     final = p.expect("transcript", turnId=t, speaker=OLD, final=True)
     assert final["source"] == "live" and final["text"]
     assert p.expect("turn_complete", turnId=t)["audio"] is False

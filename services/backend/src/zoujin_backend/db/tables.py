@@ -91,7 +91,7 @@ playthroughs = Table(
     Column("arrival", JSONB),  # 落地带 opener、还没收到 act_landed：{actId, line, opener}
     # B-12（0006）：安全筛查的这一局状态 {paused, hinted, ambiguous}（出戏卡开着、小提示推过、似是而非几次），只有网关写
     Column("safety", JSONB, nullable=False, server_default=text("'{}'::jsonb")),
-    # B-15（0008）：预算档 normal / saving / degraded（backend-design 5.3），只升不降；叙事者和网关都按它走
+    # B-14（0008）：预算档 normal / saving / degraded（backend-design 5.3），只升不降；叙事者和网关都按它走
     Column("budget_tier", Text, nullable=False, server_default="normal"),
     # 每账号同时 1 局（backend-design 5.2）
     Index("playthroughs_one_active", "user_ref", unique=True, postgresql_where=text("status = 'active'")),
@@ -212,7 +212,7 @@ playthrough_metrics = Table(
     Column("voice_in_seconds", Numeric(10, 1), nullable=False, server_default="0"),
     Column("voice_out_seconds", Numeric(10, 1), nullable=False, server_default="0"),
     _ts("degraded_at"),
-    # B-15（0008）：进节约档的时刻；降级的原因（budget / daily / service，第一次降级的那个）
+    # B-14（0008）：进节约档的时刻；降级的原因（budget / daily / service，第一次降级的那个）
     _ts("budget_saving_at"),
     Column("degraded_reason", Text),
     # B-2（0002）：分流和改写的花费；流水线的计数（分流跳过、超时降级的轮，改写、降级、拒绝、因要确认而丢弃的候选）
@@ -297,7 +297,7 @@ endings = Table(
     UniqueConstraint("playthrough_id", name="endings_playthrough"),
 )
 
-# B-15（0008）：每账号每天（日本时间）开了几局、说了多少秒语音（backend-design 5.2）。删局不退次数，所以不从
+# B-14（0008）：每账号每天（日本时间）开了几局、说了多少秒语音（backend-design 5.2）。删局不退次数，所以不从
 # playthroughs 现数；只有数，随账号删除
 account_days = Table(
     "account_days",
@@ -309,7 +309,7 @@ account_days = Table(
     PrimaryKeyConstraint("user_id", "day"),
 )
 
-# B-15（0008）：运维开关（现在只有 voice_enabled，backend-design 5.3 的全局熔断）
+# B-14（0008）：运维开关（现在只有 voice_enabled，backend-design 5.3 的全局熔断）
 app_settings = Table(
     "app_settings",
     metadata,

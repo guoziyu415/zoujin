@@ -81,7 +81,7 @@ def build(
 ) -> Brief:
     """notes：B-12 输出侧监控给这个人物加的几句提示（剧透纠正、问句过多、不往死亡推，`gateway/monitor.py`），
     放在「# いまの状況」后面的「# 気をつけること」。只在开会话时带上（中途更新只比较 `facts`）。
-    samples：「口ぶりの例」几句（B-15 节约档 2 句；最近对话的轮数由调用的人截）。"""
+    samples：「口ぶりの例」几句（B-14 节约档 2 句；最近对话的轮数由调用的人截）。"""
     p = persona(book, state, who)
     me = player_card(book, state, who)
     facts = situation_facts(book, state, who)

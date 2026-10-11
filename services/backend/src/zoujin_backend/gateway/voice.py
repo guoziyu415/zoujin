@@ -10,8 +10,8 @@
 | GoAway | 同上，立即开始 |
 | 中途断了 | 那一轮按被打断收（`ws.py`）；然后 `session_preparing { rebuild }` 重开（玩家不在看他就不推） |
 | 开不起来 | 连续 2 次（或配额、账本到上限）：`degraded { voice: false }`，这条连接先不开语音，下一次 `focus` 再试 |
-| 预算、每天、开关（B-15） | `degraded { budget / daily / service }`，`focus` 不开会话、人物文字回答 |
-| 剩 5 分钟（B-15） | 今天的语音时间剩 5 分钟推一次 `limits`（一条连接一次） |
+| 预算、每天、开关（B-14） | `degraded { budget / daily / service }`，`focus` 不开会话、人物文字回答 |
+| 剩 5 分钟（B-14） | 今天的语音时间剩 5 分钟推一次 `limits`（一条连接一次） |
 | 叙事者提交了 | 开着的会话里局势变了就 `note()` 送变了的条目；在说话的一轮里不送，等这一轮交上去 |
 | 闲置 | 离开人物 2 分钟关掉（按 `ZJ_SPEED` 缩短；速度 0 时不关，测试另设） |
 | 断线（B-11） | 会话、最近对话、监控寄存进 `Gateway.parked`；说到一半的人物关掉。会话 30 秒、其余 10 分没人接就丢 |
@@ -100,8 +100,8 @@ class Voices:
     resumed_at: float | None = None  # B-11：hello 的时刻，重新 focus 后第一次就绪记 gateway.resume_ready
     parked_once: bool = False  # B-11：这条连接已经寄存过了（4009 时先寄存、断开时不再寄存）
     off: str | None = None  # 降级的原因（service / budget / daily）；Live 开不起来的下一次 focus 再试
-    warned: bool = False  # B-15：这条连接推过「今天剩 5 分钟」的 limits
-    tier: str = "normal"  # B-15：上次开会话时这一局的预算档（节约档的局势说明短一些）
+    warned: bool = False  # B-14：这条连接推过「今天剩 5 分钟」的 limits
+    tier: str = "normal"  # B-14：上次开会话时这一局的预算档（节约档的局势说明短一些）
     idle_s: float | None = None  # None：按 ZJ_SPEED 算；测试直接设
 
     # —— 小工具 ——
@@ -148,7 +148,7 @@ class Voices:
         """带进会话的最近对话：说漏了剧透的那几句不带（B-12，UX 在 #112 的评审：新会话一开头又看到那个词）。"""
         terms = self.conn.monitor.terms(character)
         kept = [r for _, r in self.conn.recent.get(character, []) if not any(x in (r.reply or "") for x in terms)]
-        return kept[-budget.policy(self.tier).recent_turns :]  # 节约档少带几轮（B-15）
+        return kept[-budget.policy(self.tier).recent_turns :]  # 节约档少带几轮（B-14）
 
     # —— 开会话 ——
 
@@ -246,7 +246,7 @@ class Voices:
 
     async def degrade(self, why: str) -> None:
         """推 `degraded`（同一个原因只推一次），之后人物改文字回答（`ws.py`）。这一局第一次降级记进
-        `playthrough_metrics`（B-15）。预算、每天、开关的降级（不会自己好）关掉不在说话的会话。"""
+        `playthrough_metrics`（B-14）。预算、每天、开关的降级（不会自己好）关掉不在说话的会话。"""
         if self.off == why:
             return
         self.off = why
@@ -265,7 +265,7 @@ class Voices:
                     await sess.close()
 
     async def settle(self) -> None:
-        """hello 时：已经不能用语音的（B-15）记下原因，不推 `degraded`（`welcome.voice.degraded` 已经说了）。"""
+        """hello 时：已经不能用语音的（B-14）记下原因，不推 `degraded`（`welcome.voice.degraded` 已经说了）。"""
         why = await self.blocked()
         if why is not None:
             self.off = why
@@ -273,7 +273,7 @@ class Voices:
                 await budget.mark_degraded(c, self.conn.pid, why)
 
     async def blocked(self) -> str | None:
-        """预算、每天、全局开关（B-15）：现在不能开语音的原因，见 `Gateway.voice_block`。"""
+        """预算、每天、全局开关（B-14）：现在不能开语音的原因，见 `Gateway.voice_block`。"""
         return await self.conn.gw.voice_block(self.conn.pid, self.conn.user_id)
 
     async def open_now(self, character: str, reason: str) -> LiveSession | None:
@@ -325,7 +325,7 @@ class Voices:
         if prev is not None and prev != character:
             self._schedule_idle(prev)
         why = await self.blocked()
-        if why is not None:  # 不会自己好的：不开会话，人物文字回答（B-15）
+        if why is not None:  # 不会自己好的：不开会话，人物文字回答（B-14）
             if self.off == why:
                 await conn.send({"type": "session_ready", "character": character, "voiceAvailable": False})
             else:
@@ -482,7 +482,7 @@ class Voices:
     # —— 花费 ——
 
     async def can_speak(self) -> bool:
-        """这一轮能不能用语音：账本到上限（开发期）、一局花到上限、今天的语音时间用完、全局开关关了（B-15）就降级，
+        """这一轮能不能用语音：账本到上限（开发期）、一局花到上限、今天的语音时间用完、全局开关关了（B-14）就降级，
         这一轮不用 Live（文字一轮改文字回答，`ws.py`）。"""
         ledger = self.conn.gw.live_ledger
         if ledger is not None:
@@ -531,7 +531,7 @@ class Voices:
                     voice_out_seconds=m.voice_out_seconds + round(out_s, 1),
                 )
             )
-            await budget.add_voice(c, conn.user_id, reply_s)  # 每天 60 分钟（B-15）：这一轮进出的音频秒数
+            await budget.add_voice(c, conn.user_id, reply_s)  # 每天 60 分钟（B-14）：这一轮进出的音频秒数
             used = await budget.voice_seconds_today(c, conn.user_id)
         await self._warn(budget.minutes_left(used))
         with conn.gw.tracer.span(

@@ -445,7 +445,7 @@ class Conn:
             last_turn = await self._last_turn(c)
             pt = await self.gw.pt(c, self.pid)
             voice_now = await self.gw.voice_state(c, self.pid, self.user_id)
-        await self.voices.settle()  # B-15：已经降级的（花到上限、今天用完、开关关了）不再推 degraded，welcome 里有
+        await self.voices.settle()  # B-14：已经降级的（花到上限、今天用完、开关关了）不再推 degraded，welcome 里有
         asking = await self._pending_confirm()
         await self.guard.load()
         if pt is not None:
@@ -551,7 +551,7 @@ class Conn:
             log.info("%s 没有 focus 的人物", msg["type"])
             await self.send(error_msg("invalid_request", "話す相手を選んでください。"))
             return None
-        if not await self.voices.can_speak() and mode != "text":  # 降级以后文字一轮照常，人物文字回答（B-15）
+        if not await self.voices.can_speak() and mode != "text":  # 降级以后文字一轮照常，人物文字回答（B-14）
             await self.send(error_msg("voice_unavailable", "いまは声で話せません。"))
             return None
         await self._cut()
@@ -626,7 +626,7 @@ class Conn:
         self.gw.hand(self.pid, self._finish(t))
 
     async def _reply_text(self, t: Turn) -> None:
-        """降级以后的文字一轮（B-15，backend-design 3.2「降级到纯文字」）：人物用文字模型回答（叙事者的 `reply`，同一套
+        """降级以后的文字一轮（B-14，backend-design 3.2「降级到纯文字」）：人物用文字模型回答（叙事者的 `reply`，同一套
         人物设定和局势），先推定稿（`source: "live"`），再推 `turn_complete { audio: false }`（契约 3.3）。之后照常交给
         叙事者。两次都不行：没有定稿，等于人物没回答。花费进 `cost_reply_usd`。"""
         t.released = time.monotonic()
@@ -1052,7 +1052,7 @@ class Conn:
         who = asking["character"]
         t = self.turn
         busy = t is not None and (not t.ended or t.speaking)
-        off = self.voices.off is not None  # 降级了：不用声音反问，直接推 confirm（文字里有反问，B-15）
+        off = self.voices.off is not None  # 降级了：不用声音反问，直接推 confirm（文字里有反问，B-14）
         if asking.get("asked") or self.focused != who or busy or who not in self.sessions or off:
             await self._push_confirm(asking)
             return

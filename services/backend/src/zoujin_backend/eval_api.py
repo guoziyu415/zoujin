@@ -153,7 +153,7 @@ class Session:
         self.setup_doc = copy.deepcopy(dict(setup))
         self.mode = mode
         self.role: str = setup["role"]
-        self.budget_tier: str = setup.get("budgetTier", "normal")  # B-15：开局就设成这一档（E6）
+        self.budget_tier: str = setup.get("budgetTier", "normal")  # B-14：开局就设成这一档（E6）
         self.persona: str | None = setup.get("persona")  # 模拟局的画像 ID，只进 Trace（B-5）
         self.seed: int | None = setup.get("seed")
         self.ids = IdGen()

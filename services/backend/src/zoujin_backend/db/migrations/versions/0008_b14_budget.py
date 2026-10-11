@@ -1,4 +1,4 @@
-"""B-15: budget tier on playthroughs, saving-tier time and degrade reason on playthrough_metrics, per-account daily
+"""B-14: budget tier on playthroughs, saving-tier time and degrade reason on playthrough_metrics, per-account daily
 counters (runs, voice seconds), operational settings (voice_enabled)
 
 Revision ID: 0008

@@ -49,7 +49,7 @@ log = logging.getLogger("zoujin.gateway")
 
 Json = Any
 
-VOICE_SWITCH_TTL_S = 30.0  # B-15：全局语音开关多久读一次库
+VOICE_SWITCH_TTL_S = 30.0  # B-14：全局语音开关多久读一次库
 HANDOFF_WAIT_S = 5.0  # 重连的 hello 最多等旧连接把断线那一轮写完几秒（正常是毫秒级）
 
 
@@ -110,9 +110,9 @@ class Gateway:
     live_model_name: str = "fake-live"
     # B-12：玩家每一句的安全筛查（文本模型和 Model Armor 按 ZJ_MODEL；不给就按 settings 建，测试可以换）
     screener: Screener = field(default=None)  # type: ignore[assignment]
-    # B-15：降级以后人物用文字回答（叙事者的 `reply`）
+    # B-14：降级以后人物用文字回答（叙事者的 `reply`）
     replier: Pipeline = field(default=None)  # type: ignore[assignment]
-    # B-15：全局语音开关的缓存（读的时刻、开没开）；测试设 voice_ttl_s = 0
+    # B-14：全局语音开关的缓存（读的时刻、开没开）；测试设 voice_ttl_s = 0
     voice_cache: tuple[float, bool] | None = None
     voice_ttl_s: float = VOICE_SWITCH_TTL_S
     # 测试用：每条发出的服务端消息（已过 Schema）
@@ -123,14 +123,14 @@ class Gateway:
             from zoujin_backend.gateway.safety import build_screener
 
             self.screener = build_screener(self.settings, self.tracer)
-        if self.replier is None:  # 降级以后人物的文字回答（B-15）：和筛查同一个文本模型
+        if self.replier is None:  # 降级以后人物的文字回答（B-14）：和筛查同一个文本模型
             from zoujin_backend.narrator.pipeline import Pipeline
 
             self.replier = Pipeline(
                 text=self.screener.text, schemas=self.schemas, ids=self.ids, tracer=self.tracer, on_rate_limit="degrade"
             )
 
-    # —— 预算和降级（B-15，`zoujin_backend/budget.py`）——
+    # —— 预算和降级（B-14，`zoujin_backend/budget.py`）——
 
     async def voice_on(self) -> bool:
         """全局语音开关，最多每 `voice_ttl_s` 秒读一次库（运维改了以后不用重新部署）。"""

@@ -185,7 +185,7 @@ async def logout(request: Request) -> Response:
 
 
 async def me_doc(gw: Gateway, c: Any, user_id: str) -> Json:
-    """limits 按日本时间的今天（B-15，`account_days`）：删掉的局也算次数。"""
+    """limits 按日本时间的今天（B-14，`account_days`）：删掉的局也算次数。"""
     runs = await budget.runs_today(c, user_id)
     left = budget.minutes_left(await budget.voice_seconds_today(c, user_id))
     active = await active_pt(gw, c, user_id)
