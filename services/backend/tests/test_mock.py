@@ -351,20 +351,29 @@ def play_retract(p: Player) -> None:
 
 
 def play_confirm(p: Player) -> None:
+    """3.9 的顺序（B-4）：原来那一轮先 commit → turn_settled，再反问、confirm；答「是」先推草稿的 commit 再
+    confirm_closed，超时只推 confirm_closed。"""
     p.focus(MELOS)
     first = p.say("何かあったら、私が力になります。")
+    settled = p.expect("turn_settled", turnId=first)
+    assert settled["outcome"] == "no_change" and settled["minutes"] == 10
     confirm = p.expect("confirm", character=MELOS)
+    assert p.log.index(settled) < p.log.index(confirm)
+    assert [o["label"] for o in confirm["options"]] == ["本気だ", "いや、違う"] and confirm["timeoutSec"] == 30
     p.send({"type": "confirm_answer", "draftId": confirm["draftId"], "optionId": "yes"})
-    p.expect("confirm_closed", draftId=confirm["draftId"], optionId="yes", by="button")
-    assert p.expect("turn_settled", turnId=first)["outcome"] == "committed"
-    (commit,) = p.find("commit", turnId=first)
-    assert commit["events"][0]["promise"]["change"] == "made" and commit["promises"][0]["status"] == "open"
+    closed = p.expect("confirm_closed", draftId=confirm["draftId"], optionId="yes", by="button")
+    _, commit = p.find("commit", turnId=first)
+    assert p.log.index(commit) < p.log.index(closed)
+    assert commit["events"][0]["dt"] == 0 and commit["events"][0]["promise"]["change"] == "made"
+    assert commit["promises"][0]["status"] == "open" and "clock" not in commit["patch"]
     second = p.say("私も、王城へ一緒に行きます。")
+    assert p.expect("turn_settled", turnId=second)["outcome"] == "no_change"
     started = p.expect("turn_started", reason="confirm", speaker=MELOS)
     assert started["turnSeq"] > 0x80000000
     confirm = p.expect("confirm")
     p.expect("confirm_closed", draftId=confirm["draftId"], optionId=None, by="timeout")
-    assert p.expect("turn_settled", turnId=second)["outcome"] == "no_change"
+    assert len(p.find("commit", turnId=second)) == 1
+    assert not [m for m in p.log if m["type"] == "turn_settled" and m.get("turnId") == started["turnId"]]
 
 
 def play_approach(p: Player) -> None:
