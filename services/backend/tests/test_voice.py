@@ -108,10 +108,9 @@ def test_speaker_scenes_direct_one_slot_of_one_speaker() -> None:
     calm = "\n場面：落ち着いて、ふだん話すときと同じ高さと速さで。"
     assert p.recording("melos-wait-1").system.endswith(calm)
     usual = "\n場面：ふだん話すときと同じ高さと速さで。"
-    assert all(
-        p.recording(rid).system.endswith(usual) for rid in ["old-man-unheard-1", "old-man-unheard-2", "melos-unheard-2"]
-    )
-    for rid in ["melos-aizuchi-1", "melos-unheard-1", "old-man-wait-1"]:
+    assert all(p.recording(rid).system.endswith(usual) for rid in ["old-man-unheard-1", "old-man-unheard-2"])
+    # メロス unheard/2 加了演法两次都多读出「それ」「そう」，第三轮照 UX 的默认去掉演法
+    for rid in ["melos-aizuchi-1", "melos-unheard-1", "melos-unheard-2", "old-man-wait-1"]:
         assert "場面：" not in p.recording(rid).system
     # 改了演法的句子签名变了：--resume 只重读这几句
     spec = read_spec("hashire-merosu")
