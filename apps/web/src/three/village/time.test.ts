@@ -71,6 +71,14 @@ describe("the house's camera zone (F-11 card 6)", () => {
     expect(inZone(z.polygon, -8, 7, false)).toBe(false);
     expect(z.portrait.fov).toBe(70);
   });
+  it("stops the camera at the room's walls from inside", async () => {
+    const { roomWalls } = await import("./zones");
+    const { Raycaster, Vector3 } = await import("three");
+    const walls = roomWalls({ min: [-13.7, 0, 8.8], max: [-2.3, 4.1, 13.7] });
+    const ray = new Raycaster(new Vector3(-8, 1.6, 11), new Vector3(0, 0, -1));
+    const hit = ray.intersectObject(walls, false)[0];
+    expect(hit?.distance).toBeCloseTo(2.2);
+  });
   it("counts as in 0.5 m past the wall and as out 0.5 m past it the other way", () => {
     expect(inZone(room, 0.2, 3, false)).toBe(false); // on the threshold: still out
     expect(inZone(room, 0.6, 3, false)).toBe(true);

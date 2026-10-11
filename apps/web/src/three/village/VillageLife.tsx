@@ -54,7 +54,7 @@ import {
 } from "./outdoorLight";
 import { fill, puddles, splashMesh } from "./rainGround";
 import Interior from "./Interior";
-import { inZone, roomZone, type CameraZone } from "./zones";
+import { inZone, roomWalls, roomZone, type CameraZone } from "./zones";
 
 // what the page shows now, for the light sub-packs (code 2) and the test hook; force: the test page's weather switch
 export const villageLight = {
@@ -171,15 +171,26 @@ export default function VillageLife({ scene }: { scene: LoadedScene }) {
   const listed = (manifest as { cameraZones?: CameraZone[] }).cameraZones;
   const [zones, setZones] = useState<CameraZone[]>(listed ?? []);
   useEffect(() => {
-    if (listed?.length) return;
     let live = true;
+    let walls: Mesh | null = null;
     fetchJson<InteriorPack>(`${interiorBase(scene.base)}pack.json`)
-      .then((p) => live && setZones([roomZone(p.room)]))
+      .then((p) => {
+        if (!live) return;
+        if (!listed?.length) setZones([roomZone(p.room)]);
+        // the room's walls and ceiling seen from inside, for the camera's wall check (the proxy faces only outwards)
+        walls = roomWalls(p.room);
+        scene.blockers.push(walls);
+      })
       .catch(() => {});
     return () => {
       live = false;
+      if (!walls) return;
+      const i = scene.blockers.indexOf(walls);
+      if (i >= 0) scene.blockers.splice(i, 1);
+      walls.geometry.dispose();
+      (walls.material as MeshBasicMaterial).dispose();
     };
-  }, [listed, scene.base]);
+  }, [listed, scene]);
   const st = useRef({
     inside: false,
     k: 0,

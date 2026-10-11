@@ -1,3 +1,5 @@
+import { BackSide, BoxGeometry, Mesh, MeshBasicMaterial } from "three";
+
 // The house's camera zone (F-11 card 6): scene.json cameraZones, polygons in glTF x, z. In only 0.5 m past the line,
 // out only 0.5 m past it the other way, so standing on the threshold doesn't flip the camera every frame.
 
@@ -72,4 +74,28 @@ export function roomZone(room: {
     ],
     ...ROOM_VIEW,
   };
+}
+
+// the room's box with its faces turned inwards: the camera's wall check hits only faces towards the ray, and the
+// house's proxy faces outwards, so from inside nothing stopped the camera going through the wall. Never drawn: only
+// raycast (Raycaster ignores visible), its matrix set once here.
+export function roomWalls(room: {
+  min: readonly number[];
+  max: readonly number[];
+}): Mesh {
+  const [x0, y0, z0] = room.min as [number, number, number];
+  const [x1, y1, z1] = room.max as [number, number, number];
+  const m = new Mesh(
+    new BoxGeometry(x1 - x0, y1 - y0, z1 - z0),
+    new MeshBasicMaterial({
+      side: BackSide,
+      colorWrite: false,
+      depthWrite: false,
+    }),
+  );
+  m.name = "room-walls";
+  m.visible = false;
+  m.position.set((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
+  m.updateMatrixWorld(true);
+  return m;
 }
