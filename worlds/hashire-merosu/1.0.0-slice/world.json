@@ -4071,7 +4071,7 @@
     "char.young-man",
     "char.old-man"
    ],
-   "kind": "mutable",
+   "kind": "anchor",
    "preconditions": [],
    "outcomes": [
     {
@@ -4118,7 +4118,7 @@
     "char.melos",
     "char.guards"
    ],
-   "kind": "mutable",
+   "kind": "anchor",
    "preconditions": [
     {
      "var": "var.melos.knowsTyranny",
@@ -5832,6 +5832,8 @@
  "anchors": [
   "beat.01",
   "beat.02",
+  "beat.03",
+  "beat.04",
   "beat.12",
   "beat.15",
   "beat.17",
