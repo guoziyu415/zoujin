@@ -103,6 +103,7 @@ type Gate = {
 type Msg = { type: string } & Record<string, unknown>;
 
 const problems: string[] = [];
+const PACK_VERSION = "0a1b2c3d";
 
 async function shot(page: Page, name: string) {
   await page.screenshot({ path: path.join(SHOTS, `gate-${name}.png`) });
@@ -153,6 +154,23 @@ test("M2-0 gate: invite → role → plaza → walk (move) → tap メロス (fo
   await context.clearCookies();
   await resetMock(page);
   await mock(page, "scenario", { name: "full-turn" });
+  // the pack comes from the manifest's assetUrl, shaped as B-7 makes it (version first, api-contract 2.1); the
+  // fixture's is a placeholder, so it's set here. Every file of the pack then loads from under that address.
+  await page.route("**/v1/books/*/manifest", async (route) => {
+    const res = await route.fetch();
+    const doc = (await res.json()) as {
+      scenes: { sceneId: string; assetUrl: string }[];
+    };
+    for (const s of doc.scenes)
+      if (s.sceneId === "scene.syracuse-square")
+        s.assetUrl = `/scenes/${PACK_VERSION}/syracuse-square/scene.json`;
+    await route.fulfill({ response: res, json: doc });
+  });
+  const packFiles: string[] = [];
+  page.on("response", (r) => {
+    const p = new URL(r.url()).pathname;
+    if (p.startsWith("/scenes/")) packFiles.push(`${r.status()} ${p}`);
+  });
 
   // 1. invite code, role, into the story: the plaza loads under the HUD
   await startStory(page);
@@ -161,6 +179,14 @@ test("M2-0 gate: invite → role → plaza → walk (move) → tap メロス (fo
     null,
     { timeout: 240_000 },
   );
+  expect(packFiles).toContain(
+    `200 /scenes/${PACK_VERSION}/syracuse-square/scene.json`,
+  );
+  expect(
+    packFiles.filter(
+      (f) => !f.startsWith(`200 /scenes/${PACK_VERSION}/syracuse-square/`),
+    ),
+  ).toEqual([]);
   expect(
     await page.evaluate(
       () => (window.__zoujin as unknown as Gate).player().place,

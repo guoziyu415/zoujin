@@ -506,6 +506,37 @@ test.describe("by text", () => {
   });
 });
 
+test.describe("fixed lines (api-contract 3.14)", () => {
+  test("a set piece: the character's line, then the narrator's; the second knock is plain narration", async ({
+    page,
+  }) => {
+    await mock(page, "scenario", { name: "set-piece" });
+    await startStory(page);
+    const knock = async () => {
+      await page.getByRole("button", { name: "近くの人" }).click();
+      await page
+        .getByRole("listitem")
+        .filter({ hasText: "戸を叩く" })
+        .getByRole("button", { name: "調べる" })
+        .click();
+    };
+    await knock();
+    // the mock's manifest has no recording for it: the words alone, at reading pace
+    await expect(page.getByTestId("sub-character")).toContainText(
+      "もう遅い。用があるなら、明日にしてくれ。",
+      { timeout: 15_000 },
+    );
+    await expect(page.getByTestId("narration").last()).toHaveText(
+      "それきり、戸の向こうからは、石を刻む音しか聞こえなかった。",
+      { timeout: 10_000 },
+    );
+    await knock();
+    await expect(page.getByTestId("narration").last()).toHaveText(
+      "戸は閉ざされたままだ。",
+    );
+  });
+});
+
 test.describe("a refused microphone", () => {
   test("the sheet says text goes all the way; text it is", async ({ page }) => {
     await firstVisit(page, true);

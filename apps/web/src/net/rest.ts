@@ -86,6 +86,30 @@ export const rest = {
       "GET",
       `${pt(id)}/events?afterSeq=${afterSeq}&limit=50`,
     ),
+  // the chain-reaction map, why, the memory book, the ending (2.6-2.8)
+  timeline: (id: string) =>
+    call<Api.TimelineResponse>("GET", `${pt(id)}/timeline`),
+  why: (id: string, target: string) =>
+    call<Api.WhyResponse>(
+      "GET",
+      `${pt(id)}/why?target=${encodeURIComponent(target)}`,
+    ),
+  memories: (id: string) =>
+    call<Api.MemoriesResponse>("GET", `${pt(id)}/memories`),
+  memoryImpact: (id: string, memoryId: string) =>
+    call<Api.MemoryImpactResponse>(
+      "GET",
+      `${pt(id)}/memories/${encodeURIComponent(memoryId)}/impact`,
+    ),
+  deleteMemory: (id: string, memoryId: string, idempotencyKey: string) =>
+    call<Api.MemoryDeleteResponse>(
+      "DELETE",
+      `${pt(id)}/memories/${encodeURIComponent(memoryId)}`,
+      { idempotencyKey },
+    ),
+  // 202 { status: "pending", etaSeconds } until the ending is written
+  ending: (id: string) =>
+    call<Api.EndingView | Api.EndingPending>("GET", `${pt(id)}/ending`),
   // keepalive: the page is being hidden or closed (frontend-design 11's sendBeacon, with our headers)
   telemetry: (batch: Api.TelemetryBatch, keepalive = false) =>
     call<void>("POST", "/v1/telemetry", { body: batch, keepalive }),
