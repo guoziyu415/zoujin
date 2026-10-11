@@ -1537,7 +1537,7 @@ export interface Scene {
 export interface SetPiece {
   id: SetPieceId;
   /**
-   * 什么时候演：这个节拍发生时玩家在场，或玩家的这种动作判定之后
+   * 什么时候演：这个节拍发生时玩家在场（进结局时一起结算的节拍不看在场，算进结局演出，2.11），或玩家的这种动作判定之后
    */
   on:
     | {

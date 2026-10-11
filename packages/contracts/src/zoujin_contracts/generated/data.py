@@ -351,7 +351,7 @@ type SchemaVersion = Annotated[
 
 class SetPieceOnOption1(BaseModel):
     """
-    什么时候演：这个节拍发生时玩家在场，或玩家的这种动作判定之后
+    什么时候演：这个节拍发生时玩家在场（进结局时一起结算的节拍不看在场，算进结局演出，2.11），或玩家的这种动作判定之后
     """
 
     model_config = ConfigDict(
@@ -363,7 +363,7 @@ class SetPieceOnOption1(BaseModel):
 
 class SetPieceOnOption2(BaseModel):
     """
-    什么时候演：这个节拍发生时玩家在场，或玩家的这种动作判定之后
+    什么时候演：这个节拍发生时玩家在场（进结局时一起结算的节拍不看在场，算进结局演出，2.11），或玩家的这种动作判定之后
     """
 
     model_config = ConfigDict(
@@ -1664,7 +1664,7 @@ class SetPiece(BaseModel):
     id: SetPieceId
     on: SetPieceOnOption1 | SetPieceOnOption2
     """
-    什么时候演：这个节拍发生时玩家在场，或玩家的这种动作判定之后
+    什么时候演：这个节拍发生时玩家在场（进结局时一起结算的节拍不看在场，算进结局演出，2.11），或玩家的这种动作判定之后
     """
     after: list[BeatId] | None = None
     """

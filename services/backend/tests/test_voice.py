@@ -29,7 +29,24 @@ PIECE_KEYS = {
     "piece.gate-promise/2",
     "piece.gate-promise/3",
     "piece.workshop-knock/1",
-    "piece.crowd-makes-way/1",
+    # S-087：刑场收幕（beat.24〜27）。群众喊「メロスだ！」照原作的顺序排在第 4 句
+    "piece.crowd-makes-way/3",
+    "piece.crowd-makes-way/4",
+    "piece.crowd-makes-way/6",
+    "piece.crowd-makes-way-you/3",
+    "piece.crowd-makes-way-you/4",
+    "piece.crowd-makes-way-you/6",
+    "piece.storm-in/3",
+    "piece.storm-in/5",
+    "piece.storm-in-you/3",
+    "piece.storm-in-you/5",
+    "piece.embrace-melos-doubted/2",
+    "piece.embrace-selinuntius-doubted/2",
+    "piece.embrace/2",
+    "piece.embrace/4",
+    "piece.king-asks/2",
+    "piece.king-asks/4",
+    "piece.scarlet-cloak/2",
 }
 PROMISE_3 = "三日目の日没までに戻らねば、身代わりの石工セリヌンティウスが磔だ。"
 
@@ -42,20 +59,33 @@ def slice_plan() -> Plan:
 # —— 1. 清单 ——
 
 
-def test_slice_has_19_recordings_and_8_set_piece_keys() -> None:
+def test_slice_has_28_recordings_and_24_set_piece_keys() -> None:
     p = slice_plan()
-    assert len(p.recordings) == 19
+    assert len(p.recordings) == 28
     by_speaker: dict[str, int] = {}
     for r in p.recordings:
         by_speaker[r.speaker.id] = by_speaker.get(r.speaker.id, 0) + 1
-    assert by_speaker == {"char.melos": 7, "char.old-man": 6, "char.guards": 4, "char.crowd": 1, "char.selinuntius": 1}
+    assert by_speaker == {
+        "char.melos": 11,
+        "char.old-man": 6,
+        "char.guards": 4,
+        "char.crowd": 2,
+        "char.selinuntius": 4,
+        "char.king": 1,
+    }
     pieces = [r for r in p.recordings if any(k.startswith("piece.") for k in r.keys)]
     assert {k for r in pieces for k in r.keys} == PIECE_KEYS
-    assert len(pieces) == 6
+    assert len(pieces) == 15
     shared = {tuple(r.keys) for r in pieces if len(r.keys) > 1}
     assert shared == {
         ("piece.gate-taken-again/2", "piece.gate-again/1"),
         ("piece.gate-taken/2", "piece.gate-turned-away/2"),
+        # 收幕：同一句、同一个场面说明，四种开场（群众知不知道约定 × 人质是谁）共用一条
+        ("piece.crowd-makes-way/3", "piece.crowd-makes-way-you/3", "piece.storm-in/3", "piece.storm-in-you/3"),
+        ("piece.crowd-makes-way/4", "piece.crowd-makes-way-you/4"),
+        ("piece.crowd-makes-way/6", "piece.storm-in/5"),
+        ("piece.crowd-makes-way-you/6", "piece.storm-in-you/5"),
+        ("piece.embrace-melos-doubted/2", "piece.embrace/2"),
     }
     voices = {r.speaker.id: r.speaker.voice for r in p.recordings}
     assert voices == {
@@ -64,6 +94,7 @@ def test_slice_has_19_recordings_and_8_set_piece_keys() -> None:
         "char.guards": "Charon",
         "char.crowd": "Despina",
         "char.selinuntius": "Iapetus",
+        "char.king": "Algieba",
     }
     assert p.recording("melos-arrival_capped-1").text == "……これなら、間に合う。"  # 从世界模型读
 
@@ -303,7 +334,10 @@ def test_only_rereads_the_given_keys(tmp_path: Path) -> None:
     assert again.reads == {"二度は言わぬ。下がれ。": 3, "待ってくれ。少し、考えさせてくれ。": 3}
     assert len(list((run / "takes" / "discarded").rglob("*.wav"))) == 6
     voices = json.loads((run / "release" / "voices.json").read_text(encoding="utf-8"))
-    assert len(voices["setPieceVoices"]) == 8 and set(voices["characters"]) == {"char.melos", "char.old-man"}
+    assert len(voices["setPieceVoices"]) == len(PIECE_KEYS) and set(voices["characters"]) == {
+        "char.melos",
+        "char.old-man",
+    }
 
 
 def test_only_rejects_unknown_keys(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

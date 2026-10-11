@@ -2,7 +2,7 @@
 
 负责人：数据工程 · 状态：**v1.11**（1.5 在 M2-0 冻结（C-2），以后只做加法；1.6 是冻结后第一个加法版本）。v1.0 是基线（S-033），v1.1 是 PM 接受的新基线（S-061〜S-063），已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改。1.1 只做加法：加进 D-012〜D-015 的落地（S-029〜S-032：互助、约定、打算、即兴设定、导演事件、生成的结局、角色结局）、S-034〜S-053 里和数据有关的决定、后端设计 v1.0 第 12 节的 13 条提案和 UX 设计 v1.0 第 18.3 节的要求。1.2 也只做加法：幕末说出的打算（S-031 ③）、作废和出戏的一轮怎么落数据（S-054、S-057）。1.3 加随身的东西（UX 5.1，C-14）。1.4 按 UX 对世界模型的校对和 S-064 加：有条件的台词和设计台词、互助的效果、节拍的变体、过场里的二选一、第四幕按钮上「对梅洛斯的影响」。1.5 给过场的选项也加上「对梅洛斯的影响」和选后的一句（UX 校对 7.3、ux-design 4.5）。1.6 把两条只写在说明文字里的取值条件写成数据（`StateVar.valueRequires`，C-16），结局卡改成 1〜3 人、每一局都出（C-17）。1.7 加位置点（谁站在布局的哪个点）、成群的人物和幕末去处的落地（M2 切片，C-18），以及打算成行时的落点（C-19）、固定演出（S-080 ④）、可调查物和玩家知道什么。1.8 加情境动作做完以后的事件句（`Affordance.pastLabel`），写清事件 `summary` 里玩家一律写身份名、身份名只用来指玩家（UX 在 #61 前端评审后定的文案）。1.9 加「日名要知道哪条事实才说」（`Clock.labels.daysKnownBy`，S-086）。1.10 加 manifest 要的三样（B-7）：身份给玩家看的一句（`Role.summary`）、注音词表（`WorldModel.ruby`），每个人物都填读音（`Character.reading`）。1.11 加结局要的三样（B-9）：人物「原作では」那一句（`Character.originalEnding`）、结局页列谁（`endings.characters`）、结局走模板时的句子（`endings.templates`、`endings.fates`）。跨角色决定见 `pm/decisions.md`。还在等别人定的事列在第 7 节。
 UX、前端请看第 2.8 节（幕）、第 4 节（记忆）、第 5 节（结局）。1.1 新增或写清的地方都标了「（1.1）」，文末变更记录有汇总。
-最近更新：2026-10-11（1.11：`Character.originalEnding`、`endings.characters` / `templates` / `fates`，B-9 的简化结局用；1.10：`Role.summary`、`ruby`，`reading` 每个人物都填，manifest 用；1.9：`Clock.labels.daysKnownBy`，不知道约定的人物只拿到时段；1.8：`Affordance.pastLabel`，`summary` 里玩家一律写身份名，下发时服务端换成「あなた」，世界模型自检查身份名只指玩家；1.7：relocate 和 `ActExit` 的 `spot`、`WorldState.spots`、`Character.group`、`ActExit.arrival`、`ActExit.sub`、`Affordance.playerSpot`（C-18）、`Act.plan`（C-19）、`setPieces`（S-080 ④）、`objects`、玩家学到的事实（`learn` 写 `player`）；1.6：`StateVar.valueRequires`（C-16）、结局卡 1〜3 人（C-17））
+最近更新：2026-10-11（1.11：`Character.originalEnding`、`endings.characters` / `templates` / `fates`，B-9 的简化结局用，进结局时一起结算的节拍上的固定演出算进结局演出（S-087）；1.10：`Role.summary`、`ruby`，`reading` 每个人物都填，manifest 用；1.9：`Clock.labels.daysKnownBy`，不知道约定的人物只拿到时段；1.8：`Affordance.pastLabel`，`summary` 里玩家一律写身份名，下发时服务端换成「あなた」，世界模型自检查身份名只指玩家；1.7：relocate 和 `ActExit` 的 `spot`、`WorldState.spots`、`Character.group`、`ActExit.arrival`、`ActExit.sub`、`Affordance.playerSpot`（C-18）、`Act.plan`（C-19）、`setPieces`（S-080 ④）、`objects`、玩家学到的事实（`learn` 写 `player`）；1.6：`StateVar.valueRequires`（C-16）、结局卡 1〜3 人（C-17））
 
 四个契约：**WorldModel**（世界模型，静态、按书版本化）、**Event**（运行时事件，只追加）、**Memory**（角色对玩家的记忆，可删除）、**Ending**（结局）。另有两个支撑结构：**Playthrough**（一局游戏）和 **WorldState**（由事件推出的当前状态）。
 
@@ -609,7 +609,7 @@ type Item = {
 
 ### 2.11 SetPiece（1.7，固定演出，S-080 ④）
 
-有些地の文和人物的话是写好的、每局都一样（切片：城门的警吏、工房关着的门、群众让路）。它们写在世界模型里，由服务端在对的时机下发，前端不按 ID 写死，也不判断条件。它们只是演出：不是事件，不改世界状态，叙事者不改写。唯一的例外是 `learns`：演出里说出了一件事，听的人就知道了（S-077 ⑪：城门的警吏顺口说出约定）。
+有些地の文和人物的话是写好的、每局都一样（切片：城门的警吏、工房关着的门、刑场收幕）。它们写在世界模型里，由服务端在对的时机下发，前端不按 ID 写死，也不判断条件。它们只是演出：不是事件，不改世界状态，叙事者不改写。唯一的例外是 `learns`：演出里说出了一件事，听的人就知道了（S-077 ⑪：城门的警吏顺口说出约定）。
 
 ```ts
 type SetPiece = {
@@ -642,6 +642,7 @@ type SetPiece = {
 
 - 同一个时机（同一个节拍，或同一种动作和对象、同样的 `refused`）有几条时，按列表顺序取第一条条件全满足、而且（`once` 的）这一局还没演过的，只演这一条。都不满足就不演，照常由叙事者说。
 - `on.act` 的那一条在这个动作的 `action_result` 之后演，代替叙事者对这个动作的叙事（不再另说一遍）；`on.beat` 的演在节拍的那次提交之后。玩家不在场的节拍不演，幕切换第 3 步结算的节拍也不演（2.8.1）。
+- （1.11 写清，B-9，S-087）进结局时一起结算的节拍（触发结局的 watchBeat，和结算到收幕的那几拍）例外：上面的固定演出不看玩家在不在场都演，排在 `ending_started` 后面、算进结局演出，按节拍的顺序（api-contract 3.13）。选哪一条照常按上一条，条件按结算到这一拍时的状态算。
 - 选哪一条和条件怎么算只有一份：共享规则库 `zoujin_worldsim.pick_set_piece(world, state, hook, played)`（`played` 是这一局演过的固定演出 ID，由服务端记）。`knows` 用同一个库的 `knows(world, state, character, fact)`。
 - 校验工具查：ID 唯一；引用的节拍、人物、事实、地点存在；`target` 按动作是存在的人物或地点，`examine` 的是 `objects` 里的可调查物；`played`、`notPlayed` 引用别的固定演出；`learns` 的事实在演的时候一定成立、说的人一定知道（事实的 `trueFrom` 和说话人物 `knows` 的 `since` 都是 `pre` 或写在 `after` 里；只有地の文时只查前一半）；同一个时机上，排在一条没有任何条件的条目后面的永远轮不到，算错。`act` 是不是 api-contract 3.8 的动作、`lines` 的形状由 Schema 查。
 
@@ -1122,4 +1123,6 @@ type CharacterEnding = {           // （1.1）
 - **v1.11（2026-10-11）**：只做加法。B-9（切片的简化结局，#97）要从世界模型读的三样。
   - WorldModel：`Character.originalEnding`（可选，2.1）、`endings.characters`（可选）、`endings.templates` 和 `endings.fates`（可选，2.9.2）。校验工具的检查见 2.9.2。
   - 『走れメロス』（draft.3）：S-003 的 7 个人物写「原作では」那一句（数据按原文写，UX 看日语），`endings.characters` 列这 7 个；模板照 ux-design 11.4 的表（A、B 和其余 5 行，共 7 条），`fates` 照 UX 在 #97 评审第 5 题给的两句。
-  - 『走れメロス』：`clock.onDeadline` 第一条（期限到了、梅洛斯没回来、王没改心 → 人质 `executed`）加上「有人质」（`var.hostage.who != none`）。原来约定没立成的局也会被设成 `executed`、分进「間に合わなかった」（B-9 评审第 4 题）。改了以后约定没立成的局 5 类都不成立，切片怎么保证有一类成立等 PM 定。
+  - 『走れメロス』：`clock.onDeadline` 第一条（期限到了、梅洛斯没回来、王没改心 → 人质 `executed`）加上「有人质」（`var.hostage.who != none`）。原来约定没立成的局也会被设成 `executed`、分进「間に合わなかった」（B-9 评审第 4 题）。改了以后约定没立成的局 5 类都不成立。
+  - 切片（S-088，PM 10-11）：beat.03、04 设成锚点，约定一定立成，收幕时一定有一类成立。不锚 beat.05：它写的 `var.hostage.who` 会被锁住（R1），B-4「我来当人质」就做不成；beat.05 的前提由锚点 beat.04 写下，又在切片玩家去不了的王城。
+  - 写清（S-087，字段不变）：进结局时一起结算的节拍（触发结局的 watchBeat 和结算到收幕的节拍）上的固定演出，不看玩家在不在场都演，排在 `ending_started` 后面、算进结局演出（2.11，B-9）。切片 beat.24〜27 加刑场收幕的固定演出，句子照原作第 60〜74 段；人质是玩家、beat.25 的三种变体各有一条。
