@@ -415,11 +415,12 @@ function groundFollow(now) {
   if (_c.distanceTo(groundAt) > 1.5 && Math.abs(groundLitFraction(_c) - groundLit) > 0.1) buildEnv();
 }
 // skylight on the blackbody locus (linear sRGB): green over red = f(blue over red), a fit to Planck's law through
-// the CIE 1931 observer from 5000 K up; blue held to 10000 K (blue over red 1.64); only cool colours move
+// the CIE 1931 observer from 5000 to 30000 K; blue held to 30000 K (blue over red 2.755, a clear zenith; at 10000 K
+// the product's shaded floor came out warm, UX on #69); only cool colours move
 const SKYLIGHT_LOCUS = `
 vec3 toLocus( vec3 c ) {
   float r = max( c.r, 1e-5 );
-  float b = min( c.b, r * 1.64 );
+  float b = min( c.b, r * 2.755 );
   float L = log( max( b, 1e-5 ) / r );
   float gr = exp( ( -0.0147 * L + 0.377 ) * L - 0.0532 );
   vec3 o = vec3( c.r, mix( c.g, min( c.g, r * gr ), smoothstep( 0.0, 0.3, L ) ), b );
@@ -434,7 +435,7 @@ function setTime(minute, immediate) {
     sky = new Sky(); sky.scale.setScalar(4000); scene.add(sky);
     skyScene = new THREE.Scene(); const s2 = new Sky(); s2.scale.setScalar(50); skyScene.add(s2); skyScene.userData.sky = s2;
     // the sky that lights the scene (not the one you see) is real skylight: each colour moved onto the blackbody
-    // locus, no bluer than 10000 K. The Preetham sky is cyan, off the locus (green over red up to 2.2 at the zenith
+    // locus, no bluer than 30000 K. The Preetham sky is cyan, off the locus (green over red up to 2.2 at the zenith
     // at 17:30, where skylight never passes 1.46), so in shade the pale wool and the stone came out green-grey
     // (UX rounds 5 and 6; a constant tint fixed one direction only). Same brightness; the glow and the dusk belt
     // keep their colours
