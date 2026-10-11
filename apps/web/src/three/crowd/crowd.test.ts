@@ -22,6 +22,7 @@ import {
   CLIPS,
   FPS,
   packSkeleton,
+  RELAXED,
   skinMatrices,
   STAND_IN,
   type Role,
@@ -379,12 +380,17 @@ describe("Crowd", () => {
     expect(skel.fist).toEqual([
       { bone: 6, axis: [1, 0, 0], angle: 1.4, side: 0 },
     ]);
-    const open = skinMatrices({ rot: {} }, skel);
+    const open = skinMatrices({ rot: {}, fist: [0, 0] }, skel);
     const shut = skinMatrices({ rot: {}, fist: [1, 0] }, skel);
     expect(shut[6]!.equals(open[6]!)).toBe(false);
     expect(shut[5]!.equals(open[5]!)).toBe(true); // the hand itself stays
     const right = skinMatrices({ rot: {}, fist: [0, 1] }, skel);
     expect(right[6]!.equals(open[6]!)).toBe(true);
+    // a pose that says nothing: the fingers a little curled, not spread straight
+    const loose = skinMatrices({ rot: {} }, skel);
+    const relaxed = skinMatrices({ rot: {}, fist: [RELAXED, RELAXED] }, skel);
+    expect(loose[6]!.equals(relaxed[6]!)).toBe(true);
+    expect(loose[6]!.equals(open[6]!)).toBe(false);
   });
 
   it("making way: the people near the path turn to it and end up further from it; the others stay", () => {

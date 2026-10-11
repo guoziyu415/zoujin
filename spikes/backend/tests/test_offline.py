@@ -597,6 +597,16 @@ class Offline(unittest.TestCase):
         self.assertIn("竹馬の友", system)
         self.assertIn("婚礼の前夜に", system)
         self.assertIn("王は身代りを殺して見せしめにするおつもりだ", system)
+        # s092.3: the reason comes before the verdict fields, and each claim says where it comes from before its kind;
+        # the king's "やはりな" to news that Melos nearly gave up is in character (PM, S-095).
+        self.assertEqual(list(s3_spoiler.JUDGE_SCHEMA["properties"])[0], "reason")
+        self.assertEqual(s3_spoiler.JUDGE_SCHEMA["required"][0], "reason")
+        item = s3_spoiler.AUDIT_SCHEMA["properties"]["claims"]["items"]
+        self.assertEqual(list(item["properties"])[:3], ["text", "source", "kind"])
+        self.assertIn("source：kind より先に決める", system)
+        self.assertIn("「メロスが途中で投げ出しかけた」と聞いて「やはりな」", system)
+        self.assertIn("write it first, before the other fields", grade)
+        self.assertIn("neither (a) nor (b)", grade)
 
         # A run the old way: every reply knowledge overreach.
         client = FakeClient()

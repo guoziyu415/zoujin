@@ -2,12 +2,26 @@
 // frontend-design 7.5), 「——」 where the player spoke over it, the player's own line on the right (live while
 // talking; tap it to correct the words, 7.6; struck through when cancelled), 「……」 once the voice ended without
 // words, the failed-transcript note, the grey narration, and the suggestion chips (7.8) or the no-response chips
-// (7.5). All server text is rendered as text, never HTML.
+// (7.5). All server text is rendered as text, never HTML, and broken only between phrases (phrases.ts; UX on #146:
+// never 人を殺しているそ / うです).
 import { play } from "../../net/play";
 import { retractKind, useVoice, type Line } from "../../stores/voice";
 import { voiceSettings } from "../../voice/settings";
 import { useVoiceState } from "../../voice/useVoiceState";
 import { copy } from "../copy";
+import { phrases } from "./phrases";
+
+function Phrased({ text }: { text: string }) {
+  return (
+    <>
+      {phrases(text).map((p, i) => (
+        <span key={i} className="phrase">
+          {p}
+        </span>
+      ))}
+    </>
+  );
+}
 
 export function Subtitles({ names }: { names: Record<string, string> }) {
   const player = useVoice((s) => s.player);
@@ -31,7 +45,7 @@ export function Subtitles({ names }: { names: Record<string, string> }) {
       <div className="subs" data-testid="subtitles" aria-live="polite">
         {narration.map((n, i) => (
           <p key={`${i}:${n}`} className="narration" data-testid="narration">
-            {n}
+            <Phrased text={n} />
           </p>
         ))}
         {player && <PlayerLine line={player} editable={editable} />}
@@ -72,10 +86,18 @@ function PlayerLine({ line, editable }: { line: Line; editable: boolean }) {
           className="said"
           onClick={() => play.openText({ text: words, replaces: line.turnId })}
         >
-          {words}
+          <Phrased text={words} />
         </button>
       ) : (
-        <div>{line.cancelled ? <s>{words}</s> : words}</div>
+        <div>
+          {line.cancelled ? (
+            <s>
+              <Phrased text={words} />
+            </s>
+          ) : (
+            <Phrased text={words} />
+          )}
+        </div>
       )}
     </div>
   );
@@ -108,7 +130,7 @@ function CharacterLine({
         <div className="grey">{copy["sub.pending"]}</div>
       ) : (
         <div>
-          {line.text}
+          <Phrased text={line.text} />
           {line.cut && "——"}
         </div>
       )}

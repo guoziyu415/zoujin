@@ -9,8 +9,8 @@ the MakeHuman base mesh with the macro details below and the game_engine rig; th
 geometry (the tights for the upper body, the skirt for the robe) and the body under it cut away; decimated to about
 TARGET_TRIS; then the outer pieces copied from it and pushed outwards (short hair; the himation, the veil or the felt
 cap), their edges cut straight along planes; the arms brought down from MPFB's A pose and that made the rest pose (the
-crowd stands). Four parts per vertex (skin, cloth, the outer piece, hair) that the runtime colours from the palette
-per instance. The third finger joints are merged into the second (card: one level fewer). Everything is fixed: two
+crowd stands). Five parts per vertex (skin, cloth, the outer piece, hair, the eyes) that the runtime colours from the
+palette per instance (the eyes all dark). The third finger joints are merged into the second (card: one level fewer). Everything is fixed: two
 runs write the same bytes.
 
 Coordinates in the pack: three.js (Y up, the person facing +Z, their left at +X), metres.
@@ -39,7 +39,9 @@ BODIES = [
     ("veil", {"gender": 0.0, "age": 0.5, "muscle": 0.45, "weight": 0.52, "height": 0.42}, 0.06, True),
     ("worker", {"gender": 1.0, "age": 0.6, "muscle": 0.68, "weight": 0.58, "height": 0.45}, 0.5, False),
 ]
-SKIN, CLOTH, OUTER, HAIR = 0, 1, 2, 3
+SKIN, CLOTH, OUTER, HAIR, EYE = 0, 1, 2, 3, 4
+EYES = ("helper-l-eye", "helper-r-eye")  # MPFB's eyeballs: the runtime gives them a dark iris colour
+EYE_RGB = (0.09, 0.07, 0.06)  # as the runtime's (three/crowd/shader.ts)
 ARMS_DOWN = math.radians(-38)  # MPFB's A pose has the arms ~48° out; the crowd's hang ~10° from the body
 FOREARM_BEND = math.radians(12)
 # a fist: each finger bone bent about its own X axis (MPFB's game_engine rig: +X closes the hand on both sides)
@@ -50,7 +52,11 @@ PILOS_HEIGHT = 0.045  # how far the worker's cap rises above the crown
 HAIR_SLOPE = 0.93  # the hairline drops this much per metre towards the back
 MANTLE_EDGE, MANTLE_SLOPE = (-0.2, 1.05), 1.25  # the himation's edge: (x, z) at the right hip, rising to the left
 MANTLE_HEM, MANTLE_HEM_SLOPE = 0.5, 0.45  # its hem at x = 0, lower on the right (z falls 0.45 per metre towards -x)
-NECKLINE, NECK_TILT = 0.02, 0.35  # the clothes' neckline: this far under the neck joint at the side, lower in front
+NECKLINE, NECK_TILT = 0.04, 0.35  # the clothes' neckline: this far under the neck joint at the side, lower in front
+NECK_UNDER = 0.02  # the skin kept under the neckline (the cloth lies about 1 cm off it)
+COLLAR_BAND, COLLAR_LIFT = 0.06, 0.008  # the cloth this far under the neckline stands off up to this much more
+COLLAR_SMOOTH = 4  # passes smoothing the collar's edge and the band under it
+EYE_FORWARD = 0.004  # the eyes this much forward of where MPFB puts them (in front of the decimated lids)
 NECK_SKIN = {"spine_03", "clavicle_l", "clavicle_r", "neck_01"}
 UPPER = {"pelvis", "spine_01", "spine_02", "spine_03", "clavicle_l", "clavicle_r", "upperarm_l", "upperarm_r"}
 FOREARM = {"lowerarm_l", "lowerarm_r"}
@@ -97,24 +103,33 @@ def in_group(v, gi):
 def build_costume(base, costume, hem, sleeves, neck):
     """One mesh: skin where it shows, the costume from the helpers, the outer piece; material index = part. The
     clothes' top edge is cut straight along the neckline (a plane through `neck`, the neck joint's height, lower in
-    front); the skin under it is kept a little way down so the cut edge never shows a gap."""
+    front); the skin under it is kept only NECK_UNDER down, so the cut edge never shows a gap and the skin further
+    down never pokes through the cloth (UX on #148: the back of the collar)."""
     me = base.data
     names = {g.index: g.name for g in base.vertex_groups if g.name in BONE_NAMES}
     body_g = base.vertex_groups["body"].index
     tights_g = base.vertex_groups["helper-tights"].index
     skirt_g = base.vertex_groups["helper-skirt"].index
+    eye_g = [base.vertex_groups[n].index for n in EYES]
+    z0, no = neck - NECKLINE, Vector((0, -NECK_TILT, 1)).normalized()
+
+    def over_neckline(co):  # how far above the neckline's plane
+        return no.dot(co - Vector((0, 0, z0)))
+
     z = [v.co.z for v in me.vertices]
     top = max(z[i] for i, v in enumerate(me.vertices) if in_group(v, body_g))
 
     covered = set(UPPER) | (FOREARM if sleeves else set())
-    keep_skin, keep_cloth = set(), set()
+    keep_skin, keep_cloth, keep_eye = set(), set(), set()
     for v in me.vertices:
         d = dominant(v, names)
-        if in_group(v, body_g):
+        if any(in_group(v, g) for g in eye_g):
+            keep_eye.add(v.index)
+        elif in_group(v, body_g):
             hidden = d in covered or (d in LEGS and v.co.z > hem + 0.04)
             if costume == "worker" and d in LEGS:
                 hidden = v.co.z > hem + 0.04  # bare calves below the knee-length tunic
-            if hidden and d in NECK_SKIN and v.co.z > neck - 0.14:
+            if hidden and d in NECK_SKIN and over_neckline(v.co) > -NECK_UNDER:
                 hidden = False  # under the neckline
             if not hidden:
                 keep_skin.add(v.index)
@@ -130,19 +145,15 @@ def build_costume(base, costume, hem, sleeves, neck):
     bm.verts.ensure_lookup_table()
     for f in bm.faces:
         ids = {v.index for v in f.verts}
-        f.material_index = SKIN if ids <= keep_skin else CLOTH if ids <= keep_cloth else 9
+        f.material_index = SKIN if ids <= keep_skin else CLOTH if ids <= keep_cloth else EYE if ids <= keep_eye else 9
     bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.material_index == 9], context="FACES_ONLY")
     bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
-    # the neckline: the clothes cut along a plane, not along their faces' steps
-    z0, no = neck - NECKLINE, Vector((0, -NECK_TILT, 1)).normalized()
-    cloth = [f for f in bm.faces if f.material_index == CLOTH]
-    geom = bmesh.ops.bisect_plane(bm, geom=cloth + list({e for f in cloth for e in f.edges})
-                                  + list({v for f in cloth for v in f.verts}),
-                                  dist=1e-5, plane_co=Vector((0, 0, z0)), plane_no=no)["geom"]
-    above = [g for g in geom if isinstance(g, bmesh.types.BMFace) and g.material_index == CLOTH
-             and no.dot(g.calc_center_median() - Vector((0, 0, z0))) > 0]
-    bmesh.ops.delete(bm, geom=above, context="FACES")
-    bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+    # the eyes move with the head (the game_engine rig has no eye bones)
+    dl = bm.verts.layers.deform.verify()
+    head_g = base.vertex_groups["head"].index
+    for v in {v for f in bm.faces if f.material_index == EYE for v in f.verts}:
+        v[dl].clear()
+        v[dl][head_g] = 1.0
 
     out = bpy.data.meshes.new(f"crowd-{costume}")
     bm.to_mesh(out)
@@ -151,9 +162,68 @@ def build_costume(base, costume, hem, sleeves, neck):
     bpy.context.collection.objects.link(obj)
     for g in base.vertex_groups:
         obj.vertex_groups.new(name=g.name)
-    for _ in range(4):
+    for _ in range(5):
         out.materials.append(None)
     return obj, top
+
+
+def in_collar(c, neck):  # round the base of the neck, clear of the arms (still out in MPFB's A pose) and the face
+    return abs(c.x) < 0.2 and neck - 0.3 < c.z < neck + 0.05
+
+
+def neckline(obj, neck):
+    """The clothes cut along the neckline's plane, not along their faces' steps; after decimate(), which would move
+    the cut edge's vertices again. Then the cloth near the edge stood off the skin under it a little more, and the eyes
+    brought to the front of their sockets (decimate() sinks both into the skin: UX on #148, a ragged collar and white
+    eyes)."""
+    z0, no = Vector((0, 0, neck - NECKLINE)), Vector((0, -NECK_TILT, 1)).normalized()
+    bm = bmesh.new()
+    bm.from_mesh(obj.data)
+    cloth = [f for f in bm.faces if f.material_index == CLOTH]
+    geom = bmesh.ops.bisect_plane(bm, geom=cloth + list({e for f in cloth for e in f.edges})
+                                  + list({v for f in cloth for v in f.verts}),
+                                  dist=1e-5, plane_co=z0, plane_no=no)["geom"]
+    above = [g for g in geom if isinstance(g, bmesh.types.BMFace) and g.material_index == CLOTH
+             and no.dot(g.calc_center_median() - z0) > 0]
+    bmesh.ops.delete(bm, geom=above, context="FACES")
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+    # the skin under it cut along the same plane NECK_UNDER lower: a straight edge the cloth covers (the skin's own
+    # edge, moved by decimate(), came out through the cloth in teeth)
+    low = z0 - no * NECK_UNDER
+    skin = [f for f in bm.faces if f.material_index == SKIN and in_collar(f.calc_center_median(), neck)]
+    geom = bmesh.ops.bisect_plane(bm, geom=skin + list({e for f in skin for e in f.edges})
+                                  + list({v for f in skin for v in f.verts}),
+                                  dist=1e-5, plane_co=low, plane_no=no)["geom"]
+    below = [g for g in geom if isinstance(g, bmesh.types.BMFace) and g.material_index == SKIN
+             and no.dot(g.calc_center_median() - low) < 0]
+    bmesh.ops.delete(bm, geom=below, context="FACES")
+    bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+    # the edge on the plane zigzags in and out round the neck where decimate() crumpled the cloth, and the tilted plane
+    # turns that into teeth seen from behind: the edge smoothed along itself (kept on the plane), the band under it too
+    cloth = {v for f in bm.faces if f.material_index == CLOTH for v in f.verts}
+    # where the helper's own top edge stops short of the plane (at the back), it's lifted onto it
+    rim = [v for v in cloth if v.is_boundary and in_collar(v.co, neck) and -0.03 < no.dot(v.co - z0) < 0.005]
+    for v in rim:
+        v.co.z -= no.dot(v.co - z0) / no.z
+    for _ in range(COLLAR_SMOOTH):
+        ends = {v: [e.other_vert(v) for e in v.link_edges if e.is_boundary] for v in rim}
+        to = {v: (ns[0].co + ns[1].co) / 2 for v, ns in ends.items() if len(ns) == 2}
+        for v, c in to.items():
+            v.co += (c - v.co) * 0.5
+            v.co -= no * no.dot(v.co - z0)
+    band = [v for v in cloth if not v.is_boundary and in_collar(v.co, neck) and -no.dot(v.co - z0) < COLLAR_BAND]
+    for _ in range(COLLAR_SMOOTH):
+        bmesh.ops.smooth_vert(bm, verts=band, factor=0.5, use_axis_x=True, use_axis_y=True, use_axis_z=True)
+    bm.normal_update()
+    collar = cloth
+    for v in collar:
+        under = -no.dot(v.co - z0)
+        if under < COLLAR_BAND:
+            v.co += v.normal * COLLAR_LIFT * (1 - max(0.0, under) / COLLAR_BAND)
+    for v in {v for f in bm.faces if f.material_index == EYE for v in f.verts}:
+        v.co.y -= EYE_FORWARD
+    bm.to_mesh(obj.data)
+    bm.free()
 
 
 def add_pieces(obj, costume, top, dry=False):
@@ -331,7 +401,8 @@ def add_pieces(obj, costume, top, dry=False):
         # the ears), down over the shoulders
         brow, chin, cheek, hem = top - 0.05, top - 0.27, -0.075, top - 0.38
         planes = [((0, 0, z), (0, 0, 1)) for z in (brow, chin, hem)] + [((0, cheek, 0), (0, 1, 0))]
-        grow(lambda f, c, bone: c.z > hem - 0.04 and bone not in ("lowerarm_l", "lowerarm_r"), planes,
+        grow(lambda f, c, bone: f.material_index != EYE and c.z > hem - 0.04 and bone not in ("lowerarm_l", "lowerarm_r"),
+             planes,
              lambda c: c.z > hem and (c.z > brow or c.z < chin or c.y > cheek), 0.018, OUTER, hood(top, chin))
     else:
         # the worker's low round felt cap on the crown, over the hair
@@ -492,7 +563,7 @@ def export(built, out_dir):
                    "assets/pipeline/crowd/build_crowd.py": script},
         "frame": "three.js: metres, +Y up, the person facing +Z, their left at +X",
         "layout": "per costume at offset: position f32x3, normal i16x3+pad (snorm), skinIndex u8x4, skinWeight u8x4 "
-                  "(sums to 255), part u8 (0 skin, 1 cloth, 2 outer piece, 3 hair); then u16 indices at indexOffset",
+                  "(sums to 255), part u8 (0 skin, 1 cloth, 2 outer piece, 3 hair, 4 eyes); then u16 indices at indexOffset",
         "bones": skeleton,
         "costumes": costumes,
         "bytes": len(blob),
@@ -508,8 +579,8 @@ def preview(objs, path):
     """Two renders: the parts in telling colours from the front, and the palette from behind (the shot's side)."""
     sc = bpy.context.scene
     looks = {
-        "front": [(0.8, 0.5, 0.3), (0.2, 0.35, 0.7), (0.7, 0.1, 0.1), (0.1, 0.6, 0.2)],  # skin, cloth, outer, hair
-        "back": [(0.32, 0.17, 0.1), (0.51, 0.45, 0.34), (0.11, 0.06, 0.04), (0.03, 0.02, 0.015)],  # #9A6A4C L0 N1
+        "front": [(0.8, 0.5, 0.3), (0.2, 0.35, 0.7), (0.7, 0.1, 0.1), (0.1, 0.6, 0.2), EYE_RGB],  # skin, cloth, outer, hair, eyes
+        "back": [(0.32, 0.17, 0.1), (0.51, 0.45, 0.34), (0.11, 0.06, 0.04), (0.03, 0.02, 0.015), EYE_RGB],  # #9A6A4C L0 N1
     }
     for k, o in enumerate(objs):
         o.location.x += (k - 1) * 0.9
@@ -533,8 +604,8 @@ def preview(objs, path):
             m.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (*c, 1)
             mats.append(m)
         for o in objs:
-            for i in range(4):
-                o.data.materials[i] = mats[i]
+            for i, m in enumerate(mats):
+                o.data.materials[i] = m
         if view == "front":
             cam.location, cam.rotation_euler = (0.6, -6, 0.95), (math.pi / 2, 0, math.radians(6))
         else:
@@ -557,6 +628,7 @@ def main():
         obj, top = build_costume(base, costume, hem, sleeves, neck)
         extra = add_pieces(obj, costume, top, dry=True)
         decimate(obj, extra)
+        neckline(obj, neck)
         add_pieces(obj, costume, top)
         stand(rig, obj)
         merge_third_joints(obj)
