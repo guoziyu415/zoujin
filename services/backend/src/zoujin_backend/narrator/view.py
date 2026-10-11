@@ -18,7 +18,7 @@ from typing import Any
 
 from zoujin_backend.narrator.rules import absent, index
 from zoujin_backend.world import Book
-from zoujin_worldsim import OCCURRED, SimState, activity, flat, knows
+from zoujin_worldsim import OCCURRED, SimState, activity, flat, knows, lived
 
 Json = Any
 
@@ -120,13 +120,14 @@ def persona(book: Book, state: SimState, who: str) -> Json:
 
 
 def situation(book: Book, state: SimState, who: str, view: View) -> Json:
-    """时刻、地点、在场的人（不含不在场的）、他此刻知道的事实（事实 ID 和即兴设定的别名）、他参与的最近的节拍。
+    """时刻、地点、在场的人（不含不在场的）、他此刻知道的事实（事实 ID 和即兴设定的别名）、他亲历的最近的节拍。
 
     时刻：日名带着情节（`clock.labels.daysKnownBy`）而这个人物不知道那条事实时，只给时段（S-086：「約束の日」「三日目」
     是从约定那天数的，不知道约定的人物说出来就是知情越界）。
 
-    最近的节拍（`recent`，S-092）：他参与的、已发生的节拍（不是他经历的全部；「亲历」的规则等数据在 worldsim 加
-    `lived`），按发生时刻和节拍顺序排，按变体演了的带变体 ID，各带 UX 定的说法（「今朝」「昨夜」
+    最近的节拍（`recent`，S-092）：他亲历的节拍（worldsim 的 `lived()`：已发生，他参与的，或者没有参与人物、落在他
+    当时所在的同一场景的，比如大雨；人在节拍的地点却不参与的不算），按发生时刻和节拍顺序排，按变体演了的带变体 ID，
+    各带 UX 定的说法（「今朝」「昨夜」
     「おととい」……；S-068 里人物把当天早上的事说成昨天，婚礼办完了还说明天的婚礼）。再早的不给。
     """
     ix = index(book.world)
@@ -139,9 +140,7 @@ def situation(book: Book, state: SimState, who: str, view: View) -> Json:
     recent = [
         {"beat": b, "day": day} | ({"variant": state["variants"][b]} if b in state["variants"] else {})
         for b, t in sorted(state["times"].items(), key=lambda x: (x[1], beats.get(x[0], {}).get("order", 0)))
-        if state["beats"].get(b) in OCCURRED
-        and who in beats.get(b, {}).get("participants", [])
-        and (day := book.labels.ago(t, state["t"])) is not None
+        if lived(book.world, state, who, b) and (day := book.labels.ago(t, state["t"])) is not None
     ]
     return {
         "t": state["t"],

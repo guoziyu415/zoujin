@@ -205,9 +205,10 @@ class Moved:
 
 
 def catch_up(w: Writer) -> None:
-    """幕已经收了、时钟走在收幕那一刻之后时（对话、动作的分钟跨过了收幕节拍），中间到点的节拍先结了：
-    这段属于跳过的时间，玩家算不在场。之后的事件才能写在此刻（W-1 apply 要先 settle）。"""
-    w.settle(w.state["t"], guard=False, present=False)
+    """幕已经收了、时钟走在收幕那一刻之后时（对话、动作的分钟跨过了收幕节拍），中间到点的节拍先结了，之后的事件
+    才能写在此刻（W-1 apply 要先 settle）。这段是玩家说着话过去的，人在场：落在他所在地点的节拍照给 learn、固定演出
+    （数据 #158）；不在场只管第 3 步（契约 2.8.1）。"""
+    w.settle(w.state["t"], guard=False)
 
 
 def en_route_event(w: Writer, ex: Mapping[str, Any], checked: Checked | None, turn_id: str) -> None:
