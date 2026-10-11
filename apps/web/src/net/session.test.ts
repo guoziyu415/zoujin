@@ -217,6 +217,32 @@ describe("Session", () => {
     expect(useUi.getState().toasts).toEqual([]);
   });
 
+  it("a commit's cue plays once (a resent commit doesn't again); set_piece lines go to the voice", () => {
+    const { sock } = open(2);
+    const c = commit(3, 3, {
+      cue: {
+        kind: "arrival_capped",
+        speaker: null,
+        text: "この足なら、陽の沈む前に着く。",
+      },
+    });
+    sock.receive(c);
+    sock.receive(c);
+    expect(useVoice.getState().narration).toEqual([
+      "この足なら、陽の沈む前に着く。",
+    ]);
+    vi.advanceTimersByTime(5000);
+    sock.receive({
+      type: "set_piece",
+      pieceId: "piece.workshop-knock",
+      lines: [{ narration: "戸は閉ざされたままだ。" }],
+    });
+    expect(useVoice.getState().narration).toEqual([
+      "この足なら、陽の沈む前に着く。",
+      "戸は閉ざされたままだ。",
+    ]);
+  });
+
   it("fills a gap from /events and the snapshot, then applies what came meanwhile", async () => {
     const { sock } = open(2);
     const missing = [event({ seq: 3 }), event({ seq: 4 })];

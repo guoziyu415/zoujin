@@ -55,7 +55,7 @@ function Screen() {
     case "play":
       return <PlayScreen key={route.pid} pid={route.pid} />;
     case "ending":
-      return <EndingScreen />;
+      return <EndingScreen pid={route.pid} />;
     default:
       return null;
   }
