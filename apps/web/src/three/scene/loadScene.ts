@@ -27,13 +27,13 @@ import { fogUniforms } from "../shaderPatches";
 import {
   fetchJson,
   lightmapOf,
-  sceneBase,
   type MaterialEntry,
   type SceneManifest,
   type TextureEntry,
 } from "./manifest";
 
 export type LoadedScene = {
+  base: string; // the pack's directory URL; every file of the pack is relative to it (manifest.ts sceneBase)
   manifest: SceneManifest;
   nav: NavMesh;
   root: Group;
@@ -88,10 +88,9 @@ function makeMaterial(m: SceneManifest, name: string): Material {
 }
 
 export async function loadWalkable(
-  sceneId: string,
+  base: string,
   onBytes: (n: number) => void,
 ): Promise<LoadedScene> {
-  const base = sceneBase(sceneId);
   const manifest = await fetchJson<SceneManifest>(`${base}scene.json`);
   const size = (file: string) =>
     manifest.files.find((f) => f.path === file)?.bytes ?? 0;
@@ -133,6 +132,7 @@ export async function loadWalkable(
     });
   }
   return {
+    base,
     manifest,
     nav,
     root,
@@ -215,7 +215,7 @@ function textureLoader(
   renderer: WebGLRenderer,
   onBytes: (n: number) => void,
 ) {
-  const base = sceneBase(scene.manifest.sceneId);
+  const base = scene.base;
   const loader = ktx2Loader(renderer);
   const size = (file: string) =>
     scene.manifest.files.find((f) => f.path === file)?.bytes ?? 0;

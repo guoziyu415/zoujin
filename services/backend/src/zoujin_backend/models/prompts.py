@@ -190,6 +190,22 @@ PLAN = Prompt(
     },
 )
 
+# B-12：玩家每一句的安全筛查（backend-design 5.5，S-072）。判定规则是 spike 的 CLASSIFY_PROMPT_V2，字不改；
+# 只把「発話：{text}」换成 <utterance> 数据字段，输出用 Schema 定死。不带世界模型前缀
+SAFETY = Prompt(
+    "safety",
+    text("safety"),
+    {
+        "type": "object",
+        "properties": {
+            "selfHarm": {"enum": ["signal", "ambiguous", "none"]},
+            "injection": {"type": "boolean"},
+        },
+        "required": ["selfHarm", "injection"],
+        "additionalProperties": False,
+    },
+)
+
 # B-9：切片的简化结局（三层，每句引用这一局的事件；条数、字数、引用由 `narrator/ending.py` 的校验管，这里只管形状）
 CITED = {
     "type": "object",
@@ -257,4 +273,6 @@ ENDING = Prompt(
     },
 )
 
-PROMPTS: dict[str, Prompt] = {p.kind: p for p in (TRIAGE, EXTRACT, CHECK, REWRITE, REPLY, NARRATE, PLAN, ENDING)}
+PROMPTS: dict[str, Prompt] = {
+    p.kind: p for p in (TRIAGE, EXTRACT, CHECK, REWRITE, REPLY, NARRATE, PLAN, ENDING, SAFETY)
+}

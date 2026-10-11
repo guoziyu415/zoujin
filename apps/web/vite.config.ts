@@ -1,5 +1,6 @@
 // Vite for the web front end (frontend-design 3). Besides React, the 3D layer needs a scene's generated files at
 // /scenes/<slug>/ (not in git; scene-dir.ts says where they are): served in dev and preview, copied into dist on build.
+// The manifest's pack URLs carry a version first (/scenes/<8 hex>/<slug>/…, B-7): locally that segment is dropped.
 // three's KTX2Loader brings its Basis transcoder itself (new URL(..., import.meta.url)), so Vite hashes it into assets.
 // The API (/v1, its WebSocket, B-1's /__mock controls and the prerecorded voice files) goes to the mock or a local
 // backend on ZOUJIN_API (default B-1's port); the Host header passes through so the server's Origin check holds.
@@ -33,8 +34,10 @@ function runtimeFiles(): Plugin {
     SCENES.map((s) => [`/scenes/${s}/`, sceneDir(s)]);
   const serve: Connect.NextHandleFunction = (req, res, next) => {
     for (const [prefix, dir] of mounts()) {
-      if (!req.url?.startsWith(prefix)) continue;
-      const file = resolveUnder(dir, req.url.slice(prefix.length));
+      const url = req.url?.replace(/^\/scenes\/[0-9a-f]{8}\//, "/scenes/");
+      if (!url?.startsWith(prefix)) continue;
+      const rel = url.slice(prefix.length);
+      const file = resolveUnder(dir, rel);
       if (!file) break;
       res.setHeader(
         "Content-Type",

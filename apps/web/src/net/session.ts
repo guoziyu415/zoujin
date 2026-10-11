@@ -1,5 +1,5 @@
 // One open playthrough (frontend-design 4, 9): owns the Live socket, writes what the server says into the stores, and
-// gives the screens a few verbs (focus, say, examine). The conversation itself (turns, voice, subtitles, the safety
+// gives the screens and the 3D a few verbs (focus, move, near, say, examine). The conversation itself (turns, voice, subtitles, the safety
 // card) is the voice controller's; the session hands it those messages and the voice frames. Components call these
 // verbs and read the stores; none of them sees the socket. Messages this client doesn't know yet are ignored and
 // counted (api-contract 0: the protocol only adds).
@@ -13,7 +13,7 @@ import { Live, type Ended } from "./live";
 import { rest } from "./rest";
 import { setWorld, useWorld } from "../stores/world";
 import { addNarration, initialVoice, useVoice } from "../stores/voice";
-import { usePlayer } from "../stores/player";
+import { placePlayer, usePlayer } from "../stores/player";
 import { showToasts, useUi, type Toast } from "../stores/ui";
 import { setTelemetryContext, track } from "../telemetry/telemetry";
 import { addEndingLines, resetStory, useStory } from "../stores/story";
@@ -69,6 +69,8 @@ export class Session {
   private refilling: Promise<void> | null = null;
   private held: Api.CommitMessage[] = []; // commits that came while refilling
   private names: Record<string, string> = {};
+  private moves = new Map<string, string | null>(); // move actions waiting for their action_result: where from
+  private unsentMove: string | null = null; // walked into a place while the socket was down
   private actChange: Api.CommitMessage[] = []; // the act change's commits, held until act_transition (3.11)
   // a spoken plan still thinking when the line dropped, and the server has no act end any more on welcome: the plan
   // went (or the act was settled) meanwhile, so the resent commits are the act change's and wait for act_transition
@@ -107,7 +109,13 @@ export class Session {
     setWorld(fromSnapshot(snapshot));
     useVoice.setState(initialVoice());
     this.voice.init();
-    usePlayer.setState({ nearCharacter: null, focusCharacter: null });
+    usePlayer.setState({
+      nearCharacter: null,
+      focusCharacter: null,
+      distances: {},
+      goal: null,
+    });
+    placePlayer(snapshot.player.place, snapshot.player.spot);
     resetStory();
     this.actChange = [];
     this.planLanded = false;
@@ -168,6 +176,32 @@ export class Session {
     useVoice.setState({ session: { character: null, status: "none" } });
     this.live.send({ type: "unfocus", reason });
     this.voice.unfocused();
+  }
+
+  // the 3D: the player walked into another place of this scene (api-contract 3.8). Not waited for; a refusal sends
+  // them back to where they came from.
+  move(place: string, from: string | null): void {
+    const clientMsgId = uuid();
+    const sent = this.live.send({
+      type: "action",
+      clientMsgId,
+      kind: "move",
+      target: place,
+    });
+    if (sent) this.moves.set(clientMsgId, from);
+    this.unsentMove = sent ? null : place;
+  }
+
+  // the 3D: the closest talkable character within 8 m, and leaving 12 m (3.2); the server warms their session
+  near(character: string): void {
+    usePlayer.setState({ nearCharacter: character });
+    this.live.send({ type: "near", character });
+  }
+
+  far(character: string): void {
+    if (usePlayer.getState().nearCharacter === character)
+      usePlayer.setState({ nearCharacter: null });
+    this.live.send({ type: "far", character });
   }
 
   // typed text (or a suggestion chip): the player's line shows at once, the character's when it comes
@@ -306,13 +340,7 @@ export class Session {
           return addEndingLines([{ text: msg.line, speaker: null }]);
         return addNarration(msg.line);
       case "action_result":
-        if (!msg.narration) return;
-        // the action that ended the story (3.13: its result comes after the closing set piece): into the staging
-        if (useStory.getState().ending)
-          return addEndingLines([
-            { text: msg.narration, speaker: null, early: true },
-          ]);
-        return addNarration(msg.narration);
+        return this.actionResult(msg);
       case "limits":
         useVoice.setState({ voiceMinutesLeft: msg.voiceMinutesLeft });
         return;
@@ -397,8 +425,20 @@ export class Session {
       voiceMinutesLeft: w.voice.minutesLeftToday,
     });
     // the server has its own lastSeq; it resends the commits after ours right behind this welcome (api-contract 4)
-    const focus = usePlayer.getState().focusCharacter;
+    const {
+      focusCharacter: focus,
+      nearCharacter: near,
+      place,
+    } = usePlayer.getState();
+    // a move sent before the drop gets no action_result now (4: results aren't resent): if one was refused while
+    // down there's no commit for it either, so the snapshot says where the player really is
+    if (this.moves.size) void this.checkPlace();
+    this.moves.clear();
+    if (near) this.live.send({ type: "near", character: near });
     if (focus) this.live.send({ type: "focus", character: focus });
+    if (this.unsentMove && this.unsentMove === place)
+      this.move(place, world?.player.place ?? null);
+    this.unsentMove = null;
     // turnSeq from 1 again, the last turn's words back, what was typed while down goes now
     this.voice.connected(w.lastTurn, w.pending);
   }
@@ -442,10 +482,14 @@ export class Session {
     // moment; the narration joins the staging's subtitles; the map has the events
     if (useStory.getState().ending) {
       setWorld(r.world, true);
+      if (c.patch.player)
+        placePlayer(r.world.player.place, c.patch.player.spot);
       addEndingLines(c.narration.map((text) => ({ text, speaker: null })));
       return;
     }
     setWorld(withReveal(r.world, c.reveal), true);
+    // the server put the player somewhere (a place shut with them in it, a situational action's playerSpot): 3.8
+    if (c.patch.player) placePlayer(r.world.player.place, c.patch.player.spot);
     addNarration(...c.narration);
     if (c.cue) this.voice.cue(c.cue); // once: a commit seen before (resent after a drop) stops above
     showToasts(this.toasts(c));
@@ -556,9 +600,36 @@ export class Session {
       }
       const snap = await rest.snapshot(this.playthroughId);
       setWorld(fromSnapshot(snap, events));
+      // the server keeps no spot for walking about inside a place: only a different place moves the player
+      if (snap.player.place !== usePlayer.getState().place)
+        placePlayer(snap.player.place, snap.player.spot);
     } catch {
       // the socket will reconnect and the server resends from our lastSeq
     }
+  }
+
+  private async checkPlace(): Promise<void> {
+    try {
+      const snap = await rest.snapshot(this.playthroughId);
+      if (snap.player.place !== usePlayer.getState().place)
+        placePlayer(snap.player.place, snap.player.spot);
+    } catch {
+      // still down: the next welcome asks again only if another move is waiting; walking out still works
+    }
+  }
+
+  private actionResult(m: Api.ActionResultMessage): void {
+    if (m.narration) {
+      // the action that ended the story (3.13: its result comes after the closing set piece): into the staging
+      if (useStory.getState().ending)
+        addEndingLines([{ text: m.narration, speaker: null, early: true }]);
+      else addNarration(m.narration);
+    }
+    if (!this.moves.has(m.clientMsgId)) return;
+    const from = this.moves.get(m.clientMsgId) ?? null;
+    this.moves.delete(m.clientMsgId);
+    // the place had just shut (3.8): back where they came from, and no move for that
+    if (m.status === "refused" && from) placePlayer(from);
   }
 
   private name(id: string): string {

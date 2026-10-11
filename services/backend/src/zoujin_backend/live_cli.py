@@ -1,10 +1,13 @@
 """`zoujin-live`（B-10）：真 Live 在 Mac 上的两个入口。
 
   zoujin-live check [--confirm]       # 开一条真会话说一轮文字、一轮合成语音，打印时间和用量（约 0.01 美元）
+  zoujin-live probe                   # 只建会话不说话，几种 setup 各试一次，哪种被拒、关闭码和原因（不花钱）
   zoujin-live reconcile --ledger PATH [--item b10] [--out DIR]   # S-090：每轮 Live 的实际花费和公式对账
 
 - check 只在 `ZJ_LIVE=real`（或 `ZJ_MODEL=real`）时跑，要 ZJ_LEDGER、ZJ_MAX_GOOGLE_USD（同 B-2）；
   不带 `--confirm` 只打印预计花费（D-030）。打印的只有毫秒、有没有文字、用量和美元，不打印人物说了什么。
+- probe 也只在 Mac 上（要 Vertex 的环境变量，不要账本）：收到 `setupComplete` 就关，没有输入也没有输出，不计费。
+  check 建不起会话时先跑它，看是 setup 的哪个字段不收。
 - reconcile 只读账本，不调模型：账本里 `live.turn/<局>` 的每一行带这一轮的用量、会话里已有的音频毫秒、
   会话第几轮、松开到首个音频毫秒（网关记的，`gateway/voice.py`）。
   公式是 results-s1 8.5 的「每轮**输入**约 0.00086 + 0.0000788 × 会话里已有的音频秒数」（S-073 ⑤）：只拿输入那一半比，
@@ -294,14 +297,36 @@ def cmd_check(args: argparse.Namespace) -> int:  # pragma: no cover - 只在 Mac
     return asyncio.run(_check(os.environ))
 
 
+async def run_probe(connect: Any, path: str, voice: str) -> list[tuple[str, str]]:
+    from zoujin_backend.models.gemini_live import probe, setup_variants
+
+    out = []
+    for name, msg in setup_variants(model_path=path, voice=voice, system=CHECK_SYSTEM):
+        out.append((name, await probe(connect, msg)))
+    return out
+
+
+def cmd_probe(args: argparse.Namespace) -> int:  # pragma: no cover - 只在 Mac 上
+    from zoujin_backend.gateway.app import voices_of
+    from zoujin_backend.models.gemini_live import real_connect
+
+    connect, path = real_connect(os.environ)
+    rows = asyncio.run(run_probe(connect, path, voices_of()["char.melos"]))
+    for name, result in rows:
+        print(f"{name}：{result}")
+    return 0 if rows[0][1] == "ok" else 1
+
+
 def main(argv: list[str] | None = None) -> None:
     p = argparse.ArgumentParser(prog="zoujin-live", description="真 Live 的检查和 S-090 对账（B-10）")
     sub = p.add_subparsers(dest="cmd", required=True)
     c = sub.add_parser("check", help="开一条真会话说两轮（只在 Mac 上）")
     c.add_argument("--confirm", action="store_true")
+    sub.add_parser("probe", help="只建会话不说话，几种 setup 各试一次（只在 Mac 上，不花钱）")
     r = sub.add_parser("reconcile", help="账本里每轮 Live 的花费和公式对账")
     r.add_argument("--ledger", required=True)
     r.add_argument("--item", default="b10")
     r.add_argument("--out")
     args = p.parse_args(argv)
-    sys.exit(cmd_check(args) if args.cmd == "check" else cmd_reconcile(args))
+    cmds = {"check": cmd_check, "probe": cmd_probe, "reconcile": cmd_reconcile}
+    sys.exit(cmds[args.cmd](args))

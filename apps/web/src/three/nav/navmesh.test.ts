@@ -118,6 +118,27 @@ describe("NavMesh", () => {
     expect(nav.moveBy(nav.locate(3, 1.9)!, 0, 0.4).z).toBeLessThanOrEqual(2);
   });
 
+  it("lets the scene's characters walk into a shut place (it only stops the player)", () => {
+    const nav = new NavMesh(lShape());
+    nav.setBlockedPlaces(["place.yard"]);
+    const a = nav.locate(0.5, 0.5)!;
+    const inYard = nav.locate(3, 3.5, -1, undefined, true)!;
+    expect(inYard.poly).toBe(2);
+    expect(nav.findPath(a, inYard)).toBeNull();
+    const path = nav.findPath(a, inYard, true)!;
+    expect(path.at(-1)!.poly).toBe(2);
+    expect(path.at(-1)!.y).toBeCloseTo(0.75, 5);
+  });
+
+  it("finds the nearest point inside a given place (a refused move goes back there)", () => {
+    const nav = new NavMesh(lShape());
+    const back = nav.nearest(3, 3, "place.square")!;
+    expect(nav.placeOf(back.poly)).toBe("place.square");
+    expect(back.x).toBeCloseTo(3, 2);
+    expect(back.z).toBeLessThanOrEqual(2);
+    expect(nav.nearest(1, 1, "place.square")!.poly).toBe(0); // already there
+  });
+
   it("slides along a wall instead of stopping dead", () => {
     const nav = new NavMesh(lShape());
     const from = nav.locate(1, 0.5)!;

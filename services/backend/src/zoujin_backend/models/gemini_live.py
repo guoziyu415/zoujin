@@ -4,7 +4,8 @@
   消息的形状照 google-genai SDK 对 Vertex 发的（`spikes/backend/zj_spike` 用 SDK 在 Mac 上跑通过），字段用 camelCase。
 - setup：只出音频、这个人物的声音、系统指令（`gateway/brief.py`）、两边的转写（玩家一侧带 ja-JP 和专有名词偏置，S-025；
   被拒时 `ZJ_LIVE_TRANSCRIBE_HINTS=0` 去掉）、关自动语音检测（按住说话）、新活动打断旧回答、
-  思考最少（S-1：中位 628 ms）。
+  默认不设思考等级：S-090 在 Mac 上 `probe` 实测，设了 `thinkingConfig`（MINIMAL、LOW 都一样）Vertex 以 1007「项目不在
+  允许名单」关连接；`ZJ_LIVE_THINKING=minimal` 留给拿到名单以后（S-1：minimal 首音中位 628 ms，不设 868 ms）。
   **不开会话恢复**（backend-design 5.4：开了 Google 会在服务端存这条会话最长 24 小时）。
 - 一个读任务持有连接，按顺序把消息交给当前这一轮；一个写任务按顺序发。`audio_in` 保持同步：音频进发送队列，
   读任务收到的玩家转写在下一帧时作为半句吐出（40 ms 一帧）。
@@ -14,7 +15,9 @@
 - 打断：上一轮的回答还在出、新的一轮开始了，旧回答剩下的消息丢掉，直到它的 `interrupted` 或 `turnComplete`（最多 2 秒，
   同 S-1b 的 `DRAIN_MAX_S`）。丢掉的那段的用量记到下一轮上。
 - 连接断了：`alive = False`、叫 `on_change`，正在进行的一轮抛 `LiveLost`。配额、429 的抛 `LiveLost(quota=True)`。
-- 日志和异常里不写原话、系统指令、项目和地址。
+- 日志和异常里不写原话、系统指令、项目和地址。建会话时服务端关了连接，异常里带关闭码和 Google 给的原因（`close_note`：
+  去掉项目路径、模型名、邮箱和长数字，最多 160 字），一眼看出 setup 哪个字段不收。
+- `probe`：只发 setup、收到 `setupComplete` 就关，不说话、不花钱，几种 setup 各试一次（`zoujin-live probe`，S-090）。
 """
 
 from __future__ import annotations
@@ -24,6 +27,7 @@ import base64
 import contextlib
 import json
 import logging
+import re
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -62,7 +66,7 @@ def setup_message(
     model_path: str,
     voice: str,
     system: str,
-    thinking: str | None = "minimal",
+    thinking: str | None = None,
     hints: bool = True,
 ) -> Json:
     """setup 的整条消息（测试查：声音、ja-JP、偏置词、关自动检测、没有会话恢复）。"""
@@ -361,7 +365,7 @@ class GeminiLive:
         model_path: str,
         voices: Mapping[str, str],
         connect: Callable[[], Awaitable[Any]],
-        thinking: str | None = "minimal",
+        thinking: str | None = None,
         hints: bool = True,
         transcriber_factory: Callable[[], Any] | None = None,
     ) -> None:
@@ -401,7 +405,8 @@ class GeminiLive:
             text = str(getattr(getattr(e, "rcvd", None), "reason", "")).upper()
             if any(m in text for m in QUOTA_MARKS):
                 raise LiveLostQuota("Live 回配额或限流错误") from None
-            raise LiveLost(f"Live 会话没建起来（{type(e).__name__}）") from None
+            note = close_note(e, self._model_path)
+            raise LiveLost(f"Live 会话没建起来（{type(e).__name__}{'，' + note if note else ''}）") from None
         if "setupComplete" not in first:
             with contextlib.suppress(Exception):
                 await ws.close()
@@ -418,6 +423,95 @@ class GeminiLive:
         return self._transcriber_factory()
 
 
+_SCRUB = (
+    (re.compile(r"projects/[^/\s'\"]+"), "projects/…"),
+    (re.compile(r"models/[^\s'\",]+"), "models/…"),
+    (re.compile(r"[\w.+-]+@[\w-]+(\.[\w-]+)+"), "…@…"),
+    (re.compile(r"[0-9a-f]{8}-[0-9a-f-]+"), "…"),
+    (re.compile(r"\d{6,}"), "…"),
+)
+
+
+def close_note(e: BaseException, model_path: str = "") -> str:
+    """服务端关连接时的关闭码和原因（原因是 Google 写的，不含玩家的话）。去掉项目、模型、邮箱、会话 ID、长数字；
+    `model_path` 里的项目、地区、模型名按字面也换掉（原因里可能直接写裸名字，#140 数据评审）。"""
+    rcvd = getattr(e, "rcvd", None)
+    if rcvd is None:
+        return ""
+    reason = str(getattr(rcvd, "reason", "") or "")
+    for literal in sorted(_literals(model_path), key=len, reverse=True):
+        reason = reason.replace(literal, "…")
+    for pattern, repl in _SCRUB:
+        reason = pattern.sub(repl, reason)
+    reason = reason[:160]
+    return f"关闭码 {getattr(rcvd, 'code', '?')}" + (f"：{reason}" if reason else "")
+
+
+def _literals(model_path: str) -> list[str]:
+    """`projects/<项目>/locations/<地区>/publishers/google/models/<模型>` 里的三个值（太短的不换，免得把原因换花）。"""
+    parts = model_path.split("/")
+    keys = {"projects", "locations", "models"}
+    return [parts[i + 1] for i, k in enumerate(parts[:-1]) if k in keys and len(parts[i + 1]) >= 4]
+
+
+def setup_variants(*, model_path: str, voice: str, system: str) -> list[tuple[str, Json]]:
+    """`probe` 试的几种 setup：现在的配置，各去掉一样，最后是 B-6 预录那样的最简（它在 Mac 上跑通过）。"""
+
+    def make(edit: Callable[[Json], None]) -> Json:
+        msg = setup_message(model_path=model_path, voice=voice, system=system)
+        edit(msg["setup"])
+        return msg
+
+    def no_thinking(s: Json) -> None:
+        s["generationConfig"].pop("thinkingConfig", None)
+
+    def level(name: str) -> Callable[[Json], None]:
+        def edit(s: Json) -> None:
+            s["generationConfig"]["thinkingConfig"] = {"thinkingLevel": name}
+
+        return edit
+
+    def no_hints(s: Json) -> None:
+        s["inputAudioTranscription"] = {}
+
+    def no_ptt(s: Json) -> None:
+        s.pop("realtimeInputConfig", None)
+
+    def bare(s: Json) -> None:
+        no_thinking(s)
+        no_ptt(s)
+        s.pop("inputAudioTranscription", None)
+
+    return [
+        ("现在的配置（不设思考）", make(lambda s: None)),
+        ("思考 MINIMAL（ZJ_LIVE_THINKING=minimal）", make(level("MINIMAL"))),
+        ("思考 LOW（ZJ_LIVE_THINKING=low）", make(level("LOW"))),
+        ("不带偏置词（ZJ_LIVE_TRANSCRIBE_HINTS=0）", make(no_hints)),
+        ("不带按住说话（realtimeInputConfig）", make(no_ptt)),
+        ("最简（同 B-6 预录）", make(bare)),
+    ]
+
+
+async def probe(connect: Callable[[], Awaitable[Any]], msg: Json) -> str:
+    """只建会话：收到 `setupComplete` 就关。回 "ok"，或去敏的失败原因。"""
+    path = str(msg.get("setup", {}).get("model", ""))
+    try:
+        ws = await asyncio.wait_for(connect(), timeout=SETUP_TIMEOUT_S)
+    except Exception as e:  # noqa: BLE001
+        status = getattr(getattr(e, "response", None), "status_code", None)
+        return f"连不上（{type(e).__name__}{f' HTTP {status}' if status else ''}）"
+    try:
+        await ws.send(json.dumps(msg, ensure_ascii=False))
+        first = json.loads(await asyncio.wait_for(ws.recv(), timeout=SETUP_TIMEOUT_S))
+        return "ok" if "setupComplete" in first else "第一条消息不是 setupComplete"
+    except Exception as e:  # noqa: BLE001
+        note = close_note(e, path)
+        return f"{type(e).__name__}{'，' + note if note else ''}"
+    finally:
+        with contextlib.suppress(Exception):
+            await ws.close()
+
+
 def model_path(project: str, location: str, model: str = LIVE_MODEL) -> str:
     return f"projects/{project}/locations/{location}/publishers/google/models/{model}"
 
@@ -427,8 +521,8 @@ def vertex_url(location: str) -> str:
     return f"wss://{host}/ws/google.cloud.aiplatform.v1beta1.LlmBidiService/BidiGenerateContent"
 
 
-def real_live(env: Mapping[str, str], voices: Mapping[str, str], transcriber: Any) -> GeminiLive:  # pragma: no cover
-    """只在 Mac 上（`ZJ_LIVE=real`）：项目和地区只从显式设的环境变量读（同 B-6 的 `real_models`）。"""
+def real_connect(env: Mapping[str, str]) -> tuple[Callable[[], Awaitable[Any]], str]:  # pragma: no cover
+    """只在 Mac 上：连 Vertex Live 的函数和模型路径。项目和地区只从显式设的环境变量读（同 B-6 的 `real_models`）。"""
     import websockets
 
     from zoujin_backend.models.vertex import AdcAuth, vertex_env
@@ -444,13 +538,19 @@ def real_live(env: Mapping[str, str], voices: Mapping[str, str], transcriber: An
             url, additional_headers={"Authorization": f"Bearer {auth.token()}"}, max_size=16 * 1024 * 1024
         )
 
+    return connect, model_path(project, location)
+
+
+def real_live(env: Mapping[str, str], voices: Mapping[str, str], transcriber: Any) -> GeminiLive:  # pragma: no cover
+    """只在 Mac 上（`ZJ_LIVE=real`）。"""
     from zoujin_backend.gateway.fallback import BufferedTranscriber
 
+    connect, path = real_connect(env)
     return GeminiLive(
-        model_path=model_path(project, location),
+        model_path=path,
         voices=voices,
         connect=connect,
-        thinking=env.get(THINKING_ENV, "minimal") or None,
+        thinking=env.get(THINKING_ENV, "") or None,
         hints=env.get(HINTS_ENV, "1") != "0",
         transcriber_factory=lambda: BufferedTranscriber(transcriber),
     )
