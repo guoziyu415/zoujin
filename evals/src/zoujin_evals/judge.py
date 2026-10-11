@@ -8,7 +8,7 @@
 - 真调用前查账本（ZJ_LEDGER，和后端同一个文件、同一种行）：Claude 的累计加这次的预计超过总上限，或这一项
   两本账合起来超过单项上限，就不发、抛 BudgetStop。429 和 529 第一次就停（RateLimited），SDK 不自己重试。
 - 走 Batch 时整批先按预计花费查一次账本；交上去的批号写进 pending 文件，中途断了再跑会接着收这一批，不重交。
-- 只判合成输入（用例、校准样本）。真人试玩的对话不交给 Claude；评审的提示不拿留出样本调。
+- 评审的提示不拿留出样本调。真人试玩的对话（R1 起）要等隐私说明写明交给 Anthropic 以后才判（D-028）。
 """
 
 from __future__ import annotations
@@ -162,23 +162,24 @@ def now_z() -> str:
 class Price:
     input: float  # 美元 / 百万 token
     output: float
+    cache_read: float  # 缓存读取，各档不同
 
 
 @dataclass(frozen=True)
 class ClaudePrices:
     tiers: Mapping[str, Price]  # 模型档（opus / sonnet / haiku / fable）→ 单价
     batch_discount: float  # Batch 两头的折扣（0.5 = 半价）
-    cache_read: float  # 缓存读取是输入价的几倍
-    cache_write: float  # 缓存写入是输入价的几倍
+    cache_write: float  # 缓存写入是输入价的几倍（5 分钟的）
     chars_per_token: float  # 估输入 token 用：日语、中文按每字一个 token 估，偏高
 
     @classmethod
     def from_json(cls, d: Mapping[str, Any]) -> ClaudePrices:
-        tiers = {k: Price(float(v["input"]), float(v["output"])) for k, v in d["perMTok"].items()}
+        tiers = {
+            k: Price(float(v["input"]), float(v["output"]), float(v["cacheRead"])) for k, v in d["perMTok"].items()
+        }
         return cls(
             tiers,
             float(d["batchDiscount"]),
-            float(d["cacheReadMultiplier"]),
             float(d["cacheWriteMultiplier"]),
             float(d["charsPerToken"]),
         )
@@ -191,12 +192,11 @@ class ClaudePrices:
 
     def cost(self, model: str, usage: Mapping[str, int], *, batch: bool) -> float:
         p = self.price(model)
-        inp = (
-            usage.get("inputTokens", 0)
-            + usage.get("cacheReadTokens", 0) * self.cache_read
-            + usage.get("cacheWriteTokens", 0) * self.cache_write
-        )
-        usd = (inp * p.input + usage.get("outputTokens", 0) * p.output) / 1_000_000
+        usd = (
+            (usage.get("inputTokens", 0) + usage.get("cacheWriteTokens", 0) * self.cache_write) * p.input
+            + usage.get("cacheReadTokens", 0) * p.cache_read
+            + usage.get("outputTokens", 0) * p.output
+        ) / 1_000_000
         return usd * (self.batch_discount if batch else 1.0)
 
     def estimate(self, model: str, request: Mapping[str, Json], *, batch: bool) -> float:
@@ -211,12 +211,16 @@ class ClaudePrices:
 
 @dataclass
 class ClaudeLedger:
-    """和后端的 Google 账本（models/ledger.py）同一个文件、同一种行，provider 写 claude。"""
+    """和后端的 Google 账本（models/ledger.py）同一个文件、同一种行，provider 写 claude。
+
+    每行带 use：评审员是 "eval"（S-079 ④：每行标产品还是评测，S-5 的单局成本只加产品）。
+    """
 
     path: Path
     max_total_usd: float  # Claude 这本账的总上限
     max_item_usd: float  # 单项上限：这一项两本账合起来
     item: str  # 记在哪一项下（校准："judge-calibration"；评测：用例 ID）
+    use: str = "eval"  # "eval" 或 "product"
 
     def _lines(self) -> list[dict[str, Any]]:
         if not self.path.is_file():
@@ -255,6 +259,7 @@ class ClaudeLedger:
             "usage": dict(usage),
             "costUsd": round(cost, 6),
             "item": self.item,
+            "use": self.use,
         }
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8") as f:

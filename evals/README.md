@@ -258,14 +258,14 @@ uv run zoujin-eval --mode fake --deterministic-only --quiet --out evals/tests/sn
 
 ## 评审员（data-design 7.3）
 
-判分交给 Claude（PM 10-10 定 Opus 5.5，和被测的 Gemini 不是一家）。客户端在 `src/zoujin_evals/judge.py`，用官方 SDK（`evals` 的可选依赖 `real`），后端不依赖它。
+判分交给 Claude（PM 10-10 定 Opus 5.5，比被测的叙事者高一档；D-028 以后叙事者也是 Claude，独立性怎么查见 data-design 7.3）。客户端在 `src/zoujin_evals/judge.py`，用官方 SDK（`evals` 的可选依赖 `real`）；B-8 以后和后端共用。
 
 - **输入**：评分细则（用例的 `expect.judge.rubric`）、判定线、场景、对话记录（玩家、人物、叙事者）。提示是中文的，回答是日语。输出用 JSON Schema 定死：`{"reason", "score": 1〜5}`；通用的 1〜5 分说法写在提示里，和给 zg 的盲标页一样。
 - **模型和花费**：模型 ID 运行时给（`--model` 或 `ZJ_JUDGE_MODEL`），仓库里不写；单价按模型档查 `config/claude-prices.json`，认不出就不调。思考关不掉，深浅用 `--effort`（校准先试 `low`）。
 - **回放**：判出分的都存进 `judge/replays/judge.jsonl`（`kind: "judge"`，键 = `claude|模型|提示版本|请求的 sha256`），同一条判几次用请求里的 `sample` 区分。再跑先查回放，不重判、不花钱；拒答、截断、JSON 坏了不存，下次重判。
-- **账本**：每次调用前查 `ZJ_LEDGER`（和后端同一个文件、同一种行，`provider: "claude"`、`kind: "judge"`）：Claude 的累计加这次的预计（输出按上限估，偏高）超过 `--max-claude-usd`，或这一项两本账合起来超过 `--max-item-usd`，就不发。429、529 第一次就停，SDK 不自己重试；已判的在回放里，再跑接着判。
+- **账本**：每次调用前查 `ZJ_LEDGER`（和后端同一个文件、同一种行，`provider: "claude"`、`kind: "judge"`、`use: "eval"`）：Claude 的累计加这次的预计（输出按上限估，偏高）超过 `--max-claude-usd`，或这一项两本账合起来超过 `--max-item-usd`，就不发。429、529 第一次就停，SDK 不自己重试；已判的在回放里，再跑接着判。
 - **Batch**（半价）：评测跑完对话以后整批交给评审员（M2 接进运行器）。批号写进 `pending-batch.json`，断了再跑接着收这一批，不重交。
-- 只判合成输入；R1 真人试玩的对话不交给 Claude。评审的提示不拿留出样本调。
+- 评审的提示不拿留出样本调。R1 起真人试玩的对话也可以判，但要等隐私说明写明交给 Anthropic（D-028）。
 
 ### 校准
 
@@ -274,9 +274,9 @@ uv run zoujin-judge calibrate --mode replay --model <模型 ID>          # 只�
 uv run zoujin-judge agree --zg evals/judge/labels-zg.json              # zg 盲标的 20 条和数据的标注比
 ```
 
-- **标准答案**：`judge/calibration.jsonl` 的 50 条，数据线程标的分（过 26、不过 24，每个判分用例过和不过的都有）。数据线程也是 Claude，所以其中 20 条（过、不过各 10，每例最多一条，不含现实危机那例）请 zg 盲标：zg 只看评分细则、场景和回答，不看数据的分。`agree` 要 ≥ 18/20 过 / 不过一样，这 50 条才当标准答案用；对不上的条目数据和 zg 对过再改标注。
+- **标准答案**：`judge/calibration.jsonl` 的 50 条，数据线程标的分（过 26、不过 24，每个判分用例过和不过的都有）。数据线程也是 Claude，所以其中 20 条（过、不过各 10，每例最多一条，不含现实危机那例）请 zg 盲标：zg 只看评分细则、场景和回答，不看数据的分。人物的话和真跑出来的一样不带括号里的动作，动作单独写成一行「ナレーション」（UX 评审 #74）。`agree` 要 ≥ 18/20 过 / 不过一样，这 50 条才当标准答案用；对不上的条目数据和 zg 对过再改标注。
 - **评审员**：`calibrate` 把 50 条各判 `--repeat` 次（默认 3），每一次都和标注比过 / 不过，一致率 ≥ 90% 才用这个模型和 effort。报告 `evals/out/judge/calibration.md` 列出一致率、分数一样和差 1 分以内的次数、几次判得不一样的条目、输出 token（用来改 m2-model-budget 的估算），和每一条对不上的（评审员的理由和标注的理由并排）。过不了先看是标注的问题还是提示的问题；再过不了试 Fable 5.1（data-design 7.3）。
-- **在 Mac 上真跑**：和 `zoujin-eval` 的 `live` 一样，要 `ZJ_EVAL_LIVE=1`、`ZJ_LEDGER`、`--max-claude-usd`、`--max-item-usd`。不带 `--confirm` 只打印要调几次、预计花费和完整命令（50 × 3 次不走 Batch 约 $3.6，推算）；zg 同意后带 `--confirm` 跑。可以先 `--only J01 --only J02 --repeat 1` 试两条，量一下真实的输出 token。Key 由 zg 在 Anthropic 控制台建，放在 Mac 的钥匙串里，跑的时候读进 `ANTHROPIC_API_KEY`（例如 `export ANTHROPIC_API_KEY="$(security find-generic-password -s <钥匙串里的名字> -w)"`），不进仓库、文档和聊天。
+- **在 Mac 上真跑**：和 `zoujin-eval` 的 `live` 一样，要 `ZJ_EVAL_LIVE=1`、`ZJ_LEDGER`、`--max-claude-usd`、`--max-item-usd`。不带 `--confirm` 只打印要调几次、预计花费和完整命令（50 × 3 次不走 Batch 约 $3.6，推算）；zg 同意后带 `--confirm` 跑。可以先 `--only J01 --only J02 --repeat 1` 试两条，量一下真实的输出 token。Key zg 已在 Anthropic 控制台建好，放在 Mac 的钥匙串里，跑的时候读进 `ANTHROPIC_API_KEY`（`export ANTHROPIC_API_KEY="$(security find-generic-password -s zoujin-claude -w)"`），不进仓库、文档和聊天。
 - 跑完把 `judge/replays/judge.jsonl` 和报告交回来提交（回放里只有合成的对话和分数，不含 Key 和账本）。
 
 ## 需要别人定的

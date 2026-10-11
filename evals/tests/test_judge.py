@@ -112,6 +112,9 @@ def test_prices_by_tier_batch_and_cache() -> None:
     assert PRICES.cost(MODEL, {"inputTokens": 1_000_000, "outputTokens": 100_000}, batch=False) == pytest.approx(6.0)
     assert PRICES.cost(MODEL, {"inputTokens": 1_000_000, "outputTokens": 100_000}, batch=True) == pytest.approx(3.0)
     assert PRICES.cost(MODEL, {"cacheReadTokens": 1_000_000}, batch=False) == pytest.approx(0.2)
+    assert PRICES.cost("test-sonnet", {"cacheReadTokens": 1_000_000}, batch=False) == pytest.approx(0.2)
+    assert PRICES.cost("test-haiku", {"cacheReadTokens": 1_000_000}, batch=False) == pytest.approx(0.01)
+    assert PRICES.cost(MODEL, {"cacheWriteTokens": 1_000_000}, batch=False) == pytest.approx(5.0)
     for bad in ("unknown-model", "opus-or-sonnet"):
         with pytest.raises(ValueError):
             PRICES.price(bad)
@@ -216,6 +219,9 @@ def test_one_calls_once_then_replays(tmp_path: Path) -> None:
     assert (again.score, again.replayed, again.cost_usd) == (4, True, 0.0) and len(fake.calls) == 1
     j.one(item(1), sample=2)
     assert len(fake.calls) == 2 and len(ledger_rows(tmp_path)) == 2
+    assert {(r["provider"], r["kind"], r["use"], r["item"]) for r in ledger_rows(tmp_path)} == {
+        ("claude", "judge", "eval", "judge-calibration")
+    }
     # 换一个进程读同一个回放目录：不用客户端也判得出来
     offline = Judge(MODEL, "low", 2048, ReplayStore(tmp_path / "replays"), PRICES)
     assert offline.one(item(1)).score == 4
