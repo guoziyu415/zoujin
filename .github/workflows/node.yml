@@ -67,3 +67,7 @@ jobs:
       - run: node -e "JSON.parse(require('fs').readFileSync('assets/budgets.json','utf8'))"
       # 进仓库的场景清单：预算、位置点和 layout.json、用到这个场景的世界模型（地点、sceneRef、出口）。不生成，几秒钟
       - run: node assets/pipeline/plaza/check_scene.mjs assets/scenes/syracuse-square
+      # 归途的川（F-10）：两个包、共用包、scene.road-river 的索引和合起来的布局
+      - run: |
+          for p in road-river-calm road-river-flood; do node assets/pipeline/plaza/check_scene.mjs assets/scenes/$p; done
+          node assets/pipeline/road/check_road.mjs assets/scenes/road-common assets/scenes/road-river-calm assets/scenes/road-river-flood assets/scenes/road-river

@@ -3,7 +3,8 @@
 // - only the walkable polygons of layout.json are kept (spans outside them are cleared before erosion), so the
 //   castle steps behind the wall or the strip north of the houses never become walkable;
 // - recast areas carry the place: 63 (RC_WALKABLE_AREA) = layout.defaultPlace, 1.. = layout.places[i - 1];
-// - polygons not connected to the player's start spot are dropped; every spot must land on the mesh.
+// - polygons not connected to the player's start spot (or to a layout.navRoots spot) are dropped; every spot must
+//   land on the mesh.
 import {
   init,
   Recast,
@@ -273,6 +274,17 @@ async function build(meshes, layout) {
   const seen = new Int32Array(polys.length).fill(-1);
   const order = [s0];
   seen[s0] = 0;
+  // layout.navRoots: spots on ground the start cannot walk to but someone is put on (the far bank of the flooded
+  // river, F-10: the crossing is a set piece); their islands are kept too
+  for (const name of layout.navRoots ?? []) {
+    const [rx, , rz] = spotWorld(layout.spots[name]);
+    const r = polys.findIndex((p) => inPoly(p, rx, rz));
+    if (r < 0) errors.push(`nav root ${name} is not on the navmesh`);
+    else if (seen[r] < 0) {
+      seen[r] = order.length;
+      order.push(r);
+    }
+  }
   for (let k = 0; k < order.length; k++) {
     for (const n of polys[order[k]].ns) {
       if (n >= 0 && seen[n] < 0) {
