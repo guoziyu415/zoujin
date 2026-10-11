@@ -1,9 +1,9 @@
-# 前后端接口约定（api-contract.md）v1.0.9
+# 前后端接口约定（api-contract.md）v1.0.12
 
-负责人：后端 · 状态：**v1.0.9，冻结**（v1.0 在 C-1 冻结；v1.0.1 把 C-1 评审定下的写进正文；v1.0.2 把 B-1 评审定下的几处顺序写进正文；v1.0.3 把 B-0、F-2b 评审和 S-077 ⑫ 定下的写进正文；v1.0.4 把数据契约 1.7 里前端要拿到的几样加进接口；v1.0.5 按 B-3 卡放宽三处 Schema、补一条错误说明；v1.0.6 按 UX 定的文案改下发的事件句和一句叙事，不改形状；v1.0.7 按 B-4 卡写明作废、意图确认的顺序和评测入口的三项，不改形状；v1.0.8 按 B-6 写明录音文件的格式，不改形状；v1.0.9 按 B-7 写明 manifest 的缓存和生成规则、开局时次数和进行中的局谁先查，会话没就绪时缓存整段按住的音频，不改形状）：之后只做加法（第 0 节「版本」），每种消息和响应的 JSON Schema 在 `packages/contracts/schemas/api/`。v0.3 吸收了前端评审 17 条（`frontend/reviews/backend-v0.1.md` 和 frontend-design 第 14 节 1〜17）、数据评审 16 条（`data/reviews/backend-v0.1.md`）、ux-design 18.2 的接口要求，以及 decisions S-022〜S-053、D-012〜D-015。v0.3.2 和数据契约 v1.2 对齐。逐条对照见第 9 节。
+负责人：后端 · 状态：**v1.0.12，冻结**（v1.0 在 C-1 冻结；v1.0.1 把 C-1 评审定下的写进正文；v1.0.2 把 B-1 评审定下的几处顺序写进正文；v1.0.3 把 B-0、F-2b 评审和 S-077 ⑫ 定下的写进正文；v1.0.4 把数据契约 1.7 里前端要拿到的几样加进接口；v1.0.5 按 B-3 卡放宽三处 Schema、补一条错误说明；v1.0.6 按 UX 定的文案改下发的事件句和一句叙事，不改形状；v1.0.7 按 B-4 卡写明作废、意图确认的顺序和评测入口的三项，不改形状；v1.0.8 按 B-6 写明录音文件的格式，不改形状；v1.0.9 按 B-7 写明 manifest 的缓存和生成规则、开局时次数和进行中的局谁先查，会话没就绪时缓存整段按住的音频，不改形状；v1.0.12 写明重连时补推断线期间做完的幕切换，不改形状；v1.0.10、v1.0.11 留给 B-9、B-5）：之后只做加法（第 0 节「版本」），每种消息和响应的 JSON Schema 在 `packages/contracts/schemas/api/`。v0.3 吸收了前端评审 17 条（`frontend/reviews/backend-v0.1.md` 和 frontend-design 第 14 节 1〜17）、数据评审 16 条（`data/reviews/backend-v0.1.md`）、ux-design 18.2 的接口要求，以及 decisions S-022〜S-053、D-012〜D-015。v0.3.2 和数据契约 v1.2 对齐。逐条对照见第 9 节。
 数据字段以 `data/contracts.md` 为准（v1.7；标「契约 1.1」「契约 1.2」「契约 1.4」的字段是这几个小版本加的；1.3 加的随身物品不进接口，物品只出现在 `give` 类按钮上；1.6 的结局卡见 2.8；1.7 的位置点、幕末副题和落地、固定演出、可调查物见 2.3、3.8、3.11、3.14），本文只定义传输形状。字段名 camelCase；WebSocket 消息类型 snake_case。
 相关：`backend/backend-design.md` v1.0.9（为什么这么设计）· `frontend/frontend-design.md` · `ux/ux-design.md`
-最近更新：2026-10-11（v1.0.9）
+最近更新：2026-10-11（v1.0.12）
 
 ---
 
@@ -621,6 +621,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
   - 前端：「その頃」（和切片的跳转页）之后进新场景，按地の文的样式显示 `line`。
   - 有 `opener` 时，前端在 `line` 出来、玩家能动的时候发 `act_landed { actId }`；服务端收到才发起一轮 `turn_started { reason: "arrival", speaker: <opener> }`（服务端分配的 `turnSeq`，3.1），人物先开口一句（按人设和局势生成，不是问句），之后照常对话，前端不用另发 `focus`（和 3.10 第 3 步一样）。这一句不花故事时间，也不单独交给叙事者，没有 `turn_settled`；玩家接着说的是普通的一轮。`actId` 不是现在这一幕的、同一幕再发的 `act_landed`，服务端忽略。
   - 收到 `act_landed` 之前断线：`welcome.pending.arrival` 带着这一幕的 `arrival`（第 4 节），前端重连后照样落地、发 `act_landed`。
+  - 选定（或打算成行）以后、收到 `act_transition` 之前断线：重连时服务端补发 `commit` 以后再推一次这次的 `act_transition`（第 4 节，v1.0.12）。
   ```
   → act_choose {optionId: "exit.1.old-man"}
   ← commit {…}                    （选定的事件，跳过的这段时间里结算的节拍）
@@ -678,6 +679,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 ## 4. 断线、重连、续玩（S-024）
 
 - 断开后，前端按 1、2、4、8 秒退避重连；重连后发 `hello { lastSeq }`，服务端补发漏掉的 `commit`（也可以用 2.4 拉取）。
+- 断线前判完的轮次，结果消息不补推（固定演出见 3.14，幕末、确认、落地由 `pending` 补上），只有一种例外（v1.0.12）：最后一次提交是幕切换，而 `hello.lastSeq` 不晚于它（≤ 那次 `commit` 的 `seq`）时，服务端在补发的 `commit` 后面再推一次那次的 `act_transition`；说出的打算成行的，前面连同那条 `act_plan_result`（`accepted: true`）。`lastSeq` 等于它也推，因为客户端可能收到了提交、没收到后面的 `act_transition`。前端只在幕末页还在等幕切换时用它（选了去处，或打算成行了），别的时候忽略：已经落地了，或者页面重新加载过（这时按快照和 `pending.arrival` 落地，不再显示「その頃」）。
 - 收到 `goaway` 时，前端在 `reconnectAfterMs` 之后主动重连（部署时服务端约 10 秒内必须关闭连接）。
 - **`welcome` 带回续玩需要的状态**（前端第 8 条）：
   ```json
@@ -847,6 +849,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 
 ## 修订记录
 
+- v1.0.12（2026-10-11）：传输形状和 Schema 都不变，写明重连时补推断线期间做完的幕切换（3.11、第 4 节，前端 3 的 F-12 评审）：最后一次提交是幕切换、`hello.lastSeq` 不晚于它时，补发的 `commit` 后面再推一次那次的 `act_transition`（打算成行的连同 `act_plan_result`）；前端只在幕末页还在等时用。以前断线期间做完的幕切换不补推，选了去处就断线的玩家会一直停在幕末页。v1.0.9〜v1.0.11 留给 B-7（#114）、B-9、B-5（#117）。
 - v1.0.9（2026-10-11）：传输形状和 Schema 都不变，按 B-7 卡（#93）改 2.1、补 2.2 一句，和 B-7 的代码同一个 PR：manifest 的地址不带版本，`ETag` 是 `manifestVersion`、`Cache-Control: private, no-cache`、`If-None-Match` 对上回 304（原来写的「URL 带版本、`immutable`」作废）；`manifestVersion` 的形状；只出真能加载的东西（开放版次以内、开局场景有包的身份，有包的场景，`acts[].sceneIds` 跟着，没有场景的幕不出）；`assetUrl` = `/scenes/<assetVersion>/<目录>/<入口文件>`，`assetVersion` 是入口能走到的目录里全部文件的 hash；`characters` 是世界模型的全部人物；`arrival_capped` 只在说这句的人物身上；预录句逐句核对；录音文件的地址和响应头；开局只收 manifest 里的身份；到了没有包的场景前端只出字幕和旁白。3.2、3.6：会话没就绪时前端缓存按住的整段音频（最多 15 秒，原来 2 秒，前端和 UX 在 #109 提的），`session_ready` 后一次发出，服务端按顺序转。2.2：次数用完先回 429 `daily_limit`，再看 409。例子跟着改；`packages/contracts/examples/` 里的合法例子不动。mock 的 manifest 从 fixture 改成同一个生成器（`fixtures/mock/rest/manifest/` 删掉），按切片的世界模型。
 - v1.0.8（2026-10-11）：传输形状和 Schema 都不变，2.1 加一条录音文件的说明（B-6）：格式是 AAC（`.m4a`）、单声道、24 kHz；几个 `setPieceVoices` 键可以指向同一个 `url`；一个人物的 6 句缺一句时这个人物没有 `prerecorded`。
 - v1.0.7（2026-10-11）：传输形状和 Schema 都不变，按 B-4 卡（#65）把作废、意图确认的顺序和评测入口写进正文，前端同意以后和 B-4 的代码同一个 PR 改：幕末用声音说的打算也能作废，作废了不推 `act_plan_result`、`turn_settled`，不算试次；文字的一轮也有提交窗口；服务端发起的一轮回 `too_late`（3.6）；意图确认的推送顺序、反问那一轮没有 `turn_settled`、一局最多 3 次、同一时间一个草稿、用声音回答的一轮照常 10 分钟、收幕时不留草稿（3.9）；作废的一轮在 `lastTurn` 里是 `settled`、文字为 `null`（4）；评测入口的 `say(hold)`、`retract(step)`、`confirm(answer)` 和 `StepResult` 的 `held`、`confirm`（7）。mock 的 `confirm` 剧本照新的顺序改，两次确认的选项都用 3.9 的固定两项。
