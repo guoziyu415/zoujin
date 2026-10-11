@@ -1,14 +1,15 @@
 // The crowd in the scene (F-4): on the execution ground, facing the post with their backs to the gate (art-direction
 // 4.1, 5.5), clear of the scaffold and of the way from the gate to it. Until layout.json has its own crowd zone (the
-// asset PR regenerates the scene), the zone is the execution ground's place polygon. Its own chunk: only a scene with a
-// crowd downloads it.
+// asset PR regenerates the scene), the zone is the execution ground's place polygon. The bodies are the scene pack's
+// crowd/ (pack.ts), the stand-ins when it has none. Its own chunk: only a scene with a crowd downloads it.
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { LoadedScene } from "../scene/loadScene";
 // tied to the world chunk, so three and the shader patches stay in that one chunk: without it the bundler splits what
 // this chunk and the world chunk both use into a third chunk, and three compressed apart from the rest costs ~4 KB
 import "../World";
 import { Crowd } from "./Crowd";
+import { loadCrowdPack, type CrowdPack } from "./pack";
 import type { Clear, Plan } from "./scatter";
 
 const PLACE = "place.execution-ground";
@@ -67,10 +68,20 @@ export default function CrowdLayer({
   scene: LoadedScene;
   count: number;
 }) {
+  const [pack, setPack] = useState<CrowdPack | null | undefined>(undefined); // undefined: still loading
+  useEffect(() => {
+    let live = true;
+    void loadCrowdPack(scene.base)
+      .catch(() => null)
+      .then((p) => live && setPack(p));
+    return () => {
+      live = false;
+    };
+  }, [scene]);
   const crowd = useMemo(() => {
-    const spec = crowdSpec(scene, count);
-    return spec ? new Crowd(spec) : null;
-  }, [scene, count]);
+    const spec = pack === undefined ? null : crowdSpec(scene, count);
+    return spec ? new Crowd(spec, pack) : null;
+  }, [scene, count, pack]);
   useEffect(() => {
     crowdRef.current = crowd;
     return () => {

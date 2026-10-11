@@ -1,12 +1,12 @@
-// The crowd's three costumes (ux style guide ending-cast.md「刑場の群衆」), stand-in low-poly bodies until MPFB's come
-// in the asset PR: 1 a man in a long tunic and a mantle, 2 a woman with the mantle drawn over her head, 3 a working
+// The crowd's three costumes (ux style guide ending-cast.md「刑場の群衆」) as stand-in low-poly bodies, for a scene
+// whose pack has no crowd (the real bodies are MPFB's, pack.ts): 1 a man in a long tunic and a mantle, 2 a woman with the mantle drawn over her head, 3 a working
 // man in a short tunic (both shoulders covered) and a low round felt cap. Nothing from the 「不放」 list: no
 // wide-brimmed hat, no hood with a stick, no cone hat or pole, no bare chest. Each vertex says which bones move it
 // (two at most) and which colour it takes: 0 skin, 1 the main cloth, 2 the second cloth (per instance, shader.ts).
 // The shapes are written out here rather than taken from three's geometry classes: those would land in the shared
 // 3D chunk, which has no room (frontend-design 10.1).
 import { BufferAttribute, InstancedBufferGeometry } from "three";
-import { BONE, type Bone } from "./rig";
+import { BONE, type Role as Bone } from "./rig";
 
 export type Costume = "mantle" | "veil" | "worker";
 export const COSTUMES: Costume[] = ["mantle", "veil", "worker"];

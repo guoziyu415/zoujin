@@ -1,12 +1,14 @@
 # 场景资产（F-2）：查进仓库的清单（预算、两档颜色、位置点和布局、世界模型），再在干净环境里用草稿档从头生成广场，
 # 证明「一条命令跑通」；仓库里的清单要和这次是同一份输入；在另一个目录再生成一遍，两份清单逐字节一致（能复现）。
 # 正式档的光照图要约半小时，不在 CI 里烘。
+# 刑场的群众（F-4）同样：查进仓库的群众包清单，从头生成两遍（MPFB 按钉住的提交现场取），逐字节一致，清单和仓库里的相同。
 name: assets
 
 on:
   pull_request:
     paths:
       - "assets/pipeline/plaza/**"
+      - "assets/pipeline/crowd/**"
       - "assets/scenes/**"
       - "assets/budgets.json"
       - "assets/pipeline/package.json"
@@ -16,6 +18,7 @@ on:
     branches: [main]
     paths:
       - "assets/pipeline/plaza/**"
+      - "assets/pipeline/crowd/**"
       - "assets/scenes/**"
       - "assets/budgets.json"
       - "assets/pipeline/package.json"
@@ -68,3 +71,38 @@ jobs:
         run: |
           BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/plaza/build.sh draft "$RUNNER_TEMP/plaza2"
           cmp "$RUNNER_TEMP/plaza/scene.json" "$RUNNER_TEMP/plaza2/scene.json"
+
+  crowd:
+    name: crowd pack, built from scratch twice
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '["self-hosted","zoujin-mac"]') }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - name: committed manifest (budgets; built from the script in the repo)
+        run: node assets/pipeline/crowd/check_crowd.mjs assets/scenes/syracuse-square
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: assets/pipeline/plaza/requirements.txt
+      - name: Blender as a Python module (bpy) and the X11/GL libraries it links
+        run: |
+          if [ -z "${ZOUJIN_CI_PREINSTALLED:-}" ]; then
+            sudo apt-get update -q
+            sudo apt-get install -y -q --no-install-recommends libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1
+          fi
+          uv venv --python 3.13 "$RUNNER_TEMP/bpy"
+          uv pip install --python "$RUNNER_TEMP/bpy/bin/python" -r assets/pipeline/plaza/requirements.txt
+      - name: build the crowd from scratch (MPFB 2 at the pinned commit)
+        id: build
+        run: BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/crowd/build.sh "$RUNNER_TEMP/crowd"
+      - name: committed manifest is this build's
+        run: node assets/pipeline/crowd/check_crowd.mjs "$RUNNER_TEMP/crowd" --manifest assets/scenes/syracuse-square/crowd.json
+      - name: build again in another directory; byte-identical
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: |
+          BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/crowd/build.sh "$RUNNER_TEMP/crowd2"
+          cmp "$RUNNER_TEMP/crowd/crowd.bin" "$RUNNER_TEMP/crowd2/crowd.bin"
+          cmp "$RUNNER_TEMP/crowd/crowd.json" "$RUNNER_TEMP/crowd2/crowd.json"

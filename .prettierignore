@@ -13,3 +13,5 @@ pnpm-lock.yaml
 uv.lock
 # 流水线生成的场景清单（assets/pipeline/plaza/build.sh）
 assets/scenes/*/scene.json
+# 流水线生成的群众包清单（assets/pipeline/crowd/build.sh）
+assets/scenes/*/crowd.json

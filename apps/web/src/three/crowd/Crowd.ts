@@ -3,7 +3,8 @@
 // matrices: that class would land in the shared 3D chunk, which has no room (frontend-design 10.1).
 // Each person has a body shape (height and breadth), a costume, colours from the palette, a facing a little off the
 // common one, and their own start and speed in the motion, so no two sway together. The ending's staging calls the
-// three verbs; the crowd doesn't walk.
+// three verbs; the crowd doesn't walk. The bodies come from the scene's crowd pack (pack.ts), each on its own joints
+// and so with its own baked motions; without a pack, the stand-ins (bodies.ts).
 import {
   Color,
   DataTexture,
@@ -11,11 +12,13 @@ import {
   Group,
   InstancedBufferAttribute,
   Mesh,
+  type MeshStandardMaterial,
   NearestFilter,
   RGBAFormat,
 } from "three";
 import { body, COSTUMES, type Costume } from "./bodies";
-import { bake, type Baked } from "./rig";
+import type { CrowdPack } from "./pack";
+import { bake, STAND_IN, type Baked, type Skeleton } from "./rig";
 import { mulberry32, scatter, toPath, type Clear, type Plan } from "./scatter";
 import { crowdMaterials, type CrowdUniforms } from "./shader";
 
@@ -31,6 +34,8 @@ const CLOTH = {
 const MAIN: (keyof typeof CLOTH)[] = ["L0", "W0", "A1", "L0", "W0", "G1", "B1"];
 const SECOND: (keyof typeof CLOTH)[] = ["N1", "A1", "B1", "G1", "W0"];
 const SKIN = ["#8F6449", "#9A6A4C", "#A07A5F", "#A47B5F", "#86593E"];
+// dark brown to near black, now and then grey (the cast's: melos.md, ending-cast.md)
+const HAIR = ["#2A2018", "#33261C", "#1F1A16", "#4A3D33", "#2A2018", "#6E665E"];
 // 3–4 body shapes (art-direction 5.5): [breadth, height]
 const SHAPES: [number, number][] = [
   [1, 1],
@@ -75,31 +80,36 @@ type Person = {
 
 type Timed = { at: number; person: number; clip: string; loopPhase?: number };
 
-let baked: Baked | null = null;
+const baked = new WeakMap<Skeleton, Baked>(); // a skeleton's motions, baked once
+
+function boneTexture(b: Baked): DataTexture {
+  const tex = new DataTexture(b.data, b.width, b.height, RGBAFormat, FloatType);
+  tex.minFilter = tex.magFilter = NearestFilter;
+  tex.needsUpdate = true;
+  return tex;
+}
 
 export class Crowd extends Group {
   readonly people: Person[] = [];
   readonly meshes: Mesh[] = [];
   readonly started: Record<string, number> = {}; // how many times each motion has started (tests, the dev panel)
-  private readonly uniforms: CrowdUniforms;
-  private readonly baked: Baked;
+  readonly fromPack: boolean; // MPFB's bodies, not the stand-ins
+  private readonly time = { value: 0 };
+  private readonly baked: Baked; // the clips' rows: the same in every skeleton's texture
   private queue: Timed[] = [];
   private now = 0;
 
-  constructor(spec: CrowdSpec) {
+  constructor(spec: CrowdSpec, pack: CrowdPack | null = null) {
     super();
     this.name = "crowd";
-    this.baked = baked ??= bake();
-    const tex = new DataTexture(
-      this.baked.data,
-      this.baked.width,
-      this.baked.height,
-      RGBAFormat,
-      FloatType,
-    );
-    tex.minFilter = tex.magFilter = NearestFilter;
-    tex.needsUpdate = true;
-    this.uniforms = { uBones: { value: tex }, uTime: { value: 0 } };
+    this.fromPack = !!pack;
+    const skeleton = (c: Costume) => pack?.[c].skeleton ?? STAND_IN;
+    const bakedFor = (s: Skeleton) => {
+      let b = baked.get(s);
+      if (!b) baked.set(s, (b = bake(s)));
+      return b;
+    };
+    this.baked = bakedFor(skeleton(COSTUMES[0]!));
     const rnd = mulberry32((spec.seed ?? 1) * 7919);
     const pick = <T>(a: readonly T[]): T => a[Math.floor(rnd() * a.length)]!;
     const spots = scatter(spec.zone, spec.count, {
@@ -126,11 +136,15 @@ export class Crowd extends Group {
         shift: null,
       });
     }
-    const { material, depth } = crowdMaterials(this.uniforms);
     COSTUMES.forEach((c, k) => {
       const n = per[k]!;
       if (!n) return;
-      const geo = body(c);
+      const geo = pack ? pack[c].geometry.clone() : body(c);
+      const uniforms: CrowdUniforms = {
+        uBones: { value: boneTexture(bakedFor(skeleton(c))) },
+        uTime: this.time,
+      };
+      const { material, depth } = crowdMaterials(uniforms);
       const attr = (size: number) =>
         new InstancedBufferAttribute(new Float32Array(n * size), size);
       geo.setAttribute("iClip", attr(4));
@@ -139,6 +153,7 @@ export class Crowd extends Group {
       geo.setAttribute("iSkin", attr(3));
       geo.setAttribute("iCloth", attr(3));
       geo.setAttribute("iCloth2", attr(3));
+      geo.setAttribute("iHair", attr(3));
       geo.setAttribute("iPlace", attr(4));
       geo.setAttribute("iScale", attr(2));
       geo.instanceCount = n;
@@ -166,6 +181,7 @@ export class Crowd extends Group {
       set("iSkin", pick(SKIN));
       set("iCloth", CLOTH[pick(MAIN)]);
       set("iCloth2", CLOTH[pick(SECOND)]);
+      set("iHair", pick(HAIR));
       this.place(i);
       this.start(i, "sway", -1e3, p.phase);
     }
@@ -229,7 +245,7 @@ export class Crowd extends Group {
 
   update(t: number): void {
     this.now = t;
-    this.uniforms.uTime.value = t;
+    this.time.value = t;
     if (this.queue.length) {
       const due = this.queue.filter((x) => x.at <= t);
       if (due.length) {
@@ -258,11 +274,14 @@ export class Crowd extends Group {
   }
 
   override dispose(): void {
-    for (const m of this.meshes) m?.geometry.dispose();
-    (
-      this.meshes.find(Boolean)?.material as { dispose(): void } | undefined
-    )?.dispose();
-    this.uniforms.uBones.value.dispose();
+    for (const m of this.meshes) {
+      if (!m) continue;
+      m.geometry.dispose();
+      const mat = m.material as MeshStandardMaterial;
+      (mat.userData.uniforms as CrowdUniforms).uBones.value.dispose();
+      mat.dispose();
+      m.customDepthMaterial?.dispose();
+    }
   }
 
   private place(i: number): void {
