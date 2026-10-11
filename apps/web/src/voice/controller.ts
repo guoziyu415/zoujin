@@ -552,6 +552,7 @@ export class VoiceController {
 
   // error invalid_request: what we sent didn't fit the schema, so that turn didn't happen (api-contract 5)
   undelivered(): void {
+    if (useVoice.getState().paused) return; // under the safety card: no line (api-contract v1.0.9, B-12)
     const r = this.inflight;
     const waiting = useVoice.getState().turn?.phase === "waiting";
     if (!r && !waiting) return; // not one of our turns (an action, say): nothing to tell the player
@@ -1123,8 +1124,10 @@ export class VoiceController {
       this.heldBack = [];
       this.forget(h);
     }
-    // the words that set it off aren't sent again after a drop (turn_settled paused clears this too, if it came)
+    // the words that set it off aren't sent again after a drop (turn_settled paused clears this too, if it came),
+    // in flight or still waiting to go (api-contract v1.0.9, B-12)
     this.inflight = null;
+    if (r) this.outbox = this.outbox.filter((o) => o !== r);
     this.audio.setSending(false);
     this.audio.releaseMic();
     // 6. the card: the HUD dims, then clears this turn's lines in the dark (ui/safety/SafetyCard.tsx)

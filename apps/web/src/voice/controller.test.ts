@@ -698,6 +698,17 @@ describe("the connection", () => {
     expect(wire.sent.filter((m) => m.type === "text")).toHaveLength(1);
   });
 
+  it("under the safety card an invalid_request says nothing, and the words that set it off don't go again", () => {
+    const { v, wire } = setup();
+    v.say("もう疲れた");
+    v.message({ type: "safety_pause" });
+    v.undelivered();
+    expect(useVoice.getState().narration).toEqual([]);
+    v.down();
+    v.connected(null, { safetyPause: true });
+    expect(wire.sent.filter((m) => m.type === "text")).toHaveLength(1);
+  });
+
   it("too_late for our own 12 s give-up adds no narrator line (the character already said it didn't hear)", () => {
     const { v, wire } = setup({ clips: true });
     v.say("聞こえますか");
