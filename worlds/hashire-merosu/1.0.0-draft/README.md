@@ -151,7 +151,7 @@ uv run python -I packages/worldsim/reference/check_evals.py --world worlds/hashi
 - 去处：`exit.2.village` 落在 `place.melos-home`（以前落在村子，赶不上 beat.08 和「婚礼は明日」）；加 `exit.2.vigil`、`exit.3.vigil`（人质还被押着、玩家守着他 → 留在王城）；`exit.1.road` 把梅洛斯移到泉；第四幕场景加王座之间。
 - 节拍：beat.07 出发时梅洛斯移到市へ続く野の道（以前守夜的玩家零点还在王城看见他）；beat.12 大雨落在 `place.melos-home`；beat.s1 加变体 `beat.s1.v-you`（人质是玩家：玩家被带到刑场，セリヌンティウス不上柱子）。
 - `role.guard` 改名「警吏の見習い」。
-- 王城的位置点（王座之间的布局 F-14 已进仓库）：beat.04 梅洛斯 `before-king`、beat.06 セリヌンティウス `selinuntius-meet`、beat.07 他被押到 `hostage-column`，三个 vigil 去处落在 `hostage-near`。村子的位置点（beat.08〜14 的 relocate spot、`exit.2.village` 的 `road-arrive`）等村子的布局（F-11）进仓库再写：build_world 按布局查位置点。
+- 王城的位置点（王座之间的布局 F-14 已进仓库）：beat.04 梅洛斯 `before-king`、beat.06 セリヌンティウス `selinuntius-meet`、beat.07 他被押到 `hostage-column`，三个 vigil 去处落在 `hostage-near`。村子的位置点照村子的布局（F-11，#242）写上：beat.08 梅洛斯 `melos-meet`、妹 `sister-meet`；beat.09 梅洛斯 `melos-sleep`；beat.10 梅洛斯 `melos-groom`、花婿 `groom-table`；beat.11 婚礼三人 `wedding-melos` / `wedding-bride` / `wedding-groom`（花婿从此在梅洛斯家）；beat.12 大雨把妹和花婿赶进屋 `feast-bride` / `feast-groom`；beat.13 道别后梅洛斯去羊小屋 `melos-hut`；beat.14 他从 `way.east` 出村；`exit.2.village` 落在 `road-arrive`。
 
 ## UX 文案（契约 1.15，copy-ja v1.0 §6.1、§7.1）
 

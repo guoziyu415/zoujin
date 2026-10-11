@@ -389,8 +389,8 @@ def test_slice_snapshot_follows_the_standing_rules() -> None:
     assert named.get("char.selinuntius") and named.get("char.king") and named.get("char.maiden")
     snap = snapshot(book, "pt_test", "role.traveler", "active", ground, 0)
     shown = {c["id"]: c for c in snap["characters"]}
-    for who, spot in named.items():
-        assert shown[who]["spot"] == spot
+    for who in ("char.selinuntius", "char.king", "char.maiden"):  # 别处的人（村子里的妹）也有位置点，不在这个场景
+        assert shown[who]["spot"] == named[who]
     for who in ("char.crowd", "char.guards"):
         assert shown[who]["group"] is True and "spot" not in shown[who]
     auto = [c for c in shown.values() if "spot" in c and c["id"] not in named]
