@@ -119,22 +119,48 @@ class FakeLiveSession:
         self.on_change: Callable[[], None] | None = None
         self.notes: list[str] = []  # 测试看：送进来的局势更新
         self.closed = False
-        self.dying = False  # die(after_audio=True)：下一段回答说到一半断
+        self.dying = False  # die(mid_reply=True)：下一段回答说到一半断
+        try:
+            self.loop: asyncio.AbstractEventLoop | None = asyncio.get_running_loop()
+        except RuntimeError:
+            self.loop = None
+
+    def _later(self, fn: Callable[[], None]) -> None:
+        """测试线程叫的：放回会话所在的事件循环里做。"""
+        if self.loop is None:
+            fn()
+            return
+        try:
+            same = asyncio.get_running_loop() is self.loop
+        except RuntimeError:
+            same = False
+        if same:
+            fn()
+        else:
+            self.loop.call_soon_threadsafe(fn)
 
     def goaway(self) -> None:
         """测试用：Live 说这条连接快到期了。"""
-        self.going_away = True
-        if self.on_change is not None:
-            self.on_change()
+
+        def go() -> None:
+            self.going_away = True
+            if self.on_change is not None:
+                self.on_change()
+
+        self._later(go)
 
     def die(self, *, mid_reply: bool = False) -> None:
         """测试用：连接断了。mid_reply：等下一段回答出了第一个音频再断。"""
         if mid_reply:
             self.dying = True
             return
-        self.alive = False
-        if self.on_change is not None:
-            self.on_change()
+
+        def go() -> None:
+            self.alive = False
+            if self.on_change is not None:
+                self.on_change()
+
+        self._later(go)
 
     def _line(self) -> Line:
         return self.lines[self.n % len(self.lines)]
@@ -176,7 +202,9 @@ class FakeLiveSession:
             yield LiveEvent("audio", pcm=chunk)
             if self.dying:
                 self.dying = False
-                self.die()
+                self.alive = False
+                if self.on_change is not None:
+                    self.on_change()
                 raise LiveLost("假 Live：说到一半断了")
             if i in marks and not self.textless:
                 yield LiveEvent("output_partial", reply[: len(reply) * marks[i] // 3] or reply)

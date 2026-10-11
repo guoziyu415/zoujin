@@ -128,6 +128,9 @@ class Voices:
 
         async def run() -> LiveSession:
             s = await self._open(character, reason)
+            if self.conn.closed.is_set():  # 开的时候连接断了：不留没人管的会话（B-11 之前断线就全关）
+                await s.close()
+                raise LiveLost("连接已经断了")
             old = self.sessions.get(character)
             self.sessions[character] = s
             if old is not None and old is not s:
@@ -308,7 +311,7 @@ class Voices:
     def after_turn(self, character: str) -> None:
         """这个人物的一轮交上去了（停顿）：送攒着的局势更新；会话断了就重开，轮数到了或 GoAway 就换。"""
         s = self.sessions.get(character)
-        if s is None or character in self.opening:
+        if s is None or character in self.opening or self.conn.closed.is_set():
             return
         if not s.alive:
             self.sessions.pop(character, None)
@@ -336,7 +339,7 @@ class Voices:
                     t = self.conn.turn
                     assert t is not None
                     await t.submitted.wait()
-                if self.sessions.get(character) is not old:  # 期间被作废重建、断线了
+                if self.sessions.get(character) is not old or self.conn.closed.is_set():  # 期间被作废重建、断线了
                     await new.close()
                     return
                 if old.turns != before and old.alive:

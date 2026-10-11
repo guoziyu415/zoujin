@@ -44,6 +44,12 @@ uv run zoujin-admin replay pt_…    # 用事件重建世界状态，和缓存�
 - 日志和 Trace 只写 ID 和计数，不写原话（data-design 第 8 节）。
 - 代码：`gateway/`（`auth.py` 邀请码和会话，`rest.py`，`ws.py`，`hub.py` 收提交通知，`core.py` 组装推送），`narrator/`（`core.py` 领任务、单事务提交，`pipeline.py` 流水线，`rules.py` 第 3 步的规则，`view.py` 发给模型的状态和人物，`app.py` 内部接口），`db/`（表、迁移、事件行，`store.py` 写库的小函数），`models/`（假模型、回放、真客户端、账本、提示），`eval_api.py`（评测入口），`s2.py`（S-2 的运行脚本），`trace.py`（Span），`admin.py`。
 
+## Live 会话（B-10）
+
+- `ZJ_LIVE`（`fake` / `real`，没设跟 `ZJ_MODEL`）：`real` 只在 zg 的 Mac 上，要 `ZJ_VERTEX_PROJECT`、`ZJ_VERTEX_LOCATION`（同 B-2）和 ZJ_LEDGER、ZJ_MAX_GOOGLE_USD（同 B-2）。`ZJ_LIVE_REBUILD_TURNS`（7〜10，默认 8）、`ZJ_LIVE_THINKING`（默认 minimal）、`ZJ_LIVE_TRANSCRIBE_HINTS=0`（setup 被拒时去掉 ja-JP 和偏置词）、`ZJ_LIVE_LOCATION`（默认 us-central1）。
+- 代码：`models/gemini_live.py`（真 Live 客户端，直接用 websockets）、`gateway/voice.py`（预热、切换、每 N 轮和 GoAway 的无感重建、中途断了、中途更新局势、闲置、花费）、`gateway/brief.py`（系统指令，规则在 `models/prompt_texts/live.txt`）、`gateway/fallback.py`（补转写）。测试里的假 Vertex Live 服务是 `tests/fake_vertex_live.py`。
+- `uv run zoujin-live check [--confirm]`：Mac 上开一条真会话说两轮，打印时间和用量。`uv run zoujin-live reconcile --ledger … --item b10 --out …`：S-090 的对账。
+
 ## 叙事者流水线（B-2）
 
 一轮对话（语音的转写，或一条 `text`）走 backend-design 2.4：分流 → 提取 → 第 3 步确定性规则（R1〜R7，`narrator/rules.py`，和 `evals/s2_check.py` 的 `judge()` 对照）→ 第 4 步模型检查 → 改写、降级或拒绝 → 单事务提交。
