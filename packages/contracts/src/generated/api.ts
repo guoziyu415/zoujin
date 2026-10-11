@@ -595,7 +595,7 @@ export interface WhyBeatStep {
   summary: string;
   change: BeatChange;
   /**
-   * （v1.0.13）原作出处：世界模型 Beat.cite；没写出处时省略
+   * （v1.0.13）原作出处：世界模型 Beat.cite，只在这个节拍在时间线里会是 known 时带，原句带玩家此刻不知道的事实的剧透词的那条不出；没写出处或全过滤掉时省略（api-contract 2.5、2.6）
    *
    * @minItems 1
    */
@@ -2393,7 +2393,7 @@ export interface TimelineBeatItem {
    */
   known: boolean;
   /**
-   * （v1.0.13）原作出处：世界模型 Beat.cite（数据契约第 0 节的 Cite），地图节点详情列「原作」用。只在 known 时给，世界模型里这个节拍没写出处时省略
+   * （v1.0.13）原作出处：世界模型 Beat.cite（数据契约第 0 节的 Cite），地图节点详情列「原作」用。只在 known 时给；原句带玩家此刻不知道的事实的剧透词（spoilers()）的那条不出，世界模型里没写出处或全过滤掉时省略（api-contract 2.5）
    *
    * @minItems 1
    */

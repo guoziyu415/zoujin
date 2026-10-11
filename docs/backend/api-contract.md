@@ -97,10 +97,10 @@
 }
 ```
 - 生成规则（数据评审第 1 条；v1.0.9 写明只出真能加载的）：
-  - `book` 只有 `id`、`title`、`author`；世界模型的内部字段（`note`、`cite`、`inferred`、变量）不出。
+  - `book` 只有 `id`、`title`、`author`；世界模型的内部字段（`note`、`cite`、`inferred`）不出。
   - `roles`：`release` 不大于开放版次（网关的配置 `ZJ_RELEASE`，第一版 1）、而且开局场景有场景包的身份，世界模型里的顺序。`summary` = `Role.summary`；`startSceneId` = `Role.startPlace` 的 `sceneRef`；`startActId` = `Role.startAct`。
   - `scenes`：有场景包的场景，世界模型里的顺序；`places` = 世界模型里 `sceneRef` 指向它的地点。
-  - `places`（v1.0.13）：世界模型的全部地点，世界模型里的顺序；`name` = `Place.name`，地图节点详情、「谁知道这件事」旁边等要显示地名的地方用（幕末副题照旧用 `act_transition` 带的字）。`sceneId` = `Place.sceneRef`，没有场景、或那个场景没有包（不在 `scenes` 里）时为 `null`。地点的别的字段（`note`、`cite`、连通关系、变量）不出。
+  - `places`（v1.0.13）：世界模型的全部地点，世界模型里的顺序；`name` = `Place.name`，地图节点详情、「谁知道这件事」旁边等要显示地名的地方用（幕末副题照旧用 `act_transition` 带的字）。`sceneId` = `Place.sceneRef`，没有场景、或那个场景没有包（不在 `scenes` 里）时为 `null`。地点的别的字段（`description`、`note`、`cite`、`inferred`、`crossing`、连通关系）不出。manifest 的 `places` 是全书的静态列表，不表示玩家去过或知道这个地方。
   - `acts[].sceneIds` = `Act.scenes` 里有场景包的；一个都没有的幕不出（每一幕至少一个场景）。
   - `characters`：世界模型的全部人物（不只这一版出场的），`reading`、`talkable` 照世界模型。
   - `clock`：`deadlineT` = `clock.deadline.t`，`days` = `clock.labels.days`。`ruby` 照世界模型的注音词表。
@@ -212,7 +212,7 @@
 - `style`：`player`（你的举动）、`caused`（因你而起）、`character`（人物自己做的）、`system`。
 - 节拍 `status`：`canon`（原作どおり）、`hastened`、`delayed`、`prevented`、`altered`、`pending`。`canon` 就是契约 `WorldState.beats` 的 `happened`（照原作发生了），其余五个和契约同名。**还没到、或玩家还不知道的节拍 `known: false`**，只给时刻，不给 `title`（不剧透，ux-design 9.1）。
 - `knownBy`：节点详情里的「谁知道这件事」，只列玩家见过的人物。
-- `cite`（v1.0.13）：节拍的原作出处，世界模型 `Beat.cite` 原样（数据契约第 0 节的 `Cite`：原文版本、段落号、≤ 80 字的原句），节点详情列「原作」用（ux-design 9.1）。只在 `known: true` 时给，世界模型里没写出处的节拍省略。
+- `cite`（v1.0.13）：节拍的原作出处，世界模型 `Beat.cite`（数据契约第 0 节的 `Cite`：原文版本、段落号、≤ 80 字的原句），节点详情列「原作」用（ux-design 9.1）。只在 `known: true` 时给，世界模型里没写出处的节拍省略。出处按玩家此刻知道的过滤（和 E2 同一个口径）：`Beat.cite` 里原句 `quote` 让 `zoujin_worldsim.spoilers(world, state, "player", quote)` 不为空的那条不出（原句带着玩家此刻不知道的事实的剧透词，例：beat.20「悪徳者として生き伸びてやろうか」带 `fact.melos-despair`，beat.s2「ちらと君を疑った」带 `fact.selinuntius-doubted-once`，都是私密的；玩家当时不在场又还没听说的公开事实也一样），其余原样给，全去掉了就省略 `cite`。例子只列了 beat.05 的一条。
 
 ### 2.6 `GET /v1/playthroughs/{id}/why?target=<eventId | beatId | revealId | forecast>`
 「なぜこうなった？」：从目标往回走到玩家的举动或人物的举动。`target=forecast` 回答「为什么梅洛斯现在来不及」。
@@ -228,7 +228,7 @@
   "collapsed": 0
 }
 ```
-- 节拍那一步带 `cite`（v1.0.13），和 2.5 一样，没写出处时省略。
+- 节拍那一步带 `cite`（v1.0.13）：只在这个节拍在 2.5 里会是 `known: true` 时带，过滤同 2.5，没写出处或全过滤掉时省略。3.4 的 `reveal.chain` 一样。
 - 链按时间正序，每一步都是**事件或节拍**（不是记忆）；`actor` 按 2.4。最长 12 步，超过时中间折叠，`collapsed` 给折叠了几步。
 - 只讲发生了的事：被否决的候选事件不进链（数据评审第 7 条）。
 - 叙事者「导演」的事件（S-031 ②）在链上和别的事件一样，按它在故事里的行为者显示；它的上一步一定是玩家或人物的举动（S-045、ux-design 8.6）。
@@ -438,7 +438,7 @@
 - **序号**：一局只有一个 `seq` 序列。`commit` 覆盖 `fromSeq`〜`seq` 这一段（含两端），中间不可见的事件（3.7）也算在内。前端记住上一次的 `seq`；新 `commit.fromSeq` ≠ 上次 `seq + 1` 时，用 2.4 补拉再取快照。全是不可见事件的提交（例：玩家不在场的人物打算）也推一条 `events: []` 的 `commit`，让序号接得上。
 - `patch` 的字段都是快照（2.3）字段的增量，按 id 合并（人物进场时带完整的 `CharacterPresence`，`group` 的人物也带 `group: true`，v1.0.5）；`actions` 和 `interactables` 用 `add` / `remove`，`add` 里的 id 已经有了就整条替换（例：`enabled` 变了）。`clock` 必带 `t`、`tLabel`，`deadlineT` 可省。`voice`、`status` 不走 `patch`。
 - `memories[].change`：`added` / `updated` / `deleted`；記憶帳的查询失效重拉。`added`、`updated` 必带 `text` 和 `kind`，`deleted` 不带。
-- `reveal`：关键时刻（S-041 的 4 种，3.4.1），**直接带上因果链**，不用再调 `/why`（前端建议第 8 条）。链和 `/why` 一样最长 12 步，超过时中间折叠，`reveal.collapsed` 给折叠了几步；没折叠时省略。
+- `reveal`：关键时刻（S-041 的 4 种，3.4.1），**直接带上因果链**，不用再调 `/why`（前端建议第 8 条）。链和 `/why` 一样最长 12 步，超过时中间折叠，`reveal.collapsed` 给折叠了几步；没折叠时省略。链里节拍那一步的 `cite` 按 2.6（v1.0.13）。
 - `cue`：服务端在某个时刻触发的一句固定台词，没有时为 `null`。现在只有一种：`{ "kind": "arrival_capped", "speaker": "char.melos", "text": "……これなら、間に合う。" }`——这一局梅洛斯的预计到达第一次落在到达下限（17:30）的那次提交（S-066 ①，ux-design 4.3），只出一次；文字来自世界模型的 `clock.deadline.earliestArrivalCue`。梅洛斯和玩家在同一个地点时 `speaker` 是他，前端播 manifest 里他的 `cues.arrival_capped`（他正在说话就等这句说完）并显示字幕；不在时 `speaker` 为 `null`，`text` 是叙事（「この足なら、陽の沈む前に着く。」），按 `narration` 显示。断线后补发的 `commit` 里的 `cue`，前端按 `seq` 只演一次。
 - 没有 `turnId` 的 `commit` 来自到点的节拍、人物的打算、导演事件或幕切换。
 
@@ -593,7 +593,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
   ],
   "freeform": { "allowed": true, "triesLeft": 2 } }
 ```
-- `toActId`（v1.0.13）：这个去处通往的幕（`ActExit.toAct`），幕末页一出现前端就能预取下一幕的场景包（不用等 `act_transition`）。替代去处（`act_plan_result.alternative`）也带：给定去处照它的 `ActExit.toAct`，另一个打算是它落地的那一幕（`Act.plan.toAct`）。可选，前端没收到时照旧等 `act_transition`。
+- `toActId`（v1.0.13）：这个去处通往的幕（`ActExit.toAct`），幕末页一出现前端就能预取下一幕的场景包（不用等 `act_transition`）。替代去处（`act_plan_result.alternative`）也带：给定去处照它的 `ActExit.toAct`，另一个打算是它落地的那一幕（`Act.plan.toAct`）。可选，前端没收到时照旧等 `act_transition`。`toActId` 指的幕可能不在 manifest 的 `acts` 里（没有包的幕不出），这时前端不预取。
 - `options` 来自世界模型的 `ActExit`，按 `roles`、`requires` 过滤（例子是切片的第一幕：送过老爺回家才有第二个去处）。`recapLines` 是「この幕であなたが動かしたこと」（0〜4 行；玩家这一幕什么都没动时为空，前端显示 `actEnd.summary.empty`，v1.0.5）：每行是事件的 `summary`，玩家写成「あなた」（2.4），句末补「。」（v1.0.6）。
 - **副题**（v1.0.4，ux-design 4.4）：`where` 是前半「{地点}・{日子}の{时段}」，服务端算好：地点是落点 `ActExit.place` 的 `Place.name`，日子和时段是落点时刻（和 `tLabel` 同一个时刻）在世界模型 `clock.labels` 的 `days`、`bands` 里的叫法，中间用「の」，不套 `clock.labels.format`。`sub` 是后半，世界模型的 `ActExit.sub`（≤ 16 字），没有就省略。前端照 UX 拼成一行，例「刑場・三日目の夕方　西の門が見える所で」，不按去处 ID 写死。`because` 现在一律 `null`：世界模型的 `ActExit` 没有写理由的字段，条件去处的说明写在 `sub` 里（例「老爺があなたを覚えている」）。
 - 选给定去处：`act_choose { optionId }`。
@@ -859,7 +859,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 
 ## 修订记录
 
-- v1.0.13（2026-10-11）：只做加法，前端 3 做地图（F-12 之后）时提的。2.1：manifest 加必有的 `places`（地点 ID、地名、所在场景；场景没出的为 `null`），生成器照世界模型出。2.5：时间线的节拍项加可选的 `cite`（世界模型 `Beat.cite` 原样，数据契约的 `Cite`），只在 `known: true` 时给，`known: false` 的 Schema 不许带。2.6：「なぜ」链的节拍那一步也加可选的 `cite`。3.11：`ActOption`、`PlanAlternative` 加可选的 `toActId`（去处通往的幕），幕末页一出现就能预取下一幕的包（前端 3 提的）。mock 的时间线、「なぜ」带上切片世界模型的出处；`examples/` 里的合法例子跟着加。v1.0.10〜v1.0.12 在别的 PR 里（B-9、B-5 #117、重连补发 #120），号先留着。
+- v1.0.13（2026-10-11）：只做加法，前端 3 做地图（F-12 之后）时提的。2.1：manifest 加必有的 `places`（地点 ID、地名、所在场景；场景没出的为 `null`），生成器照世界模型出。2.5：时间线的节拍项加可选的 `cite`（世界模型 `Beat.cite`，数据契约的 `Cite`），只在 `known: true` 时给，`known: false` 的 Schema 不许带。出处按玩家此刻知道的过滤：原句带他此刻不知道的事实的剧透词（`spoilers()`）的那条不出（数据评审，beat.20、beat.s2）。2.6：「なぜ」链和 `reveal.chain` 的节拍那一步也加可选的 `cite`，只在 2.5 会是 `known: true` 时带，过滤相同。3.11：`ActOption`、`PlanAlternative` 加可选的 `toActId`（去处通往的幕），幕末页一出现就能预取下一幕的包（前端 3 提的）。mock 的时间线、「なぜ」带上切片世界模型的出处；`examples/` 里的合法例子跟着加。v1.0.10〜v1.0.12 在别的 PR 里（B-9、B-5 #117、重连补发 #120），号先留着。
 - v1.0.12（2026-10-11）：传输形状和 Schema 都不变，写明重连时补推断线期间做完的幕切换（3.11、第 4 节，前端 3 的 F-12 评审）：最后一次提交是幕切换、`hello.lastSeq` 不晚于它时，补发的 `commit` 后面再推一次那次的 `act_transition`（打算成行的连同 `act_plan_result`）；前端只在幕末页还在等时用。以前断线期间做完的幕切换不补推，选了去处就断线的玩家会一直停在幕末页。v1.0.9〜v1.0.11 留给 B-7（#114）、B-9、B-5（#117）。
 - v1.0.9（2026-10-11）：传输形状和 Schema 都不变，按 B-7 卡（#93）改 2.1、补 2.2 一句，和 B-7 的代码同一个 PR：manifest 的地址不带版本，`ETag` 是 `manifestVersion`、`Cache-Control: private, no-cache`、`If-None-Match` 对上回 304（原来写的「URL 带版本、`immutable`」作废）；`manifestVersion` 的形状；只出真能加载的东西（开放版次以内、开局场景有包的身份，有包的场景，`acts[].sceneIds` 跟着，没有场景的幕不出）；`assetUrl` = `/scenes/<assetVersion>/<目录>/<入口文件>`，`assetVersion` 是入口能走到的目录里全部文件的 hash；`characters` 是世界模型的全部人物；`arrival_capped` 只在说这句的人物身上；预录句逐句核对；录音文件的地址和响应头；开局只收 manifest 里的身份；到了没有包的场景前端只出字幕和旁白。3.2、3.6：会话没就绪时前端缓存按住的整段音频（最多 15 秒，原来 2 秒，前端和 UX 在 #109 提的），`session_ready` 后一次发出，服务端按顺序转。2.2：次数用完先回 429 `daily_limit`，再看 409。例子跟着改；`packages/contracts/examples/` 里的合法例子不动。mock 的 manifest 从 fixture 改成同一个生成器（`fixtures/mock/rest/manifest/` 删掉），按切片的世界模型。
 - v1.0.8（2026-10-11）：传输形状和 Schema 都不变，2.1 加一条录音文件的说明（B-6）：格式是 AAC（`.m4a`）、单声道、24 kHz；几个 `setPieceVoices` 键可以指向同一个 `url`；一个人物的 6 句缺一句时这个人物没有 `prerecorded`。

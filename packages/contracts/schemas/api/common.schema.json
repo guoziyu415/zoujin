@@ -1023,7 +1023,7 @@
           "$ref": "#/$defs/BeatChange"
         },
         "cite": {
-          "description": "（v1.0.13）原作出处：世界模型 Beat.cite；没写出处时省略",
+          "description": "（v1.0.13）原作出处：世界模型 Beat.cite，只在这个节拍在时间线里会是 known 时带，原句带玩家此刻不知道的事实的剧透词的那条不出；没写出处或全过滤掉时省略（api-contract 2.5、2.6）",
           "type": "array",
           "items": {
             "$ref": "../data/common.schema.json#/$defs/Cite"
