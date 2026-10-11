@@ -49,7 +49,9 @@ class Persona:
 
 
 def load_personas(path: Path = PERSONAS) -> dict[str, Persona]:
-    rows = json.loads(path.read_text(encoding="utf-8"))
+    """第一幕的画像，加上同目录 acts/actN/personas.json 里第二〜四幕的（清单第 15 步按幕分写）。"""
+    files = [path, *sorted(path.parent.glob("acts/act*/personas.json"))]
+    rows = [r for f in files if f.exists() for r in json.loads(f.read_text(encoding="utf-8"))]
     return {r["id"]: Persona(r["id"], r["role"], r["goal"], r["style"]) for r in rows}
 
 
