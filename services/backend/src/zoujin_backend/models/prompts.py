@@ -310,7 +310,48 @@ KEEPS = Prompt(
     },
 )
 
+# B-21：候选话语（ux-design 7.8，api-contract 3.5 的 suggestions）
+SUGGEST = Prompt(
+    "suggest",
+    text("suggest"),
+    {
+        "type": "object",
+        "properties": {
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "text": {"type": "string", "minLength": 1, "maxLength": 40},
+                        "kind": {"enum": ["ask", "act", "accept", "decline"]},
+                    },
+                    "required": ["text", "kind"],
+                    "additionalProperties": False,
+                },
+                "minItems": 2,
+                "maxItems": 3,
+            }
+        },
+        "required": ["items"],
+        "additionalProperties": False,
+    },
+)
+
 PROMPTS: dict[str, Prompt] = {
     p.kind: p
-    for p in (TRIAGE, EXTRACT, CHECK, REWRITE, REPLY, NARRATE, PLAN, ENDING, SAFETY, SAFETY_REVIEW, MEMORY, KEEPS)
+    for p in (
+        TRIAGE,
+        EXTRACT,
+        CHECK,
+        REWRITE,
+        REPLY,
+        NARRATE,
+        PLAN,
+        ENDING,
+        SAFETY,
+        SAFETY_REVIEW,
+        MEMORY,
+        KEEPS,
+        SUGGEST,
+    )
 }

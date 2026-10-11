@@ -210,6 +210,12 @@ DEFAULTS: dict[str, Callable[[Mapping[str, Any]], Json]] = {
     "ending": _ending,
     "memory": _memory,  # B-13：事件的摘要截短（假模型不分人物视角）
     "keeps": _keeps,
+    "suggest": lambda r: {  # B-21：一个问句、一个表态（不全是问句）
+        "items": [
+            {"text": "もう少し詳しく聞かせてください。", "kind": "ask"},
+            {"text": "私にできることはありますか。", "kind": "act"},
+        ]
+    },
 }
 ERRORS = ("rate-limit", "invalid", "unavailable", "refusal")
 

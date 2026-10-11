@@ -61,6 +61,8 @@ TEXT: dict[str, TextSpec] = {
     # 后果一句 2 秒（UX 评审：前端等它回来才让按〔忘れてもらう〕），超时回 null、不缓存）
     "memory": TextSpec("claude", "haiku-5.5", 5.0, 256, thinking="disabled"),
     "keeps": TextSpec("claude", "haiku-5.5", 2.0, 128, thinking="disabled"),
+    # B-21：候选话语（backend-design 3.6、8 节：Haiku、关思考；人物说完约 1 秒内要到，3 秒时限，不行就不出）
+    "suggest": TextSpec("claude", "haiku-5.5", 3.0, 256, thinking="disabled"),
 }
 TEXT_MODELS: dict[str, str] = {k: v.model for k, v in TEXT.items()}
 DEADLINES: dict[str, float] = {k: v.deadline for k, v in TEXT.items()}

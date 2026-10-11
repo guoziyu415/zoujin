@@ -215,6 +215,8 @@ playthrough_metrics = Table(
     # B-14（0008）：进节约档的时刻；降级的原因（budget / daily / service，第一次降级的那个）
     _ts("budget_saving_at"),
     Column("degraded_reason", Text),
+    # B-21（0010）：候选话语的花费
+    Column("cost_suggest_usd", Numeric(12, 6), nullable=False, server_default="0"),
     # B-2（0002）：分流和改写的花费；流水线的计数（分流跳过、超时降级的轮，改写、降级、拒绝、因要确认而丢弃的候选）
     Column("cost_triage_usd", Numeric(12, 6), nullable=False, server_default="0"),
     Column("cost_rewrite_usd", Numeric(12, 6), nullable=False, server_default="0"),
