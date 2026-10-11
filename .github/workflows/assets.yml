@@ -114,7 +114,7 @@ jobs:
       - name: navigation unit tests on the fresh packs (card F-10; skipped in web.yml, which builds only the plaza)
         run: |
           test -f "$RUNNER_TEMP/road/road-river-calm/nav.json" && test -f "$RUNNER_TEMP/road/road-river-flood/nav.json"
-          ZOUJIN_SCENE_ROOT="$RUNNER_TEMP/road" pnpm --filter web exec vitest run src/three/nav/navmesh.river.test.ts
+          ZOUJIN_SCENE_ROOT="$RUNNER_TEMP/road" pnpm --filter @zoujin/web exec vitest run src/three/nav/navmesh.river.test.ts
       - name: build again in other directories; every manifest must be byte-identical
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: |
