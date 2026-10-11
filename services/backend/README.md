@@ -119,7 +119,8 @@ uv run --all-packages --extra real zoujin-probe --requests out/probe-requests --
 uv run zoujin-s5 --ledger ~/.zoujin/ledger.jsonl --runs <运行器的 report.json> --out <目录>    # DATABASE_URL 是跑模拟局的库
 ```
 
-- 读账本里 `item: "s5"` 的行（`--item` 换）、测试库的 `playthrough_metrics` 和对话轮的时刻、运行器 `report.json` 里每次运行的 `playthroughId`、`persona`、`seed`、`steps[].elapsedMs`。写 `report.json`、`report.md`，只有数字：每局的产品花费（不算 `reply` 和评审员、AI 玩家；和 `playthrough_metrics` 差超过 1% 标出来），每轮花费随轮数涨时按趋势外推到 40、60 轮和压力档（世界推进单列），越过 240、300 日元的轮数，缓存读取的比例，每种调用的延迟和时限的建议，每一步的耗时，叙事者的计数。Live、切片里还没有的种类是〔推算〕，参数写在 `report.json` 的 `params`。
+- 读账本里 `item: "s5"` 的行（`--item` 换）、测试库的 `playthrough_metrics` 和对话轮的时刻、运行器 `report.json` 里每次运行的 `playthroughId`、`persona`、`seed`、`steps[].elapsedMs`。写 `report.json`、`report.md`，只有数字：每局的产品花费（不算 `reply` 和评审员、AI 玩家；和 `playthrough_metrics` 差超过 1% 标出来），每轮花费随轮数涨时按趋势外推到 40、60 轮和压力档（世界推进单列），越过 240、300 日元和提到 350 日元时的轮数、世界推进减半时的合计（Q-B8 的几个选项），缓存读取的比例，每种调用的延迟和时限的建议，每一步的耗时，叙事者的计数。Live、切片里还没有的种类是〔推算〕，参数写在 `report.json` 的 `params`。
+- 两档（提取、检查用 Sonnet 或 Haiku，S-090 ③）分开出报告：每档运行器各写一份 `report.json`、账本各用一个 `item`（例如 `s5-sonnet`、`s5-haiku`），各跑一次 `zoujin-s5 --item … --runs … --out <各自的目录>`。两档的局混进同一份报告会被算进同一个趋势。
 
 ## 作废和意图确认（B-4）
 
