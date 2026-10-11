@@ -20,6 +20,8 @@ import { stageBridge } from "./bridge";
 import {
   addLines,
   initPace,
+  performed,
+  type Performed,
   pause,
   resume,
   setAuto,
@@ -38,7 +40,9 @@ const TICK_MS = 100;
 const NO_LINES_MS = 3000;
 
 // what the staging measured, for data's pacing check (ux-design 11.1: how long it played, taps, auto on or off)
-export const stageStats = { ms: 0, taps: 0, auto: true };
+export const stageStats: {
+  last: (Performed & { autoAdvance: boolean }) | null;
+} = { last: null };
 
 export function EndingStage({
   pid,
@@ -55,7 +59,8 @@ export function EndingStage({
   const voices = manifest.data?.setPieceVoices;
   const pace = useRef<Pace>(initPace(auto));
   const fed = useRef(0);
-  const started = useRef(performance.now());
+  const autoAtStart = useRef(auto); // the setting can't change once the staging began (11.1)
+  const reported = useRef(false);
   const [, render] = useReducer((n: number) => n + 1, 0);
   const [done, setDone] = useState(false);
   const seen = useRef(new Set<number>()); // the shots so far; the card's frame is taken when its best one comes
@@ -127,7 +132,7 @@ export function EndingStage({
 
   useEffect(() => {
     pace.current = setAuto(pace.current, auto);
-    stageStats.auto = auto;
+    if (pace.current.t0 === null) autoAtStart.current = auto;
   }, [auto]);
 
   // in the background, behind a full page, behind the resume gate: the staging and its clock stop
@@ -161,8 +166,14 @@ export function EndingStage({
   // the last line had its time: the ending page, or wait for it
   useEffect(() => {
     if (!done) return;
-    stageStats.ms = Math.round(performance.now() - started.current);
-    stageStats.taps = pace.current.taps;
+    const m = reported.current
+      ? null
+      : performed(pace.current, performance.now());
+    if (m) {
+      reported.current = true;
+      stageStats.last = { ...m, autoAdvance: autoAtStart.current };
+      // ending_performed (data-design 9.3) is sent from here once its schema is in contracts
+    }
     if (ending?.endingId)
       navigate(`/ending/${encodeURIComponent(pid)}`, { replace: true });
   }, [done, ending?.endingId, pid]);

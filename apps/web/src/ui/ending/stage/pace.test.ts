@@ -4,6 +4,7 @@ import {
   holdMs,
   initPace,
   pause,
+  performed,
   resume,
   shotDone,
   tap,
@@ -184,5 +185,30 @@ describe("pause", () => {
     expect(p.i).toBe(0); // 1.0 s shown before + 0.4 s after
     [p] = run(p, 9500, 9500);
     expect(p.i).toBe(1);
+  });
+});
+
+describe("what the staging measured", () => {
+  it("play time without the pauses, the taps that did something, the lines", () => {
+    let [p] = addLines(
+      initPace(true),
+      [narr("一"), narr("二"), narr("三")],
+      1000,
+    );
+    [p] = tap(p, 1200); // within the guard: not a tap
+    [p] = tap(p, 1600);
+    p = pause(p, 2000);
+    p = resume(p, 7000);
+    [p] = run(p, 7100, 9000);
+    expect(performed(p, 9000)).toEqual({
+      playMs: 3000,
+      pausedMs: 5000,
+      taps: 1,
+      lines: 3,
+    });
+  });
+
+  it("no lines, nothing to send", () => {
+    expect(performed(initPace(true), 5000)).toBeNull();
   });
 });
