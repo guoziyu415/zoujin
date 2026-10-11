@@ -311,6 +311,14 @@ class Gateway:
             log_ = await store.event_log(c, pid, pt.book.version)
         return visible_events(pt.book, pt.role_id, log_, after_seq, limit)
 
+    async def log(self, pid: str) -> tuple[Any, list[Json]] | None:
+        """这一局（`pt`）和它的事件日志；时间线和「なぜ」从日志现算（2.5、2.6）。"""
+        async with self.engine.connect() as c:
+            pt = await self.pt(c, pid)
+            if pt is None:
+                return None
+            return pt, await store.event_log(c, pid, pt.book.version)
+
     async def on_commit(self, payload: Json) -> None:
         """叙事者提交后的 NOTIFY（hub.py 转过来）：这一局开着连接就推。"""
         conn = self.conns.get(payload["pid"])
