@@ -1,6 +1,6 @@
 {
   "about": "live 模式的预计花费（E-0 卡第 3 条），按两本账分。全部是推算，由 docs/data/cost/m2_budget.py 算出（2026-10-11，D-028：叙事者走 Claude，人物的文字回答留在 Google），M2 第一批跑完后用账本的实数替换。turn：切片评测要调模型的一步平均，google = 人物回答，claude = 叙事者各步（Sonnet，按 B-8）。judge：评审员 Opus 5.5 走 Batch 一次。simulatedPlaythrough：切片长度的一局（约 15 轮），claude 含叙事者、结局和 AI 玩家",
   "turn": { "google": 0.011, "claude": 0.035 },
-  "judge": { "claude": 0.012 },
+  "judge": { "claude": 0.005 },
   "simulatedPlaythrough": { "google": 0.22, "claude": 0.75 }
 }

@@ -33,7 +33,10 @@ EVAL_MIX = {
     "deletePlaythrough": {},
 }
 REPLY_USD = 0.015  # 文字模式的人物回答（Gemini 3.8 Flash，B-8 留在 Google）一次：S-068 两次实测折算，扣掉判分
-JUDGE = dict(fresh=3000, out=600)  # 判分一次，Opus 5.5；思考关不掉，算在 out 里。校准后按实测改
+# 判分一次，Opus 5.5，effort low；思考关不掉，算在 out 里。校准实测（10-11，150 次）：进 951〜1,234、平均 1,035，
+# 出平均 102、最多 220。切片的对话记录比校准样本长，进按 1,500、出按 150 算
+JUDGE = dict(fresh=1500, out=150)
+CALIBRATED_USD = 0.93  # 校准 50 条 × 3 次已经实花（Mac 账本）
 PLAYER = dict(cached=8000, fresh=1000, out=200)  # AI 玩家一轮，Sonnet 5.5：画像和世界说明走缓存，不走 Batch
 
 PASSES = dict(first=1, haiku_compare=1, tuning=5 * 0.5, gate=2)  # 第一遍、Haiku 对照一遍、调提示 5 次各半遍、过关两遍
@@ -116,7 +119,8 @@ def budget(plan, prices):
     persona, persona_g = sim(SLICE_SIM, plan, prices)
     s5, s5_g = sim({}, plan, prices)
     rows = [
-        ("claude", "数据", "评审员校准", "50 条 × 3 次，不走 Batch", 150 * judge_call(prices, False)),
+        ("claude", "数据", "评审员校准", "50 条 × 3 次已实花；J23、J24 改细则后复测 2 条 × 3 次",
+         CALIBRATED_USD + 6 * judge_call(prices, False)),
         ("claude", "数据", "S-2 留出集（Sonnet，再 Haiku 一遍）", "50 条 × 3 次，两档各一遍",
          checks(150, "sonnet", prices) + checks(150, "haiku", prices)),
         ("claude", "数据", "切片评测：叙事者", f"{n_cases} 例，一整遍 Sonnet、一遍 Haiku 对照，调提示和过关 {later:g} 遍",
