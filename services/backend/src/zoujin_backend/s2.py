@@ -2,19 +2,25 @@
 
     uv run zoujin-s2 <标注集.jsonl> --out <目录> [--runs 3] [--resume] [--watch <条目 ID 清单>]
 
-    # 真模型：只在 zg 的 Mac 上、PM 通知之后。先不带 --confirm 跑一次，看预计花费；zg 同意再带 --confirm
-    ZJ_MODEL=real ZJ_EVAL_LIVE=1 ZJ_LEDGER=<账本> ZJ_VERTEX_PROJECT=… ZJ_VERTEX_LOCATION=… DATABASE_URL=… \\
-        uv run zoujin-s2 <标注集.jsonl> --out <目录> --max-item-usd <单项> --max-google-usd <总> --confirm
+    # 真模型：只在 zg 的 Mac 上、PM 通知之后。先不带 --confirm 跑一次，看预计花费；zg 同意再带 --confirm。
+    # 检查走 Claude（B-8）：Key 从钥匙串读进这个终端，模型 ID 用环境变量给（不进仓库）
+    export ANTHROPIC_API_KEY="$(security find-generic-password -s zoujin-claude -w)"
+    ZJ_MODEL=real ZJ_EVAL_LIVE=1 ZJ_LEDGER=<账本> ZJ_CLAUDE_HAIKU=… ZJ_CLAUDE_SONNET=… DATABASE_URL=… \\
+        uv run --all-packages --extra real zoujin-s2 <标注集.jsonl> --out <目录> \\
+        --max-item-usd <单项> --max-claude-usd <总> --confirm
+    # S-085 ③ 再用 Haiku 量一遍：同样的命令前面加 ZJ_TEXT_MODELS=check=haiku-5.5，换一个 --out
 
 - 每条按 `setup` 起局（`eval_api`），调 `check(candidate, turn, model_checks="all")`，跑 `--runs` 次。先跑完第 1 次的
   全部条目，再跑第 2 次。
 - 每次的结果一行写进 `<目录>/results.jsonl`。中断（Ctrl-C、到上限、429）后 `--resume` 接着跑，跑过的不再花钱；
   标注集或检查提示的版本变了不让接着跑。跑完（或停下）写 `report.json` 和 `report.md`。
-- 真模型的开关和上限：`ZJ_EVAL_LIVE=1`（同 E-0 live）、`--max-item-usd`、`--max-google-usd`（没有默认值）、
-  `ZJ_LEDGER`（Google 那本账，和 E-0 同一个文件，总上限比的是账本里的累计）。少一样或不带 `--confirm`，只打印、不调用。
+- 真模型的开关和上限：`ZJ_EVAL_LIVE=1`（同 E-0 live）、`--max-item-usd`、`--max-claude-usd`（检查走 Claude，没有
+  默认值；D-029 的 100 美元是跨所有跑次的累计，填账本里已有的加这一次也不超过的数）、`ZJ_LEDGER`（两本账同一个文件，
+  和 E-0 一样，总上限比的是账本里的累计）。少一样或不带 `--confirm`，只打印、不调用。
   每条的花费记在 `s2/<这次的标签>/<条目 ID>` 下，单项上限按它算（同一条的几次合计）。
-- 账本到上限（`BudgetStop`）、第一个 429（`RateLimited`）：停下，已跑的照样出报告，退出码 3。回放缺失、配置不对：
+- 账本到上限（`BudgetStop`）、第一个 429 或 529（`RateLimited`）：停下，已跑的照样出报告，退出码 3。回放缺失、配置不对：
   退出码 2。
+- 检查提示定稿以后（`CHECK_FINAL`），公开的 10 条以外的标注集（留出集）只用定稿的提示跑真模型，不是定稿的退出码 2。
 - 没有默认的标注集路径，也不知道留出集在哪：路径由跑的人给。报告里只有条目 ID、标注的判定和规则、自检的判定、规则、
   理由和 trace ID，不抄条目的原话和摘要；留出集跑出来的报告和回放先交数据（B-2 卡「留出样本的规矩」）。
 """
@@ -34,7 +40,7 @@ from pathlib import Path
 from typing import Any
 
 from zoujin_backend import eval_api
-from zoujin_backend.config import TEXT_MODELS, ConfigError, Settings
+from zoujin_backend.config import ConfigError, Settings
 from zoujin_backend.ids import IdGen
 from zoujin_backend.models.prompts import PROMPTS
 from zoujin_backend.narrator.pipeline import checker
@@ -47,6 +53,11 @@ GATE_AGREEMENT = 0.90
 LIVE_ENV = "ZJ_EVAL_LIVE"
 RESULTS = "results.jsonl"
 META = "meta.json"
+# 检查提示定稿（B-2 卡「定稿」）：2026-10-11 在 Mac 上跑公开的 10 条 × 3 次，Sonnet 三次都 100%，Haiku 最差的一次 90%，
+# 锚点都没漏，两档都过门槛。定稿以后再改 check 的文本或 Schema，这次 S-2 就不代表新提示：要数据出新的测量集
+# （`evals/s2/README.md`），再改这里。
+CHECK_FINAL = "p48aa3f14c44b"
+DEV_SET = "s2_dev.jsonl"  # 公开的 10 条：调提示用，不管定稿没有
 
 
 def parse(argv: Sequence[str] | None) -> argparse.Namespace:
@@ -57,7 +68,7 @@ def parse(argv: Sequence[str] | None) -> argparse.Namespace:
     p.add_argument("--resume", action="store_true", help="接着上次中断的跑")
     p.add_argument("--watch", type=Path, help="要单列的条目 ID，一行一个（数据给）")
     p.add_argument("--max-item-usd", type=float, help="真模型：每条（几次合计）的上限")
-    p.add_argument("--max-google-usd", type=float, help="真模型：Google 那本账的总上限（含账本里已有的）")
+    p.add_argument("--max-claude-usd", type=float, help="真模型：Claude 那本账的总上限（含账本里已有的）")
     p.add_argument("--confirm", action="store_true", help="真模型：看过预计花费，确认要调用")
     return p.parse_args(argv)
 
@@ -77,39 +88,58 @@ def load(path: Path) -> list[Json]:
 # —— 真模型的开关 ——
 
 
-def per_check_usd(settings: Settings, env: Mapping[str, str]) -> float:
-    """一次检查调用的预计花费（偏高：不算缓存，输出按上限）。"""
-    from zoujin_backend.models.vertex import estimate_usd, world_prefix
+def per_check_usd(settings: Settings) -> tuple[float, float]:
+    """一次检查调用的花费：（上限：不算缓存、输出按上限，账本按它判；推算：按 B-8 卡的假设，前缀 1.7 万 token 走缓存、
+    新的输入 2,000、输出含思考 1,200 token）。"""
+    from zoujin_llm import canonical, claude_prices
+
+    from zoujin_backend.models.claude import api_schema
+    from zoujin_backend.models.render import world_prefix
+    from zoujin_backend.models.text import spec
     from zoujin_backend.world import Library
 
     world = Library(settings.worlds, settings.scenes, settings.world).current.world
-    chars = len(world_prefix(world)) + len(PROMPTS["check"].text) + 6000  # 加状态、这一轮和候选
-    regional = env.get("ZJ_VERTEX_LOCATION", "") != "global"
-    return estimate_usd(TEXT_MODELS["check"], "check", chars, regional=regional)
+    chars = len(world_prefix(world)) + len(PROMPTS["check"].text) + len(canonical(api_schema("check"))) + 6000
+    sp, prices = spec("check"), claude_prices()
+    upper = prices.estimate_chars(sp.model, chars, sp.max_output)
+    k = prices.price(sp.model).tokenizer
+    likely = prices.cost(
+        sp.model, {"cacheReadTokens": int(17000 * k), "inputTokens": int(2000 * k), "outputTokens": 1200}
+    )
+    return upper, likely
 
 
 def gate(args: argparse.Namespace, settings: Settings, env: Mapping[str, str], n: int, argv: Sequence[str]) -> bool:
     """真模型：打印预计花费和完整命令；开关、上限、账本、项目都齐了而且带了 --confirm 才返回 True。"""
-    each = per_check_usd(settings, env)
-    total = each * n * args.runs
-    print(
-        f"预计花费（Google，偏高：不算缓存、输出按上限）：每次检查 ${each:.3f}，{n} 条 × {args.runs} 次 ≈ ${total:.2f}"
-    )
+    from zoujin_backend.models.text import spec
+
+    each, likely = per_check_usd(settings)
+    calls = n * args.runs
+    print(f"检查用 Claude {spec('check').model}，{n} 条 × {args.runs} 次 = {calls} 次调用")
+    print(f"预计花费（按 B-8 卡推算，前缀走缓存）：每次约 ${likely:.3f}，合计约 ${likely * calls:.2f}")
+    print(f"上限（不算缓存、输出按上限，账本按它判）：每次 ${each:.3f}，合计 ${each * calls:.2f}")
     print(f"单项上限至少要 ${each * args.runs:.2f}（同一条 {args.runs} 次合计），否则第一次就停")
-    names = " ".join(f"{k}=…" for k in ("ZJ_MODEL", LIVE_ENV, "ZJ_LEDGER", "ZJ_VERTEX_PROJECT", "ZJ_VERTEX_LOCATION"))
+    names = " ".join(
+        f"{k}=…"
+        for k in ("ZJ_MODEL", LIVE_ENV, "ZJ_LEDGER", "ZJ_CLAUDE_HAIKU", "ZJ_CLAUDE_SONNET", "ZJ_TEXT_MODELS")
+        if k != "ZJ_TEXT_MODELS" or env.get(k)
+    )
     cmd = [x for x in argv if x != "--confirm"]
-    print(f"命令：{names} uv run zoujin-s2 {shlex.join(cmd)} --confirm")
+    print(f"命令：{names} uv run --all-packages --extra real zoujin-s2 {shlex.join(cmd)} --confirm")
     missing = []
     if env.get(LIVE_ENV) != "1":
         missing.append(f"没设 {LIVE_ENV}=1")
     if args.max_item_usd is None:
         missing.append("少 --max-item-usd")
-    if args.max_google_usd is None:
-        missing.append("少 --max-google-usd")
+    if args.max_claude_usd is None:
+        missing.append("少 --max-claude-usd")
     if settings.ledger is None:
-        missing.append("没设 ZJ_LEDGER（Google 那本账）")
-    if not env.get("ZJ_VERTEX_PROJECT") or not env.get("ZJ_VERTEX_LOCATION"):
-        missing.append("没设 ZJ_VERTEX_PROJECT / ZJ_VERTEX_LOCATION")
+        missing.append("没设 ZJ_LEDGER（两本账同一个文件）")
+    if not env.get("ANTHROPIC_API_KEY"):
+        missing.append("没设 ANTHROPIC_API_KEY（从钥匙串读进这个终端）")
+    for name in ("ZJ_CLAUDE_HAIKU", "ZJ_CLAUDE_SONNET"):
+        if not env.get(name):
+            missing.append(f"没设 {name}")
     if not args.confirm:
         missing.append("没带 --confirm")
     if missing:
@@ -131,6 +161,7 @@ def start(args: argparse.Namespace, items: Sequence[Json], settings: Settings) -
         "items": len(items),
         "runs": args.runs,
         "checkPromptVersion": PROMPTS["check"].version,
+        "checkPromptFinal": PROMPTS["check"].version == CHECK_FINAL,
         "checker": checker(True),
         "model": settings.model,
     }
@@ -139,7 +170,7 @@ def start(args: argparse.Namespace, items: Sequence[Json], settings: Settings) -
         raise ConfigError(f"{out} 里已经有结果：接着跑加 --resume，重新跑换一个目录")
     if args.resume and meta_path.is_file():
         old = json.loads(meta_path.read_text(encoding="utf-8"))
-        for k in ("datasetSha256", "runs", "checkPromptVersion", "model"):
+        for k in ("datasetSha256", "runs", "checkPromptVersion", "checker", "model"):
             if old.get(k) != meta[k]:
                 raise ConfigError(f"和上次的 {k} 不一样，不能接着跑（{old.get(k)} → {meta[k]}）")
         meta["tag"], meta["startedAt"] = old["tag"], old["startedAt"]
@@ -188,9 +219,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         items = load(args.dataset)
         live = settings.model == "real"
         if live:
+            version = PROMPTS["check"].version
+            if args.dataset.name != DEV_SET and version != CHECK_FINAL:
+                raise ConfigError(f"检查提示 {version} 不是定稿的 {CHECK_FINAL}：公开的 10 条以外只用定稿的提示跑")
             if not gate(args, settings, os.environ, len(items), argv):
                 return 0
-            os.environ["ZJ_MAX_GOOGLE_USD"] = repr(args.max_google_usd)
+            os.environ["ZJ_MAX_CLAUDE_USD"] = repr(args.max_claude_usd)
             os.environ["ZJ_MAX_ITEM_USD"] = repr(args.max_item_usd)
         meta, rows = start(args, items, settings)
     except ConfigError as e:
@@ -379,7 +413,8 @@ def markdown(rep: Json) -> str:
         "",
         f"- 标注集：`{m['dataset']}`（sha256 {m['datasetSha256'][:12]}），{n} 条："
         f"违规 {s['violations']}、合规 {n - s['violations']}",
-        f"- 检查提示：`{m['checkPromptVersion']}`（checker `{m['checker']}`），"
+        f"- 检查提示：`{m['checkPromptVersion']}`{'（定稿）' if m.get('checkPromptFinal') else '（不是定稿）'}"
+        f"（checker `{m['checker']}`），"
         f"模型模式 {m['model']}，每条 {m['runs']} 次",
         f"- 状态：{status}。开始 {m['startedAt']}，结束 {rep['finishedAt']}",
         "",

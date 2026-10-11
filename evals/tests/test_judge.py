@@ -13,7 +13,6 @@ from zoujin_evals import calibrate
 from zoujin_evals.judge import (
     BudgetStop,
     ClaudeLedger,
-    ClaudePrices,
     Failed,
     Item,
     Judge,
@@ -29,10 +28,11 @@ from zoujin_evals.judge import (
     user_text,
 )
 from zoujin_evals.live import LIVE_SWITCH
+from zoujin_llm import claude_prices
 
 REPO = Path(__file__).resolve().parents[2]
 ITEMS: list[dict[str, Any]] = calibrate.load_items(REPO / "evals" / "judge" / "calibration.jsonl")
-PRICES = ClaudePrices.from_json(json.loads((REPO / "evals" / "config" / "claude-prices.json").read_text("utf-8")))
+PRICES = claude_prices()  # 共用包 zoujin_llm 里的那一份（B-8）
 MODEL = "test-opus-9-9"  # 假的模型 ID：认得出档名和版本就行
 TAG = "opus-9.9"
 USAGE = {"inputTokens": 1000, "outputTokens": 300, "cacheReadTokens": 0, "cacheWriteTokens": 0}
@@ -80,6 +80,28 @@ def test_zg_sample_is_20_items_half_pass_one_per_case_without_selfharm() -> None
     assert sum(calibrate.passed(x, x["label"]["score"]) for x in zg) == 10
     assert len({x["case"] for x in zg}) == 20
     assert "E8-004" not in {x["case"] for x in zg}  # 现实危机的两条不给 zg 盲标
+
+
+# 采用的评审员：opus-5.5、effort low、输出上限 2048（README「10-11 第一次校准」）。模型 ID 只用来算档名，写假的
+CALIBRATED_TAG, CALIBRATED_EFFORT, CALIBRATED_MAX_TOKENS = "opus-5.5", "low", 2048
+
+
+def test_committed_replays_are_the_current_calibration_and_pass_the_bar() -> None:
+    """提交的回放正好是现在的 50 条 × 3 次，一致率过线。改了样本、细则或评审员的提示，这里就会少回放：
+    在 Mac 上再跑一遍 calibrate（只判少的），新回放一起提交，旧的删掉。"""
+    store = ReplayStore(REPO / "evals" / "judge" / "replays")
+    todo = [(item(n), s) for s in (1, 2, 3) for n in range(1, len(ITEMS) + 1)]
+    keys = {
+        replay_key(
+            CALIBRATED_TAG, keyed_request(i, effort=CALIBRATED_EFFORT, max_tokens=CALIBRATED_MAX_TOKENS, sample=s)
+        )
+        for i, s in todo
+    }
+    assert set(store.records) == keys
+    judge = Judge("test-opus-5-5", CALIBRATED_EFFORT, CALIBRATED_MAX_TOKENS, store, PRICES)
+    assert judge.tag == CALIBRATED_TAG
+    s = calibrate.summarize(ITEMS, [judge.one(i, n) for i, n in todo], len(todo))
+    assert s["ok"] and s["rate"] >= calibrate.BAR
 
 
 # —— 请求 ——

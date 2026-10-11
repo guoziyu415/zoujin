@@ -5,7 +5,7 @@ name = "zoujin-evals"
 version = "0.0.0"
 description = "评测运行器（E-0）：读 E1〜E8 的用例，经后端的 eval_api 跑，做确定性检查，出报告"
 requires-python = ">=3.13,<3.14"
-dependencies = ["zoujin-worldsim"]
+dependencies = ["zoujin-llm", "zoujin-worldsim"]
 
 [project.scripts]
 zoujin-eval = "zoujin_evals.cli:main"
@@ -13,9 +13,10 @@ zoujin-judge = "zoujin_evals.calibrate:main"
 
 # real：评审员的真客户端（只在 zg 的 Mac 上调；CI 装上只为类型检查和导入）
 [project.optional-dependencies]
-real = ["anthropic>=1,<2"]
+real = ["zoujin-llm[real]"]
 
 [tool.uv.sources]
+zoujin-llm = { workspace = true }
 zoujin-worldsim = { workspace = true }
 
 [build-system]

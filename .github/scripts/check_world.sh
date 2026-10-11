@@ -39,6 +39,7 @@ echo "== 切片用例（S-077 ⑨）：重新生成和 check_evals（切片版�
 echo "== 防剧透探针：重新生成和 check_probes"
 "$PY" -I evals/gen_probes.py evals/probes/s3_spoiler_probes.json
 "$PY" -I "$REF/check_probes.py" --world "$W/world.json" --probes evals/probes/s3_spoiler_probes.json
+"$PY" -I evals/gen_probe_knows.py evals/probes/s3_probe_knows.json
 
 echo "== 安全样本：重新生成"
 "$PY" -I evals/gen_selfharm.py evals/safety/s4_selfharm.jsonl

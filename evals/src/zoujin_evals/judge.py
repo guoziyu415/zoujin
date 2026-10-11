@@ -2,7 +2,8 @@
 
 - 只在评测包和 zg 的 Mac 上用，后端不依赖它。真调用要 Mac 上的开关（ZJ_EVAL_LIVE=1）和 Anthropic 的 Key
   （zg 在控制台建，只放在 Mac 上，不进仓库、文档和聊天）。
-- 模型 ID 运行时给（--model 或 ZJ_JUDGE_MODEL），仓库里不写；单价按模型档查 evals/config/claude-prices.json。
+- 模型 ID 运行时给（--model 或 ZJ_JUDGE_MODEL），仓库里不写；单价按模型档查共用包 zoujin_llm 的
+  claude-prices.json（B-8：叙事者和评审员共用这一份，账本类、回放的键、Anthropic 的连接也在那个包里）。
   回放、报告和账本里只写档名加版本（model_tag，如 opus-5.5），ID 只发给 API。
 - 判分存成回放（kind "judge"，键 = claude|档名加版本|提示版本|请求的 sha256），重判不花钱。同一条判几次，
   请求里的 sample 不同（只进键，不发给模型）。
@@ -14,7 +15,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 import time
@@ -24,12 +24,22 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, NotRequired, Protocol, TypedDict
 
+# 共用包的这几样，评审员的调用方（calibrate、测试）照旧从这里拿
+from zoujin_llm import BudgetStop as BudgetStop
+from zoujin_llm import ClaudePrices as ClaudePrices
+from zoujin_llm import Ledger
+from zoujin_llm import RateLimited as RateLimited
+from zoujin_llm import Reply as Reply
+from zoujin_llm import canonical as canonical
+from zoujin_llm import claude as llm
+from zoujin_llm import model_tag as model_tag
+from zoujin_llm import replay_key as llm_replay_key
+
 type Json = Any
 
 PROVIDER = "claude"
 KIND = "judge"
 PROMPT_VERSION = "judge-1"
-TAG_RE = re.compile(r"(opus|sonnet|haiku|fable)-(\d+)-(\d+)")  # 模型 ID 里的档名和版本
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
 
 
@@ -80,14 +90,6 @@ SCHEMA: Json = {
 }
 
 
-class BudgetStop(Exception):
-    """到了账本的上限：这次不发。"""
-
-
-class RateLimited(Exception):
-    """429 或 529：第一次就停，换个时间用回放接着跑（已判的不会重判）。"""
-
-
 def user_text(item: Item) -> str:
     parts = ["## 评分细则", item["rubric"], f"（合格线：{item['pass']}）"]
     if item.get("context"):
@@ -120,22 +122,8 @@ def api_params(model: str, request: Mapping[str, Json]) -> Json:
     }
 
 
-def canonical(request: Json) -> str:
-    return json.dumps(request, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
-
-
-def model_tag(model: str) -> str:
-    """模型 ID → 档名加版本（\"…-opus-5-5…\" → \"opus-5.5\"）。回放的键、回放和账本的行、报告都用它，模型 ID 不进仓库。
-    认不出（没有档名、档名不止一个、档名后面没有两段数字）就不调。"""
-    hits = TAG_RE.findall(model.lower())
-    if len({h[0] for h in hits}) != 1:
-        raise ValueError(f"认不出模型 {model!r} 的档名和版本，不调")
-    tier, major, minor = hits[0]
-    return f"{tier}-{major}.{minor}"
-
-
 def replay_key(tag: str, request: Json, version: str = PROMPT_VERSION) -> str:
-    return f"{PROVIDER}|{tag}|{version}|{hashlib.sha256(canonical(request).encode()).hexdigest()}"
+    return llm_replay_key(PROVIDER, tag, version, request)
 
 
 def threshold(spec: str) -> int:
@@ -167,115 +155,23 @@ def now_z() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-# —— 价目 ——
-
-
-@dataclass(frozen=True)
-class Price:
-    input: float  # 美元 / 百万 token
-    output: float
-    cache_read: float  # 缓存读取，各档不同
-
-
-@dataclass(frozen=True)
-class ClaudePrices:
-    tiers: Mapping[str, Price]  # 模型档（opus / sonnet / haiku / fable）→ 单价
-    batch_discount: float  # Batch 两头的折扣（0.5 = 半价）
-    cache_write: float  # 缓存写入是输入价的几倍（5 分钟的）
-    chars_per_token: float  # 估输入 token 用：日语、中文按每字一个 token 估，偏高
-
-    @classmethod
-    def from_json(cls, d: Mapping[str, Any]) -> ClaudePrices:
-        tiers = {
-            k: Price(float(v["input"]), float(v["output"]), float(v["cacheRead"])) for k, v in d["perMTok"].items()
-        }
-        return cls(
-            tiers,
-            float(d["batchDiscount"]),
-            float(d["cacheWriteMultiplier"]),
-            float(d["charsPerToken"]),
-        )
-
-    def price(self, model: str) -> Price:
-        hits = [t for t in self.tiers if t in model.lower()]
-        if len(hits) != 1:
-            raise ValueError(f"认不出模型 {model!r} 的价目档（{'/'.join(self.tiers)}），不调")
-        return self.tiers[hits[0]]
-
-    def cost(self, model: str, usage: Mapping[str, int], *, batch: bool) -> float:
-        p = self.price(model)
-        usd = (
-            (usage.get("inputTokens", 0) + usage.get("cacheWriteTokens", 0) * self.cache_write) * p.input
-            + usage.get("cacheReadTokens", 0) * p.cache_read
-            + usage.get("outputTokens", 0) * p.output
-        ) / 1_000_000
-        return usd * (self.batch_discount if batch else 1.0)
-
-    def estimate(self, model: str, request: Mapping[str, Json], *, batch: bool) -> float:
-        """调用前的预计（偏高）：输入按字数估，输出按上限（思考也算输出）。"""
-        chars = len(request["system"]) + len(request["user"]) + len(canonical(request["schema"]))
-        usage = {"inputTokens": int(chars / self.chars_per_token) + 1, "outputTokens": int(request["maxTokens"])}
-        return self.cost(model, usage, batch=batch)
-
-
 # —— 账本 ——
 
 
-@dataclass
-class ClaudeLedger:
-    """和后端的 Google 账本（models/ledger.py）同一个文件、同一种行，provider 写 claude。
+class ClaudeLedger(Ledger):
+    """共用的账本（zoujin_llm.Ledger）记 Claude 那本：provider 写 claude、kind 写 judge，和后端的 Google 账本
+    同一个文件、同一种行。评审员的 use 是 "eval"（S-079 ④：S-5 的单局成本只加产品）。"""
 
-    每行带 use：评审员是 "eval"（S-079 ④：每行标产品还是评测，S-5 的单局成本只加产品）。
-    """
-
-    path: Path
-    max_total_usd: float  # Claude 这本账的总上限
-    max_item_usd: float  # 单项上限：这一项两本账合起来
-    item: str  # 记在哪一项下（校准："judge-calibration"；评测：用例 ID）
-    use: str = "eval"  # "eval" 或 "product"
-
-    def _lines(self) -> list[dict[str, Any]]:
-        if not self.path.is_file():
-            return []
-        return [json.loads(x) for x in self.path.read_text(encoding="utf-8").splitlines() if x.strip()]
+    def __init__(self, path: Path, max_total_usd: float, max_item_usd: float, item: str, use: str = "eval") -> None:
+        super().__init__(path, PROVIDER, max_total_usd, max_item_usd, item, use)
 
     def spent(self) -> tuple[float, float]:
         """（Claude 的累计，这一项两本账合起来的累计）。每次重读文件：后端和别的跑可能同时在记。"""
-        total = on_item = 0.0
-        for line in self._lines():
-            usd = float(line.get("costUsd", 0.0))
-            if line.get("provider") == PROVIDER:
-                total += usd
-            if line.get("item") == self.item:
-                on_item += usd
-        return total, on_item
+        assert self.item is not None
+        return self.spent_total(), self.spent_on(self.item)
 
-    def before(self, estimate_usd: float) -> None:
-        total, on_item = self.spent()
-        if total + estimate_usd > self.max_total_usd:
-            raise BudgetStop(
-                f"Claude 账本已花 ${total:.4f}，加上这次预计 ${estimate_usd:.4f} 超过总上限 ${self.max_total_usd:.2f}"
-            )
-        if on_item + estimate_usd > self.max_item_usd:
-            raise BudgetStop(
-                f"「{self.item}」已花 ${on_item:.4f}，加上这次预计 ${estimate_usd:.4f}"
-                f" 超过单项上限 ${self.max_item_usd:.2f}"
-            )
-
-    def add(self, *, model: str, usage: Mapping[str, int], cost: float) -> None:
-        line = {
-            "at": now_z(),
-            "provider": PROVIDER,
-            "kind": KIND,
-            "model": model,
-            "usage": dict(usage),
-            "costUsd": round(cost, 6),
-            "item": self.item,
-            "use": self.use,
-        }
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self.path.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(line, ensure_ascii=False) + "\n")
+    def add(self, *, model: str, usage: Mapping[str, int], cost: float, kind: str = KIND) -> None:
+        super().add(kind=kind, model=model, usage=usage, cost=cost)
 
 
 # —— 回放 ——
@@ -312,13 +208,6 @@ class ReplayStore:
 
 
 @dataclass(frozen=True)
-class Reply:
-    text: str | None  # 第一段 text（结构化输出的 JSON）；没有时 None
-    stop_reason: str | None
-    usage: dict[str, int]  # inputTokens、outputTokens（含思考）、cacheReadTokens、cacheWriteTokens
-
-
-@dataclass(frozen=True)
 class Failed:
     why: str  # Batch 里这一条没成：errored（带错误类型）/ canceled / expired
 
@@ -331,56 +220,41 @@ class Transport(Protocol):
 
 
 class AnthropicTransport:
-    """官方 SDK（evals 的 real 可选依赖）。Key 从环境里读（ANTHROPIC_API_KEY），SDK 不自己重试。"""
+    """官方 SDK（real 可选依赖），连接用共用包的：Key 由 SDK 从 ANTHROPIC_API_KEY 读，不自己重试；错误换成不带原消息的
+    异常（429、529 → RateLimited，第一次就停，之后用回放接着跑；别的 → ModelCallFailed，只有状态码）。"""
 
     def __init__(self) -> None:
         import anthropic
 
         self._sdk = anthropic
-        self.client = anthropic.Anthropic(max_retries=0)
-
-    def _stop_on_limits(self, e: Exception) -> None:
-        if isinstance(e, (self._sdk.RateLimitError, self._sdk.OverloadedError)):
-            raise RateLimited(f"{e.status_code}：停下，之后用回放接着跑") from e
-
-    @staticmethod
-    def _reply(msg: Any) -> Reply:
-        u = msg.usage
-        usage = {
-            "inputTokens": u.input_tokens,
-            "outputTokens": u.output_tokens,
-            "cacheReadTokens": u.cache_read_input_tokens or 0,
-            "cacheWriteTokens": u.cache_creation_input_tokens or 0,
-        }
-        text = next((b.text for b in msg.content if b.type == "text"), None)
-        return Reply(text, msg.stop_reason, usage)
+        self.client = llm.client()
 
     def create(self, params: Json) -> Reply:
         try:
             msg = self.client.messages.create(**params)
-        except self._sdk.APIStatusError as e:
-            self._stop_on_limits(e)
-            raise
-        return self._reply(msg)
+        except self._sdk.APIError as e:
+            raise llm.translate(e) from None
+        return llm.reply_of(msg)
 
     def submit(self, requests: Sequence[tuple[str, Json]]) -> str:
         try:
             batch = self.client.messages.batches.create(
                 requests=[{"custom_id": cid, "params": params} for cid, params in requests]
             )
-        except self._sdk.APIStatusError as e:
-            self._stop_on_limits(e)
-            raise
-        return batch.id
+        except self._sdk.APIError as e:
+            raise llm.translate(e) from None
+        batch_id: str = batch.id
+        return batch_id
 
     def ended(self, batch_id: str) -> bool:
-        return self.client.messages.batches.retrieve(batch_id).processing_status == "ended"
+        status: str = self.client.messages.batches.retrieve(batch_id).processing_status
+        return status == "ended"
 
     def results(self, batch_id: str) -> Iterator[tuple[str, Reply | Failed]]:
         for r in self.client.messages.batches.results(batch_id):
             res = r.result
             if res.type == "succeeded":
-                yield r.custom_id, self._reply(res.message)
+                yield r.custom_id, llm.reply_of(res.message)
             elif res.type == "errored":
                 yield r.custom_id, Failed(f"errored：{res.error.error.type}")
             else:
