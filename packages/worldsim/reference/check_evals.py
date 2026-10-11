@@ -54,6 +54,7 @@ class Checker:
         self.personas = {p["id"]: p for p in personas}
         self.chars = {c["id"]: c for c in world["characters"]}
         self.places = {p["id"] for p in world["places"]}
+        self.objects = {o["id"] for o in world.get("objects", [])}  # （1.7）可调查物，examine 的对象
         self.items = {x["id"]: x for x in world.get("items", [])}
         self.pacing = world.get("pacing", {})
         self.scene_of = {p["id"]: p.get("sceneRef") for p in world["places"]}
@@ -266,7 +267,7 @@ class Checker:
                 act = s["act"]
                 want = ACT_KINDS.get(act.get("kind"))
                 tgt = act.get("target")
-                ok_t = {"place": self.places, "char": set(self.chars), "any": self.places | set(self.chars)}
+                ok_t = {"place": self.places, "char": set(self.chars), "any": self.places | set(self.chars) | self.objects}
                 if not want:
                     self.err(f"{sw}：动作 kind 不认识 {act.get('kind')}（UX 清单：{sorted(ACT_KINDS)}）")
                 elif want == "none" and tgt is not None:
@@ -536,10 +537,14 @@ def main():
     ap.add_argument("--world", required=True)
     ap.add_argument("--scenarios", required=True)
     ap.add_argument("--cases", required=True)
-    ap.add_argument("--personas", help="模拟局的画像；不给 = 用例里不能有模拟局（切片用例就不给）")
+    ap.add_argument("--personas", nargs="+", default=[],
+                    help="模拟局的画像，可以给几个文件（第一幕的 + evals/acts/actN 的）；不给 = 用例里不能有模拟局")
     a = ap.parse_args()
     load = lambda p: json.loads(Path(p).read_text(encoding="utf-8"))  # noqa: E731
-    ck = Checker(load(a.world), load(a.scenarios), load(a.personas) if a.personas else [])
+    ck = Checker(load(a.world), load(a.scenarios), [p for f in a.personas for p in load(f)])
+    ids = [p["id"] for f in a.personas for p in load(f)]
+    for pid in sorted({i for i in ids if ids.count(i) > 1}):
+        ck.err(f"画像 {pid} 在几个文件里重复")
 
     # 画像文件四幕共用：切片只有旅人，别的身份的画像切片用例用不到，只查用例里用到的（W-2）
     used = set(re.findall(r'"persona": "([^"]+)"', "".join(

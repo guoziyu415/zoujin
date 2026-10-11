@@ -32,6 +32,15 @@ echo "== 评测种子：check_evals"
 "$PY" -I "$REF/check_evals.py" --world "$W/world.json" --scenarios "$W/scenarios.json" \
   --cases evals/seeds --personas evals/personas.json
 
+echo "== 第二〜四幕的用例和画像（清单第 14、15 步，evals/acts/actN）：重新生成和 check_evals"
+for d in evals/acts/act*/; do
+  "$PY" -I "$d/cases.py"
+  if compgen -G "$d/E*.jsonl" > /dev/null; then
+    "$PY" -I "$REF/check_evals.py" --world "$W/world.json" --scenarios "$W/scenarios.json" --cases "$d" \
+      --personas evals/personas.json evals/acts/act*/personas.json
+  fi
+done
+
 echo "== 切片用例（S-077 ⑨）：重新生成和 check_evals（切片版世界模型，模拟局 E7-101〜110 用同一份画像）"
 "$PY" -I evals/gen_slice.py evals/slice
 "$PY" -I "$REF/check_evals.py" --world "$S/world.json" --scenarios "$W/scenarios.json" --cases evals/slice \
