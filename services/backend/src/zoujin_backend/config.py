@@ -157,6 +157,14 @@ def open_release(env: Mapping[str, str] | None = None) -> int:
     return int(value)
 
 
+def narrator_auth(env: Mapping[str, str]) -> Literal["none", "iam"]:
+    """`ZJ_NARRATOR_AUTH`：none（默认，本地）/ iam（Cloud Run：叙事者只开内部入口、只许网关的服务账号调，B-23）。"""
+    value = env.get("ZJ_NARRATOR_AUTH", "") or "none"
+    if value not in ("none", "iam"):
+        raise ConfigError(f"ZJ_NARRATOR_AUTH 只能是 none / iam，得到 {value!r}")
+    return "iam" if value == "iam" else "none"
+
+
 def async_url(url: str) -> str:
     """postgresql://… → SQLAlchemy 的 psycopg 3 驱动写法。"""
     for prefix in ("postgresql://", "postgres://"):
@@ -195,6 +203,10 @@ class Settings:
     ledger_item: str | None = None
     max_item_usd: float | None = None
     record_replays: Path | None = None
+    # 部署（B-23）：网关顺带发前端构建（`ZJ_WEB_DIST`，vite build 的 dist；没设不发）；服务间调用的身份
+    # （`ZJ_NARRATOR_AUTH=iam`：Cloud Run 的 IAM 已经验过网关服务账号的 OIDC 令牌，网关调叙事者时带上令牌）
+    web_dist: Path | None = None
+    narrator_auth: Literal["none", "iam"] = "none"
 
     @property
     def schemas(self) -> Path:
@@ -242,6 +254,8 @@ class Settings:
             max_item_usd=float(e["ZJ_MAX_ITEM_USD"]) if e.get("ZJ_MAX_ITEM_USD") else None,
             record_replays=_path(e, "ZJ_RECORD_REPLAYS"),
             replays=_path(e, "ZJ_REPLAYS") or REPLAYS,
+            web_dist=_dir(e, "ZJ_WEB_DIST"),
+            narrator_auth=narrator_auth(e),
         )
 
 
