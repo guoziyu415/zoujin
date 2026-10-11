@@ -296,6 +296,9 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
     ap.add_argument("--requests", type=Path, required=True, help="假模型录下的回放目录（不是留出样本）")
     ap.add_argument("--out", type=Path, required=True, help="结果目录（只有数字）")
     ap.add_argument("--per-kind", type=int, default=20, help="每种提示调几次（默认 20）")
+    ap.add_argument(
+        "--kind", action="append", choices=claude_kinds(), help="只量这几种（可以写几次；不写是全部走 Claude 的）"
+    )
     ap.add_argument("--max-item-usd", type=float, help=f"这次小测（item {ITEM}）的上限，真调时必填")
     ap.add_argument("--max-claude-usd", type=float, help="Claude 那本账的总上限（跨所有跑次累计，D-029），真调时必填")
     ap.add_argument("--confirm", action="store_true", help="zg 看过预计花费、同意了")
@@ -304,6 +307,8 @@ def main(argv: Sequence[str] | None = None, env: Mapping[str, str] | None = None
     e = os.environ if env is None else env
     try:
         requests = load(args.requests)
+        if args.kind:
+            requests = {k: v for k, v in requests.items() if k in args.kind}
         if not requests:
             raise ConfigError(f"{args.requests.name} 里没有走 Claude 的提示的请求")
         picked = pick(requests, args.per_kind)

@@ -8,9 +8,10 @@
 - 每次调用：system 第一段放世界模型前缀，第二段放这种提示的说明，两段后面各打一个缓存点（前缀同一档的各种提示共用，
   说明同一种提示共用）；状态、这一轮、请求字段放 user（渲染沿用
   `models/render.py`）。输出用 `output_config.format`（JSON Schema）定死，思考和 effort 按 `config.TEXT`。不传
-  `temperature`：Messages API 没有这个参数了（SDK 1.13 的 `messages.create` 不收），输出的稳不稳靠 Schema 和思考的档。
+  `temperature`：Anthropic 的 Python SDK 1.13.0 的 `messages.create` 没有这个参数，输出的稳不稳靠 Schema 和思考的档。
 - **Schema**：发给 API 的那份（`api_schema()`）去掉 API 不支持的关键字（长度、数值范围、`maxItems`），对象一律
   `additionalProperties: false`；候选事件的 `effects` 换成按 op 分开的写法（`API_EFFECT`），不然只剩 `op` 一个字段。
+  幕末打算的联合类型压到和提取差不多（`PLAN_EFFECT`、`PLAN_ALTERNATIVE_API`）。
   收到以后照旧用完整的 Schema 在本地验，不过就 `BadOutput`，按时限的规则重发。
 - 调用前按预计花费查账本（`BudgetStop`），调用后按实际用量记账（`provider: "claude"`、`use: "product"`）；被时限
   取消的按预计记（可能已经计费，宁多记）。`refusal`、`max_tokens` 也算这次失败，钱照记。
@@ -33,7 +34,7 @@ import jsonschema
 from zoujin_llm import ClaudePrices, Ledger, Reply, canonical, claude_prices, model_tag, tier_of
 
 from zoujin_backend.config import CLAUDE_TIERS, TEXT, ConfigError, ModelMode, Settings
-from zoujin_backend.models.prompts import EFFECT, PROMPTS
+from zoujin_backend.models.prompts import EFFECT, PLAN_ALTERNATIVE, PROMPTS
 from zoujin_backend.models.render import render_body, world_prefix
 from zoujin_backend.models.text import BadOutput, TextResult, model_and_version, spec
 from zoujin_backend.world import Library
@@ -114,8 +115,31 @@ EFFECT_VARIANTS: dict[str, Json] = {
 # API 不支持递归）、improv 的 factId（叙事者分配，请求里也去掉了）
 EFFECT_DROPPED = {"set": {"from"}, "beat": {"outcomes"}, "improv": {"factId"}}
 API_EFFECT: Json = {"anyOf": list(EFFECT_VARIANTS.values())}
-# 幕末打算的 effects（提示只让写 learn 这类，不写约定）：一个请求里 effects 出现两次，带约定那一种会超过 24 个可选参数
-PLAN_EFFECT: Json = {"anyOf": [v for op, v in EFFECT_VARIANTS.items() if op != "promise"]}
+# 幕末打算的 Schema 要小：B-8 小测（10-11）里提取（4 个联合类型）、改写（5 个）都过了，幕末打算原来有 10 个
+# （effects 出现两次，每次带 set 的 value、hold 的 to 和 from，alternative 又是三选一），第一次调用就回 400
+# invalid_request_error。文档说联合类型的编译代价是指数的、超了内部的上限回 400；原因是推测的，补跑时 `translate()`
+# 带的提示会说清。所以 effects 只给自己不带联合类型的几种（提示只让写 learn 这类：不写约定，也用不上 set、hold），
+# 写了也照旧按本地的完整 Schema 验
+PLAN_OPS = ("inc", "beat", "learn", "relocate", "improv")
+PLAN_EFFECT: Json = {"anyOf": [EFFECT_VARIANTS[op] for op in PLAN_OPS]}
+# alternative 发给 API 的写法：本地的三种（给定去处 {exit}、另一个打算 {label, with, effects}、null）并成「字段都
+# 可选的一个对象或 null」，少一层三选一。写出来的照旧按 PLAN_ALTERNATIVE 在本地验，`plans.alternative()` 按有没有
+# exit、label 认
+PLAN_ALTERNATIVE_API: Json = {
+    "anyOf": [
+        {
+            "type": "object",
+            "properties": {
+                "exit": _ID,
+                "label": {"type": "string"},
+                "with": {"type": "array", "items": _ID},
+                "effects": {"type": "array", "items": PLAN_EFFECT},
+            },
+            "additionalProperties": False,
+        },
+        {"type": "null"},
+    ]
+}
 
 
 def _api(node: Json, effect: Json) -> Json:
@@ -125,6 +149,8 @@ def _api(node: Json, effect: Json) -> Json:
         return node
     if node == EFFECT:
         return copy.deepcopy(effect)
+    if node == PLAN_ALTERNATIVE:
+        return copy.deepcopy(PLAN_ALTERNATIVE_API)
     out: dict[str, Json] = {}
     for k, v in node.items():
         if k in UNSUPPORTED:

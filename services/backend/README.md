@@ -94,12 +94,15 @@ uv run zoujin-s2 <标注集.jsonl> --out <目录> --resume                # 中�
 
 ```sh
 docker compose up -d db
-ZJ_RECORD_REPLAYS="$PWD/out/probe-requests" DATABASE_URL=… uv run zoujin-eval --mode fake --deterministic-only --slice --quiet --out out/probe-e0
+export DATABASE_URL=postgresql://zoujin:zoujin@127.0.0.1:5432/zoujin
+uv run --all-packages --extra real alembic -c services/backend/alembic.ini upgrade head    # 新库先建表，不然每例都连不上
+ZJ_RECORD_REPLAYS="$PWD/out/probe-requests" uv run --all-packages --extra real zoujin-eval --mode fake --deterministic-only --slice --quiet --out out/probe-e0
 uv run --all-packages --extra real zoujin-probe --requests out/probe-requests --out out/probe --max-item-usd 2 --max-claude-usd 100    # 只打印预计花费和命令
 ```
 
 - 每种取 `--per-kind` 个（默认 20；同样的请求只算一个，不够就轮着用），串行调，记 Claude 那本账、item 是 `b8-probe`。zg 点头后在打印出来的命令后面带 `--confirm`，环境变量照上面设。
-- 第一个 429、529 或到上限就停（退出码 3），别的 HTTP 错误跳过这种提示剩下的。结果 `probe.jsonl`、`summary.json` 只有数字（种类、档名加版本、毫秒、token、花费），交协调拷进项目文件夹。
+- 只补跑某几种：加 `--kind plan`（可以写几次）。
+- 第一个 429、529 或到上限就停（退出码 3），别的 HTTP 错误跳过这种提示剩下的，打印状态码、API 的错误类型和一个写死的类名（如 `提示 schema-too-complex`），原消息不打。结果 `probe.jsonl`、`summary.json` 只有数字（种类、档名加版本、毫秒、token、花费），交协调拷进项目文件夹。
 
 ## 作废和意图确认（B-4）
 

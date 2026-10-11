@@ -179,6 +179,30 @@ def test_api_schemas_pass_the_local_check() -> None:
     ]
 
 
+def unions(node: Json) -> int:
+    if isinstance(node, list):
+        return sum(unions(x) for x in node)
+    if not isinstance(node, dict):
+        return 0
+    subs = [*node.get("properties", {}).values(), *(node[k] for k in ("items", "anyOf") if k in node)]
+    return ("anyOf" in node) + sum(unions(x) for x in subs)
+
+
+def test_api_schemas_stay_as_small_as_what_passed() -> None:
+    """B-8 小测（10-11）：提取 4 个联合类型、改写 5 个都过了，幕末打算原来 10 个，第一次调用就回 400。"""
+    assert {k: unions(api_schema(k)) for k in ("extract", "rewrite", "plan")} == {"extract": 4, "rewrite": 5, "plan": 4}
+    assert all(unions(api_schema(k)) <= 5 for k in PROMPTS)
+    plan = api_schema("plan")["properties"]
+    ops = {v["properties"]["op"]["const"] for v in plan["effects"]["items"]["anyOf"]}
+    assert ops == {"inc", "beat", "learn", "relocate", "improv"}  # 不要 set、hold、promise
+    alt = plan["alternative"]["anyOf"]
+    assert alt[1] == {"type": "null"} and set(alt[0]["properties"]) == {"exit", "label", "with", "effects"}
+    for out in ({"exit": "exit.1.city"}, {"label": "広場で待つ", "with": [], "effects": []}, None):
+        doc = {"accepted": False, "label": None, "with": [], "effects": [], "narration": ["x"], "alternative": out}
+        jsonschema.validate(doc, api_schema("plan"))
+        jsonschema.validate(doc, PROMPTS["plan"].schema)  # 本地照旧按三种验
+
+
 def test_the_full_schema_is_still_checked_locally(tmp_path: Path) -> None:
     four = {"candidates": [CANDIDATE] * 4}
     jsonschema.validate(four, api_schema("extract"))  # API 那份没有 maxItems：模型可能给 4 个
