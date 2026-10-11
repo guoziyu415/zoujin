@@ -403,6 +403,8 @@ export class Session {
   }
 
   private undelivered(): void {
+    const waiting = useVoice.getState().turn?.phase === "waiting";
+    if (!this.inflight && !waiting) return; // not one of our turns (an action, say): nothing to tell the player
     this.inflight = null;
     useVoice.setState((s) =>
       s.turn?.phase === "waiting" ? { turn: null, character: null } : s,

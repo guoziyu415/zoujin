@@ -254,6 +254,20 @@ describe("Session", () => {
     ]);
   });
 
+  it("an invalid_request with no turn of ours in flight says nothing", () => {
+    const { sock } = open();
+    sock.receive({
+      type: "error",
+      error: {
+        code: "invalid_request",
+        message: "うまく送れませんでした。",
+        retryable: false,
+        retryAfterSeconds: null,
+      },
+    });
+    expect(useVoice.getState().narration).toEqual([]);
+  });
+
   it("says the lost turn again on welcome, and treats invalid_request as not delivered", () => {
     const { s, sock } = open();
     s.focus("char.melos");
