@@ -3,7 +3,8 @@
 - 只在评测包和 zg 的 Mac 上用，后端不依赖它。真调用要 Mac 上的开关（ZJ_EVAL_LIVE=1）和 Anthropic 的 Key
   （zg 在控制台建，只放在 Mac 上，不进仓库、文档和聊天）。
 - 模型 ID 运行时给（--model 或 ZJ_JUDGE_MODEL），仓库里不写；单价按模型档查 evals/config/claude-prices.json。
-- 判分存成回放（kind "judge"，键 = claude|模型|提示版本|请求的 sha256），重判不花钱。同一条判几次，
+  回放、报告和账本里只写档名加版本（model_tag，如 opus-5.5），ID 只发给 API。
+- 判分存成回放（kind "judge"，键 = claude|档名加版本|提示版本|请求的 sha256），重判不花钱。同一条判几次，
   请求里的 sample 不同（只进键，不发给模型）。
 - 真调用前查账本（ZJ_LEDGER，和后端同一个文件、同一种行）：Claude 的累计加这次的预计超过总上限，或这一项
   两本账合起来超过单项上限，就不发、抛 BudgetStop。429 和 529 第一次就停（RateLimited），SDK 不自己重试。
@@ -28,6 +29,7 @@ type Json = Any
 PROVIDER = "claude"
 KIND = "judge"
 PROMPT_VERSION = "judge-1"
+TAG_RE = re.compile(r"(opus|sonnet|haiku|fable)-(\d+)-(\d+)")  # 模型 ID 里的档名和版本
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
 
 
@@ -122,8 +124,18 @@ def canonical(request: Json) -> str:
     return json.dumps(request, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
 
 
-def replay_key(model: str, request: Json, version: str = PROMPT_VERSION) -> str:
-    return f"{PROVIDER}|{model}|{version}|{hashlib.sha256(canonical(request).encode()).hexdigest()}"
+def model_tag(model: str) -> str:
+    """模型 ID → 档名加版本（\"…-opus-5-5…\" → \"opus-5.5\"）。回放的键、回放和账本的行、报告都用它，模型 ID 不进仓库。
+    认不出（没有档名、档名不止一个、档名后面没有两段数字）就不调。"""
+    hits = TAG_RE.findall(model.lower())
+    if len({h[0] for h in hits}) != 1:
+        raise ValueError(f"认不出模型 {model!r} 的档名和版本，不调")
+    tier, major, minor = hits[0]
+    return f"{tier}-{major}.{minor}"
+
+
+def replay_key(tag: str, request: Json, version: str = PROMPT_VERSION) -> str:
+    return f"{PROVIDER}|{tag}|{version}|{hashlib.sha256(canonical(request).encode()).hexdigest()}"
 
 
 def threshold(spec: str) -> int:
@@ -419,8 +431,10 @@ class Judge:
     transport: Transport | None = None  # 只读回放时 None
     poll: Callable[[], None] = field(default=lambda: time.sleep(30))
     progress: Callable[[str], None] = field(default=lambda _: None)
+    tag: str = field(init=False)  # model_tag(model)
 
     def __post_init__(self) -> None:
+        self.tag = model_tag(self.model)  # 回放、账本、报告里只写它
         if self.effort not in EFFORTS:
             raise ValueError(f"effort 只能是 {'/'.join(EFFORTS)}")
         if (self.ledger is None) != (self.transport is None):
@@ -442,7 +456,7 @@ class Judge:
         """收到一条回答：记账，判出分就存回放。拒答、截断、JSON 坏了都不存，下次会重判。"""
         assert self.ledger is not None
         cost = self.prices.cost(self.model, reply.usage, batch=batch)
-        self.ledger.add(model=self.model, usage=reply.usage, cost=cost)
+        self.ledger.add(model=self.tag, usage=reply.usage, cost=cost)
         if reply.stop_reason in ("refusal", "max_tokens"):
             return Verdict(item["id"], sample, None, "", None, reply.stop_reason, cost, False, reply.usage)
         try:
@@ -451,10 +465,10 @@ class Judge:
             return Verdict(item["id"], sample, None, "", None, f"bad-json：{e}", cost, False, reply.usage)
         self.replays.add(
             {
-                "key": replay_key(self.model, request),
+                "key": replay_key(self.tag, request),
                 "kind": KIND,
                 "provider": PROVIDER,
-                "model": self.model,
+                "model": self.tag,
                 "promptVersion": PROMPT_VERSION,
                 "item": item["id"],
                 "request": request,
@@ -471,7 +485,7 @@ class Judge:
     def one(self, item: Item, sample: int = 1) -> Verdict:
         """判一条，不走 Batch（校准用：快）。"""
         req = self.request(item, sample)
-        rec = self.replays.get(replay_key(self.model, req))
+        rec = self.replays.get(replay_key(self.tag, req))
         if rec is not None:
             return self._from_replay(item, sample, rec)
         if self.transport is None or self.ledger is None:
@@ -487,7 +501,7 @@ class Judge:
         for item, sample in todo:
             cid = custom_id(item["id"], sample)
             req = self.request(item, sample)
-            rec = self.replays.get(replay_key(self.model, req))
+            rec = self.replays.get(replay_key(self.tag, req))
             if rec is not None:
                 out[cid] = self._from_replay(item, sample, rec)
             elif self.transport is None:

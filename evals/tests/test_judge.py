@@ -22,6 +22,7 @@ from zoujin_evals.judge import (
     Reply,
     api_params,
     keyed_request,
+    model_tag,
     parse_verdict,
     replay_key,
     threshold,
@@ -32,7 +33,8 @@ from zoujin_evals.live import LIVE_SWITCH
 REPO = Path(__file__).resolve().parents[2]
 ITEMS: list[dict[str, Any]] = calibrate.load_items(REPO / "evals" / "judge" / "calibration.jsonl")
 PRICES = ClaudePrices.from_json(json.loads((REPO / "evals" / "config" / "claude-prices.json").read_text("utf-8")))
-MODEL = "test-opus-judge"  # 假的模型 ID：只要认得出价目档
+MODEL = "test-opus-9-9"  # 假的模型 ID：认得出档名和版本就行
+TAG = "opus-9.9"
 USAGE = {"inputTokens": 1000, "outputTokens": 300, "cacheReadTokens": 0, "cacheWriteTokens": 0}
 
 
@@ -90,8 +92,8 @@ def test_request_has_rubric_context_transcript_and_sample_only_in_the_key() -> N
     assert all(f"{t['speaker']}：{t['text']}" in text for t in it["transcript"])
     r1 = keyed_request(it, effort="low", max_tokens=2048, sample=1)
     r2 = keyed_request(it, effort="low", max_tokens=2048, sample=2)
-    assert replay_key(MODEL, r1) != replay_key(MODEL, r2) != replay_key("other-opus", r2)
-    assert replay_key(MODEL, r1).startswith(f"claude|{MODEL}|judge-1|")
+    assert replay_key(TAG, r1) != replay_key(TAG, r2) != replay_key("opus-9.8", r2)
+    assert replay_key(TAG, r1).startswith("claude|opus-9.9|judge-1|")
     p = api_params(MODEL, r1)
     assert "sample" not in json.dumps(p) and "thinking" not in p  # 思考关不掉，不写 thinking
     assert p["output_config"]["effort"] == "low" and p["output_config"]["format"]["type"] == "json_schema"
@@ -106,6 +108,14 @@ def test_parse_verdict() -> None:
     assert threshold(">=4/5") == 4
     with pytest.raises(ValueError):
         threshold("4")
+
+
+def test_model_tag_keeps_the_id_out_of_the_repo() -> None:
+    assert model_tag("x-opus-5-5") == "opus-5.5"
+    assert model_tag("x-sonnet-4-5-20990101") == "sonnet-4.5"
+    for bad in ("opus", "x-opus-5", "x-opus-5-5-sonnet-5-5", "unknown-1-2"):
+        with pytest.raises(ValueError):
+            model_tag(bad)
 
 
 def test_prices_by_tier_batch_and_cache() -> None:
@@ -222,12 +232,15 @@ def test_one_calls_once_then_replays(tmp_path: Path) -> None:
     assert {(r["provider"], r["kind"], r["use"], r["item"]) for r in ledger_rows(tmp_path)} == {
         ("claude", "judge", "eval", "judge-calibration")
     }
+    # 回放和账本里只有档名加版本，没有模型 ID
+    written = (tmp_path / "replays" / "judge.jsonl").read_text("utf-8") + (tmp_path / "ledger.jsonl").read_text("utf-8")
+    assert MODEL not in written and '"model": "opus-9.9"' in written
     # 换一个进程读同一个回放目录：不用客户端也判得出来
     offline = Judge(MODEL, "low", 2048, ReplayStore(tmp_path / "replays"), PRICES)
     assert offline.one(item(1)).score == 4
     assert offline.one(item(1), sample=3).error == "replay-missing"
     assert (
-        Judge("other-opus", "low", 2048, ReplayStore(tmp_path / "replays"), PRICES).one(item(1)).error
+        Judge("test-opus-9-8", "low", 2048, ReplayStore(tmp_path / "replays"), PRICES).one(item(1)).error
         == "replay-missing"
     )
 
@@ -257,7 +270,7 @@ def test_budget_stop_before_the_call(tmp_path: Path) -> None:
 def test_live_needs_both_ledger_and_client_and_a_known_price() -> None:
     with pytest.raises(ValueError, match="账本"):
         Judge(MODEL, "low", 2048, ReplayStore(Path("/nonexistent")), PRICES, transport=FakeClaude())
-    with pytest.raises(ValueError, match="价目档"):
+    with pytest.raises(ValueError, match="认不出模型"):
         Judge("unknown", "low", 2048, ReplayStore(Path("/nonexistent")), PRICES)
     with pytest.raises(ValueError, match="effort"):
         Judge(MODEL, "none", 2048, ReplayStore(Path("/nonexistent")), PRICES)

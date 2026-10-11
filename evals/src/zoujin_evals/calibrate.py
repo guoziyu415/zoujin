@@ -145,7 +145,7 @@ def markdown(meta: Mapping[str, Json], s: Mapping[str, Json]) -> str:
 def estimate_text(a: argparse.Namespace, argv: Sequence[str], judge: Judge, todo: Sequence[tuple[Item, int]]) -> str:
     cost = json.loads(a.live_cost.read_text(encoding="utf-8"))["judge"]["claude"]  # 走 Batch 一次（推算）
     per_call = cost if a.batch else cost / judge.prices.batch_discount
-    new = [(i, s) for i, s in todo if judge.replays.get(replay_key(judge.model, judge.request(i, s))) is None]
+    new = [(i, s) for i, s in todo if judge.replays.get(replay_key(judge.tag, judge.request(i, s))) is None]
     upper = max((judge.prices.estimate(judge.model, judge.request(i, s), batch=a.batch) for i, s in new), default=0.0)
     cmd = ["uv", "run", "zoujin-judge", *argv]
     if "--confirm" not in cmd:
@@ -216,7 +216,7 @@ def calibrate(a: argparse.Namespace, argv: Sequence[str], transport: Transport |
     except (BudgetStop, RateLimited) as e:
         stopped = str(e)
     meta = {
-        "model": a.model,
+        "model": judge.tag,  # 档名加版本，不写模型 ID
         "effort": a.effort,
         "maxTokens": a.max_tokens,
         "promptVersion": PROMPT_VERSION,

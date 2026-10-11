@@ -261,8 +261,8 @@ uv run zoujin-eval --mode fake --deterministic-only --quiet --out evals/tests/sn
 判分交给 Claude（PM 10-10 定 Opus 5.5，比被测的叙事者高一档；D-028 以后叙事者也是 Claude，独立性怎么查见 data-design 7.3）。客户端在 `src/zoujin_evals/judge.py`，用官方 SDK（`evals` 的可选依赖 `real`）；B-8 以后和后端共用。
 
 - **输入**：评分细则（用例的 `expect.judge.rubric`）、判定线、场景、对话记录（玩家、人物、叙事者）。提示是中文的，回答是日语。输出用 JSON Schema 定死：`{"reason", "score": 1〜5}`；通用的 1〜5 分说法写在提示里，和给 zg 的盲标页一样。
-- **模型和花费**：模型 ID 运行时给（`--model` 或 `ZJ_JUDGE_MODEL`），仓库里不写；单价按模型档查 `config/claude-prices.json`，认不出就不调。思考关不掉，深浅用 `--effort`（校准先试 `low`）。
-- **回放**：判出分的都存进 `judge/replays/judge.jsonl`（`kind: "judge"`，键 = `claude|模型|提示版本|请求的 sha256`），同一条判几次用请求里的 `sample` 区分。再跑先查回放，不重判、不花钱；拒答、截断、JSON 坏了不存，下次重判。
+- **模型和花费**：模型 ID 运行时给（`--model` 或 `ZJ_JUDGE_MODEL`），仓库里不写；回放、报告和账本里只写档名加版本（如 `opus-5.5`），认不出档名和版本就不调；单价按模型档查 `config/claude-prices.json`，认不出就不调。思考关不掉，深浅用 `--effort`（校准先试 `low`）。
+- **回放**：判出分的都存进 `judge/replays/judge.jsonl`（`kind: "judge"`，键 = `claude|档名加版本|提示版本|请求的 sha256`），同一条判几次用请求里的 `sample` 区分。再跑先查回放，不重判、不花钱；拒答、截断、JSON 坏了不存，下次重判。
 - **账本**：每次调用前查 `ZJ_LEDGER`（和后端同一个文件、同一种行，`provider: "claude"`、`kind: "judge"`、`use: "eval"`）：Claude 的累计加这次的预计（输出按上限估，偏高）超过 `--max-claude-usd`，或这一项两本账合起来超过 `--max-item-usd`，就不发。429、529 第一次就停，SDK 不自己重试；已判的在回放里，再跑接着判。
 - **Batch**（半价）：评测跑完对话以后整批交给评审员（M2 接进运行器）。批号写进 `pending-batch.json`，断了再跑接着收这一批，不重交。
 - 评审的提示不拿留出样本调。R1 起真人试玩的对话也可以判，但要等隐私说明写明交给 Anthropic（D-028）。
