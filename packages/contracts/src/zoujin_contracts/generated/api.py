@@ -1781,6 +1781,59 @@ class TelemetryEndingClosed(BaseModel):
     props: Annotated[TelemetryEndingClosedProps, Field(title="TelemetryEndingClosedProps")]
 
 
+class TelemetryEndingPerformedProps(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    trigger: Literal["deadline", "story-closed"]
+    """
+    ending_started.trigger
+    """
+    playMs: Annotated[int, Field(ge=0)]
+    """
+    演出实际跑的毫秒，不含暂停（后台、全屏页面、「タップして続ける」等着的那段）
+    """
+    pausedMs: Annotated[int, Field(ge=0)]
+    """
+    暂停的毫秒合计
+    """
+    taps: Annotated[int, Field(ge=0)]
+    """
+    起作用的点按：补全一句或换下一句；0.5 秒保护期里的、「タップして続ける」那一下不算
+    """
+    lines: Annotated[int, Field(ge=0)]
+    """
+    这次演出的句数
+    """
+    autoAdvance: bool
+    """
+    「結末を自動で進める」开着（开演时的值，开演以后改不了）
+    """
+
+
+class TelemetryEndingPerformed(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+    name: Literal["ending_performed"] = "ending_performed"
+    playthroughId: PlaythroughId | None = None
+    """
+    没有局时省略
+    """
+    clientTs: RecordedAt
+    """
+    真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）
+    """
+    t: StoryTime | None = None
+    """
+    故事时间，有的话
+    """
+    props: Annotated[TelemetryEndingPerformedProps, Field(title="TelemetryEndingPerformedProps")]
+
+
 class TelemetryEndingSharedProps(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -3400,6 +3453,7 @@ type TelemetryEvent = Annotated[
     | TelemetryContinueStarted
     | TelemetryConnectionLost
     | TelemetryConnectionRestored
+    | TelemetryEndingPerformed
     | TelemetryEndingViewed
     | TelemetryEndingClosed
     | TelemetryEndingCardSaved
