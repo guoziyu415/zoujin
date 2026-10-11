@@ -1,0 +1,29 @@
+{
+  "about": "Claude 那本账的单价，每百万 token 的美元。Anthropic 价目表 2026-10-10 看的，和 docs/data/cost/m2-model-budget.md 一致。按模型档认：运行时给的模型 ID 里含哪个档名就用哪个，认不出就不调。思考 token 按输出计。缓存读取的单价各档不同（Opus、Sonnet 是输入价的 0.05 倍，Fable 0.025 倍，Haiku 0.1 倍；价目页 2026-10-11 核过），写在各档的 cacheRead 里；缓存写入按 5 分钟的 1.25 倍。Haiku 的提示超过 10 万 token 时单价是 0.5 / 2.5，这里的用法到不了。charsPerToken 只用来在调用前估输入（日语、中文按每字一个 token，偏高）；tokenizer 是这一档的分词器同样的文字多算几倍 token（Haiku 约 1.3，数据看的模型说明），也只用在调用前的预计。B-8 起从 evals/config/ 搬到共用的包 zoujin_llm，叙事者和评审员只用这一份",
+  "perMTok": {
+    "opus": {
+      "input": 4,
+      "output": 20,
+      "cacheRead": 0.2
+    },
+    "sonnet": {
+      "input": 2,
+      "output": 10,
+      "cacheRead": 0.1
+    },
+    "haiku": {
+      "input": 0.1,
+      "output": 0.5,
+      "cacheRead": 0.01,
+      "tokenizer": 1.3
+    },
+    "fable": {
+      "input": 10,
+      "output": 50,
+      "cacheRead": 0.25
+    }
+  },
+  "batchDiscount": 0.5,
+  "cacheWriteMultiplier": 1.25,
+  "charsPerToken": 1
+}
