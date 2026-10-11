@@ -131,5 +131,14 @@ def test_sdk_errors_lose_their_message() -> None:
         body = {"type": "error", "error": {"type": kind, "message": f"key {secret}"}}
         e = translate(anthropic.APIStatusError(f"boom {secret}", response=resp, body=body))
         assert str(e) == f"Claude HTTP 400{shown}（消息不记）"  # 错误的类型带上，认不出的不带
+    for message, shown in (
+        (f"output_config.format.schema: Schema is too complex for compilation. {secret}", "提示 schema-too-complex；"),
+        ("thinking.type: adaptive is not supported with this effort", "提示 thinking；"),
+        (f"bad key {secret}", ""),
+    ):
+        resp = httpx.Response(400, request=req, json={})
+        body = {"type": "error", "error": {"type": "invalid_request_error", "message": message}}
+        e = translate(anthropic.APIStatusError(f"boom {secret}", response=resp, body=body))
+        assert str(e) == f"Claude HTTP 400 invalid_request_error（{shown}消息不记）"  # 只带写死的类名
     e = translate(anthropic.APIConnectionError(message=f"down {secret}", request=req))
     assert isinstance(e, ModelCallFailed) and secret not in str(e)

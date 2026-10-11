@@ -156,6 +156,32 @@ def error_type(e: BaseException) -> str:
     return f" {t}" if isinstance(t, str) and ERROR_TYPE.fullmatch(t) else ""
 
 
+# 原消息不记；只按这几个词认出是哪一类，带上这里写死的类名（消息里的字一个都不出去）。先认的在前
+HINTS = (
+    ("too complex", "schema-too-complex"),
+    ("optional parameter", "too-many-optional"),
+    ("union", "too-many-unions"),
+    ("output_config", "output-config"),
+    ("schema", "schema"),
+    ("thinking", "thinking"),
+    ("effort", "effort"),
+    ("max_tokens", "max-tokens"),
+    ("cache_control", "cache-control"),
+    ("credit", "billing"),
+    ("model", "model"),
+)
+
+
+def hint(e: BaseException) -> str:
+    body = getattr(e, "body", None)
+    error = body.get("error") if isinstance(body, dict) else None
+    message = error.get("message") if isinstance(error, dict) else None
+    if not isinstance(message, str):
+        return ""
+    low = message.lower()
+    return next((f"提示 {tag}；" for word, tag in HINTS if word in low), "")
+
+
 def translate(e: BaseException) -> Exception:
     """SDK 的错误 → 不带原消息的异常。调用方 `raise translate(e) from None`，原消息不进日志和 Trace。"""
     import anthropic
@@ -163,7 +189,7 @@ def translate(e: BaseException) -> Exception:
     if isinstance(e, anthropic.APIStatusError):
         if e.status_code in LIMITS:
             return RateLimited(f"Claude 回 {e.status_code}（限流或过载），停下")
-        return ModelCallFailed(f"Claude HTTP {e.status_code}{error_type(e)}（消息不记）")
+        return ModelCallFailed(f"Claude HTTP {e.status_code}{error_type(e)}（{hint(e)}消息不记）")
     if isinstance(e, anthropic.APIError):  # 连接断开、超时
         return ModelCallFailed(f"Claude 连不上：{type(e).__name__}（消息不记）")
     return ModelCallFailed(f"Claude 调用出错：{type(e).__name__}（消息不记）")

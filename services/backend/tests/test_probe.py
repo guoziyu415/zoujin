@@ -71,6 +71,10 @@ def test_without_confirm_it_only_prints(requests: Path, tmp_path: Path, capsys: 
     printed = capsys.readouterr().out
     assert "没设 ZJ_LEDGER" in printed and "少 --max-claude-usd" in printed
     assert not out.exists() and not (tmp_path / "ledger.jsonl").exists()
+    only = [*argv, "--max-claude-usd", "100", "--kind", "check", "--kind", "rewrite"]
+    assert probe.main(only, env=env) == 0  # 只补跑某几种
+    printed = capsys.readouterr().out
+    assert "小测：10 次调用" in printed and "  check " in printed and "  triage " not in printed
 
 
 # —— 真跑（假的 SSE） ——
