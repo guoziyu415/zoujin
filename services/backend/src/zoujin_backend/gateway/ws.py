@@ -542,6 +542,17 @@ class Conn:
             return
         await self.voices.focus(character)
 
+    async def forgot(self, turn_ids: tuple[str, ...], character: str) -> bool:
+        """記憶帳删了一条（B-13）：那几轮的最近对话丢掉；这个人物的会话开着就用新的局势说明重建（推
+        `session_preparing { reason: "rebuild" }`）。返回重建了没有。"""
+        gone = set(turn_ids)
+        for kept in self.recent.values():
+            kept[:] = [(x, r) for x, r in kept if x not in gone]
+        if character not in self.sessions:
+            return False
+        await self._rebuild(character)
+        return True
+
     async def _rebuild(self, character: str) -> None:
         """作废以后重建这个人物的会话（backend-design 3.2）：新会话只带最近几轮里没作废的，人物真的没听到那一轮。"""
         await self.voices.rebuild(character)

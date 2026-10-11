@@ -1,5 +1,5 @@
 {
- "schemaVersion": "1.12",
+ "schemaVersion": "1.13",
  "worldModelVersion": "hashire-merosu@1.0.0-slice.3",
  "_authoring": "切片版。由 1.0.0-slice/make_slice.py 从 1.0.0-draft/world.src.json 生成，不要手改。出典は {\"q\": 原文の逐字引用, \"p\": 段落番号（省略可）} で書く。spikes/pipeline/build_world.py が段落を特定・検証して world.json を出力する。",
  "book": {
@@ -2038,7 +2038,8 @@
     },
     {
      "fact": "fact.friendship",
-     "since": "beat.06"
+     "since": "beat.06",
+     "inferred": true
     },
     {
      "fact": "fact.selinuntius-steadfast",

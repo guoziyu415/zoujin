@@ -235,6 +235,12 @@ function Node({
           </button>
           {isOpen && (
             <div className="map-detail">
+              {it.place && places.get(it.place) && (
+                <p>
+                  <span className="map-label">{copy["map.detail.where"]}</span>
+                  {places.get(it.place)}
+                </p>
+              )}
               <Source cite={it.cite} />
               <button className="quiet" onClick={onWhy}>
                 {copy["map.why"]}

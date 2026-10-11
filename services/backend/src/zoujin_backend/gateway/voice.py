@@ -38,6 +38,7 @@ from zoujin_backend.db.tables import playthrough_metrics
 from zoujin_backend.gateway import brief
 from zoujin_backend.models.gemini_live import LiveLostQuota
 from zoujin_backend.models.live import LiveEvent, LiveLost, LiveSession, Recent
+from zoujin_backend.narrator import memory
 from zoujin_backend.voice.models import live_cost_parts
 
 if TYPE_CHECKING:
@@ -132,8 +133,11 @@ class Voices:
             pt = await gw.pt(c, pid)
             st = await store.sim_state(c, pid)
             self.tier = await budget.tier_of(c, pid)
-        if pt is None or st is None:
-            raise LiveLost("这一局没有状态")
+            limit = budget.policy(self.tier).memory_inject  # 节约档记忆 8 → 4（B-14）
+            remembered = await memory.memories_for_brief(c, pid, character, limit)
+            if pt is None or st is None:
+                raise LiveLost("这一局没有状态")
+            forgotten = await memory.forgotten_facts(c, pt.book, pid, character)
         pol = budget.policy(self.tier)
         return brief.build(
             pt.book,
@@ -141,6 +145,8 @@ class Voices:
             character,
             self._recent(character),
             self.conn.monitor.notes(character),
+            remembered,
+            forgotten,
             samples=pol.brief_samples,
         )
 

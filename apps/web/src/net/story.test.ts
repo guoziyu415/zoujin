@@ -154,7 +154,7 @@ describe("act end", () => {
 });
 
 describe("act change", () => {
-  it("その頃 only with something to tell; the slice's jump page between act 1 and 4", () => {
+  it("その頃 only with something to tell; the slice's jump page between act 1 and 4, else the act's page", () => {
     expect(
       transition({ fromActId: "act.1", toActId: "act.4", recap: [] }).steps,
     ).toEqual(["jump", "arrival"]);
@@ -164,7 +164,7 @@ describe("act change", () => {
       recap: [1, 2, 3, 4].map((n) => ({ eventId: `ev_${n}`, line: "…" })),
       arrival: { line: "…", opener: "char.old-man" },
     });
-    expect(t.steps).toEqual(["sonokoro", "arrival"]);
+    expect(t.steps).toEqual(["sonokoro", "act", "arrival"]);
     expect(t.recap).toHaveLength(3);
     expect(t.arrival?.opener).toBe("char.old-man");
   });

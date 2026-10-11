@@ -333,6 +333,15 @@ def test_voice_turn_then_text_turn(env: Env, player: Player) -> None:
 
     evs = p.call("events", 200, "GET", f"/v1/playthroughs/{p.pid}/events?afterSeq=0&limit=50")
     assert evs["lastSeq"] == p.last_seq
+    tl = p.call("timeline", 200, "GET", f"/v1/playthroughs/{p.pid}/timeline")
+    assert tl["lastSeq"] == p.last_seq
+    shown = [i["eventId"] for d in tl["days"] for i in d["items"] if i["kind"] == "event"]
+    assert {e["eventId"] for e in evs["events"]} <= set(shown)
+    if shown:
+        why = p.call("why", 200, "GET", f"/v1/playthroughs/{p.pid}/why?target={shown[-1]}")
+        assert why["chain"][-1]["eventId"] == shown[-1]
+    r = p.http.get(f"/v1/playthroughs/{p.pid}/why?target=beat.24")
+    assert r.status_code == 404 and r.json()["error"]["code"] == "not_found"
     me = p.call("me", 200, "GET", "/v1/me")
     assert me["activePlaythrough"]["playthroughId"] == p.pid and me["activePlaythrough"]["tLabel"] == "約束の日・夕方"
 
@@ -627,7 +636,7 @@ def test_reconnect_while_the_player_is_still_holding_sees_the_lost_turn(env: Env
 def test_routes_b0_does_not_mount_are_404(player: Player) -> None:
     p = player
     p.start()
-    for path in (f"/v1/playthroughs/{p.pid}/timeline", "/v1/nothing"):
+    for path in (f"/v1/playthroughs/{p.pid}/share", "/v1/nothing"):
         r = p.http.get(path)
         assert r.status_code == 404 and r.json()["error"]["code"] == "not_found", path
     r = p.http.get("/v1/playthroughs/pt_00000000000000000000000000/snapshot")

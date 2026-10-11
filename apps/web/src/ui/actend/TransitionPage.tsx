@@ -1,15 +1,18 @@
 // The act change (ux-design 4.5, S-080): その頃 (at most three things that happened while the player was away, a
 // promise kept or broken marked in ink, each one opens the map at that event), then in the slice the jump page
 // 「第四幕 三日目」 (a line per day, one after another; a tap shows the rest; only 〔つづける〕 turns the page,
-// WCAG 2.2.1), then the landing: the arrival line joins the narration and, when someone speaks first, act_landed.
+// WCAG 2.2.1), or in the full game the next act's page (its name and the time it lands at; 〔つづける〕 once the new
+// scene can be walked, F-17), then the landing: the arrival line joins the narration and, when someone speaks first,
+// act_landed. The landing waits for the scene too, so nobody speaks over a loading screen.
 import { useEffect, useRef, useState } from "react";
 import { play } from "../../net/play";
 import { nextStep } from "../../net/story";
 import { openOverlay, useStory } from "../../stores/story";
+import { useUi } from "../../stores/ui";
 import { addNarration } from "../../stores/voice";
 import { useWorld } from "../../stores/world";
 import { track } from "../../telemetry/telemetry";
-import { copy } from "../copy";
+import { actName, copy } from "../copy";
 import { Lines } from "../Lines";
 
 export const JUMP_LINE_MS = 1400; // the jump page's lines come one by one〔推断，R1 で調整〕
@@ -28,17 +31,50 @@ const advance = () => {
 export function TransitionPage() {
   const t = useStory((s) => s.transition);
   const step = t?.steps[0];
+  const loading = useUi((s) => s.scene === "loading");
   // the landing has no page: the line goes under the subtitles, the opener is told the player can move
   useEffect(() => {
-    if (!t || step !== "arrival") return;
+    if (!t || step !== "arrival" || loading) return;
     if (t.arrival) {
       addNarration(t.arrival.line);
       if (t.arrival.opener) play.actLanded(t.toActId);
     }
     useStory.setState({ transition: null });
-  }, [t, step]);
+  }, [t, step, loading]);
   if (!t || !step || step === "arrival") return null;
-  return step === "sonokoro" ? <SonoKoro /> : <Jump />;
+  if (step === "sonokoro") return <SonoKoro />;
+  return step === "jump" ? <Jump /> : <ActPage actId={t.toActId} />;
+}
+
+// the next act's page: its name and when it begins; the new scene loads behind it
+function ActPage({ actId }: { actId: string }) {
+  const head = useRef<HTMLHeadingElement>(null);
+  const tLabel = useWorld((s) => s.world?.clock.tLabel);
+  const loading = useUi((s) => s.scene === "loading");
+  useEffect(() => head.current?.focus(), []);
+  return (
+    <section
+      className="page jump act"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="act-title"
+      aria-busy={loading}
+    >
+      <div className="page-body">
+        <h1 id="act-title" ref={head} tabIndex={-1}>
+          {actName(actId)}
+        </h1>
+        {tLabel && <p className="act-time">{tLabel}</p>}
+        <button
+          className="primary"
+          aria-disabled={loading}
+          onClick={() => !loading && advance()}
+        >
+          {copy["common.continue"]}
+        </button>
+      </div>
+    </section>
+  );
 }
 
 function SonoKoro() {
