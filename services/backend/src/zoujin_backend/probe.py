@@ -53,6 +53,7 @@ TYPICAL_OUTPUT = {
     "rewrite": 400,
     "narrate": 120,
     "plan": 600,
+    "safety": 15,
     "ending": 1000,  # 三层的文字，不思考（B-9 的 Mac 探针 10-11：平均约 970）
 }
 NEEDED_ENV = ("ANTHROPIC_API_KEY", "ZJ_CLAUDE_HAIKU", "ZJ_CLAUDE_SONNET", "ZJ_LEDGER")

@@ -88,6 +88,8 @@ playthroughs = Table(
     Column("plan_tries", Integer, nullable=False, server_default="0"),  # 这次幕末说过几次打算
     Column("plan_alternative", JSONB),  # 打算不成行时给的替代去处（幕切换时清掉）
     Column("arrival", JSONB),  # 落地带 opener、还没收到 act_landed：{actId, line, opener}
+    # B-12（0006）：安全筛查的这一局状态 {paused, hinted, ambiguous}（出戏卡开着、小提示推过、似是而非几次），只有网关写
+    Column("safety", JSONB, nullable=False, server_default=text("'{}'::jsonb")),
     # 每账号同时 1 局（backend-design 5.2）
     Index("playthroughs_one_active", "user_ref", unique=True, postgresql_where=text("status = 'active'")),
 )
@@ -120,6 +122,8 @@ turns = Table(
     _ts("created_at", nullable=False, now=True),
     _ts("settled_at"),
     _ts("commit_after"),  # B-4（0004）：叙事者最早什么时候提交这一轮（turn_complete、打算的定稿 + 3 秒，作废的窗口）
+    # B-12（0006）：第 0 步安全筛查给叙事者的标记（injection / pii / harmful / unscreened / ambiguous），不放判定的分数
+    Column("flags", JSONB),
     UniqueConstraint("playthrough_id", "idempotency_key", name="turns_idempotency"),
     Index("turns_queue", "playthrough_id", "status", "created_at"),
 )
@@ -234,6 +238,29 @@ playthrough_metrics = Table(
     Column("ending_calls", Integer),
     Column("ending_ms", Integer),
     Column("cost_ending_usd", Numeric(12, 6), nullable=False, server_default="0"),
+    # B-12（0006）：只记次数（S-057、S-069 ③），列名按数据评审 #112 的表。安全分类器（含重发）和 Model Armor 的花费；
+    # 出戏卡（信号和第二次 ambiguous）、ambiguous 的次数（含出小提示的那次）、小提示、没判定、分类器拒答、
+    # 带注入 / 个人信息 / 有害标记交给叙事者的轮数、Model Armor 出错（输入输出两边）；
+    # 输出侧：过了监控的人物定稿句数（分母）、命中剧透的句数、判有害的句数、剧透重建会话、以问句结尾的句数、
+    # 同一人物重复问同一句、问句过多的提示打开
+    Column("cost_safety_usd", Numeric(12, 6), nullable=False, server_default="0"),
+    Column("cost_armor_usd", Numeric(12, 6), nullable=False, server_default="0"),
+    Column("safety_pauses", Integer, nullable=False, server_default="0"),
+    Column("safety_ambiguous", Integer, nullable=False, server_default="0"),
+    Column("safety_hints", Integer, nullable=False, server_default="0"),
+    Column("safety_unscreened", Integer, nullable=False, server_default="0"),
+    Column("safety_refused", Integer, nullable=False, server_default="0"),
+    Column("safety_injection", Integer, nullable=False, server_default="0"),
+    Column("safety_pii", Integer, nullable=False, server_default="0"),
+    Column("safety_harmful", Integer, nullable=False, server_default="0"),
+    Column("armor_errors", Integer, nullable=False, server_default="0"),
+    Column("output_lines", Integer, nullable=False, server_default="0"),
+    Column("output_spoilers", Integer, nullable=False, server_default="0"),
+    Column("output_harmful", Integer, nullable=False, server_default="0"),
+    Column("output_rebuilds", Integer, nullable=False, server_default="0"),
+    Column("output_questions", Integer, nullable=False, server_default="0"),
+    Column("output_questions_repeated", Integer, nullable=False, server_default="0"),
+    Column("output_question_notes", Integer, nullable=False, server_default="0"),
 )
 
 # 意图确认的草稿（B-4，api-contract 3.9）：叙事者提出、还没答的那一个候选（不放原话）。关掉就删行，随整局删除。

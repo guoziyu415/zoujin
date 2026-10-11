@@ -37,7 +37,7 @@ import asyncio
 import copy
 import json
 import time
-from collections.abc import Callable, Coroutine, Mapping, Sequence
+from collections.abc import Callable, Coroutine, Iterable, Mapping, Sequence
 from dataclasses import replace
 from functools import cache, wraps
 from pathlib import Path
@@ -55,15 +55,19 @@ from zoujin_backend.db.events import recorded_at, to_row
 from zoujin_backend.db.store import Run
 from zoujin_backend.db.tables import endings, playthrough_metrics, playthroughs, users, utterances
 from zoujin_backend.db.tables import events as events_t
+from zoujin_backend.db.tables import turns as turns_t
 from zoujin_backend.db.tables import world_state as world_state_t
+from zoujin_backend.gateway.monitor import Monitor
 from zoujin_backend.ids import IdGen
 from zoujin_backend.manifest import Manifest, generate
+from zoujin_backend.models.armor import Armor, armor
 from zoujin_backend.models.text import BudgetStop, RateLimited, ReplayMissing, TextModel, text_model
 from zoujin_backend.narrator import acts, ending
 from zoujin_backend.narrator.core import Narrator, Result
 from zoujin_backend.narrator.pipeline import CallFailed, Pipeline, Spend, TurnInput
 from zoujin_backend.narrator.writer import Writer, act_closed
 from zoujin_backend.projection import snapshot, visible_events
+from zoujin_backend.safety import SafetyState, Screen, Screener, counts_of, decide
 from zoujin_backend.schemas import SchemaBook
 from zoujin_backend.trace import Tracer
 from zoujin_backend.world import Book, Library
@@ -163,6 +167,11 @@ class Session:
         self.turns: dict[int, str] = {}  # 第几步 → 那一轮的 turnId（say；retract、utterance_cleared 用）
         self.held: tuple[int, str] | None = None  # say(hold=True) 还没提交的那一步
         self.draft: tuple[int, str] | None = None  # 第几步留下的、还开着的草稿
+        # B-12：玩家每一句的安全筛查和人物输出的监控，和网关同一套（Model Armor 按 ZJ_MODEL；回放查不到照样抛）
+        self.armor: Armor = armor(settings.model, replays=settings.replays)
+        self.safety = SafetyState()
+        self.monitor = Monitor(library)
+        self.monitor.attach(book)
         self._manifest: Manifest | None = None
 
     def _run[T](self, coro: Coroutine[Any, Any, T]) -> T:
@@ -185,6 +194,11 @@ class Session:
             tracer=self.tracer,
             deadlines=self.settings.deadlines,
         )
+
+    @property
+    def screener(self) -> Screener:
+        """`text` 可能被测试换掉，每次按当前的建。评测里账本到上限、429 照样整次停下。"""
+        return Screener(self.text, self.armor, self.tracer, raise_stops=True)
 
     @property
     def pipeline(self) -> Pipeline:
@@ -328,22 +342,42 @@ class Session:
                 st = await store.sim_state(c, self.pid)
             assert st is not None
             spend = Spend()
-            reply = await self.pipeline.reply(self.book, st, TurnInput(character=to, player=text), spend)
+            screen = await self.screener.screen(text, **self.span)
+            decision = decide(screen, self.safety)
+            if decision == "pause":  # 出戏卡（3.12）：人物的回答不出、这一轮不进叙事者、不花时间、原话不存
+                return await self._paused(engine, to, pre, screen)
+            if decision == "hint":
+                self.monitor.calm()
+            notes = self.monitor.notes(to)
+            turn_in = TurnInput(character=to, player=text)
+            reply = await self.pipeline.reply(self.book, st, turn_in, spend, notes=notes)
+            watched = self.monitor.observe(to, reply, st, said=text)
             async with engine.begin() as c:
                 await c.execute(
                     update(playthrough_metrics)
                     .where(playthrough_metrics.c.playthrough_id == self.pid)
                     .values(cost_reply_usd=playthrough_metrics.c.cost_reply_usd + spend.usd.get("reply", 0.0))
                 )
-                turn_id = await store.enqueue(c, self.ids, self.pid, kind="talk", input_mode="text", character=to)
-                await store.add_utterance(c, self.ids, self.pid, turn_id, speaker="player", text=text, t=st["t"])
+                await store.count(c, self.pid, **counts_of(screen, decision), **(watched.counts() if reply else {}))
+                turn_id = await store.enqueue(
+                    c, self.ids, self.pid, kind="talk", input_mode="text", character=to, flags=screen.flags
+                )
+                await store.add_utterance(
+                    c, self.ids, self.pid, turn_id, speaker="player", text=screen.masked, t=st["t"]
+                )
                 await store.add_utterance(
                     c, self.ids, self.pid, turn_id, speaker=to, text=reply, t=st["t"], source="live"
                 )
             self.turns[self.steps] = turn_id
+            card = {"shown": False, "paused": False, "canReturn": True}
+            monitor = {"spoilers": [h.fact for h in watched.spoilers], "notes": notes}
             if hold:
                 self.held = (self.steps, turn_id)
                 return {
+                    "safetyCard": card,
+                    "safety": screen.self_harm,
+                    "safetyHint": decision == "hint",
+                    "monitor": monitor,
                     "reply": reply,
                     "characterTextMissing": reply is None,
                     "events": self._events_of(pre),
@@ -359,6 +393,10 @@ class Session:
         finally:
             await engine.dispose()
         out: Json = {
+            "safetyCard": card,
+            "safety": screen.self_harm,
+            "safetyHint": decision == "hint",
+            "monitor": monitor,
             "reply": reply,
             "characterTextMissing": reply is None,
             "events": self._events_of([*pre, *done]),
@@ -369,6 +407,40 @@ class Session:
             self.draft = (self.steps, asking["draftId"])
             out["confirm"] = asking
         return out
+
+    async def _paused(self, engine: AsyncEngine, to: str, pre: Sequence[Result], screen: Screen) -> Json:
+        """出戏卡停下的一轮（B-12，3.12）：写一行 outcome = paused、0 分，没有原话，不叫叙事者。评测里玩家下一步
+        就算选了「物語に戻る」（canReturn），暂停随即解除。"""
+        async with engine.begin() as c:
+            turn_id = await store.enqueue(
+                c, self.ids, self.pid, kind="talk", input_mode="text", character=to, status="done"
+            )
+            await c.execute(
+                update(turns_t)
+                .where(turns_t.c.turn_id == turn_id)
+                .values(outcome="paused", minutes=0, settled_at=func.now())
+            )
+            await store.count(c, self.pid, **counts_of(screen, "pause"))
+        self.turns[self.steps] = turn_id
+        self.safety.paused = False  # 评测的下一步 = 玩家回到了故事
+        return {
+            "safetyCard": {"shown": True, "paused": True, "canReturn": True},
+            "safety": screen.self_harm,
+            "outcome": "paused",
+            "reply": None,
+            "characterTextMissing": False,
+            "events": self._events_of(pre),
+            "clockMinutes": sum(r.minutes for r in pre),
+            "traceId": turn_id,
+        }
+
+    async def _count(self, **by: float) -> None:
+        engine = self._engine()
+        try:
+            async with engine.begin() as c:
+                await store.count(c, self.pid, **by)
+        finally:
+            await engine.dispose()
 
     async def _draft_of(self, engine: AsyncEngine, turn_id: str) -> Json | None:
         """这一轮留下的草稿（StepResult.confirm）。"""
@@ -436,7 +508,24 @@ class Session:
         """幕末用文字说出打算（3.11）：原话存进 utterances，叙事者的 plan 判能不能成行。收幕以前、试过 2 次以后
         返回 `error: "invalid_request"`、没有事件（网关这时回 invalid_request，不写任务）。"""
         self.steps += 1
-        r, t0 = self._run(self._task("plan", {"clientMsgId": f"eval-{self.steps}", "mode": "text"}, said=text))
+        screen = self._run(self.screener.screen(text, **self.span))  # 幕末的打算也筛（UX 在 #112 的评审）
+        decision = decide(screen, self.safety)
+        if decision == "pause":  # 不交给叙事者、不算试次；回到故事以后幕末页照原样
+            self.safety.paused = False
+            self._run(self._count(**counts_of(screen, decision)))
+            return {
+                "safetyCard": {"shown": True, "paused": True, "canReturn": True},
+                "safety": screen.self_harm,
+                "outcome": "paused",
+                "events": [],
+                "clockMinutes": 0,
+                "accepted": False,
+            }
+        if decision == "hint":
+            self.monitor.calm()
+        self._run(self._count(**counts_of(screen, decision)))
+        request = {"clientMsgId": f"eval-{self.steps}", "mode": "text"}
+        r, t0 = self._run(self._task("plan", request, said=screen.masked, flags=screen.flags))
         info = r.info
         moved = [e for e in r.events if e["type"] == "act-transition" and e["actor"] == "player"]
         alt = info.get("alternative")
@@ -475,9 +564,12 @@ class Session:
             out["error"] = r.info["error"]
         else:
             out["toAct"] = r.info.get("toAct")
+            self.monitor.act_ended()  # 似是而非之后的提示带到这一幕结束
         return out
 
-    async def _task(self, kind: str, request: Json, said: str | None = None) -> tuple[Result, int]:
+    async def _task(
+        self, kind: str, request: Json, said: str | None = None, flags: Iterable[str] | None = None
+    ) -> tuple[Result, int]:
         """写一行任务（打算还存原话），叫叙事者做完。返回这一步的结果和之前的故事时刻。hold 着的那一轮先提交、
         等回答的草稿按超时关掉，它们的事件放在这一步的前面（B-4）。"""
         engine = self._engine()
@@ -497,6 +589,7 @@ class Session:
                     input_mode="text" if kind == "plan" else None,
                     client_msg_id=request.get("clientMsgId"),
                     request=request,
+                    flags=flags,
                 )
                 if said is not None:
                     await store.add_utterance(c, self.ids, self.pid, turn_id, speaker="player", text=said, t=st["t"])

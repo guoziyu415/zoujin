@@ -153,8 +153,9 @@ class Ledger:
     @contextmanager
     def timed(self, *, kind: str, model: str, estimate: float) -> Iterator[Bill]:
         """一次调用：先按预计判上限（`before`），再计时。拿到回答以后 `bill.done(usage, cost, ok=…)` 记一行
-        （`ok` / `bad-output`）；没 done 就出来的：被取消（时限到了）按预计记 `timeout`（可能已经计费，宁多记），
-        别的异常（连不上、5xx、429）记 `error`、花费 0。异常照旧抛出。
+        （`ok` / `bad-output`）；没 done 就出来的：被取消或 `TimeoutError`（时限到了，外面的 `wait_for` 或客户端自己的
+        超时）按预计记 `timeout`（可能已经计费，宁多记），别的异常（连不上、5xx、429）记 `error`、花费 0。异常照旧抛出。
+        SDK 自己的超时异常不是 `TimeoutError` 的，调用方接住以后 `raise TimeoutError from e`。
 
             with ledger.timed(kind="judge", model=tag, estimate=guess) as bill:
                 reply = client.messages.create(...)
@@ -164,7 +165,7 @@ class Ledger:
         bill = Bill(self, kind, model, estimate)
         try:
             yield bill
-        except asyncio.CancelledError:
+        except (asyncio.CancelledError, TimeoutError):
             if not bill.written:
                 bill.write({}, estimate, "timeout")
             raise

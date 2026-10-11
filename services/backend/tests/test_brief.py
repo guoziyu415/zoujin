@@ -45,3 +45,16 @@ def test_changes_only_sends_new_lines() -> None:
 
 def test_version_follows_the_rules_text() -> None:
     assert brief.version().startswith("l") and len(brief.version()) == 13
+
+
+def test_monitor_notes_go_after_the_situation() -> None:
+    """B-12：输出侧监控的提示放在「# いまの状況」后面，不进中途更新比较的 facts。"""
+    from zoujin_backend.gateway.monitor import NOTE_QUESTIONS, NOTE_SPOILER
+
+    st = initial_state(BOOK.world, "role.traveler")
+    b = brief.build(BOOK, st, "char.old-man", notes=[NOTE_SPOILER, NOTE_QUESTIONS])
+    after = b.system.split("# いまの状況")[1]
+    assert after.index("# 気をつけること") < after.index("# 話し相手")
+    assert f"- {NOTE_SPOILER}\n- {NOTE_QUESTIONS}" in after
+    assert b.facts == brief.build(BOOK, st, "char.old-man").facts
+    assert "# 気をつけること" not in brief.build(BOOK, st, "char.old-man").system
