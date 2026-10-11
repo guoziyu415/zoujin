@@ -234,6 +234,8 @@ export class Session {
       case "action_result":
         if (msg.narration) addNarration(msg.narration);
         return;
+      case "set_piece":
+        return this.voice.setPiece(msg);
       case "limits":
         useVoice.setState({ voiceMinutesLeft: msg.voiceMinutesLeft });
         return;
@@ -242,7 +244,7 @@ export class Session {
         if (msg.error.code === "invalid_request") this.voice.undelivered();
         return;
       default:
-        return; // known, handled by later cards (set pieces, confirm, approach, act end, ending: M2)
+        return; // known, handled by later cards (confirm, approach, act end, ending: M2)
     }
   }
 
@@ -293,6 +295,7 @@ export class Session {
       t: r.world.clock.t,
     });
     addNarration(...c.narration);
+    if (c.cue) this.voice.cue(c.cue); // once: a commit seen before (resent after a drop) stops above
     showToasts(this.toasts(c));
   }
 
