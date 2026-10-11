@@ -38,6 +38,7 @@ class Config:
     strict: bool = False  # 测试用：剧本或自检出错时抛出，不只是在终端报错
     allow_origins: tuple[str, ...] = ()
     seed: int | None = None
+    voices: Path | None = None  # 测试用：换掉 assets/voice
 
     @property
     def fixtures(self) -> Path:
@@ -54,6 +55,11 @@ class Config:
     @property
     def schemas(self) -> Path:
         return self.repo / "packages" / "contracts" / "schemas"
+
+    @property
+    def voice_dir(self) -> Path:
+        """预录句（B-6）：`<voice_dir>/<book>/voices.json` 和录音文件。"""
+        return self.voices or self.repo / "assets" / "voice"
 
     @property
     def world(self) -> Path:
@@ -115,8 +121,38 @@ class Mock:
         return render(self.fixture(rel), lookup)
 
     def manifest(self, book_id: str) -> Json | None:
+        """fixture 的 manifest。有 B-6 的声音清单时，人物的 `prerecorded` 和 `setPieceVoices` 换成清单里真的
+        （清单里没有的人物不带 `prerecorded`）；清单还没有时照旧用 fixture 里示意的。"""
         path = self.config.rest_dir / "manifest" / f"{book_id}.json"
-        return self.fixture(f"manifest/{book_id}.json") if path.is_file() else None
+        if not path.is_file():
+            return None
+        doc = self.fixture(f"manifest/{book_id}.json")
+        voices = self.voices(book_id)
+        if voices is not None:
+            for c in doc["characters"]:
+                c.pop("prerecorded", None)
+                if c["id"] in voices["characters"]:
+                    c["prerecorded"] = copy.deepcopy(voices["characters"][c["id"]])
+            if voices["setPieceVoices"]:
+                doc["setPieceVoices"] = copy.deepcopy(voices["setPieceVoices"])
+        return doc
+
+    def voices(self, book_id: str) -> Json | None:
+        path = self.config.voice_dir / book_id / "voices.json"
+        return _read(path) if path.is_file() else None
+
+    def voice_file(self, book_id: str, name: str) -> Path | None:
+        """清单里列着的录音文件；别的路径（清单外、带目录的、清单还没有）一律 None。"""
+        voices = self.voices(book_id)
+        if voices is None:
+            return None
+        clips = [x for block in voices["characters"].values() for x in _clips(block)]
+        clips += list(voices["setPieceVoices"].values())
+        url = f"/assets/voice/{book_id}/{name}"
+        if not any(x["url"] == url for x in clips):
+            return None
+        path = self.config.voice_dir / book_id / name
+        return path if path.is_file() else None
 
     # —— 会话和局 ——
 
@@ -186,3 +222,8 @@ class Mock:
             "reveal": None,
         }
         return commit
+
+
+def _clips(block: Json) -> list[Json]:
+    """一个人物 `Prerecorded` 里的全部录音。"""
+    return [*block["aizuchi"], *block["unheard"], block["wait"], *block["cues"].values()]
