@@ -1,22 +1,24 @@
-"""文本模型的接口和三种实现：假模型（`fake`）、回放（`replay`）、真模型（`real`，`models/vertex.py`，只在 Mac 上）。
+"""文本模型的接口和三种实现：假模型（`fake`）、回放（`replay`）、真模型（`real`，只在 Mac 上：Claude 走
+`models/claude.py`，Google 走 `models/vertex.py`，按提示类型选，`config.TEXT`）。
 
 - 假模型：每种提示一个确定的、过 Schema 的默认输出（分流 = 可能，提取 = 没有候选，检查 = 全过，改写 = 原样，
   降级 = 做不到，回答 = 一句固定的话）。`fixtures/fake-text/*.json` 的规则按提示类型和条件覆盖默认值，也能注入延迟和
   错误（测时限、重发和 429）。规则的写法见 `fixtures/fake-text/README.md`。
-- 回放：按（模型、提示版本、规范化请求的 sha256）从 `fixtures/model-replays/*.jsonl` 查，查不到抛 `ReplayMissing`，
-  不悄悄回空、不退回假模型。
+- 回放：按（供应商、模型、提示版本、规范化请求的 sha256）从 `fixtures/model-replays/*.jsonl` 查，查不到抛
+  `ReplayMissing`，不悄悄回空、不退回假模型。同一个请求在 Google 下录的回放，换到 Claude 查不到。
 
 回放一行的格式（Mac 上录真模型、E-0 的 live 存回放都用它）：
 `key`、`kind`（提示类型）、`provider`、`model`、`promptVersion`、`request`（脱敏后）、`response`、`usage`
-（`inputTokens`、`outputTokens`，真模型另有 `cachedTokens`、`thoughtTokens`）、`costUsd`、`recordedAt`（以 Z 结尾）。
-`key` = `<model>|<promptVersion>|<请求的 sha256>`。
+（`inputTokens`、`outputTokens`；Google 另有 `cachedTokens`、`thoughtTokens`，Claude 另有 `cacheReadTokens`、
+`cacheWriteTokens`）、`costUsd`、`recordedAt`（以 Z 结尾）。`model`：Google 写模型 ID，Claude 只写档名加版本
+（如 `sonnet-5.5`，模型 ID 不进仓库）。`key` = `<provider>|<model>|<promptVersion>|<请求的 sha256>`
+（共用包 `zoujin_llm.replay_key`，和数据的评审员同一个函数）。
 """
 
 from __future__ import annotations
 
 import asyncio
 import copy
-import hashlib
 import json
 import logging
 from collections.abc import Callable, Mapping
@@ -25,7 +27,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol
 
-from zoujin_backend.config import TEXT_MODELS, ModelMode
+from zoujin_llm import BudgetStop, ModelCallFailed, RateLimited, Stop, canonical
+from zoujin_llm import replay_key as _replay_key
+
+from zoujin_backend.config import TEXT, ModelMode, TextSpec, text_spec
 from zoujin_backend.models.prompts import MODEL_RULES, PROMPTS
 
 if TYPE_CHECKING:
@@ -35,23 +40,12 @@ log = logging.getLogger("zoujin.models")
 
 Json = Any
 
-PROVIDER = "google"  # 产品路径的模型都是这一家（E-0 卡：回放带 provider）
+# 要整次停下的错误（`Stop`：`BudgetStop`、`RateLimited`）和 `ModelCallFailed` 在共用包里，叙事者和评审员同一套
+__all__ = ["BudgetStop", "ModelCallFailed", "RateLimited", "Stop", "canonical"]
 
 
 class ReplayMissing(LookupError):
     """回放里查不到这次调用（回放缺失或过期）。E-0 按类名认。"""
-
-
-class Stop(Exception):
-    """要整次停下的错误（运行器不是跳过这一例，而是停下）：`BudgetStop`、`RateLimited`。"""
-
-
-class BudgetStop(Stop):
-    """账本到上限了（单项或总上限），这次调用没有发出去。"""
-
-
-class RateLimited(Stop):
-    """模型回 429（或同类的配额错误）。第一个就停，不自动重试（dev-plan 2.5）。"""
 
 
 class BadOutput(ValueError):
@@ -61,11 +55,6 @@ class BadOutput(ValueError):
     def __init__(self, message: str, cost_usd: float = 0.0) -> None:
         super().__init__(message)
         self.cost_usd = cost_usd
-
-
-class ModelCallFailed(RuntimeError):
-    """模型调用失败（HTTP 错误、网络断开），按时限的规则重发一次。消息只有 HTTP 状态码和提示类型，不带原消息
-    （里面可能有项目 ID）。"""
 
 
 @dataclass(frozen=True)
@@ -88,19 +77,25 @@ class TextModel(Protocol):
         ...
 
 
-def canonical(request: Json) -> str:
-    """规范化请求：键排序、不转义非 ASCII、没有多余空白。"""
-    return json.dumps(request, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+def replay_key(provider: str, model: str, prompt_version: str, request: Json) -> str:
+    return _replay_key(provider, model, prompt_version, request)
 
 
-def replay_key(model: str, prompt_version: str, request: Json) -> str:
-    return f"{model}|{prompt_version}|{hashlib.sha256(canonical(request).encode()).hexdigest()}"
+def spec(kind: str) -> TextSpec:
+    """这种提示走哪家、哪个模型（Claude 是档名加版本）、思考多深、时限多长（`config.TEXT`，加上 `ZJ_TEXT_MODELS`
+    的换档）。"""
+    if kind not in PROMPTS:
+        raise ValueError(f"没有这种提示：{kind}")
+    return text_spec(kind)
 
 
 def model_and_version(kind: str) -> tuple[str, str]:
-    if kind not in PROMPTS:
-        raise ValueError(f"没有这种提示：{kind}")
-    return TEXT_MODELS[kind], PROMPTS[kind].version
+    return spec(kind).model, PROMPTS[kind].version
+
+
+def key_of(kind: str, request: Json) -> str:
+    model, version = model_and_version(kind)
+    return replay_key(spec(kind).provider, model, version, request)
 
 
 # —— 假模型 ——
@@ -149,7 +144,8 @@ def _summaries(request: Mapping[str, Any]) -> list[str]:
 
 def _matches(when: Mapping[str, Any], request: Mapping[str, Any]) -> bool:
     """fake-text 规则的条件，每个键都满足才算：`playerContains` / `replyContains` 看这一轮的原话里有没有这几个字，
-    `summaryContains` 看候选的摘要，`character` 比这一轮的人物，其他键要等于请求里同名的值。"""
+    `summaryContains` 看候选的摘要，`character` 比这一轮的人物，`confirmOpen` 看提取的请求里有没有在等回答的反问
+    （B-4 的 `<confirm>`），其他键要等于请求里同名的值。"""
     turn = request.get("turn") or {}
     for k, v in when.items():
         if k == "playerContains":
@@ -160,6 +156,8 @@ def _matches(when: Mapping[str, Any], request: Mapping[str, Any]) -> bool:
             ok = any(v in s for s in _summaries(request))
         elif k == "character":
             ok = (turn.get("character") or request.get("character")) == v
+        elif k == "confirmOpen":
+            ok = ("confirm" in request) == v
         else:
             ok = request.get(k) == v
         if not ok:
@@ -249,17 +247,16 @@ class ReplayText:
                 if not line.strip():
                     continue
                 rec = json.loads(line)
-                want = replay_key(rec["model"], rec["promptVersion"], rec["request"])
+                want = replay_key(rec.get("provider", ""), rec["model"], rec["promptVersion"], rec["request"])
                 if rec["key"] != want:
                     raise ValueError(f"{p.name}:{n} 的 key 和内容对不上（应为 {want}）")
                 self.records[rec["key"]] = rec
 
     async def call(self, kind: str, request: Json) -> TextResult:
         model, version = model_and_version(kind)
-        key = replay_key(model, version, request)
-        rec = self.records.get(key)
+        rec = self.records.get(key_of(kind, request))
         if rec is None:
-            raise ReplayMissing(f"回放缺失或过期：{kind}（{model}，提示 {version}）")
+            raise ReplayMissing(f"回放缺失或过期：{kind}（{spec(kind).provider} {model}，提示 {version}）")
         return TextResult(
             copy.deepcopy(rec["response"]), kind, model, version, dict(rec["usage"]), float(rec["costUsd"])
         )
@@ -280,9 +277,9 @@ def record(
     """一行回放（假模型录的 fixture、真模型录的回放都用它）。"""
     model, version = model_and_version(kind)
     return {
-        "key": replay_key(model, version, request),
+        "key": key_of(kind, request),
         "kind": kind,
-        "provider": PROVIDER,
+        "provider": spec(kind).provider,
         "model": model,
         "promptVersion": version,
         "request": request,
@@ -318,6 +315,40 @@ def now_z() -> str:
     return datetime.now(UTC).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
+class Routed:
+    """真模型：每种提示按 `config.TEXT` 的 provider 交给那一家的客户端（一次评测里两家可以都有：`reply` 走 Google）。
+    客户端第一次要用时才建：只调 Claude 的跑（S-2、小测）不要求 Vertex 的环境变量。"""
+
+    mode: ModelMode = "real"
+
+    def __init__(self, makers: Mapping[str, Callable[[], TextModel]]) -> None:
+        self._makers = dict(makers)
+        self._clients: dict[str, TextModel] = {}
+
+    def client(self, provider: str) -> TextModel:
+        if provider not in self._clients:
+            self._clients[provider] = self._makers[provider]()
+        return self._clients[provider]
+
+    async def call(self, kind: str, request: Json) -> TextResult:
+        return await self.client(spec(kind).provider).call(kind, request)
+
+    def cancelled_cost(self, kind: str, request: Json) -> float:
+        return self.client(spec(kind).provider).cancelled_cost(kind, request)
+
+
+def real_text_model(settings: Settings) -> Routed:
+    """real：Claude 的客户端当场建（少 Key、模型 ID、上限就退出，不发请求），Google 的到第一次调 `reply` 时才建。"""
+    # 只在 real 时 import，别的模式不碰真客户端
+    from zoujin_backend.models.claude import claude_text
+    from zoujin_backend.models.vertex import real_text
+
+    routed = Routed({"claude": lambda: claude_text(settings), "google": lambda: real_text(settings)})
+    if any(spec(k).provider == "claude" for k in TEXT):
+        routed.client("claude")
+    return routed
+
+
 def text_model(
     mode: ModelMode, *, fake_rules: Path | None, replays: Path, settings: Settings | None = None
 ) -> TextModel:
@@ -330,9 +361,7 @@ def text_model(
     else:
         if settings is None:
             raise ValueError("ZJ_MODEL=real 要用 Settings 建客户端（账本、上限、录回放的目录）")
-        from zoujin_backend.models.vertex import real_text  # 只在 real 时 import，别的模式不碰真客户端
-
-        inner = real_text(settings)
+        inner = real_text_model(settings)
     if settings is not None and settings.record_replays is not None:
         return Recording(inner, settings.record_replays)
     return inner

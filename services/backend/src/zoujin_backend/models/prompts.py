@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 from dataclasses import dataclass, field
@@ -47,7 +48,7 @@ EFFECT = {
     "properties": {"op": {"enum": ["set", "inc", "beat", "learn", "relocate", "promise", "improv", "hold"]}},
     "required": ["op"],
 }
-CANDIDATE = {
+CANDIDATE: Json = {
     "type": "object",
     "properties": {
         "actor": {"type": "string", "minLength": 1},
@@ -73,12 +74,19 @@ TRIAGE = Prompt(
     },
 )
 
+# B-4：要确认的候选多两项（人物这一轮是不是已经在反问、反问的一句）；有反问在等回答时多判一项 confirmAnswer
+EXTRACT_CANDIDATE: Json = copy.deepcopy(CANDIDATE)
+EXTRACT_CANDIDATE["properties"] |= {"asked": {"type": "boolean"}, "question": {"type": "string"}}
+
 EXTRACT = Prompt(
     "extract",
     text("extract"),
     {
         "type": "object",
-        "properties": {"candidates": {"type": "array", "maxItems": 3, "items": CANDIDATE}},
+        "properties": {
+            "candidates": {"type": "array", "maxItems": 3, "items": EXTRACT_CANDIDATE},
+            "confirmAnswer": {"enum": ["yes", "no", None]},
+        },
         "required": ["candidates"],
     },
 )

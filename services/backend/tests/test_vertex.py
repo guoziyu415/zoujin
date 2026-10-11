@@ -1,6 +1,7 @@
 """真文本模型的客户端（B-2 验收第 8 组）：传输层换成 httpx.MockTransport，不联网、不用凭证。
 
-项目 ID 用一个假的记号，查它不出现在账本、回放、日志和异常消息里。
+项目 ID 用一个假的记号，查它不出现在账本、回放、日志和异常消息里。B-8 以后分流和提取走 Claude（`test_claude.py`），
+Google 的客户端对哪种提示都一样：这里把分流和提取临时换回 B-2 时的 Google 设定来测它。
 """
 
 from __future__ import annotations
@@ -15,7 +16,8 @@ from typing import Any
 
 import httpx
 import pytest
-from zoujin_backend.config import PRICES, ConfigError, Settings
+from zoujin_backend import config
+from zoujin_backend.config import PRICES, ConfigError, Settings, TextSpec
 from zoujin_backend.ids import IdGen
 from zoujin_backend.models import vertex
 from zoujin_backend.models.ledger import Ledger, cost_usd
@@ -45,6 +47,13 @@ USAGE = {
     "candidatesTokenCount": 300,
     "thoughtsTokenCount": 200,
 }
+
+
+@pytest.fixture(autouse=True)
+def google_kinds(monkeypatch: pytest.MonkeyPatch) -> None:
+    flash, lite = "gemini-3.8-flash", "gemini-3.5-flash-lite"
+    monkeypatch.setitem(config.TEXT, "triage", TextSpec("google", lite, 5.0, 256, temperature=0.0))
+    monkeypatch.setitem(config.TEXT, "extract", TextSpec("google", flash, 15.0, 4096, thinking="LOW", temperature=0.2))
 
 
 class Auth:
@@ -108,7 +117,7 @@ def test_request_shape(tmp_path: Path) -> None:
     assert body["systemInstruction"]["parts"][0]["text"] == PROMPTS["extract"].text
     cfg = body["generationConfig"]
     assert cfg["responseMimeType"] == "application/json" and cfg["responseJsonSchema"] == PROMPTS["extract"].schema
-    assert cfg["thinkingConfig"] == {"thinkingLevel": "LOW"}
+    assert cfg["thinkingConfig"] == {"thinkingLevel": "LOW"} and cfg["temperature"] == 0.2
     user = body["contents"][0]["parts"][0]["text"]
     assert user.startswith("<world>\n") and "aozora:" not in user  # 前缀在最前，不带出处
     assert user.index("<world>") < user.index("<state>") < user.index("<turn>")
@@ -240,7 +249,7 @@ def test_recorded_replays_have_the_b0_format(tmp_path: Path) -> None:
         "costUsd",
         "recordedAt",
     }
-    assert rec["key"] == replay_key("gemini-3.8-flash", PROMPTS["extract"].version, REQ)
+    assert rec["key"] == replay_key("google", "gemini-3.8-flash", PROMPTS["extract"].version, REQ)
     replayed = asyncio.run(ReplayText(tmp_path / "rec").call("extract", REQ))
     assert replayed.output == {"candidates": []} and replayed.cost_usd == rec["costUsd"]
 

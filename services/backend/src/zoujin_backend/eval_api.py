@@ -12,6 +12,11 @@
   回答，再走叙事者整条流水线，B-2）、`advance`；`act`、`propose`、`choose`（B-3：和 WebSocket 同一条路，写任务、
   叫叙事者）；`check`（第 3 步 + 按 `model_checks` 跑第 4 步，不改写、不提交）；查询 `state()`、`events()`。
   检查点停在这一幕的收幕节拍上（例 `sc.canon@beat.07`）时，setup 之后就是幕末待选。
+- B-4：`say(hold=True)` 只写这一轮、拿人物的回答，返回 `held: true`、没有事件（作废的窗口还开着）；下一次调用（任何
+  步骤或查询）开始时先让叙事者提交它，事件算在那一次里。`retract(n)` 作废还 hold 着的第 n 步（`retracted`），
+  已经提交的 `too_late`；`utterance_cleared(n)`。这一步留下了意图确认的草稿时 `StepResult.confirm` 有值，草稿最多等
+  一步：下一步 `confirm(answer)` 按它答，`say` 由叙事者判是不是在回答，别的步骤（或那句 `say` 不是在回答）按超时关掉。
+  评测的提交窗口是 0。
 - 没做的步骤和查询、带 `persona` 的 setup、带 `memory` 的布置事件、没有布局的场景里的 `move` 抛
   `EvalNotImplemented("<名字>")`；
   回放里查不到抛 `ReplayMissing`。账本到上限抛 `BudgetStop`，模型回 429 抛 `RateLimited`：这两个要整次停下，不是跳过
@@ -26,11 +31,12 @@ import asyncio
 import copy
 import json
 from collections.abc import Coroutine, Mapping, Sequence
+from dataclasses import replace
 from functools import cache
 from pathlib import Path
 from typing import Any, NoReturn
 
-from sqlalchemy import insert, update
+from sqlalchemy import insert, select, update
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
 from zoujin_worldsim import Opened, SimState, initial_state, opening, parse_checkpoint, world_state
@@ -39,7 +45,7 @@ from zoujin_backend.config import Settings
 from zoujin_backend.db import store
 from zoujin_backend.db.events import recorded_at, to_row
 from zoujin_backend.db.tables import events as events_t
-from zoujin_backend.db.tables import playthrough_metrics, playthroughs, users
+from zoujin_backend.db.tables import playthrough_metrics, playthroughs, users, utterances
 from zoujin_backend.db.tables import world_state as world_state_t
 from zoujin_backend.ids import IdGen
 from zoujin_backend.models.text import BudgetStop, RateLimited, ReplayMissing, TextModel, text_model
@@ -122,6 +128,9 @@ class Session:
         self.span: dict[str, Any] = {}  # 运行器给这一步的 Span 加的属性（例：S-2 的 trace_id）
         self.pid = ""
         self.steps = 0
+        self.turns: dict[int, str] = {}  # 第几步 → 那一轮的 turnId（say；retract、utterance_cleared 用）
+        self.held: tuple[int, str] | None = None  # say(hold=True) 还没提交的那一步
+        self.draft: tuple[int, str] | None = None  # 第几步留下的、还开着的草稿
 
     # —— 连接和叙事者：每次调用新建（各自的事件循环） ——
 
@@ -195,14 +204,50 @@ class Session:
 
     # —— 步骤 ——
 
-    def say(self, to: str, text: str) -> Json:
-        """文字代替语音：人物用文字回答（`reply`），原话和这一轮写进去，走叙事者整条流水线。"""
+    def say(self, to: str, text: str, hold: bool = False) -> Json:
+        """文字代替语音：人物用文字回答（`reply`），原话和这一轮写进去，走叙事者整条流水线。hold：先不提交（B-4）。"""
         self.steps += 1
-        return _run(self._say(to, text))
+        return _run(self._say(to, text, hold))
 
-    async def _say(self, to: str, text: str) -> Json:
+    # —— B-4：hold 着的一轮、等回答的草稿 ——
+
+    async def _prelude(self, engine: AsyncEngine, kind: str, retract: int | None = None) -> list[Result]:
+        """每次调用开始时：hold 着的那一轮先提交（retract 的正是它就不提交）；草稿等过了一步、这一步又不是
+        confirm、say 的，按超时关掉。返回这期间叙事者提交的。"""
+        done: list[Result] = []
+        if self.held is not None and self.held[0] != retract:
+            self.held = None
+            done += await self._narrator(engine).run(self.pid)
+        if self.draft is not None and (self.steps > self.draft[0] + 1 or kind not in ("say", "confirm")):
+            done += await self._close_draft(engine, None, "timeout")
+        return done
+
+    async def _close_draft(self, engine: AsyncEngine, option: str | None, by: str) -> list[Result]:
+        assert self.draft is not None
+        _, draft_id = self.draft
+        self.draft = None
+        async with engine.begin() as c:
+            written = await store.answer_draft(c, self.ids, self.pid, draft_id, option, by)
+        return await self._narrator(engine).run(self.pid) if written is not None else []
+
+    async def _flush(self) -> None:
+        """查询之前：hold 着的那一轮先提交（草稿不动，查询不算一步）。"""
+        if self.held is None:
+            return
         engine = self._engine()
         try:
+            self.held = None
+            await self._narrator(engine).run(self.pid)
+        finally:
+            await engine.dispose()
+
+    def _events_of(self, done: Sequence[Result]) -> list[Json]:
+        return [e for r in done for e in self._step_events(r)]
+
+    async def _say(self, to: str, text: str, hold: bool = False) -> Json:
+        engine = self._engine()
+        try:
+            pre = await self._prelude(engine, "say")
             async with engine.connect() as c:
                 st = await store.sim_state(c, self.pid)
             assert st is not None
@@ -219,17 +264,68 @@ class Session:
                 await store.add_utterance(
                     c, self.ids, self.pid, turn_id, speaker=to, text=reply, t=st["t"], source="live"
                 )
+            self.turns[self.steps] = turn_id
+            if hold:
+                self.held = (self.steps, turn_id)
+                return {
+                    "reply": reply,
+                    "characterTextMissing": reply is None,
+                    "events": self._events_of(pre),
+                    "clockMinutes": sum(r.minutes for r in pre),
+                    "traceId": turn_id,
+                    "held": True,
+                }
             done = await self._narrator(engine).run(self.pid)
+            self._only(done, turn_id)
+            if self.draft is not None:  # 等回答的草稿：这句话不是在回答，按超时关掉
+                done += await self._close_draft(engine, None, "timeout")
+            asking = await self._draft_of(engine, turn_id)
         finally:
             await engine.dispose()
-        result = self._only(done, turn_id)
-        return {
+        out: Json = {
             "reply": reply,
             "characterTextMissing": reply is None,
-            "events": self._step_events(result),
-            "clockMinutes": result.minutes,
+            "events": self._events_of([*pre, *done]),
+            "clockMinutes": sum(r.minutes for r in [*pre, *done]),
             "traceId": turn_id,
         }
+        if asking is not None:
+            self.draft = (self.steps, asking["draftId"])
+            out["confirm"] = asking
+        return out
+
+    async def _draft_of(self, engine: AsyncEngine, turn_id: str) -> Json | None:
+        """这一轮留下的草稿（StepResult.confirm）。"""
+        async with engine.connect() as c:
+            draft = await store.open_draft(c, self.pid)
+        if draft is None or draft["turn_id"] != turn_id:
+            return None
+        return {"draftId": draft["draft_id"], "character": draft["character"], "prompt": draft["prompt"]}
+
+    def confirm(self, answer: str | None) -> Json:
+        """回答上一步留下的意图确认：yes / no / None（没答、超时）。没有草稿在等时 `error: "no_draft"`。"""
+        if answer not in ("yes", "no", None):
+            raise ValueError(f"answer 只能是 yes / no / None，得到 {answer!r}")
+        self.steps += 1
+        return _run(self._confirm(answer))
+
+    async def _confirm(self, answer: str | None) -> Json:
+        engine = self._engine()
+        try:
+            pre = await self._prelude(engine, "confirm")
+            if self.draft is None:
+                return {"events": self._events_of(pre), "clockMinutes": 0, "error": "no_draft"}
+            done = await self._close_draft(engine, answer, "button" if answer is not None else "timeout")
+        finally:
+            await engine.dispose()
+        out: Json = {"events": self._events_of([*pre, *done]), "clockMinutes": sum(r.minutes for r in [*pre, *done])}
+        mine = [r for r in done if r.task.kind == "confirm"]
+        if mine:
+            out["traceId"] = mine[-1].task.turn_id
+            out["result"] = mine[-1].info.get("result")
+            if mine[-1].info.get("narration"):
+                out["narration"] = mine[-1].info["narration"]
+        return out
 
     def act(self, kind: str, target: str | None, params: Mapping[str, Json]) -> Json:
         """动作（api-contract 3.8）：和 `action` 消息一样写一行任务，叙事者判定。还没有 3D 布局的场景里的 `move`
@@ -302,9 +398,14 @@ class Session:
         return out
 
     async def _task(self, kind: str, request: Json, said: str | None = None) -> tuple[Result, int]:
-        """写一行任务（打算还存原话），叫叙事者做完。返回这一步的结果和之前的故事时刻。"""
+        """写一行任务（打算还存原话），叫叙事者做完。返回这一步的结果和之前的故事时刻。hold 着的那一轮先提交、
+        等回答的草稿按超时关掉，它们的事件放在这一步的前面（B-4）。"""
         engine = self._engine()
         try:
+            async with engine.connect() as c:
+                before = await store.sim_state(c, self.pid)
+            assert before is not None
+            pre = await self._prelude(engine, kind)
             async with engine.begin() as c:
                 st = await store.sim_state(c, self.pid)
                 assert st is not None
@@ -322,7 +423,19 @@ class Session:
             done = await self._narrator(engine).run(self.pid)
         finally:
             await engine.dispose()
-        return self._only(done, turn_id), int(st["t"])
+        return self._merged(pre, self._only(done, turn_id)), int(before["t"])
+
+    @staticmethod
+    def _merged(pre: Sequence[Result], r: Result) -> Result:
+        """这一步之前提交的（hold 着的那一轮、超时关掉的草稿）的事件并进这一步的结果。"""
+        if not pre:
+            return r
+        return replace(
+            r,
+            events=[e for p in pre for e in p.events] + r.events,
+            checked=[c for p in pre for c in p.checked] + r.checked,
+            minutes=sum(p.minutes for p in pre) + r.minutes,
+        )
 
     def advance(self, minutes: int) -> Json:
         self.steps += 1
@@ -331,12 +444,13 @@ class Session:
     async def _advance(self, minutes: int) -> Json:
         engine = self._engine()
         try:
+            pre = await self._prelude(engine, "advance")
             async with engine.begin() as c:
                 turn_id = await store.enqueue(c, self.ids, self.pid, kind="advance", minutes=minutes)
             done = await self._narrator(engine).run(self.pid)
         finally:
             await engine.dispose()
-        result = self._only(done, turn_id)
+        result = self._merged(pre, self._only(done, turn_id))
         return {"events": self._step_events(result), "clockMinutes": result.minutes, "traceId": turn_id}
 
     @staticmethod
@@ -387,11 +501,56 @@ class Session:
 
     def state(self) -> Json:
         """契约 3.1 的 WorldState（W-1 的 world_state()）。"""
+        _run(self._flush())
         return world_state(self.book.world, _run(self._state()), self.pid)
 
     def events(self) -> list[Json]:
         """这一局的全部事件（含评测布置的、被否决的），按 seq。"""
+        _run(self._flush())
         return _run(self._events())
+
+    def retract(self, step: int) -> Json:
+        """作废第 step 步那一轮（B-4）：还 hold 着就作废（原话清空、不产生事件），已经提交了 `too_late`。"""
+        self.steps += 1
+        return _run(self._retract(step))
+
+    async def _retract(self, step: int) -> Json:
+        engine = self._engine()
+        try:
+            held = self.held
+            pre = await self._prelude(engine, "retract", retract=step)
+            kind = None
+            if held is not None and held[0] == step:
+                self.held = None
+                async with engine.begin() as c:
+                    kind = await store.retract_queued(c, self.pid, held[1])
+        finally:
+            await engine.dispose()
+        out: Json = {
+            "retract": "retracted" if kind is not None else "too_late",
+            "events": self._events_of(pre),
+            "clockMinutes": sum(r.minutes for r in pre),
+        }
+        if step in self.turns:
+            out["traceId"] = self.turns[step]
+        return out
+
+    def utterance_cleared(self, step: int) -> bool:
+        """第 step 步那一轮玩家和人物的原话都清空了（B-4：作废的一轮当场清空）。"""
+        _run(self._flush())
+        turn_id = self.turns.get(step)
+        if turn_id is None:
+            raise ValueError(f"第 {step} 步不是对话")
+        return _run(self._cleared(turn_id))
+
+    async def _cleared(self, turn_id: str) -> bool:
+        engine = self._engine()
+        try:
+            async with engine.connect() as c:
+                texts = (await c.execute(select(utterances.c.text).where(utterances.c.turn_id == turn_id))).scalars()
+                return all(t is None for t in texts)
+        finally:
+            await engine.dispose()
 
     async def _events(self) -> list[Json]:
         engine = self._engine()
@@ -409,9 +568,6 @@ class Session:
     def delete_memory(self, character: str, from_step: int) -> Json:
         self._no("delete_memory")
 
-    def retract(self, step: int) -> Json:
-        self._no("retract")
-
     def delete_playthrough(self) -> Json:
         self._no("delete_playthrough")
 
@@ -426,9 +582,6 @@ class Session:
 
     def trust(self, character: str) -> int:
         self._no("trust")
-
-    def utterance_cleared(self, step: int) -> bool:
-        self._no("utterance_cleared")
 
     def db_absent(self, tables: Sequence[str]) -> Mapping[str, int]:
         self._no("db_absent")

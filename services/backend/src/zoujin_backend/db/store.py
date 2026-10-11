@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from datetime import timedelta
 from typing import Any, cast
 
 from sqlalchemy import func, insert, select, update
@@ -14,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from zoujin_worldsim import SimState, apply, initial_state
 
 from zoujin_backend.db.events import from_row
-from zoujin_backend.db.tables import events, playthrough_metrics, playthroughs, turns, utterances, world_state
+from zoujin_backend.db.tables import drafts, events, playthrough_metrics, playthroughs, turns, utterances, world_state
 from zoujin_backend.ids import IdGen
 from zoujin_backend.world import Book
 
@@ -53,11 +54,15 @@ async def enqueue(
     status: str = "pending",
     client_msg_id: str | None = None,
     request: Json | None = None,
+    commit_after: float | None = None,
+    created_at: Any = None,
 ) -> str:
     """排一个叙事者任务。幂等键就是 turnId：重试用同一个，这一轮写的事件的键都以它开头。
     created_at 用 clock_timestamp()，同一个事务里排的几个也分得出先后。
     status="lost"：断线时人物还没说完的一轮，只留记录（welcome 的 lastTurn），叙事者不处理。
-    request：动作和幕末的请求（B-3），不放原话（原话在 utterances）。"""
+    request：动作和幕末的请求（B-3），不放原话（原话在 utterances）。
+    commit_after：叙事者最早在几秒以后提交（B-4 作废的窗口，按库的时钟算）；None = 判完就提交。
+    created_at：排队的时刻（草稿到期的超时任务排在到期那一刻，B-4）。"""
     turn_id = turn_id or ids.new("turn")
     await c.execute(
         insert(turns).values(
@@ -72,10 +77,103 @@ async def enqueue(
             idempotency_key=turn_id,
             client_msg_id=client_msg_id,
             request=request,
-            created_at=func.clock_timestamp(),
+            created_at=func.clock_timestamp() if created_at is None else created_at,
+            commit_after=None if commit_after is None else func.clock_timestamp() + timedelta(seconds=commit_after),
         )
     )
     return turn_id
+
+
+# —— 作废（B-4，api-contract 3.6）——
+
+RETRACTABLE = ("talk", "plan")
+
+
+async def retract_queued(c: AsyncConnection, pid: str, turn_id: str) -> str | None:
+    """已经交给叙事者、还没提交的一轮（pending / leased）改成 retracted，原话清空、记 deleted_at（行留着），
+    turns_retracted 加 1。和叙事者的提交谁先拿到这一轮的行锁谁算数（叙事者只认 leased）。返回这一轮的 kind；
+    已经提交了、不认识、不能作废的返回 None（too_late）。"""
+    row = (
+        await c.execute(
+            update(turns)
+            .where(
+                turns.c.turn_id == turn_id,
+                turns.c.playthrough_id == pid,
+                turns.c.kind.in_(RETRACTABLE),
+                turns.c.status.in_(("pending", "leased")),
+            )
+            .values(status="retracted", outcome="retracted", minutes=0, lease_until=None, settled_at=func.now())
+            .returning(turns.c.kind)
+        )
+    ).first()
+    if row is None:
+        return None
+    await c.execute(update(utterances).where(utterances.c.turn_id == turn_id).values(text=None, deleted_at=func.now()))
+    await count_retracted(c, pid)
+    return str(row.kind)
+
+
+async def count_retracted(c: AsyncConnection, pid: str) -> None:
+    m = playthrough_metrics.c
+    await c.execute(
+        update(playthrough_metrics).where(m.playthrough_id == pid).values(turns_retracted=m.turns_retracted + 1)
+    )
+
+
+# —— 意图确认的草稿（B-4，api-contract 3.9）——
+
+
+async def open_draft(c: AsyncConnection, pid: str, *, lock: bool = False) -> dict[str, Any] | None:
+    """这一局开着的草稿（最多一个）。lock：锁住这一行（写回答的任务、关掉草稿时）。"""
+    q = select(drafts).where(drafts.c.playthrough_id == pid).order_by(drafts.c.created_at).limit(1)
+    if lock:
+        q = q.with_for_update()
+    row = (await c.execute(q)).mappings().first()
+    return dict(row) if row is not None else None
+
+
+async def answered(c: AsyncConnection, pid: str, draft_id: str) -> bool:
+    """这个草稿已经有一行回答的任务（按钮、声音、超时，谁先写谁算）。做失败了的不算：草稿还开着，超时还能关掉它。"""
+    found = await c.scalar(
+        select(turns.c.turn_id).where(
+            turns.c.playthrough_id == pid,
+            turns.c.kind == "confirm",
+            turns.c.request["draftId"].astext == draft_id,
+            turns.c.status != "failed",
+        )
+    )
+    return found is not None
+
+
+async def answer_draft(
+    c: AsyncConnection, ids: IdGen, pid: str, draft_id: str, option_id: str | None, by: str, *, at: Any = None
+) -> str | None:
+    """给开着的草稿写一行 `kind: "confirm"` 的任务（叙事者按局排队处理）。草稿不在了、已经有回答的，什么都不写，
+    返回 None。锁住草稿那一行再查，按钮、声音和超时同时来时只写一行。"""
+    row = await c.scalar(
+        select(drafts.c.draft_id).where(drafts.c.draft_id == draft_id, drafts.c.playthrough_id == pid).with_for_update()
+    )
+    if row is None or await answered(c, pid, draft_id):
+        return None
+    return await enqueue(
+        c, ids, pid, kind="confirm", request={"draftId": draft_id, "optionId": option_id, "by": by}, created_at=at
+    )
+
+
+async def expire_drafts(c: AsyncConnection, ids: IdGen, pid: str) -> list[str]:
+    """到期了、还没有回答的草稿写超时的任务，排在到期的那一刻（之前来的回答先算）。返回写了的草稿 ID。"""
+    rows = (
+        await c.execute(
+            select(drafts.c.draft_id, drafts.c.expires_at)
+            .where(drafts.c.playthrough_id == pid, drafts.c.expires_at <= func.now())
+            .with_for_update()
+        )
+    ).all()
+    out = []
+    for draft_id, at in rows:
+        if await answer_draft(c, ids, pid, draft_id, None, "timeout", at=at) is not None:
+            out.append(draft_id)
+    return out
 
 
 @dataclass
