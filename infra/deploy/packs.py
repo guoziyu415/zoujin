@@ -40,6 +40,8 @@ def builder(name: str) -> str:
         return BUILDERS[name]
     if name.startswith(("road-pass", "road-spring", "road-field", "road-run")):
         return REST
+    if name.startswith("village-light-"):
+        return BUILDERS["village"]  # 村子的黄昏、夜、雨的光照子包（F-11），村子的 final 一起生成
     if name == "road-common":
         return "assets/pipeline/road/build.sh final"  # 共用的路边包：河、村子、其余几处的 final 都往里加
     return f"（不知道哪条流水线生成 {name}，问前端）"
