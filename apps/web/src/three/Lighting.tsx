@@ -60,26 +60,41 @@ const SKY_PATCH = `
   texColor *= mix( vec3( 1.0 ), vec3( 1.0, 0.66, 0.38 ), clamp( pow( side, 6.0 ) * exp( -up * 2.5 ) + nearSun * 0.6, 0.0, 1.0 ) * uAmber );
   float anti = pow( 1.0 - side, 2.0 );
   vec3 belt = vec3( 0.55, 0.27, 0.33 ) * exp( -pow( ( up - 0.09 ) / 0.06, 2.0 ) ) * anti + vec3( 0.15, 0.2, 0.38 ) * ( 1.0 - up * 0.45 );
-  texColor = max( texColor * uSkyGain * uEnvTint, max( max( glow * uDusk, nightSky * uNightSky ), belt * uBelt ) );
+  vec3 sl = texColor * uSkyGain;
+  if ( uEnvLocus > 0.5 ) sl = toLocus( sl );
+  texColor = max( sl, max( max( glow * uDusk, nightSky * uNightSky ), belt * uBelt ) );
   float peak = max( max( texColor.r, texColor.g ), max( texColor.b, 1e-4 ) );
   texColor *= 1.7 * ( 1.0 - exp( -peak / 1.7 ) ) / peak;
   gl_FragColor = vec4( texColor, 1.0 );`;
 
-// The sky that lights the scene (not the one you see) is turned from Sky.js's cyan to the blue of real skylight, about
-// 10000 K (green over red 1.2, blue over green 1.4; Sky.js gave 1.66 and 1.4 on white in shade at 17:30): under it the
-// pale wool and the limestone in shade came out green-grey (A-0, UX round 5). Same brightness; the glow, the night
-// sky and the dusk belt aren't tinted.
-const ENV_TINT = new Vector3(1.25, 0.95, 1.0);
+// The sky that lights the scene (not the one you see) is real skylight: each colour moved onto the blackbody locus, no
+// bluer than 10000 K. Sky.js is cyan, off the locus (green over red up to 2.2 at the zenith at 17:30, where skylight
+// never passes 1.46), so in shade the pale wool and the limestone came out green-grey (A-0, UX rounds 5 and 6; a
+// constant tint fixed one direction only). Green over red as a function of blue over red, a fit to Planck's law
+// through the CIE 1931 observer from 5000 K up (linear sRGB); only cool colours move. Same brightness; the glow, the
+// night sky and the dusk belt keep their colours.
+const SKYLIGHT_LOCUS = `
+vec3 toLocus( vec3 c ) {
+  float r = max( c.r, 1e-5 );
+  float b = min( c.b, r * 1.64 );
+  float L = log( max( b, 1e-5 ) / r );
+  float gr = exp( ( -0.0147 * L + 0.377 ) * L - 0.0532 );
+  vec3 o = vec3( c.r, mix( c.g, min( c.g, r * gr ), smoothstep( 0.0, 0.3, L ) ), b );
+  vec3 w = vec3( 0.2126, 0.7152, 0.0722 );
+  return o * ( dot( c, w ) / max( dot( o, w ), 1e-6 ) );
+}
+`;
 
-function makeSky(scale: number, tint?: Vector3): Sky {
+function makeSky(scale: number, locus = false): Sky {
   const s = new Sky();
   s.scale.setScalar(scale);
   const u = s.material.uniforms;
   for (const k of ["uSkyGain", "uDusk", "uNightSky", "uBelt", "uAmber"])
     u[k] = { value: 0 };
-  u.uEnvTint = { value: tint ?? new Vector3(1, 1, 1) };
+  u.uEnvLocus = { value: locus ? 1 : 0 };
   s.material.fragmentShader =
-    "uniform float uSkyGain, uDusk, uNightSky, uBelt, uAmber;\nuniform vec3 uEnvTint;\n" +
+    "uniform float uSkyGain, uDusk, uNightSky, uBelt, uAmber, uEnvLocus;\n" +
+    SKYLIGHT_LOCUS +
     s.material.fragmentShader.replace(
       "gl_FragColor = vec4( texColor, 1.0 );",
       SKY_PATCH,
@@ -194,7 +209,7 @@ export function Lighting({
     const hemi = new HemisphereLight(0xbcd0ff, 0x8a7560, 0);
     const sky = makeSky(4000);
     const skyScene = new Scene();
-    const envSky = makeSky(50, ENV_TINT);
+    const envSky = makeSky(50, true);
     const floor = new Mesh(
       new CircleGeometry(40, 48).rotateX(-Math.PI / 2),
       new MeshStandardMaterial({ roughness: 1, metalness: 0 }),

@@ -18,7 +18,8 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 import { OutputShader } from "three/examples/jsm/shaders/OutputShader.js";
 
 // day-for-night after sunset, a little warmth in the highlights and cool in the shadows, contrast, saturation, vignette;
-// on the sRGB values, as the separate pass after OutputPass did before.
+// on the sRGB values, as the separate pass after OutputPass did before. The shadows cool towards blue with red and
+// green down together: red alone turned pale colours green in shade (A-0, UX round 6).
 // The night's blue is the sky's light (art-direction 3.2; UX on PR #53): a fire and what it lights stay warm. The
 // tint lets go by how much warmth a pixel has, r - b itself: a fire adds that, the night sky can't, even to warm
 // colours (skin, ochre, terracotta, 緋 stay under 0.28 by sky light alone; a ratio to luminance blew them up in the
@@ -31,7 +32,7 @@ const GRADE = `
     float l = dot(col, vec3(0.2126,0.7152,0.0722));
     col = max(mix(vec3(l), col, uSat), 0.0);
     col = mix(col, col * vec3(1.0 + uWarm, 1.0, 1.0 - uWarm), smoothstep(0.35, 0.9, l));
-    col = mix(col, col * vec3(1.0 - uWarm*0.6, 1.0, 1.0 + uWarm), 1.0 - smoothstep(0.05, 0.35, l));
+    col = mix(col, col * vec3(1.0 - uWarm*0.3, 1.0 - uWarm*0.3, 1.0 + uWarm), 1.0 - smoothstep(0.05, 0.35, l));
     l = dot(col, vec3(0.2126,0.7152,0.0722));
     float w = col.r - col.b;
     float lit = max(max(smoothstep(0.3, 0.45, w), smoothstep(0.1, 0.5, w / (l + 0.03)) * smoothstep(0.35, 0.5, l)),
