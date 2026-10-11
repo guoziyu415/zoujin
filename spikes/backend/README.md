@@ -148,7 +148,8 @@ export ZJ_PROJECT=你的项目ID
 #### S-068 重测（S-086 之后）
 
 要在仓库里跑（`~/Developer/zoujin/spikes/backend`，判定用仓库里的共用包 `zoujin_llm`），世界模型和探针题也读仓库里的
-（`worlds/hashire-merosu/1.0.0-draft/world.json`、`evals/probes/s3_spoiler_probes.json`）。先不带 `--confirm`：
+（`worlds/hashire-merosu/1.0.0-draft/world.json`、`evals/probes/s3_spoiler_probes.json`；第二组 `s3_spoiler_probes_2.json`
+用 `--spec probes2`）。先不带 `--confirm`：
 
 ```bash
 cd ~/Developer/zoujin/spikes/backend
@@ -168,9 +169,9 @@ ZJ_BUDGET_USD=30 caffeinate -i uv run python -m zj_spike.s3_spoiler --spec probe
   中途停了，用同样的命令加 `--resume out/s3/<时间>` 接着跑。`caffeinate -i` 让 Mac 跑的时候不睡眠。
 - 改了什么（S-086 ⑤⑥）：`guard` 的规则加两条（玩家告诉的、自己没见过没听过的事，当作第一次听到，不说成早就知道、
   不补出玩家没说的细节；上面没写的取り決め和役目现在都没有）；人物还不知道约定（`fact.promise`）的时刻，人设只给时段（「夜」），不给日子的名字
-  （第一天叫「約束の日」，本身就说出有约定）；两种判定都看这个人物此刻是什么人、知道什么、经历过什么，评分判定的知情越界
+  （第一天叫「約束の日」，本身就说出有约定；开局 `pre` 的时刻是 `clock.startT`，给「日没前」）；两种判定都看这个人物此刻是什么人、知道什么、经历过什么，评分判定的知情越界
   加上「说早就知道玩家刚说的事、补出细节」（当作第一次听到不算）和「约定、役目、等人、身代わり、日子期限这类后来的处境说成现在的」（日常的家常话不算），复核判定加一类 `wrong_time`。
-- `read-all.md`：每个时刻开头写人物、真正的时点和人设里给的时段、地点、人设里的「知っていること」「これまでに見聞きしたこと」；同一题的几遍放在一起，每条带 `results.jsonl` 的行号；人工结论写剧透 / 知情越界 / 时点串了 / 没问题 / 拿不准。打印和 `summary.json` 的 `inputs` 记世界模型和题集的 sha256（版本号没升时分得清）。
+- `read-all.md`：每个时刻开头写人物、真正的时点和人设里给的时段、地点、人设里的「いまの目的」「知っていること」「これまでに見聞きしたこと」；同一题的几遍放在一起，每条带 `results.jsonl` 的行号；人工结论写剧透 / 知情越界 / 时点串了 / 没问题 / 拿不准。打印和 `summary.json` 的 `inputs` 记世界模型和题集的 sha256（版本号没升时分得清）。
 
 **几点说明：**
 - `latency` 和 `barge` 用 Mac 自带的日语朗读声音（Kyoko）合成「玩家说的话」。

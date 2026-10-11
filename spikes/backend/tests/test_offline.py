@@ -605,6 +605,7 @@ class Offline(unittest.TestCase):
         self.assertIn("## melos-square（10 条）", read_all)
         self.assertIn("- 时点：約束の日の夕方（beat.01 之后；人设里只写「夕方」）", read_all)
         self.assertIn("- 还不知道：约定", read_all)
+        self.assertIn("- いまの目的：", read_all)
         self.assertNotIn("king-after-promise", read_all)
         self.assertEqual(read_all.count("  - 人工结论："), 10)
         self.assertEqual(read_all.count("### 问："), 10)
@@ -624,7 +625,9 @@ class Offline(unittest.TestCase):
         world = s3_spoiler.World(WORLD)
         sc = {"id": "x", "character": "char.old-man", "after": "beat.22", "when": "三日目の夕方"}
         self.assertEqual(world.moment(sc), "夕方")
-        self.assertEqual(world.moment({**sc, "after": "pre"}), "ある日")
+        # Before any beat it is the opening (clock.startT): 約束の日の日没前, told as 日没前 (data on #90).
+        self.assertEqual(world.when("pre"), "約束の日の日没前")
+        self.assertEqual(world.moment({**sc, "after": "pre", "when": world.when("pre")}), "日没前")
         with self.assertRaises(SystemExit):
             world.moment({**sc, "when": "約束から三日目"})
         self.assertEqual(world.moment({**sc, "character": "char.selinuntius", "after": "beat.06", "when": "約束の日の深夜"}),

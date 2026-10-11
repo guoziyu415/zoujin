@@ -6,8 +6,8 @@
   uv run python -m zj_spike.s3_spoiler --spec probes,scenarios --conditions guard --repeat 2   # S-068 rerun
   uv run python -m zj_spike.s3_spoiler --resume out/s3/<stamp> ...       # continue a stopped run, same arguments
 
-Question sets (--spec): scenarios = the S-3 baseline (s3_scenarios.json); probes = data engineering's S-068
-probe set (s3_probes.json, from data/evals/probes/s3_spoiler_probes.json), where every question also says
+Question sets (--spec): scenarios = the S-3 baseline (s3_scenarios.json); probes, probes2 = data engineering's S-068
+probe sets (evals/probes/s3_spoiler_probes.json and s3_spoiler_probes_2.json), where every question also says
 which future facts it tries to draw out (targets) and whether it carries the spoiler itself (style leading)
 or not (open).
 
@@ -60,7 +60,8 @@ from .live_util import JA_RULE, Probe, Turn, close_session, live_config, open_se
 DATA = Path(__file__).parent / "data"
 CONDITIONS = ("naive", "base", "guard")
 AUDIT_SAMPLE = 30  # replies both judges passed, drawn at random for people to check
-SPECS = {"scenarios": "s3_scenarios.json", "probes": "s3_probes.json"}
+SPECS = {"scenarios": "s3_scenarios.json", "probes": "s3_probes.json", "probes2": "s3_probes_2.json"}
+REPO_SPECS = {"probes": "s3_spoiler_probes.json", "probes2": "s3_spoiler_probes_2.json"}  # data/evals/probes/
 REPO = Path(__file__).resolve().parents[3]
 # The first day's name (約束の日) itself says there is a promise. A character who does not know the promise yet
 # gets the time of day only (S-086: the workshop moment's セリヌンティウス spoke as the hostage).
@@ -244,7 +245,7 @@ def spec_path(name: str) -> Path:
     bundled = DATA / SPECS[name]
     if bundled.exists() or name == "scenarios":
         return bundled
-    return REPO / "evals" / "probes" / "s3_spoiler_probes.json"
+    return REPO / "evals" / "probes" / REPO_SPECS[name]
 
 
 def load_specs(names: list[str], world: "World") -> tuple[list[dict], list[str]]:
@@ -294,10 +295,8 @@ class World:
         return 0 if ref == "pre" else float(self.beats[ref]["order"])
 
     def when(self, after: str) -> str:
-        """The clock label (UX 4.2 bands) of a beat's canonical time, e.g. 二日目の真昼."""
-        if after == "pre":
-            return "約束の日の前"
-        t = self.beats[after]["window"]["canonical"]
+        """The clock label (UX 4.2 bands) of a beat's canonical time, e.g. 二日目の真昼; before any beat, the opening's."""
+        t = self.w["clock"]["startT"] if after == "pre" else self.beats[after]["window"]["canonical"]
         labels = self.w["clock"]["labels"]
         day = labels["days"][min(int(t // 1440), len(labels["days"]) - 1)]
         band = [name for start, name in labels["bands"] if start <= t % 1440][-1]
@@ -308,8 +307,6 @@ class World:
         the first day's name (約束の日) says there is a promise, and the day count says there is a deadline."""
         if PROMISE in self.known(sc["character"], sc["after"]):
             return sc["when"]
-        if sc["after"] == "pre":
-            return "ある日"
         out = sc["when"]
         for day in sorted(self.w["clock"]["labels"]["days"], key=len, reverse=True):
             if out.startswith(day + "の"):
@@ -729,6 +726,7 @@ def write_read_all(out: Path, world: World, scenarios: list[dict], rows: list[di
                f"- 人物：{world.chars[cid]['name']}",
                f"- 时点：{sc['when']}（{after} 之后；人设里只写「{world.moment(sc)}」）",
                f"- 地点：{world.places.get(sc['place'], sc['place'])}",
+               "- いまの目的：" + ("／".join(cut(world, sc, "guard")["goals"]) or "（无）"),
                "- 知っていること：" + ("".join(f"\n  - {x}" for x in facts) or "（无）"),
                "- これまでに見聞きしたこと：" + ("".join(f"\n  - {x}" for x in lived) or "（无）"),
                "- 还不知道：约定", ""]
@@ -762,7 +760,7 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--only", help="只跑这些情景，逗号分隔")
     ap.add_argument("--repeat", type=int, default=1, help="每一问问几遍（每遍都是新会话），S-068 用 2")
     ap.add_argument("--one-judge", action="store_true", help="只用评分判定，不做复核判定和 audit.md")
-    ap.add_argument("--spec", default="scenarios", help="题集，逗号分隔：scenarios（S-3 原题）、probes（数据的 S-068 探针题）或文件路径")
+    ap.add_argument("--spec", default="scenarios", help="题集，逗号分隔：scenarios（S-3 原题）、probes、probes2（数据的 S-068 探针题第一、二组）或文件路径")
     ap.add_argument("--resume", help="接着跑中断的那一次：给 out/s3/<时间> 目录，其余参数和上次一样")
     ap.add_argument("--max-claude-usd", type=float, help="Claude 那本账的总上限（D-029：100）")
     ap.add_argument("--max-item-usd", type=float, default=30.0, help="这一项（s068-judge）在 Claude 账上的上限")
