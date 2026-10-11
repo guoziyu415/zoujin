@@ -206,8 +206,8 @@ def plan(spec: Json, world: Json) -> Plan:
     lines: dict[str, dict[str, list[str]]] = {}
     for sid, s in spec["speakers"].items():
         sp = speakers[sid]
-        # 人物的 6 句只给这个世界模型里能对话的人物录（切片里只有メロス和老爺；草稿的另外五个人 M3 再录）
-        if "lines" in s and chars[sid].get("talkable"):
+        # 人物的 6 句源文件写了就录：世界模型里这个人此刻不能对话的（切片里的王等五人），manifest 不给（B-6b）
+        if "lines" in s:
             got: dict[str, list[str]] = {}
             for slot, n in SLOTS.items():
                 raw = s["lines"].get(slot)
@@ -233,8 +233,7 @@ def plan(spec: Json, world: Json) -> Plan:
             add(f"{sp.slug}-{piece['id'].removeprefix('piece.')}-{n}", sp, line["line"], f"{piece['id']}/{n}")
 
     def live(sid: str, key: str) -> bool:
-        """这个键这次录不录：不能对话的人物的 6 句、没有固定演出的世界模型（草稿）里固定演出的键，这次用不上，
-        不算写错。"""
+        """这个键这次录不录：没有固定演出的世界模型（草稿）里固定演出的键这次用不上，不算写错。"""
         head = key.split("/")[0]
         if head.startswith("piece."):
             return bool(world.get("setPieces"))

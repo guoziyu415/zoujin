@@ -11,6 +11,15 @@ describe("where a scene's pack is (B-7, api-contract 2.1)", () => {
         },
       ]),
     ).toBe("/scenes/0a1b2c3d/syracuse-square/");
+    // a scene of a pack per act (F-10): its index's folder; the packs are folders next to it
+    expect(
+      sceneBase("scene.road-river", [
+        {
+          sceneId: "scene.road-river",
+          assetUrl: "/scenes/0a1b2c3d/road-river/index.json",
+        },
+      ]),
+    ).toBe("/scenes/0a1b2c3d/road-river/");
   });
 
   it("the old shape (version after the folder), a placeholder or no entry: the unversioned folder", () => {

@@ -1,5 +1,6 @@
 // The 3D sandbox (?world, ?dev, the measuring page): no server, so a local world in the real stores with what the 3D
 // reads; the dev panel, the measuring page and the e2e test hook change it the way the server's commits would.
+// ?scene=road-river&act=act.4&t=705 opens another scene than the plaza, in that act, at that time (F-10's test page).
 import type { Api } from "@zoujin/contracts";
 import type { WorldData } from "../../net/apply";
 import { placePlayer } from "../../stores/player";
@@ -19,6 +20,8 @@ const PLACES = [
 ];
 
 export function startSandbox(): void {
+  const q = new URLSearchParams(location.search);
+  const scene = q.get("scene");
   const player = {
     roleId: "role.traveler",
     place: "place.syracuse-square",
@@ -28,9 +31,13 @@ export function startSandbox(): void {
     playthroughId: "pt_SANDBOX",
     lastSeq: 0,
     status: "active",
-    actId: "act.1",
-    sceneId: "scene.syracuse-square",
-    clock: { t: 1050, tLabel: "約束の日・夕方", deadlineT: 5460 },
+    actId: q.get("act") ?? "act.1",
+    sceneId: scene ? `scene.${scene}` : "scene.syracuse-square",
+    clock: {
+      t: Number(q.get("t") ?? 1050),
+      tLabel: "約束の日・夕方",
+      deadlineT: 5460,
+    },
     deadline: { shown: false },
     forecast: null,
     player,

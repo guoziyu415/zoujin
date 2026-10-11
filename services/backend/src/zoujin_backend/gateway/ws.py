@@ -60,7 +60,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from sqlalchemy import func, select, update
 from starlette.websockets import WebSocketState
 
-from zoujin_backend import audio
+from zoujin_backend import audio, budget
 from zoujin_backend.config import COOKIE
 from zoujin_backend.db import store
 from zoujin_backend.db.store import Run
@@ -78,7 +78,7 @@ from zoujin_backend.narrator.acts import PLAN_TRIES
 from zoujin_backend.narrator.pipeline import Spend, TurnInput
 from zoujin_backend.narrator.plans import INVALID_REQUEST, NOT_HEARD, REFUSAL_FALLBACK, narrate_fallback
 from zoujin_backend.origin import origin_allowed
-from zoujin_backend.projection import pending
+from zoujin_backend.projection import open_affordances, pending
 from zoujin_backend.safety import Screen
 from zoujin_backend.schemas import SchemaError
 
@@ -113,6 +113,12 @@ def error_msg(code: str, message: str) -> Json:
     return {"type": "error", "error": {"code": code, "message": message, "retryable": False, "retryAfterSeconds": None}}
 
 
+def _open() -> asyncio.Event:
+    e = asyncio.Event()
+    e.set()
+    return e
+
+
 @dataclass
 class Turn:
     """连接上正在进行的一轮（还没交给叙事者）。"""
@@ -145,6 +151,8 @@ class Turn:
     source: str = "live"  # 人物定稿的来源：live / fallback（补转写）
     dropped: bool = False  # Live 中途断了（按被打断收）
     screen: asyncio.Future[Screen] | None = None  # B-12：玩家这一句的安全筛查（定稿一到就开始）
+    # B-15：复核期间扣住人物还没发的声音和字幕（清掉 = 扣住；已经发出去的不收回）。暂停就丢掉，复核降下来就放出
+    flowing: asyncio.Event = field(default_factory=lambda: _open())
     paused: bool = False  # B-12：被出戏卡停下了（不推人物定稿、不交给叙事者）
 
     @property
@@ -636,6 +644,49 @@ class Conn:
             t.stream = asyncio.ensure_future(self._stream(t))
         self.gw.hand(self.pid, self._finish(t))
 
+    def suggest_later(self, character: str, t: Turn | None = None) -> None:
+        """候选话语（B-21，ux-design 7.8，契约 3.5）：人物说完一轮、会话刚就绪时，后台生成 2〜3 个推出去。"""
+        if self.ending or self.guard.paused or self.closed.is_set():
+            return
+        self.gw.spawn(self._suggest(character, t))
+
+    async def _suggest(self, character: str, t: Turn | None) -> None:
+        """按这一轮的两句话（没有就只按局势）和此刻能做的动作生成；节约档、降级不自动生成（backend-design 5.3）。
+        生成期间玩家又开始说话、换了人物：不推（过时了）。不落库，只记花费（`cost_suggest_usd`）。"""
+        async with self.gw.engine.connect() as c:
+            pt = await self.gw.pt(c, self.pid)
+            st = await store.sim_state(c, self.pid)
+            tier = await budget.tier_of(c, self.pid)
+        if pt is None or st is None or budget.policy(tier).candidates_on_demand:
+            return
+        spend = Spend()
+        items = await self.gw.replier.suggest(
+            pt.book,
+            st,
+            character,
+            spend,
+            player=t.heard if t is not None else None,
+            reply=t.said if t is not None else None,
+            actions=[a["label"] for a in open_affordances(pt.book, st)],
+        )
+        usd = spend.usd.get("suggest", 0.0)
+        if usd:
+            async with self.gw.engine.begin() as c:
+                m = playthrough_metrics.c
+                await c.execute(
+                    update(playthrough_metrics)
+                    .where(m.playthrough_id == self.pid)
+                    .values(cost_suggest_usd=m.cost_suggest_usd + usd)
+                )
+        now = self.turn
+        busy = now is not None and now is not t and not now.submitted.is_set()  # 又开始了一轮
+        if items is None or busy or self.focused != character or self.ending or self.guard.paused:
+            return
+        msg: Json = {"type": "suggestions", "character": character, "items": items}
+        if t is not None:
+            msg["turnId"] = t.turn_id
+        await self.send(msg)
+
     async def _reply_text(self, t: Turn) -> None:
         """降级以后的文字一轮（B-14，backend-design 3.2「降级到纯文字」）：人物用文字模型回答（叙事者的 `reply`，同一套
         人物设定和局势），先推定稿（`source: "live"`），再推 `turn_complete { audio: false }`（契约 3.3）。之后照常交给
@@ -695,7 +746,9 @@ class Conn:
                 await self.send(
                     {"type": "transcript", "turnId": t.turn_id, "speaker": "player", "text": ev.text, "final": True}
                 )
-            elif ev.kind == "audio":
+                continue
+            await t.flowing.wait()  # B-15：复核期间人物先停住
+            if ev.kind == "audio":
                 if t.first_audio is None:
                     t.first_audio = time.monotonic()
                 t.pcm_out.extend(ev.pcm)
@@ -827,6 +880,8 @@ class Conn:
             else:
                 t.handing = True  # 从这里起作废走库里那条路
                 await self._submit(t, screen)
+                if t.said and not t.lost and not self._silent(t) and t.mode in ("voice", "text", "arrival"):
+                    self.suggest_later(t.character, t)
         finally:
             self.memory.pop(t.turn_id, None)
             t.submitted.set()

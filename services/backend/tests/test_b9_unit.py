@@ -152,13 +152,14 @@ def test_rank_scores_ties_and_unchanged() -> None:
         ev(5, origin="action", actor="system", effects=[{"op": "relocate", "character": OLD, "place": GROUND}]),
     ]
     got = E.rank(BOOK, st, events, [])
-    assert (got[OLD]["rank"], got[OLD]["score"]) == (1, 2)  # 1（beneficiary）+ 5（relocate，origin action）
+    # 1（beneficiary）+ 5（relocate，origin action）+ 互助 1（B-17：玩家为他做的）
+    assert (got[OLD]["rank"], got[OLD]["score"]) == (1, 3)
     assert (got[KING]["rank"], got[KING]["score"]) == (2, 1)  # hold 的 to；3 是 origin plan，不算
     assert got[MELOS] == {"character": MELOS, "rank": None, "unchanged": True, "score": 0}
     # hold 的 from 也算和他有关：玩家从王手里拿走东西
     took = [ev(1, actor="player", effects=[{"op": "hold", "item": "item.x", "from": KING, "to": "player"}])]
     assert E.rank(BOOK, st, took, [])[KING]["score"] == 1
-    # 同分按 endings.characters 的顺序：梅洛斯在老爺前面
+    # 同分按 endings.characters 的顺序：梅洛斯在老爺前面（两人都是 beneficiary 1 + 互助 1）
     tie = E.rank(BOOK, st, [ev(1, beneficiary=OLD), ev(2, beneficiary=MELOS)], [])
     assert (tie[MELOS]["rank"], tie[OLD]["rank"]) == (1, 2)
     # changedBeats 的参与者

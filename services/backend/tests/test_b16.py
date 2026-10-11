@@ -1,5 +1,5 @@
 """B-16（四幕的世界推进和导演）的验收：完整草稿走通四幕；幕切换时世界推进和节拍按时刻合并；每幕中段的推进和在玩家
-面前的导演事件；迁移 0009。走评测入口（和网关同一条路），假模型的 `world` 按规则给候选。"""
+面前的导演事件；迁移 0011。走评测入口（和网关同一条路），假模型的 `world` 按规则给候选。"""
 
 from __future__ import annotations
 
@@ -187,7 +187,7 @@ def test_world_advance_can_be_switched_off(game: Callable[..., Game], monkeypatc
     assert calls(g, "world") == [] and step["toAct"] == "act.4"
 
 
-def test_migration_0009_goes_down_and_up(migrated: str) -> None:
+def test_migration_0011_goes_down_and_up(migrated: str) -> None:
     truncate(migrated)
     cfg = alembic_config(migrated)
     engine = create_async_engine(async_url(migrated), poolclass=NullPool)
@@ -198,7 +198,7 @@ def test_migration_0009_goes_down_and_up(migrated: str) -> None:
 
     new = {"cost_world_usd", "world_events", "director_events"}
     try:
-        command.downgrade(cfg, "0008")
+        command.downgrade(cfg, "0010")
         assert not new & eval_api._run(columns())
         command.upgrade(cfg, "head")
         assert new <= eval_api._run(columns())

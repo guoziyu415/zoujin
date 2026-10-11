@@ -52,7 +52,7 @@ def test_ending_requests_print_an_estimate(tmp_path: Path, capsys: pytest.Captur
     d = tmp_path / "requests"
     d.mkdir()
     (d / "b9.jsonl").write_text((FIXTURE.parent / "b9-ending.jsonl").read_text(encoding="utf-8"), encoding="utf-8")
-    assert [len(v) for v in probe.load(d).values()] == [2]
+    assert {k: len(v) for k, v in probe.load(d).items()} == {"ending": 2, "ending-check": 2, "memory": 1}  # B-17
     argv = ["--requests", str(d), "--out", str(tmp_path / "out"), "--kind", "ending", "--per-kind", "20"]
     assert probe.main([*argv, "--max-item-usd", "1", "--max-claude-usd", "100"], env=ENV) == 0
     printed = capsys.readouterr().out

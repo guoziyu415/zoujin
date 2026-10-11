@@ -167,7 +167,7 @@ for y in (1.6, -1.6):
     K.circle(5, y, 0, C['mute'], r_px=3)
 K.spot(13.5, 0, '', 'n', (-1, 0))
 K.label(13.5, 0, 'king-throne 王', dx=0, dy=22, size=10.5, color=C['ink'], anchor='middle')
-K.spot(3.5, -4.8, 'companion-aside', 'p', (0.8, 0.6), dx=-6, dy=16)
+K.spot(1.0, -1.8, 'companion-aside', 'p', (0.98, 0.2), dx=-6, dy=16)
 for x in (-1, 1.5, 4.5, 6.5, 9.5, 11):
     K.circle(x, 5.5, 0, '#ffffff', C['mute'], 1, r_px=3)
 K.label(5, 5.5, 'courtiers 群臣', dx=0, dy=-6, size=9.5, color=C['mute'], anchor='middle')
@@ -180,10 +180,10 @@ K.line([(-12.5, 8.4), (-12.5, 11.2)], C['ink'], 0.8)
 K.label(-12.5, 11.2, 'hostage-column 人质（北柱廊第二排）', dx=0, dy=-4, size=10, color=C['ink'], anchor='middle')
 K.spot(-8.5, 9.3, '', 'n')
 K.label(-8.5, 9.3, 'guard', dx=7, dy=4, size=9.5, color=C['mute'])
-K.spot(-12.5, 5.5, 'hostage-near', 'p', (0, 1), dx=8, dy=11)
+K.spot(-13.4, 6.6, 'hostage-near', 'p', (0.67, 0.74), dx=-8, dy=-8, anchor='end')
 K.spot(-14.5, 4.5, '', 'n', (0.54, 0.84))
 K.label(-14.5, 4.5, 'hostage-visit', dx=-6, dy=14, size=9.5, color=C['mute'], anchor='end')
-K.cam(-12.5, -3.5, 0, 1)
+K.cam(-19.4, -0.1, 0.67, 0.74)
 K.label(-33, 0, 'way.plaza', dx=0, dy=-8, size=10, color=C['mute'])
 K.compass(19, -8)
 K.sun(-27, -11.6, 268, '16:00')
@@ -202,7 +202,7 @@ svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" viewBo
        '<defs><marker id="ah" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#2b2a26"/></marker>'
        '<marker id="sh" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#c99700"/></marker></defs>'
        f'<rect width="{W}" height="{H}" fill="{C["bg"]}"/>'
-       f'<text x="30" y="28" font-size="19" font-weight="bold" fill="{C["ink"]}" {FONT}>王城的平面（v1.0，2026-10-10）</text>'
+       f'<text x="30" y="28" font-size="19" font-weight="bold" fill="{C["ink"]}" {FONT}>王城的平面（v1.1，2026-10-11）</text>'
        + ''.join(parts) + '</svg>')
 open(out, 'w', encoding='utf-8').write(svg)
 print('ok', W, H)

@@ -55,6 +55,7 @@ TYPICAL_OUTPUT = {
     "plan": 600,
     "safety": 15,
     "ending": 1000,  # 三层的文字，不思考（B-9 的 Mac 探针 10-11：平均约 970）
+    "ending-check": 600,  # B-17：判一个 bool 和几个字段名，含思考〔推算〕
     "memory": 30,  # B-13：一句 20 字左右加 weight
     "keeps": 25,  # B-13：后果一句 30 字以内或 null
     "world": 800,  # B-16：几件事件，加思考

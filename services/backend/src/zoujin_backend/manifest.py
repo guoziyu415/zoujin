@@ -17,7 +17,7 @@ import json
 import logging
 import os
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -50,6 +50,8 @@ class Pack:
 class Manifest:
     doc: Json
     files: dict[str, Path]  # 录音的文件名 → 本机文件；只有 doc 里引用了的
+    # 场景包：(assetVersion, 目录) → 本机目录。部署时网关自己发 `/scenes/<assetVersion>/<目录>/…`（B-23），只发这里有的
+    scenes: dict[tuple[str, str], Path] = field(default_factory=dict)
 
     @property
     def book_id(self) -> str:
@@ -74,6 +76,15 @@ class Manifest:
     def voice_file(self, book_id: str, name: str) -> Path | None:
         """manifest 里列着的录音；清单外的、清单本身、别的书都是 None。"""
         return self.files.get(name) if book_id == self.book_id else None
+
+    def scene_file(self, version: str, folder: str, rel: str) -> Path | None:
+        """manifest 引用的场景包里的一个文件；版本对不上、目录外、走出目录（`..`、符号链接）都是 None。"""
+        base = self.scenes.get((version, folder))
+        if base is None or not rel:
+            return None
+        top = base.resolve()
+        path = (top / rel).resolve()
+        return path if top in path.parents and path.is_file() else None
 
 
 def media_type(path: Path) -> str:
@@ -242,7 +253,8 @@ def generate(book: Book, schemas: SchemaBook, *, packs: Path, voices: Path, rele
         len(pieces),
         len(body["ruby"]),
     )
-    return Manifest(doc=doc, files=files)
+    dirs = {(p.version, d): packs / d for p in found.values() for d in p.dirs}
+    return Manifest(doc=doc, files=files, scenes=dirs)
 
 
 def _need(d: Json, key: str, where: str) -> Any:

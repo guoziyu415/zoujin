@@ -174,6 +174,17 @@ SLICE = [
          note="去処の副題「老爺があなたを覚えている」（ux/slice/act1-end-and-gate.md 第 2 节）"),
 ]
 
+# 切片的模拟局（B-5 的 S-5，数据定画像和 seed）：旅人能跑、不要记忆的 7 个画像各 1 局，常走的 3 个换 seed 再各 1 局。
+# 检查同种子的 E7；AI 玩家在运行器里（--player），不给就记「要真模型」
+E7_CHECKS = [{"type": t} for t in ("replay_equal", "t_monotonic", "outcome_consistent", "epilogue_cites_valid",
+                                   "no_verbatim_quotes", "director_not_sole_cause")]
+SIMS = [("persona.canon-follower", "跟着原著走"), ("persona.idle", "什么都不做"), ("persona.king-persuader", "反复劝国王"),
+        ("persona.troublemaker", "捣乱"), ("persona.jailbreaker", "越狱"), ("persona.retractor", "频繁言い直す"),
+        ("persona.melos-helper", "一心帮梅洛斯赶上"), ("persona.canon-follower", "跟着原著走（换 seed）"),
+        ("persona.melos-helper", "一心帮梅洛斯赶上（换 seed）"), ("persona.king-persuader", "反复劝国王（换 seed）")]
+SLICE += [case(f"E7-{100 + i}", f"切片模拟局：{t}", {"role": TRAV, "persona": p, "seed": 100 + i}, [], E7_CHECKS, runs=1)
+          for i, (p, t) in enumerate(SIMS, 1)]
+
 rows = [json.loads(line) for f in sorted(SEEDS.glob("E*.jsonl")) for line in f.read_text(encoding="utf-8").splitlines()]
 picked = [c for c in rows if pick(c)]
 by_suite = {}

@@ -226,6 +226,8 @@ class Voices:
                 if ok and conn.focused == character and (announce or reason in ("switch", "reconnect")):
                     await conn.send({"type": "session_ready", "character": character, "voiceAvailable": True})
                     self._resume_ready(reused=False)
+                    if reason in ("switch", "reconnect"):  # 会话刚就绪：也给一次候选话语（B-21）
+                        conn.suggest_later(character)
             finally:
                 ev.set()
 
@@ -351,6 +353,7 @@ class Voices:
                 if conn.focused == character:
                     await conn.send({"type": "session_ready", "character": character, "voiceAvailable": True})
                     self._resume_ready(reused=True)
+                    conn.suggest_later(character)  # 预热命中、续玩接上：也给一次候选话语（B-21）
 
             self._spawn(ready())
             return
@@ -525,21 +528,16 @@ class Voices:
             conn.gw.live_ledger.add(
                 kind=f"live.turn/{conn.pid}", model=conn.gw.live_model_name, usage=usage | extra, cost=ev.usd
             )
-        out_s = min(reply_s, len(t.pcm_out) / 2 / audio.RATE)
-        async with conn.gw.engine.begin() as c:
-            m = playthrough_metrics.c
-            await c.execute(
-                update(playthrough_metrics)
-                .where(m.playthrough_id == conn.pid)
-                .values(
-                    cost_live_usd=m.cost_live_usd + ev.usd,
-                    voice_in_seconds=m.voice_in_seconds + round(reply_s - out_s, 1),
-                    voice_out_seconds=m.voice_out_seconds + round(out_s, 1),
+        if ev.usd:
+            async with conn.gw.engine.begin() as c:
+                m = playthrough_metrics.c
+                await c.execute(
+                    update(playthrough_metrics)
+                    .where(m.playthrough_id == conn.pid)
+                    .values(cost_live_usd=m.cost_live_usd + ev.usd)
                 )
-            )
-            await budget.add_voice(c, conn.user_id, reply_s)  # 每天 60 分钟（B-14）：这一轮进出的音频秒数
-            used = await budget.voice_seconds_today(c, conn.user_id)
-        await self._warn(budget.minutes_left(used))
+        out_s = min(reply_s, len(t.pcm_out) / 2 / audio.RATE)
+        self._spawn(self._voice_seconds(reply_s, out_s))  # 不挡这一轮的收尾（作废、提交窗口的时序照旧）
         with conn.gw.tracer.span(
             "live.turn",
             playthrough_id=conn.pid,
@@ -558,6 +556,23 @@ class Voices:
             transcript_source=t.source,
         ):
             pass
+
+    async def _voice_seconds(self, total_s: float, out_s: float) -> None:
+        """这一轮进出的音频秒数：这一局的 voice_in/out_seconds、账号今天的语音时间（B-14，每天 60 分钟）。"""
+        conn = self.conn
+        async with conn.gw.engine.begin() as c:
+            m = playthrough_metrics.c
+            await c.execute(
+                update(playthrough_metrics)
+                .where(m.playthrough_id == conn.pid)
+                .values(
+                    voice_in_seconds=m.voice_in_seconds + round(total_s - out_s, 1),
+                    voice_out_seconds=m.voice_out_seconds + round(out_s, 1),
+                )
+            )
+            await budget.add_voice(c, conn.user_id, total_s)
+            used = await budget.voice_seconds_today(c, conn.user_id)
+        await self._warn(budget.minutes_left(used))
 
     async def _warn(self, left: int) -> None:
         """今天的语音时间剩 5 分钟时推一次 `limits`（一条连接一次）。用完的下一轮开始前降级（`can_speak`）。"""
