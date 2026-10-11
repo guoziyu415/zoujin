@@ -4,6 +4,7 @@
 //   light down and colder (through Lighting's adjust, settled again as they move); the rain is one instanced mesh of
 //   streaks round the camera (fewer with reduced motion);
 // - on the ground: splash rings round the camera and puddles by the spots, filling and drying (rainGround.ts);
+// - the baked light outside: the light sub-packs' bakes on the ground and the walls, mixed by the clock (outdoorLight.ts);
 // - the light sets: which baked set the outside and the house show now (villageLight, for the pack's light sub-packs:
 //   code 2), the house dimmed with the daylight and its exposure eased in over about a second at the door;
 // - the house's camera zone (scene.json cameraZones): the near follow camera, with 0.5 m either way at the threshold;
@@ -45,6 +46,12 @@ import {
   type RoomSet,
   type Weather,
 } from "./time";
+import {
+  outdoorBake,
+  type LightSets,
+  type OutdoorBake,
+  type SubPack,
+} from "./outdoorLight";
 import { fill, puddles, splashMesh } from "./rainGround";
 import Interior from "./Interior";
 import { inZone, roomZone, type CameraZone } from "./zones";
@@ -158,7 +165,7 @@ function glow(node: Object3D | undefined) {
 }
 
 export default function VillageLife({ scene }: { scene: LoadedScene }) {
-  const { scene: three, camera, size } = useThree();
+  const { scene: three, camera, size, gl } = useThree();
   const { manifest } = scene;
   // scene.json's cameraZones (the layout's, card 6); until the pack carries them, the room's box from village-interior
   const listed = (manifest as { cameraZones?: CameraZone[] }).cameraZones;
@@ -181,6 +188,19 @@ export default function VillageLife({ scene }: { scene: LoadedScene }) {
     wet: 0,
     lastT: -1,
   });
+
+  // the baked light outside by the clock and the weather (outdoorLight.ts): scene.json lightSets and the light sub-packs
+  const bake = useRef<OutdoorBake | null>(null);
+  useEffect(() => {
+    const m = manifest as { lightSets?: LightSets; subPacks?: SubPack[] };
+    if (!m.lightSets || !m.subPacks) return;
+    const b = outdoorBake(scene, gl, m.lightSets, m.subPacks);
+    bake.current = b;
+    return () => {
+      bake.current = null;
+      b.dispose();
+    };
+  }, [scene, manifest, gl]);
 
   const parts = useMemo(() => {
     const find = (name: string): Object3D | undefined =>
@@ -248,6 +268,7 @@ export default function VillageLife({ scene }: { scene: LoadedScene }) {
     villageLight.weather = w;
     villageLight.outside = outsideLight(t, w);
     villageLight.room = roomLight(t, w);
+    bake.current?.set(t, w.cloud);
     // the sky follows the clouds: the environment again when they have moved enough, at most twice a second
     if (Math.abs(w.cloud - s.cloud) > 0.04 && now - s.settled > 500) {
       s.cloud = w.cloud;
