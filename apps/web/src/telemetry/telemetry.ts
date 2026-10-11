@@ -11,9 +11,19 @@ const MAX_QUEUED = 500; // nobody draining (no network layer yet, or offline for
 
 const queue: Event[] = [];
 
+// the open playthrough and its story time, added to every event while there is one
+let context: { playthroughId?: string; t?: number } = {};
+export function setTelemetryContext(c: {
+  playthroughId?: string;
+  t?: number;
+}): void {
+  context = c;
+}
+
 export function track<N extends Name>(name: N, props: PropsOf<N>): void {
   queue.push({
     name,
+    ...context,
     clientTs: new Date().toISOString(),
     props,
   } as Extract<Event, { name: N }>);
@@ -23,6 +33,12 @@ export function track<N extends Name>(name: N, props: PropsOf<N>): void {
 // up to n of the oldest events, removed from the queue
 export function drain(n = 50): Event[] {
   return queue.splice(0, n);
+}
+
+// a batch that didn't go out goes back to the front
+export function requeue(events: Event[]): void {
+  queue.unshift(...events);
+  if (queue.length > MAX_QUEUED) queue.splice(0, queue.length - MAX_QUEUED);
 }
 
 // what is waiting, without removing it (the test hook and the measuring page)

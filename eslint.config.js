@@ -26,6 +26,34 @@ export default tseslint.config(
     files: ["apps/web/**/*.{ts,tsx}"],
     languageOptions: { globals: globals.browser },
   },
+  // 只有网络层碰 WebSocket：组件和 3D 层读 store、调 net/play 的动作（F-0，frontend-design 4）
+  {
+    files: ["apps/web/src/**/*.{ts,tsx}"],
+    ignores: ["apps/web/src/net/**"],
+    rules: {
+      "no-restricted-globals": [
+        "error",
+        {
+          name: "WebSocket",
+          message:
+            "WebSocket 只在 src/net/ 里用；组件调 net/play 的动作、读 store。",
+        },
+      ],
+      "no-restricted-properties": [
+        "error",
+        {
+          object: "window",
+          property: "WebSocket",
+          message: "WebSocket 只在 src/net/ 里用。",
+        },
+        {
+          object: "globalThis",
+          property: "WebSocket",
+          message: "WebSocket 只在 src/net/ 里用。",
+        },
+      ],
+    },
+  },
   {
     files: [
       "assets/pipeline/**/*.mjs",

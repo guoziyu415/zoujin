@@ -1,5 +1,5 @@
 {
- "schemaVersion": "1.8",
+ "schemaVersion": "1.9",
  "worldModelVersion": "hashire-merosu@1.0.0-slice.3",
  "_authoring": "切片版。由 1.0.0-slice/make_slice.py 从 1.0.0-draft/world.src.json 生成，不要手改。出典は {\"q\": 原文の逐字引用, \"p\": 段落番号（省略可）} で書く。spikes/pipeline/build_world.py が段落を特定・検証して world.json を出力する。",
  "book": {
@@ -149,6 +149,7 @@
     ]
    ],
    "format": "{day}・{band}",
+   "daysKnownBy": "fact.promise",
    "inferred": true,
    "note": "UX ux-design 4.2 の表（S-037）。日没前 = 日没の 1 時間前から、日没 = 日没から 29 分まで（sunsetMinuteOfDay=1140 前提）。文言は UX、境目は数据が維持",
    "cite": [
@@ -476,6 +477,10 @@
     {
      "fact": "fact.selinuntius-doubted-once",
      "since": "beat.25"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "since": "beat.10"
     }
    ],
    "initialPlace": "place.syracuse-square",
@@ -1288,7 +1293,7 @@
    ],
    "goals": [
     {
-     "text": "結婚する（推定：原文に本人の言葉はない）",
+     "text": "結婚する",
      "cite": [
       {
        "q": "花婿として迎える事になっていた。"
@@ -1307,7 +1312,8 @@
     }
    ],
    "speech": {
-    "register": "原文に台詞なし。控えめで丁寧な話し方として設計（推定）。",
+    "firstPerson": "わたし",
+    "register": "控えめで丁寧な話し方（〜です、〜ます）。兄を「兄さん」と呼ぶ。口数が少なく、照れると言葉が途切れる。",
     "sampleLines": []
    },
    "knows": [
@@ -1444,7 +1450,8 @@
     }
    ],
    "speech": {
-    "register": "原文は間接話法のみ。実直で慎重な話し方として設計（推定）。",
+    "firstPerson": "わたし",
+    "register": "実直で慎重な話し方（〜です、〜ます）。メロスを「メロスさん」と呼ぶ。",
     "sampleLines": [
      {
       "q": "こちらには未だ何の仕度も出来ていない"
@@ -1471,6 +1478,10 @@
     {
      "fact": "fact.storm",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.groom-agreed",
+     "since": "beat.10"
     }
    ],
    "initialPlace": "place.groom-house",
@@ -1594,7 +1605,7 @@
     }
    ],
    "speech": {
-    "firstPerson": "（原文なし）",
+    "firstPerson": "わたくし",
     "register": "丁寧（〜でございます、〜居りました）。取り乱しやすい。",
     "sampleLines": [
      {
@@ -1726,7 +1737,7 @@
    ],
    "goals": [
     {
-     "text": "目をつけられずに生き延びる（推定）",
+     "text": "目をつけられずに生き延びる",
      "cite": [
       {
        "q": "老爺は答えなかった。"
@@ -1782,6 +1793,10 @@
     {
      "fact": "fact.city-silent",
      "since": "pre"
+    },
+    {
+     "fact": "fact.execution-crowd",
+     "since": "beat.22"
     }
    ],
    "initialPlace": "place.syracuse-square",
@@ -1873,7 +1888,7 @@
    ],
    "goals": [
     {
-     "text": "関わり合いを避ける（推定）",
+     "text": "関わり合いを避ける",
      "cite": [
       {
        "q": "若い衆は、首を振って答えなかった。"
@@ -1882,7 +1897,7 @@
     }
    ],
    "speech": {
-    "register": "原文に台詞なし（推定）。",
+    "register": "口が重く、ぶっきらぼうな話し方。",
     "sampleLines": []
    },
    "knows": [
@@ -1897,6 +1912,10 @@
     {
      "fact": "fact.city-silent",
      "since": "pre"
+    },
+    {
+     "fact": "fact.execution-crowd",
+     "since": "beat.22"
     }
    ],
    "initialPlace": "place.syracuse-square",
@@ -1909,7 +1928,7 @@
   },
   {
    "id": "char.guards",
-   "name": "警吏（巡邏・刑吏）",
+   "name": "城の警吏",
    "summary": "王城を巡邏する役人たち。王の命令で人を捕らえ、刑場で磔を執り行う。",
    "traits": [
     {
@@ -1923,7 +1942,7 @@
    ],
    "goals": [
     {
-     "text": "命令を遂行する（推定）",
+     "text": "命令を遂行する",
      "cite": [
       {
        "q": "私だ、刑吏！"
@@ -1932,7 +1951,7 @@
     }
    ],
    "speech": {
-    "register": "原文に台詞なし（推定）。",
+    "register": "役人らしく、短く命令口調の話し方。",
     "sampleLines": []
    },
    "knows": [
@@ -2069,6 +2088,10 @@
     {
      "fact": "fact.selinuntius-steadfast",
      "since": "beat.s1"
+    },
+    {
+     "fact": "fact.execution-crowd",
+     "since": "beat.22"
     }
    ],
    "initialPlace": "place.syracuse-square",
@@ -2098,7 +2121,7 @@
    ],
    "goals": [],
    "speech": {
-    "register": "原文に台詞なし（推定）。",
+    "register": "素朴で、言葉少なな話し方。",
     "sampleLines": []
    },
    "knows": [],
@@ -2234,7 +2257,7 @@
      "q": "猛勢一挙に橋を破壊し"
     }
    ],
-   "sceneRef": "scene.homeward-road"
+   "sceneRef": "scene.road-river"
   },
   {
    "id": "place.mountain-pass",
@@ -2257,7 +2280,7 @@
      "q": "ぜいぜい荒い呼吸をしながら峠をのぼり"
     }
    ],
-   "sceneRef": "scene.homeward-road"
+   "sceneRef": "scene.road-pass"
   },
   {
    "id": "place.spring",
@@ -2283,7 +2306,7 @@
      "q": "岩の裂目から滾々と、何か小さく囁きながら清水が湧き出ているのである。"
     }
    ],
-   "sceneRef": "scene.homeward-road"
+   "sceneRef": "scene.road-spring"
   },
   {
    "id": "place.road-to-city",
@@ -2306,7 +2329,7 @@
      "q": "はるか向うに小さく、シラクスの市の塔楼が見える。"
     }
    ],
-   "sceneRef": "scene.homeward-road"
+   "sceneRef": "scene.road-field"
   },
   {
    "id": "place.syracuse-square",
@@ -2539,7 +2562,7 @@
   },
   {
    "id": "fact.six-killed-today",
-   "statement": "この日（Day 0）、六人が殺された。",
+   "statement": "王の命令で、一日のうちに六人が殺された。",
    "trueFrom": "pre",
    "visibility": "private",
    "cite": [
@@ -2675,6 +2698,24 @@
    ]
   },
   {
+   "id": "fact.groom-agreed",
+   "statement": "花婿は夜明けに、婚礼をその日の真昼に挙げることを承知した。",
+   "trueFrom": "beat.10",
+   "visibility": "public",
+   "cite": [
+    {
+     "q": "やっと、どうにか婿をなだめ、すかして、説き伏せた。"
+    },
+    {
+     "q": "結婚式は、真昼に行われた。"
+    }
+   ],
+   "spoilerTerms": [
+    "婚礼を真昼に",
+    "式を真昼に"
+   ]
+  },
+  {
    "id": "fact.groom-wanted-wait",
    "statement": "花婿は仕度ができていないので葡萄の季節まで待ちたかった。",
    "trueFrom": "pre",
@@ -2775,7 +2816,7 @@
   },
   {
    "id": "fact.melos-suspects-king",
-   "statement": "メロスは山賊を王の差し金だと考えた（原文では真偽不明。語り手は断定しない）。",
+   "statement": "メロスは山賊を王の差し金だと考えた。",
    "trueFrom": "beat.19",
    "visibility": "private",
    "cite": [
@@ -2818,6 +2859,24 @@
    ],
    "spoilerTerms": [
     "磔にかかっている"
+   ]
+  },
+  {
+   "id": "fact.execution-crowd",
+   "statement": "日没に、市の石工が刑場で磔にされることになっていて、広場の一角の刑場に人が集まりはじめている。",
+   "trueFrom": "beat.22",
+   "visibility": "public",
+   "cite": [
+    {
+     "q": "すでに磔の柱が高々と立てられ、縄を打たれたセリヌンティウスは、徐々に釣り上げられてゆく。"
+    },
+    {
+     "q": "大声で刑場の群衆にむかって叫んだ"
+    }
+   ],
+   "spoilerTerms": [
+    "刑場に人が集ま",
+    "磔にされることになって"
    ]
   },
   {
@@ -4038,7 +4097,7 @@
    "id": "beat.s2",
    "order": 20.5,
    "title": "ちらと友を疑う",
-   "summary": "三日目の午後、日が傾いてもメロスは戻らない。城で縄を打たれたセリヌンティウスは、生れてはじめて、ちらと友を疑う（時刻は推定。原作では刑場で本人が打ち明けるだけ）。",
+   "summary": "三日目の午後、日が傾いてもメロスは戻らない。城で縄を打たれたセリヌンティウスは、生れてはじめて、ちらと友を疑う。",
    "window": {
     "earliest": 5160,
     "latest": 5390,
@@ -4922,11 +4981,32 @@
    "note": "家、婚礼の祭壇、羊小屋、花婿の家。"
   },
   {
-   "id": "scene.homeward-road",
-   "name": "帰り道",
+   "id": "scene.road-river",
+   "name": "帰り道・川と橋",
    "release": 1,
    "inferred": true,
-   "note": "川と橋、峠、泉、市へ続く道を一つの場面にまとめる。第二幕（夜）は橋が残り、第四幕は流されている。"
+   "note": "第二幕（夜明け）は橋が残り、第四幕は流されている（var.bridge）。前端は状態で二つの包を使い分ける（S-081 ④）。帰り道は停留点ごとに一つの場面：場面の間は adjacent の歩行分で移る（S-081 ②）"
+  },
+  {
+   "id": "scene.road-pass",
+   "name": "帰り道・峠",
+   "release": 1,
+   "inferred": true,
+   "note": "第四幕の停留点。第二幕は夜道の一部として通る（S-081）"
+  },
+  {
+   "id": "scene.road-spring",
+   "name": "帰り道・泉",
+   "release": 1,
+   "inferred": true,
+   "note": "第四幕の停留点、第二幕の夜道の起点（S-081）"
+  },
+  {
+   "id": "scene.road-field",
+   "name": "帰り道・市へ続く野の道",
+   "release": 1,
+   "inferred": true,
+   "note": "停留点ではなく、二人で走る区間（S-081 ②）"
   }
  ],
  "acts": [
@@ -5060,7 +5140,10 @@
     "atLatest": 2280
    },
    "scenes": [
-    "scene.homeward-road",
+    "scene.road-spring",
+    "scene.road-pass",
+    "scene.road-river",
+    "scene.road-field",
     "scene.syracuse-square",
     "scene.castle-throne"
    ],
