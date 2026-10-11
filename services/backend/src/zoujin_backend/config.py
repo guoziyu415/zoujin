@@ -59,6 +59,8 @@ TEXT: dict[str, TextSpec] = {
     # 后果一句 2 秒（UX 评审：前端等它回来才让按〔忘れてもらう〕），超时回 null、不缓存）
     "memory": TextSpec("claude", "haiku-5.5", 5.0, 256, thinking="disabled"),
     "keeps": TextSpec("claude", "haiku-5.5", 2.0, 128, thinking="disabled"),
+    # B-16：世界推进（幕切换、关键时刻之后、每幕中段）。和幕末打算同档；玩家不等它（幕切换那次除外），时限放宽
+    "world": TextSpec("claude", "sonnet-5.5", 20.0, 4096, thinking="adaptive", effort="low"),
 }
 TEXT_MODELS: dict[str, str] = {k: v.model for k, v in TEXT.items()}
 DEADLINES: dict[str, float] = {k: v.deadline for k, v in TEXT.items()}

@@ -299,6 +299,38 @@ KEEPS = Prompt(
     },
 )
 
+# B-16：世界推进（backend-design 2.6）：不在场人物的打算、约定的结算、导演事件。规则和导演规则由
+# `narrator/advance.py` 判，这里只管形状
+WORLD = Prompt(
+    "world",
+    text("world"),
+    {
+        "type": "object",
+        "properties": {
+            "events": {
+                "type": "array",
+                "maxItems": 6,
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "t": {"type": "integer"},
+                        "actor": {"type": "string", "minLength": 1},
+                        "origin": {"enum": ["plan", "director"]},
+                        "type": {"enum": ["action", "move", "learn", "say"]},
+                        "place": {"type": "string", "minLength": 1},
+                        "summary": {"type": "string", "minLength": 1},
+                        "causes": {"type": "array", "items": {"type": "string"}},
+                        "effects": {"type": "array", "items": EFFECT},
+                        "beneficiary": {"type": "string"},
+                    },
+                    "required": ["t", "actor", "origin", "type", "place", "summary", "causes", "effects"],
+                },
+            }
+        },
+        "required": ["events"],
+    },
+)
+
 PROMPTS: dict[str, Prompt] = {
-    p.kind: p for p in (TRIAGE, EXTRACT, CHECK, REWRITE, REPLY, NARRATE, PLAN, ENDING, SAFETY, MEMORY, KEEPS)
+    p.kind: p for p in (TRIAGE, EXTRACT, CHECK, REWRITE, REPLY, NARRATE, PLAN, ENDING, SAFETY, MEMORY, KEEPS, WORLD)
 }

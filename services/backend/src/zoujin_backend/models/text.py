@@ -209,6 +209,7 @@ DEFAULTS: dict[str, Callable[[Mapping[str, Any]], Json]] = {
     "ending": _ending,
     "memory": _memory,  # B-13：事件的摘要截短（假模型不分人物视角）
     "keeps": _keeps,
+    "world": lambda r: {"events": []},  # B-16：世界推进默认什么都不写
 }
 ERRORS = ("rate-limit", "invalid", "unavailable", "refusal")
 

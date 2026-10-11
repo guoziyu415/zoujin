@@ -57,6 +57,7 @@ TYPICAL_OUTPUT = {
     "ending": 1000,  # 三层的文字，不思考（B-9 的 Mac 探针 10-11：平均约 970）
     "memory": 30,  # B-13：一句 20 字左右加 weight
     "keeps": 25,  # B-13：后果一句 30 字以内或 null
+    "world": 800,  # B-16：几件事件，加思考
 }
 NEEDED_ENV = ("ANTHROPIC_API_KEY", "ZJ_CLAUDE_HAIKU", "ZJ_CLAUDE_SONNET", "ZJ_LEDGER")
 ROWS, SUMMARY = "probe.jsonl", "summary.json"

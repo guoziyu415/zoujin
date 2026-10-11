@@ -202,6 +202,7 @@ class Moved:
     t: int
     skipped: list[Json] = field(default_factory=list)
     arrival: Json | None = None
+    world: list[Json] = field(default_factory=list)  # B-16：第 3 步里世界推进写的事件（也在 skipped 里）
 
 
 def catch_up(w: Writer) -> None:
@@ -266,11 +267,22 @@ def player_transition(
     )
 
 
-def jump(w: Writer, landing: Landing, t: int, turn_id: str) -> Moved:
+def jump(
+    w: Writer,
+    landing: Landing,
+    t: int,
+    turn_id: str,
+    world: Sequence[Any] = (),
+    log_: Sequence[Mapping[str, Any]] = (),
+) -> Moved:
     """第 3、4 步：玩家不在场地结算到目标时刻（不 learn 节拍的 public 事实，不演固定演出），再写系统的
-    act-transition（换幕、换地点）。"""
+    act-transition（换幕、换地点）。world：世界推进过了检查的候选（B-16，`advance.Item`），和到点的节拍按时刻合并，
+    写之前再判一次；log_ 是这一局到这次提交之前的事件（causes 只留里面有的）。"""
+    from zoujin_backend.narrator import advance
+
     from_act = w.book.act_of(w.state["vars"])
     before = len(w.events)
+    written = advance.write(w, world, until=t, away=True, log_=[*log_, *w.events]) if world else []
     w.settle(t, guard=False, present=False)
     skipped = list(w.events[before:])
     w.add(
@@ -297,7 +309,7 @@ def jump(w: Writer, landing: Landing, t: int, turn_id: str) -> Moved:
     run.plan_alternative = None
     arrival = dict(landing.arrival) if landing.arrival else None
     run.arrival = {"actId": landing.to_act, **arrival} if arrival and arrival.get("opener") else None
-    return Moved(from_act, landing.to_act, t, skipped, arrival)
+    return Moved(from_act, landing.to_act, t, skipped, arrival, written)
 
 
 # —— 「その頃」 ——

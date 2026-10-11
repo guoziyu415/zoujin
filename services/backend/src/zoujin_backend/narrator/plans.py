@@ -32,6 +32,7 @@ if TYPE_CHECKING:
 log = logging.getLogger("zoujin.narrator")
 
 Json = Any
+World = tuple[list[Any], list[Json]]  # B-16：世界推进过了检查的候选（advance.Item）和读到的事件日志
 
 LABEL_MAX = 30
 LINE_MAX = 60
@@ -127,16 +128,40 @@ async def talked(n: Narrator, pid: str) -> list[str]:
 
 async def seen(n: Narrator, book: Book, pid: str, role_id: str) -> set[str]:
     """「その頃」要的玩家见过的人物（读这一局的全部事件和对话过的人物）。"""
+    return (await seen_and_log(n, book, pid, role_id))[0]
+
+
+async def seen_and_log(n: Narrator, book: Book, pid: str, role_id: str) -> tuple[set[str], list[Json]]:
+    """玩家见过的人物，和这一局的事件日志（世界推进也要，B-16）。"""
     from zoujin_backend.db import store
     from zoujin_backend.narrator.acts import seen_characters
 
     async with n.engine.connect() as c:
         log_ = await store.event_log(c, pid, book.version)
     start = initial_state(book.world, role_id)["vars"]["var.player.location"]
-    return seen_characters(book, start, log_, await talked(n, pid))
+    return seen_characters(book, start, log_, await talked(n, pid)), log_
+
+
+async def world_ahead(
+    n: Narrator,
+    book: Book,
+    state: SimState,
+    log_: list[Json],
+    to_act: str,
+    t: int,
+    spend: Spend,
+    span: Mapping[str, Any],
+) -> World:
+    """B-16：幕切换的世界推进，此刻到目标时刻（事务外调模型，事务里和节拍合并着写）。"""
+    from zoujin_backend.narrator import advance
+
+    window = advance.Window("act", int(state["t"]), max(int(state["t"]), t), to_act)
+    prepared = await advance.prepare(n, book, state, log_, window, spend, span)
+    return (prepared.items, log_)
 
 
 async def run_choose(n: Narrator, task: Task) -> Result:
+    from zoujin_backend.narrator.acts import current_act, target_t
     from zoujin_backend.narrator.core import MAX_STALE, Stale
 
     req = dict(task.request or {})
@@ -149,7 +174,7 @@ async def run_choose(n: Narrator, task: Task) -> Result:
             return await n._commit(task, pt["last_seq"], lambda w, b: invalid(INVALID_CHOICE, "invalid_choice"))
         spend = task.spend  # 跟着任务走：重来的、没提交的也算（B-8 第 7 条）
         span = {"playthrough_id": task.pid, "turn_id": task.turn_id, "world_model_version": book.version}
-        who = await seen(n, book, task.pid, pt["role_id"])
+        who, log_ = await seen_and_log(n, book, task.pid, pt["role_id"])
         if got[0] == "plan":
             alt = got[1]
             accepted = await verify_plan(n, book, state, alt.get("effects", []), "", spend, span)
@@ -157,9 +182,13 @@ async def run_choose(n: Narrator, task: Task) -> Result:
                 return await n._commit(task, pt["last_seq"], lambda w, b: invalid(INVALID_CHOICE, "invalid_choice"))
             label = str(alt["label"])
             plan = (label, [c for c in alt.get("with", []) if c in book.characters], accepted)
+            p = current_act(book, state)["plan"]
+            world = await world_ahead(
+                n, book, state, log_, p["toAct"], target_t(book, state, int(p["t"]), None), spend, span
+            )
 
-            def go_plan(w: Writer, b: Book, who: set[str] = who, plan: Any = plan) -> Planned:
-                return transition(n, w, b, task, req, who, plan=plan)
+            def go_plan(w: Writer, b: Book, who: set[str] = who, plan: Any = plan, world: World = world) -> Planned:
+                return transition(n, w, b, task, req, who, plan=plan, world=world)
 
             write: Callable[[Writer, Book], Planned] = go_plan
         else:
@@ -169,11 +198,18 @@ async def run_choose(n: Narrator, task: Task) -> Result:
             if cand is not None:
                 turn = TurnInput(character=None, player=None, act={"kind": "en-route", "exit": ex["id"]})
                 checked = await n.pipeline.check_only(book, state, cand, turn, "scoped", spend, span)
+            t = target_t(book, state, int(ex["t"]), ex.get("alignTo"))
+            world = await world_ahead(n, book, state, log_, ex["toAct"], t, spend, span)
 
             def go_exit(
-                w: Writer, b: Book, who: set[str] = who, ex: Json = ex, checked: Checked | None = checked
+                w: Writer,
+                b: Book,
+                who: set[str] = who,
+                ex: Json = ex,
+                checked: Checked | None = checked,
+                world: World = world,
             ) -> Planned:
-                return transition(n, w, b, task, req, who, ex=ex, step1=checked)
+                return transition(n, w, b, task, req, who, ex=ex, step1=checked, world=world)
 
             write = go_exit
         try:
@@ -201,8 +237,10 @@ def transition(
     step1: Checked | None = None,
     plan: tuple[str, list[str], Checked | None] | None = None,
     head: Sequence[Json] = (),
+    world: World | None = None,
 ) -> Planned:
-    """幕切换（契约 2.8.1）：给定去处（ex）或成行的打算（plan = (label, with, 打算自己的效果的判定)）。"""
+    """幕切换（契约 2.8.1）：给定去处（ex）或成行的打算（plan = (label, with, 打算自己的效果的判定)）。
+    world：世界推进过了检查的候选和读到的事件日志（B-16），第 3 步和节拍合并着写。"""
     from zoujin_backend.narrator import acts
     from zoujin_backend.narrator.core import Planned
 
@@ -238,7 +276,8 @@ def transition(
             check=checked.check if checked else acts.PASSED_EXIT,
             plan=doc,
         )
-    moved = acts.jump(w, landing, t, task.turn_id)
+    items, log_ = world if world is not None else ([], [])
+    moved = acts.jump(w, landing, t, task.turn_id, items, log_)
     items = acts.recap(book, w.state["role"], moved.skipped, who, acts.player_promises(w.state))
     msg: Json = {
         "type": "act_transition",
@@ -250,7 +289,15 @@ def transition(
     if moved.arrival:
         msg["arrival"] = moved.arrival
     info: Json = {"toAct": moved.to_act, "t": t}
-    return Planned(push=[*head, msg], info=info, extra={"playerSpot": landing.spot}, snapshot=True)
+    plans_n = sum(1 for e in moved.world if e.get("origin") == "plan")
+    return Planned(
+        push=[*head, msg],
+        info=info,
+        extra={"playerSpot": landing.spot},
+        snapshot=True,
+        world_events=plans_n,
+        director_events=len(moved.world) - plans_n,
+    )
 
 
 # —— 说出打算 ——
@@ -364,11 +411,15 @@ async def run_plan(n: Narrator, task: Task, said: str | None) -> Result:
                 "narration": [f"あなたは、{label}ことにした。"],
                 "triesLeft": max(0, 2 - run.plan_tries),
             }
-            who = await seen(n, book, task.pid, pt["role_id"])
+            who, log_ = await seen_and_log(n, book, task.pid, pt["role_id"])
             plan = (label, with_, checked if checked and checked.effects else None)
+            land = request["landing"]
+            world = await world_ahead(n, book, state, log_, land["toAct"], int(land["t"]), spend, span)
 
-            def go_plan(w: Writer, b: Book, who: set[str] = who, plan: Any = plan, head: Json = head) -> Planned:
-                p = transition(n, w, b, task, req, who, plan=plan, head=[head])
+            def go_plan(
+                w: Writer, b: Book, who: set[str] = who, plan: Any = plan, head: Json = head, world: World = world
+            ) -> Planned:
+                p = transition(n, w, b, task, req, who, plan=plan, head=[head], world=world)
                 p.info |= {"accepted": True, "triesLeft": head["triesLeft"], "narration": head["narration"]}
                 p.plans_accepted = 1
                 return p
