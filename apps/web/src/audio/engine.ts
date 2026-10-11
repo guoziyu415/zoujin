@@ -41,6 +41,9 @@ export interface AudioPort {
   preload(clips: Clip[]): void;
   // false when it isn't loaded (yet); with hold, that turn's live voice waits for the clip, at most maxMs
   playClip(clip: Clip, hold?: { tag: number; maxMs: number }): boolean;
+  // the ending's staging paused (background, a full page): the clip stops where it is and goes on from there
+  pauseClip(): void;
+  resumeClip(): void;
   lastFlushMs: number | null; // press → silence of the last flush that cut the voice (the 50 ms budget)
 }
 
@@ -77,6 +80,8 @@ export class AudioEngine implements AudioPort {
   private isPlaying = false;
   private clips = new Map<string, AudioBuffer | null>();
   private clipNode: AudioBufferSourceNode | null = null;
+  private clipAt = { buf: null as AudioBuffer | null, start: 0, offset: 0 }; // where the clip is (context time)
+  private clipPaused = false;
   private held: Float32Array[] = []; // live voice waiting behind a prerecorded aizuchi
   private holdTag = -1;
   private holdTimer: ReturnType<typeof setTimeout> | undefined;
@@ -362,15 +367,7 @@ export class AudioEngine implements AudioPort {
     const buf = this.clips.get(clip.url);
     if (!ctx || !buf || !this.bus) return false;
     this.stopClip();
-    const node = ctx.createBufferSource();
-    node.buffer = buf;
-    node.connect(this.bus);
-    node.onended = () => {
-      if (this.clipNode === node) this.clipNode = null;
-      this.release(true);
-    };
-    node.start();
-    this.clipNode = node;
+    this.startClip(ctx, buf, 0);
     if (hold) {
       this.holdTag = hold.tag;
       clearTimeout(this.holdTimer);
@@ -382,7 +379,39 @@ export class AudioEngine implements AudioPort {
     return true;
   }
 
+  private startClip(ctx: AudioContext, buf: AudioBuffer, offset: number): void {
+    const node = ctx.createBufferSource();
+    node.buffer = buf;
+    node.connect(this.bus!);
+    node.onended = () => {
+      if (this.clipNode === node) this.clipNode = null;
+      this.release(true);
+    };
+    node.start(0, offset);
+    this.clipNode = node;
+    this.clipAt = { buf, start: ctx.currentTime, offset };
+  }
+
+  pauseClip(): void {
+    const ctx = this.ctx;
+    if (!ctx || !this.clipNode || this.clipPaused) return;
+    const { start, offset } = this.clipAt;
+    this.clipAt = { ...this.clipAt, offset: offset + ctx.currentTime - start };
+    this.stopClip();
+    this.clipPaused = true;
+  }
+
+  resumeClip(): void {
+    const ctx = this.ctx;
+    const { buf, offset } = this.clipAt;
+    if (!this.clipPaused) return;
+    this.clipPaused = false;
+    if (!ctx || !buf || !this.bus || offset >= buf.duration) return;
+    this.startClip(ctx, buf, offset);
+  }
+
   private stopClip(): void {
+    this.clipPaused = false; // stopped for good (a flush, a fade, the next clip): nothing to go on with
     const n = this.clipNode;
     this.clipNode = null;
     if (!n) return;
