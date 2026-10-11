@@ -70,11 +70,11 @@ def test_slice_has_19_recordings_and_8_set_piece_keys() -> None:
 
 
 def test_lines_match_ux_design_16_2() -> None:
-    # 相槌两句按 UX 量测改了字（ux/reviews/prerecorded-listen.md）：メロス「……なるほど。」→「そうか。」，
+    # 相槌两句按 UX 量测改了字（ux/reviews/prerecorded-listen.md）：メロス「……なるほど。」→「そうか。」→「おう。」，
     # 老爺「ああ、ああ。」→「ああ。」
     p = slice_plan()
     assert p.lines["char.melos"] == {
-        "aizuchi": ["うむ。", "ああ。", "そうか。"],
+        "aizuchi": ["うむ。", "ああ。", "おう。"],
         "unheard": ["すまない、風の音で聞こえなかった。", "……もう一度、頼む。"],
         "wait": ["待ってくれ。少し、考えさせてくれ。"],
     }
@@ -106,9 +106,11 @@ def test_speaker_scenes_direct_one_slot_of_one_speaker() -> None:
     scene = "\n場面：相づち。聞いているしるしに、短く一度だけ。間を置かず、語尾を上げず、ささやかずに。"
     assert all(p.recording(rid).system.endswith(scene) for rid in redo)
     calm = "\n場面：落ち着いて、ふだん話すときと同じ高さと速さで。"
-    assert all(p.recording(rid).system.endswith(calm) for rid in ["melos-wait-1", "melos-unheard-2"])
+    assert p.recording("melos-wait-1").system.endswith(calm)
     usual = "\n場面：ふだん話すときと同じ高さと速さで。"
-    assert all(p.recording(rid).system.endswith(usual) for rid in ["old-man-unheard-1", "old-man-unheard-2"])
+    assert all(
+        p.recording(rid).system.endswith(usual) for rid in ["old-man-unheard-1", "old-man-unheard-2", "melos-unheard-2"]
+    )
     for rid in ["melos-aizuchi-1", "melos-unheard-1", "old-man-wait-1"]:
         assert "場面：" not in p.recording(rid).system
     # 改了演法的句子签名变了：--resume 只重读这几句
@@ -409,7 +411,7 @@ def test_rate_limit_stops_and_resume_continues_from_there(tmp_path: Path) -> Non
         {},
     )
     assert code == 0
-    assert again.reads["そうか。"] == 6  # 第 3 条从第 1 遍读起（相槌读 6 遍）
+    assert again.reads["おう。"] == 6  # 第 3 条从第 1 遍读起（相槌读 6 遍）
     assert again.reads["うむ。"] == 5  # 第 1 条已经读过第 1 遍
     assert (run / "release" / "voices.json").is_file()
 
