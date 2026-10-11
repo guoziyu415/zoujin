@@ -123,35 +123,6 @@ type BandItem = Annotated[int, Field(ge=0)]
 type Band = Annotated[list[BandItem | str], Field(max_length=2, min_length=2)]
 
 
-class ClockLabels(BaseModel):
-    """
-    tLabel 的生成规则
-    """
-
-    model_config = ConfigDict(
-        extra="forbid",
-        validate_by_name=True,
-    )
-    days: list[str]
-    """
-    下标 = Day（S-037）
-    """
-    bands: list[Band]
-    """
-    一天内的时段起点（分钟）和叫法，如 [1140,"日没"]；从 0 开始严格递增
-    """
-    format: str
-    """
-    （1.1）模板，含 {day} 和 {band}
-    """
-    inferred: Literal[True] = True
-    note: str | None = None
-    cite: list[Cite] | None = None
-    """
-    （1.1）时段叫法的原文依据
-    """
-
-
 type EdgeId = Annotated[str, Field(pattern="^edge\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="EdgeId")]
 """
 因果边：`edge.` 加小写 slug（可以有 `.` 和 `-`）
@@ -370,11 +341,11 @@ type SceneId = Annotated[str, Field(pattern="^scene\\.[a-z0-9]+(?:[.-][a-z0-9]+)
 
 
 type SchemaVersion = Annotated[
-    Literal["1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8"],
+    Literal["1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8", "1.9", "1.10"],
     Field(title="SchemaVersion"),
 ]
 """
-写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival / sub、Affordance.playerSpot（C-18）、Act.plan（C-19）、WorldModel.setPieces（S-080 ④）、WorldModel.objects。1.8：Affordance.pastLabel，事件 summary 里玩家一律写身份名
+写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival / sub、Affordance.playerSpot（C-18）、Act.plan（C-19）、WorldModel.setPieces（S-080 ④）、WorldModel.objects。1.8：Affordance.pastLabel，事件 summary 里玩家一律写身份名。1.9：Clock.labels.daysKnownBy。1.10：Role.summary、WorldModel.ruby，Character.reading 每个人物都填
 """
 
 
@@ -551,6 +522,21 @@ class WorldModelGlobalRulesItem(BaseModel):
 
 
 PacingAdditionalProperty = TypeAliasType("PacingAdditionalProperty", Annotated[int, Field(ge=0)])
+
+
+class WorldModelRubyItem(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    word: Annotated[str, Field(min_length=1)]
+    """
+    字幕里的写法，前端按最长匹配找
+    """
+    reading: Annotated[str, Field(min_length=1)]
+    """
+    word 整个词的读音，平假名
+    """
 
 
 class WorldObject(BaseModel):
@@ -802,6 +788,39 @@ class ClockDeadline(BaseModel):
     ] = None
     """
     （1.5，S-066 ①）本局第一次到下限时说一次的话
+    """
+
+
+class ClockLabels(BaseModel):
+    """
+    tLabel 的生成规则
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    days: list[str]
+    """
+    下标 = Day（S-037）
+    """
+    bands: list[Band]
+    """
+    一天内的时段起点（分钟）和叫法，如 [1140,"日没"]；从 0 开始严格递增
+    """
+    format: str
+    """
+    （1.1）模板，含 {day} 和 {band}
+    """
+    daysKnownBy: FactId | None = None
+    """
+    （1.9）日名（days）带着情节时，要知道哪条事实才说日名。不知道这条事实的人物，给他的时间只写时段（band），如「夜」；界面、tLabel、記憶帳、地の文照旧用完整说法（S-086）。不写 = 谁都给完整说法
+    """
+    inferred: Literal[True] = True
+    note: str | None = None
+    cite: list[Cite] | None = None
+    """
+    （1.1）时段叫法的原文依据
     """
 
 
@@ -1511,6 +1530,10 @@ class Role(BaseModel):
     )
     id: RoleId
     name: str
+    summary: Annotated[str, Field(min_length=1)]
+    """
+    （1.10）身份页和 manifest 上给玩家看的一句（日语），文字 UX 定。note 是写给编写者的，不给玩家看
+    """
     release: Annotated[int, Field(ge=1)]
     """
     第几版开放
@@ -2254,6 +2277,9 @@ class Character(BaseModel):
     id: CharacterId
     name: str
     reading: str | None = None
+    """
+    名字的读法：片假名照抄，汉字写成平假名，例「おうディオニス」。（1.10）manifest 要每个人物都有，build_world 查每个人物都填了、不带汉字
+    """
     summary: str
     """
     一两句，中性描述
@@ -2619,6 +2645,10 @@ class WorldModel(BaseModel):
     objects: list[WorldObject] | None = None
     """
     （1.7）场景里可「調べる」的东西，见 2.12
+    """
+    ruby: list[WorldModelRubyItem] | None = None
+    """
+    （1.10）注音词表：字幕里专有名词和难读词的读音（frontend-design 7.5、UX 13），manifest 原样下发。不写 = 没有
     """
 
 

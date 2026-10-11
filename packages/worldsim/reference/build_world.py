@@ -15,7 +15,7 @@
 4. 知情范围：角色「从 X 起知道 F」时，F 必须在 X 之前（或同时）已经成立。
 5. 因果图无环；from 的 canonical 不晚于 to。
 6. 设计层：场景（sceneRef）、幕（acts，开始/收幕/幕末去处）、身份（release、startAct、conditionalAccess）、世界结局（endings）、
-   时刻标签（clock.labels）、人物的互助 / 约定 / 打算（S-029、S-030、S-048）、情境动作和物品（affordances / items，
+   时刻标签（clock.labels）、（1.10）身份的 summary、每个人物的 reading、注音词表（ruby）、人物的互助 / 约定 / 打算（S-029、S-030、S-048）、情境动作和物品（affordances / items，
    contracts 2.10；第四幕让他慢和帮他快并排，S-036 ②）、节拍上的人物状态（activities）、台词和动机的生效时间（since / until / when）、
    （1.4）设计台词、互助的效果、节拍的变体、过场二选一（enRoute）都成立；（1.7）位置点（relocate 和去处的 spot）在这个地点所在场景的
    布局里、属于这个地点（assets/scenes/<场景>/scene.json），去处落地的 arrival，成群的人物（group）不能对话；打算成行的落点
@@ -37,7 +37,7 @@ from pathlib import Path
 
 from zoujin_worldsim import Sim  # 共用的推演规则（W-1 的包，contracts 2.4.1 / 2.5.1）
 
-CONTRACT_VERSION = "1.8"  # contracts.md 的版本
+CONTRACT_VERSION = "1.10"  # contracts.md 的版本
 errors, warnings = [], []
 
 
@@ -578,6 +578,32 @@ def main():
         err("clock.labels.bands 要从 0 开始、严格递增、小于 1440")
     if "{day}" not in lab.get("format", "") or "{band}" not in lab.get("format", ""):
         err("clock.labels.format 要含 {day} 和 {band}")
+    if "daysKnownBy" in lab and lab["daysKnownBy"] not in facts:
+        err(f"clock.labels.daysKnownBy 不是世界模型里的事实：{lab['daysKnownBy']}")
+
+    # ---------- 给玩家看的名字：身份的一句、人物读音、注音词表（1.10，B-7 的 manifest） ----------
+    kanji = re.compile(r"[\u3400-\u9fff々〆ヶ]")
+    for r in world["roles"]:
+        if not r.get("summary"):
+            err(f"{r['id']}: 要有 summary（身份页和 manifest 上给玩家看的一句）")
+    for c in world["characters"]:
+        if not c.get("reading"):
+            err(f"{c['id']}: 要有 reading（manifest 里每个人物都带读音）")
+        elif kanji.search(c["reading"]):
+            err(f"{c['id']}: reading 不能带汉字：{c['reading']}")
+    body = "\n".join(paras) + json.dumps({k: v for k, v in world.items() if k != "ruby"}, ensure_ascii=False)
+    seen = set()
+    for x in world.get("ruby", []):
+        word, rd = x["word"], x["reading"]
+        if word in seen:
+            err(f"ruby: 词重复了：{word}")
+        seen.add(word)
+        if not kanji.search(word):
+            err(f"ruby: {word} 没有汉字，不用注音")
+        if not re.fullmatch(r"[ぁ-ゖー]+", rd):
+            err(f"ruby: {word} 的读音要全是平假名：{rd}")
+        if word not in body:
+            err(f"ruby: {word} 在原文和世界模型里都没有出现（写错了？）")
 
     # ---------- 情境动作和物品（contracts 2.10；S-036 ②、S-038、UX 5.1） ----------
     UX_ACTIONS = {"examine", "give", "follow", "block", "help", "wait", "go", "shortcut", "run-together", "hasten"}
@@ -717,6 +743,12 @@ def main():
     for rid, paths in later.items():
         warn(f"{rid}: 第二版的身份名「{role_names[rid][0]}」在世界模型里还指别的（{len(paths)} 处，例 {paths[0]}），"
              f"开放第二版前给这个身份另起名（contracts 2.7）")
+
+    # 名字原样给玩家看（事件句、manifest），不带写世界模型时的括号注释（1.8 补注：「警吏（巡邏・刑吏）」→「城の警吏」）
+    for sec in ("characters", "places", "roles", "items", "objects"):
+        for x in world.get(sec, []):
+            if re.search(r"[（）()［］\[\]【】「」『』]", x.get("name", "")):
+                err(f"{x['id']}: 名字「{x['name']}」带括号。名字原样进事件句和 manifest，注释写进 note（contracts 2.7）")
 
     # ---------- 可调查物（contracts 2.12，1.7） ----------
     objects = {x["id"]: x for x in world.get("objects", [])}

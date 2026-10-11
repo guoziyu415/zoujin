@@ -232,6 +232,27 @@
             "$ref": "#/$defs/WorldObject"
           },
           "description": "（1.7）场景里可「調べる」的东西，见 2.12"
+        },
+        "ruby": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "word": {
+                "type": "string",
+                "minLength": 1,
+                "description": "字幕里的写法，前端按最长匹配找"
+              },
+              "reading": {
+                "type": "string",
+                "minLength": 1,
+                "description": "word 整个词的读音，平假名"
+              }
+            },
+            "required": ["word", "reading"],
+            "additionalProperties": false
+          },
+          "description": "（1.10）注音词表：字幕里专有名词和难读词的读音（frontend-design 7.5、UX 13），manifest 原样下发。不写 = 没有"
         }
       },
       "required": [
@@ -266,7 +287,8 @@
           "type": "string"
         },
         "reading": {
-          "type": "string"
+          "type": "string",
+          "description": "名字的读法：片假名照抄，汉字写成平假名，例「おうディオニス」。（1.10）manifest 要每个人物都有，build_world 查每个人物都填了、不带汉字"
         },
         "summary": {
           "type": "string",
@@ -1182,6 +1204,10 @@
               "type": "string",
               "description": "（1.1）模板，含 {day} 和 {band}"
             },
+            "daysKnownBy": {
+              "$ref": "common.schema.json#/$defs/FactId",
+              "description": "（1.9）日名（days）带着情节时，要知道哪条事实才说日名。不知道这条事实的人物，给他的时间只写时段（band），如「夜」；界面、tLabel、記憶帳、地の文照旧用完整说法（S-086）。不写 = 谁都给完整说法"
+            },
             "inferred": {
               "const": true
             },
@@ -1305,6 +1331,11 @@
         "name": {
           "type": "string"
         },
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "description": "（1.10）身份页和 manifest 上给玩家看的一句（日语），文字 UX 定。note 是写给编写者的，不给玩家看"
+        },
         "release": {
           "type": "integer",
           "minimum": 1,
@@ -1380,6 +1411,7 @@
       "required": [
         "id",
         "name",
+        "summary",
         "release",
         "startAct",
         "startPlace",
