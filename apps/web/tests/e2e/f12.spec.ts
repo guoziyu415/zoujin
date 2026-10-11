@@ -1,8 +1,8 @@
 // F-12 against B-1's mock: the act end (exits, a plan that doesn't go, the alternative), その頃, the slice's jump
 // page and the landing (act_landed when someone speaks first); then the memory book, the map and the ending.
-// Screenshots for UX go to test-results/f12/.
+// Screenshots for UX go to test-results/f12/. The plaza under the play screen is left out, as in f0 and f1.
 import { expect, test, type Page } from "@playwright/test";
-import { mock, resetMock, startStory } from "./shell";
+import { mock, resetMock, startStory, without3d } from "./shell";
 
 const problems: string[] = [];
 
@@ -19,6 +19,7 @@ test.beforeEach(async ({ page, context }) => {
       problems.push(`console: ${m.text()}`);
   });
   await context.clearCookies();
+  await without3d(context); // the screens over the world; the 3D under them is world.spec's and gate.spec's
   await resetMock(page);
 });
 

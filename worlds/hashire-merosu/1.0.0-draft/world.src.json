@@ -1,5 +1,5 @@
 {
- "schemaVersion": "1.11",
+ "schemaVersion": "1.12",
  "worldModelVersion": "hashire-merosu@1.0.0-draft.3",
  "_authoring": "出典は {\"q\": 原文の逐字引用, \"p\": 段落番号（省略可）} で書く。spikes/pipeline/build_world.py が段落を特定・検証して world.json を出力する。",
  "book": {
@@ -4719,6 +4719,16 @@
      "character": "char.king",
      "place": "place.execution-ground",
      "spot": "king-west"
+    },
+    {
+     "op": "relocate",
+     "character": "char.crowd",
+     "place": "place.execution-ground"
+    },
+    {
+     "op": "relocate",
+     "character": "char.guards",
+     "place": "place.execution-ground"
     }
    ],
    "activities": [
@@ -5808,6 +5818,7 @@
      "label": "雨の中、メロスと走り出る",
      "toAct": "act.4",
      "place": "place.river",
+     "spot": "road-west",
      "t": 5000,
      "alignTo": "beat.18",
      "requires": [

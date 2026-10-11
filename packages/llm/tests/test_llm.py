@@ -130,6 +130,8 @@ def test_timed_records_time_and_status(tmp_path: Path) -> None:
 
     with pytest.raises(TimeoutError):
         asyncio.run(cut())
+    with pytest.raises(TimeoutError), ledger.timed(kind="judge", model="opus-5.5", estimate=0.05):
+        raise TimeoutError  # 同步客户端自己的超时（数据评审 #117）：也按预计记 timeout
     with pytest.raises(BudgetStop), ledger.timed(kind="judge", model="opus-5.5", estimate=5.0):
         pass  # 超上限：不发、不记
     rows = read_lines(path)
@@ -138,6 +140,7 @@ def test_timed_records_time_and_status(tmp_path: Path) -> None:
         ("bad-output", 0.03),
         ("error", 0.0),
         ("timeout", 0.07),  # 取消的按预计记
+        ("timeout", 0.05),
     ]
     assert all(isinstance(r["ms"], int) for r in rows) and rows[3]["ms"] >= 15
 

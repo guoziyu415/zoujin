@@ -36,6 +36,7 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any, NotRequired, TypedDict
 
 from .sim import BIG, OCCURRED, Effect, Override, Sim, World, change_conflict, merge_change, role_of
+from .visibility import sees
 
 SCHEDULE = "schedule"  # Event.origin：到点的节拍和期限
 SPOT = re.compile(r"[a-z0-9]+(?:[.-][a-z0-9]+)*")  # 1.7：位置点名（data common.schema.json 的 SpotId）
@@ -442,8 +443,10 @@ def _occur_draft(sim: Sim, s: SimState, b: str, t: int, player_present: bool) ->
         else:
             effects.append({"op": "beat", "beat": b, "to": "happened"})
             effects += copy.deepcopy(list(x["outcomes"]))
-    # 玩家在场：public 事实玩家也知道了（契约 2.1、2.3，1.7）
-    if player_present and s["vars"].get("var.player.location") == x["place"]:
+    # 玩家在场：public 事实玩家也知道了（契约 2.1、2.3，1.7）。在不在场按 sees()（1.12：没有参与人物的节拍同一场景就算）
+    if player_present and sees(
+        sim.world, s["vars"].get("var.player.location"), _system_event("beat", t, x["place"], effects)
+    ):
         known = s["knowledge"].get("player", [])
         effects += [
             {"op": "learn", "character": "player", "fact": f["id"]}

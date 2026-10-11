@@ -4,7 +4,9 @@
 import { useEffect, useRef, useState } from "react";
 import { frameStats } from "../PostFX";
 import { useQuality } from "../quality/quality";
-import { useWorld } from "./fakeStore";
+import { usePlayer } from "../../stores/player";
+import { useWorld } from "../../stores/world";
+import { sandbox } from "./sandbox";
 import type { LoadStage } from "../World";
 
 const hhmm = (t: number) => {
@@ -13,10 +15,10 @@ const hhmm = (t: number) => {
 };
 
 export function DevPanel({ stage }: { stage: LoadStage }) {
-  const t = useWorld((s) => s.clock.t);
-  const place = useWorld((s) => s.player.place);
+  const t = useWorld((s) => s.world?.clock.t ?? 0);
+  const place = usePlayer((s) => s.place) ?? "";
   const workshopOpen = useWorld(
-    (s) => s.places["place.stonemason-workshop"]?.enabled ?? true,
+    (s) => s.world?.places["place.stonemason-workshop"]?.enabled ?? true,
   );
   const q = useQuality();
   const [hud, setHud] = useState("");
@@ -54,7 +56,7 @@ export function DevPanel({ stage }: { stage: LoadStage }) {
     const t0 = performance.now();
     const step = () => {
       const f = Math.min(1, (performance.now() - t0) / 40000);
-      useWorld.getState().setClock(1080 + 70 * f);
+      sandbox.setClock(1080 + 70 * f);
       anim.current = f < 1 ? requestAnimationFrame(step) : 0;
     };
     step();
@@ -87,15 +89,13 @@ export function DevPanel({ stage }: { stage: LoadStage }) {
         max={1230}
         step={5}
         value={t % 1440}
-        onChange={(e) => useWorld.getState().setClock(Number(e.target.value))}
+        onChange={(e) => sandbox.setClock(Number(e.target.value))}
         style={{ width: "100%" }}
       />
       <button onClick={sunset}>18:00 → 19:10</button>{" "}
       <button
         onClick={() =>
-          useWorld
-            .getState()
-            .setPlaceEnabled("place.stonemason-workshop", !workshopOpen)
+          sandbox.setPlaceEnabled("place.stonemason-workshop", !workshopOpen)
         }
       >
         workshop {workshopOpen ? "open" : "shut"}

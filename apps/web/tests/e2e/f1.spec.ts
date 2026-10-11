@@ -4,7 +4,15 @@
 // and a refused microphone. The prerecorded lines the manifest names aren't there yet (B-6 files are not in git): their
 // 404s are expected.
 import { expect, test, type Page, type WebSocketRoute } from "@playwright/test";
-import { login, mock, ORIGIN, resetMock, startStory, talkTo } from "./shell";
+import {
+  login,
+  mock,
+  ORIGIN,
+  resetMock,
+  startStory,
+  talkTo,
+  without3d,
+} from "./shell";
 
 const BASE_ARGS = [
   "--use-angle=swiftshader",
@@ -117,6 +125,7 @@ test.beforeEach(async ({ page, context }) => {
   await page.addInitScript(() => {
     window.__zoujinTest = true;
   });
+  await without3d(context);
   await context.clearCookies();
   await resetMock(page);
 });

@@ -33,6 +33,7 @@ PIECES = [
     piece("piece.gate-turned-away", GATE, before=["beat.04"], once=True),
     piece("piece.crowd", {"beat": "beat.24"}, knows=[{"character": "char.crowd", "fact": "fact.promise"}]),
     piece("piece.any-help", {"act": "help"}, when=[{"var": "var.player.custody", "op": "==", "value": "free"}]),
+    piece("piece.rain", {"beat": "beat.12"}),
 ]
 W: dict[str, Any] = {**json.loads(WORLD.read_text(encoding="utf-8")), "setPieces": PIECES}
 
@@ -57,6 +58,14 @@ def test_beat_pieces_play_only_when_the_player_is_at_the_beat() -> None:
     assert pick(s, {"beat": "beat.04"}, set()) == "piece.gate-taken"
     assert pick(s, {"beat": "beat.04"}, {"piece.gate-taken"}) is None  # once
     assert pick(at("place.syracuse-square", 1201), {"beat": "beat.04"}, set()) is None
+
+
+def test_open_air_beat_pieces_play_in_the_same_scene() -> None:
+    """契约 1.12：beat.12 的大雨没有参与人物，落在 place.village。婚礼上（place.melos-home，同一个场景）也演，
+    别的场景（シラクスの市）不演。和 settle 写 learn、后端推事件同一条规则（sees）。"""
+    assert pick(at("place.village", 0), {"beat": "beat.12"}, set()) == "piece.rain"
+    assert pick(at("place.melos-home", 0), {"beat": "beat.12"}, set()) == "piece.rain"
+    assert pick(at("place.syracuse-square", 0), {"beat": "beat.12"}, set()) is None
 
 
 def test_the_gate_in_both_orders() -> None:
