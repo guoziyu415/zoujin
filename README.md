@@ -9,3 +9,8 @@
 - `bodies-back-palette.png`：从背后看，色表里的颜色。
 - `crowd-1850.png`、`crowd-stir.png`、`crowd-cheer.png`、`crowd-part.png`：18:50 从群众背后看柱子（手机竖屏），どよめき、欢呼、让路。
 - `close-behind.png`、`close-front.png`：白天 4 米近看（比游戏镜头近得多，看衣服和头巾的边）。
+
+## f4-motions/（#139 加的 UAL1 站立/说话动作，crowd.json 旁边有 motions.json 时）
+
+- `crowd-1850.png`、`crowd-stir.png`、`crowd-cheer.png`、`crowd-part.png`：同上四个镜头，四个人里一个在说话（Idle_Talking_Loop），其余是 UAL 的 Idle_Loop。
+- `close-0-0.png`、`close-1-1.png`：从柱子那边 3 米看说话的人（看手臂有没有穿进身体）。
