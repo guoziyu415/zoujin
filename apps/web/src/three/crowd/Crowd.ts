@@ -92,7 +92,7 @@ type Timed = { at: number; person: number; clip: string; loopPhase?: number };
 // each skeleton's motions, baked once for the page and kept (about 170 KB each): the textures made from them go with
 // each crowd. A pack's skeletons only ever bake with that pack's motions.
 const baked = new WeakMap<Skeleton, Baked>();
-const TALKING = 0.25; // how many of them talk among themselves, when the pack's motions have the talk
+const TALKING = 4; // one in so many talks among themselves, when the pack's motions have the talk
 
 function boneTexture(b: Baked): DataTexture {
   const tex = new DataTexture(b.data, b.width, b.height, RGBAFormat, FloatType);
@@ -155,7 +155,7 @@ export class Crowd extends Group {
         scale: [sx * (0.97 + rnd() * 0.06), sy * (0.97 + rnd() * 0.06)],
         speed: 0.85 + rnd() * 0.3,
         phase: rnd() * 4,
-        idle: talk && rnd() < TALKING ? "talk" : "sway",
+        idle: talk && this.people.length % TALKING === 1 ? "talk" : "sway",
         clip: "sway",
         shift: null,
       });
