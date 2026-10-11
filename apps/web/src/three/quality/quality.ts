@@ -8,7 +8,7 @@ import { create } from "zustand";
 import { flags } from "../../app/flags";
 import { track } from "../../telemetry/telemetry";
 import { FrameHistogram } from "./frameHistogram";
-import { Governor, type Change } from "./governor";
+import { GAP_MS, Governor, type Change } from "./governor";
 import {
   estimateMs,
   LEVELS,
@@ -172,7 +172,7 @@ export const quality = {
     dpr = pixelRatio;
     if (lastFrame >= 0 && sampleStart > 0) {
       const dt = now - lastFrame;
-      hist.add(dt);
+      if (dt <= GAP_MS) hist.add(dt); // a page over the world or the background: a gap, not a slow frame
       gov?.frame(dt, now, still);
       if (now - sampleStart >= SAMPLE_EVERY_MS) {
         sampleStart = now;

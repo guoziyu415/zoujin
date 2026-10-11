@@ -16,6 +16,8 @@ export default defineConfig({
     baseURL: "http://127.0.0.1:4173",
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 1,
+    // the service worker would answer for the network the checks watch and route; sw.spec.ts allows it
+    serviceWorkers: "block",
     launchOptions: {
       // PW_CHROMIUM: a Chromium that is already installed (the project containers); CI uses Playwright's own
       ...(process.env.PW_CHROMIUM

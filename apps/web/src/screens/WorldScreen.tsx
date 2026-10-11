@@ -9,6 +9,8 @@ import { flags } from "../app/flags";
 import { levelDpr } from "../three/quality/levels";
 import { QualityProbe } from "../three/quality/QualityProbe";
 import { useQuality } from "../three/quality/quality";
+import { selectCovered, useStory } from "../stores/story";
+import { useVoice } from "../stores/voice";
 import { World, type LoadStage, type ScenePacks } from "../three/World";
 
 const DEV = new URLSearchParams(location.search).has("dev");
@@ -33,6 +35,10 @@ export default function WorldScreen({
   const onStage = useCallback((s: LoadStage) => setStage(s), []);
   // the pixel ratio follows the quality level at once (10.6.3): L0 1.25, L1 1.5, L2 2, L3 the screen's own
   const level = useQuality((s) => s.level);
+  // a story page or the safety card over the world: the render loop stops and the canvas keeps its last frame (10.4),
+  // less heat and battery. Loading goes on behind it (its own animation frames); the governor skips the gap.
+  const covered = useStory(selectCovered);
+  const paused = useVoice((s) => s.paused);
   return (
     <div
       style={{
@@ -42,6 +48,7 @@ export default function WorldScreen({
       }}
     >
       <Canvas
+        frameloop={embedded && (covered || paused) ? "never" : "always"}
         dpr={levelDpr(level, devicePixelRatio)}
         shadows={{ type: PCFShadowMap }}
         gl={{ antialias: false, powerPreference: "high-performance" }}

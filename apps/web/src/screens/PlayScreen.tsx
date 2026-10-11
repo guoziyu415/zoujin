@@ -32,6 +32,7 @@ import { selectCovered, useStory } from "../stores/story";
 import { StoryLayer } from "../ui/StoryLayer";
 import { StoryMenu } from "../ui/StoryMenu";
 import { useVoiceState } from "../voice/useVoiceState";
+import { keepScenes } from "../sw/register";
 
 const WorldScreen = lazy(() => import("./WorldScreen"));
 
@@ -98,7 +99,9 @@ export default function PlayScreen({ pid }: { pid: string }) {
   }, [pid, qc, attempt]);
 
   useEffect(() => {
-    if (manifest.data) play.setManifest(manifest.data);
+    if (!manifest.data) return;
+    play.setManifest(manifest.data);
+    keepScenes(manifest.data.scenes.map((s) => s.assetUrl));
   }, [manifest.data]);
   useResume();
   // what the page has applied, for the e2e checks of resent commits (no duplicates, nothing lost)
