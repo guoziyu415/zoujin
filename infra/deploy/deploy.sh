@@ -78,8 +78,6 @@ guard() {
 # Claude 的两档模型 ID：没写就用终端里 export 的 ZJ_CLAUDE_HAIKU / ZJ_CLAUDE_SONNET
 ZJ_CLAUDE_HAIKU=
 ZJ_CLAUDE_SONNET=
-# 场景包目录（B-7、S-075：Mac 上现场生成的输出）
-ZJ_SCENE_PACKS=$HOME/.zoujin/scenes
 # 每个实例的花费上限（美元，账本在实例的 /tmp，实例重启归零；最多 3 个实例）
 ZJ_MAX_CLAUDE_USD=10
 ZJ_MAX_GOOGLE_USD=10
@@ -209,8 +207,7 @@ cmd_setup() {
 
 cmd_build() {
   guard
-  local ref="${ZJ_DEPLOY_REF:-origin/main}" sha packs="${ZJ_SCENE_PACKS:-}"
-  [[ -n "$packs" && -d "$packs" ]] || die "场景包目录不在：$packs（$CONFIG 的 ZJ_SCENE_PACKS）"
+  local ref="${ZJ_DEPLOY_REF:-origin/main}" sha packs="$STATE/assets/scenes" rc=0
   say "取 $ref"
   run git -C "$REPO" fetch origin main
   sha="$(git -C "$REPO" rev-parse "$ref^{commit}")"
@@ -220,8 +217,14 @@ cmd_build() {
   else
     run git -C "$REPO" worktree add --detach --force "$WT" "$sha"
   fi
+  say "场景包和人物文件（Mac 上的仓库里生成过的 build/，和这个提交的清单比）"
+  python3 -I "$HERE/packs.py" "$WT" "$REPO" "$STATE/assets" || rc=$?
+  if [[ $rc -eq 1 ]] || { [[ $rc -eq 2 ]] && [[ "${ZJ_ALLOW_STALE:-}" != 1 ]]; }; then
+    die "先把上面列的流水线跑完（只有「旧」、确定要照旧部署：ZJ_ALLOW_STALE=1）"
+  fi
   say "前端构建（pnpm install + vite build）"
-  (cd "$WT" && run $PNPM install --frozen-lockfile && run $PNPM --filter @zoujin/web build)
+  (cd "$WT" && run $PNPM install --frozen-lockfile &&
+    ZOUJIN_SCENE_ROOT="$packs" ZOUJIN_CAST_ROOT="$STATE/assets/cast" run $PNPM --filter @zoujin/web build)
   [[ -f "$WT/apps/web/dist/index.html" ]] || die "前端构建没有 dist/index.html"
   say "检查场景包能生成 manifest"
   ZJ_SCENE_PACKS="$packs" in_wt python -I - <<'EOF' || die "场景包出不了 manifest（上面一行是原因）"
@@ -241,6 +244,7 @@ EOF
   rm -rf "$ctx" && mkdir -p "$ctx"
   git -C "$WT" archive "$sha" pyproject.toml uv.lock packages services worlds assets evals fixtures | tar -x -C "$ctx"
   cp -R "$WT/apps/web/dist" "$ctx/web"
+  rm -rf "$ctx/web/scenes" # 场景包由网关按带版本的地址从 /app/scenes 发（B-7），dist 里那份不要
   cp -RL "$packs" "$ctx/scenes"
   find "$ctx/scenes" -name '*.md' -delete
   say "构建镜像（linux/amd64）并推送"
