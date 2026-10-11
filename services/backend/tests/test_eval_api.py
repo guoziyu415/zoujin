@@ -68,7 +68,7 @@ def test_s2_dev_setups_start_and_check(env: Env, monkeypatch: pytest.MonkeyPatch
         r5 = {r["rule"]: r["status"] for r in out["rules"]}["R5-persona"]
         stage3 = item["label"].get("stage") == "rules"
         assert r5 == ("skipped" if stage3 else "pass"), item["id"]
-        assert out["check"]["checker"] == ("rules@b3.1" if stage3 else f"rules@b3.1+gemini-3.8-flash/{version}")
+        assert out["check"]["checker"] == ("rules@b3.1" if stage3 else f"rules@b3.1+sonnet-5.5/{version}")
         every = s.check(item["candidate"], item["turn"], model_checks="all")
         assert (
             every["check"]["checker"].endswith(version) and every["check"]["failedRules"] == out["check"]["failedRules"]
@@ -151,13 +151,11 @@ def test_setup_reads_zj_world_on_every_call(env: Env, monkeypatch: pytest.Monkey
     ("method", "args"),
     [
         ("delete_memory", (OLD, 1)),
-        ("retract", (1,)),
         ("delete_playthrough", ()),
         ("new_playthrough", ()),
         ("silence", (20,)),
         ("memories", (OLD,)),
         ("trust", (OLD,)),
-        ("utterance_cleared", (1,)),
         ("db_absent", (["events"],)),
         ("ending", ()),
     ],

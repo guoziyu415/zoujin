@@ -10,6 +10,9 @@
   每次提交以后看这一幕收了没有（`Writer.closed`）：收了就把幕末的去处记在局上，推 `act_ended`。收幕以后、选定之前
   才轮到的对话和动作 0 分、不写事件、不调模型。提交以后要推的消息（固定演出、turn_settled、action_result、
   act_plan_result、act_transition、act_ended）按顺序记在 `turns.result`，网关推完 commit 以后照着推。
+- B-4：confirm（回答意图确认，`narrator/confirm.py`）；对话里要确认的候选存成草稿。对话和用声音说的打算有提交窗口
+  （`turns.commit_after`）：判完、没到时候就等（不占事务），这期间网关可以把这一轮作废（`status = retracted`），
+  提交时发现不是 leased 就丢掉结果、不推任何消息。取任务之前先给到期的草稿写超时的任务。
 
 同一局严格串行：取任务时锁住这一局的行，有没过期的租约就不取。提交时再锁一次、校验 lastSeq 没变；变了就丢弃，
 用新状态从第 3 步重来（不重新提取）。任何一步失败整轮回滚，任务放回队列，用同一个幂等键重试，三次都失败记 no_response。
@@ -18,24 +21,26 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+import time
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import timedelta
 from typing import Any, cast
 
-from sqlalchemy import and_, func, insert, or_, select, update
+from sqlalchemy import and_, delete, func, insert, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
 from zoujin_backend.config import DEADLINES
 from zoujin_backend.db import store
 from zoujin_backend.db.events import recorded_at, to_row
 from zoujin_backend.db.store import Run
+from zoujin_backend.db.tables import drafts, playthrough_metrics, playthroughs, turns, utterances, world_state
 from zoujin_backend.db.tables import events as events_t
-from zoujin_backend.db.tables import playthrough_metrics, playthroughs, turns, utterances, world_state
 from zoujin_backend.ids import IdGen
 from zoujin_backend.models.text import ReplayMissing, Stop, TextModel
-from zoujin_backend.narrator import acts
+from zoujin_backend.narrator import acts, confirm
 from zoujin_backend.narrator.pipeline import Counts, Pipeline, Spend, TurnInput, Verified
 from zoujin_backend.narrator.rules import Checked
 from zoujin_backend.narrator.writer import Writer
@@ -77,6 +82,10 @@ class Task:
     attempts: int
     client_msg_id: str | None = None  # B-3：动作、幕末的 clientMsgId
     request: Json | None = None  # B-3：动作和幕末的请求（turns.request）
+    window_until: float | None = None  # B-4：提交窗口到什么时候（time.monotonic()）；None = 没有窗口
+    # 这次处理已经花的钱（B-8 第 7 条）：从检查重来（Stale）的几遍合在一起；提交了就随提交写进 playthrough_metrics，
+    # 没提交（作废了、出错了、停下了）由 `Narrator.charge` 补记，每局的花费才和账本对得上
+    spend: Spend = field(default_factory=Spend, compare=False)
 
 
 # 叙事者的事件带 turnId 的任务（契约 Event.turnId：这一轮、这个动作、这次幕末）
@@ -100,6 +109,17 @@ class Planned:
     actions_ended: int = 0
     plans_accepted: int = 0
     plans_refused: int = 0
+    # B-4：这一轮要确认的候选（第一个存草稿，其余丢掉）、声音回答了开着的草稿（draftId, yes / no）、
+    # 这次关掉的草稿、确认的计数、丢掉的要确认的候选
+    proposals: list[confirm.Proposal] = field(default_factory=list)
+    answer: tuple[str, str] | None = None
+    close_draft: str | None = None
+    confirms_asked: int = 0
+    confirms_yes: int = 0
+    confirms_no: int = 0
+    confirms_timeout: int = 0
+    confirms_rejected: int = 0
+    dropped: int = 0
 
 
 @dataclass
@@ -137,9 +157,10 @@ class Narrator:
     before_commit: Callable[[Task], Awaitable[None]] | None = None
     tracer: Tracer = field(default_factory=Tracer)
     deadlines: Mapping[str, float] = field(default_factory=lambda: dict(DEADLINES))
+    on_rate_limit: str = "stop"  # 服务玩家的叙事者（narrator/app.py）是 "degrade"，见 Pipeline
 
     def __post_init__(self) -> None:
-        self.pipeline = Pipeline(self.text, self.schemas, self.ids, self.tracer, self.deadlines)
+        self.pipeline = Pipeline(self.text, self.schemas, self.ids, self.tracer, self.deadlines, self.on_rate_limit)
 
     # —— 取任务 ——
 
@@ -147,6 +168,7 @@ class Narrator:
         """把这一局排着的任务按顺序做完；别的进程正在做这一局时直接返回。"""
         done: list[Result] = []
         while True:
+            await self.expire(pid)
             task = await self.claim(pid)
             if task is None:
                 return done
@@ -154,13 +176,35 @@ class Narrator:
                 done.append(await self.process(task))
             except Gone:
                 log.info("任务 %s 已经不用做了", task.turn_id)
+                await self.charge(task)
             except (Stop, ReplayMissing) as e:  # 不重试：放回队列，整次停下
                 log.warning("任务 %s 停下：%s", task.turn_id, type(e).__name__)
+                await self.charge(task)
                 await self.release(task, failed=False)
                 raise
             except Exception:
                 log.exception("任务 %s 第 %d 次失败", task.turn_id, task.attempts)
+                await self.charge(task)
                 await self.release(task, failed=task.attempts >= MAX_ATTEMPTS)
+
+    async def charge(self, task: Task) -> None:
+        """这次处理没提交（这一轮被作废、局被删、出错重来、停下），已经花的钱照样记进这一局的 `playthrough_metrics`
+        （B-8 第 7 条：作废的一轮在窗口里花的、失败后重来的那几次）。局已经删了就没处记（0 行）。"""
+        if not any(task.spend.usd.values()):
+            return
+        async with self.engine.begin() as c:
+            await c.execute(
+                update(playthrough_metrics)
+                .where(playthrough_metrics.c.playthrough_id == task.pid)
+                .values(cost_values(task.spend))
+            )
+        task.spend.usd.clear()
+
+    async def expire(self, pid: str) -> None:
+        """到期的草稿写超时的任务（B-4：网关的 30 秒计时随连接断了也能关掉）。"""
+        async with self.engine.begin() as c:
+            for draft_id in await store.expire_drafts(c, self.ids, pid):
+                log.info("草稿 %s 到期，写超时的任务", draft_id)
 
     async def claim(self, pid: str) -> Task | None:
         async with self.engine.begin() as c:
@@ -177,10 +221,11 @@ class Narrator:
             )
             if busy.first() is not None:
                 return None
+            window = func.extract("epoch", turns.c.commit_after - func.clock_timestamp()).label("window")
             row = (
                 (
                     await c.execute(
-                        select(turns)
+                        select(turns, window)
                         .where(
                             turns.c.playthrough_id == pid,
                             or_(
@@ -203,6 +248,7 @@ class Narrator:
                 .where(turns.c.turn_id == row["turn_id"])
                 .values(status="leased", lease_until=now + LEASE, attempts=turns.c.attempts + 1)
             )
+            left = float(row["window"]) if row["window"] is not None else 0.0
             return Task(
                 turn_id=row["turn_id"],
                 pid=pid,
@@ -214,7 +260,13 @@ class Narrator:
                 attempts=row["attempts"] + 1,
                 client_msg_id=row["client_msg_id"],
                 request=row["request"],
+                window_until=time.monotonic() + left if left > 0 else None,
             )
+
+    async def wait_window(self, task: Task) -> None:
+        """提交窗口（B-4）：判完了、还没到 commit_after 就等，不占事务。这期间这一轮可能被作废，提交时会发现。"""
+        if task.window_until is not None:
+            await asyncio.sleep(max(0.0, task.window_until - time.monotonic()))
 
     async def release(self, task: Task, *, failed: bool) -> None:
         async with self.engine.begin() as c:
@@ -257,6 +309,8 @@ class Narrator:
             from zoujin_backend.narrator.plans import run_plan
 
             return await run_plan(self, task, (await self._lines(task.turn_id)).get("player"))
+        if task.kind == "confirm":
+            return await confirm.run_confirm(self, task)
         raise ValueError(f"不认识的任务 {task.kind}")
 
     async def read(self, pid: str) -> tuple[dict[str, Any], SimState]:
@@ -270,6 +324,7 @@ class Narrator:
     async def _talk(self, task: Task) -> Result:
         pt, state = await self.read(task.pid)
         if pt["act_end"] is not None:  # 收幕以后才轮到：no_response、0 分、不调模型
+            await self.wait_window(task)
             return await self._commit(task, pt["last_seq"], lambda w, book: self._ended_talk(w, task))
         book = self.library.version(pt["world_model_version"])
         lines = await self._lines(task.turn_id)
@@ -279,19 +334,23 @@ class Narrator:
             reply=lines.get("character"),
             mode=task.input_mode or "voice",
         )
-        spend = Spend()
+        spend = task.spend  # 跟着任务走：重来的、没提交的也算（B-8 第 7 条）
         span = {"playthrough_id": task.pid, "turn_id": task.turn_id}
-        extracted = await self.pipeline.extract(book, state, turn, spend, span)
+        draft = await self._waiting(task)
+        asking = {"prompt": draft["prompt"], "summary": draft["candidate"]["summary"]} if draft else None
+        extracted = await self.pipeline.extract(book, state, turn, spend, span, drafts=True, confirm=asking)
+        answer = (draft["draft_id"], extracted.answer) if draft and extracted.answer in confirm.ANSWERS else None
         for _ in range(MAX_STALE):
             if extracted.timed_out:
                 verified = Verified([], Counts())
             else:
                 minutes = talk_minutes(book, state)
                 verified = await self.pipeline.verify(book, state, extracted.candidates, turn, minutes, spend, span)
+            await self.wait_window(task)
             if self.before_commit is not None:
                 await self.before_commit(task)
             try:
-                plan = self._talk_plan(task, verified.checked)
+                plan = self._talk_plan(task, verified.checked, extracted.confirm, answer, turn.player)
                 counts = extracted.counts + verified.counts
                 return await self._commit(task, pt["last_seq"], plan, spend=spend, counts=counts)
             except Stale:
@@ -300,6 +359,7 @@ class Narrator:
         raise RuntimeError(f"{task.turn_id}：lastSeq 一直在变")
 
     async def _lines(self, turn_id: str) -> dict[str, str | None]:
+        """这一轮玩家和人物的原话。人物的取第一句：意图确认的反问（B-4）也挂在原来那一轮下面，排在回答之后。"""
         async with self.engine.connect() as c:
             rows = (
                 await c.execute(
@@ -310,8 +370,20 @@ class Narrator:
             ).all()
         out: dict[str, str | None] = {}
         for speaker, text in rows:
-            out["player" if speaker == "player" else "character"] = text
+            out.setdefault("player" if speaker == "player" else "character", text)
         return out
+
+    async def _waiting(self, task: Task) -> dict[str, Any] | None:
+        """这一轮是对着反问的人物说的、草稿还开着（没到期、还没有回答）：提取要判这句话是不是在回答（B-4）。"""
+        async with self.engine.connect() as c:
+            draft = await store.open_draft(c, task.pid)
+            if draft is None or draft["character"] != task.character:
+                return None
+            if draft["expires_at"] is not None and draft["expires_at"] <= await c.scalar(select(func.now())):
+                return None
+            if await store.answered(c, task.pid, draft["draft_id"]):
+                return None
+        return draft
 
     # —— 每种任务写哪些事件（在提交的事务里、锁着这一局时调用）——
 
@@ -361,15 +433,42 @@ class Narrator:
             )
         return Planned(minutes=w.state["t"] - t0)
 
-    def _talk_plan(self, task: Task, checked: list[Checked]) -> Callable[[Writer, Book], Planned]:
-        return lambda w, book: self._talk_events(w, book, task, checked)
+    def _talk_plan(
+        self,
+        task: Task,
+        checked: list[Checked],
+        asks: list[Json | None],
+        answer: tuple[str, str] | None,
+        said: str | None,
+    ) -> Callable[[Writer, Book], Planned]:
+        def plan(w: Writer, book: Book) -> Planned:
+            p = self._talk_events(w, book, task, checked, asks, said)
+            p.answer = answer
+            return p
 
-    def _talk_events(self, w: Writer, book: Book, task: Task, checked: list[Checked]) -> Planned:
+        return plan
+
+    def _talk_events(
+        self,
+        w: Writer,
+        book: Book,
+        task: Task,
+        checked: list[Checked],
+        asks: list[Json | None] | None = None,
+        said: str | None = None,
+    ) -> Planned:
         w.settle(w.state["t"])
         t0 = w.state["t"]
         place = w.player_place
-        for c in checked:
+        proposals: list[confirm.Proposal] = []
+        for i, c in enumerate(checked):
             cand = c.candidate
+            ask = asks[i] if asks is not None and i < len(asks) else None
+            if confirm.proposes(c, ask):  # 要确认：不写进日志，提交时存成草稿（B-4）
+                assert ask is not None
+                question = confirm.question_of(ask, said)
+                proposals.append(confirm.Proposal(c, bool(ask.get("asked")), question, cand.get("place", place)))
+                continue
             extra = {k: cand[k] for k in ("beneficiary", "confirmed") if k in cand}
             ev = w.add(
                 w.full(
@@ -416,7 +515,7 @@ class Narrator:
             "eventIds": [e["eventId"] for e in w.events if e.get("turnId") == task.turn_id and e["eventId"] in seen],
             "minutes": minutes,
         }
-        return Planned(outcome=outcome, minutes=minutes, checked=checked, push=[settled])
+        return Planned(outcome=outcome, minutes=minutes, checked=checked, push=[settled], proposals=proposals)
 
     def _ended_talk(self, w: Writer, task: Task) -> Planned:
         settled = {
@@ -479,6 +578,9 @@ class Narrator:
             )
             w.run = Run.of(dict(pt))
             planned = plan(w, book)
+            if planned.close_draft is not None:  # 回答了的草稿关掉就删（B-4）
+                await c.execute(delete(drafts).where(drafts.c.draft_id == planned.close_draft))
+            closing, asking = await confirm.in_commit(self, c, task, w, planned)
             push = list(w.pieces) + list(planned.push)
             if w.closed:  # 这一幕在这次提交里收了：幕末的去处记在局上，推 act_ended（api-contract 3.11）
                 start = await c.scalar(
@@ -492,6 +594,7 @@ class Narrator:
                 w.run.act_end = acts.act_end(book, w.state, 0, [*earlier, *w.events])
                 w.run.plan_tries = 0
                 w.run.plan_alternative = None
+                push.extend(closing)  # 开着的草稿按超时关掉，在 act_ended 之前（B-4）
                 push.append({"type": "act_ended", **w.run.act_end})
             if planned.snapshot:
                 for m in push:
@@ -537,6 +640,9 @@ class Narrator:
                 .values(last_seq=w.state["seq"], last_active_at=func.now(), **w.run.values())
             )
             self.fault("turn")
+            stored = {"push": push, "pieces": pieces, "seq": w.state["seq"], **planned.extra}
+            if asking is not None:  # 网关推完这一轮的结果以后让人物反问、推 confirm（B-4）
+                stored["confirm"] = asking
             await c.execute(
                 update(turns)
                 .where(turns.c.turn_id == task.turn_id)
@@ -546,14 +652,15 @@ class Narrator:
                     minutes=result.minutes,
                     lease_until=None,
                     settled_at=func.now(),
-                    result={"push": push, "pieces": pieces, "seq": w.state["seq"], **planned.extra},
+                    result=stored,
                 )
             )
             self.fault("metrics")
+            counts = (counts or Counts()) + Counts(confirm_dropped=planned.dropped)
             await c.execute(
                 update(playthrough_metrics)
                 .where(playthrough_metrics.c.playthrough_id == task.pid)
-                .values(metrics(task, spend or Spend(), counts or Counts(), planned))
+                .values(metrics(task, spend or Spend(), counts, planned))
             )
             self.fault("notify")
             await self._notify(c, task, seq=w.state["seq"], outcome=result.outcome)
@@ -593,12 +700,23 @@ COUNT_COLUMNS = {
 }
 
 
-PLANNED_COLUMNS = {  # B-3：动作的次数（收幕时队列里回 refused 的另数），打算成行、不成行的次数
+PLANNED_COLUMNS = {  # B-3：动作的次数（收幕时队列里回 refused 的另数），打算成行、不成行的次数；B-4：意图确认
     "actions": "actions",
     "actions_ended": "actions_act_ended",
     "plans_accepted": "plans_accepted",
     "plans_refused": "plans_refused",
+    "confirms_asked": "confirms_asked",
+    "confirms_yes": "confirms_yes",
+    "confirms_no": "confirms_no",
+    "confirms_timeout": "confirms_timeout",
+    "confirms_rejected": "confirms_rejected",
 }
+
+
+def cost_values(spend: Spend) -> dict[str, Any]:
+    """各类提示的花费加到这一局已有的数上（data-design 第 3 节：每局费用 = 所有 cost_*_usd 之和）。"""
+    m = playthrough_metrics.c
+    return {COST_COLUMNS[kind]: m[COST_COLUMNS[kind]] + usd for kind, usd in spend.usd.items()}
 
 
 def metrics(task: Task, spend: Spend, counts: Counts, planned: Planned | None = None) -> dict[str, Any]:
@@ -608,9 +726,7 @@ def metrics(task: Task, spend: Spend, counts: Counts, planned: Planned | None = 
         n = getattr(planned, k) if planned is not None else 0
         if n:
             out[col] = m[col] + n
-    for kind, usd in spend.usd.items():
-        col = COST_COLUMNS[kind]
-        out[col] = m[col] + usd
+    out |= cost_values(spend)
     for k, col in COUNT_COLUMNS.items():
         n = getattr(counts, k)
         if n:

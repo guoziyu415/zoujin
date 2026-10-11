@@ -34,7 +34,7 @@ concurrency:
 jobs:
   generated:
     name: generated types are up to date
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '["self-hosted","zoujin-mac"]') }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
