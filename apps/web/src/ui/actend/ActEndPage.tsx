@@ -2,8 +2,10 @@
 // 「三日のあいだ、あなたは──」, the exits (label; where + sub as two wholes that wrap at the full-width space), and
 // 「ほかの考えがある」, which turns the lower half into the input: say or type a plan, wait while the dash grows, read
 // the narrator's answer. A third try isn't offered (「夜が更けていく。…」). Once an exit is chosen the page waits for
-// the act change and takes no more taps.
+// the act change and takes no more taps. While the page is up, the scene packs of the places it leads to are fetched
+// ahead (F-10, UX on #103), so the act change shows no loading screen.
 import type { Api } from "@zoujin/contracts";
+import { useQuery } from "@tanstack/react-query";
 import {
   useEffect,
   useRef,
@@ -12,6 +14,7 @@ import {
   type KeyboardEvent,
   type PointerEvent,
 } from "react";
+import { manifestQuery } from "../../app/queries";
 import { play } from "../../net/play";
 import {
   backToExits,
@@ -38,6 +41,8 @@ export function ActEndPage() {
   const a = useStory((s) => s.actEnd);
   const head = useRef<HTMLHeadingElement>(null);
   useEffect(() => head.current?.focus(), []);
+  const alt = a?.phase.k === "result" ? a.phase.alternative : undefined;
+  usePrefetch([...(a?.end.options ?? []), ...(alt ? [alt] : [])]);
   if (!a) return null;
   const { end, phase } = a;
   const slice = end.actId === "act.1"; // the slice's opening lines are written in the client for now (copy-ja 6)
@@ -85,6 +90,28 @@ export function ActEndPage() {
       </div>
     </section>
   );
+}
+
+// each destination's scene pack (manifest scenes[].assetUrl) for the act it lands in (toActId; an older server gives
+// none, and a scene split by act then fetches only what its acts share). A failure only means the scene loads later as
+// usual.
+function usePrefetch(to: Pick<Api.ActOption, "sceneId" | "toActId">[]) {
+  const scenes = useQuery(manifestQuery).data?.scenes;
+  const key = [...new Set(to.map((d) => `${d.sceneId} ${d.toActId ?? ""}`))]
+    .sort()
+    .join("\n");
+  useEffect(() => {
+    if (!scenes || !key) return;
+    const urls = new Map(scenes.map((s) => [s.sceneId, s.assetUrl]));
+    for (const d of key.split("\n")) {
+      const [sceneId = "", act] = d.split(" ");
+      const url = urls.get(sceneId);
+      if (url)
+        void import("../../three/scene/prefetch")
+          .then((m) => m.prefetch(url, act || undefined))
+          .catch(() => {});
+    }
+  }, [key, scenes]);
 }
 
 function Exits({ a }: { a: ActEndState }) {
