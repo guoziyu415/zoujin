@@ -117,9 +117,9 @@ def test_lines_match_ux_design_16_2() -> None:
 
 # ux-design 16.2 的表，切片以外的五个人物（M3）
 M3_LINES = {
-    "char.king": (["ふん。", "……ほう。", "続けよ。"], ["……聞こえぬ。", "はっきり申せ。"], "……しばし待て。"),
+    "char.king": (["ふん。", "……ほう。", "うむ。"], ["……聞こえぬ。", "はっきり申せ。"], "……しばし待て。"),
     "char.selinuntius": (
-        ["うん。", "……そうか。", "なるほどな。"],
+        ["うん。", "うむ。", "ああ。"],
         ["すまない、聞きそびれた。", "もう一度、ゆっくり話してくれ。"],
         "少し、考えさせてくれ。",
     ),
@@ -134,15 +134,15 @@ M3_LINES = {
         "ちょっと待ってください。考えます。",
     ),
     "char.philostratus": (
-        ["はい。", "……さようで。", "ええ、ええ。"],
+        ["はい。", "はあ。", "ええ。"],
         ["申し訳ございません、聞き取れませんでした。", "もう一度、お聞かせくださいまし。"],
         "少々、お待ちくださいまし。",
     ),
 }
 
 
-# 假声音下 6 句全过的人物（三拍以上的相槌超 0.5 秒的人整块不进清单）
-FAKE_CHARACTERS = {"char.melos", "char.old-man", "char.sister", "char.groom"}
+# 假声音下 6 句全过的人物（相槌超 0.5 秒的人整块不进清单；三拍以上的四句 UX 已换成两拍，七个人都过）
+FAKE_CHARACTERS = {"char.melos", "char.old-man", *M3_LINES}
 
 
 def draft_plan() -> Plan:
@@ -199,8 +199,7 @@ def test_resume_of_a_run_made_before_b6b_reads_only_the_five(tmp_path: Path) -> 
     assert sum(lines.values()) == 5 * (3 * 6 + 3 * 3)
     assert set(again.reads) - set(lines)  # 另外的是 ref
     voices = json.loads((run / "release" / "voices.json").read_text(encoding="utf-8"))
-    # 假声音按拍数定长度：三拍以上的相槌（「続けよ。」「なるほどな。」「……さようで。」「ええ、ええ。」）
-    # 过不了 0.5 秒，那个人整块不进清单（ux-design 16.2：真录也先量，超了换成两拍）
+    # 假声音按拍数定长度，相槌超 0.5 秒的人整块不进清单（FAKE_CHARACTERS）
     assert set(voices["characters"]) == FAKE_CHARACTERS
     assert len(voices["setPieceVoices"]) == len(PIECE_KEYS)
 
@@ -549,7 +548,8 @@ def test_rate_limit_stops_and_resume_continues_from_there(tmp_path: Path) -> Non
     )
     assert code == 0
     assert again.reads["おう。"] == 6  # 第 3 条从第 1 遍读起（相槌读 6 遍）
-    assert again.reads["うむ。"] == 5  # 第 1 条已经读过第 1 遍
+    # メロス的第 1 条已经读过第 1 遍；王和セリヌンティウス的相槌也有「うむ。」，各读 6 遍
+    assert again.reads["うむ。"] == 5 + 6 + 6
     assert (run / "release" / "voices.json").is_file()
 
 
