@@ -1,5 +1,5 @@
 {
- "schemaVersion": "1.10",
+ "schemaVersion": "1.11",
  "worldModelVersion": "hashire-merosu@1.0.0-draft.3",
  "_authoring": "出典は {\"q\": 原文の逐字引用, \"p\": 段落番号（省略可）} で書く。spikes/pipeline/build_world.py が段落を特定・検証して world.json を出力する。",
  "book": {
@@ -344,6 +344,11 @@
       "var": "var.king.disposition",
       "op": "!=",
       "value": "reformed"
+     },
+     {
+      "var": "var.hostage.who",
+      "op": "!=",
+      "value": "none"
      }
     ],
     "then": [
@@ -353,7 +358,7 @@
       "value": "executed"
      }
     ],
-    "note": "期限までにメロスが戻らず、王も改心していなければ身代りは処刑される",
+    "note": "期限までにメロスが戻らず、王も改心していなければ身代りは処刑される。約束が成立していない（人質がいない）局では何も起きない（1.11、B-9 の評審）",
     "cite": [
      {
       "q": "おくれたら、その身代りを、きっと殺すぞ。"
@@ -742,6 +747,10 @@
      "since": "beat.12"
     },
     {
+     "fact": "fact.melos-farewell",
+     "since": "beat.13"
+    },
+    {
      "fact": "fact.bridge-destroyed",
      "since": "beat.17"
     },
@@ -912,7 +921,18 @@
       }
      ]
     }
-   ]
+   ],
+   "originalEnding": {
+    "text": "日没の寸前に刑場へ駆け込み、友と殴り合って、抱き合った。",
+    "cite": [
+     {
+      "q": "メロスは疾風の如く刑場に突入した。"
+     },
+     {
+      "q": "ひしと抱き合い"
+     }
+    ]
+   }
   },
   {
    "id": "char.king",
@@ -1172,7 +1192,15 @@
       }
      ]
     }
-   ]
+   ],
+   "originalEnding": {
+    "text": "二人を見て、「わしをも仲間に入れてくれまいか」と願った。",
+    "cite": [
+     {
+      "q": "どうか、わしをも仲間に入れてくれまいか。"
+     }
+    ]
+   }
   },
   {
    "id": "char.selinuntius",
@@ -1551,7 +1579,18 @@
       }
      ]
     }
-   ]
+   ],
+   "originalEnding": {
+    "text": "人質として待ちつづけ、一度だけ疑ったと打ち明けて、メロスと抱き合った。",
+    "cite": [
+     {
+      "q": "私はこの三日の間、たった一度だけ、ちらと君を疑った。"
+     },
+     {
+      "q": "ひしと抱き合い"
+     }
+    ]
+   }
   },
   {
    "id": "char.sister",
@@ -1642,6 +1681,10 @@
     {
      "fact": "fact.storm",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "since": "beat.13"
     }
    ],
    "initialPlace": "place.melos-home",
@@ -1707,7 +1750,18 @@
      "text": "花婿と新しい暮らしを始める",
      "inferred": true
     }
-   ]
+   ],
+   "originalEnding": {
+    "text": "真昼に婚礼を挙げ、兄の言葉に、夢見心地で頷いた。",
+    "cite": [
+     {
+      "q": "結婚式は、真昼に行われた。"
+     },
+     {
+      "q": "花嫁は、夢見心地で首肯いた。"
+     }
+    ]
+   }
   },
   {
    "id": "char.groom",
@@ -1781,6 +1835,10 @@
     {
      "fact": "fact.storm",
      "since": "beat.12"
+    },
+    {
+     "fact": "fact.melos-farewell",
+     "since": "beat.13"
     },
     {
      "fact": "fact.groom-agreed",
@@ -1865,7 +1923,18 @@
       }
      ]
     }
-   ]
+   ],
+   "originalEnding": {
+    "text": "夜明けに説き伏せられて真昼に式を挙げ、メロスの弟になった。",
+    "cite": [
+     {
+      "q": "やっと、どうにか婿をなだめ、すかして、説き伏せた。"
+     },
+     {
+      "q": "もう一つ、メロスの弟になったことを誇ってくれ。"
+     }
+    ]
+   }
   },
   {
    "id": "char.philostratus",
@@ -2023,7 +2092,18 @@
       }
      ]
     }
-   ]
+   ],
+   "originalEnding": {
+    "text": "後について走りながら止めたが、最後には「うんと走るがいい」と叫んだ。",
+    "cite": [
+     {
+      "q": "メロスの後について走りながら叫んだ。"
+     },
+     {
+      "q": "それでは、うんと走るがいい。"
+     }
+    ]
+   }
   },
   {
    "id": "char.old-man",
@@ -2175,7 +2255,15 @@
       }
      ]
     }
-   ]
+   ],
+   "originalEnding": {
+    "text": "あたりをはばかる低声で、王の暴虐をメロスに打ち明けた。",
+    "cite": [
+     {
+      "q": "老爺は、あたりをはばかる低声で、わずか答えた。"
+     }
+    ]
+   }
   },
   {
    "id": "char.young-man",
@@ -2234,8 +2322,8 @@
   },
   {
    "id": "char.guards",
-   "name": "警吏（巡邏・刑吏）",
-   "reading": "けいり（じゅんら・けいり）",
+   "name": "城の警吏",
+   "reading": "しろのけいり",
    "summary": "王城を巡邏する役人たち。王の命令で人を捕らえ、刑場で磔を執り行う。",
    "traits": [
     {
@@ -2568,7 +2656,7 @@
      "q": "猛勢一挙に橋を破壊し"
     }
    ],
-   "sceneRef": "scene.homeward-road"
+   "sceneRef": "scene.road-river"
   },
   {
    "id": "place.mountain-pass",
@@ -2591,7 +2679,7 @@
      "q": "ぜいぜい荒い呼吸をしながら峠をのぼり"
     }
    ],
-   "sceneRef": "scene.homeward-road"
+   "sceneRef": "scene.road-pass"
   },
   {
    "id": "place.spring",
@@ -2617,7 +2705,7 @@
      "q": "岩の裂目から滾々と、何か小さく囁きながら清水が湧き出ているのである。"
     }
    ],
-   "sceneRef": "scene.homeward-road"
+   "sceneRef": "scene.road-spring"
   },
   {
    "id": "place.road-to-city",
@@ -2640,7 +2728,7 @@
      "q": "はるか向うに小さく、シラクスの市の塔楼が見える。"
     }
    ],
-   "sceneRef": "scene.homeward-road"
+   "sceneRef": "scene.road-field"
   },
   {
    "id": "place.syracuse-square",
@@ -3067,6 +3155,17 @@
     "大雨",
     "豪雨",
     "車軸を流す"
+   ]
+  },
+  {
+   "id": "fact.melos-farewell",
+   "statement": "メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。",
+   "trueFrom": "beat.13",
+   "visibility": "public",
+   "cite": [
+    {
+     "q": "眼が覚めたら、すぐに市に出かける。大切な用事があるのだ。"
+    }
    ]
   },
   {
@@ -5465,11 +5564,32 @@
    "note": "家、婚礼の祭壇、羊小屋、花婿の家。"
   },
   {
-   "id": "scene.homeward-road",
-   "name": "帰り道",
+   "id": "scene.road-river",
+   "name": "帰り道・川と橋",
    "release": 1,
    "inferred": true,
-   "note": "川と橋、峠、泉、市へ続く道を一つの場面にまとめる。第二幕（夜）は橋が残り、第四幕は流されている。"
+   "note": "第二幕（夜明け）は橋が残り、第四幕は流されている（var.bridge）。前端は状態で二つの包を使い分ける（S-081 ④）。帰り道は停留点ごとに一つの場面：場面の間は adjacent の歩行分で移る（S-081 ②）"
+  },
+  {
+   "id": "scene.road-pass",
+   "name": "帰り道・峠",
+   "release": 1,
+   "inferred": true,
+   "note": "第四幕の停留点。第二幕は夜道の一部として通る（S-081）"
+  },
+  {
+   "id": "scene.road-spring",
+   "name": "帰り道・泉",
+   "release": 1,
+   "inferred": true,
+   "note": "第四幕の停留点、第二幕の夜道の起点（S-081）"
+  },
+  {
+   "id": "scene.road-field",
+   "name": "帰り道・市へ続く野の道",
+   "release": 1,
+   "inferred": true,
+   "note": "停留点ではなく、二人で走る区間（S-081 ②）"
   }
  ],
  "acts": [
@@ -5581,7 +5701,10 @@
     "atLatest": 2280
    },
    "scenes": [
-    "scene.homeward-road",
+    "scene.road-spring",
+    "scene.road-pass",
+    "scene.road-river",
+    "scene.road-field",
     "scene.syracuse-square",
     "scene.castle-throne"
    ],
@@ -5743,7 +5866,10 @@
     "atLatest": 5520
    },
    "scenes": [
-    "scene.homeward-road",
+    "scene.road-river",
+    "scene.road-pass",
+    "scene.road-spring",
+    "scene.road-field",
     "scene.syracuse-square"
    ],
    "exits": [],
@@ -5859,6 +5985,137 @@
    ],
    "inferred": true,
    "note": "S-031 ⑤ と S-041 の「結局が実質的に違う」の定義：この変数の最終値と、この節拍が原作どおり起きたか（happened か否か）の組。世界結局の分類（world[]）が同じでも署名が違えば「違う結局」。1.4：beat.s2（セリヌンティウスが疑ったか、S-064）を追加"
+  },
+  "characters": [
+   "char.melos",
+   "char.selinuntius",
+   "char.king",
+   "char.sister",
+   "char.groom",
+   "char.philostratus",
+   "char.old-man"
+  ],
+  "templates": [
+   {
+    "outcome": "player-substituted",
+    "when": [
+     {
+      "var": "var.player.custody",
+      "op": "==",
+      "value": "executed"
+     }
+    ],
+    "subtitle": "日は沈んだ。メロスは、間に合わなかった。",
+    "title": "友の代わりに立った{role}",
+    "fate": "最後の光が消えるまで、西の門を見ていた。",
+    "lines": [
+     {
+      "character": "char.melos",
+      "line": "沈む陽を追って走ったが、あと一歩、届かなかった。"
+     },
+     {
+      "character": "char.selinuntius",
+      "line": "あなたが立った場所を、生涯忘れなかった。"
+     }
+    ],
+    "contrast": "原作では身代わりは友だった。あなたの世界では、あなたが柱に立った。",
+    "note": "ux-design 11.4 B"
+   },
+   {
+    "outcome": "player-substituted",
+    "when": [
+     {
+      "var": "var.melos.custody",
+      "op": "==",
+      "value": "returned"
+     }
+    ],
+    "subtitle": "メロスは間に合い、あなたの縄はほどかれた。",
+    "title": "友の代わりに立った{role}",
+    "fate": "柱から下ろされ、刑場で夜を迎えた。",
+    "lines": [
+     {
+      "character": "char.melos",
+      "line": "沈む陽より先に、刑場へ駆け込んだ。"
+     }
+    ],
+    "contrast": "原作では身代わりは友だった。あなたの世界では、あなたが柱に立った。",
+    "note": "ux-design 11.4（梅洛斯回来了）"
+   },
+   {
+    "outcome": "player-substituted",
+    "subtitle": "王の心が先に変わり、あなたの縄はほどかれた。",
+    "title": "友の代わりに立った{role}",
+    "fate": "柱から下ろされ、刑場で夜を迎えた。",
+    "lines": [
+     {
+      "character": "char.melos",
+      "line": "約束の刻限には、間に合わなかった。"
+     }
+    ],
+    "contrast": "原作では身代わりは友だった。あなたの世界では、あなたが柱に立った。",
+    "note": "ux-design 11.4（其余：王先变了，梅洛斯没赶上）"
+   },
+   {
+    "outcome": "canon-reunion",
+    "subtitle": "メロスは間に合い、王は仲間に入れてくれと言った。",
+    "title": "友の帰りを見届けた{role}",
+    "lines": [
+     {
+      "character": "char.melos",
+      "line": "沈む陽より先に、刑場へ駆け込んだ。"
+     }
+    ],
+    "contrast": "原作でもあなたの世界でも、メロスは間に合った。違うのは、そこにあなたがいたこと。",
+    "note": "ux-design 11.4"
+   },
+   {
+    "outcome": "in-time-king-unchanged",
+    "subtitle": "メロスは間に合ったが、王の心は変わらなかった。",
+    "title": "約束を見届けた{role}",
+    "lines": [
+     {
+      "character": "char.melos",
+      "line": "沈む陽より先に、刑場へ駆け込んだ。"
+     }
+    ],
+    "contrast": "原作では王が改心した。あなたの世界では、王は二人を見ても変わらなかった。",
+    "note": "ux-design 11.4"
+   },
+   {
+    "outcome": "king-changed-first",
+    "subtitle": "王の心は、日没より先に変わった。",
+    "title": "王の変わる日を見た{role}",
+    "lines": [
+     {
+      "character": "char.melos",
+      "line": "約束の刻限には、間に合わなかった。"
+     }
+    ],
+    "contrast": "原作では、王はメロスの帰還を見て改心した。あなたの世界では、それより先に変わった。",
+    "note": "ux-design 11.4"
+   },
+   {
+    "outcome": "too-late",
+    "subtitle": "日は沈んだ。メロスは、間に合わなかった。",
+    "title": "最後の日を見届けた{role}",
+    "lines": [
+     {
+      "character": "char.selinuntius",
+      "line": "最後まで、メロスは来ると言いつづけた。"
+     },
+     {
+      "character": "char.melos",
+      "line": "陽が沈んでも、走ることをやめなかった。"
+     }
+    ],
+    "contrast": "原作では日没に間に合った。あなたの世界では、陽が先に沈んだ。",
+    "note": "ux-design 11.4 A"
+   }
+  ],
+  "fates": {
+   "witness": "刑場で、日没を見届けた。",
+   "elsewhere": "刑場には行かず、日没を迎えた。"
   }
  },
  "pacing": {

@@ -12,12 +12,12 @@
    "assets/pipeline/plaza/requirements.txt": "0a234e44f52fb462c7e8694ecd82b99aca8e534ac610dde2dd749bb1e2cbe0e3",
    "assets/pipeline/plaza/placeholder_tex.py": "aabda4df4f3974b2eb65b227ed3b5ae2d606a489441d665b3f2f108c5cd1343e",
    "assets/pipeline/plaza/build_plaza.py": "249c8f24ce14a0cb2cff2afe6625806667506c545e264d8e6ab57dd021dadf43",
-   "assets/pipeline/plaza/sky.py": "20375dd1f411ad91e240078b2691b4ddd7773ba0818542d7415537fe11dd9836",
-   "assets/pipeline/plaza/sunpos.py": "2da6794757da0d29b482c5483577881d2098ecfd12f7d7178956da185310b03a",
-   "assets/pipeline/plaza/bake.py": "1b2267b42cf6de868bd1799754b2724e73a91817ba954cfef038c4229c1a53b3",
+   "assets/pipeline/plaza/sky.py": "971584f110b8a924e737d195f30eab114cb35d7345909e364ed21ec3e77aab27",
+   "assets/pipeline/plaza/sunpos.py": "807e1774526b33ef4f2329dbabf906c44f9517605a80f9ca930ecfb9ff6287ba",
+   "assets/pipeline/plaza/bake.py": "3e8f5fd8e83ee8fd10391060599366fa6463bf8ad86481b28317ad9d623423db",
    "assets/pipeline/plaza/encode.py": "4f4da080164bf598dff116bc28461b1bc582bb4e80a53a0ad03a5bcac9028a1b",
-   "assets/pipeline/plaza/pack_scene.mjs": "1b367b40d064324b0408192dd7dce28c7099602ae03b9bbf274862bc3bd36cf7",
-   "assets/pipeline/plaza/nav.mjs": "abe19b65f19fe1788f8a53d17697ece14ec808e7facd14a5e744701fdbb00069",
+   "assets/pipeline/plaza/pack_scene.mjs": "5a94fdb70e52bafb133ef592da769e6716fbe8be2bb10b3784846f8d05d2e7f7",
+   "assets/pipeline/plaza/nav.mjs": "3ae96ae3ac59de4a3dc29058f8fd9a064c754cb489a2f58fdd2f4a3d47044e19",
    "assets/pipeline/plaza/frame.mjs": "0a5da76ee5796a9850fb35d84b8aae3d7f826f8ecde8c8275ee131c4f658defb",
    "assets/pipeline/plaza/ktx2_decode.mjs": "3772741bf09c2898ba1a2cbe2fc64582c0b97471355be2c5272f0584991a4553"
   },
@@ -70,7 +70,14 @@
    "AEROSOL": "default",
    "SKY_W": "default",
    "SKY_H": "default",
-   "PLAZA_BAKE_MINUTE": "default"
+   "PLAZA_BAKE_MINUTE": "default",
+   "SCENE_STEM": "default",
+   "SCENE_ROT_DEG": "default",
+   "SCENE_MINUS_X_AZ": "default",
+   "SKY_SUN_ELEV_DEG": "default",
+   "BAKE_SUN_E": "default",
+   "BAKE_SUN_RGB": "default",
+   "BAKE_RES": "default"
   }
  },
  "sun": {

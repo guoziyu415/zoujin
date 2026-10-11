@@ -49,6 +49,7 @@ class ScriptedSession:
     cleared: set[int] = field(default_factory=set)
     db: dict[str, int] = field(default_factory=dict)
     ending_: dict[str, Any] | None = None
+    no_ending: bool = False  # 后端实现了 ending()，但这一局没进结局（回 None）
 
     def state(self) -> dict[str, Any]:
         return self.state_
@@ -68,7 +69,9 @@ class ScriptedSession:
     def db_absent(self, tables: Sequence[str]) -> Mapping[str, int]:
         return {t: self.db.get(t, 0) for t in tables}
 
-    def ending(self) -> dict[str, Any]:
+    def ending(self) -> dict[str, Any] | None:
+        if self.no_ending:
+            return None
         if self.ending_ is None:
             raise EvalNotImplemented("ending")
         return self.ending_

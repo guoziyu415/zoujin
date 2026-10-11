@@ -32,7 +32,7 @@
 | beat.01 未明、村を発つ | D0 04:00（D0 03:00〜D0 05:00） | village | メロス | anchor | — | — | 「きょう未明メロスは村を出発し」(1) | |
 | beat.02 市の異変 | D0 19:10（D0 19:00〜D0 20:00） | syracuse-square | メロス | anchor | — | — | 「歩いているうちにメロスは、まちの様子を怪しく思った。」(1) | |
 | beat.03 王の暴虐を知る | D0 19:30（D0 19:10〜D0 21:00） | syracuse-square | メロス、市の若い衆、市の老爺 | mutable | — | melos.knowsTyranny = True | 「王様は、人を殺します。」(2)<br>「聞いて、メロスは激怒した。」(9) | |
-| beat.04 王城で捕縛 | D0 20:00（D0 19:30〜D0 22:00） | execution-ground | メロス、警吏（巡邏・刑吏） | mutable | melos.knowsTyranny == True | melos.custody = arrested、melos → castle、item.dagger 被拿走 | 「買い物を、背負ったままで、のそのそ王城にはいって行った。」(10)<br>「調べられて、メロスの懐中からは短剣が出て来たので、騒ぎが大きくなってしまった。」(10) | |
+| beat.04 王城で捕縛 | D0 20:00（D0 19:30〜D0 22:00） | execution-ground | メロス、城の警吏 | mutable | melos.knowsTyranny == True | melos.custody = arrested、melos → castle、item.dagger 被拿走 | 「買い物を、背負ったままで、のそのそ王城にはいって行った。」(10)<br>「調べられて、メロスの懐中からは短剣が出て来たので、騒ぎが大きくなってしまった。」(10) | |
 | beat.05 王との問答と約束 | D0 20:30（D0 20:00〜D0 23:00） | castle | メロス、王ディオニス | mutable | melos.custody == arrested | promise.made = True、hostage.who = char.selinuntius | 「処刑までに三日間の日限を与えて下さい。」(18)<br>「あれを、人質としてここに置いて行こう。」(20)<br>「願いを、聞いた。その身代りを呼ぶがよい。」(22)<br>「メロスは口惜しく、地団駄踏んだ。」(25) | |
 | beat.06 深夜、友が召される | D0 23:30（D0 21:30〜D1 01:00） | castle | セリヌンティウス、メロス、王ディオニス | mutable | promise.made == True | hostage.fate = held、selinuntius → castle | 「竹馬の友、セリヌンティウスは、深夜、王城に召された。」(26) | |
 | beat.07 満天の星の下を発つ | D0 23:45（D0 21:40〜D1 02:00） | castle | メロス | mutable | hostage.fate == held | melos.custody = on-parole、melos.stamina -30 | 「メロスは、すぐに出発した。初夏、満天の星である。」(26) | |
@@ -52,9 +52,9 @@
 | beat.s2 ちらと友を疑う | D3 16:00（D3 14:00〜D3 17:50） | castle | セリヌンティウス | mutable | hostage.who == char.selinuntius、hostage.fate == held、selinuntius.faith <= 2〔推断〕 | selinuntius.doubted = True | 「私はこの三日の間、たった一度だけ、ちらと君を疑った。」(65) | |
 | beat.21 泉 | D3 16:30（D3 12:30〜D3 19:00） | spring | メロス | mutable | — | melos.stamina +30、melos.resolve = 100 | 「水を両手で掬って、一くち飲んだ。」(48)<br>「走れ！　メロス。」(48)<br>「先刻の、あの悪魔の囁きは、あれは夢だ。」(49) | |
 | beat.22 黒い風のように | D3 17:30（D3 13:30〜D3 19:00） | road-to-city | メロス、旅の一団 | mutable | — | melos.clothing = nearly-naked | 「メロスは黒い風のように走った。」(50)<br>「メロスは、いまは、ほとんど全裸体であった。」(50) | |
-| beat.s1 刑場に引き出される友 | D3 18:00（D3 17:00〜D3 18:55） | execution-ground | セリヌンティウス、王ディオニス、市の群衆、警吏（巡邏・刑吏） | mutable | hostage.fate == held | hostage.fate = on-cross、selinuntius → execution-ground、maiden → execution-ground、king → execution-ground | 「王様が、さんざんあの方をからかっても、メロスは来ます、とだけ答え」(57) | |
+| beat.s1 刑場に引き出される友 | D3 18:00（D3 17:00〜D3 18:55） | execution-ground | セリヌンティウス、王ディオニス、市の群衆、城の警吏 | mutable | hostage.fate == held | hostage.fate = on-cross、selinuntius → execution-ground、maiden → execution-ground、king → execution-ground | 「王様が、さんざんあの方をからかっても、メロスは来ます、とだけ答え」(57) | |
 | beat.23 フィロストラトス | D3 18:30（D3 14:30〜D3 19:00） | road-to-city | メロス、フィロストラトス | mutable | — | — | 「もう、駄目でございます。」(53)<br>「それだから、走るのだ。信じられているから走るのだ。」(58)<br>「いや、まだ陽は沈まぬ。」(56) | |
-| beat.24 日没、刑場へ | D3 19:00（D3 16:00〜D3 19:00） | execution-ground | メロス、セリヌンティウス、市の群衆、警吏（巡邏・刑吏） | mutable | melos.custody == on-parole | melos.custody = returned、hostage.fate = released、melos → execution-ground | 「メロスは疾風の如く刑場に突入した。間に合った。」(60)<br>「セリヌンティウスの縄は、ほどかれたのである。」(62) | |
+| beat.24 日没、刑場へ | D3 19:00（D3 16:00〜D3 19:00） | execution-ground | メロス、セリヌンティウス、市の群衆、城の警吏 | mutable | melos.custody == on-parole | melos.custody = returned、hostage.fate = released、melos → execution-ground | 「メロスは疾風の如く刑場に突入した。間に合った。」(60)<br>「セリヌンティウスの縄は、ほどかれたのである。」(62) | |
 | beat.25 殴り合いと抱擁 | D3 19:05（D3 16:00〜D3 20:00） | execution-ground | メロス、セリヌンティウス | mutable | hostage.fate == released、hostage.who == char.selinuntius〔推断〕 | — | 「私を殴れ。ちから一ぱいに頬を殴れ。」(63)<br>「「ありがとう、友よ。」二人同時に言い」(67)<br>「刑場一ぱいに鳴り響くほど音高くメロスの右頬を殴った。」(64)<br>「メロスは腕に唸りをつけてセリヌンティウスの頬を殴った。」(66) | |
 | ↳ 变体 beat.25.v-neither〔推断〕 | — | — | — | — | melos.doubted == False、selinuntius.doubted == False | どちらも相手を疑わなかった。殴り合うことはなく、二人は「ありがとう、友よ」と言って抱き合い、声を放って泣く。  | 「「ありがとう、友よ。」二人同時に言い」(67) | |
 | ↳ 变体 beat.25.v-melos-only〔推断〕 | — | — | — | — | selinuntius.doubted == False | メロスだけが途中の悪い夢を打ち明け、セリヌンティウスに殴られる。セリヌンティウスは一度も疑わなかったと言い、殴られないまま二人は抱き合う。  | 「私は、途中で一度、悪い夢を見た。」(63) | |
@@ -88,6 +88,7 @@
 | fact.groom-wanted-wait | 花婿は仕度ができていないので葡萄の季節まで待ちたかった。 | pre | private | 「こちらには未だ何の仕度も出来ていない、葡萄の季節まで待ってくれ」(32) | |
 | fact.wedding-held | 婚礼は真昼に行われた。 | beat.11 | public | 「結婚式は、真昼に行われた。」(32) | |
 | fact.storm | 婚礼の宣誓のころから車軸を流すような大雨になった。 | beat.12 | public | 「やがて車軸を流すような大雨となった。」(32) | |
+| fact.melos-farewell | メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。 | beat.13 | public | 「眼が覚めたら、すぐに市に出かける。大切な用事があるのだ。」(33) | |
 | fact.bridge-destroyed | 前日の豪雨で川が氾濫し、橋が流された。 | beat.17 | public | 「きのうの豪雨で山の水源地は氾濫し」(38)<br>「猛勢一挙に橋を破壊し」(38) | |
 | fact.no-boats | 繋ぎ舟はすべて浪にさらわれ、渡し守もいない。 | beat.17 | public | 「繋舟は残らず浪に浚われて影なく、渡守りの姿も見えない。」(38) | |
 | fact.bandits-ambush | 峠で一隊の山賊が待ち伏せている。 | beat.19 | public | 「突然、目の前に一隊の山賊が躍り出た。」(39) | |
@@ -119,7 +120,7 @@
 | 动机 | 王に人の信実を見せる〔since beat.05〕〔until beat.26〕 | 「あの王に、人の信実の存するところを見せてやろう。」(37) | |
 | 动机 | 市を暴君の手から救う〔since beat.03〕〔until beat.26〕 | 「市を暴君の手から救うのだ。」(12) | |
 | 说话 | 一人称「私」；率直で激しい。古風な断定（〜ぬ、〜のだ）。目上にも物怖じしない。；开局在做：idle | 「人の心を疑うのは、最も恥ずべき悪徳だ。」(14)<br>「そうです。帰って来るのです。」(20)〔since beat.05〕<br>「いや、まだ陽は沈まぬ。」(54)〔since beat.23〕<br>「信じられているから走るのだ。」(58)〔since beat.23〕<br>「私にはいのちの他には何も無い。」(43)〔since beat.19〕<br>「私は信頼されている。私は信頼されている。」(49)〔since beat.21〕<br>「私は、途中で一度、悪い夢を見た。」(63)〔since beat.25〕〔条件 melos.doubted == True〕 | |
-| 知道 | melos-shepherd@pre、melos-family@pre、sister-engaged@pre、melos-errand@pre、friendship@pre、selinuntius-stonemason@pre、city-silent@beat.02、king-killings@beat.03、king-distrust@beat.03、hostage-decree@beat.03、six-killed-today@beat.03、melos-dagger@beat.04、promise@beat.05、melos-reason@beat.05、king-whisper@beat.05、selinuntius-hostage@beat.06、wedding-tomorrow@beat.08、groom-wanted-wait@beat.10、wedding-held@beat.11、storm@beat.12、bridge-destroyed@beat.17、no-boats@beat.17、bandits-ambush@beat.19、melos-suspects-king@beat.19、melos-despair@beat.20、travelers-rumor@beat.22、selinuntius-steadfast@beat.23、selinuntius-doubted-once@beat.25、groom-agreed@beat.10 | — | |
+| 知道 | melos-shepherd@pre、melos-family@pre、sister-engaged@pre、melos-errand@pre、friendship@pre、selinuntius-stonemason@pre、city-silent@beat.02、king-killings@beat.03、king-distrust@beat.03、hostage-decree@beat.03、six-killed-today@beat.03、melos-dagger@beat.04、promise@beat.05、melos-reason@beat.05、king-whisper@beat.05、selinuntius-hostage@beat.06、wedding-tomorrow@beat.08、groom-wanted-wait@beat.10、wedding-held@beat.11、storm@beat.12、melos-farewell@beat.13、bridge-destroyed@beat.17、no-boats@beat.17、bandits-ambush@beat.19、melos-suspects-king@beat.19、melos-despair@beat.20、travelers-rumor@beat.22、selinuntius-steadfast@beat.23、selinuntius-doubted-once@beat.25、groom-agreed@beat.10 | — | |
 | 他能为你 | 水をくれた牧童を覚えていて、三日のうちに戻るという約束を初めて話し、家まで連れて行く〔开局互助：role.shepherd-boy〕〔推断〕 | 「三日のうちに」(18) | |
 | 你能为他 | よろめいて村に戻ったメロスに水を一杯差し出す〔开局互助：role.shepherd-boy〕〔推断〕 | 「よろめいて歩いて来る兄の、疲労困憊の姿を見つけて驚いた。」(27) | |
 | 他能为你 | 王の前で、あなたのことを口にする（条件：melos.custody == arrested）〔大事：兑现时算关键时刻〕〔推断〕 | — | |
@@ -201,7 +202,7 @@
 | 动机 | 結婚する〔until beat.11〕 | 「花婿として迎える事になっていた。」(1) | |
 | 动机 | 婚礼は近いが、日取りはまだ決まっていない〔until beat.08〕 | 「結婚式も間近かなのである。」(1) | |
 | 说话 | 一人称「わたし」；控えめで丁寧な話し方（〜です、〜ます）。兄を「兄さん」と呼ぶ。口数が少なく、照れると言葉が途切れる。；开局在做：work | — | |
-| 知道 | melos-family@pre、sister-engaged@pre、melos-errand@pre、wedding-tomorrow@beat.08、wedding-held@beat.11、storm@beat.12 | — | |
+| 知道 | melos-family@pre、sister-engaged@pre、melos-errand@pre、wedding-tomorrow@beat.08、wedding-held@beat.11、storm@beat.12、melos-farewell@beat.13 | — | |
 | 他能为你 | 兄にあなたを引き合わせる〔推断〕 | — | |
 | 他能为你 | 兄の出発のとき、あなたにも弁当を持たせる〔交给你：item.provisions〕〔推断〕 | — | |
 | 你能为他 | 婚礼の支度を手伝う〔推断〕 | 「神々の祭壇を飾り」(31) | |
@@ -221,7 +222,7 @@
 | 性格 | 照れ屋 | 「花婿は揉み手して、てれていた。」(36) | |
 | 动机 | 仕度を整え、葡萄の季節に婚礼を挙げたい〔until beat.10〕 | 「葡萄の季節まで待ってくれ」(32) | |
 | 说话 | 一人称「わたし」；実直で慎重な話し方（〜です、〜ます）。メロスを「メロスさん」と呼ぶ。；开局在做：work | 「こちらには未だ何の仕度も出来ていない」(32) | |
-| 知道 | sister-engaged@pre、melos-family@pre、groom-wanted-wait@pre、wedding-held@beat.11、storm@beat.12、groom-agreed@beat.10 | — | |
+| 知道 | sister-engaged@pre、melos-family@pre、groom-wanted-wait@pre、wedding-held@beat.11、storm@beat.12、melos-farewell@beat.13、groom-agreed@beat.10 | — | |
 | 他能为你 | あなたが支度を手伝ったか、自分の口で頼んだから、婚礼を早めることに同意する（メロスの説得だけで承知したなら、あなたのためとは数えない）（条件：wedding.status == scheduled）〔大事：兑现时算关键时刻〕〔推断〕 | 「やっと、どうにか婿をなだめ、すかして、説き伏せた。」(32) | |
 | 他能为你 | 灯や上着を貸す〔交给你：item.lantern〕〔推断〕 | — | |
 | 他能为你 | 牧人だけが知る、峠の脇道と町へ抜ける野道を教える〔效果：player.knowsShortcut = True〕〔推断〕 | — | |
@@ -278,7 +279,7 @@
 | 说话 | 一人称「—」；口が重く、ぶっきらぼうな話し方。；开局在做：idle | — | |
 | 知道 | king-killings@pre、hostage-decree@pre、city-silent@pre、execution-crowd@beat.22 | — | |
 
-### 警吏（巡邏・刑吏）（char.guards）
+### 城の警吏（char.guards）
 
 王城を巡邏する役人たち。王の命令で人を捕らえ、刑場で磔を執り行う。
 
@@ -371,10 +372,10 @@
 | place.melos-home メロスの家と羊小屋 | scene.village | village 5 |  | |
 | place.groom-house 花婿の家 | scene.village | village 10 |  | |
 | place.neighbor-village 隣村 | （无场景） | village 120、river 180 | 第一版に場面はない。ここを通る移動と、ここで起きる節拍（beat.15、beat.16）は叙事者の語りで伝える。 | |
-| place.river 川と橋 | scene.homeward-road | neighbor-village 180、mountain-pass 100 |  | |
-| place.mountain-pass 峠 | scene.homeward-road | river 100、spring 45 |  | |
-| place.spring 峠下の草原と泉 | scene.homeward-road | mountain-pass 45、road-to-city 120 |  | |
-| place.road-to-city 市へ続く野の道 | scene.homeward-road | spring 120、syracuse-square 60 |  | |
+| place.river 川と橋 | scene.road-river | neighbor-village 180、mountain-pass 100 |  | |
+| place.mountain-pass 峠 | scene.road-pass | river 100、spring 45 |  | |
+| place.spring 峠下の草原と泉 | scene.road-spring | mountain-pass 45、road-to-city 120 |  | |
+| place.road-to-city 市へ続く野の道 | scene.road-field | spring 120、syracuse-square 60 |  | |
 | place.syracuse-square シラクスの広場と大路 | scene.syracuse-square | road-to-city 60、castle 10、stonemason-workshop 2、execution-ground 2 |  | |
 | place.castle 王城 | scene.castle-throne | syracuse-square 10、execution-ground 5 |  | |
 | place.execution-ground 刑場 | scene.syracuse-square | castle 5、syracuse-square 2 |  | |
@@ -386,18 +387,18 @@
 |---|---|---|---|---|---|---|---|---|
 | role.traveler | 旅人 | 第 1 版 | act.1 · syracuse-square · D0 17:30 | — | syracuse-square、stonemason-workshop、execution-ground | castle：player.companionOf == char.melos、melos.custody == arrested<br>castle：player.custody == arrested<br>castle：player.companionOf == char.selinuntius | 誰も知らない。最初のプレイ向け（S-002）。王城にはメロスの連れとして連れて行かれた時に入れる（縛られない、UX 5.1）。 | |
 | role.apprentice | 石屋の弟子 | 第 1 版 | act.1 · stonemason-workshop · D0 17:30 | セリヌンティウス、フィロストラトス | stonemason-workshop、syracuse-square、execution-ground | castle：player.companionOf == char.selinuntius | 原文ではフィロストラトスが「セリヌンティウスの弟子の若い石工」。重複を避けるため、フィロストラトスの弟弟子とする（UX 5.1 は「セリヌンティウス親方の工房で、石を刻んでいる」）。 | |
-| role.castle-maid | 王城の侍女 | 第 2 版 | act.1 · castle · D0 17:30 | 王ディオニス、警吏（巡邏・刑吏） | castle、execution-ground、syracuse-square | — | 王の耳打ち（fact.king-whisper）を立ち聞きできる唯一の身分。 | |
+| role.castle-maid | 王城の侍女 | 第 2 版 | act.1 · castle · D0 17:30 | 王ディオニス、城の警吏 | castle、execution-ground、syracuse-square | — | 王の耳打ち（fact.king-whisper）を立ち聞きできる唯一の身分。 | |
 | role.shepherd-boy | 村の牧童 | 第 1 版 | act.3 · village · D1 09:00 | メロス、メロスの妹、花婿 | village、melos-home、groom-house、neighbor-village、river、mountain-pass、spring、road-to-city、syracuse-square、execution-ground | — | 一日目の午前、村の畑から始まる（メロスが村に着く前）。村・帰り道・広場に行ける（UX 5.1）。婚礼と出発の時刻に影響できる。 | |
-| role.guard | 警吏 | 第 2 版 | act.1 · castle · D0 17:30 | 警吏（巡邏・刑吏）、王ディオニス | castle、execution-ground、syracuse-square | — | 王の側に立つ。メロスを捕らえる側から始まる。 | |
+| role.guard | 警吏 | 第 2 版 | act.1 · castle · D0 17:30 | 城の警吏、王ディオニス | castle、execution-ground、syracuse-square | — | 王の側に立つ。メロスを捕らえる側から始まる。 | |
 
 ### 幕
 
 | 幕 | 时间 | 场景 | 收幕 | 幕末去处 | 校对 |
 |---|---|---|---|---|---|
 | act.1 約束の日 | D0 17:30〜（最迟 D1 02:00） | syracuse-square、castle-throne | beat.07 | メロスと夜の道を行く → act.2 · spring · D1 02:45<br>城に残り、セリヌンティウスのそばにいる → act.2 · castle · D1 00:00<br>市に残る → act.2 · syracuse-square · D1 00:00 | |
-| act.2 その夜 | D1 00:00〜（最迟 D1 14:00） | homeward-road、syracuse-square、castle-throne | beat.08 | メロスと村に着く → act.3 · village · D1 10:00<br>市でその時を待つ → act.3 · syracuse-square · D1 10:00 | |
+| act.2 その夜 | D1 00:00〜（最迟 D1 14:00） | road-spring、road-pass、road-river、road-field、syracuse-square、castle-throne | beat.08 | メロスと村に着く → act.3 · village · D1 10:00<br>市でその時を待つ → act.3 · syracuse-square · D1 10:00 | |
 | act.3 村の二日 | D1 09:00〜（最迟 D3 09:40） | village、syracuse-square、castle-throne | beat.14 | 雨の中、メロスと走り出る → act.4 · river · D3 11:20<br>　过场：「隣村で、メロスは歩をゆるめた。」〔急かす（40分早まる）〕beat.16 prevented、melos.stamina -15，选后：「メロスは足を速めた。河原には、思ったより早く着いた。」 / 〔好きにさせる〕（原作どおり）<br>市で日没を待つ → act.4 · syracuse-square · D3 04:30 | |
-| act.4 三日目 | D3 04:30〜（最迟 D3 20:00） | homeward-road、syracuse-square | beat.27 | （进入结局） | |
+| act.4 三日目 | D3 04:30〜（最迟 D3 20:00） | road-river、road-pass、road-spring、road-field、syracuse-square | beat.27 | （进入结局） | |
 
 ### 情境动作（contracts 2.10；第四幕每处既能让他慢，也能帮他快，S-036 ②）
 

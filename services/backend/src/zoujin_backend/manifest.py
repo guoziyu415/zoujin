@@ -2,7 +2,8 @@
 
 - 世界模型：书、身份、场景和地点、人物、幕、时钟、注音词表；
 - B-6 的声音清单（`<声音目录>/<bookId>/voices.json`，可以没有）：人物的预录句、固定演出的预录句，逐句和世界模型核对；
-- 前端的场景包（`ZJ_SCENE_PACKS`）：每个场景目录的入口文件（`index.json`，没有就 `scene.json`）和它的内容 hash。
+- 前端的场景包（`ZJ_SCENE_PACKS`）：每个场景目录的入口文件（`index.json`，没有就 `scene.json`），
+  版本是入口能走到的目录里全部文件的 hash。
 
 只有真能加载的东西才进：没有包的场景、开局场景没有包的身份、和世界模型对不上或文件不在的录音都不出，启动日志只记 ID、
 键名、版本号和个数（不记台词）。结果过 `ManifestResponse` 的 Schema；生成不出来就抛 `ManifestError`，网关起不来。
@@ -14,6 +15,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
@@ -39,8 +41,9 @@ class ManifestError(ValueError):
 
 @dataclass(frozen=True)
 class Pack:
-    url: str  # /scenes/<目录>/<assetVersion>/<入口文件>
-    version: str  # 入口文件的 sha256 前 8 位
+    url: str  # /scenes/<assetVersion>/<目录>/<入口文件>
+    version: str  # 入口能走到的目录里全部文件的 sha256 前 8 位
+    dirs: tuple[str, ...]  # 入口能走到的目录（部署时一起放在 /scenes/<assetVersion>/ 下）
 
 
 @dataclass(frozen=True)
@@ -78,16 +81,55 @@ def media_type(path: Path) -> str:
 
 
 def scene_packs(root: Path, scene_ids: Iterable[str]) -> dict[str, Pack]:
-    """有包的场景：`scene.x` 看 `<root>/x/` 里的入口文件。"""
+    """有包的场景：`scene.x` 看 `<root>/x/` 里的入口文件。入口能走到的目录（`index.json` 的 `packs[].manifest`
+    所在的目录和 `sharedPacks`）要都在 `<root>` 下一层而且都在，不然这个场景不出。"""
     out = {}
     for sid in scene_ids:
         folder = root / sid.removeprefix("scene.")
         entry = next((folder / n for n in ENTRIES if (folder / n).is_file()), None)
         if entry is None:
             continue
-        version = hashlib.sha256(entry.read_bytes()).hexdigest()[:8]
-        out[sid] = Pack(url=f"/scenes/{folder.name}/{version}/{entry.name}", version=version)
+        dirs = _reach(root, folder, entry)
+        if dirs is None:
+            continue
+        version = _version(root, dirs)
+        out[sid] = Pack(url=f"/scenes/{version}/{folder.name}/{entry.name}", version=version, dirs=dirs)
     return out
+
+
+def _reach(root: Path, folder: Path, entry: Path) -> tuple[str, ...] | None:
+    """入口能走到的目录名（自己在前，其余按名字排）；走出 `<root>`、目录不在、`index.json` 读不了：None（记日志）。"""
+    names = {folder.name}
+    if entry.name == "index.json":
+        try:
+            index = json.loads(entry.read_text(encoding="utf-8"))
+            refs = [(folder / p["manifest"]).parent for p in index.get("packs", [])]
+            refs += [root / name for name in index.get("sharedPacks", [])]
+        except (json.JSONDecodeError, KeyError, TypeError, AttributeError):
+            log.info("manifest：场景目录 %s 的 index.json 读不了，不出", folder.name)
+            return None
+        top = Path(os.path.normpath(root))
+        for ref in refs:
+            d = Path(os.path.normpath(ref))  # 只按字面走 `..`，场景目录可以是符号链接
+            if d.is_dir() and (d == folder or folder in d.parents):
+                continue  # 自己目录里的，已经算在里面
+            if d.parent != top or not d.is_dir():
+                log.info("manifest：场景目录 %s 引用的包不在场景包目录下一层，不出", folder.name)
+                return None
+            names.add(d.name)
+    return (folder.name, *sorted(names - {folder.name}))
+
+
+def _version(root: Path, dirs: Iterable[str]) -> str:
+    """这几个目录里全部文件（相对路径和内容）合起来的 sha256 前 8 位：包里任何一个文件变了版本就变。"""
+    h = hashlib.sha256()
+    for name in sorted(dirs):
+        base = root / name
+        for f in sorted(p for p in base.rglob("*") if p.is_file()):
+            with f.open("rb") as fh:
+                digest = hashlib.file_digest(fh, "sha256").digest()
+            h.update(f"{name}/{f.relative_to(base).as_posix()}".encode() + b"\0" + digest)
+    return h.hexdigest()[:8]
 
 
 def read_voices(voice_dir: Path, book_id: str) -> tuple[Json | None, Path]:

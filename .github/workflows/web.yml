@@ -1,6 +1,6 @@
-# 网页前端（F-2b）：单元测试、打包体积预算、世界屏幕的 Playwright 验收（无头 Chromium + 软件渲染）。
+# 网页前端（F-2b、F-0）：单元测试、打包体积预算、世界屏幕和外壳的 Playwright 验收（无头 Chromium + 软件渲染）。
 # 场景生成物不进仓库，这里用草稿档生成广场（和 assets.yml 同一条命令），按流水线、布局和锁文件缓存；
-# 截图作为构件上传，给 UX 看。
+# 外壳的验收对着 B-1 的 mock 跑（Playwright 自己起 `uv run --all-packages zoujin-mock`）。截图作为构件上传，给 UX 看。
 name: web
 
 on:
@@ -12,6 +12,11 @@ on:
       - "assets/scenes/**"
       - "assets/budgets.json"
       - "pnpm-lock.yaml"
+      - "services/backend/src/zoujin_backend/mock/**"
+      - "fixtures/sessions/**"
+      - "fixtures/mock/**"
+      - "packages/contracts/**"
+      - "uv.lock"
       - ".github/workflows/web.yml"
   push:
     branches: [main]
@@ -22,6 +27,11 @@ on:
       - "assets/scenes/**"
       - "assets/budgets.json"
       - "pnpm-lock.yaml"
+      - "services/backend/src/zoujin_backend/mock/**"
+      - "fixtures/sessions/**"
+      - "fixtures/mock/**"
+      - "packages/contracts/**"
+      - "uv.lock"
       - ".github/workflows/web.yml"
 
 permissions:
@@ -34,7 +44,7 @@ concurrency:
 jobs:
   world:
     name: unit tests, bundle budget, world screen e2e
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '["self-hosted","zoujin-mac"]') }}
     timeout-minutes: 45
     steps:
       # where the plaza gets built and the web app reads it (scene-dir.ts); the runner context isn't available in job env
@@ -53,15 +63,21 @@ jobs:
           path: ${{ runner.temp }}/scenes/syracuse-square
           key: plaza-draft-${{ hashFiles('assets/pipeline/plaza/**', 'assets/scenes/syracuse-square/layout.json', 'assets/pipeline/package.json', 'pnpm-lock.yaml') }}
       - uses: astral-sh/setup-uv@v6
-        if: steps.scene.outputs.cache-hit != 'true'
         with:
           enable-cache: true
-          cache-dependency-glob: assets/pipeline/plaza/requirements.txt
+          cache-dependency-glob: |
+            uv.lock
+            assets/pipeline/plaza/requirements.txt
+      # B-1's mock for the app shell e2e (Playwright starts it)
+      - run: uv sync --locked --all-packages
       - name: build the plaza (draft lightmaps) when the cache missed
         if: steps.scene.outputs.cache-hit != 'true'
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q --no-install-recommends libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1
+          # 自建机器（infra/ci-runner）的镜像里已经装好，那里也没有 sudo
+          if [ -z "${ZOUJIN_CI_PREINSTALLED:-}" ]; then
+            sudo apt-get update -q
+            sudo apt-get install -y -q --no-install-recommends libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1
+          fi
           uv venv --python 3.13 "$RUNNER_TEMP/bpy"
           uv pip install --python "$RUNNER_TEMP/bpy/bin/python" -r assets/pipeline/plaza/requirements.txt
           BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/plaza/build.sh draft "$ZOUJIN_SCENE_ROOT/syracuse-square"
@@ -72,8 +88,11 @@ jobs:
       - name: bundle budget (shell <= 120 KB, 3D chunk <= 250 KB, brotli)
         run: pnpm --filter @zoujin/web check:bundle
       - name: Chromium for Playwright
-        run: pnpm --filter @zoujin/web exec playwright install --with-deps chromium
-      - name: world screen e2e (first screen, sunset shadow line, draw calls, walking, console)
+        # 系统依赖：自建机器的镜像里已经装好（没有 sudo），GitHub 自带的机器上用 --with-deps 装
+        run: |
+          if [ -n "${ZOUJIN_CI_PREINSTALLED:-}" ]; then deps=""; else deps="--with-deps"; fi
+          pnpm --filter @zoujin/web exec playwright install $deps chromium
+      - name: e2e (world screen; app shell against the mock)
         run: pnpm --filter @zoujin/web e2e
       - name: screenshots for UX
         if: ${{ !cancelled() }}

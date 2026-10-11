@@ -17,7 +17,7 @@ import pytest
 from fastapi.testclient import TestClient
 from zoujin_backend.config import DEFAULT_WORLD, REPO, ConfigError, Settings
 from zoujin_backend.gateway import app as gateway_app
-from zoujin_backend.manifest import CACHE, FILE_CACHE, ManifestError, generate
+from zoujin_backend.manifest import CACHE, FILE_CACHE, ManifestError, generate, scene_packs
 from zoujin_backend.mock.app import create_app as mock_app
 from zoujin_backend.mock.core import Config
 from zoujin_backend.narrator import app as narrator_app
@@ -159,7 +159,7 @@ def test_a_castle_pack_brings_in_the_castle_scene_and_its_roles(tmp_path: Path) 
     castle = next(s for s in doc["scenes"] if s["sceneId"] == "scene.castle-throne")
     assert castle["places"] == ["place.castle"]
     version = castle["assetVersion"]
-    assert len(version) == 8 and castle["assetUrl"] == f"/scenes/castle-throne/{version}/scene.json"
+    assert len(version) == 8 and castle["assetUrl"] == f"/scenes/{version}/castle-throne/scene.json"
     assert next(a for a in doc["acts"] if a["actId"] == "act.1")["sceneIds"] == [
         "scene.syracuse-square",
         "scene.castle-throne",
@@ -171,7 +171,60 @@ def test_a_castle_pack_brings_in_the_castle_scene_and_its_roles(tmp_path: Path) 
 
 def test_index_json_wins_over_scene_json(tmp_path: Path) -> None:
     square = make(world(), tmp_path, packs_dir=packs(tmp_path, index=True))["scenes"][0]
-    assert square["assetUrl"] == f"/scenes/syracuse-square/{square['assetVersion']}/index.json"
+    assert square["assetUrl"] == f"/scenes/{square['assetVersion']}/syracuse-square/index.json"
+
+
+def road(root: Path, shared: list[str] | None = None, manifest: str = "../road-river-calm/scene.json") -> None:
+    """#103 的形状：`index.json` 只列兄弟包的相对地址和共用包，不带 sha（前端 2 #114 评审）。"""
+    for name in ("road-river", "road-river-calm", "road-river-flood", "road-common"):
+        (root / name).mkdir(exist_ok=True)
+    (root / "road-river-calm" / "scene.json").write_text('{"files": {"a.glb": "1"}}', encoding="utf-8")
+    (root / "road-river-flood" / "scene.json").write_text('{"files": {"b.glb": "2"}}', encoding="utf-8")
+    (root / "road-common" / "pack.json").write_text('{"textures": {}}', encoding="utf-8")
+    (root / "road-common" / "tex").mkdir(exist_ok=True)
+    (root / "road-common" / "tex" / "grass.ktx2").write_bytes(b"grass")
+    index = {
+        "packs": [
+            {"pack": "road-river-calm", "act": "act.2", "manifest": manifest},
+            {"pack": "road-river-flood", "act": "act.4", "manifest": "../road-river-flood/scene.json"},
+        ],
+        "sharedPacks": ["road-common"] if shared is None else shared,
+    }
+    (root / "road-river" / "index.json").write_text(json.dumps(index), encoding="utf-8")
+
+
+def test_an_index_json_pack_versions_everything_it_reaches(tmp_path: Path) -> None:
+    root = packs(tmp_path)
+    road(root)
+    found = scene_packs(root, ["scene.syracuse-square", "scene.road-river"])
+    river = found["scene.road-river"]
+    # 版本在最前：`../road-river-calm/` 落在同一个版本下面，不出界
+    assert river.url == f"/scenes/{river.version}/road-river/index.json"
+    assert river.dirs == ("road-river", "road-common", "road-river-calm", "road-river-flood")
+    assert found["scene.syracuse-square"].dirs == ("syracuse-square",)
+    # index.json 不变，兄弟包或共用包里任何一个文件变了，版本就变
+    calm = root / "road-river-calm" / "scene.json"
+    calm.write_text('{"files": {"a.glb": "3"}}', encoding="utf-8")
+    after = scene_packs(root, ["scene.road-river"])["scene.road-river"].version
+    assert after != river.version
+    (root / "road-common" / "tex" / "grass.ktx2").write_bytes(b"grass2")
+    assert scene_packs(root, ["scene.road-river"])["scene.road-river"].version not in (river.version, after)
+    # 别的场景的包变了，这个场景的版本不变
+    square = found["scene.syracuse-square"].version
+    assert scene_packs(root, ["scene.syracuse-square"])["scene.syracuse-square"].version == square
+
+
+@pytest.mark.parametrize(
+    ("shared", "manifest"),
+    [(["road-gone"], "../road-river-calm/scene.json"), ([], "../../elsewhere/scene.json"), ([], "../x/scene.json")],
+    ids=["missing-shared", "outside", "missing-pack"],
+)
+def test_an_index_json_reaching_outside_the_packs_is_not_shipped(
+    tmp_path: Path, shared: list[str], manifest: str
+) -> None:
+    root = packs(tmp_path)
+    road(root, shared, manifest)
+    assert "scene.road-river" not in scene_packs(root, ["scene.road-river"])
 
 
 def test_characters_are_all_of_the_world_model_with_its_talkable(tmp_path: Path) -> None:

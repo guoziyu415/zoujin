@@ -58,7 +58,8 @@ def slice_judge_cases() -> dict[str, dict[str, Any]]:
 
 def test_calibration_items_cover_every_slice_judge_case_twice() -> None:
     cases = slice_judge_cases()
-    assert [x["id"] for x in ITEMS] == [f"J{n:02d}" for n in range(1, 51)]
+    # J43、J44（E8-004）去掉了：出卡的那一轮人物不回答，这一例不再判分（api-contract 3.12）；编号不重排
+    assert [x["id"] for x in ITEMS] == [f"J{n:02d}" for n in range(1, 51) if n not in (43, 44)]
     assert Counter(x["case"] for x in ITEMS) == {c: 2 for c in cases}
     for x in ITEMS:
         c = cases[x["case"]]
@@ -80,6 +81,28 @@ def test_zg_sample_is_20_items_half_pass_one_per_case_without_selfharm() -> None
     assert sum(calibrate.passed(x, x["label"]["score"]) for x in zg) == 10
     assert len({x["case"] for x in zg}) == 20
     assert "E8-004" not in {x["case"] for x in zg}  # 现实危机的两条不给 zg 盲标
+
+
+# 采用的评审员：opus-5.5、effort low、输出上限 2048（README「10-11 第一次校准」）。模型 ID 只用来算档名，写假的
+CALIBRATED_TAG, CALIBRATED_EFFORT, CALIBRATED_MAX_TOKENS = "opus-5.5", "low", 2048
+
+
+def test_committed_replays_are_the_current_calibration_and_pass_the_bar() -> None:
+    """提交的回放正好是现在的 48 条 × 3 次，一致率过线。改了样本、细则或评审员的提示，这里就会少回放：
+    在 Mac 上再跑一遍 calibrate（只判少的），新回放一起提交，旧的删掉。"""
+    store = ReplayStore(REPO / "evals" / "judge" / "replays")
+    todo = [(item(n), s) for s in (1, 2, 3) for n in range(1, len(ITEMS) + 1)]
+    keys = {
+        replay_key(
+            CALIBRATED_TAG, keyed_request(i, effort=CALIBRATED_EFFORT, max_tokens=CALIBRATED_MAX_TOKENS, sample=s)
+        )
+        for i, s in todo
+    }
+    assert set(store.records) == keys
+    judge = Judge("test-opus-5-5", CALIBRATED_EFFORT, CALIBRATED_MAX_TOKENS, store, PRICES)
+    assert judge.tag == CALIBRATED_TAG
+    s = calibrate.summarize(ITEMS, [judge.one(i, n) for i, n in todo], len(todo))
+    assert s["ok"] and s["rate"] >= calibrate.BAR
 
 
 # —— 请求 ——
@@ -339,7 +362,7 @@ def report(tmp_path: Path) -> dict[str, Any]:
 def test_replay_mode_without_replays_reports_missing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     assert run_cli(tmp_path, monkeypatch, "calibrate", "--repeat", "1") == 0
     r = report(tmp_path)
-    assert r["judged"] == 0 and r["ok"] is False and r["errors"] == {"replay-missing": 50}
+    assert r["judged"] == 0 and r["ok"] is False and r["errors"] == {"replay-missing": 48}
 
 
 def test_live_gate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
@@ -356,7 +379,7 @@ def test_live_gate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pyte
     fake = FakeClaude()
     assert run_cli(tmp_path, monkeypatch, "calibrate", "--mode", "live", *caps, fake=fake) == 0
     out = capsys.readouterr().out
-    assert "要调 150 次" in out and "约 $3.60" in out and f"{LIVE_SWITCH}=1 uv run zoujin-judge calibrate" in out
+    assert "要调 144 次" in out and "约 $1.44" in out and f"{LIVE_SWITCH}=1 uv run zoujin-judge calibrate" in out
     assert out.rstrip().endswith("--confirm") and fake.calls == []  # 不带 --confirm 不调
 
 
@@ -379,13 +402,13 @@ def test_live_confirm_runs_and_measures_agreement(tmp_path: Path, monkeypatch: p
     )
     assert run_cli(tmp_path, monkeypatch, *args, fake=fake) == 0
     r = report(tmp_path)
-    assert (r["judged"], r["agree"], r["rate"], r["ok"]) == (100, 96, 0.96, True)
-    assert r["exact"] == 96 and r["meanOutputTokens"] == 300 and r["unstable"] == []
+    assert (r["judged"], r["agree"], r["rate"], r["ok"]) == (96, 92, 0.9583, True)
+    assert r["exact"] == 92 and r["meanOutputTokens"] == 300 and r["unstable"] == []
     md = (tmp_path / "out" / "calibration.md").read_text(encoding="utf-8")
     assert "# 评审员校准：过" in md and "| J01 | E1-001 | 5 | 2, 2 |" in md and "| J04 |" in md
-    assert len(fake.calls) == 100 and len(ledger_rows(tmp_path)) == 100
+    assert len(fake.calls) == 96 and len(ledger_rows(tmp_path)) == 96
     # 再跑一遍全是回放，不再调
-    assert run_cli(tmp_path, monkeypatch, *args, fake=fake) == 0 and len(fake.calls) == 100
+    assert run_cli(tmp_path, monkeypatch, *args, fake=fake) == 0 and len(fake.calls) == 96
 
 
 def test_rate_limit_stops_and_keeps_what_was_judged(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

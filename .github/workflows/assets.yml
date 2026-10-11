@@ -1,4 +1,4 @@
-# 场景资产（F-2）：查进仓库的清单（预算、两档颜色、位置点和布局、世界模型），再在干净环境里用草稿档从头生成广场，
+# 场景资产（F-2；归途的川 F-10 照同样的做法）：查进仓库的清单（预算、两档颜色、位置点和布局、世界模型），再在干净环境里用草稿档从头生成广场，
 # 证明「一条命令跑通」；仓库里的清单要和这次是同一份输入；在另一个目录再生成一遍，两份清单逐字节一致（能复现）。
 # 正式档的光照图要约半小时，不在 CI 里烘。
 name: assets
@@ -7,6 +7,7 @@ on:
   pull_request:
     paths:
       - "assets/pipeline/plaza/**"
+      - "assets/pipeline/road/**"
       - "assets/scenes/**"
       - "assets/budgets.json"
       - "assets/pipeline/package.json"
@@ -16,6 +17,7 @@ on:
     branches: [main]
     paths:
       - "assets/pipeline/plaza/**"
+      - "assets/pipeline/road/**"
       - "assets/scenes/**"
       - "assets/budgets.json"
       - "assets/pipeline/package.json"
@@ -32,7 +34,7 @@ concurrency:
 jobs:
   plaza:
     name: plaza manifest, draft build from scratch
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '["self-hosted","zoujin-mac"]') }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
@@ -50,8 +52,11 @@ jobs:
           cache-dependency-glob: assets/pipeline/plaza/requirements.txt
       - name: Blender as a Python module (bpy) and the X11/GL libraries it links
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q --no-install-recommends libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1
+          # 自建机器（infra/ci-runner）的镜像里已经装好，那里也没有 sudo
+          if [ -z "${ZOUJIN_CI_PREINSTALLED:-}" ]; then
+            sudo apt-get update -q
+            sudo apt-get install -y -q --no-install-recommends libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1
+          fi
           uv venv --python 3.13 "$RUNNER_TEMP/bpy"
           uv pip install --python "$RUNNER_TEMP/bpy/bin/python" -r assets/pipeline/plaza/requirements.txt
       - name: build the plaza from scratch (draft lightmaps)
@@ -65,3 +70,55 @@ jobs:
         run: |
           BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/plaza/build.sh draft "$RUNNER_TEMP/plaza2"
           cmp "$RUNNER_TEMP/plaza/scene.json" "$RUNNER_TEMP/plaza2/scene.json"
+
+  road:
+    name: road river manifests, draft build from scratch
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '["self-hosted","zoujin-mac"]') }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: committed manifests (both packs, road-common, the scene.road-river index and layout)
+        run: |
+          for p in road-river-calm road-river-flood; do node assets/pipeline/plaza/check_scene.mjs assets/scenes/$p; done
+          node assets/pipeline/road/check_road.mjs assets/scenes/road-common assets/scenes/road-river-calm assets/scenes/road-river-flood assets/scenes/road-river
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: assets/pipeline/plaza/requirements.txt
+      - name: Blender as a Python module (bpy) and the X11/GL libraries it links
+        run: |
+          # 自建机器（infra/ci-runner）的镜像里已经装好，那里也没有 sudo
+          if [ -z "${ZOUJIN_CI_PREINSTALLED:-}" ]; then
+            sudo apt-get update -q
+            sudo apt-get install -y -q --no-install-recommends libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1
+          fi
+          uv venv --python 3.13 "$RUNNER_TEMP/bpy"
+          uv pip install --python "$RUNNER_TEMP/bpy/bin/python" -r assets/pipeline/plaza/requirements.txt
+      - name: build both packs from scratch (draft lightmaps)
+        id: build
+        run: BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/road/build.sh draft "$RUNNER_TEMP/road"
+      - name: committed manifests built from the same inputs
+        run: |
+          for p in road-river-calm road-river-flood; do
+            node assets/pipeline/plaza/check_scene.mjs "$RUNNER_TEMP/road/$p" assets/scenes/$p/layout.json --manifest assets/scenes/$p/scene.json
+          done
+          # the index and the merged layout hold no baked numbers: the committed ones are the fresh ones
+          cmp assets/scenes/road-river/index.json "$RUNNER_TEMP/road/road-river/index.json"
+          cmp assets/scenes/road-river/scene.json "$RUNNER_TEMP/road/road-river/scene.json"
+      - name: navigation unit tests on the fresh packs (card F-10; skipped in web.yml, which builds only the plaza)
+        run: |
+          test -f "$RUNNER_TEMP/road/road-river-calm/nav.json" && test -f "$RUNNER_TEMP/road/road-river-flood/nav.json"
+          ZOUJIN_SCENE_ROOT="$RUNNER_TEMP/road" pnpm --filter @zoujin/web exec vitest run src/three/nav/navmesh.river.test.ts
+      - name: build again in other directories; every manifest must be byte-identical
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: |
+          BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/road/build.sh draft "$RUNNER_TEMP/road2"
+          for f in road-river-calm/scene.json road-river-flood/scene.json road-common/pack.json road-river/scene.json road-river/index.json; do
+            cmp "$RUNNER_TEMP/road/$f" "$RUNNER_TEMP/road2/$f"
+          done

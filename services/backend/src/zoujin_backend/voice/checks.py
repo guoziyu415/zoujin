@@ -1,30 +1,40 @@
 """自动检查和挑选（B-6 卡「自动检查」，backend-design 3.6）。
 
-每句三遍，逐遍查：
-1. 长度：有声长度比三遍的中位数长一倍以上或不到一半的不要；再和拍数估的长度比（每拍 0.08〜0.25 秒），超出的不要。
+每句三遍（相槌六遍），逐遍查：
+1. 长度：有声长度比几遍的中位数长一倍以上或不到一半的不要；再和拍数估的长度比（每拍 0.08〜0.25 秒），超出的不要。
    中位数只取长度在拍数范围里的几遍（两遍坏了时不让坏的拉偏中位数）。
 2. 截断：原始那一遍最后 0.1 秒还有声音的不要。
 3. 读错、读两遍：补转写和原文按字算错误率，超过 20% 的不要；补转写里原文出现两遍的不要。
-4. 相槌超过 0.5 秒的不扔，标给 UX 看；相槌只在字错率上不过的也不扔，标给 UX。
-过了的里面挑有声长度最接近中位数的一遍；三遍都不过，这句不进声音清单，审查单写明原因。
+4. 相槌另有三条（UX 量测 20261011-121014）：有声范围（`audio.level`，UX 的量法）超过 0.5 秒的不要，裁好的文件超过
+   0.6 秒的不要（补 AAC 帧之前；相槌两头合计只留 0.1 秒），有音高的窗不到四成的（耳语、气声）不要。都不过就再跑
+   一次，不放宽。
+5. 不扔、标给 UX 的：相槌只在字错率上不过（「うむ」听成「うん」），相槌原始那遍一开头就有声（可能切了头）。
+6. 人物的「听不清」「等一下」和同一人物的自由对话比（B-6 卡、UX 量测）：音高中位差 ±2 半音、语速差 ±25% 以内的优先；
+   过了的几遍都不在范围里就挑最近的一遍，标出来留给 zg 听，不再跑。
+过了的里面先挑没有要标的，再挑像自由对话的，再挑有声长度最接近中位数的一遍；都不过，这句不进声音清单，审查单
+写明原因。
 """
 
 from __future__ import annotations
 
+import math
 import statistics
 import unicodedata
 from dataclasses import dataclass, field
 
-from zoujin_backend.voice.audio import Shape
+from zoujin_backend.voice.audio import Shape, aizuchi_pads, head_voiced, released_seconds
 
 MAX_CER = 0.2
 SEC_PER_MORA = (0.08, 0.25)
 # 拍数估的长度另给句中停顿的余量：「、」「。」「！」后面和「……」都会停一下，只放宽上限
 PAUSE_ALLOWANCE_S = 0.35
-AIZUCHI_MAX_S = 0.5
-# 两三拍的短句（「うむ。」「へえ。」）上限按拍数只有 0.5 秒上下，拖长一点的相槌会被当成太长扔掉，而卡上说相槌超过
-# 0.5 秒是标给 UX、不扔：上限至少给到 0.8 秒
+AIZUCHI_MAX_S = 0.5  # 有声范围（ux-design 16.2 第 4 样）
+AIZUCHI_FILE_MAX_S = 0.6  # 裁好的整个文件
+AIZUCHI_MIN_PITCHED = 0.4  # UX 量过的：过的相槌 0.56〜0.84，气声的「ああ。」0.07，耳语的「ああ、ああ。」0.04
+# 两三拍的短句（「うむ。」「へえ。」）上限按拍数只有 0.5 秒上下，太紧：上限至少给到 0.8 秒（相槌另有 0.5 秒那条管着）
 MIN_UPPER_S = 0.8
+TALK_MAX_ST = 2.0  # 和自由对话的音高中位差（半音）
+TALK_MAX_RATE = 0.25  # 语速差（比例）
 
 _PUNCT = set(" 　、。，．,.!?！？「」『』（）()・…ー〜~")
 _SMALL = set("ゃゅょぁぃぅぇぉゎャュョァィゥェォヮ")  # 和前一个假名合成一拍（っ、ん、ー各算一拍）
@@ -109,7 +119,9 @@ class TakeCheck:
     transcript: str | None = None
     cer: float | None = None
     problems: list[str] = field(default_factory=list)
-    soft: list[str] = field(default_factory=list)  # 不扔、标给 UX 的（相槌只在字错率或拍数上限上不过）
+    soft: list[str] = field(default_factory=list)  # 不扔、标给 UX 的（相槌只在字错率上不过、开头就有声）
+    talk: str | None = None  # 和自由对话比的音高、语速（要比的句子才有）
+    talk_off: float = 0.0  # 离范围多远：两样各除以允许的差取大的，≤ 1 在范围里
 
     @property
     def ok(self) -> bool:
@@ -131,6 +143,8 @@ def judge(
     *,
     aizuchi: bool,
     spoken: str | None = None,
+    talk: tuple[float, float] | None = None,
+    heard_as: tuple[str, ...] = (),
 ) -> Verdict:
     """takes：第几遍 → (形状, 补转写) 或出错的原因。补转写对原文 `text` 和送给 Live 的 `spoken`（读音替换后）都比，
     取小的；拍数按 `spoken` 估（替换后的假名更准）。"""
@@ -159,15 +173,18 @@ def judge(
             if s.speech < lo:
                 c.problems.append(f"比拍数估的下限 {lo:.2f}s 短")
             elif s.speech > hi:
-                why = f"比拍数估的上限 {hi:.2f}s 长"
-                # 相槌拖长（老爷慢慢的「ああ、ああ」）是演法，不是读错；读两遍有中位数和补转写两样查着。不扔，标给 UX
-                (c.soft if aizuchi else c.problems).append(why)
+                c.problems.append(f"比拍数估的上限 {hi:.2f}s 长")
+            if aizuchi:
+                _aizuchi(s, c)
+            if talk is not None:
+                _talk(s, c, talk, mora(spoken or text))
         if s.tail_voiced:
             c.problems.append("最后 0.1 秒还有声音（截断）")
         if heard is None:
             c.problems.append("没有补转写")
         else:
             refs = [text] if not spoken or spoken == text else [text, spoken]  # 补转写可能写汉字也可能写假名
+            refs += heard_as  # 源文件 heardAs：补转写固定写错的（「ちと」写成「ちょっと」），只对这一句
             c.cer = min(cer(r, heard) for r in refs)
             if any(read_twice(r, heard) for r in refs):
                 c.problems.append("补转写里原文出现两遍（读两遍）")
@@ -179,14 +196,46 @@ def judge(
     passed = [c for c in checks if c.ok]
     chosen = None
     if passed and median is not None:
-        # 没有软问题的优先，其次长度最接近中位数
-        chosen = min(passed, key=lambda c: (bool(c.soft), abs((c.speech or 0) - median), c.take)).take
+        # 没有软问题的优先；其次在自由对话的范围里的，都不在就挑最近的；再其次长度最接近中位数
+        chosen = min(
+            passed,
+            key=lambda c: (bool(c.soft), max(1.0, c.talk_off), abs((c.speech or 0) - median), c.take),
+        ).take
     flags = []
-    if chosen is not None and aizuchi:
+    if chosen is not None:
         pick = next(c for c in checks if c.take == chosen)
-        for why in pick.soft:
-            flags.append(f"相槌{why}，不扔，请听一下")
-        sp = pick.speech or 0.0
-        if sp > AIZUCHI_MAX_S:
-            flags.append(f"相槌 {sp:.2f}s，超过 {AIZUCHI_MAX_S}s（ux-design 16.2 第 4 样）")
+        flags = [f"相槌{why}，不扔，请听一下" for why in pick.soft]
+        if pick.talk_off > 1:
+            flags.append(f"和自由对话比 {pick.talk}，过了的几遍都不在范围里，挑了最近的一遍，请听一下")
     return Verdict(checks, median, (round(lo, 2), round(hi, 2)), chosen, flags)
+
+
+def _talk(s: Shape, c: TakeCheck, talk: tuple[float, float], moras: float) -> None:
+    hz, rate = talk
+    parts, off = [], 0.0
+    if s.pitch_hz:
+        st = 12 * math.log2(s.pitch_hz / hz)
+        parts.append(f"音高 {s.pitch_hz:.0f} Hz（{st:+.1f} 半音）")
+        off = max(off, abs(st) / TALK_MAX_ST)
+    else:
+        parts.append("没量到音高")
+        off = max(off, 2.0)
+    if s.sounding:
+        r = moras / s.sounding
+        dev = r / rate - 1
+        parts.append(f"语速 {r:.1f} 拍/秒（{dev:+.0%}）")
+        off = max(off, abs(dev) / TALK_MAX_RATE)
+    c.talk, c.talk_off = "，".join(parts), round(off, 3)
+
+
+def _aizuchi(s: Shape, c: TakeCheck) -> None:
+    span = s.span if s.span is not None else s.speech
+    if span > AIZUCHI_MAX_S:
+        c.problems.append(f"相槌有声 {span:.2f}s，超过 {AIZUCHI_MAX_S}s")
+    file_s = released_seconds(s, aizuchi_pads(s))
+    if file_s > AIZUCHI_FILE_MAX_S:
+        c.problems.append(f"相槌裁好是 {file_s:.2f}s，超过 {AIZUCHI_FILE_MAX_S}s")
+    if s.pitched is not None and s.pitched < AIZUCHI_MIN_PITCHED:
+        c.problems.append(f"有音高的只有 {s.pitched:.0%}（耳语或气声？）")
+    if head_voiced(s):
+        c.soft.append("原始那遍一开头就有声（可能切了头；已在前面补够静音）")

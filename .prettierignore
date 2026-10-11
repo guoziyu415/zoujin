@@ -11,5 +11,7 @@ packages/contracts/**/generated/
 assets/**/reports/
 pnpm-lock.yaml
 uv.lock
-# 流水线生成的场景清单（assets/pipeline/plaza/build.sh）
+# 流水线生成的场景清单（assets/pipeline/plaza/build.sh、road/build.sh）
 assets/scenes/*/scene.json
+assets/scenes/*/index.json
+assets/scenes/*/pack.json

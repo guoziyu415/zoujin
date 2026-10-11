@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from collections.abc import Iterator
 
 import httpx
@@ -75,6 +76,19 @@ def plan_turns(env: Env, pid: str) -> list[str]:
             async with engine.connect() as c:
                 q = select(turns.c.turn_id).where(turns.c.playthrough_id == pid, turns.c.kind == "plan")
                 return list((await c.execute(q)).scalars())
+        finally:
+            await engine.dispose()
+
+    return asyncio.run(main())
+
+
+def choose_done(env: Env, pid: str) -> bool:
+    async def main() -> bool:
+        engine = env.engine()
+        try:
+            async with engine.connect() as c:
+                q = select(turns.c.status).where(turns.c.playthrough_id == pid, turns.c.kind == "choose")
+                return list((await c.execute(q)).scalars()) == ["done"]
         finally:
             await engine.dispose()
 
@@ -199,3 +213,50 @@ def test_a_spoken_plan(env: Env, sliced: Services, player: Player) -> None:
     assert p.log.index(p.find("commit", seq=p.last_seq)) < p.log.index(result) < p.log.index(moved_on)
     assert moved_on["toActId"] == "act.4" and "opener" not in moved_on["arrival"]
     assert plan_turns(env, p.pid) == [turn_id]
+
+
+def test_the_act_changed_while_offline(env: Env, sliced: Services, player: Player) -> None:
+    """第 4 节（v1.0.12）：选了去处就断线，幕切换在断线时做完。重连时补发的 commit 后面再推一次 act_transition；
+    客户端收到了那次提交（lastSeq 等于它）也推（可能没收到后面的 act_transition）；之后又有提交就不推。"""
+    p = player
+    p.start()
+    advance_to(env, sliced, p.pid, 1430)
+    p.connect(last_seq=p.last_seq)
+    assert p.expect("welcome")["pending"]["actEnd"] is not None
+    p.expect("commit")
+    before = p.last_seq
+
+    p.send({"type": "act_choose", "clientMsgId": "c1", "optionId": "exit.1.city"})
+    assert p.ws is not None
+    p.ws.close()
+    deadline = time.monotonic() + 15
+    while not choose_done(env, p.pid):
+        assert time.monotonic() < deadline, "幕切换没做完"
+        time.sleep(0.1)
+    assert p.last_seq == before
+
+    p.connect(last_seq=before)
+    assert p.expect("welcome")["pending"]["actEnd"] is None
+    commit = p.expect("commit")
+    moved_on = p.expect("act_transition")
+    assert (moved_on["fromActId"], moved_on["toActId"]) == ("act.1", "act.4")
+    assert commit["seq"] == p.last_seq == moved_on["snapshot"]["lastSeq"]
+    assert p.log.index(commit) < p.log.index(moved_on)
+    assert "opener" not in moved_on["arrival"]
+
+    # 收到了那次提交、没确认收到 act_transition：再推一次，和原来的一样
+    assert p.ws is not None
+    p.ws.close()
+    p.connect(last_seq=p.last_seq)
+    p.expect("welcome")
+    assert p.expect("act_transition") == moved_on
+
+    # 落地以后说了一轮（又有了提交）：不再推
+    p.focus(OLD)
+    p.expect("turn_settled", turnId=p.text("……"))
+    assert p.ws is not None
+    p.ws.close()
+    p.connect(last_seq=p.last_seq)
+    p.expect("welcome")
+    with pytest.raises(AssertionError):
+        p.expect("act_transition", timeout=1.5)

@@ -44,6 +44,12 @@ uv run zoujin-admin replay pt_…    # 用事件重建世界状态，和缓存�
 - 日志和 Trace 只写 ID 和计数，不写原话（data-design 第 8 节）。
 - 代码：`gateway/`（`auth.py` 邀请码和会话，`rest.py`，`ws.py`，`hub.py` 收提交通知，`core.py` 组装推送），`narrator/`（`core.py` 领任务、单事务提交，`pipeline.py` 流水线，`rules.py` 第 3 步的规则，`view.py` 发给模型的状态和人物，`app.py` 内部接口），`db/`（表、迁移、事件行，`store.py` 写库的小函数），`models/`（假模型、回放、真客户端、账本、提示），`eval_api.py`（评测入口），`s2.py`（S-2 的运行脚本），`trace.py`（Span），`admin.py`。
 
+## Live 会话（B-10）
+
+- `ZJ_LIVE`（`fake` / `real`，没设跟 `ZJ_MODEL`）：`real` 只在 zg 的 Mac 上，要 `ZJ_VERTEX_PROJECT`、`ZJ_VERTEX_LOCATION`（同 B-2）和 ZJ_LEDGER、ZJ_MAX_GOOGLE_USD（同 B-2）。`ZJ_LIVE_REBUILD_TURNS`（7〜10，默认 8）、`ZJ_LIVE_THINKING`（默认 minimal）、`ZJ_LIVE_TRANSCRIBE_HINTS=0`（setup 被拒时去掉 ja-JP 和偏置词）、`ZJ_LIVE_LOCATION`（默认 us-central1）。
+- 代码：`models/gemini_live.py`（真 Live 客户端，直接用 websockets）、`gateway/voice.py`（预热、切换、每 N 轮和 GoAway 的无感重建、中途断了、中途更新局势、闲置、花费）、`gateway/brief.py`（系统指令，规则在 `models/prompt_texts/live.txt`）、`gateway/fallback.py`（补转写）。测试里的假 Vertex Live 服务是 `tests/fake_vertex_live.py`。
+- `uv run zoujin-live check [--confirm]`：Mac 上开一条真会话说两轮，打印时间和用量。`uv run zoujin-live reconcile --ledger … --item b10 --out …`：S-090 的对账。
+
 ## 叙事者流水线（B-2）
 
 一轮对话（语音的转写，或一条 `text`）走 backend-design 2.4：分流 → 提取 → 第 3 步确定性规则（R1〜R7，`narrator/rules.py`，和 `evals/s2_check.py` 的 `judge()` 对照）→ 第 4 步模型检查 → 改写、降级或拒绝 → 单事务提交。
@@ -130,8 +136,8 @@ uv run zoujin-voice                                        # 假模型：合成�
 uv run zoujin-voice --resume out/b6/<时间> [--only <键> …]  # 接着跑；只重读某几句
 ```
 
-- 源文件 `voice/<book>.json`：每个说话人的声音（D-025）、人物说明 `direction`、人物的 6 句（ux-design 16.2）、`cues`、场面说明 `scenes` 和读音替换 `readings`；固定演出的句子和 `arrival_capped` 的文字从世界模型读。换声音改这里，再 `--only` 重跑那个人物。
-- 每句读 3 遍（3 条会话），自动检查（长度、截断、补转写对原文）后挑一遍，裁头尾静音、限峰值、转 AAC。输出在 `out/b6/<时间>/release/`：`.m4a`、`voices.json`（manifest 的 `characters[].prerecorded` 和 `setPieceVoices` 两块）、`audit.md`、`ref/`，另打 zip、打印 sha256。
+- 源文件 `voice/<book>.json`：每个说话人的声音（D-025）、人物说明 `direction`、人物的 6 句（ux-design 16.2）、`cues`、场面说明 `scenes` 和读音替换 `readings`；固定演出的句子和 `arrival_capped` 的文字从世界模型读。换声音改这里，再 `--only` 重跑那个人物。只给某个人的某一句加演法（比如偏长的相槌）写在说话人块的 `scenes` 里，键是槽位（`"aizuchi/3"`），顶层的 `scenes` 不分人；改完 `--resume <目录> --only <录音 ID>` 只重读这几句，别的照用。说话人块的 `loudness` 是目标响度（有声 RMS，dBFS，UX 量的同一人物自由对话），构建时整句调到它；改了不用重录，`--resume <目录>` 重出 release 就行；`loudnessOffset`（键 → dB）给原作写明声音小的句子单独压低。补转写对某一句总写错（「ちと」写成「ちょっと」）时，顶层 `heardAs` 给那一句加一个也算对的写法，只管那一句，不放宽 20% 的线；改了也不用重录。
+- 每句读 3 遍（3 条会话），自动检查（长度、截断、补转写对原文；相槌另要有声 ≤ 0.5 秒、裁好 ≤ 0.6 秒、有音高）后挑一遍，裁头尾静音（不够 80 毫秒补静音）、调到目标响度、真峰值压到 −1 dBTP 以下、转 AAC。相槌三遍都不过就 `--resume <目录> --only <录音 ID>` 再跑一次，不放宽。输出在 `out/b6/<时间>/release/`：`.m4a`、`voices.json`（manifest 的 `characters[].prerecorded` 和 `setPieceVoices` 两块）、`audit.md`、`ref/`，另打 zip、打印 sha256。
 - 真模型（只在 Mac 上）：`ZJ_MODEL=real`、`ZJ_LEDGER`、`ZJ_VERTEX_PROJECT`、`ZJ_VERTEX_LOCATION`（补转写）、`--max-google-usd` 和 `--confirm`；Live 的地区默认 us-central1（`ZJ_LIVE_LOCATION` 换）。少一样只打印预计花费和命令。这一次跑的上限 `--max-usd` 默认 $1。到上限、第一个 429 或连接失败退出码 3（`--resume` 接着跑）。
 - 跑完：release 的 zip 和 sha256 交协调拷到 `/mnt/project-files/app-team/backend/b6/`，后端核对 sha 以后交 UX 量、zg 听（B-6 卡「真的生成」）。
 - mock 的 manifest 读 `assets/voice/<book>/voices.json`（有的话），`/assets/voice/<book>/<文件>` 只发清单里的文件。

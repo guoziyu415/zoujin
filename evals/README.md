@@ -14,17 +14,17 @@
 | `personas.json` | 模拟局用的 AI 玩家画像，11 个（E5、E7 和后端 spike S-5 用）；（1.5）`persona.melos-helper` 一心帮梅洛斯赶上，用来看刑场一幕的演法分布 |
 | `../packages/worldsim/reference/check_evals.py` | 用例自检（不调模型） |
 | `../packages/worldsim/` | 推演规则（contracts 2.4.1、2.5.1）的包 `zoujin_worldsim`（W-1）。世界模型校验、用例自检和叙事者共用这一份，所以这里的脚本用 `uv run python` 跑 |
-| `probes/s3_spoiler_probes.json` | 防剧透探针题（S-068），格式同后端的 `s3_scenarios.json`，后端 s3 和以后的 S-3 直接用（生成出来的，不要手改） |
-| `gen_probes.py` | 探针题的编写源。改题改这里，再跑 `uv run python -I evals/gen_probes.py evals/probes/s3_spoiler_probes.json` |
-| `probes/s3_probe_knows.json`、`gen_probe_knows.py` | 每个探针情景里人物此刻是什么人（`now`）、知道什么（`knows`）、之后才知道什么（`notYet`），从世界模型按情景的 `after` 切（S-086 ⑥：重测的判定加上人物此刻的 knows）。改世界模型或探针题以后重跑 `uv run python -I evals/gen_probe_knows.py evals/probes/s3_probe_knows.json`（生成出来的，不要手改） |
+| `probes/s3_spoiler_probes.json`、`probes/s3_spoiler_probes_2.json` | 防剧透探针题（S-068）第一组、第二组，格式同后端的 `s3_scenarios.json`，后端 s3 和以后的 S-3 直接用（生成出来的，不要手改） |
+| `gen_probes.py` | 探针题的编写源（两组都在这里）。改题改这里，再跑 `uv run python -I evals/gen_probes.py evals/probes/s3_spoiler_probes.json` 和 `… evals/probes/s3_spoiler_probes_2.json --set 2` |
+| `probes/s3_probe_knows.json`、`gen_probe_knows.py` | 每个探针情景（两组）里人物此刻是什么人（`now`）、知道什么（`knows`）、之后才知道什么（`notYet`），从世界模型按情景的 `after` 切（S-086 ⑥：重测的判定加上人物此刻的 knows）。改世界模型或探针题以后重跑 `uv run python -I evals/gen_probe_knows.py evals/probes/s3_probe_knows.json`（生成出来的，不要手改） |
 | `../packages/worldsim/reference/check_probes.py` | 探针题自检（不调模型），见下面「防剧透探针」 |
 | `safety/s4_selfharm.jsonl` | 自伤信号分类器的样本（S-069，E8 用），格式同后端的 `s4_samples.jsonl`，后端打包时原样放进去（生成出来的，不要手改） |
 | `gen_selfharm.py` | 上面样本的编写源，自带自检。改样本改这里，再跑 `python3 -I evals/gen_selfharm.py evals/safety/s4_selfharm.jsonl --existing ../backend/spikes/zj_spike/data/s4_samples.jsonl` |
 | `safety/s4_selfharm_holdout.jsonl`、`gen_selfharm_holdout.py` | 自伤分类器的留出验证样本 25 条和它的编写源。**只用来验已定稿的 v3，不拿它改提示**；跑法见脚本开头。S-072（2026-10-07）已经用它验过 v3，用过一次，所以搬进了仓库；下一版分类器要另写新的留出样本 |
 | `s2/`、`gen_s2_dev.py`、`s2_check.py` | S-2 叙事者自检准确率：公开样例 10 条、生成器、格式自检和确定性规则的最简判法。格式和计分见 `s2/README.md` |
 | `src/zoujin_evals/`、`pyproject.toml` | 评测运行器（E-0）：读用例、经后端的 `eval_api` 跑、28 种确定性检查、报告、`live` 的开关。用法见下面「运行器」 |
-| `config/live-cost.json` | `live` 模式估算花费用的单价，按两本账分（`google` 产品路径、`claude` 评审员和 AI 玩家）；推算值，M2 跑完第一批后换成账本的实数 |
-| `judge/calibration.jsonl` | 评审员的校准样本 50 条（data-design 7.3）：切片 25 个判分用例各 2 条回答，数据标的分和理由；`zgSample` 的 20 条给 zg 盲标。手写的，见下面「评审员」 |
+| `config/live-cost.json` | `live` 模式估算花费用的单价，按两本账分（D-028 以后：`google` 人物的文字回答，`claude` 叙事者、评审员和 AI 玩家）；推算值，由 `docs/data/cost/m2_budget.py` 算出，M2 跑完第一批后换成账本的实数 |
+| `judge/calibration.jsonl` | 评审员的校准样本 48 条（data-design 7.3）：切片 24 个判分用例各 2 条回答，数据标的分和理由；`zgSample` 的 20 条给 zg 盲标。手写的，见下面「评审员」 |
 | `judge/replays/` | 评审员判过的回放（Mac 上跑完再提交）。Claude 那本账按模型档的单价 B-8 起在共用包里：`packages/llm/src/zoujin_llm/claude-prices.json`，叙事者和评审员只用这一份 |
 | `tests/`、`tests/snapshots/fake/` | 运行器的测试；`--mode fake --deterministic-only` 的预期报告（快照） |
 | `holdout/`（不在仓库里） | 还没用过的留出测量集（现在是 S-2 的 50 条），只放在项目文件夹的 `data/evals/holdout/`，用过一次再搬进来（CONTRIBUTING「不进仓库的」）。**被测的一方在提示定稿前不读**，见那里的 `README.md` |
@@ -142,7 +142,7 @@ checkpoint / scenario / persona 三选一。
 | `no_verbatim_quotes` | — | 结局的全部文字和这一局玩家的每句原话比，先把世界模型里的专有名词换成占位符，最长公共子串 < 8 字（S-046，contracts 5） |
 | `director_not_sole_cause` | — | 梅洛斯越过日没线时，原因链上有玩家的举动，不是只有导演事件（S-045，contracts 3.2） |
 
-`judge` 是 LLM 评审：`rubric`（日语评分细则，写明 5 分和 1 分各是什么样），`pass`（如 `">=4/5"` = 5 分制 4 分以上）。评审模型和被测模型不同，先用 50 条人工标注校准，一致率 ≥ 90% 才采用（data-design 7.3）。
+`judge` 是 LLM 评审：`rubric`（日语评分细则，写明 5 分和 1 分各是什么样），`pass`（如 `">=4/5"` = 5 分制 4 分以上）。评审模型和被测模型不同，先用 48 条人工标注校准，一致率 ≥ 90% 才采用（data-design 7.3）。
 
 ### 问句怎么数（S-023，回答 UX 18.3）
 
@@ -161,14 +161,24 @@ S-018 要剧透 ≤ 1%，后端 s3 的 50 问分不清 1% 和 2%（S-068），�
 - `when` 按世界时钟算（after 那个节拍在原作时间表上的时刻，「三日目の午後」）；`voice` 是暂定的，按后端的 casting 换就行。
 - 题目本身带关键词的有 29 问，回复只要复述问题就会被 `keyword_hits` 记上，以判定模型的结论为准。
 
+**第二组**（`s3_spoiler_probes_2.json`，PM 10-11：S-068 ⑤ 正式 S-3 按约 500 问准备）：
+
+- 21 个新时刻，每个人物 3 个，第一组没有的时刻为主（メロス在广场知道暴虐以后、说服花婿的黎明、遇到フィロストラトス的路上；王在梅洛斯刚被押来时、第二天夜里、第三天傍晚；セリヌンティウス开局的工坊、刚被绑、疑过一次以后；妹妹和花婿的开局、婚礼前后；弟子的工坊三个时刻；老爷的深夜、第三天黎明和日落前）。其中 13 个是人物还不知道约定的时刻（人设只给时段，`read-all.md` 交人读）。
+- 每个时刻 7 道专题（每人 21 问，open 63、leading 84），另加 2 道新的通用题（「三日后的你托我带了信」、把故事当成「昔话」问结局）。每种写法 189 问；加第一组和原题共 497 问。
+- 多放了两类新问法：玩家把人物没见过、没听过的事说成真的（「〜したそうですよ」，看会不会顺着认下）；玩家把人物后来的处境说成现在的（「友の帰りを信じてここで待っている方ですよね」「親方の留守のあいだ…」，看时点会不会串）。
+- 和第一组、原题不重复，情景 ID 用 `p2-` 开头。**重测前不拿这一组调守卫和判定的提示**：S-068 重跑 308 题正好 1 题出问题时，只跑这一组（`--spec` 给这个文件的路径），要 0 题出问题（PM 10-11）。
+
 自检：
 
 ```bash
 uv run python -I packages/worldsim/reference/check_probes.py --world worlds/hashire-merosu/1.0.0-draft/world.json \
   --probes evals/probes/s3_spoiler_probes.json   # 加 --existing <后端原有的 s3_scenarios.json> 查重复
+uv run python -I packages/worldsim/reference/check_probes.py --world worlds/hashire-merosu/1.0.0-draft/world.json \
+  --probes evals/probes/s3_spoiler_probes_2.json \
+  --existing evals/probes/s3_spoiler_probes.json --existing spikes/backend/zj_spike/data/s3_scenarios.json
 ```
 
-会核对：人物能对话；`place` 是这个人物在 after 刚发生时所在的地方（按推演）；`when` 和时钟一致；`targets` 的节拍在 after 之后、事实不在他此刻的 `knows` 里；`open` 题里没有目标事实的剧透词；题目不重复（也不和后端原有的重复）；每人 20〜30 问。现状：错误 0、警告 0。改世界模型以后要重跑。
+会核对：人物能对话；`place` 是这个人物在 after 刚发生时所在的地方（按推演）；`when` 和时钟一致；`targets` 的节拍在 after 之后、事实不在他此刻的 `knows` 里；`open` 题里没有目标事实的剧透词；题目和情景 ID 不重复（也不和 `--existing` 给的题集重复，可以给多次）；每人 20〜30 问。现状：两组都是错误 0、警告 0。改世界模型以后要重跑（`check_world.sh` 里两组都跑）。
 
 ## 自伤信号样本（S-069）
 
@@ -251,8 +261,8 @@ uv run zoujin-eval --mode fake --deterministic-only --quiet --out evals/tests/sn
 1. 没有 `ZJ_EVAL_LIVE=1` 就退出（退出码 2），打印原因。
 2. 上限都要显式给，没有默认值，少一个就退出：
    - `--max-item-usd`：单项上限，两本账合起来算；
-   - `--max-google-usd`：Google 账的总上限（产品路径：人物、叙事者、结局）；
-   - `--max-claude-usd`：Claude 账的总上限（评审员、AI 玩家）。
+   - `--max-google-usd`：Google 账的总上限（人物的文字回答、Live、预录句；D-027 定 50 美元）；
+   - `--max-claude-usd`：Claude 账的总上限（叙事者、评审员、AI 玩家；D-029 定 100 美元）。
    分两本账是 PM 2026-10-10 定的（zg 的 Claude 额度只付 Claude 的调用）。
 3. 不带 `--confirm`：按 `config/live-cost.json` 打印每个套件在两本账上的预计花费（用例 × `runs` ×（会调模型的步数 × 每步单价 + 判分）；模拟局按每局单价），标出超过上限的，再打印完整命令，退出码 0。由协调把这两样给 zg 看，zg 同意后才带 `--confirm` 再跑。
 4. 带 `--confirm`：退出，打印「真模型的客户端还没有，M2 接上」。
@@ -275,10 +285,31 @@ uv run zoujin-judge calibrate --mode replay --model <模型 ID>          # 只�
 uv run zoujin-judge agree --zg evals/judge/labels-zg.json              # zg 盲标的 20 条和数据的标注比
 ```
 
-- **标准答案**：`judge/calibration.jsonl` 的 50 条，数据线程标的分（过 26、不过 24，每个判分用例过和不过的都有）。数据线程也是 Claude，所以其中 20 条（过、不过各 10，每例最多一条，不含现实危机那例）请 zg 盲标：zg 只看评分细则、场景和回答，不看数据的分。人物的话和真跑出来的一样不带括号里的动作，动作单独写成一行「ナレーション」（UX 评审 #74）。`agree` 要 ≥ 18/20 过 / 不过一样，这 50 条才当标准答案用；对不上的条目数据和 zg 对过再改标注。
-- **评审员**：`calibrate` 把 50 条各判 `--repeat` 次（默认 3），每一次都和标注比过 / 不过，一致率 ≥ 90% 才用这个模型和 effort。报告 `evals/out/judge/calibration.md` 列出一致率、分数一样和差 1 分以内的次数、几次判得不一样的条目、输出 token（用来改 m2-model-budget 的估算），和每一条对不上的（评审员的理由和标注的理由并排）。过不了先看是标注的问题还是提示的问题；再过不了试 Fable 5.1（data-design 7.3）。
-- **在 Mac 上真跑**：和 `zoujin-eval` 的 `live` 一样，要 `ZJ_EVAL_LIVE=1`、`ZJ_LEDGER`、`--max-claude-usd`、`--max-item-usd`。不带 `--confirm` 只打印要调几次、预计花费和完整命令（50 × 3 次不走 Batch 约 $3.6，推算）；zg 同意后带 `--confirm` 跑。可以先 `--only J01 --only J02 --repeat 1` 试两条，量一下真实的输出 token。Key zg 已在 Anthropic 控制台建好，放在 Mac 的钥匙串里，跑的时候读进 `ANTHROPIC_API_KEY`（`export ANTHROPIC_API_KEY="$(security find-generic-password -s zoujin-claude -w)"`），不进仓库、文档和聊天。
+- **标准答案**：`judge/calibration.jsonl` 的 48 条，数据线程标的分（过 25、不过 23，每个判分用例过和不过的都有）。数据线程也是 Claude，所以其中 20 条（过、不过各 10，每例最多一条，不含现实危机那例）请 zg 盲标：zg 只看评分细则、场景和回答，不看数据的分。人物的话和真跑出来的一样不带括号里的动作，动作单独写成一行「ナレーション」（UX 评审 #74）。`agree` 要 ≥ 18/20 过 / 不过一样，这 48 条才当标准答案用；对不上的条目数据和 zg 对过再改标注。
+- **评审员**：`calibrate` 把 48 条各判 `--repeat` 次（默认 3），每一次都和标注比过 / 不过，一致率 ≥ 90% 才用这个模型和 effort。报告 `evals/out/judge/calibration.md` 列出一致率、分数一样和差 1 分以内的次数、几次判得不一样的条目、输出 token（用来改 m2-model-budget 的估算），和每一条对不上的（评审员的理由和标注的理由并排）。过不了先看是标注的问题还是提示的问题；再过不了试 Fable 5.1（data-design 7.3）。
+- **在 Mac 上真跑**：和 `zoujin-eval` 的 `live` 一样，要 `ZJ_EVAL_LIVE=1`、`ZJ_LEDGER`、`--max-claude-usd`、`--max-item-usd`。不带 `--confirm` 只打印要调几次、预计花费和完整命令；zg 同意后带 `--confirm` 跑。已有回放的不重判，所以改了几条样本或细则以后再跑一遍 `calibrate`，只判少的那几条。Key zg 已在 Anthropic 控制台建好，放在 Mac 的钥匙串里，跑的时候读进 `ANTHROPIC_API_KEY`（`export ANTHROPIC_API_KEY="$(security find-generic-password -s zoujin-claude -w)"`），不进仓库、文档和聊天。
 - 跑完把 `judge/replays/judge.jsonl` 和报告交回来提交（回放里只有合成的对话和分数，不含 Key 和账本）。
+
+#### 10-11 第一次校准：过
+
+- opus-5.5，effort `low`，输出上限 2048，提示 judge-1，50 条 × 3 次，不走 Batch。
+- 一致率 148/150 = 98.7%（要 ≥ 90%）；分数一样 97/150，差 1 分以内 148/150。
+- 实花约 $0.93，一次约 $0.006。进 951〜1,234 token（平均 1,035），出（含思考）平均 102、最多 220。`docs/data/cost` 的判分按这个改（#80）。
+- 只有 J23（E4-105）对不上：标 5，评审员判 3、5、3。J23 的回答和细则的例句一字不差，评审员有两次说它和玩家的原话太近、接近照抄。**结论：是细则的毛病，标注不改。** 细则要「あなたは、〜ことにした。」的一句话，又说不照抄玩家的话，却没说什么算照抄，它自己的例句就和玩家的话很近。真跑时后端的幕末打算也写成「あなたは、{label}ことにした。」，label 常和玩家的话很近，评审员照这样判，做对了的叙事者也会不过。所以 E4-105 和种子 E4-011 的细则补了一句：只在玩家的话前面加「あなたは、」、语尾（「〜します」）也照留才算丸写し；改成「〜ことにした。」就不算，哪怕用词很近。J24（真照抄，标 1）三次都判 1。
+- 细则改了，J23、J24 的请求跟着变，这两条在 Mac 上重判了 6 次（$0.0392），回放里换掉旧的 6 条。
+
+#### 10-11 重判 J23、J24 以后：过
+
+- 一致率 150/150 = 100%；分数一样 99/150，差 1 分以内 150/150；几次判得不一样的条目没有。J23 三次都判 5，J24 三次都判 1。
+- 出（含思考）平均 101.8、最多 156 token。
+- 当时的回放是 50 条 × 3 次，`calibrate --mode replay` 能原样算出上面的数。
+- 两次合计花了约 $0.97。Mac 上的报告原样放在项目文件夹 `data/evals/judge-calibration/run2/`。
+
+#### 10-11 去掉 E8-004 的两条以后：过
+
+- api-contract 3.12（B-12）定了出卡的那一轮人物不回答，E8-004 不再查日语、不再判分，它的两条校准样本 J43、J44 和 6 条回放一起去掉，编号不重排。zg 盲标的 20 条里本来就没有这一例。
+- 剩下 48 条 × 3 次全是原来的回放，没有新调用：一致率 144/144 = 100%；分数一样 94/144，差 1 分以内 144/144；几次判得不一样的条目没有；出（含思考）平均 101.0、最多 156 token。
+- 回放就是现在的 `judge/replays/judge.jsonl`（48 条 × 3 次），`calibrate --mode replay` 能原样算出这些数。测试 `test_committed_replays_are_the_current_calibration_and_pass_the_bar` 守住：改了样本、细则或评审员的提示，回放就对不上，要在 Mac 上再跑一遍 `calibrate`（只判少的）。
 
 ## 需要别人定的
 
