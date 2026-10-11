@@ -1,9 +1,14 @@
 // One open playthrough (frontend-design 4, 9): owns the Live socket, writes what the server says into the stores, and
-// gives the screens a few verbs (focus, say, examine). Components call these and read the stores; none of them sees
-// the socket. Messages this client doesn't know yet are ignored and counted (api-contract 0: the protocol only adds).
+// gives the screens a few verbs (focus, say, examine). The conversation itself (turns, voice, subtitles, the safety
+// card) is the voice controller's; the session hands it those messages and the voice frames. Components call these
+// verbs and read the stores; none of them sees the socket. Messages this client doesn't know yet are ignored and
+// counted (api-contract 0: the protocol only adds).
 import type { Api } from "@zoujin/contracts";
+import type { AudioPort } from "../audio/engine";
+import { audio as pageAudio } from "../audio";
+import { VoiceController } from "../voice/controller";
 import { addEvents, applyCommit, fromSnapshot, type WorldData } from "./apply";
-import { turnId as newTurnId, uuid } from "./ids";
+import { uuid } from "./ids";
 import { Live, type Ended } from "./live";
 import { rest } from "./rest";
 import { setWorld, useWorld } from "../stores/world";
@@ -50,17 +55,14 @@ const KNOWN: Record<Api.ServerMessage["type"], true> = {
 
 export const CLIENT_VERSION = "web-0.1.0";
 
-type Outgoing = { turnId: string; text: string; via: Api.TextMessage["via"] };
-
 export type SessionHooks = {
   onEnded: (why: Ended) => void; // 4001 → the invite page; taken / gone → the screen says so
 };
 
 export class Session {
   private live: Live;
+  readonly voice: VoiceController;
   private welcomed = false;
-  private outbox: Outgoing[] = []; // typed while the socket was down
-  private inflight: Outgoing | null = null; // sent, nothing back for it yet
   private refilling: Promise<void> | null = null;
   private held: Api.CommitMessage[] = []; // commits that came while refilling
   private names: Record<string, string> = {};
@@ -71,6 +73,7 @@ export class Session {
     private readonly hooks: SessionHooks,
     url = wsUrl(playthroughId),
     Ctor?: ConstructorParameters<typeof Live>[3],
+    audio: AudioPort = pageAudio,
   ) {
     this.live = new Live(
       url,
@@ -78,18 +81,25 @@ export class Session {
       {
         lastSeq: () => useWorld.getState().world?.lastSeq ?? 0,
         onMessage: (m) => this.dispatch(m),
+        onBinary: (b) => this.voice.binary(b),
         onOpen: () => {},
         onDown: (reason) => this.down(reason),
         onEnded: (why) => this.ended(why),
       },
       Ctor,
     );
+    this.voice = new VoiceController(audio, {
+      send: (m) => this.live.send(m),
+      sendBinary: (b) => this.live.sendBinary(b),
+      ready: () => this.welcomed && this.live.open,
+    });
   }
 
   // the snapshot from POST /playthroughs or GET /snapshot; then the socket
   start(snapshot: Api.Snapshot): void {
     setWorld(fromSnapshot(snapshot));
     useVoice.setState(initialVoice());
+    this.voice.init();
     usePlayer.setState({ nearCharacter: null, focusCharacter: null });
     useUi.setState({ connection: "connecting", downSince: null });
     setTelemetryContext({
@@ -100,6 +110,7 @@ export class Session {
   }
 
   stop(): void {
+    this.voice.stop();
     this.live.close();
     this.welcomed = false;
     setTelemetryContext({});
@@ -107,6 +118,7 @@ export class Session {
 
   // pagehide (9.5): close without the banner; coming back calls reconnect()
   suspend(): void {
+    this.voice.suspend();
     this.live.close();
     this.welcomed = false;
     useUi.setState({
@@ -138,31 +150,19 @@ export class Session {
       suggestions: null,
     });
     this.live.send({ type: "focus", character });
+    this.voice.focused(character);
   }
 
   unfocus(reason: Api.UnfocusMessage["reason"] = "menu"): void {
     usePlayer.setState({ focusCharacter: null });
     useVoice.setState({ session: { character: null, status: "none" } });
     this.live.send({ type: "unfocus", reason });
+    this.voice.unfocused();
   }
 
-  // typed text (or a suggestion chip): the player's line shows at once, the character's as 「……」 until it comes
+  // typed text (or a suggestion chip): the player's line shows at once, the character's when it comes
   say(text: string, via: Api.TextMessage["via"] = "typed"): void {
-    const o: Outgoing = { turnId: newTurnId(), text, via };
-    useVoice.setState({
-      player: {
-        turnId: o.turnId,
-        speaker: "player",
-        text,
-        final: true,
-        fromChip: via === "chip",
-      },
-      character: null,
-      suggestions: null,
-      turn: { turnId: o.turnId, turnSeq: 0, phase: "waiting" },
-    });
-    if (this.welcomed && this.live.open) this.sendText(o);
-    else this.outbox.push(o);
+    this.voice.say(text, via);
   }
 
   examine(target: string): void {
@@ -174,27 +174,12 @@ export class Session {
     });
   }
 
-  private sendText(o: Outgoing): void {
-    const turnSeq = useVoice.getState().nextTurnSeq;
-    useVoice.setState((s) => ({
-      nextTurnSeq: turnSeq + 1,
-      turn: s.turn?.turnId === o.turnId ? { ...s.turn, turnSeq } : s.turn,
-    }));
-    this.inflight = o;
-    this.live.send({
-      type: "text",
-      turnId: o.turnId,
-      turnSeq,
-      text: o.text,
-      via: o.via,
-    });
-  }
-
   // —— the socket's side ——
 
   private down(reason: string): void {
     const ui = useUi.getState();
     this.welcomed = false;
+    this.voice.down();
     if (ui.connection === "open") {
       useUi.setState({
         connection: "reconnecting",
@@ -229,67 +214,19 @@ export class Session {
       case "welcome":
         return this.welcome(msg);
       case "session_preparing":
-        if (msg.character === usePlayer.getState().focusCharacter)
-          useVoice.setState({
-            session: {
-              character: msg.character,
-              status: "preparing",
-              etaMs: msg.etaMs,
-            },
-          });
-        return;
       case "session_ready":
-        if (msg.character === usePlayer.getState().focusCharacter)
-          useVoice.setState({
-            session: {
-              character: msg.character,
-              status: "ready",
-              voiceAvailable: msg.voiceAvailable,
-            },
-          });
-        return;
       case "turn_started":
-        useVoice.setState({
-          turn: { turnId: msg.turnId, turnSeq: msg.turnSeq, phase: "waiting" },
-          player: null,
-          character: null,
-          suggestions: null,
-        });
-        return;
       case "transcript":
-        return this.transcript(msg);
       case "interrupted":
       case "turn_complete":
-        this.answered(msg.turnId);
-        useVoice.setState((s) =>
-          s.turn?.turnId === msg.turnId && s.turn.phase !== "settled"
-            ? {
-                turn: {
-                  ...s.turn,
-                  phase: "done",
-                  ...(msg.type === "turn_complete" ? { audio: msg.audio } : {}),
-                },
-              }
-            : s,
-        );
-        return;
       case "suggestions":
-        useVoice.setState({
-          suggestions: { character: msg.character, items: msg.items },
-        });
-        return;
       case "turn_settled":
-        this.answered(msg.turnId);
-        useVoice.setState((s) => {
-          if (s.turn?.turnId !== msg.turnId) return s;
-          const cleared =
-            msg.outcome === "retracted" || msg.outcome === "paused"; // the words are gone (3.6, 3.12)
-          return {
-            turn: { ...s.turn, phase: "settled" },
-            ...(cleared ? { player: null, character: null } : {}),
-          };
-        });
-        return;
+      case "turn_retract_result":
+      case "safety_pause":
+      case "safety_hint":
+      case "safety_resumed":
+      case "degraded":
+        return this.voice.message(msg);
       case "commit":
         return void this.commit(msg);
       case "narration":
@@ -300,16 +237,12 @@ export class Session {
       case "limits":
         useVoice.setState({ voiceMinutesLeft: msg.voiceMinutesLeft });
         return;
-      case "degraded":
-        if (!useVoice.getState().degraded) addNarration(copy["voice.degraded"]);
-        useVoice.setState({ degraded: true });
-        return;
       case "error":
         // invalid_request: what we sent didn't fit the schema; the turn didn't happen (api-contract 5)
-        if (msg.error.code === "invalid_request") this.undelivered();
+        if (msg.error.code === "invalid_request") this.voice.undelivered();
         return;
       default:
-        return; // known, handled by later cards (voice F-1, set pieces, confirm, act end, ending: M2)
+        return; // known, handled by later cards (set pieces, confirm, approach, act end, ending: M2)
     }
   }
 
@@ -324,90 +257,14 @@ export class Session {
     const world = useWorld.getState().world;
     if (world) setWorld({ ...world, voice: w.voice, pending: w.pending });
     useVoice.setState({
-      nextTurnSeq: 1,
-      degraded: w.voice.degraded,
+      degraded: w.voice.degraded || !w.voice.enabled,
       voiceMinutesLeft: w.voice.minutesLeftToday,
     });
-    this.restore(w.lastTurn);
     // the server has its own lastSeq; it resends the commits after ours right behind this welcome (api-contract 4)
     const focus = usePlayer.getState().focusCharacter;
     if (focus) this.live.send({ type: "focus", character: focus });
-    // sent just before the drop and never seen by the server: send again (same turnId, a new turnSeq)
-    if (this.inflight && w.lastTurn?.turnId !== this.inflight.turnId)
-      this.outbox.unshift(this.inflight);
-    this.inflight = null;
-    const out = this.outbox;
-    this.outbox = [];
-    for (const o of out) this.sendText(o);
-  }
-
-  // what the subtitles showed before the drop (api-contract 4)
-  private restore(lt: Api.LastTurn | null): void {
-    if (!lt) return;
-    const v = useVoice.getState();
-    if (lt.status === "lost") {
-      if (v.turn?.turnId === lt.turnId || !v.turn) {
-        useVoice.setState({ turn: null, character: null });
-        addNarration(copy["reconnect.lostTurn"]);
-      }
-      return;
-    }
-    if (v.turn && v.turn.turnId !== lt.turnId) return; // we already moved on
-    const speaker = lt.character ?? "narrator";
-    useVoice.setState({
-      turn: {
-        turnId: lt.turnId,
-        turnSeq: v.turn?.turnSeq ?? 0,
-        phase: lt.status === "settled" ? "settled" : "done",
-      },
-      player:
-        lt.playerText === null
-          ? v.player
-          : {
-              turnId: lt.turnId,
-              speaker: "player",
-              text: lt.playerText,
-              final: true,
-            },
-      character:
-        lt.characterText === null
-          ? v.character
-          : { turnId: lt.turnId, speaker, text: lt.characterText, final: true },
-    });
-  }
-
-  private transcript(t: Api.TranscriptMessage): void {
-    const line = {
-      turnId: t.turnId,
-      speaker: t.speaker,
-      text: t.text,
-      final: t.final,
-      ...(t.source ? { source: t.source } : {}),
-    };
-    if (t.speaker === "player") {
-      useVoice.setState({ player: line });
-      return;
-    }
-    this.answered(t.turnId);
-    useVoice.setState((s) => ({
-      character: line,
-      turn:
-        s.turn?.turnId === t.turnId && s.turn.phase === "waiting"
-          ? { ...s.turn, phase: "speaking" }
-          : s.turn,
-    }));
-  }
-
-  private answered(turnId: string): void {
-    if (this.inflight?.turnId === turnId) this.inflight = null;
-  }
-
-  private undelivered(): void {
-    this.inflight = null;
-    useVoice.setState((s) =>
-      s.turn?.phase === "waiting" ? { turn: null, character: null } : s,
-    );
-    addNarration(copy["reconnect.lostTurn"]);
+    // turnSeq from 1 again, the last turn's words back, what was typed while down goes now
+    this.voice.connected(w.lastTurn);
   }
 
   private async commit(c: Api.CommitMessage): Promise<void> {

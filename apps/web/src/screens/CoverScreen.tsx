@@ -1,6 +1,8 @@
 // The book's cover (frontend-design 5, ux-design 2): 「書をひらく」, or 「続きから」 when a story is open (S-024).
-// F-1 unlocks audio in this tap; F-2d starts downloading the 3D chunk here.
+// Either tap unlocks the audio (iOS wants a gesture before any sound, frontend-design 7.4); F-2d starts downloading
+// the 3D chunk here.
 import { useQuery } from "@tanstack/react-query";
+import { audio } from "../audio";
 import { navigate } from "../app/router";
 import { meQuery } from "../app/queries";
 import { track } from "../telemetry/telemetry";
@@ -32,6 +34,7 @@ export default function CoverScreen() {
             <button
               className="primary"
               onClick={() => {
+                audio.unlock();
                 track("continue_started", {
                   awayMs: Math.max(
                     0,
@@ -51,7 +54,13 @@ export default function CoverScreen() {
             </p>
           </>
         ) : (
-          <button className="primary" onClick={() => navigate("/roles")}>
+          <button
+            className="primary"
+            onClick={() => {
+              audio.unlock();
+              navigate("/roles");
+            }}
+          >
             {copy["cover.open"]}
           </button>
         ))}

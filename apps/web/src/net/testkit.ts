@@ -10,6 +10,7 @@ export class FakeSocket {
   readyState = 0;
   binaryType: BinaryType = "blob";
   sent: Record<string, unknown>[] = [];
+  binary: ArrayBuffer[] = []; // microphone frames
   closedWith: number | null = null;
   onopen: ((e: Event) => void) | null = null;
   onclose: ((e: CloseEvent) => void) | null = null;
@@ -22,6 +23,7 @@ export class FakeSocket {
   send(d: string | ArrayBuffer): void {
     if (typeof d === "string")
       this.sent.push(JSON.parse(d) as Record<string, unknown>);
+    else this.binary.push(d);
   }
   close(code = 1000): void {
     if (this.readyState === 3) return;
@@ -38,6 +40,9 @@ export class FakeSocket {
     this.onmessage?.({
       data: typeof m === "string" ? m : JSON.stringify(m),
     } as MessageEvent);
+  }
+  receiveBinary(buf: ArrayBuffer): void {
+    this.onmessage?.({ data: buf } as MessageEvent);
   }
   drop(code = 1006): void {
     this.readyState = 3;

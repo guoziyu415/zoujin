@@ -2,46 +2,26 @@
 // start, one typed turn (subtitles, a light reaction, the clock moving), five seconds offline with the commit
 // resent once and only once, and a message type this client doesn't know. Every test starts from a reset mock.
 import { expect, test, type Page } from "@playwright/test";
-
-const ORIGIN = "http://127.0.0.1:4173";
-const MOCK = "http://127.0.0.1:8787";
-const PT = /\/play\/(pt_[0-9A-Z]+)$/;
-
-async function mock(page: Page, path: string, data: unknown = {}) {
-  const r = await page.request.post(`${MOCK}/__mock/${path}`, {
-    data,
-    headers: { Origin: MOCK },
-  });
-  expect(r.ok(), `/__mock/${path}`).toBeTruthy();
-}
-
-async function login(page: Page) {
-  await page.getByLabel("招待コード").fill("mock");
-  await page.getByRole("button", { name: "すすむ" }).click();
-}
-
-async function startStory(page: Page): Promise<string> {
-  await page.goto("/");
-  await login(page);
-  await page.getByRole("button", { name: "書をひらく" }).click();
-  await page.getByRole("button", { name: "旅人として、はじめる" }).click();
-  await expect(page).toHaveURL(PT);
-  await expect(page.getByTestId("sunband")).toHaveText("約束の日・夕方");
-  await expect(page.getByText("人に近づくと話せます")).toBeVisible(); // connected: the welcome came
-  return PT.exec(page.url())![1]!;
-}
+import {
+  login,
+  mock,
+  ORIGIN,
+  PT,
+  resetMock,
+  startStory,
+  talkTo,
+} from "./shell";
 
 async function sayToMelos(page: Page, text: string) {
-  await page.getByRole("button", { name: "近くの人" }).click();
-  const melos = page.getByRole("listitem").filter({ hasText: "メロス" });
-  await melos.getByRole("button", { name: "話しかける" }).click();
+  await talkTo(page, "メロス");
   await page.getByRole("button", { name: "文字で話す" }).click();
   await page.getByLabel("言いたいことを書く").fill(text);
   await page.getByRole("button", { name: "送る" }).click();
 }
 
 const problems: string[] = [];
-// HTTP errors the browser logs on its own and the flow expects: the 401 before login, the 409 at the start
+// HTTP errors the browser logs on its own and the flow expects: the 401 before login, the 409 at the start, and the
+// prerecorded lines the manifest names (preloaded on focus, F-1) while B-6's files aren't in git
 let expectedStatus = ["401", "409"];
 
 test.beforeEach(async ({ page, context }) => {
@@ -52,13 +32,12 @@ test.beforeEach(async ({ page, context }) => {
     const expected = new RegExp(
       `WebSocket connection to .* failed|status of (${expectedStatus.join("|")}) `,
     );
-    if (m.type() === "error" && !expected.test(m.text()))
+    const voiceFile = m.location().url.includes("/assets/voice/");
+    if (m.type() === "error" && !voiceFile && !expected.test(m.text()))
       problems.push(`console: ${m.text()}`);
   });
   await context.clearCookies();
-  // the mock's state and scenario are global: reset them (the cookie-less reset needs no session)
-  const r = await page.request.post(`${MOCK}/__mock/reset`, { data: {} });
-  expect(r.ok()).toBeTruthy();
+  await resetMock(page);
 });
 
 test.afterEach(() => {
@@ -204,9 +183,12 @@ test("five seconds offline: the commit made meanwhile arrives once, nothing is l
   // once more: nothing new to resend, nothing applied twice
   await mock(page, "drop");
   await expect(page.getByText("つながり直しています").first()).toBeVisible();
-  await expect(page.getByLabel("言いたいことを書く")).toBeVisible({
-    timeout: 15_000,
-  });
+  // back to where a turn can start (the text field closed after sending; the key is the way in, F-1)
+  await expect(page.getByTestId("talk")).toHaveAttribute(
+    "data-state",
+    "mic-unknown",
+    { timeout: 15_000 },
+  );
   await expect(page.locator(".world")).toHaveAttribute("data-last-seq", "1");
   await expect(page.locator(".world")).toHaveAttribute("data-events", "1");
 });

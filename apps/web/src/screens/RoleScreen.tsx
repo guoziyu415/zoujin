@@ -4,6 +4,7 @@ import type { Api } from "@zoujin/contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { navigate } from "../app/router";
+import { audio } from "../audio";
 import { BOOK_ID, handSnapshot, manifestQuery, meQuery } from "../app/queries";
 import { uuid } from "../net/ids";
 import { ApiError, rest } from "../net/rest";
@@ -23,7 +24,9 @@ export default function RoleScreen() {
 
   const enter = (pid: string) => navigate(`/play/${encodeURIComponent(pid)}`);
 
+  // every way in is a tap: unlock the audio inside it (frontend-design 7.4)
   async function start(roleId: string) {
+    audio.unlock();
     setBusy(true);
     setProblem(null);
     try {
@@ -43,6 +46,7 @@ export default function RoleScreen() {
   }
 
   async function replace(active: Api.ActivePlaythrough, roleId: string) {
+    audio.unlock();
     setBusy(true);
     try {
       await rest.deletePlaythrough(active.playthroughId, uuid());
@@ -73,7 +77,10 @@ export default function RoleScreen() {
             <Conflict
               problem={problem}
               busy={busy}
-              onResume={() => enter(problem.active.playthroughId)}
+              onResume={() => {
+                audio.unlock();
+                enter(problem.active.playthroughId);
+              }}
               onNew={() => setProblem({ ...problem, confirming: true })}
               onCancel={() => setProblem({ ...problem, confirming: false })}
               onConfirm={() => void replace(problem.active, r.roleId)}
