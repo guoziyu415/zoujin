@@ -4,7 +4,7 @@
 // and a refused microphone. The prerecorded lines the manifest names aren't there yet (B-6 files are not in git): their
 // 404s are expected.
 import { expect, test, type Page, type WebSocketRoute } from "@playwright/test";
-import { mock, ORIGIN, resetMock, startStory, talkTo } from "./shell";
+import { login, mock, ORIGIN, resetMock, startStory, talkTo } from "./shell";
 
 const BASE_ARGS = [
   "--use-angle=swiftshader",
@@ -519,5 +519,39 @@ test.describe("a refused microphone", () => {
     await expect(page.getByTestId("sub-character")).toContainText(
       "許しておけるものか。",
     );
+  });
+});
+
+test.describe("LINE's browser", () => {
+  test.use({
+    userAgent:
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Safari Line/14.16.0",
+  });
+  test("the cover says the voice may not work here; このまま文字で遊ぶ starts with the keyboard", async ({
+    page,
+  }) => {
+    await mock(page, "scenario", { name: "full-turn" });
+    await page.goto("/");
+    await login(page);
+    const note = page.getByRole("note");
+    await expect(note).toHaveText(
+      /LINEの中のブラウザでは、声で話せないことがあります。/,
+    );
+    await note.getByRole("button", { name: "このまま文字で遊ぶ" }).click();
+    await expect(note).toHaveCount(0);
+    await page.getByRole("button", { name: "書をひらく" }).click();
+    await page.getByRole("button", { name: "旅人として、はじめる" }).click();
+    await expect(page.getByText("人に近づくと話せます")).toBeVisible();
+    await talkTo(page, "メロス");
+    await expect(page.getByTestId("talk")).toHaveCount(0);
+    await page.getByLabel("言いたいことを書く").fill("こんにちは");
+    await page.getByRole("button", { name: "送る" }).click();
+    await expect(page.getByTestId("sub-character")).toContainText(
+      "許しておけるものか。",
+    );
+    // the choice stays on this device: the next visit has no note
+    await page.goto("/");
+    await expect(page.getByRole("button", { name: "続きから" })).toBeVisible();
+    await expect(page.getByRole("note")).toHaveCount(0);
   });
 });

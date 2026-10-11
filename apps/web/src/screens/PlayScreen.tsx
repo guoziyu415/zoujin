@@ -6,6 +6,7 @@ import type { Api } from "@zoujin/contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { manifestQuery, meQuery, takeSnapshot } from "../app/queries";
+import { audio } from "../audio";
 import { navigate, toLogin } from "../app/router";
 import { closePlay, openPlay, play } from "../net/play";
 import { ApiError, rest } from "../net/rest";
@@ -32,6 +33,7 @@ export default function PlayScreen({ pid }: { pid: string }) {
   const qc = useQueryClient();
   const manifest = useQuery(manifestQuery);
   const [failed, setFailed] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0); // 「もう一度つなぐ」 reads the snapshot again
   const names = useMemo(
     () =>
       Object.fromEntries(
@@ -87,7 +89,7 @@ export default function PlayScreen({ pid }: { pid: string }) {
         resumeGate: false,
       });
     };
-  }, [pid, qc]);
+  }, [pid, qc, attempt]);
 
   useEffect(() => {
     if (manifest.data) play.setManifest(manifest.data);
@@ -113,7 +115,15 @@ export default function PlayScreen({ pid }: { pid: string }) {
         <WorldReactionToast />
         {failed && (
           <div className="banner" role="alert">
-            {failed}
+            <span>{failed}</span>
+            <button
+              onClick={() => {
+                setFailed(null);
+                setAttempt((n) => n + 1);
+              }}
+            >
+              {copy["net.retry"]}
+            </button>
           </div>
         )}
       </div>
@@ -168,7 +178,8 @@ function Controls({ names }: { names: Record<string, string> }) {
 }
 
 // leaving and coming back (frontend-design 9.5): pagehide closes the socket (back/forward cache); visible again
-// reconnects if it dropped and shows the one-tap gate; app_resumed says how long the player was away
+// reconnects if it dropped and, when the sound needs it, shows the one-tap gate; app_resumed says how long the
+// player was away
 function useResume(): void {
   useEffect(() => {
     let hiddenAt: number | null = null;
@@ -178,7 +189,11 @@ function useResume(): void {
         hiddenAt === null ? 0 : Math.round(performance.now() - hiddenAt);
       hiddenAt = null;
       const since = performance.now();
-      useUi.setState({ resumeGate: true });
+      // the one-tap gate only when the sound can't come back without a tap (iOS after the background)
+      void audio.resumeQuietly().then((ok) => {
+        if (!ok && document.visibilityState === "visible")
+          useUi.setState({ resumeGate: true });
+      });
       play.reconnect();
       const report = () =>
         track("app_resumed", {

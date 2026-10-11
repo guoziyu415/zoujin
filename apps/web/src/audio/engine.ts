@@ -113,6 +113,19 @@ export class AudioEngine implements AudioPort {
     void this.load();
   }
 
+  // back on the page (frontend-design 9.5): false when the sound needs a tap to come back. A context that never
+  // started or still runs needs nothing (a desktop tab switch); one the browser lets resume without a gesture
+  // comes back here on its own.
+  async resumeQuietly(): Promise<boolean> {
+    const ctx = this.ctx;
+    if (!ctx || this.running) return true;
+    await Promise.race([
+      ctx.resume().catch(() => {}),
+      new Promise((r) => setTimeout(r, 300)),
+    ]);
+    return this.running;
+  }
+
   private context(): AudioContext {
     if (this.ctx) return this.ctx;
     const ctx = new AudioContext({ latencyHint: "interactive" });

@@ -10,6 +10,7 @@ import {
 } from "react";
 import { levels } from "../../audio/engine";
 import { play } from "../../net/play";
+import { useUi } from "../../stores/ui";
 import { useVoice } from "../../stores/voice";
 import { canPress } from "../../voice/state";
 import { voiceSettings } from "../../voice/settings";
@@ -21,6 +22,7 @@ const SLIDE_PX = 60;
 export function TalkKey() {
   const state = useVoiceState();
   const hold = useVoice((s) => s.hold);
+  const connection = useUi((s) => s.connection);
   const ref = useRef<HTMLButtonElement>(null);
   const startY = useRef(0);
   const tap = voiceSettings.tap;
@@ -53,7 +55,10 @@ export function TalkKey() {
       : state === "thinking"
         ? copy["talk.thinking"]
         : state === "reconnecting"
-          ? copy["talk.reconnecting"]
+          ? // only a drop says so: the first connect stays blank, a taken tab has its banner
+            connection === "reconnecting"
+            ? copy["talk.reconnecting"]
+            : ""
           : state === "away"
             ? copy["talk.disabled"]
             : tap
@@ -101,6 +106,7 @@ export function TalkKey() {
       data-state={state}
       disabled={!enabled}
       aria-pressed={state === "listening"}
+      aria-label={label ? undefined : copy["talk.hold"]}
       onPointerDown={down}
       onPointerMove={move}
       onPointerUp={up}

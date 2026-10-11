@@ -4,13 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { useWorld } from "../../stores/world";
 import { copy, fill } from "../copy";
 
+// an hour or more: to the nearest 30 minutes, 15 rounding up (copy-ja 3, the same as the countdown): 74 → +1時間,
+// 75 → +1時間半, 105 → +2時間
 export function delta(min: number): string {
   if (min < 60) return fill(copy["clock.delta.min"], { n: min });
-  const h = Math.floor(min / 60);
-  const rest = min - h * 60;
+  const halves = Math.floor((min + 15) / 30);
   return fill(
-    rest >= 30 ? copy["clock.delta.hoursHalf"] : copy["clock.delta.hours"],
-    { n: h },
+    halves % 2 ? copy["clock.delta.hoursHalf"] : copy["clock.delta.hours"],
+    { n: Math.floor(halves / 2) },
   );
 }
 
