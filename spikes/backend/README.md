@@ -201,7 +201,7 @@ ZJ_BUDGET_USD=30 caffeinate -i uv run python -m zj_spike.s3_spoiler --spec probe
   - 复核判定每条主张先标 `source`（`player` / `now` / `known` / `lived` / `unknown_now` / `future` / `none`），再定 `kind`：
     `unknown_fact` 只在出处是「不知道」一览且上面的规则不放过、或补了玩家没说的细节时；`future_match` 只在出处是「还没发生」一览时。
   - 王听说梅洛斯途中差点放弃时的「やはりな」写成例子（PM S-095）。
-  - 等 UX 认可，`JUDGE_RULES_ACCEPTED` 先关着。
+  - UX 在 #169 认可了（5e6890d），`JUDGE_RULES_ACCEPTED` 开着。Mac 上的重判和整轮重跑用的是 5e6890d（开关关着、提示一样），E2 照算。
 - `guard` 加三条：玩家说的当传闻听、不用「やはり」作保；他人の胸のうち、自己没见没听的事，不说有也不说没有；
   说到什么时候的事照下面的标法，不说日子的名字。`base` 和 `guard` 的人设里（UX 定的说法）：
   - 「これまでに見聞きしたこと」每条前面带（今朝）（今日の昼）（今日の夕方）（今夜）（昨日）（昨夜）（おととい）（三日前）。

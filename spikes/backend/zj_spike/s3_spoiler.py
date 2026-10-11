@@ -79,7 +79,7 @@ PROMISE = "fact.promise"
 LIVE_USD = 0.0041  # one Live session with one text question: the 10-07 retest spent $2.485 on 615 sessions
 REPLY_CHARS = 60  # a reply's length for the estimate (10-07: 51 characters on average)
 JUDGE_RULES = "s092.3"  # s092.2 with the reason written before the verdict fields, and where each claim comes from (S-092 ②')
-JUDGE_RULES_ACCEPTED = False  # waits for UX on the s092.3 PR; off = E2 checks judges only
+JUDGE_RULES_ACCEPTED = True  # UX accepted s092.3 on #169 (5e6890d); off = E2 checks judges only
 # S-092, UX's wording (review of the 20261011-152340 run): a character's day starts at dawn (the clock's band after the
 # one that starts at midnight), so the small hours still belong to the day before; past events are told as 今朝 /
 # 今日の昼 / 今日の夕方 / 今夜 / 昨日 / 昨夜 / おととい / 三日前, never a day name. Which clock band is which part of the day
