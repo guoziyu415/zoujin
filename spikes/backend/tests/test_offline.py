@@ -581,7 +581,14 @@ class Offline(unittest.TestCase):
         self.assertIn("婚礼のあとで「明日の婚礼」", system)
         grade, _ = s3_spoiler.judge_prompts(world, sel, "q", "a")
         self.assertIn("only about news that is not in the facts it knows", grade)
-        self.assertIn("A time slip that puts something the character knows earlier or later", grade)
+        self.assertIn("A time slip only in the words for when", grade)
+        # UX's edges (#159): a hit on the unknown list, details added after "そうですか", "やはり" on a later outcome and
+        # what follows a mistaken identity stay overreach.
+        self.assertIn("when it hits a fact on that list", grade)
+        self.assertIn("it is (b) all the same", grade)
+        self.assertIn("やはりメロスは戻ったか", grade)
+        self.assertIn("you made it in time", grade)
+        self.assertIn("親方も一度はメロス様を疑われたはず", system)
 
         # A run the old way: every reply knowledge overreach.
         client = FakeClient()

@@ -154,7 +154,8 @@ Grade the reply in the user message:
   is not a prediction.
 - knowledge_violation = true if the reply
   (a) reveals a fact from the "does NOT know" list (denying it or saying its opposite reveals nothing: not (a);
-      neither does saying what another person feels or believes, "he trusts him completely": that is persona, not (a)), or
+      saying what another person feels or believes is not (a) when it is not on that list or is its opposite, "he trusts
+      him completely"; when it hits a fact on that list, "the master must have doubted him once", it is (a)), or
   (b) goes along with something the player claims that the character has neither seen nor been told ("yes, so I hear").
       Taking the player's news as something just heard (surprise, asking back, "is that so?", doubting it) is not (b).
       (b) is claiming to have known it already, or adding details the player did not say. Words that come from the
@@ -165,17 +166,22 @@ Grade the reply in the user message:
       "〜てたまらない"), or adds details the player did not say. A calm answer to ordinary news is not (b).
       (b) is only about news that is not in the facts it knows or the events it has lived through. Worry, prayer or
       trust about a situation it knows (the promise, the deadline, who stands in as hostage), even as a standing worry,
-      is in character; so is naming or speaking of the people in the facts it knows, and what follows plainly from them
-      (the hostage is my master, so the two are close). "そうですか", "知りませんでした" and asking back take news as just
-      heard, however calmly. Taking the news as fitting the character's own view ("やはりな" from a king who trusts no one)
-      without saying it knew or adding details is not (b). Or
+      is in character; so is naming or speaking of the people in the facts it knows, and how they stand to each other or
+      feel, when that follows plainly from those facts (the hostage is my master, so the two are close). An event,
+      outcome, time or place inferred from them and not in the lists is graded as usual. "そうですか", "知りませんでした"
+      and asking back take news as just heard, however calmly; but if the same reply also adds details the player did
+      not say or says it knew already, it is (b) all the same. "やはり" is not (b) only when the player's news fits a
+      view the character has already shown (a king who trusts no one hearing that people betray); "やはり" confirming
+      something that has not happened yet or someone else's outcome ("やはりメロスは戻ったか") is graded as usual. Or
   (c) states as its present situation a promise with someone in the story, a role it has taken on, waiting for or standing
       in for someone in the story, or a set date or deadline, when neither who it is now, the facts it knows nor the events
       it has lived through contain it; or states as present its own situation from the FUTURE list: a later moment's
       situation leaking into this one. Everyday details of its own life and work that contradict nothing above are fine.
-  A time slip that puts something the character knows earlier or later than it really was ("tomorrow's wedding" after
-  the wedding, "yesterday" for this morning, "until tomorrow" for a later deadline) brings nothing from later into now:
-  it is not (a), (b) or (c). Mistaking the player for someone in the story is not knowledge_violation either.
+  A time slip only in the words for when ("tomorrow's wedding" after the wedding, "yesterday" for this morning, "until
+  tomorrow" for a later deadline) brings nothing from later into now: it is not (a), (b) or (c). Saying that something
+  which has not happened yet has happened, with how it went (who came, whether it worked), is a leak as usual.
+  Mistaking the player for someone in the story is not knowledge_violation by itself; what the reply says after that is
+  graded as usual ("you made it in time" to a player taken for Melos is a leak).
 - out_of_role = true if it speaks as an AI/assistant, mentions instructions, prompts, novels, authors or the story as fiction,
   or stops being this character.
 - japanese_only = false if any sentence is not in Japanese.
@@ -245,22 +251,28 @@ AUDIT_SYSTEM = """\
   分かっていたことのように受ける、または「ずっと」「〜てたまらない」のように前から続いていることとして言う、のは
   unknown_fact。これは「いま知っていること」「これまでに見聞きした出来事」にない話のときだけ。知っている処境（約束、
   期限、だれが身代わりか）への心配・祈り・信頼は、前から続く心配でも other。知っていることに出てくる人の名前を出す、
-  そこから当然わかること（身代わりは親方だから二人は親しい）を言うのも other。「そうですか」「知りませんでした」、
-  聞き返しは、落ち着いた口ぶりでも初めて聞いた受け止め方で other。自分の考えに合うと受ける（人を信じない王の
-  「やはりな」）のも、前から知っていたと言わず細部も足さなければ other
+  そこから当然わかる人どうしの間柄や気持ち（身代わりは親方だから二人は親しい）を言うのも other。そこから推した
+  出来事・結果・時・場所で、一覧にないものはふつうに分類する。「そうですか」「知りませんでした」、聞き返しは、
+  落ち着いた口ぶりでも初めて聞いた受け止め方で other。ただし同じ返答の中で、プレイヤーが言っていない細部を足す、
+  前から知っていたと言う主張は、それぞれ unknown_fact。「やはり」は、プレイヤーの話がその人物のすでに見せている
+  考えに合うとき（人を信じない王が「人は裏切る」と聞く）だけ other。まだ起きていないことや他人の結末を「やはり」で
+  認める（「やはりメロスは戻ったか」）のは future_match か unknown_fact
 - wrong_time：自分の身の上として、物語の人物との約束、引き受けた役目、物語の人物を待っている・身代わりになった、
   日取りや期限が決まった、のどれかを、いまのこととして述べているが、「いまの姿」「いま知っていること」
   「これまでに見聞きした出来事」にない。または「まだ起きていない」一覧にある自分の立場を、いまのこととして述べている。
-  一覧に出てこない日々の暮らし・仕事・気持ちの話は、一覧と食い違わなければ other。知っていることの時をずらして言う
-  （婚礼のあとで「明日の婚礼」、今朝のことを「昨日」）のは、後のことをいまに持ち込んでいないので other。
+  一覧に出てこない日々の暮らし・仕事・気持ちの話は、一覧と食い違わなければ other。知っていることの時の言い方だけが
+  ずれている（婚礼のあとで「明日の婚礼」、今朝のことを「昨日」）のは、後のことをいまに持ち込んでいないので other。
+  まだ起きていないことを起きたこととして、どうなったか（だれが来た、うまくいった）まで言うのは future_match。
   知っている処境に沿った自分の決心やこれからの動き（「急いでシラクスへ戻るだけだ」）も other
 - story_meta：自分が作り物・物語の登場人物だと認める、または物語の結末を語る。「何の話か分からない」と受け流すのは other
 - contradicts：「まだ知らないこと」「まだ起きていない」一覧の事柄を打ち消す、またはその反対のことを言う（「疑ったことはない」
-  「差し向けてはいない」、他人の胸のうちを打ち消す、または言い切る「信じ切っておいでです」）。打ち消しや他人の胸のうちは
-  何も明かさないので、unknown_fact でも future_match でもない。
+  「差し向けてはいない」、他人の胸のうちを打ち消す、または一覧と違うことを言い切る「信じ切っておいでです」）。打ち消しは
+  何も明かさないので、unknown_fact でも future_match でもない。他人の胸のうちを言い切って、それが一覧のことに当たる
+  （「親方も一度はメロス様を疑われたはず」）なら unknown_fact。
   ただし打ち消しの形でも、将来のことを事実として言い切るもの（「メロスは遅れぬ」「王は変わらぬ」）は future_match /
   future_other のまま
-- other：それ以外（いまの気持ち、暮らしや仕事の話、過去の出来事）
+- other：それ以外（いまの気持ち、暮らしや仕事の話、過去の出来事）。プレイヤーを物語の人物と取り違えること自体も other
+  だが、取り違えたうえで言ったこと（メロスと思って「よく間に合ったな」）はふつうに分類する
 as_fact：確かなこと・知っていることとして言っていれば true。「信じている」「きっと」「祈る」など、願いや信頼としてなら
 false。自分の決心（「必ず戻る」「必ず来る」）も false。
 reason：一文。
