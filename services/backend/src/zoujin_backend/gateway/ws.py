@@ -25,9 +25,14 @@ B-4 加了作废、识别改正和意图确认（3.6、3.9）：
   缩短；速度 0 时照 30 秒）。按钮、计时到点都写一行 `kind: "confirm"` 的任务。重连时 `welcome.pending.confirm`
   带剩余秒数，过期的先关掉。
 
+重连（第 4 节）：补发 `hello.lastSeq` 之后的 `commit`；这条连接之前判完的轮次结果不补，只有一种例外（v1.0.12）：
+最后一次提交是幕切换、客户端还没确认收到它（`lastSeq` 不晚于那次的 `seq`）时，补发的 `commit` 后面再推一次那次的
+`act_transition`（打算成行的连同 `act_plan_result`），不然幕末页在断线时选了去处，就等不到幕切换（`again`）。
+
 B-10 接上真 Live（`models/gemini_live.py`，`ZJ_LIVE=real`），会话的开、换、关都在 `gateway/voice.py`：`near` / `far`
-预热、`focus`、作废后重建、每 N 轮和 GoAway 的无感重建、Live 中途断了（那一轮按被打断收，再 `rebuild`）、叙事者提交后
-中途更新局势、闲置关闭、每轮的花费。人物有声音没文字时补转写（`gateway/fallback.py`，定稿 `source: "fallback"`）。
+预热、`focus`、作废后重建、每 N 轮和 Live 的 goAway 的无感重建、Live 中途断了（出过声的 `turn_complete { audio: true }`
+照常交，没出声的 `no_response`，再 `rebuild`）、叙事者提交后中途更新局势、闲置关闭、每轮的花费。人物有声音没文字时
+补转写（`gateway/fallback.py`，定稿 `source: "fallback"`）。B-11：断线时会话和最近对话寄存起来，重连的 `hello` 接手。
 `hello.fakeVoice` 给不给都按网关的设置。还没做的消息忽略，只在日志里记类型名。
 """
 
@@ -75,6 +80,20 @@ ANSWERED = ("talk", "action", "choose", "plan", "confirm")
 SERVER_SEQ = 0x80000001  # 服务端发起的轮次的 turnSeq 从这里起，最高位为 1（3.1）
 COMMIT_WINDOW_S = 3.0  # 作废的窗口：叙事者最早在 turn_complete（打算是定稿）之后几秒提交（B-4）
 RECENT_TURNS = 6  # 会话重建时带进新会话的最近几轮
+
+
+def again(results: list[Json], client_seq: int, last_seq: int) -> list[Json]:
+    """重连时要再推一次的幕切换（第 4 节，v1.0.12）。results：判完的轮次的 `turns.result`，按判完的先后。
+    最近一次幕切换就是最后一次提交（之后没有别的提交），而客户端的 `lastSeq` 不晚于它：那次的 `act_plan_result`
+    （打算成行时才有）和 `act_transition`，照原来的顺序。前端只在幕末页还在等幕切换时用，别的时候忽略。"""
+    for r in reversed(results):
+        push = (r or {}).get("push") or []
+        if any(m["type"] == "act_transition" for m in push):
+            seq = r.get("seq")
+            if seq != last_seq or client_seq > seq:
+                return []
+            return [m for m in push if m["type"] in ("act_plan_result", "act_transition")]
+    return []
 
 
 def error_msg(code: str, message: str) -> Json:
@@ -303,17 +322,19 @@ class Conn:
             last_seq = int(
                 await c.scalar(select(playthroughs.c.last_seq).where(playthroughs.c.playthrough_id == self.pid)) or 0
             )
-            settled = (
+            done = (
                 await c.execute(
-                    select(turns.c.turn_id).where(
+                    select(turns.c.turn_id, turns.c.result)
+                    .where(
                         turns.c.playthrough_id == self.pid,
                         turns.c.kind.in_(ANSWERED),
                         turns.c.status.in_(("done", "failed")),
                     )
+                    .order_by(turns.c.settled_at)
                 )
-            ).scalars()
+            ).all()
             # 这条连接之前判完的不再推结果：固定演出不补发（3.14），幕末和落地由 welcome.pending 补上（第 4 节）
-            self.settled = set(settled)
+            self.settled = {r.turn_id for r in done}
             last_turn = await self._last_turn(c)
             pt = await self.gw.pt(c, self.pid)
         asking = await self._pending_confirm()
@@ -331,7 +352,12 @@ class Conn:
         )
         async with self.push_lock:
             self.sent_seq = min(int(msg["lastSeq"]), last_seq)
+        resend = again([r.result for r in done], self.sent_seq, last_seq)
         await self.push()
+        if resend:
+            async with self.push_lock:
+                for m in resend:
+                    await self.send(m)
 
     async def _resume(self, reconnect: bool) -> None:
         """接手断线前寄存的 Live 会话和最近对话（B-11，`Voices.adopt`）。Trace：gateway.resume（不带原话）。

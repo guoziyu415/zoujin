@@ -188,6 +188,98 @@
             "signature": {
               "$ref": "#/$defs/EndingSignature",
               "description": "（1.1）什么叫「结局实质不同」，见 2.9.1"
+            },
+            "characters": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/CharacterId"
+              },
+              "description": "（1.11，B-9）结局页列人物结局的那些人，顺序就是同分时的顺序。不写 = talkable 的人物"
+            },
+            "templates": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "outcome": {
+                    "$ref": "common.schema.json#/$defs/WorldEndingId"
+                  },
+                  "when": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/$defs/Condition"
+                    }
+                  },
+                  "subtitle": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "世界的去向（卡片副题），≤ 26 字"
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "称号，带一个 {role}（换成开局身份名），去掉 {role} 以后 ≤ 9 字"
+                  },
+                  "fate": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "行方。不写 = 按 fate.id 取 endings.fates"
+                  },
+                  "lines": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "character": {
+                          "$ref": "common.schema.json#/$defs/CharacterId"
+                        },
+                        "line": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "这个人物的结局一句，≤ 40 字"
+                        }
+                      },
+                      "required": ["character", "line"],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1,
+                    "description": "按顺序给 rank 1、2…"
+                  },
+                  "contrast": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "「原作との違い」，≤ 48 字"
+                  },
+                  "note": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "outcome",
+                  "subtitle",
+                  "title",
+                  "lines",
+                  "contrast"
+                ],
+                "additionalProperties": false
+              },
+              "description": "（1.11，B-9，S-065）结局走模板时用的句子（ux-design 11.4）。同一个 outcome 有几条时取第一条 when 成立的，最后一条不带 when"
+            },
+            "fates": {
+              "type": "object",
+              "properties": {
+                "witness": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "elsewhere": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "required": ["witness", "elsewhere"],
+              "additionalProperties": false,
+              "description": "（1.11，B-9）模板没写 fate 时的行方，按 Ending.player.fate.id 取：结局的地点在场 witness，不在 elsewhere（ux-design 11.4）"
             }
           },
           "required": ["world"],
@@ -518,6 +610,26 @@
             "additionalProperties": false
           },
           "description": "（1.1）每一幕「没人管时的打算」"
+        },
+        "originalEnding": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "description": "原作里这个人物的结局，一句，≤ 40 字，不写主语（结局页前面有名字和「原作では」）"
+            },
+            "cite": {
+              "type": "array",
+              "items": {
+                "$ref": "common.schema.json#/$defs/Cite"
+              },
+              "minItems": 1
+            }
+          },
+          "required": ["text", "cite"],
+          "additionalProperties": false,
+          "description": "（1.11，B-9）结局页「原作では」那一句，也是全部人物都没被波及时卡上梅洛斯那一行；endings.characters 里的人物都要有"
         }
       },
       "required": [
@@ -1923,7 +2035,7 @@
           "$ref": "common.schema.json#/$defs/SetPieceId"
         },
         "on": {
-          "description": "什么时候演：这个节拍发生时玩家在场，或玩家的这种动作判定之后",
+          "description": "什么时候演：这个节拍发生时玩家在场（进结局时一起结算的节拍不看在场，算进结局演出，2.11），或玩家的这种动作判定之后",
           "oneOf": [
             {
               "type": "object",

@@ -15,7 +15,13 @@ import { track } from "../../telemetry/telemetry";
 import { copy, fill } from "../copy";
 import { FullPage } from "../FullPage";
 import { Lines } from "../Lines";
-import { afterDelete, isEmpty, meter, shownPromises } from "./view";
+import {
+  afterDelete,
+  isEmpty,
+  meter,
+  shownPromises,
+  memoriesKey,
+} from "./view";
 
 const VIA = {
   witnessed: "memory.via.saw",
@@ -28,8 +34,6 @@ const STATE = {
   kept: "memory.promise.state.kept",
   broken: "memory.promise.state.broken",
 } as const;
-
-export const memoriesKey = (pid: string) => ["memories", pid] as const;
 
 export default function MemoryBook({
   pid,
@@ -132,21 +136,27 @@ function Person({
           <h3>{copy["memory.sec.promise"]}</h3>
           <ul>
             {promises.map((p) => (
-              <li key={p.promiseId} className="mb-promise">
-                <span>{p.text}</span>
-                <span className="mb-dir">
-                  {fill(
-                    copy[
-                      p.direction === "playerToCharacter"
-                        ? "memory.promise.dir.mine"
-                        : "memory.promise.dir.theirs"
-                    ],
-                    { name },
-                  )}
-                </span>
-                <span className="mb-state">
-                  {copy[STATE[p.status as keyof typeof STATE]]}
-                </span>
+              <li key={p.promiseId}>
+                {/* the whole row opens the map at the event that made it, like the deeds; its words are its name */}
+                <button className="mb-promise" onClick={() => toMap(p.eventId)}>
+                  <span>{p.text}</span>
+                  <span className="mb-dir">
+                    {fill(
+                      copy[
+                        p.direction === "playerToCharacter"
+                          ? "memory.promise.dir.mine"
+                          : "memory.promise.dir.theirs"
+                      ],
+                      { name },
+                    )}
+                  </span>
+                  <span className="mb-state">
+                    {copy[STATE[p.status as keyof typeof STATE]]}
+                  </span>
+                  <span className="mb-go" aria-hidden>
+                    ›
+                  </span>
+                </button>
               </li>
             ))}
           </ul>

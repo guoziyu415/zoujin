@@ -932,10 +932,17 @@ button {
   transition: all 0.4s;
 }
 .mb-promise {
+  width: 100%;
+  min-height: 44px;
   display: flex;
   flex-wrap: wrap;
+  align-items: baseline;
   gap: 4px 12px;
   padding: 6px 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  line-height: 1.6;
 }
 .mb-promise::before {
   content: "◯";
@@ -1302,4 +1309,21 @@ button {
 .hud-top[hidden],
 .hud-bottom[hidden] {
   display: none;
+}
+.mb-go {
+  margin-left: auto;
+}
+.knot {
+  display: inline-block;
+  vertical-align: -2px;
+  margin-right: 4px;
+  color: var(--umi);
+}
+/* Japanese text breaks between phrases where the browser can (Chrome's auto-phrase; Safari keeps per character),
+   and a paragraph's last line isn't left with one or two characters (UX review of #113, item 14) */
+p,
+dd,
+li {
+  text-wrap: pretty;
+  word-break: auto-phrase;
 }

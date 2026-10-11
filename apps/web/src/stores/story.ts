@@ -24,6 +24,7 @@ export type EndingLine = {
   speaker: string | null;
   pieceId?: string;
   n?: number;
+  early?: true; // the narration of the action that ended the story: before the closing set piece (3.13)
 };
 
 export type EndingState = {

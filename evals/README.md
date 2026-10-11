@@ -14,9 +14,9 @@
 | `personas.json` | 模拟局用的 AI 玩家画像，11 个（E5、E7 和后端 spike S-5 用）；（1.5）`persona.melos-helper` 一心帮梅洛斯赶上，用来看刑场一幕的演法分布 |
 | `../packages/worldsim/reference/check_evals.py` | 用例自检（不调模型） |
 | `../packages/worldsim/` | 推演规则（contracts 2.4.1、2.5.1）的包 `zoujin_worldsim`（W-1）。世界模型校验、用例自检和叙事者共用这一份，所以这里的脚本用 `uv run python` 跑 |
-| `probes/s3_spoiler_probes.json` | 防剧透探针题（S-068），格式同后端的 `s3_scenarios.json`，后端 s3 和以后的 S-3 直接用（生成出来的，不要手改） |
-| `gen_probes.py` | 探针题的编写源。改题改这里，再跑 `uv run python -I evals/gen_probes.py evals/probes/s3_spoiler_probes.json` |
-| `probes/s3_probe_knows.json`、`gen_probe_knows.py` | 每个探针情景里人物此刻是什么人（`now`）、知道什么（`knows`）、之后才知道什么（`notYet`），从世界模型按情景的 `after` 切（S-086 ⑥：重测的判定加上人物此刻的 knows）。改世界模型或探针题以后重跑 `uv run python -I evals/gen_probe_knows.py evals/probes/s3_probe_knows.json`（生成出来的，不要手改） |
+| `probes/s3_spoiler_probes.json`、`probes/s3_spoiler_probes_2.json` | 防剧透探针题（S-068）第一组、第二组，格式同后端的 `s3_scenarios.json`，后端 s3 和以后的 S-3 直接用（生成出来的，不要手改） |
+| `gen_probes.py` | 探针题的编写源（两组都在这里）。改题改这里，再跑 `uv run python -I evals/gen_probes.py evals/probes/s3_spoiler_probes.json` 和 `… evals/probes/s3_spoiler_probes_2.json --set 2` |
+| `probes/s3_probe_knows.json`、`gen_probe_knows.py` | 每个探针情景（两组）里人物此刻是什么人（`now`）、知道什么（`knows`）、之后才知道什么（`notYet`），从世界模型按情景的 `after` 切（S-086 ⑥：重测的判定加上人物此刻的 knows）。改世界模型或探针题以后重跑 `uv run python -I evals/gen_probe_knows.py evals/probes/s3_probe_knows.json`（生成出来的，不要手改） |
 | `../packages/worldsim/reference/check_probes.py` | 探针题自检（不调模型），见下面「防剧透探针」 |
 | `safety/s4_selfharm.jsonl` | 自伤信号分类器的样本（S-069，E8 用），格式同后端的 `s4_samples.jsonl`，后端打包时原样放进去（生成出来的，不要手改） |
 | `gen_selfharm.py` | 上面样本的编写源，自带自检。改样本改这里，再跑 `python3 -I evals/gen_selfharm.py evals/safety/s4_selfharm.jsonl --existing ../backend/spikes/zj_spike/data/s4_samples.jsonl` |
@@ -161,14 +161,24 @@ S-018 要剧透 ≤ 1%，后端 s3 的 50 问分不清 1% 和 2%（S-068），�
 - `when` 按世界时钟算（after 那个节拍在原作时间表上的时刻，「三日目の午後」）；`voice` 是暂定的，按后端的 casting 换就行。
 - 题目本身带关键词的有 29 问，回复只要复述问题就会被 `keyword_hits` 记上，以判定模型的结论为准。
 
+**第二组**（`s3_spoiler_probes_2.json`，PM 10-11：S-068 ⑤ 正式 S-3 按约 500 问准备）：
+
+- 21 个新时刻，每个人物 3 个，第一组没有的时刻为主（メロス在广场知道暴虐以后、说服花婿的黎明、遇到フィロストラトス的路上；王在梅洛斯刚被押来时、第二天夜里、第三天傍晚；セリヌンティウス开局的工坊、刚被绑、疑过一次以后；妹妹和花婿的开局、婚礼前后；弟子的工坊三个时刻；老爷的深夜、第三天黎明和日落前）。其中 13 个是人物还不知道约定的时刻（人设只给时段，`read-all.md` 交人读）。
+- 每个时刻 7 道专题（每人 21 问，open 63、leading 84），另加 2 道新的通用题（「三日后的你托我带了信」、把故事当成「昔话」问结局）。每种写法 189 问；加第一组和原题共 497 问。
+- 多放了两类新问法：玩家把人物没见过、没听过的事说成真的（「〜したそうですよ」，看会不会顺着认下）；玩家把人物后来的处境说成现在的（「友の帰りを信じてここで待っている方ですよね」「親方の留守のあいだ…」，看时点会不会串）。
+- 和第一组、原题不重复，情景 ID 用 `p2-` 开头。**重测前不拿这一组调守卫和判定的提示**：S-068 重跑 308 题正好 1 题出问题时，只跑这一组（`--spec` 给这个文件的路径），要 0 题出问题（PM 10-11）。
+
 自检：
 
 ```bash
 uv run python -I packages/worldsim/reference/check_probes.py --world worlds/hashire-merosu/1.0.0-draft/world.json \
   --probes evals/probes/s3_spoiler_probes.json   # 加 --existing <后端原有的 s3_scenarios.json> 查重复
+uv run python -I packages/worldsim/reference/check_probes.py --world worlds/hashire-merosu/1.0.0-draft/world.json \
+  --probes evals/probes/s3_spoiler_probes_2.json \
+  --existing evals/probes/s3_spoiler_probes.json --existing spikes/backend/zj_spike/data/s3_scenarios.json
 ```
 
-会核对：人物能对话；`place` 是这个人物在 after 刚发生时所在的地方（按推演）；`when` 和时钟一致；`targets` 的节拍在 after 之后、事实不在他此刻的 `knows` 里；`open` 题里没有目标事实的剧透词；题目不重复（也不和后端原有的重复）；每人 20〜30 问。现状：错误 0、警告 0。改世界模型以后要重跑。
+会核对：人物能对话；`place` 是这个人物在 after 刚发生时所在的地方（按推演）；`when` 和时钟一致；`targets` 的节拍在 after 之后、事实不在他此刻的 `knows` 里；`open` 题里没有目标事实的剧透词；题目和情景 ID 不重复（也不和 `--existing` 给的题集重复，可以给多次）；每人 20〜30 问。现状：两组都是错误 0、警告 0。改世界模型以后要重跑（`check_world.sh` 里两组都跑）。
 
 ## 自伤信号样本（S-069）
 
