@@ -506,12 +506,11 @@ export class VoiceController {
   // error invalid_request: what we sent didn't fit the schema, so that turn didn't happen (api-contract 5)
   undelivered(): void {
     const r = this.inflight;
+    const waiting = useVoice.getState().turn?.phase === "waiting";
+    if (!r && !waiting) return; // not one of our turns (an action, say): nothing to tell the player
     this.inflight = null;
     if (r) this.endTurn(r, {});
-    else
-      useVoice.setState((s) =>
-        s.turn?.phase === "waiting" ? { turn: null, character: null } : s,
-      );
+    else useVoice.setState({ turn: null, character: null });
     addNarration(copy["reconnect.lostTurn"]);
   }
 
