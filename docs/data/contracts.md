@@ -1,8 +1,8 @@
-# 数据契约（contracts.md）v1.10
+# 数据契约（contracts.md）v1.11
 
-负责人：数据工程 · 状态：**v1.10**（1.5 在 M2-0 冻结（C-2），以后只做加法；1.6 是冻结后第一个加法版本）。v1.0 是基线（S-033），v1.1 是 PM 接受的新基线（S-061〜S-063），已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改。1.1 只做加法：加进 D-012〜D-015 的落地（S-029〜S-032：互助、约定、打算、即兴设定、导演事件、生成的结局、角色结局）、S-034〜S-053 里和数据有关的决定、后端设计 v1.0 第 12 节的 13 条提案和 UX 设计 v1.0 第 18.3 节的要求。1.2 也只做加法：幕末说出的打算（S-031 ③）、作废和出戏的一轮怎么落数据（S-054、S-057）。1.3 加随身的东西（UX 5.1，C-14）。1.4 按 UX 对世界模型的校对和 S-064 加：有条件的台词和设计台词、互助的效果、节拍的变体、过场里的二选一、第四幕按钮上「对梅洛斯的影响」。1.5 给过场的选项也加上「对梅洛斯的影响」和选后的一句（UX 校对 7.3、ux-design 4.5）。1.6 把两条只写在说明文字里的取值条件写成数据（`StateVar.valueRequires`，C-16），结局卡改成 1〜3 人、每一局都出（C-17）。1.7 加位置点（谁站在布局的哪个点）、成群的人物和幕末去处的落地（M2 切片，C-18），以及打算成行时的落点（C-19）、固定演出（S-080 ④）、可调查物和玩家知道什么。1.8 加情境动作做完以后的事件句（`Affordance.pastLabel`），写清事件 `summary` 里玩家一律写身份名、身份名只用来指玩家（UX 在 #61 前端评审后定的文案）。1.9 加「日名要知道哪条事实才说」（`Clock.labels.daysKnownBy`，S-086）。1.10 加 manifest 要的三样（B-7）：身份给玩家看的一句（`Role.summary`）、注音词表（`WorldModel.ruby`），每个人物都填读音（`Character.reading`）。跨角色决定见 `pm/decisions.md`。还在等别人定的事列在第 7 节。
+负责人：数据工程 · 状态：**v1.11**（1.5 在 M2-0 冻结（C-2），以后只做加法；1.6 是冻结后第一个加法版本）。v1.0 是基线（S-033），v1.1 是 PM 接受的新基线（S-061〜S-063），已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改。1.1 只做加法：加进 D-012〜D-015 的落地（S-029〜S-032：互助、约定、打算、即兴设定、导演事件、生成的结局、角色结局）、S-034〜S-053 里和数据有关的决定、后端设计 v1.0 第 12 节的 13 条提案和 UX 设计 v1.0 第 18.3 节的要求。1.2 也只做加法：幕末说出的打算（S-031 ③）、作废和出戏的一轮怎么落数据（S-054、S-057）。1.3 加随身的东西（UX 5.1，C-14）。1.4 按 UX 对世界模型的校对和 S-064 加：有条件的台词和设计台词、互助的效果、节拍的变体、过场里的二选一、第四幕按钮上「对梅洛斯的影响」。1.5 给过场的选项也加上「对梅洛斯的影响」和选后的一句（UX 校对 7.3、ux-design 4.5）。1.6 把两条只写在说明文字里的取值条件写成数据（`StateVar.valueRequires`，C-16），结局卡改成 1〜3 人、每一局都出（C-17）。1.7 加位置点（谁站在布局的哪个点）、成群的人物和幕末去处的落地（M2 切片，C-18），以及打算成行时的落点（C-19）、固定演出（S-080 ④）、可调查物和玩家知道什么。1.8 加情境动作做完以后的事件句（`Affordance.pastLabel`），写清事件 `summary` 里玩家一律写身份名、身份名只用来指玩家（UX 在 #61 前端评审后定的文案）。1.9 加「日名要知道哪条事实才说」（`Clock.labels.daysKnownBy`，S-086）。1.10 加 manifest 要的三样（B-7）：身份给玩家看的一句（`Role.summary`）、注音词表（`WorldModel.ruby`），每个人物都填读音（`Character.reading`）。1.11 加结局要的三样（B-9）：人物「原作では」那一句（`Character.originalEnding`）、结局页列谁（`endings.characters`）、结局走模板时的句子（`endings.templates`、`endings.fates`）。跨角色决定见 `pm/decisions.md`。还在等别人定的事列在第 7 节。
 UX、前端请看第 2.8 节（幕）、第 4 节（记忆）、第 5 节（结局）。1.1 新增或写清的地方都标了「（1.1）」，文末变更记录有汇总。
-最近更新：2026-10-11（1.10：`Role.summary`、`ruby`，`reading` 每个人物都填，manifest 用；1.9：`Clock.labels.daysKnownBy`，不知道约定的人物只拿到时段；1.8：`Affordance.pastLabel`，`summary` 里玩家一律写身份名，下发时服务端换成「あなた」，世界模型自检查身份名只指玩家；1.7：relocate 和 `ActExit` 的 `spot`、`WorldState.spots`、`Character.group`、`ActExit.arrival`、`ActExit.sub`、`Affordance.playerSpot`（C-18）、`Act.plan`（C-19）、`setPieces`（S-080 ④）、`objects`、玩家学到的事实（`learn` 写 `player`）；1.6：`StateVar.valueRequires`（C-16）、结局卡 1〜3 人（C-17））
+最近更新：2026-10-11（1.11：`Character.originalEnding`、`endings.characters` / `templates` / `fates`，B-9 的简化结局用；1.10：`Role.summary`、`ruby`，`reading` 每个人物都填，manifest 用；1.9：`Clock.labels.daysKnownBy`，不知道约定的人物只拿到时段；1.8：`Affordance.pastLabel`，`summary` 里玩家一律写身份名，下发时服务端换成「あなた」，世界模型自检查身份名只指玩家；1.7：relocate 和 `ActExit` 的 `spot`、`WorldState.spots`、`Character.group`、`ActExit.arrival`、`ActExit.sub`、`Affordance.playerSpot`（C-18）、`Act.plan`（C-19）、`setPieces`（S-080 ④）、`objects`、玩家学到的事实（`learn` 写 `player`）；1.6：`StateVar.valueRequires`（C-16）、结局卡 1〜3 人（C-17））
 
 四个契约：**WorldModel**（世界模型，静态、按书版本化）、**Event**（运行时事件，只追加）、**Memory**（角色对玩家的记忆，可删除）、**Ending**（结局）。另有两个支撑结构：**Playthrough**（一局游戏）和 **WorldState**（由事件推出的当前状态）。
 
@@ -102,6 +102,14 @@ type WorldModel = {
   endings: {
     world: WorldEnding[];             // 世界结局的底线分类（S-007、S-034）；1.1 起是「保证能到达的底线」，结局可以按这一局生成（S-031 ①）
     signature?: EndingSignature;      // （1.1）什么叫「结局实质不同」（S-031 ⑤、S-041），见 2.9.1
+    characters?: string[];            // （1.11，B-9）结局页列人物结局的那些人，顺序就是受影响排序同分时的顺序。不写 = talkable 的人物
+    templates?: {                     // （1.11，B-9，S-065）结局走模板时的句子（ux-design 11.4），见 2.9.2
+      outcome: string; when?: Condition[];
+      subtitle: string; title: string; fate?: string;
+      lines: { character: string; line: string }[];
+      contrast: string; note?: string;
+    }[];
+    fates?: { witness: string; elsewhere: string };  // （1.11）模板没写 fate 时的行方，按 Ending.player.fate.id 取
   };
   pacing?: Record<string, number>;    // 时间消耗参数（S-005、S-038），键见 2.6.1
   pacingNote?: string;                // （1.1）pacing 的说明（日语）
@@ -151,6 +159,9 @@ type Character = {
   mutualAid?: MutualAid[];         // 互助：他能为你做的、你能为他做的。能对话的人物两种至少各一条
   promiseTemplates?: PromiseTemplate[];  // 这个人物常见的约定；叙事者写 promise 效果时引用。玩家临时提出的约定不需要模板
   plans?: { act: string; text: string; inferred?: true; cite?: Cite[] }[];  // 每一幕「没人管时的打算」；能对话的人物必填
+  originalEnding?: { text: string; cite: Cite[] };
+                                   // （1.11，B-9）原作里这个人物的结局，一句，≤ 40 字，不写主语，以「。」结尾：结局页「原作では」那一句
+                                   // （第 5 节 CharacterEnding.original），全部人物都没被波及时也是卡上梅洛斯那一行。endings.characters 里的人物都要有
 };
 
 type DesignLine = {                // （1.4）
@@ -534,6 +545,19 @@ type EndingSignature = {
 ```
 
 两局的「世界结局实质不同」= 署名不同：`vars` 的最终值和 `beats` 是否发生，组成的元组不一样。底线类相同、署名不同也算不同的结局。用在两处：结局多样性的统计（S-031 ⑤，data-design 第 9 节）；关键时刻的第三条「预测的世界结局发生实质变化」（S-041，3 节）。『走れメロス』的署名：`vars` = 人质是谁、人质的下场、王的心、梅洛斯的去向、玩家的去向、婚礼；`beats` = 捕缚、召见人质、婚礼、山贼、倒下、（1.4，S-064）セリヌンティウスがちらと疑う、赶到刑场、王改心、緋のマント（beat.04、06、11、19、20、s2、24、26、27）。原著加 22 个改道情景，有 10 种不同的署名。
+
+### 2.9.2 结局模板（1.11，B-9，S-065）
+
+结局校验两次都不过、超时或出错时，结局用世界模型里写好的句子（ux-design 11.4）。后端按这一局的世界结局挑：同一个 `outcome` 有几条时，按列表顺序取第一条 `when` 成立的；每一类的最后一条不带 `when`，当兜底。
+
+- `subtitle`：世界的去向（卡片副题），≤ 26 字。也是这一局尾声的那一句。
+- `title`：称号，带一个 `{role}`，换成开局身份名；去掉 `{role}` 以后 ≤ 9 字（身份名 ≤ 5 字，合起来 ≤ 14）。
+- `fate`：行方。不写就按 `Ending.player.fate.id` 取 `endings.fates` 的 `witness`（结局的地点在场）或 `elsewhere`。
+- `lines`：写了句子的人物，按顺序给 `rank` 1、2…，每句 ≤ 40 字；其余人物 `unchanged`。
+- `contrast`：「原作との違い」，≤ 48 字。
+- 模板只写结果，不假设玩家做了什么、在哪里。处刑只间接交代（S-067）：模板、`fates` 和人物的 `originalEnding` 都不用「処刑」「死」「殺」「最期」「亡くな」「命を落と」「息絶え」「絶命」「事切れ」「帰らぬ人」「磔にされ」「磔になっ」（「磔」这个设定本身可以写）。
+
+校验工具查：`outcome` 是底线类；每一类至少一条，只有最后一条不带 `when`；字数；`{role}` 正好一个；`when` 的变量和取值合法；没写 `fate` 的条目要有 `endings.fates`；上面那些字眼；`endings.characters`（不写时是 talkable 的人物）里每个人物都有 `originalEnding`，一句、≤ 40 字、以「。」结尾、有出处。
 
 ### 2.10 Affordance 和 Item（1.1，情境动作和物品）
 
@@ -1095,3 +1119,7 @@ type CharacterEnding = {           // （1.1）
   - WorldModel：`ruby`（可选）：注音词表 `{ word, reading }[]`，manifest 原样下发。
   - `Character.reading` 字段不变，写清每个人物都填（manifest 要），`build_world` 查每个人物都有读音、读音不带汉字；注音词表的读音全是平假名、词不重复、词在原文或世界模型里出现过。
   - 『走れメロス』（draft.3）：13 个人物的读音、5 个身份的一句（第一版三个照 ux-design 5.1 身份卡上的一句，第二版两个待 UX 定）、65 个词的注音词表（44 个读音照青空文库原文的注音，21 个是原文没注音的专有名词和难读词，UX 核读音）。切片版只留旅人的一句，注音词表去掉切片里不出现的词。依据见世界模型 README「1.10 补的」一节。
+- **v1.11（2026-10-11）**：只做加法。B-9（切片的简化结局，#97）要从世界模型读的三样。
+  - WorldModel：`Character.originalEnding`（可选，2.1）、`endings.characters`（可选）、`endings.templates` 和 `endings.fates`（可选，2.9.2）。校验工具的检查见 2.9.2。
+  - 『走れメロス』（draft.3）：S-003 的 7 个人物写「原作では」那一句（数据按原文写，UX 看日语），`endings.characters` 列这 7 个；模板照 ux-design 11.4 的表（A、B 和其余 5 行，共 7 条），`fates` 照 UX 在 #97 评审第 5 题给的两句。
+  - 『走れメロス』：`clock.onDeadline` 第一条（期限到了、梅洛斯没回来、王没改心 → 人质 `executed`）加上「有人质」（`var.hostage.who != none`）。原来约定没立成的局也会被设成 `executed`、分进「間に合わなかった」（B-9 评审第 4 题）。改了以后约定没立成的局 5 类都不成立，切片怎么保证有一类成立等 PM 定。

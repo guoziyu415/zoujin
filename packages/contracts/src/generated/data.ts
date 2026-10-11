@@ -170,9 +170,10 @@ export type EdgeId = string;
  */
 export type EventId = string;
 /**
- * 写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival / sub、Affordance.playerSpot（C-18）、Act.plan（C-19）、WorldModel.setPieces（S-080 ④）、WorldModel.objects。1.8：Affordance.pastLabel，事件 summary 里玩家一律写身份名。1.9：Clock.labels.daysKnownBy。1.10：Role.summary、WorldModel.ruby，Character.reading 每个人物都填
+ * 写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival / sub、Affordance.playerSpot（C-18）、Act.plan（C-19）、WorldModel.setPieces（S-080 ④）、WorldModel.objects。1.8：Affordance.pastLabel，事件 summary 里玩家一律写身份名。1.9：Clock.labels.daysKnownBy。1.10：Role.summary、WorldModel.ruby，Character.reading 每个人物都填。1.11：Character.originalEnding、endings.characters / templates / fates
  */
-export type SchemaVersion = "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5" | "1.6" | "1.7" | "1.8" | "1.9" | "1.10";
+export type SchemaVersion =
+  "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5" | "1.6" | "1.7" | "1.8" | "1.9" | "1.10" | "1.11";
 /**
  * 结局：`end_` 加 ULID（26 位 Crockford base32，大写）
  */
@@ -735,6 +736,19 @@ export interface Character {
     inferred?: true;
     cite?: Cite[];
   }[];
+  /**
+   * （1.11，B-9）结局页「原作では」那一句，也是全部人物都没被波及时卡上梅洛斯那一行；endings.characters 里的人物都要有
+   */
+  originalEnding?: {
+    /**
+     * 原作里这个人物的结局，一句，≤ 40 字，不写主语（结局页前面有名字和「原作では」）
+     */
+    text: string;
+    /**
+     * @minItems 1
+     */
+    cite: Cite[];
+  };
 }
 /**
  * （1.4）原文没有、为游戏写的示例台词（2.1）
@@ -1821,6 +1835,53 @@ export interface WorldModel {
      * （1.1）什么叫「结局实质不同」，见 2.9.1
      */
     signature?: EndingSignature;
+    /**
+     * （1.11，B-9）结局页列人物结局的那些人，顺序就是同分时的顺序。不写 = talkable 的人物
+     */
+    characters?: CharacterId[];
+    /**
+     * （1.11，B-9，S-065）结局走模板时用的句子（ux-design 11.4）。同一个 outcome 有几条时取第一条 when 成立的，最后一条不带 when
+     */
+    templates?: {
+      outcome: WorldEndingId;
+      when?: Condition[];
+      /**
+       * 世界的去向（卡片副题），≤ 26 字
+       */
+      subtitle: string;
+      /**
+       * 称号，带一个 {role}（换成开局身份名），去掉 {role} 以后 ≤ 9 字
+       */
+      title: string;
+      /**
+       * 行方。不写 = 按 fate.id 取 endings.fates
+       */
+      fate?: string;
+      /**
+       * 按顺序给 rank 1、2…
+       *
+       * @minItems 1
+       */
+      lines: {
+        character: CharacterId;
+        /**
+         * 这个人物的结局一句，≤ 40 字
+         */
+        line: string;
+      }[];
+      /**
+       * 「原作との違い」，≤ 48 字
+       */
+      contrast: string;
+      note?: string;
+    }[];
+    /**
+     * （1.11，B-9）模板没写 fate 时的行方，按 Ending.player.fate.id 取：结局的地点在场 witness，不在 elsewhere（ux-design 11.4）
+     */
+    fates?: {
+      witness: string;
+      elsewhere: string;
+    };
   };
   /**
    * 时间消耗参数（S-005、S-038），键见 2.6.1；值是故事分钟
