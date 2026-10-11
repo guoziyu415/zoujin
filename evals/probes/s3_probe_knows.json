@@ -1646,6 +1646,10 @@
     {
      "fact": "fact.promise",
      "statement": "王はメロスに三日目の日没までに戻れと命じ、遅れたら身代りを殺すと言った。身代りはセリヌンティウス。"
+    },
+    {
+     "fact": "fact.friendship",
+     "statement": "メロスとセリヌンティウスは竹馬の友で、二年会っていなかった。"
     }
    ],
    "notYet": [
@@ -1690,6 +1694,10 @@
     {
      "fact": "fact.promise",
      "statement": "王はメロスに三日目の日没までに戻れと命じ、遅れたら身代りを殺すと言った。身代りはセリヌンティウス。"
+    },
+    {
+     "fact": "fact.friendship",
+     "statement": "メロスとセリヌンティウスは竹馬の友で、二年会っていなかった。"
     }
    ],
    "notYet": [
@@ -1734,6 +1742,10 @@
     {
      "fact": "fact.promise",
      "statement": "王はメロスに三日目の日没までに戻れと命じ、遅れたら身代りを殺すと言った。身代りはセリヌンティウス。"
+    },
+    {
+     "fact": "fact.friendship",
+     "statement": "メロスとセリヌンティウスは竹馬の友で、二年会っていなかった。"
     }
    ],
    "notYet": [
@@ -3160,6 +3172,11 @@
      "since": "beat.06"
     },
     {
+     "fact": "fact.friendship",
+     "statement": "メロスとセリヌンティウスは竹馬の友で、二年会っていなかった。",
+     "since": "beat.06"
+    },
+    {
      "fact": "fact.selinuntius-steadfast",
      "statement": "セリヌンティウスは刑場に引き出され、王にからかわれても「メロスは来ます」とだけ答えた。",
      "since": "beat.s1"
@@ -3200,6 +3217,10 @@
     {
      "fact": "fact.promise",
      "statement": "王はメロスに三日目の日没までに戻れと命じ、遅れたら身代りを殺すと言った。身代りはセリヌンティウス。"
+    },
+    {
+     "fact": "fact.friendship",
+     "statement": "メロスとセリヌンティウスは竹馬の友で、二年会っていなかった。"
     }
    ],
    "notYet": [
@@ -3244,6 +3265,10 @@
     {
      "fact": "fact.promise",
      "statement": "王はメロスに三日目の日没までに戻れと命じ、遅れたら身代りを殺すと言った。身代りはセリヌンティウス。"
+    },
+    {
+     "fact": "fact.friendship",
+     "statement": "メロスとセリヌンティウスは竹馬の友で、二年会っていなかった。"
     },
     {
      "fact": "fact.selinuntius-steadfast",

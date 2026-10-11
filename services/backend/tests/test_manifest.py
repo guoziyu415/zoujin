@@ -316,6 +316,18 @@ def test_voices_json_of_another_world_version_is_still_checked_line_by_line(tmp_
     assert make(w, tmp_path, voices=root)["setPieceVoices"] == written(root)["setPieceVoices"]
 
 
+def test_the_repo_recordings_all_match_the_slice_world_model(tmp_path: Path) -> None:
+    """仓库里的录音（assets/voice）对切片世界模型一句也不少：世界模型改了台词，这里先红，提醒重读。"""
+    w = world(SLICE)
+    v = json.loads((REPO / "assets" / "voice" / BOOK / "voices.json").read_text(encoding="utf-8"))
+    doc = make(w, tmp_path, voices=REPO / "assets" / "voice")
+    valid(doc)
+    chars = {c["id"]: c.get("prerecorded") for c in doc["characters"]}
+    assert {k: chars[k] for k in v["characters"]} == v["characters"]
+    assert doc["setPieceVoices"] == v["setPieceVoices"]
+    assert set(v["setPieceVoices"]) == set(speaker_lines(w))  # 切片里人物说的固定演出句都有录音
+
+
 # —— 3. 版本 ——
 
 
