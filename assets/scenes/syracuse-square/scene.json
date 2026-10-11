@@ -7,7 +7,7 @@
  "placeholderTextures": true,
  "inputs": {
   "files": {
-   "assets/scenes/syracuse-square/layout.json": "2d968d98097f0922d432212f1ee6289000e7ef470937b0149c3aebcf0afe9e80",
+   "assets/scenes/syracuse-square/layout.json": "61493fe3d70a15ceb51ae528debf90ca3f9ac8b54d66bb70806170d6e0c0cc37",
    "assets/pipeline/plaza/build.sh": "5640d8d18a8817b84b1c0387c476d127996931dab6b70389b0b5ac1753151716",
    "assets/pipeline/plaza/requirements.txt": "0a234e44f52fb462c7e8694ecd82b99aca8e534ac610dde2dd749bb1e2cbe0e3",
    "assets/pipeline/plaza/placeholder_tex.py": "aabda4df4f3974b2eb65b227ed3b5ae2d606a489441d665b3f2f108c5cd1343e",
@@ -1249,6 +1249,86 @@
    "yaw": -2.1991,
    "place": "place.execution-ground",
    "poly": 41
+  },
+  "workshop-northwest": {
+   "pos": [
+    22.48,
+    0,
+    -5.42
+   ],
+   "yaw": -2.6965,
+   "place": "place.stonemason-workshop",
+   "poly": 23
+  },
+  "workshop-entry": {
+   "pos": [
+    19.63,
+    0,
+    -7.62
+   ],
+   "yaw": 2.4578,
+   "place": "place.stonemason-workshop",
+   "poly": 16
+  },
+  "workshop-northeast": {
+   "pos": [
+    17.25,
+    0,
+    -8.6
+   ],
+   "yaw": 1.6879,
+   "place": "place.stonemason-workshop",
+   "poly": 17
+  },
+  "workshop-shed-front": {
+   "pos": [
+    24.66,
+    0,
+    -7.06
+   ],
+   "yaw": -2.0377,
+   "place": "place.stonemason-workshop",
+   "poly": 52
+  },
+  "workshop-shed-side": {
+   "pos": [
+    23.67,
+    0,
+    -8.76
+   ],
+   "yaw": -1.6587,
+   "place": "place.stonemason-workshop",
+   "poly": 55
+  },
+  "workshop-center": {
+   "pos": [
+    20.23,
+    0,
+    -8.79
+   ],
+   "yaw": 1.9729,
+   "place": "place.stonemason-workshop",
+   "poly": 16
+  },
+  "workshop-east": {
+   "pos": [
+    18.52,
+    0,
+    -11.88
+   ],
+   "yaw": 0.6642,
+   "place": "place.stonemason-workshop",
+   "poly": 18
+  },
+  "workshop-west": {
+   "pos": [
+    23.75,
+    0,
+    -3.76
+   ],
+   "yaw": -2.6257,
+   "place": "place.stonemason-workshop",
+   "poly": 13
   }
  },
  "files": [

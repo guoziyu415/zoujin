@@ -2,8 +2,10 @@
 // invite page and comes back to where the player was afterwards.
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { clearPrivateState } from "../net/privateState";
 import { setUnauthenticatedHandler } from "../net/rest";
 import { CLIENT_VERSION } from "../net/session";
+import HomeScreen from "../screens/HomeScreen";
 import CoverScreen from "../screens/CoverScreen";
 import EndingScreen from "../screens/EndingScreen";
 import LoginScreen from "../screens/LoginScreen";
@@ -16,7 +18,8 @@ import { queryClient } from "./queries";
 import { navigate, toLogin, useRoute } from "./router";
 
 setUnauthenticatedHandler(() => {
-  queryClient.removeQueries({ queryKey: ["me"] });
+  clearPrivateState();
+  queryClient.clear(); // do not keep another invite account's library or ending in memory
   toLogin();
 });
 
@@ -48,10 +51,12 @@ function Screen() {
   switch (route.name) {
     case "login":
       return <LoginScreen next={route.next} />;
+    case "home":
+      return <HomeScreen />;
     case "cover":
-      return <CoverScreen />;
+      return <CoverScreen key={route.bookId} bookId={route.bookId} />;
     case "roles":
-      return <RoleScreen />;
+      return <RoleScreen key={route.bookId} bookId={route.bookId} />;
     case "play":
       return <PlayScreen key={route.pid} pid={route.pid} />;
     case "ending":

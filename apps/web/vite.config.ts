@@ -58,6 +58,8 @@ function resolveUnder(dir: string, rel: string): string | null {
 }
 
 function runtimeFiles(): Plugin {
+  const castRuntimeFile = (rel: string) =>
+    /^[a-z0-9-]+\/(walk|talk_std|talk_high|anims)\.glb$/.test(rel);
   const mounts = (): [string, string][] => [
     ...SCENES.map((s): [string, string] => [`/scenes/${s}/`, sceneDir(s)]),
     ["/cast/", castDir()],
@@ -67,7 +69,10 @@ function runtimeFiles(): Plugin {
       const url = req.url?.replace(/^\/scenes\/[0-9a-f]{8}\//, "/scenes/");
       if (!url?.startsWith(prefix)) continue;
       const rel = url.slice(prefix.length);
-      const file = resolveUnder(dir, rel);
+      const file =
+        prefix !== "/cast/" || castRuntimeFile(rel.split("?")[0] ?? "")
+          ? resolveUnder(dir, rel)
+          : null;
       if (!file) {
         // a 404, not the app's index.html: scene/extra.ts asks for an index.json a single-pack scene does not have
         res.statusCode = 404;
@@ -107,7 +112,11 @@ function runtimeFiles(): Plugin {
         fs.cpSync(dir, path.join(outDir, prefix), {
           recursive: true,
           dereference: true, // the deploy's scene dirs are symlinks (infra/deploy packs.py): dist gets real files
-          filter: (f) => !f.endsWith(".md"),
+          filter: (f) =>
+            prefix === "/cast/"
+              ? fs.statSync(f).isDirectory() ||
+                castRuntimeFile(path.relative(dir, f).split(path.sep).join("/"))
+              : !f.endsWith(".md"),
         });
       }
     },
@@ -227,9 +236,11 @@ export default defineConfig({
                 /[\\/]node_modules[\\/](three|@react-three[\\/][^\\/]+|suspend-react|its-fine|react-use-measure|zustand[\\/]esm[\\/]traditional|use-sync-external-store)/.test(
                   id,
                 )
-                  ? !id.includes("libs/basis")
+                  ? !/libs\/basis|examples\/jsm\/(?:postprocessing\/GTAOPass|shaders\/(?:GTAOShader|PoissonDenoiseShader)|math\/SimplexNoise|environments\/RoomEnvironment|geometries\/RoundedBoxGeometry)/.test(
+                      id,
+                    )
                   : /[\\/]src[\\/]three[\\/]/.test(id) &&
-                    !/scene[\\/](extra|land|clouds|prefetch)|quality[\\/]probe|[\\/](water|dev|castle|road)[\\/]|cast[\\/]CastBody|ending[\\/](?!Guard)|crowd[\\/](?!presence)/.test(
+                    !/scene[\\/](extra|land|clouds|prefetch)|quality[\\/]probe|[\\/](water|dev|castle|road|home)[\\/]|cast[\\/]CastBody|ending[\\/](?!Guard)|crowd[\\/](?!presence)/.test(
                       id,
                     ),
             },

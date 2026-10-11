@@ -3,7 +3,7 @@
 // queue; telemetry never shows the player an error.
 import type { Api } from "@zoujin/contracts";
 import { rest } from "../net/rest";
-import { drain, peek, requeue } from "./telemetry";
+import { drain, peek, requeue, telemetryGeneration } from "./telemetry";
 
 const EVERY_MS = 10_000;
 const BATCH = 50;
@@ -49,13 +49,15 @@ async function send(c: Api.TelemetryCommon, keepalive: boolean): Promise<void> {
   sending = true;
   try {
     while (peek().length) {
+      const generation = telemetryGeneration();
       const events = drain(BATCH);
       try {
         await rest.telemetry({ common: c, events }, keepalive);
       } catch {
-        requeue(events);
+        requeue(events, generation);
         return;
       }
+      if (generation !== telemetryGeneration()) return;
     }
   } finally {
     sending = false;

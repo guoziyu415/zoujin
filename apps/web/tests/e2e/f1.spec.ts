@@ -6,6 +6,7 @@
 import { expect, test, type Page, type WebSocketRoute } from "@playwright/test";
 import {
   login,
+  openFirstBook,
   mock,
   ORIGIN,
   resetMock,
@@ -592,6 +593,7 @@ test.describe("LINE's browser", () => {
     ).toBeVisible();
     await note.getByRole("button", { name: "このまま文字で遊ぶ" }).click();
     await expect(note).toHaveCount(0);
+    await openFirstBook(page);
     await page.getByRole("button", { name: "書をひらく" }).click();
     await page.getByRole("button", { name: "旅人として、はじめる" }).click();
     await expect(page.getByText("人に近づくと話せます")).toBeVisible();
@@ -604,7 +606,9 @@ test.describe("LINE's browser", () => {
     );
     // the choice stays on this device: the next visit has no note
     await page.goto("/");
-    await expect(page.getByRole("button", { name: "続きから" })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /しおりの続きから/ }),
+    ).toBeVisible();
     await expect(page.getByRole("note")).toHaveCount(0);
   });
 });

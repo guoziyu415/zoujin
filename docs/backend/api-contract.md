@@ -11,7 +11,7 @@
 
 | 项 | 约定 |
 |---|---|
-| 来源 | 静态资源和 API **同源**（`https://<同一域名>/` 和 `/v1/...`），负载均衡分流，CDN 只缓存静态资源（Q-B7，前端已确认） |
+| 来源 | 静态资源和 API **同源**（`https://<同一域名>/` 和 `/v1/...`），H-1 私密模式由网关统一提供并校验站点密码，不公开静态目录，不经公共 CDN 缓存 |
 | 版本 | 路径带 `/v1`；只做加法，前端忽略不认识的字段和消息类型；删字段或改语义升 `/v2` |
 | 鉴权 | 邀请码登录后发会话 Cookie（`HttpOnly; Secure; SameSite=Lax`），**有效期 30 天，每次使用滑动续期**。前端不接触任何令牌 |
 | 跨站防护 | WebSocket 握手校验 Cookie 和 `Origin`；会改数据的 REST（POST、DELETE）要求 `Content-Type: application/json` 并校验 `Origin`，不符合返回 `403 forbidden` |
@@ -59,7 +59,7 @@
 ### 2.1 `GET /v1/books/{bookId}/manifest`
 不变的内容，全部由仓库里的东西生成，不手写（v1.0.9，B-7）：世界模型、B-6 的声音清单、前端的场景包。正式网关和 mock 用同一个生成器（`services/backend/src/zoujin_backend/manifest.py`），网关开进程时生成一次，换世界模型、声音或场景包都要重启。要登录（邀请制，没有会话回 401）；书不是网关开新局用的那本回 404 `not_found`。
 
-- 缓存（v1.0.9）：地址不带版本。响应头 `ETag: "<manifestVersion>"`、`Cache-Control: private, no-cache`；前端每次带 `If-None-Match` 问，没变回 304、不带内容。录音和场景包的文件自己长缓存（见下）。
+- 缓存（H-1 私密要求）：地址不带版本。响应头 `ETag: "<manifestVersion>"`、`Cache-Control: private, no-store`；兼容显式 `If-None-Match` 请求，没变回 304、不带内容。页面、录音和场景包同样由密码门禁保护且不落浏览器缓存。
 - `manifestVersion`（v1.0.9）：`{worldModelVersion}+{hash}`，hash 是除它以外整份 manifest（键排序的 JSON）的 sha256 前 8 位。世界模型里给玩家的那些字段、声音清单、任何一个场景包的入口文件变了，它就变；同样的输入每次一样。只用来比相等，不要解析。
 ```json
 {
@@ -104,11 +104,11 @@
   - `acts[].sceneIds` = `Act.scenes` 里有场景包的；一个都没有的幕不出（每一幕至少一个场景）。
   - `characters`：世界模型的全部人物（不只这一版出场的），`reading`、`talkable` 照世界模型。
   - `clock`：`deadlineT` = `clock.deadline.t`，`days` = `clock.labels.days`。`ruby` 照世界模型的注音词表。
-- 场景包（v1.0.9）：场景 `scene.x` 看场景包目录里的 `x/`，入口文件是 `index.json`（F-10，一个场景几个包），没有就是 `scene.json`（广场）。入口能走到的目录：场景自己的目录，加上 `index.json` 的 `packs[].manifest` 所在的目录和 `sharedPacks`（都在场景包目录下一层，例：`road-river` 走到 `road-river-calm`、`road-river-flood`、`road-common`）。`assetVersion` 是这几个目录里全部文件（相对路径和内容）合起来的 sha256 前 8 位，包里任何一个文件变了版本就变（`index.json` 只列相对地址、不带 sha，只哈希入口不够，前端 2 的 #114 评审）。`assetUrl` = `/scenes/<assetVersion>/<目录>/<入口文件>`，版本在最前、不用查询参数：部署时把入口能走到的目录一起放在 `/scenes/<assetVersion>/` 下，`../road-river-calm/scene.json` 这样的相对地址落在同一个版本里。包里别的文件的地址相对 `assetUrl` 算，`/scenes/<版本>/` 下的文件都长缓存（`immutable`）；拿着旧 manifest 的玩家照样能加载旧版的包。走到场景包目录外、或引用的目录不在的场景不出。两个入口都没有的场景没有包，不出现在 `scenes` 和任何一幕的 `sceneIds` 里。玩家走到没有包的场景时，前端留在当前画面，只出字幕和旁白。
+- 场景包（v1.0.9）：场景 `scene.x` 看场景包目录里的 `x/`，入口文件是 `index.json`（F-10，一个场景几个包），没有就是 `scene.json`（广场）。入口能走到的目录：场景自己的目录，加上 `index.json` 的 `packs[].manifest` 所在的目录和 `sharedPacks`（都在场景包目录下一层，例：`road-river` 走到 `road-river-calm`、`road-river-flood`、`road-common`）。`assetVersion` 是这几个目录里全部文件（相对路径和内容）合起来的 sha256 前 8 位，包里任何一个文件变了版本就变（`index.json` 只列相对地址、不带 sha，只哈希入口不够，前端 2 的 #114 评审）。`assetUrl` = `/scenes/<assetVersion>/<目录>/<入口文件>`，版本在最前、不用查询参数：部署时把入口能走到的目录一起放在 `/scenes/<assetVersion>/` 下，`../road-river-calm/scene.json` 这样的相对地址落在同一个版本里。包里别的文件的地址相对 `assetUrl` 算，`/scenes/<版本>/` 下的文件由密码门禁保护、响应 `private, no-store`；部署须保留旧包，拿着旧 manifest 的玩家才能加载对应版本。走到场景包目录外、或引用的目录不在的场景不出。两个入口都没有的场景没有包，不出现在 `scenes` 和任何一幕的 `sceneIds` 里。玩家走到没有包的场景时，前端留在当前画面，只出字幕和旁白。
 - `prerecorded`：ux-design 16.2 的 6 句（相槌 3、听不清 2、等一下 1），后端用这个角色的声音在构建时生成（backend-design 3.6），前端在场景加载时解码。每一句是 `{ url, text, durationMs }`：`text` 是剧本原文（字幕用它，`source: "script"`，S-071），`durationMs` 是实际音频长度，前端按它分段跟着声音出字幕。现在所有固定台词都是预录的；以后若有服务端经 WebSocket 推的固定台词，`transcript {final: true, source: "script"}` 会在第一个音频包之前到。声音定了以后才有（Q-004）。`cues`：由服务端在某个时刻触发的固定台词，键是 `commit.cue.kind`（3.4）；现在只有梅洛斯的 `arrival_capped`，只放在世界模型 `clock.deadline.earliestArrivalCue.speaker` 那个人物身上，文字和它的 `line` 一字不差（同一条里的 `narration` 是地の文，没有声音）。只有能对话的人物带 `prerecorded`（v1.0.9 写明）。
 - `ruby`：注音词表，词由数据工程出（F-11）。
 - `setPieceVoices`（v1.0.4）：固定演出（3.14）里人物的预录句，前端在场景加载时和 `prerecorded` 一起解码。键是「{固定演出 ID}/{序号}」，序号是这一句在那条固定演出 `lines` 里的位置（从 1 起，地の文也算；上面的例子是 `piece.gate-taken` 的第 2 行，警吏的那句）。和 `prerecorded` 一样构建时用这个人物的声音生成（ux-design 16.2，声音按 UX 的文案表），不能对话的人物（警吏）也有；声音还没生成的句子没有键。世界模型没有固定演出时省略。生成时逐句和世界模型核对（v1.0.9）：那条固定演出的第 n 行是人物说的话、`text` 和它一字不差才出，对不上的、录音文件不在的只少那个键；声音清单是别的世界模型版本的也照这样核对。
-- 录音文件（v1.0.8，B-6）：AAC-LC（`.m4a`），单声道，24 kHz；文件名带内容 hash，长缓存。文字和声音都相同的几个 `setPieceVoices` 键可以指向同一个 `url`（例：`piece.gate-taken/2` 和 `piece.gate-turned-away/2` 是警吏同一句）。一个人物的 6 句里有一句没生成成（自动检查三遍都不过）时，这个人物这次没有 `prerecorded`（Schema 要求 3/2/1 齐全），前端照没有预录处理；`cues` 和 `setPieceVoices` 少一句只少那个键。地址是 `/assets/voice/{bookId}/{文件名}`（v1.0.9 写明）：网关只发 manifest 里列着的文件，不要登录，`Cache-Control: public, max-age=31536000, immutable`，`Content-Type: audio/mp4`；清单外的、`voices.json` 本身、别的书回 404。
+- 录音文件（v1.0.8，B-6）：AAC-LC（`.m4a`），单声道，24 kHz；文件名带内容 hash；H-1 私密模式不落浏览器缓存。文字和声音都相同的几个 `setPieceVoices` 键可以指向同一个 `url`（例：`piece.gate-taken/2` 和 `piece.gate-turned-away/2` 是警吏同一句）。一个人物的 6 句里有一句没生成成（自动检查三遍都不过）时，这个人物这次没有 `prerecorded`（Schema 要求 3/2/1 齐全），前端照没有预录处理；`cues` 和 `setPieceVoices` 少一句只少那个键。地址是 `/assets/voice/{bookId}/{文件名}`（v1.0.9 写明）：网关只发 manifest 里列着的文件，必须先通过站点密码门禁，`Cache-Control: private, no-store`，`Content-Type: audio/mp4`；清单外的、`voices.json` 本身、别的书回 404。
 - 第一版只有 3 个身份（S-002、S-039 U-3），没开放的身份不出现在 `roles` 里。开局（2.2）只收 `roles` 里有的身份，别的回 400 `invalid_request`。
 - manifest 只描述开新局用的那个世界模型版本。一局锁定的版本和它不同（评审部署期间换了版本）时，老局的人物名、场景可能和 manifest 有出入（backend-design 第 12 节）。
 
@@ -755,7 +755,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 | 世界反应 | `turn_complete` 后 3〜5 s 内 `turn_settled`（叙事者判定） | 轻反馈只在 `commit` 后出现 |
 | 候选话语 | `turn_complete` 后约 1 s | — |
 | REST | 快照 ≤ 10 KB；事件每页 ≤ 50 条 | — |
-| 静态资源 | 文件名带 hash 的资源 `public, max-age=31536000, immutable`、预压缩 br；`index.html` `no-cache`；`/v1/*` 不经 CDN 缓存（前端建议第 17 条） | — |
+| 静态资源 | H-1 私密模式：页面、文件名带 hash 的资源、音频和 `/v1/*` 均为 `private, no-store`，不经公共 CDN 缓存；资源 URL 保留版本和 hash 用于匹配 | — |
 
 ---
 
@@ -908,3 +908,20 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 - v0.3（2026-10-06）：按前端评审 17 条、数据评审、ux-design 18.2 和 S-022〜S-053、D-012〜D-015 修改。主要变化：一次提交合成 `commit`（带 `fromSeq`）并且每轮推 `turn_settled`；turnSeq 只在一条连接内有效，服务端发起的轮次最高位为 1；`anchor` 改 `spot`，ID 用世界模型的；`tLabel` 改为约束之日起算，去掉 `koku`；作废统一用 `turn_retract`，作废时重建会话、原话立即清空，识别改正 = `turn_retract` + `text`；新增意图确认（`confirm`）、人物主动开口（`approach`、`turn_started`）、候选话语（`suggestions`）、幕末说出打算（`act_propose`）、幕切换和「その頃」（`act_transition`）、出戏卡（`safety_pause`）、结局演出的站位（`staging`）、时间消耗规则（3.7）、动作清单（3.8）；快照加 `places`、`actions`、`deadline`、`forecast`、`pending`、`relationLevel`；新增地图时间线接口（2.5）、记忆删除的后果查询（2.7）；記憶帳按约定、做了的事、记忆分栏；结局改为三层并带卡面字段，插画改为前端 3D 定格；`/v1/me` 带进行中的局，`welcome` 带最后一轮和未完成的状态；REST 跨站防护、会话 30 天滑动；mock 服务和 JSON Schema。
 - v0.2（2026-10-06）：按前端设计第 14 节和前端答复修改：加 manifest；快照改成前端字段清单；消息加 `near/far`、`turn_retract`、`act_choose`、`world_patch`、`chain_reveal`、`memory_updated`、`act_ended`、`ending_ready`、`goaway`；帧头加 turnSeq；事件只推玩家可见投影；插画走同源路径；加分享草案。
 - v0.1（2026-10-06）：初稿。
+
+## H-1 书房与多书目录（2026-10-12）
+
+- `GET /v1/books`：登录后返回 `BooksResponse.books`。每本书包含 `bookId`、新局锁定的 `worldModelVersion`、`title`、`author`、`year`、`description`、`availability` 和 `manifestUrl`。只列显式配置的书，不把草稿、未制作的候选或不同版本当成第二本书。只有 `available` 才可进入；开放身份继续以 manifest 为准。
+- `GET /v1/books/{bookId}/manifest?worldModelVersion=...`：恢复已有存档时可指定锁定版本，先核对当前账号确有该书该版本记录，再按保留世界模型生成。不存在/不属于该账号的版本 404，不回退到最新。部署须保留旧场景 ID、人物和站位资源兼容性。
+- `GET /v1/library`：登录后返回当前账号 `activePlaythrough`、`endings`、`pendingEndings`。active 是原 ActivePlaythrough 加 `bookId`、`worldModelVersion`。完成列表只来自 `status=ended` 且结局已落库、版本和局 ID 相符的记录，按结束时间倒序；只带结局卡标题和副标题，详情仍通过原 ending 接口读取。已结束但结局尚未落库进入 pending，不能展示成已完成。
+- 三类记录均包含局、书、世界版本标识；已结束记录含书名、身份、结束时间。不把当前书籍版本替换旧局版本。删除整局级联删除结局，下一次 library 查询立即消失。目录和历史响应均 `private, no-store`，不允许通过客户端指定 owner 查询别人记录。
+- 当前继续保留每账号同时一局限制。回书房不创建、不放弃、不删除任何局。继续体验复用原快照和 WebSocket 重连；再次体验走原创建及冲突确认流程。
+- `ZJ_WORLD` 仍是默认书，`ZJ_WORLDS` 是额外开放书籍 world.json 的绝对路径 JSON 数组，默认空。已存局从仓库所有已保留版本读取，不随发布目录升级。新书还须完整世界、场景、角色、声音和验收后才能配置开放。
+
+### 私密预览的站点门禁
+
+生产环境的所有页面、JS、场景、人物、贴图、音频、REST 和 WebSocket 必须先通过站点密码，只有不含内容的 `/healthz` 豁免。`ZJ_SITE_PASSWORD` 从运行环境的 Secret 注入，至少 16 字符；未配置时生产返回 503，不以公开模式启动访问。仅显式本地 `ZJ_DEV=1` 可不设。
+
+`GET /site-access` 给自包含密码页，`POST /site-access` 收同源表单；成功设 12 小时 `HttpOnly`、`Secure`、`SameSite=Strict` HMAC 通行 cookie。生产应使用 HTTPS。密码验证失败按来源 IP 在 15 分钟窗口内限 10 次（进程内；部署需约束实例数或另加入口限速）。密码不写日志、URL或数据表。修改 Secret 会使旧通行 cookie 失效。
+
+未通行的 API/资源返回 401 和 `X-Site-Access: required`，浏览器页面跳转密码页；前端按该 header 返回外层门禁，不能循环跳邀请码登录。通行后仍保留原邀请码账号权限；WS 同时校验通行 cookie 和同源 Origin。全部私密响应 `private, no-store`。成功/失效响应要求浏览器清缓存与离线存储，但它不能撤回之前已经被用户保存或离线缓存的公开资源；上线需另行清除旧部署/CDN公开缓存、禁用旧 Service Worker，并验证旧资产 URL 已被挡住。本地代码完成不等于线上已保护。

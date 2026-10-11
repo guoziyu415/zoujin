@@ -23,8 +23,9 @@ from zoujin_backend.config import COOKIE, SESSION_DAYS
 from zoujin_backend.db import store
 from zoujin_backend.db.tables import endings, idempotency_keys, memory_items, playthrough_metrics, playthroughs, turns
 from zoujin_backend.gateway import auth, memory_book
+from zoujin_backend.gateway import library as library_mod
 from zoujin_backend.gateway.core import Gateway
-from zoujin_backend.manifest import CACHE, FILE_CACHE, media_type
+from zoujin_backend.manifest import CACHE, FILE_CACHE, generate, media_type
 from zoujin_backend.narrator import ending as ending_mod
 from zoujin_backend.narrator import memory
 from zoujin_backend.schemas import SchemaError
@@ -236,13 +237,55 @@ async def me(request: Request) -> Response:
 # —— 2.1 ——
 
 
+@router.get("/v1/books")
+async def books(request: Request) -> Response:
+    gw = gw_of(request)
+    await user_of(request)
+    resp = ok(gw, "books", 200, library_mod.catalog(gw))
+    resp.headers["Cache-Control"] = "private, no-store"
+    return resp
+
+
+@router.get("/v1/library")
+async def library(request: Request) -> Response:
+    gw = gw_of(request)
+    user_id = await user_of(request)
+    async with gw.engine.connect() as c:
+        doc = await library_mod.history(gw, c, user_id)
+    resp = ok(gw, "library", 200, doc)
+    resp.headers["Cache-Control"] = "private, no-store"
+    return resp
+
+
 @router.get("/v1/books/{book_id}/manifest")
 async def manifest(request: Request, book_id: str) -> Response:
     """开进程时生成好的那一份（B-7）。地址不带版本：ETag 是 manifestVersion，对上了回 304。"""
     gw = gw_of(request)
-    await user_of(request)
-    m = gw.manifest
-    if m is None or book_id != m.book_id:
+    user_id = await user_of(request)
+    m = gw.manifests.get(book_id)
+    check_request(gw, "manifest", "query", dict(request.query_params))
+    version = request.query_params.get("worldModelVersion")
+    if version is not None:
+        # 历史版本仅供拥有该版本存档的账号恢复；未知或未体验的版本不能借查询参数预览。
+        async with gw.engine.connect() as c:
+            own = await c.scalar(
+                select(playthroughs.c.playthrough_id)
+                .where(
+                    playthroughs.c.user_ref == user_id,
+                    playthroughs.c.book_id == book_id,
+                    playthroughs.c.world_model_version == version,
+                )
+                .limit(1)
+            )
+        book = gw.library.by_version.get(version)
+        if own is None or book is None or book.book_id != book_id:
+            raise Fail("not_found")
+        if version not in gw.history_manifests:
+            gw.history_manifests[version] = generate(
+                book, gw.schemas, packs=gw.settings.packs, voices=gw.settings.voice_dir, release=gw.settings.release
+            )
+        m = gw.history_manifests[version]
+    if m is None:
         raise Fail("not_found")
     headers = {"ETag": m.etag, "Cache-Control": CACHE}
     if m.fresh(request.headers.get("if-none-match")):
@@ -255,8 +298,11 @@ async def manifest(request: Request, book_id: str) -> Response:
 @router.get("/assets/voice/{book_id}/{name}")
 async def voice_file(request: Request, book_id: str, name: str) -> Response:
     """预录句的录音：只发 manifest 里列着的文件，文件名带 hash，长缓存；不要登录（同源的静态资源）。"""
-    m = gw_of(request).manifest
-    path = m.voice_file(book_id, name) if m is not None else None
+    gw = gw_of(request)
+    path = next(
+        (p for m in [*gw.manifests.values(), *gw.history_manifests.values()] if (p := m.voice_file(book_id, name))),
+        None,
+    )
     if path is None:
         return Response(status_code=404)
     return FileResponse(path, media_type=media_type(path), headers={"Cache-Control": FILE_CACHE})
@@ -305,7 +351,8 @@ async def _create(gw: Gateway, request: Request, user_id: str, key: str, fp: str
     doc = await body_of(request)
     check_request(gw, "playthroughs-create", "request", doc)
     book = gw.library.book(doc["bookId"])
-    closed = gw.manifest is not None and not gw.manifest.has_role(doc["roleId"])  # 不在 manifest 里的身份没开放
+    manifest = gw.manifests.get(doc["bookId"])
+    closed = manifest is not None and not manifest.has_role(doc["roleId"])
     if book is None or doc["roleId"] not in book.roles or closed:
         log.info("没有这个书或身份")
         raise Fail("invalid_request")
@@ -440,6 +487,9 @@ async def get_ending(request: Request, pid: str) -> Response:
         )
     if queued is None:
         raise Fail("not_found")
+    # 从书房直接打开回忆不一定有 WebSocket。重启/断线后读 202 时唤醒既有任务；
+    # 不新建结局任务，叙事者按 PostgreSQL 租约和幂等键去重，完成行存在时上面已直接返回。
+    gw.kick(pid)
     elapsed = float(started) if started is not None else 0.0
     return ok(gw, "ending", 202, {"status": "pending", "etaSeconds": ending_mod.eta(0.0, elapsed)})
 

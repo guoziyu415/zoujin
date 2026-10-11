@@ -1,0 +1,14 @@
+{
+  "books": [
+    {
+      "bookId": "hashire-merosu",
+      "worldModelVersion": "hashire-merosu@1.0.0-draft.3",
+      "title": "走れメロス",
+      "author": "太宰治",
+      "year": 1940,
+      "description": "本を開いて、物語の世界へ。",
+      "availability": "available",
+      "manifestUrl": "/v1/books/hashire-merosu/manifest"
+    }
+  ]
+}

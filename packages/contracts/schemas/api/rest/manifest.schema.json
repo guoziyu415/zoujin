@@ -9,7 +9,8 @@
     "params": "#/$defs/ManifestParams",
     "responses": {
       "200": "#/$defs/ManifestResponse"
-    }
+    },
+    "query": "#/$defs/ManifestQuery"
   },
   "$defs": {
     "ManifestParams": {
@@ -325,6 +326,19 @@
         }
       },
       "title": "ManifestResponse"
+    },
+    "ManifestQuery": {
+      "title": "ManifestQuery",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "worldModelVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200,
+          "description": "恢复既有存档的锁定世界版本；当前账号须拥有该书该版本存档。"
+        }
+      }
     }
   }
 }

@@ -690,8 +690,15 @@ def test_rest_endpoints(fast: Server) -> None:
     try:
         rest_ok("auth-login", 401, p.http.post("/v1/auth/login", json={"inviteCode": "wrong"}))
         assert p.call("me", 200, "/v1/me")["activePlaythrough"] is None
+        assert [b["bookId"] for b in p.call("books", 200, "/v1/books")["books"]] == ["hashire-merosu"]
+        assert p.call("library", 200, "/v1/library") == {
+            "activePlaythrough": None,
+            "endings": [],
+            "pendingEndings": [],
+        }
         p.call("manifest", 200, "/v1/books/hashire-merosu/manifest")
         p.start("small-talk")
+        assert p.call("library", 200, "/v1/library")["activePlaythrough"]["playthroughId"] == p.pid
         busy = p.call("playthroughs-create", 409, "/v1/playthroughs", create, key=True)
         assert busy["activePlaythrough"]["playthroughId"] == p.pid
         base = f"/v1/playthroughs/{p.pid}"
@@ -737,6 +744,7 @@ def test_rest_endpoints(fast: Server) -> None:
         p.connect()
         p.expect("ending_ready")
         ending = p.call("ending", 200, f"/v1/playthroughs/{p.pid}/ending")
+        assert [e["endingId"] for e in p.call("library", 200, "/v1/library")["endings"]] == [ending["endingId"]]
         assert [x["character"] for x in ending["card"]["characterLines"]] == [OLD]
         events = p.call("events", 200, f"/v1/playthroughs/{p.pid}/events?afterSeq=0&limit=50")
         last_welcome = max(i for i, x in enumerate(p.log) if x["type"] == "welcome")  # 内容相同的 welcome 不止一条

@@ -67,7 +67,12 @@ def shape(v: object) -> object:
 def same_build(committed: bytes, built: bytes) -> bool:
     a, b = json.loads(committed), json.loads(built)
     if isinstance(a, dict) and isinstance(b, dict) and "inputs" in a:
-        return a["inputs"] == b.get("inputs")
+        return bool(a["inputs"] == b.get("inputs"))
+    # road-common 可由村子或归途管线合并；顶层 note 只是生成器署名，不是资源结构。
+    # 仅去掉这一个说明字段，files / textures / 嵌套结构和 inputs 校验照旧。
+    if isinstance(a, dict) and isinstance(b, dict):
+        a.pop("note", None)
+        b.pop("note", None)
     return shape(a) == shape(b)
 
 

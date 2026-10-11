@@ -210,7 +210,7 @@ def real_text(
         if settings.ledger is None or settings.max_google_usd is None:
             raise ConfigError("ZJ_MODEL=real 要账本和 Google 的总上限：ZJ_LEDGER、ZJ_MAX_GOOGLE_USD，没有默认值")
         ledger = Ledger(settings.ledger, settings.max_google_usd, settings.max_item_usd, settings.ledger_item)
-    library = Library(settings.worlds, settings.scenes, settings.world)
+    library = Library(settings.worlds, settings.scenes, settings.world, settings.released_worlds)
     return RealText(
         transport=transport or RestTransport(project, location, AdcAuth()),
         ledger=ledger,

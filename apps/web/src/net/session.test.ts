@@ -9,6 +9,7 @@ import { FakeAudio, voiceFrame } from "../voice/fakeAudio";
 import { Session } from "./session";
 import { commit, event, FakeSocket, PID, snapshot, welcome } from "./testkit";
 import { openPropose } from "./story";
+import { setUnauthenticatedHandler } from "./rest";
 
 function open(lastSeq = 0) {
   const onEnded = vi.fn();
@@ -32,9 +33,67 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  setUnauthenticatedHandler(() => {});
 });
 
 describe("Session", () => {
+  it("probes authentication on abnormal WS loss and returns an expired site password to its gate", async () => {
+    const assign = vi.fn();
+    const unauthenticated = vi.fn();
+    setUnauthenticatedHandler(unauthenticated);
+    vi.stubGlobal("window", { location: { assign } });
+    const fetch = vi.fn(
+      async () =>
+        new Response("{}", {
+          status: 401,
+          headers: { "X-Site-Access": "required" },
+        }),
+    );
+    vi.stubGlobal("fetch", fetch);
+    const { s, sock } = open();
+    sock.drop(1006);
+    await vi.waitFor(() => expect(assign).toHaveBeenCalledWith("/site-access"));
+    expect(unauthenticated).toHaveBeenCalledOnce();
+    expect(fetch).toHaveBeenCalledWith(
+      "/v1/me",
+      expect.objectContaining({ method: "GET" }),
+    );
+    s.stop();
+  });
+
+  it("limits authentication probes during repeated failed WS reconnects", async () => {
+    const fetch = vi.fn(async () => {
+      throw new Error("offline");
+    });
+    vi.stubGlobal("fetch", fetch);
+    const { s, sock } = open();
+    sock.drop();
+    await vi.advanceTimersByTimeAsync(1000);
+    FakeSocket.last().drop();
+    await vi.advanceTimersByTimeAsync(2000);
+    FakeSocket.last().drop();
+    expect(fetch).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(30_000);
+    FakeSocket.last().drop();
+    expect(fetch).toHaveBeenCalledTimes(2);
+    s.stop();
+  });
+
+  it("waits for connectivity before probing a failed WS handshake", async () => {
+    const fetch = vi.fn(async () => new Response("{}"));
+    vi.stubGlobal("fetch", fetch);
+    const network = { onLine: false };
+    vi.stubGlobal("navigator", network);
+    const { s, sock } = open();
+    sock.drop();
+    expect(fetch).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1000);
+    network.onLine = true;
+    FakeSocket.last().drop();
+    expect(fetch).toHaveBeenCalledOnce();
+    s.stop();
+  });
+
   it("opens on welcome and numbers the turns from 1 on each connection", () => {
     const { s, sock } = open();
     expect(useUi.getState().connection).toBe("open");
@@ -505,6 +564,7 @@ describe("Session, for the 3D", () => {
       expect(usePlayer.getState().place).toBe("place.syracuse-square"),
     );
     expect(fetch.mock.calls.map((c) => c[0])).toEqual([
+      "/v1/me",
       `/v1/playthroughs/${PID}/snapshot`,
     ]);
     // the next welcome has nothing waiting: no snapshot
@@ -512,7 +572,7 @@ describe("Session, for the 3D", () => {
     vi.advanceTimersByTime(1000);
     FakeSocket.last().open();
     FakeSocket.last().receive(welcome(0));
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it("near and far go out as they are; after a reconnect near, focus and a move made while down go again", () => {

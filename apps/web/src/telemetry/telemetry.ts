@@ -10,6 +10,13 @@ type PropsOf<N extends Name> = Extract<Event, { name: N }>["props"];
 const MAX_QUEUED = 500; // nobody draining (no network layer yet, or offline for long): keep the newest
 
 const queue: Event[] = [];
+let generation = 0;
+export const telemetryGeneration = () => generation;
+export function clearTelemetry(): void {
+  queue.length = 0;
+  context = {};
+  generation++;
+}
 
 // the open playthrough and its story time, added to every event while there is one
 let context: { playthroughId?: string; t?: number } = {};
@@ -36,7 +43,8 @@ export function drain(n = 50): Event[] {
 }
 
 // a batch that didn't go out goes back to the front
-export function requeue(events: Event[]): void {
+export function requeue(events: Event[], fromGeneration = generation): void {
+  if (fromGeneration !== generation) return;
   queue.unshift(...events);
   if (queue.length > MAX_QUEUED) queue.splice(0, queue.length - MAX_QUEUED);
 }

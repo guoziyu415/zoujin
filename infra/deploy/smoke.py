@@ -66,6 +66,19 @@ async def delete(c: httpx.AsyncClient, origin: dict[str, str], pid: str) -> int:
 async def anon(base: str, bearer: dict[str, str]) -> None:
     origin = {"Origin": base}
     async with httpx.AsyncClient(base_url=base, timeout=30, headers=bearer) as c:
+        for path in (
+            "/",
+            "/assets/unknown.js",
+            "/cast/unknown.glb",
+            "/scenes/old/scene/geo.glb",
+            "/assets/voice/book/audio.m4a",
+            "/v1/books",
+        ):
+            blocked = await c.get(path)
+            expect(
+                blocked.status_code == 401 and blocked.headers.get("x-site-access") == "required",
+                "匿名页面、资产及目录先通过密码门禁",
+            )
         me = await c.get("/v1/me")
         expect(me.status_code == 401, "匿名 GET /v1/me 回 401")
         m = await c.get(f"/v1/books/{BOOK}/manifest")
@@ -73,12 +86,19 @@ async def anon(base: str, bearer: dict[str, str]) -> None:
         p = await c.post("/v1/playthroughs", json={}, headers={**origin, "Idempotency-Key": str(uuid.uuid4())})
         expect(p.status_code == 401, "匿名开局回 401")
     code = await ws_close_code(ws_url(base, "pt_00000000000000000000000000"), {**bearer, **origin})
-    expect(code in (4001, -1), f"匿名 WebSocket 握手被拒（关闭码 {code}）")
+    expect(code in (4001, 4401, -1), f"匿名 WebSocket 握手被拒（关闭码 {code}）")
 
 
 async def smoke(base: str, bearer: dict[str, str], code: str) -> None:
     origin = {"Origin": base}
     async with httpx.AsyncClient(base_url=base, timeout=60, headers=bearer) as c:
+        password = os.environ.get("ZJ_SMOKE_PASSWORD", "")
+        expect(bool(password), "已配置站点密码（不输出）")
+        unlocked = await c.post("/site-access", data={"password": password}, headers=origin)
+        expect(unlocked.status_code == 303, "站点密码通过")
+        expect("HttpOnly" in unlocked.headers.get("set-cookie", ""), "通行 Cookie 不对脚本开放")
+        health = await c.get("/healthz")
+        expect(health.status_code == 204, "健康探测返回空 204")
         page = await c.get("/")
         expect(page.status_code == 200 and "<html" in page.text.lower()[:500], "首页是前端的页面")
         expect(page.headers.get("x-robots-tag", "").startswith("noindex"), "页面不让搜索引擎收")

@@ -1,11 +1,15 @@
 // The book button (ux-design 9.3, 10.1): the memory book and the map, and the one setting the ending reads
 // (「結末を自動で進める」, S-089). The settings page proper is a later card.
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { libraryQuery, meQuery } from "../app/queries";
+import { navigate } from "../app/router";
 import { openOverlay } from "../stores/story";
 import { copy } from "./copy";
 import { endingSettings, useEndingAuto } from "./ending/settings";
 
 export function StoryMenu() {
+  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const auto = useEndingAuto();
   return (
@@ -20,6 +24,19 @@ export function StoryMenu() {
       </button>
       {open && (
         <ul id="story-menu-list" className="story-menu-list">
+          <li>
+            <button
+              onClick={() => {
+                setOpen(false);
+                void qc.invalidateQueries({ queryKey: libraryQuery.queryKey });
+                void qc.invalidateQueries({ queryKey: meQuery.queryKey });
+                navigate("/");
+              }}
+            >
+              書斎に戻る
+            </button>
+            <p className="small">物語は、続きから再開できます。</p>
+          </li>
           <li>
             <button
               onClick={() => {

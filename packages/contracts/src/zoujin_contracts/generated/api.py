@@ -181,6 +181,33 @@ type BookId = Annotated[str, Field(min_length=1, pattern="^[a-z0-9]+(?:-[a-z0-9]
 """
 
 
+class BookSummary(BaseModel):
+    """
+    只列明确配置的已制作书籍，不因发现世界草稿就自动开放；availability 由可加载资源和开放身份决定。
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    bookId: BookId
+    worldModelVersion: Annotated[str, Field(min_length=1)]
+    title: Annotated[str, Field(min_length=1)]
+    author: Annotated[str, Field(min_length=1)]
+    year: int
+    description: Annotated[str, Field(min_length=1)]
+    availability: Literal["available", "unavailable"]
+    manifestUrl: AssetPath
+
+
+class BooksResponse(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    books: list[BookSummary]
+
+
 type ClientMsgId = Annotated[str, Field(max_length=64, min_length=1, title="ClientMsgId")]
 """
 前端生成的动作 ID（第 0 节「幂等」），例 UUID
@@ -676,6 +703,83 @@ class LastTurn(BaseModel):
     """
 
 
+class LibraryActivePlaythrough(BaseModel):
+    """
+    当前账号唯一的进行中体验，按该局锁定的书和世界版本恢复。
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+    playthroughId: PlaythroughId
+    roleId: RoleId
+    roleName: Annotated[str, Field(min_length=1)]
+    actId: ActId
+    tLabel: TLabel
+    updatedAt: RecordedAt
+    bookId: BookId
+    worldModelVersion: Annotated[str, Field(min_length=1)]
+
+
+class LibraryEnding(BaseModel):
+    """
+    只来自该账号 status=ended 且已落库的 endings；不包含未体验的结局和内部因果、变量。
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+    playthroughId: PlaythroughId
+    bookId: BookId
+    worldModelVersion: Annotated[str, Field(min_length=1)]
+    bookTitle: Annotated[str, Field(min_length=1)]
+    roleId: RoleId
+    roleName: Annotated[str, Field(min_length=1)]
+    endedAt: RecordedAt
+    endingId: EndingId
+    title: Annotated[str, Field(max_length=14, min_length=1)]
+    """
+    称号 ≤ 14 字
+    """
+    subtitle: Annotated[str, Field(max_length=26, min_length=1)]
+    """
+    世界的去向 ≤ 26 字
+    """
+
+
+class LibraryPendingEnding(BaseModel):
+    """
+    已结束、尾声尚未落库；必须以生成中展示，不能当成已完成结局。
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+    playthroughId: PlaythroughId
+    bookId: BookId
+    worldModelVersion: Annotated[str, Field(min_length=1)]
+    bookTitle: Annotated[str, Field(min_length=1)]
+    roleId: RoleId
+    roleName: Annotated[str, Field(min_length=1)]
+    endedAt: RecordedAt
+
+
+class LibraryResponse(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    activePlaythrough: LibraryActivePlaythrough | None
+    endings: list[LibraryEnding]
+    pendingEndings: list[LibraryPendingEnding]
+
+
 class LoginRequest(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -693,6 +797,17 @@ class ManifestParams(BaseModel):
         validate_by_name=True,
     )
     bookId: BookId
+
+
+class ManifestQuery(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    worldModelVersion: Annotated[str | None, Field(max_length=200, min_length=1)] = None
+    """
+    恢复既有存档的锁定世界版本；当前账号须拥有该书该版本存档。
+    """
 
 
 class ManifestResponseBook(BaseModel):

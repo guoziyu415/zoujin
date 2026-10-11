@@ -163,6 +163,22 @@ def open_release(env: Mapping[str, str] | None = None) -> int:
     return int(value)
 
 
+def released_worlds(env: Mapping[str, str]) -> tuple[Path, ...]:
+    """ZJ_WORLDS 是额外开放书籍的 world.json 绝对路径 JSON 数组；默认不额外开放。"""
+    import json
+
+    try:
+        values = json.loads(env.get("ZJ_WORLDS", "[]"))
+    except ValueError:
+        raise ConfigError("ZJ_WORLDS 要写 world.json 绝对路径的 JSON 数组") from None
+    if not isinstance(values, list) or not all(isinstance(v, str) for v in values):
+        raise ConfigError("ZJ_WORLDS 要写 world.json 绝对路径的 JSON 数组")
+    paths = tuple(Path(v) for v in values)
+    if any(not p.is_absolute() or not p.is_file() for p in paths):
+        raise ConfigError("ZJ_WORLDS 的每个文件都必须存在且使用绝对路径")
+    return paths
+
+
 def narrator_auth(env: Mapping[str, str]) -> Literal["none", "iam"]:
     """`ZJ_NARRATOR_AUTH`：none（默认，本地）/ iam（Cloud Run：叙事者只开内部入口、只许网关的服务账号调，B-23）。"""
     value = env.get("ZJ_NARRATOR_AUTH", "") or "none"
@@ -195,6 +211,8 @@ class Settings:
     fake_text: Path = field(default=REPO / "fixtures" / "fake-text")
     replays: Path = REPLAYS  # ZJ_REPLAYS 换成别的目录（例：留出集的回放，不进仓库）
     world: Path = DEFAULT_WORLD  # 开新局用的世界模型；已有的局按自己锁定的版本
+    released_worlds: tuple[Path, ...] = ()  # 额外开放的书；不自动发布仓库内的草稿
+    site_password: str | None = field(default=None, repr=False)  # 私密预览门禁，只从环境/Secret 注入
     # manifest（B-7）：开放到第几版的身份（S-002，第一版 1）、场景包目录（部署时指到构建的输出，S-075）、声音目录
     release: int = 1
     scene_packs: Path | None = None  # None = 仓库的 assets/scenes
@@ -251,6 +269,8 @@ class Settings:
             live=live_mode(e, model_mode(e)),
             live_rebuild_turns=rebuild_turns(e),
             world=world_path(e),
+            released_worlds=released_worlds(e),
+            site_password=e.get("ZJ_SITE_PASSWORD") or None,
             release=open_release(e),
             scene_packs=_dir(e, "ZJ_SCENE_PACKS"),
             ledger=_path(e, "ZJ_LEDGER"),

@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api/rest/books.schema.json",
+  "title": "GET /v1/books",
+  "x-endpoint": {
+    "method": "GET",
+    "path": "/v1/books",
+    "responses": {
+      "200": "#/$defs/BooksResponse"
+    }
+  },
+  "$defs": {
+    "BookSummary": {
+      "title": "BookSummary",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bookId",
+        "worldModelVersion",
+        "title",
+        "author",
+        "year",
+        "description",
+        "availability",
+        "manifestUrl"
+      ],
+      "properties": {
+        "bookId": {
+          "$ref": "../common.schema.json#/$defs/BookId"
+        },
+        "worldModelVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "author": {
+          "type": "string",
+          "minLength": 1
+        },
+        "year": {
+          "type": "integer"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "availability": {
+          "enum": ["available", "unavailable"]
+        },
+        "manifestUrl": {
+          "$ref": "../common.schema.json#/$defs/AssetPath"
+        }
+      },
+      "description": "只列明确配置的已制作书籍，不因发现世界草稿就自动开放；availability 由可加载资源和开放身份决定。"
+    },
+    "BooksResponse": {
+      "title": "BooksResponse",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["books"],
+      "properties": {
+        "books": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/BookSummary"
+          }
+        }
+      }
+    }
+  }
+}

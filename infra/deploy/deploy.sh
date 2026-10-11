@@ -7,7 +7,7 @@
 #   infra/deploy/deploy.sh build        取 origin/main（ZJ_DEPLOY_REF 换），构建前端和镜像，推到镜像仓库
 #   infra/deploy/deploy.sh migrate      经 Cloud SQL 代理跑迁移，再设两个应用账号的权限
 #   infra/deploy/deploy.sh up           新版本上线但不接流量（第一次：私有服务），对候选地址跑冒烟
-#   infra/deploy/deploy.sh promote      切流量（第一次：打开公开访问），再冒烟一次、查匿名被拒
+#   infra/deploy/deploy.sh promote      切流量（维持现有 IAM 私密设置），再冒烟一次、查匿名被拒
 #   infra/deploy/deploy.sh verify       只查匿名被拒
 #   infra/deploy/deploy.sh invite [N]   生成 N 个邀请码（默认 1），写进私有目录的文件，不打印
 #   infra/deploy/deploy.sh rollback     两个服务的流量切回上一个版本
@@ -27,6 +27,7 @@ SEC_OWNER=zj-db-owner
 SEC_GW=zj-db-gw
 SEC_NR=zj-db-nr
 SEC_CLAUDE=zj-claude
+SEC_SITE=zj-site-password
 KEYCHAIN_CLAUDE=zoujin-claude
 DB=zoujin
 TAG=next
@@ -38,7 +39,7 @@ CONFIG="$STATE/config.env"
 STATE_ENV="$STATE/state.env"
 LOG="$STATE/deploy.log"
 WT="$STATE/wt"
-HERE="$(cd "$(dirname "$0")" && pwd)"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$HERE/../.." && pwd)"
 APIS=(run.googleapis.com sqladmin.googleapis.com artifactregistry.googleapis.com secretmanager.googleapis.com
   iam.googleapis.com aiplatform.googleapis.com modelarmor.googleapis.com)
@@ -121,6 +122,53 @@ has_ready() { [[ -n "$(gcloud run services describe "$1" --region="$REGION" "${P
   --format='value(status.latestReadyRevisionName)' 2>/dev/null)" ]]; }
 has_secret() { gcloud secrets describe "$1" "${PA[@]}" >/dev/null 2>&1; }
 has_service() { gcloud run services describe "$1" --region="$REGION" "${PA[@]}" >/dev/null 2>&1; }
+gateway_access() {
+  # 只有成功的 list 空结果才代表尚未创建；权限/网络/JSON 错误绝不能被解释成“私有”。
+  local services mode policy members
+  services="$(gcloud run services list --region="$REGION" "${PA[@]}" --filter="metadata.name=$GW" --format=json 2>/dev/null)" ||
+    die "无法读取网关服务访问配置，禁止继续"
+  mode="$(python3 -c 'import json,sys
+p=json.load(sys.stdin)
+if not isinstance(p,list) or len(p)>1: raise ValueError("invalid service list")
+if not p: print("missing")
+else:
+ s=p[0]; metadata=s.get("metadata",{})
+ if not isinstance(metadata,dict) or not metadata.get("name"): raise ValueError("missing service identity")
+ value=metadata.get("annotations",{}).get("run.googleapis.com/invoker-iam-disabled",s.get("invokerIamDisabled",False))
+ if str(value).lower() not in ("true","false"): raise ValueError("invalid invoker state")
+ print("public" if str(value).lower()=="true" else "check")' <<<"$services")" ||
+    die "网关服务访问配置无法解析，禁止继续"
+  if [[ "$mode" == missing ]]; then printf '%s\n' missing; return; fi
+  policy="$(gcloud run services get-iam-policy "$GW" --region="$REGION" "${PA[@]}" --format=json 2>/dev/null)" ||
+    die "无法读取网关 IAM 权限，禁止继续"
+  members="$(python3 -c 'import json,sys
+p=json.load(sys.stdin)
+if not isinstance(p,dict) or not isinstance(p.get("bindings",[]),list): raise ValueError("invalid IAM policy")
+for b in p.get("bindings",[]):
+ if not isinstance(b,dict) or not isinstance(b.get("members",[]),list): raise ValueError("invalid IAM binding")
+print("public" if any(b.get("role")=="roles/run.invoker" and {"allUsers","allAuthenticatedUsers"}.intersection(b.get("members",[])) for b in p.get("bindings",[])) else "private")' <<<"$policy")" ||
+    die "网关 IAM 权限无法解析，禁止继续"
+  if [[ "$mode" == public || "$members" == public ]]; then printf '%s\n' public; else printf '%s\n' private; fi
+}
+privacy_check() {
+  GW_ACCESS="$(gateway_access)" || die "网关访问状态未知，禁止继续"
+  if [[ "$GW_ACCESS" == missing && "${1:-}" != allow-missing ]]; then
+    die "网关服务尚不存在，禁止冒烟或切流量"
+  fi
+  if [[ -f "$STATE/privacy-lock.json" && "$GW_ACCESS" == public ]]; then
+    die "隐私锁存在，但网关公开授权或 invoker IAM 检查已关闭：先收紧访问，禁止自动继续"
+  fi
+}
+gateway_bearer() {
+  privacy_check
+  if [[ "$GW_ACCESS" == private ]]; then
+    local token
+    token="$(gcloud auth print-identity-token 2>/dev/null)" || die "无法取得私有网关身份令牌"
+    [[ -n "$token" ]] || die "私有网关身份令牌为空"
+    printf '%s' "$token"
+  fi
+}
+
 secret() { gcloud secrets versions access latest --secret="$1" "${PA[@]}"; }
 conn() { gcloud sql instances describe "$SQL" "${PA[@]}" --format='value(connectionName)'; }
 url_of() { gcloud run services describe "$1" --region="$REGION" "${PA[@]}" --format='value(status.url)'; }
@@ -165,8 +213,10 @@ cmd_check() {
   echo "镜像仓库：$(yn has_repo)"
   echo "服务账号：网关 $(yn has_sa "$SA_GW_EMAIL")，叙事者 $(yn has_sa "$SA_NR_EMAIL")"
   echo "数据库实例：$(yn has_sql)"
-  for s in "$SEC_OWNER" "$SEC_GW" "$SEC_NR" "$SEC_CLAUDE"; do echo "密钥 $s：$(yn has_secret "$s")"; done
-  echo "服务：网关 $(yn has_service "$GW")，叙事者 $(yn has_service "$NR")；公开访问：${OPENED:-还没开}"
+  for s in "$SEC_OWNER" "$SEC_GW" "$SEC_NR" "$SEC_CLAUDE" "$SEC_SITE"; do echo "密钥 $s：$(yn has_secret "$s")"; done
+  local access
+  access="$(gateway_access)" || die "网关访问状态未知"
+  echo "服务：网关 $(yn has_service "$GW")，叙事者 $(yn has_service "$NR")；网关访问状态：$access"
   echo "镜像：${IMAGE:+已构建（${IMAGE##*:}）}${IMAGE:-还没构建}"
 }
 
@@ -214,8 +264,9 @@ cmd_setup() {
     security find-generic-password -s "$KEYCHAIN_CLAUDE" -w | tr -d '\n' | new_secret "$SEC_CLAUDE" ||
       die "钥匙串里读不到 $KEYCHAIN_CLAUDE"
   fi
+  has_secret "$SEC_SITE" || rand_hex 32 | tr -d '\n' | new_secret "$SEC_SITE"
   local s
-  for s in "$SEC_GW:$SA_GW_EMAIL" "$SEC_NR:$SA_NR_EMAIL" "$SEC_CLAUDE:$SA_GW_EMAIL" "$SEC_CLAUDE:$SA_NR_EMAIL"; do
+  for s in "$SEC_SITE:$SA_GW_EMAIL" "$SEC_GW:$SA_GW_EMAIL" "$SEC_NR:$SA_NR_EMAIL" "$SEC_CLAUDE:$SA_GW_EMAIL" "$SEC_CLAUDE:$SA_NR_EMAIL"; do
     run gcloud secrets add-iam-policy-binding "${s%%:*}" --member="serviceAccount:${s#*:}" \
       --role=roles/secretmanager.secretAccessor "${PA[@]}"
   done
@@ -319,14 +370,16 @@ common_env() { # 两个服务共用的环境变量（YAML，写进私有目录�
 }
 
 smoke() { # smoke MODE URL [BEARER]
-  ZJ_SMOKE_URL="$2" ZJ_SMOKE_BEARER="${3:-}" ZJ_SMOKE_CODE="$(head -1 "$STATE/smoke-code" 2>/dev/null)" \
+  ZJ_SMOKE_PASSWORD="$(secret "$SEC_SITE")" ZJ_SMOKE_URL="$2" ZJ_SMOKE_BEARER="${3:-}" ZJ_SMOKE_CODE="$(head -1 "$STATE/smoke-code" 2>/dev/null)" \
     in_wt python -I "$HERE/smoke.py" "$1"
 }
 
 cmd_up() {
   guard
   [[ -n "$IMAGE" ]] || die "先跑 build"
+  privacy_check allow-missing
   [[ -s "$STATE/smoke-code" ]] || die "先跑 migrate"
+  has_secret "$SEC_SITE" || die "缺少站点访问密码 Secret：先完成 setup 密钥准备，禁止无密码部署"
   local c flags=() bearer="" url
   c="$(conn)"
   common_env >"$STATE/env-narrator.yaml"
@@ -349,17 +402,17 @@ cmd_up() {
     printf '%s: "%s"\n' ZJ_LIVE real ZJ_NARRATOR_URL "$(url_of "$NR")" FORWARDED_ALLOW_IPS "*"
   } >"$STATE/env-gateway.yaml"
   say "网关（新版本不接流量；第一次是私有服务）"
-  if has_ready "$GW"; then flags=(--no-traffic --tag="$TAG"); elif [[ -z "$OPENED" ]]; then flags=(--no-allow-unauthenticated); else flags=(--allow-unauthenticated); fi # bash 3.2 + set -u：空数组展开会报错
+  if has_ready "$GW"; then flags=(--no-traffic --tag="$TAG"); else flags=(--no-allow-unauthenticated); fi # bash 3.2 + set -u：空数组展开会报错
   run gcloud run deploy "$GW" --image="$IMAGE" --region="$REGION" "${PA[@]}" "${flags[@]}" \
     --service-account="$SA_GW_EMAIL" --ingress=all --add-cloudsql-instances="$c" --port=8080 \
     --env-vars-file="$STATE/env-gateway.yaml" \
-    --set-secrets="DATABASE_URL=$SEC_GW:latest,ANTHROPIC_API_KEY=$SEC_CLAUDE:latest" \
+    --set-secrets="DATABASE_URL=$SEC_GW:latest,ANTHROPIC_API_KEY=$SEC_CLAUDE:latest,ZJ_SITE_PASSWORD=$SEC_SITE:latest" \
     --cpu=1 --memory=1Gi --concurrency=80 --min-instances=0 --max-instances=3 --timeout=3600 \
     --session-affinity --execution-environment=gen2 --cpu-boost
   say "冒烟（候选版本）"
   url="$(tag_url "$GW")"
   url="${url:-$(url_of "$GW")}"
-  [[ -n "$OPENED" ]] || bearer="$(gcloud auth print-identity-token)" # 还是私有服务：带 zg 的身份过 IAM
+  bearer="$(gateway_bearer)" || die "无法确定候选网关访问权限" # 每次查真实状态，不信 OPENED 旧标记
   if [[ $fresh -eq 1 ]]; then say "等调用权限生效（90 秒）"; sleep 90; fi
   # 再不过等一分钟重试一次（两次各开一局，promote 再一局，一天 5 局够用）
   smoke smoke "$url" "$bearer" || { say "冒烟没过，一分钟后重试一次"; sleep 60; smoke smoke "$url" "$bearer"; } ||
@@ -370,22 +423,24 @@ cmd_up() {
 
 cmd_promote() {
   guard
+  privacy_check
   [[ -n "${CANDIDATE:-}" && "$CANDIDATE" == "$IMAGE" ]] || die "这个镜像还没过 up 的冒烟"
   say "切流量：叙事者、网关都到新版本"
   run gcloud run services update-traffic "$NR" --to-latest --region="$REGION" "${PA[@]}"
   run gcloud run services update-traffic "$GW" --to-latest --region="$REGION" "${PA[@]}"
-  if [[ -z "$OPENED" ]]; then
-    say "第一次：打开公开访问（靠邀请码保护）"
-    run gcloud run services add-iam-policy-binding "$GW" --region="$REGION" "${PA[@]}" \
-      --member=allUsers --role=roles/run.invoker
-    save OPENED "$(date '+%F')"
-  fi
-  local url i
+  # promote 不改变 IAM。恢复匿名入口必须在用户明确批准、密码门禁已通过验证以后单独执行。
+  # privacy-lock 不会被本脚本删除；旧 OPENED 标记不再是授权依据。
+  local url i bearer="" anon_ok=0
+  bearer="$(gateway_bearer)" || die "无法确定正式网关访问权限"
   url="$(url_of "$GW")"
   printf '%s\n' "$url" >"$STATE/url"
   say "冒烟（正式地址）和匿名被拒"
-  for ((i = 0; i < 6; i++)); do smoke anon "$url" >/dev/null 2>&1 && break; sleep 10; done # 公开访问生效要一会儿
-  smoke smoke "$url" || die "正式地址冒烟没过：跑 rollback 切回上一个版本"
+  for ((i = 0; i < 6; i++)); do
+    if smoke anon "$url" "$bearer" >/dev/null 2>&1; then anon_ok=1; break; fi
+    if [[ $i -lt 5 ]]; then sleep 10; fi # 等流量切换生效
+  done
+  [[ $anon_ok -eq 1 ]] || die "匿名门禁检查连续失败：禁止继续冒烟或标记 DEPLOYED，请保持 IAM 私有并检查新版本"
+  smoke smoke "$url" "$bearer" || die "正式地址冒烟没过：跑 rollback 切回上一个版本"
   save DEPLOYED "$IMAGE"
   say "promote 完成：地址在 $STATE/url（open \"\$(cat $STATE/url)\" 打开），邀请码用 invite 生成"
 }
@@ -393,7 +448,10 @@ cmd_promote() {
 cmd_verify() {
   guard
   [[ -s "$STATE/url" ]] || die "还没部署"
-  smoke anon "$(cat "$STATE/url")"
+  privacy_check
+  local bearer=""
+  bearer="$(gateway_bearer)" || die "无法确定网关访问权限"
+  smoke anon "$(cat "$STATE/url")" "$bearer"
 }
 
 cmd_invite() {
@@ -432,8 +490,10 @@ cmd_all() {
   cmd_promote
 }
 
-case "${1:-}" in
-  all | check | setup | build | migrate | up | promote | verify | rollback | pause | resume) "cmd_$1" ;;
-  invite) cmd_invite "${2:-1}" ;;
-  *) sed -n '2,16p' "$0"; exit 2 ;;
-esac
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  case "${1:-}" in
+    all | check | setup | build | migrate | up | promote | verify | rollback | pause | resume) "cmd_$1" ;;
+    invite) cmd_invite "${2:-1}" ;;
+    *) sed -n '2,16p' "$0"; exit 2 ;;
+  esac
+fi

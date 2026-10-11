@@ -6,7 +6,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { navigate } from "../app/router";
 import { audio } from "../audio";
-import { BOOK_ID, handSnapshot, manifestQuery, meQuery } from "../app/queries";
+import {
+  handSnapshot,
+  manifestFor,
+  meQuery,
+  libraryQuery,
+} from "../app/queries";
 import { uuid } from "../net/ids";
 import { ApiError, rest } from "../net/rest";
 import { track } from "../telemetry/telemetry";
@@ -23,9 +28,9 @@ type Problem =
     }
   | { kind: "message"; text: string };
 
-export default function RoleScreen() {
+export default function RoleScreen({ bookId }: { bookId: string }) {
   const qc = useQueryClient();
-  const manifest = useQuery(manifestQuery);
+  const manifest = useQuery(manifestFor(bookId));
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
 
@@ -37,13 +42,11 @@ export default function RoleScreen() {
     setBusy(true);
     setProblem(null);
     try {
-      const res = await rest.createPlaythrough(
-        { bookId: BOOK_ID, roleId },
-        uuid(),
-      );
+      const res = await rest.createPlaythrough({ bookId, roleId }, uuid());
       track("role_selected", { roleId });
       handSnapshot(res.snapshot);
       void qc.invalidateQueries({ queryKey: meQuery.queryKey });
+      void qc.invalidateQueries({ queryKey: libraryQuery.queryKey });
       enter(res.playthroughId);
     } catch (err) {
       setProblem(problemOf(err, roleId));
@@ -73,7 +76,14 @@ export default function RoleScreen() {
 
   const roles = manifest.data?.roles ?? [];
   return (
-    <main className="screen">
+    <main className="screen role-screen">
+      <button
+        className="quiet home-back"
+        disabled={busy}
+        onClick={() => navigate("/")}
+      >
+        ← 書斎に戻る
+      </button>
       <h1 style={{ fontSize: 20 }}>{copy["role.title"]}</h1>
       <p className="note">{copy["role.lead"]}</p>
       {readFailed(manifest) && (

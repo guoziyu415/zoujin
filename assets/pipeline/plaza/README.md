@@ -39,7 +39,7 @@ Python 依赖：直接依赖写在 `requirements.in`，`requirements.txt` 是连
 | 出口 `place.road-to-city`   | 位置点 `way.road-to-city`，城门外                                                                                                                                                      |
 | 出口 `place.castle`         | 位置点 `way.castle`，台阶顶上的城门                                                                                                                                                    |
 
-位置点 27 个，名字和说明在 `layout.json`。磔台上有两个：`stake`（背靠柱子、被吊起来的人）和 `scaffold`（爬上台、够得着他双脚的地方）；`old-man-house` 是老爷家门前。五个只给演出指定（`auto: false`）：`stake`、`scaffold`、`king-west`（刑场西头、群众背后，王先站的地方）、`stake-front-side`（`stake-front` 旁边，玩家站 `stake-front` 时老爷站这里）、`crowd-front`（群众前排、磔台西北角，拿斗篷的少女）。通往别的场景的位置点叫 `way.<地点>`，不用 `exit.`（那是世界模型 `ExitId`，幕末去处）。后端和数据在 `characters[].spot`、`player.spot` 里只用这些名字；要加新的位置点，改 `layout.json` 再重新生成。
+位置点 38 个，名字和说明在 `layout.json`。磔台上有两个：`stake`（背靠柱子、被吊起来的人）和 `scaffold`（爬上台、够得着他双脚的地方）；`old-man-house` 是老爷家门前。五个只给演出指定（`auto: false`）：`stake`、`scaffold`、`king-west`（刑场西头、群众背后，王先站的地方）、`stake-front-side`（`stake-front` 旁边，玩家站 `stake-front` 时老爷站这里）、`crowd-front`（群众前排、磔台西北角，拿斗篷的少女）。通往别的场景的位置点叫 `way.<地点>`，不用 `exit.`（那是世界模型 `ExitId`，幕末去处）。后端和数据在 `characters[].spot`、`player.spot` 里只用这些名字；要加新的位置点，改 `layout.json` 再重新生成。
 
 ## 两档贴图（frontend-design 10.6.2，art-direction 9.3）
 
@@ -74,3 +74,9 @@ recast 只在生成时跑（WASM），页面用 `nav.json` 自己做 A* 和拉�
 - **贴图是占位图**：容器访问不了 Poly Haven、ambientCG。CC0 扫描材质要在能上这些网站的地方下载（zg 的 Mac，要 zg 同意），按 `assets/manifest/` 记来源和 sha256，再用 `PLAZA_SCANS` 指过来重新生成。正式材质也要等 UX 的材质清单。
 - 只有日没一个时段的光照图；建筑是程序生成的方块；南边两条小巷看得见但走不进去（可走区域外）。
 - 光照图的接缝和分辨率没有精修（卡里写明不做）。
+
+## H-1 石工房站位补足
+
+石工房现在有 10 个自动站位，足够当前 9 位非群体人物和玩家同时在场。旧站位与演出专用点不变，新加的 8 点在现有导航网格的平地上，彼此和旧点至少相隔 1.2 米。
+
+只有新增平地站位时可用 `refresh_spots.mjs`，输入旧布局、新布局、与清单 SHA 一致的 `nav.json`、待更新 `scene.json`。脚本验证除新增站位以外的布局不变、所有构建脚本 hash 未变、地点归属和高度正确；几何、纹理、烘焙和 nav 文件字节不动，清单仅追加站位和更新布局输入 hash。改地形、已有站位、斜坡或台阶仍须完整构建。重新打包部署时必须使用更新清单，不能只替换服务端 layout 或复用旧 scene.json。

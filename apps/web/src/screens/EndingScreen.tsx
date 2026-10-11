@@ -7,8 +7,9 @@
 import type { Api } from "@zoujin/contracts";
 import { useQuery } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { manifestQuery } from "../app/queries";
-import { navigate } from "../app/router";
+import { libraryQuery, manifestFor } from "../app/queries";
+import { navigate, rolePath } from "../app/router";
+import { libraryEntry } from "../net/library";
 import { rest } from "../net/rest";
 import { endingFrame, openOverlay, useStory } from "../stores/story";
 import { track } from "../telemetry/telemetry";
@@ -25,7 +26,12 @@ const isReady = (
 ): d is Api.EndingView => !!d && "endingId" in d;
 
 export default function EndingScreen({ pid }: { pid: string }) {
-  const manifest = useQuery(manifestQuery);
+  const library = useQuery(libraryQuery);
+  const entry = libraryEntry(library.data, pid);
+  const manifest = useQuery({
+    ...manifestFor(entry?.bookId ?? "", entry?.worldModelVersion),
+    enabled: !!entry,
+  });
   const q = useQuery({
     queryKey: ["ending", pid],
     queryFn: () => rest.ending(pid),
@@ -35,6 +41,13 @@ export default function EndingScreen({ pid }: { pid: string }) {
     },
   });
   const overlay = useStory((s) => s.overlay);
+  useEffect(
+    () => () => {
+      // A browser-back departure must not reopen a previous run's map in the next memory.
+      useStory.setState({ overlay: null });
+    },
+    [pid],
+  );
   const names = useMemo(
     () =>
       Object.fromEntries(
@@ -42,14 +55,7 @@ export default function EndingScreen({ pid }: { pid: string }) {
       ),
     [manifest.data],
   );
-  // the role of this playthrough (kept from the staging, and in this tab's storage for a reload: the whole game has
-  // three roles, F-17); else the only role if there is one; else none
-  const staged = useStory((s) => s.ending?.roleId ?? null);
-  const roleId = useMemo(() => keptRole(pid, staged), [pid, staged]);
-  const roles = manifest.data?.roles ?? [];
-  const role =
-    roles.find((r) => r.roleId === roleId)?.name ??
-    (roles.length === 1 ? roles[0]!.name : "");
+  const role = entry?.roleName ?? "";
   const ending = isReady(q.data) ? q.data : null;
 
   // leaving the page: how long it was read, and the captured frame goes
@@ -74,15 +80,47 @@ export default function EndingScreen({ pid }: { pid: string }) {
   return (
     <main className="page end-page">
       <div className="page-body">
+        <button className="quiet end-home-link" onClick={() => navigate("/")}>
+          ← 書斎に戻る
+        </button>
+        {library.isError && (
+          <p className="error" role="alert">
+            本の情報を取得できませんでした。
+            <button className="quiet" onClick={() => void library.refetch()}>
+              もう一度
+            </button>
+          </p>
+        )}
+        {manifest.isError && (
+          <p className="error" role="alert">
+            本の情報を取得できませんでした。
+            <button className="quiet" onClick={() => void manifest.refetch()}>
+              もう一度
+            </button>
+          </p>
+        )}
+        {library.isSuccess && !entry && (
+          <p className="note">この物語は回想録に見つかりませんでした。</p>
+        )}
         {!ending &&
           (q.isError ? (
-            <p className="error">{copy["net.failed"]}</p>
+            <p className="error">
+              {copy["net.failed"]}
+              <button className="quiet" onClick={() => void q.refetch()}>
+                もう一度
+              </button>
+            </p>
           ) : (
             <Binding />
           ))}
         {/* the names come with the manifest: until then the card would draw ids */}
         {ending && manifest.data && (
-          <Ending e={ending} names={names} role={role} />
+          <Ending
+            e={ending}
+            names={names}
+            role={role}
+            bookId={manifest.data.book.id}
+          />
         )}
       </div>
       <Suspense fallback={null}>
@@ -116,10 +154,12 @@ function Ending({
   e,
   names,
   role,
+  bookId,
 }: {
   e: Api.EndingView;
   names: Record<string, string>;
   role: string;
+  bookId: string;
 }) {
   const name = (id: string) => names[id] ?? id;
   // the source marks are numbered down the page
@@ -247,17 +287,22 @@ function Ending({
         >
           {copy["menu.memory"]}
         </button>
-        <button className="secondary" onClick={() => navigate("/roles")}>
+        <button
+          className="secondary"
+          onClick={() => navigate(rolePath(bookId))}
+        >
           {copy["ending.again"]}
         </button>
-        <a
-          className="quiet"
-          href={SOURCE_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          {copy["ending.source"]}
-        </a>
+        {bookId === "hashire-merosu" && (
+          <a
+            className="quiet"
+            href={SOURCE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {copy["ending.source"]}
+          </a>
+        )}
       </nav>
       {card && (
         <EndingCard
@@ -306,15 +351,4 @@ function CharacterEnd({
       )}
     </div>
   );
-}
-
-// sessionStorage can be missing or throw (private windows): the role then falls back as above
-function keptRole(pid: string, staged: string | null): string | null {
-  const key = `zoujin.role.${pid}`;
-  try {
-    if (staged) sessionStorage.setItem(key, staged);
-    return staged ?? sessionStorage.getItem(key);
-  } catch {
-    return staged;
-  }
 }

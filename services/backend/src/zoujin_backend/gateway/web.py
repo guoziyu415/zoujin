@@ -59,7 +59,14 @@ def router(dist: Path) -> APIRouter:
     @r.get("/scenes/{version}/{folder}/{rel:path}", include_in_schema=False)
     async def scene(request: Request, version: str, folder: str, rel: str) -> Response:
         gw: Gateway = request.app.state.gw
-        path = gw.manifest.scene_file(version, folder, rel) if gw.manifest is not None else None
+        path = next(
+            (
+                p
+                for m in [*gw.manifests.values(), *gw.history_manifests.values()]
+                if (p := m.scene_file(version, folder, rel))
+            ),
+            None,
+        )
         if path is None:
             return Response(status_code=404)
         return FileResponse(path, media_type=media_type(path), headers={"Cache-Control": IMMUTABLE})

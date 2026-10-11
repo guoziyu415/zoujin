@@ -93,13 +93,15 @@ class Mock:
     idempotency: dict[tuple[str, str], tuple[str, int, bytes]] = field(default_factory=dict)
     login_failures: int = 0
     content: Manifest = field(init=False)  # 2.1 的静态内容，开 mock 时生成一次
+    world_book: Book = field(init=False)
 
     def __post_init__(self) -> None:
         self.book = SchemaBook(self.config.schemas)
         self.labels = Labels(self.config.world)
         world = _read(self.config.world)
+        self.world_book = Book(book_id=world["book"]["id"], world=world, path=self.config.world)
         self.content = generate(  # 和正式网关同一个生成器（B-7）
-            Book(book_id=world["book"]["id"], world=world, path=self.config.world),
+            self.world_book,
             self.book,
             packs=self.config.packs,
             voices=self.config.voice_dir,

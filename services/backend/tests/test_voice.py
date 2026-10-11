@@ -368,7 +368,10 @@ def test_whispered_aizuchi_is_rejected() -> None:
 
 def test_breathy_ok_keeps_the_least_breathy_take_and_flags_it() -> None:
     # 花婿「ああ。」重读了还是气声（12〜36%）：源文件 breathyOk 只对这一句收，挑最不气的一遍标给 UX，不再重读
-    takes = {1: (ai_shape(0.3, pitched=0.12), "ああ"), 2: (ai_shape(0.32, pitched=0.36), "ああ")}
+    takes: dict[int, tuple[audio.Shape, str | None] | str] = {
+        1: (ai_shape(0.3, pitched=0.12), "ああ"),
+        2: (ai_shape(0.32, pitched=0.36), "ああ"),
+    }
     assert checks.judge("ああ。", takes, aizuchi=True).chosen is None
     v = checks.judge("ああ。", takes, aizuchi=True, breathy_ok=True)
     assert v.chosen == 2 and "音高" in v.flags[0]

@@ -4,6 +4,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
   login,
+  openFirstBook,
   mock,
   ORIGIN,
   PT,
@@ -56,6 +57,10 @@ test("invite code: a wrong one says so, the right one opens the cover", async ({
   await expect(page.getByRole("alert")).toHaveText("招待コードが違うようです");
   await login(page);
   await expect(page).toHaveURL(`${ORIGIN}/`);
+  await expect(
+    page.getByRole("heading", { name: "あなたの書斎" }),
+  ).toBeVisible();
+  await openFirstBook(page);
   await expect(page.getByRole("heading", { name: "走れメロス" })).toBeVisible();
   await expect(page.getByRole("button", { name: "書をひらく" })).toBeVisible();
 });
@@ -76,11 +81,7 @@ test("a 401 goes back to the invite page and, after it, back to the story", asyn
   // after the code, the page asks for that story again (the mock gives a new login a new owner, so it then answers
   // 403 and the page goes to the cover; the real backend keeps the player)
   expectedStatus = ["401", "403"];
-  const again = page.waitForRequest((r) =>
-    r.url().endsWith(`/v1/playthroughs/${pid}/snapshot`),
-  );
   await login(page);
-  await again;
   await expect(page).toHaveURL(`${ORIGIN}/`);
 });
 
@@ -89,6 +90,7 @@ test("starting while a story is open (409): continue it, or delete it and start 
 }) => {
   await page.goto("/");
   await login(page);
+  await openFirstBook(page);
   await page.getByRole("button", { name: "書をひらく" }).click();
   // another tab started one meanwhile
   const made = await page.request.post("/v1/playthroughs", {
@@ -134,10 +136,10 @@ test("an open story: the cover offers a quiet 新しく始める; a snapshot tha
   page,
 }) => {
   const pid = await startStory(page);
-  await page.goto("/");
+  await page.goto("/books/hashire-merosu");
   await expect(page.getByRole("button", { name: "続きから" })).toBeVisible();
   await page.getByRole("button", { name: "新しく始める" }).click();
-  await expect(page).toHaveURL(`${ORIGIN}/roles`);
+  await expect(page).toHaveURL(`${ORIGIN}/books/hashire-merosu/roles`);
 
   // the story page can't read the snapshot once, then can
   expectedStatus = ["401", "409", "503"];

@@ -20,6 +20,8 @@ REST_ENDPOINTS = {
     ("POST", "/v1/auth/login"),
     ("POST", "/v1/auth/logout"),
     ("GET", "/v1/me"),
+    ("GET", "/v1/books"),
+    ("GET", "/v1/library"),
     ("GET", "/v1/books/{bookId}/manifest"),
     ("POST", "/v1/playthroughs"),
     ("GET", "/v1/playthroughs/{id}/snapshot"),

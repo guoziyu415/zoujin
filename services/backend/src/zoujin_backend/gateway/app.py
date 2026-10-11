@@ -25,6 +25,7 @@ from zoujin_backend.config import Settings
 from zoujin_backend.gateway import rest, web, ws
 from zoujin_backend.gateway.core import Gateway, HttpNarrator, IdToken, NarratorClient
 from zoujin_backend.gateway.hub import Hub
+from zoujin_backend.gateway.site_access import SiteAccess
 from zoujin_backend.manifest import generate
 from zoujin_backend.models.live import FakeLive
 from zoujin_backend.origin import csrf_problem
@@ -40,11 +41,12 @@ SHUTDOWN_GRACE_S = 5  # 停服务前等手上的任务（交轮次、叫叙事�
 
 def build(settings: Settings, narrator: NarratorClient | None = None) -> Gateway:
     """生成 manifest 出错（`ManifestError`，写着是哪个文件、哪个字段）就起不来。"""
-    library = Library(settings.worlds, settings.scenes, settings.world)
+    library = Library(settings.worlds, settings.scenes, settings.world, settings.released_worlds)
     schemas = SchemaBook(settings.schemas)
-    manifest = generate(
-        library.current, schemas, packs=settings.packs, voices=settings.voice_dir, release=settings.release
-    )
+    manifests = {
+        bid: generate(book, schemas, packs=settings.packs, voices=settings.voice_dir, release=settings.release)
+        for bid, book in library.available.items()
+    }
     gw = Gateway(
         settings=settings,
         engine=create_async_engine(settings.database_url, pool_size=10),
@@ -52,7 +54,8 @@ def build(settings: Settings, narrator: NarratorClient | None = None) -> Gateway
         schemas=schemas,
         live=FakeLive(settings.fake_voice, speed=settings.speed),
         narrator=narrator or http_narrator(settings),
-        manifest=manifest,
+        manifest=manifests[library.current.book_id],
+        manifests=manifests,
     )
     if settings.live == "real":  # pragma: no cover - 只在 Mac 上（B-10）
         real_live(gw, settings)
@@ -85,7 +88,13 @@ def real_live(gw: Gateway, settings: Settings) -> None:  # pragma: no cover - �
     _, rest = real_models(os.environ)
     tr = VertexTranscriber(rest)
     gw.transcriber = tr
-    gw.live = gemini_live.real_live(os.environ, voices_of(), tr)
+    voices: dict[str, str] = {}
+    for book_id in gw.library.available:
+        for character, voice in voices_of(book_id).items():
+            if character in voices and voices[character] != voice:
+                raise ConfigError(f"不同书籍的人物 ID 复用了不同声音：{character}；请使用独立人物 ID")
+            voices[character] = voice
+    gw.live = gemini_live.real_live(os.environ, voices, tr)
     gw.live_ledger = Ledger(settings.ledger, settings.max_google_usd, settings.max_item_usd, settings.ledger_item)
     gw.live_model_name = LIVE_MODEL
 
@@ -148,8 +157,12 @@ def create_app(settings: Settings, gw: Gateway | None = None) -> FastAPI:
             rest.set_cookie(gw, resp, token)
         if settings.web_dist is not None:  # 部署（B-23）：只给邀请的人，不让搜索引擎收
             resp.headers.setdefault("X-Robots-Tag", "noindex, nofollow")
+        if request.url.path.startswith("/v1/"):
+            resp.headers["Cache-Control"] = "private, no-store"
         return resp
 
+    # 最外层 ASGI middleware 同时覆盖 HTTP 和 WebSocket，不能只在 REST 路由里检查密码。
+    app.add_middleware(SiteAccess, password=settings.site_password, dev=settings.dev)
     return app
 
 

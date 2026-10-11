@@ -359,5 +359,5 @@ def claude_text(
             transport = AsyncTransport()
         except ImportError as err:  # pragma: no cover - 只在 Mac 上
             raise ConfigError("ZJ_MODEL=real 要可选依赖组 real：uv sync --extra real") from err
-    library = Library(settings.worlds, settings.scenes, settings.world)
+    library = Library(settings.worlds, settings.scenes, settings.world, settings.released_worlds)
     return ClaudeText(transport=transport, ledger=ledger, worlds=lambda v: library.version(v).world, ids=ids)

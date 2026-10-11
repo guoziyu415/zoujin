@@ -30,7 +30,7 @@ Json = Any
 
 SCHEMA = "api/rest/manifest.schema.json"
 ENTRIES = ("index.json", "scene.json")  # 场景目录的入口：F-10 的索引优先，没有就是合起来的那份（广场）
-CACHE = "private, no-cache"  # manifest 不长缓存，靠 ETag 问（2.1）
+CACHE = "private, no-store"  # 私密书籍内容不落浏览器缓存；保留 ETag 兼容显式条件请求
 FILE_CACHE = "public, max-age=31536000, immutable"  # 录音文件名带 hash
 ARRIVAL = "arrival_capped"
 

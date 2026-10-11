@@ -42,6 +42,11 @@ async function call<T>(
   } catch {
     throw new ApiError(0, null);
   }
+  if (res.headers.get("X-Site-Access") === "required") {
+    onUnauthenticated();
+    window.location.assign("/site-access");
+    throw new ApiError(401, null);
+  }
   if (res.status === 204) return undefined as T;
   const doc: unknown = await res.json().catch(() => null);
   if (res.ok) return doc as T;
@@ -65,10 +70,12 @@ export const rest = {
     }),
   logout: () => call<void>("POST", "/v1/auth/logout", { body: {} }),
   me: () => call<Api.MeResponse>("GET", "/v1/me"),
-  manifest: (bookId: string) =>
+  books: () => call<Api.BooksResponse>("GET", "/v1/books"),
+  library: () => call<Api.LibraryResponse>("GET", "/v1/library"),
+  manifest: (bookId: string, worldModelVersion?: string) =>
     call<Api.ManifestResponse>(
       "GET",
-      `/v1/books/${encodeURIComponent(bookId)}/manifest`,
+      `/v1/books/${encodeURIComponent(bookId)}/manifest${worldModelVersion ? `?worldModelVersion=${encodeURIComponent(worldModelVersion)}` : ""}`,
     ),
   createPlaythrough: (
     req: Api.CreatePlaythroughRequest,

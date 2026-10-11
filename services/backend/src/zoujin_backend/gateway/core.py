@@ -175,6 +175,8 @@ class Gateway:
     live: LiveModel
     narrator: NarratorClient
     manifest: Manifest | None = None  # 2.1：开进程时由 `Library.current` 生成一次（B-7）；没有就回 404
+    manifests: dict[str, Manifest] = field(default_factory=dict)  # 按书查已开放的资源；manifest 保留旧接口
+    history_manifests: dict[str, Manifest] = field(default_factory=dict)  # 已授权恢复的旧世界版本
     ids: IdGen = field(default_factory=IdGen)
     conns: dict[str, Conn] = field(default_factory=dict)  # 一局一条连接（第 4 节 4009）
     draining: bool = False
@@ -199,6 +201,8 @@ class Gateway:
     on_send: Callable[[Json], None] | None = None
 
     def __post_init__(self) -> None:
+        if self.manifest is not None:
+            self.manifests.setdefault(self.manifest.book_id, self.manifest)
         if self.screener is None:
             from zoujin_backend.gateway.safety import build_screener
 

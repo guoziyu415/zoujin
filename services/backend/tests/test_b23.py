@@ -120,3 +120,60 @@ def test_http_narrator_sends_the_id_token() -> None:
     asyncio.run(go())
     assert fetched == ["https://narrator.internal", "https://narrator.internal"]
     assert seen == ["Bearer tok-1", "Bearer tok-1", "Bearer tok-2", None]
+
+
+def test_real_gateway_password_gate_covers_pages_resources_api_and_socket(env: Env, tmp_path: Path) -> None:
+    from starlette.websockets import WebSocketDisconnect
+    from zoujin_backend.gateway.site_access import PATH
+
+    from .test_gateway import invite
+    from .test_manifest import Direct, voices, world
+
+    password = "local-only-gateway-test-password"
+    pk, web = packs(tmp_path), dist(tmp_path)
+    (pk / "syracuse-square" / "hero.glb").write_bytes(b"private-model")
+    (web / "cast").mkdir()
+    (web / "cast" / "hero.glb").write_bytes(b"private-cast")
+    settings = replace(
+        env.settings,
+        dev=False,
+        world=SLICE,
+        scene_packs=pk,
+        web_dist=web,
+        voices=voices(tmp_path, world(SLICE)),
+        site_password=password,
+    )
+    narrator = narrator_app.build(settings)
+    gw = gateway_app.build(settings, Direct(narrator))
+    assert gw.manifest is not None
+    scene = gw.manifest.doc["scenes"][0]["assetUrl"]
+    model = scene.rsplit("/", 1)[0] + "/hero.glb"
+    voice = "/assets/voice/hashire-merosu/" + next(iter(gw.manifest.files))
+    paths = ["/", "/assets/index-abc123.js", scene, model, "/cast/hero.glb", voice, "/v1/books"]
+    with TestClient(gateway_app.create_app(settings, gw), base_url="https://testserver") as c:
+        for target in paths:
+            blocked = c.get(target)
+            assert blocked.status_code == 401 and blocked.headers["x-site-access"] == "required", target
+        assert c.get("/healthz").status_code == 204
+        with pytest.raises(WebSocketDisconnect), c.websocket_connect("wss://testserver/v1/playthroughs/unknown/live"):
+            pass
+        origin = {"Origin": "https://testserver"}
+        assert c.post(PATH, data={"password": password}, headers=origin).status_code == 200
+        # 站点密码不等于邀请码账号；内层 API 仍然拒绝。
+        assert c.get("/v1/books").status_code == 401
+        for target in paths[:-1]:
+            allowed = c.get(target)
+            assert allowed.status_code == 200 and allowed.headers["cache-control"] == "private, no-store", target
+        assert c.post("/v1/auth/login", json={"inviteCode": invite(env)}, headers=origin).status_code == 200
+        assert c.get("/v1/books").status_code == 200
+        made = c.post(
+            "/v1/playthroughs",
+            json={"bookId": "hashire-merosu", "roleId": "role.traveler"},
+            headers={**origin, "Idempotency-Key": "site-gate-create"},
+        )
+        assert made.status_code == 201
+        pid = made.json()["playthroughId"]
+        with c.websocket_connect(f"wss://testserver/v1/playthroughs/{pid}/live", headers=origin) as ws:
+            ws.send_json({"type": "hello", "lastSeq": 0, "clientVersion": "test"})
+            assert ws.receive_json()["type"] == "welcome"
+        c.portal.call(narrator.engine.dispose)  # type: ignore[union-attr]

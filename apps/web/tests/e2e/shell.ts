@@ -32,9 +32,15 @@ export async function login(page: Page) {
   await page.getByRole("button", { name: "すすむ" }).click();
 }
 
+export async function openFirstBook(page: Page) {
+  await page.getByRole("button", { name: /本棚.*次の世界を選ぶ/ }).click();
+  await page.getByRole("button", { name: "この本をひらく" }).click();
+}
+
 export async function startStory(page: Page): Promise<string> {
   await page.goto("/");
   await login(page);
+  await openFirstBook(page);
   await page.getByRole("button", { name: "書をひらく" }).click();
   await page.getByRole("button", { name: "旅人として、はじめる" }).click();
   await expect(page).toHaveURL(PT);

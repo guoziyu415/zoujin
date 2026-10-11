@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { navigate } from "../app/router";
 import { meQuery } from "../app/queries";
+import { clearPrivateState } from "../net/privateState";
 import { ApiError, rest } from "../net/rest";
 import { copy } from "../ui/copy";
 
@@ -18,7 +19,10 @@ export default function LoginScreen({ next }: { next: string }) {
     setBusy(true);
     setError(null);
     try {
-      qc.setQueryData(meQuery.queryKey, await rest.login(code));
+      const me = await rest.login(code);
+      clearPrivateState();
+      qc.clear(); // another invite account must never inherit cached private histories
+      qc.setQueryData(meQuery.queryKey, me);
       navigate(next, { replace: true });
     } catch (err) {
       const c = err instanceof ApiError ? err.code : "network";

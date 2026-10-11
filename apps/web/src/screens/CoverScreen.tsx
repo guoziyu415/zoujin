@@ -1,40 +1,56 @@
-// The book's cover (frontend-design 5, ux-design 2, 3): 「書をひらく」, or 「続きから」 when a story is open (S-024) with a
-// quiet 「新しく始める」 under it (another role: the start asks before the open story is deleted). Not read: try again.
-// In LINE's browser a note on top says the voice may not work there.
-// Every tap here unlocks the audio (iOS wants a gesture before any sound, frontend-design 7.4); F-2d starts
-// downloading the 3D chunk here.
+// 本ごとの入口。家への移動は読みかけの局を変更しない。
 import { useQuery } from "@tanstack/react-query";
 import { audio } from "../audio";
-import { navigate } from "../app/router";
-import { meQuery } from "../app/queries";
+import { navigate, rolePath } from "../app/router";
+import { booksQuery, libraryQuery, manifestFor } from "../app/queries";
 import { track } from "../telemetry/telemetry";
 import { copy, fill } from "../ui/copy";
 import { InAppNotice } from "../ui/InAppNotice";
 import { ReadFailed, readFailed } from "../ui/ReadFailed";
 
-// 「約束の日・夕方」 → day 約束の日, band 夕方
 export function dayBand(tLabel: string): { day: string; band: string } {
   const [day = tLabel, band = ""] = tLabel.split("・");
   return { day, band };
 }
 
-export default function CoverScreen() {
-  const me = useQuery(meQuery);
-  const active = me.data?.activePlaythrough ?? null;
+export default function CoverScreen({ bookId }: { bookId: string }) {
+  const books = useQuery(booksQuery);
+  const book = books.data?.books.find((item) => item.bookId === bookId);
+  const manifest = useQuery({
+    ...manifestFor(bookId),
+    enabled: book?.availability === "available",
+  });
+  const library = useQuery(libraryQuery);
+  const active = library.data?.activePlaythrough;
+  const sameBook = active?.bookId === bookId;
   return (
-    <main className="screen">
+    <main className="screen book-cover">
+      <button className="quiet home-back" onClick={() => navigate("/")}>
+        ← 書斎に戻る
+      </button>
       <InAppNotice />
-      <h1>{copy["cover.title"]}</h1>
-      <p>{copy["cover.tagline"]}</p>
-      <p className="note">
-        {copy["cover.note.violence"]}
-        <br />
-        {copy["cover.note.ai"]}
-        <br />
-        {copy["cover.note.earphones"]}
-      </p>
-      {me.isSuccess &&
-        (active ? (
+      <p className="book-author">{book?.author}</p>
+      <h1>{book?.title ?? "本をひらいています…"}</h1>
+      <p className="note">{book?.description}</p>
+      {book?.availability === "available" && (
+        <p className="note">
+          {copy["cover.note.violence"]}
+          <br />
+          {copy["cover.note.ai"]}
+          <br />
+          {copy["cover.note.earphones"]}
+        </p>
+      )}
+      {books.isSuccess && !book && (
+        <p className="note">この本は本棚に見つかりませんでした。</p>
+      )}
+      {book?.availability === "unavailable" && (
+        <p className="note">この本は、ただいま支度をしています。</p>
+      )}
+      {manifest.isSuccess &&
+        library.isSuccess &&
+        book?.availability === "available" &&
+        (sameBook && active ? (
           <>
             <button
               className="primary"
@@ -61,7 +77,7 @@ export default function CoverScreen() {
               className="quiet"
               onClick={() => {
                 audio.unlock();
-                navigate("/roles");
+                navigate(rolePath(bookId));
               }}
             >
               {copy["cover.new"]}
@@ -72,13 +88,19 @@ export default function CoverScreen() {
             className="primary"
             onClick={() => {
               audio.unlock();
-              navigate("/roles");
+              navigate(rolePath(bookId));
             }}
           >
             {copy["cover.open"]}
           </button>
         ))}
-      {readFailed(me) && <ReadFailed onRetry={() => void me.refetch()} />}
+      {readFailed(books) && <ReadFailed onRetry={() => void books.refetch()} />}
+      {readFailed(manifest) && (
+        <ReadFailed onRetry={() => void manifest.refetch()} />
+      )}
+      {readFailed(library) && (
+        <ReadFailed onRetry={() => void library.refetch()} />
+      )}
     </main>
   );
 }

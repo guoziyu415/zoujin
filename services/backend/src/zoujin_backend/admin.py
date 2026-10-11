@@ -67,7 +67,7 @@ async def _main(args: argparse.Namespace) -> int:
         if args.cmd == "voice":
             print("语音：" + ("开" if await voice_switch(engine, args.action) else "关"))
             return 0
-        library = Library(settings.worlds, settings.scenes, settings.world)
+        library = Library(settings.worlds, settings.scenes, settings.world, settings.released_worlds)
         fields = await replay(engine, library, args.playthrough_id)
         if fields is None:
             print(f"没有这一局，或开局还没做完：{args.playthrough_id}", file=sys.stderr)

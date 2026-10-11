@@ -137,7 +137,7 @@ class Library:
     `version()`，版本不在这里就报错，不悄悄换。
     """
 
-    def __init__(self, worlds: Path, scenes: Path, current: Path) -> None:
+    def __init__(self, worlds: Path, scenes: Path, current: Path, released: tuple[Path, ...] = ()) -> None:
         self.layouts: dict[str, Scene] = {}
         for p in sorted(scenes.glob("*/scene.json")):
             s = Scene.read(p)
@@ -146,17 +146,27 @@ class Library:
         for p in sorted(worlds.glob("*/*/world.json")):
             self._add(p)
         self.current = self._add(current)
+        # 目录是明确发布的清单；发现草稿文件不代表已经开放。每本书只锁一个新局版本。
+        self.available: dict[str, Book] = {self.current.book_id: self.current}
+        for path in released:
+            book = self._add(path)
+            if book.book_id in self.available:
+                raise ValueError(f"开放书籍重复：{book.book_id}")
+            self.available[book.book_id] = book
 
     def _add(self, path: Path) -> Book:
         w = json.loads(path.read_text(encoding="utf-8"))
         book = Book(book_id=w["book"]["id"], world=w, path=path)
+        existing = self.by_version.get(book.version)
+        if existing is not None and existing.book_id != book.book_id:
+            raise ValueError(f"世界版本被不同书籍复用：{book.version}")
         book.scenes = {k: v for k, v in self.layouts.items() if k in {s["id"] for s in w["scenes"]}}
         self.by_version[book.version] = book
         return book
 
     def book(self, book_id: str) -> Book | None:
-        """开新局：只用 `current`，书不对就是没有。"""
-        return self.current if self.current.book_id == book_id else None
+        """开新局只认显式发布清单；已有局用 version()，不随目录升级。"""
+        return self.available.get(book_id)
 
     def version(self, world_model_version: str) -> Book:
         return self.by_version[world_model_version]

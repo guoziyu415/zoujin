@@ -75,6 +75,8 @@ export class Session {
   // a spoken plan still thinking when the line dropped, and the server has no act end any more on welcome: the plan
   // went (or the act was settled) meanwhile, so the resent commits are the act change's and wait for act_transition
   private planLanded = false;
+  private authProbeAt = -Infinity;
+  private authProbePending = false;
   readonly unknown = new Map<string, number>();
 
   constructor(
@@ -279,6 +281,25 @@ export class Session {
   // —— the socket's side ——
 
   private down(reason: string): void {
+    // A password gate rejects WS before accept, which browsers expose as 1006.
+    // REST can distinguish that from a lost network and route to /site-access.
+    // Single flight + cooldown keeps a normal reconnect loop from flooding /me.
+    const now = Date.now();
+    if (
+      (reason === "close 1006" || reason === "close 4401") &&
+      (typeof navigator === "undefined" || navigator.onLine !== false) &&
+      !this.authProbePending &&
+      now - this.authProbeAt >= 30_000
+    ) {
+      this.authProbeAt = now;
+      this.authProbePending = true;
+      void rest
+        .me()
+        .catch(() => {}) // REST handles authentication; offline failures keep normal retry.
+        .finally(() => {
+          this.authProbePending = false;
+        });
+    }
     const ui = useUi.getState();
     this.welcomed = false;
     this.voice.down();

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, cast
 
 import pytest
-from zoujin_backend.config import DEFAULT_WORLD, REPO, ConfigError, world_path
+from zoujin_backend.config import DEFAULT_WORLD, REPO, ConfigError, released_worlds, world_path
 from zoujin_backend.narrator.writer import SCHEMA_VERSION
 from zoujin_backend.world import Library, Scene
 
@@ -97,6 +97,49 @@ def test_zj_world_must_be_an_absolute_path_to_a_file(tmp_path: Path) -> None:
         world_path({"ZJ_WORLD": "worlds/hashire-merosu/1.0.0-draft/world.json"})
     with pytest.raises(ConfigError, match="不存在"):
         world_path({"ZJ_WORLD": str(tmp_path / "nope.json")})
+
+
+def test_extra_books_are_explicit_and_do_not_replace_pinned_versions(tmp_path: Path) -> None:
+    w = json.loads(DEFAULT_WORLD.read_text())
+    w["book"]["id"] = "test-book"
+    w["worldModelVersion"] = "test-book@1.0.0"
+    p = tmp_path / "world.json"
+    p.write_text(json.dumps(w))
+    release = released_worlds({"ZJ_WORLDS": json.dumps([str(p)])})
+    lib = Library(REPO / "worlds", REPO / "assets/scenes", DEFAULT_WORLD, release)
+    assert set(lib.available) == {"hashire-merosu", "test-book"}
+    assert lib.book("test-book") is lib.version("test-book@1.0.0")
+    assert lib.book("hashire-merosu") is lib.current
+    with pytest.raises(ValueError, match="重复"):
+        Library(REPO / "worlds", REPO / "assets/scenes", DEFAULT_WORLD, (DEFAULT_WORLD,))
+    for invalid in ("{}", '"no"', "[1]", '["relative.json"]', "not json"):
+        with pytest.raises(ConfigError):
+            released_worlds({"ZJ_WORLDS": invalid})
+    w["worldModelVersion"] = lib.current.version
+    p.write_text(json.dumps(w))
+    with pytest.raises(ValueError, match="不同书籍复用"):
+        Library(REPO / "worlds", REPO / "assets/scenes", DEFAULT_WORLD, (p,))
+
+
+def test_workshop_has_separate_positions_for_every_individual_and_player() -> None:
+    lib = Library(REPO / "worlds", REPO / "assets/scenes", DEFAULT_WORLD)
+    book = lib.current
+    scene = lib.layouts["scene.syracuse-square"]
+    place = "place.stonemason-workshop"
+    people = [(cid, place) for cid, c in book.characters.items() if not c.get("group")]
+    player = scene.player_spot(place)
+    placed = scene.character_spots(people, {player})
+    assert len(set(placed.values())) == len(people)
+    assert player not in placed.values() and "workshop-door" not in placed.values()
+    # 不只比较 ID：真实生成坐标也必须离开彼此，保留至少 1.2m 给人物身体和轻微动作。
+    doc = json.loads((REPO / "assets/scenes/syracuse-square/scene.json").read_text())
+    spots = [doc["spots"][s] for s in [player, *placed.values()]]
+    from math import hypot
+
+    for i, left in enumerate(spots):
+        assert left["place"] == place
+        for right in spots[i + 1 :]:
+            assert hypot(left["pos"][0] - right["pos"][0], left["pos"][2] - right["pos"][2]) >= 1.2
 
 
 def test_delivered_lines_call_the_player_anata() -> None:

@@ -1,0 +1,182 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "api/rest/library.schema.json",
+  "title": "GET /v1/library",
+  "x-endpoint": {
+    "method": "GET",
+    "path": "/v1/library",
+    "responses": {
+      "200": "#/$defs/LibraryResponse"
+    }
+  },
+  "$defs": {
+    "LibraryActivePlaythrough": {
+      "title": "LibraryActivePlaythrough",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "playthroughId",
+        "roleId",
+        "roleName",
+        "actId",
+        "tLabel",
+        "updatedAt",
+        "bookId",
+        "worldModelVersion"
+      ],
+      "properties": {
+        "playthroughId": {
+          "$ref": "../../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "roleId": {
+          "$ref": "../../data/common.schema.json#/$defs/RoleId"
+        },
+        "roleName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "actId": {
+          "$ref": "../../data/common.schema.json#/$defs/ActId"
+        },
+        "tLabel": {
+          "$ref": "../../data/common.schema.json#/$defs/TLabel"
+        },
+        "updatedAt": {
+          "$ref": "../../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "bookId": {
+          "$ref": "../common.schema.json#/$defs/BookId"
+        },
+        "worldModelVersion": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "description": "当前账号唯一的进行中体验，按该局锁定的书和世界版本恢复。"
+    },
+    "LibraryPendingEnding": {
+      "title": "LibraryPendingEnding",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "playthroughId",
+        "bookId",
+        "worldModelVersion",
+        "bookTitle",
+        "roleId",
+        "roleName",
+        "endedAt"
+      ],
+      "properties": {
+        "playthroughId": {
+          "$ref": "../../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "bookId": {
+          "$ref": "../common.schema.json#/$defs/BookId"
+        },
+        "worldModelVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bookTitle": {
+          "type": "string",
+          "minLength": 1
+        },
+        "roleId": {
+          "$ref": "../../data/common.schema.json#/$defs/RoleId"
+        },
+        "roleName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "endedAt": {
+          "$ref": "../../data/common.schema.json#/$defs/RecordedAt"
+        }
+      },
+      "description": "已结束、尾声尚未落库；必须以生成中展示，不能当成已完成结局。"
+    },
+    "LibraryEnding": {
+      "title": "LibraryEnding",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "playthroughId",
+        "bookId",
+        "worldModelVersion",
+        "bookTitle",
+        "roleId",
+        "roleName",
+        "endedAt",
+        "endingId",
+        "title",
+        "subtitle"
+      ],
+      "properties": {
+        "playthroughId": {
+          "$ref": "../../data/common.schema.json#/$defs/PlaythroughId"
+        },
+        "bookId": {
+          "$ref": "../common.schema.json#/$defs/BookId"
+        },
+        "worldModelVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "bookTitle": {
+          "type": "string",
+          "minLength": 1
+        },
+        "roleId": {
+          "$ref": "../../data/common.schema.json#/$defs/RoleId"
+        },
+        "roleName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "endedAt": {
+          "$ref": "../../data/common.schema.json#/$defs/RecordedAt"
+        },
+        "endingId": {
+          "$ref": "../../data/common.schema.json#/$defs/EndingId"
+        },
+        "title": {
+          "$ref": "../../data/ending.schema.json#/$defs/Ending/properties/card/properties/title"
+        },
+        "subtitle": {
+          "$ref": "../../data/ending.schema.json#/$defs/Ending/properties/card/properties/subtitle"
+        }
+      },
+      "description": "只来自该账号 status=ended 且已落库的 endings；不包含未体验的结局和内部因果、变量。"
+    },
+    "LibraryResponse": {
+      "title": "LibraryResponse",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["activePlaythrough", "endings", "pendingEndings"],
+      "properties": {
+        "activePlaythrough": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LibraryActivePlaythrough"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "endings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LibraryEnding"
+          }
+        },
+        "pendingEndings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LibraryPendingEnding"
+          }
+        }
+      }
+    }
+  }
+}

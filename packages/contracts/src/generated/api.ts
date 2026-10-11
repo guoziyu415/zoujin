@@ -757,6 +757,22 @@ export interface ApproachMessage {
   kind: "request" | "news";
 }
 /**
+ * 只列明确配置的已制作书籍，不因发现世界草稿就自动开放；availability 由可加载资源和开放身份决定。
+ */
+export interface BookSummary {
+  bookId: BookId;
+  worldModelVersion: string;
+  title: string;
+  author: string;
+  year: number;
+  description: string;
+  availability: "available" | "unavailable";
+  manifestUrl: AssetPath;
+}
+export interface BooksResponse {
+  books: BookSummary[];
+}
+/**
  * commit.patch.characters[]（3.4）：按 id 合并，只给变了的字段。人物进场（之前不在当前场景）时带完整的 CharacterPresence 字段；离场就是 place 变成不在当前场景里的地点
  */
 export interface CharacterPresencePatch {
@@ -1332,6 +1348,57 @@ export interface LastTurn {
   characterText: string | null;
 }
 /**
+ * 当前账号唯一的进行中体验，按该局锁定的书和世界版本恢复。
+ */
+export interface LibraryActivePlaythrough {
+  playthroughId: Data.PlaythroughId;
+  roleId: Data.RoleId;
+  roleName: string;
+  actId: Data.ActId;
+  tLabel: Data.TLabel;
+  updatedAt: Data.RecordedAt;
+  bookId: BookId;
+  worldModelVersion: string;
+}
+/**
+ * 只来自该账号 status=ended 且已落库的 endings；不包含未体验的结局和内部因果、变量。
+ */
+export interface LibraryEnding {
+  playthroughId: Data.PlaythroughId;
+  bookId: BookId;
+  worldModelVersion: string;
+  bookTitle: string;
+  roleId: Data.RoleId;
+  roleName: string;
+  endedAt: Data.RecordedAt;
+  endingId: Data.EndingId;
+  /**
+   * 称号 ≤ 14 字
+   */
+  title: string;
+  /**
+   * 世界的去向 ≤ 26 字
+   */
+  subtitle: string;
+}
+/**
+ * 已结束、尾声尚未落库；必须以生成中展示，不能当成已完成结局。
+ */
+export interface LibraryPendingEnding {
+  playthroughId: Data.PlaythroughId;
+  bookId: BookId;
+  worldModelVersion: string;
+  bookTitle: string;
+  roleId: Data.RoleId;
+  roleName: string;
+  endedAt: Data.RecordedAt;
+}
+export interface LibraryResponse {
+  activePlaythrough: LibraryActivePlaythrough | null;
+  endings: LibraryEnding[];
+  pendingEndings: LibraryPendingEnding[];
+}
+/**
  * 今天的语音时间剩 5 分钟时推一次
  */
 export interface LimitsMessage {
@@ -1346,6 +1413,12 @@ export interface LoginRequest {
 }
 export interface ManifestParams {
   bookId: BookId;
+}
+export interface ManifestQuery {
+  /**
+   * 恢复既有存档的锁定世界版本；当前账号须拥有该书该版本存档。
+   */
+  worldModelVersion?: string;
 }
 /**
  * 不变的内容（2.1），构建时由世界模型和资源清单生成

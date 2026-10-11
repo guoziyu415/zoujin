@@ -10,6 +10,7 @@ from typing import Any
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import FileResponse, JSONResponse
 
+from zoujin_backend.gateway.library import book_summary
 from zoujin_backend.manifest import CACHE, FILE_CACHE, media_type
 from zoujin_backend.mock import scripts
 from zoujin_backend.mock.core import COOKIE, INVITE_CODE, Mock
@@ -207,6 +208,41 @@ async def me(request: Request) -> Response:
 
 
 # —— 第 2 节 ——
+
+
+@router.get("/v1/books")
+async def books(request: Request) -> Response:
+    m = mock_of(request)
+    session_of(request)
+    return ok(m, "books", 200, {"books": [book_summary(m.world_book, bool(m.content.doc["roles"]))]})
+
+
+@router.get("/v1/library")
+async def library(request: Request) -> Response:
+    m = mock_of(request)
+    s = session_of(request)
+    book = m.world_book
+    identity = {"bookId": book.book_id, "worldModelVersion": book.version}
+    pt = m.active(s)
+    active = {**m.active_ref(pt), **identity} if pt is not None else None
+    ready, pending = [], []
+    for pt in m.playthroughs.values():
+        if pt.owner != s.sid or pt.status != "ended" or pt.ending_id is None:
+            continue
+        item = {
+            **identity,
+            "playthroughId": pt.pid,
+            "bookTitle": book.world["book"]["title"],
+            "roleId": pt.role_id,
+            "roleName": book.roles[pt.role_id]["name"],
+            "endedAt": pt.updated_at,
+        }
+        if pt.ending_ready:
+            card = m.rendered("ending.json", pt)["card"]
+            ready.append({**item, "endingId": pt.ending_id, "title": card["title"], "subtitle": card["subtitle"]})
+        else:
+            pending.append(item)
+    return ok(m, "library", 200, {"activePlaythrough": active, "endings": ready, "pendingEndings": pending})
 
 
 @router.get("/v1/books/{book_id}/manifest")

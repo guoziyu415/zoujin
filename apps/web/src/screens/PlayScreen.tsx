@@ -6,10 +6,16 @@ import type { Api } from "@zoujin/contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { flags } from "../app/flags";
-import { manifestQuery, meQuery, takeSnapshot } from "../app/queries";
+import {
+  libraryQuery,
+  manifestFor,
+  meQuery,
+  takeSnapshot,
+} from "../app/queries";
 import { audio } from "../audio";
 import { navigate, toLogin } from "../app/router";
 import { closePlay, openPlay, play } from "../net/play";
+import { libraryEntry } from "../net/library";
 import { ApiError, rest } from "../net/rest";
 import { usePlayer } from "../stores/player";
 import { useUi } from "../stores/ui";
@@ -38,7 +44,12 @@ const WorldScreen = lazy(() => import("./WorldScreen"));
 
 export default function PlayScreen({ pid }: { pid: string }) {
   const qc = useQueryClient();
-  const manifest = useQuery(manifestQuery);
+  const library = useQuery(libraryQuery);
+  const entry = libraryEntry(library.data, pid);
+  const manifest = useQuery({
+    ...manifestFor(entry?.bookId ?? "", entry?.worldModelVersion),
+    enabled: !!entry,
+  });
   const [failed, setFailed] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0); // 「もう一度つなぐ」 reads the snapshot again
   const names = useMemo(
@@ -50,6 +61,13 @@ export default function PlayScreen({ pid }: { pid: string }) {
   );
 
   useEffect(() => {
+    if (library.isSuccess && !library.isFetching && !entry)
+      navigate("/", { replace: true });
+  }, [library.isSuccess, library.isFetching, entry]);
+
+  useEffect(() => {
+    if (!manifest.data) return;
+    play.setManifest(manifest.data);
     let alive = true;
     const handed = takeSnapshot(pid);
     (handed ? Promise.resolve(handed) : rest.snapshot(pid))
@@ -64,6 +82,7 @@ export default function PlayScreen({ pid }: { pid: string }) {
             if (why === "unauthenticated") toLogin();
             if (why === "gone") {
               void qc.invalidateQueries({ queryKey: meQuery.queryKey });
+              void qc.invalidateQueries({ queryKey: libraryQuery.queryKey });
               navigate("/", { replace: true });
             }
           },
@@ -96,7 +115,7 @@ export default function PlayScreen({ pid }: { pid: string }) {
         resumeGate: false,
       });
     };
-  }, [pid, qc, attempt]);
+  }, [pid, qc, attempt, manifest.data]);
 
   useEffect(() => {
     if (!manifest.data) return;
@@ -122,7 +141,7 @@ export default function PlayScreen({ pid }: { pid: string }) {
       data-voice={voice}
     >
       <div className="world-3d" aria-hidden="true">
-        {!flags.no3d && (
+        {!flags.no3d && manifest.isSuccess && (
           <Suspense fallback={null}>
             <WorldScreen embedded packs={manifest.data?.scenes} />
           </Suspense>
@@ -133,6 +152,18 @@ export default function PlayScreen({ pid }: { pid: string }) {
         <StoryMenu />
         <ConnectionBanner />
         <WorldReactionToast />
+        {library.isError && (
+          <div className="banner" role="alert">
+            <span>本の情報を取得できませんでした。</span>
+            <button onClick={() => void library.refetch()}>もう一度</button>
+          </div>
+        )}
+        {manifest.isError && (
+          <div className="banner" role="alert">
+            <span>本の情報を取得できませんでした。</span>
+            <button onClick={() => void manifest.refetch()}>もう一度</button>
+          </div>
+        )}
         {failed && (
           <div className="banner" role="alert">
             <span>{failed}</span>
