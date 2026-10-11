@@ -3,8 +3,8 @@
 - 源文件：`worlds/hashire-merosu/1.0.0-slice/world.src.json`
 - 原文：`worlds/hashire-merosu/sources/melos_plain.txt`（75 段，sha256 `2a437c047d7f09857355bfefc07e466e8b8b09fd1ee9db9c54f285a6efd5e685`）
 - 出处 ID：`aozora:1567_ruby_4948@sha256:2a437c047d7f`
-- 人物 13、地点 12、事实 31、节拍 29、因果边 26、状态变量 27、身份 1、锚点 17
-- 出处条数：264；被引用段落 65/75（86%）
+- 人物 13、地点 12、事实 31、节拍 29、因果边 26、状态变量 27、身份 1、锚点 19
+- 出处条数：276；被引用段落 65/75（86%）
 - **错误 0，警告 0**
 
 ## 错误

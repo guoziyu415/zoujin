@@ -25,6 +25,9 @@ export const GIVE_UP_MS = 12_000; // 7.8: the turn is retracted, the character s
 export const CAPTION_WAIT_MS = 8000; // 7.5: no final line 8 s after turn_complete → as if it failed
 export const MIC_IDLE_MS = 120_000; // S-073 ③: the microphone goes 2 minutes after the conversation ends
 export const FADE_MS = 200; // 12: the voice fades out in 0.2 s on a safety pause
+export const STAGED_NARRATION_MS = 1500; // a set piece's narrator line stays this long alone before the next line
+const STAGED_WAIT_MS = 100; // how often a staged line looks whether the character's voice has ended
+const CHARS_PER_SECOND = 6; // a line with no recording: its subtitle at this pace (the same as Caption's)
 const TOO_SHORT_NOTE_MS = 1500;
 
 export type Wire = {
@@ -61,6 +64,12 @@ type Prerecorded = NonNullable<
   Api.ManifestResponse["characters"][number]["prerecorded"]
 >;
 
+// a fixed line the server stages (api-contract 3.4 cue, 3.14 set_piece): a narrator's line, or a character's line
+// with its recording when the manifest has one
+export type StagedLine =
+  | { narration: string }
+  | { speaker: string; text: string; clip?: Clip | undefined };
+
 export class VoiceController {
   private cur: Rec | null = null;
   private recs = new Map<string, Rec>();
@@ -70,6 +79,11 @@ export class VoiceController {
   private outbox: Rec[] = []; // typed while the socket was down
   private inflight: Rec | null = null; // a typed turn sent, nothing back for it yet
   private clips: Record<string, Prerecorded> = {};
+  private pieceVoices: Record<string, Clip | undefined> = {};
+  private staged: StagedLine[] = [];
+  private stagedTimer: ReturnType<typeof setTimeout> | undefined;
+  private saying: { turnId: string; speaker: string; text: string } | null =
+    null; // a fixed line whose words are still coming
   private turnsDone = 0;
   private lastAizuchi = { turn: -10, url: "" };
   private micTimer: ReturnType<typeof setTimeout> | undefined;
@@ -116,10 +130,99 @@ export class VoiceController {
     });
   }
 
-  setClips(byCharacter: Record<string, Prerecorded>): void {
+  // setPieceVoices and the cues are few (the slice: a handful); decoded with the manifest, so they are ready when
+  // the server stages them, wherever the player stands
+  setClips(
+    byCharacter: Record<string, Prerecorded>,
+    pieceVoices: Record<string, Clip | undefined> = {},
+  ): void {
     this.clips = byCharacter;
+    this.pieceVoices = pieceVoices;
     const focus = usePlayer.getState().focusCharacter;
     if (focus) this.preload(focus);
+    this.audio.preload([
+      ...Object.values(pieceVoices).filter((c): c is Clip => !!c),
+      ...Object.values(byCharacter).flatMap((p) =>
+        Object.values(p.cues).filter((c): c is Clip => !!c),
+      ),
+    ]);
+  }
+
+  // —— fixed lines the server stages ——
+
+  // a set piece (api-contract 3.14): its lines in order, each once the one before has played out; a character's line
+  // plays setPieceVoices["<pieceId>/<n>"] (n from 1, narrator lines counted), or only its subtitle when there is none
+  setPiece(m: Api.SetPieceMessage): void {
+    this.stage(
+      m.lines.map((l, i) =>
+        "narration" in l
+          ? { narration: l.narration }
+          : {
+              speaker: l.speaker,
+              text: l.line,
+              clip: this.pieceVoices[`${m.pieceId}/${i + 1}`],
+            },
+      ),
+    );
+  }
+
+  // a commit's cue (3.4): the character's own recording when he is here, the narrator's line when he isn't
+  cue(c: Api.Cue): void {
+    this.stage([
+      c.speaker
+        ? {
+            speaker: c.speaker,
+            text: c.text,
+            clip: this.clips[c.speaker]?.cues[c.kind],
+          }
+        : { narration: c.text },
+    ]);
+  }
+
+  private stage(lines: StagedLine[]): void {
+    const idle = !this.staged.length && this.stagedTimer === undefined;
+    this.staged.push(...lines);
+    if (idle) this.nextStaged();
+  }
+
+  // after the character's voice now playing (he finishes his line first), then line by line
+  private nextStaged(): void {
+    clearTimeout(this.stagedTimer);
+    this.stagedTimer = undefined;
+    if (!this.staged.length) return;
+    const r = this.cur;
+    const speaking = r && r.audibleAt !== undefined && !r.complete && !r.drop;
+    if (this.audio.playing() || speaking || useVoice.getState().paused) {
+      this.stagedTimer = setTimeout(() => this.nextStaged(), STAGED_WAIT_MS);
+      return;
+    }
+    const l = this.staged.shift()!;
+    let ms = STAGED_NARRATION_MS;
+    if ("narration" in l) addNarration(l.narration);
+    else ms = this.sayLine(l.speaker, l.text, l.clip);
+    this.stagedTimer = setTimeout(() => this.nextStaged(), ms);
+  }
+
+  // the player speaks or types over it: the voice has stopped (cutCurrent), the rest isn't played; nothing is lost
+  // from the log: the narrator's lines go in at once, the last character line shows whole
+  private flushStaged(): void {
+    const rest = this.staged;
+    if (!rest.length && this.stagedTimer === undefined) return;
+    clearTimeout(this.stagedTimer);
+    this.stagedTimer = undefined;
+    this.staged = [];
+    const line = this.saying;
+    if (line) {
+      clearInterval(this.clipTimer);
+      this.saying = null;
+      useVoice.setState({
+        character: { ...line, final: true, source: "script" },
+      });
+    }
+    const narration = rest.flatMap((l) =>
+      "narration" in l ? [l.narration] : [],
+    );
+    if (narration.length) addNarration(...narration);
   }
 
   // a new playthrough's store: what this device remembers, and whether the browser already allows the microphone
@@ -573,6 +676,7 @@ export class VoiceController {
     clearTimeout(this.micTimer);
     clearTimeout(this.noteTimer);
     clearInterval(this.clipTimer);
+    clearTimeout(this.stagedTimer);
     this.audio.setSending(false);
     if (this.audio.playing()) this.audio.flush();
     this.audio.releaseMic();
@@ -741,6 +845,7 @@ export class VoiceController {
   // the player speaks or types over whatever the character is doing: the voice stops here first, the line breaks off
   // with 「——」, and that turn is counted now, interrupted (7.7: not when its playback would have ended)
   private cutCurrent(): void {
+    this.flushStaged();
     const p = this.cur;
     const playing = this.audio.playing();
     if (playing) this.audio.flush();
@@ -815,14 +920,35 @@ export class VoiceController {
 
   // a prerecorded line on its own (not an answer): its words follow it, segment by segment
   private sayClip(character: string, clip: Clip): void {
-    if (!this.audio.playClip(clip)) return;
+    if (this.audio.playClip(clip))
+      this.showLine(character, clip.text, clip.durationMs, `clip:${clip.url}`);
+  }
+
+  // a fixed line with its recording, or with no recording its words alone at reading pace; how long it takes
+  private sayLine(character: string, text: string, clip?: Clip): number {
+    if (clip && this.audio.playClip(clip)) {
+      this.showLine(character, text, clip.durationMs, `clip:${clip.url}`);
+      return clip.durationMs;
+    }
+    const lengthMs = Math.round(([...text].length / CHARS_PER_SECOND) * 1000);
+    this.showLine(character, text, lengthMs, `line:${text}`);
+    return lengthMs;
+  }
+
+  // a fixed line's words, segment by segment as its length goes by
+  private showLine(
+    character: string,
+    text: string,
+    lengthMs: number,
+    id: string,
+  ): void {
     const caption = new Caption();
-    caption.scripted(clip.text, clip.durationMs);
-    const id = `clip:${clip.url}`;
+    caption.scripted(text, lengthMs);
     const started = performance.now();
+    this.saying = { turnId: id, speaker: character, text };
     const show = () => {
       const heard = performance.now() - started;
-      caption.update(heard, clip.durationMs);
+      caption.update(heard, lengthMs);
       useVoice.setState({
         character: {
           turnId: id,
@@ -832,7 +958,10 @@ export class VoiceController {
           source: "script",
         },
       });
-      if (heard >= clip.durationMs) clearInterval(this.clipTimer);
+      if (heard >= lengthMs) {
+        clearInterval(this.clipTimer);
+        this.saying = null;
+      }
     };
     clearInterval(this.clipTimer);
     this.clipTimer = setInterval(show, 100);

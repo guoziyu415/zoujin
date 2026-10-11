@@ -1,5 +1,6 @@
 // The clock band (ux-design 4.2): placeholder text of the story time; when a commit moves the clock, 「+30分」 beside it
-// for 2 s. The sun-and-diamond drawing is UX's card.
+// for 2 s. Only a commit's move shows it: a snapshot (reconnect, act change) moves the clock silently (ux-design 4.5).
+// The sun-and-diamond drawing is UX's card.
 import { useEffect, useRef, useState } from "react";
 import { useWorld } from "../../stores/world";
 import { copy, fill } from "../copy";
@@ -17,6 +18,7 @@ export function delta(min: number): string {
 
 export function SunBand() {
   const clock = useWorld((s) => s.world?.clock);
+  const byCommit = useWorld((s) => s.byCommit);
   const last = useRef<number | null>(null);
   const [shown, setShown] = useState<string | null>(null);
   const t = clock?.t;
@@ -24,11 +26,13 @@ export function SunBand() {
     if (t === undefined) return;
     const before = last.current;
     last.current = t;
+    // a snapshot clears a 「+n」 still showing (its timer is gone with this effect's rerun)
+    if (!byCommit) return setShown(null);
     if (before === null || t <= before) return;
     setShown(delta(t - before));
     const id = setTimeout(() => setShown(null), 2000);
     return () => clearTimeout(id);
-  }, [t]);
+  }, [t, byCommit]);
   if (!clock) return null;
   const [day = clock.tLabel, band = ""] = clock.tLabel.split("・");
   return (

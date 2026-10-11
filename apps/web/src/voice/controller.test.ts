@@ -16,6 +16,7 @@ import {
   HOLD_BACK_MS,
   NO_RESPONSE_MS,
   PREPARING_MS,
+  STAGED_NARRATION_MS,
   VoiceController,
   type Wire,
 } from "./controller";
@@ -38,7 +39,21 @@ const PRERECORDED = {
     clip("/u/2.ogg", "……もう一度、頼む。"),
   ],
   wait: clip("/w.ogg", "待ってくれ。少し、考えさせてくれ。"),
-  cues: {},
+  cues: {
+    arrival_capped: clip("/c/arrival.ogg", "……これなら、間に合う。", 2100),
+  },
+};
+const KNOCK: Api.SetPieceMessage = {
+  type: "set_piece",
+  pieceId: "piece.workshop-knock",
+  lines: [
+    { narration: "戸を叩いた。" },
+    {
+      speaker: "char.selinuntius",
+      line: "もう遅い。用があるなら、明日にしてくれ。",
+    },
+    { narration: "それきり、石を刻む音しか聞こえなかった。" },
+  ],
 };
 
 // the wire writes into the audio's log, so one list shows what happened in which order
@@ -754,5 +769,101 @@ describe("the connection", () => {
     expect(useVoice.getState().narration).toEqual([copy["voice.degraded"]]);
     tick(GIVE_UP_MS);
     expect(wire.types().filter((t) => t === "turn_retract")).toHaveLength(1);
+  });
+});
+
+describe("fixed lines the server stages (api-contract 3.4, 3.14)", () => {
+  const knockVoice = clip(
+    "/p/knock-2.m4a",
+    "もう遅い。用があるなら、明日にしてくれ。",
+    3000,
+  );
+
+  it("a set piece in order: the narrator's line, then the character's recording with its words, then the next", () => {
+    const { v, audio } = setup();
+    v.setClips({}, { "piece.workshop-knock/2": knockVoice });
+    v.setPiece(KNOCK);
+    expect(useVoice.getState().narration).toEqual(["戸を叩いた。"]);
+    expect(audio.log).not.toContain("clip:/p/knock-2.m4a");
+    tick(STAGED_NARRATION_MS);
+    expect(audio.log).toContain("clip:/p/knock-2.m4a");
+    expect(useVoice.getState().character).toMatchObject({
+      speaker: "char.selinuntius",
+      source: "script",
+    });
+    tick(1000);
+    expect(useVoice.getState().character?.text).toBe("もう遅い。");
+    tick(1900);
+    expect(useVoice.getState().narration).toHaveLength(1); // the next line waits for the voice
+    tick(100);
+    expect(useVoice.getState().character?.text).toBe(
+      "もう遅い。用があるなら、明日にしてくれ。",
+    );
+    expect(useVoice.getState().narration).toEqual([
+      "戸を叩いた。",
+      "それきり、石を刻む音しか聞こえなかった。",
+    ]);
+  });
+
+  it("no recording: the words alone at reading pace", () => {
+    const { v, audio } = setup();
+    v.setPiece(KNOCK);
+    tick(STAGED_NARRATION_MS);
+    expect(audio.log.filter((l) => l.startsWith("clip:"))).toHaveLength(0);
+    expect(useVoice.getState().character?.text).toBe("");
+    tick(20_000);
+    expect(useVoice.getState().character?.text).toBe(
+      "もう遅い。用があるなら、明日にしてくれ。",
+    );
+    expect(useVoice.getState().narration).toHaveLength(2);
+  });
+
+  it("waits for the character's voice now playing to end", () => {
+    const { v, audio, wire } = setup();
+    const t = answering(v, audio, wire);
+    v.setPiece(KNOCK);
+    tick(5000);
+    expect(useVoice.getState().narration).toEqual([]);
+    v.message(complete(t.turnId));
+    audio.drain(t.turnSeq);
+    tick(100);
+    expect(useVoice.getState().narration).toEqual(["戸を叩いた。"]);
+  });
+
+  it("the cue: his own recording when he is here, the narrator's line when he isn't", () => {
+    const { v, audio } = setup({ clips: true });
+    v.cue({
+      kind: "arrival_capped",
+      speaker: MELOS,
+      text: "……これなら、間に合う。",
+    });
+    expect(audio.log).toContain("clip:/c/arrival.ogg");
+    expect(useVoice.getState().character).toMatchObject({ speaker: MELOS });
+    tick(2100);
+    v.cue({
+      kind: "arrival_capped",
+      speaker: null,
+      text: "この足なら、陽の沈む前に着く。",
+    });
+    expect(useVoice.getState().narration).toEqual([
+      "この足なら、陽の沈む前に着く。",
+    ]);
+  });
+
+  it("the player speaks over it: the voice stops, the line shows whole, the narrator's lines left go in at once", () => {
+    const { v, audio } = setup();
+    v.setClips({}, { "piece.workshop-knock/2": knockVoice });
+    v.setPiece(KNOCK);
+    tick(STAGED_NARRATION_MS + 500);
+    v.say("あの");
+    expect(useVoice.getState().narration).toEqual([
+      "戸を叩いた。",
+      "それきり、石を刻む音しか聞こえなかった。",
+    ]);
+    tick(STAGED_NARRATION_MS * 3);
+    expect(useVoice.getState().narration).toHaveLength(2);
+    expect(audio.log.filter((l) => l === "clip:/p/knock-2.m4a")).toHaveLength(
+      1,
+    );
   });
 });

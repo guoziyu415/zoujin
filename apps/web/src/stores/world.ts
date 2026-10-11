@@ -3,9 +3,14 @@
 import { create } from "zustand";
 import type { WorldData } from "../net/apply";
 
-type WorldStore = { world: WorldData | null };
+// byCommit: the clock (if it moved) was moved by a commit. A snapshot (the welcome, a reconnect, an act change) also
+// moves it, but the sun band shows 「+n」 only for a commit (ux-design 4.5: the jump page doesn't).
+type WorldStore = { world: WorldData | null; byCommit: boolean };
 
-export const useWorld = create<WorldStore>()(() => ({ world: null }));
+export const useWorld = create<WorldStore>()(() => ({
+  world: null,
+  byCommit: false,
+}));
 
-export const setWorld = (world: WorldData | null): void =>
-  useWorld.setState({ world });
+export const setWorld = (world: WorldData | null, byCommit = false): void =>
+  useWorld.setState({ world, byCommit });
