@@ -534,3 +534,14 @@ def fake_repo(tmp_path: Path) -> Path:
     (repo / "worlds").symlink_to(REPO / "worlds")
     (repo / "packages").symlink_to(REPO / "packages")
     return repo
+
+
+def test_resume_of_a_finished_run_says_it_reuses_takes(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    assert run_fake(tmp_path, FakeReader()) == 0
+    run = only_run(tmp_path)
+    before = sorted(p.name for p in (run / "release").glob("*.wav"))
+    capsys.readouterr()
+    assert cli.main(["--resume", str(run)], cli.Deps(encoder=audio.FakeEncoder()), {}) == 0
+    out = capsys.readouterr().out
+    assert "都读过了" in out and "假模型" not in out  # Mac 上按新检查重挑时，别让人以为换成了合成的声音
+    assert sorted(p.name for p in (run / "release").glob("*.wav")) == before

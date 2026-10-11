@@ -562,7 +562,10 @@ def main(argv: Sequence[str] | None = None, deps: Deps | None = None, env: Mappi
         if reader is None or transcriber is None:
             fake = FakeReader()
             reader, transcriber = fake, FakeTranscriber(fake)
-            print("假模型：合成的声音，不调用任何模型")
+            if work.reads or work.transcribe_only:
+                print("假模型：合成的声音，不调用任何模型")
+            else:  # --resume 一个都读完了的目录：只按现在的检查重挑、重出 release，用的全是已录的
+                print("都读过了：不调用模型，只用已录的重挑、重出 release")
         encoder = deps.encoder or audio.FfmpegEncoder()
         schemas = SchemaBook(deps.repo / "packages" / "contracts" / "schemas")
     except (ConfigError, SpecError, RuntimeError) as e:
