@@ -1,8 +1,11 @@
 # apps/web
 
-网页前端（React + three.js，手机浏览器优先）。前端负责。设计见 `docs/frontend/frontend-design.md`，任务卡见 `docs/tasks/m2-0/F-2.md`。
+网页前端（React + three.js，手机浏览器优先）。前端负责。设计见 `docs/frontend/frontend-design.md`，任务卡见 `docs/tasks/m2-0/F-0.md`、`F-2.md`。
 
-现在有的是 F-2b 的世界屏幕：写实的锡拉库萨广场（第一屏是 S7 的西南角构图），点地面走过去、点人走到对方面前、拖动转镜头，太阳和影子跟着世界时钟走。数据来自本卡的假 store（`src/three/dev/fakeStore.ts`），F-0 换成真的 store 和服务端推送；对话界面、时钟条这些在 F-0 / F-1。
+现在有两块：
+
+- **外壳（F-0）**：邀请码 → 封面 → 选身份 → 世界屏幕的 HUD（字幕、时钟条、近くの人、文字输入、轻反馈、断线横幅、回来时的「タップして続ける」），对着 B-1 的 mock 走完一轮文字对话。样式是占位的，视觉和文案定稿是 UX 的卡。世界屏幕下面的 3D 先放占位，F-2d 把广场接到这里的 store 上。
+- **3D 广场（F-2b、F-2c）**：写实的锡拉库萨广场（第一屏是 S7 的西南角构图），点地面走过去、点人走到对方面前、拖动转镜头，太阳和影子跟着世界时钟走。现在用 `?test` / `?dev` 打开，数据来自假 store（`src/three/dev/fakeStore.ts`），F-2d 换成真的 store。
 
 ## 跑起来
 
@@ -15,8 +18,16 @@ pnpm --filter @zoujin/web dev      # http://127.0.0.1:5173/
 
 场景在别的目录时设 `ZOUJIN_SCENE_ROOT=<目录>`（读 `<目录>/syracuse-square/`）。
 
-- `?dev`：拖时钟、放一遍日落（18:00 → 19:10）、开关石匠作坊、看帧时间和 draw call。给团队用，不给玩家。
-- `?test`：挂上 `window.__zoujin`（`src/three/dev/testHook.ts`），Playwright 用它定时钟、摆固定机位、让玩家走到某处。画质固定在 L1，每次画面一样；`?test&quality=auto` 照玩家那样跑起始档自测和升降档。
+外壳要接口：开发服务器和 `vite preview` 把 `/v1`（含 WebSocket）、`/__mock`、`/assets/voice` 转给 `ZOUJIN_API`（默认 `http://127.0.0.1:8787`，B-1 的 mock）。在仓库根起 mock，邀请码是 `mock`：
+
+```sh
+uv run --all-packages zoujin-mock --scenario full-turn   # 一轮完整的对话；剧本见 fixtures/sessions/
+```
+
+不带参数是外壳（路由：`/login`、`/`、`/roles`、`/play/<局>`、`/ending/<局>`）。
+
+- `?dev`：3D 广场，拖时钟、放一遍日落（18:00 → 19:10）、开关石匠作坊、看帧时间和 draw call。给团队用，不给玩家。
+- `?test`：3D 广场，挂上 `window.__zoujin`（`src/three/dev/testHook.ts`），Playwright 用它定时钟、摆固定机位、让玩家走到某处。画质固定在 L1，每次画面一样；`?test&quality=auto` 照玩家那样跑起始档自测和升降档。
 - `?quality=L0`〜`L3`：固定一级画质，不自测、不升降。
 - `?measure`：计测页（见下面「画质」）。
 
@@ -42,17 +53,24 @@ node apps/web/scripts/measure_artifact.mjs <临时目录>/dist <临时目录>/pa
 ## 检查
 
 ```sh
-pnpm --filter @zoujin/web test          # 单元测试（导航网格、太阳、升降档、直方图）；有场景生成物时也查每个位置点都走得到
+pnpm --filter @zoujin/web test          # 单元测试（网络层、导航网格、太阳、升降档、直方图）；有场景生成物时也查每个位置点都走得到
 pnpm --filter @zoujin/web build
 pnpm --filter @zoujin/web check:bundle  # 外壳 ≤ 120 KB、3D 分块 ≤ 250 KB（brotli，assets/budgets.json）
-pnpm --filter @zoujin/web e2e           # 先 build；无头 Chromium + 软件渲染，截图在 test-results/shots/
+pnpm --filter @zoujin/web e2e           # 先 build；自己起 mock 和 preview；无头 Chromium + 软件渲染，截图在 test-results/shots/
 ```
 
-e2e 查的是 F-2 卡的验收（`world.spec.ts`）和画质（`quality.spec.ts`：自测选了档、升降档开始工作、遥测的形状对，L0 / L1 / L2 第一屏几块区域的平均颜色差 ≤ 6/255）。`world.spec.ts` 查的是：第一屏和 S7 第一屏构图一致，时钟从 18:00 推到 18:55 时王城墙上的影子线往上走，draw call 不超预算，跟随镜头的取景合 UX 的数字（人物高度、地平线位置），走进刑场时 store 正好收到一次移动，作坊在玩家还在里面时关上也走得出来，控制台没有错误。已经装了 Chromium 的机器用 `PW_CHROMIUM=<路径>` 指过去，不用再下载。CI（`.github/workflows/web.yml`）用草稿档生成广场并缓存，截图作为构件上传。
+`f0.spec.ts` 对着 mock 查 F-0 卡的验收：邀请码、401 回邀请码页（WebSocket 4001 和 REST 都查）、开局 409（続きから / 新しく始める）、文字一轮（字幕、轻反馈、时钟 +10分）、断网 5 秒再连（断线期间判完的 commit 补发一次，不重复不丢）、不认识的消息类型不报错。每个测试先 `POST /__mock/reset`。组件不直接碰 WebSocket 由 ESLint 查（`no-restricted-globals`，只有 `src/net/` 能用）。
+
+e2e 还查 F-2 卡的验收（`world.spec.ts`）和画质（`quality.spec.ts`：自测选了档、升降档开始工作、遥测的形状对，L0 / L1 / L2 第一屏几块区域的平均颜色差 ≤ 6/255）。`world.spec.ts` 查的是：第一屏和 S7 第一屏构图一致，时钟从 18:00 推到 18:55 时王城墙上的影子线往上走，draw call 不超预算，跟随镜头的取景合 UX 的数字（人物高度、地平线位置），走进刑场时 store 正好收到一次移动，作坊在玩家还在里面时关上也走得出来，控制台没有错误。已经装了 Chromium 的机器用 `PW_CHROMIUM=<路径>` 指过去，不用再下载。CI（`.github/workflows/web.yml`）用草稿档生成广场并缓存，截图作为构件上传。
 
 ## 代码在哪
 
-- `src/screens/WorldScreen.tsx`：世界屏幕（单独一个分块，外壳保持小）。
+- `src/app/`：外壳、路由（History API，不引路由包）、TanStack Query 的 REST 数据。
+- `src/net/`：REST（`rest.ts`）、一局一条 WebSocket（`live.ts`：hello、ping、退避重连、关闭码）、消息写进 store（`session.ts`：commit 按序号应用和去重、缺号补拉、断线前没送到的一轮重发、轻反馈）、组件调的动作（`play.ts`）。
+- `src/stores/`：zustand 的 world / player / voice / ui（frontend-design 第 6 节）。
+- `src/screens/`：登录、封面、选身份、世界、结局（占位）；`src/ui/hud/`：世界屏幕的 HUD；`src/ui/copy.ts`：用到的日语文案（照 `docs/ux/copy-ja.md` 的键）。
+- `src/telemetry/`：排队（`telemetry.ts`）和批量发送（`flush.ts`，每 10 秒，页面隐藏时 keepalive）。
+- `src/screens/WorldScreen.tsx`：3D 广场（单独一个分块，外壳保持小）。
 - `src/three/World.tsx`：分两步加载场景（能走的几何先到，贴图和遮蔽后到），然后灯光、玩家、镜头、后处理。
 - `src/three/scene/`：场景清单、加载、平面坐标和 glTF 坐标的换算、第一屏机位。
 - `src/three/nav/navmesh.ts`：读 `nav.json`，A* 加拉直路径、贴地、沿墙滑。
