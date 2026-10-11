@@ -10,6 +10,7 @@ import { levelDpr } from "../three/quality/levels";
 import { QualityProbe } from "../three/quality/QualityProbe";
 import { useQuality } from "../three/quality/quality";
 import { World, type LoadStage, type ScenePacks } from "../three/World";
+import { useUi } from "../stores/ui";
 
 const DEV = new URLSearchParams(location.search).has("dev");
 const DevPanel = lazy(() =>
@@ -30,7 +31,10 @@ export default function WorldScreen({
       void import("../three/dev/sandbox").then((m) => m.startSandbox());
   }, [embedded]);
   const [stage, setStage] = useState<LoadStage>("loading");
-  const onStage = useCallback((s: LoadStage) => setStage(s), []);
+  const onStage = useCallback((s: LoadStage) => {
+    setStage(s);
+    useUi.setState({ scene: s });
+  }, []);
   // the pixel ratio follows the quality level at once (10.6.3): L0 1.25, L1 1.5, L2 2, L3 the screen's own
   const level = useQuality((s) => s.level);
   return (

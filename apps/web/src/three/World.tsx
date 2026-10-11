@@ -72,6 +72,7 @@ export function World({
       onStage(s);
     };
     const bytes = (n: number) => (loadInfo.bytes = n);
+    stage("loading"); // a scene change (F-17): the old one is gone until the new one can be walked
     loadWalkable(base, bytes)
       .then(async (s) => {
         if (!alive) return;
