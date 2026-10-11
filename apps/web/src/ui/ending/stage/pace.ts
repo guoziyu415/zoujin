@@ -46,7 +46,9 @@ export type Pace = {
   auto: boolean;
   pausedAt: number | null;
   drained: boolean;
-  taps: number;
+  taps: number; // taps that did something (completed a line or moved on)
+  t0: number | null; // when the first line came
+  pausedMs: number; // paused since then
 };
 
 export const chars = (s: string): number => [...s].length; // punctuation counts; ruby isn't in these strings
@@ -71,6 +73,8 @@ export function initPace(auto: boolean): Pace {
     pausedAt: null,
     drained: false,
     taps: 0,
+    t0: null,
+    pausedMs: 0,
   };
 }
 
@@ -107,6 +111,7 @@ function enter(
   return {
     ...p,
     i,
+    t0: p.t0 ?? now,
     since: cut ? now + FADE_MS : now,
     whole: l.clipMs === null,
     guardUntil: now + TAP_GUARD_MS,
@@ -127,6 +132,20 @@ export function addLines(
   // nothing on screen yet, or the last line already had its time: the new one comes at once
   if (p.i < 0 || p.drained) return tick(next, now, true);
   return [next, []];
+}
+
+// the narration of the action that ended the story (3.13: its result arrives after the closing set piece) tells what
+// the player did before the curtain: before the first set-piece line if that hasn't played yet, else next
+export function insertLine(
+  p: Pace,
+  line: StageLine,
+  now: number,
+): [Pace, Effect[]] {
+  const piece = p.lines.findIndex((l) => l.key);
+  const at = piece > p.i ? piece : p.i + 1;
+  if (at >= p.lines.length) return addLines(p, [line], now);
+  const lines = [...p.lines.slice(0, at), line, ...p.lines.slice(at)];
+  return [{ ...p, lines }, []];
 }
 
 export function tick(p: Pace, now: number, wake = false): [Pace, Effect[]] {
@@ -193,6 +212,7 @@ export function resume(p: Pace, now: number): Pace {
   return {
     ...p,
     pausedAt: null,
+    pausedMs: p.t0 === null ? p.pausedMs : p.pausedMs + gone,
     since: p.since + gone,
     guardUntil: Math.max(p.guardUntil, now + TAP_GUARD_MS), // the tap that brought it back isn't a tap here
     startAt: p.startAt === null ? null : p.startAt + gone,
@@ -200,3 +220,24 @@ export function resume(p: Pace, now: number): Pace {
 }
 
 export const setAuto = (p: Pace, auto: boolean): Pace => ({ ...p, auto });
+
+// what the staging measured, for data (ending_performed, data-design 9.3): sent once when the last line has had its
+// time; a staging without lines (a reload in the middle, the ending given at once) sends nothing
+export type Performed = {
+  playMs: number;
+  pausedMs: number;
+  taps: number;
+  lines: number;
+};
+
+export function performed(p: Pace, now: number): Performed | null {
+  if (p.t0 === null || !p.lines.length) return null;
+  const pausedNow = p.pausedAt === null ? 0 : now - p.pausedAt;
+  const pausedMs = Math.round(p.pausedMs + pausedNow);
+  return {
+    playMs: Math.max(0, Math.round(now - p.t0) - pausedMs),
+    pausedMs,
+    taps: p.taps,
+    lines: p.lines.length,
+  };
+}

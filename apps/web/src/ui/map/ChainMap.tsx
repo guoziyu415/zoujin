@@ -5,16 +5,20 @@
 // Chips filter by person and by 「わたしの行動だけ」. A node opens in place: summary, time, who knows, and
 // 「なぜこうなった？」, the chain from your deed to it in time order.
 import type { Api } from "@zoujin/contracts";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { rest } from "../../net/rest";
 import { openOverlay, useStory } from "../../stores/story";
 import { useWorld } from "../../stores/world";
 import { track } from "../../telemetry/telemetry";
+import { KnotIcon } from "../KnotIcon";
+import { memoriesKey, voidedIn } from "../memory/view";
 import { copy, fill } from "../copy";
 import { FullPage } from "../FullPage";
 import {
   corrected,
+  keptPromises,
+  voidedPromises,
   itemId,
   nowDayOf,
   nowIndex,
@@ -54,6 +58,13 @@ export default function ChainMap({
   const now = useWorld((s) => s.world?.clock.t ?? 0);
   const events = useWorld((s) => s.world?.events);
   const fixed = useMemo(() => corrected(events ?? []), [events]);
+  const qc = useQueryClient();
+  const book = qc.getQueryData<Api.MemoriesResponse>(memoriesKey(pid));
+  const kept = useMemo(() => {
+    const voided = voidedPromises(events ?? []);
+    for (const id of voidedIn(book)) voided.add(id);
+    return keptPromises(events ?? [], voided);
+  }, [events, book]);
   // the timeline item doesn't name who did it; the events this page has seen do (an older one shows no name)
   const actors = useMemo(
     () => new Map((events ?? []).map((e) => [e.eventId, e.actor])),
@@ -139,6 +150,7 @@ export default function ChainMap({
                     it={it}
                     name={name}
                     actor={actors}
+                    kept={kept}
                     fixed={fixed}
                     isOpen={open === itemId(it)}
                     onToggle={() =>
@@ -163,6 +175,7 @@ function Node({
   it,
   name,
   actor,
+  kept,
   fixed,
   isOpen,
   onToggle,
@@ -174,6 +187,7 @@ function Node({
   it: Api.TimelineItem;
   name: (id: string) => string;
   actor: Map<string, string>;
+  kept: Set<string>;
   fixed: Set<string>;
   isOpen: boolean;
   onToggle: () => void;
@@ -233,6 +247,7 @@ function Node({
                   : copy["map.forYou"].replace("{name}・", "")}
               </span>
             )}
+            {kept.has(id) && <KnotIcon label={copy["map.kept"]} />}
             {it.summary}
             {fixed.has(id) && (
               <span className="map-fixed">{copy["map.corrected"]}</span>

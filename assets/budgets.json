@@ -17,6 +17,25 @@
     "textureVramMb": 150,
     "tierMeanColourMaxDiff": 3
   },
+  "scenes": {
+    "about": "Per pack, on top of scene (F-10, homeward-road stops): entryPackMb = the pack's own files, envTotalMb = the first visit with nothing cached (own + road-common). Set from the first final build with placeholder textures (river: own 2.34 / 2.26 MB, first visit 4.29 / 4.22 MB, road-common 1.96 MB) plus about 10%; the card's estimates were 1.8 and 4. Adjust when the CC0 scans and the F-2c iPhone numbers come.",
+    "road-common": {
+      "entryPackMb": 2.2,
+      "envTotalHighMb": 6.7
+    },
+    "road-river-calm": {
+      "entryPackMb": 2.6,
+      "envTotalMb": 4.7,
+      "envTotalHighMb": 10.5,
+      "maxDrawCalls": 45
+    },
+    "road-river-flood": {
+      "entryPackMb": 2.6,
+      "envTotalMb": 4.7,
+      "envTotalHighMb": 10.5,
+      "maxDrawCalls": 50
+    }
+  },
   "character": {
     "talkStd": {
       "maxMb": 4,
