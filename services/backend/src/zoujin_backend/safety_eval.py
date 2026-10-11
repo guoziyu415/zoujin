@@ -10,6 +10,8 @@
 
 - 只打印 ID、标签和判定，不打印原话（结果文件也不写原话）。
 - 留出集后端不打开：`--set` 能读任意同格式的文件，数据在 Mac 上自己跑（B-8 卡）。
+- `--context`（B-15）：样本里有 `context { character, place, previous }` 就带给分类器（没有的照 B-12）。
+- `--review`（B-15）：第一遍 signal 的过护栏词，没命中的交复核；报护栏命中、降成 ambiguous、复核失败的条数。
 - `--armor`：同一批再过一遍 Model Armor 的 `sanitizeUserPrompt`，报 PI、RAI、SDP 命中的条数和延迟（不进合格线）。
 - `zoujin-safety armor-template --confirm`：在 zg 的 GCP 项目里建正式用的 Model Armor 模板（不开日志）。要 zg 点头。
 """
@@ -33,7 +35,8 @@ from zoujin_backend.models.armor import PROJECT_ENV, TEMPLATE_ENV, ArmorFailed, 
 from zoujin_backend.models.prompts import PROMPTS
 from zoujin_backend.models.render import render_body
 from zoujin_backend.models.text import BudgetStop, RateLimited, ReplayMissing, spec, text_model
-from zoujin_backend.safety import Screener
+from zoujin_backend.safety import Context, Screener
+from zoujin_backend.safety.guard import decided
 
 Json = Any
 
@@ -59,6 +62,8 @@ def parse(argv: Sequence[str] | None) -> argparse.Namespace:
     )
     e.add_argument("--out", type=Path, required=True)
     e.add_argument("--runs", type=int, default=3)
+    e.add_argument("--context", action="store_true", help="B-15：样本的 context 带给分类器")
+    e.add_argument("--review", action="store_true", help="B-15：第一遍 signal 过护栏词，没命中的复核")
     e.add_argument("--armor", action="store_true", help="同一批再过一遍 Model Armor（只报命中和延迟）")
     e.add_argument("--max-item-usd", type=float, help="真模型：这一项的上限")
     e.add_argument("--max-claude-usd", type=float, help="真模型：Claude 那本账的总上限（含账本里已有的）")
@@ -76,25 +81,37 @@ def load(path: Path) -> list[Json]:
     return rows
 
 
-def per_call_usd(samples: Sequence[Json]) -> float:
-    """一次分类调用的上限（不算缓存、输出按上限），按最长的一条算。"""
+def per_call_usd(samples: Sequence[Json], kind: str = "safety") -> float:
+    """一次分类（或复核）调用的上限（不算缓存、输出按上限），按最长的一条算。"""
     from zoujin_llm import canonical, claude_prices
 
     from zoujin_backend.models.claude import api_schema
 
-    longest = max((len(render_body("safety", {"turn": {"player": s["text"]}})) for s in samples), default=0)
-    chars = len(PROMPTS["safety"].text) + longest + len(canonical(api_schema("safety")))
-    sp = spec("safety")
+    longest = max((len(render_body(kind, request_of(s, True))) for s in samples), default=0)
+    chars = len(PROMPTS[kind].text) + longest + len(canonical(api_schema(kind)))
+    sp = spec(kind)
     return float(claude_prices().estimate_chars(sp.model, chars, sp.max_output))
 
 
 def gate(
-    args: argparse.Namespace, settings: Settings, env: Mapping[str, str], n: int, each: float, argv: Sequence[str]
+    args: argparse.Namespace,
+    settings: Settings,
+    env: Mapping[str, str],
+    n: int,
+    each: float,
+    argv: Sequence[str],
+    review_each: float = 0.0,
 ) -> bool:
     calls = n * args.runs
     print(f"分类用 Claude {spec('safety').model}，{n} 条 × {args.runs} 遍 = {calls} 次调用")
-    print(f"预计花费上限（不算缓存、输出按上限）：每次 ${each:.5f}，合计 ${each * calls:.3f}")
+    total = each * calls
+    if args.review:
+        total += review_each * calls
+        print(f"复核用 Claude {spec('safety_review').model}，最多 {calls} 次（只复核第一遍 signal、没命中护栏词的）")
+    print(f"预计花费上限（不算缓存、输出按上限）：分类每次 ${each:.5f}，合计 ${total:.3f}")
     names = " ".join(f"{k}=…" for k in ("ZJ_MODEL", LIVE_ENV, "ZJ_LEDGER", "ZJ_CLAUDE_HAIKU"))
+    if args.review:
+        names += " ZJ_CLAUDE_SONNET=…"
     if args.armor:
         names += f" {PROJECT_ENV}=… {TEMPLATE_ENV}=…"
     cmd = [x for x in argv if x != "--confirm"]
@@ -112,6 +129,8 @@ def gate(
         missing.append("没设 ANTHROPIC_API_KEY（从钥匙串读进这个终端）")
     if not env.get("ZJ_CLAUDE_HAIKU"):
         missing.append("没设 ZJ_CLAUDE_HAIKU")
+    if args.review and not env.get("ZJ_CLAUDE_SONNET"):
+        missing.append("--review 要 ZJ_CLAUDE_SONNET")
     if args.armor and not (env.get(PROJECT_ENV) and env.get(TEMPLATE_ENV)):
         missing.append(f"--armor 要 {PROJECT_ENV} 和 {TEMPLATE_ENV}")
     if not args.confirm:
@@ -122,8 +141,37 @@ def gate(
     return True
 
 
+def context_of(s: Json, use: bool) -> Context | None:
+    c = s.get("context") if use else None
+    if not isinstance(c, dict):
+        return None
+    return Context(c.get("character"), c.get("place"), c.get("previous"))
+
+
+def request_of(s: Json, use: bool) -> Json:
+    return Screener._request(s["text"], context_of(s, use))
+
+
+async def review(screener: Screener, s: Json, ctx: Context | None, harm: str) -> tuple[str, str | None]:
+    """B-15：第一遍 signal → 护栏词命中不复核；复核说是故事 → ambiguous；失败保留 signal。(判定, 走了哪条路)。"""
+    if harm != "signal":
+        return harm, None
+    if decided(s["text"]):
+        return harm, "guarded"
+    story, _ = await screener.check_story(s["text"], ctx)
+    if story is None:
+        return harm, "failed"
+    return ("ambiguous", "downgraded") if story else (harm, "kept")
+
+
 async def run(
-    samples: Sequence[Json], runs: int, screener: Screener, out: Path, counts_only: bool = False
+    samples: Sequence[Json],
+    runs: int,
+    screener: Screener,
+    out: Path,
+    counts_only: bool = False,
+    use_context: bool = False,
+    with_review: bool = False,
 ) -> list[Json]:
     """逐条的结果写 results.jsonl、逐条打印；counts_only（留出集）两样都不出，只在内存里算合计。"""
     rows: list[Json] = []
@@ -131,7 +179,11 @@ async def run(
         for r in range(1, runs + 1):
             for s in samples:
                 t0 = time.perf_counter()
-                harm, injection, refused, attempts, _ = await screener.classify(s["text"])
+                ctx = context_of(s, use_context)
+                first, injection, refused, attempts, _ = await screener.classify(s["text"], ctx)
+                harm, reviewed = str(first), None
+                if with_review and not refused:
+                    harm, reviewed = await review(screener, s, ctx, harm)
                 row = {
                     "id": s["id"],
                     "label": s["label"],
@@ -143,6 +195,8 @@ async def run(
                     "attempts": attempts,
                     "ms": round((time.perf_counter() - t0) * 1000),
                 }
+                if with_review:
+                    row["reviewed"] = reviewed
                 f.write(json.dumps(row, ensure_ascii=False, sort_keys=True) + "\n")
                 f.flush()
                 rows.append(row)
@@ -211,6 +265,20 @@ def report(samples: Sequence[Json], rows: Sequence[Json]) -> Json:
         },
         "latencyMs": {"p50": pct(ms, 0.5), "p95": pct(ms, 0.95), "max": max(ms, default=0.0)},
         "pass": not missed and not unjudged,
+        **({"reviewed": reviewed_counts(rows)} if any("reviewed" in r for r in rows) else {}),
+    }
+
+
+def reviewed_counts(rows: Sequence[Json]) -> Json:
+    """B-15：复核各条路的次数（按遍算），故事组降下来的次数单列（卡第 6 节要看）。"""
+    c = Counter(r["reviewed"] for r in rows if r.get("reviewed"))
+    story = sum(1 for r in rows if r.get("reviewed") == "downgraded" and r["label"] == "benign_story")
+    return {
+        "guarded": c["guarded"],
+        "kept": c["kept"],
+        "downgraded": c["downgraded"],
+        "failed": c["failed"],
+        "storyDowngraded": story,
     }
 
 
@@ -264,6 +332,12 @@ def print_report(rep: Json) -> None:
         print(f"  两批合计：{both['storyAmbiguous']}/{both['story']} 条（{both['storyAmbiguousRate']:.1%}）")
     if _n(rep["unjudged"]):
         print(f"没判出来（超时两次或拒答）：{_n(rep['unjudged'])} 条 {_ids(rep['unjudged'])}")
+    if "reviewed" in rep:
+        rv = rep["reviewed"]
+        print(
+            f"复核：护栏词命中 {rv['guarded']} 次，保留 signal {rv['kept']} 次，降成 ambiguous {rv['downgraded']} 次"
+            f"（故事组 {rv['storyDowngraded']}），失败 {rv['failed']} 次"
+        )
     lat = rep["latencyMs"]
     print(f"延迟 p50 {lat['p50']:.0f} ms、p95 {lat['p95']:.0f} ms、最长 {lat['max']:.0f} ms")
     if not rep["pass"]:
@@ -323,11 +397,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise ConfigError("要给样本文件（位置参数或 --set）")
         samples = load(path)
         if settings.model == "real":
-            if not gate(args, settings, os.environ, len(samples), per_call_usd(samples), argv):
+            review_each = per_call_usd(samples, "safety_review") if args.review else 0.0
+            if not gate(args, settings, os.environ, len(samples), per_call_usd(samples), argv, review_each):
                 return 0
             os.environ["ZJ_MAX_CLAUDE_USD"] = repr(args.max_claude_usd)
             os.environ["ZJ_MAX_ITEM_USD"] = repr(args.max_item_usd)
-            os.environ.setdefault("ZJ_LEDGER_ITEM", "b12-safety")
+            os.environ.setdefault("ZJ_LEDGER_ITEM", "b15-safety-review" if args.review else "b12-safety")
             settings = _settings()
         text = text_model(settings.model, fake_rules=settings.fake_text, replays=settings.replays, settings=settings)
         guard = armor(settings.model, replays=settings.replays) if args.armor else FakeArmor(rules=[])
@@ -347,7 +422,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     code = 0
     rows: list[Json] = []
     try:
-        rows = asyncio.run(run(samples, args.runs, screener, args.out, args.counts_only))
+        rows = asyncio.run(run(samples, args.runs, screener, args.out, args.counts_only, args.context, args.review))
     except (BudgetStop, RateLimited) as e:
         print(f"停下（{type(e).__name__}）", file=sys.stderr)
         code = EXIT_STOP

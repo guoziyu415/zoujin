@@ -18,8 +18,11 @@ from dataclasses import dataclass, field
 from types import FrameType
 from typing import Any, Protocol
 
+from zoujin_llm import Stop
+
 from .api import EvalApi, EvalNotImplemented, EvalSession, Event, Json, StepResult, not_implemented, replay_missing
 from .checks import CHECKS, RunContext, WorldIndex, step_kind
+from .player import Persona, Played, Player, load_personas, play, sim_stats
 from .results import CaseResult, CheckResult, RunResult, Skip, SkipCheck, run_status
 
 TIMEOUT_TEXT_S = 600.0
@@ -43,6 +46,9 @@ class Options:
     judge: Judge = skip_judge
     timeout_s: float | None = None  # 每次的时限；None = 按用例的 mode 和起点取默认值，0 = 不限
     progress: Callable[[str], None] = field(default=lambda _: None)
+    # 模拟局的 AI 玩家：按用例造一个（player.py）。None = 模拟局记「要真模型」
+    player: Callable[[Mapping[str, Json]], Player] | None = None
+    personas: Mapping[str, Persona] = field(default_factory=load_personas)
 
 
 class RunTimeout(BaseException):
@@ -126,15 +132,22 @@ def _run_with_retry(api: EvalApi, case: Mapping[str, Json], world: WorldIndex, o
 
 def run_once(api: EvalApi, case: Mapping[str, Json], world: WorldIndex, opts: Options, i: int) -> RunResult:
     results: list[StepResult] = []
+    played: Played | None = None
     try:
         session = api.setup(case["setup"], mode=case.get("mode", "text"))
-        if "persona" in case["setup"]:
-            # 模拟局：AI 玩家在运行器里按画像逐步走（后端只按 persona、seed 定身份、起点和假模型的种子）。
-            # AI 玩家要真模型，M2 接上；现在这一次记「要真模型」
-            return {"run": i, "status": "skip", "checks": [], "skip": {"code": "needs-live-model"}, "traceIds": []}
         setup_events = _setup_events(session)
-        for step in case.get("steps", []):
-            results.append(call_step(session, step))
+        if "persona" in case["setup"]:
+            # 模拟局：AI 玩家在运行器里按画像逐步走（后端只按 persona、seed 定身份、起点和假模型的种子）
+            if opts.player is None:
+                return {"run": i, "status": "skip", "checks": [], "skip": {"code": "needs-live-model"}, "traceIds": []}
+            persona = opts.personas[case["setup"]["persona"]]
+            played = play(session, persona, opts.player(case), progress=opts.progress)
+            results = played.results
+        else:
+            for step in case.get("steps", []):
+                results.append(call_step(session, step))
+    except Stop:
+        raise  # 账本到上限、限流：整次停下（live）
     except Exception as e:
         name = not_implemented(e)
         if name is not None:
@@ -144,7 +157,14 @@ def run_once(api: EvalApi, case: Mapping[str, Json], world: WorldIndex, opts: Op
             return {"run": i, "status": "skip", "checks": [], "skip": {"code": "replay-missing"}, "traceIds": traces}
         return {"run": i, "status": "fail", "checks": [], "error": f"{type(e).__name__}: {e}", "traceIds": traces}
 
-    ctx = RunContext(world=world, case=case, session=session, results=results, setup_events=setup_events)
+    ctx = RunContext(
+        world=world,
+        case=case,
+        session=session,
+        results=results,
+        setup_events=setup_events,
+        played=played.steps if played is not None else None,
+    )
     expect = case.get("expect", {})
     checks = [run_check(ctx, n, spec) for n, spec in enumerate(expect.get("deterministic", []), 1)]
     out: RunResult = {"run": i, "status": "pass", "checks": checks, "traceIds": []}
@@ -155,7 +175,20 @@ def run_once(api: EvalApi, case: Mapping[str, Json], world: WorldIndex, opts: Op
     if not checks and judge is None:  # 只有判分的用例只跑确定性检查
         out["skip"] = {"code": "needs-live-model"}
     out["traceIds"] = [r["traceId"] for r in results if "traceId" in r]
+    if played is not None:
+        out["playthroughId"] = played.playthrough_id
+        out["sim"] = sim_stats(played, _query(ctx, "events"), _query(ctx, "ending"))
     return out
+
+
+def _query(ctx: RunContext, name: str) -> Any:
+    """统计用的查询：后端没做、回放缺失时 None，不影响这一次的判定。"""
+    try:
+        return ctx.query(name)
+    except Exception as e:
+        if not_implemented(e) is not None or replay_missing(e):
+            return None
+        raise
 
 
 def _setup_events(session: EvalSession) -> list[Event] | None:

@@ -322,8 +322,10 @@ def test_the_repo_recordings_all_match_the_slice_world_model(tmp_path: Path) -> 
     v = json.loads((REPO / "assets" / "voice" / BOOK / "voices.json").read_text(encoding="utf-8"))
     doc = make(w, tmp_path, voices=REPO / "assets" / "voice")
     valid(doc)
-    chars = {c["id"]: c.get("prerecorded") for c in doc["characters"]}
-    assert {k: chars[k] for k in v["characters"]} == v["characters"]
+    chars = {c["id"]: c.get("prerecorded") for c in doc["characters"] if c["talkable"]}
+    assert {k: v["characters"][k] for k in chars} == chars  # 能对话的人物都有、和录音一样
+    # 切片里不能对话的人物（B-6b 先录好的王等五人）manifest 不给，但也得是世界模型里的人物
+    assert set(v["characters"]) - set(chars) <= {c["id"] for c in w["characters"]}
     assert doc["setPieceVoices"] == v["setPieceVoices"]
     assert set(v["setPieceVoices"]) == set(speaker_lines(w))  # 切片里人物说的固定演出句都有录音
 

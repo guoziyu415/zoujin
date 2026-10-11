@@ -1,10 +1,15 @@
-"""live 模式（E-0 卡第 3 条）：本卡只有开关和退出，真模型的客户端 M2 再接。
+"""live 模式（E-0 卡第 3 条；B-5 起真跑）：只在 zg 的 Mac 上。
 
 1. 没有 Mac 上的开关（环境变量 ZJ_EVAL_LIVE=1，只在 zg 的 Mac 上设）就退出，打印原因。
 2. 上限必须显式传入，没有默认值：--max-item-usd（单项）和两本账各一个总上限 --max-google-usd、--max-claude-usd。
    少一个就退出。两本账（D-028 以后）：Live、预录句和文字模式的人物回答记 google，叙事者、评审员和 AI 玩家记 claude。
-3. 不带 --confirm：打印预计花费和完整命令后退出。由协调拿给 zg 看，zg 同意后才带 --confirm 再跑。
-4. 带 --confirm：退出，打印「真模型的客户端还没有，M2 接上」。
+   另外要 --item（账本里记在哪一项下，如 s5）和账本文件 ZJ_LEDGER；用例里有模拟局时要 AI 玩家的模型 ID
+   （--player-model 或 ZJ_PLAYER_MODEL，仓库里不写）。
+3. 判分在 live 里还没接（评审员现在走 zoujin-calibrate），live 要带 --deterministic-only。
+4. 不带 --confirm：打印预计花费和完整命令后退出（D-030：在单项上限以内就跑，不用再问）。
+5. 带 --confirm：查 3 和第 2 条的另外几样，都齐就真跑。后端用 ZJ_MODEL=real，上限和账本由运行器设进环境
+   （config.Settings 读）；AI 玩家用 Claude。
+   账本到上限、429 / 529 第一次就整次停下（zoujin_llm.Stop）。
 """
 
 from __future__ import annotations
@@ -66,8 +71,11 @@ def gate(
     prices: Prices,
     deterministic_only: bool,
     argv: Sequence[str],
-) -> tuple[int, str]:
-    """返回（退出码，要打印的话）。live 现在总是退出：0 = 打印了预计花费，2 = 不能跑。caps：供应商 → 总上限。"""
+    item: str | None = None,
+    player_model: str | None = None,
+) -> tuple[int | None, str]:
+    """返回（退出码，要打印的话）：0 = 打印了预计花费、退出；2 = 不能跑；None = 带了 --confirm、条件都齐，接着真跑。
+    caps：供应商 → 总上限。"""
     if env.get(LIVE_SWITCH) != "1":
         return 2, f"live 要调真模型，只在 zg 的 Mac 上跑：没有设 {LIVE_SWITCH}=1，退出。"
     given = {"--max-item-usd": max_item_usd, **{CAP_FLAGS[p]: caps.get(p) for p in PROVIDERS}}
@@ -77,9 +85,28 @@ def gate(
         return 2, f"live 要显式给单项上限和两本账的总上限，{why}。少了 {' '.join(missing)}，退出。"
     assert max_item_usd is not None
     total_caps = {p: float(caps[p] or 0) for p in PROVIDERS}
-    if confirm:
-        return 2, "真模型的客户端还没有，M2 接上。没有调用任何模型，退出。"
-    return 0, estimate_text(cases, prices, deterministic_only, max_item_usd, total_caps, argv)
+    if not confirm:
+        return 0, estimate_text(cases, prices, deterministic_only, max_item_usd, total_caps, argv)
+    if not deterministic_only:
+        return 2, "live 里判分还没接（评审员走 zoujin-calibrate）：要带 --deterministic-only，退出。"
+    if not item:
+        return 2, "live 要 --item（账本里记在哪一项下，如 s5），单项上限按它算，退出。"
+    if not env.get("ZJ_LEDGER"):
+        return 2, "live 要账本：设 ZJ_LEDGER（和后端同一个 JSONL 文件），退出。"
+    if any("persona" in c["setup"] for c in cases) and not player_model:
+        return 2, "有模拟局：要 AI 玩家的模型 ID（--player-model 或 ZJ_PLAYER_MODEL，仓库里不写），退出。"
+    return None, f"live：{len(cases)} 例，记在「{item}」下。"
+
+
+def backend_env(*, item: str, max_item_usd: float, caps: Mapping[str, float]) -> dict[str, str]:
+    """真跑时设给后端的环境（config.Settings.from_env 读）：真模型、上限、记在哪一项下。账本 ZJ_LEDGER 已经在环境里。"""
+    return {
+        "ZJ_MODEL": "real",
+        "ZJ_LEDGER_ITEM": item,
+        "ZJ_MAX_ITEM_USD": str(max_item_usd),
+        "ZJ_MAX_GOOGLE_USD": str(caps["google"]),
+        "ZJ_MAX_CLAUDE_USD": str(caps["claude"]),
+    }
 
 
 def estimate_text(

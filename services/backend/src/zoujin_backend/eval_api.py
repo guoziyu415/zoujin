@@ -69,6 +69,7 @@ from zoujin_backend.db.tables import events as events_t
 from zoujin_backend.db.tables import turns as turns_t
 from zoujin_backend.db.tables import world_state as world_state_t
 from zoujin_backend.gateway.monitor import Monitor
+from zoujin_backend.gateway.safety import context_of
 from zoujin_backend.ids import IdGen
 from zoujin_backend.manifest import Manifest, generate
 from zoujin_backend.models.armor import Armor, armor
@@ -181,6 +182,7 @@ class Session:
         # B-12：玩家每一句的安全筛查和人物输出的监控，和网关同一套（Model Armor 按 ZJ_MODEL；回放查不到照样抛）
         self.armor: Armor = armor(settings.model, replays=settings.replays)
         self.safety = SafetyState()
+        self.last_reply: dict[str, str] = {}  # B-15：每个人物上一句（安全筛查的上下文）
         self.monitor = Monitor(library)
         self.monitor.attach(book)
         self._manifest: Manifest | None = None
@@ -381,7 +383,10 @@ class Session:
                 st = await store.sim_state(c, self.pid)
             assert st is not None
             spend = Spend()
-            screen = await self.screener.screen(text, **self.span)
+            ctx = context_of(self.book, st["vars"]["var.player.location"], to, self.last_reply.get(to))
+            screen = await self.screener.screen(text, ctx, **self.span)
+            if self.safety.ambiguous >= 1:  # B-15：第二次 ambiguous 先复核
+                screen = await self.screener.second_look(screen, text, ctx, **self.span)
             decision = decide(screen, self.safety)
             if decision == "pause":  # 出戏卡（3.12）：人物的回答不出、这一轮不进叙事者、不花时间、原话不存
                 return await self._paused(engine, to, pre, screen)
@@ -391,6 +396,8 @@ class Session:
             turn_in = TurnInput(character=to, player=text)
             reply = await self.pipeline.reply(self.book, st, turn_in, spend, notes=notes)
             watched = self.monitor.observe(to, reply, st, said=text)
+            if reply:
+                self.last_reply[to] = reply
             async with engine.begin() as c:
                 await c.execute(
                     update(playthrough_metrics)
@@ -545,12 +552,25 @@ class Session:
                 out[k] = info[k]
         return out
 
+    async def _screen_plan(self, text: str) -> Screen:
+        engine = self._engine()
+        try:
+            async with engine.connect() as c:
+                st = await store.sim_state(c, self.pid)
+        finally:
+            await engine.dispose()
+        ctx = context_of(self.book, st["vars"]["var.player.location"] if st else None, None, None)
+        screen = await self.screener.screen(text, ctx, **self.span)
+        if self.safety.ambiguous >= 1:
+            screen = await self.screener.second_look(screen, text, ctx, **self.span)
+        return screen
+
     @_timed
     def propose(self, text: str) -> Json:
         """幕末用文字说出打算（3.11）：原话存进 utterances，叙事者的 plan 判能不能成行。收幕以前、试过 2 次以后
         返回 `error: "invalid_request"`、没有事件（网关这时回 invalid_request，不写任务）。"""
         self.steps += 1
-        screen = self._run(self.screener.screen(text, **self.span))  # 幕末的打算也筛（UX 在 #112 的评审）
+        screen = self._run(self._screen_plan(text))  # 幕末的打算也筛（UX 在 #112 的评审）
         decision = decide(screen, self.safety)
         if decision == "pause":  # 不交给叙事者、不算试次；回到故事以后幕末页照原样
             self.safety.paused = False

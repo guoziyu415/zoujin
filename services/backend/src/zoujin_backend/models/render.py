@@ -82,6 +82,15 @@ def render_turn(turn: Mapping[str, Any]) -> str:
     return "<turn>\n" + json.dumps(rest, ensure_ascii=False) + "\n" + "\n".join(lines) + "\n</turn>"
 
 
+def render_context(ctx: Mapping[str, Any]) -> str:
+    """B-15：安全筛查的上下文（对谁说、在哪、人物上一句）。人物的上一句也只放在 <utterance> 数据字段里。"""
+    head = {k: ctx[k] for k in ("character", "place") if ctx.get(k)}
+    lines = [json.dumps(head, ensure_ascii=False)]
+    if ctx.get("previous"):
+        lines.append(f'<utterance speaker="character">{_escape(ctx["previous"])}</utterance>')
+    return "<context>\n" + "\n".join(lines) + "\n</context>"
+
+
 def render_parts(kind: str, request: Mapping[str, Any]) -> list[str]:
     """一次调用里前缀以外的数据，一段一段：状态 → 这一轮 → 这种提示自己的字段。"""
     parts: list[str] = []
@@ -93,7 +102,10 @@ def render_parts(kind: str, request: Mapping[str, Any]) -> list[str]:
         parts.append("<action>\n" + json.dumps(request["action"], ensure_ascii=False) + "\n</action>")
     if "confirm" in request:  # B-4：提取的输入里在等回答的反问（反问的一句、那件事的摘要），数据字段
         parts.append("<confirm>\n" + json.dumps(request["confirm"], ensure_ascii=False) + "\n</confirm>")
-    rest = {k: v for k, v in request.items() if k not in ("state", "turn", "action", "confirm", "worldModelVersion")}
+    if "context" in request:
+        parts.append(render_context(request["context"]))
+    skip = ("state", "turn", "action", "confirm", "context", "worldModelVersion")
+    rest = {k: v for k, v in request.items() if k not in skip}
     if rest:
         parts.append(f"<{kind}>\n" + json.dumps(rest, ensure_ascii=False) + f"\n</{kind}>")
     return parts
