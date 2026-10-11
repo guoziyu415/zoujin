@@ -278,7 +278,7 @@ describe("Session", () => {
         pieceId: "piece.curtain",
         n: 2,
       },
-      { text: "陽が沈んだ。", speaker: null },
+      { text: "陽が沈んだ。", speaker: null, early: true },
     ]);
     expect(useVoice.getState().narration).toEqual([]);
     useStory.setState({ ending: null });

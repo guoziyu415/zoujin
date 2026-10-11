@@ -20,6 +20,7 @@ import { stageBridge } from "./bridge";
 import {
   addLines,
   initPace,
+  insertLine,
   performed,
   type Performed,
   pause,
@@ -97,7 +98,8 @@ export function EndingStage({
     if (!ending?.ready) return;
     const lines = ending.lines;
     if (lines.length <= fed.current) return;
-    const more = lines.slice(fed.current).map((l) => toStage(l, voices));
+    const fresh = lines.slice(fed.current);
+    const more = fresh.map((l) => toStage(l, voices));
     fed.current = lines.length;
     audio.preload(
       more.flatMap((l) => {
@@ -105,7 +107,22 @@ export function EndingStage({
         return c ? [c] : [];
       }),
     );
-    const [p, fx] = addLines(pace.current, more, performance.now());
+    const now = performance.now();
+    let p = pace.current;
+    const fx: Effect[] = [];
+    const late = more.filter((_, i) => !fresh[i]!.early);
+    if (late.length) {
+      const [q, f] = addLines(p, late, now);
+      p = q;
+      fx.push(...f);
+    }
+    // the action that ended the story goes before the curtain (3.13, UX review of #127)
+    for (const [i, l] of more.entries()) {
+      if (!fresh[i]!.early) continue;
+      const [q, f] = insertLine(p, l, now);
+      p = q;
+      fx.push(...f);
+    }
     pace.current = p;
     if (more.length) setDone(false);
     apply(fx);

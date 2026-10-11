@@ -134,6 +134,20 @@ export function addLines(
   return [next, []];
 }
 
+// the narration of the action that ended the story (3.13: its result arrives after the closing set piece) tells what
+// the player did before the curtain: before the first set-piece line if that hasn't played yet, else next
+export function insertLine(
+  p: Pace,
+  line: StageLine,
+  now: number,
+): [Pace, Effect[]] {
+  const piece = p.lines.findIndex((l) => l.key);
+  const at = piece > p.i ? piece : p.i + 1;
+  if (at >= p.lines.length) return addLines(p, [line], now);
+  const lines = [...p.lines.slice(0, at), line, ...p.lines.slice(at)];
+  return [{ ...p, lines }, []];
+}
+
 export function tick(p: Pace, now: number, wake = false): [Pace, Effect[]] {
   if (p.pausedAt !== null) return [p, []];
   const fx: Effect[] = [];

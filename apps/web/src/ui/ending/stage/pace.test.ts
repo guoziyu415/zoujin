@@ -3,6 +3,7 @@ import {
   addLines,
   holdMs,
   initPace,
+  insertLine,
   pause,
   performed,
   resume,
@@ -210,5 +211,32 @@ describe("what the staging measured", () => {
 
   it("no lines, nothing to send", () => {
     expect(performed(initPace(true), 5000)).toBeNull();
+  });
+
+  it("the action's narration goes before the first set-piece line, or next when that has played", () => {
+    const piece = (text: string, n: number): StageLine => ({
+      ...narr(text, 1),
+      key: `piece.curtain/${n}`,
+    });
+    const act = narr("あなたは待った");
+    // not started: before the curtain
+    let [p] = addLines(initPace(true), [], 0);
+    p = { ...p, lines: [piece("幕一", 1), piece("幕二", 2)] };
+    [p] = insertLine(p, act, 0);
+    expect(p.lines.map((l) => l.text)).toEqual([
+      "あなたは待った",
+      "幕一",
+      "幕二",
+    ]);
+    // the curtain's first line on screen: right after it
+    let [q] = addLines(initPace(true), [piece("幕一", 1), piece("幕二", 2)], 0);
+    expect(q.i).toBe(0);
+    [q] = insertLine(q, act, 100);
+    expect(q.lines.map((l) => l.text)).toEqual([
+      "幕一",
+      "あなたは待った",
+      "幕二",
+    ]);
+    expect(q.i).toBe(0);
   });
 });

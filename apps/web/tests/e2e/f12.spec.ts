@@ -370,4 +370,8 @@ test("map: an event that kept a promise has the knot", async ({ page }) => {
     node.getByRole("img", { name: "約束が果たされた" }),
   ).toBeVisible();
   await shot(page, "map-kept");
+  await node.screenshot({
+    path: "test-results/f12/map-kept-node.png",
+    scale: "device",
+  });
 });
