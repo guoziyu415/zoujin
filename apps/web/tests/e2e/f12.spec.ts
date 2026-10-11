@@ -176,8 +176,8 @@ test("memory book: tabs, sections, forgetting a promise moves the relation and t
   await expect(mb).toBeHidden();
 });
 
-// the mock's opening clock (1050) is before its timeline's events: the map's 「いまここ」 belongs after the last event
-// the player saw, so the clock the page starts from moves to that event (1140), the time label as it is
+// the mock's opening clock (1050) is before its timeline's events: the map's 「いまここ」 belongs after the last item
+// with a result (events and beats, 1170), so the clock the page starts from moves there, the time label as it is
 async function clockAt(page: Page, t: number) {
   const at = (s: { clock: { t: number } }) => (s.clock.t = t);
   await page.route(/\/v1\/playthroughs(\/[^/]+\/snapshot)?$/, async (route) => {
@@ -196,7 +196,7 @@ test("map: the timeline by day, beats and their state, future beats as ？, filt
   page,
 }) => {
   await mock(page, "scenario", { name: "limits" });
-  await clockAt(page, 1140);
+  await clockAt(page, 1170);
   await startStory(page);
   await page.getByRole("button", { name: /^本をひらく/ }).click();
   await page
@@ -211,7 +211,7 @@ test("map: the timeline by day, beats and their state, future beats as ？, filt
     map.getByRole("button", { name: /王の暴虐を知る/ }),
   ).toContainText("変わった");
   await expect(map.getByText("？")).toHaveCount(2);
-  // 「いまここ」 after the last event, before the beats still to come
+  // 「いまここ」 after the last item with a result, before the beats still to come
   const now = map.locator(".map-now");
   await expect(now).toHaveCount(1);
   await shot(page, "map");
@@ -295,4 +295,79 @@ test("ending: the staging hands over to the ending page; world, you, the people;
   expect(png.startsWith("data:image/png;base64,")).toBe(true);
   expect(png.length).toBeGreaterThan(20_000);
   await card.screenshot({ path: "test-results/f12/ending-card.png" });
+});
+
+test("map: an event that kept a promise has the knot", async ({ page }) => {
+  await mock(page, "scenario", { name: "limits" });
+  await clockAt(page, 1170);
+  // the mock has no kept promise: one commit, from between the page and the mock, says walking the old man home kept one
+  let walkHome = "";
+  await page.route(/\/timeline$/, async (route) => {
+    const res = await route.fetch();
+    const body = (await res.json()) as {
+      days: { items: { eventId?: string; summary: string }[] }[];
+    };
+    walkHome =
+      body.days[0]!.items.find((it) => it.summary.includes("老爺を家まで"))
+        ?.eventId ?? "";
+    await route.fulfill({ response: res, json: body });
+  });
+  let client: { send: (m: string) => void } | null = null;
+  await page.routeWebSocket(/\/live$/, (ws) => {
+    client = ws;
+    const server = ws.connectToServer();
+    ws.onMessage((m) => server.send(m));
+    server.onMessage((m) => ws.send(m));
+  });
+  await startStory(page);
+  await page.getByRole("button", { name: /^本をひらく/ }).click();
+  await page
+    .getByRole("button", { name: "連鎖反応マップ", exact: true })
+    .click();
+  const map = page.getByRole("dialog", { name: "連鎖反応マップ" });
+  await expect(
+    map.getByRole("button", { name: /老爺を家まで送った/ }),
+  ).toBeVisible();
+  expect(walkHome).not.toBe("");
+  const last = Number(
+    await page.locator(".world").getAttribute("data-last-seq"),
+  );
+  const seq = last + 1;
+  client!.send(
+    JSON.stringify({
+      type: "commit",
+      fromSeq: seq,
+      seq,
+      events: [
+        {
+          eventId: walkHome,
+          seq,
+          t: 1080,
+          dt: 0,
+          tLabel: "約束の日・日没前",
+          type: "action",
+          actor: "player",
+          forPlayer: false,
+          place: "place.syracuse-square",
+          summary: "あなたは、老爺を家まで送った",
+          causes: [],
+          visibleEffects: [],
+          promise: { promiseId: "prm_e2e_walk-home", change: "kept" },
+          keyMoment: false,
+          supersedes: null,
+        },
+      ],
+      patch: {},
+      memories: [],
+      promises: [],
+      narration: [],
+      cue: null,
+      reveal: null,
+    }),
+  );
+  const node = map.getByRole("button", { name: /老爺を家まで送った/ });
+  await expect(
+    node.getByRole("img", { name: "約束が果たされた" }),
+  ).toBeVisible();
+  await shot(page, "map-kept");
 });
