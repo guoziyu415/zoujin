@@ -79,15 +79,16 @@ const SKY_PATCH = `
   gl_FragColor = vec4( texColor, 1.0 );`;
 
 // The sky that lights the scene (not the one you see) is real skylight: each colour moved onto the blackbody locus, no
-// bluer than 10000 K. Sky.js is cyan, off the locus (green over red up to 2.2 at the zenith at 17:30, where skylight
+// bluer than 30000 K (a clear zenith; held to 10000 K, the shaded floor of the first screen at 17:30 came out warm
+// brown, UX on #69). Sky.js is cyan, off the locus (green over red up to 2.2 at the zenith at 17:30, where skylight
 // never passes 1.46), so in shade the pale wool and the limestone came out green-grey (A-0, UX rounds 5 and 6; a
 // constant tint fixed one direction only). Green over red as a function of blue over red, a fit to Planck's law
-// through the CIE 1931 observer from 5000 K up (linear sRGB); only cool colours move. Same brightness; the glow, the
-// night sky and the dusk belt keep their colours.
+// through the CIE 1931 observer from 5000 to 30000 K (linear sRGB); only cool colours move. Same brightness; the
+// glow, the night sky and the dusk belt keep their colours.
 const SKYLIGHT_LOCUS = `
 vec3 toLocus( vec3 c ) {
   float r = max( c.r, 1e-5 );
-  float b = min( c.b, r * 1.64 );
+  float b = min( c.b, r * 2.755 );
   float L = log( max( b, 1e-5 ) / r );
   float gr = exp( ( -0.0147 * L + 0.377 ) * L - 0.0532 );
   vec3 o = vec3( c.r, mix( c.g, min( c.g, r * gr ), smoothstep( 0.0, 0.3, L ) ), b );
