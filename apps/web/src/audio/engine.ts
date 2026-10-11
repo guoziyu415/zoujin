@@ -11,6 +11,17 @@ export type MicResult =
 
 export type Clip = { url: string; text: string; durationMs: number };
 
+// a crowd's line (UX on the closing recordings: 「万歳、王様万歳。」, 「メロスだ！」 are one woman's voice, the ground holds
+// hundreds): copies under the recording, each a little late, higher or lower, quieter and to one side
+export const CROWD_LAYERS = [
+  { delay: 0.07, rate: 0.95, gain: 0.55, pan: -0.5 },
+  { delay: 0.16, rate: 1.05, gain: 0.5, pan: 0.45 },
+  { delay: 0.24, rate: 0.91, gain: 0.4, pan: -0.2 },
+  { delay: 0.11, rate: 1.09, gain: 0.35, pan: 0.7 },
+];
+export const isCrowd = (speaker: string | null | undefined): boolean =>
+  speaker === "char.crowd";
+
 export type AudioEvents = {
   onFrame: (pcm: Int16Array) => void; // 40 ms of 16 kHz microphone while sending
   onStarted: (tag: number, at: number) => void; // a turn's first sample is audible (performance.now() time)
@@ -39,8 +50,13 @@ export interface AudioPort {
   playing(): boolean;
   // prerecorded lines (manifest prerecorded, 7.8)
   preload(clips: Clip[]): void;
-  // false when it isn't loaded (yet); with hold, that turn's live voice waits for the clip, at most maxMs
-  playClip(clip: Clip, hold?: { tag: number; maxMs: number }): boolean;
+  // false when it isn't loaded (yet); with hold, that turn's live voice waits for the clip, at most maxMs; crowd: a
+  // crowd's line, the one recorded voice heard as many (CROWD_LAYERS)
+  playClip(
+    clip: Clip,
+    hold?: { tag: number; maxMs: number },
+    crowd?: boolean,
+  ): boolean;
   // the ending's staging paused (background, a full page): the clip stops where it is and goes on from there
   pauseClip(): void;
   resumeClip(): void;
@@ -80,7 +96,14 @@ export class AudioEngine implements AudioPort {
   private isPlaying = false;
   private clips = new Map<string, AudioBuffer | null>();
   private clipNode: AudioBufferSourceNode | null = null;
-  private clipAt = { buf: null as AudioBuffer | null, start: 0, offset: 0 }; // where the clip is (context time)
+  private layerNodes: AudioBufferSourceNode[] = []; // a crowd's line's copies (CROWD_LAYERS)
+  // where the clip is (context time)
+  private clipAt = {
+    buf: null as AudioBuffer | null,
+    start: 0,
+    offset: 0,
+    crowd: false,
+  };
   private clipPaused = false;
   private held: Float32Array[] = []; // live voice waiting behind a prerecorded aizuchi
   private holdTag = -1;
@@ -362,12 +385,16 @@ export class AudioEngine implements AudioPort {
 
   // plays a loaded clip on the voice bus; the live voice of hold.tag that arrives meanwhile waits for it to end, at
   // most hold.maxMs (7.8: an aizuchi delays the real answer by at most 0.5 s)
-  playClip(clip: Clip, hold?: { tag: number; maxMs: number }): boolean {
+  playClip(
+    clip: Clip,
+    hold?: { tag: number; maxMs: number },
+    crowd = false,
+  ): boolean {
     const ctx = this.ctx;
     const buf = this.clips.get(clip.url);
     if (!ctx || !buf || !this.bus) return false;
     this.stopClip();
-    this.startClip(ctx, buf, 0);
+    this.startClip(ctx, buf, 0, crowd);
     if (hold) {
       this.holdTag = hold.tag;
       clearTimeout(this.holdTimer);
@@ -379,7 +406,12 @@ export class AudioEngine implements AudioPort {
     return true;
   }
 
-  private startClip(ctx: AudioContext, buf: AudioBuffer, offset: number): void {
+  private startClip(
+    ctx: AudioContext,
+    buf: AudioBuffer,
+    offset: number,
+    crowd: boolean,
+  ): void {
     const node = ctx.createBufferSource();
     node.buffer = buf;
     node.connect(this.bus!);
@@ -389,7 +421,27 @@ export class AudioEngine implements AudioPort {
     };
     node.start(0, offset);
     this.clipNode = node;
-    this.clipAt = { buf, start: ctx.currentTime, offset };
+    this.clipAt = { buf, start: ctx.currentTime, offset, crowd };
+    if (!crowd) return;
+    for (const l of CROWD_LAYERS) {
+      const copy = ctx.createBufferSource();
+      copy.buffer = buf;
+      copy.playbackRate.value = l.rate;
+      const gain = ctx.createGain();
+      gain.gain.value = l.gain;
+      copy.connect(gain);
+      if (ctx.createStereoPanner) {
+        const pan = ctx.createStereoPanner();
+        pan.pan.value = l.pan;
+        gain.connect(pan).connect(this.bus!);
+      } else gain.connect(this.bus!);
+      copy.start(ctx.currentTime + l.delay, offset);
+      // the slower copies end with the recording, not after it (PM on #156): faded out over its last 0.1 s
+      const end = ctx.currentTime + buf.duration - offset;
+      gain.gain.setTargetAtTime(0, end - 0.1, 0.03);
+      copy.stop(end);
+      this.layerNodes.push(copy);
+    }
   }
 
   pauseClip(): void {
@@ -403,15 +455,22 @@ export class AudioEngine implements AudioPort {
 
   resumeClip(): void {
     const ctx = this.ctx;
-    const { buf, offset } = this.clipAt;
+    const { buf, offset, crowd } = this.clipAt;
     if (!this.clipPaused) return;
     this.clipPaused = false;
     if (!ctx || !buf || !this.bus || offset >= buf.duration) return;
-    this.startClip(ctx, buf, offset);
+    this.startClip(ctx, buf, offset, crowd);
   }
 
   private stopClip(): void {
     this.clipPaused = false; // stopped for good (a flush, a fade, the next clip): nothing to go on with
+    for (const copy of this.layerNodes)
+      try {
+        copy.stop();
+      } catch {
+        // not started
+      }
+    this.layerNodes = [];
     const n = this.clipNode;
     this.clipNode = null;
     if (!n) return;

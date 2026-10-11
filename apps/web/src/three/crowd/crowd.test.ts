@@ -1,11 +1,32 @@
 // The crowd without a GPU (F-4): where people stand, the baked motions, and the staging's verbs on a clock.
 import type { Api } from "@zoujin/contracts";
-import { Matrix4, type InstancedBufferGeometry } from "three";
+import {
+  Matrix4,
+  type InstancedBufferGeometry,
+  type MeshStandardMaterial,
+} from "three";
 import { describe, expect, it } from "vitest";
 import { body, COSTUMES } from "./bodies";
 import { Crowd } from "./Crowd";
+import {
+  parseCrowdPack,
+  parseMotions,
+  type CrowdPackJson,
+  type MotionsJson,
+} from "./pack";
 import { CROWD, crowdCount } from "./presence";
-import { bake, BONES, CLIPS, FPS, skinMatrices } from "./rig";
+import {
+  bake,
+  BONES,
+  CHEERS,
+  CLIPS,
+  FPS,
+  packSkeleton,
+  RELAXED,
+  skinMatrices,
+  STAND_IN,
+  type Role,
+} from "./rig";
 import { inPolygon, scatter, toPath, type Plan } from "./scatter";
 
 const ZONE: Plan[] = [
@@ -54,9 +75,26 @@ describe("scatter", () => {
 });
 
 describe("the baked motions", () => {
-  it("no rotation is the bind pose: every skin matrix is the identity", () => {
-    for (const m of skinMatrices({ rot: {} }))
+  it("no rotation is the rest pose; on a skeleton whose rest is its bind pose every skin matrix is the identity", () => {
+    for (const m of skinMatrices({ rot: {} }, { ...STAND_IN, rest: {} }))
       expect(m.equals(new Matrix4())).toBe(true);
+    // the stand-in's arms hang out a little at rest
+    const arm = skinMatrices({ rot: {} })[
+      BONES.findIndex((b) => b.name === "armL")
+    ]!;
+    expect(arm.equals(new Matrix4())).toBe(false);
+  });
+
+  it("MPFB's skeleton: the roles find their bones, and the sway leaves the legs where they stand", () => {
+    const skel = packSkeleton(MPFB_BONES, MPFB_JOINTS);
+    expect(skel.roles).toMatchObject({ hips: 1, chest: 2, armL: 3 });
+    for (const c of CLIPS.filter((c) => c.name !== "cheer")) {
+      const m = skinMatrices(c.pose(1.3), skel);
+      expect(m[0]!.equals(new Matrix4())).toBe(true); // pelvis
+      expect(m[4]!.equals(new Matrix4())).toBe(true); // thigh_l
+    }
+    const sway = skinMatrices(CLIPS[0]!.pose(1), skel);
+    expect(sway[1]!.equals(new Matrix4())).toBe(false); // spine_01 moves
   });
 
   it("one row per frame, nine bones of four texels; the loops close on themselves", () => {
@@ -85,7 +123,7 @@ describe("the baked motions", () => {
     );
   });
 
-  it("each costume: every vertex has two bones whose weights add to 1, and a colour part", () => {
+  it("each stand-in costume: every vertex has two bones whose weights add to 1, and a colour part", () => {
     for (const c of COSTUMES) {
       const g = body(c);
       const w = g.getAttribute("skinWeight");
@@ -96,6 +134,168 @@ describe("the baked motions", () => {
       }
       expect(g.getAttribute("position").count / 3).toBeLessThan(1000); // stand-in: well under A-0's 3k
     }
+  });
+});
+
+// a small MPFB-like skeleton: pelvis, spine_01, spine_03, upperarm_l, thigh_l
+const MPFB_BONES = [
+  { name: "pelvis", parent: -1 },
+  { name: "spine_01", parent: 0 },
+  { name: "spine_03", parent: 1 },
+  { name: "upperarm_l", parent: 2 },
+  { name: "thigh_l", parent: 0 },
+];
+const MPFB_JOINTS: [number, number, number][] = [
+  [0, 0.93, 0],
+  [0, 1.02, -0.03],
+  [0, 1.15, -0.03],
+  [0.19, 1.39, 0.02],
+  [0.11, 0.92, 0],
+];
+
+// a pack as build_crowd.py writes it: one triangle (plus a spare vertex) a costume
+function tinyPack(): { json: CrowdPackJson; bin: ArrayBuffer } {
+  const n = 4;
+  const per = 4 * (Math.ceil((n * 29) / 4) + Math.ceil((3 * 2) / 4)); // vertex arrays, then indices, each padded to 4
+  const bin = new ArrayBuffer(per * 3);
+  const costumes = {} as CrowdPackJson["costumes"];
+  COSTUMES.forEach((c, k) => {
+    const offset = k * per;
+    const pos = new Float32Array(bin, offset, n * 3);
+    pos.set([0, 0, 0, 0.5, 0, 0, 0, 1.7, 0, 0.2, 1.4, 0.1]);
+    const nor = new Int16Array(bin, offset + n * 12, n * 4);
+    for (let v = 0; v < n; v++) nor.set([0, 0, 32767, 0], v * 4);
+    const idx = new Uint8Array(bin, offset + n * 20, n * 4);
+    idx.set([0, 0, 0, 0, 4, 0, 0, 0, 3, 2, 0, 0, 1, 2, 3, 0]);
+    const w = new Uint8Array(bin, offset + n * 24, n * 4);
+    w.set([255, 0, 0, 0, 255, 0, 0, 0, 200, 55, 0, 0, 85, 85, 85, 0]);
+    new Uint8Array(bin, offset + n * 28, n).set([1, 0, 2, 3]);
+    const indexOffset = offset + Math.ceil((n * 29) / 4) * 4;
+    new Uint16Array(bin, indexOffset, 3).set([0, 1, 2]);
+    costumes[c] = {
+      vertices: n,
+      offset,
+      indices: 3,
+      indexOffset,
+      joints: MPFB_JOINTS,
+    };
+  });
+  return {
+    json: {
+      format: "zoujin-crowd-1",
+      bones: MPFB_BONES,
+      costumes,
+      bytes: bin.byteLength,
+    },
+    bin,
+  };
+}
+
+describe("the crowd pack", () => {
+  it("reads build_crowd.py's layout into attributes", () => {
+    const { json, bin } = tinyPack();
+    const pack = parseCrowdPack(json, bin);
+    const g = pack.veil.geometry;
+    expect(g.getAttribute("position").getY(2)).toBeCloseTo(1.7, 6);
+    expect(g.getAttribute("normal").getZ(3)).toBeCloseTo(1, 4);
+    expect(g.getAttribute("skinIndex").getX(1)).toBe(4);
+    const w = g.getAttribute("skinWeight");
+    expect(w.getX(2) + w.getY(2)).toBeCloseTo(1, 6);
+    expect(g.getAttribute("aPart").getX(3)).toBe(3);
+    expect(Array.from(g.index!.array)).toEqual([0, 1, 2]);
+    expect(pack.veil.skeleton.joints).toHaveLength(MPFB_BONES.length);
+  });
+
+  it("a pack of another size or format is refused", () => {
+    const { json, bin } = tinyPack();
+    expect(() => parseCrowdPack({ ...json, bytes: 1 }, bin)).toThrow();
+    expect(() => parseCrowdPack({ ...json, format: "x" }, bin)).toThrow();
+  });
+
+  it("a crowd from the pack: each costume's motions baked on its own skeleton", () => {
+    const { json, bin } = tinyPack();
+    const c = new Crowd(
+      { zone: ZONE, facing: [4, 20], count: 12, seed: 2 },
+      parseCrowdPack(json, bin),
+    );
+    expect(c.fromPack).toBe(true);
+    for (const m of c.meshes.filter(Boolean)) {
+      const u = (m.material as MeshStandardMaterial).userData.uniforms as {
+        uBones: { value: { image: { width: number } } };
+      };
+      expect(u.uBones.value.image.width).toBe(MPFB_BONES.length * 4);
+      expect(m.geometry.getAttribute("iHair")).toBeTruthy();
+    }
+    c.dispose();
+  });
+
+  // motions as build_motions.py writes them: the hips' offset, then the nine roles
+  const motions = (): MotionsJson => {
+    const roles: Role[] = [
+      "hips",
+      "spine",
+      "chest",
+      "neck",
+      "head",
+      "armL",
+      "foreL",
+      "armR",
+      "foreR",
+    ];
+    const frame = (k: number) => [
+      0,
+      0.01 * k,
+      0,
+      ...roles.flatMap((r) => (r === "armL" ? [0, 0, 0.1 * k] : [0, 0, 0])),
+    ];
+    return {
+      format: "zoujin-crowd-motions-1",
+      fps: FPS,
+      roles,
+      clips: {
+        sway: {
+          seconds: 2,
+          loop: true,
+          frames: [...Array(60).keys()].map(frame),
+        },
+        talk: {
+          seconds: 1,
+          loop: true,
+          frames: [...Array(30).keys()].map(frame),
+        },
+      },
+    };
+  };
+
+  it("the pack's motions: each frame's offset and rotations, by role", () => {
+    const [sway] = parseMotions(motions());
+    expect(sway!.seconds).toBe(2);
+    const p = sway!.pose(10 / FPS);
+    expect(p.hips).toEqual([0, 0.1, 0]);
+    expect(p.rot.armL).toEqual([0, 0, 1]);
+    expect(p.rot.head).toEqual([0, 0, 0]);
+    expect(() => parseMotions({ ...motions(), fps: 24 })).toThrow();
+  });
+
+  it("with them the crowd stands in the pack's sway, and some talk; without a pack they're not used", () => {
+    const { json, bin } = tinyPack();
+    const spec = { zone: ZONE, facing: [4, 20] as Plan, count: 20, seed: 2 };
+    const c = new Crowd(
+      spec,
+      parseCrowdPack(json, bin),
+      parseMotions(motions()),
+    );
+    const idle = c.clips();
+    expect(idle.every((x) => x === "sway" || x === "talk")).toBe(true);
+    expect(idle).toContain("talk");
+    expect(idle).toContain("sway");
+    c.cheer(1);
+    c.update(3);
+    expect(c.clips()).toEqual(idle); // back to what each was doing
+    c.dispose();
+    const plain = new Crowd(spec, null, parseMotions(motions()));
+    expect(plain.clips().every((x) => x === "sway")).toBe(true);
+    plain.dispose();
   });
 });
 
@@ -138,12 +338,59 @@ describe("Crowd", () => {
     expect(c.clips().every((x) => x === "sway")).toBe(true);
   });
 
-  it("the cheer reaches everyone within half a second", () => {
+  it("the cheer reaches everyone within a second, not all the same way", () => {
     const c = new Crowd(spec);
     c.update(5);
     c.cheer();
-    c.update(5.5);
-    expect(c.clips().every((x) => x === "cheer")).toBe(true);
+    c.update(5.4);
+    expect(c.clips().some((x) => x === "sway")).toBe(true); // not all at once
+    c.update(6);
+    expect(c.clips().every((x) => CHEERS.includes(x))).toBe(true);
+    expect(new Set(c.clips()).size).toBeGreaterThanOrEqual(3);
+  });
+
+  it("making way while they cheer: the cheering stops first, nobody's arms are up as they part", () => {
+    const c = new Crowd(spec);
+    c.update(1);
+    c.cheer();
+    c.update(2.5);
+    c.part(
+      [
+        [4, -1],
+        [4, 7],
+      ],
+      2,
+    );
+    c.update(3);
+    expect(c.clips().some((x) => CHEERS.includes(x))).toBe(false);
+  });
+
+  it("a fist closes the pack's fingers, each hand on its own", () => {
+    const bones = [
+      ...MPFB_BONES,
+      { name: "hand_l", parent: 3 },
+      { name: "index_01_l", parent: 5 },
+    ];
+    const joints: [number, number, number][] = [
+      ...MPFB_JOINTS,
+      [0.2, 0.92, 0.17],
+      [0.19, 0.85, 0.26],
+    ];
+    const skel = packSkeleton(bones, joints, [[6, 1, 0, 0, 1.4]]);
+    expect(skel.fist).toEqual([
+      { bone: 6, axis: [1, 0, 0], angle: 1.4, side: 0 },
+    ]);
+    const open = skinMatrices({ rot: {}, fist: [0, 0] }, skel);
+    const shut = skinMatrices({ rot: {}, fist: [1, 0] }, skel);
+    expect(shut[6]!.equals(open[6]!)).toBe(false);
+    expect(shut[5]!.equals(open[5]!)).toBe(true); // the hand itself stays
+    const right = skinMatrices({ rot: {}, fist: [0, 1] }, skel);
+    expect(right[6]!.equals(open[6]!)).toBe(true);
+    // a pose that says nothing: the fingers a little curled, not spread straight
+    const loose = skinMatrices({ rot: {} }, skel);
+    const relaxed = skinMatrices({ rot: {}, fist: [RELAXED, RELAXED] }, skel);
+    expect(loose[6]!.equals(relaxed[6]!)).toBe(true);
+    expect(loose[6]!.equals(open[6]!)).toBe(false);
   });
 
   it("making way: the people near the path turn to it and end up further from it; the others stay", () => {
@@ -172,9 +419,9 @@ describe("Crowd", () => {
     const c = new Crowd(spec);
     c.update(2);
     c.cheer(3);
-    c.update(2.6);
-    expect(c.clips().every((x) => x === "cheer")).toBe(true);
-    c.update(6);
+    c.update(3);
+    expect(c.clips().every((x) => CHEERS.includes(x))).toBe(true);
+    c.update(7);
     expect(c.clips().every((x) => x === "sway")).toBe(true);
     c.cheer();
     c.part(
@@ -184,10 +431,10 @@ describe("Crowd", () => {
       ],
       2,
     );
-    c.update(7);
+    c.update(8);
     expect(c.clips().some((x) => x.startsWith("turn"))).toBe(true);
     c.settle();
-    c.update(7.5);
+    c.update(8.5);
     expect(c.clips().every((x) => x === "sway")).toBe(true);
   });
 

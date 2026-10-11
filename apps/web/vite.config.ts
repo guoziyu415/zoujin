@@ -109,19 +109,20 @@ export default defineConfig({
         // the 3D layer stays one chunk (S-083 ⑤ budgets it as one): the lazy chunks that import from it (the scenes
         // after the plaza, the dev panel, the e2e hook) would otherwise split it into pieces compressed one by one
         // (about 3 KB more brotli). Only the listed modules, not their dependencies (react stays in the shell); the lazy
-        // ones stay out (the road's extras and water, the crowd past its presence check, the team's tools in dev/).
+        // ones stay out (the road's extras and water, the act-end page's prefetch, the ending's staging, the crowd past
+        // its presence check, the team's tools in dev/).
         codeSplitting: {
           groups: [
             {
               name: "world",
               includeDependenciesRecursively: false,
               test: (id: string) =>
-                /[\\/]node_modules[\\/](three|@react-three[\\/][^\\/]+|suspend-react|its-fine|react-use-measure)[\\/]/.test(
+                /[\\/]node_modules[\\/](three|@react-three[\\/][^\\/]+|suspend-react|its-fine|react-use-measure|zustand[\\/]esm[\\/]traditional|use-sync-external-store)/.test(
                   id,
                 )
                   ? !id.includes("libs/basis")
                   : /[\\/]src[\\/]three[\\/]/.test(id) &&
-                    !/scene[\\/](extra|land|clouds)|[\\/]water[\\/]|[\\/]dev[\\/]|crowd[\\/](?!presence)/.test(
+                    !/scene[\\/](extra|land|clouds|prefetch)|[\\/](water|dev)[\\/]|ending[\\/](?!Guard)|crowd[\\/](?!presence)/.test(
                       id,
                     ),
             },

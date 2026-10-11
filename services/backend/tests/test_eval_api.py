@@ -149,15 +149,7 @@ def test_setup_reads_zj_world_on_every_call(env: Env, monkeypatch: pytest.Monkey
 
 @pytest.mark.parametrize(
     ("method", "args"),
-    [
-        ("delete_memory", (OLD, 1)),
-        ("delete_playthrough", ()),
-        ("new_playthrough", ()),
-        ("silence", (20,)),
-        ("memories", (OLD,)),
-        ("trust", (OLD,)),
-        ("db_absent", (["events"],)),
-    ],
+    [("silence", (20,))],  # B-13 做了记忆和删除的那几个（test_b13）
 )
 def test_steps_b0_does_not_do_raise(
     env: Env, monkeypatch: pytest.MonkeyPatch, method: str, args: tuple[Any, ...]
@@ -188,13 +180,6 @@ def test_checkpoint_past_beat_24_does_not_enter_the_ending(env: Env, monkeypatch
     assert eval_api.setup({"role": "role.traveler", "checkpoint": "sc.canon@beat.26"}, mode="text").ending() is None
 
 
-def test_planted_memory_raises_in_setup(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("DATABASE_URL", env.url)
-    planted = {**MINIMAL, "events": [{"effects": [], "memory": {"character": OLD}}]}
-    with pytest.raises(eval_api.EvalNotImplemented, match="memory"):
-        eval_api.setup(planted, mode="text")
-
-
 def test_replay_fixture_is_the_fake_model_recorded(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
     """b0-minimal.jsonl = 最小剧本那一轮的各次调用，输出取假模型的。提示、请求或假模型的输出改了，这条不过；重写：
     ZJ_UPDATE_REPLAYS=1 DATABASE_URL=… uv run pytest services/backend/tests/test_eval_api.py -k fixture
@@ -215,7 +200,7 @@ def test_replay_fixture_is_the_fake_model_recorded(env: Env, monkeypatch: pytest
     text = "".join(json.dumps(c, ensure_ascii=False, sort_keys=True) + "\n" for c in calls)
     if os.environ.get("ZJ_UPDATE_REPLAYS") == "1":
         REPLAYS.write_text(text, encoding="utf-8")
-    # 被否决的那个：改写两次（假模型原样改回）、降级一次（做不到）
+    # 被否决的那个：改写两次（假模型原样改回）、降级一次（做不到）；提交以后给说话的对象写一条印象（B-13）
     assert [c["kind"] for c in calls] == [
         "safety",
         "reply",
@@ -225,6 +210,7 @@ def test_replay_fixture_is_the_fake_model_recorded(env: Env, monkeypatch: pytest
         "rewrite",
         "rewrite",
         "rewrite",
+        "memory",
     ]
     assert REPLAYS.read_text(encoding="utf-8") == text, "回放过期：ZJ_UPDATE_REPLAYS=1 重跑这条测试"
 

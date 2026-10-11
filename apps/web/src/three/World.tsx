@@ -3,8 +3,10 @@
 import { useThree } from "@react-three/fiber";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { flags } from "../app/flags";
+import { useStory } from "../stores/story";
 import { useWorld } from "../stores/world";
 import { CameraRig } from "./CameraRig";
+import { StagingGuard } from "./ending/Guard";
 import { crowdCount } from "./crowd/presence";
 import { groundAlbedo, Lighting } from "./Lighting";
 import { People } from "./People";
@@ -24,6 +26,7 @@ import { patchShaderChunks } from "./shaderPatches";
 patchShaderChunks();
 
 const CrowdLayer = lazy(() => import("./crowd/CrowdLayer"));
+const Staging = lazy(() => import("./ending/Staging"));
 
 export type LoadStage = "loading" | "walkable" | "ready" | "failed";
 
@@ -58,6 +61,7 @@ export function World({
   const { gl, scene: three, camera } = useThree();
   const sceneId = useWorld((s) => s.world?.sceneId);
   const crowd = useWorld((s) => crowdCount(s.world?.characters, flags.crowd));
+  const ending = useStory((s) => !!s.ending);
   const base = sceneId ? sceneBase(sceneId, packs) : null;
   const plaza = sceneId === PLAZA;
   // the act picks the pack of a scene that has one per act (the road's river)
@@ -75,6 +79,7 @@ export function World({
       onStage(s);
     };
     const bytes = (n: number) => (loadInfo.bytes = n);
+    stage("loading"); // a scene change (F-17): the old one is gone until the new one can be walked
     (plaza
       ? loadWalkable(base, bytes)
       : extra().then((m) => m.load(base, act, bytes, three))
@@ -170,6 +175,13 @@ export function World({
         </Suspense>
       )}
       <Player scene={scene} />
+      {ending && (
+        <StagingGuard>
+          <Suspense fallback={null}>
+            <Staging scene={scene} />
+          </Suspense>
+        </StagingGuard>
+      )}
       <CameraRig blockers={scene.blockers} />
       <PostFX />
     </>

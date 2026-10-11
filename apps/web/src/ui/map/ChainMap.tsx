@@ -166,7 +166,7 @@ export default function ChainMap({
                       setOpen((o) => (o === itemId(it) ? null : itemId(it)))
                     }
                     now={d.items.indexOf(it) === nowAt && !filter.mine}
-                    place={places}
+                    places={places}
                     showWhy={whyOf === itemId(it)}
                     onWhy={() => setWhyOf(itemId(it))}
                   />
@@ -190,14 +190,14 @@ function Node({
   isOpen,
   onToggle,
   now,
-  place,
+  places,
   showWhy,
   onWhy,
 }: {
   pid: string;
   it: Api.TimelineItem;
   name: (id: string) => string;
-  place: Map<string, string>;
+  places: Map<string, string>;
   actor: Map<string, string>;
   kept: Set<string>;
   fixed: Set<string>;
@@ -235,6 +235,12 @@ function Node({
           </button>
           {isOpen && (
             <div className="map-detail">
+              {it.place && places.get(it.place) && (
+                <p>
+                  <span className="map-label">{copy["map.detail.where"]}</span>
+                  {places.get(it.place)}
+                </p>
+              )}
               <Source cite={it.cite} />
               <button className="quiet" onClick={onWhy}>
                 {copy["map.why"]}
@@ -270,10 +276,10 @@ function Node({
         {isOpen && (
           <div className="map-detail">
             <p>{it.tLabel}</p>
-            {place.get(it.place) && (
+            {places.get(it.place) && (
               <p>
                 <span className="map-label">{copy["map.detail.where"]}</span>
-                {place.get(it.place)}
+                {places.get(it.place)}
               </p>
             )}
             {it.knownBy.length > 0 && (

@@ -364,6 +364,7 @@ button {
   border: 2px solid var(--accent);
   box-shadow: 0 0 0 calc(var(--level) * 10px) rgba(224, 166, 90, 0.45);
 }
+.subs .phrase,
 .controls .talk .phrase {
   display: inline-block;
 }
@@ -612,6 +613,12 @@ button {
   .helplines .button {
     justify-self: start;
   }
+}
+.act-time {
+  color: var(--ink-2);
+}
+.act .primary[aria-disabled="true"] {
+  opacity: 0.4;
 }
 @keyframes fade-in {
   from {

@@ -178,6 +178,18 @@ def _ending_broken(request: Mapping[str, Any]) -> Json:
     return out
 
 
+def _memory(request: Mapping[str, Any]) -> Json:
+    """第一条事件的摘要，身份名换成「あの人」、去掉句末的「。」，截到 30 字。"""
+    said = str(request["events"][0]["summary"]).replace(str(request.get("role") or "\0"), "あの人")
+    return {"text": said.rstrip("。")[:30], "weight": 1}
+
+
+def _keeps(request: Mapping[str, Any]) -> Json:
+    """有可见的结果才有一句（没有 = null，删除确认里不显示那一行）。"""
+    shown = any(e.get("visibleEffects") for e in request.get("events", []))
+    return {"keeps": "そのとき起きたこと" if shown else None}
+
+
 DEFAULTS: dict[str, Callable[[Mapping[str, Any]], Json]] = {
     "triage": lambda r: {"route": "maybe"},
     "extract": lambda r: {"candidates": []},  # 没有候选事件：只走时钟
@@ -195,12 +207,15 @@ DEFAULTS: dict[str, Callable[[Mapping[str, Any]], Json]] = {
         "alternative": {"exit": r["options"][0]["optionId"]} if r.get("options") else None,
     },
     "ending": _ending,
+    "memory": _memory,  # B-13：事件的摘要截短（假模型不分人物视角）
+    "keeps": _keeps,
 }
 ERRORS = ("rate-limit", "invalid", "unavailable", "refusal")
 
 
 def _summaries(request: Mapping[str, Any]) -> list[str]:
     cands = request.get("candidates") or ([request["candidate"]] if request.get("candidate") else [])
+    cands = [*cands, *([request["event"]] if request.get("event") else []), *request.get("events", [])]  # B-13
     return [str(c.get("summary", "")) for c in cands]
 
 
@@ -217,7 +232,8 @@ def _matches(when: Mapping[str, Any], request: Mapping[str, Any]) -> bool:
         elif k == "summaryContains":
             ok = any(v in s for s in _summaries(request))
         elif k == "character":
-            ok = (turn.get("character") or request.get("character")) == v
+            who = turn.get("character") or request.get("character")
+            ok = (who.get("id") if isinstance(who, dict) else who) == v  # B-13：记忆的请求里是人设摘要
         elif k == "confirmOpen":
             ok = ("confirm" in request) == v
         else:

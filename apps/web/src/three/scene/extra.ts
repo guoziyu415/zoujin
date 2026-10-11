@@ -4,13 +4,15 @@
 // next act's pack ahead of time is prefetch.ts.
 import {
   DoubleSide,
+  MathUtils,
   Mesh,
   MeshStandardMaterial,
   type Material,
   type Scene,
   type Texture,
 } from "three";
-import { lighting } from "../Lighting";
+import { lighting, lightState } from "../Lighting";
+import { sunLook } from "../sun";
 import { attachWater } from "../water/water";
 import { clouds } from "./clouds";
 import { glowFor, hills } from "./land";
@@ -53,16 +55,35 @@ function shareFiles(m: SceneManifest): void {
     }
 }
 
+// the sky drawn as for a sun this high, the sun itself where it is (F-10 card 5: act 2's sky as at −1.5°); the test
+// hook sets it
+export const skyLook = { elevDeg: undefined as number | undefined };
+
 // east of the scene a ridge stands this high (scene.json ridgeElevationDeg): below it the sun gives no direct light,
-// and the sky that lights the scene loses the glow around it (F-10 card 5)
+// and the sky that lights the scene loses the glow around it (F-10 card 5); Lighting.tsx calls this after the clock
 function ridge(deg: number | undefined): void {
-  lighting.sunGain = (elevDeg, azimuthDeg) => {
+  lighting.adjust = (pos, sun, skies) => {
     const gain =
-      deg === undefined || azimuthDeg > 180
+      deg === undefined || pos.azimuthDeg > 180
         ? 1
-        : Math.min(1, Math.max(0, (elevDeg - deg) / 0.6));
-    glowFor(elevDeg, gain);
-    return gain;
+        : MathUtils.clamp((pos.elevDeg - deg) / 0.6, 0, 1);
+    glowFor(pos.elevDeg, gain);
+    lightState.direct = sun.intensity *= gain;
+    skies[1]!.material.uniforms.mieDirectionalG!.value = 0.8 * gain;
+    const e = skyLook.elevDeg;
+    if (e === undefined) return;
+    const sl = sunLook(e);
+    const se = MathUtils.degToRad(e);
+    const k = Math.cos(se) / Math.hypot(pos.dir[0], pos.dir[2]);
+    for (const s of skies) {
+      const u = s.material.uniforms;
+      u.sunPosition!.value.set(pos.dir[0] * k, Math.sin(se), pos.dir[2] * k);
+      u.uSkyGain!.value = sl.skyGain;
+      u.uDusk!.value = sl.dusk;
+      u.uNightSky!.value = sl.nightSky;
+      u.uBelt!.value = sl.belt;
+      u.uAmber!.value = sl.amber;
+    }
   };
 }
 

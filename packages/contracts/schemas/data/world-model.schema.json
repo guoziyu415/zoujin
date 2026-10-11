@@ -532,6 +532,10 @@
                   }
                 ],
                 "description": "\"pre\" = 故事开始前就知道"
+              },
+              "inferred": {
+                "const": true,
+                "description": "（1.13）原文没写他知道、由人推断（评审表标〔推断〕）"
               }
             },
             "required": ["fact", "since"],

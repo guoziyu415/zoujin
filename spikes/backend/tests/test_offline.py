@@ -597,6 +597,16 @@ class Offline(unittest.TestCase):
         self.assertIn("竹馬の友", system)
         self.assertIn("婚礼の前夜に", system)
         self.assertIn("王は身代りを殺して見せしめにするおつもりだ", system)
+        # s092.3: the reason comes before the verdict fields, and each claim says where it comes from before its kind;
+        # the king's "やはりな" to news that Melos nearly gave up is in character (PM, S-095).
+        self.assertEqual(list(s3_spoiler.JUDGE_SCHEMA["properties"])[0], "reason")
+        self.assertEqual(s3_spoiler.JUDGE_SCHEMA["required"][0], "reason")
+        item = s3_spoiler.AUDIT_SCHEMA["properties"]["claims"]["items"]
+        self.assertEqual(list(item["properties"])[:3], ["text", "source", "kind"])
+        self.assertIn("source：kind より先に決める", system)
+        self.assertIn("「メロスが途中で投げ出しかけた」と聞いて「やはりな」", system)
+        self.assertIn("write it first, before the other fields", grade)
+        self.assertIn("neither (a) nor (b)", grade)
 
         # A run the old way: every reply knowledge overreach.
         client = FakeClient()
@@ -625,6 +635,28 @@ class Offline(unittest.TestCase):
         self.assertIn("## 4. 改判法以后 E2 变了（10 条）", audit)
         self.assertIn("改判法前：E2 是", audit)
         self.assertFalse((out / "personas.md").exists())
+        # --only-flagged (zg 10-11): only the questions with a problem are judged again, the rest are copied.
+        rows = [json.loads(x) for x in (src / "results.jsonl").read_text().splitlines()]
+        part = src.parent / (src.name + "-part")
+        part.mkdir()
+        (part / "summary.json").write_text((src / "summary.json").read_text())
+        first = rows[0]["question"]
+        clean = {"leak": "none", "knowledge_violation": False, "leak2": "none", "disagree": False}
+        (part / "results.jsonl").write_text("".join(
+            json.dumps(r if r["question"] == first else {**r, **clean}, ensure_ascii=False) + "\n" for r in rows))
+        claude = run_s3(["--only", "king-after-promise", "--rejudge", str(part), "--only-flagged", str(part)], client,
+                        FakeClaude(audit_claims=denial))
+        picked = [r for r in rows if r["question"] == first]
+        self.assertEqual(len(claude.calls), 2 * len(picked))
+        got = next(p for p in (TMP / "out" / "s3").iterdir() if p.name.startswith(part.name + "-rejudge-"))
+        new = [json.loads(x) for x in (got / "results.jsonl").read_text().splitlines()]
+        self.assertEqual(len(new), len(rows))
+        self.assertEqual(sum(r["before"]["e2"] for r in new), len(picked))
+        self.assertEqual(json.loads((got / "summary.json").read_text())["summary"]["guard"]["leak_any"], 0)
+        # Alone: only those questions get a Live session.
+        before = len(client.sessions)
+        run_s3(["--only", "king-after-promise", "--conditions", "guard", "--only-flagged", str(part)], client, FakeClaude())
+        self.assertEqual(len(client.sessions) - before, 1)
         # Stopped half way: --resume judges only the rest.
         rows = (out / "results.jsonl").read_text().splitlines()
         (out / "results.jsonl").write_text("\n".join(rows[:6]) + "\n")

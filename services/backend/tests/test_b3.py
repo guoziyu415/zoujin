@@ -17,20 +17,24 @@ from sqlalchemy import delete, func, inspect, select
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
 from zoujin_backend import eval_api
-from zoujin_backend.config import REPO, async_url
+from zoujin_backend import timeline as timeline_mod
+from zoujin_backend.config import DEFAULT_WORLD, REPO, async_url
 from zoujin_backend.db import store
 from zoujin_backend.db.store import Run
 from zoujin_backend.db.tables import events, playthrough_metrics, playthroughs, turns
 from zoujin_backend.gateway.core import Gateway
 from zoujin_backend.gateway.ws import Conn
+from zoujin_backend.ids import IdGen
 from zoujin_backend.models.live import FakeLive
 from zoujin_backend.models.text import FakeText
+from zoujin_backend.narrator import acts
 from zoujin_backend.narrator.actions import ACT_ENDED_LINE, CHECKER_MOVE
 from zoujin_backend.narrator.core import Result
 from zoujin_backend.narrator.plans import LABEL_FALLBACK, REFUSAL_FALLBACK
+from zoujin_backend.narrator.writer import Writer
 from zoujin_backend.projection import is_visible, snapshot
 from zoujin_backend.trace import Tracer
-from zoujin_worldsim import settle
+from zoujin_worldsim import initial_state, settle
 
 from .conftest import LIBRARY, OLD, SCHEMAS, Env, alembic_config, truncate
 
@@ -666,6 +670,72 @@ def test_skipped_beats_are_not_pushed_live_or_on_reconnect(game: Callable[..., G
     assert msgs and msgs[-1]["seq"] == system["seq"]
     assert not hidden & {e["eventId"] for m in msgs for e in m["events"]}
     assert not hidden & {e["eventId"] for e in g.s.view(seq)["events"]}
+
+
+def test_catch_up_counts_the_player_present() -> None:
+    """收幕以后、切幕之前时钟走过的那段（对话、动作的分钟跨过了收幕节拍）是玩家说着话过去的，人在场（数据 #158）：
+    `catch_up` 结算到的节拍落在玩家所在地点，公开的事实玩家也知道（契约 2.1）。不在场只管第 3 步（2.8.1）。"""
+    book = LIBRARY.book("hashire-merosu")
+    assert book is not None
+    setup = {"role": "role.traveler", "checkpoint": "sc.canon@beat.07", "place": "place.melos-home"}
+    w = Writer(
+        book, "pt_test", initial_state(book.world, setup["role"]), key_base="k", turn_id=None, ids=IdGen(), now=""
+    )
+    eval_api.play_setup(w, eval_api._scenarios(DEFAULT_WORLD.parent), setup)
+    w = Writer(book, "pt_test", w.state, key_base="k2", turn_id="t", ids=IdGen(), now="")
+    assert not w.guard  # 这一幕已经收了
+    beat = book.beats["beat.08"]
+    assert beat["place"] == w.player_place
+    w.state["t"] = int(w.state["times"].get("beat.07", 0)) + 700  # 跨过 beat.08（第二天上午）
+    acts.catch_up(w)
+    assert [e["t"] for e in w.system if any(x.get("beat") == "beat.08" for x in e["effects"])]
+    assert "fact.wedding-tomorrow" in w.state["knowledge"].get("player", [])
+
+
+def test_timeline_and_why_from_the_log(game: Callable[..., Game]) -> None:
+    """2.5、2.6（B-15）：时间线从事件日志现算，事件和 2.4 推的一致；玩家知道的节拍带标题、地点，不知道的只给时刻；
+    「なぜ」走到发生了的前因，玩家不知道的节拍 404。"""
+    g = game("sc.canon@beat.07", place="place.melos-home")
+    g.s.choose(CITY)
+    log_ = eval_api._run(g.s._events())
+    book = g.s.book
+    tl = SCHEMAS.response("timeline", 200, timeline_mod.timeline(book, "role.traveler", log_, 7))
+    items = [i for d in tl["days"] for i in d["items"]]
+    assert {e["eventId"] for e in g.s.view()["events"]} <= {i["eventId"] for i in items if i["kind"] == "event"}
+    assert [i["t"] for i in items] == sorted(i["t"] for i in items) and tl["lastSeq"] == 7
+    assert [d["label"] for d in tl["days"]] == [book.labels.days[d["day"]] for d in tl["days"]]
+    beats = {i["beatId"]: i for i in items if i["kind"] == "beat"}
+    heard = beats["beat.05"]  # 起点在梅洛斯家，没看到王城的约定，知道约定这条事实（听说）
+    assert heard["known"] and heard["status"] == "canon" and heard["place"] == book.beats["beat.05"]["place"]
+    assert heard["title"] == book.beats["beat.05"]["title"]
+    later = beats["beat.22"]
+    assert later == {"kind": "beat", "beatId": "beat.22", "t": later["t"], "tLabel": later["tLabel"], "known": False}
+    with pytest.raises(timeline_mod.NotFound):
+        timeline_mod.why(book, "role.traveler", log_, "beat.22")
+    with pytest.raises(timeline_mod.NotFound):
+        timeline_mod.why(book, "role.traveler", log_, "ev_00000000000000000000000000")
+    why = SCHEMAS.response("why", 200, timeline_mod.why(book, "role.traveler", log_, "beat.05"))
+    assert why["chain"][-1]["beatId"] == "beat.05" and why["collapsed"] == 0
+    shown = {i["eventId"] for i in items if i["kind"] == "event"}
+    assert all(step["eventId"] in shown for step in why["chain"][:-1])  # 玩家没看到的事件不上链
+    assert (
+        SCHEMAS.response("why", 200, timeline_mod.why(book, "role.traveler", log_, "forecast"))["target"] == "forecast"
+    )
+
+    # 玩家自己的举动：在时间线上是 player，「なぜ」的链就是它自己
+    h = game("sc.canon@beat.02")
+    h.s.act("give", OLD, {"item": "item.cloak"})
+    log_ = eval_api._run(h.s._events())
+    tl = SCHEMAS.response("timeline", 200, timeline_mod.timeline(book, "role.traveler", log_, 0))
+    mine = [i for d in tl["days"] for i in d["items"] if i["kind"] == "event"]
+    pushed = {e["eventId"] for e in h.s.view()["events"]}
+    assert pushed <= {i["eventId"] for i in mine}  # 2.4 推的都在，再加上玩家自己做成的
+    (gave,) = [i for i in mine if i["style"] == "player"]
+    assert (
+        gave["causedByPlayer"] and gave["summary"] == "あなたは、市の老爺に旅の外套を渡した" and OLD in gave["knownBy"]
+    )
+    why = SCHEMAS.response("why", 200, timeline_mod.why(book, "role.traveler", log_, gave["eventId"]))
+    assert [s["eventId"] for s in why["chain"]] == [gave["eventId"]] and why["chain"][0]["actor"] == "player"
 
 
 # —— 第 6 组：不记原话 ——

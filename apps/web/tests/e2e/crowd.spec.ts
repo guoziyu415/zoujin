@@ -1,14 +1,24 @@
-// The crowd (F-4 acceptance, with the stand-in bodies until the asset PR): twenty people on the execution ground at
+// The crowd (F-4 acceptance): twenty people on the execution ground at
 // 18:50, seen from behind them towards the post; three draw calls more (their shadow aside, budget 8); nobody sways in
 // step; どよめき from the scaffold outwards, the cheer, making way for the king; the console stays clean. Screenshots go
-// to test-results/shots for UX.
+// to test-results/shots for UX. The bodies are MPFB's when the built scene has its crowd pack (crowd/, assets/pipeline/
+// crowd/build.sh), the stand-ins otherwise.
 import { expect, test, type Page } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { sceneDir } from "../../scene-dir.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const SHOTS = path.join(here, "../../test-results/shots");
+const PACK = fs.existsSync(
+  path.join(sceneDir("syracuse-square"), "crowd/crowd.json"),
+);
+// the standing motions from Quaternius's library, when the pack was built with them (build.sh UAL_GLB)
+const MOTIONS =
+  PACK &&
+  fs.existsSync(path.join(sceneDir("syracuse-square"), "crowd/motions.json"));
+const IDLE = /^(sway|talk)$/;
 
 type Vec3 = [number, number, number];
 type CrowdInfo = {
@@ -17,6 +27,7 @@ type CrowdInfo = {
   clips: string[];
   started: Record<string, number>;
   at: [number, number][];
+  pack: boolean;
 };
 type Hook = {
   load(): { stage: string; error: string; spots: Record<string, Vec3> };
@@ -76,8 +87,11 @@ test("twenty people on the execution ground, from behind them towards the post a
     .not.toBeNull();
   const c = (await call((h) => h.crowd()))!;
   expect(c.count).toBe(20);
+  expect(c.pack).toBe(PACK);
   expect(c.meshes).toBeLessThanOrEqual(3);
-  expect(c.clips.every((x) => x === "sway")).toBe(true);
+  // standing: swaying, or talking among themselves when the pack has its motions
+  expect(c.clips.every((x) => IDLE.test(x))).toBe(true);
+  if (MOTIONS) expect(c.clips).toContain("talk");
   const { spots } = await call((h) => h.load());
   const post = spots["stake"]!;
   const cx = c.at.reduce((s, p) => s + p[0], 0) / c.count;
@@ -124,7 +138,9 @@ test("どよめき from the scaffold outwards, the cheer, making way", async () 
   await expect
     .poll(
       async () =>
-        (await call((h) => h.crowd()))!.clips.every((x) => x === "cheer"),
+        (await call((h) => h.crowd()))!.clips.every((x) =>
+          x.startsWith("cheer"),
+        ),
       { timeout: 60_000 },
     )
     .toBe(true);
@@ -164,7 +180,7 @@ test("どよめき from the scaffold outwards, the cheer, making way", async () 
   await expect
     .poll(
       async () =>
-        (await call((h) => h.crowd()))!.clips.every((x) => x === "sway"),
+        (await call((h) => h.crowd()))!.clips.every((x) => IDLE.test(x)),
       { timeout: 60_000 },
     )
     .toBe(true);

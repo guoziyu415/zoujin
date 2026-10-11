@@ -20,6 +20,9 @@ export const rig = {
   opening: null as View | null,
   // set by the test hook: a fixed camera instead of the follow rig
   fixedView: null as View | null,
+  // the ending's staging (ending/Staging.tsx): its shot's camera, and the exploring layer's people and player hidden
+  stage: null as View | null,
+  staged: false,
   // the next frame cuts the camera to its place instead of easing there (the player was put on a spot, not walked)
   cutCamera: false,
   camera: null as PerspectiveCamera | null, // CameraRig's, for the test hook

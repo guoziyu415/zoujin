@@ -2,6 +2,7 @@
 import { Vector3 } from "three";
 import { peek } from "../../telemetry/telemetry";
 import { lighting, lightState } from "../Lighting";
+import type { Api } from "@zoujin/contracts";
 import { frameStats } from "../PostFX";
 import type { Level } from "../quality/levels";
 import { quality, useQuality, type AssetTier } from "../quality/quality";
@@ -10,7 +11,9 @@ import { planToWorld, type Vec3 } from "../scene/frame";
 import { highTier, loadInfo } from "../World";
 import { play } from "../../net/play";
 import { usePlayer } from "../../stores/player";
+import { useStory } from "../../stores/story";
 import { useWorld } from "../../stores/world";
+import { stageBridge } from "../../ui/ending/stage/bridge";
 import { sandbox, type SandboxCharacter } from "./sandbox";
 
 type Plan = [number, number, number]; // layout.json plan x, y and height
@@ -87,6 +90,7 @@ export function installTestHook(): void {
           clips: c.clips(),
           started: { ...c.started },
           at: c.people.map((p) => p.at),
+          pack: c.fromPack,
         };
       },
       player: () => ({
@@ -177,13 +181,53 @@ export function installTestHook(): void {
       // one)
       direct: () => lightState.direct,
       skyElev: async (deg?: number) => {
-        lighting.skyElevDeg = deg;
+        (await import("../scene/extra")).skyLook.elevDeg = deg;
         lighting.settle();
         await nextFrames(2);
       },
       cut: async () => {
         quality.cut(performance.now());
         await nextFrames(2);
+      },
+      // the ending's staging (F-13) without a server: the ending as ending_started and the closing set pieces would
+      // leave it, then one shot at a time; resolves when the shot's action is done (ms it took)
+      ending: async (staging: Api.Staging, pieces: string[]) => {
+        useStory.setState({
+          ending: {
+            trigger: "story-closed",
+            staging,
+            lines: pieces.map((pieceId) => ({
+              text: "",
+              speaker: null,
+              pieceId,
+              n: 1,
+            })),
+            endingId: null,
+            roleId: null,
+            ready: true,
+          },
+        });
+        while (!rig.staged) await nextFrames(1);
+        await nextFrames(2);
+      },
+      endingShot: (n: number) =>
+        new Promise<number>((done) => {
+          const b = stageBridge();
+          const t0 = performance.now();
+          const off = b.onShotDone((m) => {
+            if (m !== n) return;
+            off();
+            done(performance.now() - t0);
+          });
+          b.shot(n);
+        }),
+      endingCard: async () => {
+        const bmp = await stageBridge().captureFrame();
+        if (!bmp) return null;
+        const c = document.createElement("canvas");
+        [c.width, c.height] = [bmp.width, bmp.height];
+        c.getContext("2d")!.drawImage(bmp, 0, 0);
+        return { width: bmp.width, height: bmp.height, png: c.toDataURL() };
       },
       walkTo: (to: string | [number, number]) => {
         const at =

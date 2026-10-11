@@ -111,12 +111,6 @@ def test_persona_setup_rules(db: Env, monkeypatch: pytest.MonkeyPatch) -> None:
     assert s.view()["snapshot"]["clock"]["t"] == s.book.roles["role.traveler"]["startT"]  # 起点是正式开局
 
 
-def test_planted_memory_still_raises(db: Env) -> None:
-    planted = {"role": "role.traveler", "checkpoint": "sc.canon@t=1080", "events": [{"effects": [], "memory": {}}]}
-    with pytest.raises(eval_api.EvalNotImplemented, match="memory"):
-        eval_api.setup(planted, mode="text")
-
-
 # —— 第 2、3 组：AI 玩家看什么 ——
 
 
