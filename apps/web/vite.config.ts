@@ -106,6 +106,7 @@ function runtimeFiles(): Plugin {
         }
         fs.cpSync(dir, path.join(outDir, prefix), {
           recursive: true,
+          dereference: true, // the deploy's scene dirs are symlinks (infra/deploy packs.py): dist gets real files
           filter: (f) => !f.endsWith(".md"),
         });
       }
