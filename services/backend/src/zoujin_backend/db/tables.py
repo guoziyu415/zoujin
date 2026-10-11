@@ -274,7 +274,7 @@ playthrough_metrics = Table(
     Column("memories_filtered", Integer, nullable=False, server_default="0"),
     Column("memories_failed", Integer, nullable=False, server_default="0"),
     Column("memories_deleted", Integer, nullable=False, server_default="0"),
-    # B-15（0008，S-072 ⑤）：复核的花费；复核了几次（含第二次 ambiguous 的）、降成 ambiguous 的、
+    # B-15（0009，S-072 ⑤）：复核的花费；复核了几次（含第二次 ambiguous 的）、降成 ambiguous 的、
     # 复核失败保留 signal 的、护栏命中不复核的
     Column("cost_safety_review_usd", Numeric(12, 6), nullable=False, server_default="0"),
     Column("safety_reviews", Integer, nullable=False, server_default="0"),
