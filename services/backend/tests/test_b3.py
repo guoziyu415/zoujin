@@ -224,6 +224,7 @@ def test_snapshot_actions_interactables_and_player_spot(game: Callable[..., Game
     (ev,) = [e for e in step["events"] if e["actor"] == "player"]
     assert (ev["type"], ev["origin"], ev["dt"], ev["check"]["status"]) == ("action", "action", 30, "passed")
     assert ev["beneficiary"] == OLD  # 为老爺做的（E6-011 的牧童给水同样）
+    assert ev["summary"] == "旅人は、老爺を家まで送った"  # 契约 1.8：存的用身份名、写做成了的事（Affordance.pastLabel）
     assert g.turn(step["traceId"])["result"]["playerSpot"] == "old-man-house-side"
     snap = g.snap()
     assert snap["actions"] == [] and snap["player"]["spot"] == "old-man-house-side"
@@ -293,6 +294,15 @@ def test_affordance_whose_condition_fails_is_refused_with_a_rejected_event(game:
     assert r.info["status"] == "refused" and r.minutes == 0
     (ev,) = r.events
     assert ev["check"]["status"] == "rejected" and ev["effects"] == []
+
+
+def test_give_without_an_affordance_says_what_was_handed_over(game: Callable[..., Game]) -> None:
+    """没有对应情境动作的 give 写成做成了的事（UX 10-10：「渡した」，不是「渡そうとした」）。"""
+    g = game("sc.canon@beat.02")
+    step = g.s.act("give", OLD, {"item": "item.cloak"})
+    (ev,) = [e for e in step["events"] if e["effects"]]  # 另一条是花掉的时间（没有效果）
+    assert ev["check"]["status"] == "passed" and ev["beneficiary"] == OLD
+    assert ev["summary"] == "旅人は、市の老爺に旅の外套を渡した"
 
 
 def test_go_to_the_castle_is_refused_and_block_goes_through_extract(game: Callable[..., Game]) -> None:
