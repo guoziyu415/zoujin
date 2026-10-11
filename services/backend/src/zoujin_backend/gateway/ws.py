@@ -284,6 +284,7 @@ class Conn:
     # —— 收 ——
 
     async def hello(self, msg: Json) -> None:
+        await self.gw.handed(self.pid)  # 旧连接断线那一轮先写下来，lastTurn 才是它（lost 或照常交了）
         async with self.gw.engine.connect() as c:
             last_seq = int(
                 await c.scalar(select(playthroughs.c.last_seq).where(playthroughs.c.playthrough_id == self.pid)) or 0
@@ -453,7 +454,7 @@ class Conn:
         if t.mode == "text":
             t.heard = t.text
         t.stream = asyncio.ensure_future(self._stream(t))
-        self.gw.spawn(self._finish(t))
+        self.gw.hand(self.pid, self._finish(t))
 
     async def _stream(self, t: Turn) -> None:
         """假 Live 的回答转成下行消息。被打断、断线时这个任务被取消，停在哪就是哪。"""
