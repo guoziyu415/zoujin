@@ -565,7 +565,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 - 选给定去处：`act_choose { optionId }`。
 - **过场里的二选一**〔契约 1.4，2.8.1 第 2 步，ux-design 4.5〕：去处的跳过的这段路上有一个还能改的节拍时，这个去处多带一个 `enRoute`：
   ```json
-  { "optionId": "exit.3.road", "label": "雨の中、メロスと走り出る", "sceneId": "scene.homeward-road", "tLabel": "三日目・午前",
+  { "optionId": "exit.3.road", "label": "雨の中、メロスと走り出る", "sceneId": "scene.road-river", "tLabel": "三日目・午前",
     "with": ["char.melos"], "because": null,
     "enRoute": { "line": "隣村で、メロスは歩をゆるめた。",
                  "choices": [ { "index": 0, "label": "急かす", "melosMinutes": -40,
