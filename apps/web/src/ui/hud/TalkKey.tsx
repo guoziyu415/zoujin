@@ -16,7 +16,7 @@ import { canPress } from "../../voice/state";
 import { voiceSettings } from "../../voice/settings";
 import { useVoiceState } from "../../voice/useVoiceState";
 import { copy } from "../copy";
-import { keyFontPx, phrases } from "./phrases";
+import { KEY_LINE, keyFontPx, phrases } from "./phrases";
 
 const SLIDE_PX = 60;
 
@@ -66,7 +66,7 @@ export function TalkKey() {
               ? copy["talk.tap"]
               : copy["talk.hold"];
   const enabled = canPress(state) || state === "listening";
-  const parts = phrases(label);
+  const parts = phrases(label, KEY_LINE);
 
   function down(e: PointerEvent<HTMLButtonElement>) {
     if (e.button !== 0) return;
