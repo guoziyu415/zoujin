@@ -54,6 +54,7 @@
           "title": "市の異変",
           "status": "canon",
           "known": true,
+          "place": "place.syracuse-square",
           "cite": [
             {
               "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
@@ -70,6 +71,7 @@
           "title": "王の暴虐を知る",
           "status": "altered",
           "known": true,
+          "place": "place.syracuse-square",
           "cite": [
             {
               "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",

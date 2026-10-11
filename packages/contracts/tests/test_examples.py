@@ -45,6 +45,7 @@ INVALID_BECAUSE: dict[str, tuple[str, str]] = {
     "rest/telemetry/request/transcript-in-props.json": ("additionalProperties", "events/0/props"),
     "rest/timeline/200/unknown-beat-with-title.json": ("not", "days/0/items/2"),
     "rest/timeline/200/unknown-beat-with-cite.json": ("not", "days/0/items/2"),
+    "rest/timeline/200/unknown-beat-with-place.json": ("not", "days/0/items/2"),
     "ws/client/act_choose/option-not-exit.json": ("pattern", "optionId"),
     "ws/client/act_landed/missing-act-id.json": ("required", ""),
     "ws/client/action/move-without-target.json": ("required", ""),
