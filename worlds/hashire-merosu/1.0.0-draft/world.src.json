@@ -1,5 +1,5 @@
 {
- "schemaVersion": "1.9",
+ "schemaVersion": "1.11",
  "worldModelVersion": "hashire-merosu@1.0.0-draft.3",
  "_authoring": "出典は {\"q\": 原文の逐字引用, \"p\": 段落番号（省略可）} で書く。spikes/pipeline/build_world.py が段落を特定・検証して world.json を出力する。",
  "book": {
@@ -17,6 +17,328 @@
    "license": "public-domain"
   }
  },
+ "ruby": [
+  {
+   "word": "邪智暴虐",
+   "reading": "じゃちぼうぎゃく"
+  },
+  {
+   "word": "暴虐",
+   "reading": "ぼうぎゃく"
+  },
+  {
+   "word": "牧人",
+   "reading": "ぼくじん"
+  },
+  {
+   "word": "律気",
+   "reading": "りちぎ"
+  },
+  {
+   "word": "花婿",
+   "reading": "はなむこ"
+  },
+  {
+   "word": "衣裳",
+   "reading": "いしょう"
+  },
+  {
+   "word": "竹馬の友",
+   "reading": "ちくばのとも"
+  },
+  {
+   "word": "石工",
+   "reading": "いしく"
+  },
+  {
+   "word": "若い衆",
+   "reading": "わかいしゅ"
+  },
+  {
+   "word": "老爺",
+   "reading": "ろうや"
+  },
+  {
+   "word": "世嗣",
+   "reading": "よつぎ"
+  },
+  {
+   "word": "賢臣",
+   "reading": "けんしん"
+  },
+  {
+   "word": "王城",
+   "reading": "おうじょう"
+  },
+  {
+   "word": "巡邏",
+   "reading": "じゅんら"
+  },
+  {
+   "word": "警吏",
+   "reading": "けいり"
+  },
+  {
+   "word": "蒼白",
+   "reading": "そうはく"
+  },
+  {
+   "word": "眉間",
+   "reading": "みけん"
+  },
+  {
+   "word": "皺",
+   "reading": "しわ"
+  },
+  {
+   "word": "憫笑",
+   "reading": "びんしょう"
+  },
+  {
+   "word": "反駁",
+   "reading": "はんばく"
+  },
+  {
+   "word": "呟",
+   "reading": "つぶや"
+  },
+  {
+   "word": "下賤",
+   "reading": "げせん"
+  },
+  {
+   "word": "腹綿",
+   "reading": "はらわた"
+  },
+  {
+   "word": "磔",
+   "reading": "はりつけ"
+  },
+  {
+   "word": "悧巧",
+   "reading": "りこう"
+  },
+  {
+   "word": "自惚",
+   "reading": "うぬぼ"
+  },
+  {
+   "word": "北叟笑",
+   "reading": "ほくそえ"
+  },
+  {
+   "word": "身代り",
+   "reading": "みがわり"
+  },
+  {
+   "word": "磔刑",
+   "reading": "たっけい"
+  },
+  {
+   "word": "奴輩",
+   "reading": "やつばら"
+  },
+  {
+   "word": "口惜し",
+   "reading": "くやし"
+  },
+  {
+   "word": "地団駄",
+   "reading": "じだんだ"
+  },
+  {
+   "word": "佳き",
+   "reading": "よき"
+  },
+  {
+   "word": "首肯き",
+   "reading": "うなずき"
+  },
+  {
+   "word": "困憊",
+   "reading": "こんぱい"
+  },
+  {
+   "word": "葡萄",
+   "reading": "ぶどう"
+  },
+  {
+   "word": "怺",
+   "reading": "こら"
+  },
+  {
+   "word": "首肯い",
+   "reading": "うなずい"
+  },
+  {
+   "word": "薄明",
+   "reading": "はくめい"
+  },
+  {
+   "word": "信実",
+   "reading": "しんじつ"
+  },
+  {
+   "word": "奸佞",
+   "reading": "かんねい"
+  },
+  {
+   "word": "呑気",
+   "reading": "のんき"
+  },
+  {
+   "word": "氾濫",
+   "reading": "はんらん"
+  },
+  {
+   "word": "滔々",
+   "reading": "とうとう"
+  },
+  {
+   "word": "木葉微塵",
+   "reading": "こっぱみじん"
+  },
+  {
+   "word": "橋桁",
+   "reading": "はしげた"
+  },
+  {
+   "word": "繋舟",
+   "reading": "けいしゅう"
+  },
+  {
+   "word": "掻",
+   "reading": "か"
+  },
+  {
+   "word": "憐愍",
+   "reading": "れんびん"
+  },
+  {
+   "word": "棍棒",
+   "reading": "こんぼう"
+  },
+  {
+   "word": "流石",
+   "reading": "さすが"
+  },
+  {
+   "word": "灼熱",
+   "reading": "しゃくねつ"
+  },
+  {
+   "word": "眩暈",
+   "reading": "めまい"
+  },
+  {
+   "word": "韋駄天",
+   "reading": "いだてん"
+  },
+  {
+   "word": "稀代",
+   "reading": "きたい"
+  },
+  {
+   "word": "芋虫",
+   "reading": "いもむし"
+  },
+  {
+   "word": "不貞腐",
+   "reading": "ふてくさ"
+  },
+  {
+   "word": "定法",
+   "reading": "じょうほう"
+  },
+  {
+   "word": "潺々",
+   "reading": "せんせん"
+  },
+  {
+   "word": "滾々",
+   "reading": "こんこん"
+  },
+  {
+   "word": "囁",
+   "reading": "ささや"
+  },
+  {
+   "word": "恢復",
+   "reading": "かいふく"
+  },
+  {
+   "word": "風態",
+   "reading": "ふうてい"
+  },
+  {
+   "word": "塔楼",
+   "reading": "とうろう"
+  },
+  {
+   "word": "刑場",
+   "reading": "けいじょう"
+  },
+  {
+   "word": "刑吏",
+   "reading": "けいり"
+  },
+  {
+   "word": "齧",
+   "reading": "かじ"
+  },
+  {
+   "word": "若し",
+   "reading": "もし"
+  },
+  {
+   "word": "唸",
+   "reading": "うな"
+  },
+  {
+   "word": "歔欷",
+   "reading": "きょき"
+  },
+  {
+   "word": "緋",
+   "reading": "ひ"
+  },
+  {
+   "word": "身代わり",
+   "reading": "みがわり"
+  },
+  {
+   "word": "牧童",
+   "reading": "ぼくどう"
+  },
+  {
+   "word": "侍女",
+   "reading": "じじょ"
+  },
+  {
+   "word": "鑿",
+   "reading": "のみ"
+  },
+  {
+   "word": "外套",
+   "reading": "がいとう"
+  },
+  {
+   "word": "市の老爺",
+   "reading": "まちのろうや"
+  },
+  {
+   "word": "市の若い衆",
+   "reading": "まちのわかいしゅ"
+  },
+  {
+   "word": "市の群衆",
+   "reading": "まちのぐんしゅう"
+  },
+  {
+   "word": "市の少女",
+   "reading": "まちのしょうじょ"
+  }
+ ],
  "clock": {
   "startT": 1110,
   "sunsetMinuteOfDay": 1140,
@@ -50,6 +372,11 @@
       "var": "var.king.disposition",
       "op": "!=",
       "value": "reformed"
+     },
+     {
+      "var": "var.hostage.who",
+      "op": "!=",
+      "value": "none"
      }
     ],
     "then": [
@@ -59,7 +386,7 @@
       "value": "executed"
      }
     ],
-    "note": "期限までにメロスが戻らず、王も改心していなければ身代りは処刑される",
+    "note": "期限までにメロスが戻らず、王も改心していなければ身代りは処刑される。約束が成立していない（人質がいない）局では何も起きない（1.11、B-9 の評審）",
     "cite": [
      {
       "q": "おくれたら、その身代りを、きっと殺すぞ。"
@@ -212,6 +539,7 @@
   {
    "id": "char.melos",
    "name": "メロス",
+   "reading": "メロス",
    "summary": "村の牧人。十六の内気な妹と二人暮らし。政治はわからないが、邪悪には人一倍敏感。",
    "traits": [
     {
@@ -617,11 +945,23 @@
       }
      ]
     }
-   ]
+   ],
+   "originalEnding": {
+    "text": "日没の寸前に刑場へ駆け込み、友と殴り合って、抱き合った。",
+    "cite": [
+     {
+      "q": "メロスは疾風の如く刑場に突入した。"
+     },
+     {
+      "q": "ひしと抱き合い"
+     }
+    ]
+   }
   },
   {
    "id": "char.king",
    "name": "王ディオニス",
+   "reading": "おうディオニス",
    "summary": "シラクスの王。これまでに身内や臣下を次々に殺してきた。",
    "traits": [
     {
@@ -876,11 +1216,20 @@
       }
      ]
     }
-   ]
+   ],
+   "originalEnding": {
+    "text": "二人を見て、「わしをも仲間に入れてくれまいか」と願った。",
+    "cite": [
+     {
+      "q": "どうか、わしをも仲間に入れてくれまいか。"
+     }
+    ]
+   }
   },
   {
    "id": "char.selinuntius",
    "name": "セリヌンティウス",
+   "reading": "セリヌンティウス",
    "summary": "メロスの竹馬の友。シラクスの市の石工。",
    "traits": [
     {
@@ -1254,11 +1603,23 @@
       }
      ]
     }
-   ]
+   ],
+   "originalEnding": {
+    "text": "人質として待ちつづけ、一度だけ疑ったと打ち明けて、メロスと抱き合った。",
+    "cite": [
+     {
+      "q": "私はこの三日の間、たった一度だけ、ちらと君を疑った。"
+     },
+     {
+      "q": "ひしと抱き合い"
+     }
+    ]
+   }
   },
   {
    "id": "char.sister",
    "name": "メロスの妹",
+   "reading": "メロスのいもうと",
    "summary": "メロスの妹。十六の内気な娘で、兄と二人で村に暮らしている。",
    "traits": [
     {
@@ -1409,11 +1770,23 @@
      "text": "花婿と新しい暮らしを始める",
      "inferred": true
     }
-   ]
+   ],
+   "originalEnding": {
+    "text": "真昼に婚礼を挙げ、兄の言葉に、夢見心地で頷いた。",
+    "cite": [
+     {
+      "q": "結婚式は、真昼に行われた。"
+     },
+     {
+      "q": "花嫁は、夢見心地で首肯いた。"
+     }
+    ]
+   }
   },
   {
    "id": "char.groom",
    "name": "花婿",
+   "reading": "はなむこ",
    "summary": "村の律気な牧人。メロスの妹の結婚相手。",
    "traits": [
     {
@@ -1566,11 +1939,23 @@
       }
      ]
     }
-   ]
+   ],
+   "originalEnding": {
+    "text": "夜明けに説き伏せられて真昼に式を挙げ、メロスの弟になった。",
+    "cite": [
+     {
+      "q": "やっと、どうにか婿をなだめ、すかして、説き伏せた。"
+     },
+     {
+      "q": "もう一つ、メロスの弟になったことを誇ってくれ。"
+     }
+    ]
+   }
   },
   {
    "id": "char.philostratus",
    "name": "フィロストラトス",
+   "reading": "フィロストラトス",
    "summary": "セリヌンティウスの弟子の若い石工。",
    "traits": [
     {
@@ -1723,11 +2108,23 @@
       }
      ]
     }
-   ]
+   ],
+   "originalEnding": {
+    "text": "後について走りながら止めたが、最後には「うんと走るがいい」と叫んだ。",
+    "cite": [
+     {
+      "q": "メロスの後について走りながら叫んだ。"
+     },
+     {
+      "q": "それでは、うんと走るがいい。"
+     }
+    ]
+   }
   },
   {
    "id": "char.old-man",
    "name": "市の老爺",
+   "reading": "まちのろうや",
    "summary": "シラクスの市に住む老人。王の所業を知っていて、怯えている。",
    "traits": [
     {
@@ -1874,11 +2271,20 @@
       }
      ]
     }
-   ]
+   ],
+   "originalEnding": {
+    "text": "あたりをはばかる低声で、王の暴虐をメロスに打ち明けた。",
+    "cite": [
+     {
+      "q": "老爺は、あたりをはばかる低声で、わずか答えた。"
+     }
+    ]
+   }
   },
   {
    "id": "char.young-man",
    "name": "市の若い衆",
+   "reading": "まちのわかいしゅ",
    "summary": "シラクスの市の若い衆。",
    "traits": [
     {
@@ -1933,6 +2339,7 @@
   {
    "id": "char.guards",
    "name": "城の警吏",
+   "reading": "しろのけいり",
    "summary": "王城を巡邏する役人たち。王の命令で人を捕らえ、刑場で磔を執り行う。",
    "traits": [
     {
@@ -1988,6 +2395,7 @@
   {
    "id": "char.bandits",
    "name": "峠の山賊",
+   "reading": "とうげのさんぞく",
    "summary": "棍棒を持った一隊の山賊。",
    "traits": [
     {
@@ -2030,6 +2438,7 @@
   {
    "id": "char.travelers",
    "name": "旅の一団",
+   "reading": "たびのいちだん",
    "summary": "街道を行く旅の一団。",
    "traits": [
     {
@@ -2068,6 +2477,7 @@
   {
    "id": "char.crowd",
    "name": "市の群衆",
+   "reading": "まちのぐんしゅう",
    "summary": "シラクスの市の人々。",
    "traits": [
     {
@@ -2111,6 +2521,7 @@
   {
    "id": "char.maiden",
    "name": "市の少女",
+   "reading": "まちのしょうじょ",
    "summary": "シラクスの市の少女。",
    "traits": [
     {
@@ -4548,6 +4959,13 @@
      "value": 1,
      "inferred": true,
      "note": "王の信頼（0〜100、初期 5）が 0 まで落ちていたら改心しない。プレイヤーが嘲りや欺きで王の心を閉ざした場合（推断。S-007「間に合ったが王は変わらない」への道）"
+    },
+    {
+     "var": "var.king.disposition",
+     "op": "!=",
+     "value": "reformed",
+     "inferred": true,
+     "note": "刑場に来る前に王がもう改心していた局（信頼が 70 を超え、身代りを先に放した）では、刑場でもう一度改心しない（UX の評審、S-087）"
     }
    ],
    "outcomes": [
@@ -4925,6 +5343,7 @@
   {
    "id": "role.traveler",
    "name": "旅人",
+   "summary": "はじめてこの市に来た。誰も、あなたを知らない。",
    "startPlace": "place.syracuse-square",
    "startT": 1050,
    "knownCharacters": [],
@@ -4988,6 +5407,7 @@
   {
    "id": "role.apprentice",
    "name": "石屋の弟子",
+   "summary": "セリヌンティウス親方の工房で、石を刻んでいる。",
    "startPlace": "place.stonemason-workshop",
    "startT": 1050,
    "knownCharacters": [
@@ -5029,6 +5449,7 @@
   {
    "id": "role.castle-maid",
    "name": "王城の侍女",
+   "summary": "王城で、王の身のまわりの世話をしている。",
    "startPlace": "place.castle",
    "startT": 1050,
    "knownCharacters": [
@@ -5054,6 +5475,7 @@
   {
    "id": "role.shepherd-boy",
    "name": "村の牧童",
+   "summary": "メロスの村で、羊を追っている。",
    "startPlace": "place.village",
    "startT": 1980,
    "knownCharacters": [
@@ -5091,6 +5513,7 @@
   {
    "id": "role.guard",
    "name": "警吏",
+   "summary": "王の命令で、市を見回っている。",
    "startPlace": "place.castle",
    "startT": 1050,
    "knownCharacters": [
@@ -5574,6 +5997,137 @@
    ],
    "inferred": true,
    "note": "S-031 ⑤ と S-041 の「結局が実質的に違う」の定義：この変数の最終値と、この節拍が原作どおり起きたか（happened か否か）の組。世界結局の分類（world[]）が同じでも署名が違えば「違う結局」。1.4：beat.s2（セリヌンティウスが疑ったか、S-064）を追加"
+  },
+  "characters": [
+   "char.melos",
+   "char.selinuntius",
+   "char.king",
+   "char.sister",
+   "char.groom",
+   "char.philostratus",
+   "char.old-man"
+  ],
+  "templates": [
+   {
+    "outcome": "player-substituted",
+    "when": [
+     {
+      "var": "var.player.custody",
+      "op": "==",
+      "value": "executed"
+     }
+    ],
+    "subtitle": "日は沈んだ。メロスは、間に合わなかった。",
+    "title": "友の代わりに立った{role}",
+    "fate": "最後の光が消えるまで、西の門を見ていた。",
+    "lines": [
+     {
+      "character": "char.melos",
+      "line": "沈む陽を追って走ったが、あと一歩、届かなかった。"
+     },
+     {
+      "character": "char.selinuntius",
+      "line": "あなたが立った場所を、生涯忘れなかった。"
+     }
+    ],
+    "contrast": "原作では身代わりは友だった。あなたの世界では、あなたが柱に立った。",
+    "note": "ux-design 11.4 B"
+   },
+   {
+    "outcome": "player-substituted",
+    "when": [
+     {
+      "var": "var.melos.custody",
+      "op": "==",
+      "value": "returned"
+     }
+    ],
+    "subtitle": "メロスは間に合い、あなたの縄はほどかれた。",
+    "title": "友の代わりに立った{role}",
+    "fate": "柱から下ろされ、刑場で夜を迎えた。",
+    "lines": [
+     {
+      "character": "char.melos",
+      "line": "沈む陽より先に、刑場へ駆け込んだ。"
+     }
+    ],
+    "contrast": "原作では身代わりは友だった。あなたの世界では、あなたが柱に立った。",
+    "note": "ux-design 11.4（梅洛斯回来了）"
+   },
+   {
+    "outcome": "player-substituted",
+    "subtitle": "王の心が先に変わり、あなたの縄はほどかれた。",
+    "title": "友の代わりに立った{role}",
+    "fate": "柱から下ろされ、刑場で夜を迎えた。",
+    "lines": [
+     {
+      "character": "char.melos",
+      "line": "約束の刻限には、間に合わなかった。"
+     }
+    ],
+    "contrast": "原作では身代わりは友だった。あなたの世界では、あなたが柱に立った。",
+    "note": "ux-design 11.4（其余：王先变了，梅洛斯没赶上）"
+   },
+   {
+    "outcome": "canon-reunion",
+    "subtitle": "メロスは間に合い、王は仲間に入れてくれと言った。",
+    "title": "友の帰りを見届けた{role}",
+    "lines": [
+     {
+      "character": "char.melos",
+      "line": "沈む陽より先に、刑場へ駆け込んだ。"
+     }
+    ],
+    "contrast": "原作でもあなたの世界でも、メロスは間に合った。違うのは、そこにあなたがいたこと。",
+    "note": "ux-design 11.4"
+   },
+   {
+    "outcome": "in-time-king-unchanged",
+    "subtitle": "メロスは間に合ったが、王の心は変わらなかった。",
+    "title": "約束を見届けた{role}",
+    "lines": [
+     {
+      "character": "char.melos",
+      "line": "沈む陽より先に、刑場へ駆け込んだ。"
+     }
+    ],
+    "contrast": "原作では王が改心した。あなたの世界では、王は二人を見ても変わらなかった。",
+    "note": "ux-design 11.4"
+   },
+   {
+    "outcome": "king-changed-first",
+    "subtitle": "王の心は、日没より先に変わった。",
+    "title": "王の変わる日を見た{role}",
+    "lines": [
+     {
+      "character": "char.melos",
+      "line": "約束の刻限には、間に合わなかった。"
+     }
+    ],
+    "contrast": "原作では、王はメロスの帰還を見て改心した。あなたの世界では、それより先に変わった。",
+    "note": "ux-design 11.4"
+   },
+   {
+    "outcome": "too-late",
+    "subtitle": "日は沈んだ。メロスは、間に合わなかった。",
+    "title": "最後の日を見届けた{role}",
+    "lines": [
+     {
+      "character": "char.selinuntius",
+      "line": "最後まで、メロスは来ると言いつづけた。"
+     },
+     {
+      "character": "char.melos",
+      "line": "陽が沈んでも、走ることをやめなかった。"
+     }
+    ],
+    "contrast": "原作では日没に間に合った。あなたの世界では、陽が先に沈んだ。",
+    "note": "ux-design 11.4 A"
+   }
+  ],
+  "fates": {
+   "witness": "刑場で、日没を見届けた。",
+   "elsewhere": "刑場には行かず、日没を迎えた。"
   }
  },
  "pacing": {

@@ -15,7 +15,7 @@
 4. 知情范围：角色「从 X 起知道 F」时，F 必须在 X 之前（或同时）已经成立。
 5. 因果图无环；from 的 canonical 不晚于 to。
 6. 设计层：场景（sceneRef）、幕（acts，开始/收幕/幕末去处）、身份（release、startAct、conditionalAccess）、世界结局（endings）、
-   时刻标签（clock.labels）、人物的互助 / 约定 / 打算（S-029、S-030、S-048）、情境动作和物品（affordances / items，
+   时刻标签（clock.labels）、（1.10）身份的 summary、每个人物的 reading、注音词表（ruby）、（1.11）结局页人物的 originalEnding 和结局模板（endings.templates，字数、兜底、S-067 的字眼）、人物的互助 / 约定 / 打算（S-029、S-030、S-048）、情境动作和物品（affordances / items，
    contracts 2.10；第四幕让他慢和帮他快并排，S-036 ②）、节拍上的人物状态（activities）、台词和动机的生效时间（since / until / when）、
    （1.4）设计台词、互助的效果、节拍的变体、过场二选一（enRoute）都成立；（1.7）位置点（relocate 和去处的 spot）在这个地点所在场景的
    布局里、属于这个地点（assets/scenes/<场景>/scene.json），去处落地的 arrival，成群的人物（group）不能对话；打算成行的落点
@@ -37,7 +37,7 @@ from pathlib import Path
 
 from zoujin_worldsim import Sim  # 共用的推演规则（W-1 的包，contracts 2.4.1 / 2.5.1）
 
-CONTRACT_VERSION = "1.9"  # contracts.md 的版本
+CONTRACT_VERSION = "1.11"  # contracts.md 的版本
 errors, warnings = [], []
 
 
@@ -580,6 +580,99 @@ def main():
         err("clock.labels.format 要含 {day} 和 {band}")
     if "daysKnownBy" in lab and lab["daysKnownBy"] not in facts:
         err(f"clock.labels.daysKnownBy 不是世界模型里的事实：{lab['daysKnownBy']}")
+
+    # ---------- 给玩家看的名字：身份的一句、人物读音、注音词表（1.10，B-7 的 manifest） ----------
+    kanji = re.compile(r"[\u3400-\u9fff々〆ヶ]")
+    for r in world["roles"]:
+        if not r.get("summary"):
+            err(f"{r['id']}: 要有 summary（身份页和 manifest 上给玩家看的一句）")
+    for c in world["characters"]:
+        if not c.get("reading"):
+            err(f"{c['id']}: 要有 reading（manifest 里每个人物都带读音）")
+        elif kanji.search(c["reading"]):
+            err(f"{c['id']}: reading 不能带汉字：{c['reading']}")
+    body = "\n".join(paras) + json.dumps({k: v for k, v in world.items() if k != "ruby"}, ensure_ascii=False)
+    seen = set()
+    for x in world.get("ruby", []):
+        word, rd = x["word"], x["reading"]
+        if word in seen:
+            err(f"ruby: 词重复了：{word}")
+        seen.add(word)
+        if not kanji.search(word):
+            err(f"ruby: {word} 没有汉字，不用注音")
+        if not re.fullmatch(r"[ぁ-ゖー]+", rd):
+            err(f"ruby: {word} 的读音要全是平假名：{rd}")
+        if word not in body:
+            err(f"ruby: {word} 在原文和世界模型里都没有出现（写错了？）")
+
+    # ---------- 结局：人物的「原作では」、模板（1.11，B-9；ux-design 11.2〜11.4，S-065、S-067） ----------
+    # S-067：处刑只间接交代。这些写法在任何结局里都可能出现（模板、「原作では」），一律不用（UX 在 #97 评审补了后几个）
+    death_words = ("処刑", "死", "殺", "最期", "亡くな", "命を落と", "息絶え", "絶命", "事切れ", "帰らぬ人", "磔にされ", "磔になっ")
+
+    def no_death_words(text, where):
+        hit = [x for x in death_words if x in text]
+        if hit:
+            err(f"{where}: 结局的文字不直接写死（S-067）：{'、'.join(hit)}")
+
+    cmap_e = {c["id"]: c for c in world["characters"]}
+    ends = world.get("endings", {})
+    listed = ends.get("characters", [c["id"] for c in world["characters"] if c["talkable"]])
+    if len(set(listed)) != len(listed):
+        err("endings.characters 有重复的人物")
+    for cid in listed:
+        c = cmap_e.get(cid)
+        if c is None:
+            err(f"endings.characters: 不是人物 {cid}")
+        elif not c.get("originalEnding"):
+            err(f"{cid}: 结局页要列的人物要有 originalEnding（「原作では」那一句）")
+    for c in world["characters"]:
+        oe = c.get("originalEnding")
+        if not oe:
+            continue
+        if len(oe["text"]) > 40 or not oe["text"].endswith("。"):
+            err(f"{c['id']}.originalEnding: 一句，≤ 40 字，以「。」结尾（现在 {len(oe['text'])} 字）")
+        if not oe.get("cite"):
+            err(f"{c['id']}.originalEnding: 要有出处")
+        no_death_words(oe["text"], f"{c['id']}.originalEnding")
+    outcomes = [e["id"] for e in ends.get("world", [])]
+    templates = ends.get("templates", [])
+    if templates:
+        by_outcome = defaultdict(list)
+        for i, tp in enumerate(templates):
+            w2 = f"endings.templates[{i}]（{tp['outcome']}）"
+            if tp["outcome"] not in outcomes:
+                err(f"{w2}: outcome 不是世界结局的底线类")
+            by_outcome[tp["outcome"]].append(tp)
+            for cnd in tp.get("when", []):
+                check_value(cnd["var"], cnd["value"], f"{w2}.when")
+            if len(tp["subtitle"]) > 26:
+                err(f"{w2}: subtitle ≤ 26 字（现在 {len(tp['subtitle'])}）")
+            if tp["title"].count("{role}") != 1 or len(tp["title"].replace("{role}", "")) > 9:
+                err(f"{w2}: title 要有一个 {{role}}，去掉以后 ≤ 9 字")
+            if len(tp["contrast"]) > 48:
+                err(f"{w2}: contrast ≤ 48 字（现在 {len(tp['contrast'])}）")
+            for ln in tp["lines"]:
+                if ln["character"] not in cmap_e:
+                    err(f"{w2}: lines 的人物不存在 {ln['character']}")
+                if len(ln["line"]) > 40:
+                    err(f"{w2}: {ln['character']} 那一句 ≤ 40 字（现在 {len(ln['line'])}）")
+            if "fate" not in tp and not ends.get("fates"):
+                err(f"{w2}: 没写 fate，就要有 endings.fates")
+            if "fate" not in tp and tp["outcome"] == "player-substituted":  # 玩家是人质，fate.id 不是 witness / elsewhere
+                err(f"{w2}: player-substituted 的模板要写 fate（endings.fates 只有 witness、elsewhere）")
+            for k in ("subtitle", "title", "fate", "contrast"):
+                if k in tp:
+                    no_death_words(tp[k], f"{w2}.{k}")
+            for ln in tp["lines"]:
+                no_death_words(ln["line"], f"{w2}.lines")
+        for oc in outcomes:
+            tps = by_outcome.get(oc, [])
+            if not tps:
+                err(f"endings.templates: 世界结局 {oc} 没有模板")
+            elif "when" in tps[-1] or any("when" not in x for x in tps[:-1]):
+                err(f"endings.templates: {oc} 只有最后一条不带 when（兜底），前面的都要带")
+    for k, v in ends.get("fates", {}).items():
+        no_death_words(v, f"endings.fates.{k}")
 
     # ---------- 情境动作和物品（contracts 2.10；S-036 ②、S-038、UX 5.1） ----------
     UX_ACTIONS = {"examine", "give", "follow", "block", "help", "wait", "go", "shortcut", "run-together", "hasten"}
