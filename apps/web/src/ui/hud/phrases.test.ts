@@ -34,6 +34,22 @@ describe("the talk key's phrases", () => {
   });
 });
 
+describe("punctuation ends a phrase", () => {
+  it("a new phrase after 、。！？」, even before kana", () => {
+    expect(phrases("ああ、セリヌンティウスよ、ゆるしてくれ。")).toEqual([
+      "ああ、",
+      "セリヌンティウスよ、",
+      "ゆるしてくれ。",
+    ]);
+    expect(phrases("「待て」と言った。それから")).toEqual([
+      "「待て」",
+      "と",
+      "言った。",
+      "それから",
+    ]);
+  });
+});
+
 describe("without Intl.Segmenter (older Safari and Firefox)", () => {
   it("still breaks only before kanji and katakana, never inside the kana after them", async () => {
     vi.resetModules();
@@ -52,6 +68,11 @@ describe("without Intl.Segmenter (older Safari and Firefox)", () => {
         "殺しているそうです",
       ]);
       expect(plain("メロスだ！")).toEqual(["メロスだ！"]);
+      expect(plain("ああ、セリヌンティウスよ、ゆるしてくれ。")).toEqual([
+        "ああ、",
+        "セリヌンティウスよ、",
+        "ゆるしてくれ。",
+      ]);
       expect(plain("")).toEqual([]);
     } finally {
       vi.unstubAllGlobals();

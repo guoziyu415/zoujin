@@ -11,10 +11,16 @@ const CONTENT = /^[\p{Script=Han}\p{Script=Katakana}]/u;
 const RUNS =
   /[\p{Script=Han}\p{Script=Katakana}ー]+|[^\p{Script=Han}\p{Script=Katakana}ー]+/gu;
 
+// a phrase ends after these (UX on #167: ああ、/ セリヌンティウスよ、/ ゆるしてくれ。, never the last two as one)
+const ENDS = /[、。！？」]$/;
+const OPENS = /^[「『（]+$/; // an opening bracket goes with what follows it
+
 function words(text: string): string[] {
-  return SEGMENTER
-    ? [...SEGMENTER.segment(text)].map((s) => s.segment)
-    : (text.match(RUNS) ?? []);
+  return (
+    SEGMENTER
+      ? [...SEGMENTER.segment(text)].map((s) => s.segment)
+      : (text.match(RUNS) ?? [])
+  ).flatMap((w) => w.split(/(?<=[、。！？」])/));
 }
 const KANJI = /\p{Script=Han}/u;
 const KANA = /\p{Script=Hiragana}/u;
@@ -23,7 +29,13 @@ const KANA = /\p{Script=Hiragana}/u;
 export function phrases(text: string, max = Infinity): string[] {
   const out: string[] = [];
   for (const segment of words(text)) {
-    if (!out.length || CONTENT.test(segment)) out.push(segment);
+    const last = out[out.length - 1];
+    const open = last !== undefined && OPENS.test(last);
+    if (
+      last === undefined ||
+      (!open && (CONTENT.test(segment) || ENDS.test(last)))
+    )
+      out.push(segment);
     else out[out.length - 1] += segment;
   }
   return out.flatMap((p) => {

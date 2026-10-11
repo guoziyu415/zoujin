@@ -367,6 +367,7 @@ button {
 .subs .phrase,
 .controls .talk .phrase {
   display: inline-block;
+  max-width: 100%; /* a phrase longer than the line (all hiragana) wraps inside itself (UX on #167) */
 }
 .controls .talk.listening {
   background: var(--accent);
