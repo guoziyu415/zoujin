@@ -73,6 +73,14 @@ button {
   border-radius: 8px;
   font-size: 14px;
 }
+.inapp-steps {
+  padding-bottom: 8px;
+}
+.inapp-link {
+  user-select: all;
+  -webkit-user-select: all;
+  overflow-wrap: anywhere;
+}
 .primary {
   background: var(--accent);
   color: var(--ink);
@@ -338,6 +346,8 @@ button {
   padding: 0 8px;
   font-size: 13px;
   line-height: 1.3;
+  white-space: normal; /* the round key's label wraps inside it (UX R1) */
+  word-break: auto-phrase;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
@@ -932,10 +942,17 @@ button {
   transition: all 0.4s;
 }
 .mb-promise {
+  width: 100%;
+  min-height: 44px;
   display: flex;
   flex-wrap: wrap;
+  align-items: baseline;
   gap: 4px 12px;
   padding: 6px 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  line-height: 1.6;
 }
 .mb-promise::before {
   content: "◯";
@@ -1302,4 +1319,80 @@ button {
 .hud-top[hidden],
 .hud-bottom[hidden] {
   display: none;
+}
+.mb-go {
+  margin-left: auto;
+}
+.knot {
+  display: inline-block;
+  vertical-align: -2px;
+  margin-right: 4px;
+  color: var(--umi);
+}
+/* Japanese text breaks between phrases where the browser can (Chrome's auto-phrase; Safari keeps per character),
+   and a paragraph's last line isn't left with one or two characters (UX review of #113, item 14) */
+p,
+dd,
+li {
+  text-wrap: pretty;
+  word-break: auto-phrase;
+}
+/* the act end's input (ux-design 4.4): on a phone the field takes the whole line, the talk key and 伝える under it,
+   left and right; wider, the three side by side. The form's children join the grid */
+.ae-inputs {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas:
+    "field field field"
+    "key . send";
+  gap: 8px;
+  align-items: center;
+}
+.ae-inputs .textinput {
+  display: contents;
+}
+.ae-inputs .textinput input {
+  grid-area: field;
+  min-width: 0;
+}
+.ae-inputs .textinput button,
+.ae-talk {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 22px;
+  white-space: nowrap;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--ink);
+}
+.ae-inputs .textinput button {
+  grid-area: send;
+}
+.ae-inputs .textinput button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+@media (min-width: 600px) {
+  .ae-inputs {
+    grid-template-areas: "key field send";
+  }
+}
+.ae-talk {
+  grid-area: key;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.ae-talk[aria-pressed="true"] {
+  color: var(--paper);
+  background: var(--ink);
+}
+/* the plan as heard: grey while it is still coming (as the subtitles' partial line) */
+.ae-heard {
+  color: var(--ink);
+}
+.ae-heard.partial {
+  color: var(--ink-2);
 }

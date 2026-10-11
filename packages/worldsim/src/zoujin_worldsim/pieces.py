@@ -14,6 +14,7 @@ from typing import Any
 from .incremental import SimState, flat
 from .primitives import knows
 from .sim import OCCURRED, Sim, World
+from .visibility import sees
 
 
 def _matches(on: Mapping[str, Any], hook: Mapping[str, Any]) -> bool:
@@ -30,12 +31,18 @@ def pick_set_piece(
     """这个时机演哪一条固定演出；没有就是 None。
 
     hook 的写法同 `SetPiece.on`：`{"beat": 节拍}`，或 `{"act": kind, "target": 对象, "refused": 是否被拒}`
-    （target 按契约 2.11：人物、地点，go 是出口通往的地点，examine 是可调查物）。节拍的时机只在玩家在节拍的地点时演
-    （`var.player.location`，契约 2.4.1 第 4 条），调用方在节拍那次提交之后、把它应用到 state 以后再问。
+    （target 按契约 2.11：人物、地点，go 是出口通往的地点，examine 是可调查物）。节拍的时机只在玩家看得到这个节拍时演
+    （`sees()`，契约 1.12 第 3 节：在节拍的地点，或者节拍没有参与人物、落在同一个场景），调用方在节拍那次提交之后、
+    把它应用到 state 以后再问（玩家的位置和节拍之前一样）。
     """
     if "beat" in hook:
         beat = next((b for b in world["beats"] if b["id"] == hook["beat"]), None)
-        if beat is None or state["vars"].get("var.player.location") != beat.get("place"):
+        event = {
+            "actor": "system",
+            "place": beat.get("place") if beat else None,
+            "effects": [{"op": "beat", "beat": hook["beat"]}],
+        }
+        if beat is None or not sees(world, state["vars"].get("var.player.location"), event):
             return None
     sim: Sim | None = None
     for p in world.get("setPieces", []):

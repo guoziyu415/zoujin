@@ -16,7 +16,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from zoujin_worldsim import SimState, activity, arrival_delta, flat, knows, world_state
+from zoujin_worldsim import SimState, activity, apply, arrival_delta, flat, initial_state, knows, sees, world_state
 
 from zoujin_backend.db.store import Run
 from zoujin_backend.world import Book
@@ -80,12 +80,14 @@ def promise_change(effects: Sequence[Mapping[str, Any]]) -> Json | None:
 
 
 def is_visible(book: Book, ev: Mapping[str, Any], player_place: str) -> bool:
-    """第 0 节：改的是可见变量或节拍走向（或约定），并且玩家在场或是玩家做的。被否决的不推。"""
+    """第 0 节：改的是可见变量或节拍走向（或约定），并且玩家看得到（数据契约 1.12 第 3 节的 `sees()`：玩家做的、
+    玩家在事件的地点，或者是没有参与人物的节拍、落在和玩家同一个场景）。player_place 是这个事件之前玩家的地点。
+    被否决的不推。"""
     if not committed(ev):
         return False
     if not visible_effects(book, ev["effects"]) and promise_change(ev["effects"]) is None:
         return False
-    return bool(ev["actor"] == "player" or ev["place"] == player_place)
+    return sees(book.world, player_place, ev)
 
 
 YOU = "あなた"
@@ -132,6 +134,22 @@ def visible_event(book: Book, ev: Mapping[str, Any], role_id: str) -> Json:
     }
     if ev.get("turnId"):
         out["turnId"] = ev["turnId"]
+    return out
+
+
+def visible_events(
+    book: Book, role_id: str, log: Sequence[Mapping[str, Any]], after_seq: int, limit: int | None = None
+) -> list[Json]:
+    """2.4：一局事件里玩家可见的、seq 大于 after_seq 的，最多 limit 条（网关的 `GET …/events` 和评测的 `view()`
+    同一个）。在不在场按这一条之前的状态算；只改时间的、玩家不在场的、被否决的占 seq 但不在这里。"""
+    state = initial_state(book.world, role_id)
+    out: list[Json] = []
+    for ev in log:
+        if ev["seq"] > after_seq and is_visible(book, ev, state["vars"]["var.player.location"]):
+            out.append(visible_event(book, ev, role_id))
+            if limit is not None and len(out) >= limit:
+                break
+        state = apply(book.world, state, ev)
     return out
 
 
@@ -234,10 +252,12 @@ def player_spot(book: Book, state: SimState, run: Run | None) -> str:
     return scene.player_spot(place)
 
 
-def pending(run: Run | None, confirm: Json | None = None) -> Json:
-    """welcome.pending（第 4 节）。confirm：还没答的意图确认（B-4，带 remainingSec），网关查草稿给。"""
+def pending(run: Run | None, confirm: Json | None = None, *, safety_pause: bool = False) -> Json:
+    """welcome.pending（第 4 节）。confirm：还没答的意图确认（B-4，带 remainingSec），网关查草稿给；
+    safety_pause：出戏卡开着（B-12，`playthroughs.safety.paused`）。"""
     out: Json = dict(PENDING)
     out["confirm"] = confirm
+    out["safetyPause"] = safety_pause
     if run is not None:
         out["actEnd"] = run.act_end
         if run.arrival and run.arrival.get("opener"):

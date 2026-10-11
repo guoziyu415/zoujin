@@ -9,12 +9,12 @@ B-8 以后只剩 `config.TEXT` 里 provider 是 google 的提示（评测里替 
 - 每次调用：渲染提示（世界模型前缀放最前）→ 账本判上限（`BudgetStop`）→ 调用（429 → `RateLimited`，第一个就停）→
   记账 → 输出过 Schema（不过 → `BadOutput`，由流水线按时限的规则重发）。设了 `ZJ_RECORD_REPLAYS` 时由
   `models.text.Recording` 录一行回放。
-- 被时限取消的调用按预计花费记账（可能已经计费了，宁多记）。
+- 被时限取消的调用按预计花费记账（可能已经计费了，宁多记）。每行带耗时和状态（B-5：`ok`、`timeout`、`bad-output`；
+  没有回应的记 `error`、花费 0）。
 """
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import os
@@ -175,19 +175,16 @@ class RealText:
         user = self._user(kind, request)
         req = body(kind, user)
         guess = self._guess(kind, user)
-        self.ledger.before(guess)
-        try:
+        with self.ledger.timed(kind=kind, model=model, estimate=guess) as bill:
             got = await self.transport.generate(model, req)
-        except asyncio.CancelledError:  # 时限到了被取消：可能已经计费，按预计记
-            self.ledger.add(kind=kind, model=model, usage={}, cost=guess)
-            raise
-        cost = cost_usd(model, got.usage, regional=self.regional)
-        self.ledger.add(kind=kind, model=model, usage=got.usage, cost=cost)
-        try:
-            output = json.loads(got.text)
-            jsonschema.validate(output, PROMPTS[kind].schema)
-        except (ValueError, jsonschema.ValidationError):
-            raise BadOutput(f"{kind} 的输出不是合 Schema 的 JSON", cost) from None
+            cost = cost_usd(model, got.usage, regional=self.regional)
+            try:
+                output = json.loads(got.text)
+                jsonschema.validate(output, PROMPTS[kind].schema)
+            except (ValueError, jsonschema.ValidationError):
+                bill.done(got.usage, cost, ok=False)
+                raise BadOutput(f"{kind} 的输出不是合 Schema 的 JSON", cost) from None
+            bill.done(got.usage, cost)
         return TextResult(output, kind, model, version, dict(got.usage), cost)
 
 

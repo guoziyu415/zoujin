@@ -52,14 +52,14 @@
 | beat.s2 ちらと友を疑う | D3 16:00（D3 14:00〜D3 17:50） | castle | セリヌンティウス | mutable | hostage.who == char.selinuntius、hostage.fate == held、selinuntius.faith <= 2〔推断〕 | selinuntius.doubted = True | 「私はこの三日の間、たった一度だけ、ちらと君を疑った。」(65) | |
 | beat.21 泉 | D3 16:30（D3 12:30〜D3 19:00） | spring | メロス | mutable | — | melos.stamina +30、melos.resolve = 100 | 「水を両手で掬って、一くち飲んだ。」(48)<br>「走れ！　メロス。」(48)<br>「先刻の、あの悪魔の囁きは、あれは夢だ。」(49) | |
 | beat.22 黒い風のように | D3 17:30（D3 13:30〜D3 19:00） | road-to-city | メロス、旅の一団 | mutable | — | melos.clothing = nearly-naked | 「メロスは黒い風のように走った。」(50)<br>「メロスは、いまは、ほとんど全裸体であった。」(50) | |
-| beat.s1 刑場に引き出される友 | D3 18:00（D3 17:00〜D3 18:55） | execution-ground | セリヌンティウス、王ディオニス、市の群衆、城の警吏 | mutable | hostage.fate == held | hostage.fate = on-cross、selinuntius → execution-ground、maiden → execution-ground、king → execution-ground | 「王様が、さんざんあの方をからかっても、メロスは来ます、とだけ答え」(57) | |
+| beat.s1 刑場に引き出される友 | D3 18:00（D3 17:00〜D3 18:55） | execution-ground | セリヌンティウス、王ディオニス、市の群衆、城の警吏 | mutable | hostage.fate == held | hostage.fate = on-cross、selinuntius → execution-ground、maiden → execution-ground、king → execution-ground、crowd → execution-ground、guards → execution-ground | 「王様が、さんざんあの方をからかっても、メロスは来ます、とだけ答え」(57) | |
 | beat.23 フィロストラトス | D3 18:30（D3 14:30〜D3 19:00） | road-to-city | メロス、フィロストラトス | mutable | — | — | 「もう、駄目でございます。」(53)<br>「それだから、走るのだ。信じられているから走るのだ。」(58)<br>「いや、まだ陽は沈まぬ。」(56) | |
 | beat.24 日没、刑場へ | D3 19:00（D3 16:00〜D3 19:00） | execution-ground | メロス、セリヌンティウス、市の群衆、城の警吏 | mutable | melos.custody == on-parole | melos.custody = returned、hostage.fate = released、melos → execution-ground | 「メロスは疾風の如く刑場に突入した。間に合った。」(60)<br>「セリヌンティウスの縄は、ほどかれたのである。」(62) | |
 | beat.25 殴り合いと抱擁 | D3 19:05（D3 16:00〜D3 20:00） | execution-ground | メロス、セリヌンティウス | mutable | hostage.fate == released、hostage.who == char.selinuntius〔推断〕 | — | 「私を殴れ。ちから一ぱいに頬を殴れ。」(63)<br>「「ありがとう、友よ。」二人同時に言い」(67)<br>「刑場一ぱいに鳴り響くほど音高くメロスの右頬を殴った。」(64)<br>「メロスは腕に唸りをつけてセリヌンティウスの頬を殴った。」(66) | |
 | ↳ 变体 beat.25.v-neither〔推断〕 | — | — | — | — | melos.doubted == False、selinuntius.doubted == False | どちらも相手を疑わなかった。殴り合うことはなく、二人は「ありがとう、友よ」と言って抱き合い、声を放って泣く。  | 「「ありがとう、友よ。」二人同時に言い」(67) | |
 | ↳ 变体 beat.25.v-melos-only〔推断〕 | — | — | — | — | selinuntius.doubted == False | メロスだけが途中の悪い夢を打ち明け、セリヌンティウスに殴られる。セリヌンティウスは一度も疑わなかったと言い、殴られないまま二人は抱き合う。  | 「私は、途中で一度、悪い夢を見た。」(63) | |
 | ↳ 变体 beat.25.v-selinuntius-only〔推断〕 | — | — | — | — | melos.doubted == False | メロスは道中で一度も約束を投げ出しかけなかった。セリヌンティウスだけが一度疑ったことを打ち明けて殴られ、二人は抱き合う。  | 「私はこの三日の間、たった一度だけ、ちらと君を疑った。」(65) | |
-| beat.26 王の改心 | D3 19:15（D3 16:00〜D3 20:00） | execution-ground | 王ディオニス、メロス、セリヌンティウス、市の群衆 | mutable | hostage.fate == released、king.trust >= 1〔推断〕 | king.disposition = reformed、king.trust = 80 | 「信実とは、決して空虚な妄想ではなかった。」(69)<br>「万歳、王様万歳。」(71)<br>「どっと群衆の間に、歓声が起った。」(70) | |
+| beat.26 王の改心 | D3 19:15（D3 16:00〜D3 20:00） | execution-ground | 王ディオニス、メロス、セリヌンティウス、市の群衆 | mutable | hostage.fate == released、king.trust >= 1〔推断〕、king.disposition != reformed〔推断〕 | king.disposition = reformed、king.trust = 80 | 「信実とは、決して空虚な妄想ではなかった。」(69)<br>「万歳、王様万歳。」(71)<br>「どっと群衆の間に、歓声が起った。」(70) | |
 | beat.27 緋のマント | D3 19:20（D3 16:00〜D3 20:00） | execution-ground | 市の少女、メロス、セリヌンティウス | mutable | melos.custody == returned | melos.clothing = scarlet-cloak | 「ひとりの少女が、緋のマントをメロスに捧げた。」(72)<br>「勇者は、ひどく赤面した。」(74) | |
 
 ## 3. 事实
@@ -88,6 +88,7 @@
 | fact.groom-wanted-wait | 花婿は仕度ができていないので葡萄の季節まで待ちたかった。 | pre | private | 「こちらには未だ何の仕度も出来ていない、葡萄の季節まで待ってくれ」(32) | |
 | fact.wedding-held | 婚礼は真昼に行われた。 | beat.11 | public | 「結婚式は、真昼に行われた。」(32) | |
 | fact.storm | 婚礼の宣誓のころから車軸を流すような大雨になった。 | beat.12 | public | 「やがて車軸を流すような大雨となった。」(32) | |
+| fact.melos-farewell | メロスは祝宴で妹と花婿に、眼が覚めたらすぐ市へ出かける、大切な用事があると告げた（何の用か、いつ戻るかは言っていない）。 | beat.13 | public | 「眼が覚めたら、すぐに市に出かける。大切な用事があるのだ。」(33) | |
 | fact.bridge-destroyed | 前日の豪雨で川が氾濫し、橋が流された。 | beat.17 | public | 「きのうの豪雨で山の水源地は氾濫し」(38)<br>「猛勢一挙に橋を破壊し」(38) | |
 | fact.no-boats | 繋ぎ舟はすべて浪にさらわれ、渡し守もいない。 | beat.17 | public | 「繋舟は残らず浪に浚われて影なく、渡守りの姿も見えない。」(38) | |
 | fact.bandits-ambush | 峠で一隊の山賊が待ち伏せている。 | beat.19 | public | 「突然、目の前に一隊の山賊が躍り出た。」(39) | |
@@ -119,7 +120,7 @@
 | 动机 | 王に人の信実を見せる〔since beat.05〕〔until beat.26〕 | 「あの王に、人の信実の存するところを見せてやろう。」(37) | |
 | 动机 | 市を暴君の手から救う〔since beat.03〕〔until beat.26〕 | 「市を暴君の手から救うのだ。」(12) | |
 | 说话 | 一人称「私」；率直で激しい。古風な断定（〜ぬ、〜のだ）。目上にも物怖じしない。；开局在做：idle | 「人の心を疑うのは、最も恥ずべき悪徳だ。」(14)<br>「そうです。帰って来るのです。」(20)〔since beat.05〕<br>「いや、まだ陽は沈まぬ。」(54)〔since beat.23〕<br>「信じられているから走るのだ。」(58)〔since beat.23〕<br>「私にはいのちの他には何も無い。」(43)〔since beat.19〕<br>「私は信頼されている。私は信頼されている。」(49)〔since beat.21〕<br>「私は、途中で一度、悪い夢を見た。」(63)〔since beat.25〕〔条件 melos.doubted == True〕 | |
-| 知道 | melos-shepherd@pre、melos-family@pre、sister-engaged@pre、melos-errand@pre、friendship@pre、selinuntius-stonemason@pre、city-silent@beat.02、king-killings@beat.03、king-distrust@beat.03、hostage-decree@beat.03、six-killed-today@beat.03、melos-dagger@beat.04、promise@beat.05、melos-reason@beat.05、king-whisper@beat.05、selinuntius-hostage@beat.06、wedding-tomorrow@beat.08、groom-wanted-wait@beat.10、wedding-held@beat.11、storm@beat.12、bridge-destroyed@beat.17、no-boats@beat.17、bandits-ambush@beat.19、melos-suspects-king@beat.19、melos-despair@beat.20、travelers-rumor@beat.22、selinuntius-steadfast@beat.23、selinuntius-doubted-once@beat.25、groom-agreed@beat.10 | — | |
+| 知道 | melos-shepherd@pre、melos-family@pre、sister-engaged@pre、melos-errand@pre、friendship@pre、selinuntius-stonemason@pre、city-silent@beat.02、king-killings@beat.03、king-distrust@beat.03、hostage-decree@beat.03、six-killed-today@beat.03、melos-dagger@beat.04、promise@beat.05、melos-reason@beat.05、king-whisper@beat.05、selinuntius-hostage@beat.06、wedding-tomorrow@beat.08、groom-wanted-wait@beat.10、wedding-held@beat.11、storm@beat.12、melos-farewell@beat.13、bridge-destroyed@beat.17、no-boats@beat.17、bandits-ambush@beat.19、melos-suspects-king@beat.19、melos-despair@beat.20、travelers-rumor@beat.22、selinuntius-steadfast@beat.23、selinuntius-doubted-once@beat.25、groom-agreed@beat.10 | — | |
 | 他能为你 | 水をくれた牧童を覚えていて、三日のうちに戻るという約束を初めて話し、家まで連れて行く〔开局互助：role.shepherd-boy〕〔推断〕 | 「三日のうちに」(18) | |
 | 你能为他 | よろめいて村に戻ったメロスに水を一杯差し出す〔开局互助：role.shepherd-boy〕〔推断〕 | 「よろめいて歩いて来る兄の、疲労困憊の姿を見つけて驚いた。」(27) | |
 | 他能为你 | 王の前で、あなたのことを口にする（条件：melos.custody == arrested）〔大事：兑现时算关键时刻〕〔推断〕 | — | |
@@ -201,7 +202,7 @@
 | 动机 | 結婚する〔until beat.11〕 | 「花婿として迎える事になっていた。」(1) | |
 | 动机 | 婚礼は近いが、日取りはまだ決まっていない〔until beat.08〕 | 「結婚式も間近かなのである。」(1) | |
 | 说话 | 一人称「わたし」；控えめで丁寧な話し方（〜です、〜ます）。兄を「兄さん」と呼ぶ。口数が少なく、照れると言葉が途切れる。；开局在做：work | — | |
-| 知道 | melos-family@pre、sister-engaged@pre、melos-errand@pre、wedding-tomorrow@beat.08、wedding-held@beat.11、storm@beat.12 | — | |
+| 知道 | melos-family@pre、sister-engaged@pre、melos-errand@pre、wedding-tomorrow@beat.08、wedding-held@beat.11、storm@beat.12、melos-farewell@beat.13 | — | |
 | 他能为你 | 兄にあなたを引き合わせる〔推断〕 | — | |
 | 他能为你 | 兄の出発のとき、あなたにも弁当を持たせる〔交给你：item.provisions〕〔推断〕 | — | |
 | 你能为他 | 婚礼の支度を手伝う〔推断〕 | 「神々の祭壇を飾り」(31) | |
@@ -221,7 +222,7 @@
 | 性格 | 照れ屋 | 「花婿は揉み手して、てれていた。」(36) | |
 | 动机 | 仕度を整え、葡萄の季節に婚礼を挙げたい〔until beat.10〕 | 「葡萄の季節まで待ってくれ」(32) | |
 | 说话 | 一人称「わたし」；実直で慎重な話し方（〜です、〜ます）。メロスを「メロスさん」と呼ぶ。；开局在做：work | 「こちらには未だ何の仕度も出来ていない」(32) | |
-| 知道 | sister-engaged@pre、melos-family@pre、groom-wanted-wait@pre、wedding-held@beat.11、storm@beat.12、groom-agreed@beat.10 | — | |
+| 知道 | sister-engaged@pre、melos-family@pre、groom-wanted-wait@pre、wedding-held@beat.11、storm@beat.12、melos-farewell@beat.13、groom-agreed@beat.10 | — | |
 | 他能为你 | あなたが支度を手伝ったか、自分の口で頼んだから、婚礼を早めることに同意する（メロスの説得だけで承知したなら、あなたのためとは数えない）（条件：wedding.status == scheduled）〔大事：兑现时算关键时刻〕〔推断〕 | 「やっと、どうにか婿をなだめ、すかして、説き伏せた。」(32) | |
 | 他能为你 | 灯や上着を貸す〔交给你：item.lantern〕〔推断〕 | — | |
 | 他能为你 | 牧人だけが知る、峠の脇道と町へ抜ける野道を教える〔效果：player.knowsShortcut = True〕〔推断〕 | — | |

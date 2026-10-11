@@ -252,6 +252,7 @@ def test_ledger_line(tmp_path: Path) -> None:
         "s2d-01",
     )
     assert line["costUsd"] == pytest.approx(want) and line["usage"] == USAGE
+    assert line["status"] == "ok" and isinstance(line["ms"], int) and line["ms"] >= 0  # B-5
     assert "idmark" not in json.dumps(line)  # 模型 ID 不进账本
 
 
@@ -269,6 +270,17 @@ def test_failed_answers_are_billed(reply: Reply, tmp_path: Path) -> None:
         asyncio.run(client(Fake(reply), tmp_path).call("extract", REQ))
     (line,) = lines(tmp_path / "ledger.jsonl")
     assert line["costUsd"] > 0 and e.value.cost_usd == pytest.approx(line["costUsd"])
+    assert line["status"] == "bad-output"
+
+
+def test_no_answer_is_a_free_error_line(tmp_path: Path) -> None:
+    """没有回应（连不上、5xx、429）：记一行 error，花费 0，照旧抛出（B-5）。"""
+    for err in (ModelCallFailed("Claude HTTP 500"), RateLimited("Claude 回 429")):
+        with pytest.raises(type(err)):
+            asyncio.run(client(Fake(err), tmp_path).call("extract", REQ))
+    rows = lines(tmp_path / "ledger.jsonl")
+    assert [(x["status"], x["costUsd"], x["usage"]) for x in rows] == [("error", 0, {}), ("error", 0, {})]
+    assert all(x["ms"] >= 0 and "playthroughId" not in x for x in rows)
 
 
 def test_budget_stops_before_sending(tmp_path: Path) -> None:
@@ -300,6 +312,7 @@ def test_cancelled_call_is_billed_at_the_estimate(tmp_path: Path) -> None:
     billed = lines(tmp_path / "ledger.jsonl")
     assert [x["kind"] for x in billed] == ["triage", "triage", "extract", "extract"]
     assert all(x["costUsd"] > 0 and x["usage"] == {} and x["provider"] == "claude" for x in billed)
+    assert all(x["status"] == "timeout" and x["ms"] >= 40 for x in billed)  # 记到取消为止（时限 50 毫秒）
     assert billed[2]["costUsd"] == pytest.approx(rt.cancelled_cost("extract", extract_request()))
     assert spend.usd == pytest.approx(by_kind(billed))  # 这一轮的花费（playthrough_metrics）和账本对得上
 

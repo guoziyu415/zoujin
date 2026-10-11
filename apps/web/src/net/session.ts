@@ -72,6 +72,9 @@ export class Session {
   private moves = new Map<string, string | null>(); // move actions waiting for their action_result: where from
   private unsentMove: string | null = null; // walked into a place while the socket was down
   private actChange: Api.CommitMessage[] = []; // the act change's commits, held until act_transition (3.11)
+  // a spoken plan still thinking when the line dropped, and the server has no act end any more on welcome: the plan
+  // went (or the act was settled) meanwhile, so the resent commits are the act change's and wait for act_transition
+  private planLanded = false;
   readonly unknown = new Map<string, number>();
 
   constructor(
@@ -115,6 +118,7 @@ export class Session {
     placePlayer(snapshot.player.place, snapshot.player.spot);
     resetStory();
     this.actChange = [];
+    this.planLanded = false;
     useUi.setState({ connection: "connecting", downSince: null });
     setTelemetryContext({
       playthroughId: snapshot.playthroughId,
@@ -242,6 +246,31 @@ export class Session {
     if (sent) useStory.setState({ actEnd: story.proposed(a, { clientMsgId }) });
   }
 
+  // the plan said aloud (3.11): the talk key's voice with purpose act_plan, nobody to focus; from the release the
+  // page waits for act_plan_result with that turn's ID. A slip or a slide away leaves the page as it was.
+  actPlanPress(): void {
+    const a = useStory.getState().actEnd;
+    if (!a || a.phase.k !== "propose") return;
+    useStory.setState({ actEnd: story.clearNotHeard(a) });
+    this.voice.planPress();
+  }
+
+  actPlanRelease(): void {
+    const turnId = this.voice.planRelease();
+    const a = useStory.getState().actEnd;
+    if (turnId && a)
+      useStory.setState({ actEnd: story.proposed(a, { turnId }) });
+  }
+
+  // took the spoken plan back while it was being judged (3.6 ⑦): turn_retract_result says whether it was in time
+  actPlanRetract(): void {
+    const a = useStory.getState().actEnd;
+    const turnId = a?.phase.k === "thinking" ? a.phase.turnId : undefined;
+    if (!a || !turnId) return;
+    this.voice.retract();
+    useStory.setState({ actEnd: story.retracting(a, turnId) });
+  }
+
   // shown the landing line of an arrival with an opener: the server lets the opener speak first
   actLanded(actId: string): void {
     this.live.send({ type: "act_landed", actId });
@@ -286,6 +315,11 @@ export class Session {
     switch (msg.type) {
       case "welcome":
         return this.welcome(msg);
+      case "turn_retract_result": {
+        const a = useStory.getState().actEnd;
+        if (a) useStory.setState({ actEnd: story.retractResult(a, msg) });
+        return this.voice.message(msg);
+      }
       case "session_preparing":
       case "session_ready":
       case "turn_started":
@@ -294,7 +328,6 @@ export class Session {
       case "turn_complete":
       case "suggestions":
       case "turn_settled":
-      case "turn_retract_result":
       case "safety_pause":
       case "safety_hint":
       case "safety_resumed":
@@ -308,14 +341,13 @@ export class Session {
         return addNarration(msg.line);
       case "action_result":
         return this.actionResult(msg);
-      case "set_piece":
-        return this.voice.setPiece(msg);
       case "limits":
         useVoice.setState({ voiceMinutesLeft: msg.voiceMinutesLeft });
         return;
       case "act_ended":
         return this.actEnded(msg);
       case "act_plan_result": {
+        if (msg.turnId) this.voice.planDone(msg.turnId);
         const a = useStory.getState().actEnd;
         if (!a) return;
         const next = story.planResult(a, msg);
@@ -339,28 +371,33 @@ export class Session {
         return;
       }
       case "set_piece":
-        if (useStory.getState().ending)
-          addEndingLines(
-            msg.lines.map((l, i) =>
-              "narration" in l
-                ? {
-                    text: l.narration,
-                    speaker: null,
-                    pieceId: msg.pieceId,
-                    n: i + 1,
-                  }
-                : {
-                    text: l.line,
-                    speaker: l.speaker,
-                    pieceId: msg.pieceId,
-                    n: i + 1,
-                  },
-            ),
-          );
+        // outside the ending the voice plays it (#126); the closing set pieces are the ending's staging (3.13)
+        if (!useStory.getState().ending) return this.voice.setPiece(msg);
+        addEndingLines(
+          msg.lines.map((l, i) =>
+            "narration" in l
+              ? {
+                  text: l.narration,
+                  speaker: null,
+                  pieceId: msg.pieceId,
+                  n: i + 1,
+                }
+              : {
+                  text: l.line,
+                  speaker: l.speaker,
+                  pieceId: msg.pieceId,
+                  n: i + 1,
+                },
+          ),
+        );
         return;
       case "error":
         // invalid_request: what we sent didn't fit the schema; the turn didn't happen (api-contract 5)
-        if (msg.error.code === "invalid_request") this.voice.undelivered();
+        if (msg.error.code === "invalid_request") {
+          this.voice.undelivered();
+          const a = useStory.getState().actEnd;
+          if (a) useStory.setState({ actEnd: story.planRefused(a) });
+        }
         // invalid_choice: the act-end page as it was, the exits again (3.11)
         if (msg.error.code === "invalid_choice") {
           const a = useStory.getState().actEnd;
@@ -411,7 +448,9 @@ export class Session {
     const a = useStory.getState().actEnd;
     if (
       a &&
-      (a.phase.k === "chosen" || (a.phase.k === "result" && a.phase.accepted))
+      (a.phase.k === "chosen" ||
+        (a.phase.k === "result" && a.phase.accepted) ||
+        (a.phase.k === "thinking" && this.planLanded))
     ) {
       this.actChange.push(c);
       return;
@@ -458,6 +497,7 @@ export class Session {
 
   // the act ends: what was being said or done is dropped (3.11: the server refuses it now); the page takes over
   private actEnded(end: Api.ActEnd): void {
+    this.planLanded = false;
     if (usePlayer.getState().focusCharacter) this.unfocus("menu");
     useStory.setState({ actEnd: story.actEnded(end), overlay: null });
   }
@@ -470,6 +510,7 @@ export class Session {
     const world = useWorld.getState().world;
     const held = this.actChange;
     this.actChange = [];
+    this.planLanded = false;
     const events = held.reduce(
       (list, c) => addEvents(list, c.events),
       world?.events ?? [],
@@ -523,6 +564,7 @@ export class Session {
   private pendingStory(p: Api.Pending): void {
     const st = useStory.getState();
     const r = story.onWelcome(st.actEnd, p.actEnd);
+    this.planLanded = st.actEnd?.phase.k === "thinking" && !p.actEnd;
     if ("set" in r) useStory.setState({ actEnd: r.set });
     // landed before the drop, the opener not yet sent: the landing again (a page waiting for the act change gets
     // act_transition instead, see onWelcome)
@@ -577,7 +619,12 @@ export class Session {
   }
 
   private actionResult(m: Api.ActionResultMessage): void {
-    if (m.narration) addNarration(m.narration);
+    if (m.narration) {
+      // the action that ended the story (3.13: its result comes after the closing set piece): into the staging
+      if (useStory.getState().ending)
+        addEndingLines([{ text: m.narration, speaker: null, early: true }]);
+      else addNarration(m.narration);
+    }
     if (!this.moves.has(m.clientMsgId)) return;
     const from = this.moves.get(m.clientMsgId) ?? null;
     this.moves.delete(m.clientMsgId);

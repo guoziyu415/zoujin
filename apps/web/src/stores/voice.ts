@@ -53,7 +53,7 @@ type VoiceStore = {
   mic: Mic;
   sheet: "primer" | "denied" | "unavailable" | null; // the half page over the HUD (ux-design 7.3, 12)
   micReady: boolean; // just granted: 「準備ができました…」 once
-  hold: { slide: boolean; preparing: boolean } | null; // the key is down; slide: past 60 px up; preparing: > 2 s held back
+  hold: { slide: boolean; preparing: boolean } | null; // the key is down; slide: past 60 px up; preparing: ≥ 2 s held back, still no session
   note: "tooShort" | null; // 「押したまま話してください」 for a moment
   textOpen: boolean; // the text field is open (文字で話す, 文字で送る, a correction)
   draft: { text: string; replaces: string | null } | null; // the field's starting text; replaces: a correction

@@ -37,5 +37,16 @@ export function shotOf(
 }
 
 // the ending card's illustration (S-055, ending-shots.md): shot 6 (the two on the platform against the west sky);
-// without it (the player was the hostage) shot 5; when Melos didn't make it, shot 1's camera
+// without it — the player was the hostage (the `-you` pieces: beat.25 doesn't happen, so no shot 6; M3) — shot 5,
+// the rope loosened and the crowd stirring; when Melos didn't make it, shot 1's camera
 export const CARD_SHOTS = [6, 5, 1];
+
+// the shot the card takes from the shots the staging went through (null: none of them; the card's fallback picture)
+export function cardShot(seen: Iterable<number>): number | null {
+  let best: number | null = null;
+  for (const n of seen) {
+    const r = CARD_SHOTS.indexOf(n);
+    if (r >= 0 && (best === null || r < CARD_SHOTS.indexOf(best))) best = n;
+  }
+  return best;
+}
