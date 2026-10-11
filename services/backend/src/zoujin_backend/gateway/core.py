@@ -26,7 +26,9 @@ from zoujin_backend.db import store
 from zoujin_backend.db.events import commit_key, recorded_at
 from zoujin_backend.db.store import Run
 from zoujin_backend.db.tables import turns
+from zoujin_backend.gateway.fallback import AudioTranscriber, FakeAudioTranscriber
 from zoujin_backend.ids import IdGen
+from zoujin_backend.models.ledger import Ledger
 from zoujin_backend.models.live import LiveModel
 from zoujin_backend.projection import is_visible, patch, snapshot, visible_event, with_locations
 from zoujin_backend.schemas import SchemaBook
@@ -90,6 +92,10 @@ class Gateway:
     draining: bool = False
     tasks: set[asyncio.Task[Any]] = field(default_factory=set)
     tracer: Tracer = field(default_factory=Tracer)  # B-4：gateway.retract
+    # B-10：补转写（人物有声音没文字时）、Live 的账本（真 Live 时）和记账用的模型名
+    transcriber: AudioTranscriber = field(default_factory=FakeAudioTranscriber)
+    live_ledger: Ledger | None = None
+    live_model_name: str = "fake-live"
     # 测试用：每条发出的服务端消息（已过 Schema）
     on_send: Callable[[Json], None] | None = None
 

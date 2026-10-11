@@ -92,6 +92,7 @@ DEFAULT_WORLD = REPO / "worlds" / "hashire-merosu" / "1.0.0-draft" / "world.json
 REPLAYS = REPO / "fixtures" / "model-replays"
 
 COOKIE = "zj_session"
+LIVE_REBUILD_TURNS = 8  # B-10：每条 Live 会话说完几轮重建（S-073 ⑤）
 SESSION_DAYS = 30  # 会话 Cookie 30 天，每次使用滑动续期（backend-design 5.2）
 
 
@@ -106,6 +107,22 @@ def model_mode(env: Mapping[str, str] | None = None) -> ModelMode:
         if value == m:
             return m
     raise ConfigError(f"ZJ_MODEL 只能是 {' / '.join(MODEL_MODES)}，得到 {value!r}")
+
+
+def live_mode(env: Mapping[str, str], model: ModelMode) -> Literal["fake", "real"]:
+    """`ZJ_LIVE`：fake / real（B-10）；没设就跟 `ZJ_MODEL`（real 才是 real，replay 的 Live 用假的）。"""
+    value = env.get("ZJ_LIVE", "") or ("real" if model == "real" else "fake")
+    if value not in ("fake", "real"):
+        raise ConfigError(f"ZJ_LIVE 只能是 fake / real，得到 {value!r}")
+    return "real" if value == "real" else "fake"
+
+
+def rebuild_turns(env: Mapping[str, str]) -> int:
+    """`ZJ_LIVE_REBUILD_TURNS`：每条 Live 会话说完几轮在停顿处换新的（B-10，dev-plan：7〜10），默认 8。"""
+    value = env.get("ZJ_LIVE_REBUILD_TURNS", "") or str(LIVE_REBUILD_TURNS)
+    if not value.isdigit() or not 7 <= int(value) <= 10:
+        raise ConfigError(f"ZJ_LIVE_REBUILD_TURNS 只能是 7〜10，得到 {value!r}")
+    return int(value)
 
 
 def world_path(env: Mapping[str, str] | None = None) -> Path:
@@ -139,6 +156,8 @@ class Settings:
     narrator_url: str = "http://127.0.0.1:8002"
     repo: Path = REPO
     speed: float = 1.0  # 假 Live 的间隔乘这个数：0 = 不等（测试）
+    live: Literal["fake", "real"] = "fake"  # B-10：ZJ_LIVE
+    live_rebuild_turns: int = LIVE_REBUILD_TURNS
     fake_voice: Path = field(default=REPO / "fixtures" / "fake-voice")
     fake_text: Path = field(default=REPO / "fixtures" / "fake-text")
     replays: Path = REPLAYS  # ZJ_REPLAYS 换成别的目录（例：留出集的回放，不进仓库）
@@ -180,6 +199,8 @@ class Settings:
             allow_origins=origins,
             narrator_url=e.get("ZJ_NARRATOR_URL", cls.narrator_url),
             speed=float(e.get("ZJ_SPEED", "1")),
+            live=live_mode(e, model_mode(e)),
+            live_rebuild_turns=rebuild_turns(e),
             world=world_path(e),
             ledger=_path(e, "ZJ_LEDGER"),
             max_google_usd=float(e["ZJ_MAX_GOOGLE_USD"]) if e.get("ZJ_MAX_GOOGLE_USD") else None,

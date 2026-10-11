@@ -49,6 +49,13 @@ ATTRS = frozenset(
         "by",
         "result",
         "nth",
+        "reason",  # B-10：Live 会话为什么开（warm / switch / rebuild / rebuild_turns / rebuild_goaway / arrival）
+        "prompt_chars",
+        "notes",
+        "first_audio_ms",
+        "audio_s",
+        "session_audio_s",
+        "session_turn",
     }
 )
 
