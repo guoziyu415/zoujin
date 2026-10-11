@@ -42,6 +42,12 @@ ATTRS = frozenset(
         "piece_id",
         "accepted",
         "tries",
+        "turn_kind",  # B-4：作废的一轮的 kind、到了哪一步；意图确认的回答、谁答的、结果、这一局第几次
+        "stage",
+        "answer",
+        "by",
+        "result",
+        "nth",
     }
 )
 

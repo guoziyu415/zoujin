@@ -4,6 +4,9 @@
 语音一轮的玩家字幕就是这一条的 `player`（假的没有语音识别）；文字一轮只用 `reply`。
 B-3：落地时先开口的人物说 `openers` 里他的一句（`speak_first`）；幕末用声音说打算时只转写，玩家字幕是 `planLines`
 依次用（`transcriber`）。
+B-4：意图确认的反问也是人物先开口，说给定的那一句（`speak_first(line)`）。作废以后会话重建：`open` 收「最近的对话」
+（这条连接上和这个人物最近几轮的文字，跳过作废的），假 Live 记下收到了什么（`opened`），测试查作废的那一轮不在里面。
+真 Live 的重建跟真 Live 的卡一起做；最近的对话只在网关内存里，不落库、不进 Trace。
 人物的音频是按回答的长短合成的 24 kHz PCM（`zoujin_backend.audio`），不放任何真人或模型录的声音。
 """
 
@@ -11,7 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Protocol
@@ -37,7 +40,7 @@ class LiveSession(Protocol):
 
     def audio_in(self, pcm: bytes) -> list[LiveEvent]: ...
     def respond(self, text: str | None) -> AsyncIterator[LiveEvent]: ...
-    def speak_first(self) -> AsyncIterator[LiveEvent]: ...
+    def speak_first(self, line: str | None = None) -> AsyncIterator[LiveEvent]: ...
     async def close(self) -> None: ...
 
 
@@ -48,8 +51,16 @@ class Transcriber(Protocol):
     async def finish(self) -> str | None: ...
 
 
+@dataclass(frozen=True)
+class Recent:
+    """最近的一轮对话（会话重建时带进新会话）：玩家说的、人物答的。"""
+
+    player: str | None
+    reply: str | None
+
+
 class LiveModel(Protocol):
-    async def open(self, character: str) -> LiveSession: ...
+    async def open(self, character: str, recent: Sequence[Recent] = ()) -> LiveSession: ...
     def transcriber(self) -> Transcriber: ...
 
 
@@ -92,9 +103,9 @@ class FakeLiveSession:
         async for ev in self._say(line.reply):
             yield ev
 
-    async def speak_first(self) -> AsyncIterator[LiveEvent]:
-        """人物先开口（落地的 opener）：没有玩家的话，只有人物的一句。"""
-        async for ev in self._say(self.opener):
+    async def speak_first(self, line: str | None = None) -> AsyncIterator[LiveEvent]:
+        """人物先开口（落地的 opener；意图确认的反问说给定的 line）：没有玩家的话，只有人物的一句。"""
+        async for ev in self._say(line or self.opener):
             yield ev
 
     async def _say(self, reply: str) -> AsyncIterator[LiveEvent]:
@@ -138,8 +149,10 @@ class FakeLive:
         self.plan_lines: list[str] = doc.get("planLines") or ["……"]
         self.planned = 0
         self.speed = speed
+        self.opened: list[tuple[str, list[Recent]]] = []  # 测试看：开了谁的会话、带了哪些最近的对话
 
-    async def open(self, character: str) -> FakeLiveSession:
+    async def open(self, character: str, recent: Sequence[Recent] = ()) -> FakeLiveSession:
+        self.opened.append((character, list(recent)))
         opener = self.openers.get(character) or self.openers.get("default") or "……"
         return FakeLiveSession(character, self.lines.get(character) or self.lines["default"], self.speed, opener)
 

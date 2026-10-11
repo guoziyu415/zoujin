@@ -13,6 +13,9 @@
   - beat {beat, to: prevented / delayed / hastened / altered, minutes?, outcomes?}：玩家的话改变了原作的某个出来事。节拍到点由系统结算，不要写 happened。
   - set / inc 状态变量、relocate 人物、hold 物品换手：只在这一轮里真的发生了才写。
 - needsConfirm：玩家的意思不确定、而事件会让节拍 prevented / altered 或改变人质、玩家自己的处境时写 true，否则 false。
+- needsConfirm 是 true 时再给两项，人物会先问玩家是不是真心：
+  - asked：人物这一轮的回答已经在这样反问了（例「本気で言っているのか」）写 true，否则 false。
+  - question：人物反问玩家的一句，30 字以内，人物自己的口吻；不照抄玩家的原话，不写现实里的个人信息。asked 是 true 时就用人物回答里反问的那一句。
 
 有 <action> 时，这一轮是玩家做的一个动作（kind、对象 target、物品 item），不是对话：按这个动作找候选事件，actor 是 player，type 是 action，origin 写 action。动作本身做不到的也照写成候选（例：交出手上没有的东西写 hold），由后面的检查判。
 
@@ -24,4 +27,6 @@
    "causes": [], "effects": [{"op": "promise", "change": "made", "from": "player", "to": "char.old-man", "text": "家まで送る"}],
    "needsConfirm": false}]}
 
-只输出 JSON：{"candidates": [...]}。
+有 <confirm> 时，人物之前反问过玩家一件事、还在等回答：prompt 是反问的那一句，summary 是那件事。另外输出 confirmAnswer：这一轮玩家的话是在回答那个反问时，肯定的（是真心的、要做）写 "yes"，否定的（不是、算了）写 "no"；说的是别的事、不是在回答，写 null。那件事本身不要再提取成候选。没有 <confirm> 时不输出 confirmAnswer。
+
+只输出 JSON：{"candidates": [...]}（有 <confirm> 时是 {"candidates": [...], "confirmAnswer": ...}）。

@@ -1,7 +1,9 @@
 """叙事者流水线的第 1〜5 步（B-2，backend-design 2.4）：分流 → 提取 → 确定性规则 → 模型检查 → 改写、降级或拒绝。
 
-第 7 步（单事务提交）在 `narrator/core.py`；第 0 步（安全筛查）只有接口：`TurnInput.flags`。第 6 步（意图确认）是 B-4，
-本卡里提取标了要确认、又是不可逆的大事的候选按「没确认 = 不是」丢弃（不写事件、不花时间）。
+第 7 步（单事务提交）在 `narrator/core.py`；第 0 步（安全筛查）只有接口：`TurnInput.flags`。第 6 步（意图确认，B-4）：
+对话里提取标了要确认、又是不可逆的大事的候选照常过第 3〜5 步，带着 `confirm`（人物反问了没有、反问的一句）交给
+叙事者，过了的存成草稿（`narrator/confirm.py`）；动作里的这种候选照 B-2 丢弃（B-4 不改动作）。
+草稿开着时，对着反问的人物说的一轮不分流，提取多判一项：这句话是不是在回答（`confirmAnswer`）。
 
 - **时限**：每次调用有截止时间（`config.DEADLINES`），超时、输出不过 Schema、调用失败就取消、立刻重发一次。
   第二次还不行：分流当作「可能」继续；提取、检查、改写的，这一轮只提交时钟事件、候选丢弃，
@@ -129,6 +131,9 @@ class Extracted:
     candidates: list[Json]  # 规范化以后的（真 ID；t、dt、place 在第 3 步前按当时的状态补）
     counts: Counts
     timed_out: bool = False
+    # B-4：和 candidates 一一对应，要确认的候选是 {"asked", "question"}，其余 None
+    confirm: list[Json | None] = field(default_factory=list)
+    answer: str | None = None  # 草稿开着时：这句话在回答反问（yes / no），不是在回答为 None
 
 
 @dataclass
@@ -300,8 +305,18 @@ class Pipeline:
     # 第 1、2 步
 
     async def extract(
-        self, book: Book, state: SimState, turn: TurnInput, spend: Spend, span: Mapping[str, Any] | None = None
+        self,
+        book: Book,
+        state: SimState,
+        turn: TurnInput,
+        spend: Spend,
+        span: Mapping[str, Any] | None = None,
+        *,
+        drafts: bool = False,
+        confirm: Mapping[str, Any] | None = None,
     ) -> Extracted:
+        """drafts：要确认的候选留下来、带上 `confirm`（对话）；False 时丢弃（动作）。confirm：开着的草稿（反问的那一句
+        `prompt`、那件事的 `summary`），给了就不分流，提取多判 `confirmAnswer`。"""
         counts = Counts()
         span = {"world_model_version": book.version, **(span or {})}
         names = {
@@ -309,7 +324,7 @@ class Pipeline:
             "character": book.characters.get(turn.character or "", {}).get("name"),
         }
         action = act_doc(turn.act)
-        if action is None:  # 动作（B-3）不分流：做了就要找事件
+        if action is None and confirm is None:  # 动作（B-3）不分流：做了就要找事件；有反问在等回答的也不分流
             try:
                 r = await self.call(
                     "triage",
@@ -328,6 +343,8 @@ class Pipeline:
         request = {"worldModelVersion": book.version, "state": view.doc, "turn": turn.doc()}
         if action is not None:
             request["action"] = action
+        if confirm is not None:
+            request["confirm"] = {"prompt": confirm["prompt"], "summary": confirm["summary"]}
         try:
             r = await self.call(
                 "extract", request, spend, span=span, extra=lambda o: {"candidate_count": len(o["candidates"])}
@@ -335,16 +352,22 @@ class Pipeline:
         except CallFailed:
             counts.timeouts = 1
             return Extracted([], counts, timed_out=True)
-        cands = []
+        cands: list[Json] = []
+        asks: list[Json | None] = []
         for raw in r.output["candidates"]:
             c = normalize(raw, view, book)
             if not c["effects"]:
                 continue
-            if c["needsConfirm"] and irreversible(c):  # 第 6 步在 B-4：没确认 = 不是
-                counts.confirm_dropped += 1
-                continue
+            ask = None
+            if c["needsConfirm"] and irreversible(c):
+                if not drafts:  # 动作：照 B-2，没确认 = 不是
+                    counts.confirm_dropped += 1
+                    continue
+                ask = {"asked": bool(raw.get("asked")), "question": raw.get("question")}
             cands.append(c)
-        return Extracted(cands, counts)
+            asks.append(ask)
+        answer = r.output.get("confirmAnswer") if confirm is not None else None
+        return Extracted(cands, counts, confirm=asks, answer=answer)
 
     # 第 3〜5 步
 
