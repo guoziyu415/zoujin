@@ -3,7 +3,7 @@
 import type { Api } from "@zoujin/contracts";
 import { Session, type SessionHooks } from "./session";
 
-type Manifest = Pick<Api.ManifestResponse, "characters">;
+type Manifest = Pick<Api.ManifestResponse, "characters" | "setPieceVoices">;
 
 let current: Session | null = null;
 let manifest: Manifest | null = null; // may arrive before or after the session opens
@@ -34,6 +34,7 @@ function apply(s: Session, m: Manifest): void {
         c.prerecorded ? [[c.id, c.prerecorded]] : [],
       ),
     ),
+    m.setPieceVoices,
   );
 }
 
@@ -45,6 +46,11 @@ export const play = {
   say: (text: string, via: Api.TextMessage["via"] = "typed") =>
     current?.say(text, via),
   examine: (target: string) => current?.examine(target),
+  // the act end (ux-design 4.4)
+  actChoose: (optionId: string, enRouteChoice?: number) =>
+    current?.actChoose(optionId, enRouteChoice),
+  actPropose: (text: string) => current?.actPropose(text),
+  actLanded: (actId: string) => current?.actLanded(actId),
   reconnect: () => current?.reconnect(),
   // pagehide: close the socket so the page can go into the back/forward cache (9.5)
   suspend: () => current?.suspend(),
