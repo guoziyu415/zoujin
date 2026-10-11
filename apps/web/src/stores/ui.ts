@@ -23,6 +23,8 @@ type UiStore = {
   moreToasts: number;
   resumeGate: boolean; // back from the background: one tap resumes audio (9.5)
   overlay: "nearby" | null;
+  // the scene's loading (three/World LoadStage): an act change holds its page and landing line until it can be walked
+  scene: "loading" | "walkable" | "ready" | "failed";
 };
 
 export const useUi = create<UiStore>()(() => ({
@@ -32,6 +34,7 @@ export const useUi = create<UiStore>()(() => ({
   moreToasts: 0,
   resumeGate: false,
   overlay: null,
+  scene: "loading",
 }));
 
 export const TOASTS_SHOWN = 2;

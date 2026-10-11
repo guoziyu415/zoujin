@@ -120,11 +120,17 @@ export const copy = {
   "menu.map": "連鎖反応マップ",
   "toast.toMemory": "記憶帳で見る",
   "toast.toMap": "地図で見る",
-  "actEnd.title": "第一幕　約束の日　おわり",
+  "actEnd.title": "{act}　おわり",
+  // the four acts' names (S-037, ux-design 4.1): the act-end page's title and the next act's page (F-17)
+  "act.1": "第一幕　約束の日",
+  "act.2": "第二幕　その夜",
+  "act.3": "第三幕　村の二日",
+  "act.4": "第四幕　三日目",
   "actEnd.rumor":
     "門の警吏たちが、ひそひそと話していた。<br>──あの男は友を人質に置き、三日目の日没までに戻ると誓ったそうだ。",
   "actEnd.melosLeft": "メロスは、村へ走り去った。",
   "actEnd.prompt": "三日のあいだ、あなたは──",
+  "actEnd.prompt.later": "あなたは──", // the later acts' act ends (ux-design 4.4's page)
   "actEnd.other": "ほかの考えがある",
   "actEnd.other.sub": "声か文字で、どうしたいかを伝える",
   "actEnd.propose.prompt": "どうしますか。",
@@ -281,3 +287,7 @@ export const fill = (
   s.replace(/\{(\w+)\}/g, (all, k: string) =>
     k in vars ? String(vars[k]) : all,
   );
+
+// an act's name on the pages (「第二幕 その夜」); an act the client doesn't know shows nothing rather than an id
+export const actName = (actId: string): string =>
+  (copy as Record<string, string>)[actId] ?? "";

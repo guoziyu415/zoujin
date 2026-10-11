@@ -175,7 +175,7 @@ export function onWelcome(
 
 // —— the act change (4.5, S-080) ——
 
-export type TransitionStep = "sonokoro" | "jump" | "arrival";
+export type TransitionStep = "sonokoro" | "jump" | "act" | "arrival";
 
 export type TransitionState = {
   fromActId: string;
@@ -197,7 +197,8 @@ export function transition(m: {
 }): TransitionState {
   const steps: TransitionStep[] = [];
   if (m.recap.length) steps.push("sonokoro"); // nothing to tell: no page (4.5)
-  if (isSliceJump(m.fromActId, m.toActId)) steps.push("jump");
+  // the slice's own page; any other act change turns to the next act's title page while its scene loads (F-17)
+  steps.push(isSliceJump(m.fromActId, m.toActId) ? "jump" : "act");
   steps.push("arrival");
   return {
     fromActId: m.fromActId,
