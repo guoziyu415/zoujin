@@ -1,7 +1,8 @@
 // Phone formats for the character glbs: KTX2 textures, quantized + meshopt geometry.
 // node compress.mjs <in_dir> <out_dir>
-// Tiers (frontend-design 10.6.2): std = all colour 1024, normals 512 (longer side);
-// high = skin colour (+normal) 2048, the rest as std; walk = one 1024 atlas.
+// Tiers (frontend-design 10.6.2): std = all colour 1024, normals 512 (longer side) except the skin's 1024;
+// high = skin colour (+normal) 2048, the rest as std; walk = one 1024 atlas. An occlusion texture (the A-0 skin's) is
+// 512 on every tier.
 import { NodeIO, PropertyType } from "@gltf-transform/core";
 import { ALL_EXTENSIONS, KHRTextureBasisu } from "@gltf-transform/extensions";
 import { prune, dedup, quantize, meshopt } from "@gltf-transform/functions";
@@ -28,7 +29,7 @@ const decoder = async (buf) => {
 
 const ALPHA = new Set(["hair", "brows", "lashes"]);
 
-async function encodeTexture(tex, size, isNormal) {
+async function encodeTexture(tex, size, isNormal, linear = false) {
   const src = tex.getImage();
   // keep the aspect of non-square atlases (the teeth atlas is 2:1); size is the longer side
   const { data, info } = await sharp(Buffer.from(src))
@@ -73,7 +74,8 @@ async function encodeTexture(tex, size, isNormal) {
       }
     }
   }
-  const k = size / Math.max(info.width, info.height);
+  // never scale up: a 1024 source in a 2048 slot only costs bytes
+  const k = Math.min(1, size / Math.max(info.width, info.height));
   const png = await sharp(data, {
     raw: { width: info.width, height: info.height, channels: 4 },
   })
@@ -95,12 +97,12 @@ async function encodeTexture(tex, size, isNormal) {
         generateMipmap: true,
         qualityLevel: 160,
         compressionLevel: 2,
-        isSetKTX2SRGBTransferFunc: true,
+        isSetKTX2SRGBTransferFunc: !linear,
         imageDecoder: decoder,
       };
   const out = await encodeToKTX2(new Uint8Array(png), opts);
   tex.setImage(new Uint8Array(out)).setMimeType("image/ktx2");
-  return out.length;
+  return [out.length, Math.round(Math.max(info.width, info.height) * k)];
 }
 
 async function run(file, tier) {
@@ -117,16 +119,26 @@ async function run(file, tier) {
     const slots = [
       ["base", m.getBaseColorTexture(), false],
       ["normal", m.getNormalTexture(), true],
+      ["occlusion", m.getOcclusionTexture(), false],
     ];
     for (const [slot, tex, isNormal] of slots) {
       if (!tex || tex.getMimeType() === "image/ktx2") continue;
+      if (slot === "occlusion") {
+        // the skin's arms-down occlusion (A-0): smooth, so 512 on every tier; linear, not sRGB
+        const [n, encoded] = await encodeTexture(tex, 512, false, true);
+        rep.textures[`${name}.${slot}`] = { size: encoded, bytes: n };
+        rep.texBytes += n;
+        continue;
+      }
       let size = isNormal ? 512 : 1024;
       if (tier === "high" && (skin || name === "tunic"))
         size = isNormal ? 1024 : 2048;
       if (tier === "high" && skin) size = 2048;
-      const n = await encodeTexture(tex, size, isNormal);
+      // skin relief on std too (UX, art-direction 9.5: the high tier only gets sharper, it doesn't add things)
+      if (tier === "std" && skin && isNormal) size = 1024;
+      const [n, encoded] = await encodeTexture(tex, size, isNormal);
       rep.textures[`${name}.${slot}`] = {
-        size,
+        size: encoded,
         bytes: n,
         ...(isNormal ? { leanDeg: tex.getExtras().normalLeanDeg } : {}),
       };
