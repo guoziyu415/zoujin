@@ -176,10 +176,27 @@ test("memory book: tabs, sections, forgetting a promise moves the relation and t
   await expect(mb).toBeHidden();
 });
 
+// the mock's opening clock (1050) is before its timeline's events: the map's 「いまここ」 belongs after the last event
+// the player saw, so the clock the page starts from moves to that event (1140), the time label as it is
+async function clockAt(page: Page, t: number) {
+  const at = (s: { clock: { t: number } }) => (s.clock.t = t);
+  await page.route(/\/v1\/playthroughs(\/[^/]+\/snapshot)?$/, async (route) => {
+    const res = await route.fetch();
+    const body = (await res.json()) as {
+      clock?: { t: number };
+      snapshot?: { clock: { t: number } };
+    };
+    if (body.snapshot) at(body.snapshot);
+    else if (body.clock) at(body as { clock: { t: number } });
+    await route.fulfill({ response: res, json: body });
+  });
+}
+
 test("map: the timeline by day, beats and their state, future beats as ？, filters, why", async ({
   page,
 }) => {
   await mock(page, "scenario", { name: "limits" });
+  await clockAt(page, 1140);
   await startStory(page);
   await page.getByRole("button", { name: /^本をひらく/ }).click();
   await page
@@ -194,6 +211,9 @@ test("map: the timeline by day, beats and their state, future beats as ？, filt
     map.getByRole("button", { name: /王の暴虐を知る/ }),
   ).toContainText("変わった");
   await expect(map.getByText("？")).toHaveCount(2);
+  // 「いまここ」 after the last event, before the beats still to come
+  const now = map.locator(".map-now");
+  await expect(now).toHaveCount(1);
   await shot(page, "map");
 
   await map.getByRole("button", { name: "市の老爺" }).click();
