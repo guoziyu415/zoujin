@@ -14,6 +14,11 @@ const SHOTS = path.join(here, "../../test-results/shots");
 const PACK = fs.existsSync(
   path.join(sceneDir("syracuse-square"), "crowd/crowd.json"),
 );
+// the standing motions from Quaternius's library, when the pack was built with them (build.sh UAL_GLB)
+const MOTIONS =
+  PACK &&
+  fs.existsSync(path.join(sceneDir("syracuse-square"), "crowd/motions.json"));
+const IDLE = /^(sway|talk)$/;
 
 type Vec3 = [number, number, number];
 type CrowdInfo = {
@@ -84,7 +89,9 @@ test("twenty people on the execution ground, from behind them towards the post a
   expect(c.count).toBe(20);
   expect(c.pack).toBe(PACK);
   expect(c.meshes).toBeLessThanOrEqual(3);
-  expect(c.clips.every((x) => x === "sway")).toBe(true);
+  // standing: swaying, or talking among themselves when the pack has its motions
+  expect(c.clips.every((x) => IDLE.test(x))).toBe(true);
+  if (MOTIONS) expect(c.clips).toContain("talk");
   const { spots } = await call((h) => h.load());
   const post = spots["stake"]!;
   const cx = c.at.reduce((s, p) => s + p[0], 0) / c.count;
@@ -171,7 +178,7 @@ test("どよめき from the scaffold outwards, the cheer, making way", async () 
   await expect
     .poll(
       async () =>
-        (await call((h) => h.crowd()))!.clips.every((x) => x === "sway"),
+        (await call((h) => h.crowd()))!.clips.every((x) => IDLE.test(x)),
       { timeout: 60_000 },
     )
     .toBe(true);

@@ -9,7 +9,8 @@ import type { LoadedScene } from "../scene/loadScene";
 // this chunk and the world chunk both use into a third chunk, and three compressed apart from the rest costs ~4 KB
 import "../World";
 import { Crowd } from "./Crowd";
-import { loadCrowdPack, type CrowdPack } from "./pack";
+import { loadCrowdPack, loadMotions, type CrowdPack } from "./pack";
+import type { Clip } from "./rig";
 import type { Clear, Plan } from "./scatter";
 
 const PLACE = "place.execution-ground";
@@ -73,19 +74,23 @@ export default function CrowdLayer({
   scene: LoadedScene;
   count: number;
 }) {
-  const [pack, setPack] = useState<CrowdPack | null | undefined>(undefined); // undefined: still loading
+  // undefined: still loading
+  const [pack, setPack] = useState<
+    { bodies: CrowdPack | null; motions: Clip[] } | undefined
+  >(undefined);
   useEffect(() => {
     let live = true;
-    void loadCrowdPack(scene.base)
-      .catch(() => null)
-      .then((p) => live && setPack(p));
+    void Promise.all([
+      loadCrowdPack(scene.base).catch(() => null),
+      loadMotions(scene.base),
+    ]).then(([bodies, motions]) => live && setPack({ bodies, motions }));
     return () => {
       live = false;
     };
   }, [scene]);
   const crowd = useMemo(() => {
-    const spec = pack === undefined ? null : crowdSpec(scene, count);
-    return spec ? new Crowd(spec, pack) : null;
+    const spec = pack && crowdSpec(scene, count);
+    return pack && spec ? new Crowd(spec, pack.bodies, pack.motions) : null;
   }, [scene, count, pack]);
   useEffect(() => {
     crowdRef.current = crowd;

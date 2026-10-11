@@ -92,6 +92,28 @@ if (fs.existsSync(bin)) {
     fail(`${script} changed since this manifest was built: run build.sh`);
 }
 
+// the standing motions, when built (build_motions.py)
+const motionsFile = path.join(DIR, "motions.json");
+if (fs.existsSync(motionsFile)) {
+  const size = fs.statSync(motionsFile).size;
+  const m = JSON.parse(fs.readFileSync(motionsFile, "utf8"));
+  if (m.format !== "zoujin-crowd-motions-1") fail(`motions format ${m.format}`);
+  if (size > budget.motionsKb * 1024)
+    fail(`motions.json ${size} B > ${budget.motionsKb} KB`);
+  if (m.roles?.length !== 9) fail(`motions: ${m.roles?.length} roles, not 9`);
+  for (const [name, c] of Object.entries(m.clips ?? {})) {
+    if (c.frames.length !== Math.round(c.seconds * m.fps))
+      fail(`motions ${name}: ${c.frames.length} frames for ${c.seconds} s`);
+    if (
+      c.frames.some((f) => f.length !== 3 + 9 * 3 || !f.every(Number.isFinite))
+    )
+      fail(`motions ${name}: a frame isn't 30 numbers`);
+  }
+  console.log(
+    `motions: ${Object.keys(m.clips ?? {}).join(", ")}, ${(size / 1024).toFixed(1)} KB`,
+  );
+}
+
 if (MANIFEST && fs.readFileSync(MANIFEST, "utf8") !== text)
   fail(`${MANIFEST} is not this build's manifest: run build.sh and commit it`);
 

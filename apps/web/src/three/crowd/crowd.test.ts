@@ -7,7 +7,12 @@ import {
 import { describe, expect, it } from "vitest";
 import { body, COSTUMES } from "./bodies";
 import { Crowd } from "./Crowd";
-import { parseCrowdPack, type CrowdPackJson } from "./pack";
+import {
+  parseCrowdPack,
+  parseMotions,
+  type CrowdPackJson,
+  type MotionsJson,
+} from "./pack";
 import {
   bake,
   BONES,
@@ -16,6 +21,7 @@ import {
   packSkeleton,
   skinMatrices,
   STAND_IN,
+  type Role,
 } from "./rig";
 import { inPolygon, scatter, toPath, type Plan } from "./scatter";
 
@@ -217,6 +223,75 @@ describe("the crowd pack", () => {
       expect(m.geometry.getAttribute("iHair")).toBeTruthy();
     }
     c.dispose();
+  });
+
+  // motions as build_motions.py writes them: the hips' offset, then the nine roles
+  const motions = (): MotionsJson => {
+    const roles: Role[] = [
+      "hips",
+      "spine",
+      "chest",
+      "neck",
+      "head",
+      "armL",
+      "foreL",
+      "armR",
+      "foreR",
+    ];
+    const frame = (k: number) => [
+      0,
+      0.01 * k,
+      0,
+      ...roles.flatMap((r) => (r === "armL" ? [0, 0, 0.1 * k] : [0, 0, 0])),
+    ];
+    return {
+      format: "zoujin-crowd-motions-1",
+      fps: FPS,
+      roles,
+      clips: {
+        sway: {
+          seconds: 2,
+          loop: true,
+          frames: [...Array(60).keys()].map(frame),
+        },
+        talk: {
+          seconds: 1,
+          loop: true,
+          frames: [...Array(30).keys()].map(frame),
+        },
+      },
+    };
+  };
+
+  it("the pack's motions: each frame's offset and rotations, by role", () => {
+    const [sway] = parseMotions(motions());
+    expect(sway!.seconds).toBe(2);
+    const p = sway!.pose(10 / FPS);
+    expect(p.hips).toEqual([0, 0.1, 0]);
+    expect(p.rot.armL).toEqual([0, 0, 1]);
+    expect(p.rot.head).toEqual([0, 0, 0]);
+    expect(() => parseMotions({ ...motions(), fps: 24 })).toThrow();
+  });
+
+  it("with them the crowd stands in the pack's sway, and some talk; without a pack they're not used", () => {
+    const { json, bin } = tinyPack();
+    const spec = { zone: ZONE, facing: [4, 20] as Plan, count: 20, seed: 2 };
+    const c = new Crowd(
+      spec,
+      parseCrowdPack(json, bin),
+      parseMotions(motions()),
+    );
+    const idle = c.clips();
+    expect(idle.every((x) => x === "sway" || x === "talk")).toBe(true);
+    expect(idle).toContain("talk");
+    expect(idle).toContain("sway");
+    c.cheer(1);
+    c.update(3);
+    expect(c.clips()).toEqual(idle); // back to what each was doing
+    c.dispose();
+    const plain = new Crowd(spec, null, parseMotions(motions()));
+    expect(plain.clips().every((x) => x === "sway")).toBe(true);
+    plain.dispose();
   });
 });
 

@@ -47,6 +47,7 @@
     "packKb": 300,
     "maxTrisPerBody": 3500,
     "maxBones": 60,
-    "extraDrawCalls": 8
+    "extraDrawCalls": 8,
+    "motionsKb": 60
   }
 }

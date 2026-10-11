@@ -4,7 +4,8 @@
 // Each person has a body shape (height and breadth), a costume, colours from the palette, a facing a little off the
 // common one, and their own start and speed in the motion, so no two sway together. The ending's staging calls the
 // three verbs; the crowd doesn't walk. The bodies come from the scene's crowd pack (pack.ts), each on its own joints
-// and so with its own baked motions; without a pack, the stand-ins (bodies.ts).
+// and so with its own baked motions; without a pack, the stand-ins (bodies.ts). With the pack's motions (pack.ts
+// loadMotions) they stand in Quaternius's idle, and some talk among themselves.
 import {
   Color,
   DataTexture,
@@ -18,7 +19,14 @@ import {
 } from "three";
 import { body, COSTUMES, type Costume } from "./bodies";
 import type { CrowdPack } from "./pack";
-import { bake, STAND_IN, type Baked, type Skeleton } from "./rig";
+import {
+  bake,
+  CLIPS,
+  STAND_IN,
+  type Baked,
+  type Clip,
+  type Skeleton,
+} from "./rig";
 import { mulberry32, scatter, toPath, type Clear, type Plan } from "./scatter";
 import { crowdMaterials, type CrowdUniforms } from "./shader";
 
@@ -74,6 +82,7 @@ type Person = {
   scale: [number, number];
   speed: number;
   phase: number; // seconds into the sway loop at time 0
+  idle: string; // what they do standing: sway, or talk when the pack's motions have it
   clip: string;
   shift: { from: Plan; to: Plan; t0: number; t1: number } | null; // making way
 };
@@ -81,8 +90,9 @@ type Person = {
 type Timed = { at: number; person: number; clip: string; loopPhase?: number };
 
 // each skeleton's motions, baked once for the page and kept (about 170 KB each): the textures made from them go with
-// each crowd
+// each crowd. A pack's skeletons only ever bake with that pack's motions.
 const baked = new WeakMap<Skeleton, Baked>();
+const TALKING = 0.25; // how many of them talk among themselves, when the pack's motions have the talk
 
 function boneTexture(b: Baked): DataTexture {
   const tex = new DataTexture(b.data, b.width, b.height, RGBAFormat, FloatType);
@@ -101,14 +111,24 @@ export class Crowd extends Group {
   private queue: Timed[] = [];
   private now = 0;
 
-  constructor(spec: CrowdSpec, pack: CrowdPack | null = null) {
+  constructor(
+    spec: CrowdSpec,
+    pack: CrowdPack | null = null,
+    motions: Clip[] = [], // the pack's (with a pack only: they're made for its skeleton)
+  ) {
     super();
     this.name = "crowd";
     this.fromPack = !!pack;
     const skeleton = (c: Costume) => pack?.[c].skeleton ?? STAND_IN;
+    // the pack's motions in place of the hand-made ones of the same name, and after them
+    const own = pack ? motions : [];
+    const clips = [
+      ...CLIPS.map((c) => own.find((m) => m.name === c.name) ?? c),
+      ...own.filter((m) => !CLIPS.some((c) => c.name === m.name)),
+    ];
     const bakedFor = (s: Skeleton) => {
       let b = baked.get(s);
-      if (!b) baked.set(s, (b = bake(s)));
+      if (!b) baked.set(s, (b = bake(s, clips)));
       return b;
     };
     this.baked = bakedFor(skeleton(COSTUMES[0]!));
@@ -121,6 +141,7 @@ export class Crowd extends Group {
       ...(spec.keep ? { keep: spec.keep } : {}),
     });
     const per = COSTUMES.map(() => 0);
+    const talk = clips.some((c) => c.name === "talk");
     for (const at of spots) {
       const mesh = COSTUMES.indexOf(pick(MIX));
       const face = Math.atan2(spec.facing[0] - at[0], spec.facing[1] - at[1]);
@@ -134,6 +155,7 @@ export class Crowd extends Group {
         scale: [sx * (0.97 + rnd() * 0.06), sy * (0.97 + rnd() * 0.06)],
         speed: 0.85 + rnd() * 0.3,
         phase: rnd() * 4,
+        idle: talk && rnd() < TALKING ? "talk" : "sway",
         clip: "sway",
         shift: null,
       });
@@ -185,7 +207,7 @@ export class Crowd extends Group {
       set("iCloth2", CLOTH[pick(SECOND)]);
       set("iHair", pick(HAIR));
       this.place(i);
-      this.start(i, "sway", -1e3, p.phase);
+      this.start(i, p.idle, -1e3, p.phase);
     }
   }
 
@@ -207,7 +229,7 @@ export class Crowd extends Group {
       this.queue.push({
         at: at + stir.seconds / p.speed - 0.2,
         person: i,
-        clip: "sway",
+        clip: p.idle,
         loopPhase: p.phase,
       });
     }
@@ -224,7 +246,7 @@ export class Crowd extends Group {
         this.queue.push({
           at: at + seconds,
           person: i,
-          clip: "sway",
+          clip: p.idle,
           loopPhase: p.phase,
         });
     }
@@ -239,7 +261,7 @@ export class Crowd extends Group {
       this.queue.push({
         at: this.now + rnd() * 0.4,
         person: i,
-        clip: "sway",
+        clip: p.idle,
         loopPhase: p.phase,
       });
   }
