@@ -18,8 +18,11 @@ import {
 import { useStory } from "../../stores/story";
 import { useWorld } from "../../stores/world";
 import { setStageBridge, type StageBridge } from "../../ui/ending/stage/bridge";
+import { castName } from "../cast/cast";
+import type { CastBody } from "../cast/CastBody";
 import { makeMannequin } from "../mannequin";
 import { reducedMotion } from "../motion";
+import { useQuality } from "../quality/quality";
 import { makePost } from "../post";
 import { lightState } from "../Lighting";
 import { rig } from "../rig";
@@ -62,6 +65,15 @@ type Actor = {
   speed: number;
   face: Move["face"] | null;
   yaw: number;
+  body?: CastBody;
+};
+
+// who stands for whom among F-16's built characters (cast/cast.ts); the player is their role
+const CAST_OF: Partial<Record<ActorId, string>> = {
+  melos: "char.melos",
+  hostage: "char.selinuntius",
+  king: "char.king",
+  oldMan: "char.old-man",
 };
 
 const TONES: Record<ActorId, number> = {
@@ -144,11 +156,32 @@ export default function Staging({ scene }: { scene: LoadedScene }) {
       ActorId,
       Mark,
     ][]) {
-      const obj = makeMannequin(TONES[id]);
+      const stand = makeMannequin(TONES[id]);
+      const obj = new Group();
+      obj.add(stand);
       obj.name = `stage:${id}`;
       group.add(obj);
       const yaw = yawTowards(frame, at, [0, 0, at[2]]); // facing the post
-      stage.actors.set(id, { obj, at, path: [], speed: 1, face: null, yaw });
+      const actor: Actor = { obj, at, path: [], speed: 1, face: null, yaw };
+      stage.actors.set(id, actor);
+      // F-16's realistic people where there is a pack (the maiden stays on the crowd's bodies, below)
+      const castId =
+        id === "player"
+          ? useWorld.getState().world?.player.roleId
+          : CAST_OF[id];
+      const name = castId ? castName(castId) : null;
+      if (castId && name)
+        void import("../cast/CastBody").then(({ CastBody }) => {
+          if (stage.actors.get(id) !== actor) return;
+          actor.body = new CastBody(
+            gl,
+            name,
+            castId,
+            obj,
+            stand,
+            () => useQuality.getState().assetTier === "high",
+          );
+        });
     }
 
     // the torches are there from the start, dark, so lighting them doesn't recompile the scene's shaders
@@ -284,6 +317,7 @@ export default function Staging({ scene }: { scene: LoadedScene }) {
       rig.stage = null;
       rig.staged = false;
       three.remove(group);
+      for (const a of stage.actors.values()) a.body?.dispose();
       stage.actors.clear();
       stage.torches = [];
       for (const c of stage.captures) c.done(null);
@@ -367,6 +401,13 @@ export default function Staging({ scene }: { scene: LoadedScene }) {
           a.yaw = turn(a.yaw, yawTowards(frame, a.at, to), dt);
       }
       const [x, y, z] = toWorld(frame, a.at);
+      if (a.body) {
+        const v =
+          dt > 0
+            ? Math.hypot(x - a.obj.position.x, z - a.obj.position.z) / dt
+            : 0;
+        a.body.update(dt, v, 0);
+      }
       a.obj.position.set(x, y, z);
       a.obj.rotation.y = a.yaw;
     }

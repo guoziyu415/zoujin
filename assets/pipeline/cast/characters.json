@@ -14,7 +14,9 @@
     "Y1": "#C89A3A",
     "GOLD": "#C9A04A",
     "MYRTLE": "#3F5A2E",
-    "FLEECE": "#D8CDB6"
+    "FLEECE": "#D8CDB6",
+    "R1": "#8E271C",
+    "F1": "#6F5E4B"
   },
   "characters": {
     "king": {
@@ -395,6 +397,190 @@
       ],
       "dust": 0.45,
       "stone": 0.0
+    },
+    "traveler": {
+      "id": "role.traveler",
+      "height": 1.68,
+      "macro": {
+        "gender": 0.5,
+        "age": 0.35,
+        "muscle": 0.5,
+        "weight": 0.38,
+        "height": 0.45,
+        "proportions": 0.55
+      },
+      "details": {},
+      "skin": "#A47B5F",
+      "hair": {
+        "style": "short",
+        "colour": "#2E2016",
+        "length": 0.007
+      },
+      "brows": "#2A1D14",
+      "garments": [
+        {
+          "kind": "chiton",
+          "colour": "B1",
+          "hem": 0.4,
+          "sleeves": "short"
+        },
+        {
+          "kind": "belt",
+          "colour": "R1",
+          "width": 0.06,
+          "tails": 0.3
+        },
+        {
+          "kind": "hat",
+          "colour": "F1"
+        },
+        {
+          "kind": "shoes",
+          "style": "sandals",
+          "colour": "K1"
+        }
+      ],
+      "dust": 0.2,
+      "stone": 0.0
+    },
+    "old-man": {
+      "id": "char.old-man",
+      "height": 1.68,
+      "macro": {
+        "gender": 1.0,
+        "age": 0.95,
+        "muscle": 0.35,
+        "weight": 0.3,
+        "height": 0.45,
+        "proportions": 0.5
+      },
+      "details": {
+        "head-age-incr": 0.8
+      },
+      "skin": "#A07A5F",
+      "hair": {
+        "style": "short",
+        "colour": "#D8D2C6",
+        "length": 0.008
+      },
+      "beard": {
+        "length": 0.02,
+        "colour": "#DDD8CE"
+      },
+      "brows": "#E0DBD2",
+      "garments": [
+        {
+          "kind": "chiton",
+          "colour": "L0",
+          "grey": 0.2,
+          "hem": 0.05,
+          "sleeves": "short"
+        },
+        {
+          "kind": "himation",
+          "colour": "A1",
+          "over": "l",
+          "hem": 0.35,
+          "heavy": true
+        },
+        {
+          "kind": "veil",
+          "colour": "A1"
+        },
+        {
+          "kind": "shoes",
+          "style": "sandals",
+          "colour": "K1"
+        },
+        {
+          "kind": "staff",
+          "colour": "N1",
+          "length": 1.25
+        }
+      ],
+      "dust": 0.15,
+      "stone": 0.0
+    },
+    "young-man": {
+      "id": "char.young-man",
+      "height": 1.73,
+      "macro": {
+        "gender": 1.0,
+        "age": 0.4,
+        "muscle": 0.55,
+        "weight": 0.4,
+        "height": 0.6,
+        "proportions": 0.6
+      },
+      "details": {},
+      "skin": "#A06E4E",
+      "hair": {
+        "style": "short",
+        "colour": "#2A1D14",
+        "length": 0.01
+      },
+      "brows": "#26190F",
+      "garments": [
+        {
+          "kind": "chiton",
+          "colour": "N1",
+          "hem": 0.5,
+          "sleeves": "short"
+        },
+        {
+          "kind": "shoes",
+          "style": "sandals",
+          "colour": "K1"
+        }
+      ],
+      "dust": 0.1,
+      "stone": 0.0
+    },
+    "maiden": {
+      "id": "char.maiden",
+      "height": 1.5,
+      "macro": {
+        "gender": 0.0,
+        "age": 0.28,
+        "muscle": 0.4,
+        "weight": 0.4,
+        "height": 0.3,
+        "proportions": 0.6
+      },
+      "details": {
+        "head-oval": 0.4
+      },
+      "skin": "#B08463",
+      "hair": {
+        "style": "bun",
+        "colour": "#3A2618",
+        "length": 0.01
+      },
+      "brows": "#33221A",
+      "garments": [
+        {
+          "kind": "chiton",
+          "colour": "L0",
+          "hem": 0.05,
+          "sleeves": "short"
+        },
+        {
+          "kind": "veil",
+          "colour": "W0",
+          "sheer": true
+        },
+        {
+          "kind": "shoes",
+          "style": "sandals",
+          "colour": "K1"
+        }
+      ],
+      "dust": 0.0,
+      "stone": 0.0
+    },
+    "melos": {
+      "id": "char.melos",
+      "prebuilt": true
     }
   }
 }

@@ -702,6 +702,7 @@ LEGS = {"thigh_l", "thigh_r", "calf_l", "calf_r"}
 FEET = {"foot_l", "foot_r", "ball_l", "ball_r"}
 TEX = 1024
 PIECE_KIND = []  # piece index -> garment spec
+RIGID_GARMENTS = {"staff": "hand_r", "hat": "head"}  # props that follow one bone
 
 
 def base_parts(base, fco):
@@ -943,7 +944,75 @@ def garment_pieces(bp, lm):
             out.append((bm, gi))
         elif k == "staff":
             out.append((staff_bm(lm, g), gi))
+        elif k == "hat":
+            out.append((hat_bm(lm, g), gi))
+        elif k == "belt":
+            # a sash round the waist over the robe, the tails hanging at the left hip
+            z0 = lm["pelvis"][2] + g.get("at", 0.1)
+            h = g.get("width", 0.06)
+            sel = faces_where(
+                bp, bp["tights"], lambda fi, f, c, z0=z0, h=h: majority(bp, f, TORSO) and abs(c[2] - z0) < h
+            )
+            verts, fs, _ = shell(co, bp["faces"], sel, 0.024, bp["n"])
+            bm = mesh_bm(verts, fs)
+            cut(bm, [(np.array([0, 0, z0 + h / 2]), (0, 0, 1)), (np.array([0, 0, z0 - h / 2]), (0, 0, -1))])
+            out.append((bm, gi))
+            if g.get("tails"):
+                ring = co[[i for f in [bp["faces"][fi] for fi in sel] for i in f]]
+                x = float(ring[:, 0].max()) + 0.012  # the character's left is +x
+                y = float(ring[ring[:, 0] > x - 0.05, 1].mean()) - 0.02
+                out.append((tails_bm(x, y, z0 - h / 2, g["tails"]), gi))
     return out
+
+
+def tails_bm(x, y, z, length):
+    """Two flat strips hanging from a knot."""
+    bm = bmesh.new()
+    for dx, ln in ((-0.012, length), (0.02, length * 0.8)):
+        a = [Vector((x + dx - 0.02, y, z)), Vector((x + dx + 0.02, y, z))]
+        b = [Vector((x + dx - 0.018, y + 0.01, z - ln)), Vector((x + dx + 0.022, y + 0.01, z - ln))]
+        m = [Vector(((a[i].x + b[i].x) / 2, y + 0.004, z - ln / 2)) for i in (0, 1)]
+        vs = [[bm.verts.new(v) for v in row] for row in (a, m, b)]
+        for r0, r1 in zip(vs, vs[1:]):
+            bm.faces.new([r0[0], r0[1], r1[1], r1[0]])
+    bm.normal_update()
+    return bm
+
+
+def hat_bm(lm, g):
+    """A petasos: a low round crown on the head and a wide brim drooping a little at the edge (rigid, on the head)."""
+    bm = bmesh.new()
+    n = 24
+    cx, cy = 0.0, float(lm["eye"][1]) + 0.07
+    band = float(lm["eye"][2]) + 0.06
+    top = float(lm["crown"]) + 0.025
+    rc = g.get("crown", 0.105)
+    rb = g.get("brim", 0.225) + 0.0
+    rings = []
+    for r, z in (
+        (rb, band - 0.03),
+        (rb * 0.75, band - 0.008),
+        (rc + 0.005, band),
+        (rc, band + 0.004),
+        (rc * 0.97, top - 0.03),
+        (rc * 0.7, top - 0.005),
+        (rc * 0.3, top),
+    ):
+        rings.append(
+            [bm.verts.new((cx + r * math.cos(a), cy + r * math.sin(a), z)) for a in np.linspace(0, 2 * math.pi, n, endpoint=False)]
+        )
+    for a, b in zip(rings, rings[1:]):
+        for i in range(n):
+            bm.faces.new([a[i], a[(i + 1) % n], b[(i + 1) % n], b[i]])
+    bm.faces.new(rings[-1][::-1])
+    # the underside of the brim
+    under = [bm.verts.new(v.co + Vector((0, 0, -0.006))) for v in rings[0]]
+    inner = [bm.verts.new(v.co + Vector((0, 0, -0.006))) for v in rings[2]]
+    for i in range(n):
+        bm.faces.new([under[(i + 1) % n], under[i], inner[i], inner[(i + 1) % n]])
+        bm.faces.new([rings[0][(i + 1) % n], rings[0][i], under[i], under[(i + 1) % n]])
+    bm.normal_update()
+    return bm
 
 
 def staff_bm(lm, g):
@@ -1009,11 +1078,12 @@ def build_clothes(base, fco, lm):
         for i in p.vertices:
             piece_of[i] = pa.data[p.index].value
     copy_weights(tunic, body, k=6, exclude=("bundle",))
-    staff = [i for i in range(len(piece_of)) if SPEC["garments"][piece_of[i]]["kind"] == "staff"]
-    if staff:
-        for g in list(tunic.vertex_groups):
-            g.remove(staff)
-        (tunic.vertex_groups.get("hand_r") or tunic.vertex_groups.new(name="hand_r")).add(staff, 1.0, "REPLACE")
+    for kind, bone in RIGID_GARMENTS.items():
+        rigid = [i for i in range(len(piece_of)) if SPEC["garments"][piece_of[i]]["kind"] == kind]
+        if rigid:
+            for g in list(tunic.vertex_groups):
+                g.remove(rigid)
+            (tunic.vertex_groups.get(bone) or tunic.vertex_groups.new(name=bone)).add(rigid, 1.0, "REPLACE")
     # skirts: below the hips the weights spread over both legs and the pelvis, so the robe doesn't split
     skirt_like = {"chiton", "himation", "apron"}
     hip_z = lm["pelvis"][2]
@@ -1052,7 +1122,7 @@ def under_clothes(tunic, lm):
     n = vertex_normals(co, faces)
     tco = coords(tunic)
     tf = [tuple(p.vertices) for p in tunic.data.polygons]
-    keep_kinds = {"staff"}
+    keep_kinds = {"staff", "hat"}
     pa = tunic.data.attributes["piece"]
     tf = [
         f for p, f in zip(tunic.data.polygons, tf) if SPEC["garments"][pa.data[p.index].value]["kind"] not in keep_kinds
@@ -1152,7 +1222,7 @@ def tunic_texture(tunic, piece_of, lm):
         kind = g["kind"]
         if kind == "band" and g["style"] == "diadem":
             tex = 1.0 + 0.25 * (value_noise((h, w), 3, rng) - 0.5)
-        elif kind in ("shoes", "staff"):
+        elif kind in ("shoes", "staff", "hat"):
             tex = 0.85 + 0.3 * value_noise((h, w), 6, rng)
         elif g.get("fleece"):
             tex = 0.7 + 0.5 * value_noise((h, w), 5, rng) ** 1.5
