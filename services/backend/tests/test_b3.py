@@ -17,20 +17,23 @@ from sqlalchemy import delete, func, inspect, select
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
 from zoujin_backend import eval_api
-from zoujin_backend.config import REPO, async_url
+from zoujin_backend.config import DEFAULT_WORLD, REPO, async_url
 from zoujin_backend.db import store
 from zoujin_backend.db.store import Run
 from zoujin_backend.db.tables import events, playthrough_metrics, playthroughs, turns
 from zoujin_backend.gateway.core import Gateway
 from zoujin_backend.gateway.ws import Conn
+from zoujin_backend.ids import IdGen
 from zoujin_backend.models.live import FakeLive
 from zoujin_backend.models.text import FakeText
+from zoujin_backend.narrator import acts
 from zoujin_backend.narrator.actions import ACT_ENDED_LINE, CHECKER_MOVE
 from zoujin_backend.narrator.core import Result
 from zoujin_backend.narrator.plans import LABEL_FALLBACK, REFUSAL_FALLBACK
+from zoujin_backend.narrator.writer import Writer
 from zoujin_backend.projection import snapshot
 from zoujin_backend.trace import Tracer
-from zoujin_worldsim import settle
+from zoujin_worldsim import initial_state, settle
 
 from .conftest import LIBRARY, OLD, SCHEMAS, Env, alembic_config, truncate
 
@@ -615,6 +618,26 @@ def test_skipped_beats_where_the_player_was_teach_nothing(game: Callable[..., Ga
         e for ev in step["events"][1:] for e in ev["effects"] if e["op"] == "learn" and e["character"] == "player"
     ]
     assert learns == [] and step["pieces"] == []
+
+
+def test_catch_up_counts_the_player_present() -> None:
+    """收幕以后、切幕之前时钟走过的那段（对话、动作的分钟跨过了收幕节拍）是玩家说着话过去的，人在场（数据 #158）：
+    `catch_up` 结算到的节拍落在玩家所在地点，公开的事实玩家也知道（契约 2.1）。不在场只管第 3 步（2.8.1）。"""
+    book = LIBRARY.book("hashire-merosu")
+    assert book is not None
+    setup = {"role": "role.traveler", "checkpoint": "sc.canon@beat.07", "place": "place.melos-home"}
+    w = Writer(
+        book, "pt_test", initial_state(book.world, setup["role"]), key_base="k", turn_id=None, ids=IdGen(), now=""
+    )
+    eval_api.play_setup(w, eval_api._scenarios(DEFAULT_WORLD.parent), setup)
+    w = Writer(book, "pt_test", w.state, key_base="k2", turn_id="t", ids=IdGen(), now="")
+    assert not w.guard  # 这一幕已经收了
+    beat = book.beats["beat.08"]
+    assert beat["place"] == w.player_place
+    w.state["t"] = int(w.state["times"].get("beat.07", 0)) + 700  # 跨过 beat.08（第二天上午）
+    acts.catch_up(w)
+    assert [e["t"] for e in w.system if any(x.get("beat") == "beat.08" for x in e["effects"])]
+    assert "fact.wedding-tomorrow" in w.state["knowledge"].get("player", [])
 
 
 # —— 第 6 组：不记原话 ——
