@@ -8,8 +8,14 @@ import type { Api } from "@zoujin/contracts";
 export type ActEndPhase =
   | { k: "choose" } // the exits
   | { k: "propose"; notHeard: boolean } // the input area: 「どうしますか。」 (or the not-heard line in its place)
-  // sent; waiting for act_plan_result with this id (one of the two)
-  | { k: "thinking"; clientMsgId?: string; turnId?: string }
+  // sent; waiting for act_plan_result with this id (one of the two). retracting: the spoken try taken back, waiting
+  // for turn_retract_result (too late and its result comes all the same, 3.6 ⑦)
+  | {
+      k: "thinking";
+      clientMsgId?: string;
+      turnId?: string;
+      retracting?: boolean;
+    }
   // the narrator's answer: accepted waits for act_transition; not accepted offers the alternative
   | {
       k: "result";
@@ -66,9 +72,30 @@ export function clearNotHeard(s: ActEndState): ActEndState {
     : s;
 }
 
-// a spoken try that was retracted (the player took it back): no result comes, no try is used (api-contract 3.6 ⑦)
-export function proposeRetracted(s: ActEndState, turnId: string): ActEndState {
+// the player took the spoken try back: the page waits for turn_retract_result before it says anything
+export function retracting(s: ActEndState, turnId: string): ActEndState {
   return s.phase.k === "thinking" && s.phase.turnId === turnId
+    ? { ...s, phase: { ...s.phase, retracting: true } }
+    : s;
+}
+
+// turn_retract_result for the spoken try (api-contract 3.6 ⑦): retracted, no result comes and no try is used, back to
+// 「どうしますか。」; too late, the try was judged and its act_plan_result comes as usual, so keep waiting for it
+export function retractResult(
+  s: ActEndState,
+  r: Api.TurnRetractResultMessage,
+): ActEndState {
+  const p = s.phase;
+  if (p.k !== "thinking" || p.turnId !== r.turnId) return s;
+  if (r.status === "retracted")
+    return { ...s, phase: { k: "propose", notHeard: false } };
+  return { ...s, phase: { k: "thinking", turnId: p.turnId } };
+}
+
+// the server refused the try before judging it (invalid_request: the act already closing, no tries left): the turn
+// didn't happen, back to 「どうしますか。」
+export function planRefused(s: ActEndState): ActEndState {
+  return s.phase.k === "thinking"
     ? { ...s, phase: { k: "propose", notHeard: false } }
     : s;
 }

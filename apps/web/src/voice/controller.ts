@@ -479,29 +479,6 @@ export class VoiceController {
     }));
   }
 
-  // degraded with the turn's voice still waiting for a session that won't come: nobody heard it. The turn is
-  // retracted (no story time), the words kept on screen go, and the narrator's degraded line says the rest
-  private dropUnsent(): void {
-    if (!this.heldBack.some((m) => m instanceof ArrayBuffer)) return;
-    const r = this.holding ?? this.cur;
-    this.heldBack = [];
-    this.heldBackMs = 0;
-    if (!r || r.kind !== "voice") return;
-    if (this.holding === r) {
-      this.holding = null;
-      this.audio.setSending(false);
-      if (voiceSettings.micMode === "perTurn") this.audio.releaseMic();
-    }
-    r.retract = "timeout"; // ours: no too_late line if it comes back
-    if (this.wire.ready())
-      this.wire.send({ type: "turn_retract", turnId: r.id });
-    this.endTurn(r, {});
-    useVoice.setState((s) => ({
-      hold: null,
-      player: s.player?.turnId === r.id ? null : s.player,
-    }));
-  }
-
   // the microphone's 40 ms frames while the key is down
   frame(pcm: Int16Array): void {
     const r = this.holding;
