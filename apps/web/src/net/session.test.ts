@@ -4,18 +4,20 @@ import { useVoice } from "../stores/voice";
 import { useWorld } from "../stores/world";
 import { usePlayer } from "../stores/player";
 import { peek, drain } from "../telemetry/telemetry";
+import { FakeAudio, voiceFrame } from "../voice/fakeAudio";
 import { Session } from "./session";
 import { commit, event, FakeSocket, PID, snapshot, welcome } from "./testkit";
 
 function open(lastSeq = 0) {
   const onEnded = vi.fn();
-  const s = new Session(PID, { onEnded }, "ws://test/live", FakeSocket);
+  const audio = new FakeAudio();
+  const s = new Session(PID, { onEnded }, "ws://test/live", FakeSocket, audio);
   s.setNames({ "char.melos": "メロス", "char.old-man": "市の老爺" });
   s.start(snapshot({ lastSeq }));
   const sock = FakeSocket.last();
   sock.open();
   sock.receive(welcome(lastSeq));
-  return { s, sock, onEnded };
+  return { s, sock, onEnded, audio };
 }
 
 const texts = (sock: FakeSocket) => sock.sent.filter((m) => m.type === "text");
@@ -53,10 +55,13 @@ describe("Session", () => {
     expect(texts(again).map((m) => m.turnSeq)).toEqual([1]);
     // focus again after reconnecting (api-contract 4)
     expect(again.types()).toEqual(["hello", "focus", "text"]);
-    expect(peek().map((e) => e.name)).toEqual([
-      "connection_lost",
-      "connection_restored",
-    ]);
+    expect(
+      peek()
+        .map((e) => e.name)
+        .filter((n) => n.startsWith("connection")),
+    ).toEqual(["connection_lost", "connection_restored"]);
+    // each turn the next one cut short is counted once, when it was cut (7.7)
+    expect(peek().filter((e) => e.name === "talk_turn")).toHaveLength(2);
   });
 
   it("sends what was typed while down after the welcome, and again what the server never saw", () => {
@@ -94,8 +99,8 @@ describe("Session", () => {
     expect(useVoice.getState().player?.text).toBe("届いた");
   });
 
-  it("shows a typed turn: the player's line, the character's words, then settled", () => {
-    const { s, sock } = open();
+  it("shows a typed turn: the player's line, the character's words with the voice, then settled", () => {
+    const { s, sock, audio } = open();
     s.focus("char.melos");
     sock.receive({
       type: "session_preparing",
@@ -123,6 +128,11 @@ describe("Session", () => {
       text: "……なんだと。",
       final: false,
     });
+    // the words wait for the voice (frontend-design 7.5)
+    expect(useVoice.getState().turn?.phase).toBe("waiting");
+    expect(useVoice.getState().character).toBeNull();
+    sock.receiveBinary(voiceFrame(1, 400));
+    audio.audible(1);
     expect(useVoice.getState().turn?.phase).toBe("speaking");
     sock.receive({
       type: "turn_complete",
@@ -138,6 +148,7 @@ describe("Session", () => {
       final: true,
       source: "live",
     });
+    audio.drain(1);
     sock.receive({
       type: "suggestions",
       turnId,

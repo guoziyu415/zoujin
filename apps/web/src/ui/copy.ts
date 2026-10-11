@@ -15,6 +15,8 @@ export const copy = {
   "cover.resume": "続きから",
   "cover.resumeMeta": "{role}として・{day}の{band}",
   "cover.new": "新しく始める",
+  "inapp.notice": "LINEの中のブラウザでは、声で話せないことがあります。",
+  "inapp.textOnly": "このまま文字で遊ぶ",
   "start.conflict": "続きの物語があります",
   "start.conflict.resume": "続きから",
   "start.conflict.new": "新しく始める",
@@ -37,14 +39,33 @@ export const copy = {
   "nearby.talk": "話しかける",
   "nearby.examine": "調べる",
   "nearby.empty": "近くに話せる人がいません。人の近くへ歩いてください。",
+  "talk.hold": "押して話す",
+  "talk.tap": "タップで話す",
+  "talk.listening": "聞いています",
+  "talk.slideCancel": "指を離すと取り消します",
+  "talk.tooShort": "押したまま話してください",
   "talk.thinking": "考えています",
   "talk.disabled": "人に近づくと話せます",
   "talk.reconnecting": "つながり直しています",
   "talk.end": "話を終える",
+  "talk.preparing": "準備中", // frontend-design 7.1 (not in copy-ja yet)
   "text.open": "文字で話す",
   "text.placeholder": "言いたいことを書く",
   "text.send": "送る",
+  "text.backToVoice": "声に戻す",
   "text.limit": "200字までです",
+  "primer.title": "声で話しかけますか",
+  "primer.body1": "ボタンを押しているあいだだけ、声を聞き取ります。",
+  "primer.body2":
+    "声そのものは保存しません。話したことばは文字にして、この物語のなかだけで使い、結末ができたら消します。学習には使いません。",
+  "primer.use": "マイクを使う",
+  "primer.text": "文字で話す",
+  "primer.ready": "準備ができました。ボタンを押しながら、話してください。",
+  "wait.again": "もう一度話す",
+  "wait.text": "文字で送る",
+  "retract.cancel": "取り消す",
+  "retract.redo": "言い直す",
+  "retract.tooLate": "……もう伝わってしまった。",
   "sub.me": "あなた",
   "sub.fromChip": "候補から",
   "sub.source": "原作のことば",
@@ -61,6 +82,14 @@ export const copy = {
   "toast.more": "ほか{n}件",
   "voice.degraded":
     "ここからは文字でお話しください。人物のことばは字幕で表示します。",
+  "mic.denied": "マイクが使えません。文字で話しても、物語は最後まで進みます。",
+  "mic.denied.ios":
+    "iPhone：アドレスバーの「ぁあ」→「Webサイトの設定」→「マイク」を「許可」",
+  "mic.denied.android": "Android：鍵のアイコン →「権限」→「マイク」を「許可」",
+  "mic.unavailable":
+    "マイクがうまく動いていません。Safariを一度終了して開き直すと、直ることがあります。",
+  "mic.textContinue": "文字で続ける",
+  "mic.howto": "設定のしかた",
   "net.reconnecting": "つながり直しています",
   "net.lost":
     "通信が切れました。ここまでの物語は保存されています。つながったら、同じ場面から続きます。",
@@ -70,7 +99,45 @@ export const copy = {
   "tab.takeBack": "この画面で続ける",
   "resume.tap": "タップして続ける",
   "ending.world": "世界の結末",
+  "safety.hint": "つらいときは、話を聞いてくれる窓口があります。",
+  "safety.hint.landscape": "つらいときの相談窓口",
+  "safety.hint.open": "窓口を見る",
+  "safety.hint.close": "この知らせを閉じる",
+  "safety.panel.title": "話を聞いてくれる窓口",
+  "safety.panel.body":
+    "物語とは別に、いま誰かに話したいことがあれば、聞いてもらえます。",
+  "safety.panel.why": "物語の中の言葉でも、この知らせが出ることがあります。",
+  "safety.back": "物語に戻る",
+  "safety.pause.q": "いま、つらい気持ちを抱えていませんか。",
+  "safety.pause.body":
+    "物語は、ここで少し止めておきます。話を聞いてくれる窓口があります。",
+  "safety.pause.list": "窓口の一覧",
+  "safety.pause.why": "物語の中の言葉でも、この画面が出ることがあります。",
 } as const;
+
+// the helplines of copy-ja 13 (ux-design 14.3; UX checked them with each operator 2026-10-10, again before launch).
+// Chat before phone (the players are 18-34 with earphones in); the number is also text, selectable, unbroken.
+export const helplines = [
+  {
+    name: "あなたのいばしょ",
+    how: "チャット・24時間",
+    button: "チャットで話す",
+    href: "https://talkme.jp/",
+  },
+  {
+    name: "#いのちSOS",
+    how: "電話・24時間・無料",
+    number: "0120-061-338",
+    button: "電話する",
+    href: "tel:0120061338",
+  },
+  {
+    name: "まもろうよ こころ",
+    how: "厚生労働省・ほかの電話とSNSの窓口",
+    button: "一覧を見る",
+    href: "https://www.mhlw.go.jp/mamorouyokokoro/",
+  },
+] as const;
 
 export type CopyKey = keyof typeof copy;
 

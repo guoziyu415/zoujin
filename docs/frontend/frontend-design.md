@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |---|---|
-| 版本 | **v1.0.4**（设计阶段定稿：吸收了后端、UX 两份评审，接口对齐 api-contract v0.3.6，写实画风按 D-019 定档，语音按 S-1b 实测；还要实测的列在第 16 节，见文末修订记录） |
+| 版本 | **v1.0.5**（设计阶段定稿：吸收了后端、UX 两份评审，接口对齐 api-contract v0.3.6，写实画风按 D-019 定档，语音按 S-1b 实测；还要实测的列在第 16 节，见文末修订记录） |
 | 作者 | 前端 |
 | 评审 | UX、后端 |
 | 依据 | `brief/handoff.md`、`pm/prd.md` v1.0、`pm/decisions.md`（到 S-073、D-022）、`data/contracts.md` v1.5、`data/data-design.md` v1.2（9.3）、`backend/api-contract.md` v0.3.6、`backend/backend-design.md` v1.0.6、`backend/spikes/results-s1.md`（8.5 S-1b）、`backend/reviews/frontend-v0.1.md`、`ux/ux-design.md` v1.0 和原型 v8、`ux/art-direction.md` v1.1、`ux/reviews/frontend-v0.8.md`、前端 spike S1、S2、S7 |
@@ -79,7 +79,7 @@ PRD 7.1 的「iPhone 12 级为底线、Pixel 6 级」我同意，补一条：日
 | UI | **React 19 + React Compiler 1.0** | 界面多（对话、地图、記憶帳、结局卡），React 生态成熟；Compiler 自动 memo。外壳只有 58KB（brotli）〔实测〕 | Svelte/Solid：更小，但 3D 生态（R3F）和团队熟悉度不如 React |
 | 3D | **three.js r186 + React Three Fiber 9** | three.js 生态最大（周下载约 Babylon 的 39 倍）；R3F 让 3D 场景和界面共享同一份状态 | Babylon.js、PlayCanvas：包更大或更偏引擎，和 React 结合弱 |
 | 渲染器 | **WebGPURenderer 或 WebGLRenderer，S1 真机决定**〔待真机〕 | WebGPURenderer 没有 WebGPU 时自动回退 WebGL2，一套代码；但 3D 分块 349KB vs 209KB（brotli），要多解析约 690KB JS〔实测〕；r186 下官方迁移指南也说部分场景 WebGL 更快。为了切换成本低：只用标准材质和少量自定义着色，不依赖只有一边能用的后处理 | — |
-| 状态 | **zustand**（游戏/界面状态）+ **TanStack Query**（REST 数据：記憶帳、结局、清单） | zustand 能在 R3F 渲染循环外直接读写，不触发 React 重渲染；TanStack Query 管缓存、重试、失效 | Redux：样板多；XState：只给语音状态机用（见 7.6） |
+| 状态 | **zustand**（游戏/界面状态）+ **TanStack Query**（REST 数据：記憶帳、结局、清单） | zustand 能在 R3F 渲染循环外直接读写，不触发 React 重渲染；TanStack Query 管缓存、重试、失效 | Redux：样板多；XState：不用，语音状态由 store 里的事实推出（见 7.6，F-1） |
 | 路由 | 轻量路由（≤ 5KB） | 只有 4 个屏幕，但结局卡要能用链接直达 | 大型路由框架 |
 | 文字 | **全部 DOM**（字幕、对话、地图、記憶帳、结局卡） | 日文字形多，WebGL 里要做 SDF 字库（几 MB）；DOM 天然支持 `<ruby>`（ふりがな P1）、读屏、复制、系统字体 | troika-three-text 等 WebGL 文字 |
 | 字体 | 正文用系统日文字体（Hiragino / Noto Sans JP）；标题和故事文字用一款明朝体，经 Google Fonts 按 unicode-range 分片只下用到的字 | 日文字体完整版 5〜20MB，不能整包下 | 自托管完整字体 |
@@ -307,6 +307,8 @@ REST 数据（記憶帳列表、结局详情、书的清单）用 TanStack Query
 - 原作原文照搬的句子右上标「原作のことば」，点开看出处（UX 7.7，数据的 `Cite`）。
 
 ### 7.6 语音状态机（名字和画面按 UX 7.4）
+
+实现上不另放一台状态机：说话键显示哪个状态，由 store 里已有的事实（连接、出戏卡、回到前台、麦克风、和人物的会话、按住没有、这一轮到了哪一步）用一个纯函数推出来（`voice/state.ts`），表里每一行是一个单元测试。`interrupted` 和 `cancelled` 是一瞬间，不是停留的状态：前者留下带「——」的那句，后者留下划掉的那句（F-1）。
 
 | 状态 | 什么时候 | 前端要做的 |
 |---|---|---|
@@ -905,6 +907,8 @@ zg 问「不同 iPhone 不同配置不同效果，17 Pro Max 可以高一点」�
 - 3DMark Wild Life Extreme（UL 官方数据库，2026-10-06 访问）：iPhone 12 2131 分、压力测试稳定度 74%：https://benchmarks.ul.com/hardware/phone/Apple+iPhone+12+review ；iPhone 17 Pro Max 5405 分：https://benchmarks.ul.com/en/hardware/phone/Apple+iPhone+17+Pro+Max+review ；iPhone 16 Pro Max 4264 分：https://benchmarks.ul.com/en/hardware/phone/Apple+iPhone+16+Pro+Max+review ；iPhone 15 Pro Max 3570 分：https://benchmarks.ul.com/en/hardware/phone/Apple+iPhone+15+Pro+Max+review
 
 ## 修订记录
+
+- v1.0.5（2026-10-11）：F-1。第 3 节状态库一行和 7.6：不用 XState，语音状态由 store 里的事实推出（`voice/state.ts`）。
 
 - v1.0.4（2026-10-11）：「言い直す」的说明按 api-contract 3.6 改：服务端重建人物的语音会话，人物真的没听到，不再写「只能让它忽略」；12 秒没回应时播这个人物预录的「听不清」第 1 句（ux-design 16.2），不再写一句所有人共用的「もう一度言ってくれぬか」（后端在 B-4 卡评审时指出）。
 - v1.0.3（2026-10-10）：结局卡的人物从 2〜3 个改成 1〜3 个，每一局都出卡（S-076、contracts 1.6）：第 5 节结局一行、10.5 卡面内容和角色区（不满 3 行上下居中，至少 1 行）、F-20。
