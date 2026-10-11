@@ -17,6 +17,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from sqlalchemy import delete, func, insert, select, text
 from sqlalchemy.exc import IntegrityError
 
+from zoujin_backend import timeline as timeline_mod
 from zoujin_backend.config import COOKIE, SESSION_DAYS
 from zoujin_backend.db import store
 from zoujin_backend.db.tables import endings, idempotency_keys, playthrough_metrics, playthroughs, turns
@@ -361,6 +362,42 @@ async def get_events(request: Request, pid: str) -> Response:
     async with gw.engine.connect() as c:
         last_seq = await c.scalar(select(playthroughs.c.last_seq).where(playthroughs.c.playthrough_id == pid))
     return ok(gw, "events", 200, {"events": evs, "lastSeq": int(last_seq or 0)})
+
+
+async def last_seq_of(gw: Gateway, pid: str) -> int:
+    async with gw.engine.connect() as c:
+        last_seq = await c.scalar(select(playthroughs.c.last_seq).where(playthroughs.c.playthrough_id == pid))
+    return int(last_seq or 0)
+
+
+@router.get("/v1/playthroughs/{pid}/timeline")
+async def get_timeline(request: Request, pid: str) -> Response:
+    """2.5：事件和节拍合在一起、按日子分段，从事件日志现算。"""
+    gw = gw_of(request)
+    await owned(request, pid)
+    got = await gw.log(pid)
+    if got is None:
+        raise Fail("not_found")
+    pt, log_ = got
+    return ok(gw, "timeline", 200, timeline_mod.timeline(pt.book, pt.role_id, log_, await last_seq_of(gw, pid)))
+
+
+@router.get("/v1/playthroughs/{pid}/why")
+async def get_why(request: Request, pid: str) -> Response:
+    """2.6：从目标沿 causes 往回。目标不是玩家看得到的事件、知道的节拍时 404（关键时刻切片还没有）。"""
+    gw = gw_of(request)
+    await owned(request, pid)
+    query = dict(request.query_params)
+    check_request(gw, "why", "query", query)
+    got = await gw.log(pid)
+    if got is None:
+        raise Fail("not_found")
+    pt, log_ = got
+    try:
+        doc = timeline_mod.why(pt.book, pt.role_id, log_, query["target"])
+    except timeline_mod.NotFound:
+        raise Fail("not_found") from None
+    return ok(gw, "why", 200, doc)
 
 
 @router.get("/v1/playthroughs/{pid}/ending")
