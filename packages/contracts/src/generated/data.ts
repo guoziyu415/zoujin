@@ -170,9 +170,9 @@ export type EdgeId = string;
  */
 export type EventId = string;
 /**
- * 写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival / sub、Affordance.playerSpot（C-18）、Act.plan（C-19）、WorldModel.setPieces（S-080 ④）、WorldModel.objects
+ * 写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival / sub、Affordance.playerSpot（C-18）、Act.plan（C-19）、WorldModel.setPieces（S-080 ④）、WorldModel.objects。1.8：Affordance.pastLabel，事件 summary 里玩家一律写身份名
  */
-export type SchemaVersion = "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5" | "1.6" | "1.7";
+export type SchemaVersion = "1.0" | "1.1" | "1.2" | "1.3" | "1.4" | "1.5" | "1.6" | "1.7" | "1.8";
 /**
  * 结局：`end_` 加 ULID（26 位 Crockford base32，大写）
  */
@@ -428,6 +428,10 @@ export interface Affordance {
    * 按钮上的动词短语（日语），不写耗时
    */
   label: string;
+  /**
+   * （1.8）做完以后的事件句（日语，过去式，带对象，不带主语和「。」），例「老爺を家まで送った」。叙事者写成 summary「{Role.name}は、{pastLabel}」，下发给玩家时服务端换成「あなた」
+   */
+  pastLabel: string;
   /**
    * 在哪个地点出现
    */

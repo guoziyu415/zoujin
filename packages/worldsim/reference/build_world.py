@@ -30,13 +30,14 @@
 import argparse
 import hashlib
 import json
+import re
 import sys
 from collections import defaultdict
 from pathlib import Path
 
 from zoujin_worldsim import Sim  # 共用的推演规则（W-1 的包，contracts 2.4.1 / 2.5.1）
 
-CONTRACT_VERSION = "1.7"  # contracts.md 的版本
+CONTRACT_VERSION = "1.8"  # contracts.md 的版本
 errors, warnings = [], []
 
 
@@ -630,6 +631,9 @@ def main():
             err(f"{w2}: kind 不在 UX 的动作清单里 {af.get('kind')}")
         if not af.get("label") or any(ch in af["label"] for ch in "（(0123456789"):
             err(f"{w2}: label 要是动词短语，不写耗时（前端用 minutes 拼）：{af.get('label')!r}")
+        pl = af.get("pastLabel")  # 1.8：事件句「{身份名}は、{pastLabel}」
+        if not pl or "。" in pl or pl[-1] not in "ただ" or len(pl) > 30 or pl == af.get("label"):
+            err(f"{w2}: pastLabel 要是做完以后的一句（过去式「〜た」结尾、带对象、不带「。」，30 字以内）：{pl!r}")
         for r in af.get("roles", []):
             if r not in role_ids:
                 err(f"{w2}: 身份不存在 {r}")
@@ -677,6 +681,42 @@ def main():
     for pl, kinds in by_place.items():
         if kinds != {"slower", "faster"}:
             err(f"{pl}: 第四幕每处要同时有让他慢和帮他快的动作（S-036 ②），现在只有 {sorted(kinds)}")
+
+    # ---------- （1.8）身份名只用来指玩家（contracts 2.7）：下发时服务端把身份名换成「あなた」 ----------
+    role_names = {r["id"]: (r["name"], r.get("release")) for r in world["roles"]}
+    for rid, (nm, _) in role_names.items():
+        for rid2, (nm2, _) in role_names.items():
+            if rid != rid2 and nm in nm2:
+                err(f"{rid}: 身份名「{nm}」包含在 {rid2} 的「{nm2}」里，换「あなた」时分不开")
+
+    def about_player(path):  # 写玩家的地方：身份自己、状态变量的说明、互助的 text（路径里的 ID 不含「/」）
+        return (path.startswith("$.roles")
+                or re.fullmatch(r"\$\.stateVars/[^/]+\.description", path) is not None
+                or re.fullmatch(r"\$\.characters/[^/]+\.mutualAid/[^/]+\.text", path) is not None)
+
+    later = defaultdict(list)  # 第二版的身份：撞名先记下，汇总成一条警告
+
+    def walk_names(x, path):
+        if isinstance(x, dict):
+            for k, v in x.items():
+                if k not in ("cite", "note", "quote", "book", "_authoring"):
+                    walk_names(v, f"{path}.{k}")
+        elif isinstance(x, list):
+            for i, v in enumerate(x):
+                walk_names(v, f"{path}/{label(v, i)}")
+        elif isinstance(x, str) and not about_player(path):
+            for rid, (nm, rel) in role_names.items():
+                if nm in x:
+                    if rel == 1:
+                        err(f"{path}: 有第一版的身份名「{nm}」（{rid}）。身份名只用来指玩家，下发时换成「あなた」"
+                            f"（contracts 2.7）：{x[:40]}")
+                    else:
+                        later[rid].append(path)
+
+    walk_names(world, "$")
+    for rid, paths in later.items():
+        warn(f"{rid}: 第二版的身份名「{role_names[rid][0]}」在世界模型里还指别的（{len(paths)} 处，例 {paths[0]}），"
+             f"开放第二版前给这个身份另起名（contracts 2.7）")
 
     # ---------- 可调查物（contracts 2.12，1.7） ----------
     objects = {x["id"]: x for x in world.get("objects", [])}

@@ -51,7 +51,7 @@
 | beat.20 力尽きる | D3 15:00（D3 11:00〜D3 19:00） | spring | メロス | mutable | melos.stamina <= 20 | melos.resolve -60、melos.doubted = True | 「ついに、がくりと膝を折った。」(47)<br>「四肢を投げ出して、うとうと、まどろんでしまった。」(47)<br>「ああ、もういっそ、悪徳者として生き伸びてやろうか。」(47) | |
 | beat.s2 ちらと友を疑う | D3 16:00（D3 14:00〜D3 17:50） | castle | セリヌンティウス | mutable | hostage.who == char.selinuntius、hostage.fate == held、selinuntius.faith <= 2〔推断〕 | selinuntius.doubted = True | 「私はこの三日の間、たった一度だけ、ちらと君を疑った。」(65) | |
 | beat.21 泉 | D3 16:30（D3 12:30〜D3 19:00） | spring | メロス | mutable | — | melos.stamina +30、melos.resolve = 100 | 「水を両手で掬って、一くち飲んだ。」(48)<br>「走れ！　メロス。」(48)<br>「先刻の、あの悪魔の囁きは、あれは夢だ。」(49) | |
-| beat.22 黒い風のように | D3 17:30（D3 13:30〜D3 19:00） | road-to-city | メロス、一団の旅人 | mutable | — | melos.clothing = nearly-naked | 「メロスは黒い風のように走った。」(50)<br>「メロスは、いまは、ほとんど全裸体であった。」(50) | |
+| beat.22 黒い風のように | D3 17:30（D3 13:30〜D3 19:00） | road-to-city | メロス、旅の一団 | mutable | — | melos.clothing = nearly-naked | 「メロスは黒い風のように走った。」(50)<br>「メロスは、いまは、ほとんど全裸体であった。」(50) | |
 | beat.s1 刑場に引き出される友 | D3 18:00（D3 17:00〜D3 18:55） | execution-ground | セリヌンティウス、王ディオニス、刑場の群衆、警吏（巡邏・刑吏） | mutable | hostage.fate == held | hostage.fate = on-cross、selinuntius → execution-ground、maiden → execution-ground、king → execution-ground | 「王様が、さんざんあの方をからかっても、メロスは来ます、とだけ答え」(57) | |
 | beat.23 フィロストラトス | D3 18:30（D3 14:30〜D3 19:00） | road-to-city | メロス、フィロストラトス | mutable | — | — | 「もう、駄目でございます。」(53)<br>「それだから、走るのだ。信じられているから走るのだ。」(58)<br>「いや、まだ陽は沈まぬ。」(56) | |
 | beat.24 日没、刑場へ | D3 19:00（D3 16:00〜D3 19:00） | execution-ground | メロス、セリヌンティウス、刑場の群衆、警吏（巡邏・刑吏） | mutable | melos.custody == on-parole | melos.custody = returned、hostage.fate = released、melos → execution-ground | 「メロスは疾風の如く刑場に突入した。間に合った。」(60)<br>「セリヌンティウスの縄は、ほどかれたのである。」(62) | |
@@ -92,7 +92,7 @@
 | fact.bandits-ambush | 峠で一隊の山賊が待ち伏せている。 | beat.19 | public | 「突然、目の前に一隊の山賊が躍り出た。」(39) | |
 | fact.melos-suspects-king | メロスは山賊を王の差し金だと考えた（原文では真偽不明。語り手は断定しない）。 | beat.19 | private | 「さては、王の命令で、ここで私を待ち伏せしていたのだな。」(45) | |
 | fact.melos-despair | メロスは力尽きて倒れ、一度は約束を投げ出そうと思った（「悪い夢」）。 | beat.20 | private | 「ああ、もういっそ、悪徳者として生き伸びてやろうか。」(47)<br>「私は、途中で一度、悪い夢を見た。」(63) | |
-| fact.travelers-rumor | 旅人たちは身代りの男がいまごろ磔にかかっていると噂した。 | beat.22 | public | 「いまごろは、あの男も、磔にかかっているよ。」(50) | |
+| fact.travelers-rumor | 旅の一団は、身代りの男がいまごろ磔にかかっていると噂した。 | beat.22 | public | 「いまごろは、あの男も、磔にかかっているよ。」(50) | |
 | fact.selinuntius-steadfast | セリヌンティウスは刑場に引き出され、王にからかわれても「メロスは来ます」とだけ答えた。 | beat.s1 | public | 「刑場に引き出されても、平気でいました。」(57) | |
 | fact.selinuntius-doubted-once | セリヌンティウスは三日の間に一度だけメロスを疑った。 | beat.s2 | private | 「私はこの三日の間、たった一度だけ、ちらと君を疑った。」(65) | |
 
@@ -298,9 +298,9 @@
 | 说话 | 一人称「—」；粗野。；开局在做：idle | 「どっこい放さぬ。持ちもの全部を置いて行け。」(42) | |
 | 知道 | — | — | |
 
-### 一団の旅人（char.travelers）
+### 旅の一団（char.travelers）
 
-メロスとすれちがう旅人たち。処刑の噂を口にする。
+メロスとすれちがう旅の一団。処刑の噂を口にする。
 
 | 项 | 内容 | 原文 | 校对 |
 |---|---|---|---|

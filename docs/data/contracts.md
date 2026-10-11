@@ -1,8 +1,8 @@
-# 数据契约（contracts.md）v1.7
+# 数据契约（contracts.md）v1.8
 
-负责人：数据工程 · 状态：**v1.7**（1.5 在 M2-0 冻结（C-2），以后只做加法；1.6 是冻结后第一个加法版本）。v1.0 是基线（S-033），v1.1 是 PM 接受的新基线（S-061〜S-063），已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改。1.1 只做加法：加进 D-012〜D-015 的落地（S-029〜S-032：互助、约定、打算、即兴设定、导演事件、生成的结局、角色结局）、S-034〜S-053 里和数据有关的决定、后端设计 v1.0 第 12 节的 13 条提案和 UX 设计 v1.0 第 18.3 节的要求。1.2 也只做加法：幕末说出的打算（S-031 ③）、作废和出戏的一轮怎么落数据（S-054、S-057）。1.3 加随身的东西（UX 5.1，C-14）。1.4 按 UX 对世界模型的校对和 S-064 加：有条件的台词和设计台词、互助的效果、节拍的变体、过场里的二选一、第四幕按钮上「对梅洛斯的影响」。1.5 给过场的选项也加上「对梅洛斯的影响」和选后的一句（UX 校对 7.3、ux-design 4.5）。1.6 把两条只写在说明文字里的取值条件写成数据（`StateVar.valueRequires`，C-16），结局卡改成 1〜3 人、每一局都出（C-17）。1.7 加位置点（谁站在布局的哪个点）、成群的人物和幕末去处的落地（M2 切片，C-18），以及打算成行时的落点（C-19）、固定演出（S-080 ④）、可调查物和玩家知道什么。跨角色决定见 `pm/decisions.md`。还在等别人定的事列在第 7 节。
+负责人：数据工程 · 状态：**v1.8**（1.5 在 M2-0 冻结（C-2），以后只做加法；1.6 是冻结后第一个加法版本）。v1.0 是基线（S-033），v1.1 是 PM 接受的新基线（S-061〜S-063），已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改。1.1 只做加法：加进 D-012〜D-015 的落地（S-029〜S-032：互助、约定、打算、即兴设定、导演事件、生成的结局、角色结局）、S-034〜S-053 里和数据有关的决定、后端设计 v1.0 第 12 节的 13 条提案和 UX 设计 v1.0 第 18.3 节的要求。1.2 也只做加法：幕末说出的打算（S-031 ③）、作废和出戏的一轮怎么落数据（S-054、S-057）。1.3 加随身的东西（UX 5.1，C-14）。1.4 按 UX 对世界模型的校对和 S-064 加：有条件的台词和设计台词、互助的效果、节拍的变体、过场里的二选一、第四幕按钮上「对梅洛斯的影响」。1.5 给过场的选项也加上「对梅洛斯的影响」和选后的一句（UX 校对 7.3、ux-design 4.5）。1.6 把两条只写在说明文字里的取值条件写成数据（`StateVar.valueRequires`，C-16），结局卡改成 1〜3 人、每一局都出（C-17）。1.7 加位置点（谁站在布局的哪个点）、成群的人物和幕末去处的落地（M2 切片，C-18），以及打算成行时的落点（C-19）、固定演出（S-080 ④）、可调查物和玩家知道什么。1.8 加情境动作做完以后的事件句（`Affordance.pastLabel`），写清事件 `summary` 里玩家一律写身份名、身份名只用来指玩家（UX 在 #61 前端评审后定的文案）。跨角色决定见 `pm/decisions.md`。还在等别人定的事列在第 7 节。
 UX、前端请看第 2.8 节（幕）、第 4 节（记忆）、第 5 节（结局）。1.1 新增或写清的地方都标了「（1.1）」，文末变更记录有汇总。
-最近更新：2026-10-10（1.7：relocate 和 `ActExit` 的 `spot`、`WorldState.spots`、`Character.group`、`ActExit.arrival`、`ActExit.sub`、`Affordance.playerSpot`（C-18）、`Act.plan`（C-19）、`setPieces`（S-080 ④）、`objects`、玩家学到的事实（`learn` 写 `player`）；1.6：`StateVar.valueRequires`（C-16）、结局卡 1〜3 人（C-17））
+最近更新：2026-10-11（1.8：`Affordance.pastLabel`，`summary` 里玩家一律写身份名，下发时服务端换成「あなた」，世界模型自检查身份名只指玩家；1.7：relocate 和 `ActExit` 的 `spot`、`WorldState.spots`、`Character.group`、`ActExit.arrival`、`ActExit.sub`、`Affordance.playerSpot`（C-18）、`Act.plan`（C-19）、`setPieces`（S-080 ④）、`objects`、玩家学到的事实（`learn` 写 `player`）；1.6：`StateVar.valueRequires`（C-16）、结局卡 1〜3 人（C-17））
 
 四个契约：**WorldModel**（世界模型，静态、按书版本化）、**Event**（运行时事件，只追加）、**Memory**（角色对玩家的记忆，可删除）、**Ending**（结局）。另有两个支撑结构：**Playthrough**（一局游戏）和 **WorldState**（由事件推出的当前状态）。
 
@@ -405,6 +405,8 @@ type Role = {
 
 R7 判「能不能进」：`access` ∪ 此刻条件成立的 `conditionalAccess` ∪ 事件给的许可（被带进去、被召见）。
 
+**（1.8）身份名只用来指玩家。** 事件 `summary` 里玩家写身份名，下发给玩家时服务端把它换成「あなた」（第 3 节 `summary`），所以别的东西不能叫这个名字，否则「一団の旅人」会变成「一団のあなた」。世界模型自检（`build_world`）查：第一版（`release: 1`）身份的 `name` 不出现在世界模型别处的文字里，只有写玩家的地方除外（`roles` 自己、状态变量的 `description`、互助的 `text`）和引文、`note`；身份名之间也不互相包含。第二版的身份撞名先给警告：「警吏」和人物 `char.guards` 同名，开放第二版前给这个身份另起名。『走れメロス』为此把成群的人物「一団の旅人」改叫「旅の一団」，事实、节拍摘要和地点描述里的「旅人」跟着改（1.8）。
+
 ### 2.8 Act（幕，S-004）
 
 一局分四幕。每一幕里自由走动和说话；幕结束时玩家从「去处」里选一个（跟谁、去哪），故事时间跳到下一幕。（1.2，S-031 ③）`exits` 是**推荐去处**：玩家也可以说出自己的打算，叙事者判定能否成行（2.8.1 第 2 步）。
@@ -531,6 +533,9 @@ type Affordance = {
   id: string;                      // "aff.river-hold"
   kind: "examine" | "give" | "follow" | "block" | "help" | "wait" | "go" | "shortcut" | "run-together" | "hasten";
   label: string;                   // 按钮上的动词短语（日语），**不写耗时**，前端用 minutes 拼成「引き止める（30分ほど）」（半角数字，ux-design 4.3）
+  pastLabel: string;               // （1.8）做完以后的事件句：日语，过去式，带对象，不带主语和「。」，30 字以内：「老爺を家まで送った」。
+                                   // 叙事者把动作的事件 summary 写成「{Role.name}は、{pastLabel}」（3 节），下发给玩家时服务端换成
+                                   // 「あなたは、老爺を家まで送った。」（api-contract）。label 是按钮上的「要做什么」，没有对象也像还没做
   place: string;                   // 在哪个地点出现
   act?: string;                    // 只在这一幕
   roles?: string[];                // 只对这些身份；省略 = 全部
@@ -564,7 +569,7 @@ type Item = {
 - 动作的实际结果仍由叙事者判定（先判后演，api-contract 3.8）；效果模板是「照常成立时」的效果，情势不同时叙事者可以改写，仍过自检。
 - 效果模板里的 `promise` 只写 `change: "made"` 和 `from` / `to` / `text` / `template`，不写 `promiseId`（提交时由叙事者分配 `prm_…`）。
 - **（1.4）按钮上的分钟数：** 第四幕带 `melos` 的动作，按钮写对梅洛斯的影响（带正负号）；第一〜三幕照旧写玩家花的 `minutes`。世界模型里的 `melosMinutes` 是原著路径上的估计值（校验和校对用）。**快照里给按钮的是按本局当前排程算的实际值**（S-066 ①）：共享规则 `worldsim.py` 的 `arrival_delta(本局情景, 动作的 effects, 当前时刻)` 返回 `{minutes, inTime}`。已经到了到达下限时，「帮他快」的实际值是 0，按钮不能写「早まる」；由人物或叙事说一次 `clock.deadline.earliestArrivalCue`（1.5，2.6）。`inTime: false` = 做了就来不及。（1.5 写清）这个实际值放在快照的 `actions[].melosMinutes`（api-contract 2.3，v0.3.4），过场选项的放在 `act_ended.options[].enRoute`（api-contract 3.11）。分钟数 = 做和不做各排一次程、看 watchBeat 的差，两次都用去掉 `window.latest` 的排程（拖到来不及也有数）；赶不赶得上看真实排程。在原著路径上它等于世界模型里的 `melosMinutes`。实际值是 0 时按钮写「（変わらない）」（ux-design 4.3）。
-- 『走れメロス』现在有 19 个：第四幕 12 个（河边、泉边各一慢一快；山口一慢三快：人人可用的「先に登って様子を見る」（10 分），和绕开山口的脇道（牧童，或听花婿说过路的人，1.5 按 UX 校对 7.4）；进城的路一慢三快：近道（牧童，或听人说过的人）、先跑去报信），身份独有的 4 个（旅人「メロスの身元を保証する」、石屋の弟子「工房を預かる」「親方のそばにいる」、牧童「水を一杯差し出す」），第三幕 3 个（帮妹妹、帮花婿备婚礼，天亮前叫醒梅洛斯）。物品见世界模型的 `items`（1.3：开局带的、互助得到的、原作里的短剑）。
+- 『走れメロス』现在有 20 个：第一幕 1 个（「家まで送る」，1.7），第四幕 12 个（河边、泉边各一慢一快；山口一慢三快：人人可用的「先に登って様子を見る」（10 分），和绕开山口的脇道（牧童，或听花婿说过路的人，1.5 按 UX 校对 7.4）；进城的路一慢三快：近道（牧童，或听人说过的人）、先跑去报信），身份独有的 4 个（旅人「メロスの身元を保証する」、石屋の弟子「工房を預かる」「親方のそばにいる」、牧童「水を一杯差し出す」），第三幕 3 个（帮妹妹、帮花婿备婚礼，天亮前叫醒梅洛斯）。物品见世界模型的 `items`（1.3：开局带的、互助得到的、原作里的短剑）。
 
 
 ### 2.11 SetPiece（1.7，固定演出，S-080 ④）
@@ -651,6 +656,10 @@ type Event = {
   confirmed?: true;                // （1.1）提交前经过故事里的意图确认（S-040），一局 0〜3 次
   place: string;
   summary: string;                 // 叙事者写的中性日语摘要：只写故事里的行为，不含玩家原话，不含现实个人信息（违反即 R6 失败）
+                                   // （1.8）玩家一律写这一局的身份名（Role.name，例「旅人は、老爺を家まで送った」），不写「旅の人」
+                                   // 「旅の者」「彼」「プレイヤー」：存的照旧是第三人称，模型、检查、评测读的都是它；下发给玩家的句子
+                                   // （幕末的 recapLines、「その頃」、commit 里事件的 summary）由服务端把身份名换成「あなた」。
+                                   // 所以身份名在世界模型里只用来指玩家（2.7 的自检）
   utteranceRefs?: string[];        // 相关原话 utt_…（可删除；删除后这里保留 ID 但内容取不到）
   causes: string[];                // 因为哪些事件（ev_…）或节拍（beat.…）
   effects: Effect[];
@@ -978,7 +987,7 @@ type CharacterEnding = {           // （1.1）
 
 ```json
 { "seq": 4, "t": 1080, "dt": 10, "actor": "player", "type": "say", "origin": "turn", "place": "place.stonemason-workshop",
-  "summary": "弟子は、親方の留守のあいだ工房を守ると約束した", "causes": [],
+  "summary": "石屋の弟子は、親方の留守のあいだ工房を守ると約束した", "causes": [],
   "effects": [{ "op": "promise", "promiseId": "prm_01J…", "change": "made", "from": "player", "to": "char.selinuntius",
                 "text": "工房を守る", "template": "promise.selinuntius.workshop" }],
   "keyMoment": false, "check": { "status": "passed", "attempts": 1, "failedRules": [], "checker": "rules@1.1+…" } }
@@ -1060,3 +1069,8 @@ type CharacterEnding = {           // （1.1）
   - 『走れメロス』（draft.3）：群众、警吏、山贼、一团旅人 `group: true`；beat.s1 セリヌンティウス站 `stake`、王站 `king-west`，beat.24 梅洛斯站 `scaffold`（布局见前端 #22）。同一个 PR 里的世界模型修正：群众、少女第一幕在广场的家里（`absent`），beat.s1 到刑场；beat.04（捕缚）挪到王城前庭（`place.execution-ground`）；送老爺回家记 `var.player.walkedOldManHome`（说话兑现，或第一幕的情境动作「家まで送る」`aff.walk-old-man-home`，30 分，UX 10-10）；警吏从 beat.05 起知道约定（`knows`，PM 10-10：警吏在殿上，城门的固定演出靠它说出约定，S-077 ⑪）。
   - 写清（10-10，#41、#45、#50 合并以后，字段不变）：固定演出的 `lines` 整条放在一条 `set_piece` 消息里下发，预录句的录音是 manifest 的 `setPieceVoices["{id}/{序号}"]`（2.11，api-contract v1.0.4 的 3.14、2.1）；人物此刻的 activity 怎么算（2.4，共享规则库的 `activity()`，挪走又回来的人物又是节拍给的 activity）。Schema 里 `SetPiece.lines` 的说明跟着改；例子里城门的地の文「衛兵」改成「警吏」，和世界模型、api-contract 3.14 一致。
   - 写清（10-10，B-3 卡 #58 以后，字段不变）：幕切换第 3 步结算的那段玩家算不在场，不写 2.1 ② 的 `learn`、不演节拍时机的固定演出、不进 `visibleEffects`（2.8.1 第 3 步、第 3 节，共享规则库 `settle` 加 `player_present`）；第 2、4 步的 `act-transition` 事件 `origin: "act"`、`checker: "world-exit"`；`SetPiece.learns` 另写一条 `type: "learn"` 事件（2.11，Schema 的说明跟着改）。
+- **v1.8（2026-10-11）**：只做加法。UX 在 #61 前端评审以后定的文案：给玩家看的事件句里玩家一律是「あなた」，情境动作的事件句要说清做了什么、对谁做的。
+  - WorldModel：`Affordance.pastLabel`（必填：做完以后的事件句，过去式、带对象，2.10）。叙事者的事件 `summary` 写「{Role.name}は、{pastLabel}」。
+  - Event：`summary` 里玩家一律写身份名，不写「旅の人」「彼」等；下发给玩家时服务端换成「あなた」（第 3 节）。例子里「弟子は、」改成「石屋の弟子は、」。
+  - 世界模型自检：第一版身份名只用来指玩家，身份名之间不互相包含；第二版的撞名给警告（2.7）。
+  - 『走れメロス』（draft.3）：20 个情境动作都写上 `pastLabel`（UX 看文字）；成群的人物「一団の旅人」改叫「旅の一団」，它的简介、`fact.travelers-rumor`、beat.22 的摘要、`place.road-to-city` 的描述跟着改。
