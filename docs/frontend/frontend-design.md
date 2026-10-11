@@ -368,7 +368,10 @@ REST 数据（記憶帳列表、结局详情、书的清单）用 TanStack Query
 | `scene.syracuse-square` | 锡拉库萨的大路与广场；第 3 天日落时同一场景换布景变刑场 | `place.syracuse-square`、`place.stonemason-workshop`（石工的仕事场，广场一角）、`place.execution-ground` |
 | `scene.castle-throne` | 王城·王座之间 | `place.castle` |
 | `scene.village` | 梅洛斯的村子（家、羊舍、花婿家、婚礼） | `place.village`、`place.melos-home`、`place.groom-house` |
-| `scene.homeward-road` | 归途：河与桥、山口、草原和泉水、往城里的野路 | `place.river`、`place.mountain-pass`、`place.spring`、`place.road-to-city` |
+| `scene.road-river` | 归途・河与桥（第二幕桥在、第四幕被冲走，按 `var.bridge` 换包，S-081 ④） | `place.river` |
+| `scene.road-pass` | 归途・山口 | `place.mountain-pass` |
+| `scene.road-spring` | 归途・草原和泉水 | `place.spring` |
+| `scene.road-field` | 归途・往城里的野路（整段是跑） | `place.road-to-city` |
 | （第一版不做） | — | `place.neighbor-village`（`sceneRef` 为空：玩家不能停留，经过或在那里发生的事由叙事者用一两句旁白交代，前端显示字幕并播旁白音） |
 
 一个场景里有多个地点。服务端说角色在哪个 `place` 的哪个 `spot`（位置点名），前端在场景文件里查到坐标。位置点不叫 `anchor`，因为世界模型里 `anchors` 是「故事锚点」（R1），见前端评审第 2 条。

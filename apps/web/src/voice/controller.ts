@@ -468,10 +468,35 @@ export class VoiceController {
 
   // —— the session's side ——
 
-  // welcome: turnSeq starts again; the last turn's words come back; what was typed while down goes now
-  connected(lastTurn: Api.LastTurn | null): void {
+  // welcome: turnSeq starts again; the last turn's words come back; what was typed while down goes now; a safety
+  // pause the server still holds comes back as the card (api-contract 4)
+  connected(
+    lastTurn: Api.LastTurn | null,
+    pending: { safetyPause: boolean } | null = null,
+  ): void {
     useVoice.setState({ nextTurnSeq: 1 });
-    this.restore(lastTurn);
+    // a voice turn the server never got (let go while the line was already down) isn't its last turn and will
+    // never settle: it's lost, said the same way (a typed one is sent again below)
+    const r = this.cur;
+    if (
+      r?.kind === "voice" &&
+      !r.settled &&
+      r.audibleAt === undefined &&
+      useVoice.getState().turn?.turnId === r.id &&
+      lastTurn?.turnId !== r.id
+    )
+      this.restore({
+        turnId: r.id,
+        character: r.character,
+        status: "lost",
+        playerText: null,
+        characterText: null,
+      });
+    else this.restore(lastTurn);
+    if (pending?.safetyPause) {
+      this.pause(false);
+      this.outbox = []; // typed while down, into a pause: dropped like a held turn
+    }
     if (this.inflight && lastTurn?.turnId !== this.inflight.id)
       this.outbox.unshift(this.inflight);
     this.inflight = null;
@@ -979,8 +1004,10 @@ export class VoiceController {
       kind: r?.retract ?? "cancel",
       result: m.status,
     });
-    // too late: the narrator's line from our own copy, no voice, the world keeps what happened (7.5)
-    if (m.status === "too_late") addNarration(copy["retract.tooLate"]);
+    // too late: the narrator's line from our own copy, no voice, the world keeps what happened (7.5). Not after our
+    // own 12 s give-up: the character has already said it didn't hear, and nothing was passed on
+    if (m.status === "too_late" && r?.retract !== "timeout")
+      addNarration(copy["retract.tooLate"]);
   }
 
   // talk_turn, once per turn of the player's (data-design 9.3): when the voice ends, at the moment it is cut
@@ -1054,11 +1081,12 @@ export class VoiceController {
 
   // —— the safety card (frontend-design 12, ux-design 14.1) ——
 
-  private pause(): void {
+  // fade: false when the card comes back after a reload or a drop (nothing is playing to fade)
+  private pause(fade = true): void {
     const v = useVoice.getState();
     if (v.paused) return;
     // 1. the voice (and an aizuchi on the same bus) fades in 0.2 s, then the buffer empties; later frames go
-    this.audio.fadeOut(FADE_MS);
+    if (fade) this.audio.fadeOut(FADE_MS);
     const r = this.cur;
     if (r) {
       r.drop = true;
@@ -1072,6 +1100,8 @@ export class VoiceController {
       this.heldBack = [];
       this.forget(h);
     }
+    // the words that set it off aren't sent again after a drop (turn_settled paused clears this too, if it came)
+    this.inflight = null;
     this.audio.setSending(false);
     this.audio.releaseMic();
     // 6. the card: the HUD dims, then clears this turn's lines in the dark (ui/safety/SafetyCard.tsx)

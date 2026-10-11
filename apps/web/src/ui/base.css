@@ -537,6 +537,7 @@ button {
   color: inherit;
   font-size: 13px;
   text-align: left;
+  white-space: normal;
 }
 .safety-hint .link {
   display: block;

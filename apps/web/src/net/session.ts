@@ -346,7 +346,7 @@ export class Session {
     const focus = usePlayer.getState().focusCharacter;
     if (focus) this.live.send({ type: "focus", character: focus });
     // turnSeq from 1 again, the last turn's words back, what was typed while down goes now
-    this.voice.connected(w.lastTurn);
+    this.voice.connected(w.lastTurn, w.pending);
   }
 
   private async commit(c: Api.CommitMessage): Promise<void> {

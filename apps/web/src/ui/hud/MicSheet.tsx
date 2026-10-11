@@ -5,10 +5,19 @@ import { play } from "../../net/play";
 import { useVoice } from "../../stores/voice";
 import { copy } from "../copy";
 
+// which settings to explain: this phone's only (ux-design 12); a computer, or one we can't tell, gets both
+export function phoneOf(ua: string, touch: number): "ios" | "android" | null {
+  if (/Android/i.test(ua)) return "android";
+  if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && touch > 1))
+    return "ios"; // iPadOS asks for the desktop site and says Macintosh
+  return null;
+}
+
 export function MicSheet() {
   const sheet = useVoice((s) => s.sheet);
   const [howto, setHowto] = useState(false);
   if (!sheet) return null;
+  const phone = phoneOf(navigator.userAgent, navigator.maxTouchPoints);
   if (sheet === "primer")
     return (
       <div
@@ -42,8 +51,8 @@ export function MicSheet() {
       </h2>
       {sheet === "denied" && howto && (
         <ul className="howto">
-          <li>{copy["mic.denied.ios"]}</li>
-          <li>{copy["mic.denied.android"]}</li>
+          {phone !== "android" && <li>{copy["mic.denied.ios"]}</li>}
+          {phone !== "ios" && <li>{copy["mic.denied.android"]}</li>}
         </ul>
       )}
       <div className="row">
