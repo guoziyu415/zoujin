@@ -22,7 +22,7 @@ DEST="${OUT:+$OUT/$PACK}"
 DEST="${DEST:-$SCENES/$PACK/build}"
 echo "work dir $WORK, output $DEST ($Q)"
 
-export SCENE_INPUTS="assets/pipeline/castle/build.sh,assets/pipeline/castle/castle_tex.py,assets/pipeline/plaza/placeholder_tex.py,assets/pipeline/road/bl.py,assets/pipeline/castle/build_castle.py,assets/pipeline/castle/lamps.mjs"
+export SCENE_INPUTS="assets/pipeline/castle/build.sh,assets/pipeline/castle/castle_tex.py,assets/pipeline/plaza/placeholder_tex.py,assets/pipeline/common/bl.py,assets/pipeline/castle/build_castle.py,assets/pipeline/castle/lamps.mjs"
 export SCENE_BUILD="assets/pipeline/castle/build.sh"
 export SCENE_ROT_DEG=0 SCENE_MINUS_X_AZ=270   # plan +x = east, no rotation (castle.md 2)
 export SCENE_STEM="$PACK" PLAZA_OUT="$WORK" CASTLE_LAYOUT="$SCENES/$PACK/layout.json"
