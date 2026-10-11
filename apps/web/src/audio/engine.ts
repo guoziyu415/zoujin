@@ -436,6 +436,10 @@ export class AudioEngine implements AudioPort {
         gain.connect(pan).connect(this.bus!);
       } else gain.connect(this.bus!);
       copy.start(ctx.currentTime + l.delay, offset);
+      // the slower copies end with the recording, not after it (PM on #156): faded out over its last 0.1 s
+      const end = ctx.currentTime + buf.duration - offset;
+      gain.gain.setTargetAtTime(0, end - 0.1, 0.03);
+      copy.stop(end);
       this.layerNodes.push(copy);
     }
   }
