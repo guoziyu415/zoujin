@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal, NotRequired, TypedDict
+from typing import Any, Literal, NotRequired, TypedDict
 
 type Status = Literal["pass", "fail", "skip"]
 type SkipCode = Literal["not-implemented", "needs-live-model", "replay-missing", "no-character-text", "timeout"]
@@ -30,6 +30,8 @@ class RunResult(TypedDict):
     skip: NotRequired[Skip]  # 这一次整个没跑完：回放缺失或过期、超时
     error: NotRequired[str]  # 后端抛了「没做」以外的异常：这一次算不过
     traceIds: list[str]
+    playthroughId: NotRequired[str | None]  # 模拟局：这一局的 ID（S-5 的报告脚本按它对账本）
+    sim: NotRequired[dict[str, Any]]  # 模拟局的统计（player.sim_stats）
 
 
 class CaseResult(TypedDict):
