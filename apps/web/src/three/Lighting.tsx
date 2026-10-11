@@ -61,9 +61,11 @@ const SKY_PATCH = `
   float anti = pow( 1.0 - side, 2.0 );
   vec3 belt = vec3( 0.55, 0.27, 0.33 ) * exp( -pow( ( up - 0.09 ) / 0.06, 2.0 ) ) * anti + vec3( 0.15, 0.2, 0.38 ) * ( 1.0 - up * 0.45 );
   vec3 sl = texColor * uSkyGain;
-  if ( uEnvLocus > 0.5 ) sl = toLocus( sl );
-  texColor = max( sl, max( max( glow * uDusk, nightSky * uNightSky ), belt * uBelt ) );
+  vec3 dusk = max( max( glow * uDusk, nightSky * uNightSky ), belt * uBelt );
+  texColor = max( sl, dusk );
   float peak = max( max( texColor.r, texColor.g ), max( texColor.b, 1e-4 ) );
+  // the knee from the colour before the locus move, so the light keeps its brightness
+  if ( uEnvLocus > 0.5 ) texColor = max( toLocus( sl ), dusk );
   texColor *= 1.7 * ( 1.0 - exp( -peak / 1.7 ) ) / peak;
   gl_FragColor = vec4( texColor, 1.0 );`;
 
