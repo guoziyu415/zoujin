@@ -274,6 +274,13 @@ playthrough_metrics = Table(
     Column("memories_filtered", Integer, nullable=False, server_default="0"),
     Column("memories_failed", Integer, nullable=False, server_default="0"),
     Column("memories_deleted", Integer, nullable=False, server_default="0"),
+    # B-15（0008，S-072 ⑤）：复核的花费；复核了几次（含第二次 ambiguous 的）、降成 ambiguous 的、
+    # 复核失败保留 signal 的、护栏命中不复核的
+    Column("cost_safety_review_usd", Numeric(12, 6), nullable=False, server_default="0"),
+    Column("safety_reviews", Integer, nullable=False, server_default="0"),
+    Column("safety_downgrades", Integer, nullable=False, server_default="0"),
+    Column("safety_review_failed", Integer, nullable=False, server_default="0"),
+    Column("safety_guarded", Integer, nullable=False, server_default="0"),
 )
 
 # 意图确认的草稿（B-4，api-contract 3.9）：叙事者提出、还没答的那一个候选（不放原话）。关掉就删行，随整局删除。
