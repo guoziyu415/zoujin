@@ -1,6 +1,7 @@
 // The verbs the world screen's components call (frontend-design 4): they reach the open playthrough's session (and
 // its voice controller) through here, never a socket. With no playthrough open they do nothing.
 import type { Api } from "@zoujin/contracts";
+import { usePlayer } from "../stores/player";
 import { Session, type SessionHooks } from "./session";
 
 type Manifest = Pick<Api.ManifestResponse, "characters" | "setPieceVoices">;
@@ -43,6 +44,17 @@ const voice = () => current?.voice;
 export const play = {
   focus: (character: string) => current?.focus(character),
   unfocus: () => current?.unfocus("menu"),
+  // the 3D (frontend-design 9.4, api-contract 3.2): walking off from the one in the conversation, into another place
+  // of the scene, near a talkable character and away again. The place is the client's to keep even with no story
+  // open (the 3D sandbox), so walking on doesn't ask again every frame.
+  walkAway: () => current?.unfocus("walk_away"),
+  move: (place: string) => {
+    const from = usePlayer.getState().place;
+    usePlayer.setState({ place });
+    current?.move(place, from);
+  },
+  near: (character: string) => current?.near(character),
+  far: (character: string) => current?.far(character),
   say: (text: string, via: Api.TextMessage["via"] = "typed") =>
     current?.say(text, via),
   examine: (target: string) => current?.examine(target),

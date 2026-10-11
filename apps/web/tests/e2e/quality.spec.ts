@@ -54,7 +54,7 @@ test.beforeAll(async ({ browser }) => {
   });
   page.on("pageerror", (e) => problems.push(`pageerror: ${e.message}`));
   fs.mkdirSync(SHOTS, { recursive: true });
-  await page.goto("/?test&quality=auto");
+  await page.goto("/?world&test&quality=auto");
   await page.waitForFunction(
     () => ["ready", "failed"].includes(window.__zoujin?.load().stage),
     null,

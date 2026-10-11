@@ -3,7 +3,8 @@
 - `state_view`：此刻的世界状态，紧凑、确定（同样的局面每次一样，回放的键才对得上）。约定和即兴设定的 ID 是提交时随机
   分配的，请求里换成按内容排序的别名（`prm#1`、`rf#1`）；模型输出里的别名按同一个 `View` 换回真 ID。
 - `persona`、`situation`：文字模式人物回答（`reply`）用的 2.3 第 2 段（按此刻裁剪的人设）和最小的局势说明（时刻、地点、
-  在场的人、此刻知道的事实；不知道日名那条事实的人物只给时段）。完整的局势说明、记忆和圆回提示是后续卡。
+  在场的人、此刻知道的事实；不知道日名那条事实的人物只给时段；这三天里亲历的节拍是今天、昨天还是前天）。完整的局势说明、
+  记忆和圆回提示是后续卡。
 
 这里只有世界模型和状态里的东西，没有玩家的原话（原话只在请求的 `turn` 里）。
 """
@@ -119,10 +120,14 @@ def persona(book: Book, state: SimState, who: str) -> Json:
 
 
 def situation(book: Book, state: SimState, who: str, view: View) -> Json:
-    """时刻、地点、在场的人（不含不在场的）、他此刻知道的事实（事实 ID 和即兴设定的别名）。
+    """时刻、地点、在场的人（不含不在场的）、他此刻知道的事实（事实 ID 和即兴设定的别名）、他参与的最近的节拍。
 
     时刻：日名带着情节（`clock.labels.daysKnownBy`）而这个人物不知道那条事实时，只给时段（S-086：「約束の日」「三日目」
     是从约定那天数的，不知道约定的人物说出来就是知情越界）。
+
+    最近的节拍（`recent`，S-092）：他参与的、已发生的节拍（不是他经历的全部；「亲历」的规则等数据在 worldsim 加
+    `lived`），按发生时刻和节拍顺序排，按变体演了的带变体 ID，各带 UX 定的说法（「今朝」「昨夜」
+    「おととい」……；S-068 里人物把当天早上的事说成昨天，婚礼办完了还说明天的婚礼）。再早的不给。
     """
     ix = index(book.world)
     place = state["locations"].get(who, state["vars"]["var.player.location"])
@@ -130,12 +135,21 @@ def situation(book: Book, state: SimState, who: str, view: View) -> Json:
     known = [f["id"] for f in book.world["facts"] if knows(book.world, state, who, f["id"])]
     known += [view.alias(r) for r in sorted(state["runFacts"], key=view.alias) if knows(book.world, state, who, r)]
     by = book.labels.days_known_by
+    beats = {b["id"]: b for b in book.world["beats"]}
+    recent = [
+        {"beat": b, "day": day} | ({"variant": state["variants"][b]} if b in state["variants"] else {})
+        for b, t in sorted(state["times"].items(), key=lambda x: (x[1], beats.get(x[0], {}).get("order", 0)))
+        if state["beats"].get(b) in OCCURRED
+        and who in beats.get(b, {}).get("participants", [])
+        and (day := book.labels.ago(t, state["t"])) is not None
+    ]
     return {
         "t": state["t"],
         "time": book.labels.band(state["t"]) if by and by not in known else book.label(state["t"]),
         "place": place,
         "present": here,
         "knows": known,
+        "recent": recent,
     }
 
 

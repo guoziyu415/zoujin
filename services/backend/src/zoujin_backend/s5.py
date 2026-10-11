@@ -41,6 +41,8 @@ Json = Any
 YEN = 150  # 1 美元
 CAP_YEN = 300  # PRD 7.4 的单局上限
 SAVER_YEN = 240  # 节约档
+RAISED_YEN = 350  # Q-B8 的选项「上限提到 350 円」（PM #117）
+WORLD_CUT = 0.5  # Q-B8 的选项「减少世界推进」：换算表另给世界推进减半时的合计（PM #117）
 TURNS = (40, 60)  # 20 分钟、30 分钟（PRD 7.4）
 STRESS_TURNS = 60  # 压力档：60 轮，每轮都检查、2 次尝试
 STRESS_CHECKS = 2
@@ -74,7 +76,8 @@ COUNTS = (
     "actions",
     "plans_accepted",
     "plans_refused",
-    "endings_templated",
+    "ending_template",  # B-9：这一局的结局是不是模板（布尔，报告里记 1 / 0，合计在 endingsTemplated）
+    "ending_calls",
 )
 
 
@@ -284,6 +287,7 @@ def scaled(
         "ending": round(ending, 6),
         "totalUsd": round(total, 6),
         "totalYen": round(total * YEN, 1),
+        "worldCutUsd": round(total - world * (1 - WORLD_CUT), 6),
         "share": {k: round(v / total, 4) for k, v in {**kinds, WORLD: world, **est, "live": live}.items()}
         if total
         else {},
@@ -403,7 +407,7 @@ def report(
                 "totalUsd": round(cost + live, 6),
                 "totalYen": round((cost + live) * YEN, 1),
                 "metricsMismatch": mismatch,
-                "counts": {k: m[k] for k in COUNTS if k in m},
+                "counts": {k: int(m[k]) if isinstance(m[k], bool) else m[k] for k in COUNTS if k in m},
                 "evalUsd": round(sum(float(r.get("costUsd", 0.0)) for r in mine if use_of(r) == "eval"), 6),
             }
         )
@@ -439,6 +443,8 @@ def report(
             "yenPerUsd": YEN,
             "capYen": CAP_YEN,
             "saverYen": SAVER_YEN,
+            "raisedYen": RAISED_YEN,
+            "worldCut": WORLD_CUT,
             "live": asdict(LIVE),
             "missing": {k: asdict(v) for k, v in MISSING.items()},
             "endingEstimateUsd": None if endings_usd else ENDING_ESTIMATE,
@@ -447,7 +453,8 @@ def report(
         "playthroughs": plays,
         "perTurn": {k: round(v, 8) for k, v in t.items()} | {"rising": t["rising"], "points": t["points"]},
         "scaled": out_scaled,
-        "crossing": {str(SAVER_YEN): crossing(t, ending, SAVER_YEN), str(CAP_YEN): crossing(t, ending, CAP_YEN)},
+        "crossing": {str(y): crossing(t, ending, y) for y in (SAVER_YEN, CAP_YEN, RAISED_YEN)},
+        "endingsTemplated": sum(1 for m in metrics.values() if m.get("ending_template") is True),
         "cacheRead": cache_share(product_all),
         "latency": lat,
         "steps": {k: spread(v) for k, v in sorted(steps.items())} or NO_DATA,
@@ -498,11 +505,16 @@ def markdown(r: Mapping[str, Json]) -> str:
     for k in names:
         lines.append(f"| {k} | " + " | ".join(f"{c['share'].get(k, 0) * 100:.1f}%" for c in cols) + " |")
     lines.append("| **合计** | " + " | ".join(money(c["totalUsd"]) for c in cols) + " |")
+    lines.append(f"| 世界推进 ×{WORLD_CUT:g} 时合计 | " + " | ".join(money(c["worldCutUsd"]) for c in cols) + " |")
     cross = r["crossing"]
+
+    def at(yen: int) -> str:
+        return f"第 {cross[str(yen)] or f'{SEARCH_TURNS}+'} 轮"
+
     lines += [
         "",
-        f"越过节约档 {SAVER_YEN} 円：第 {cross[str(SAVER_YEN)] or f'{SEARCH_TURNS}+'} 轮；"
-        f"越过上限 {CAP_YEN} 円：第 {cross[str(CAP_YEN)] or f'{SEARCH_TURNS}+'} 轮。",
+        f"越过节约档 {SAVER_YEN} 円：{at(SAVER_YEN)}；越过上限 {CAP_YEN} 円：{at(CAP_YEN)}；"
+        f"上限提到 {RAISED_YEN} 円时：{at(RAISED_YEN)}。",
         "",
         f"缓存读取占输入：Claude {r['cacheRead']['claude']}，Google {r['cacheRead']['google']}。",
         "",
@@ -521,7 +533,10 @@ def markdown(r: Mapping[str, Json]) -> str:
             + f" | {v['deadlineS'] or '—'} | {over} | {v['timeouts']} | "
             f"{v['errors']} | {v['badOutput']} | {r['deadlineAdvice'][kind]} |"
         )
-    lines += ["", "每一步（玩家说完到提交，elapsedMs）："]
+    lines += [
+        "",
+        "每一步（玩家说完到提交，elapsedMs；评测入口量的，每步含新建事件循环和数据库连接，比网关慢，是上限）：",
+    ]
     steps = r["steps"]
     if isinstance(steps, dict):
         for kind, v in steps.items():
@@ -530,7 +545,7 @@ def markdown(r: Mapping[str, Json]) -> str:
         lines.append(f"- {NO_DATA}")
     e = r["endingMs"]
     ending = f"p50 {e['p50']:.0f}、最长 {e['max']:.0f}" if isinstance(e, dict) else NO_DATA
-    lines.append(f"- 结局从开始到存好：{ending}")
+    lines.append(f"- 结局从开始到存好：{ending}；模板结局 {r['endingsTemplated']} 局")
     lines += [
         "",
         "## 叙事者的计数",

@@ -1,5 +1,5 @@
 // Per-frame state shared by the player, the camera and the input, outside React (frontend-design 6: the render loop
-// reads and writes it without re-rendering). Only place changes go to the store.
+// reads and writes it without re-rendering). Only place changes, near / far and the distances go to the stores.
 import type { Object3D, PerspectiveCamera } from "three";
 import type { NavPoint } from "./nav/navmesh";
 import type { View } from "./scene/openingViews";
@@ -9,9 +9,11 @@ export type Pose = NavPoint & { yaw: number };
 export const rig = {
   player: { poly: -1, x: 0, y: 0, z: 0, yaw: 0 } as Pose,
   path: [] as NavPoint[],
-  // walking up to someone: face them and frame the conversation on arrival (frontend-design 8.4)
+  // walking up to someone: face them and frame the conversation on arrival (frontend-design 8.4); someone who can't
+  // be talked to is only faced
   talkTo: null as string | null,
   talking: null as string | null,
+  faceTo: null as string | null,
   // camera: yaw of the view around the player (the angle down is fixed, ux-design 6.3); a sideways drag sets it, walking eases the yaw back behind the player
   cam: { yaw: 0, lastDrag: -Infinity },
   // the first screen's fixed shot (scene/openingViews.ts, world coordinates) until the player first walks or turns

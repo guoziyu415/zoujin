@@ -9,6 +9,7 @@
 - 版本号 = 规则文本的哈希（同 `Prompt.version` 的做法），记进 Trace 的 `live.session`。
 - `live.txt` 和叙事者的 `reply.txt` 是一对（提示文本里不能写注释，写在这里）：S-068 的结论改 `reply.txt` 时，`live.txt`
   同一个 PR 跟着改（#111 数据评审）。
+- 「気をつけること」：B-12 输出侧监控的提示（`monitor.notes`），开会话时带上；剧透纠正不点名那个词。
 - 玩家的称呼用「話し相手」那一段的名字（`player_card` 的 `name`，即身份名；契约 1.8 起身份名只指玩家）。
 """
 
@@ -69,7 +70,9 @@ def situation_facts(book: Book, state: SimState, who: str) -> tuple[str, ...]:
     return tuple(lines)
 
 
-def build(book: Book, state: SimState, who: str, recent: Sequence[Recent] = ()) -> Brief:
+def build(book: Book, state: SimState, who: str, recent: Sequence[Recent] = (), notes: Sequence[str] = ()) -> Brief:
+    """notes：B-12 输出侧监控给这个人物加的几句提示（剧透纠正、问句过多、不往死亡推，`gateway/monitor.py`），
+    放在「# いまの状況」后面的「# 気をつけること」。只在开会话时带上（中途更新只比较 `facts`）。"""
     p = persona(book, state, who)
     me = player_card(book, state, who)
     facts = situation_facts(book, state, who)
@@ -89,6 +92,9 @@ def build(book: Book, state: SimState, who: str, recent: Sequence[Recent] = ()) 
         out.append(f"口ぶりの例：「{q}」")
     out += ["", "# いまの状況"]
     out += [f"- {x}" for x in facts]
+    if notes:
+        out += ["", "# 気をつけること"]
+        out += [f"- {x}" for x in notes]
     out += ["", "# 話し相手", f"{me['name']}（{'顔見知り' if me['knownToYou'] else '初めて会う相手'}）"]
     said = [r for r in recent if r.player or r.reply]
     if said:
