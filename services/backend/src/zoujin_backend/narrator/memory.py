@@ -65,7 +65,7 @@ HELPED = ("help", 10, 0.7)  # actor = player、beneficiary = 他
 HARMED = ("harm", -10, 0.7)  # actor = player，他的信任类变量降了、他被带走（beneficiary 不是他）
 HELPED_YOU = ("shared-moment", 3, 0.5)  # actor = 他、beneficiary = player
 BEAT = ("shared-moment", 2, 0.6)  # 节拍发生、玩家看得到、他亲历（`zoujin_worldsim.lived`）
-CLAIM = ("claim", 0, 0.5)  # 玩家说自己的事（learn 效果写明他学到了）
+CLAIM = ("claim", 0, 0.5)  # 玩家说自己的事（learn 效果写明他学到了，或 improv 成了他的即兴设定）
 IMPRESSION = ("impression", 0, 0.3)  # 其余 actor = player 的事件（说话、动作）
 ROWS = (PROMISE_MADE, PROMISE_KEPT, PROMISE_BROKEN, HELPED, HARMED, HELPED_YOU, BEAT, CLAIM, IMPRESSION)
 KEY_MOMENT_BONUS = 0.2  # keyMoment 的 salience 加分（上限 1）
@@ -210,8 +210,8 @@ def _event_rows(
                         put(c, HARMED)
             elif e.get("op") == "relocate" and e.get("character") != b:
                 put(e.get("character"), HARMED)
-        if ev["type"] == "say":
-            for c in told:
+        if ev["type"] == "say":  # 玩家说自己的事：写明他学到了（learn），或成了他的即兴设定（improv）
+            for c in told | {e["character"] for e in ev["effects"] if e.get("op") == "improv"}:
                 put(c, CLAIM)
         # 印象：说话只给说话的对象（这一轮的人物），动作给在场的人
         hearers = {addressee} if ev["type"] == "say" and addressee else present
@@ -327,7 +327,7 @@ def rule_ok(text: str, role_name: str | None = None) -> bool:
 
 
 # 「不会撤销的后果」一句里不能有的：代词（用名字）、记得和忘记（UX 评审）
-_KEEPS_BANNED = ("彼女", "彼", "覚え", "忘れ")
+_KEEPS_BANNED = re.compile(r"彼(?![方岸])|覚え|忘れ")  # 「彼方」「彼岸」不算代词（UX 复看）
 
 
 def keeps_ok(text: str) -> bool:
@@ -337,7 +337,7 @@ def keeps_ok(text: str) -> bool:
         and length(t) <= MAX_KEEPS
         and not has_pii(t)
         and not command_like(t)
-        and not any(w in t for w in _KEEPS_BANNED)
+        and not _KEEPS_BANNED.search(t)
     )
 
 

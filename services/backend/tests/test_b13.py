@@ -283,6 +283,12 @@ def test_a_character_helping_the_player_remembers_it() -> None:
     assert (got.kind, got.trust_delta, got.salience) == memory.HELPED_YOU
 
 
+def test_telling_him_about_yourself_is_a_claim() -> None:
+    st = _state(**{OLD: "place.syracuse-square"})
+    improv = {"op": "improv", "character": OLD, "statement": "旅人は旅の薬師だという", "factId": "rf_1"}
+    assert _seeds(st, _ev(type="say", effects=[improv]), to=OLD) == [(OLD, "claim", "witnessed")]
+
+
 def test_a_say_leaves_an_impression_only_on_the_one_spoken_to() -> None:
     st = _state(**{OLD: "place.syracuse-square", "char.melos": "place.syracuse-square"})
     assert _seeds(st, _ev(type="say"), to=OLD) == [(OLD, "impression", "witnessed")]
@@ -351,6 +357,8 @@ def test_quotes_and_the_final_period_are_dropped(raw: str, tidied: str) -> None:
     [
         ("老爺の荷車が市に着いたこと", True),
         ("彼が市に着いたこと", False),
+        ("彼女が市に着いたこと", False),
+        ("老爺の荷車が彼方の村に着いたこと", True),
         ("老爺が覚えていること", False),
         ("老爺の荷車が市に着いたこと" * 3, False),
     ],
