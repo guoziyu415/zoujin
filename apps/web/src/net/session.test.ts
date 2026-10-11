@@ -285,6 +285,30 @@ describe("Session", () => {
     useStory.setState({ ending: null });
   });
 
+  it("a spoken plan thinking when the line drops: with no act end on welcome, the resent commits wait for the act change", () => {
+    const { sock } = open(2);
+    sock.receive({
+      type: "act_ended",
+      actId: "act.1",
+      recapLines: [],
+      options: [],
+      freeform: { allowed: true, triesLeft: 2 },
+    });
+    const a = useStory.getState().actEnd!;
+    useStory.setState({ actEnd: { ...a, phase: { k: "thinking" } } });
+    sock.drop();
+    vi.advanceTimersByTime(1000);
+    const again = FakeSocket.last();
+    again.open();
+    again.receive(welcome(2)); // pending.actEnd: null — the plan went during the drop
+    again.receive(commit(3, 3, { narration: ["夜が明けた。"] }));
+    // not applied yet: the page still waits, the subtitles don't run ahead of it
+    expect(useWorld.getState().world!.lastSeq).toBe(2);
+    expect(useVoice.getState().narration).toEqual([]);
+    expect(useStory.getState().actEnd!.phase.k).toBe("thinking");
+    useStory.setState({ actEnd: null });
+  });
+
   it("fills a gap from /events and the snapshot, then applies what came meanwhile", async () => {
     const { sock } = open(2);
     const missing = [event({ seq: 3 }), event({ seq: 4 })];
