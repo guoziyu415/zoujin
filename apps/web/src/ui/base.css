@@ -153,6 +153,8 @@ button {
   border: 1px solid var(--ink);
   background: transparent;
   padding: 0 12px;
+  flex: none;
+  white-space: nowrap;
 }
 .toasts {
   display: flex;
@@ -232,8 +234,10 @@ button {
 }
 .controls {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: center;
+  justify-content: center;
 }
 .controls .grow {
   flex: 1;
@@ -245,6 +249,7 @@ button {
   background: rgba(20, 17, 14, 0.75);
   color: var(--paper);
   padding: 0 14px;
+  white-space: nowrap; /* a narrow phone wraps the row, never the label */
 }
 .controls .hint {
   font-size: 13px;
@@ -253,7 +258,7 @@ button {
 .textinput {
   display: flex;
   gap: 8px;
-  flex: 1;
+  flex: 1 1 220px; /* below this the field takes its own line */
 }
 .textinput input {
   flex: 1;
