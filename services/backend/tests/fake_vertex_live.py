@@ -11,7 +11,7 @@ import asyncio
 import base64
 import contextlib
 import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Any
@@ -47,6 +47,7 @@ class Reply:
 class Script:
     replies: list[Reply] = field(default_factory=list)
     setup: str = "ok"  # ok / silent（不回）/ close（直接关）/ wrong（第一条不是 setupComplete）
+    reject: Callable[[Json], bool] | None = None  # setup 合这个条件就像 Vertex 不收字段那样 1007 关掉
 
 
 @dataclass
@@ -80,6 +81,11 @@ class FakeVertexLive:
             conn.got.append(json.loads(await ws.recv()))
             if script.setup == "silent":
                 await ws.wait_closed()
+                return
+            if script.reject is not None and script.reject(conn.setup):
+                await ws.close(
+                    1007, "Invalid JSON payload at projects/my-proj-123/locations/l: unknown name thinkingConfig"
+                )
                 return
             if script.setup == "close":
                 await ws.close(1011, "setup failed")

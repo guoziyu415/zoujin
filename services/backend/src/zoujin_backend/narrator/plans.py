@@ -20,7 +20,7 @@ from sqlalchemy import select
 from zoujin_backend.db.store import Run
 from zoujin_backend.db.tables import turns
 from zoujin_backend.narrator.pipeline import CallFailed, Spend, TurnInput, normalize
-from zoujin_backend.narrator.rules import PII, VERBATIM, Checked, lcs_len
+from zoujin_backend.narrator.rules import VERBATIM, Checked, has_pii, lcs_len
 from zoujin_backend.narrator.view import state_view
 from zoujin_backend.narrator.writer import Writer
 from zoujin_backend.world import Book
@@ -41,7 +41,9 @@ REFUSAL_FALLBACK = "その考えは、いまは形にならなかった。"
 NOT_HEARD = "声が届かなかったようです。もう一度、聞かせてください。"
 INVALID_CHOICE = "その行き先は選べません。"
 INVALID_REQUEST = "うまく送れませんでした。"
-FLAGS = frozenset({"injection", "pii"})  # 第 0 步（Model Armor）的标记，有就不转述
+FLAGS = frozenset(
+    {"injection", "pii", "harmful", "unscreened", "ambiguous"}
+)  # 第 0 步（B-12 安全筛查）的标记，有就不转述
 NARRATE_FALLBACK = {  # narrate 两次都不行、或过滤不过时的一句（和假模型的默认一样）
     "done": "あなたは、そうした。",
     "partial": "思ったようには、いかなかった。",
@@ -59,7 +61,7 @@ def clean(text: str | None, said: str, flags: frozenset[str], *, limit: int) -> 
     if text is None:
         return None
     text = text.strip()
-    if not text or len(text) > limit or PII.search(text) or flags & FLAGS:
+    if not text or len(text) > limit or has_pii(text) or flags & FLAGS:
         return None
     if said and lcs_len(said, text) >= VERBATIM:
         return None
@@ -431,7 +433,7 @@ def alternative(
     return {**ref, "kind": "exit"}
 
 
-PUBLIC = ("optionId", "label", "sceneId", "toActId", "tLabel")  # toActId：v1.0.13，局上记的老替代去处没有
+PUBLIC = ("optionId", "label", "sceneId", "toActId", "tLabel")  # toActId：v1.0.14，局上记的老替代去处没有
 
 
 def refused(w: Writer, task: Task, req: Mapping[str, Any], lines: list[str], alt: Json) -> Planned:

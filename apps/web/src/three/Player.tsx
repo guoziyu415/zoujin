@@ -1,11 +1,16 @@
 // The player on the navmesh (frontend-design 8.4, 9.4): tap the ground to walk there (A* + funnel), tap a person to
-// walk up to them, WASD / arrow keys to walk; height from the detail mesh; crossing into another place calls the
-// store's movePlayer. Plus the scene's other people, as grey stand-ins on their spots.
+// walk up to them (a talkable one: focus goes at the tap, api-contract 3.2), WASD / arrow keys to walk; height from the
+// detail mesh. Crossing into another place of the scene sends move (3.8); the closest talkable character within 8 m
+// gets near, 12 m away far; walking off from the one in the conversation ends it (unfocus walk_away). Where the server
+// puts the player (the snapshot, a commit's patch.player, a refused move) they stand, without walking.
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
-import { Group, Raycaster, Vector2, Vector3, type Object3D } from "three";
-import { useWorld } from "./dev/fakeStore";
+import { Raycaster, Vector2, Vector3, type Object3D } from "three";
+import { play } from "../net/play";
+import { usePlayer } from "../stores/player";
+import { useWorld } from "../stores/world";
 import { makeMannequin } from "./mannequin";
+import { NEAR_M, pickNear } from "./nearby";
 import { rig } from "./rig";
 import { planToWorld } from "./scene/frame";
 import type { LoadedScene } from "./scene/loadScene";
@@ -14,38 +19,91 @@ import { OPENING_VIEWS } from "./scene/openingViews";
 const WALK = 1.5; // m/s
 const RUN = 3.2;
 const TURN = 8; // rad/s towards the walking direction
-const TALK_GAP = 1.2; // stop this far in front of the person
+const TALK_GAP = 1.2; // stop this far from the person, on the player's side
 const TAP_MS = 300;
 const TAP_PX = 10;
+const LOOK_MS = 250; // how often near / far and the distances are worked out
 
 const angleTo = (from: number, to: number) =>
   Math.atan2(Math.sin(to - from), Math.cos(to - from));
+
+const personAt = (o: Object3D | null): string | null => {
+  while (o && !o.userData.character) o = o.parent;
+  return (o?.userData.character as string | undefined) ?? null;
+};
 
 export function Player({ scene }: { scene: LoadedScene }) {
   const { camera, gl } = useThree();
   const { nav, manifest } = scene;
   const body = useMemo(() => makeMannequin(0.36), []);
-  const people = useMemo(() => new Group(), []);
-  useEffect(() => {
-    rig.people = people;
-    return () => {
-      rig.people = null;
-    };
-  }, [people]);
 
-  // start on the store's spot (or the scene's first-screen spot), with the first screen's shot if it has one; the
-  // test hook can put the player on another spot ("zoujin:placeat")
+  // the walk to a point / a person, shared by taps, 「近くの人」, the focus and the test hook
+  const go = useMemo(() => {
+    const walkTo = (x: number, z: number) => {
+      const goal = nav.nearest(x, z);
+      const from = nav.locate(
+        rig.player.x,
+        rig.player.z,
+        rig.player.poly,
+        rig.player.y,
+      );
+      if (!goal || !from) return false;
+      const path = nav.findPath(from, goal);
+      if (!path) return false;
+      rig.path = path.slice(1);
+      rig.opening = null;
+      return true;
+    };
+    const stopTalking = () => {
+      rig.talkTo = null;
+      rig.talking = null;
+      rig.faceTo = null;
+    };
+    // up to TALK_GAP from them on the player's side; they stop and turn to the player (People.tsx)
+    const toPerson = (id: string, talk: boolean) => {
+      const o = rig.people?.getObjectByName(id);
+      if (!o) return false;
+      stopTalking();
+      const dx = rig.player.x - o.position.x;
+      const dz = rig.player.z - o.position.z;
+      const d = Math.hypot(dx, dz);
+      if (d > TALK_GAP + 0.3) {
+        const k = TALK_GAP / d;
+        if (!walkTo(o.position.x + dx * k, o.position.z + dz * k)) return false;
+      } else rig.path = [];
+      if (talk) rig.talkTo = id;
+      else rig.faceTo = id;
+      return true;
+    };
+    return { walkTo, toPerson, stopTalking };
+  }, [nav]);
+
+  // where the server put the player: a spot (with the first screen's shot the first time), or anywhere in a place as
+  // near as possible (a refused move). Not a move (api-contract 3.8). The test hook puts them on spots too.
   useEffect(() => {
-    const placeAt = (name: string, withOpening: boolean) => {
-      const spotName = manifest.spots[name] ? name : manifest.playerStartSpot;
+    const stand = (
+      at: { poly: number; x: number; y: number; z: number },
+      yaw: number,
+    ) => {
+      Object.assign(rig.player, at, { yaw });
+      rig.path = [];
+      rig.cutCamera = true;
+      go.stopTalking();
+      const place = nav.placeOf(at.poly);
+      nav.setPlayerPlace(place);
+      if (place && place !== usePlayer.getState().place)
+        usePlayer.setState({ place });
+    };
+    const placeAt = (name: string, place?: string, withOpening = false) => {
+      const spotName = manifest.spots[name]
+        ? name
+        : ((place && manifest.startSpots?.[place]) ?? manifest.playerStartSpot);
       const spot = manifest.spots[spotName]!;
       const at =
         nav.locate(spot.pos[0], spot.pos[2]) ??
         nav.nearest(spot.pos[0], spot.pos[2]);
-      if (at) Object.assign(rig.player, at, { yaw: spot.yaw });
+      if (!at) return;
       rig.cam.yaw = spot.yaw;
-      rig.path = [];
-      rig.cutCamera = true;
       const v = withOpening ? OPENING_VIEWS[spotName] : undefined;
       const rot = manifest.sun.sceneRotationDeg;
       rig.opening = v
@@ -55,18 +113,37 @@ export function Player({ scene }: { scene: LoadedScene }) {
             fov: v.fov,
           }
         : null;
-      // putting the player on a spot is the server's word on where they are, not a move (api-contract 3.8)
-      const place = at ? nav.placeOf(at.poly) : spot.place;
-      nav.setPlayerPlace(place);
-      if (place && place !== useWorld.getState().player.place)
-        useWorld.getState().placePlayer(place, spotName);
+      stand(at, spot.yaw);
     };
-    placeAt(useWorld.getState().player.spot ?? manifest.playerStartSpot, true);
-    const onPlaceAt = (e: Event) =>
-      placeAt((e as CustomEvent<string>).detail, false);
+    const placeIn = (place: string) => {
+      nav.setPlayerPlace(place); // open to them even if it has just shut
+      const at = nav.nearest(rig.player.x, rig.player.z, place);
+      if (at) stand(at, rig.player.yaw);
+      else placeAt("", place);
+    };
+    const first = usePlayer.getState().placed;
+    let n = first?.n ?? 0;
+    placeAt(
+      first?.spot ??
+        useWorld.getState().world?.player.spot ??
+        manifest.playerStartSpot,
+      first?.place,
+      true,
+    );
+    const off = usePlayer.subscribe((s) => {
+      const p = s.placed;
+      if (!p || p.n === n) return;
+      n = p.n;
+      if (p.spot) placeAt(p.spot, p.place);
+      else placeIn(p.place);
+    });
+    const onPlaceAt = (e: Event) => placeAt((e as CustomEvent<string>).detail);
     window.addEventListener("zoujin:placeat", onPlaceAt);
-    return () => window.removeEventListener("zoujin:placeat", onPlaceAt);
-  }, [nav, manifest]);
+    return () => {
+      off();
+      window.removeEventListener("zoujin:placeat", onPlaceAt);
+    };
+  }, [nav, manifest, go]);
 
   // places that are shut (scene.json places[], api-contract 2.3 places.enabled) and the workshop gate
   useEffect(() => {
@@ -92,34 +169,34 @@ export function Player({ scene }: { scene: LoadedScene }) {
             : 0);
       }
     };
-    apply(useWorld.getState().places);
+    apply(useWorld.getState().world?.places ?? {});
     return useWorld.subscribe((s, prev) => {
-      if (s.places !== prev.places) apply(s.places);
+      const places = s.world?.places;
+      if (places && places !== prev.world?.places) apply(places);
     });
   }, [nav, manifest, scene.root]);
 
-  // the scene's other people stand on their spots (story moves come with F-0's commits, 8.6)
-  useEffect(() => {
-    const place = (
-      chars: ReturnType<typeof useWorld.getState>["characters"],
-    ) => {
-      people.clear();
-      for (const [id, c] of Object.entries(chars)) {
-        const spot = c.spot ? manifest.spots[c.spot] : undefined;
-        if (!spot || c.activity === "absent") continue;
-        const m = makeMannequin(0.3);
-        m.name = id;
-        m.userData.character = id;
-        m.position.set(...spot.pos);
-        m.rotation.y = spot.yaw;
-        people.add(m);
-      }
-    };
-    place(useWorld.getState().characters);
-    return useWorld.subscribe((s, prev) => {
-      if (s.characters !== prev.characters) place(s.characters);
-    });
-  }, [people, manifest]);
+  // someone picked in 「近くの人」 (focus from the HUD): walk up to them; the conversation ended: stop framing it.
+  // A thing picked there: walk to its spot.
+  useEffect(
+    () =>
+      usePlayer.subscribe((s, prev) => {
+        if (s.focusCharacter !== prev.focusCharacter) {
+          const id = s.focusCharacter;
+          if (!id) go.stopTalking();
+          else if (rig.talkTo !== id && rig.talking !== id)
+            go.toPerson(id, true);
+        }
+        if (s.goal && s.goal !== prev.goal) {
+          const spot = manifest.spots[s.goal.spot];
+          if (spot) {
+            go.stopTalking();
+            go.walkTo(spot.pos[0], spot.pos[2]);
+          }
+        }
+      }),
+    [go, manifest],
+  );
 
   // taps and drags on the canvas
   useEffect(() => {
@@ -133,21 +210,6 @@ export function Player({ scene }: { scene: LoadedScene }) {
       t: number;
       lx: number;
     } | null = null;
-    const walkTo = (x: number, z: number) => {
-      const goal = nav.nearest(x, z);
-      const from = nav.locate(
-        rig.player.x,
-        rig.player.z,
-        rig.player.poly,
-        rig.player.y,
-      );
-      if (!goal || !from) return false;
-      const path = nav.findPath(from, goal);
-      if (!path) return false;
-      rig.path = path.slice(1);
-      rig.opening = null;
-      return true;
-    };
     const tap = (cx: number, cy: number) => {
       const r = el.getBoundingClientRect();
       ndc.set(
@@ -155,26 +217,22 @@ export function Player({ scene }: { scene: LoadedScene }) {
         -((cy - r.top) / r.height) * 2 + 1,
       );
       ray.setFromCamera(ndc, camera);
-      const person = ray.intersectObjects(people.children, true)[0];
-      if (person) {
-        let o: Object3D | null = person.object;
-        while (o && !o.userData.character) o = o.parent;
-        if (o) {
-          const fx = Math.sin(o.rotation.y);
-          const fz = Math.cos(o.rotation.y);
-          rig.talking = null;
-          if (
-            walkTo(o.position.x + fx * TALK_GAP, o.position.z + fz * TALK_GAP)
-          )
-            rig.talkTo = o.userData.character as string;
-          return;
-        }
+      const hitPerson = rig.people
+        ? ray.intersectObjects(rig.people.children, true)[0]
+        : undefined;
+      const id = personAt(hitPerson?.object ?? null);
+      if (id) {
+        const talkable =
+          useWorld.getState().world?.characters[id]?.talkable ?? false;
+        // focus at the tap, not on arrival: the server starts their session while the player walks (3.2)
+        if (go.toPerson(id, talkable) && talkable)
+          if (usePlayer.getState().focusCharacter !== id) play.focus(id);
+        return;
       }
       const hit = ray.intersectObjects(scene.walkable, false)[0];
       if (!hit) return;
-      rig.talkTo = null;
-      rig.talking = null;
-      walkTo(hit.point.x, hit.point.z);
+      go.stopTalking();
+      go.walkTo(hit.point.x, hit.point.z);
     };
     const onDown = (e: PointerEvent) => {
       if (down) return;
@@ -208,12 +266,13 @@ export function Player({ scene }: { scene: LoadedScene }) {
     // the test hook's walkTo (dev/testHook.ts)
     const onWalkTo = (e: Event) => {
       const [x, , z] = (e as CustomEvent<[number, number, number]>).detail;
-      rig.talkTo = null;
-      rig.talking = null;
-      walkTo(x, z);
+      go.stopTalking();
+      go.walkTo(x, z);
     };
     window.addEventListener("zoujin:walkto", onWalkTo);
     const key = (on: boolean) => (e: KeyboardEvent) => {
+      // the space bar is the talk key's (ux-design 6.2); typing into the text field doesn't walk
+      if (e.target instanceof HTMLInputElement) return;
       if (on) rig.keys.add(e.code);
       else rig.keys.delete(e.code);
     };
@@ -234,7 +293,59 @@ export function Player({ scene }: { scene: LoadedScene }) {
       window.removeEventListener("keyup", ku);
       window.removeEventListener("zoujin:walkto", onWalkTo);
     };
-  }, [gl, camera, nav, people, scene.walkable]);
+  }, [gl, camera, go, scene.walkable]);
+
+  // near / far, the distances for 「近くの人」, walking off from the conversation: a few times a second
+  const look = useMemo(
+    () => ({
+      at: 0,
+      near: null as string | null,
+      dist: {} as Record<string, number>,
+    }),
+    [],
+  );
+  useEffect(
+    () => () => {
+      if (look.near) play.far(look.near);
+      look.near = null;
+    },
+    [look],
+  );
+  const lookAround = (now: number) => {
+    if (now - look.at < LOOK_MS) return;
+    look.at = now;
+    const chars = useWorld.getState().world?.characters ?? {};
+    const p = rig.player;
+    const all: Record<string, number> = {};
+    const talkable: Record<string, number> = {};
+    for (const o of rig.people?.children ?? []) {
+      const id = personAt(o);
+      if (!id) continue;
+      const d = Math.hypot(o.position.x - p.x, o.position.z - p.z);
+      all[id] = d;
+      if (chars[id]?.talkable) talkable[id] = d;
+    }
+    const next = pickNear(look.near, talkable);
+    if (next !== look.near) {
+      if (look.near) play.far(look.near);
+      if (next) play.near(next);
+      look.near = next;
+    }
+    const whole = Object.fromEntries(
+      Object.entries(all).map(([id, d]) => [id, Math.round(d)]),
+    );
+    const before = usePlayer.getState().distances;
+    if (
+      Object.keys(whole).length !== Object.keys(before).length ||
+      Object.entries(whole).some(([id, d]) => before[id] !== d)
+    )
+      usePlayer.setState({ distances: whole });
+    // the player walked off from the one they were talking to (not on their way to them)
+    const focus = usePlayer.getState().focusCharacter;
+    const d = focus ? all[focus] : undefined;
+    if (focus && d !== undefined && d > NEAR_M && rig.talkTo !== focus)
+      play.walkAway();
+  };
 
   const tmp = useMemo(() => ({ fwd: new Vector3() }), []);
   useFrame((_, dtRaw) => {
@@ -249,10 +360,13 @@ export function Player({ scene }: { scene: LoadedScene }) {
       (k.has("KeyA") || k.has("ArrowLeft") ? 1 : 0);
     let moving = false;
     let wantYaw = p.yaw;
+    const faceOf = (id: string | null) => {
+      const o = id ? rig.people?.getObjectByName(id) : undefined;
+      if (o) wantYaw = Math.atan2(o.position.x - p.x, o.position.z - p.z);
+    };
     if (f || s) {
       rig.path = [];
-      rig.talkTo = null;
-      rig.talking = null;
+      go.stopTalking();
       rig.opening = null;
       camera.getWorldDirection(tmp.fwd);
       tmp.fwd.y = 0;
@@ -287,14 +401,16 @@ export function Player({ scene }: { scene: LoadedScene }) {
       }
       moving = true;
       if (!rig.path.length && rig.talkTo) {
-        const o = people.getObjectByName(rig.talkTo);
-        if (o) wantYaw = Math.atan2(o.position.x - p.x, o.position.z - p.z);
+        faceOf(rig.talkTo);
         rig.talking = rig.talkTo;
         rig.talkTo = null;
       }
-    } else if (rig.talking) {
-      const o = people.getObjectByName(rig.talking);
-      if (o) wantYaw = Math.atan2(o.position.x - p.x, o.position.z - p.z);
+    } else if (rig.talking ?? rig.faceTo) {
+      faceOf(rig.talking ?? rig.faceTo);
+    } else if (rig.talkTo) {
+      // already standing next to them when picked
+      rig.talking = rig.talkTo;
+      rig.talkTo = null;
     }
     p.yaw += angleTo(p.yaw, wantYaw) * Math.min(1, TURN * dt);
     body.position.set(p.x, p.y, p.z);
@@ -302,15 +418,10 @@ export function Player({ scene }: { scene: LoadedScene }) {
     if (moving) {
       const place = nav.placeOf(p.poly);
       nav.setPlayerPlace(place);
-      const w = useWorld.getState();
-      if (place && place !== w.player.place) w.movePlayer(place);
+      if (place && place !== usePlayer.getState().place) play.move(place);
     }
+    lookAround(performance.now());
   }, -3);
 
-  return (
-    <>
-      <primitive object={body} />
-      <primitive object={people} />
-    </>
-  );
+  return <primitive object={body} />;
 }

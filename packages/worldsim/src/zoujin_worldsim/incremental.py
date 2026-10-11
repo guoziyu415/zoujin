@@ -36,6 +36,7 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any, NotRequired, TypedDict
 
 from .sim import BIG, OCCURRED, Effect, Override, Sim, World, change_conflict, merge_change, role_of
+from .visibility import sees
 
 SCHEDULE = "schedule"  # Event.origin：到点的节拍和期限
 SPOT = re.compile(r"[a-z0-9]+(?:[.-][a-z0-9]+)*")  # 1.7：位置点名（data common.schema.json 的 SpotId）
@@ -442,8 +443,10 @@ def _occur_draft(sim: Sim, s: SimState, b: str, t: int, player_present: bool) ->
         else:
             effects.append({"op": "beat", "beat": b, "to": "happened"})
             effects += copy.deepcopy(list(x["outcomes"]))
-    # 玩家在场：public 事实玩家也知道了（契约 2.1、2.3，1.7）
-    if player_present and s["vars"].get("var.player.location") == x["place"]:
+    # 玩家在场：public 事实玩家也知道了（契约 2.1、2.3，1.7）。在不在场按 sees()（1.12：没有参与人物的节拍同一场景就算）
+    if player_present and sees(
+        sim.world, s["vars"].get("var.player.location"), _system_event("beat", t, x["place"], effects)
+    ):
         known = s["knowledge"].get("player", [])
         effects += [
             {"op": "learn", "character": "player", "fact": f["id"]}
@@ -527,6 +530,15 @@ def world_state(world: World, state: SimState, playthrough_id: str) -> dict[str,
 def classify(world: World, state: SimState) -> str | None:
     """2.9：按现在的状态落到哪一类世界结局。"""
     return Sim(world).classify(flat(state))
+
+
+def signature(world: World, state: SimState) -> dict[str, Any]:
+    """2.9.1 结局署名：`endings.signature.vars` 的最终值，`beats` 是否照原著发生（happened，altered 不算）。
+    结局的 `world.signature`、数据的多样性统计都用这一份（关键时刻的第三条以后也用它）。世界模型没写署名时是空的。"""
+    sig = world.get("endings", {}).get("signature") or {}
+    out: dict[str, Any] = {v: copy.deepcopy(state["vars"].get(v)) for v in sig.get("vars", [])}
+    out |= {b: state["beats"].get(b) == "happened" for b in sig.get("beats", [])}
+    return out
 
 
 def predict(world: World, state: SimState) -> str | None:

@@ -126,7 +126,7 @@ def test_both_world_models_give_a_valid_manifest_by_the_2_1_rules(tmp_path: Path
         assert r["startSceneId"] == places[role["startPlace"]]["sceneRef"]
         assert r["startActId"] == role["startAct"] and r["summary"] == role["summary"]
     shown = {s["sceneId"] for s in doc["scenes"]}
-    assert doc["places"] == [  # v1.0.13：全部地点的地名；场景没出的 sceneId 为 null
+    assert doc["places"] == [  # v1.0.14：全部地点的地名；场景没出的 sceneId 为 null
         {"placeId": p["id"], "name": p["name"], "sceneId": p["sceneRef"] if p.get("sceneRef") in shown else None}
         for p in w["places"]
     ]

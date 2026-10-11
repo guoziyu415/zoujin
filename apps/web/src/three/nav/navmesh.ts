@@ -166,17 +166,26 @@ export class NavMesh {
     return vs.reduce((s, v) => s + this.vy(v), 0) / Math.max(1, vs.length);
   }
 
-  // the open polygon under (x, z); near yHint when polygons overlap in plan (none do in the plaza yet)
-  locate(x: number, z: number, hintPoly = -1, yHint?: number): NavPoint | null {
-    if (this.isOpen(hintPoly) && this.inside(hintPoly, x, z))
+  // the open polygon under (x, z) (any polygon with anyPlace); near yHint when polygons overlap in plan (none do in the
+  // plaza yet)
+  locate(
+    x: number,
+    z: number,
+    hintPoly = -1,
+    yHint?: number,
+    anyPlace = false,
+  ): NavPoint | null {
+    const open = (p: number) =>
+      anyPlace ? p >= 0 && p < this.polyCount : this.isOpen(p);
+    if (open(hintPoly) && this.inside(hintPoly, x, z))
       return { poly: hintPoly, x, y: this.heightAt(hintPoly, x, z), z };
     if (hintPoly >= 0)
       for (const n of this.data.neis[hintPoly] ?? [])
-        if (this.isOpen(n) && this.inside(n, x, z))
+        if (open(n) && this.inside(n, x, z))
           return { poly: n, x, y: this.heightAt(n, x, z), z };
     let found: NavPoint | null = null;
     for (let p = 0; p < this.polyCount; p++) {
-      if (!this.isOpen(p) || !this.inside(p, x, z)) continue;
+      if (!open(p) || !this.inside(p, x, z)) continue;
       const y = this.heightAt(p, x, z);
       if (
         !found ||
@@ -188,14 +197,17 @@ export class NavMesh {
     return found;
   }
 
-  // the nearest point on the open mesh (a tap just outside the walkable area still walks to its edge)
-  nearest(x: number, z: number): NavPoint | null {
+  // the nearest point on the open mesh (a tap just outside the walkable area still walks to its edge); with a place,
+  // the nearest point inside that place (a refused move puts the player back in the place they came from, 3.8)
+  nearest(x: number, z: number, place?: string): NavPoint | null {
+    const want = place === undefined ? -1 : this.data.places.indexOf(place);
     const hit = this.locate(x, z);
-    if (hit) return hit;
+    if (hit && (want < 0 || this.data.place[hit.poly] === want)) return hit;
     let best: NavPoint | null = null;
     let bestD = Infinity;
     for (let p = 0; p < this.polyCount; p++) {
-      if (!this.isOpen(p)) continue;
+      if (!this.isOpen(p) || (want >= 0 && this.data.place[p] !== want))
+        continue;
       const vs = this.data.polys[p]!;
       for (let j = 0; j < vs.length; j++) {
         const q = closestOnSegment(
@@ -217,8 +229,13 @@ export class NavMesh {
     return best;
   }
 
-  // A* over open polygons; edge midpoints as the nodes' positions
-  private polyPath(from: NavPoint, to: NavPoint): number[] | null {
+  // A* over open polygons (all of them for the scene's characters: shut places only stop the player); edge midpoints
+  // as the nodes' positions
+  private polyPath(
+    from: NavPoint,
+    to: NavPoint,
+    walkable: (poly: number) => boolean,
+  ): number[] | null {
     if (from.poly === to.poly) return [from.poly];
     const n = this.polyCount;
     const g = new Float64Array(n).fill(Infinity);
@@ -240,7 +257,7 @@ export class NavMesh {
       const ns = this.data.neis[cur]!;
       for (let j = 0; j < ns.length; j++) {
         const nb = ns[j]!;
-        if (nb < 0 || closed[nb] || !this.isOpen(nb)) continue;
+        if (nb < 0 || closed[nb] || !walkable(nb)) continue;
         const a = this.v2(vs[j]!);
         const b = this.v2(vs[(j + 1) % vs.length]!);
         const mid =
@@ -274,9 +291,14 @@ export class NavMesh {
     return triarea2(c, mid, p) > 0 ? [q, p] : [p, q];
   }
 
-  // straight-line path on the mesh, start and end included; null when the goal can't be reached
-  findPath(from: NavPoint, to: NavPoint): NavPoint[] | null {
-    const polys = this.polyPath(from, to);
+  // straight-line path on the mesh, start and end included; null when the goal can't be reached. `anyPlace` for the
+  // characters, whom a shut place doesn't stop.
+  findPath(from: NavPoint, to: NavPoint, anyPlace = false): NavPoint[] | null {
+    const polys = this.polyPath(
+      from,
+      to,
+      anyPlace ? (p) => p >= 0 && p < this.polyCount : (p) => this.isOpen(p),
+    );
     if (!polys) return null;
     const s = { x: from.x, z: from.z };
     const e = { x: to.x, z: to.z };
@@ -329,7 +351,7 @@ export class NavMesh {
     if (!same(pts[pts.length - 1]!.p, e)) pts.push({ p: e, poly: to.poly });
     return pts.map(({ p, poly }) => {
       // corners sit on polygon edges: pick whichever neighbouring polygon contains them for the height
-      const at = this.locate(p.x, p.z, poly) ?? {
+      const at = this.locate(p.x, p.z, poly, undefined, anyPlace) ?? {
         poly,
         x: p.x,
         y: this.heightAt(poly, p.x, p.z),

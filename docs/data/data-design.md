@@ -1,8 +1,8 @@
 # 数据设计（data-design.md）v1.2.9
 
-负责人：数据工程 · 状态：**v1.2.9**。v1.0 已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改；1.1 跟上契约 1.1、PM 的 S-022〜S-053 和世界模型 draft.3；1.2 跟上契约 1.2 和 S-054〜S-063，补齐前端、UX 要的埋点（9.3）和市场调研要的试玩导出（9.5）。跨角色决定见 `pm/decisions.md`。待别人定的事见第 13 节。
+负责人：数据工程 · 状态：**v1.2.10**。v1.0 已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改；1.1 跟上契约 1.1、PM 的 S-022〜S-053 和世界模型 draft.3；1.2 跟上契约 1.2 和 S-054〜S-063，补齐前端、UX 要的埋点（9.3）和市场调研要的试玩导出（9.5）。跨角色决定见 `pm/decisions.md`。待别人定的事见第 13 节。
 相关：[contracts.md](contracts.md) v1.7（四个数据契约，本文所有字段以它为准）· `backend/backend-design.md` · `pm/prd.md`
-最近更新：2026-10-11（v1.2.9：9.3 加结局演出的 `ending_performed`，9.1 加演出节奏、写清问句怎么算；第 3 节 B-12 的安全和输出监控的列；第 8 节 Live 的三种 Span（B-10）和输出监控的事件（B-12）；v1.2.7：第 10 节单局成本按 D-028 和 B-8 重算，叙事者走 Claude，Sonnet 约 305 日元、提取和检查换 Haiku 约 183 日元；v1.2.6：7.3 写清评审员的校准样本和一致率怎么算，跟上 D-028 改独立性和真人对话那句；v1.2.5：跟上 B-3（#61）：第 3 节动作和打算的花费、计数和局上的新列，5.3 `turns.result.seq`，第 8 节 `narrator.action` / `narrate` / `plan`；v1.2.4：按后端 #56 的评审改第 3、8 节四处说法，5.3 写清 B-3 加的 `turns.request` / `result` 和打算文字怎么清；v1.2.3：第 3 节 B-2 加的花费和计数列，第 8 节叙事者的五种 Span；v1.2.2：7.3 评审员定为 Claude Opus 5.5，写清校准和独立性；7.1 模拟局的 AI 玩家用 Claude；9.3 画质遥测的两处读法）
+最近更新：2026-10-11（v1.2.10：第 10 节加切片简化结局的实测花费（B-9 探针）；v1.2.9：9.3 加结局演出的 `ending_performed`，9.1 加演出节奏、写清问句怎么算；第 3 节 B-12 的安全和输出监控的列；第 8 节 Live 的三种 Span（B-10）和输出监控的事件（B-12）；v1.2.8：第 3 节 `turns.status` 的 `lost` 跟上后端 #106；v1.2.7：第 10 节单局成本按 D-028 和 B-8 重算，叙事者走 Claude，Sonnet 约 305 日元、提取和检查换 Haiku 约 183 日元；v1.2.6：7.3 写清评审员的校准样本和一致率怎么算，跟上 D-028 改独立性和真人对话那句；v1.2.5：跟上 B-3（#61）：第 3 节动作和打算的花费、计数和局上的新列，5.3 `turns.result.seq`，第 8 节 `narrator.action` / `narrate` / `plan`；v1.2.4：按后端 #56 的评审改第 3、8 节四处说法，5.3 写清 B-3 加的 `turns.request` / `result` 和打算文字怎么清；v1.2.3：第 3 节 B-2 加的花费和计数列，第 8 节叙事者的五种 Span；v1.2.2：7.3 评审员定为 Claude Opus 5.5，写清校准和独立性；7.1 模拟局的 AI 玩家用 Claude；9.3 画质遥测的两处读法）
 
 数据工程负责六件事：世界模型（含『走れメロス』v1）、新增一本书的流水线、事件日志与世界状态、記憶帳与删除、评测与可观测数据、分析与成本测算。
 
@@ -108,7 +108,7 @@ endings(ending_id PK, playthrough_id FK CASCADE, body jsonb, decided_at)
   - `output_questions`：以问句结尾的定稿数（9.1 的判法）；`output_questions_repeated`：同一个人物把同一句问句又问一遍的次数（比较 NFKC、去掉标点以后的末句，网关内存里只留哈希）；`output_question_notes`：「問いかけは控えめに」那句提示打开的次数。
   - `turns.flags` 是网关交给叙事者的传递字段（`injection`、`pii`、`harmful`、`unscreened`、`ambiguous`），叙事者在第 7 步提交的同一个事务里置空，分析不读。`playthroughs.safety` 的 `paused`、`hinted` 是重连要用的运行状态，分析不读，看上面的计数。
 - 局上的六列（B-3）是叙事者在幕末和落地之间用的运行状态，分析不读：`player_spot`（玩家站在布局的哪个点）、`played_pieces`（演过的固定演出）、`act_end`（收幕后待选的那一份）、`plan_tries`、`plan_alternative`（不成行时给的替代去处，幕切换时清掉，5.3）、`arrival`（落地后谁先开口）。
-- 分析会读后端 `turns` 表的 `status`：pending / leased / done / retracted / failed / lost。`lost` 是断线时人物还没说完的一轮：叙事者不处理，不判、不花时间、没有 `turn_settled`（api-contract v1.0.3 第 4 节），也不算进 `playthrough_metrics.turns`。算「一局几轮」用 `playthrough_metrics.turns`，`lost` 的轮数单独看（9.1「续玩」的断线）。
+- 分析会读后端 `turns` 表的 `status`：pending / leased / done / retracted / failed / lost。`lost` 是断线时人物还没说完的一轮（后端 #106 起，也包括玩家还按着说话键就断线的一轮）：叙事者不处理，不判、不花时间、没有 `turn_settled`（api-contract v1.0.3 第 4 节），也不算进 `playthrough_metrics.turns`。算「一局几轮」用 `playthrough_metrics.turns`，`lost` 的轮数单独看（9.1「续玩」的断线）。
 
 `events` 不允许 UPDATE / DELETE：narrator 角色只有 INSERT、SELECT；只有「删除整局」走单独的特权流程（backend-design 2.1）。
 
@@ -525,6 +525,7 @@ BigQuery 每天一个定时查询，用 `EXTERNAL_QUERY` 直接读 Cloud SQL，�
 2. **钱在 Sonnet 的三步：模型检查（约 0.59 美元）、世界推进（约 0.31）、提取（约 0.29）。** Haiku 那几步（分流、安全分类、记忆、候选话语、删除）合起来约 0.02 美元。
 3. **提取、检查都换 Haiku：一局约 183 日元，30 分钟约 233 日元，都在节约档以下；只有压力档（约 322 日元）会降级。** 所以 Haiku 在 S-2 和第一遍切片评测里不差的话，换 Haiku 同时解决单局上限和开发期的 Claude 额度（`cost/m2-model-budget.md`）。定的办法照 B-8：同一批样本两档各量一遍，PM 带着数字定。
 4. D-028 以前全用 Gemini 的旧表（20 分钟约 156 日元，加上 D-012〜D-015 的新增约 198 日元，1.2 的 S-058）作废。`python3 -I cost_model.py --gemini` 还能打出来，因为后端的 `backend/cost/cost_addons.py` 还引用那一部分；backend-design 第 8 节按 B-8 改完以后一起删。
+5. **切片的简化结局实测（B-9 验收第 13 条，10-11 在 Mac 上）：一局约 0.024 美元（约 3.5 日元）。** 切片两条路各 10 次，共 0.4723 美元，20 次都成功（ok）。比 B-9 卡推算的一次约 0.03 美元低，因为切片不思考、只调一次。探针用的是两条短局录下的请求，真人玩 20 分钟，结局的输入会更长，每局会比 0.024 美元略高，等 S-5 量出整局的数再换。上表「结局生成 + 结局检查」约 0.17 美元是完整版（思考、模型检查）的推算，完整版做出来以后照同样的探针再量一遍替换；切片的单局成本按实测算，比上表少约 0.15 美元。
 
 ---
 
@@ -559,7 +560,9 @@ BigQuery 每天一个定时查询，用 `EXTERNAL_QUERY` 直接读 Cloud SQL，�
 
 修订记录：
 
-- **v1.2.9（2026-10-11）**：（v1.2.8 留给契约 1.12 的 #116。）9.3 加 `ending_performed`（UX 11.1 要的三个数：实际播了多久、点了几次、自动往下开没开；另带 `trigger`、`pausedMs`、`lines`），Schema 进 `api/telemetry.schema.json`；9.1 加「结局演出的节奏」，写清问句怎么算。第 3 节 B-12 的列：安全筛查的花费和次数、人物输出监控的次数和分母；`turns.flags` 提交时置空。第 8 节 `live.response` 换成 B-10 代码里的 `live.session` / `live.turn` / `live.note`（含 lost 的一轮和 first_audio_ms = -1），加 B-11 的 `gateway.resume` / `gateway.resume_ready`、B-12 的 `monitor.hit`（fact_ids 是列表），写明安全筛查不出 Span。
+- **v1.2.10（2026-10-11）**：第 10 节结论加第 5 条：切片的简化结局在 Mac 上实测（B-9 验收第 13 条，20 次共 0.4723 美元），一局约 0.024 美元，20 次都成功；表上结局两行仍是完整版的推算。
+- **v1.2.9（2026-10-11）**：9.3 加 `ending_performed`（UX 11.1 要的三个数：实际播了多久、点了几次、自动往下开没开；另带 `trigger`、`pausedMs`、`lines`），Schema 进 `api/telemetry.schema.json`；9.1 加「结局演出的节奏」，写清问句怎么算。第 3 节 B-12 的列：安全筛查的花费和次数、人物输出监控的次数和分母；`turns.flags` 提交时置空。第 8 节 `live.response` 换成 B-10 代码里的 `live.session` / `live.turn` / `live.note`（含 lost 的一轮和 first_audio_ms = -1），加 B-11 的 `gateway.resume` / `gateway.resume_ready`、B-12 的 `monitor.hit`（fact_ids 是列表），写明安全筛查不出 Span。
+- **v1.2.8（2026-10-11）**：第 3 节分析读 `turns.status` 那一条：`lost` 也包括玩家还按着说话键就断线的一轮（后端 #106），照样不处理、不算进 `playthrough_metrics.turns`。
 - **v1.2.7（2026-10-11）**：第 10 节单局成本按 D-028 和 B-8 每一步的 token 重算（`cost/cost_model.py` 加 Claude 那一版，Gemini 的旧版留给后端的 `cost_addons.py`）：提取、检查用 Sonnet 约 305 日元，超过 300 日元的上限；都换 Haiku 约 183 日元。开发期两本账另见 `cost/m2-model-budget.md`（由新的 `cost/m2_budget.py` 算出）。
 - **v1.2.6（2026-10-11）**：7.3 写清评审员的校准样本（`evals/judge/calibration.jsonl` 50 条，zg 盲标其中 20 条）和两种一致率怎么算，命令 `zoujin-judge`。跟上 D-028（叙事者的文字各步换 Claude）：独立性不再让 Gemini 2.5 Pro 再判，改成第一次真跑以后 zg 再盲标 20 条真回答、评审员比叙事者高一档；R1 起真人对话可以交给 Claude 判（隐私说明写明以后）；评审员和后端共用 Claude 客户端（B-8）。
 - **v1.2.4（2026-10-10）**：按后端 #56 的评审改四处：`turns_timed_out` 也算改写两次都失败；Span 的 token 四项只在 ok 时有，`cost_usd` 在 ok、timeout、invalid 时有；check 的 Span 也带 `failed_rules`；评测入口的 `say` 也带 playthrough_id、turn_id，只有 `check()` 带 trace_id。5.3 `turns` 那一行跟上 B-3 卡（#58）：`request`、`result`，打算的文字随 L1 和结局清空。打算的文字写入前过和事件 `summary` 一样的过滤（B-3 卡第 4 条）。

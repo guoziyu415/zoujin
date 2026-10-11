@@ -12,8 +12,8 @@
 | 开不起来 | 连续 2 次（或配额、账本到上限）：`degraded { voice: false }`，这条连接先不开语音，下一次 `focus` 再试 |
 | 叙事者提交了 | 开着的会话里局势变了就 `note()` 送变了的条目；在说话的一轮里不送，等这一轮交上去 |
 | 闲置 | 离开人物 2 分钟关掉（按 `ZJ_SPEED` 缩短；速度 0 时不关，测试另设） |
-| 断线（B-11） | 会话、最近对话寄存进 `Gateway.parked`；说到一半断的那个人物的关掉。会话 30 秒、对话 10 分钟没人接就丢 |
-| 重连的 `hello` | 接手寄存的：会话装回来（重新 `focus` 立即就绪），最近对话接着用；局势变了送一段说明 |
+| 断线（B-11） | 会话、最近对话、监控寄存进 `Gateway.parked`；说到一半的人物关掉。会话 30 秒、其余 10 分没人接就丢 |
+| 重连的 `hello` | 接手寄存的：会话装回来（重新 `focus` 立即就绪），最近对话和监控接着用；局势变了送一段说明 |
 
 「停顿」= 这个人物没有还没交上去的一轮（`Turn.submitted`）。换会话前一直等停顿；开新会话期间又说了一轮，新会话里没有
 那一轮，就丢掉重开。
@@ -38,6 +38,7 @@ from zoujin_backend.models.live import LiveEvent, LiveLost, LiveSession, Recent
 from zoujin_backend.voice.models import live_cost_parts
 
 if TYPE_CHECKING:
+    from zoujin_backend.gateway.monitor import Monitor
     from zoujin_backend.gateway.ws import Conn, Turn
 
 log = logging.getLogger("zoujin.gateway")
@@ -56,12 +57,15 @@ RECENT_HOLD_S = 600.0  # B-11：断线后最近对话留几秒（同 Live 单个
 
 @dataclass
 class Parked:
-    """断线后寄存的语音的东西（B-11），只在网关内存里。`recent` 和旧连接的是同一份：断线那一轮交完照常进来。"""
+    """断线后寄存的语音的东西（B-11），只在网关内存里。`recent` 和旧连接的是同一份：断线那一轮交完照常进来。
+    `monitor` 也是旧连接的那一个（B-12：说漏的词、连续剧透的计数、问句、似是而非之后的缓和），和最近对话一样留 10 分钟：
+    重连以后新会话的最近对话照样去掉说漏的那几句，纠正提示照样带上。"""
 
     sessions: dict[str, LiveSession]
     recent: dict[str, list[tuple[str, Recent]]]
     facts: dict[str, tuple[str, ...]]
     at: float
+    monitor: Monitor | None = None
     timer: asyncio.Task[None] | None = None
 
     async def close_sessions(self) -> None:
@@ -76,6 +80,7 @@ class Parked:
         await self.close_sessions()
         self.recent.clear()
         self.facts.clear()
+        self.monitor = None
 
 
 @dataclass
@@ -123,15 +128,19 @@ class Voices:
             st = await store.sim_state(c, pid)
         if pt is None or st is None:
             raise LiveLost("这一局没有状态")
-        recent = [r for _, r in self.conn.recent.get(character, [])]
-        return brief.build(pt.book, st, character, recent)
+        return brief.build(pt.book, st, character, self._recent(character), self.conn.monitor.notes(character))
+
+    def _recent(self, character: str) -> list[Recent]:
+        """带进会话的最近对话：说漏了剧透的那几句不带（B-12，UX 在 #112 的评审：新会话一开头又看到那个词）。"""
+        terms = self.conn.monitor.terms(character)
+        return [r for _, r in self.conn.recent.get(character, []) if not any(x in (r.reply or "") for x in terms)]
 
     # —— 开会话 ——
 
     async def _open(self, character: str, reason: str) -> LiveSession:
         """拼系统指令、开会话、挂上变化的回调。Trace：live.session（不带指令的文字）。"""
         b = await self._brief(character)
-        recent = [r for _, r in self.conn.recent.get(character, [])]
+        recent = self._recent(character)
         with self.conn.gw.tracer.span(
             "live.session",
             playthrough_id=self.conn.pid,
@@ -513,8 +522,9 @@ class Voices:
         self.sessions.clear()
         # 寄存这一步不 await：新连接的 hello 不会夹在中间、拿不到
         stale = gw.parked.pop(conn.pid, None)  # 上一次寄存的没人接（不该有）：丢掉
-        if not gw.draining and (keep or any(conn.recent.values())):
-            p = Parked(keep, conn.recent, dict(self.facts), time.monotonic())
+        watched = bool(conn.monitor.chars) or conn.monitor.calming
+        if not gw.draining and (keep or any(conn.recent.values()) or watched):
+            p = Parked(keep, conn.recent, dict(self.facts), time.monotonic(), conn.monitor)
             gw.parked[conn.pid] = p
             p.timer = self._spawn(self._expire(p))
         for s in shut:
@@ -546,6 +556,8 @@ class Voices:
             p.timer.cancel()
         conn.recent = p.recent
         self.facts.update(p.facts)
+        if p.monitor is not None:
+            conn.monitor = p.monitor
         now = time.monotonic()
         for character, s in list(p.sessions.items()):
             if not s.alive:

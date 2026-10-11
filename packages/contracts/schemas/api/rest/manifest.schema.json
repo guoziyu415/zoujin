@@ -192,7 +192,7 @@
           "minItems": 1
         },
         "places": {
-          "description": "（v1.0.13）世界模型的全部地点和名字（Place.name），地图节点详情、幕末副题以外要显示地名的地方用。sceneId：地点所在的场景；没有场景、或场景不在 scenes 里（没有场景包）的地点为 null",
+          "description": "（v1.0.14）世界模型的全部地点和名字（Place.name），地图节点详情、幕末副题以外要显示地名的地方用。sceneId：地点所在的场景；没有场景、或场景不在 scenes 里（没有场景包）的地点为 null",
           "type": "array",
           "items": {
             "type": "object",

@@ -1,6 +1,7 @@
-// 「近くの人」 (ux-design 6): the people the player can talk to and the things to examine. In F-0 it lists the
-// talkable characters of the snapshot; F-2d sorts them by distance from the player and walks there when picked.
+// 「近くの人」 (ux-design 6.2): the people the player can talk to, nearest first, and the things to examine. Picking
+// one walks there (the 3D does the walking): a person is focused at once, a thing examined at once (0 minutes).
 import { play } from "../../net/play";
+import { usePlayer, walkToSpot } from "../../stores/player";
 import { useWorld } from "../../stores/world";
 import { useUi } from "../../stores/ui";
 import { copy } from "../copy";
@@ -9,9 +10,13 @@ export function NearbyList({ names }: { names: Record<string, string> }) {
   const open = useUi((s) => s.overlay === "nearby");
   const characters = useWorld((s) => s.world?.characters);
   const interactables = useWorld((s) => s.world?.interactables);
+  const distances = usePlayer((s) => s.distances);
   if (!open) return null;
   const close = () => useUi.setState({ overlay: null });
-  const people = Object.values(characters ?? {}).filter((c) => c.talkable);
+  const far = (id: string) => distances[id] ?? Infinity;
+  const people = Object.values(characters ?? {})
+    .filter((c) => c.talkable)
+    .sort((a, b) => far(a.id) - far(b.id));
   const things = (interactables ?? []).filter(
     (i) => i.kind === "examine" && i.enabled,
   );
@@ -38,6 +43,7 @@ export function NearbyList({ names }: { names: Record<string, string> }) {
             <span>{i.label}</span>
             <button
               onClick={() => {
+                walkToSpot(i.spot);
                 play.examine(i.id);
                 close();
               }}
