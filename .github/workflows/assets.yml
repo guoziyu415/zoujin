@@ -32,7 +32,7 @@ concurrency:
 jobs:
   plaza:
     name: plaza manifest, draft build from scratch
-    runs-on: ubuntu-24.04
+    runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '["self-hosted","zoujin-mac"]') }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
