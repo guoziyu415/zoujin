@@ -13,6 +13,7 @@ from zoujin_contracts.generated.data import (
     BeatId,
     CharacterEnding,
     CharacterId,
+    Cite,
     EndingId,
     Event,
     EventId,
@@ -727,6 +728,17 @@ class ManifestResponseScenesItem(BaseModel):
     places: Annotated[list[PlaceId], Field(min_length=1)]
     assetUrl: AssetPath
     assetVersion: Annotated[str, Field(min_length=1)]
+
+
+class ManifestResponsePlacesItem(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+        arbitrary_types_allowed=True,
+    )
+    placeId: PlaceId
+    name: Annotated[str, Field(min_length=1)]
+    sceneId: SceneId | None
 
 
 class ManifestResponseActsItem(BaseModel):
@@ -2462,6 +2474,10 @@ class TimelineBeatItem(BaseModel):
     """
     还没到、或玩家还不知道的节拍为 false，只给时刻
     """
+    cite: Annotated[list[Cite] | None, Field(min_length=1)] = None
+    """
+    （v1.0.13）原作出处：世界模型 Beat.cite（数据契约第 0 节的 Cite），地图节点详情列「原作」用。只在 known 时给，世界模型里这个节拍没写出处时省略
+    """
 
 
 class TimelineEventItem(BaseModel):
@@ -2735,6 +2751,10 @@ class WhyBeatStep(BaseModel):
     tLabel: TLabel
     summary: Annotated[str, Field(min_length=1)]
     change: BeatChange
+    cite: Annotated[list[Cite] | None, Field(min_length=1)] = None
+    """
+    （v1.0.13）原作出处：世界模型 Beat.cite；没写出处时省略
+    """
 
 
 class WhyEventStep(BaseModel):
@@ -3639,6 +3659,10 @@ class ManifestResponse(BaseModel):
     book: Annotated[ManifestResponseBook, Field(title="ManifestResponseBook")]
     roles: Annotated[list[ManifestResponseRolesItem], Field(min_length=1)]
     scenes: Annotated[list[ManifestResponseScenesItem], Field(min_length=1)]
+    places: Annotated[list[ManifestResponsePlacesItem], Field(min_length=1)]
+    """
+    （v1.0.13）世界模型的全部地点和名字（Place.name），地图节点详情、幕末副题以外要显示地名的地方用。sceneId：地点所在的场景；没有场景、或场景不在 scenes 里（没有场景包）的地点为 null
+    """
     characters: list[ManifestResponseCharactersItem]
     acts: list[ManifestResponseActsItem]
     clock: Annotated[ManifestResponseClock, Field(title="ManifestResponseClock")]

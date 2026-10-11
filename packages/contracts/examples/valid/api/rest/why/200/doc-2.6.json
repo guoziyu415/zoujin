@@ -20,7 +20,14 @@
       "beatId": "beat.05",
       "tLabel": "約束の日・夜",
       "summary": "王はメロスの願いを聞き入れた",
-      "change": "altered"
+      "change": "altered",
+      "cite": [
+        {
+          "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
+          "para": 22,
+          "quote": "願いを、聞いた。その身代りを呼ぶがよい。"
+        }
+      ]
     }
   ],
   "collapsed": 0

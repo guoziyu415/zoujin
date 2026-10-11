@@ -103,6 +103,14 @@
         "known": {
           "description": "还没到、或玩家还不知道的节拍为 false，只给时刻",
           "type": "boolean"
+        },
+        "cite": {
+          "description": "（v1.0.13）原作出处：世界模型 Beat.cite（数据契约第 0 节的 Cite），地图节点详情列「原作」用。只在 known 时给，世界模型里这个节拍没写出处时省略",
+          "type": "array",
+          "items": {
+            "$ref": "../../data/common.schema.json#/$defs/Cite"
+          },
+          "minItems": 1
         }
       },
       "if": {
@@ -123,6 +131,9 @@
             },
             {
               "required": ["status"]
+            },
+            {
+              "required": ["cite"]
             }
           ]
         }

@@ -1,9 +1,9 @@
-# 前后端接口约定（api-contract.md）v1.0.9
+# 前后端接口约定（api-contract.md）v1.0.13
 
-负责人：后端 · 状态：**v1.0.9，冻结**（v1.0 在 C-1 冻结；v1.0.1 把 C-1 评审定下的写进正文；v1.0.2 把 B-1 评审定下的几处顺序写进正文；v1.0.3 把 B-0、F-2b 评审和 S-077 ⑫ 定下的写进正文；v1.0.4 把数据契约 1.7 里前端要拿到的几样加进接口；v1.0.5 按 B-3 卡放宽三处 Schema、补一条错误说明；v1.0.6 按 UX 定的文案改下发的事件句和一句叙事，不改形状；v1.0.7 按 B-4 卡写明作废、意图确认的顺序和评测入口的三项，不改形状；v1.0.8 按 B-6 写明录音文件的格式，不改形状；v1.0.9 按 B-7 写明 manifest 的缓存和生成规则、开局时次数和进行中的局谁先查，会话没就绪时缓存整段按住的音频，不改形状）：之后只做加法（第 0 节「版本」），每种消息和响应的 JSON Schema 在 `packages/contracts/schemas/api/`。v0.3 吸收了前端评审 17 条（`frontend/reviews/backend-v0.1.md` 和 frontend-design 第 14 节 1〜17）、数据评审 16 条（`data/reviews/backend-v0.1.md`）、ux-design 18.2 的接口要求，以及 decisions S-022〜S-053、D-012〜D-015。v0.3.2 和数据契约 v1.2 对齐。逐条对照见第 9 节。
+负责人：后端 · 状态：**v1.0.13，冻结**（v1.0 在 C-1 冻结；v1.0.1 把 C-1 评审定下的写进正文；v1.0.2 把 B-1 评审定下的几处顺序写进正文；v1.0.3 把 B-0、F-2b 评审和 S-077 ⑫ 定下的写进正文；v1.0.4 把数据契约 1.7 里前端要拿到的几样加进接口；v1.0.5 按 B-3 卡放宽三处 Schema、补一条错误说明；v1.0.6 按 UX 定的文案改下发的事件句和一句叙事，不改形状；v1.0.7 按 B-4 卡写明作废、意图确认的顺序和评测入口的三项，不改形状；v1.0.8 按 B-6 写明录音文件的格式，不改形状；v1.0.9 按 B-7 写明 manifest 的缓存和生成规则、开局时次数和进行中的局谁先查，会话没就绪时缓存整段按住的音频，不改形状；v1.0.10〜v1.0.12 在 B-9、B-5 和重连补发的 PR 里；v1.0.13 加 manifest 的地名、地图和「なぜ」的节拍出处，只做加法）：之后只做加法（第 0 节「版本」），每种消息和响应的 JSON Schema 在 `packages/contracts/schemas/api/`。v0.3 吸收了前端评审 17 条（`frontend/reviews/backend-v0.1.md` 和 frontend-design 第 14 节 1〜17）、数据评审 16 条（`data/reviews/backend-v0.1.md`）、ux-design 18.2 的接口要求，以及 decisions S-022〜S-053、D-012〜D-015。v0.3.2 和数据契约 v1.2 对齐。逐条对照见第 9 节。
 数据字段以 `data/contracts.md` 为准（v1.7；标「契约 1.1」「契约 1.2」「契约 1.4」的字段是这几个小版本加的；1.3 加的随身物品不进接口，物品只出现在 `give` 类按钮上；1.6 的结局卡见 2.8；1.7 的位置点、幕末副题和落地、固定演出、可调查物见 2.3、3.8、3.11、3.14），本文只定义传输形状。字段名 camelCase；WebSocket 消息类型 snake_case。
 相关：`backend/backend-design.md` v1.0.9（为什么这么设计）· `frontend/frontend-design.md` · `ux/ux-design.md`
-最近更新：2026-10-11（v1.0.9）
+最近更新：2026-10-11（v1.0.13）
 
 ---
 
@@ -72,6 +72,10 @@
     { "sceneId": "scene.syracuse-square", "places": ["place.syracuse-square", "place.stonemason-workshop", "place.execution-ground"],
       "assetUrl": "/scenes/syracuse-square/80778e4c/scene.json", "assetVersion": "80778e4c" }
   ],
+  "places": [
+    { "placeId": "place.syracuse-square", "name": "シラクスの広場と大路", "sceneId": "scene.syracuse-square" },
+    { "placeId": "place.neighbor-village", "name": "隣村", "sceneId": null }, "…"
+  ],
   "characters": [
     { "id": "char.melos", "name": "メロス", "reading": "メロス", "talkable": true,
       "prerecorded": {
@@ -96,6 +100,7 @@
   - `book` 只有 `id`、`title`、`author`；世界模型的内部字段（`note`、`cite`、`inferred`、变量）不出。
   - `roles`：`release` 不大于开放版次（网关的配置 `ZJ_RELEASE`，第一版 1）、而且开局场景有场景包的身份，世界模型里的顺序。`summary` = `Role.summary`；`startSceneId` = `Role.startPlace` 的 `sceneRef`；`startActId` = `Role.startAct`。
   - `scenes`：有场景包的场景，世界模型里的顺序；`places` = 世界模型里 `sceneRef` 指向它的地点。
+  - `places`（v1.0.13）：世界模型的全部地点，世界模型里的顺序；`name` = `Place.name`，地图节点详情、「谁知道这件事」旁边等要显示地名的地方用（幕末副题照旧用 `act_transition` 带的字）。`sceneId` = `Place.sceneRef`，没有场景、或那个场景没有包（不在 `scenes` 里）时为 `null`。地点的别的字段（`note`、`cite`、连通关系、变量）不出。
   - `acts[].sceneIds` = `Act.scenes` 里有场景包的；一个都没有的幕不出（每一幕至少一个场景）。
   - `characters`：世界模型的全部人物（不只这一版出场的），`reading`、`talkable` 照世界模型。
   - `clock`：`deadlineT` = `clock.deadline.t`，`days` = `clock.labels.days`。`ruby` 照世界模型的注音词表。
@@ -196,7 +201,8 @@
       { "kind": "event", "eventId": "ev_…", "t": 1290, "tLabel": "約束の日・夜", "summary": "あなたがメロスの身元を保証した",
         "place": "place.castle", "style": "player", "causedByPlayer": true, "forPlayer": false, "knownBy": ["char.king", "char.melos"] },
       { "kind": "beat", "beatId": "beat.05", "t": 1320, "tLabel": "約束の日・夜", "title": "王との問答と約束",
-        "status": "altered", "known": true },
+        "status": "altered", "known": true,
+        "cite": [{ "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f", "para": 22, "quote": "願いを、聞いた。その身代りを呼ぶがよい。" }] },
       { "kind": "beat", "beatId": "beat.06", "t": 1410, "tLabel": "約束の日・夜", "known": false }
     ] }
   ],
@@ -206,6 +212,7 @@
 - `style`：`player`（你的举动）、`caused`（因你而起）、`character`（人物自己做的）、`system`。
 - 节拍 `status`：`canon`（原作どおり）、`hastened`、`delayed`、`prevented`、`altered`、`pending`。`canon` 就是契约 `WorldState.beats` 的 `happened`（照原作发生了），其余五个和契约同名。**还没到、或玩家还不知道的节拍 `known: false`**，只给时刻，不给 `title`（不剧透，ux-design 9.1）。
 - `knownBy`：节点详情里的「谁知道这件事」，只列玩家见过的人物。
+- `cite`（v1.0.13）：节拍的原作出处，世界模型 `Beat.cite` 原样（数据契约第 0 节的 `Cite`：原文版本、段落号、≤ 80 字的原句），节点详情列「原作」用（ux-design 9.1）。只在 `known: true` 时给，世界模型里没写出处的节拍省略。
 
 ### 2.6 `GET /v1/playthroughs/{id}/why?target=<eventId | beatId | revealId | forecast>`
 「なぜこうなった？」：从目标往回走到玩家的举动或人物的举动。`target=forecast` 回答「为什么梅洛斯现在来不及」。
@@ -215,11 +222,13 @@
   "chain": [
     { "eventId": "ev_A", "seq": 12, "tLabel": "約束の日・夕方", "summary": "あなたが老爺に王のことを尋ねた", "actor": "player" },
     { "eventId": "ev_B", "seq": 30, "tLabel": "約束の日・夜", "summary": "老爺があなたをメロスに引き合わせた", "actor": "char.old-man", "forPlayer": true },
-    { "beatId": "beat.05", "tLabel": "約束の日・夜", "summary": "王はメロスの願いを聞き入れた", "change": "altered" }
+    { "beatId": "beat.05", "tLabel": "約束の日・夜", "summary": "王はメロスの願いを聞き入れた", "change": "altered",
+      "cite": [{ "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f", "para": 22, "quote": "願いを、聞いた。その身代りを呼ぶがよい。" }] }
   ],
   "collapsed": 0
 }
 ```
+- 节拍那一步带 `cite`（v1.0.13），和 2.5 一样，没写出处时省略。
 - 链按时间正序，每一步都是**事件或节拍**（不是记忆）；`actor` 按 2.4。最长 12 步，超过时中间折叠，`collapsed` 给折叠了几步。
 - 只讲发生了的事：被否决的候选事件不进链（数据评审第 7 条）。
 - 叙事者「导演」的事件（S-031 ②）在链上和别的事件一样，按它在故事里的行为者显示；它的上一步一定是玩家或人物的举动（S-045、ux-design 8.6）。
@@ -847,6 +856,7 @@ UX、前端统一用一个消息（ux-design 7.6、frontend 第 14 节第 17 条
 
 ## 修订记录
 
+- v1.0.13（2026-10-11）：只做加法，前端 3 做地图（F-12 之后）时提的。2.1：manifest 加必有的 `places`（地点 ID、地名、所在场景；场景没出的为 `null`），生成器照世界模型出。2.5：时间线的节拍项加可选的 `cite`（世界模型 `Beat.cite` 原样，数据契约的 `Cite`），只在 `known: true` 时给，`known: false` 的 Schema 不许带。2.6：「なぜ」链的节拍那一步也加可选的 `cite`。mock 的时间线、「なぜ」带上切片世界模型的出处；`examples/` 里的合法例子跟着加。v1.0.10〜v1.0.12 在别的 PR 里（B-9、B-5 #117、重连补发 #120），号先留着。
 - v1.0.9（2026-10-11）：传输形状和 Schema 都不变，按 B-7 卡（#93）改 2.1、补 2.2 一句，和 B-7 的代码同一个 PR：manifest 的地址不带版本，`ETag` 是 `manifestVersion`、`Cache-Control: private, no-cache`、`If-None-Match` 对上回 304（原来写的「URL 带版本、`immutable`」作废）；`manifestVersion` 的形状；只出真能加载的东西（开放版次以内、开局场景有包的身份，有包的场景，`acts[].sceneIds` 跟着，没有场景的幕不出）；`assetUrl` = `/scenes/<目录>/<assetVersion>/<入口文件>`；`characters` 是世界模型的全部人物；`arrival_capped` 只在说这句的人物身上；预录句逐句核对；录音文件的地址和响应头；开局只收 manifest 里的身份；到了没有包的场景前端只出字幕和旁白。3.2、3.6：会话没就绪时前端缓存按住的整段音频（最多 15 秒，原来 2 秒，前端和 UX 在 #109 提的），`session_ready` 后一次发出，服务端按顺序转。2.2：次数用完先回 429 `daily_limit`，再看 409。例子跟着改；`packages/contracts/examples/` 里的合法例子不动。mock 的 manifest 从 fixture 改成同一个生成器（`fixtures/mock/rest/manifest/` 删掉），按切片的世界模型。
 - v1.0.8（2026-10-11）：传输形状和 Schema 都不变，2.1 加一条录音文件的说明（B-6）：格式是 AAC（`.m4a`）、单声道、24 kHz；几个 `setPieceVoices` 键可以指向同一个 `url`；一个人物的 6 句缺一句时这个人物没有 `prerecorded`。
 - v1.0.7（2026-10-11）：传输形状和 Schema 都不变，按 B-4 卡（#65）把作废、意图确认的顺序和评测入口写进正文，前端同意以后和 B-4 的代码同一个 PR 改：幕末用声音说的打算也能作废，作废了不推 `act_plan_result`、`turn_settled`，不算试次；文字的一轮也有提交窗口；服务端发起的一轮回 `too_late`（3.6）；意图确认的推送顺序、反问那一轮没有 `turn_settled`、一局最多 3 次、同一时间一个草稿、用声音回答的一轮照常 10 分钟、收幕时不留草稿（3.9）；作废的一轮在 `lastTurn` 里是 `settled`、文字为 `null`（4）；评测入口的 `say(hold)`、`retract(step)`、`confirm(answer)` 和 `StepResult` 的 `held`、`confirm`（7）。mock 的 `confirm` 剧本照新的顺序改，两次确认的选项都用 3.9 的固定两项。

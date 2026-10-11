@@ -586,6 +586,12 @@ export interface WhyBeatStep {
   tLabel: Data.TLabel;
   summary: string;
   change: BeatChange;
+  /**
+   * （v1.0.13）原作出处：世界模型 Beat.cite；没写出处时省略
+   *
+   * @minItems 1
+   */
+  cite?: Data.Cite[];
 }
 /**
  * 续玩时还没回答的意图确认：confirm（3.9）的字段加剩余秒数 remainingSec（第 4 节「含剩余秒数」），timeoutSec 照样给（C-1 评审定）
@@ -1363,6 +1369,16 @@ export interface ManifestResponse {
     places: Data.PlaceId[];
     assetUrl: AssetPath;
     assetVersion: string;
+  }[];
+  /**
+   * （v1.0.13）世界模型的全部地点和名字（Place.name），地图节点详情、幕末副题以外要显示地名的地方用。sceneId：地点所在的场景；没有场景、或场景不在 scenes 里（没有场景包）的地点为 null
+   *
+   * @minItems 1
+   */
+  places: {
+    placeId: Data.PlaceId;
+    name: string;
+    sceneId: Data.SceneId | null;
   }[];
   characters: {
     id: Data.CharacterId;
@@ -2368,6 +2384,12 @@ export interface TimelineBeatItem {
    * 还没到、或玩家还不知道的节拍为 false，只给时刻
    */
   known: boolean;
+  /**
+   * （v1.0.13）原作出处：世界模型 Beat.cite（数据契约第 0 节的 Cite），地图节点详情列「原作」用。只在 known 时给，世界模型里这个节拍没写出处时省略
+   *
+   * @minItems 1
+   */
+  cite?: Data.Cite[];
 }
 export interface TimelineEventItem {
   kind: "event";

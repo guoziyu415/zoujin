@@ -126,6 +126,10 @@ def test_both_world_models_give_a_valid_manifest_by_the_2_1_rules(tmp_path: Path
         assert r["startSceneId"] == places[role["startPlace"]]["sceneRef"]
         assert r["startActId"] == role["startAct"] and r["summary"] == role["summary"]
     shown = {s["sceneId"] for s in doc["scenes"]}
+    assert doc["places"] == [  # v1.0.13：全部地点的地名；场景没出的 sceneId 为 null
+        {"placeId": p["id"], "name": p["name"], "sceneId": p["sceneRef"] if p.get("sceneRef") in shown else None}
+        for p in w["places"]
+    ]
     for a in doc["acts"]:
         act = next(x for x in w["acts"] if x["id"] == a["actId"])
         assert a["sceneIds"] == [x for x in act["scenes"] if x in shown]
@@ -158,6 +162,11 @@ def test_a_castle_pack_brings_in_the_castle_scene_and_its_roles(tmp_path: Path) 
     valid(doc)
     castle = next(s for s in doc["scenes"] if s["sceneId"] == "scene.castle-throne")
     assert castle["places"] == ["place.castle"]
+    assert {
+        "placeId": "place.castle",
+        "name": next(p["name"] for p in w["places"] if p["id"] == "place.castle"),
+        "sceneId": "scene.castle-throne",
+    } in doc["places"]
     version = castle["assetVersion"]
     assert len(version) == 8 and castle["assetUrl"] == f"/scenes/castle-throne/{version}/scene.json"
     assert next(a for a in doc["acts"] if a["actId"] == "act.1")["sceneIds"] == [
