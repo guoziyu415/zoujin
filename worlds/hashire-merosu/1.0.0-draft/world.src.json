@@ -4668,6 +4668,16 @@
      "character": "char.king",
      "place": "place.execution-ground",
      "spot": "king-west"
+    },
+    {
+     "op": "relocate",
+     "character": "char.crowd",
+     "place": "place.execution-ground"
+    },
+    {
+     "op": "relocate",
+     "character": "char.guards",
+     "place": "place.execution-ground"
     }
    ],
    "activities": [
@@ -5750,6 +5760,7 @@
      "label": "雨の中、メロスと走り出る",
      "toAct": "act.4",
      "place": "place.river",
+     "spot": "road-west",
      "t": 5000,
      "alignTo": "beat.18",
      "requires": [
