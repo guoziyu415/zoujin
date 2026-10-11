@@ -330,7 +330,9 @@ function Why({ pid, target }: { pid: string; target: string }) {
           )}
           <span className="map-t">{s.tLabel}</span>
           <span>{s.summary}</span>
+          {/* the beat opened is the chain's last step: its words are already above */}
           {"beatId" in s &&
+            s.beatId !== target &&
             s.cite?.map((c) => (
               <span key={`${c.para}:${c.quote}`} className="map-cite">
                 「{c.quote}」

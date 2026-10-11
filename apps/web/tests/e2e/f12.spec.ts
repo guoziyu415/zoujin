@@ -241,7 +241,8 @@ test("map: the timeline by day, beats and their state, future beats as ？, filt
   const why = map.getByRole("list", { name: "なぜこうなった？" });
   await expect(why.getByRole("listitem")).toHaveCount(2);
   await expect(why).toContainText("メロスは王の暴虐を知り、激怒した");
-  await expect(why).toContainText("「聞いて、メロスは激怒した。」");
+  // the chain ends at the beat opened, whose words are already above: not again
+  await expect(why.locator(".map-cite")).toHaveCount(0);
   await shot(page, "map-source");
   await shot(page, "map-why");
 });
