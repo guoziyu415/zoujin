@@ -206,7 +206,8 @@ def plan(spec: Json, world: Json) -> Plan:
     lines: dict[str, dict[str, list[str]]] = {}
     for sid, s in spec["speakers"].items():
         sp = speakers[sid]
-        if "lines" in s:
+        # 人物的 6 句只给这个世界模型里能对话的人物录（切片里只有メロス和老爺；草稿的另外五个人 M3 再录）
+        if "lines" in s and chars[sid].get("talkable"):
             got: dict[str, list[str]] = {}
             for slot, n in SLOTS.items():
                 raw = s["lines"].get(slot)
@@ -231,6 +232,14 @@ def plan(spec: Json, world: Json) -> Plan:
             sp = speakers[who]
             add(f"{sp.slug}-{piece['id'].removeprefix('piece.')}-{n}", sp, line["line"], f"{piece['id']}/{n}")
 
+    def live(sid: str, key: str) -> bool:
+        """这个键这次录不录：不能对话的人物的 6 句、没有固定演出的世界模型（草稿）里固定演出的键，这次用不上，
+        不算写错。"""
+        head = key.split("/")[0]
+        if head.startswith("piece."):
+            return bool(world.get("setPieces"))
+        return sid in lines or head not in SLOTS
+
     heard: dict[str, list[str]] = spec.get("heardAs", {})
     said = {r.text for r in recs}
     if set(heard) - said:
@@ -238,24 +247,29 @@ def plan(spec: Json, world: Json) -> Plan:
     for r in recs:
         r.heard_as = tuple(heard.get(r.text, ()))
     keys = {(r.speaker.id, k) for r in recs for k in r.keys}
-    bad = sorted(f"{sid} 的 {k}" for sid, sp in speakers.items() for k in sp.offsets if (sid, k) not in keys)
+    bad = sorted(
+        f"{sid} 的 {k}" for sid, sp in speakers.items() for k in sp.offsets if (sid, k) not in keys and live(sid, k)
+    )
     if bad:
         raise SpecError(f"源文件 loudnessOffset 里的键对不上任何一句：{', '.join(bad)}")
     owned = {(r.speaker.id, k.split("/")[0]) for r in recs for k in r.keys}
-    bad = sorted(f"{sid} 的 {k}" for sid, sp in speakers.items() for k in sp.pieces if (sid, k) not in owned)
+    bad = sorted(
+        f"{sid} 的 {k}" for sid, sp in speakers.items() for k in sp.pieces if (sid, k) not in owned and live(sid, k)
+    )
     if bad:
         raise SpecError(f"源文件 pieceLoudness 里的固定演出这个人没有句子：{', '.join(bad)}")
     bad = sorted(r.id for r in recs if r.loudness is None and any(k in r.speaker.offsets for k in r.keys))
     if bad:
         raise SpecError(f"有 loudnessOffset 但没有目标响度（loudness 或 pieceLoudness）：{', '.join(bad)}")
-    unused = sorted(set(scenes) - used_scenes) + sorted(
-        f"{sid} 的 {k}" for sid, own in own_scenes.items() for k in own if (sid, k) not in used_own
+    unused = sorted(k for k in set(scenes) - used_scenes if live("", k)) + sorted(
+        f"{sid} 的 {k}" for sid, own in own_scenes.items() for k in own if (sid, k) not in used_own and live(sid, k)
     )
     if unused:
         raise SpecError(f"源文件 scenes 里的键对不上任何一句：{', '.join(unused)}")
     refs = [
         Ref(f"{speakers[sid].slug}-ref-{i}", speakers[sid], TALK_QUESTIONS[i - 1])
         for sid, s in spec["speakers"].items()
+        if sid in lines
         for i in range(1, int(s.get("ref", 0)) + 1)
     ]
     return Plan(spec["book"], str(world["worldModelVersion"]), speakers, lines, recs, refs)
