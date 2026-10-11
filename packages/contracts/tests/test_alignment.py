@@ -78,12 +78,14 @@ def test_ending_trigger_is_subset_of_data(contracts: Contracts) -> None:
 
 
 def test_telemetry_enums_match_messages(contracts: Contracts) -> None:
-    """data-design 9.3：turn_retracted.result 和 turn_retract_result.status 一致；degraded_shown.reason 同 degraded。"""
+    """data-design 9.3：turn_retracted.result 和 turn_retract_result.status 一致；degraded_shown.reason 同 degraded；
+    ending_performed.trigger 同 ending_started。"""
     tele = "telemetry.schema.json#/$defs/"
     ws = "ws/server.schema.json#/$defs/"
     pairs = [
         ("TelemetryTurnRetracted", "result", "TurnRetractResultMessage", "status"),
         ("TelemetryDegradedShown", "reason", "DegradedMessage", "reason"),
+        ("TelemetryEndingPerformed", "trigger", "EndingStartedMessage", "trigger"),
     ]
     for t_def, t_prop, w_def, w_prop in pairs:
         t = api_def(contracts, tele + t_def)["properties"]["props"]["properties"][t_prop]["enum"]
