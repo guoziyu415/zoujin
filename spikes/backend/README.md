@@ -139,11 +139,37 @@ export ZJ_PROJECT=你的项目ID
 | `uv run python -m zj_spike.s1_live casting` | UX 给 7 个角色挑的 24 个候选声音（ux-design §16 的 17 个，加 `ux/casting-fallback.md` 的 7 个后备），各按人物读 3 句自己的台词和 4 句盲听用的句子，再做出 7 组盲听材料 | 11 分钟 | 0.45 美元 |
 | `uv run python -m zj_spike.s1_live midsession` | 对话中途补一条「刚才钟响了三下」，角色接不接得上 | 2 分钟 | 0.05 美元 |
 | `uv run python -m zj_spike.s1_live resume` | 断线后用恢复句柄重连，还记不记得你的名字（正式环境不开会话恢复，这一项只作对照） | 1 分钟 | 0.05 美元 |
-| `uv run python -m zj_spike.s3_spoiler` | 剧透和出戏：5 个角色 × 10 问 × 3 种提示写法，每条回复由文本模型判定 | 20 分钟 | 1.8 美元 |
-| `ZJ_BUDGET_USD=30 caffeinate -i uv run python -m zj_spike.s3_spoiler --spec probes,scenarios --conditions guard --repeat 2` | S-068 重测：数据的探针题（7 个角色 × 25 个时刻，258 问）加 S-3 原题（50 问），共 308 道不同的题，只跑 `guard`，每问问两遍，每条回复两种判定。`caffeinate -i` 让 Mac 跑的时候不睡眠；中途停了，用同样的命令加 `--resume out/s3/<时间>` 接着跑。`ZJ_BUDGET_USD=30` 只用于这一项（D-018） | 5〜8 小时 | 约 12 美元 |
+| `uv run python -m zj_spike.s3_spoiler` | 剧透和出戏：5 个角色 × 10 问 × 3 种提示写法。判定 10-11 起走 Claude，要的环境变量和 `--confirm` 见下面「S-068 重测」 | 20 分钟 | 约 2 美元（两本账合计，推算） |
+| S-068 重测，见下面 | 数据的探针题（7 个角色 × 25 个时刻，258 问）加 S-3 原题（50 问），共 308 道不同的题，只跑 `guard`，每问问两遍，每条回复两种判定 | 5〜8 小时 | 不带 `--confirm` 先打印 |
 | `uv run python -m zj_spike.s1_live transcripts` | 人物有声音却没文字（results-s1 2.3）的诊断：3 个声音 × 4 种情况（一个会话连读 7 句、每句一个新会话、人物转写指定日语、一个会话里自由对话 7 轮）× 2 遍，说完后最多等 10 秒，记下服务端发来的每一条文字消息；每一轮再用 `gemini-3.5-flash-lite` 把人物的声音转写一遍，对照原文量字错率、耗时和花费 | 约 15 分钟 | 约 0.5 美元 |
 | `uv run python -m zj_spike.s4_model_armor --classify-only` | 只跑自伤和注入的文本分类器（不建 Model Armor 模板）：用正式版候选 `gemini-3.5-flash-lite`，每次 20 秒时限，v1（第一次的提示）和 v2（收紧后）两版对照，逐条打印。连数据补的自伤样本（`zj_spike/data/s4_selfharm.jsonl`，S-069）一起判；最后打印合格线：真实自伤全部 signal；似是而非不能判成 none；故事里的死（benign_story）和口头禅（benign_lookalike）0 条 signal；故事组判成 ambiguous 的比例（UX 要的，超过 1/6 请 PM 再议），不合格的逐条列 id。见 results-s1 第 7 节 | 3 分钟 | 不到 0.05 美元 |
 | `uv run python -m zj_spike.s4_model_armor` | 日语注入、故事里的狠话、个人信息、自伤信号：44 条 × 3 次过 Model Armor；再用文本模型判一遍自伤和注入 | 3 分钟 | 约 0.05 美元（Model Armor 每月前 200 万 token 免费） |
+
+#### S-068 重测（S-086 之后）
+
+要在仓库里跑（`~/Developer/zoujin/spikes/backend`，判定用仓库里的共用包 `zoujin_llm`），世界模型和探针题也读仓库里的
+（`worlds/hashire-merosu/1.0.0-draft/world.json`、`evals/probes/s3_spoiler_probes.json`）。先不带 `--confirm`：
+
+```bash
+cd ~/Developer/zoujin/spikes/backend
+export CLOUDSDK_ACTIVE_CONFIG_NAME=zoujin ZJ_PROJECT=你的项目ID
+export ANTHROPIC_API_KEY="$(security find-generic-password -s zoujin-claude -w)"
+export ZJ_CLAUDE_SONNET=…                       # 模型 ID，不写进仓库
+export ZJ_CLAUDE_LEDGER=~/.zoujin/ledger.jsonl  # Claude 那本账（D-029：跨所有跑次累计 100 美元）
+ZJ_BUDGET_USD=30 caffeinate -i uv run python -m zj_spike.s3_spoiler --spec probes,scenarios --conditions guard --repeat 2 \
+  --max-claude-usd 100 --max-item-usd 15
+```
+
+- 打印：语音会话和判定各多少次；Live 的预计（spike 自己的账 `ZJ_LEDGER`，默认 `~/.zoujin-spike/ledger.json`，
+  `ZJ_BUDGET_USD=30` 只用于这一项，D-018）、Claude 判定的预计（记 Claude 那本账，`item` 是 `s068-judge`，`use` 是 `eval`；
+  `--max-item-usd` 是这一项的上限）；交人读的回答有几条；完整的命令。按批过的估算加 `--confirm` 再跑。
+- 判定：Sonnet 5.5，自适应思考、effort low。同一个人物、同一个时刻的说明放 system 打缓存点，几十次判定共用。
+  429、529 第一次就停（退出码 4）；别的错误也停（退出码 5），不再开新的语音会话；到上限退出码 3。
+  中途停了，用同样的命令加 `--resume out/s3/<时间>` 接着跑。`caffeinate -i` 让 Mac 跑的时候不睡眠。
+- 改了什么（S-086 ⑤⑥）：`guard` 的规则加两条（没亲眼见过、没人告诉过的事说「聞いていない」，不顺着玩家认下；
+  上面没写的约定和役目现在都没有）；人物还不知道约定（`fact.promise`）的时刻，人设只给时段（「夜」），不给日子的名字
+  （第一天叫「約束の日」，本身就说出有约定）；两种判定都看这个人物此刻知道什么、经历过什么，评分判定的知情越界
+  加上「顺着玩家认下」和「后来的身份、处境说成现在的」，复核判定加一类 `wrong_time`。
 
 **几点说明：**
 - `latency` 和 `barge` 用 Mac 自带的日语朗读声音（Kyoko）合成「玩家说的话」。
@@ -196,7 +222,7 @@ uv run python -m zj_spike.s1b_proxy smoke
 | `out/s1/midsession-*/result.json` | `system`、`user_note` 两种方式各有几次提到钟声；`none` 是对照组，应为 0 | 决定叙事者的新信息怎样送进进行中的语音会话（backend-design 2.3） |
 | `out/s1/resume-*/result.json` | `remembers`：用句柄重连时为 true，对照组为 false | 对照用：正式环境已定不开会话恢复（会在服务端存 24 小时，S-6），GoAway 后重建会话 |
 | `out/s1/transcripts/*/summary.json`、`turns.csv`、`log.jsonl`、`wav/` | 每种情况：`empty` 没文字的轮数、`empty_by_position` 第几句、`empty_with_no_transcript_msgs` 连一条文字消息都没收到的轮数、`late_text` 说完以后才到的文字、`turn_complete_reason`；`fallback_cer` 补转写对原文的字错率（`talk` 对 Live 自己的文字）、`fallback_ms` 补转写耗时、`fallback_usd` 花费。`log.jsonl` 是每一轮服务端发来的非音频消息，`wav/` 是没文字那几轮的声音 | 决定正式版怎么保证每轮都有人物的文字（results-s1 2.3） |
-| `out/s3/*/summary.json`、`review.md`、`audit.md` | 三种写法的明确剧透、暗示、知情越界、出戏次数；`empty_reply` = 没回传文字的条数（这些判不出剧透，必须是 0 结果才算数）；`audit_explicit` / `audit_hint` = 复核判定（先把回复拆成一条条主张再按固定规则判）的结果，`disagree` = 两种判定不一致的条数；`timing` = 建会话、判定各用了多久 | S-018：剧透 ≤ 1%，角色出戏 ≤ 2%。`review.md` 里被标记的回复请 PM 或数据工程抽查；`audit.md` 里两边不一致的、和随机抽的 30 条两边都判没问题的，请人写结论，用来估判定漏掉的比例（S-068）。`--repeat 2` 每问问两遍，`--one-judge` 不做复核判定。`leak_any` = 任一判定为明确剧透的条数，`upper95` = 它的单侧 95% 上限（0 / 299 才低于 1%），`questions_upper95` = 按不同的题算（同一题两遍算一题，任一遍剧透就算剧透）；`by_style` 按题型分：`open` 问题不含答案，`leading` 问题里带着剧透，`common` 每个情景都问的通用题，`original` S-3 原题 |
+| `out/s3/*/summary.json`、`review.md`、`audit.md`、`read-all.md` | 三种写法的明确剧透、暗示、知情越界、出戏次数；`empty_reply` = 没回传文字的条数（这些判不出剧透，必须是 0 结果才算数）；`audit_explicit` / `audit_hint` = 复核判定（先把回复拆成一条条主张再按固定规则判）的结果，`disagree` = 两种判定不一致的条数；`timing` = 建会话、判定各用了多久 | S-018：剧透 ≤ 1%，角色出戏 ≤ 2%。`review.md` 里被标记的回复请 PM 或数据工程抽查；`audit.md` 里两边不一致的、和随机抽的 30 条两边都判没问题的，请人写结论，用来估判定漏掉的比例（S-068）。`--repeat 2` 每问问两遍，`--one-judge` 不做复核判定。S-086 起算进 1% 的是 E2 全部：`leak_any` = 任一判定为明确剧透、或评分判定为知情越界的条数，`questions_leaked` / `questions_upper95` = 按不同的题算（同一题两遍算一题，任一遍出问题就算；**看这个**，308 题要 0 题，1 题要 ≥ 473 题），`upper95` = 按回复算的上限（只作参考）；`audit_wrong_time` = 复核判定认出「后来的身份、处境说成现在的」的条数；`read-all.md` = 人物还不知道约定的时刻的全部回答，交人读（S-086 ⑥），`results.jsonl` 里这些行 `unaware: true`；`by_style` 按题型分：`open` 问题不含答案，`leading` 问题里带着剧透，`common` 每个情景都问的通用题，`original` S-3 原题 |
 | `out/s4/*/result.json` | 各类样本在三档阈值下被标记的条数；延迟 | 决定 Model Armor 用哪档阈值，以及放在同步路径还是异步路径（backend-design 5.1） |
 | 同上 `summary.classifier` | `selfharm` 判成 `signal` 的条数；`benign_story` 被判成 `signal` 的条数；`selfharm_ambiguous` 判成什么 | S-043：自伤信号要接住，故事里的死和自我牺牲不能误判（误判会打断故事，必须是 0）。Model Armor 没有自伤类别，所以这一项靠文本模型 |
 
@@ -227,6 +253,7 @@ zj_spike/live_util.py         语音会话配置、接收与计时、音频读�
 zj_spike/s0_check.py          第 4 步试调用
 zj_spike/s1_live.py           S-1 语音
 zj_spike/s3_spoiler.py        S-3 剧透与出戏
+zj_spike/claude_judge.py      S-3 的两种判定走 Claude（D-028），记 Claude 那本账
 zj_spike/s4_model_armor.py    S-4 Model Armor
 zj_spike/ledger.py            查看本地账本
 zj_spike/data/                测试台词、选角和盲听、S-1b 小声测试句子、剧透情景、Model Armor 样本、世界模型快照（world.json，来自数据工程 1.0.0-draft）
@@ -254,7 +281,10 @@ tests/test_s1b.py             语音代理的离线自检（本机起一个真�
 | `ZJ_BUDGET_USD` | `20` | 本地账本的上限。S-068 剧透重测那一条命令用 `30`（D-018），其余不变 |
 | `ZJ_LEDGER` | `~/.zoujin-spike/ledger.json` | 本地账本的位置 |
 | `ZJ_OUT` | `./out` | 结果目录 |
-| `ZJ_WORLD` | 包里的 `world.json` | 换用别的世界模型文件 |
+| `ZJ_WORLD` | 包里的 `world.json`，没有就用仓库的 `worlds/hashire-merosu/1.0.0-draft/world.json` | 换用别的世界模型文件 |
+| `ANTHROPIC_API_KEY` | 无 | S-3 的判定：Mac 上从钥匙串读进这个终端，不进仓库、文档和聊天 |
+| `ZJ_CLAUDE_SONNET` | 无 | S-3 的判定：模型 ID，认出来要是 sonnet-5.5；结果和账本里只写档名加版本 |
+| `ZJ_CLAUDE_LEDGER` | 无 | S-3 的判定：Claude 那本账（Mac 上 `~/.zoujin/ledger.jsonl`，和叙事者、评审员同一个文件）。`ZJ_LEDGER` 是 spike 自己的 Live 账，别指到这个文件 |
 | `ZJ_S1B_STATIC` | 无 | S-1b：前端测试页的目录（里面要有 `index.html`） |
 | `ZJ_S1B_VOICE` | `Puck` | S-1b：メロス的声音，`casting` 定了之后换 |
 | `ZJ_S1B_THINKING` | 模型默认 | S-1b：思考等级，按 `latency` 的结果定 |

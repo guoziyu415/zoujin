@@ -1,4 +1,4 @@
-"""Offline self-test: runs every spike end to end against a fake Live server and fake text model.
+"""Offline self-test: runs every spike end to end against a fake Live server, fake text model and fake Claude.
 
   uv run python -m unittest tests.test_offline -v
 
@@ -27,7 +27,10 @@ os.environ.update(ZJ_PROJECT="offline-test", ZJ_OUT=str(TMP / "out"), ZJ_LEDGER=
 
 from google.genai import types  # noqa: E402
 
-from zj_spike import common, live_util, s0_check, s1_live, s3_spoiler, s4_model_armor  # noqa: E402
+from zoujin_llm import ModelCallFailed, RateLimited  # noqa: E402
+from zoujin_llm.claude import Reply  # noqa: E402
+
+from zj_spike import claude_judge, common, live_util, s0_check, s1_live, s3_spoiler, s4_model_armor  # noqa: E402
 
 WORLD = s3_spoiler.world_path()
 live_util.TAIL_QUIET_S = 0.05  # keep the fake runs fast; a late transcript still gets the full TAIL_CAP_S
@@ -186,6 +189,46 @@ class FakeClient:
         self.aio.models = FakeModels(judge_leak, slow_judges, audit_claims)
 
 
+class FakeClaude:
+    """Stands in for zoujin_llm's AsyncTransport behind the S-3 judges (Claude since D-028): no network, no key."""
+
+    def __init__(self, judge_leak="none", audit_claims=None, knowledge_violation=False, slow=0, fail=None):
+        self.judge_leak = judge_leak
+        self.audit_claims = audit_claims or []
+        self.knowledge_violation = knowledge_violation
+        self.slow = slow  # this many calls hang (to test the judge time limit)
+        self.fail = fail  # raised on every call
+        self.calls: list[dict] = []
+
+    async def create(self, params):
+        self.calls.append(params)
+        if self.slow > 0:
+            self.slow -= 1
+            await asyncio.sleep(3600)
+        if self.fail:
+            raise self.fail
+        if "claims" in params["output_config"]["format"]["schema"]["properties"]:
+            out = {"claims": self.audit_claims, "reason": "fake"}
+        else:
+            out = {"leak": self.judge_leak, "leaked_items": [], "knowledge_violation": self.knowledge_violation,
+                   "out_of_role": False, "japanese_only": True, "reason": "fake"}
+        usage = {"inputTokens": 120, "cacheReadTokens": 2500, "cacheWriteTokens": 0, "outputTokens": 300}
+        return Reply(json.dumps(out, ensure_ascii=False), "end_turn", usage)
+
+
+KEY = "sk-ant-test-marker-0000"
+CLAUDE_LEDGER = TMP / "claude-ledger.jsonl"
+CLAUDE_ENV = {"ANTHROPIC_API_KEY": KEY, "ZJ_CLAUDE_SONNET": "test-sonnet-5-5-idmark", "ZJ_CLAUDE_LEDGER": str(CLAUDE_LEDGER)}
+
+
+def run_s3(argv, client, claude=None):
+    """S-3 with its gate passed (--confirm, the Claude cap, the env the Mac sets) and the fake Claude behind it."""
+    claude = claude or FakeClaude()
+    with mock.patch.dict(os.environ, CLAUDE_ENV), mock.patch.object(claude_judge, "AsyncTransport", lambda: claude):
+        run_cli(s3_spoiler, [*argv, "--confirm", "--max-claude-usd", "100", "--max-item-usd", "15"], client)
+    return claude
+
+
 def write_wavs(d: Path, n: int = 3) -> Path:
     d.mkdir(parents=True, exist_ok=True)
     for i in range(n):
@@ -205,6 +248,7 @@ def run_cli(module, argv, client):
 class Offline(unittest.TestCase):
     def setUp(self):
         Path(os.environ["ZJ_LEDGER"]).unlink(missing_ok=True)
+        CLAUDE_LEDGER.unlink(missing_ok=True)
 
     def test_cost_functions(self):
         c = common.live_usage_cost(usage(1_000_000, 1_000_000))
@@ -309,7 +353,7 @@ class Offline(unittest.TestCase):
 
     @unittest.skipUnless(WORLD.exists(), "world.json not found")
     def test_s3_spoiler(self):
-        run_cli(s3_spoiler, ["--only", "king-after-promise,selinuntius-hostage"], FakeClient(judge_leak="hint"))
+        run_s3(["--only", "king-after-promise,selinuntius-hostage"], FakeClient(), FakeClaude(judge_leak="hint"))
         out = sorted((TMP / "out" / "s3").iterdir())[-1]
         summary = json.loads((out / "summary.json").read_text())["summary"]
         self.assertEqual(summary["guard"]["n"], 20)
@@ -335,8 +379,8 @@ class Offline(unittest.TestCase):
         # S-068: every question asked twice; a second, claim-by-claim judge; disagreements and a random
         # sample of passed replies go to people in audit.md.
         claims = [{"text": "明日には婚礼がある", "kind": "future_match", "as_fact": True}]
-        run_cli(s3_spoiler, ["--only", "king-after-promise", "--conditions", "guard", "--repeat", "2"],
-                FakeClient(judge_leak="none", audit_claims=claims))
+        run_s3(["--only", "king-after-promise", "--conditions", "guard", "--repeat", "2"], FakeClient(),
+               FakeClaude(audit_claims=claims))
         out = sorted((TMP / "out" / "s3").iterdir())[-1]
         summary = json.loads((out / "summary.json").read_text())["summary"]["guard"]
         self.assertEqual(summary["n"], 20)
@@ -361,9 +405,9 @@ class Offline(unittest.TestCase):
         path = TMP / "probes.json"
         path.write_text(json.dumps(spec, ensure_ascii=False))
         claims = [{"text": "王は改心する", "kind": "future_match", "as_fact": True}]
-        client = FakeClient(audit_claims=claims)
+        client, claude = FakeClient(), FakeClaude(audit_claims=claims)
         args = ["--spec", f"{path},scenarios", "--only", "p-king-day2,king-after-promise", "--conditions", "guard", "--repeat", "2"]
-        run_cli(s3_spoiler, args, client)
+        run_s3(args, client, claude)
         out = sorted((TMP / "out" / "s3").iterdir())[-1]
         v = json.loads((out / "summary.json").read_text())["summary"]["guard"]
         self.assertEqual((v["n"], v["questions"], v["leak_any"], v["questions_leaked"]), (26, 13, 26, 13))
@@ -381,7 +425,7 @@ class Offline(unittest.TestCase):
         broken.pop("leak")
         (out / "results.jsonl").write_text("\n".join([json.dumps(broken, ensure_ascii=False), *rows[1:-2]]) + "\n")
         before = len(client.sessions)
-        run_cli(s3_spoiler, [*args, "--resume", str(out)], client)
+        run_s3([*args, "--resume", str(out)], client, claude)
         self.assertEqual(len(client.sessions) - before, 3)
         rows = [json.loads(x) for x in (out / "results.jsonl").read_text().splitlines()]
         self.assertEqual(len(rows), 26)
@@ -419,9 +463,9 @@ class Offline(unittest.TestCase):
 
     @unittest.skipUnless(WORLD.exists(), "world.json not found")
     def test_s3_late_text_and_time_limits(self):
-        client = FakeClient(late_transcript=True, hang_first_connects=1, slow_judges=1)
-        with mock.patch.object(live_util, "SETUP_TIMEOUT_S", 0.3), mock.patch.object(s3_spoiler, "JUDGE_TIMEOUT_S", 0.3):
-            run_cli(s3_spoiler, ["--only", "king-after-promise", "--conditions", "guard"], client)
+        client = FakeClient(late_transcript=True, hang_first_connects=1)
+        with mock.patch.object(live_util, "SETUP_TIMEOUT_S", 0.3), mock.patch.object(claude_judge, "TIMEOUT_S", 0.3):
+            run_s3(["--only", "king-after-promise", "--conditions", "guard"], client, FakeClaude(slow=1))
         out = sorted((TMP / "out" / "s3").iterdir())[-1]
         data = json.loads((out / "summary.json").read_text())
         self.assertEqual(data["summary"]["guard"]["errors"], 0)  # one hung setup and one hung judge, both retried
@@ -430,6 +474,123 @@ class Offline(unittest.TestCase):
         rows = [json.loads(x) for x in (out / "results.jsonl").read_text().splitlines()]
         self.assertTrue(all(r["reply"] and r["transcript_late_ms"] > 200 for r in rows))
         self.assertTrue(all("at" in r and "setup_ms" in r and "judge_s" in r for r in rows))
+        # The hung judge call is booked at the high estimate (it may have been billed), then the retry at its usage.
+        ledger = [json.loads(x) for x in CLAUDE_LEDGER.read_text().splitlines()]
+        self.assertEqual(len(ledger), 20 + 1)
+        self.assertEqual(ledger[0]["usage"], {})
+
+    @unittest.skipUnless(WORLD.exists(), "world.json not found")
+    def test_s3_without_confirm_only_prints(self):
+        # S-086 ⑦: the estimate comes first. No Live session, no judge call, nothing on either book.
+        client, claude = FakeClient(), FakeClaude()
+        out = io.StringIO()
+        with mock.patch.object(claude_judge, "AsyncTransport", lambda: claude), contextlib.redirect_stdout(out):
+            run_cli(s3_spoiler, ["--spec", "scenarios", "--conditions", "guard", "--repeat", "2"], client)
+        printed = out.getvalue()
+        self.assertIn("5 个情景、50 道题 × 1 种条件 × 2 遍 = 100 次语音会话、200 次判定", printed)
+        self.assertIn("Live 约 $0.41", printed)
+        self.assertIn("sonnet-5.5", printed)
+        (cmd,) = [x for x in printed.splitlines() if x.startswith("命令：")]
+        self.assertTrue(cmd.endswith("--repeat 2 --confirm"))
+        self.assertIn("没带 --confirm", printed)
+        self.assertIn("少 --max-claude-usd", printed)
+        self.assertEqual((client.sessions, claude.calls), ([], []))
+        self.assertFalse(Path(os.environ["ZJ_LEDGER"]).exists() or CLAUDE_LEDGER.exists())
+        # --confirm without the Claude env (the Mac sets it in that one terminal): still only prints.
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            run_cli(s3_spoiler, ["--spec", "scenarios", "--conditions", "guard", "--confirm", "--max-claude-usd", "100"],
+                    client)
+        self.assertIn("只打印，不调用：ANTHROPIC_API_KEY、ZJ_CLAUDE_SONNET、ZJ_CLAUDE_LEDGER", out.getvalue())
+        self.assertEqual(client.sessions, [])
+        # The product's ledger (one JSON line per call) is not the spike's: refuse before reading it.
+        out = io.StringIO()
+        with mock.patch.object(common, "LEDGER_PATH", TMP / "ledger.jsonl"), contextlib.redirect_stdout(out):
+            run_s3(["--spec", "scenarios", "--conditions", "guard"], client, claude)
+        self.assertIn("ZJ_LEDGER 指着产品的账本", out.getvalue())
+        self.assertEqual((client.sessions, claude.calls), ([], []))
+
+    @unittest.skipUnless(WORLD.exists(), "world.json not found")
+    def test_s3_claude_judge_request_and_ledger(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            claude = run_s3(["--only", "king-after-promise", "--conditions", "guard"], FakeClient())
+        self.assertEqual(len(claude.calls), 20)  # 10 questions, two judges each
+        first = claude.calls[0]
+        self.assertEqual(first["model"], CLAUDE_ENV["ZJ_CLAUDE_SONNET"])
+        self.assertEqual(first["system"][0]["cache_control"], {"type": "ephemeral"})
+        self.assertEqual(first["output_config"]["effort"], "low")
+        schema = first["output_config"]["format"]["schema"]
+        self.assertFalse(schema["additionalProperties"])
+        # The judge sees what the character knows and has lived through at this moment (S-086 ⑥).
+        self.assertIn("Events the character has lived through", first["system"][0]["text"])
+        self.assertIn("beat.05", first["system"][0]["text"])
+        self.assertIn("Player said:", first["messages"][0]["content"])
+        audit = claude.calls[1]
+        self.assertIn("この人物がこれまでに見聞きした出来事", audit["system"][0]["text"])
+        self.assertIn("wrong_time", json.dumps(audit["output_config"]["format"]["schema"]))
+        # The same character at the same moment: the same system text for every question (one cache entry per judge).
+        self.assertEqual({c["system"][0]["text"] for c in claude.calls[::2]}, {first["system"][0]["text"]})
+        ledger = [json.loads(x) for x in CLAUDE_LEDGER.read_text().splitlines()]
+        self.assertEqual(len(ledger), 20)
+        self.assertEqual({(x["provider"], x["item"], x["use"], x["model"]) for x in ledger},
+                         {("claude", "s068-judge", "eval", "sonnet-5.5")})
+        self.assertEqual({x["kind"] for x in ledger}, {"judge", "audit"})
+        res = sorted((TMP / "out" / "s3").iterdir())[-1]
+        written = "".join((res / f).read_text() for f in ("results.jsonl", "summary.json")) + out.getvalue()
+        self.assertNotIn(KEY, written)
+        self.assertNotIn("idmark", written)
+        self.assertEqual(json.loads((res / "summary.json").read_text())["judge"], "sonnet-5.5")
+
+    @unittest.skipUnless(WORLD.exists(), "world.json not found")
+    def test_s3_claude_stops_the_run(self):
+        # 429 / 529 stop everything at once (exit 4); any other refusal stops too (exit 5), so no Live session is
+        # opened for a reply that cannot be judged. --resume picks up from there.
+        for fail, code in ((RateLimited("Claude HTTP 529"), 4), (ModelCallFailed("Claude HTTP 400"), 5)):
+            client = FakeClient()
+            with self.assertRaises(SystemExit) as cm:
+                run_s3(["--only", "king-after-promise", "--conditions", "guard"], client, FakeClaude(fail=fail))
+            self.assertEqual(cm.exception.code, code)
+            self.assertEqual(len(client.sessions), 1)
+        with self.assertRaises(SystemExit) as cm:
+            with mock.patch.object(claude_judge, "MAX_TOKENS", 10**7):  # one call's high estimate is over the cap
+                run_s3(["--only", "king-after-promise", "--conditions", "guard"], FakeClient())
+        self.assertEqual(cm.exception.code, 3)
+
+    @unittest.skipUnless(WORLD.exists(), "world.json not found")
+    def test_s3_e2_moment_and_read_all(self):
+        # S-086 ①: knowledge overreach counts toward the 1% line; ⑥ wrong_time; the day's name stays out of the
+        # persona of a character who does not know the promise yet; every reply at those moments goes to people.
+        claims = [{"text": "友の身代わりで待っている", "kind": "wrong_time", "as_fact": True}]
+        run_s3(["--only", "melos-square,king-after-promise", "--conditions", "guard"], FakeClient(),
+               FakeClaude(knowledge_violation=True, audit_claims=claims))
+        out = sorted((TMP / "out" / "s3").iterdir())[-1]
+        v = json.loads((out / "summary.json").read_text())["summary"]["guard"]
+        self.assertEqual((v["leak_explicit"], v["knowledge_violation"], v["leak_any"], v["questions_leaked"]), (0, 20, 20, 20))
+        self.assertEqual((v["audit_explicit"], v["audit_wrong_time"]), (20, 20))
+        personas = (out / "personas.md").read_text()
+        melos = personas.split("## melos-square / guard")[1].split("## ")[0]
+        king = personas.split("## king-after-promise / guard")[1].split("## ")[0]
+        self.assertIn("いまは夕方、", melos)
+        self.assertNotIn("約束の日", melos)
+        self.assertIn("いまは約束の日の夜、", king)  # the king made the promise at beat.05
+        for line in ("「聞いていない」「知らない」と答えて", "書かれていない約束や役目は、いまのあなたにはありません"):
+            self.assertIn(line, melos)
+        read_all = (out / "read-all.md").read_text()
+        self.assertIn("## melos-square（10 条）", read_all)
+        self.assertNotIn("king-after-promise", read_all)
+        self.assertEqual(read_all.count("- 人工结论："), 10)
+        rows = [json.loads(x) for x in (out / "results.jsonl").read_text().splitlines()]
+        self.assertEqual({r["scenario"]: r["unaware"] for r in rows}, {"melos-square": True, "king-after-promise": False})
+        # Every day of the clock is cut; a label that cannot be cut stops the run before anything is called.
+        world = s3_spoiler.World(WORLD)
+        sc = {"id": "x", "character": "char.old-man", "after": "beat.22", "when": "三日目の夕方"}
+        self.assertEqual(world.moment(sc), "夕方")
+        self.assertEqual(world.moment({**sc, "after": "pre"}), "ある日")
+        with self.assertRaises(SystemExit):
+            world.moment({**sc, "when": "約束から三日目"})
+        self.assertEqual(world.moment({**sc, "character": "char.selinuntius", "after": "beat.06", "when": "約束の日の深夜"}),
+                         "約束の日の深夜")
 
     def test_s1_casting_and_blind_kits(self):
         client = FakeClient()
