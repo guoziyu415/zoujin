@@ -3,7 +3,9 @@
 // cuts. The 3D components read `useQuality`: the pixel ratio follows `level`, everything else `applied`.
 //   ?quality=L0..L3  fixed level, no probe and no governor (the measuring page, comparisons)
 //   ?test            fixed L1 so the Playwright checks see the same picture every run; ?test&quality=auto runs it all
+//                    (app/flags.ts: window.__zoujinTest counts as ?test, for the checks that go through the app)
 import { create } from "zustand";
+import { flags } from "../../app/flags";
 import { track } from "../../telemetry/telemetry";
 import { FrameHistogram } from "./frameHistogram";
 import { Governor, type Change } from "./governor";
@@ -34,7 +36,7 @@ function fixedFromUrl(): Level | null {
   const p = new URLSearchParams(location.search);
   const q = p.get("quality");
   if (q && (LEVELS as readonly string[]).includes(q)) return q as Level;
-  return p.has("test") && q !== "auto" ? "L1" : null;
+  return flags.test && q !== "auto" ? "L1" : null;
 }
 
 export const fixedLevel = fixedFromUrl();

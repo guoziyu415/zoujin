@@ -51,7 +51,7 @@ test.beforeAll(async ({ browser }) => {
   page.on("pageerror", (e) => problems.push(`pageerror: ${e.message}`));
   page.on("requestfailed", (r) => problems.push(`request failed: ${r.url()}`));
   fs.mkdirSync(SHOTS, { recursive: true });
-  await page.goto("/?test");
+  await page.goto("/?world&test");
   await page.waitForFunction(
     () => ["ready", "failed"].includes(window.__zoujin?.load().stage),
     null,

@@ -10,6 +10,7 @@ import {
   resetMock,
   startStory,
   talkTo,
+  without3d,
 } from "./shell";
 
 async function sayToMelos(page: Page, text: string) {
@@ -36,6 +37,7 @@ test.beforeEach(async ({ page, context }) => {
     if (m.type() === "error" && !voiceFile && !expected.test(m.text()))
       problems.push(`console: ${m.text()}`);
   });
+  await without3d(context);
   await context.clearCookies();
   await resetMock(page);
 });

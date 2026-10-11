@@ -27,7 +27,8 @@ import {
   type WebGLRenderTarget,
 } from "three";
 import { Sky } from "three/examples/jsm/objects/Sky.js";
-import { useWorld } from "./dev/fakeStore";
+import { useWorld } from "../stores/world";
+import { reducedMotion } from "./motion";
 import type { NavData } from "./nav/navmesh";
 import { SETTINGS } from "./quality/levels";
 import { useQuality } from "./quality/quality";
@@ -146,6 +147,11 @@ function makeSunDisc(): Mesh {
 
 // regenerating the environment light costs a few ms: at most every 250 ms while the clock moves
 const ENV_EVERY_MS = 250;
+// a commit moves the clock: the sun goes there in 1.5 s (frontend-design 9.3); a jump of hours (a new act) cuts
+const GLIDE_MS = 1500;
+const GLIDE_MAX_MIN = 120;
+const NOON = 720; // before the snapshot (the sandbox sets one at once)
+const clockT = () => useWorld.getState().world?.clock.t ?? NOON;
 
 // The environment has the plaza floor under the horizon (A-0, UX round 5; art-direction 3.2: faces are filled by the
 // warm light the sunlit limestone throws back): with the sky alone, whatever was in shade was lit by blue only. A disc
@@ -424,11 +430,39 @@ export function Lighting({
       if (immediate) env();
       else envTimer.current = window.setTimeout(env, ENV_EVERY_MS);
     };
-    apply(useWorld.getState().clock.t, true);
-    lighting.settle = () => apply(useWorld.getState().clock.t, true);
-    return useWorld.subscribe((s, prev) => {
-      if (s.clock.t !== prev.clock.t) apply(s.clock.t, false);
+    let shown = clockT();
+    let raf = 0;
+    const glideTo = (t: number) => {
+      cancelAnimationFrame(raf);
+      const from = shown;
+      if (reducedMotion() || Math.abs(t - from) > GLIDE_MAX_MIN) {
+        shown = t;
+        apply(t, false);
+        return;
+      }
+      const t0 = performance.now();
+      const step = () => {
+        const f = Math.min(1, (performance.now() - t0) / GLIDE_MS);
+        shown = from + (t - from) * f * f * (3 - 2 * f);
+        apply(shown, false);
+        if (f < 1) raf = requestAnimationFrame(step);
+      };
+      step();
+    };
+    apply(shown, true);
+    lighting.settle = () => {
+      cancelAnimationFrame(raf);
+      shown = clockT();
+      apply(shown, true);
+    };
+    const off = useWorld.subscribe((s, prev) => {
+      const t = s.world?.clock.t;
+      if (t !== undefined && t !== prev.world?.clock.t) glideTo(t);
     });
+    return () => {
+      off();
+      cancelAnimationFrame(raf);
+    };
   }, [parts, params, scene, blockers, points]);
 
   // shadow box and the sun disc follow the camera; snapped to shadow texels so the edges don't crawl
