@@ -342,12 +342,27 @@ type SceneId = Annotated[str, Field(pattern="^scene\\.[a-z0-9]+(?:[.-][a-z0-9]+)
 
 type SchemaVersion = Annotated[
     Literal[
-        "1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8", "1.9", "1.10", "1.11", "1.12", "1.13", "1.14"
+        "1.0",
+        "1.1",
+        "1.2",
+        "1.3",
+        "1.4",
+        "1.5",
+        "1.6",
+        "1.7",
+        "1.8",
+        "1.9",
+        "1.10",
+        "1.11",
+        "1.12",
+        "1.13",
+        "1.14",
+        "1.15",
     ],
     Field(title="SchemaVersion"),
 ]
 """
-写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival / sub、Affordance.playerSpot（C-18）、Act.plan（C-19）、WorldModel.setPieces（S-080 ④）、WorldModel.objects。1.8：Affordance.pastLabel，事件 summary 里玩家一律写身份名。1.9：Clock.labels.daysKnownBy。1.10：Role.summary、WorldModel.ruby，Character.reading 每个人物都填。1.11：Character.originalEnding、endings.characters / templates / fates。1.12：字段不变，没有参与人物的节拍在同一场景就算玩家在场（zoujin_worldsim.sees）。1.13：Character.knows[].inferred。1.14：Act.stops、Place.shortName、Beat.arriveBefore
+写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival / sub、Affordance.playerSpot（C-18）、Act.plan（C-19）、WorldModel.setPieces（S-080 ④）、WorldModel.objects。1.8：Affordance.pastLabel，事件 summary 里玩家一律写身份名。1.9：Clock.labels.daysKnownBy。1.10：Role.summary、WorldModel.ruby，Character.reading 每个人物都填。1.11：Character.originalEnding、endings.characters / templates / fates。1.12：字段不变，没有参与人物的节拍在同一场景就算玩家在场（zoujin_worldsim.sees）。1.13：Character.knows[].inferred。1.14：Act.stops、Place.shortName、Beat.arriveBefore。1.15：Act.endLines、Act.closingLine
 """
 
 
@@ -1988,6 +2003,21 @@ class WorldState(BaseModel):
     """
 
 
+class ActEndLinesItem(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+        validate_by_name=True,
+    )
+    when: list[Condition] | None = None
+    """
+    这一局的状态要满足；省略 = 总是
+    """
+    line: Annotated[str, Field(min_length=1)]
+    """
+    日语，地の文
+    """
+
+
 class CharacterTraitsItem(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -2145,6 +2175,14 @@ class Act(BaseModel):
     exits: list[ActExit]
     """
     幕末去处；最后一幕为空，收幕即进入结局
+    """
+    endLines: list[ActEndLinesItem] | None = None
+    """
+    （1.15，UX copy-ja 6.1）幕末页的第一行：按顺序取第一条 when 满足的；都不满足（例：节拍被改写）由叙事者写。只写玩家此刻能知道的事
+    """
+    closingLine: Annotated[str | None, Field(min_length=1)] = None
+    """
+    （1.15，UX copy-ja 6.1、ux-design 4.3）幕快结束时服务端下发的一行预告（日语）
     """
     stops: list[PlaceId] | None = None
     """

@@ -1,5 +1,5 @@
 {
- "schemaVersion": "1.14",
+ "schemaVersion": "1.15",
  "worldModelVersion": "hashire-merosu@1.0.0-slice.3",
  "book": {
   "id": "hashire-merosu",
@@ -3162,7 +3162,7 @@
   {
    "id": "place.stonemason-workshop",
    "name": "セリヌンティウスの石工の仕事場",
-   "shortName": "石工の仕事場",
+   "shortName": "工房",
    "description": "原文に場面はない。石工セリヌンティウスと弟子フィロストラトスの仕事場として設計。広場の一角にある（S-002）。",
    "adjacent": [
     {
@@ -6243,7 +6243,12 @@
        "value": "char.melos"
       }
      ],
-     "effects": []
+     "effects": [],
+     "sub": "メロスの妹が待つ村",
+     "arrival": {
+      "line": "羊の番をしていた娘が、よろめいて歩くメロスに気づき、駆け寄ってきた。",
+      "opener": "char.sister"
+     }
     },
     {
      "id": "exit.2.vigil",
@@ -6264,7 +6269,11 @@
        "value": "char.selinuntius"
       }
      ],
-     "effects": []
+     "effects": [],
+     "sub": "人質のそばで、昼を待つ",
+     "arrival": {
+      "line": "日が高くなった。セリヌンティウスは、柱のそばで黙って目を閉じている。"
+     }
     },
     {
      "id": "exit.2.city",
@@ -6284,7 +6293,11 @@
        ]
       }
      ],
-     "effects": []
+     "effects": [],
+     "sub": "人質の友と、王のいる市で",
+     "arrival": {
+      "line": "日が高くなった。市は、何事もなかったように動きはじめている。"
+     }
     }
    ],
    "inferred": true,
@@ -6327,7 +6340,11 @@
        ]
       }
      ],
-     "effects": []
+     "effects": [],
+     "sub": "約束の日没を待つ",
+     "arrival": {
+      "line": "三日目の薄明。雨は、まだ降りつづいている。"
+     }
     }
    ],
    "inferred": true,

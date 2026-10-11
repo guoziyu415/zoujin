@@ -1,6 +1,6 @@
 # 『走れメロス』切片版世界模型（hashire-merosu@1.0.0-slice）
 
-负责人：数据工程 · 契约：`data/contracts.md` v1.14 · 依据：S-077（`pm/decisions.md`）、dev-plan「完整世界模型 + 一份切片配置」
+负责人：数据工程 · 契约：`data/contracts.md` v1.15 · 依据：S-077（`pm/decisions.md`）、dev-plan「完整世界模型 + 一份切片配置」
 
 M2 竖切片（R1 试玩）用的世界模型。和完整版同一个 Schema，B-0、worldsim、评测照读；**不手写**，由 `make_slice.py` 从 `1.0.0-draft/world.src.json` 生成，切片和完整版的差别全在这个脚本里，每一处改动注明 S-077 的哪一条。
 

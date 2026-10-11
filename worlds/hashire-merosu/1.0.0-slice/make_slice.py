@@ -111,8 +111,9 @@ def make_slice(src: dict[str, Any]) -> dict[str, Any]:
     acts = {a["id"]: a for a in w["acts"]}
     acts["act.1"]["scenes"] = ["scene.syracuse-square"]
     acts["act.4"]["scenes"] = ["scene.syracuse-square"]
-    for a in acts.values():  # 归途的停靠点（S-081）切片用不上
-        a.pop("stops", None)
+    for a in acts.values():  # 归途的停靠点（S-081）切片用不上；幕末第一行和预告是完整版的（切片用前端的文案，copy-ja 6）
+        for k in ("stops", "endLines", "closingLine"):
+            a.pop(k, None)
     # 第二、三幕在切片里只在后台结算，去处不会出现；落在归途和王城（第四幕只有广场）的去掉，其余照旧
     acts["act.3"]["exits"] = [e for e in acts["act.3"]["exits"] if e["id"] not in ("exit.3.road", "exit.3.vigil")]
 

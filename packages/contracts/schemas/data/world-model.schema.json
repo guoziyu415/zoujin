@@ -1608,6 +1608,34 @@
           },
           "description": "幕末去处；最后一幕为空，收幕即进入结局"
         },
+        "endLines": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "when": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/Condition"
+                },
+                "description": "这一局的状态要满足；省略 = 总是"
+              },
+              "line": {
+                "type": "string",
+                "minLength": 1,
+                "description": "日语，地の文"
+              }
+            },
+            "required": ["line"],
+            "additionalProperties": false
+          },
+          "description": "（1.15，UX copy-ja 6.1）幕末页的第一行：按顺序取第一条 when 满足的；都不满足（例：节拍被改写）由叙事者写。只写玩家此刻能知道的事"
+        },
+        "closingLine": {
+          "type": "string",
+          "minLength": 1,
+          "description": "（1.15，UX copy-ja 6.1、ux-design 4.3）幕快结束时服务端下发的一行预告（日语）"
+        },
         "stops": {
           "type": "array",
           "items": {
