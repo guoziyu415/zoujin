@@ -1,0 +1,13 @@
+{
+  "about": "Claude 那本账的单价（评审员、AI 玩家），每百万 token 的美元。Anthropic 价目表 2026-10-10 看的，和 docs/data/cost/m2-model-budget.md 一致。按模型档认：运行时给的模型 ID 里含哪个档名就用哪个，认不出就不调。思考 token 按输出计。charsPerToken 只用来在调用前估输入（日语、中文按每字一个 token，偏高）",
+  "perMTok": {
+    "opus": { "input": 4, "output": 20 },
+    "sonnet": { "input": 2, "output": 10 },
+    "haiku": { "input": 0.1, "output": 0.5 },
+    "fable": { "input": 10, "output": 50 }
+  },
+  "batchDiscount": 0.5,
+  "cacheReadMultiplier": 0.05,
+  "cacheWriteMultiplier": 1.25,
+  "charsPerToken": 1
+}

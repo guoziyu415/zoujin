@@ -2,7 +2,7 @@
 
 负责人：数据工程 · 状态：**v1.2.5**。v1.0 已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改；1.1 跟上契约 1.1、PM 的 S-022〜S-053 和世界模型 draft.3；1.2 跟上契约 1.2 和 S-054〜S-063，补齐前端、UX 要的埋点（9.3）和市场调研要的试玩导出（9.5）。跨角色决定见 `pm/decisions.md`。待别人定的事见第 13 节。
 相关：[contracts.md](contracts.md) v1.7（四个数据契约，本文所有字段以它为准）· `backend/backend-design.md` · `pm/prd.md`
-最近更新：2026-10-11（v1.2.5：跟上 B-3（#61）：第 3 节动作和打算的花费、计数和局上的新列，5.3 `turns.result.seq`，第 8 节 `narrator.action` / `narrate` / `plan`；v1.2.4：按后端 #56 的评审改第 3、8 节四处说法，5.3 写清 B-3 加的 `turns.request` / `result` 和打算文字怎么清；v1.2.3：第 3 节 B-2 加的花费和计数列，第 8 节叙事者的五种 Span；v1.2.2：7.3 评审员定为 Claude Opus 5.5，写清校准和独立性；7.1 模拟局的 AI 玩家用 Claude；9.3 画质遥测的两处读法）
+最近更新：2026-10-11（v1.2.6：7.3 写清评审员的校准样本和一致率怎么算；v1.2.5：跟上 B-3（#61）：第 3 节动作和打算的花费、计数和局上的新列，5.3 `turns.result.seq`，第 8 节 `narrator.action` / `narrate` / `plan`；v1.2.4：按后端 #56 的评审改第 3、8 节四处说法，5.3 写清 B-3 加的 `turns.request` / `result` 和打算文字怎么清；v1.2.3：第 3 节 B-2 加的花费和计数列，第 8 节叙事者的五种 Span；v1.2.2：7.3 评审员定为 Claude Opus 5.5，写清校准和独立性；7.1 模拟局的 AI 玩家用 Claude；9.3 画质遥测的两处读法）
 
 数据工程负责六件事：世界模型（含『走れメロス』v1）、新增一本书的流水线、事件日志与世界状态、記憶帳与删除、评测与可观测数据、分析与成本测算。
 
@@ -305,6 +305,7 @@ UX 的设计层校对（`ux/reviews/data-world-draft3.md`）已按契约 1.4 落
   - **独立性**：50 条标注是数据线程写的，数据线程也是 Claude，不能单独证明一个 Claude 评审员判得对。所以两样都做：① 50 条里抽 20 条请 zg 盲标（只看评分细则和回答，约 20〜30 分钟，数据做成网页），zg 和数据的一致率 ≥ 90%，这 50 条才当标准答案用；② 同样 50 条再让 Gemini 2.5 Pro 判一遍（记 Google 账），两边分歧的条目给 zg 看。M2 开跑时由 PM 问 zg。
   - 只判合成输入：R1 试玩导出的真人对话不交给 Claude 判。评审的提示不拿留出样本调。
   - 判分也存成回放（`kind: "judge"`，键里有供应商和模型），CI 以后重判不花钱。评审员的客户端只在 evals 包和 Mac 的批跑脚本里，后端服务不加这个依赖。
+  - （v1.2.6）校准样本是 `evals/judge/calibration.jsonl`：切片的 25 个判分用例各 2 条回答（过 26、不过 24），数据标分，其中 20 条（过、不过各 10，不含现实危机）标了给 zg 盲标。一致率都按判定线分过 / 不过来比：zg 和数据 ≥ 18/20；评审员每一次判分各算一次（50 条 × 3 次），≥ 90%。命令 `zoujin-judge calibrate` / `agree`，用法和回放、账本见 `evals/README.md`「评审员」。
 - 每例跑 5 次取通过率。
 - 结果按「模型版本 × 提示版本 × 世界模型版本」存档，可以画出每次改动的分数变化。
 - **没有人物原话的轮次**（后端 S-1：语音转写可能晚到，网关在 turnComplete 后最多等约 3 秒，等满仍没有人物的文字就照常提交并标记，backend-design 3.1）：轮次记录带 `characterTextMissing: true`。这样的轮次不做人设、剧透、语气这类看原话的评审，记为「无原话」单独计数，不进通过率的分母；世界状态、事件、记忆的确定性检查照常做。一次评测里占比超过 5% 时，当作基础设施问题报给后端。
@@ -515,6 +516,7 @@ BigQuery 每天一个定时查询，用 `EXTERNAL_QUERY` 直接读 Cloud SQL，�
 
 修订记录：
 
+- **v1.2.6（2026-10-11）**：7.3 写清评审员的校准样本（`evals/judge/calibration.jsonl` 50 条，zg 盲标其中 20 条）和两种一致率怎么算，命令 `zoujin-judge`。
 - **v1.2.4（2026-10-10）**：按后端 #56 的评审改四处：`turns_timed_out` 也算改写两次都失败；Span 的 token 四项只在 ok 时有，`cost_usd` 在 ok、timeout、invalid 时有；check 的 Span 也带 `failed_rules`；评测入口的 `say` 也带 playthrough_id、turn_id，只有 `check()` 带 trace_id。5.3 `turns` 那一行跟上 B-3 卡（#58）：`request`、`result`，打算的文字随 L1 和结局清空。打算的文字写入前过和事件 `summary` 一样的过滤（B-3 卡第 4 条）。
 - **v1.2.3（2026-10-10）**：跟上 B-2（#47）。第 3 节 `playthrough_metrics` 加分流、改写的花费和六个计数（迁移 0002），写清每个计数怎么算、否决率的分母从哪数；第 8 节的 Span 表换成叙事者的五种（triage、extract、check、rewrite、reply）和它们的属性，写明 Span 只收白名单属性、B-2 先写进日志。
 - **v1.2.2（2026-10-10）**：7.3 写清评审员（Claude Opus 5.5，走 Batch）和它的校准、独立性（zg 盲标 20 条，Gemini 2.5 Pro 再判一遍）；7.1 模拟局的 AI 玩家用 Claude Sonnet 5.5（PM 10-10 定，dev-plan Z-8 两本账）；9.3 按前端 F-2c 写清 `quality_changed` 档位不变的两种 `reason` 和 Safari 的 `longTasks` 怎么读。
