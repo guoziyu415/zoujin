@@ -4709,6 +4709,16 @@
      "character": "char.king",
      "place": "place.execution-ground",
      "spot": "king-west"
+    },
+    {
+     "op": "relocate",
+     "character": "char.crowd",
+     "place": "place.execution-ground"
+    },
+    {
+     "op": "relocate",
+     "character": "char.guards",
+     "place": "place.execution-ground"
     }
    ],
    "activities": [
