@@ -157,7 +157,10 @@ function Controls({ names }: { names: Record<string, string> }) {
         {copy["nearby.button"]}
       </button>
       {textFirst ? (
-        <TextInput primary />
+        <>
+          <SafetyHint where="landscape" />
+          <TextInput primary />
+        </>
       ) : (
         <>
           {!(textOpen && focus) && <TalkKey />}

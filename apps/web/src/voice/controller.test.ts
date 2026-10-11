@@ -648,6 +648,42 @@ describe("the connection", () => {
     });
   });
 
+  it("a voice turn the server never got is lost after the welcome: the didn't-hear line once, nothing at 12 s", () => {
+    const { v, audio, wire } = setup({ clips: true });
+    v.press();
+    tick(600);
+    v.release(); // the line was already down: activity_start never reached the server
+    v.down();
+    v.connected(null);
+    expect(useVoice.getState().turn).toBeNull();
+    expect(audio.log.filter((l) => l === "clip:/u/1.ogg")).toHaveLength(1);
+    const before = wire.sent.length;
+    tick(GIVE_UP_MS);
+    expect(wire.sent).toHaveLength(before); // no turn_retract, so no too_late either
+    expect(useVoice.getState().narration).toEqual([]);
+  });
+
+  it("a safety pause the server still holds comes back as the card, without a fade; the words aren't sent again", () => {
+    const { v, audio, wire } = setup();
+    v.say("もう疲れた");
+    v.down();
+    v.connected(null, { safetyPause: true });
+    expect(v.state()).toBe("paused");
+    expect(audio.log).not.toContain(`fadeOut:${FADE_MS}`);
+    expect(audio.mic).toBe(false);
+    expect(wire.sent.filter((m) => m.type === "text")).toHaveLength(1);
+  });
+
+  it("too_late for our own 12 s give-up adds no narrator line (the character already said it didn't hear)", () => {
+    const { v, wire } = setup({ clips: true });
+    v.say("聞こえますか");
+    const id = turnId();
+    tick(GIVE_UP_MS);
+    expect(wire.last("turn_retract")).toMatchObject({ turnId: id });
+    v.message({ type: "turn_retract_result", turnId: id, status: "too_late" });
+    expect(useVoice.getState().narration).toEqual([]);
+  });
+
   it("degraded: the narrator says so once, degraded_shown, a held turn ends", () => {
     const { v, wire } = setup();
     v.press();

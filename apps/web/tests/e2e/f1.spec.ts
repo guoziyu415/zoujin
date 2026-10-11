@@ -555,3 +555,59 @@ test.describe("LINE's browser", () => {
     await expect(page.getByRole("note")).toHaveCount(0);
   });
 });
+
+test.describe("text from the start", () => {
+  // the player chose 文字で話す before (kept on this device): the text field takes the key's place
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() =>
+      localStorage.setItem("zj.voice", JSON.stringify({ text: true })),
+    );
+  });
+  const say = async (page: Page, text: string) => {
+    await page.getByLabel("言いたいことを書く").fill(text);
+    await page.getByRole("button", { name: "送る" }).click();
+  };
+
+  test.describe("landscape", () => {
+    test.use({ viewport: { width: 844, height: 390 } });
+    test("the quiet note shows beside the text field", async ({ page }) => {
+      await mock(page, "scenario", { name: "safety" });
+      await startStory(page);
+      await talkTo(page, "市の老爺");
+      await expect(page.getByTestId("talk")).toHaveCount(0);
+      await say(page, "もう、ここで終わりにしたい。");
+      const note = page
+        .getByRole("status")
+        .filter({ hasText: "つらいときの相談窓口" });
+      await expect(note).toBeVisible();
+      await note.getByRole("button", { name: "つらいときの相談窓口" }).click();
+      await expect(
+        page.getByRole("dialog", { name: "話を聞いてくれる窓口" }),
+      ).toBeVisible();
+    });
+  });
+
+  test("the safety card is still there after a reload, and 物語に戻る still works", async ({
+    page,
+  }) => {
+    await mock(page, "scenario", { name: "safety" });
+    await startStory(page);
+    await talkTo(page, "市の老爺");
+    await say(page, "もう、ここで終わりにしたい。");
+    await expect(page.getByTestId("sub-character")).toContainText(
+      "腰を下ろしなされ。",
+    );
+    await say(page, "もう、ここで終わりにしたい。");
+    const card = page.getByRole("dialog", {
+      name: "いま、つらい気持ちを抱えていませんか。",
+    });
+    await expect(card).toBeVisible();
+
+    await page.reload(); // the welcome says the pause still holds
+    await expect(card).toBeVisible();
+    await expect(voice(page)).toHaveAttribute("data-voice", "paused");
+    await card.getByRole("button", { name: "物語に戻る" }).click();
+    await expect(card).toHaveCount(0);
+    await expect(page.getByText("人に近づくと話せます")).toBeVisible();
+  });
+});
