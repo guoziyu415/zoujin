@@ -367,7 +367,15 @@ def judge_all(run: Run) -> list[Chosen]:
                 continue
             pcm = audio.read_wav(run.takes / f"{r.id}.{n}.wav")
             takes[n] = (audio.shape(pcm, pitch=r.aizuchi or r.talk is not None), m.get("transcript"))
-        verdict = checks.judge(r.text, takes, aizuchi=r.aizuchi, spoken=r.spoken, talk=r.talk, heard_as=r.heard_as)
+        verdict = checks.judge(
+            r.text,
+            takes,
+            aizuchi=r.aizuchi,
+            spoken=r.spoken,
+            talk=r.talk,
+            heard_as=r.heard_as,
+            breathy_ok=r.breathy_ok,
+        )
         out.append(Chosen(r, verdict))
     return out
 

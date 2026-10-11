@@ -49,6 +49,8 @@ class Speaker:
     offsets: dict[str, float] = field(default_factory=dict, hash=False, compare=False)  # 键 → 目标响度的偏移（dB）
     # 固定演出 ID → 这个人在那段里的目标响度（pieceLoudness：收幕那一串几个人拉到同一个电平，UX）
     pieces: dict[str, float] = field(default_factory=dict, hash=False, compare=False)
+    # 音高比例低（气声）也收的键（breathyOk）：重读几次都是气声的相槌，不再花钱重读，挑最不气的一遍标给 UX
+    breathy_ok: frozenset[str] = frozenset()
 
     @property
     def slug(self) -> str:
@@ -85,6 +87,10 @@ class Recording:
     @property
     def aizuchi(self) -> bool:
         return any(k.startswith("aizuchi/") for k in self.keys)
+
+    @property
+    def breathy_ok(self) -> bool:
+        return any(k in self.speaker.breathy_ok for k in self.keys)
 
     @property
     def talk(self) -> tuple[float, float] | None:
@@ -176,7 +182,15 @@ def plan(spec: Json, world: Json) -> Plan:
         offsets = {k: float(v) for k, v in s.get("loudnessOffset", {}).items()}
         pieces = {k: float(v) for k, v in s.get("pieceLoudness", {}).items()}
         speakers[sid] = Speaker(
-            sid, s["name"], s["voice"], s["direction"], None if loud is None else float(loud), talk, offsets, pieces
+            sid,
+            s["name"],
+            s["voice"],
+            s["direction"],
+            None if loud is None else float(loud),
+            talk,
+            offsets,
+            pieces,
+            frozenset(s.get("breathyOk", [])),
         )
     readings: dict[str, str] = spec.get("readings", {})
     scenes: dict[str, str] = spec.get("scenes", {})
@@ -251,6 +265,14 @@ def plan(spec: Json, world: Json) -> Plan:
     )
     if bad:
         raise SpecError(f"源文件 loudnessOffset 里的键对不上任何一句：{', '.join(bad)}")
+    bad = sorted(
+        f"{sid} 的 {k}"
+        for sid, sp in speakers.items()
+        for k in sp.breathy_ok
+        if not any(r.aizuchi and r.speaker.id == sid and k in r.keys for r in recs)
+    )
+    if bad:
+        raise SpecError(f"源文件 breathyOk 只能写这个人的相槌键：{', '.join(bad)}")
     owned = {(r.speaker.id, k.split("/")[0]) for r in recs for k in r.keys}
     bad = sorted(
         f"{sid} 的 {k}" for sid, sp in speakers.items() for k in sp.pieces if (sid, k) not in owned and live(sid, k)
