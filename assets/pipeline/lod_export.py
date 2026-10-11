@@ -16,8 +16,8 @@ build on the Mac will be renamed to match.
 import os
 import sys
 
-import bmesh  # noqa: E402  (only importable after bpy)
-import bpy
+import bpy  # first: bmesh is only importable after bpy
+import bmesh  # noqa: E402
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
