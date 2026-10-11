@@ -37,7 +37,7 @@ from pathlib import Path
 
 from zoujin_worldsim import Sim  # 共用的推演规则（W-1 的包，contracts 2.4.1 / 2.5.1）
 
-CONTRACT_VERSION = "1.8"  # contracts.md 的版本
+CONTRACT_VERSION = "1.9"  # contracts.md 的版本
 errors, warnings = [], []
 
 
@@ -578,6 +578,8 @@ def main():
         err("clock.labels.bands 要从 0 开始、严格递增、小于 1440")
     if "{day}" not in lab.get("format", "") or "{band}" not in lab.get("format", ""):
         err("clock.labels.format 要含 {day} 和 {band}")
+    if "daysKnownBy" in lab and lab["daysKnownBy"] not in facts:
+        err(f"clock.labels.daysKnownBy 不是世界模型里的事实：{lab['daysKnownBy']}")
 
     # ---------- 情境动作和物品（contracts 2.10；S-036 ②、S-038、UX 5.1） ----------
     UX_ACTIONS = {"examine", "give", "follow", "block", "help", "wait", "go", "shortcut", "run-together", "hasten"}
@@ -717,6 +719,12 @@ def main():
     for rid, paths in later.items():
         warn(f"{rid}: 第二版的身份名「{role_names[rid][0]}」在世界模型里还指别的（{len(paths)} 处，例 {paths[0]}），"
              f"开放第二版前给这个身份另起名（contracts 2.7）")
+
+    # 名字原样给玩家看（事件句、manifest），不带写世界模型时的括号注释（1.8 补注：「警吏（巡邏・刑吏）」→「城の警吏」）
+    for sec in ("characters", "places", "roles", "items", "objects"):
+        for x in world.get(sec, []):
+            if re.search(r"[（）()［］\[\]【】「」『』]", x.get("name", "")):
+                err(f"{x['id']}: 名字「{x['name']}」带括号。名字原样进事件句和 manifest，注释写进 note（contracts 2.7）")
 
     # ---------- 可调查物（contracts 2.12，1.7） ----------
     objects = {x["id"]: x for x in world.get("objects", [])}

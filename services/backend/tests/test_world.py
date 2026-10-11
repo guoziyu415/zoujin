@@ -9,6 +9,7 @@ from typing import Any, cast
 
 import pytest
 from zoujin_backend.config import DEFAULT_WORLD, REPO, ConfigError, world_path
+from zoujin_backend.narrator.writer import SCHEMA_VERSION
 from zoujin_backend.world import Library, Scene
 
 GROUND = "place.execution-ground"
@@ -179,3 +180,12 @@ def test_recap_lines_call_the_player_anata_with_a_period() -> None:
     ]
     lines = [r["line"] for r in recap(BOOK, "role.traveler", skipped, {"char.old-man"}, set())]
     assert lines == ["メロスが走り出した。", "市の老爺があなたのことを町の人に話した。"]
+
+
+def test_events_are_written_with_the_newest_contract_version() -> None:
+    """写事件用的 `SCHEMA_VERSION` 跟着契约走：是 `SchemaVersion` 里最新的那个，也是仓库里世界模型写的版本。
+    数据升契约时这条会红，提醒后端一起升。"""
+    common = json.loads((REPO / "packages/contracts/schemas/data/common.schema.json").read_text(encoding="utf-8"))
+    assert SCHEMA_VERSION == common["$defs"]["SchemaVersion"]["enum"][-1]
+    world = json.loads(DEFAULT_WORLD.read_text(encoding="utf-8"))
+    assert SCHEMA_VERSION == world["schemaVersion"]
