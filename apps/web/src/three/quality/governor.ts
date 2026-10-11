@@ -5,7 +5,7 @@
 //   the pixel ratio follows at once (`level`); shadows, bloom, MSAA, textures and conversation models wait for the
 //   next camera cut (`applied`), because a sudden change there is easier to see (UX art-direction 9.5).
 // - Up: only at a camera cut or entering / leaving a conversation, never while `busy` (mid-line, a key moment, the
-//   act-end page, the ending). Needs 30 s within budget at this level, no drop in the last 60 s, and a passed 2x
+//   act-end page, the ending). Needs 30 s within budget at this level, no drop in the last 5 minutes, and a passed 2x
 //   stress: 30 frames drawn twice that still run at about 60 fps (twice the work in the same time: room for the next
 //   level, which costs up to 1.8x). The level goes up at the next cut, so nothing changes mid-shot. One level at a time.
 // - The stress runs only while the picture is still (the camera has not moved for a few frames: after a hard cut,
@@ -31,14 +31,16 @@ export type Change = { from?: Level; to: Level; reason: ChangeReason };
 export const CHECK_EVERY_MS = 5000;
 export const OVER_CHECKS_TO_DROP = 2;
 export const OK_CHECKS_TO_RISE = 6; // 6 x 5 s = the last 30 s
-export const NO_RISE_AFTER_DROP_MS = 60_000;
+// 60 s at first: in the 20-minute heat run (governor.test.ts) a phone still warming up went back up after a minute,
+// then down again. A phone takes minutes to warm through (inferred; the 20-minute run on a real iPhone will tell, 10.6.4)
+export const NO_RISE_AFTER_DROP_MS = 300_000;
 export const DROPS_TO_LOCK = 2;
 export const STRESS_FRAMES = 30;
 export const STRESS_PASS_MS = 19; // "still about 16.7 ms": one 60 Hz refresh plus the jitter, not two
 export const STILL_FRAMES = 10; // the camera unmoved this many frames before a stress starts
 const MAX_BACKOFF = 3; // the wait after failed stresses doubles up to 2^3 x 30 s
 const MIN_FRAMES = 5; // fewer in a window: the page was hidden or stalled, skip the check
-const GAP_MS = 1000; // a longer interval is the page coming back from the background, not a slow frame
+export const GAP_MS = 1000; // a longer interval is the page coming back from the background, not a slow frame
 
 const percentile = (sorted: number[], p: number): number =>
   sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))]!;

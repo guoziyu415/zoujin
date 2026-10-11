@@ -5,6 +5,7 @@ import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./app/App";
 import "./app/flags"; // read once, at start
+import { registerWorker } from "./sw/register";
 
 const WorldScreen = lazy(() => import("./screens/WorldScreen"));
 // the team's measuring page (F-2 range 6): ?measure, or the private page measure_artifact.mjs packs sets the flag
@@ -14,6 +15,7 @@ const measure =
   params.has("measure") ||
   (window as { __ZOUJIN_MEASURE?: boolean }).__ZOUJIN_MEASURE === true;
 const sandbox = params.has("world") || params.has("dev");
+registerWorker();
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

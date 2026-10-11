@@ -110,7 +110,7 @@ async function shot(page: Page, name: string) {
   await page.screenshot({ path: path.join(SHOTS, `gate-${name}.png`) });
 }
 
-test("M2-0 gate: invite → role → plaza → walk (move) → tap メロス (focus) → talk by voice → commit → settled", async ({
+test("M2-0 gate: invite → role → plaza → walk (move) → tap メロス (focus) → talk by voice → commit → settled; a full page stops the 3D", async ({
   page,
   context,
 }) => {
@@ -326,6 +326,23 @@ test("M2-0 gate: invite → role → plaza → walk (move) → tap メロス (fo
     .toBe(1);
   await expect(page.locator(".world")).toHaveAttribute("data-voice", "idle");
   await shot(page, "7-settled");
+
+  // 8. a full page over the world stops the 3D loop (frontend-design 10.4, F-19); closing it starts it again
+  const drawn = () =>
+    page.evaluate(
+      () =>
+        (window.__zoujin as unknown as { frame(): { frames: number } }).frame()
+          .frames,
+    );
+  await page.getByRole("button", { name: /^本をひらく/ }).click();
+  await page.getByRole("button", { name: "記憶帳", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "記憶帳" })).toBeVisible();
+  await page.waitForTimeout(1500); // a software-rendered frame already started may still finish
+  const covered = await drawn();
+  await page.waitForTimeout(3000);
+  expect(await drawn(), "no frames under the memory book").toBe(covered);
+  await page.keyboard.press("Escape");
+  await expect.poll(drawn, { timeout: 30_000 }).toBeGreaterThan(covered);
 
   expect(
     await page.evaluate(() => (window.__zoujin as unknown as Gate).moves()),
