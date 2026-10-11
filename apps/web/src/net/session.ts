@@ -16,6 +16,8 @@ import { addNarration, initialVoice, useVoice } from "../stores/voice";
 import { usePlayer } from "../stores/player";
 import { showToasts, useUi, type Toast } from "../stores/ui";
 import { setTelemetryContext, track } from "../telemetry/telemetry";
+import { resetStory, useStory } from "../stores/story";
+import * as story from "./story";
 import { copy, fill } from "../ui/copy";
 
 // every server message type of this contract version; a type missing here fails the typecheck when contracts grow
@@ -66,6 +68,7 @@ export class Session {
   private refilling: Promise<void> | null = null;
   private held: Api.CommitMessage[] = []; // commits that came while refilling
   private names: Record<string, string> = {};
+  private actChange: Api.CommitMessage[] = []; // the act change's commits, held until act_transition (3.11)
   readonly unknown = new Map<string, number>();
 
   constructor(
@@ -101,6 +104,8 @@ export class Session {
     useVoice.setState(initialVoice());
     this.voice.init();
     usePlayer.setState({ nearCharacter: null, focusCharacter: null });
+    resetStory();
+    this.actChange = [];
     useUi.setState({ connection: "connecting", downSince: null });
     setTelemetryContext({
       playthroughId: snapshot.playthroughId,
@@ -174,6 +179,34 @@ export class Session {
     });
   }
 
+  // —— the act end (ux-design 4.4, api-contract 3.11) ——
+
+  actChoose(optionId: string, enRouteChoice?: number): void {
+    const a = useStory.getState().actEnd;
+    if (!a || a.phase.k === "chosen" || a.phase.k === "thinking") return;
+    useStory.setState({ actEnd: story.chosen(a, optionId) });
+    this.live.send({
+      type: "act_choose",
+      clientMsgId: uuid(),
+      optionId,
+      ...(enRouteChoice === undefined ? {} : { enRouteChoice }),
+    });
+  }
+
+  actPropose(text: string): void {
+    const a = useStory.getState().actEnd;
+    const t = text.trim();
+    if (!a || a.phase.k !== "propose" || !t) return;
+    const clientMsgId = uuid();
+    useStory.setState({ actEnd: story.proposed(a, { clientMsgId }) });
+    this.live.send({ type: "act_propose", clientMsgId, text: t.slice(0, 200) });
+  }
+
+  // shown the landing line of an arrival with an opener: the server lets the opener speak first
+  actLanded(actId: string): void {
+    this.live.send({ type: "act_landed", actId });
+  }
+
   // —— the socket's side ——
 
   private down(reason: string): void {
@@ -237,6 +270,24 @@ export class Session {
       case "limits":
         useVoice.setState({ voiceMinutesLeft: msg.voiceMinutesLeft });
         return;
+      case "act_ended":
+        return this.actEnded(msg);
+      case "act_plan_result": {
+        const a = useStory.getState().actEnd;
+        if (!a) return;
+        const next = story.planResult(a, msg);
+        useStory.setState({ actEnd: next });
+        if (next.phase.k === "result" && a.phase.k === "thinking")
+          track("act_plan_result", {
+            actId: a.end.actId,
+            accepted: msg.accepted,
+            try: a.end.freeform.triesLeft - msg.triesLeft,
+            inputMode: msg.turnId ? "voice" : "text",
+          });
+        return;
+      }
+      case "act_transition":
+        return this.actTransition(msg);
       case "error":
         // invalid_request: what we sent didn't fit the schema; the turn didn't happen (api-contract 5)
         if (msg.error.code === "invalid_request") this.voice.undelivered();
@@ -256,6 +307,7 @@ export class Session {
     this.welcomed = true;
     const world = useWorld.getState().world;
     if (world) setWorld({ ...world, voice: w.voice, pending: w.pending });
+    this.pendingStory(w.pending);
     useVoice.setState({
       degraded: w.voice.degraded || !w.voice.enabled,
       voiceMinutesLeft: w.voice.minutesLeftToday,
@@ -268,6 +320,15 @@ export class Session {
   }
 
   private async commit(c: Api.CommitMessage): Promise<void> {
+    // after the exit is chosen, the act change's commits wait for act_transition, which lands from its own snapshot
+    const a = useStory.getState().actEnd;
+    if (
+      a &&
+      (a.phase.k === "chosen" || (a.phase.k === "result" && a.phase.accepted))
+    ) {
+      this.actChange.push(c);
+      return;
+    }
     if (this.refilling) {
       this.held.push(c);
       return;
@@ -294,6 +355,50 @@ export class Session {
     });
     addNarration(...c.narration);
     showToasts(this.toasts(c));
+  }
+
+  // the act ends: what was being said or done is dropped (3.11: the server refuses it now); the page takes over
+  private actEnded(end: Api.ActEnd): void {
+    if (usePlayer.getState().focusCharacter) this.unfocus("menu");
+    useStory.setState({ actEnd: story.actEnded(end), overlay: null });
+  }
+
+  // the next act: the snapshot replaces the world (complete, after the landing); the held commits only add their
+  // events, for the map. Then その頃, the slice's jump page and the landing line (4.5).
+  private actTransition(m: Api.ActTransitionMessage): void {
+    const world = useWorld.getState().world;
+    const held = this.actChange;
+    this.actChange = [];
+    const events = held.reduce(
+      (list, c) => addEvents(list, c.events),
+      world?.events ?? [],
+    );
+    setWorld(fromSnapshot(m.snapshot, events));
+    setTelemetryContext({
+      playthroughId: this.playthroughId,
+      t: m.snapshot.clock.t,
+    });
+    useStory.setState({ actEnd: null, transition: story.transition(m) });
+  }
+
+  // back after a drop or a reload in the middle of an act end, or before landing (api-contract 4)
+  private pendingStory(p: Api.Pending): void {
+    const st = useStory.getState();
+    if (p.actEnd && !st.actEnd)
+      useStory.setState({ actEnd: story.actEnded(p.actEnd) });
+    if (!p.actEnd && st.actEnd && st.actEnd.phase.k !== "chosen")
+      useStory.setState({ actEnd: null }); // chosen while we were away; act_transition follows in the resend
+    if (p.arrival && !st.transition && !p.actEnd)
+      useStory.setState({
+        transition: {
+          ...story.transition({
+            fromActId: "",
+            toActId: useWorld.getState().world?.actId ?? "",
+            recap: [],
+            arrival: p.arrival,
+          }),
+        },
+      });
   }
 
   // a missing range: the events after our lastSeq (page by page), then the snapshot for the rest of the state (3.4)

@@ -612,3 +612,246 @@ button {
     animation-name: fade-in;
   }
 }
+
+/* —— F-12: book pages (act end, その頃, jump), the menu, the memory book, the map, the ending ——
+   Full pages are opaque paper (ux-design 7.7: no backdrop-filter over the 3D); ink text, Mincho for the story,
+   the sans for words from outside it. */
+.page {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  overflow-y: auto;
+  background: var(--paper);
+  color: var(--ink);
+  padding: max(24px, env(safe-area-inset-top)) 16px
+    max(24px, env(safe-area-inset-bottom));
+}
+.page.overlay {
+  z-index: 40; /* the map or the memory book opened from an act-end page */
+}
+.page-body {
+  max-width: 560px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.page h1 {
+  font-size: 22px;
+  letter-spacing: 0.08em;
+  margin: 8px 0 4px;
+  outline: none;
+}
+.page p {
+  margin: 0;
+  line-height: 1.8;
+}
+.page .quiet {
+  color: var(--ink-2);
+  align-self: flex-start;
+}
+.page .primary {
+  align-self: center;
+}
+.page .small,
+.trial-note {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.page button {
+  color: inherit;
+}
+.ae-prompt {
+  font-size: 18px;
+}
+.ae-dash {
+  display: inline-block;
+  height: 1px;
+  vertical-align: middle;
+  background: var(--ink);
+  width: 0;
+  animation: ae-dash 6s linear forwards;
+}
+@keyframes ae-dash {
+  to {
+    width: 6em;
+  }
+}
+.ae-narr {
+  color: var(--ink);
+}
+.ae-exits,
+.sk-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ae-exit {
+  width: 100%;
+  min-height: 64px;
+  text-align: left;
+  padding: 12px 14px;
+  border: 1px solid var(--ink-2);
+  border-radius: 6px;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ae-exit[aria-pressed="true"] {
+  border-color: var(--hi);
+  box-shadow: inset 3px 0 0 var(--hi);
+}
+.ae-exit:disabled:not([aria-pressed="true"]) {
+  opacity: 0.45;
+}
+.ae-label {
+  font-size: 17px;
+}
+.ae-sub,
+.ae-because {
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.ae-where {
+  display: inline-block; /* the two halves of the subtitle wrap as wholes (ux-design 4.4) */
+}
+.ae-two {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.ae-choice {
+  flex: 1 1 140px;
+  min-height: 48px;
+  border: 1px solid var(--ink);
+  border-radius: 24px;
+  background: transparent;
+}
+.ae-propose .textinput input {
+  color: var(--ink);
+  background: #fff8ec;
+  border: 1px solid var(--ink-2);
+}
+.ae-recap summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.ae-recap ul {
+  margin: 0 0 8px;
+  padding-left: 1.2em;
+  line-height: 1.8;
+}
+.sk-item {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid rgba(20, 17, 14, 0.15);
+  background: none;
+  padding: 8px 0;
+  line-height: 1.7;
+}
+.sk-item::before {
+  content: "●";
+  color: var(--ink);
+  font-size: 10px;
+  padding-top: 0.6em;
+}
+.sk-item > span:first-child {
+  flex: 1;
+}
+.sk-promise {
+  white-space: nowrap;
+  color: var(--ink-2);
+  font-size: 13px;
+}
+.jump-days {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.jump-day {
+  display: grid;
+  grid-template-columns: 4em 1fr;
+  gap: 8px;
+  animation: fade-in 0.6s ease-out;
+}
+.jump-day dt {
+  color: var(--ink-2);
+}
+.jump-day dd {
+  margin: 0;
+  line-height: 1.8;
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ae-dash,
+  .jump-day {
+    animation: none;
+  }
+  .ae-dash {
+    width: 3em;
+  }
+}
+.story-menu {
+  position: relative;
+  align-self: flex-end;
+}
+.story-menu > button {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 22px;
+  border: 1px solid var(--paper-2);
+  background: rgba(20, 17, 14, 0.6);
+  color: var(--paper);
+}
+.story-menu-list {
+  position: absolute;
+  right: 0;
+  top: 48px;
+  z-index: 20;
+  width: min(280px, calc(100vw - 32px));
+  list-style: none;
+  margin: 0;
+  padding: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 8px;
+}
+.story-menu-list button {
+  width: 100%;
+  min-height: 44px;
+  text-align: left;
+  border: 0;
+  background: none;
+  color: var(--ink);
+}
+.story-menu-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  font-family: var(--sans);
+  font-size: 14px;
+}
+.story-menu-list .small {
+  font-family: var(--sans);
+  font-size: 12px;
+  color: var(--ink-2);
+  margin: 0 0 4px;
+}

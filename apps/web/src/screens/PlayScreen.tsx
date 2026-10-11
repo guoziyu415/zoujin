@@ -27,6 +27,8 @@ import { TextInput } from "../ui/hud/TextInput";
 import { WorldReactionToast } from "../ui/hud/WorldReactionToast";
 import { SafetyCard } from "../ui/safety/SafetyCard";
 import { HelplinePanel, SafetyHint } from "../ui/safety/SafetyHint";
+import { StoryLayer } from "../ui/StoryLayer";
+import { StoryMenu } from "../ui/StoryMenu";
 import { useVoiceState } from "../voice/useVoiceState";
 
 export default function PlayScreen({ pid }: { pid: string }) {
@@ -111,6 +113,7 @@ export default function PlayScreen({ pid }: { pid: string }) {
       <div className="world-3d" aria-hidden="true" />
       <div className="hud-top" inert={paused}>
         <SunBand />
+        <StoryMenu />
         <ConnectionBanner />
         <WorldReactionToast />
         {failed && (
@@ -133,6 +136,7 @@ export default function PlayScreen({ pid }: { pid: string }) {
         <Controls names={names} />
       </div>
       <NearbyList names={names} />
+      <StoryLayer pid={pid} names={names} />
       <MicSheet />
       <HelplinePanel />
       <SafetyCard />
