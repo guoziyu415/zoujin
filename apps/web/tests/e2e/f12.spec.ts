@@ -41,7 +41,13 @@ async function toActEnd(page: Page) {
 test("act end: a plan that doesn't go, then the alternative; その頃, the jump page, the landing line", async ({
   page,
 }) => {
+  // with the 3D left out, only the act-end page asks for a scene pack: the exits' scene, ahead of the act change
+  const packs: string[] = [];
+  page.on("request", (r) => {
+    if (/\/scenes\/.*syracuse-square\//.test(r.url())) packs.push(r.url());
+  });
   const ae = await toActEnd(page);
+  await expect.poll(() => packs.length).toBeGreaterThan(0);
   await expect(ae.getByText("三日のあいだ、あなたは──")).toBeVisible();
   const city = ae.getByRole("button", { name: /市に残り、メロスの帰りを待つ/ });
   await expect(city).toContainText("刑場・三日目の夕方");
