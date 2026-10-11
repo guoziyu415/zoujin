@@ -18,12 +18,12 @@ api-contract 第 7 节的 11 种，B-1 卡的 5 种边角情况，加一个「�
 | `retract` | 作废（`retracted`、`too_late`）和识别改正 | 市の老爺 | 第 1 轮人物回答后约 4 秒内「言い直す」；第 2 轮判完后再作废；第 3 轮字幕识别错了，`turn_retract` 加 `text { via: "correction" }` |
 | `confirm` | 意图确认：按按钮回答、超时 | メロス | 说两句，原来那一轮先 `commit`（10 分钟）、`turn_settled`，再反问、推 `confirm`。第 1 次人物的回答就是反问，按按钮（一直等），答「是」先推草稿的 `commit` 再 `confirm_closed`；第 2 次服务端发起一轮（`turn_started reason: confirm`）再问，不回答，30 秒后超时，只推 `confirm_closed` |
 | `approach` | 人物走过来，接着一个动作 | 市の老爺 | 收到 `approach` 后发 `approach_arrived`（或 `approach_dismiss`）；他开口后回一句；再点动作「家まで送る」 |
-| `act-end` | 幕末：`leaving` 的一轮、`act_ended`（去处带副题 `where`、`sub`）、说出打算、`act_transition`（带落地 `arrival`） | — | 可以直接 `act_choose`；也可以先 `act_propose` 或用声音（`activity_start purpose: "act_plan"`），拿到不成行和替代去处（只演一次）后再 `act_choose`。选「老爺の家に身を寄せる」时落地带 `opener`：显示完落地那一行发 `act_landed`，老爺先开口（`turn_started reason: arrival`） |
+| `act-end` | 幕末：`leaving` 的一轮、`act_ended`（去处带副题 `where`、`sub`）、说出打算、`act_transition`（带落地 `arrival`） | — | 可以直接 `act_choose`；也可以先 `act_propose` 或用声音（`activity_start purpose: "act_plan"`），拿到不成行和替代去处后，再 `act_choose`，或者再说一次打算：第 2 次成行（`accepted: true`），紧接着 `commit` 和 `act_transition`，落点和「市に残る」一样。选「老爺の家に身を寄せる」时落地带 `opener`：显示完落地那一行发 `act_landed`，老爺先开口（`turn_started reason: arrival`） |
 | `set-piece` | 固定演出（3.14）：`action_result` 带 `setPiece` 不带 `narration`，紧接着 `set_piece`；mock 的 manifest 没有录音，只出字幕 | — | 等 mock 加上「戸を叩く」（`obj.workshop-door`）后点它（`action kind: examine`）；再点一次，回普通的 `narration` |
 | `goaway` | `goaway` 后 1012 关闭，断线期间判完，重连补发 | 市の老爺 | 说一句；被关掉后按第 4 节重连 |
 | `other-tab` | 4009 | 市の老爺 | 同一局再开一条连接，旧的以 4009 关闭；在新连接上说一句 |
 | `safety` | `safety_hint`；再一次 `safety_pause` → `safety_resumed` | 市の老爺 | 说两句；出戏卡上选「物語に戻る」（`safety_resume`） |
-| `ending` | 结局：`cue`、刑场的节拍、`ending_started`、约 4 秒后 `ending_ready` | — | 什么都不用做；之前 `GET …/ending` 回 202，之后 200 |
+| `ending` | 结局：`cue`、刑场的节拍、`ending_started`，紧接着收幕的固定演出（S-087：`set_piece` 四条，`piece.storm-in`、`piece.embrace`、`piece.king-asks`、`piece.scarlet-cloak`），约 4 秒后 `ending_ready` | — | 什么都不用做；之前 `GET …/ending` 回 202，之后 200 |
 | `late-transcript` | 人物的定稿晚于 `turn_complete`（补转写，`source: "fallback"`） | 市の老爺 | 说一句 |
 | `transcript-failed` | 补转写也失败：`{final: true, text: null, source: "fallback"}` | 市の老爺 | 说一句 |
 | `no-audio` | 人物没出声：`turn_complete { audio: false }`，`no_response` | 市の老爺 | 说一句 |
@@ -32,7 +32,7 @@ api-contract 第 7 节的 11 种，B-1 卡的 5 种边角情况，加一个「�
 | `future-message` | 一条 Schema 里没有的 `type`，之后一行叙事 | — | 什么都不用做（前端应该忽略不认识的消息） |
 | `tour` | 导览：上面除 `other-tab` 以外的全部，按 `full-turn`、`small-talk`、`approach`、`set-piece`、`confirm`、`interrupt`、`retract`、`late-transcript`、`transcript-failed`、`no-audio`、`safety`、`goaway`、`limits`、`future-message`、`act-end`、`degraded`、`ending` 的顺序串成一局 | | 照各段做 |
 
-不靠剧本、mock 自己回的（`services/backend/src/zoujin_backend/mock/ws.py`）：`hello` → `welcome` 和补发的 `commit`；`ping` → `pong`；`near`、`focus` → `session_preparing` / `session_ready`（预热 800 ms，重建 1 秒，重连后第一次是 `reconnect`）；`turn_retract` → `turn_retract_result`（判完之前作废还会推 `turn_settled retracted` 并重建会话）；人物发音频时收到 `activity_start` 或 `text` → `interrupted`；不合 Schema 的消息 → `error invalid_request`；`act_choose` 选了不在这次幕末里的去处 → `error invalid_choice`；对不上现在的确认的 `confirm_answer`（超时之后才到的）忽略。
+不靠剧本、mock 自己回的（`services/backend/src/zoujin_backend/mock/ws.py`）：`hello` → `welcome` 和补发的 `commit`，`lastSeq` 不晚于最近一次幕切换、之后又没有提交时再补推那次的 `act_transition`（打算成行的连同 `act_plan_result`，api-contract 第 4 节，v1.0.12）；`ping` → `pong`；`near`、`focus` → `session_preparing` / `session_ready`（预热 800 ms，重建 1 秒，重连后第一次是 `reconnect`）；`turn_retract` → `turn_retract_result`（判完之前作废还会推 `turn_settled retracted` 并重建会话）；人物发音频时收到 `activity_start` 或 `text` → `interrupted`；不合 Schema 的消息 → `error invalid_request`；`act_choose` 选了不在这次幕末里的去处 → `error invalid_choice`；对不上现在的确认的 `confirm_answer`（超时之后才到的）忽略。
 
 ## 一行的写法
 

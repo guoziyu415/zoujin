@@ -4,7 +4,6 @@ mock 的 REST（`services/backend/src/zoujin_backend/mock/rest.py`）回这里�
 
 | 文件 | 接口（api-contract） | mock 另外做的 |
 |---|---|---|
-| `manifest/hashire-merosu.json` | `GET /v1/books/{bookId}/manifest`（2.1） | 文件名就是 `bookId`。预录台词和资源路径是示意，文件不存在 |
 | `me.json` | `GET /v1/me`、登录的响应（1、2.0） | `activePlaythrough` 和剩余语音分钟按这个 Cookie 的局现填 |
 | `snapshot.json` | 开局的快照（2.2、2.3） | 之后的快照 = 它加上推过的 `commit.patch` 和 `act_transition`；`lastSeq`、`pending`、`voice` 现填 |
 | `timeline.json` | `GET …/timeline`（2.5） | `lastSeq` 现填 |
@@ -13,6 +12,8 @@ mock 的 REST（`services/backend/src/zoujin_backend/mock/rest.py`）回这里�
 | `memory-impact.json` | `GET …/memories/{memoryId}/impact`（2.7） | 以记忆的名字为键；不认识的记忆回 404 |
 | `memory-delete.json` | `DELETE …/memories/{memoryId}`（2.7） | 同上；删过的再删回 404；重建那个人物的会话（`session_preparing reason: rebuild`） |
 | `ending.json` | `GET …/ending`（2.8） | 结局演出开始前 404，`ending_ready` 之前 202，之后 200 |
+
+manifest（2.1）也不靠固定数据：和正式网关用同一个生成器（`services/backend/src/zoujin_backend/manifest.py`，B-7），按切片的世界模型、`assets/voice` 的声音清单（没有就不带预录句）和 `assets/scenes` 的场景包现生成，响应头一样（`ETag`、304）。
 
 不靠固定数据的：`POST /v1/auth/login`（只认邀请码 `mock`，连错 5 次以后回 429）、`logout`、`POST /v1/playthroughs`（一个 Cookie 一局进行中的局，再开回 409）、`events`（推过的 `commit` 里的事件）、`DELETE /v1/playthroughs/{id}`（开着的连接以 4004 关闭）、`telemetry`（校验后丢掉）、`POST /v1/test/playthroughs/{id}/advance`（推一条只带时钟的 `commit`）。
 

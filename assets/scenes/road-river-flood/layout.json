@@ -1,0 +1,126 @@
+{
+  "sceneId": "road-river-flood",
+  "partOf": "scene.road-river",
+  "select": {
+    "act": "act.4",
+    "bridge": "destroyed"
+  },
+  "about": "Hand-written layout of one of the two packs of scene.road-river (F-10; ux/scenes/homeward-road.md 1): plan metres, +x = towards Syracuse = azimuth 90° (east), +y = upstream (north), the landing ground at z = 0. Rotation 0, so glTF x = plan x and glTF z = -plan y. The two packs share places, exits and spot names (assets/pipeline/road/merge_river.mjs checks they agree and writes assets/scenes/road-river/scene.json for the backend). Spots marked auto: false are for set pieces only; way.* are the ways out. select: the page loads this pack in that act (road-river/index.json); bridge is var.bridge there, for reference. Act 4, 11:20 to 12:00: the bridge is gone, the river fills both banks; the river bed is not walkable, the drowned road is (1.3).",
+  "rotationDeg": 0,
+  "defaultPlace": "place.river",
+  "playerStartSpot": "road-west",
+  "startSpots": {
+    "place.river": "road-west"
+  },
+  "ridgeElevationDeg": 7,
+  "water": {
+    "kind": "flood",
+    "node": "water",
+    "levelM": -0.25,
+    "flowDir": [0, -1]
+  },
+  "hiTextures": {
+    "base": ["road", "grass", "outcrop", "bank", "wood"],
+    "nrm": ["road", "grass", "outcrop", "bank", "wood"]
+  },
+  "walkable": [
+    {
+      "name": "west bank and the road, the last 3 m of it under a few centimetres of water",
+      "polygon": [
+        [-32, -20],
+        [-4.9, -20],
+        [-4.9, 20],
+        [-32, 20]
+      ]
+    },
+    {
+      "name": "east bank above the flood (reached only through the crossing set piece: navRoots) (the upstream shallows, y 7..18.5, are water: from x = 12 there)",
+      "polygon": [
+        [10.7, -20],
+        [32, -20],
+        [32, 20],
+        [10.7, 20],
+        [10.7, 18.5],
+        [12.0, 18.5],
+        [12.0, 7.0],
+        [10.7, 7.0]
+      ]
+    }
+  ],
+  "places": [],
+  "exits": [
+    {
+      "place": "place.mountain-pass",
+      "spot": "way.east",
+      "about": "the road on east, up to the pass"
+    },
+    {
+      "place": "place.neighbor-village",
+      "spot": "way.west",
+      "about": "the road back west, to the neighbouring village"
+    }
+  ],
+  "navRoots": ["far-bank"],
+  "spots": {
+    "road-west": {
+      "at": [-16, -1],
+      "face": [-6, -1],
+      "about": "act 4 landing (exit.3.road); the default camera 9 m behind it sees only road (homeward-road.md 1.2)"
+    },
+    "melos-bridgehead": {
+      "at": [-6, 0.8],
+      "face": [4, 0.8],
+      "about": "act 4: where Melos stops dead at the washed-out bridge, then paces the bank calling downstream"
+    },
+    "road-east": {
+      "at": [17, 1],
+      "face": [7, 1],
+      "about": "act 2 landing (from the night road); the default camera 9 m behind it sees only road"
+    },
+    "far-bank": {
+      "at": [15, -4],
+      "face": [25, -4],
+      "about": "act 4: both of you after the crossing; R1 starts here"
+    },
+    "melos-pray": {
+      "at": [-5.6, -2.5],
+      "face": [4, -2.5],
+      "about": "act 4: Melos kneeling on the bank praying to Zeus until 12:00",
+      "auto": false
+    },
+    "swim-in": {
+      "at": [-5, -1],
+      "face": [5, -1],
+      "about": "beat.18: where he jumps into the flood",
+      "auto": false
+    },
+    "swim-out": {
+      "at": [11, -12],
+      "face": [1, -12],
+      "about": "beat.18: swept downstream, he catches the willow",
+      "auto": false
+    },
+    "shallows-in": {
+      "at": [-5.5, 12],
+      "face": [4.5, 12],
+      "about": "「流れの緩い浅瀬を探す」: the crossing upstream starts here",
+      "auto": false
+    },
+    "shallows-out": {
+      "at": [12.5, 13],
+      "face": [22.5, 13],
+      "about": "「流れの緩い浅瀬を探す」: and comes out here",
+      "auto": false
+    },
+    "way.west": {
+      "at": [-24, 0],
+      "face": [-34, 0],
+      "about": "the road on towards the neighbouring village and the village"
+    },
+    "way.east": {
+      "at": [24, 0],
+      "face": [34, 0],
+      "about": "the road up towards the pass"
+    }
+  }
+}

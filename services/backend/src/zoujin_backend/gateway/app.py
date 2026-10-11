@@ -25,6 +25,7 @@ from zoujin_backend.config import Settings
 from zoujin_backend.gateway import rest, ws
 from zoujin_backend.gateway.core import Gateway, HttpNarrator, NarratorClient
 from zoujin_backend.gateway.hub import Hub
+from zoujin_backend.manifest import generate
 from zoujin_backend.models.live import FakeLive
 from zoujin_backend.origin import csrf_problem
 from zoujin_backend.schemas import SchemaBook
@@ -37,13 +38,20 @@ SHUTDOWN_GRACE_S = 5  # 停服务前等手上的任务（交轮次、叫叙事�
 
 
 def build(settings: Settings, narrator: NarratorClient | None = None) -> Gateway:
+    """生成 manifest 出错（`ManifestError`，写着是哪个文件、哪个字段）就起不来。"""
+    library = Library(settings.worlds, settings.scenes, settings.world)
+    schemas = SchemaBook(settings.schemas)
+    manifest = generate(
+        library.current, schemas, packs=settings.packs, voices=settings.voice_dir, release=settings.release
+    )
     return Gateway(
         settings=settings,
         engine=create_async_engine(settings.database_url, pool_size=10),
-        library=Library(settings.worlds, settings.scenes, settings.world),
-        schemas=SchemaBook(settings.schemas),
+        library=library,
+        schemas=schemas,
         live=FakeLive(settings.fake_voice, speed=settings.speed),
         narrator=narrator or HttpNarrator(settings.narrator_url),
+        manifest=manifest,
     )
 
 
