@@ -1327,3 +1327,31 @@ li {
   text-wrap: pretty;
   word-break: auto-phrase;
 }
+/* the act end's input: the talk key beside the keyboard (ux-design 4.4) */
+.ae-inputs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.ae-inputs .textinput {
+  flex: 1;
+  min-width: 0;
+}
+.ae-talk {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 22px;
+  white-space: nowrap;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--ink);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.ae-talk[aria-pressed="true"] {
+  color: var(--paper);
+  background: var(--ink);
+}

@@ -73,6 +73,7 @@ export class VoiceController {
   private cur: Rec | null = null;
   private recs = new Map<string, Rec>();
   private holding: Rec | null = null;
+  private planHold: { id: string; seq: number; pressAt: number } | null = null; // the act end's spoken plan being held (see planPress)
   private heldBack: (ArrayBuffer | Api.ClientMessage)[] = []; // after activity_start, before session_ready
   private heldBackMs = 0;
   private outbox: Rec[] = []; // typed while the socket was down
@@ -365,6 +366,60 @@ export class VoiceController {
       });
   }
 
+  // —— the act end's spoken plan (ux-design 4.4, api-contract 3.11): nobody listens, the server only transcribes and
+  // the narrator answers with act_plan_result for this turn's id. Same key rules as the talk key (a slip under
+  // 250 ms is no turn); no waiting ladder, no character on the line ——
+
+  planPress(): boolean {
+    if (this.planHold || this.holding || useVoice.getState().mic !== "granted")
+      return false;
+    this.wake();
+    this.cutCurrent();
+    const seq = this.nextSeq();
+    const id = newTurnId();
+    this.planHold = { id, seq, pressAt: performance.now() };
+    useVoice.setState({ hold: { slide: false, preparing: false }, note: null });
+    this.wire.send({
+      type: "activity_start",
+      turnId: id,
+      turnSeq: seq,
+      purpose: "act_plan",
+    });
+    if (this.audio.micOpen() && voiceSettings.micMode === "session")
+      this.audio.setSending(true);
+    else
+      void this.audio.openMic().then((res) => {
+        if (!res.ok) {
+          if (this.planHold?.id === id) this.planEnd();
+          return this.micFailed(res.result, res.reason, false);
+        }
+        if (this.planHold?.id === id) this.audio.setSending(true);
+      });
+    return true;
+  }
+
+  // let go: the turn's id when it went to the server, null for a slip (nothing to wait for)
+  planRelease(): string | null {
+    const h = this.planEnd();
+    if (!h) return null;
+    if (!voiceSettings.tap && performance.now() - h.pressAt < TOO_SHORT_MS) {
+      this.wire.send({ type: "turn_retract", turnId: h.id });
+      return null;
+    }
+    this.wire.send({ type: "activity_end", turnId: h.id, turnSeq: h.seq });
+    return h.id;
+  }
+
+  private planEnd(): { id: string; seq: number; pressAt: number } | null {
+    const h = this.planHold;
+    this.planHold = null;
+    if (!h) return null;
+    this.audio.setSending(false);
+    if (voiceSettings.micMode === "perTurn") this.audio.releaseMic();
+    useVoice.setState({ hold: null });
+    return h;
+  }
+
   // past 60 px up while holding: letting go cancels (ux-design 7.1)
   slide(armed: boolean): void {
     const h = useVoice.getState().hold;
@@ -423,6 +478,11 @@ export class VoiceController {
 
   // the microphone's 40 ms frames while the key is down
   frame(pcm: Int16Array): void {
+    // the act end's plan: no character session to wait for, the frames go at once
+    if (this.planHold) {
+      this.wire.sendBinary(micFrame(this.planHold.seq, pcm));
+      return;
+    }
     const r = this.holding;
     if (!r) return;
     const f = micFrame(r.seq, pcm);
@@ -609,6 +669,7 @@ export class VoiceController {
   }
 
   down(): void {
+    this.planEnd(); // a plan held when the line went: the server heard nothing usable, the page stays on the input
     if (this.holding) {
       const r = this.holding;
       this.holding = null;

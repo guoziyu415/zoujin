@@ -4,7 +4,14 @@
 // the narrator's answer. A third try isn't offered (「夜が更けていく。…」). Once an exit is chosen the page waits for
 // the act change and takes no more taps.
 import type { Api } from "@zoujin/contracts";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+  type PointerEvent,
+} from "react";
 import { play } from "../../net/play";
 import {
   backToExits,
@@ -14,6 +21,8 @@ import {
   type ActEndState,
 } from "../../net/story";
 import { openOverlay, useStory } from "../../stores/story";
+import { useVoice } from "../../stores/voice";
+import { voiceSettings } from "../../voice/settings";
 import { copy, fill } from "../copy";
 import { Lines } from "../Lines";
 import { TEXT_MAX } from "../hud/TextInput";
@@ -140,6 +149,9 @@ function Exits({ a }: { a: ActEndState }) {
 
 function Propose({ notHeard }: { notHeard: boolean }) {
   const [text, setText] = useState("");
+  // the talk key beside the keyboard when the voice can be used (4.4); else the text field alone
+  const mic = useVoice((s) => s.mic);
+  const degraded = useVoice((s) => s.degraded);
   const over = [...text].length > TEXT_MAX;
   function send(e: FormEvent) {
     e.preventDefault();
@@ -153,27 +165,77 @@ function Propose({ notHeard }: { notHeard: boolean }) {
           ? copy["actEnd.propose.notHeard"]
           : copy["actEnd.propose.prompt"]}
       </p>
-      <form className="textinput" onSubmit={send}>
-        <input
-          aria-label={copy["actEnd.propose.prompt"]}
-          placeholder={copy["actEnd.propose.placeholder"]}
-          value={text}
-          onChange={(e) => {
-            setText(e.target.value);
-            set(clearNotHeard);
-          }}
-          enterKeyHint="send"
-          autoFocus
-        />
-        <button type="submit" disabled={!text.trim() || over}>
-          {copy["actEnd.propose.send"]}
-        </button>
-      </form>
+      <div className="ae-inputs">
+        {mic === "granted" && !degraded && <PlanKey />}
+        <form className="textinput" onSubmit={send}>
+          <input
+            aria-label={copy["actEnd.propose.prompt"]}
+            placeholder={copy["actEnd.propose.placeholder"]}
+            value={text}
+            onChange={(e) => {
+              setText(e.target.value);
+              set(clearNotHeard);
+            }}
+            enterKeyHint="send"
+            autoFocus
+          />
+          <button type="submit" disabled={!text.trim() || over}>
+            {copy["actEnd.propose.send"]}
+          </button>
+        </form>
+      </div>
       {over && <p className="error">{copy["text.limit"]}</p>}
       <button className="quiet" onClick={() => set(backToExits)}>
         {copy["actEnd.propose.back"]}
       </button>
     </div>
+  );
+}
+
+// hold to say the plan, let go to send (the talk key's rules; tap mode: two taps); Space or Enter from a keyboard
+function PlanKey() {
+  const hold = useVoice((s) => s.hold);
+  const tap = voiceSettings.tap;
+  function down(e: PointerEvent<HTMLButtonElement>) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    if (tap && useVoice.getState().hold) return play.actPlanRelease();
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // synthetic events
+    }
+    play.actPlanPress();
+  }
+  function up() {
+    if (!tap) play.actPlanRelease();
+  }
+  function key(e: KeyboardEvent<HTMLButtonElement>, isDown: boolean) {
+    if (e.key !== " " && e.key !== "Enter") return;
+    e.preventDefault();
+    if (isDown && !e.repeat) {
+      if (tap && useVoice.getState().hold) play.actPlanRelease();
+      else play.actPlanPress();
+    } else if (!isDown && !tap) play.actPlanRelease();
+  }
+  return (
+    <button
+      className="talk ae-talk"
+      data-testid="plan-talk"
+      aria-pressed={!!hold}
+      onPointerDown={down}
+      onPointerUp={up}
+      onPointerCancel={up}
+      onKeyDown={(e) => key(e, true)}
+      onKeyUp={(e) => key(e, false)}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      {hold
+        ? copy["talk.listening"]
+        : tap
+          ? copy["talk.tap"]
+          : copy["talk.hold"]}
+    </button>
   );
 }
 

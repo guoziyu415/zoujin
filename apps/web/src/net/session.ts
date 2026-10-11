@@ -212,6 +212,22 @@ export class Session {
     if (sent) useStory.setState({ actEnd: story.proposed(a, { clientMsgId }) });
   }
 
+  // the plan said aloud (ux-design 4.4): held like the talk key; on letting go the page waits for act_plan_result
+  // with this turn's id
+  actPlanPress(): void {
+    const a = useStory.getState().actEnd;
+    if (!a || a.phase.k !== "propose") return;
+    if (this.voice.planPress() && a.phase.notHeard)
+      useStory.setState({ actEnd: story.clearNotHeard(a) });
+  }
+
+  actPlanRelease(): void {
+    const turnId = this.voice.planRelease();
+    const a = useStory.getState().actEnd;
+    if (turnId && a && a.phase.k === "propose")
+      useStory.setState({ actEnd: story.proposed(a, { turnId }) });
+  }
+
   // shown the landing line of an arrival with an opener: the server lets the opener speak first
   actLanded(actId: string): void {
     this.live.send({ type: "act_landed", actId });

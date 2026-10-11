@@ -808,3 +808,32 @@ describe("fixed lines the server stages (api-contract 3.4, 3.14)", () => {
     );
   });
 });
+
+describe("the act end's spoken plan", () => {
+  it("no character: activity_start with purpose act_plan, the frames go at once, activity_end gives the turn's id", () => {
+    const { v, audio, wire } = setup({ ready: false });
+    usePlayer.setState({ focusCharacter: null });
+    expect(v.planPress()).toBe(true);
+    const start = wire.last("activity_start");
+    expect(start).toMatchObject({ purpose: "act_plan" });
+    expect(audio.sending).toBe(true);
+    for (let i = 0; i < 3; i++) audio.micFrame();
+    expect(wire.binary).toHaveLength(3); // no session_ready to wait for
+    tick(800);
+    expect(v.planRelease()).toBe(start.turnId);
+    expect(wire.last("activity_end")).toMatchObject({ turnId: start.turnId });
+    expect(audio.sending).toBe(false);
+    // nothing waits for a character's answer
+    tick(15_000);
+    expect(useVoice.getState().turn).toBeNull();
+  });
+
+  it("a slip under 250 ms is no try: retracted, no id", () => {
+    const { v, wire } = setup();
+    v.planPress();
+    const id = wire.last("activity_start").turnId;
+    tick(100);
+    expect(v.planRelease()).toBeNull();
+    expect(wire.last("turn_retract")).toMatchObject({ turnId: id });
+  });
+});
