@@ -22,8 +22,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from zoujin_backend import logs
 from zoujin_backend.config import Settings
-from zoujin_backend.gateway import rest, ws
-from zoujin_backend.gateway.core import Gateway, HttpNarrator, NarratorClient
+from zoujin_backend.gateway import rest, web, ws
+from zoujin_backend.gateway.core import Gateway, HttpNarrator, IdToken, NarratorClient
 from zoujin_backend.gateway.hub import Hub
 from zoujin_backend.manifest import generate
 from zoujin_backend.models.live import FakeLive
@@ -51,12 +51,17 @@ def build(settings: Settings, narrator: NarratorClient | None = None) -> Gateway
         library=library,
         schemas=schemas,
         live=FakeLive(settings.fake_voice, speed=settings.speed),
-        narrator=narrator or HttpNarrator(settings.narrator_url),
+        narrator=narrator or http_narrator(settings),
         manifest=manifest,
     )
     if settings.live == "real":  # pragma: no cover - 只在 Mac 上（B-10）
         real_live(gw, settings)
     return gw
+
+
+def http_narrator(settings: Settings) -> HttpNarrator:
+    token = IdToken(settings.narrator_url) if settings.narrator_auth == "iam" else None
+    return HttpNarrator(settings.narrator_url, token=token)
 
 
 def voices_of(book: str = "hashire-merosu") -> dict[str, str]:
@@ -110,6 +115,8 @@ def create_app(settings: Settings, gw: Gateway | None = None) -> FastAPI:
     app.state.hub = hub
     app.include_router(rest.router)
     app.add_api_websocket_route("/v1/playthroughs/{pid}/live", ws.endpoint)
+    if settings.web_dist is not None:  # 部署（B-23）：同源发前端和场景包，挂在最后，接住别的 GET
+        app.include_router(web.router(settings.web_dist))
 
     @app.exception_handler(rest.Fail)
     async def on_fail(request: Request, exc: rest.Fail) -> Response:
@@ -139,6 +146,8 @@ def create_app(settings: Settings, gw: Gateway | None = None) -> FastAPI:
         token = getattr(request.state, "slid_token", None)
         if token is not None and "set-cookie" not in resp.headers:
             rest.set_cookie(gw, resp, token)
+        if settings.web_dist is not None:  # 部署（B-23）：只给邀请的人，不让搜索引擎收
+            resp.headers.setdefault("X-Robots-Tag", "noindex, nofollow")
         return resp
 
     return app

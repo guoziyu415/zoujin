@@ -215,6 +215,8 @@ playthrough_metrics = Table(
     # B-14（0008）：进节约档的时刻；降级的原因（budget / daily / service，第一次降级的那个）
     _ts("budget_saving_at"),
     Column("degraded_reason", Text),
+    # B-21（0010）：候选话语的花费
+    Column("cost_suggest_usd", Numeric(12, 6), nullable=False, server_default="0"),
     # B-2（0002）：分流和改写的花费；流水线的计数（分流跳过、超时降级的轮，改写、降级、拒绝、因要确认而丢弃的候选）
     Column("cost_triage_usd", Numeric(12, 6), nullable=False, server_default="0"),
     Column("cost_rewrite_usd", Numeric(12, 6), nullable=False, server_default="0"),
@@ -274,7 +276,7 @@ playthrough_metrics = Table(
     Column("memories_filtered", Integer, nullable=False, server_default="0"),
     Column("memories_failed", Integer, nullable=False, server_default="0"),
     Column("memories_deleted", Integer, nullable=False, server_default="0"),
-    # B-15（0008，S-072 ⑤）：复核的花费；复核了几次（含第二次 ambiguous 的）、降成 ambiguous 的、
+    # B-15（0009，S-072 ⑤）：复核的花费；复核了几次（含第二次 ambiguous 的）、降成 ambiguous 的、
     # 复核失败保留 signal 的、护栏命中不复核的
     Column("cost_safety_review_usd", Numeric(12, 6), nullable=False, server_default="0"),
     Column("safety_reviews", Integer, nullable=False, server_default="0"),

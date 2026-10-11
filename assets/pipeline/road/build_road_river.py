@@ -33,6 +33,7 @@ M_THATCH = mat('thatch', tex_exists('thatch_base'), None, None, rough=0.95)
 M_BARK = mat('bark', tex_exists('bark_base'), tex_exists('wood_nrm'), None, rough=0.9)
 M_POPLAR = mat('poplar', tex_exists('poplar_base'), None, None, rough=0.8)
 M_WILLOW = mat('willow', tex_exists('willow_base'), None, None, rough=0.8)
+M_STRAND = mat('willowstrand', tex_exists('willowstrand_base'), None, None, rough=0.8)   # not baked (far)
 M_HOLM = mat('holmoak', tex_exists('holmoak_base'), None, None, rough=0.85)
 M_REED = mat('reed', tex_exists('reed_base'), None, None, rough=0.8)
 M_HILL = mat('hill', tex_exists('hill_base'), tex_exists('outcrop_nrm'), None, rough=0.95)
@@ -319,26 +320,153 @@ hut()
 
 # ---------------------------------------------------------------- trees, rocks, walls, reeds (homeward-road.md 1.1, 0.4)
 # white poplars: broad ragged crowns about 15 m up, a head above the holm oaks, trunks often leaning
-for i, (x, y) in enumerate(((-8, 7), (-9, 13), (-7, -17), (13, 5), (14.2, 11), (13, -17))):
+for i, (x, y) in enumerate(((-8, 7), (-9, 13), (-7, -17), (13, 5), (14.2, 11), (14.5, -21.5))):   # not behind the willow seen from road-west
     tree(f'poplar{i}', x, y, random.uniform(14, 16), 4.5, M_POPLAR, M_BARK, 'spread', z=terrain(x, y),
          lean=(random.uniform(-0.12, 0.12), random.uniform(-0.12, 0.12)))
-# the willow on the east bank, about 10 m, leaning out over the water, its roots bared by the river (swim-out, where
-# Melos gets hold of it in act 4)
-WX, WY = 12.3, -12.4
-tree('willow', WX, WY, 10.0, 3.6, M_WILLOW, M_BARK, 'weep', z=terrain(WX, WY), lean=(-0.55, 0.0))
-for i, a in enumerate((150, 185, 215, 250)):
-    r = math.radians(a)
-    ex, ey = WX + math.cos(r) * 1.6, WY + math.sin(r) * 1.3
-    rod(f'willow_root{i}', (WX, WY, terrain(WX, WY) + 0.25), (ex, ey, terrain(ex, ey) - 0.15), 0.09, M_BARK, caster=True)
+# the willow on the east bank (swim-out: beat.18, Melos gets hold of its trunk in the flood): about 10 m, one trunk
+# leaning about 30° out over the water from its roots and a little downstream, so from road-west it is seen side-on;
+# the crown hangs over the river, its roots bared by the water (UX on #103, a713399)
+WX, WY = 11.8, -11.6
+WLEAN = Vector((-0.6, -0.8, 0.0)).normalized()
+def willow():
+    import bmesh
+    z0 = terrain(WX, WY)
+    def along(p, ang, length):   # from p, length metres at ang degrees from the vertical, towards WLEAN
+        a = math.radians(ang)
+        return p + WLEAN * math.sin(a) * length + Vector((0, 0, math.cos(a) * length))
+    p0 = Vector((WX, WY, z0 - 0.3))
+    p1 = along(p0, 28, 3.6)
+    p2 = along(p1, 38, 3.0)
+    rod('willow_trunk', p0, p1, 0.3, M_BARK, caster=True)
+    rod('willow_trunk2', p1 - WLEAN * 0.05, p2, 0.24, M_BARK, caster=True)
+    side = Vector((-WLEAN.y, WLEAN.x, 0))
+    tips = []
+    for i, (s_, out, up) in enumerate(((-1.0, 1.4, 1.6), (0.0, 2.2, 1.2), (1.0, 1.5, 1.7), (0.4, -0.6, 2.0))):
+        t = p2 + side * s_ * 1.6 + WLEAN * out + Vector((0, 0, up))
+        rod(f'willow_limb{i}', p2, t, 0.11, M_BARK, caster=True)
+        tips.append(t)
+    # the crown: drooping blobs round the limb tips, their lower halves pulled down into a curtain over the water
+    bm = bmesh.new()
+    rr = random.Random(11)
+    crowns = []
+    for i, c in enumerate(tips + [p2 + Vector((0, 0, 1.4)) + WLEAN * 0.6]):
+        rad = rr.uniform(1.3, 1.7)
+        crowns.append((c.copy(), rad, 1.25))
+        g = bmesh.ops.create_icosphere(bm, subdivisions=2, radius=rad)
+        for v in g['verts']:
+            n = noise.noise(v.co * 1.7 + Vector((WX, WY, i))) * 0.3
+            v.co = Vector((c.x + v.co.x * (1 + n), c.y + v.co.y * (1 + n), c.z + v.co.z * 1.25 * (1 + n)))
+    top = p2.z + 1.0
+    for v in bm.verts:
+        if v.co.z < top:
+            d = Vector((v.co.x - p2.x, v.co.y - p2.y, 0))
+            v.co += d * 0.12 + Vector((0, 0, -(top - v.co.z) * 0.55))
+    for f in bm.faces:
+        f.smooth = True
+    bm.normal_update()
+    bl.box_uv_bm(bm, 1.6)
+    bl.obj_from_bm('willow_leaves', bm, [M_WILLOW], 'arch', True)
+    bl.leaf_cards('willow_cards', crowns, 14, 1.0, M_WILLOW, 'far', random.Random(12), droop=True)
+    # hanging strands below the crown (not baked like the reeds): the willow's falling branches, cards 0.3 m wide of
+    # the alpha-tested strand texture (twigs with narrow leaves; the page draws both sides), facing out of the crown,
+    # down to about a metre over the flood
+    bm = bmesh.new()
+    uvl = bm.loops.layers.uv.new('UVMap')
+    for k in range(80):
+        c = tips[k % len(tips)]
+        a = rr.uniform(0, 2 * math.pi); d = rr.uniform(0.6, 2.2)
+        x, y = c.x + math.cos(a) * d, c.y + math.sin(a) * d
+        zt = c.z - rr.uniform(0.4, 1.0)
+        zb = max(WATER + 0.9, zt - rr.uniform(2.0, 3.6))
+        b = a + math.pi / 2 + rr.uniform(-0.5, 0.5)
+        dx, dy = math.cos(b) * 0.15, math.sin(b) * 0.15
+        sw = Vector((rr.uniform(-0.15, 0.15), rr.uniform(-0.15, 0.15), 0))
+        vs = [bm.verts.new(Vector((x - dx, y - dy, zb)) + sw), bm.verts.new(Vector((x + dx, y + dy, zb)) + sw),
+              bm.verts.new((x + dx, y + dy, zt)), bm.verts.new((x - dx, y - dy, zt))]
+        f = bm.faces.new(vs)
+        for l, uv in zip(f.loops, ((0, 0), (1, 0), (1, 1), (0, 1))):   # the texture's top (the twig's start) up
+            l[uvl].uv = uv
+    bm.normal_update()
+    bl.obj_from_bm('willow_strands', bm, [M_STRAND], 'far')
+    # the roots the river has bared: out of the foot of the trunk, arching over the bank edge into the water
+    for i, a in enumerate((-75, -40, -12, 15, 45, 80)):
+        r = math.atan2(WLEAN.y, WLEAN.x) + math.radians(a)
+        L = 1.3 + 0.5 * math.cos(math.radians(a))
+        ex, ey = WX + math.cos(r) * L, WY + math.sin(r) * L
+        mid = Vector(((WX + ex) / 2, (WY + ey) / 2, max(terrain(WX, WY), terrain(ex, ey)) + 0.18))
+        rod(f'willow_root{i}a', (WX, WY, z0 + 0.35), mid, 0.11, M_BARK, caster=True)
+        rod(f'willow_root{i}b', mid, (ex, ey, terrain(ex, ey) - 0.2), 0.08, M_BARK, caster=True)
+willow()
 for i, (x, y) in enumerate(((28, 12), (-30, 9), (31, -10))):
     tree(f'holmoak{i}', x, y, random.uniform(6, 8), 2.6, M_HOLM, M_BARK, 'round', z=terrain(x, y))
 for i, (x, y, r) in enumerate(((-9.5, -5.5, 1.3), (14.5, -8.0, 1.6), (-13.5, 9.5, 1.1), (16.5, 13.0, 1.8),
                                (-6.2, -14.5, 0.9), (12.0, 17.5, 1.2))):
     rock(f'outcrop{i}', x, y, terrain(x, y) - 0.25 * r, r, M_ROCK, squash=0.55, seed=i)
-# dry-stone walls along the road, off the landings (nothing but road and low grass 9 m behind them)
+# the upstream shallows (aff.river-shallows, 「流れの緩い浅瀬を探す」): four big round boulders on the pebble bar in a
+# line slanting across the river (from the east bank upstream to the west: seen broadside from the bridgehead), their tops 0.2〜0.4 m over the flood (UX on #103, a713399); in act 2 they stand on
+# the bar. Each is stretched from 0.3 m into the bed up to its top
+for i, (x, y, top, r) in enumerate(((7.2, 10.6, 0.05, 0.95), (5.9, 11.8, 0.12, 1.05), (4.6, 13.0, -0.02, 0.9),
+                                    (3.3, 14.2, 0.1, 1.0))):
+    o = rock(f'boulder{i}', x, y, 0.0, r, M_ROCK, squash=1.0, seed=20 + i)
+    zs = [v.co.z for v in o.data.vertices]
+    lo, hi, bed = min(zs), max(zs), terrain(x, y) - 0.3
+    for v in o.data.vertices:
+        v.co.z = bed + (v.co.z - lo) / (hi - lo) * (top - bed)
+def flood_bar():
+    """act 4: in the lee of the boulders the flood has thrown up a gravel spit, its crown a little over the water, and
+    stones lie round it and the boulders, some just awash (UX round 2 ⑥: the shallows must read as shallows). Their feet
+    end under the opaque water, not on the bed far below"""
+    rr = random.Random(31)
+    for i, (x, y, rx, ry, top) in enumerate(((5.9, 9.2, 1.5, 3.4, 0.16), (3.0, 12.2, 1.0, 2.0, 0.09))):
+        o = rock(f'gravelbar{i}', x, y, 0.0, 1.0, M_PEBBLE, squash=0.5, seed=40 + i, caster=False)
+        zs = [v.co.z for v in o.data.vertices]
+        lo, hi = min(zs), max(zs)
+        for v in o.data.vertices:
+            v.co.x = x + (v.co.x - x) * rx
+            v.co.y = y + (v.co.y - y) * ry / 0.8
+            v.co.z = -0.7 + (v.co.z - lo) / (hi - lo) * (top + 0.7)
+    for i in range(12):
+        a = rr.uniform(0, 2 * math.pi)
+        cx, cy = (5.9, 9.4) if i < 7 else (5.2, 12.4)
+        d = rr.uniform(1.0, 2.6)
+        x, y = cx + math.cos(a) * d * 0.7, cy + math.sin(a) * d
+        r = rr.uniform(0.18, 0.4)
+        top = rr.uniform(-0.04, 0.18)
+        o = rock(f'stone{i}', x, y, 0.0, r, M_ROCK, squash=0.7, seed=60 + i, caster=False, subdiv=1)   # small: coarse
+        zs = [v.co.z for v in o.data.vertices]
+        lo, hi = min(zs), max(zs)
+        for v in o.data.vertices:
+            v.co.z = -0.7 + (v.co.z - lo) / (hi - lo) * (top + 0.7)
+if FLOOD:
+    flood_bar()
+# dry-stone walls along the road, off the landings (nothing but road and low grass 9 m behind them): two courses of
+# rough stones, each its own lump, the top ragged (UX round 3 ⑦: a box read as a concrete beam)
+def drystone(name, x0, x1, y, seed):
+    rr = random.Random(seed)
+    for c, (zc, hc) in enumerate(((0.2, 0.42), (0.58, 0.34))):
+        x = x0 + (0.0 if c == 0 else rr.uniform(0.2, 0.4))
+        k = 0
+        while x < x1 - 0.2:
+            L = min(rr.uniform(0.5, 0.85), x1 - x)
+            g = terrain(x + L / 2, y)
+            o = rock(f'{name}_{c}_{k}', x + L / 2, y + rr.uniform(-0.05, 0.05), 0.0, 1.0, M_ROCK, squash=1.0,
+                     seed=seed * 10 + c * 50 + k, subdiv=1)
+            zs = [v.co.z for v in o.data.vertices]
+            xs = [v.co.x for v in o.data.vertices]
+            ys = [v.co.y for v in o.data.vertices]
+            lo, hi = min(zs), max(zs)
+            top = g + zc + hc * rr.uniform(0.75, 1.1) - (0.1 if c == 0 else 0.0)
+            for v in o.data.vertices:
+                v.co.x = x + L / 2 + (v.co.x - (min(xs) + max(xs)) / 2) / (max(xs) - min(xs)) * L * 1.08
+                v.co.y = y + (v.co.y - (min(ys) + max(ys)) / 2) / (max(ys) - min(ys)) * rr.uniform(0.5, 0.62)
+                v.co.z = g - 0.25 + (v.co.z - lo) / (hi - lo) * (top - g + 0.25) if c == 0 else \
+                    g + zc - 0.2 + (v.co.z - lo) / (hi - lo) * (top - g - zc + 0.2)
+            for f in o.data.polygons:   # coarse, so smooth: faceted they read as crystals
+                f.use_smooth = True
+            x += L * rr.uniform(0.92, 1.0)
+            k += 1
 for i, (x0, x1, y) in enumerate(((-14.5, -8.5, -3.6), (-13.5, -9.0, 3.8), (13.0, 15.8, 3.6))):   # far-bank stands south of the east road
-    z = min(terrain(x0, y), terrain(x1, y)) - 0.2
-    box(f'wall{i}', x0, x1, y - 0.3, y + 0.3, z, terrain((x0 + x1) / 2, y) + 0.8, M_ROCK, tile=1.6, caster=True)
+    drystone(f'wall{i}', x0, x1, y, 70 + i)
 
 def reeds():
     """act 2 only: reed clumps on the west beach, crossed pairs of thin cards (far group: not baked)"""
@@ -382,6 +510,8 @@ def rain_clouds():
             low = 0.7 * far_height(x, y) + 4 * k
             # rounded billows (two slow swells and a little noise), not a saw-tooth that reads as more mountains
             top = low + 45 + 14 * math.sin(i * 0.3 + 1.7 * k) + 6 * math.sin(i * 0.7 + k) + 2 * rr.random()
+            # both ends taper down onto the slopes (UX: no vertical cut at 55°)
+            top = low + (top - low) * ss(i, 0, 12) * ss(48 - i, 0, 12)
             pts.append((x, y, low, top))
         for (x0, y0, b0, t0), (x1, y1, b1, t1) in zip(pts, pts[1:]):
             vs = [bm.verts.new((x1, y1, b1)), bm.verts.new((x0, y0, b0)), bm.verts.new((x0, y0, t0)), bm.verts.new((x1, y1, t1))]

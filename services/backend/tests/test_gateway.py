@@ -276,6 +276,8 @@ def player(env: Env, services: Services) -> Iterator[Player]:
 def types_for(p: Player, turn_id: str, start: int) -> list[str]:
     out: list[str] = []
     for m in p.log[start:]:
+        if m["type"] == "suggestions":  # 候选话语（B-21）什么时候到不定，test_gateway_b21 另测
+            continue
         if m["type"] == "#audio" or m.get("turnId") == turn_id:
             label = m["type"]
             if m["type"] == "transcript":
