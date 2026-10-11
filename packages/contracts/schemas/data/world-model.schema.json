@@ -1182,6 +1182,10 @@
               "type": "string",
               "description": "（1.1）模板，含 {day} 和 {band}"
             },
+            "daysKnownBy": {
+              "$ref": "common.schema.json#/$defs/FactId",
+              "description": "（1.9）日名（days）带着情节时，要知道哪条事实才说日名。不知道这条事实的人物，给他的时间只写时段（band），如「夜」；界面、tLabel、記憶帳、地の文照旧用完整说法（S-086）。不写 = 谁都给完整说法"
+            },
             "inferred": {
               "const": true
             },

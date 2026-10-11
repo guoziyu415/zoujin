@@ -71,7 +71,7 @@
     },
     {
      "fact": "fact.six-killed-today",
-     "statement": "この日（Day 0）、六人が殺された。"
+     "statement": "王の命令で、一日のうちに六人が殺された。"
     },
     {
      "fact": "fact.melos-dagger",
@@ -133,7 +133,7 @@
     },
     {
      "fact": "fact.melos-suspects-king",
-     "statement": "メロスは山賊を王の差し金だと考えた（原文では真偽不明。語り手は断定しない）。",
+     "statement": "メロスは山賊を王の差し金だと考えた。",
      "since": "beat.19"
     },
     {
@@ -225,7 +225,7 @@
     },
     {
      "fact": "fact.six-killed-today",
-     "statement": "この日（Day 0）、六人が殺された。"
+     "statement": "王の命令で、一日のうちに六人が殺された。"
     },
     {
      "fact": "fact.melos-dagger",
@@ -282,7 +282,7 @@
     },
     {
      "fact": "fact.melos-suspects-king",
-     "statement": "メロスは山賊を王の差し金だと考えた（原文では真偽不明。語り手は断定しない）。",
+     "statement": "メロスは山賊を王の差し金だと考えた。",
      "since": "beat.19"
     },
     {
@@ -374,7 +374,7 @@
     },
     {
      "fact": "fact.six-killed-today",
-     "statement": "この日（Day 0）、六人が殺された。"
+     "statement": "王の命令で、一日のうちに六人が殺された。"
     },
     {
      "fact": "fact.melos-dagger",
@@ -431,7 +431,7 @@
     },
     {
      "fact": "fact.melos-suspects-king",
-     "statement": "メロスは山賊を王の差し金だと考えた（原文では真偽不明。語り手は断定しない）。",
+     "statement": "メロスは山賊を王の差し金だと考えた。",
      "since": "beat.19"
     },
     {
@@ -523,7 +523,7 @@
     },
     {
      "fact": "fact.six-killed-today",
-     "statement": "この日（Day 0）、六人が殺された。"
+     "statement": "王の命令で、一日のうちに六人が殺された。"
     },
     {
      "fact": "fact.melos-dagger",
@@ -575,7 +575,7 @@
     },
     {
      "fact": "fact.melos-suspects-king",
-     "statement": "メロスは山賊を王の差し金だと考えた（原文では真偽不明。語り手は断定しない）。"
+     "statement": "メロスは山賊を王の差し金だと考えた。"
     },
     {
      "fact": "fact.melos-despair",
@@ -636,7 +636,7 @@
     },
     {
      "fact": "fact.six-killed-today",
-     "statement": "この日（Day 0）、六人が殺された。"
+     "statement": "王の命令で、一日のうちに六人が殺された。"
     }
    ],
    "notYet": [
@@ -718,7 +718,7 @@
     },
     {
      "fact": "fact.six-killed-today",
-     "statement": "この日（Day 0）、六人が殺された。"
+     "statement": "王の命令で、一日のうちに六人が殺された。"
     },
     {
      "fact": "fact.melos-dagger",
@@ -793,7 +793,7 @@
     },
     {
      "fact": "fact.six-killed-today",
-     "statement": "この日（Day 0）、六人が殺された。"
+     "statement": "王の命令で、一日のうちに六人が殺された。"
     },
     {
      "fact": "fact.melos-dagger",
@@ -868,7 +868,7 @@
     },
     {
      "fact": "fact.six-killed-today",
-     "statement": "この日（Day 0）、六人が殺された。"
+     "statement": "王の命令で、一日のうちに六人が殺された。"
     },
     {
      "fact": "fact.melos-dagger",
@@ -943,7 +943,7 @@
     },
     {
      "fact": "fact.six-killed-today",
-     "statement": "この日（Day 0）、六人が殺された。"
+     "statement": "王の命令で、一日のうちに六人が殺された。"
     },
     {
      "fact": "fact.melos-dagger",
@@ -1286,7 +1286,7 @@
      "兄を心配する"
     ],
     "goals": [
-     "結婚する（推定：原文に本人の言葉はない）",
+     "結婚する",
      "婚礼は近いが、日取りはまだ決まっていない"
     ]
    },
@@ -1681,7 +1681,7 @@
      "人目をはばかり、怯えている"
     ],
     "goals": [
-     "目をつけられずに生き延びる（推定）"
+     "目をつけられずに生き延びる"
     ]
    },
    "knows": [
@@ -1699,7 +1699,7 @@
     },
     {
      "fact": "fact.six-killed-today",
-     "statement": "この日（Day 0）、六人が殺された。"
+     "statement": "王の命令で、一日のうちに六人が殺された。"
     },
     {
      "fact": "fact.city-silent",
@@ -1721,7 +1721,7 @@
      "人目をはばかり、怯えている"
     ],
     "goals": [
-     "目をつけられずに生き延びる（推定）"
+     "目をつけられずに生き延びる"
     ]
    },
    "knows": [
@@ -1739,7 +1739,7 @@
     },
     {
      "fact": "fact.six-killed-today",
-     "statement": "この日（Day 0）、六人が殺された。"
+     "statement": "王の命令で、一日のうちに六人が殺された。"
     },
     {
      "fact": "fact.city-silent",
@@ -1761,7 +1761,7 @@
      "人目をはばかり、怯えている"
     ],
     "goals": [
-     "目をつけられずに生き延びる（推定）"
+     "目をつけられずに生き延びる"
     ]
    },
    "knows": [
@@ -1779,7 +1779,7 @@
     },
     {
      "fact": "fact.six-killed-today",
-     "statement": "この日（Day 0）、六人が殺された。"
+     "statement": "王の命令で、一日のうちに六人が殺された。"
     },
     {
      "fact": "fact.city-silent",

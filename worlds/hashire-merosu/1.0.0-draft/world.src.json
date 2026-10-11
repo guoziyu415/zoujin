@@ -1,5 +1,5 @@
 {
- "schemaVersion": "1.8",
+ "schemaVersion": "1.9",
  "worldModelVersion": "hashire-merosu@1.0.0-draft.3",
  "_authoring": "出典は {\"q\": 原文の逐字引用, \"p\": 段落番号（省略可）} で書く。spikes/pipeline/build_world.py が段落を特定・検証して world.json を出力する。",
  "book": {
@@ -149,6 +149,7 @@
     ]
    ],
    "format": "{day}・{band}",
+   "daysKnownBy": "fact.promise",
    "inferred": true,
    "note": "UX ux-design 4.2 の表（S-037）。日没前 = 日没の 1 時間前から、日没 = 日没から 29 分まで（sunsetMinuteOfDay=1140 前提）。文言は UX、境目は数据が維持",
    "cite": [
@@ -1292,7 +1293,7 @@
    ],
    "goals": [
     {
-     "text": "結婚する（推定：原文に本人の言葉はない）",
+     "text": "結婚する",
      "cite": [
       {
        "q": "花婿として迎える事になっていた。"
@@ -1311,7 +1312,7 @@
     }
    ],
    "speech": {
-    "register": "原文に台詞なし。控えめで丁寧な話し方として設計（推定）。",
+    "register": "控えめで丁寧な話し方。",
     "sampleLines": []
    },
    "knows": [
@@ -1448,7 +1449,7 @@
     }
    ],
    "speech": {
-    "register": "原文は間接話法のみ。実直で慎重な話し方として設計（推定）。",
+    "register": "実直で慎重な話し方。",
     "sampleLines": [
      {
       "q": "こちらには未だ何の仕度も出来ていない"
@@ -1598,7 +1599,6 @@
     }
    ],
    "speech": {
-    "firstPerson": "（原文なし）",
     "register": "丁寧（〜でございます、〜居りました）。取り乱しやすい。",
     "sampleLines": [
      {
@@ -1730,7 +1730,7 @@
    ],
    "goals": [
     {
-     "text": "目をつけられずに生き延びる（推定）",
+     "text": "目をつけられずに生き延びる",
      "cite": [
       {
        "q": "老爺は答えなかった。"
@@ -1877,7 +1877,7 @@
    ],
    "goals": [
     {
-     "text": "関わり合いを避ける（推定）",
+     "text": "関わり合いを避ける",
      "cite": [
       {
        "q": "若い衆は、首を振って答えなかった。"
@@ -1886,7 +1886,7 @@
     }
    ],
    "speech": {
-    "register": "原文に台詞なし（推定）。",
+    "register": "口が重く、ぶっきらぼうな話し方。",
     "sampleLines": []
    },
    "knows": [
@@ -1927,7 +1927,7 @@
    ],
    "goals": [
     {
-     "text": "命令を遂行する（推定）",
+     "text": "命令を遂行する",
      "cite": [
       {
        "q": "私だ、刑吏！"
@@ -1936,7 +1936,7 @@
     }
    ],
    "speech": {
-    "register": "原文に台詞なし（推定）。",
+    "register": "役人らしく、短く命令口調の話し方。",
     "sampleLines": []
    },
    "knows": [
@@ -2102,7 +2102,7 @@
    ],
    "goals": [],
    "speech": {
-    "register": "原文に台詞なし（推定）。",
+    "register": "素朴で、言葉少なな話し方。",
     "sampleLines": []
    },
    "knows": [],
@@ -2543,7 +2543,7 @@
   },
   {
    "id": "fact.six-killed-today",
-   "statement": "この日（Day 0）、六人が殺された。",
+   "statement": "王の命令で、一日のうちに六人が殺された。",
    "trueFrom": "pre",
    "visibility": "private",
    "cite": [
@@ -2779,7 +2779,7 @@
   },
   {
    "id": "fact.melos-suspects-king",
-   "statement": "メロスは山賊を王の差し金だと考えた（原文では真偽不明。語り手は断定しない）。",
+   "statement": "メロスは山賊を王の差し金だと考えた。",
    "trueFrom": "beat.19",
    "visibility": "private",
    "cite": [
@@ -4044,7 +4044,7 @@
    "id": "beat.s2",
    "order": 20.5,
    "title": "ちらと友を疑う",
-   "summary": "三日目の午後、日が傾いてもメロスは戻らない。城で縄を打たれたセリヌンティウスは、生れてはじめて、ちらと友を疑う（時刻は推定。原作では刑場で本人が打ち明けるだけ）。",
+   "summary": "三日目の午後、日が傾いてもメロスは戻らない。城で縄を打たれたセリヌンティウスは、生れてはじめて、ちらと友を疑う。",
    "window": {
     "earliest": 5160,
     "latest": 5390,
