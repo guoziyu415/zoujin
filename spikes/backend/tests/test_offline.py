@@ -589,6 +589,14 @@ class Offline(unittest.TestCase):
         self.assertIn("やはりメロスは戻ったか", grade)
         self.assertIn("you made it in time", grade)
         self.assertIn("親方も一度はメロス様を疑われたはず", system)
+        # 数据 on #159: facts that are someone's mind, the specific content of an unknown fact, and a FUTURE event said to
+        # have happened stay overreach.
+        self.assertIn("Some facts on that list are themselves someone's", grade)
+        self.assertIn("The specific content of a fact", grade)
+        self.assertIn("yesterday's wedding", grade)
+        self.assertIn("竹馬の友", system)
+        self.assertIn("婚礼の前夜に", system)
+        self.assertIn("王は身代りを殺して見せしめにするおつもりだ", system)
 
         # A run the old way: every reply knowledge overreach.
         client = FakeClient()
