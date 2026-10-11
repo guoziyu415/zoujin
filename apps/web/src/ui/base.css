@@ -1327,24 +1327,48 @@ li {
   text-wrap: pretty;
   word-break: auto-phrase;
 }
-/* the act end's input: the talk key beside the keyboard (ux-design 4.4) */
+/* the act end's input (ux-design 4.4): on a phone the field takes the whole line, the talk key and 伝える under it,
+   left and right; wider, the three side by side. The form's children join the grid */
 .ae-inputs {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas:
+    "field field field"
+    "key . send";
   gap: 8px;
   align-items: center;
 }
 .ae-inputs .textinput {
-  flex: 1;
+  display: contents;
+}
+.ae-inputs .textinput input {
+  grid-area: field;
   min-width: 0;
 }
+.ae-inputs .textinput button,
 .ae-talk {
   min-height: 44px;
-  padding: 0 14px;
+  padding: 0 18px;
   border-radius: 22px;
   white-space: nowrap;
   color: var(--ink);
   background: transparent;
   border: 1px solid var(--ink);
+}
+.ae-inputs .textinput button {
+  grid-area: send;
+}
+.ae-inputs .textinput button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+@media (min-width: 600px) {
+  .ae-inputs {
+    grid-template-areas: "key field send";
+  }
+}
+.ae-talk {
+  grid-area: key;
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
@@ -1354,4 +1378,11 @@ li {
 .ae-talk[aria-pressed="true"] {
   color: var(--paper);
   background: var(--ink);
+}
+/* the plan as heard: grey while it is still coming (as the subtitles' partial line) */
+.ae-heard {
+  color: var(--ink);
+}
+.ae-heard.partial {
+  color: var(--ink-2);
 }

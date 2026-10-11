@@ -60,6 +60,8 @@ type VoiceStore = {
   paused: boolean; // the safety card (frontend-design 12)
   hint: boolean; // the quiet safety note (12, ux-design 14.2)
   helpline: "hint" | null; // the helpline panel, opened from the note
+  // the act end's spoken plan as the server hears it (ux-design 4.4): live while held, kept until the result
+  planWords: { turnId: string; text: string; final: boolean } | null;
 };
 
 export const NARRATION_KEEP = 3;
@@ -84,6 +86,7 @@ export const initialVoice = (): VoiceStore => ({
   paused: false,
   hint: false,
   helpline: null,
+  planWords: null,
 });
 
 export const useVoice = create<VoiceStore>()(initialVoice);

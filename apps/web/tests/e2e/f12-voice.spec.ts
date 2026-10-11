@@ -66,8 +66,14 @@ test("act end: the plan said aloud goes with its turn's id; the result answers i
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
   await expect(key).toHaveAttribute("aria-pressed", "true");
-  await page.waitForTimeout(800);
+  // the words as they are heard, under 「どうしますか。」
+  await expect(ae.getByText("夜明けを待って、", { exact: true })).toBeVisible();
+  await shot(page, "act-end-plan-heard");
   await page.mouse.up();
+  // let go: fixed in 「」 and kept above the answer, to compare
+  await expect(
+    ae.getByText("「夜明けを待って、村へ向かいたい。」"),
+  ).toBeVisible();
   await expect(
     ae.getByText("メロスの姿は、もう夜の向こうに消えていた。"),
   ).toBeVisible();

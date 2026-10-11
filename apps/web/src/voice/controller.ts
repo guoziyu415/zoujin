@@ -74,6 +74,7 @@ export class VoiceController {
   private recs = new Map<string, Rec>();
   private holding: Rec | null = null;
   private planHold: { id: string; seq: number; pressAt: number } | null = null; // the act end's spoken plan being held (see planPress)
+  private planTurn: string | null = null; // the last spoken plan sent: its transcript shows on the page
   private heldBack: (ArrayBuffer | Api.ClientMessage)[] = []; // after activity_start, before session_ready
   private heldBackMs = 0;
   private outbox: Rec[] = []; // typed while the socket was down
@@ -378,7 +379,12 @@ export class VoiceController {
     const seq = this.nextSeq();
     const id = newTurnId();
     this.planHold = { id, seq, pressAt: performance.now() };
-    useVoice.setState({ hold: { slide: false, preparing: false }, note: null });
+    this.planTurn = id;
+    useVoice.setState({
+      hold: { slide: false, preparing: false },
+      note: null,
+      planWords: null,
+    });
     this.wire.send({
       type: "activity_start",
       turnId: id,
@@ -404,6 +410,8 @@ export class VoiceController {
     if (!h) return null;
     if (!voiceSettings.tap && performance.now() - h.pressAt < TOO_SHORT_MS) {
       this.wire.send({ type: "turn_retract", turnId: h.id });
+      this.planTurn = null;
+      useVoice.setState({ planWords: null });
       return null;
     }
     this.wire.send({ type: "activity_end", turnId: h.id, turnSeq: h.seq });
@@ -1047,6 +1055,16 @@ export class VoiceController {
   }
 
   private transcript(t: Api.TranscriptMessage): void {
+    if (t.turnId === this.planTurn) {
+      // the plan's words: shown under 「どうしますか。」, not in the subtitles; an empty one shows nothing
+      if (t.speaker === "player")
+        useVoice.setState({
+          planWords: t.text
+            ? { turnId: t.turnId, text: t.text, final: t.final }
+            : null,
+        });
+      return;
+    }
     const r = this.recs.get(t.turnId);
     const current = this.cur === r && !!r;
     if (t.speaker === "player") {

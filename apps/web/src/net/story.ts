@@ -16,6 +16,7 @@ export type ActEndPhase =
       accepted: boolean;
       narration: string[];
       alternative: Api.PlanAlternative | null;
+      turnId?: string; // said aloud: its words stay above the answer (4.4)
     }
   | { k: "chosen"; optionId: string }; // act_choose sent; the page waits for act_transition
 
@@ -100,6 +101,7 @@ export function planResult(
       accepted: r.accepted,
       narration: r.narration,
       alternative: r.accepted ? null : (r.alternative ?? null),
+      ...(r.turnId ? { turnId: r.turnId } : {}),
     },
   };
 }

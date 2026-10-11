@@ -73,7 +73,13 @@ export function ActEndPage() {
         {phase.k === "choose" && <Exits a={a} />}
         {phase.k === "chosen" && <Exits a={a} />}
         {phase.k === "propose" && <Propose notHeard={phase.notHeard} />}
+        {phase.k === "thinking" && phase.turnId && (
+          <PlanWords turnId={phase.turnId} />
+        )}
         {phase.k === "thinking" && <Thinking />}
+        {phase.k === "result" && phase.turnId && !phase.accepted && (
+          <PlanWords turnId={phase.turnId} />
+        )}
         {phase.k === "result" && <Result phase={phase} />}
         <Recap lines={end.recapLines} />
       </div>
@@ -152,6 +158,7 @@ function Propose({ notHeard }: { notHeard: boolean }) {
   // the talk key beside the keyboard when the voice can be used (4.4); else the text field alone
   const mic = useVoice((s) => s.mic);
   const degraded = useVoice((s) => s.degraded);
+  const hold = useVoice((s) => s.hold);
   const over = [...text].length > TEXT_MAX;
   function send(e: FormEvent) {
     e.preventDefault();
@@ -165,6 +172,7 @@ function Propose({ notHeard }: { notHeard: boolean }) {
           ? copy["actEnd.propose.notHeard"]
           : copy["actEnd.propose.prompt"]}
       </p>
+      {hold && <PlanWords />}
       <div className="ae-inputs">
         {mic === "granted" && !degraded && <PlanKey />}
         <form className="textinput" onSubmit={send}>
@@ -236,6 +244,19 @@ function PlanKey() {
           ? copy["talk.tap"]
           : copy["talk.hold"]}
     </button>
+  );
+}
+
+// the spoken plan as heard (4.4): live in grey while held, then fixed in 「」 until the answer (a refused one keeps it
+// above the reason, to compare)
+function PlanWords({ turnId }: { turnId?: string }) {
+  const w = useVoice((s) => s.planWords);
+  if (!w || (turnId && w.turnId !== turnId)) return null;
+  // while held (no turnId to match yet): as it comes; once let go: fixed, in 「」 (the final words replace it)
+  return turnId ? (
+    <p className="ae-heard">「{w.text}」</p>
+  ) : (
+    <p className="ae-heard partial">{w.text}</p>
   );
 }
 
