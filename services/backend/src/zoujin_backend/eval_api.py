@@ -49,11 +49,21 @@ from sqlalchemy.pool import NullPool
 from zoujin_llm import mark_playthrough, playthrough
 from zoujin_worldsim import Opened, SimState, initial_state, opening, parse_checkpoint, world_state
 
+from zoujin_backend import memory_delete
 from zoujin_backend.config import Settings
 from zoujin_backend.db import store
 from zoujin_backend.db.events import recorded_at, to_row
 from zoujin_backend.db.store import Run
-from zoujin_backend.db.tables import endings, playthrough_metrics, playthroughs, users, utterances
+from zoujin_backend.db.tables import (
+    PER_PLAYTHROUGH,
+    endings,
+    memory_items,
+    metadata,
+    playthrough_metrics,
+    playthroughs,
+    users,
+    utterances,
+)
 from zoujin_backend.db.tables import events as events_t
 from zoujin_backend.db.tables import turns as turns_t
 from zoujin_backend.db.tables import world_state as world_state_t
@@ -62,7 +72,7 @@ from zoujin_backend.ids import IdGen
 from zoujin_backend.manifest import Manifest, generate
 from zoujin_backend.models.armor import Armor, armor
 from zoujin_backend.models.text import BudgetStop, RateLimited, ReplayMissing, TextModel, text_model
-from zoujin_backend.narrator import acts, ending
+from zoujin_backend.narrator import acts, ending, memory
 from zoujin_backend.narrator.core import Narrator, Result
 from zoujin_backend.narrator.pipeline import CallFailed, Pipeline, Spend, TurnInput
 from zoujin_backend.narrator.writer import Writer, act_closed
@@ -130,8 +140,6 @@ def setup(setup: Mapping[str, Json], *, mode: str = "text") -> Session:
         mixed = [k for k in NOT_WITH_PERSONA if k in setup]
         if mixed:
             raise ValueError(f"persona 不和 {'、'.join(mixed)} 一起给：模拟局从正式开局玩起")
-    if any("memory" in e for e in setup.get("events", [])):
-        raise EvalNotImplemented("memory")
     settings = Settings.from_env()
     library = _library(settings.worlds, settings.scenes, settings.world)  # ZJ_WORLD 每次 setup() 都读
     book = library.book(setup.get("book", BOOK))
@@ -163,6 +171,8 @@ class Session:
         self.tracer = Tracer()
         self.span: dict[str, Any] = {}  # 运行器给这一步的 Span 加的属性（例：S-2 的 trace_id）
         self.pid = ""
+        self.user_id = ""
+        self.deleted: str | None = None  # B-13：delete_playthrough 删掉的那一局（db_absent 查它）
         self.steps = 0
         self.turns: dict[int, str] = {}  # 第几步 → 那一轮的 turnId（say；retract、utterance_cleared 用）
         self.held: tuple[int, str] | None = None  # say(hold=True) 还没提交的那一步
@@ -193,6 +203,7 @@ class Session:
             ids=self.ids,
             tracer=self.tracer,
             deadlines=self.settings.deadlines,
+            armor=self.armor,
         )
 
     @property
@@ -211,8 +222,7 @@ class Session:
         engine = self._engine()
         try:
             async with engine.begin() as c:
-                user_id = self.ids.new("usr")
-                await c.execute(insert(users).values(user_id=user_id))
+                user_id = await self._user(c)
                 self.pid = self.ids.new("pt")
                 await c.execute(
                     insert(playthroughs).values(
@@ -235,6 +245,7 @@ class Session:
                     now=recorded_at(),
                 )
                 play_setup(w, _scenarios(self._world_dir()), self.setup_doc)
+                laid = w.events[len(w.events) - len(self.setup_doc.get("events", [])) :]  # 评测布置的事件在最后
                 # 情景模式一口气推到了收幕（B-9 第 11 条）：起点就进结局，和叙事者提交时一样。只看最后一幕收没收，
                 # 检查点停在 beat.24 以后、还在前面几幕的不进（数据评审 #124）
                 trigger = ending.closed(self.book, w.state) if ending.curtain_fell(self.book, w.state) else None
@@ -244,6 +255,7 @@ class Session:
                     self.schemas.event(ev)
                 if w.events:
                     await c.execute(insert(events_t), [to_row(e) for e in w.events])
+                await self._seed_memories(c, laid)
                 await c.execute(
                     insert(world_state_t).values(playthrough_id=self.pid, as_of_seq=w.state["seq"], state=w.state)
                 )
@@ -275,8 +287,7 @@ class Session:
         engine = self._engine()
         try:
             async with engine.begin() as c:
-                user_id = self.ids.new("usr")
-                await c.execute(insert(users).values(user_id=user_id))
+                user_id = await self._user(c)
                 self.pid = await store.create_playthrough(
                     c, self.ids, user_id=user_id, book=self.book, role_id=self.role
                 )
@@ -286,6 +297,29 @@ class Session:
                 await self._narrator(engine).run(self.pid)
         finally:
             await engine.dispose()
+
+    async def _user(self, c: Any) -> str:
+        """这一局的账号：第一次建，`new_playthrough` 用同一个（E6-008：同一个账号换一局）。"""
+        if not self.user_id:
+            self.user_id = self.ids.new("usr")
+            await c.execute(insert(users).values(user_id=self.user_id))
+        return self.user_id
+
+    async def _seed_memories(self, c: Any, laid: Sequence[Json]) -> None:
+        """setup 的事件带 `memory: {character, kind, text}`：直接种一条记忆（不调模型，过同样的三道过滤）。"""
+        todo = [
+            (ev, d["memory"]) for ev, d in zip(laid, self.setup_doc.get("events", []), strict=True) if "memory" in d
+        ]
+        if not todo:
+            return
+        m = memory.Memorizer(self.text, self.armor, self.ids, self.tracer)
+        rows = []
+        for ev, spec in todo:
+            text = str(spec["text"]).strip()
+            if not (memory.rule_ok(text) and await m._armor_ok(text, memory.Written())):
+                raise ValueError(f"setup 种的记忆过不了过滤：{spec['character']}")
+            rows.append(memory.seeded(self.ids, self.pid, ev, spec["character"], spec["kind"], text))
+        await c.execute(insert(memory_items), rows)
 
     def _world_dir(self) -> Path:
         """情景 `scenarios.json` 和开局用的 world.json 在同一个目录（setup 只用 `Library.current`）。"""
@@ -489,6 +523,7 @@ class Session:
         if target is not None:
             request["target"] = target
         r, t0 = self._run(self._task("action", request))
+        self.turns[self.steps] = r.task.turn_id  # B-13：delete_memory 按这一步的事件找记忆
         info = r.info
         out: Json = {
             "events": self._step_events(r),
@@ -764,31 +799,149 @@ class Session:
         finally:
             await engine.dispose()
 
-    # —— B-0 没做的 ——
+    # —— 记忆和删除（B-13） ——
+
+    def delete_memory(self, character: str, from_step: int) -> Json:
+        """删这个人物来源于第 from_step 步提交的事件的那条记忆（和 REST 同一个函数）。没有这样的记忆：什么都不删，
+        `deleted` 是 None（之后的检查照常判）。"""
+        self._run(self._flush())
+        self.steps += 1
+        turn_id = self.turns.get(from_step)
+        if turn_id is None:
+            raise ValueError(f"第 {from_step} 步没有提交的一轮")
+        return self._run(self._delete_memory(character, turn_id))
+
+    async def _delete_memory(self, character: str, turn_id: str) -> Json:
+        engine = self._engine()
+        try:
+            async with engine.begin() as c:
+                ids = set(
+                    (
+                        await c.scalars(
+                            select(events_t.c.event_id).where(
+                                events_t.c.playthrough_id == self.pid, events_t.c.turn_id == turn_id
+                            )
+                        )
+                    ).all()
+                )
+                target = next(
+                    (r["memory_id"] for r in await memory.alive(c, self.pid, character) if ids & set(r["from_events"])),
+                    None,
+                )
+                if target is None:
+                    return {"events": [], "clockMinutes": 0, "deleted": None}
+                d = await memory_delete.delete_memory(c, self.library, self.ids, self.schemas, self.pid, target)
+                evs = await store.event_log(c, self.pid, self.book.version, after_seq=(d.seq or 1) - 1)
+        finally:
+            await engine.dispose()
+        return {
+            "events": evs if d.seq is not None else [],
+            "clockMinutes": 0,
+            "deleted": d.memory_id,
+            "promiseVoided": d.promise_voided,
+        }
+
+    def delete_playthrough(self) -> Json:
+        """L2：这一局全删（和 REST 同一个函数）。之后 `db_absent` 查的就是这一局。"""
+        self._run(self._flush())
+        self.steps += 1
+        self._run(self._delete_playthrough())
+        return {"events": [], "clockMinutes": 0}
+
+    async def _delete_playthrough(self) -> None:
+        engine = self._engine()
+        try:
+            async with engine.begin() as c:
+                await memory_delete.delete_playthrough(c, self.pid)
+        finally:
+            await engine.dispose()
+        self.deleted = self.pid
+
+    def new_playthrough(self) -> Json:
+        """同一个账号、同一个起点再开一局；这一局放弃（`abandoned`）。之后的步骤和查询都对新的一局。"""
+        self._run(self._flush())
+        self.steps += 1
+        self._run(self._new_playthrough())
+        return {"events": [], "clockMinutes": 0}
+
+    async def _new_playthrough(self) -> None:
+        engine = self._engine()
+        try:
+            async with engine.begin() as c:
+                await c.execute(
+                    update(playthroughs).where(playthroughs.c.playthrough_id == self.pid).values(status="abandoned")
+                )
+        finally:
+            await engine.dispose()
+        self.safety = SafetyState()
+        self.monitor = Monitor(self.library)
+        self.monitor.attach(self.book)
+        self.draft = None
+        if self.persona is not None:
+            await self._open()
+        else:
+            await self._setup()
+
+    def memories(self, character: str) -> list[Json]:
+        """契约第 4 节的 MemoryItem，删了的也在（带 deletedAt，text 是空的）。"""
+        self._run(self._flush())
+        return self._run(self._memories(character))
+
+    async def _memories(self, character: str) -> list[Json]:
+        engine = self._engine()
+        try:
+            async with engine.connect() as c:
+                rows = (
+                    await c.execute(
+                        select(memory_items)
+                        .where(memory_items.c.playthrough_id == self.pid, memory_items.c.character == character)
+                        .order_by(memory_items.c.t, memory_items.c.created_at)
+                    )
+                ).mappings()
+                return [memory.item_json(dict(r)) for r in rows]
+        finally:
+            await engine.dispose()
+
+    def trust(self, character: str) -> int:
+        self._run(self._flush())
+        return self._run(self._trust(character))
+
+    async def _trust(self, character: str) -> int:
+        engine = self._engine()
+        try:
+            async with engine.connect() as c:
+                return await memory.trust_of(c, self.book, self.pid, self.role, character)
+        finally:
+            await engine.dispose()
+
+    def db_absent(self, tables: Sequence[str]) -> Mapping[str, int]:
+        """每张表里还剩这一局（删了的那一局，没删过就是现在这一局）几行。还没建的表（`briefs` 等）答 0。"""
+        return self._run(self._db_absent(tables))
+
+    async def _db_absent(self, tables: Sequence[str]) -> Mapping[str, int]:
+        pid = self.deleted or self.pid
+        engine = self._engine()
+        out: dict[str, int] = {}
+        try:
+            async with engine.connect() as c:
+                for name in tables:
+                    if name not in PER_PLAYTHROUGH:
+                        out[name] = 0
+                        continue
+                    t = metadata.tables[name]
+                    n = await c.scalar(select(func.count()).select_from(t).where(t.c.playthrough_id == pid))
+                    out[name] = int(n or 0)
+        finally:
+            await engine.dispose()
+        return out
+
+    # —— 还没做的 ——
 
     def _no(self, name: str) -> NoReturn:
         raise EvalNotImplemented(name)
 
-    def delete_memory(self, character: str, from_step: int) -> Json:
-        self._no("delete_memory")
-
-    def delete_playthrough(self) -> Json:
-        self._no("delete_playthrough")
-
-    def new_playthrough(self) -> Json:
-        self._no("new_playthrough")
-
     def silence(self, seconds: int) -> Json:
         self._no("silence")
-
-    def memories(self, character: str) -> list[Json]:
-        self._no("memories")
-
-    def trust(self, character: str) -> int:
-        self._no("trust")
-
-    def db_absent(self, tables: Sequence[str]) -> Mapping[str, int]:
-        self._no("db_absent")
 
     def ending(self) -> Json:
         """B-9：存的 Ending（数据契约第 5 节的完整形状，含 `signature`）；还没进结局（或结局任务还没做完）返回 None。

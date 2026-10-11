@@ -75,6 +75,11 @@ ATTRS = frozenset(
         "usage_estimated",  # #111 数据评审：live.turn 的用量是不是按 0.01 美元估的、玩家打断没有、人物字幕的来源
         "interrupted",
         "transcript_source",
+        "event_id",  # B-13：记忆来自哪条事件、哪条记忆；删除时清了几轮原话、作废了约定没有、重建了会话没有
+        "memory_id",
+        "turns",
+        "voided",
+        "rebuilt",
     }
 )
 

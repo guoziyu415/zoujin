@@ -35,6 +35,7 @@ from zoujin_backend.db.tables import playthrough_metrics
 from zoujin_backend.gateway import brief
 from zoujin_backend.models.gemini_live import LiveLostQuota
 from zoujin_backend.models.live import LiveEvent, LiveLost, LiveSession, Recent
+from zoujin_backend.narrator import memory
 from zoujin_backend.voice.models import live_cost_parts
 
 if TYPE_CHECKING:
@@ -121,9 +122,12 @@ class Voices:
         async with gw.engine.connect() as c:
             pt = await gw.pt(c, pid)
             st = await store.sim_state(c, pid)
+            remembered = await memory.memories_for_brief(c, pid, character)
         if pt is None or st is None:
             raise LiveLost("这一局没有状态")
-        return brief.build(pt.book, st, character, self._recent(character), self.conn.monitor.notes(character))
+        return brief.build(
+            pt.book, st, character, self._recent(character), self.conn.monitor.notes(character), remembered
+        )
 
     def _recent(self, character: str) -> list[Recent]:
         """带进会话的最近对话：说漏了剧透的那几句不带（B-12，UX 在 #112 的评审：新会话一开头又看到那个词）。"""

@@ -7,6 +7,8 @@
   意图确认答「是」的那次提交（B-4）：`turnId` 是原来那一轮，重查没过时 `narration` 带一句（`turns.result`）。
   玩家的位置点不进 WorldState（契约 3.1）：做完情境动作、幕切换落地的 `patch.player.spot` 按这次提交的结果给
   （`turns.result.playerSpot`），动作（`move`、`go`）的不带（B-3 第 1 条）。
+  记忆的变化（B-13）：`turns.result.memories` 记着这次写了、删了哪几条和那时的关系，文字从 `memory_items` 取，
+  之后在記憶帳删了的不再带（补推的 commit 里也不出现删了的文字）。约定的变化按这一段事件的 promise 效果和之后的状态给。
 """
 
 from __future__ import annotations
@@ -26,7 +28,7 @@ from zoujin_backend.config import Settings
 from zoujin_backend.db import store
 from zoujin_backend.db.events import commit_key, recorded_at
 from zoujin_backend.db.store import Run
-from zoujin_backend.db.tables import turns
+from zoujin_backend.db.tables import memory_items, turns
 from zoujin_backend.gateway.fallback import AudioTranscriber, FakeAudioTranscriber
 from zoujin_backend.ids import IdGen
 from zoujin_backend.manifest import Manifest
@@ -49,6 +51,46 @@ Json = Any
 RUNS_PER_DAY = 5  # 每账号每天开局数（backend-design 5.2）；B-0 只显示，不拦
 VOICE_MINUTES = 60  # 预算是 M2 的卡
 HANDOFF_WAIT_S = 5.0  # 重连的 hello 最多等旧连接把断线那一轮写完几秒（正常是毫秒级）
+
+
+def memory_changes(result: Json, texts: dict[str, str | None]) -> list[Json]:
+    """commit.memories（api-contract 3.4，B-13）：added 带文字和 kind；文字已经删了的那条不推。deleted 不带文字。"""
+    out = []
+    for m in result.get("memories", []):
+        if m["change"] == "deleted":
+            out.append({k: m[k] for k in ("character", "change", "memoryId", "relationLabel", "relationLevel")})
+        elif texts.get(m["memoryId"]):
+            out.append({**m, "text": texts[m["memoryId"]]})
+    return out
+
+
+def promise_changes(seg: Sequence[Json], after: SimState) -> list[Json]:
+    """commit.promises：这一段事件动了的、和玩家有关的约定，按这一段之后的状态（契约 3.1 的 direction）。"""
+    out: list[Json] = []
+    seen: set[str] = set()
+    for ev in seg:
+        for e in ev["effects"]:
+            pid = e.get("promiseId") if e.get("op") == "promise" else None
+            p = (after.get("promises") or {}).get(pid or "")
+            if pid is None or pid in seen or p is None:
+                continue
+            if p["from"] == "player":
+                character, direction = p["to"], "playerToCharacter"
+            elif p["to"] == "player":
+                character, direction = p["from"], "characterToPlayer"
+            else:
+                continue
+            seen.add(pid)
+            out.append(
+                {
+                    "promiseId": pid,
+                    "character": character,
+                    "text": p["text"],
+                    "direction": direction,
+                    "status": p["status"],
+                }
+            )
+    return out
 
 
 class NarratorClient(Protocol):
@@ -174,6 +216,14 @@ class Gateway:
             rows = (
                 await c.execute(select(turns.c.turn_id, turns.c.kind, turns.c.result).where(turns.c.turn_id.in_(keys)))
             ).all()
+            ids = [m["memoryId"] for r in rows for m in (r.result or {}).get("memories", [])]
+            texts = dict(
+                (
+                    await c.execute(
+                        select(memory_items.c.memory_id, memory_items.c.text).where(memory_items.c.memory_id.in_(ids))
+                    )
+                ).all()
+            )
         kinds = {r.turn_id: r.kind for r in rows}
         results = {r.turn_id: r.result or {} for r in rows}
         book = pt.book
@@ -192,7 +242,7 @@ class Gateway:
         out = []
         sent = after_seq
         for seg in segments:
-            msg, state = self._commit(book, pt, state, seg, kinds, results)
+            msg, state = self._commit(book, pt, state, seg, kinds, results, texts)
             out.extend(results.get(commit_key(seg[0]["idempotencyKey"]), {}).get("before", []))  # B-9：ending_started
             out.append(msg)
             sent = seg[-1]["seq"]
@@ -206,6 +256,7 @@ class Gateway:
         seg: Sequence[Json],
         kinds: dict[str, str],
         results: dict[str, Json],
+        texts: dict[str, str | None] | None = None,
     ) -> tuple[Json, SimState]:
         state = before
         visible = []
@@ -235,8 +286,8 @@ class Gateway:
             "seq": seg[-1]["seq"],
             "events": visible,
             "patch": diff,
-            "memories": [],
-            "promises": [],
+            "memories": memory_changes(results.get(key, {}), texts or {}),
+            "promises": promise_changes(seg, state),
             "narration": [],
             "cue": None,
             "reveal": None,

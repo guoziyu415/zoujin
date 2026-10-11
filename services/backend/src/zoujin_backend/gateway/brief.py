@@ -70,9 +70,18 @@ def situation_facts(book: Book, state: SimState, who: str) -> tuple[str, ...]:
     return tuple(lines)
 
 
-def build(book: Book, state: SimState, who: str, recent: Sequence[Recent] = (), notes: Sequence[str] = ()) -> Brief:
+def build(
+    book: Book,
+    state: SimState,
+    who: str,
+    recent: Sequence[Recent] = (),
+    notes: Sequence[str] = (),
+    memories: Sequence[str] = (),
+) -> Brief:
     """notes：B-12 输出侧监控给这个人物加的几句提示（剧透纠正、问句过多、不往死亡推，`gateway/monitor.py`），
-    放在「# いまの状況」后面的「# 気をつけること」。只在开会话时带上（中途更新只比较 `facts`）。"""
+    放在「# いまの状況」后面的「# 気をつけること」。只在开会话时带上（中途更新只比较 `facts`）。
+    memories：B-13 这个人物对玩家没删的记忆（`narrator/memory.memories_for_brief`，按 salience 取、按时间排），
+    放在「# いまの状況」后面的「# 覚えていること」；在記憶帳删了的不在这里，会话也随删除重建。"""
     p = persona(book, state, who)
     me = player_card(book, state, who)
     facts = situation_facts(book, state, who)
@@ -92,6 +101,9 @@ def build(book: Book, state: SimState, who: str, recent: Sequence[Recent] = (), 
         out.append(f"口ぶりの例：「{q}」")
     out += ["", "# いまの状況"]
     out += [f"- {x}" for x in facts]
+    if memories:
+        out += ["", "# 覚えていること"]
+        out += [f"- {x}" for x in memories]
     if notes:
         out += ["", "# 気をつけること"]
         out += [f"- {x}" for x in notes]

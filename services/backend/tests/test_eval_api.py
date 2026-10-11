@@ -149,15 +149,7 @@ def test_setup_reads_zj_world_on_every_call(env: Env, monkeypatch: pytest.Monkey
 
 @pytest.mark.parametrize(
     ("method", "args"),
-    [
-        ("delete_memory", (OLD, 1)),
-        ("delete_playthrough", ()),
-        ("new_playthrough", ()),
-        ("silence", (20,)),
-        ("memories", (OLD,)),
-        ("trust", (OLD,)),
-        ("db_absent", (["events"],)),
-    ],
+    [("silence", (20,))],  # B-13 做了记忆和删除的那几个（test_b13）
 )
 def test_steps_b0_does_not_do_raise(
     env: Env, monkeypatch: pytest.MonkeyPatch, method: str, args: tuple[Any, ...]
@@ -186,13 +178,6 @@ def test_checkpoint_past_beat_24_does_not_enter_the_ending(env: Env, monkeypatch
     """检查点停在 beat.24 以后、玩家还没换幕：beat.27 没结果，不进结局，照旧可以对话（数据评审 #124）。"""
     monkeypatch.setenv("DATABASE_URL", env.url)
     assert eval_api.setup({"role": "role.traveler", "checkpoint": "sc.canon@beat.26"}, mode="text").ending() is None
-
-
-def test_planted_memory_raises_in_setup(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("DATABASE_URL", env.url)
-    planted = {**MINIMAL, "events": [{"effects": [], "memory": {"character": OLD}}]}
-    with pytest.raises(eval_api.EvalNotImplemented, match="memory"):
-        eval_api.setup(planted, mode="text")
 
 
 def test_replay_fixture_is_the_fake_model_recorded(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:

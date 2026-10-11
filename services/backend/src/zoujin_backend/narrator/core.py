@@ -13,6 +13,9 @@
 - B-4：confirm（回答意图确认，`narrator/confirm.py`）；对话里要确认的候选存成草稿。对话和用声音说的打算有提交窗口
   （`turns.commit_after`）：判完、没到时候就等（不占事务），这期间网关可以把这一轮作废（`status = retracted`），
   提交时发现不是 leased 就丢掉结果、不推任何消息。取任务之前先给到期的草稿写超时的任务。
+- B-13：提交的事件里有要写记忆的（`narrator/memory.py`），提交的事务里先不 NOTIFY；事务之后并行调模型写记忆
+  （不占事务、不重发），第二个事务存记忆、记计数、把这次的记忆变化记进 `turns.result.memories`，再 NOTIFY。
+  写记忆出了任何错也照样 NOTIFY，这一轮的结果不受影响。
 
 同一局严格串行：取任务时锁住这一局的行，有没过期的租约就不取。提交时再锁一次、校验 lastSeq 没变；变了就丢弃，
 用新状态从第 3 步重来（不重新提取）。任何一步失败整轮回滚，任务放回队列，用同一个幂等键重试，三次都失败记 no_response。
@@ -36,11 +39,20 @@ from zoujin_backend.config import DEADLINES
 from zoujin_backend.db import store
 from zoujin_backend.db.events import recorded_at, to_row
 from zoujin_backend.db.store import Run
-from zoujin_backend.db.tables import drafts, playthrough_metrics, playthroughs, turns, utterances, world_state
+from zoujin_backend.db.tables import (
+    drafts,
+    memory_items,
+    playthrough_metrics,
+    playthroughs,
+    turns,
+    utterances,
+    world_state,
+)
 from zoujin_backend.db.tables import events as events_t
 from zoujin_backend.ids import IdGen
+from zoujin_backend.models.armor import Armor
 from zoujin_backend.models.text import ReplayMissing, Stop, TextModel
-from zoujin_backend.narrator import acts, confirm, ending
+from zoujin_backend.narrator import acts, confirm, ending, memory
 from zoujin_backend.narrator.pipeline import Counts, Extracted, Pipeline, Spend, TurnInput, Verified
 from zoujin_backend.narrator.rules import Checked
 from zoujin_backend.narrator.writer import Writer
@@ -136,6 +148,7 @@ class Result:
     push: list[Json] = field(default_factory=list)  # 网关要推的（固定演出、结果、幕末、幕切换）
     info: dict[str, Any] = field(default_factory=dict)
     pieces: list[str] = field(default_factory=list)  # 这次演的固定演出 ID
+    memories: list[Json] = field(default_factory=list)  # B-13：这次写的记忆（memory_items 的行）
 
 
 def talk_minutes(book: Book, state: SimState) -> int:
@@ -159,9 +172,18 @@ class Narrator:
     tracer: Tracer = field(default_factory=Tracer)
     deadlines: Mapping[str, float] = field(default_factory=lambda: dict(DEADLINES))
     on_rate_limit: str = "stop"  # 服务玩家的叙事者（narrator/app.py）是 "degrade"，见 Pipeline
+    armor: Armor | None = None  # B-13：记忆一句的第二道过滤（None = 不过这一道，只给测试）
 
     def __post_init__(self) -> None:
         self.pipeline = Pipeline(self.text, self.schemas, self.ids, self.tracer, self.deadlines, self.on_rate_limit)
+        self.memorizer = memory.Memorizer(
+            self.text,
+            self.armor,
+            self.ids,
+            self.tracer,
+            deadline=self.deadlines.get("memory"),
+            raise_stops=self.on_rate_limit == "stop",
+        )
 
     # —— 取任务 ——
 
@@ -651,6 +673,8 @@ class Narrator:
                             book, task.pid, pt["role_id"], pt["status"], w.state, w.state["seq"], w.run
                         )
             pieces = [m["pieceId"] for m in push if m["type"] == "set_piece"]
+            todo = memory.seeds(book, state, w.events)  # B-13：要写的记忆（文字在事务之后由模型写）
+            role_id = str(pt["role_id"])
             result = Result(
                 task,
                 w.events,
@@ -715,8 +739,9 @@ class Narrator:
             await c.execute(
                 update(playthrough_metrics).where(playthrough_metrics.c.playthrough_id == task.pid).values(values)
             )
-            self.fault("notify")
-            await self._notify(c, task, seq=w.state["seq"], outcome=result.outcome)
+            if not todo:
+                self.fault("notify")
+                await self._notify(c, task, seq=w.state["seq"], outcome=result.outcome)
             self.fault("commit")
         log.info(
             "提交 %s %s：seq %d〜%d，%d 个事件",
@@ -726,7 +751,79 @@ class Narrator:
             w.state["seq"],
             len(w.events),
         )
+        if todo:
+            result.memories = await self._remember(task, book, role_id, todo, result)
         return result
+
+    async def _remember(
+        self, task: Task, book: Book, role_id: str, todo: list[memory.Seed], result: Result
+    ) -> list[Json]:
+        """B-13：提交以后写记忆，存好再 NOTIFY。出了任何错也 NOTIFY（这一轮的结果照推），`Stop` 推完再往上抛。"""
+        rows: list[Json] = []
+        stop: Stop | None = None
+        try:
+            got = await self.memorizer.write(
+                book, task.pid, role_id, todo, playthrough_id=task.pid, turn_id=task.turn_id
+            )
+            async with self.engine.begin() as c:
+                rows = await self._store_memories(c, task, book, role_id, got)
+                await self._notify(c, task, seq=result.state["seq"], outcome=result.outcome)
+            return rows
+        except Stop as e:
+            stop = e
+        except Exception:
+            log.exception("写记忆失败（%s），这一轮照常推", task.turn_id)
+        async with self.engine.begin() as c:
+            await self._notify(c, task, seq=result.state["seq"], outcome=result.outcome)
+        if stop is not None:
+            raise stop
+        return []
+
+    async def _store_memories(
+        self, c: AsyncConnection, task: Task, book: Book, role_id: str, got: memory.Written
+    ) -> list[Json]:
+        """存记忆、记计数和花费；这次的记忆变化（不带文字）记进 turns.result.memories，网关拼 commit 时再取文字。
+        局在这期间被删了：一行也不写（外键），只是这一轮的计数没处记。"""
+        exists = await c.scalar(
+            select(playthroughs.c.playthrough_id).where(playthroughs.c.playthrough_id == task.pid).with_for_update()
+        )
+        if exists is None:
+            return []
+        if got.rows:
+            await c.execute(insert(memory_items), got.rows)
+        changes = []
+        for who in dict.fromkeys(r["character"] for r in got.rows):
+            label, level = await memory.relation_of(c, book, task.pid, role_id, who)
+            changes += [
+                {
+                    "character": who,
+                    "change": "added",
+                    "memoryId": r["memory_id"],
+                    "kind": r["kind"],
+                    "relationLabel": label,
+                    "relationLevel": level,
+                }
+                for r in got.rows
+                if r["character"] == who
+            ]
+        if changes:
+            stored = await c.scalar(select(turns.c.result).where(turns.c.turn_id == task.turn_id))
+            await c.execute(
+                update(turns)
+                .where(turns.c.turn_id == task.turn_id)
+                .values(result={**(stored or {}), "memories": changes})
+            )
+        m = playthrough_metrics.c
+        values: dict[str, Any] = {
+            "cost_memory_usd": m.cost_memory_usd + got.cost_usd,
+            "memories_written": m.memories_written + len(got.rows),
+            "memories_filtered": m.memories_filtered + got.filtered,
+            "memories_failed": m.memories_failed + got.failed,
+            "armor_errors": m.armor_errors + got.armor_errors,
+            "cost_armor_usd": m.cost_armor_usd + got.armor_usd,
+        }
+        await c.execute(update(playthrough_metrics).where(m.playthrough_id == task.pid).values(values))
+        return got.rows
 
     async def _notify(self, c: AsyncConnection, task: Task, *, seq: int, outcome: str | None) -> None:
         payload = {"pid": task.pid, "seq": seq, "kind": task.kind, "turnId": task.turn_id, "outcome": outcome}

@@ -54,6 +54,9 @@ TEXT: dict[str, TextSpec] = {
     "safety": TextSpec("claude", "haiku-5.5", 3.0, 64, thinking="disabled"),
     # B-9：结局要快，不先思考；输出约 1,500 token〔推算〕，时限 30 秒等 Mac 探针实测再改
     "ending": TextSpec("claude", "sonnet-5.5", 30.0, 4096, thinking="between_tools", effort="low"),
+    # B-13：记忆一句、「不会撤销的后果」一句（B-8 的表：Haiku、关思考、5 秒；记忆超时不重发，这一轮不写）
+    "memory": TextSpec("claude", "haiku-5.5", 5.0, 256, thinking="disabled"),
+    "keeps": TextSpec("claude", "haiku-5.5", 5.0, 256, thinking="disabled"),
 }
 TEXT_MODELS: dict[str, str] = {k: v.model for k, v in TEXT.items()}
 DEADLINES: dict[str, float] = {k: v.deadline for k, v in TEXT.items()}

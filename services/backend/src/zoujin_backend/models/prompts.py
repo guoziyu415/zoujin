@@ -273,6 +273,29 @@ ENDING = Prompt(
     },
 )
 
+# B-13：人物视角的一句记忆（只读事件的摘要和结果，不读原话；长度、个人信息、命令句由 `narrator/memory.py` 再过滤），
+# 和记憶帳删除确认里「不会撤销的后果」一句（没有就是 null）
+MEMORY = Prompt(
+    "memory",
+    text("memory"),
+    {
+        "type": "object",
+        "properties": {"text": {"type": "string", "minLength": 1}},
+        "required": ["text"],
+        "additionalProperties": False,
+    },
+)
+KEEPS = Prompt(
+    "keeps",
+    text("keeps"),
+    {
+        "type": "object",
+        "properties": {"keeps": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]}},
+        "required": ["keeps"],
+        "additionalProperties": False,
+    },
+)
+
 PROMPTS: dict[str, Prompt] = {
-    p.kind: p for p in (TRIAGE, EXTRACT, CHECK, REWRITE, REPLY, NARRATE, PLAN, ENDING, SAFETY)
+    p.kind: p for p in (TRIAGE, EXTRACT, CHECK, REWRITE, REPLY, NARRATE, PLAN, ENDING, SAFETY, MEMORY, KEEPS)
 }
