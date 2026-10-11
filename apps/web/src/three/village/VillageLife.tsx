@@ -34,7 +34,7 @@ import { reducedMotion } from "../motion";
 import { rig } from "../rig";
 import type { LoadedScene } from "../scene/loadScene";
 import { fetchJson } from "../scene/manifest";
-import { interiorBase, type InteriorPack } from "./interior";
+import { interiorBase, type InteriorPack } from "./roomPack";
 import {
   flicker,
   lamps,

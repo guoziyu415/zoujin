@@ -31,7 +31,7 @@ import {
   interiorBase,
   personLight,
   type InteriorPack,
-} from "./interior";
+} from "./roomPack";
 import { villageLight } from "./VillageLife";
 import type { RoomSet } from "./time";
 
