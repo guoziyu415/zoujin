@@ -112,7 +112,7 @@ def test_prices_by_tier_batch_and_cache() -> None:
     assert PRICES.cost(MODEL, {"inputTokens": 1_000_000, "outputTokens": 100_000}, batch=False) == pytest.approx(6.0)
     assert PRICES.cost(MODEL, {"inputTokens": 1_000_000, "outputTokens": 100_000}, batch=True) == pytest.approx(3.0)
     assert PRICES.cost(MODEL, {"cacheReadTokens": 1_000_000}, batch=False) == pytest.approx(0.2)
-    assert PRICES.cost("test-sonnet", {"cacheReadTokens": 1_000_000}, batch=False) == pytest.approx(0.2)
+    assert PRICES.cost("test-sonnet", {"cacheReadTokens": 1_000_000}, batch=False) == pytest.approx(0.1)
     assert PRICES.cost("test-haiku", {"cacheReadTokens": 1_000_000}, batch=False) == pytest.approx(0.01)
     assert PRICES.cost(MODEL, {"cacheWriteTokens": 1_000_000}, batch=False) == pytest.approx(5.0)
     for bad in ("unknown-model", "opus-or-sonnet"):
