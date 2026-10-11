@@ -409,5 +409,66 @@
         "fov": 55
       }
     }
-  ]
+  ],
+  "lightSets": {
+    "about": "F-11 card 5 (village.md 5.1〜5.3): which baked light the page shows at each story time, outside (the village pack's own day, or a light sub-pack) and inside Melos's house (village-interior's lightSets). from / to are the clock (to wraps past midnight); outdoor with two ids blends from the first to the second over the span (both lightmaps loaded, mixed in the shader); indoorDim: sky = dimmed with the outdoor sky light, dark = very dark. From 04:00 the sky and the sun are drawn live. rain replaces the clear rows once the weather turns (the page's weather rule, card 5): the rain set outside (dimmed at night and at day 3's dawn), the feast inside.",
+    "outdoor": {
+      "day": "village",
+      "sunset": "village-light-sunset",
+      "night": "village-light-night",
+      "rain": "village-light-rain"
+    },
+    "indoor": {
+      "day": "village-interior",
+      "feast": "village-interior"
+    },
+    "clear": [
+      {
+        "from": "06:00",
+        "to": "17:00",
+        "outdoor": ["day"],
+        "indoor": "day"
+      },
+      {
+        "from": "17:00",
+        "to": "18:30",
+        "outdoor": ["day", "sunset"],
+        "indoor": "day",
+        "indoorDim": "sky"
+      },
+      {
+        "from": "18:30",
+        "to": "18:45",
+        "outdoor": ["sunset"],
+        "indoor": "day",
+        "indoorDim": "sky"
+      },
+      {
+        "from": "18:45",
+        "to": "20:00",
+        "outdoor": ["sunset", "night"],
+        "indoor": "day",
+        "indoorDim": "sky"
+      },
+      {
+        "from": "20:00",
+        "to": "04:00",
+        "outdoor": ["night"],
+        "indoor": "day",
+        "indoorDim": "dark"
+      },
+      {
+        "from": "04:00",
+        "to": "06:00",
+        "outdoor": ["night", "day"],
+        "indoor": "day",
+        "indoorDim": "sky"
+      }
+    ],
+    "rain": {
+      "outdoor": ["rain"],
+      "indoor": "feast",
+      "dimAtNight": true
+    }
+  }
 }

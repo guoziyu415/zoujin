@@ -7,8 +7,8 @@
  "placeholderTextures": true,
  "inputs": {
   "files": {
-   "assets/scenes/village/layout.json": "030b0868d23895885925a2ed52c933a04b280c84191bef128f9c7a1abd0a6815",
-   "assets/pipeline/village/build.sh": "bd88a42b6d44893d72a7a1a771d31c5153b6cd76aeb97b0d1de4e569101c6e07",
+   "assets/scenes/village/layout.json": "896464e4e510bf0207d7fba0c3ec4042d25b016037db59aad37ee455b1ee6214",
+   "assets/pipeline/village/build.sh": "3dc97f55cdf39edddab70b3f7ef8b443ff187ea21e5d5ddd05a41d5c83f6dcd0",
    "assets/pipeline/common/road_tex.py": "a31a2a76e5421dccc6f5fa6e8ed272578569ea1133e8c581a05a13a4f0abdad6",
    "assets/pipeline/plaza/placeholder_tex.py": "aabda4df4f3974b2eb65b227ed3b5ae2d606a489441d665b3f2f108c5cd1343e",
    "assets/pipeline/common/bl.py": "4bffdacd1d0b1876b9244e30b0f98ce00154911aa30c1130566723b55a1c9f22",
@@ -17,6 +17,9 @@
    "assets/pipeline/common/roadside.mjs": "5f847f5f67e51ff3ec7745e6986f73f516712b2507c6a135ae6065dcb0cb679f",
    "assets/pipeline/common/small_tex.mjs": "2510e7083721b8d59d94651bf0ea91e7e2df07407c9e092471146b966be34b2c",
    "assets/pipeline/village/zones.mjs": "6860381bf57b2b6c2262a537aad2c5ba482235bebbb0e46901e9abc19a9284b0",
+   "assets/pipeline/village/relight.py": "c58d6bd456fdb033b41bf8e59a8c0d78f89d3d173527da5d4b09e7643ea92d93",
+   "assets/pipeline/village/pack_sub.mjs": "26580cbae404338dabd83dd1c574e04448cad87d39132c2e9c504fb30a1e9c6f",
+   "assets/pipeline/village/ktx2.mjs": "aebd47632e6e222d7f9ba09db9c2e929291d4bae421aeaaa9f410d848a170aef",
    "assets/pipeline/plaza/requirements.txt": "0a234e44f52fb462c7e8694ecd82b99aca8e534ac610dde2dd749bb1e2cbe0e3",
    "assets/pipeline/plaza/sky.py": "971584f110b8a924e737d195f30eab114cb35d7345909e364ed21ec3e77aab27",
    "assets/pipeline/plaza/sunpos.py": "807e1774526b33ef4f2329dbabf906c44f9517605a80f9ca930ecfb9ff6287ba",
@@ -1573,5 +1576,113 @@
  ],
  "sharedPacks": [
   "road-common"
- ]
+ ],
+ "subPacks": [
+  {
+   "pack": "village-light-sunset",
+   "kind": "light",
+   "light": "sunset",
+   "manifest": "../village-light-sunset/pack.json",
+   "bytes": 390949
+  },
+  {
+   "pack": "village-light-night",
+   "kind": "light",
+   "light": "night",
+   "manifest": "../village-light-night/pack.json",
+   "bytes": 301444
+  },
+  {
+   "pack": "village-light-rain",
+   "kind": "light",
+   "light": "rain",
+   "manifest": "../village-light-rain/pack.json",
+   "bytes": 355559
+  },
+  {
+   "pack": "village-interior",
+   "kind": "interior",
+   "manifest": "../village-interior/pack.json",
+   "bytes": 499714
+  }
+ ],
+ "lightSets": {
+  "about": "F-11 card 5 (village.md 5.1〜5.3): which baked light the page shows at each story time, outside (the village pack's own day, or a light sub-pack) and inside Melos's house (village-interior's lightSets). from / to are the clock (to wraps past midnight); outdoor with two ids blends from the first to the second over the span (both lightmaps loaded, mixed in the shader); indoorDim: sky = dimmed with the outdoor sky light, dark = very dark. From 04:00 the sky and the sun are drawn live. rain replaces the clear rows once the weather turns (the page's weather rule, card 5): the rain set outside (dimmed at night and at day 3's dawn), the feast inside.",
+  "outdoor": {
+   "day": "village",
+   "sunset": "village-light-sunset",
+   "night": "village-light-night",
+   "rain": "village-light-rain"
+  },
+  "indoor": {
+   "day": "village-interior",
+   "feast": "village-interior"
+  },
+  "clear": [
+   {
+    "from": "06:00",
+    "to": "17:00",
+    "outdoor": [
+     "day"
+    ],
+    "indoor": "day"
+   },
+   {
+    "from": "17:00",
+    "to": "18:30",
+    "outdoor": [
+     "day",
+     "sunset"
+    ],
+    "indoor": "day",
+    "indoorDim": "sky"
+   },
+   {
+    "from": "18:30",
+    "to": "18:45",
+    "outdoor": [
+     "sunset"
+    ],
+    "indoor": "day",
+    "indoorDim": "sky"
+   },
+   {
+    "from": "18:45",
+    "to": "20:00",
+    "outdoor": [
+     "sunset",
+     "night"
+    ],
+    "indoor": "day",
+    "indoorDim": "sky"
+   },
+   {
+    "from": "20:00",
+    "to": "04:00",
+    "outdoor": [
+     "night"
+    ],
+    "indoor": "day",
+    "indoorDim": "dark"
+   },
+   {
+    "from": "04:00",
+    "to": "06:00",
+    "outdoor": [
+     "night",
+     "day"
+    ],
+    "indoor": "day",
+    "indoorDim": "sky"
+   }
+  ],
+  "rain": {
+   "outdoor": [
+    "rain"
+   ],
+   "indoor": "feast",
+   "dimAtNight": true
+  }
+ },
+ "subPackBytes": 1547666
 }
