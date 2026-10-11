@@ -307,24 +307,25 @@ export class Session {
         return;
       }
       case "set_piece":
-        if (useStory.getState().ending)
-          addEndingLines(
-            msg.lines.map((l, i) =>
-              "narration" in l
-                ? {
-                    text: l.narration,
-                    speaker: null,
-                    pieceId: msg.pieceId,
-                    n: i + 1,
-                  }
-                : {
-                    text: l.line,
-                    speaker: l.speaker,
-                    pieceId: msg.pieceId,
-                    n: i + 1,
-                  },
-            ),
-          );
+        // outside the ending the voice plays it (#126); the closing set pieces are the ending's staging (3.13)
+        if (!useStory.getState().ending) return this.voice.setPiece(msg);
+        addEndingLines(
+          msg.lines.map((l, i) =>
+            "narration" in l
+              ? {
+                  text: l.narration,
+                  speaker: null,
+                  pieceId: msg.pieceId,
+                  n: i + 1,
+                }
+              : {
+                  text: l.line,
+                  speaker: l.speaker,
+                  pieceId: msg.pieceId,
+                  n: i + 1,
+                },
+          ),
+        );
         return;
       case "error":
         // invalid_request: what we sent didn't fit the schema; the turn didn't happen (api-contract 5)
@@ -336,7 +337,7 @@ export class Session {
         }
         return;
       default:
-        return; // known, handled by later cards (set pieces, confirm, approach, act end, ending: M2)
+        return; // known, handled by later cards (confirm, approach, act end, ending: M2)
     }
   }
 
@@ -404,6 +405,7 @@ export class Session {
     }
     setWorld(withReveal(r.world, c.reveal), true);
     addNarration(...c.narration);
+    if (c.cue) this.voice.cue(c.cue); // once: a commit seen before (resent after a drop) stops above
     showToasts(this.toasts(c));
   }
 
