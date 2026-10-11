@@ -5,7 +5,14 @@
 // nine roles, in place of the hand-made sway.
 import { BufferAttribute, InstancedBufferGeometry } from "three";
 import type { Costume } from "./bodies";
+import { cloth, spear, type Prop } from "./props";
 import { FPS, packSkeleton, type Clip, type Role, type Skeleton } from "./rig";
+
+// what each body carries for the cast (props.ts): the spear in the right hand, the bundle on the left
+const PROPS: Partial<Record<Costume, [string, (hand: Vec3) => Prop]>> = {
+  worker: ["hand_r", spear],
+  veil: ["hand_l", cloth],
+};
 
 type Vec3 = [number, number, number];
 type Entry = {
@@ -58,15 +65,76 @@ export function parseCrowdPack(
     const skinIndex = take((b, o, l) => new Uint8Array(b, o, l), 1, n * 4);
     const skinWeight = take((b, o, l) => new Uint8Array(b, o, l), 1, n * 4);
     const part = take((b, o, l) => new Uint8Array(b, o, l), 1, n);
+    const index = new Uint16Array(bin, c.indexOffset, c.indices);
     const g = new InstancedBufferGeometry();
-    g.setAttribute("position", new BufferAttribute(position, 3));
-    g.setAttribute("normal", new BufferAttribute(normal, 3, true));
-    g.setAttribute("skinIndex", new BufferAttribute(skinIndex, 4));
-    g.setAttribute("skinWeight", new BufferAttribute(skinWeight, 4, true));
-    g.setAttribute("aPart", new BufferAttribute(part, 1));
-    g.setIndex(
-      new BufferAttribute(new Uint16Array(bin, c.indexOffset, c.indices), 1),
-    );
+    const carry = PROPS[costume];
+    const bone = carry ? json.bones.findIndex((b) => b.name === carry[0]) : -1;
+    const joint = c.joints[bone];
+    if (carry && joint) {
+      // the body's arrays with the prop after them, rigid on the hand
+      const prop = carry[1](joint);
+      const m = prop.part.length;
+      const grow = <
+        T extends Float32Array | Int16Array | Uint8Array | Uint16Array,
+      >(
+        a: T,
+        extra: ArrayLike<number>,
+      ): T => {
+        const out = new (a.constructor as new (n: number) => T)(
+          a.length + extra.length,
+        );
+        out.set(a);
+        out.set(extra, a.length);
+        return out;
+      };
+      const snorm = prop.normal.map((v) => Math.round(v * 32767));
+      g.setAttribute(
+        "position",
+        new BufferAttribute(grow(position, prop.position), 3),
+      );
+      g.setAttribute(
+        "normal",
+        new BufferAttribute(grow(normal, snorm), 3, true),
+      );
+      g.setAttribute(
+        "skinIndex",
+        new BufferAttribute(
+          grow(
+            skinIndex,
+            Array.from({ length: m * 4 }, (_, i) => (i % 4 ? 0 : bone)),
+          ),
+          4,
+        ),
+      );
+      g.setAttribute(
+        "skinWeight",
+        new BufferAttribute(
+          grow(
+            skinWeight,
+            Array.from({ length: m * 4 }, (_, i) => (i % 4 ? 0 : 255)),
+          ),
+          4,
+          true,
+        ),
+      );
+      g.setAttribute("aPart", new BufferAttribute(grow(part, prop.part), 1));
+      g.setIndex(
+        new BufferAttribute(
+          grow(
+            index,
+            prop.index.map((i) => i + n),
+          ),
+          1,
+        ),
+      );
+    } else {
+      g.setAttribute("position", new BufferAttribute(position, 3));
+      g.setAttribute("normal", new BufferAttribute(normal, 3, true));
+      g.setAttribute("skinIndex", new BufferAttribute(skinIndex, 4));
+      g.setAttribute("skinWeight", new BufferAttribute(skinWeight, 4, true));
+      g.setAttribute("aPart", new BufferAttribute(part, 1));
+      g.setIndex(new BufferAttribute(index, 1));
+    }
     out[costume] = {
       geometry: g,
       skeleton: packSkeleton(json.bones, c.joints, c.fist),

@@ -12,6 +12,7 @@ import {
   FloatType,
   Group,
   InstancedBufferAttribute,
+  type InstancedBufferGeometry,
   Mesh,
   type MeshStandardMaterial,
   NearestFilter,
@@ -82,6 +83,58 @@ export type CrowdSpec = {
   height?: (x: number, z: number) => number; // the ground under each person
 };
 
+// the staging's extras on the crowd's bodies (ux style guide ending-cast.md; the staging's actors, three/ending): the
+// guards in the cone helmet with a spear, the executioner bareheaded with his arms bare, the maiden small in a light
+// veil with a bundle of cloth. With the pack only (the stand-ins have no helmet or spear); hidden until the staging
+// puts one where its actor stands (cast()).
+export type CastId = "guardN" | "guardS" | "executioner" | "maiden";
+const CAST: {
+  id: CastId;
+  costume: Costume;
+  role: [number, number];
+  scale: [number, number];
+  cloth: string;
+  outer: string;
+}[] = [
+  {
+    id: "guardN",
+    costume: "worker",
+    role: [2, 1],
+    scale: [1.04, 1.03],
+    cloth: "#5E4636",
+    outer: "#5C4A33",
+  },
+  {
+    id: "guardS",
+    costume: "worker",
+    role: [2, 1],
+    scale: [1.02, 1.05],
+    cloth: "#5E4636",
+    outer: "#5C4A33",
+  },
+  {
+    id: "executioner",
+    costume: "worker",
+    role: [0, 0],
+    scale: [1.08, 1.0],
+    cloth: "#7E776C",
+    outer: "#7E776C",
+  },
+  {
+    id: "maiden",
+    costume: "veil",
+    role: [1, 2],
+    scale: [0.9, 0.88],
+    cloth: "#BDB39D",
+    outer: "#D9D0BE",
+  },
+];
+// where an actor stands: its position and the turn about +Y, read every frame
+export type Stand = {
+  position: { x: number; y: number; z: number };
+  rotation: { y: number };
+};
+
 type Person = {
   mesh: number; // which costume's InstancedMesh
   slot: number;
@@ -94,6 +147,9 @@ type Person = {
   idle: string; // what they do standing: sway, or talk when the pack's motions have it
   clip: string;
   shift: { from: Plan; to: Plan; t0: number; t1: number } | null; // making way
+  role: [number, number]; // the outer piece and what they carry (shader.ts iScale.zw)
+  cast?: CastId;
+  stand?: Stand | null; // the actor this one of the cast follows; hidden till then
 };
 
 type Timed = { at: number; person: number; clip: string; loopPhase?: number };
@@ -104,6 +160,22 @@ const baked = new WeakMap<Skeleton, Baked>();
 const isCheer = (clip: string) => CHEERS.includes(clip);
 const TALKING = 4; // one in so many talks among themselves, when the pack's motions have the talk
 
+// a part's centre (x, z), lowest y and height, from the body's rest positions (the cap, for the guards' helmet)
+function partBounds(g: InstancedBufferGeometry, part: number): Vector4 | null {
+  const pos = g.getAttribute("position");
+  const parts = g.getAttribute("aPart");
+  let [x, z, n, lo, hi] = [0, 0, 0, Infinity, -Infinity];
+  for (let i = 0; i < pos.count; i++) {
+    if (parts.getX(i) !== part) continue;
+    x += pos.getX(i);
+    z += pos.getZ(i);
+    lo = Math.min(lo, pos.getY(i));
+    hi = Math.max(hi, pos.getY(i));
+    n++;
+  }
+  return n ? new Vector4(x / n, lo, z / n, Math.max(0.01, hi - lo)) : null;
+}
+
 function boneTexture(b: Baked): DataTexture {
   const tex = new DataTexture(b.data, b.width, b.height, RGBAFormat, FloatType);
   tex.minFilter = tex.magFilter = NearestFilter;
@@ -113,6 +185,7 @@ function boneTexture(b: Baked): DataTexture {
 
 export class Crowd extends Group {
   readonly people: Person[] = [];
+  readonly extras: Person[] = []; // the staging's extras (CAST), on the same meshes after the crowd
   readonly meshes: Mesh[] = [];
   readonly started: Record<string, number> = {}; // how many times each motion has started (tests, the dev panel)
   readonly fromPack: boolean; // MPFB's bodies, not the stand-ins
@@ -168,6 +241,26 @@ export class Crowd extends Group {
         idle: talk && this.people.length % TALKING === 1 ? "talk" : "sway",
         clip: "sway",
         shift: null,
+        role: [1, 0],
+      });
+    }
+    for (const c of pack ? CAST : []) {
+      const mesh = COSTUMES.indexOf(c.costume);
+      this.extras.push({
+        mesh,
+        slot: per[mesh]!++,
+        at: [0, 0],
+        y: 0,
+        yaw: 0,
+        scale: c.scale,
+        speed: 0.9 + rnd() * 0.2,
+        phase: rnd() * 4,
+        idle: "sway",
+        clip: "sway",
+        shift: null,
+        role: c.role,
+        cast: c.id,
+        stand: null,
       });
     }
     COSTUMES.forEach((c, k) => {
@@ -175,12 +268,15 @@ export class Crowd extends Group {
       if (!n) return;
       const geo = pack ? pack[c].geometry.clone() : body(c);
       const sk = skeleton(c);
+      const geoOf = pack?.[c].geometry;
+      const cap = geoOf ? partBounds(geoOf, 2) : null;
       const hb = sk.roles.head ?? 0;
       const [hx, hy, hz] = sk.joints[hb] ?? [0, 0, 0];
       const uniforms: CrowdUniforms = {
         uBones: { value: boneTexture(bakedFor(sk)) },
         uTime: this.time,
         uHead: { value: new Vector4(hx, hy, hz, hb) },
+        uCap: { value: cap ?? new Vector4(0, 10, 0, 1) },
       };
       const { material, depth } = crowdMaterials(uniforms);
       const attr = (size: number) =>
@@ -194,7 +290,7 @@ export class Crowd extends Group {
       geo.setAttribute("iHair", attr(3));
       geo.setAttribute("iFace", attr(3));
       geo.setAttribute("iPlace", attr(4));
-      geo.setAttribute("iScale", attr(2));
+      geo.setAttribute("iScale", attr(4));
       geo.instanceCount = n;
       const mesh = new Mesh(geo, material);
       mesh.name = `crowd-${c}`;
@@ -207,8 +303,10 @@ export class Crowd extends Group {
     });
     const col = new Color();
     const grey3 = new Color();
-    for (const [i, p] of this.people.entries()) {
+    const castOf = (p: Person) => CAST.find((c) => c.id === p.cast);
+    for (const p of [...this.people, ...this.extras]) {
       const g = this.meshes[p.mesh]!.geometry;
+      const own = castOf(p);
       const set = (name: string, hex: string, mute = MUTE.cloth) => {
         col.set(hex);
         const grey = col.r * 0.2126 + col.g * 0.7152 + col.b * 0.0722;
@@ -221,8 +319,12 @@ export class Crowd extends Group {
         );
       };
       set("iSkin", pick(SKIN), MUTE.skin);
-      set("iCloth", CLOTH[pick(MAIN)]);
-      set("iCloth2", CLOTH[pick(SECOND)]);
+      set("iCloth", own?.cloth ?? CLOTH[pick(MAIN)]);
+      set(
+        "iCloth2",
+        own?.outer ?? CLOTH[pick(SECOND)],
+        own ? 0.15 : MUTE.cloth,
+      );
       set("iHair", pick(HAIR), 0);
       (g.getAttribute("iFace") as InstancedBufferAttribute).setXYZ(
         p.slot,
@@ -230,9 +332,18 @@ export class Crowd extends Group {
         1 + (rnd() - 0.5) * 2 * HEAD,
         1 + (rnd() - 0.5) * 2 * HEAD,
       );
-      this.place(i);
-      this.start(i, p.idle, -1e3, p.phase);
+      this.place(p);
+      this.start(p, p.idle, -1e3, p.phase);
     }
+  }
+
+  // one of the cast follows `stand` (the staging's actor) from now on, or hides again (null). False without the pack
+  cast(id: CastId, stand: Stand | null): boolean {
+    const p = this.extras.find((c) => c.cast === id);
+    if (!p) return false;
+    p.stand = stand;
+    this.place(p);
+    return true;
   }
 
   // —— the staging's verbs (F-4 range 4) ——
@@ -345,10 +456,10 @@ export class Crowd extends Group {
       if (due.length) {
         this.queue = this.queue.filter((x) => x.at > t);
         for (const x of due.sort((a, b) => a.at - b.at))
-          this.start(x.person, x.clip, x.at, x.loopPhase ?? 0);
+          this.start(this.people[x.person]!, x.clip, x.at, x.loopPhase ?? 0);
       }
     }
-    for (const [i, p] of this.people.entries()) {
+    for (const p of this.people) {
       const sh = p.shift;
       if (!sh || t < sh.t0) continue;
       const k = Math.min(1, (t - sh.t0) / (sh.t1 - sh.t0));
@@ -357,8 +468,16 @@ export class Crowd extends Group {
         sh.from[0] + (sh.to[0] - sh.from[0]) * e,
         sh.from[1] + (sh.to[1] - sh.from[1]) * e,
       ];
-      this.place(i);
+      this.place(p);
       if (k >= 1) p.shift = null;
+    }
+    for (const p of this.extras) {
+      const s = p.stand;
+      if (!s) continue;
+      p.at = [s.position.x, s.position.z];
+      p.y = s.position.y;
+      p.yaw = s.rotation.y;
+      this.place(p);
     }
   }
 
@@ -378,20 +497,19 @@ export class Crowd extends Group {
     }
   }
 
-  private place(i: number): void {
-    const p = this.people[i]!;
+  private place(p: Person): void {
     const g = this.meshes[p.mesh]!.geometry;
     const place = g.getAttribute("iPlace") as InstancedBufferAttribute;
     const size = g.getAttribute("iScale") as InstancedBufferAttribute;
     place.setXYZW(p.slot, p.at[0], p.y, p.at[1], p.yaw);
-    size.setXY(p.slot, p.scale[0], p.scale[1]);
+    const shown = p.cast && !p.stand ? 0 : 1; // the cast folded to a point till the staging places them
+    size.setXYZW(p.slot, p.scale[0] * shown, p.scale[1] * shown, ...p.role);
     place.needsUpdate = size.needsUpdate = true;
   }
 
   // switch person i to a motion from time `at`; the one before fades out (shader.ts BLEND). A looping motion can
   // start part-way in (`phase` seconds), so people coming back to swaying together don't sway together
-  private start(i: number, name: string, at: number, phase = 0): void {
-    const p = this.people[i]!;
+  private start(p: Person, name: string, at: number, phase = 0): void {
     const c = this.baked.clips[name]!;
     const g = this.meshes[p.mesh]!.geometry;
     const clip = g.getAttribute("iClip") as InstancedBufferAttribute;
