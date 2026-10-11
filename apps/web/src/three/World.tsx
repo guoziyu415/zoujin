@@ -130,6 +130,7 @@ export function World({ onStage }: { onStage: (s: LoadStage) => void }) {
         sun={scene.manifest.sun}
         ground={ground}
         blockers={scene.blockers}
+        nav={scene.nav.data}
       />
       <Player scene={scene} />
       <CameraRig blockers={scene.blockers} />

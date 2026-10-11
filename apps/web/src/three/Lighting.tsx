@@ -16,6 +16,7 @@ import {
   Mesh,
   MeshStandardMaterial,
   type Object3D,
+  OrthographicCamera,
   PlaneGeometry,
   PMREMGenerator,
   Raycaster,
@@ -27,9 +28,9 @@ import {
 } from "three";
 import { Sky } from "three/examples/jsm/objects/Sky.js";
 import { useWorld } from "./dev/fakeStore";
+import type { NavData } from "./nav/navmesh";
 import { SETTINGS } from "./quality/levels";
 import { useQuality } from "./quality/quality";
-import { rig } from "./rig";
 import { minuteOfDay } from "./scene/frame";
 import type { SceneManifest } from "./scene/manifest";
 import { FOG } from "./shaderPatches";
@@ -48,6 +49,14 @@ export const lightState = {
 export const lighting = { settle: () => {} };
 
 const SHADOW_HALF = 36; // metres either side of the shadow box (S7)
+
+function endFade(r: {
+  current: { from: WebGLRenderTarget; mix: WebGLRenderTarget } | null;
+}) {
+  r.current?.from.dispose();
+  r.current?.mix.dispose();
+  r.current = null;
+}
 
 // Sky.js goes black as soon as the sun is down and its forward scattering near a low sun runs far above the baked sky:
 // afterglow on the sunset side, a dark blue night, an amber low sun, the pink belt, a soft knee on the brightest channel
@@ -139,17 +148,18 @@ const ENV_EVERY_MS = 250;
 
 // The environment has the plaza floor under the horizon (A-0, UX round 5; art-direction 3.2: faces are filled by the
 // warm light the sunlit limestone throws back): with the sky alone, whatever was in shade was lit by blue only. A disc
-// of the floor's colour lit by the sun, as much of it as reaches the ground round the player (rays to the sun against
-// the shadow caster), and by the sky. In shade the bounce stays weak and cool, so the plaza's cool shade at 17:30
-// stays. The sky alone is rendered first to light the disc, then sky and disc together make the environment.
+// of the floor's colour lit by the sun, as much of it as reaches the walkable ground (rays to the sun against the
+// shadow caster), and by the sky. The whole plaza's share, not the ground round the player: the environment lights
+// every face in the scene, so it follows the clock only, not the player's steps (UX on #69). When the plaza is in shade
+// (17:30) the bounce stays weak and cool. The sky alone is rendered first to light the disc, then sky and disc together
+// make the environment.
 const GROUND_DROP = 1.2; // the disc this far under the environment's centre: a person's middle above the floor
 // The disc leaves out the light the sunlit walls throw back (the castle's front at 17:30). This stands in for it: at
 // noon the plaza comes back to the brightness UX approved, and the shade at 17:30 stays a little darker than before.
 const ENV_GAIN = 1.3;
-const LIT_RAYS = 24;
-const FOLLOW_MS = 1500; // walking in and out of shade: checked this often, rebuilt past 1.5 m and a 0.1 change
-const FOLLOW_M = 1.5;
-const FOLLOW_LIT = 0.1;
+const LIT_POINTS = 32;
+const LIT_EVERY = MathUtils.degToRad(1); // the share is cast again once the sun has moved this far (it costs ~15 ms)
+const FADE_MS = 1000; // a new environment fades in over this (UX on #69)
 
 // the floor's albedo: its base texture's mean colour (scene.json keeps it) times the material colour, linear
 export function groundAlbedo(m: SceneManifest): Color {
@@ -164,32 +174,79 @@ export function groundAlbedo(m: SceneManifest): Color {
   return e ? c.multiply(new Color().setRGB(...e.color)) : c;
 }
 
-const ray = new Raycaster();
-const rayFrom = new Vector3();
+// points spread evenly by area over the navmesh's ground triangles (a quasi-random sequence, the same every time)
+export function walkPoints(nav: NavData, n = LIT_POINTS): Vector3[] {
+  const t = nav.detail.tris;
+  const area: number[] = [];
+  let sum = 0;
+  for (let i = 0; i < t.length; i += 9) {
+    const ux = t[i + 3]! - t[i]!;
+    const uz = t[i + 5]! - t[i + 2]!;
+    const vx = t[i + 6]! - t[i]!;
+    const vz = t[i + 8]! - t[i + 2]!;
+    area.push((sum += Math.abs(ux * vz - uz * vx)));
+  }
+  const pts: Vector3[] = [];
+  for (let k = 0, j = 0; k < n && sum > 0; k++) {
+    while (area[j]! < ((k + 0.5) / n) * sum) j++;
+    let a = (k * 0.7548777) % 1;
+    let b = (k * 0.5698403) % 1;
+    if (a + b > 1) [a, b] = [1 - a, 1 - b];
+    const i = 9 * j;
+    pts.push(
+      new Vector3(
+        t[i]! + a * (t[i + 3]! - t[i]!) + b * (t[i + 6]! - t[i]!),
+        t[i + 1]! +
+          a * (t[i + 4]! - t[i + 1]!) +
+          b * (t[i + 7]! - t[i + 1]!) +
+          0.03,
+        t[i + 2]! + a * (t[i + 5]! - t[i + 2]!) + b * (t[i + 8]! - t[i + 2]!),
+      ),
+    );
+  }
+  return pts;
+}
 
-// how much of the ground round (x, y, z) the sun reaches: a sunflower disc of about 4 m
-function litAround(blockers: Object3D[], x: number, y: number, z: number) {
+const ray = new Raycaster();
+
+// how much of the walkable ground the sun reaches
+function litShare(blockers: Object3D[], pts: Vector3[]) {
   const d = lightState.sunDir;
-  if (d.y < 0.005 || !blockers.length) return 0;
+  if (d.y < 0.005 || !blockers.length || !pts.length) return 0;
   let lit = 0;
-  for (let i = 0; i < LIT_RAYS; i++) {
-    const a = i * 2.39996;
-    const r = 0.5 + 3.5 * Math.sqrt((i + 0.5) / LIT_RAYS);
-    ray.set(rayFrom.set(x + Math.cos(a) * r, y + 0.03, z + Math.sin(a) * r), d);
-    ray.far = 300;
+  ray.far = 300;
+  for (const p of pts) {
+    ray.set(p, d);
     if (!ray.intersectObjects(blockers, false).length) lit++;
   }
-  return lit / LIT_RAYS;
+  return lit / pts.length;
+}
+
+// the fade between two environments: both are PMREM targets of one size, so a texel-by-texel mix is exact
+function makeFade() {
+  const mat = new ShaderMaterial({
+    uniforms: { a: { value: null }, b: { value: null }, k: { value: 0 } },
+    vertexShader: "void main(){ gl_Position = vec4(position.xy, 0.0, 1.0); }",
+    fragmentShader:
+      "uniform sampler2D a, b; uniform float k; void main(){ ivec2 p = ivec2(gl_FragCoord.xy); gl_FragColor = mix(texelFetch(a, p, 0), texelFetch(b, p, 0), k); }",
+    depthTest: false,
+    depthWrite: false,
+  });
+  const quad = new Mesh(new PlaneGeometry(2, 2), mat);
+  quad.frustumCulled = false;
+  return { mat, scene: new Scene().add(quad), cam: new OrthographicCamera() };
 }
 
 export function Lighting({
   sun: params,
   ground,
   blockers,
+  nav,
 }: {
   sun: SunParams;
   ground: Color;
   blockers: Object3D[];
+  nav: NavData;
 }) {
   const { gl, scene, camera } = useThree();
   const parts = useMemo(() => {
@@ -230,21 +287,26 @@ export function Lighting({
       disc: makeSunDisc(),
       pmrem: new PMREMGenerator(gl),
       pmremSky: new PMREMGenerator(gl), // the sky alone, small: it only lights the disc
+      fade: makeFade(),
     };
   }, [gl]);
   const applied = useQuality((s) => s.applied);
   const envRT = useRef<WebGLRenderTarget | null>(null);
   const envTimer = useRef<number>(0);
-  // where and how lit the ground was when the environment was last made
-  const bounce = useRef({ x: 0, z: 0, lit: -1, check: 0 });
-  const makeEnv = useRef(() => {});
+  // fading in envRT: the one it replaces, the mix shown meanwhile, when it started
+  const fading = useRef<{
+    from: WebGLRenderTarget;
+    mix: WebGLRenderTarget;
+    start: number;
+  } | null>(null);
+  const points = useMemo(() => walkPoints(nav), [nav]);
 
   useEffect(() => {
     (parts.floor.material as MeshStandardMaterial).color.copy(ground);
   }, [parts, ground]);
 
   useEffect(() => {
-    const { sun, hemi, sky, disc, pmrem, pmremSky, floor } = parts;
+    const { sun, hemi, sky, disc, pmrem, pmremSky, floor, fade } = parts;
     scene.add(sun, sun.target, hemi, sky, disc);
     scene.fog = new FogExp2(FOG.base.clone(), FOG.density);
     scene.background = null;
@@ -255,11 +317,13 @@ export function Lighting({
       scene.environment = null;
       scene.environmentIntensity = 1;
       envRT.current?.dispose();
+      endFade(fading);
       window.clearTimeout(envTimer.current);
       pmrem.dispose();
       pmremSky.dispose();
       floor.geometry.dispose();
       (floor.material as MeshStandardMaterial).dispose();
+      fade.mat.dispose();
     };
   }, [parts, scene]);
 
@@ -277,6 +341,7 @@ export function Lighting({
 
   // the clock moves the sun
   useEffect(() => {
+    const cast = { dir: new Vector3(), lit: -1 };
     const apply = (t: number, immediate: boolean) => {
       const { sun, hemi, sky, envSky, skyScene, disc, pmrem } = parts;
       const pos = sunAt(minuteOfDay(t), params);
@@ -321,9 +386,17 @@ export function Lighting({
       FOG.sunColor.value.copy(sun.color).multiplyScalar(look.fogSun);
       const env = () => {
         const { floor, floorSun, pmremSky } = parts;
-        const p = rig.player;
-        const lit = litAround(blockers, p.x, p.y, p.z);
-        bounce.current = { ...bounce.current, x: p.x, z: p.z, lit };
+        // one fade at a time: a change meanwhile waits for it (the test hook's settle doesn't)
+        if (fading.current && !immediate) {
+          envTimer.current = window.setTimeout(env, ENV_EVERY_MS);
+          return;
+        }
+        endFade(fading);
+        if (cast.lit < 0 || cast.dir.angleTo(lightState.sunDir) > LIT_EVERY) {
+          cast.lit = litShare(blockers, points);
+          cast.dir.copy(lightState.sunDir);
+        }
+        const lit = cast.lit;
         floor.visible = false;
         skyScene.environment = null;
         const skyOnly = pmremSky.fromScene(skyScene, 0, 0.1, 100, { size: 32 });
@@ -334,12 +407,18 @@ export function Lighting({
         floorSun.position.copy(lightState.sunDir);
         floorSun.target.position.set(0, 0, 0);
         floorSun.target.updateMatrixWorld();
-        envRT.current?.dispose();
+        const old = envRT.current;
         envRT.current = pmrem.fromScene(skyScene, 0, 0.1, 100);
         skyOnly.dispose();
-        scene.environment = envRT.current.texture;
+        if (old && !immediate) {
+          const mix = envRT.current.clone();
+          fading.current = { from: old, mix, start: performance.now() };
+          scene.environment = mix.texture; // drawn from the next frame on
+        } else {
+          old?.dispose();
+          scene.environment = envRT.current.texture;
+        }
       };
-      makeEnv.current = env;
       window.clearTimeout(envTimer.current);
       if (immediate) env();
       else envTimer.current = window.setTimeout(env, ENV_EVERY_MS);
@@ -349,7 +428,7 @@ export function Lighting({
     return useWorld.subscribe((s, prev) => {
       if (s.clock.t !== prev.clock.t) apply(s.clock.t, false);
     });
-  }, [parts, params, scene, blockers]);
+  }, [parts, params, scene, blockers, points]);
 
   // shadow box and the sun disc follow the camera; snapped to shadow texels so the edges don't crawl
   const tmp = useMemo(
@@ -364,19 +443,23 @@ export function Lighting({
     [],
   );
   useFrame(() => {
-    const { sun, disc } = parts;
+    const { sun, disc, fade } = parts;
     const d = lightState.sunDir;
-    // the bounce follows the player in and out of shade
-    const now = performance.now();
-    const b = bounce.current;
-    if (now > b.check) {
-      b.check = now + FOLLOW_MS;
-      const p = rig.player;
-      if (
-        Math.hypot(p.x - b.x, p.z - b.z) > FOLLOW_M &&
-        Math.abs(litAround(blockers, p.x, p.y, p.z) - b.lit) > FOLLOW_LIT
-      )
-        makeEnv.current();
+    const f = fading.current;
+    if (f && envRT.current) {
+      const k = Math.min(1, (performance.now() - f.start) / FADE_MS);
+      const u = fade.mat.uniforms;
+      u.a!.value = f.from.texture;
+      u.b!.value = envRT.current.texture;
+      u.k!.value = k;
+      const was = gl.getRenderTarget();
+      gl.setRenderTarget(f.mix);
+      gl.render(fade.scene, fade.cam);
+      gl.setRenderTarget(was);
+      if (k >= 1) {
+        scene.environment = envRT.current.texture;
+        endFade(fading);
+      }
     }
     camera.getWorldDirection(tmp.fwd);
     tmp.fwd.y = 0;
