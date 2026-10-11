@@ -25,7 +25,8 @@ const time = { value: 0 };
 // The fragment shader: the cloud layer seen in perspective (flattening towards the horizon); the broken cumulus,
 // billowed (folded noise on the finer octaves), sharp-edged, a little warped; in shadow where the cloud gets thicker
 // towards the sun and on its underside (towards the horizon in this projection), thin edges facing the sun shine; the
-// bank over the mountains upstream, low to the north, a ragged top lit by the sun, darker layers below; all of it
+// bank over the mountains upstream, low to the north: billowed in the sky's own angles (not the cumulus' perspective
+// plane, which smears into streaks that low; UX round 3 ③), its lumpy top lit by the sun, darker below; all of it
 // into the haze at the horizon. (No comments inside the shader strings: they ship in the 3D chunk.)
 
 export function clouds(s: LoadedScene): (() => void) | null {
@@ -91,14 +92,17 @@ void main() {
   float shade = clamp( ( fbm( w + toSun * 0.15 ) - fbm( w ) ) * 6.0 + 0.4 + ( fbm( w - down ) - fbm( w + down ) ) * 3.0, 0.0, 1.0 );
   float core = smoothstep( cover + 0.04, cover + 0.3, c );
   vec3 col = mix( uSun, uAmb, clamp( shade * 0.7 + core * 0.3, 0.0, 1.0 ) );
-  float north = smoothstep( 0.35, 0.9, dot( normalize( d.xz + 1e-5 ), uNorth ) );
-  float az = atan( d.z, d.x );
-  float top = 0.3 + 0.05 * n1( vec2( az * 9.0, 1.3 ) ) + 0.05 * fbm( vec2( az * 24.0, 7.7 ) ) - 0.08 * ( 1.0 - north );
-  float bank = north * smoothstep( top + 0.01, top - 0.03, h + 0.04 * ( fbm( p * 2.5 ) - 0.5 ) );
-  float layers = 0.5 + 0.5 * sin( h * 70.0 + 3.0 * fbm( vec2( az * 6.0, h * 4.0 ) ) );
-  vec3 dark = uAmb * mix( 0.3, 0.5, layers ) * ( 0.75 + 0.5 * fbm( vec2( az * 20.0, h * 30.0 ) + p ) );
-  float rim = smoothstep( top - 0.07, top - 0.005, h );
-  vec3 bankCol = mix( dark, uSun * 0.85, rim * rim );
+  vec2 dn = normalize( d.xz + 1e-5 );
+  float north = smoothstep( 0.35, 0.9, dot( dn, uNorth ) );
+  float az = atan( dot( dn, vec2( - uNorth.y, uNorth.x ) ), dot( dn, uNorth ) );
+  vec2 g = vec2( az, h ) * 9.0 + vec2( uTime * 0.004, 0.0 );
+  float lump = fbm( g );
+  float top = 0.24 + 0.06 * n1( vec2( az * 3.0, 1.3 ) ) + 0.09 * ( lump - 0.5 ) - 0.08 * ( 1.0 - north );
+  float bank = north * smoothstep( top + 0.012, top - 0.012, h );
+  float bill = fbm( g * 2.1 + 3.1 );
+  vec3 dark = uAmb * ( 0.26 + 0.22 * bill + 0.22 * smoothstep( 0.0, top, h ) );
+  float rim = smoothstep( top - 0.08, top - 0.004, h ) * ( 0.45 + 0.55 * bill );
+  vec3 bankCol = mix( dark, uSun * 0.8, rim * rim );
   col = mix( col, bankCol, bank );
   a = max( a, bank * 0.97 );
   a *= smoothstep( - 0.005, 0.05, d.y );

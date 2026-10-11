@@ -1,9 +1,9 @@
-// The far land round the road's scenes (F-10, UX round 2 on the river shots): the pack's hills are one straw texture
-// tiled every 12 m with the outcrop's relief, which read as desert dunes. Here, in the shader: the tiling broken up (a
-// second, larger sample of the same texture blended in by a slow noise), the relief turned down, and macro colour by
-// position and slope: dark scrub in patches, greener hollows, pale limestone breaking through on the steep parts
-// (homeward-road.md 0.4). And the first light (act 2, 05:15): the sun is up but behind the east ridge, so the valley
-// has no direct light; the far western hilltops stand high enough to catch it, a faint gold (UX round 2).
+// The far land round the road's scenes (F-10, UX rounds 2 and 3 on the river shots): the pack's hills are one straw
+// texture tiled every 12 m with the outcrop's relief, which read as desert dunes. Here, in the shader: the tiling broken
+// up (a second, larger sample of the same texture blended in by a slow noise), the relief turned down, and macro colour
+// by position and slope: dark scrub in patches, greener hollows, grey-beige limestone breaking through in small pieces
+// on the steep parts (homeward-road.md 0.4). And the first light (act 2, 05:15): the sun is up but behind the east
+// ridge, so the valley has no direct light; the tops of the far western hills catch a faint line of gold.
 import {
   Color,
   Mesh,
@@ -96,9 +96,10 @@ zjHillN *= sign( zjHillN.y );
   float steep = 1.0 - smoothstep( 0.82, 0.96, zjHillN.y );
   diffuseColor.rgb *= mix( vec3( 1.0 ), vec3( 0.8, 0.95, 0.66 ), smoothstep( 0.35, 0.75, big ) );
   diffuseColor.rgb *= mix( vec3( 1.0 ), vec3( 0.42, 0.5, 0.32 ), smoothstep( 0.5, 0.68, mid * 0.65 + fine * 0.35 ) * 0.9 );
-  float rock = zjHillNoise( p / 11.0 + 3.0 ) * 0.6 + zjHillNoise( p / 3.0 + 7.0 ) * 0.4;
-  float t = 0.7 - 0.12 * steep;
-  diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.36, 0.35, 0.32 ) * ( 0.8 + 0.4 * fine ), smoothstep( t, t + 0.06, rock ) * 0.75 );
+  float rock = zjHillNoise( p / 6.0 + 3.0 ) * 0.55 + zjHillNoise( p / 1.8 + 7.0 ) * 0.45;
+  float t = 0.8 - 0.24 * steep;
+  float pits = 0.6 + 0.4 * zjHillNoise( p * 1.4 + 2.0 );
+  diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.17, 0.155, 0.13 ) * pits, smoothstep( t, t + 0.05, rock ) * 0.7 );
 }`,
         )
         .replace(
@@ -115,7 +116,8 @@ zjHillN *= sign( zjHillN.y );
   vec2 toSun = normalize( uSunDir.xz + 1e-5 );
   float along = dot( vZjHill.xz, toSun );
   float over = ( uRidge.x * uRidge.y - vZjHill.y ) / max( uRidge.x - along, 1.0 );
-  float lit = along > uRidge.x - 1.0 ? 1.0 : smoothstep( - 0.004, 0.004, uSunDir.y / length( uSunDir.xz + 1e-5 ) - over );
+  // only the tops: the light fades in over some tens of metres above the ridge's shadow line, faint (UX round 3 ⑧)
+  float lit = along > uRidge.x - 1.0 ? 1.0 : smoothstep( 0.006, 0.03, uSunDir.y / length( uSunDir.xz + 1e-5 ) - over ) * 0.4;
   totalEmissiveRadiance += diffuseColor.rgb * RECIPROCAL_PI * uGlow * max( dot( zjHillN, uSunDir ), 0.0 ) * lit;
 }`,
         );

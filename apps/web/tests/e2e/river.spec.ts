@@ -1,9 +1,9 @@
 // The road's river (F-10 card acceptance) on the test page: each act loads its own pack through scene.road-river's
 // index, the shared roadside textures come from road-common, no direct sun in the valley at 05:15 but at 05:45 (the
 // east ridge), draw calls in budget, a clean console. Screenshots for UX go to test-results/shots: act 4 from road-west
-// looking east and south (the backlit waves), act 2 from road-east looking west with Melos at melos-wash, the act 2 sky
-// both ways (drawn as at −1.5°, or the landing moved to 04:55); act 4 also looking upstream at the shallows' boulders
-// and at the willow from road-west. Skipped without a road build (assets/pipeline/road).
+// looking east and south (the backlit waves), act 2 from road-east looking west (no stand-in figure: UX round 3) and
+// from the deck downstream, the act 2 sky both ways (drawn as at −1.5°, or the landing moved to 04:55); act 4 also
+// looking upstream at the shallows' boulders and at the willow from road-west. Skipped without a road build (assets/pipeline/road).
 import { expect, test, type Page } from "@playwright/test";
 import fs from "node:fs";
 import path from "node:path";
@@ -26,9 +26,6 @@ type Hook = {
   frames(n: number): Promise<void>;
   setClock(t: number): Promise<void>;
   setView(from: Plan | null, to?: Plan, fov?: number): Promise<void>;
-  setCharacters(
-    c: Record<string, { place: string; spot?: string; activity: string }>,
-  ): Promise<void>;
   direct(): number;
   skyElev(deg?: number): Promise<void>;
 };
@@ -105,15 +102,6 @@ test("act 2: the calm pack from road-east; the ridge holds the sun back", async 
   page,
 }) => {
   const problems = await open(page, "act.2", 315);
-  await page.evaluate(() =>
-    (window as unknown as W).__zoujin.setCharacters({
-      "char.melos": {
-        place: "place.river",
-        spot: "melos-wash",
-        activity: "wash",
-      },
-    }),
-  );
   // 05:15: the sun 2.8° up, behind the 7° ridge: no direct light; at 05:45 it has cleared it
   expect(await direct(page)).toBe(0);
   const west: [Plan, Plan] = [
@@ -121,6 +109,8 @@ test("act 2: the calm pack from road-east; the ridge holds the sun back", async 
     [-20, 0, 1],
   ];
   await shot(page, "river-act2-west", ...west);
+  // the river itself hardly shows from the landing: from the deck, downstream, the mirror and the mist on it
+  await shot(page, "river-act2-bridge-south", [3, 1, 1.65], [3, -30, -2.5]);
   // the two skies for UX to choose from (F-10 card 5): drawn as at −1.5°, or the landing moved to 04:55
   await skyElev(page, -1.5);
   await shot(page, "river-act2-west-sky-minus1.5", ...west);

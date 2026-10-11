@@ -1,8 +1,7 @@
 // The river's water (F-10 card 4; ux/scenes/homeward-road.md 1.1, 1.5), replacing the placeholder material of the
 // pack's water node. Everything is procedural (no textures to download):
 // - calm (act 2, 05:15): a dark near-mirror with slow ripples, holding the sky where it looks up past the banks and the
-//   hills (low down it mirrors them, dark), and a mist lying in the channel up to about 3.4 m (the deck is 2.2 m over
-//   the water: legs in the mist on the bridge);
+//   hills (low down it mirrors them, dark), and a thin mist lying low on the water, about 1.3 m (UX round 3);
 // - flood (act 4, 11:45): opaque mud yellow-brown, long ridges and foam streaks running downstream, silt bands drawn
 //   out along the current, standing waves and foam where the flood piles up on the piles and the snag (rings round
 //   the shallows' boulders), lighter slack water where the flow mask says (the upstream shallows, the drowned west
@@ -79,7 +78,7 @@ float zjWake( vec2 p ) {
   for ( int i = 0; i < 12; i ++ ) {
     vec2 d = p - uSplash[ i ].xy;
     float along = dot( d, uFlow ), across = dot( d, vec2( - uFlow.y, uFlow.x ) );
-    w += uSplash[ i ].z * ( exp( - dot( d, d ) / 0.5 ) + exp( - across * across / ( 0.25 + 0.08 * max( along, 0.0 ) ) ) * smoothstep( - 0.3, 0.2, along ) * exp( - max( along, 0.0 ) / 7.0 ) );
+    w += uSplash[ i ].z * ( exp( - dot( d, d ) / 0.5 ) + exp( - across * across / ( 0.25 + 0.12 * max( along, 0.0 ) ) ) * smoothstep( - 0.3, 0.2, along ) * exp( - max( along, 0.0 ) / 12.0 ) );
   }
   return clamp( w, 0.0, 1.0 );
 }
@@ -122,8 +121,8 @@ function waterMaterial(o: Opts): Material {
     roughness: o.flood ? 0.42 : 0.05,
     metalness: 0,
     // muddy water: a dull sheen, mostly its own colour (a stronger blue sky in it turned it mauve); the calm river
-    // mirrors the sky
-    envMapIntensity: o.flood ? 0.22 : 1,
+    // mirrors the sky, a little brighter than it would (UX round 3: the dawn's pink in it)
+    envMapIntensity: o.flood ? 0.22 : 1.6,
   });
   mat.name = "water";
   const splash = Array.from(
@@ -176,16 +175,18 @@ zh += 0.5 * zst;
 {
   vec2 q = zjQ( zp );
   float adv = uTime * uSpeed;
-  q.y += 1.2 * zjNoise( vec2( q.x - adv, q.y ) * 0.15 ); // the streaks wander
-  // foam: streaks carried downstream, on the crests, in the wakes and on the standing waves
-  float streak = zjNoise( vec2( ( q.x - adv ) * 0.3, q.y * 7.0 ) ) * zjNoise( vec2( ( q.x - adv ) * 1.6, q.y * 11.0 ) + 3.7 );
-  float broken = smoothstep( 0.3, 0.7, zjNoise( zp * 2.3 - uFlow * adv ) );
-  foam = smoothstep( 0.42, 0.62, streak ) * 0.4 * zs * broken;
-  foam += zjWake( zp ) * broken + smoothstep( 0.45, 0.9, zst ) * ( 0.4 + 0.6 * broken );
-  foam = clamp( foam, 0.0, 1.0 );
-  // silt in the current, lighter and darker bands drawn out along it; the shallows lighter still (UX round 2 ⑥)
+  q.y += 1.2 * zjNoise( vec2( q.x - adv, q.y ) * 0.15 ); // the bands wander
+  // foam (UX round 3 ②): long soft bands drawn out along the current, laced inside, not short dashes; trails from the
+  // piles, the snag and the boulders downstream; on the standing waves
+  vec2 r = vec2( q.x - adv, q.y );
+  float band = 0.65 * zjNoise( r * vec2( 0.05, 1.1 ) ) + 0.35 * zjNoise( r * vec2( 0.12, 2.3 ) + 3.7 );
+  float lace = zjNoise( r * vec2( 0.5, 2.6 ) + 9.1 );
+  foam = smoothstep( 0.56, 0.82, band ) * ( 0.25 + 0.35 * lace ) * zs;
+  foam += zjWake( zp ) * ( 0.35 + 0.5 * lace ) + smoothstep( 0.45, 0.9, zst ) * ( 0.45 + 0.4 * lace );
+  foam = clamp( foam, 0.0, 0.9 );
+  // silt in the current, lighter and darker bands drawn out along it; the shallows clearly lighter (UX round 3 ⑤)
   zjCol *= mix( 0.82, 1.18, zjNoise( vec2( ( q.x - adv ) * 0.05, q.y * 0.35 ) ) );
-  zjCol = mix( zjCol, zjCol * 1.7 + vec3( 0.02, 0.018, 0.008 ), ( 1.0 - zs ) / 0.75 );
+  zjCol = mix( zjCol, zjCol * 2.3 + vec3( 0.05, 0.045, 0.03 ), ( 1.0 - zs ) / 0.75 );
 }
 #endif
 vec3 zjN = vec3( 0.0, 1.0, 0.0 );
@@ -294,10 +295,13 @@ float zjLine = ( 1.0 - smoothstep( 0.03, 0.08, abs( zjAbove - 0.015 ) / max( zjS
 diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 0.66, 0.61, 0.52 ), zjLine * 0.8 );
 float zjPuddle = 0.0;
 #ifdef ZJ_ROAD
-// damp all over, and puddles in the ruts and hollows: dark, still, mirroring the sky
-diffuseColor.rgb = mix( vec3( dot( diffuseColor.rgb, vec3( 0.3, 0.59, 0.11 ) ) ), diffuseColor.rgb, 1.3 ) * 0.5;
-zjPuddle = smoothstep( 0.52, 0.57, zjWetNoise( vZjWet.xz * 0.45 ) * 0.7 + zjWetNoise( vZjWet.xz * 1.7 + 4.1 ) * 0.3 ) * ( 1.0 - zjWet );
-diffuseColor.rgb *= 1.0 - 0.6 * zjPuddle;
+// wet all over (UX round 3 ⑥: darker again), and puddles in the hollows: still water mirroring the sky, with a dark
+// wet rim round each
+diffuseColor.rgb = mix( vec3( dot( diffuseColor.rgb, vec3( 0.3, 0.59, 0.11 ) ) ), diffuseColor.rgb, 1.3 ) * 0.26;
+vec2 zjPw = vZjWet.xz + 0.8 * vec2( zjWetNoise( vZjWet.xz * 0.9 ), zjWetNoise( vZjWet.xz * 0.9 + 7.7 ) );
+float zjPn = zjWetNoise( zjPw * 0.45 ) * 0.7 + zjWetNoise( zjPw * 1.7 + 4.1 ) * 0.3;
+zjPuddle = smoothstep( 0.55, 0.58, zjPn ) * ( 1.0 - zjWet );
+diffuseColor.rgb *= ( 1.0 - 0.45 * smoothstep( 0.48, 0.55, zjPn ) ) * ( 1.0 - 0.7 * zjPuddle );
 #endif`,
         )
         .replace(
@@ -305,7 +309,7 @@ diffuseColor.rgb *= 1.0 - 0.6 * zjPuddle;
           `#include <roughnessmap_fragment>
 roughnessFactor = mix( roughnessFactor, 0.6, zjWet * ( 1.0 - zjLine ) );
 #ifdef ZJ_ROAD
-roughnessFactor = mix( roughnessFactor, 0.03, zjPuddle );
+roughnessFactor = mix( min( roughnessFactor, 0.65 ), 0.02, zjPuddle );
 #endif`,
         )
         .replace(
@@ -313,6 +317,15 @@ roughnessFactor = mix( roughnessFactor, 0.03, zjPuddle );
           `#include <normal_fragment_maps>
 #ifdef ZJ_ROAD
 normal = normalize( mix( normal, normalize( ( viewMatrix * vec4( 0.0, 1.0, 0.0, 0.0 ) ).xyz ), zjPuddle ) );
+#endif`,
+        )
+        // the sky in a puddle as bright as the sky (seen from above, water mirrors only a few per cent of it)
+        .replace(
+          "#include <lights_fragment_maps>",
+          `#include <lights_fragment_maps>
+#if defined( ZJ_ROAD ) && defined( RE_IndirectSpecular )
+float zjNv = saturate( dot( geometryNormal, geometryViewDir ) ); // at a glancing angle water mirrors well enough
+radiance *= 1.0 + 7.0 * zjPuddle * zjNv * zjNv;
 #endif`,
         );
     };
@@ -456,7 +469,7 @@ void main() {
   vec2 p = vPos.xz + vec2( 0.0, vLayer * 7.0 );
   float d = n( p * 0.12 + vec2( 0.03, 0.05 ) * uTime ) * n( p * 0.37 - vec2( 0.06, 0.02 ) * uTime );
   float reach = vAcross.y + 0.2 + 0.6 * vLayer * uHeight; // where this layer would meet the bank
-  float a = 0.6 * pow( 1.0 - vLayer, 0.8 ) * ( 1.0 - smoothstep( reach - 1.6, reach, abs( vAcross.x ) ) ) * ( 0.1 + 2.2 * smoothstep( 0.08, 0.5, d ) );
+  float a = 0.12 * pow( 1.0 - vLayer, 0.8 ) * ( 1.0 - smoothstep( reach - 1.6, reach, abs( vAcross.x ) ) ) * ( 0.15 + 1.6 * smoothstep( 0.08, 0.5, d ) );
   a *= smoothstep( 0.8, 5.0, distance( cameraPosition, vPos ) );
   gl_FragColor = vec4( uColor, a );
   #include <tonemapping_fragment>
@@ -527,7 +540,7 @@ export function attachWater(s: LoadedScene, three: Scene): () => void {
     const u = (ms.material as ShaderMaterial).uniforms.uColor!.value as Color;
     ms.onBeforeRender = () => {
       tick();
-      if (three.fog) u.copy(three.fog.color).multiplyScalar(2.5);
+      if (three.fog) u.copy(three.fog.color).multiplyScalar(1.5);
     };
     added.push(ms);
   }

@@ -167,6 +167,9 @@ def rock(name, x, y, z, r, m, squash=0.6, seed=0, group='arch', caster=True, sub
     return obj_from_bm(name, bm, [m], group, caster)
 
 
+CORE = 0.55   # the crown blobs' size under the leaf cards
+
+
 def tree(name, x, y, h, r, m_leaf, m_bark, shape='round', z=0.0, group='arch', lean=(0.0, 0.0)):
     """white poplar ('spread': broad, ragged, see-through crown on a leaning trunk; not the columnar Lombardy poplar,
     a later cultivar), holm oak ('round'), willow ('weep': wide, hanging, leaning trunk)"""
@@ -190,7 +193,8 @@ def tree(name, x, y, h, r, m_leaf, m_bark, shape='round', z=0.0, group='arch', l
             cx, cy, cz = tx + math.cos(a) * d, ty + math.sin(a) * d, z + h * rr.uniform(0.36, 0.9)
             rad = r * rr.uniform(0.34, 0.48)
             crowns.append((Vector((cx, cy, cz)), rad, 0.85))
-            g = bmesh.ops.create_icosphere(bm, subdivisions=2, radius=rad)
+            # the blob only a dark core inside the leaf cards (UX round 3: the blobs read as noisy polyhedra)
+            g = bmesh.ops.create_icosphere(bm, subdivisions=1, radius=rad * CORE)
             for v in g['verts']:
                 n = noise.noise(v.co * 1.9 + Vector((x, y, i))) * 0.35
                 v.co = Vector((cx + v.co.x * (1 + n), cy + v.co.y * (1 + n), cz + v.co.z * 0.85 * (1 + n)))
@@ -203,10 +207,9 @@ def tree(name, x, y, h, r, m_leaf, m_bark, shape='round', z=0.0, group='arch', l
                                              (0.25 if i % 2 else -0.15), 0.5) for i in range(6)]
         for i, (ux, uy, uz, s_) in enumerate(lobes):
             cx, cy, cz = tx + ux * r * 0.45, ty + uy * r * 0.45, cz0 + uz * h * 0.25
-            # the core smooth, the lobes coarser (they stand 28 m off and more; the pack's bytes are tight)
             rad = r * s_ * rr.uniform(0.9, 1.1)
             crowns.append((Vector((cx, cy, cz)), rad, 0.95))
-            g = bmesh.ops.create_icosphere(bm, subdivisions=2 if i == 0 else 1, radius=rad)
+            g = bmesh.ops.create_icosphere(bm, subdivisions=1, radius=rad * CORE)
             for v in g['verts']:
                 n = noise.noise(v.co * 1.7 + Vector((x, y, i))) * 0.22
                 v.co = Vector((cx + v.co.x * (1 + n), cy + v.co.y * (1 + n), cz + v.co.z * 0.95 * (1 + n)))
@@ -234,17 +237,20 @@ def tree(name, x, y, h, r, m_leaf, m_bark, shape='round', z=0.0, group='arch', l
     o = obj_from_bm(name + '_leaves', bm, [m_leaf], group, True)
     if crowns:
         rr = random.Random(int(round(x * 100)) * 104729 + int(round(y * 100)))
-        leaf_cards(name + '_cards', crowns, 9 if shape == 'spread' else 7, 1.5 if shape == 'spread' else 1.0,
-                   m_leaf, group, rr)
+        leaf_cards(name + '_cards', crowns, 16 if shape == 'spread' else 14, 1.9 if shape == 'spread' else 1.3,
+                   m_leaf, 'far', rr, depth=(0.4, 1.1))
     return o
 
 
-def leaf_cards(name, crowns, per, size, m, group, rr, droop=False, uv_tile=1.6):
+def leaf_cards(name, crowns, per, size, m, group, rr, droop=False, uv_tile=1.6, depth=(0.7, 1.05)):
     """leaf cards over a crown's blobs (UX round 2: the blobs alone read as low-poly balls): small hexagons of the
     alpha-tested leaf texture (a random piece of its 1.6 m tile, the blobs' scale), standing out of the blob surfaces so
     the crown's edge is ragged and lets the sky through. Their normals point out of the crown (not across the card), so
-    a crown is lit as one mass. Not shadow casters: the blobs cast the crown's shadow. droop: hanging, facing out
-    sideways (the willow)"""
+    a crown is lit as one mass. Not shadow casters: the blobs cast the crown's shadow. The callers put them in the 'far'
+    group, not baked: their baked light is noise, and their islands grew the lightmap past the pack's bytes (UX round
+    3). droop: hanging, facing out sideways (the willow). depth: how far out from a blob's centre a card stands, in its
+    radius (UX round 3: the poplars and holm oaks are all cards, through the crown and past its edge, round a small
+    core)"""
     bm = bmesh.new()
     uvl = bm.loops.layers.uv.new('UVMap')
     normals = []
@@ -252,7 +258,7 @@ def leaf_cards(name, crowns, per, size, m, group, rr, droop=False, uv_tile=1.6):
     for c, rad, sz in crowns:
         for _ in range(per):
             d = Vector((rr.gauss(0, 1), rr.gauss(0, 1), rr.gauss(0, 1) + (0.0 if droop else 0.35))).normalized()
-            p = c + Vector((d.x, d.y, d.z * sz)) * rad * rr.uniform(0.7, 1.05)
+            p = c + Vector((d.x, d.y, d.z * sz)) * rad * rr.uniform(*depth)
             if droop:
                 nrm = Vector((d.x, d.y, 0.0)).normalized() if d.xy.length > 1e-3 else Vector((1, 0, 0))
                 t = nrm.cross(up).normalized()

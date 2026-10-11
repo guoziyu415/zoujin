@@ -366,7 +366,7 @@ def willow():
     bm.normal_update()
     bl.box_uv_bm(bm, 1.6)
     bl.obj_from_bm('willow_leaves', bm, [M_WILLOW], 'arch', True)
-    bl.leaf_cards('willow_cards', crowns, 14, 1.0, M_WILLOW, 'arch', random.Random(12), droop=True)
+    bl.leaf_cards('willow_cards', crowns, 14, 1.0, M_WILLOW, 'far', random.Random(12), droop=True)
     # hanging strands below the crown (not baked like the reeds): the willow's falling branches, cards 0.3 m wide of
     # the alpha-tested strand texture (twigs with narrow leaves; the page draws both sides), facing out of the crown,
     # down to about a metre over the flood
@@ -417,7 +417,7 @@ def flood_bar():
     stones lie round it and the boulders, some just awash (UX round 2 ⑥: the shallows must read as shallows). Their feet
     end under the opaque water, not on the bed far below"""
     rr = random.Random(31)
-    for i, (x, y, rx, ry, top) in enumerate(((5.9, 9.4, 1.1, 2.8, 0.02), (3.2, 12.4, 0.7, 1.5, -0.05))):
+    for i, (x, y, rx, ry, top) in enumerate(((5.9, 9.2, 1.5, 3.4, 0.16), (3.0, 12.2, 1.0, 2.0, 0.09))):
         o = rock(f'gravelbar{i}', x, y, 0.0, 1.0, M_PEBBLE, squash=0.5, seed=40 + i, caster=False)
         zs = [v.co.z for v in o.data.vertices]
         lo, hi = min(zs), max(zs)
@@ -431,7 +431,7 @@ def flood_bar():
         d = rr.uniform(1.0, 2.6)
         x, y = cx + math.cos(a) * d * 0.7, cy + math.sin(a) * d
         r = rr.uniform(0.18, 0.4)
-        top = rr.uniform(-0.1, 0.12)
+        top = rr.uniform(-0.04, 0.18)
         o = rock(f'stone{i}', x, y, 0.0, r, M_ROCK, squash=0.7, seed=60 + i, caster=False, subdiv=1)   # small: coarse
         zs = [v.co.z for v in o.data.vertices]
         lo, hi = min(zs), max(zs)
@@ -439,10 +439,34 @@ def flood_bar():
             v.co.z = -0.7 + (v.co.z - lo) / (hi - lo) * (top + 0.7)
 if FLOOD:
     flood_bar()
-# dry-stone walls along the road, off the landings (nothing but road and low grass 9 m behind them)
+# dry-stone walls along the road, off the landings (nothing but road and low grass 9 m behind them): two courses of
+# rough stones, each its own lump, the top ragged (UX round 3 ⑦: a box read as a concrete beam)
+def drystone(name, x0, x1, y, seed):
+    rr = random.Random(seed)
+    for c, (zc, hc) in enumerate(((0.2, 0.42), (0.58, 0.34))):
+        x = x0 + (0.0 if c == 0 else rr.uniform(0.2, 0.4))
+        k = 0
+        while x < x1 - 0.2:
+            L = min(rr.uniform(0.5, 0.85), x1 - x)
+            g = terrain(x + L / 2, y)
+            o = rock(f'{name}_{c}_{k}', x + L / 2, y + rr.uniform(-0.05, 0.05), 0.0, 1.0, M_ROCK, squash=1.0,
+                     seed=seed * 10 + c * 50 + k, subdiv=1)
+            zs = [v.co.z for v in o.data.vertices]
+            xs = [v.co.x for v in o.data.vertices]
+            ys = [v.co.y for v in o.data.vertices]
+            lo, hi = min(zs), max(zs)
+            top = g + zc + hc * rr.uniform(0.75, 1.1) - (0.1 if c == 0 else 0.0)
+            for v in o.data.vertices:
+                v.co.x = x + L / 2 + (v.co.x - (min(xs) + max(xs)) / 2) / (max(xs) - min(xs)) * L * 1.08
+                v.co.y = y + (v.co.y - (min(ys) + max(ys)) / 2) / (max(ys) - min(ys)) * rr.uniform(0.5, 0.62)
+                v.co.z = g - 0.25 + (v.co.z - lo) / (hi - lo) * (top - g + 0.25) if c == 0 else \
+                    g + zc - 0.2 + (v.co.z - lo) / (hi - lo) * (top - g - zc + 0.2)
+            for f in o.data.polygons:   # coarse, so smooth: faceted they read as crystals
+                f.use_smooth = True
+            x += L * rr.uniform(0.92, 1.0)
+            k += 1
 for i, (x0, x1, y) in enumerate(((-14.5, -8.5, -3.6), (-13.5, -9.0, 3.8), (13.0, 15.8, 3.6))):   # far-bank stands south of the east road
-    z = min(terrain(x0, y), terrain(x1, y)) - 0.2
-    box(f'wall{i}', x0, x1, y - 0.3, y + 0.3, z, terrain((x0 + x1) / 2, y) + 0.8, M_ROCK, tile=1.6, caster=True)
+    drystone(f'wall{i}', x0, x1, y, 70 + i)
 
 def reeds():
     """act 2 only: reed clumps on the west beach, crossed pairs of thin cards (far group: not baked)"""

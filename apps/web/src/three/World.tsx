@@ -46,6 +46,7 @@ export type ScenePacks = readonly { sceneId: string; assetUrl: string }[];
 
 // the first entry; every other scene loads through scene/extra.ts, its own chunk (F-10)
 const PLAZA = "scene.syracuse-square";
+const extra = () => import("./scene/extra");
 
 export function World({
   onStage,
@@ -76,7 +77,7 @@ export function World({
     const bytes = (n: number) => (loadInfo.bytes = n);
     (plaza
       ? loadWalkable(base, bytes)
-      : import("./scene/extra").then((m) => m.load(base, act, bytes, three))
+      : extra().then((m) => m.load(base, act, bytes, three))
     )
       .then(async (s) => {
         if (!alive) return;
@@ -123,7 +124,7 @@ export function World({
       if (!l) return;
       three.remove(l.root);
       setScene(null);
-      void import("./scene/extra").then((m) => m.dispose(l));
+      void extra().then((m) => m.dispose(l));
     };
   }, [base, plaza, act, gl, three, camera, onStage]);
 

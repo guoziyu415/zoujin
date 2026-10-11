@@ -15,12 +15,12 @@
   "ridgeElevationDeg": 7,
   "water": {
     "kind": "calm",
-    "horizonDeg": 4,
+    "horizonDeg": 2.5,
     "bankM": 1.8,
     "node": "water",
     "levelM": -2.0,
     "fog": {
-      "heightM": 3.4,
+      "heightM": 1.3,
       "edgeM": 3
     },
     "about": "plan coordinates (layout.json); the page turns them into glTF. channelPlan: the channel's centre line [x, y] and half width at the calm water's level, every 5 m (build_road_river.py: P_MAIN / P_SHALLOW, wiggle, meander): the mist lies over it; horizonDeg, bankM: how high the hills round the valley stand seen from the water, and the banks over it (what the water mirrors low down, not the bright sky behind them)",

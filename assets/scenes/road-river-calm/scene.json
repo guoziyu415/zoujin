@@ -8,12 +8,12 @@
  "placeholderTextures": true,
  "inputs": {
   "files": {
-   "assets/scenes/road-river-calm/layout.json": "df1430c12569e5a16605f9c307287d572061f9abfdfa7bdf1b39802862b66992",
+   "assets/scenes/road-river-calm/layout.json": "d271d163c1e49a53d6df1ae30e0d7b88c8b7c7d4a4f94c84f9bab973961e5c1f",
    "assets/pipeline/road/build.sh": "38ba550f7ab271c696d0576c9e7c0c05c177b44e0338fd8020fab502648412e1",
    "assets/pipeline/road/road_tex.py": "f4da9dda1867829c5799a208415346622f81d7e5a85fadbfd0d15478414b0de5",
    "assets/pipeline/plaza/placeholder_tex.py": "aabda4df4f3974b2eb65b227ed3b5ae2d606a489441d665b3f2f108c5cd1343e",
-   "assets/pipeline/road/bl.py": "5fef4cbe11f692510b697a87cff3b7d2c4610e5d425b43e1898d672590f0c029",
-   "assets/pipeline/road/build_road_river.py": "4106e34a412fb4ed7d6d49ebd56186c54ea12164cf7435bf3fcd793fed5ef128",
+   "assets/pipeline/road/bl.py": "08a5e8b769f887ea76c72acea86b93dc40d11c421b30a28e6313649d64424d28",
+   "assets/pipeline/road/build_road_river.py": "ace3b0840f734bc2636c4bbb2af526b3f477ad9f1888bc19b09c2a29aa0960c8",
    "assets/pipeline/road/merge_river.mjs": "1e41b37b401bda2130895dc2a6b67ae45ae866e4352d33f2e89314214f760edc",
    "assets/pipeline/road/small_tex.mjs": "2510e7083721b8d59d94651bf0ea91e7e2df07407c9e092471146b966be34b2c",
    "assets/pipeline/plaza/requirements.txt": "0a234e44f52fb462c7e8694ecd82b99aca8e534ac610dde2dd749bb1e2cbe0e3",
@@ -91,12 +91,12 @@
  "ridgeElevationDeg": 7,
  "water": {
   "kind": "calm",
-  "horizonDeg": 4,
+  "horizonDeg": 2.5,
   "bankM": 1.8,
   "node": "water",
   "levelM": -2,
   "fog": {
-   "heightM": 3.4,
+   "heightM": 1.3,
    "edgeM": 3
   },
   "about": "plan coordinates (layout.json); the page turns them into glTF. channelPlan: the channel's centre line [x, y] and half width at the calm water's level, every 5 m (build_road_river.py: P_MAIN / P_SHALLOW, wiggle, meander): the mist lies over it; horizonDeg, bankM: how high the hills round the valley stand seen from the water, and the banks over it (what the water mirrors low down, not the bright sky behind them)",
@@ -251,12 +251,12 @@
  "nodes": {
   "arch": {
    "prims": 7,
-   "tris": 9152,
+   "tris": 4822,
    "lightmap": "arch"
   },
   "far": {
-   "prims": 6,
-   "tris": 4176
+   "prims": 9,
+   "tris": 8320
   },
   "ground": {
    "prims": 5,
@@ -265,7 +265,7 @@
   },
   "proxy": {
    "prims": 1,
-   "tris": 6734,
+   "tris": 4784,
    "shadowCasterOnly": true
   },
   "water": {
@@ -273,7 +273,7 @@
    "tris": 1120
   }
  },
- "tris": 31892,
+ "tris": 29756,
  "materials": {
   "outcrop": {
    "color": [
@@ -939,7 +939,7 @@
   "ground": {
    "indirect": {
     "file": "lm/ground_indirect.ktx2",
-    "K": 0.3705382029249995
+    "K": 0.3704662567428558
    },
    "ao": {
     "file": "lm/ground_ao.ktx2"
@@ -949,7 +949,7 @@
   "arch": {
    "indirect": {
     "file": "lm/arch_indirect.ktx2",
-    "K": 0.3566213764664537
+    "K": 0.3285152195679426
    },
    "ao": {
     "file": "lm/arch_ao.ktx2"
@@ -1041,7 +1041,7 @@
     -0.39,
     1.04
    ],
-   "yaw": 1.5742,
+   "yaw": 1.5744,
    "place": "place.river",
    "poly": 55,
    "auto": false
@@ -1114,8 +1114,8 @@
  "files": [
   {
    "path": "geo.glb",
-   "bytes": 741988,
-   "sha256": "f053a8fe34f6025d480bef6429c47d0a2acd7bb4830a4f3c2bc227686f41ac20",
+   "bytes": 723700,
+   "sha256": "8c1d02b5f7950646839cc440b0b821e6805bb30873c5d64acfbb9c74e560def2",
    "pack": "entry"
   },
   {
@@ -1362,44 +1362,44 @@
   },
   {
    "path": "lm/ground_indirect.ktx2",
-   "bytes": 122618,
-   "sha256": "d540eaa4da463673acca248e82befa27ecb562dcf52c45bc7cc13e02aece4238",
+   "bytes": 123174,
+   "sha256": "0a75ce069837cda8bb6074468544c4c3a812b49620e6e23245511316dca3be3e",
    "pack": "entry"
   },
   {
    "path": "lm/ground_ao.ktx2",
-   "bytes": 103764,
-   "sha256": "0df4ffd0d5cadcfd3d5b7e8d4f8b0477e5c4a9648d48a1ff4db6c0e2ad3c9de5",
+   "bytes": 103653,
+   "sha256": "0fbd28c4c0fa55ba7daa754e56b9e6199586391381e705d121c449889feacb99",
    "pack": "entry"
   },
   {
    "path": "lm/arch_indirect.ktx2",
-   "bytes": 220147,
-   "sha256": "ac69b95c8dd2a74636388b0240de825bbe99e5bbc10195c260ae1207af7ad12e",
+   "bytes": 220268,
+   "sha256": "88266e78e11909656b54567b1c2f16c04008d6698b5248fe7336134020124d33",
    "pack": "entry"
   },
   {
    "path": "lm/arch_ao.ktx2",
-   "bytes": 190011,
-   "sha256": "d7c557aad923036723589450b2a1b6cd7caa0a065db3a3fa1c21342a1035e063",
+   "bytes": 189633,
+   "sha256": "c454f9f9b6087d2422abdcfe607846b9fac278ed30e96562ca9c3b98c290e857",
    "pack": "entry"
   },
   {
    "path": "nav.json",
-   "bytes": 34795,
-   "sha256": "f9e624b1f9f1ce91dbda9b131042da93372433206033f3e2440958527565ee4e",
+   "bytes": 34990,
+   "sha256": "8580a2fb578e23e449ecb1a73466ac909b0306cd763dc43aa418f98c8421d7b2",
    "pack": "entry"
   }
  ],
  "bytes": {
-  "entry": 2466003,
+  "entry": 2448098,
   "hiExtra": 1142841,
   "shared": {
    "entry": 1936805,
    "hiExtra": 4585771
   },
-  "envStd": 4402808,
-  "envHi": 10131420
+  "envStd": 4384903,
+  "envHi": 10113515
  },
  "sharedPacks": [
   "road-common"
