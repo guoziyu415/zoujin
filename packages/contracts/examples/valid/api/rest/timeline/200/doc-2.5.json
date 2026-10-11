@@ -24,6 +24,7 @@
           "title": "王との問答と約束",
           "status": "altered",
           "known": true,
+          "place": "place.castle",
           "cite": [
             {
               "source": "aozora:1567_ruby_4948@sha256:2a437c047d7f",
