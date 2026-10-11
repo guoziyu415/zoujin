@@ -109,3 +109,52 @@ test("act end: the old man's exit lands with him speaking first (act_landed)", a
     timeout: 30_000,
   });
 });
+
+test("memory book: tabs, sections, forgetting a promise moves the relation and the promise goes", async ({
+  page,
+}) => {
+  await mock(page, "scenario", { name: "limits" });
+  await startStory(page);
+  await page.getByRole("button", { name: "メニュー" }).click();
+  await page.getByRole("button", { name: "記憶帳" }).click();
+  const mb = page.getByRole("dialog", { name: "記憶帳" });
+  await expect(mb.getByRole("tab", { name: "メロス" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(mb.getByRole("tab", { name: "市の老爺" })).toBeVisible();
+  await expect(mb.getByText("メロスの力になる", { exact: true })).toBeVisible();
+  await expect(mb.getByText("あなた → メロス")).toBeVisible();
+  await expect(mb.getByText("王のことを、メロスに告げた")).toBeVisible();
+  await shot(page, "memory-book");
+
+  const card = mb
+    .getByRole("listitem")
+    .filter({ hasText: "力になると約束してくれた旅の人" });
+  await card.getByRole("button", { name: "忘れてもらう" }).click();
+  await expect(
+    card.getByText("メロスに、このことを忘れてもらいますか。"),
+  ).toBeVisible();
+  await expect(
+    card.getByText("この約束も、なかったことになります。"),
+  ).toBeVisible();
+  await shot(page, "memory-forget");
+  await card
+    .getByRole("group")
+    .getByRole("button", { name: "忘れてもらう" })
+    .click();
+  await expect(mb.getByRole("status")).toHaveText(
+    "メロスは、そのことを忘れた。",
+  );
+  await expect(card).toBeHidden();
+  await expect(mb.getByText("様子を見ている")).toBeVisible();
+  await expect(mb.getByText("メロスの力になる", { exact: true })).toBeHidden(); // voided: not shown
+
+  // the other tab; Escape closes and the menu button has the focus back
+  await mb.getByRole("tab", { name: "市の老爺" }).click();
+  await expect(
+    mb.getByText("暗い道を、家まで送ってくれた旅の人"),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(mb).toBeHidden();
+});

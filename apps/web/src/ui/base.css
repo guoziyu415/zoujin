@@ -855,3 +855,143 @@ button {
   color: var(--ink-2);
   margin: 0 0 4px;
 }
+.page-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  position: sticky;
+  top: calc(-1 * max(24px, env(safe-area-inset-top)));
+  background: var(--paper);
+  padding-top: 4px;
+  z-index: 1;
+}
+.page-close {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--ink-2);
+  border-radius: 22px;
+  background: transparent;
+  font-family: var(--sans);
+  font-size: 14px;
+}
+.page h2 {
+  font-size: 20px;
+  margin: 4px 0 0;
+}
+.page h3 {
+  font-size: 15px;
+  color: var(--ink-2);
+  margin: 0 0 6px;
+  font-weight: normal;
+}
+.page ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.page .error {
+  color: var(--hi);
+}
+.mb-lead {
+  color: var(--ink-2);
+}
+.mb-done:empty {
+  display: none;
+}
+.mb-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  border-bottom: 1px solid rgba(20, 17, 14, 0.2);
+}
+.mb-tabs button {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  white-space: nowrap;
+}
+.mb-tabs button[aria-selected="true"] {
+  border-bottom-color: var(--ink);
+}
+.mb-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.mb-relation {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.mb-meter {
+  letter-spacing: 2px;
+  transition: all 0.4s;
+}
+.mb-promise {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  padding: 6px 0;
+}
+.mb-promise::before {
+  content: "◯";
+}
+.mb-dir,
+.mb-state,
+.mb-meta {
+  color: var(--ink-2);
+  font-size: 14px;
+}
+.mb-deed {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  justify-content: space-between;
+  text-align: left;
+  border: 0;
+  background: none;
+  padding: 6px 0;
+  line-height: 1.6;
+}
+.mb-card {
+  padding: 10px 12px;
+  border: 1px solid rgba(20, 17, 14, 0.2);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  transition: opacity 0.4s;
+}
+.mb-card.leaving {
+  opacity: 0.3;
+}
+.mb-meta {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.mb-meta .quiet {
+  margin-left: auto;
+}
+.mb-confirm {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(20, 17, 14, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ae-choice.danger {
+  border-color: var(--hi);
+  color: var(--hi);
+}
+.mb-footer {
+  margin-top: 24px;
+  border-top: 1px solid rgba(20, 17, 14, 0.2);
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
