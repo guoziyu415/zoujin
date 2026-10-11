@@ -72,7 +72,11 @@ function SonoKoro() {
                 className="sk-item"
                 onClick={() => {
                   tapped.current = true;
-                  openOverlay({ kind: "map", eventId: r.eventId });
+                  openOverlay({
+                    kind: "map",
+                    eventId: r.eventId,
+                    from: "sonokoro",
+                  });
                 }}
               >
                 <span>{r.line}</span>
@@ -95,7 +99,7 @@ function SonoKoro() {
           className="quiet"
           onClick={() => {
             tapped.current = true;
-            openOverlay({ kind: "map" });
+            openOverlay({ kind: "map", from: "sonokoro" });
           }}
         >
           {copy["sonokoro.map"]}

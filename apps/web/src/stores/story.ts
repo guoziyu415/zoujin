@@ -7,7 +7,13 @@ import type { ActEndState, TransitionState } from "../net/story";
 
 export type Overlay =
   | { kind: "memory"; character?: string }
-  | { kind: "map"; eventId?: string; why?: string } // scroll to an event; or open a why straight away
+  // scroll to an event, or open a why straight away; from: where it was opened (map_opened)
+  | {
+      kind: "map";
+      eventId?: string;
+      why?: string;
+      from?: "hud" | "sonokoro" | "ending";
+    }
   | null;
 
 type StoryStore = {

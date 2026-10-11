@@ -158,3 +158,38 @@ test("memory book: tabs, sections, forgetting a promise moves the relation and t
   await page.keyboard.press("Escape");
   await expect(mb).toBeHidden();
 });
+
+test("map: the timeline by day, beats and their state, future beats as ？, filters, why", async ({
+  page,
+}) => {
+  await mock(page, "scenario", { name: "limits" });
+  await startStory(page);
+  await page.getByRole("button", { name: "メニュー" }).click();
+  await page.getByRole("button", { name: "連鎖反応マップ" }).click();
+  const map = page.getByRole("dialog", { name: "連鎖反応マップ" });
+  await expect(map.getByRole("heading", { name: "約束の日" })).toBeVisible();
+  await expect(
+    map.getByRole("button", { name: /あなたは、老爺を家まで送った/ }),
+  ).toBeVisible();
+  await expect(
+    map.getByRole("button", { name: /王の暴虐を知る/ }),
+  ).toContainText("変わった");
+  await expect(map.getByText("？")).toHaveCount(2);
+  await shot(page, "map");
+
+  await map.getByRole("button", { name: "市の老爺" }).click();
+  await expect(
+    map.getByRole("button", { name: /王が人を殺している/ }),
+  ).toBeHidden();
+  await expect(
+    map.getByRole("button", { name: /老爺を家まで送った/ }),
+  ).toBeVisible();
+  await map.getByRole("button", { name: "市の老爺" }).click();
+
+  await map.getByRole("button", { name: /王の暴虐を知る/ }).click();
+  await map.getByRole("button", { name: "なぜこうなった？" }).click();
+  const why = map.getByRole("list", { name: "なぜこうなった？" });
+  await expect(why.getByRole("listitem")).toHaveCount(2);
+  await expect(why).toContainText("メロスは王の暴虐を知り、激怒した");
+  await shot(page, "map-why");
+});
