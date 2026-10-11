@@ -1,10 +1,11 @@
 """快照里的位置点怎么分（前端 assets/pipeline/plaza/README.md 的规则）：人物按布局顺序站第一个空着的，
-`way.*` 和 `auto: false` 的除外；玩家站的算占着。开新局用哪个世界模型。"""
+`way.*` 和 `auto: false` 的除外；玩家站的算占着。开新局用哪个世界模型。下发的事件句里玩家写成「あなた」。"""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 from zoujin_backend.config import DEFAULT_WORLD, REPO, ConfigError, world_path
@@ -104,12 +105,27 @@ def test_delivered_lines_call_the_player_anata() -> None:
     from .conftest import BOOK
 
     assert as_you(BOOK, "role.traveler", "旅人は、老爺を家まで送ることにした") == "あなたは、老爺を家まで送ることにした"
-    assert as_you(BOOK, "role.traveler", "旅人は一団の旅人に道を聞いた") == "あなたは一団の旅人に道を聞いた"
-    guard = as_you(BOOK, "role.guard", "警吏は警吏（巡邏・刑吏）と話した", period=True)
-    assert guard == "あなたは警吏（巡邏・刑吏）と話した。"
     assert as_you(BOOK, "role.traveler", "メロスが走り出した。", period=True) == "メロスが走り出した。"
     assert as_you(BOOK, "role.traveler", "旅人は刑場へ移った", period=True) == "あなたは刑場へ移った。"
     assert as_you(BOOK, "role.traveler", "", period=True) == ""
+
+
+def test_characters_whose_name_holds_the_role_name_are_kept() -> None:
+    """契约 1.8 起世界模型里的人物名不再含身份名（数据的自检），这里用自己搭的一本书查兜底。"""
+    from types import SimpleNamespace
+
+    from zoujin_backend.projection import as_you
+    from zoujin_backend.world import Book
+
+    book = cast(
+        Book,
+        SimpleNamespace(
+            roles={"role.guard": {"name": "警吏"}},
+            characters={"char.guards": {"name": "警吏（巡邏・刑吏）"}, "char.chief": {"name": "警吏長"}},
+        ),
+    )
+    out = as_you(book, "role.guard", "警吏は警吏長と警吏（巡邏・刑吏）に話した", period=True)
+    assert out == "あなたは警吏長と警吏（巡邏・刑吏）に話した。"
 
 
 def test_commit_events_call_the_player_anata_without_a_period() -> None:
@@ -141,7 +157,7 @@ def test_recap_lines_call_the_player_anata_with_a_period() -> None:
     from .conftest import BOOK
 
     passed = {"status": "passed"}
-    skipped = [
+    skipped: list[dict[str, Any]] = [
         {
             "eventId": "evt_a",
             "type": "beat",

@@ -94,8 +94,8 @@ ENDS = ("。", "！", "？", "!", "?")
 
 def as_you(book: Book, role_id: str, text: str, *, period: bool = False) -> str:
     """下发给前端的事件句里，玩家一律是「あなた」：把这一局的身份名换掉（存的 summary 照旧用身份名，模型、检查、
-    评测读那一份）。名字里含身份名的人物（例「一団の旅人」）不换。period：句末没有「。」就补上（recapLines、
-    「その頃」；commit 的 summary 不补，前端放在括号里）。"""
+    评测读那一份）。名字里含身份名的人物不换（兜底：契约 1.8 起数据的自检不让人物名含身份名）。
+    period：句末没有「。」就补上（recapLines、「その頃」；commit 的 summary 不补，前端放在括号里）。"""
     name = str(book.roles[role_id]["name"])
     keep = sorted(
         {str(c["name"]) for c in book.characters.values() if name in str(c["name"]) and c["name"] != name},
