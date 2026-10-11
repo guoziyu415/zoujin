@@ -83,6 +83,7 @@ test("act end: a plan that doesn't go, then the alternative; その頃, the jump
     page.getByText("刑場の西のはずれ。", { exact: false }),
   ).toBeVisible();
   await expect(page.getByTestId("sunband")).toHaveText("三日目・夕方");
+  await shot(page, "landing");
 });
 
 test("act end: the old man's exit lands with him speaking first (act_landed)", async ({
@@ -218,7 +219,11 @@ test("ending: the staging hands over to the ending page; world, you, the people;
   ).toBeVisible();
   // the five the player didn't touch are one line until opened
   await expect(page.getByRole("heading", { name: "王" })).toBeHidden();
+  // the page scrolls inside a fixed layer: a tall window to catch all of it for UX
+  const size = page.viewportSize()!;
+  await page.setViewportSize({ width: size.width, height: 2600 });
   await shot(page, "ending");
+  await page.setViewportSize(size);
 
   await page.getByRole("button", { name: /\[1\]/ }).click();
   const map = page.getByRole("dialog", { name: "連鎖反応マップ" });
