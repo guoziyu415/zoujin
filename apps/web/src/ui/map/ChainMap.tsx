@@ -2,11 +2,13 @@
 // scarlet dot and 「あなた」; what they caused an ink dot with a thin scarlet line back; what someone did for you with
 // their name and 「あなたのために」; the original's beats in grey boxes with how they stand now; beats not yet come (or
 // not known) only their time and 「？」. The deadline line on top (the crisis line opens the why of the forecast).
-// Chips filter by person and by 「わたしの行動だけ」. A node opens in place: summary, time, who knows, and
-// 「なぜこうなった？」, the chain from your deed to it in time order.
+// Chips filter by person and by 「わたしの行動だけ」. A node opens in place: summary, time, where, who knows, the
+// original's words (a beat's, as the server filtered them for what you know), and 「なぜこうなった？」, the chain from
+// your deed to it in time order.
 import type { Api } from "@zoujin/contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { manifestQuery } from "../../app/queries";
 import { rest } from "../../net/rest";
 import { openOverlay, useStory } from "../../stores/story";
 import { useWorld } from "../../stores/world";
@@ -78,6 +80,13 @@ export default function ChainMap({
   const [whyOf, setWhyOf] = useState<string | null>(why ?? null);
   const list = useRef<HTMLOListElement>(null);
   const name = (id: string) => names[id] ?? id;
+  // the book's places (manifest, api-contract 2.1): a name for where an event was, not what you know
+  const manifest = useQuery(manifestQuery);
+  const places = useMemo(
+    () =>
+      new Map((manifest.data?.places ?? []).map((p) => [p.placeId, p.name])),
+    [manifest.data],
+  );
   const crisis = forecast?.beforeDeadline === false;
 
   useEffect(() => track("map_opened", { from }), [from]);
@@ -157,6 +166,7 @@ export default function ChainMap({
                       setOpen((o) => (o === itemId(it) ? null : itemId(it)))
                     }
                     now={d.items.indexOf(it) === nowAt && !filter.mine}
+                    places={places}
                     showWhy={whyOf === itemId(it)}
                     onWhy={() => setWhyOf(itemId(it))}
                   />
@@ -180,12 +190,14 @@ function Node({
   isOpen,
   onToggle,
   now,
+  places,
   showWhy,
   onWhy,
 }: {
   pid: string;
   it: Api.TimelineItem;
   name: (id: string) => string;
+  places: Map<string, string>;
   actor: Map<string, string>;
   kept: Set<string>;
   fixed: Set<string>;
@@ -223,6 +235,7 @@ function Node({
           </button>
           {isOpen && (
             <div className="map-detail">
+              <Source cite={it.cite} />
               <button className="quiet" onClick={onWhy}>
                 {copy["map.why"]}
               </button>
@@ -257,6 +270,12 @@ function Node({
         {isOpen && (
           <div className="map-detail">
             <p>{it.tLabel}</p>
+            {places.get(it.place) && (
+              <p>
+                <span className="map-label">{copy["map.detail.where"]}</span>
+                {places.get(it.place)}
+              </p>
+            )}
             {it.knownBy.length > 0 && (
               <p>
                 <span className="map-label">{copy["map.detail.who"]}</span>
@@ -311,8 +330,31 @@ function Why({ pid, target }: { pid: string; target: string }) {
           )}
           <span className="map-t">{s.tLabel}</span>
           <span>{s.summary}</span>
+          {/* the beat opened is the chain's last step: its words are already above */}
+          {"beatId" in s &&
+            s.beatId !== target &&
+            s.cite?.map((c) => (
+              <span key={`${c.para}:${c.quote}`} className="map-cite">
+                「{c.quote}」
+              </span>
+            ))}
         </li>
       ))}
     </ol>
+  );
+}
+
+// the original's words for a beat (api-contract 2.5: only for a beat you know, filtered for what you know; none, none)
+function Source({ cite }: { cite?: Api.TimelineBeatItem["cite"] }) {
+  if (!cite?.length) return null;
+  return (
+    <div className="map-source">
+      <span className="map-label">{copy["map.detail.source"]}</span>
+      {cite.map((c) => (
+        <p key={`${c.para}:${c.quote}`} className="map-cite">
+          「{c.quote}」
+        </p>
+      ))}
+    </div>
   );
 }

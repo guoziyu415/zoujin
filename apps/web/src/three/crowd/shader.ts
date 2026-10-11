@@ -3,7 +3,7 @@
 // Per instance (InstancedBufferAttribute):
 //   iClip  = (first row, frames (negative: plays once and holds the last), start, speed)   the motion now
 //   iPrev  = the same for the motion before, faded out over BLEND seconds from iSwitch
-//   iSkin, iCloth, iCloth2 = the colours of the three parts (bodies.ts aPart 0, 1, 2)
+//   iSkin, iCloth, iCloth2, iHair = the colours of the parts (aPart 0 skin, 1 cloth, 2 the outer piece, 3 hair)
 //   iPlace = (x, y, z, yaw): where the person stands and which way they face; iScale = (breadth, height)
 import {
   MeshDepthMaterial,
@@ -46,7 +46,10 @@ float crowdRow(vec4 c) {
   return c.x + (c.y > 0.0 ? mod(f, n) : min(f, n - 1.0));
 }
 mat4 crowdSkinAt(float row) {
-  return crowdBone(row, skinIndex.x) * skinWeight.x + crowdBone(row, skinIndex.y) * skinWeight.y;
+  mat4 m = crowdBone(row, skinIndex.x) * skinWeight.x + crowdBone(row, skinIndex.y) * skinWeight.y;
+  if (skinWeight.z > 0.0) m += crowdBone(row, skinIndex.z) * skinWeight.z;
+  if (skinWeight.w > 0.0) m += crowdBone(row, skinIndex.w) * skinWeight.w;
+  return m;
 }
 mat4 crowdSkin() {
   float k = clamp((uTime - iSwitch) / ${BLEND.toFixed(2)}, 0.0, 1.0);
@@ -82,11 +85,11 @@ function patch(
   sh.vertexShader = sh.vertexShader
     .replace(
       "#include <common>",
-      "#include <common>\nattribute float aPart;\nattribute vec3 iSkin;\nattribute vec3 iCloth;\nattribute vec3 iCloth2;\nvarying vec3 vTint;",
+      "#include <common>\nattribute float aPart;\nattribute vec3 iSkin;\nattribute vec3 iCloth;\nattribute vec3 iCloth2;\nattribute vec3 iHair;\nvarying vec3 vTint;",
     )
     .replace(
       "#include <beginnormal_vertex>",
-      "mat4 crowdM = crowdSkin();\nvec3 objectNormal = crowdTurn( normalize( mat3( crowdM ) * normal ) );\nvTint = aPart < 0.5 ? iSkin : aPart < 1.5 ? iCloth : iCloth2;",
+      "mat4 crowdM = crowdSkin();\nvec3 objectNormal = crowdTurn( normalize( mat3( crowdM ) * normal ) );\nvTint = aPart < 0.5 ? iSkin : aPart < 1.5 ? iCloth : aPart < 2.5 ? iCloth2 : iHair;",
     )
     .replace(
       "#include <begin_vertex>",
@@ -104,6 +107,7 @@ export function crowdMaterials(u: CrowdUniforms): {
   const material = new MeshStandardMaterial({ roughness: 0.85, metalness: 0 });
   material.onBeforeCompile = (sh) => patch(sh, u, false);
   material.customProgramCacheKey = () => "crowd";
+  material.userData.uniforms = u; // the bone texture is the material's to dispose
   const depth = new MeshDepthMaterial(); // as the shadow map's own (WebGLShadowMap)
   depth.onBeforeCompile = (sh) => patch(sh, u, true);
   depth.customProgramCacheKey = () => "crowd-depth";

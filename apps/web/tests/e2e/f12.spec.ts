@@ -41,7 +41,13 @@ async function toActEnd(page: Page) {
 test("act end: a plan that doesn't go, then the alternative; その頃, the jump page, the landing line", async ({
   page,
 }) => {
+  // with the 3D left out, only the act-end page asks for a scene pack: the exits' scene, ahead of the act change
+  const packs: string[] = [];
+  page.on("request", (r) => {
+    if (/\/scenes\/.*syracuse-square\//.test(r.url())) packs.push(r.url());
+  });
   const ae = await toActEnd(page);
+  await expect.poll(() => packs.length).toBeGreaterThan(0);
   await expect(ae.getByText("三日のあいだ、あなたは──")).toBeVisible();
   const city = ae.getByRole("button", { name: /市に残り、メロスの帰りを待つ/ });
   await expect(city).toContainText("刑場・三日目の夕方");
@@ -226,11 +232,25 @@ test("map: the timeline by day, beats and their state, future beats as ？, filt
   ).toBeVisible();
   await map.getByRole("button", { name: "市の老爺" }).click();
 
+  // an event's detail: where it was, by the book's place names (manifest places, api-contract 2.1)
+  await map.getByRole("button", { name: /老爺を家まで送った/ }).click();
+  await expect(map.locator(".map-detail")).toContainText(
+    "場所シラクスの広場と大路",
+  );
+  await map.getByRole("button", { name: /老爺を家まで送った/ }).click();
+
+  // a beat's detail: the original's words (2.5), and in its why too (2.6)
   await map.getByRole("button", { name: /王の暴虐を知る/ }).click();
+  await expect(map.locator(".map-detail")).toContainText(
+    "原作のことば「王様は、人を殺します。」",
+  );
   await map.getByRole("button", { name: "なぜこうなった？" }).click();
   const why = map.getByRole("list", { name: "なぜこうなった？" });
   await expect(why.getByRole("listitem")).toHaveCount(2);
   await expect(why).toContainText("メロスは王の暴虐を知り、激怒した");
+  // the chain ends at the beat opened, whose words are already above: not again
+  await expect(why.locator(".map-cite")).toHaveCount(0);
+  await shot(page, "map-source");
   await shot(page, "map-why");
 });
 
@@ -271,9 +291,13 @@ test("ending: the staging hands over to the ending page; world, you, the people;
     .toMatchObject({
       trigger: "story-closed",
       lines: expect.any(Number),
+      playMs: expect.any(Number),
       taps: expect.any(Number),
       autoAdvance: expect.any(Boolean),
     });
+  const performed = sent.find((e) => e.name === "ending_performed")!.props;
+  expect(performed.lines).toBeGreaterThan(0);
+  expect(performed.playMs).toBeGreaterThan(0);
   await expect(
     page.getByRole("heading", { name: "原作どおりの大団円" }),
   ).toBeVisible();

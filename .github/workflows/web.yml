@@ -8,6 +8,7 @@ on:
     paths:
       - "apps/web/**"
       - "assets/pipeline/plaza/**"
+      - "assets/pipeline/crowd/**"
       - "assets/pipeline/package.json"
       - "assets/scenes/**"
       - "assets/budgets.json"
@@ -23,6 +24,7 @@ on:
     paths:
       - "apps/web/**"
       - "assets/pipeline/plaza/**"
+      - "assets/pipeline/crowd/**"
       - "assets/pipeline/package.json"
       - "assets/scenes/**"
       - "assets/budgets.json"
@@ -81,6 +83,26 @@ jobs:
           uv venv --python 3.13 "$RUNNER_TEMP/bpy"
           uv pip install --python "$RUNNER_TEMP/bpy/bin/python" -r assets/pipeline/plaza/requirements.txt
           BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/plaza/build.sh draft "$ZOUJIN_SCENE_ROOT/syracuse-square"
+      # the crowd pack goes inside the plaza's build, as in a deploy (assets/pipeline/crowd/build.sh)
+      - name: crowd pack from the cache
+        id: crowd
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/crowd
+          key: crowd-${{ hashFiles('assets/pipeline/crowd/**', 'assets/pipeline/plaza/requirements.txt') }}
+      - name: build the crowd pack when the cache missed
+        if: steps.crowd.outputs.cache-hit != 'true'
+        run: |
+          if [ ! -x "$RUNNER_TEMP/bpy/bin/python" ]; then
+            if [ -z "${ZOUJIN_CI_PREINSTALLED:-}" ]; then
+              sudo apt-get update -q
+              sudo apt-get install -y -q --no-install-recommends libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1
+            fi
+            uv venv --python 3.13 "$RUNNER_TEMP/bpy"
+            uv pip install --python "$RUNNER_TEMP/bpy/bin/python" -r assets/pipeline/plaza/requirements.txt
+          fi
+          BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/crowd/build.sh "$RUNNER_TEMP/crowd"
+      - run: rm -rf "$ZOUJIN_SCENE_ROOT/syracuse-square/crowd" && cp -R "$RUNNER_TEMP/crowd" "$ZOUJIN_SCENE_ROOT/syracuse-square/crowd"
       - name: unit tests (navmesh on the built plaza, sun)
         run: pnpm --filter @zoujin/web test
       - name: build

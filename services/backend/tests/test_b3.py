@@ -17,20 +17,23 @@ from sqlalchemy import delete, func, inspect, select
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
 from zoujin_backend import eval_api
-from zoujin_backend.config import REPO, async_url
+from zoujin_backend.config import DEFAULT_WORLD, REPO, async_url
 from zoujin_backend.db import store
 from zoujin_backend.db.store import Run
 from zoujin_backend.db.tables import events, playthrough_metrics, playthroughs, turns
 from zoujin_backend.gateway.core import Gateway
 from zoujin_backend.gateway.ws import Conn
+from zoujin_backend.ids import IdGen
 from zoujin_backend.models.live import FakeLive
 from zoujin_backend.models.text import FakeText
+from zoujin_backend.narrator import acts
 from zoujin_backend.narrator.actions import ACT_ENDED_LINE, CHECKER_MOVE
 from zoujin_backend.narrator.core import Result
 from zoujin_backend.narrator.plans import LABEL_FALLBACK, REFUSAL_FALLBACK
+from zoujin_backend.narrator.writer import Writer
 from zoujin_backend.projection import is_visible, snapshot
 from zoujin_backend.trace import Tracer
-from zoujin_worldsim import settle
+from zoujin_worldsim import initial_state, settle
 
 from .conftest import LIBRARY, OLD, SCHEMAS, Env, alembic_config, truncate
 
@@ -284,6 +287,34 @@ def test_move_writes_one_event_and_the_patch_has_no_spot(game: Callable[..., Gam
     assert g.seq == seq and g.commits(seq) == []
     shut = g.s.act("move", "place.stonemason-workshop", {})  # beat.06 之前：门关着的固定演出
     assert shut["setPiece"] == "piece.workshop-door-closed"
+
+
+def test_crossing_that_cannot_be_made_is_refused_with_a_rejected_move(game: Callable[..., Game]) -> None:
+    """E5-008：桥冲毁了还要走桥。带 params.crossing 的 move（只有评测这样发，契约 3.8 的 move 没有 params）走不通：
+    action_result 照旧 refused，但和别的动作被否决一样记一条被否决的 move（effects 空，R2-precondition）。"""
+    river = {
+        "effects": [
+            {"op": "set", "var": "var.player.companionOf", "value": "char.melos"},
+            {"op": "set", "var": "var.player.location", "value": "place.river"},
+        ]
+    }
+    g = game("sc.canon@t=5000", world=DRAFT, role="role.shepherd-boy", events=[river])
+    seq = g.seq
+    step = g.s.act("move", "place.mountain-pass", {"crossing": "bridge"})
+    assert (step["status"], step["clockMinutes"]) == ("refused", 0)
+    (ev,) = step["events"]
+    assert (ev["type"], ev["actor"], ev["dt"], ev["effects"]) == ("move", "player", 0, [])
+    assert ev["check"] == {
+        "status": "rejected",
+        "attempts": 1,
+        "failedRules": ["R2-precondition"],
+        "checker": CHECKER_MOVE,
+    }
+    (commit,) = g.commits(seq)  # 被否决的那条也占一个 seq：和别的动作被否决一样，commit 里没有事件、玩家不动
+    assert commit["events"] == [] and "player" not in commit["patch"]
+    assert g.s.state()["vars"]["var.player.location"] == "place.river"
+    plain = g.s.act("move", "place.mountain-pass", {})  # 不说走法的照旧：不写事件
+    assert (plain["status"], plain["events"]) == ("refused", [])
 
 
 def test_affordance_whose_condition_fails_is_refused_with_a_rejected_event(game: Callable[..., Game]) -> None:
@@ -638,6 +669,26 @@ def test_skipped_beats_are_not_pushed_live_or_on_reconnect(game: Callable[..., G
     assert msgs and msgs[-1]["seq"] == system["seq"]
     assert not hidden & {e["eventId"] for m in msgs for e in m["events"]}
     assert not hidden & {e["eventId"] for e in g.s.view(seq)["events"]}
+
+
+def test_catch_up_counts_the_player_present() -> None:
+    """收幕以后、切幕之前时钟走过的那段（对话、动作的分钟跨过了收幕节拍）是玩家说着话过去的，人在场（数据 #158）：
+    `catch_up` 结算到的节拍落在玩家所在地点，公开的事实玩家也知道（契约 2.1）。不在场只管第 3 步（2.8.1）。"""
+    book = LIBRARY.book("hashire-merosu")
+    assert book is not None
+    setup = {"role": "role.traveler", "checkpoint": "sc.canon@beat.07", "place": "place.melos-home"}
+    w = Writer(
+        book, "pt_test", initial_state(book.world, setup["role"]), key_base="k", turn_id=None, ids=IdGen(), now=""
+    )
+    eval_api.play_setup(w, eval_api._scenarios(DEFAULT_WORLD.parent), setup)
+    w = Writer(book, "pt_test", w.state, key_base="k2", turn_id="t", ids=IdGen(), now="")
+    assert not w.guard  # 这一幕已经收了
+    beat = book.beats["beat.08"]
+    assert beat["place"] == w.player_place
+    w.state["t"] = int(w.state["times"].get("beat.07", 0)) + 700  # 跨过 beat.08（第二天上午）
+    acts.catch_up(w)
+    assert [e["t"] for e in w.system if any(x.get("beat") == "beat.08" for x in e["effects"])]
+    assert "fact.wedding-tomorrow" in w.state["knowledge"].get("player", [])
 
 
 # —— 第 6 组：不记原话 ——
