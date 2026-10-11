@@ -36,9 +36,9 @@ else
     run_once -e RUNNER_TOKEN -e RUNNER_REPO="$REPO" "$IMAGE" register
 fi
 
-echo "== 启动容器 $NAME（随 Docker 启动，不挂 Mac 的任何文件夹）"
+echo "== 启动容器 $NAME（随 Docker 启动，不挂 Mac 的任何文件夹；NET_ADMIN 只给入口封连接用，runner 起来前就丢掉）"
 docker rm -f "$NAME" >/dev/null 2>&1 || true
-docker run -d --name "$NAME" --platform "$PLATFORM" --restart unless-stopped \
+docker run -d --name "$NAME" --platform "$PLATFORM" --restart unless-stopped --cap-add NET_ADMIN \
   -v "$VOLUME:/home/runner/actions-runner" "$IMAGE" run >/dev/null
 
 sleep 15
