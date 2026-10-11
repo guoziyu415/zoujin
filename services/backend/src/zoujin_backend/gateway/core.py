@@ -28,6 +28,7 @@ from zoujin_backend.db.store import Run
 from zoujin_backend.db.tables import turns
 from zoujin_backend.gateway.fallback import AudioTranscriber, FakeAudioTranscriber
 from zoujin_backend.ids import IdGen
+from zoujin_backend.manifest import Manifest
 from zoujin_backend.models.ledger import Ledger
 from zoujin_backend.models.live import LiveModel
 from zoujin_backend.projection import is_visible, patch, snapshot, visible_event, with_locations
@@ -89,6 +90,7 @@ class Gateway:
     schemas: SchemaBook
     live: LiveModel
     narrator: NarratorClient
+    manifest: Manifest | None = None  # 2.1：开进程时由 `Library.current` 生成一次（B-7）；没有就回 404
     ids: IdGen = field(default_factory=IdGen)
     conns: dict[str, Conn] = field(default_factory=dict)  # 一局一条连接（第 4 节 4009）
     draining: bool = False

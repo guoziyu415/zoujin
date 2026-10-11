@@ -78,6 +78,7 @@ class Book:
     book_id: str
     world: Json
     scenes: dict[str, Scene] = field(default_factory=dict)
+    path: Path | None = None  # world.json，报错时写哪个文件
 
     @property
     def version(self) -> str:
@@ -148,7 +149,7 @@ class Library:
 
     def _add(self, path: Path) -> Book:
         w = json.loads(path.read_text(encoding="utf-8"))
-        book = Book(book_id=w["book"]["id"], world=w)
+        book = Book(book_id=w["book"]["id"], world=w, path=path)
         book.scenes = {k: v for k, v in self.layouts.items() if k in {s["id"] for s in w["scenes"]}}
         self.by_version[book.version] = book
         return book
