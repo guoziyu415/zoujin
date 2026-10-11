@@ -99,6 +99,10 @@ SELI = "char.selinuntius"
 HOSTAGE_SELI = {"var": "var.hostage.who", "op": "==", "value": SELI}
 HOSTAGE_YOU = {"var": "var.hostage.who", "op": "==", "value": "player"}
 CROWD_KNOWS = [{"character": "char.crowd", "fact": "fact.promise"}]
+# beat.24 的演出只在友人真的在柱上时演（UX #107）：beat.s1（引到刑场）发生过、王还没改心（改了心就先放了人）。
+# 条件在 beat.24 应用以后算（2.11），那时 var.hostage.fate 已经是 released，所以不能直接看 on-cross。
+ON_CROSS_AFTER = ["beat.s1"]
+KING_UNMOVED = {"var": "var.king.disposition", "op": "!=", "value": "reformed"}
 # beat.24（第 60〜62 段）
 PILLAR = {"narration": "すでに磔の柱が高々と立てられ、縄を打たれたセリヌンティウスは、徐々に釣り上げられてゆく。"}
 PILLAR_YOU = {"narration": "すでに磔の柱が高々と立てられ、縄を打たれたあなたは、徐々に釣り上げられてゆく。"}
@@ -109,7 +113,9 @@ WAIT = {
     "speaker": "char.melos",
     "line": "待て。その人を殺してはならぬ。メロスが帰って来た。約束のとおり、いま、帰って来た。",
 }
+MADE_IT = {"narration": "間に合った。"}
 UNNOTICED = {"narration": "群衆は、ひとりとして彼の到着に気がつかない。"}
+SHOVE = {"narration": "メロスは最後の勇、先刻、濁流を泳いだように群衆を掻きわけ、掻きわけた。"}
 CROWD_CRIES = {"speaker": "char.crowd", "line": "メロスだ！　メロスが帰って来た！"}
 MAKE_WAY = {"narration": "人々が振り返り、道をあけた。"}
 ITS_ME = {
@@ -153,6 +159,10 @@ KING_COMES = {
     "narration": "暴君ディオニスは、群衆の背後から二人の様を、まじまじと見つめていたが、やがて静かに二人に近づき、"
     "顔をあからめて、こう言った。"
 }
+KING_COMES_YOU = {
+    "narration": "暴君ディオニスは、群衆の背後からメロスとあなたの様を、まじまじと見つめていたが、やがて静かに近づき、"
+    "顔をあからめて、こう言った。"
+}
 KING_ASKS = {
     "speaker": "char.king",
     "line": "おまえらの望みは叶ったぞ。おまえらは、わしの心に勝ったのだ。信実とは、決して空虚な妄想ではなかった。"
@@ -174,10 +184,11 @@ CURTAIN_PIECES: list[dict[str, Any]] = [
     {
         "id": "piece.crowd-makes-way",
         "on": {"beat": "beat.24"},
+        "after": ON_CROSS_AFTER,
         "knows": CROWD_KNOWS,
-        "when": [HOSTAGE_SELI],
+        "when": [HOSTAGE_SELI, KING_UNMOVED],
         "once": True,
-        "lines": [PILLAR, STORM_IN, WAIT, CROWD_CRIES, MAKE_WAY, ITS_ME, CLING, UPROAR, UNTIED],
+        "lines": [PILLAR, STORM_IN, MADE_IT, WAIT, CROWD_CRIES, MAKE_WAY, ITS_ME, CLING, UPROAR, UNTIED],
         "inferred": True,
         "note": "第 2 节：玩家把约定告诉了城里的人（learn 群众 fact.promise），梅洛斯第一声没人听见，群众里一个女人认出他，"
         "人群让路，不是「掻きわけ」。其余照原作第 60〜62 段（S-087）",
@@ -185,28 +196,32 @@ CURTAIN_PIECES: list[dict[str, Any]] = [
     {
         "id": "piece.crowd-makes-way-you",
         "on": {"beat": "beat.24"},
+        "after": ON_CROSS_AFTER,
         "knows": CROWD_KNOWS,
-        "when": [HOSTAGE_YOU],
+        "when": [HOSTAGE_YOU, KING_UNMOVED],
         "once": True,
-        "lines": [PILLAR_YOU, STORM_IN, WAIT, CROWD_CRIES, MAKE_WAY, ITS_ME_YOU, CLING_YOU, UPROAR, UNTIED_YOU],
+        "lines": [PILLAR_YOU, STORM_IN, MADE_IT, WAIT, CROWD_CRIES, MAKE_WAY, ITS_ME_YOU, CLING_YOU, UPROAR, UNTIED_YOU],
         "inferred": True,
         "note": "S-087：玩家把约定告诉了城里的人，人质是玩家（B-4）。柱上、腿、绳子换成「あなた」，梅洛斯不说「彼を人質にした」",
     },
     {
         "id": "piece.storm-in",
         "on": {"beat": "beat.24"},
-        "when": [HOSTAGE_SELI],
+        "after": ON_CROSS_AFTER,
+        "when": [HOSTAGE_SELI, KING_UNMOVED],
         "once": True,
-        "lines": [PILLAR, STORM_IN, WAIT, UNNOTICED, ITS_ME, CLING, UPROAR, UNTIED],
+        "lines": [PILLAR, STORM_IN, MADE_IT, WAIT, UNNOTICED, SHOVE, ITS_ME, CLING, UPROAR, UNTIED],
         "inferred": True,
-        "note": "S-087：原作第 60〜62 段，补了「メロスは、」。顺序照 ending-shots 的镜头 1〜5（柱子先立起来，梅洛斯再冲进来）",
+        "note": "S-087：原作第 60〜62 段，补了「メロスは、」，「群衆を掻きわけ、掻きわけ」收成一句（镜头 3）。"
+        "顺序照 ending-shots 的镜头 1〜5（柱子先立起来，梅洛斯再冲进来）",
     },
     {
         "id": "piece.storm-in-you",
         "on": {"beat": "beat.24"},
-        "when": [HOSTAGE_YOU],
+        "after": ON_CROSS_AFTER,
+        "when": [HOSTAGE_YOU, KING_UNMOVED],
         "once": True,
-        "lines": [PILLAR_YOU, STORM_IN, WAIT, UNNOTICED, ITS_ME_YOU, CLING_YOU, UPROAR, UNTIED_YOU],
+        "lines": [PILLAR_YOU, STORM_IN, MADE_IT, WAIT, UNNOTICED, SHOVE, ITS_ME_YOU, CLING_YOU, UPROAR, UNTIED_YOU],
         "inferred": True,
         "note": "S-087：人质是玩家（B-4）。同 piece.storm-in，柱上、腿、绳子换成「あなた」，梅洛斯不说「彼を人質にした」",
     },
@@ -264,6 +279,15 @@ CURTAIN_PIECES: list[dict[str, Any]] = [
         "lines": [TEARS, HIT_ME, SELI_HITS, HIT_ME_TOO, MELOS_HITS, EMBRACE, SOBS],
         "inferred": True,
         "note": "S-087：原作第 63〜68 段。「セリヌンティウス。」和「私を殴れ。…」并成一句；「殴ってから優しく微笑み、」收成一句",
+    },
+    {
+        "id": "piece.king-asks-you",
+        "on": {"beat": "beat.26"},
+        "when": [HOSTAGE_YOU],
+        "once": True,
+        "lines": [KING_COMES_YOU, KING_ASKS, CHEER, BANZAI],
+        "inferred": True,
+        "note": "S-087：人质是玩家（B-4）时王看的是梅洛斯和「あなた」（UX #107），其余同 piece.king-asks",
     },
     {
         "id": "piece.king-asks",

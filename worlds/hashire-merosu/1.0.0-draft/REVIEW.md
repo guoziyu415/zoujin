@@ -59,7 +59,7 @@
 | ↳ 变体 beat.25.v-neither〔推断〕 | — | — | — | — | melos.doubted == False、selinuntius.doubted == False | どちらも相手を疑わなかった。殴り合うことはなく、二人は「ありがとう、友よ」と言って抱き合い、声を放って泣く。  | 「「ありがとう、友よ。」二人同時に言い」(67) | |
 | ↳ 变体 beat.25.v-melos-only〔推断〕 | — | — | — | — | selinuntius.doubted == False | メロスだけが途中の悪い夢を打ち明け、セリヌンティウスに殴られる。セリヌンティウスは一度も疑わなかったと言い、殴られないまま二人は抱き合う。  | 「私は、途中で一度、悪い夢を見た。」(63) | |
 | ↳ 变体 beat.25.v-selinuntius-only〔推断〕 | — | — | — | — | melos.doubted == False | メロスは道中で一度も約束を投げ出しかけなかった。セリヌンティウスだけが一度疑ったことを打ち明けて殴られ、二人は抱き合う。  | 「私はこの三日の間、たった一度だけ、ちらと君を疑った。」(65) | |
-| beat.26 王の改心 | D3 19:15（D3 16:00〜D3 20:00） | execution-ground | 王ディオニス、メロス、セリヌンティウス、市の群衆 | mutable | hostage.fate == released、king.trust >= 1〔推断〕 | king.disposition = reformed、king.trust = 80 | 「信実とは、決して空虚な妄想ではなかった。」(69)<br>「万歳、王様万歳。」(71)<br>「どっと群衆の間に、歓声が起った。」(70) | |
+| beat.26 王の改心 | D3 19:15（D3 16:00〜D3 20:00） | execution-ground | 王ディオニス、メロス、セリヌンティウス、市の群衆 | mutable | hostage.fate == released、king.trust >= 1〔推断〕、king.disposition != reformed〔推断〕 | king.disposition = reformed、king.trust = 80 | 「信実とは、決して空虚な妄想ではなかった。」(69)<br>「万歳、王様万歳。」(71)<br>「どっと群衆の間に、歓声が起った。」(70) | |
 | beat.27 緋のマント | D3 19:20（D3 16:00〜D3 20:00） | execution-ground | 市の少女、メロス、セリヌンティウス | mutable | melos.custody == returned | melos.clothing = scarlet-cloak | 「ひとりの少女が、緋のマントをメロスに捧げた。」(72)<br>「勇者は、ひどく赤面した。」(74) | |
 
 ## 3. 事实

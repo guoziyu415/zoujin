@@ -139,8 +139,20 @@
    "reading": "やつばら"
   },
   {
+   "word": "口惜し",
+   "reading": "くちおし"
+  },
+  {
    "word": "地団駄",
    "reading": "じだんだ"
+  },
+  {
+   "word": "佳き",
+   "reading": "よき"
+  },
+  {
+   "word": "首肯き",
+   "reading": "うなずき"
   },
   {
    "word": "困憊",
@@ -153,6 +165,10 @@
   {
    "word": "怺",
    "reading": "こら"
+  },
+  {
+   "word": "首肯い",
+   "reading": "うなずい"
   },
   {
    "word": "薄明",
@@ -189,6 +205,10 @@
   {
    "word": "繋舟",
    "reading": "けいしゅう"
+  },
+  {
+   "word": "掻",
+   "reading": "か"
   },
   {
    "word": "憐愍",
@@ -265,6 +285,10 @@
   {
    "word": "齧",
    "reading": "かじ"
+  },
+  {
+   "word": "唸",
+   "reading": "うな"
   },
   {
    "word": "歔欷",
@@ -4917,6 +4941,13 @@
      "value": 1,
      "inferred": true,
      "note": "王の信頼（0〜100、初期 5）が 0 まで落ちていたら改心しない。プレイヤーが嘲りや欺きで王の心を閉ざした場合（推断。S-007「間に合ったが王は変わらない」への道）"
+    },
+    {
+     "var": "var.king.disposition",
+     "op": "!=",
+     "value": "reformed",
+     "inferred": true,
+     "note": "刑場に来る前に王がもう改心していた局（信頼が 70 を超え、身代りを先に放した）では、刑場でもう一度改心しない（UX の評審、S-087）"
     }
    ],
    "outcomes": [
@@ -6159,6 +6190,9 @@
    "on": {
     "beat": "beat.24"
    },
+   "after": [
+    "beat.s1"
+   ],
    "knows": [
     {
      "character": "char.crowd",
@@ -6170,6 +6204,11 @@
      "var": "var.hostage.who",
      "op": "==",
      "value": "char.selinuntius"
+    },
+    {
+     "var": "var.king.disposition",
+     "op": "!=",
+     "value": "reformed"
     }
    ],
    "once": true,
@@ -6179,6 +6218,9 @@
     },
     {
      "narration": "陽は、ゆらゆら地平線に没し、まさに最後の一片の残光も、消えようとした時、メロスは疾風の如く刑場に突入した。"
+    },
+    {
+     "narration": "間に合った。"
     },
     {
      "speaker": "char.melos",
@@ -6213,6 +6255,9 @@
    "on": {
     "beat": "beat.24"
    },
+   "after": [
+    "beat.s1"
+   ],
    "knows": [
     {
      "character": "char.crowd",
@@ -6224,6 +6269,11 @@
      "var": "var.hostage.who",
      "op": "==",
      "value": "player"
+    },
+    {
+     "var": "var.king.disposition",
+     "op": "!=",
+     "value": "reformed"
     }
    ],
    "once": true,
@@ -6233,6 +6283,9 @@
     },
     {
      "narration": "陽は、ゆらゆら地平線に没し、まさに最後の一片の残光も、消えようとした時、メロスは疾風の如く刑場に突入した。"
+    },
+    {
+     "narration": "間に合った。"
     },
     {
      "speaker": "char.melos",
@@ -6267,11 +6320,19 @@
    "on": {
     "beat": "beat.24"
    },
+   "after": [
+    "beat.s1"
+   ],
    "when": [
     {
      "var": "var.hostage.who",
      "op": "==",
      "value": "char.selinuntius"
+    },
+    {
+     "var": "var.king.disposition",
+     "op": "!=",
+     "value": "reformed"
     }
    ],
    "once": true,
@@ -6283,11 +6344,17 @@
      "narration": "陽は、ゆらゆら地平線に没し、まさに最後の一片の残光も、消えようとした時、メロスは疾風の如く刑場に突入した。"
     },
     {
+     "narration": "間に合った。"
+    },
+    {
      "speaker": "char.melos",
      "line": "待て。その人を殺してはならぬ。メロスが帰って来た。約束のとおり、いま、帰って来た。"
     },
     {
      "narration": "群衆は、ひとりとして彼の到着に気がつかない。"
+    },
+    {
+     "narration": "メロスは最後の勇、先刻、濁流を泳いだように群衆を掻きわけ、掻きわけた。"
     },
     {
      "speaker": "char.melos",
@@ -6304,18 +6371,26 @@
     }
    ],
    "inferred": true,
-   "note": "S-087：原作第 60〜62 段，补了「メロスは、」。顺序照 ending-shots 的镜头 1〜5（柱子先立起来，梅洛斯再冲进来）"
+   "note": "S-087：原作第 60〜62 段，补了「メロスは、」，「群衆を掻きわけ、掻きわけ」收成一句（镜头 3）。顺序照 ending-shots 的镜头 1〜5（柱子先立起来，梅洛斯再冲进来）"
   },
   {
    "id": "piece.storm-in-you",
    "on": {
     "beat": "beat.24"
    },
+   "after": [
+    "beat.s1"
+   ],
    "when": [
     {
      "var": "var.hostage.who",
      "op": "==",
      "value": "player"
+    },
+    {
+     "var": "var.king.disposition",
+     "op": "!=",
+     "value": "reformed"
     }
    ],
    "once": true,
@@ -6327,11 +6402,17 @@
      "narration": "陽は、ゆらゆら地平線に没し、まさに最後の一片の残光も、消えようとした時、メロスは疾風の如く刑場に突入した。"
     },
     {
+     "narration": "間に合った。"
+    },
+    {
      "speaker": "char.melos",
      "line": "待て。その人を殺してはならぬ。メロスが帰って来た。約束のとおり、いま、帰って来た。"
     },
     {
      "narration": "群衆は、ひとりとして彼の到着に気がつかない。"
+    },
+    {
+     "narration": "メロスは最後の勇、先刻、濁流を泳いだように群衆を掻きわけ、掻きわけた。"
     },
     {
      "speaker": "char.melos",
@@ -6486,6 +6567,38 @@
    ],
    "inferred": true,
    "note": "S-087：原作第 63〜68 段。「セリヌンティウス。」和「私を殴れ。…」并成一句；「殴ってから優しく微笑み、」收成一句"
+  },
+  {
+   "id": "piece.king-asks-you",
+   "on": {
+    "beat": "beat.26"
+   },
+   "when": [
+    {
+     "var": "var.hostage.who",
+     "op": "==",
+     "value": "player"
+    }
+   ],
+   "once": true,
+   "lines": [
+    {
+     "narration": "暴君ディオニスは、群衆の背後からメロスとあなたの様を、まじまじと見つめていたが、やがて静かに近づき、顔をあからめて、こう言った。"
+    },
+    {
+     "speaker": "char.king",
+     "line": "おまえらの望みは叶ったぞ。おまえらは、わしの心に勝ったのだ。信実とは、決して空虚な妄想ではなかった。どうか、わしをも仲間に入れてくれまいか。どうか、わしの願いを聞き入れて、おまえらの仲間の一人にしてほしい。"
+    },
+    {
+     "narration": "どっと群衆の間に、歓声が起った。"
+    },
+    {
+     "speaker": "char.crowd",
+     "line": "万歳、王様万歳。"
+    }
+   ],
+   "inferred": true,
+   "note": "S-087：人质是玩家（B-4）时王看的是梅洛斯和「あなた」（UX #107），其余同 piece.king-asks"
   },
   {
    "id": "piece.king-asks",

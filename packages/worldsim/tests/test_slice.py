@@ -12,6 +12,7 @@ from typing import Any
 
 import pytest
 from zoujin_worldsim import (
+    OCCURRED,
     Sim,
     SimState,
     apply,
@@ -192,6 +193,7 @@ def test_the_workshop_light_goes_out_once() -> None:
 
 
 UNNOTICED = "群衆は、ひとりとして彼の到着に気がつかない。"
+SHOVE = "メロスは最後の勇、先刻、濁流を泳いだように群衆を掻きわけ、掻きわけた。"
 SHOUT = ["メロスだ！　メロスが帰って来た！", "人々が振り返り、道をあけた。"]
 
 
@@ -205,13 +207,14 @@ def test_the_curtain_follows_the_book_and_the_crowd_makes_way_only_if_told() -> 
     s = walk_to(GROUND, 5461)
     assert s["beats"]["beat.24"] == "happened" and not knows(SLICE, s, "char.crowd", "fact.promise")
     (plain,) = lines_of([(s, {"beat": "beat.24"})])
-    assert plain is not None and plain[3] == UNNOTICED and not set(SHOUT) & set(plain)
+    assert plain is not None and plain[2] == "間に合った。" and plain[4:6] == [UNNOTICED, SHOVE]
+    assert not set(SHOUT) & set(plain)
     assert plain[-1] == "セリヌンティウスの縄は、ほどかれたのである。"
     s = apply(SLICE, s, {"t": s["t"], "dt": 0, "origin": "turn",
                          "effects": [{"op": "learn", "character": "char.crowd", "fact": "fact.promise"}]})  # fmt: skip
     (told,) = lines_of([(s, {"beat": "beat.24"})])
-    assert told is not None and told[3:5] == SHOUT and UNNOTICED not in told  # 键 piece.crowd-makes-way/4（B-6）
-    assert told[:3] == plain[:3] and told[5:] == plain[4:]
+    assert told is not None and told[4:6] == SHOUT and UNNOTICED not in told  # 键 piece.crowd-makes-way/5（B-6）
+    assert told[:4] == plain[:4] and told[6:] == plain[6:] and SHOVE not in told  # 人群让路，不用掻きわけ
 
 
 def test_the_curtain_when_you_are_the_hostage_says_you() -> None:
@@ -220,6 +223,34 @@ def test_the_curtain_when_you_are_the_hostage_says_you() -> None:
     (you,) = lines_of([(s, {"beat": "beat.24"})])
     assert you is not None and "あなたの縄は、ほどかれたのである。" in you
     assert not any("セリヌンティウス" in x or "彼を人質にした" in x for x in you)
+
+
+def test_the_curtain_plays_only_while_the_friend_is_on_the_cross() -> None:
+    """UX #107：王先改心、人质先放了，或者没被引到刑场（beat.s1 没发生），beat.24 不演「釣り上げられてゆく」，
+    交给叙事者。条件在 beat.24 应用以后算，那时 hostage.fate 已经是 released，所以看 beat.s1 和王的心。"""
+    s = walk_to(GROUND, 5461)
+    assert s["beats"]["beat.s1"] == "happened" and s["vars"]["var.hostage.fate"] == "released"
+    assert lines_of([(set_vars(s, king__trust=80, king__disposition="reformed"), {"beat": "beat.24"})]) == [None]
+    no_cross = {**s, "beats": {**s["beats"], "beat.s1": "prevented"}}
+    assert lines_of([(no_cross, {"beat": "beat.24"})]) == [None]
+
+
+def test_a_king_who_already_relented_does_not_relent_again() -> None:
+    """王在刑场以前就改了心（信赖过 70），beat.26 不发生，「わしの心に勝った」也不演（UX #107）；照样算王改心的局。"""
+    s = set_vars(walk_to(GROUND, 5300), king__trust=80, king__disposition="reformed")
+    s = run_to(s, 5520)
+    assert s["beats"]["beat.24"] == "happened" and s["beats"].get("beat.26") not in OCCURRED
+    assert s["vars"]["var.king.disposition"] == "reformed" and classify(SLICE, s) == "canon-reunion"
+
+
+def test_the_king_looks_at_melos_and_you_when_you_are_the_hostage() -> None:
+    s = walk_to(GROUND, 5476)
+    assert s["beats"]["beat.26"] == "happened"
+    p = pick_set_piece(SLICE, s, {"beat": "beat.26"}, set())
+    assert p is not None and p["id"] == "piece.king-asks"
+    p = pick_set_piece(SLICE, set_vars(s, hostage__who="player"), {"beat": "beat.26"}, set())
+    assert p is not None and p["id"] == "piece.king-asks-you" and "メロスとあなたの様" in p["lines"][0]["narration"]
+    assert p["lines"][1:] == pick_set_piece(SLICE, s, {"beat": "beat.26"}, set())["lines"][1:]  # type: ignore[index]
 
 
 @pytest.mark.parametrize(
