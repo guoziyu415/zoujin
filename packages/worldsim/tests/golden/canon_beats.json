@@ -123,7 +123,7 @@
    "t": 1425,
    "status": "happened",
    "where": {
-    "char.melos": "place.castle",
+    "char.melos": "place.road-to-city",
     "char.king": "place.castle",
     "char.selinuntius": "place.castle",
     "char.sister": "place.melos-home",

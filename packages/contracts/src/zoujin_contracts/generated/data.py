@@ -341,11 +341,13 @@ type SceneId = Annotated[str, Field(pattern="^scene\\.[a-z0-9]+(?:[.-][a-z0-9]+)
 
 
 type SchemaVersion = Annotated[
-    Literal["1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8", "1.9", "1.10", "1.11", "1.12", "1.13"],
+    Literal[
+        "1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8", "1.9", "1.10", "1.11", "1.12", "1.13", "1.14"
+    ],
     Field(title="SchemaVersion"),
 ]
 """
-写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival / sub、Affordance.playerSpot（C-18）、Act.plan（C-19）、WorldModel.setPieces（S-080 ④）、WorldModel.objects。1.8：Affordance.pastLabel，事件 summary 里玩家一律写身份名。1.9：Clock.labels.daysKnownBy。1.10：Role.summary、WorldModel.ruby，Character.reading 每个人物都填。1.11：Character.originalEnding、endings.characters / templates / fates。1.12：字段不变，没有参与人物的节拍在同一场景就算玩家在场（zoujin_worldsim.sees）。1.13：Character.knows[].inferred
+写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival / sub、Affordance.playerSpot（C-18）、Act.plan（C-19）、WorldModel.setPieces（S-080 ④）、WorldModel.objects。1.8：Affordance.pastLabel，事件 summary 里玩家一律写身份名。1.9：Clock.labels.daysKnownBy。1.10：Role.summary、WorldModel.ruby，Character.reading 每个人物都填。1.11：Character.originalEnding、endings.characters / templates / fates。1.12：字段不变，没有参与人物的节拍在同一场景就算玩家在场（zoujin_worldsim.sees）。1.13：Character.knows[].inferred。1.14：Act.stops、Place.shortName、Beat.arriveBefore
 """
 
 
@@ -1463,6 +1465,10 @@ class Place(BaseModel):
     )
     id: PlaceId
     name: str
+    shortName: Annotated[str | None, Field(max_length=8, min_length=1)] = None
+    """
+    （1.14）短い名前（日语，≤ 8 字）：幕末页去处副题的前半「{地点}・{日子}の{时段}」用它，省略 = 用 name
+    """
     description: str
     adjacent: list[PlaceAdjacentItem]
     """
@@ -2140,6 +2146,10 @@ class Act(BaseModel):
     """
     幕末去处；最后一幕为空，收幕即进入结局
     """
+    stops: list[PlaceId] | None = None
+    """
+    （1.14，S-081）本幕梅洛斯停下来的地点（归途的停靠点）。跟着他的玩家（companionOf = char.melos）在别的地点随他一起移动；他离开停靠点时不带玩家。省略 = 没有停靠点
+    """
     plan: Annotated[ActPlan | None, Field(title="ActPlan")] = None
     """
     （1.7，C-19）玩家在幕末说出的打算成行时落在哪里（2.8.1 第 2 步）：成行的事件按这里写下一幕、地点、时间、落点和落地。省略 = 叙事者按世界模型判（M3 定）
@@ -2318,6 +2328,10 @@ class Beat(BaseModel):
     variants: list[BeatVariant] | None = None
     """
     （1.4）到点发生时，按这一局的状态换成另一种演法
+    """
+    arriveBefore: Annotated[int | None, Field(ge=1)] = None
+    """
+    （1.14）参与人物比本局排定时间早几分钟到这个节拍的地点（归途的停靠点：梅洛斯先到，玩家看得见他在那里）；省略 = 到点才到
     """
     cite: list[Cite]
 

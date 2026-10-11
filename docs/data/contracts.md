@@ -1,8 +1,8 @@
-# 数据契约（contracts.md）v1.13
+# 数据契约（contracts.md）v1.14
 
-负责人：数据工程 · 状态：**v1.13**（1.5 在 M2-0 冻结（C-2），以后只做加法；1.6 是冻结后第一个加法版本）。v1.0 是基线（S-033），v1.1 是 PM 接受的新基线（S-061〜S-063），已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改。1.1 只做加法：加进 D-012〜D-015 的落地（S-029〜S-032：互助、约定、打算、即兴设定、导演事件、生成的结局、角色结局）、S-034〜S-053 里和数据有关的决定、后端设计 v1.0 第 12 节的 13 条提案和 UX 设计 v1.0 第 18.3 节的要求。1.2 也只做加法：幕末说出的打算（S-031 ③）、作废和出戏的一轮怎么落数据（S-054、S-057）。1.3 加随身的东西（UX 5.1，C-14）。1.4 按 UX 对世界模型的校对和 S-064 加：有条件的台词和设计台词、互助的效果、节拍的变体、过场里的二选一、第四幕按钮上「对梅洛斯的影响」。1.5 给过场的选项也加上「对梅洛斯的影响」和选后的一句（UX 校对 7.3、ux-design 4.5）。1.6 把两条只写在说明文字里的取值条件写成数据（`StateVar.valueRequires`，C-16），结局卡改成 1〜3 人、每一局都出（C-17）。1.7 加位置点（谁站在布局的哪个点）、成群的人物和幕末去处的落地（M2 切片，C-18），以及打算成行时的落点（C-19）、固定演出（S-080 ④）、可调查物和玩家知道什么。1.8 加情境动作做完以后的事件句（`Affordance.pastLabel`），写清事件 `summary` 里玩家一律写身份名、身份名只用来指玩家（UX 在 #61 前端评审后定的文案）。1.9 加「日名要知道哪条事实才说」（`Clock.labels.daysKnownBy`，S-086）。1.10 加 manifest 要的三样（B-7）：身份给玩家看的一句（`Role.summary`）、注音词表（`WorldModel.ruby`），每个人物都填读音（`Character.reading`）。1.11 加结局要的三样（B-9）：人物「原作では」那一句（`Character.originalEnding`）、结局页列谁（`endings.characters`）、结局走模板时的句子（`endings.templates`、`endings.fates`）。1.12 字段不变，改玩家在不在场的判法：没有参与人物的节拍（天气、天灾）在同一个场景就算玩家在场，三处共用一条规则（`zoujin_worldsim.sees`）。跨角色决定见 `pm/decisions.md`。还在等别人定的事列在第 7 节。
+负责人：数据工程 · 状态：**v1.14**（1.5 在 M2-0 冻结（C-2），以后只做加法；1.6 是冻结后第一个加法版本）。v1.0 是基线（S-033），v1.1 是 PM 接受的新基线（S-061〜S-063），已按后端评审（`backend/reviews/data-v0.1.md`）和 PM 评审（`pm/reviews/data-v0.1.md`）修改。1.1 只做加法：加进 D-012〜D-015 的落地（S-029〜S-032：互助、约定、打算、即兴设定、导演事件、生成的结局、角色结局）、S-034〜S-053 里和数据有关的决定、后端设计 v1.0 第 12 节的 13 条提案和 UX 设计 v1.0 第 18.3 节的要求。1.2 也只做加法：幕末说出的打算（S-031 ③）、作废和出戏的一轮怎么落数据（S-054、S-057）。1.3 加随身的东西（UX 5.1，C-14）。1.4 按 UX 对世界模型的校对和 S-064 加：有条件的台词和设计台词、互助的效果、节拍的变体、过场里的二选一、第四幕按钮上「对梅洛斯的影响」。1.5 给过场的选项也加上「对梅洛斯的影响」和选后的一句（UX 校对 7.3、ux-design 4.5）。1.6 把两条只写在说明文字里的取值条件写成数据（`StateVar.valueRequires`，C-16），结局卡改成 1〜3 人、每一局都出（C-17）。1.7 加位置点（谁站在布局的哪个点）、成群的人物和幕末去处的落地（M2 切片，C-18），以及打算成行时的落点（C-19）、固定演出（S-080 ④）、可调查物和玩家知道什么。1.8 加情境动作做完以后的事件句（`Affordance.pastLabel`），写清事件 `summary` 里玩家一律写身份名、身份名只用来指玩家（UX 在 #61 前端评审后定的文案）。1.9 加「日名要知道哪条事实才说」（`Clock.labels.daysKnownBy`，S-086）。1.10 加 manifest 要的三样（B-7）：身份给玩家看的一句（`Role.summary`）、注音词表（`WorldModel.ruby`），每个人物都填读音（`Character.reading`）。1.11 加结局要的三样（B-9）：人物「原作では」那一句（`Character.originalEnding`）、结局页列谁（`endings.characters`）、结局走模板时的句子（`endings.templates`、`endings.fates`）。1.12 字段不变，改玩家在不在场的判法：没有参与人物的节拍（天气、天灾）在同一个场景就算玩家在场，三处共用一条规则（`zoujin_worldsim.sees`）。1.13 `Character.knows` 可标推断。1.14 加归途（S-081）要的三样：幕的停靠点（`Act.stops`）、地点的短名（`Place.shortName`）、人物先到节拍的地点（`Beat.arriveBefore`）。跨角色决定见 `pm/decisions.md`。还在等别人定的事列在第 7 节。
 UX、前端请看第 2.8 节（幕）、第 4 节（记忆）、第 5 节（结局）。1.1 新增或写清的地方都标了「（1.1）」，文末变更记录有汇总。
-最近更新：2026-10-11（1.13：`Character.knows` 可标 `inferred`，原文没写他知道、由人推断；1.12：没有参与人物的节拍同一场景就算玩家在场，推事件、写 `learn`、固定演出共用 `zoujin_worldsim.sees`；1.11：`Character.originalEnding`、`endings.characters` / `templates` / `fates`，B-9 的简化结局用，进结局时一起结算的节拍上的固定演出算进结局演出（S-087）；1.10：`Role.summary`、`ruby`，`reading` 每个人物都填，manifest 用；1.9：`Clock.labels.daysKnownBy`，不知道约定的人物只拿到时段；1.8：`Affordance.pastLabel`，`summary` 里玩家一律写身份名，下发时服务端换成「あなた」，世界模型自检查身份名只指玩家；1.7：relocate 和 `ActExit` 的 `spot`、`WorldState.spots`、`Character.group`、`ActExit.arrival`、`ActExit.sub`、`Affordance.playerSpot`（C-18）、`Act.plan`（C-19）、`setPieces`（S-080 ④）、`objects`、玩家学到的事实（`learn` 写 `player`）；1.6：`StateVar.valueRequires`（C-16）、结局卡 1〜3 人（C-17））
+最近更新：2026-10-11（1.14：`Act.stops`、`Place.shortName`、`Beat.arriveBefore`，完整世界模型 W-2；1.13：`Character.knows` 可标 `inferred`，原文没写他知道、由人推断；1.12：没有参与人物的节拍同一场景就算玩家在场，推事件、写 `learn`、固定演出共用 `zoujin_worldsim.sees`；1.11：`Character.originalEnding`、`endings.characters` / `templates` / `fates`，B-9 的简化结局用，进结局时一起结算的节拍上的固定演出算进结局演出（S-087）；1.10：`Role.summary`、`ruby`，`reading` 每个人物都填，manifest 用；1.9：`Clock.labels.daysKnownBy`，不知道约定的人物只拿到时段；1.8：`Affordance.pastLabel`，`summary` 里玩家一律写身份名，下发时服务端换成「あなた」，世界模型自检查身份名只指玩家；1.7：relocate 和 `ActExit` 的 `spot`、`WorldState.spots`、`Character.group`、`ActExit.arrival`、`ActExit.sub`、`Affordance.playerSpot`（C-18）、`Act.plan`（C-19）、`setPieces`（S-080 ④）、`objects`、玩家学到的事实（`learn` 写 `player`）；1.6：`StateVar.valueRequires`（C-16）、结局卡 1〜3 人（C-17））
 
 四个契约：**WorldModel**（世界模型，静态、按书版本化）、**Event**（运行时事件，只追加）、**Memory**（角色对玩家的记忆，可删除）、**Ending**（结局）。另有两个支撑结构：**Playthrough**（一局游戏）和 **WorldState**（由事件推出的当前状态）。
 
@@ -214,6 +214,7 @@ type PromiseTemplate = {           // （1.1）
 type Place = {
   id: string;                      // "place.syracuse-square"
   name: string; description: string;
+  shortName?: string;              // （1.14）短名（日语，≤ 8 字）：幕末页去处副题的前半「{地点}・{日子}の{时段}」用它，省略 = 用 name（例：「メロスの家」）
   adjacent: { place: string; travelMinutes: number; inferred?: boolean }[]; // 步行分钟；跑步等节奏由叙事者按系数换算
   crossing?: { bridgeMinutes: number; swimMinutes: number; boatMinutes: number; inferred: true }; // 有河的地点
   sceneRef: string | null;         // 对应的 3D 场景；null = 第一版没有场景（见下）
@@ -263,6 +264,8 @@ type Beat = {
   outcomes: Effect[];              // 原著里发生后对状态的影响（同 Event.effects 的写法）
   activities?: { character: string; activity: Activity }[];  // （1.1）节拍发生后这个人物在做什么，到他下一个带 activity 的节拍或移动为止
   variants?: BeatVariant[];        // （1.4）到点发生时，按这一局的状态换成另一种演法（2.4.1 第 2 步）
+  arriveBefore?: number;           // （1.14，S-081）参与人物比本局排定时间早几分钟到这个节拍的地点（归途的停靠点：梅洛斯先到，
+                                   // 玩家看得见他在那里）。按本局的排定时间减，跟着推迟、提前一起动；省略 = 到点才到。由世界推进（B-16）落成 relocate
   cite: Cite[];
 };
 
@@ -449,6 +452,8 @@ type Act = {
   };
   scenes: string[];                // 本幕可能用到的场景（前端据此预加载）
   exits: ActExit[];                // 幕末去处；最后一幕为空，收幕即进入结局
+  stops?: string[];                // （1.14，S-081）本幕梅洛斯停下来的地点（归途的停靠点）。跟着他的玩家（companionOf = char.melos）
+                                   // 在别的地点随他一起移动（同一条系统事件），他离开停靠点时不带玩家；省略 = 没有停靠点
   plan?: {                         // （1.7，C-19）玩家在幕末说出的打算成行时落在哪里（2.8.1 第 2 步）；省略 = 叙事者按世界模型判（M3 定）
     toAct: string; place: string; t: number;   // 同 ActExit 的同名字段
     spot?: string;                 // 玩家落在 place 的哪个位置点；省略 = 这个地点的起点（startSpots）
@@ -471,7 +476,7 @@ type ActExit = {
   effects: Effect[];               // 选择本身的效果，如 set var.player.companionOf = "char.melos"
   enRoute?: EnRoute;               // （1.4，UX 校对 3.2）跳过的这段路上有一个能改的节拍时，过场页给一个二选一
   sub?: string;                    // （1.7，UX）幕末页上这个去处副题的后半（日语，≤ 16 字，叙事口吻，不写分钟数），如「老爺があなたを覚えている」；
-                                   // 前半「{地点}・{日子}の{时段}」由服务端按 place 的 `Place.name` 和 t 算好（日子、时段照 `clock.labels`，
+                                   // 前半「{地点}・{日子}の{时段}」由服务端按 place 的 `Place.shortName`（（1.14）没有就用 `Place.name`）和 t 算好（日子、时段照 `clock.labels`，
                                    // 不套它的 `format`），和后半一起下发（ux-design 4.4）。省略 = 只有前半
   spot?: string;                   // （1.7）玩家落在 place 的哪个位置点（布局 layout.json 的 spots）；省略 = 这个地点的起点（startSpots）
   arrival?: { line: string; opener?: string };  // （1.7）落地：line = 跳转之后的第一行叙事（地の文，日语）；
@@ -1139,3 +1144,6 @@ type CharacterEnding = {           // （1.1）
   - 补（字段和 `schemaVersion` 不变）：第 3 节加「人物亲历了哪些节拍」，同一场景规则给人物用：参与的节拍，加上没有参与人物、落在同一场景的节拍；不算在场。共享规则库 `zoujin_worldsim.lived` / `place_at`，后端叙事者给人物的最近的节拍（S-092，`narrator/view.py` 的 `recent`）跟着换。
 - **v1.13（2026-10-11）**：只做加法。`Character.knows` 的一项可以带 `inferred: true`：原文没写他知道、由人推断（和 `goals`、`traits` 的 `inferred` 同一个意思），评审表 `REVIEW.md` 的「知道」一行标〔推断〕。
   - 『走れメロス』：`schemaVersion` 1.13。フィロストラトス从 beat.06 知道 `fact.friendship`（#161）标 `inferred`：原文第 53 段只撑得住「お友達」，竹馬の友、两年没见是推断（PM 10-11）。
+- **v1.14（2026-10-11）**：只做加法（W-2 完整世界模型，S-081 归途）。
+  - WorldModel：`Act.stops`（停靠点：梅洛斯在这些地点停下，别处跟着他的玩家随他移动）、`Place.shortName`（幕末页去处副题的地点短名）、`Beat.arriveBefore`（参与人物先到几分钟）。运行时由世界推进（B-16）落地。
+  - 『走れメロス』：`schemaVersion` 1.14。第二幕停靠点 = 川，第四幕 = 川、峠、泉；峠 20、泉 5、野の道 10 分钟先到；6 个地点有短名。切片的城门、工房、收幕固定演出和屋门搬进完整版（切片照抄，生成物不变），加川的可调查物 `obj.river-water` 和桥被冲走以后的一句（`piece.river-flood`）。`exit.2.village` 落在 `place.melos-home`（以前落在村子，赶不上 `beat.08`）；加 `exit.2.vigil`、`exit.3.vigil`（守着人质的玩家留在王城，以前每次跳幕都被放到广场）；第四幕的场景加王座之间；`beat.07` 把梅洛斯移到市へ続く野の道、`exit.1.road` 把他移到泉（以前守夜的玩家零点还在王城看见他）；`beat.12`（大雨）落在 `place.melos-home`（婚礼的人看得见）；`beat.s1` 加变体 `beat.s1.v-you`：人质是玩家时セリヌンティウス不上柱子，玩家被带到刑场；`role.guard` 改名「警吏の見習い」。
