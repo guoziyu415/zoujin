@@ -4,7 +4,14 @@
 // the narrator's answer. A third try isn't offered (「夜が更けていく。…」). Once an exit is chosen the page waits for
 // the act change and takes no more taps.
 import type { Api } from "@zoujin/contracts";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+  type PointerEvent,
+} from "react";
 import { play } from "../../net/play";
 import {
   backToExits,
@@ -14,6 +21,8 @@ import {
   type ActEndState,
 } from "../../net/story";
 import { openOverlay, useStory } from "../../stores/story";
+import { useVoice } from "../../stores/voice";
+import { voiceSettings } from "../../voice/settings";
 import { copy, fill } from "../copy";
 import { Lines } from "../Lines";
 import { TEXT_MAX } from "../hud/TextInput";
@@ -64,7 +73,13 @@ export function ActEndPage() {
         {phase.k === "choose" && <Exits a={a} />}
         {phase.k === "chosen" && <Exits a={a} />}
         {phase.k === "propose" && <Propose notHeard={phase.notHeard} />}
+        {phase.k === "thinking" && phase.turnId && (
+          <PlanWords turnId={phase.turnId} />
+        )}
         {phase.k === "thinking" && <Thinking />}
+        {phase.k === "result" && phase.turnId && !phase.accepted && (
+          <PlanWords turnId={phase.turnId} />
+        )}
         {phase.k === "result" && <Result phase={phase} />}
         <Recap lines={end.recapLines} />
       </div>
@@ -140,6 +155,10 @@ function Exits({ a }: { a: ActEndState }) {
 
 function Propose({ notHeard }: { notHeard: boolean }) {
   const [text, setText] = useState("");
+  // the talk key beside the keyboard when the voice can be used (4.4); else the text field alone
+  const mic = useVoice((s) => s.mic);
+  const degraded = useVoice((s) => s.degraded);
+  const hold = useVoice((s) => s.hold);
   const over = [...text].length > TEXT_MAX;
   function send(e: FormEvent) {
     e.preventDefault();
@@ -153,27 +172,104 @@ function Propose({ notHeard }: { notHeard: boolean }) {
           ? copy["actEnd.propose.notHeard"]
           : copy["actEnd.propose.prompt"]}
       </p>
-      <form className="textinput" onSubmit={send}>
-        <input
-          aria-label={copy["actEnd.propose.prompt"]}
-          placeholder={copy["actEnd.propose.placeholder"]}
-          value={text}
-          onChange={(e) => {
-            setText(e.target.value);
-            set(clearNotHeard);
-          }}
-          enterKeyHint="send"
-          autoFocus
-        />
-        <button type="submit" disabled={!text.trim() || over}>
-          {copy["actEnd.propose.send"]}
-        </button>
-      </form>
+      {hold && <PlanWords />}
+      <div className="ae-inputs">
+        {mic === "granted" && !degraded && <PlanKey />}
+        <form className="textinput" onSubmit={send}>
+          <input
+            aria-label={copy["actEnd.propose.prompt"]}
+            placeholder={copy["actEnd.propose.placeholder"]}
+            value={text}
+            onChange={(e) => {
+              setText(e.target.value);
+              set(clearNotHeard);
+            }}
+            enterKeyHint="send"
+            autoFocus
+          />
+          <button type="submit" disabled={!text.trim() || over}>
+            {copy["actEnd.propose.send"]}
+          </button>
+        </form>
+      </div>
       {over && <p className="error">{copy["text.limit"]}</p>}
       <button className="quiet" onClick={() => set(backToExits)}>
         {copy["actEnd.propose.back"]}
       </button>
     </div>
+  );
+}
+
+const SLIDE_PX = 60;
+
+// hold to say the plan, let go to send (the talk key's rules; tap mode: two taps); Space or Enter from a keyboard
+function PlanKey() {
+  const hold = useVoice((s) => s.hold);
+  const tap = voiceSettings.tap;
+  const startY = useRef(0);
+  function down(e: PointerEvent<HTMLButtonElement>) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    if (tap && useVoice.getState().hold) return play.actPlanRelease();
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // synthetic events
+    }
+    startY.current = e.clientY;
+    play.actPlanPress();
+  }
+  // past 60 px up while holding: letting go cancels (7.1)
+  function move(e: PointerEvent<HTMLButtonElement>) {
+    if (!tap && useVoice.getState().hold)
+      play.slide(startY.current - e.clientY > SLIDE_PX);
+  }
+  function up() {
+    if (!tap) play.actPlanRelease();
+  }
+  function key(e: KeyboardEvent<HTMLButtonElement>, isDown: boolean) {
+    if (e.key !== " " && e.key !== "Enter") return;
+    e.preventDefault();
+    if (isDown && !e.repeat) {
+      if (tap && useVoice.getState().hold) play.actPlanRelease();
+      else play.actPlanPress();
+    } else if (!isDown && !tap) play.actPlanRelease();
+  }
+  return (
+    <button
+      className="talk ae-talk"
+      data-testid="plan-talk"
+      aria-pressed={!!hold}
+      onPointerDown={down}
+      onPointerMove={move}
+      onPointerUp={up}
+      onPointerCancel={up}
+      onKeyDown={(e) => key(e, true)}
+      onKeyUp={(e) => key(e, false)}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      {hold
+        ? hold.slide
+          ? copy["talk.slideCancel"]
+          : copy["talk.listening"]
+        : tap
+          ? copy["talk.tap"]
+          : copy["talk.hold"]}
+    </button>
+  );
+}
+
+// the spoken plan as heard (4.4): live in grey while held, then fixed in 「」 until the answer (a refused one keeps it
+// above the reason, to compare)
+function PlanWords({ turnId }: { turnId?: string }) {
+  const w = useVoice((s) => s.player);
+  const held = useVoice((s) => s.turn?.turnId);
+  if (!w?.text || w.turnId !== (turnId ?? held)) return null;
+  // while held (no turnId on the page yet): as it comes; once let go: fixed, in 「」 (the final words replace it)
+  return turnId ? (
+    <p className="ae-heard">「{w.text}」</p>
+  ) : (
+    <p className="ae-heard partial">{w.text}</p>
   );
 }
 

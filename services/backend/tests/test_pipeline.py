@@ -9,9 +9,11 @@ import asyncio
 import copy
 import json
 from collections.abc import Mapping, Sequence
+from pathlib import Path
 from typing import Any
 
 import pytest
+from zoujin_backend.clock import PART_OF_DAY, Labels
 from zoujin_backend.config import DEADLINES
 from zoujin_backend.ids import IdGen
 from zoujin_backend.models.text import BudgetStop, FakeText, RateLimited, TextResult, canonical
@@ -380,6 +382,41 @@ def test_reply_time_is_band_only_for_who_does_not_know_the_day_names() -> None:
     assert time(promise, night, OLD) == time(promise, night, "char.selinuntius") == "夜"
     assert time(promise, day1, "char.selinuntius") == "一日目・午前" and time(promise, day1, OLD) == "午前"
     assert time(promise, at(), "char.king") == "日没前"  # 约定还没立，谁都不算知道
+
+
+def test_reply_recent_beats_count_days_from_now() -> None:
+    """S-092：局势带他亲历的节拍是什么时候（UX 的说法，一天从夜明け算起，不用日名）；没参与的、更早的不给。"""
+
+    def recent(t: int, who: str) -> list[tuple[str, str]]:
+        s = at(checkpoint=f"sc.canon@t={t}")
+        return [(x["beat"], x["day"]) for x in situation(BOOK, s, who, state_view(BOOK, s))["recent"]]
+
+    assert recent(1400, "char.king") == [("beat.05", "今夜")] and recent(1400, "char.selinuntius") == []
+    assert recent(2000, "char.selinuntius") == [("beat.06", "昨夜")]
+    assert recent(3600, "char.selinuntius") == [("beat.06", "おととい")]
+    ago = BOOK.labels.ago
+    assert ago(1440 + 60, 1410) == "今夜"  # 天亮前的深夜还算前一天
+    assert (ago(1440 + 300, 1440 + 600), ago(1440 + 600, 1440 + 700), ago(1440 + 1000, 1440 + 1100)) == (
+        "今朝",
+        "今日の昼",
+        "今日の夕方",
+    )
+    assert (ago(600, 1440 + 600), ago(1300, 1440 + 600), ago(600, 3 * 1440 + 600)) == ("昨日", "昨夜", "三日前")
+    assert ago(10, 6000) is None
+
+
+def test_part_of_day_covers_every_world() -> None:
+    """S-092：worlds/ 下每个世界模型的每个时段名都在 PART_OF_DAY 里，第一段从零点开始、第二段（夜明け）算「朝」；
+    数据改了时段名或加了一段先碰到这里。查不到不回退成「今日」，直接报错。"""
+    worlds = sorted((Path(__file__).resolve().parents[3] / "worlds").glob("*/*/world.json"))
+    assert worlds
+    for path in worlds:
+        labels = Labels(path)
+        assert labels.bands[0][0] == 0 and PART_OF_DAY[labels.bands[1][1]] == "朝", path
+    raw = json.loads(worlds[0].read_text(encoding="utf-8"))
+    raw["clock"]["labels"]["bands"] = [*raw["clock"]["labels"]["bands"], [1430, "丑三つ"]]
+    with pytest.raises(ValueError, match="丑三つ"):
+        Labels(raw)
 
 
 # —— Span 不含原话 ——

@@ -123,15 +123,19 @@ class Voices:
             st = await store.sim_state(c, pid)
         if pt is None or st is None:
             raise LiveLost("这一局没有状态")
-        recent = [r for _, r in self.conn.recent.get(character, [])]
-        return brief.build(pt.book, st, character, recent)
+        return brief.build(pt.book, st, character, self._recent(character), self.conn.monitor.notes(character))
+
+    def _recent(self, character: str) -> list[Recent]:
+        """带进会话的最近对话：说漏了剧透的那几句不带（B-12，UX 在 #112 的评审：新会话一开头又看到那个词）。"""
+        terms = self.conn.monitor.terms(character)
+        return [r for _, r in self.conn.recent.get(character, []) if not any(x in (r.reply or "") for x in terms)]
 
     # —— 开会话 ——
 
     async def _open(self, character: str, reason: str) -> LiveSession:
         """拼系统指令、开会话、挂上变化的回调。Trace：live.session（不带指令的文字）。"""
         b = await self._brief(character)
-        recent = [r for _, r in self.conn.recent.get(character, [])]
+        recent = self._recent(character)
         with self.conn.gw.tracer.span(
             "live.session",
             playthrough_id=self.conn.pid,

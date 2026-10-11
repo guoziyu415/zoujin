@@ -411,7 +411,7 @@ def test_act_ends_after_beat_07_and_queued_turns_get_no_world(game: Callable[...
     options = by_id(ended["options"], "optionId")
     assert list(options) == [CITY, HOME]
     assert {o["where"] for o in options.values()} == {"刑場・三日目の夕方"}
-    assert {o["toActId"] for o in options.values()} == {"act.4"}  # v1.0.13：ActExit.toAct，预取下一幕的包
+    assert {o["toActId"] for o in options.values()} == {"act.4"}  # v1.0.14：ActExit.toAct，预取下一幕的包
     assert (options[CITY]["sub"], options[HOME]["sub"]) == ("西の門が見える所で", "老爺があなたを覚えている")
     assert (options[CITY]["with"], options[HOME]["with"]) == ([], [OLD])
     assert ended["freeform"] == {"allowed": True, "triesLeft": 2} and ended["recapLines"] == []

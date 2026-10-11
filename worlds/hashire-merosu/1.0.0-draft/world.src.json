@@ -1,5 +1,5 @@
 {
- "schemaVersion": "1.11",
+ "schemaVersion": "1.12",
  "worldModelVersion": "hashire-merosu@1.0.0-draft.3",
  "_authoring": "出典は {\"q\": 原文の逐字引用, \"p\": 段落番号（省略可）} で書く。spikes/pipeline/build_world.py が段落を特定・検証して world.json を出力する。",
  "book": {
@@ -139,8 +139,20 @@
    "reading": "やつばら"
   },
   {
+   "word": "口惜し",
+   "reading": "くやし"
+  },
+  {
    "word": "地団駄",
    "reading": "じだんだ"
+  },
+  {
+   "word": "佳き",
+   "reading": "よき"
+  },
+  {
+   "word": "首肯き",
+   "reading": "うなずき"
   },
   {
    "word": "困憊",
@@ -153,6 +165,10 @@
   {
    "word": "怺",
    "reading": "こら"
+  },
+  {
+   "word": "首肯い",
+   "reading": "うなずい"
   },
   {
    "word": "薄明",
@@ -189,6 +205,10 @@
   {
    "word": "繋舟",
    "reading": "けいしゅう"
+  },
+  {
+   "word": "掻",
+   "reading": "か"
   },
   {
    "word": "憐愍",
@@ -265,6 +285,14 @@
   {
    "word": "齧",
    "reading": "かじ"
+  },
+  {
+   "word": "若し",
+   "reading": "もし"
+  },
+  {
+   "word": "唸",
+   "reading": "うな"
   },
   {
    "word": "歔欷",
@@ -4691,6 +4719,16 @@
      "character": "char.king",
      "place": "place.execution-ground",
      "spot": "king-west"
+    },
+    {
+     "op": "relocate",
+     "character": "char.crowd",
+     "place": "place.execution-ground"
+    },
+    {
+     "op": "relocate",
+     "character": "char.guards",
+     "place": "place.execution-ground"
     }
    ],
    "activities": [
@@ -4954,6 +4992,13 @@
      "value": 1,
      "inferred": true,
      "note": "王の信頼（0〜100、初期 5）が 0 まで落ちていたら改心しない。プレイヤーが嘲りや欺きで王の心を閉ざした場合（推断。S-007「間に合ったが王は変わらない」への道）"
+    },
+    {
+     "var": "var.king.disposition",
+     "op": "!=",
+     "value": "reformed",
+     "inferred": true,
+     "note": "刑場に来る前に王がもう改心していた局（信頼が 70 を超え、身代りを先に放した）では、刑場でもう一度改心しない（UX の評審、S-087）"
     }
    ],
    "outcomes": [
@@ -5773,6 +5818,7 @@
      "label": "雨の中、メロスと走り出る",
      "toAct": "act.4",
      "place": "place.river",
+     "spot": "road-west",
      "t": 5000,
      "alignTo": "beat.18",
      "requires": [
