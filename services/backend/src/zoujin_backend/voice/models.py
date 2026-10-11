@@ -119,6 +119,13 @@ def live_cost(usage: Mapping[str, int]) -> float:
     return usd / 1_000_000
 
 
+def live_cost_parts(usage: Mapping[str, int]) -> tuple[float, float]:
+    """`live_cost` 分成输入、输出两半（美元）。S-090 对账只拿输入那一半和 results-s1 8.5 的公式比（#111 数据评审）。"""
+    p = LIVE_PRICES
+    inp = usage.get("inputTextTokens", 0) * p["inText"] + usage.get("inputAudioTokens", 0) * p["inAudio"]
+    return inp / 1_000_000, live_cost(usage) - inp / 1_000_000
+
+
 def live_usage(meta: Json) -> dict[str, int]:
     """Vertex 的 usageMetadata → 账本的 usage（只有数字）。"""
     u = {"inputTokens": int(meta.get("promptTokenCount", 0)), "outputTokens": int(meta.get("candidatesTokenCount", 0))}

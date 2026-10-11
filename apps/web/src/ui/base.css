@@ -73,6 +73,14 @@ button {
   border-radius: 8px;
   font-size: 14px;
 }
+.inapp-steps {
+  padding-bottom: 8px;
+}
+.inapp-link {
+  user-select: all;
+  -webkit-user-select: all;
+  overflow-wrap: anywhere;
+}
 .primary {
   background: var(--accent);
   color: var(--ink);
