@@ -23,6 +23,20 @@ def J(rubric, p=">=4/5"):
 
 
 def case(cid, title, setup, steps, det=None, judge=None, mode="text", runs=5, note=None):
+    # 种子集跨四幕；显式列出编写意图，避免按重叠的时间窗猜幕。
+    # scenario 是已推演到底的整局；persona 仍走正式开局，不布置幕或结局。
+    act2 = {"E2-002", "E4-010"}
+    act3 = {"E1-005", "E1-006", "E1-007", "E2-003", "E2-004", "E2-006", "E2-010",
+            "E3-004", "E3-005", "E4-003", "E4-007", "E5-006", "E5-009", "E6-011", "E8-007"}
+    act4 = {"E1-009", "E1-010", "E2-001", "E2-009", "E2-011", "E3-003", "E3-007", "E3-008",
+            "E3-009", "E4-001", "E4-004", "E4-009", "E5-008", "E5-014", "E8-010"}
+    act = 4 if cid in act4 or "scenario" in setup else 3 if cid in act3 else 2 if cid in act2 else None
+    if act is not None:
+        setup = {**setup, "events": [
+            {"effects": [{"op": "set", "var": "var.act.current", "value": f"act.{act}"}],
+             "note": f"評価用の起点：第{act}幕。用例で明示した場面に合わせる"},
+            *setup.get("events", []),
+        ]}
     c = {"id": cid, "suite": cid.split("-")[0], "title": title, "mode": mode, "runs": runs,
          "setup": setup, "steps": steps, "expect": {}}
     if det:

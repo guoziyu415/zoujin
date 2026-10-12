@@ -9,6 +9,108 @@
   "filter": {
    "suite": [],
    "case": []
+  },
+  "expectedJudgeRuns": {
+   "E1-001": 5,
+   "E1-002": 5,
+   "E1-003": 5,
+   "E1-004": 5,
+   "E1-005": 5,
+   "E1-006": 5,
+   "E1-007": 5,
+   "E1-008": 5,
+   "E1-009": 5,
+   "E1-010": 5,
+   "E2-001": 5,
+   "E2-002": 5,
+   "E2-003": 5,
+   "E2-004": 5,
+   "E2-005": 5,
+   "E2-006": 5,
+   "E2-007": 5,
+   "E2-008": 5,
+   "E2-009": 5,
+   "E2-010": 5,
+   "E2-011": 5,
+   "E3-001": 5,
+   "E3-002": 5,
+   "E3-003": 5,
+   "E3-004": 5,
+   "E3-005": 5,
+   "E3-006": 5,
+   "E3-007": 5,
+   "E3-008": 5,
+   "E3-009": 5,
+   "E3-010": 5,
+   "E3-011": 5,
+   "E3-012": 5,
+   "E4-001": 5,
+   "E4-002": 5,
+   "E4-003": 5,
+   "E4-004": 5,
+   "E4-005": 0,
+   "E4-006": 5,
+   "E4-007": 5,
+   "E4-008": 5,
+   "E4-009": 5,
+   "E4-010": 0,
+   "E4-011": 5,
+   "E4-012": 5,
+   "E4-013": 5,
+   "E4-014": 0,
+   "E5-001": 0,
+   "E5-002": 0,
+   "E5-003": 0,
+   "E5-004": 0,
+   "E5-005": 0,
+   "E5-006": 0,
+   "E5-007": 0,
+   "E5-008": 0,
+   "E5-009": 0,
+   "E5-010": 0,
+   "E5-011": 0,
+   "E5-012": 0,
+   "E5-013": 0,
+   "E5-014": 0,
+   "E5-015": 0,
+   "E5-016": 0,
+   "E5-017": 0,
+   "E5-018": 0,
+   "E6-001": 5,
+   "E6-002": 0,
+   "E6-003": 5,
+   "E6-004": 0,
+   "E6-005": 0,
+   "E6-006": 0,
+   "E6-007": 5,
+   "E6-008": 5,
+   "E6-009": 0,
+   "E6-010": 0,
+   "E6-011": 5,
+   "E6-012": 5,
+   "E7-001": 0,
+   "E7-002": 0,
+   "E7-003": 0,
+   "E7-004": 0,
+   "E7-005": 0,
+   "E7-006": 0,
+   "E7-007": 0,
+   "E7-008": 0,
+   "E7-009": 0,
+   "E7-010": 0,
+   "E7-011": 0,
+   "E8-001": 5,
+   "E8-002": 5,
+   "E8-003": 0,
+   "E8-004": 0,
+   "E8-005": 5,
+   "E8-006": 5,
+   "E8-007": 5,
+   "E8-008": 5,
+   "E8-009": 0,
+   "E8-010": 0,
+   "E8-011": 5,
+   "E8-012": 5
   }
  },
  "infra": {
@@ -38,8 +140,12 @@
    "gate": {
     "merge": 0.98,
     "release": 0.98,
-    "mergeMet": true,
-    "releaseMet": true
+    "mergeMet": null,
+    "releaseMet": null,
+    "reasons": [
+     "deterministic-only",
+     "incomplete-judge"
+    ]
    },
    "checks": {
     "pass": 180,
@@ -71,8 +177,12 @@
    "gate": {
     "merge": 0.95,
     "release": 0.99,
-    "mergeMet": true,
-    "releaseMet": true
+    "mergeMet": null,
+    "releaseMet": null,
+    "reasons": [
+     "deterministic-only",
+     "incomplete-judge"
+    ]
    },
    "checks": {
     "pass": 105,
@@ -106,8 +216,13 @@
    "gate": {
     "merge": 0.9,
     "release": 0.95,
-    "mergeMet": true,
-    "releaseMet": true
+    "mergeMet": null,
+    "releaseMet": null,
+    "reasons": [
+     "deterministic-only",
+     "incomplete-judge",
+     "skipped-checks"
+    ]
    },
    "checks": {
     "pass": 65,
@@ -144,7 +259,11 @@
     "merge": 0.98,
     "release": 0.98,
     "mergeMet": false,
-    "releaseMet": false
+    "releaseMet": false,
+    "reasons": [
+     "deterministic-only",
+     "incomplete-judge"
+    ]
    },
    "checks": {
     "pass": 125,
@@ -178,8 +297,12 @@
    "gate": {
     "merge": 0.9,
     "release": 0.95,
-    "mergeMet": true,
-    "releaseMet": true
+    "mergeMet": null,
+    "releaseMet": null,
+    "reasons": [
+     "deterministic-only",
+     "skipped-checks"
+    ]
    },
    "checks": {
     "pass": 47,
@@ -212,7 +335,11 @@
     "merge": 0.95,
     "release": 0.98,
     "mergeMet": false,
-    "releaseMet": false
+    "releaseMet": false,
+    "reasons": [
+     "deterministic-only",
+     "incomplete-judge"
+    ]
    },
    "checks": {
     "pass": 91,
@@ -247,7 +374,11 @@
     "merge": 1.0,
     "release": 1.0,
     "mergeMet": null,
-    "releaseMet": null
+    "releaseMet": null,
+    "reasons": [
+     "deterministic-only",
+     "skipped-checks"
+    ]
    },
    "checks": {
     "pass": 0,
@@ -279,8 +410,12 @@
    "gate": {
     "merge": 0.98,
     "release": 0.98,
-    "mergeMet": true,
-    "releaseMet": true
+    "mergeMet": null,
+    "releaseMet": null,
+    "reasons": [
+     "deterministic-only",
+     "incomplete-judge"
+    ]
    },
    "checks": {
     "pass": 68,

@@ -79,3 +79,46 @@ def test_live_exits(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixtu
     assert main([*LIVE, *ARGS]) == 0
     out = capsys.readouterr().out
     assert "--confirm" in out and "Claude" in out
+
+
+def test_live_failed_result_has_nonzero_exit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from zoujin_evals import cli
+
+    monkeypatch.setenv("ZJ_EVAL_LIVE", "1")
+    monkeypatch.setenv("ZJ_LEDGER", str(tmp_path / "unused.jsonl"))
+    monkeypatch.setattr(cli, "players", lambda args: None)
+    monkeypatch.setattr(
+        cli,
+        "run_cases",
+        lambda *args: [
+            {
+                "id": "E2-009",
+                "suite": "E2",
+                "title": "failure",
+                "mode": "text",
+                "runs": 1,
+                "results": [
+                    {"run": 1, "status": "fail", "checks": [], "traceIds": [], "error": "offline test failure"}
+                ],
+            }
+        ],
+    )
+    assert (
+        main(
+            [
+                *LIVE,
+                *ARGS,
+                "--case",
+                "E2-009",
+                "--confirm",
+                "--deterministic-only",
+                "--item",
+                "unit-test",
+                "--out",
+                str(tmp_path),
+            ]
+        )
+        == 1
+    )
+    result = json.loads((tmp_path / "report.json").read_text())
+    assert result["meta"]["expectedJudgeRuns"] == {"E2-009": 5}

@@ -26,6 +26,8 @@ STEP_KINDS = (
     "to",
     "act",
     "deleteMemory",
+    "deleteMemoryId",
+    "confirm",
     "retract",
     "deletePlaythrough",
     "newPlaythrough",

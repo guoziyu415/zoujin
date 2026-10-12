@@ -87,6 +87,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         print(msg, file=sys.stderr if code else sys.stdout)
         if code is not None:
+            if code == 0:
+                print("仅估算；尚未调用模型、尚未生成运行结果。")
             return code
         assert a.item is not None and a.max_item_usd is not None
         os.environ.update(
@@ -113,6 +115,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "cases": len(cases),
         "filter": {"suite": a.suite, "case": a.case},
     }
+    meta["expectedJudgeRuns"] = {c["id"]: c.get("runs", 5) if "judge" in c.get("expect", {}) else 0 for c in cases}
     if opts.player is not None:
         meta["player"] = a.player or "claude"
     rep = report.build(results, meta)
@@ -120,6 +123,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     (a.out / "report.json").write_text(json.dumps(rep, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     (a.out / "report.md").write_text(report.markdown(rep), encoding="utf-8")
     print(f"报告：{a.out / 'report.md'}，{a.out / 'report.json'}")
+    if a.mode == "live":
+        return int(any(c.get("skip") or any(r["status"] != "pass" for r in c.get("results", [])) for c in results))
     return 0
 
 

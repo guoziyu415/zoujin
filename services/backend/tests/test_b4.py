@@ -163,6 +163,8 @@ def test_a_draft_is_not_logged_and_yes_commits_it_on_the_original_turn(game: Cal
     asking = step["confirm"]
     draft_id = asking["draftId"]
     assert asking == {"draftId": draft_id, "character": MELOS, "prompt": QUESTION}
+    public = g.s.view()["snapshot"]["pending"]["confirm"]
+    assert public == asking and "candidate" not in public
     assert draft_id.startswith("draft_") and step["clockMinutes"] == 10
     assert SUMMARY not in [e["summary"] for e in step["events"]]  # 草稿不进事件日志，这一轮其他的照常提交
     turn = g.turn(step["traceId"])
@@ -200,6 +202,7 @@ def test_a_draft_is_not_logged_and_yes_commits_it_on_the_original_turn(game: Cal
     assert answer["request"] == {"draftId": draft_id, "optionId": "yes", "by": "button"}
     assert answer["result"]["push"] == [closed_msg(draft_id, "yes", "button")]
     assert rows(g, drafts, playthrough_id=g.s.pid) == []
+    assert g.s.view()["snapshot"]["pending"]["confirm"] is None
     assert counts(g) == (1, 1, 0, 0, 0, 0)
 
 

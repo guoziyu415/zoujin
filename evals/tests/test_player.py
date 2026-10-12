@@ -21,6 +21,7 @@ from zoujin_evals.player import (
     ScriptedPlayer,
     beat_outcome,
     ends_as_question,
+    heard,
     legal_moves,
     load_personas,
     play,
@@ -102,7 +103,7 @@ def test_moves_come_from_the_snapshot() -> None:
     steps = [m.with_text("こんにちは") for m in moves]
     assert {"to": "char.old-man", "say": "こんにちは"} in steps  # 同一地点、能说话的
     assert not any(s.get("to") == "char.melos" for s in steps)  # 不在这个地点的不能直接说
-    assert {"act": {"kind": "help", "target": "char.old-man"}} in steps
+    assert {"act": {"kind": "help", "target": "char.old-man", "actionId": "act_walk"}} in steps
     assert {"act": {"kind": "examine", "target": "obj.workshop-door"}} in steps
     assert {"act": {"kind": "go", "target": "way.castle"}} in steps
     assert {"act": {"kind": "move", "target": "place.execution-ground"}} in steps
@@ -129,6 +130,65 @@ def test_act_end_moves() -> None:
 
 def test_no_moves_once_the_ending_started() -> None:
     assert legal_moves(snap(status="ended"), NAMES, None) == []
+
+
+def test_confirmation_exposes_only_explicit_answers_and_no_hidden_candidate() -> None:
+    asking = {"prompt": "本気なのか。", "candidate": {"secret": "NEVER EXPOSE"}}
+    moves = legal_moves(snap(pending={"confirm": asking}), NAMES, 3)
+    assert [m.step for m in moves] == [{"confirm": "yes"}, {"confirm": "no"}, {"confirm": None}]
+    text = Observation(snap(pending={"confirm": asking}), [], moves, 4).text(NAMES)
+    assert "本気なのか。" in text and "NEVER EXPOSE" not in text
+
+
+def test_memory_actions_use_only_public_notebook_text() -> None:
+    notebook = {
+        "characters": [
+            {
+                "character": "char.old-man",
+                "memories": [
+                    {"memoryId": "mem_visible", "text": "家まで送ってくれた人", "fromEvents": ["SECRET"]},
+                    {"memoryId": "mem_deleted", "text": "DELETED", "deletedAt": "yesterday"},
+                ],
+            }
+        ]
+    }
+    moves = legal_moves(snap(), NAMES, None, notebook)
+    deletions = [m for m in moves if m.kind == "deleteMemoryId"]
+    assert [m.step for m in deletions] == [{"deleteMemoryId": "mem_visible"}]
+    text = Observation(snap(), [], moves, 1).text(NAMES)
+    assert "家まで送ってくれた人" in text
+    assert all(secret not in text for secret in ("mem_visible", "SECRET", "DELETED"))
+
+
+def test_heard_uses_delivered_pieces_and_never_internal_piece_ids() -> None:
+    lines = heard(
+        NAMES,
+        {"act": {"kind": "wait"}},
+        {  # type: ignore[typeddict-unknown-key]
+            "pieces": ["piece.FUTURE_SECRET"],
+            "setPieces": [{"pieceId": "piece.now", "lines": [{"text": "戻ったぞ。"}]}],
+            "setPiece": {"lines": [{"text": "duplicate legacy content"}]},
+            "events": [{"summary": "HIDDEN EVENT"}],
+        },
+    )
+    assert lines == ["（戻ったぞ。）"]
+
+
+def test_simulated_action_preserves_the_public_button_id() -> None:
+    class ButtonPlayer:
+        def choose(self, persona: Any, names: Any, obs: Observation) -> tuple[int, str]:
+            return next(i for i, m in enumerate(obs.moves) if m.step.get("act", {}).get("actionId") == "act_walk"), ""
+
+    class ButtonGame(FakeGame):
+        def act(
+            self, kind: str, target: str | None, params: Mapping[str, Any], *, action_id: str | None = None
+        ) -> dict[str, Any]:
+            assert action_id == "act_walk" and kind == "help" and target == "char.old-man"
+            return self._step("public-action", action_id)
+
+    game = ButtonGame(1)
+    play(game, PERSONAS["persona.idle"], ButtonPlayer())
+    assert game.calls == [("public-action", "act_walk")]
 
 
 def test_observation_text_has_only_what_the_player_sees() -> None:
@@ -169,7 +229,9 @@ class FakeGame:
     def say(self, to: str, text: str) -> dict[str, Any]:
         return self._step("say", to, text)
 
-    def act(self, kind: str, target: str | None, params: Mapping[str, Any]) -> dict[str, Any]:
+    def act(
+        self, kind: str, target: str | None, params: Mapping[str, Any], *, action_id: str | None = None
+    ) -> dict[str, Any]:
         return self._step("act", kind, target)
 
     def retract(self, step: int) -> dict[str, Any]:
@@ -242,7 +304,8 @@ def obs() -> Observation:
 
 def test_claude_player_records_then_replays(tmp_path: Path) -> None:
     persona = PERSONAS["persona.king-persuader"]
-    t = Transport(json.dumps({"why": "王に会いたい", "move": 0, "text": "王のことを教えてください。"}))
+    answer = json.dumps({"why": "王に会いたい", "move": 0, "text": "王のことを教えてください。"})
+    t = Transport(answer, answer)
     ledger = Ledger()
     live = ClaudePlayer(MODEL, PlayerReplays(tmp_path), claude_prices(), ledger, t)
     assert live.choose(persona, NAMES, obs()) == (0, "王のことを教えてください。")
@@ -254,6 +317,11 @@ def test_claude_player_records_then_replays(tmp_path: Path) -> None:
     assert rec["model"] == "sonnet-9.9" and MODEL not in json.dumps(rec)  # 回放里只写档名
     again = ClaudePlayer(MODEL, PlayerReplays(tmp_path), claude_prices())  # 只读回放：不花钱
     assert again.choose(persona, NAMES, obs()) == (0, "王のことを教えてください。")
+    assert live.freshCalls == 1 and live.replayHits == 0
+    assert again.freshCalls == 0 and again.replayHits == 1
+    # live 复用同目录、同请求也必须新调用；否则 20 个种子可能只重放同一个决定。
+    live.choose(persona, NAMES, obs())
+    assert len(t.sent) == 2 and live.freshCalls == 2 and live.replayHits == 0
 
 
 def test_claude_player_bad_output_waits(tmp_path: Path) -> None:
@@ -266,6 +334,16 @@ def test_claude_player_bad_output_waits(tmp_path: Path) -> None:
         pick, text = p.choose(PERSONAS["persona.idle"], NAMES, obs())
         assert obs().moves[pick].step == {"act": {"kind": "wait"}} and text == "" and p.bad == 1
     assert not (tmp_path / "player.jsonl").exists()  # 坏的不存回放
+
+
+def test_bad_player_output_at_confirmation_or_act_end_is_counted(tmp_path: Path) -> None:
+    p = ClaudePlayer(MODEL, PlayerReplays(tmp_path), claude_prices(), Ledger(), Transport("{}", "{}"))
+    for pending in ({"confirm": {"prompt": "よいか。"}}, {"actEnd": ACT_END}):
+        snapshot = snap(pending=pending)
+        moves = legal_moves(snapshot, NAMES, None)
+        pick, text = p.choose(PERSONAS["persona.idle"], NAMES, Observation(snapshot, [], moves, 1))
+        assert moves[pick].kind in ("confirm", "choose") and text == ""
+    assert p.bad == p.freshCalls == 2
 
 
 def test_claude_player_replay_missing_and_budget(tmp_path: Path) -> None:
@@ -306,7 +384,40 @@ def test_sim_stats() -> None:
     played = play(FakeGame(3), PERSONAS["persona.idle"], ScriptedPlayer(seed=1))
     st = sim_stats(played, events, {"world": {"outcome": "canon-reunion"}})
     assert st["keyMoments"] == 1 and st["beat20"] == "happened" and st["beat25"] == "altered:v-neither"
-    assert st["ending"] == {"outcome": "canon-reunion", "variant": None} and st["steps"] == 3
+    assert st["ending"] == {"outcome": "canon-reunion", "variant": None, "signature": None} and st["steps"] == 3
+    assert sum(st["player"]["actions"].values()) == 3
+
+
+def test_player_can_delete_a_real_visible_memory_and_confirm() -> None:
+    class PublicGame(FakeGame):
+        def memory_book(self) -> dict[str, Any]:
+            return {
+                "characters": [
+                    {
+                        "character": "char.old-man",
+                        "memories": [{"memoryId": "mem_1", "text": "家まで送ってくれた人"}] if self.n == 0 else [],
+                    }
+                ]
+            }
+
+        def delete_memory_id(self, memory_id: str) -> dict[str, Any]:
+            assert memory_id == "mem_1"
+            return self._step("delete_memory_id", memory_id)
+
+        def view(self, after_seq: int = 0) -> dict[str, Any]:
+            v = super().view(after_seq)
+            if self.n == 1:
+                v["snapshot"]["pending"]["confirm"] = {"prompt": "よいか。"}
+            return v
+
+        def confirm(self, answer: str | None) -> dict[str, Any]:
+            return self._step("confirm", answer)
+
+    game = PublicGame(2)
+    played = play(game, PERSONAS["persona.deleter"], ScriptedPlayer())
+    assert game.calls == [("delete_memory_id", "mem_1"), ("confirm", "yes")]
+    assert played.diagnostics["actions"] == {"deleteMemoryId": 1, "confirm": 1}
+    assert played.status == "ended"
 
 
 # —— 运行器和 live ——

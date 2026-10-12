@@ -337,6 +337,19 @@ def test_give_without_an_affordance_says_what_was_handed_over(game: Callable[...
     assert ev["summary"] == "旅人は、市の老爺に旅の外套を渡した"
 
 
+def test_eval_public_button_preserves_item_affordance(game: Callable[..., Game]) -> None:
+    """界面给水按钮不带 params.item；评估入口须保留 actionId 才能识别同一情境动作。"""
+    arrival = {"effects": [{"op": "relocate", "character": "char.melos", "place": "place.village"}]}
+    g = game("sc.canon@t=1980", world=DRAFT, role="role.shepherd-boy", events=[arrival])
+    try:
+        water = next(a for a in g.s.view()["snapshot"]["actions"] if a["actionId"] == "act_village-water")
+        assert water["enabled"] is True and "params" not in water
+        result = g.s.act(water["kind"], water["target"], {}, action_id=water["actionId"])
+        assert (result["status"], result["aid"], result["clockMinutes"]) == ("done", "aid.melos.water", 15)
+    finally:
+        g.s.close()
+
+
 def test_go_to_the_castle_is_refused_and_block_goes_through_extract(game: Callable[..., Game]) -> None:
     """E4-107：旅人进不了王城（R7），没被抓、还在刑场；没有对应情境动作的 block 走提取（不分流）。"""
     g = game("sc.canon@beat.04", place=GROUND)
@@ -360,8 +373,11 @@ def test_examine_the_workshop_door(game: Callable[..., Game]) -> None:
     g = game("sc.canon@beat.03", place="place.stonemason-workshop")
     first = g.s.act("examine", "obj.workshop-door", {})
     assert (first["setPiece"], first["events"], first["clockMinutes"]) == ("piece.workshop-knock", [], 0)
+    assert first["setPieces"] == [m for m in g.push(first) if m["type"] == "set_piece"]
+    assert first["setPieces"][0]["lines"]
     second = g.s.act("examine", "obj.workshop-door", {})
     assert second["pieces"] == [] and second["narration"]
+    assert second["setPieces"] == []
     dark = game("sc.canon@beat.06", place="place.stonemason-workshop").s.act("examine", "obj.workshop-door", {})
     assert dark["setPiece"] == "piece.workshop-knock-dark"
 

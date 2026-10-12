@@ -130,8 +130,7 @@ def exit_place(book: Book, state: SimState, target: str | None) -> str | None:
 def next_beat(book: Book, state: SimState, sched: Mapping[str, int]) -> str | None:
     """wait：这个地点的下一个节拍（排定时刻在此刻之后、在本幕收幕之前）。"""
     place = state["vars"]["var.player.location"]
-    act = book.acts[book.act_of(state["vars"])]
-    limit = act["end"]["atLatest"] if act.get("exits") else None
+    limit = wait_limit(book, state)
     best: tuple[int, int, str] | None = None
     for b, t in sched.items():
         if book.beats[b]["place"] != place or t <= state["t"] or (limit is not None and t > limit):
@@ -139,6 +138,15 @@ def next_beat(book: Book, state: SimState, sched: Mapping[str, int]) -> str | No
         key = (t, int(book.beats[b]["order"]), b)
         best = key if best is None or key < best else best
     return best[2] if best else None
+
+
+def wait_limit(book: Book, state: SimState) -> int:
+    """普通幕最多等到收幕；最终幕最多等到期限，由正式结局流程结算落幕。"""
+    act = book.acts[book.act_of(state["vars"])]
+    limit = int(act["end"]["atLatest"])
+    if not act.get("exits"):
+        limit = min(limit, int(book.world["clock"]["deadline"]["t"]))
+    return limit
 
 
 def role_name(book: Book, state: SimState) -> str:
@@ -176,10 +184,8 @@ async def decide(
         beat = next_beat(book, state, sched)
         if beat is None:
             # 这个地点在收幕前没有节拍了：等到收幕（atLatest），途中的节拍照常结算；不然只能靠说话一轮轮推时间
-            end = book.acts[book.act_of(state["vars"])]
-            limit = int(end["end"]["atLatest"]) if end.get("exits") else None
-            ok = limit is not None and state["t"] < limit
-            return Decision("wait", kind, None, ok=ok, at=limit or 0)
+            limit = wait_limit(book, state)
+            return Decision("wait", kind, None, ok=state["t"] < limit, at=limit)
         return Decision("wait", kind, None, beat=beat, at=sched[beat])
     if kind == "go":
         dest = exit_place(book, state, target)
@@ -373,6 +379,12 @@ async def narrate(
 ) -> str:
     """一行地の文（提示 `narrate`）：按动作、判定结果和失败的规则。两次都不行、或过滤不过，用固定的一句。"""
     act: Json = {"kind": d.act, "target": d.target}
+    if d.affordance is not None:
+        # 说明玩家试图帮什么；这不是已经做成的结果，尤其不能把 partial 写成另一个剧情。
+        act["intendedAction"] = d.affordance.get("label", d.affordance.get("pastLabel", ""))
+    completed = [str(c.candidate["summary"]) for c in d.checked if c.passed and c.candidate.get("summary")]
+    if completed:
+        act["completedActions"] = completed  # 只给校验已通过、实际提交的候选，不带被拒绝的摘要
     if d.kind == "give":
         act["item"] = d.checked[0].candidate["effects"][0].get("item") if d.checked else None
     request = {

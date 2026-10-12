@@ -98,6 +98,22 @@ def write(act: int, cases: list[dict], personas: list[dict], out: Path) -> None:
         f.unlink()
     suites: dict[str, list[dict]] = {}
     for c in cases:
+        # 检查点只推时间/事实，不会替玩家选幕末去处。按该用例目录明确当前幕；
+        # 否则第四幕 t=5040 的模型提示仍说 act.1。persona 从正式开局走，不插布置事件。
+        if "persona" not in c["setup"]:
+            c = {
+                **c,
+                "setup": {
+                    **c["setup"],
+                    "events": [
+                        {
+                            "effects": [{"op": "set", "var": "var.act.current", "value": f"act.{act}"}],
+                            "note": f"評価用の起点：第{act}幕。時刻・人物の知識・因果は既存のチェックポイントに従う",
+                        },
+                        *c["setup"].get("events", []),
+                    ],
+                },
+            }
         suites.setdefault(c["suite"], []).append(c)
     for s, cs in sorted(suites.items()):
         (out / f"{s}.jsonl").write_text("".join(json.dumps(c, ensure_ascii=False) + "\n" for c in cs), encoding="utf-8")

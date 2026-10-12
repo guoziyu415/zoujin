@@ -10,7 +10,7 @@
   - `ScriptedPlayer`：不调模型，按画像写死的走法加 `seed` 的随机数，CI 和假模型用；
   - `ClaudePlayer`：Claude（data-design 7.1：Sonnet 5.5，模型 ID 运行时给，仓库里不写），画像和规则放进 system
     走缓存。账本记 Claude 那本、`kind: "player"`、`use: "eval"`（不算进 S-5 的单局成本）；每次的选择存成回放
-    （kind "player"），同一局重跑不花钱。
+    （kind "player"）。只有 replay 模式读回放；live 每步都发新请求。
 - 玩家说过的话运行器自己记（2026-10-10 和后端定），在 `Played.transcript` 里，报告只写计数，不写原话。
 """
 
@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import random
 import re
+from collections import Counter
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -27,7 +28,7 @@ from typing import Any, Literal, Protocol
 from zoujin_llm import ClaudePrices, Reply, canonical, model_tag
 from zoujin_llm import replay_key as llm_replay_key
 
-from .api import EvalSession, StepResult
+from .api import EvalNotImplemented, EvalSession, StepResult
 
 type Json = Any
 
@@ -37,7 +38,7 @@ HISTORY = 24  # 给 AI 玩家看的最近几行
 # 每一步返回里真玩家也听得到、看得到的（B-5 卡第 2 条）；其余（events、pieces、aid…）只给检查
 SEEN = ("reply", "narration", "setPiece", "status", "plan", "alternatives", "triesLeft", "confirm", "error", "accepted")
 
-StepKind = Literal["say", "act", "retract", "propose", "choose"]
+StepKind = Literal["say", "act", "retract", "propose", "choose", "confirm", "deleteMemoryId"]
 
 
 @dataclass(frozen=True)
@@ -99,11 +100,19 @@ class Names:
         return self.places.get(pid, pid)
 
 
-def legal_moves(snap: Mapping[str, Json], names: Names, last_said: int | None) -> list[Move]:
+def legal_moves(
+    snap: Mapping[str, Json], names: Names, last_said: int | None, notebook: Mapping[str, Json] | None = None
+) -> list[Move]:
     """此刻能走的步骤。结局开始以后（status 不是 active）没有。last_said：上一步是对话时它的步骤号（可以言い直す）。"""
     if snap.get("status") != "active":
         return []
     pending = snap.get("pending") or {}
+    if asking := pending.get("confirm"):
+        prompt = str(asking.get("prompt", ""))
+        return [
+            Move("confirm", f"確認「{prompt}」：{label}", {"confirm": answer})
+            for answer, label in (("yes", "はい"), ("no", "いいえ"), (None, "答えずに待つ"))
+        ]
     end = pending.get("actEnd")
     if end:
         moves = []
@@ -135,6 +144,8 @@ def legal_moves(snap: Mapping[str, Json], names: Names, last_said: int | None) -
     for a in snap.get("actions", []):
         if a.get("enabled"):
             act = {"kind": a["kind"], "target": a.get("target")}
+            if a.get("actionId"):
+                act["actionId"] = a["actionId"]
             moves.append(Move("act", f"{a['label']}（{_minutes(a)}）", {"act": act}))
     for i in snap.get("interactables", []):
         if i.get("enabled") and i["kind"] in ("examine", "go"):
@@ -148,6 +159,16 @@ def legal_moves(snap: Mapping[str, Json], names: Names, last_said: int | None) -
     moves.append(Move("act", "時を進める（ここで次の出来事まで待つ）", {"act": {"kind": "wait"}}))
     if last_said is not None:
         moves.append(Move("retract", "いまの発言を言い直す（取り消す）", {"retract": {"step": last_said}}))
+    for c in (notebook or {}).get("characters", []):
+        for m in c.get("memories", []):
+            if m.get("memoryId") and m.get("text") and not m.get("deletedAt"):
+                moves.append(
+                    Move(
+                        "deleteMemoryId",
+                        f"記憶帳：{names.who(c['character'])}に「{m['text']}」を忘れてもらう",
+                        {"deleteMemoryId": m["memoryId"]},
+                    )
+                )
     return moves
 
 
@@ -200,12 +221,20 @@ def heard(names: Names, move: Mapping[str, Json], result: StepResult) -> list[st
         out.append(f"あなた（打算）：{move['propose']}")
     elif "retract" in move:
         out.append("あなた：（いまの発言を言い直した）")
+    elif "confirm" in move:
+        out.append(
+            "あなた：（確認に「" + {"yes": "はい", "no": "いいえ", None: "答えずに待つ"}[move["confirm"]] + "」）"
+        )
+    elif "deleteMemoryId" in move and not r.get("error"):
+        out.append("あなた：（記憶帳から、選んだ記憶を忘れてもらった）")
     for k in ("narration",):
         v = r.get(k)
         out += [f"（{x}）" for x in (v if isinstance(v, list) else [v] if v else [])]
-    piece = r.get("setPiece")
-    if isinstance(piece, Mapping):
-        out += [f"（{x.get('text', '')}）" for x in piece.get("lines", []) if isinstance(x, Mapping)]
+    # setPieces 只含本轮正式推送的对白；不把内部 pieces ID 当台词，也不读取未来演出清单。
+    pieces = r.get("setPieces") or ([r["setPiece"]] if isinstance(r.get("setPiece"), Mapping) else [])
+    for piece in pieces:
+        if isinstance(piece, Mapping):
+            out += [f"（{x.get('text', '')}）" for x in piece.get("lines", []) if isinstance(x, Mapping)]
     if r.get("alternatives"):
         out.append("（代わりの行き先：" + "、".join(str(a.get("label")) for a in r["alternatives"]) + "）")
     if r.get("confirm"):
@@ -257,6 +286,10 @@ class ScriptedPlayer:
             self._rng = random.Random(f"{persona.id}:{self.seed}")
         rng, moves = self._rng, obs.moves
         idx = {m.kind: n for n, m in reversed(list(enumerate(moves)))}
+        if "confirm" in idx:
+            return idx["confirm"], ""
+        if persona.id == "persona.deleter" and "deleteMemoryId" in idx:
+            return idx["deleteMemoryId"], ""
         lines = _LINES.get(persona.id, ("こんにちは。",))
         if "choose" in idx or "propose" in idx:  # 幕末：照原作的走法选第一个；捣乱的随机
             chooses = [n for n, m in enumerate(moves) if m.kind == "choose"]
@@ -291,14 +324,18 @@ class ScriptedPlayer:
 
 
 def _wait(moves: Sequence[Move]) -> int:
-    return next(n for n, m in enumerate(moves) if m.kind == "act" and m.step["act"]["kind"] == "wait")
+    for n, m in enumerate(moves):
+        if (m.kind == "act" and m.step["act"]["kind"] == "wait") or (m.kind == "confirm" and m.step["confirm"] is None):
+            return n
+    # 幕末没有 wait；坏输出计入 bad，再选已有去处，避免 StopIteration 丢掉整局的故障证据。
+    return next((n for n, m in enumerate(moves) if m.kind == "choose"), 0)
 
 
 # —— Claude 当 AI 玩家 ——
 
 PROVIDER = "claude"
 KIND = "player"
-PROMPT_VERSION = "player-1"
+PROMPT_VERSION = "player-2"
 
 SYSTEM = """你在一款日语互动故事里扮演一位玩家，按给你的「玩家画像」玩完一局。故事改编自太宰治『走れメロス』，\
 你是故事里的一个人物（身份见下），用日语和故事里的人物说话、做动作，叙事者（括号里的文字）描述结果。
@@ -436,6 +473,8 @@ class ClaudePlayer:
     max_tokens: int = 2000
     tag: str = field(init=False)
     bad: int = field(default=0, init=False)  # 这一局里拒答、截断、JSON 坏了的次数（照样走一步：等）
+    freshCalls: int = field(default=0, init=False)
+    replayHits: int = field(default=0, init=False)
 
     def __post_init__(self) -> None:
         self.tag = model_tag(self.model)  # 回放、账本、报告里只写它
@@ -446,13 +485,15 @@ class ClaudePlayer:
     def choose(self, persona: Persona, names: Names, obs: Observation) -> tuple[int, str]:
         req = keyed_request(persona, names, obs, effort=self.effort, max_tokens=self.max_tokens)
         key = replay_key(self.tag, req)
-        rec = self.replays.get(key)
+        rec = self.replays.get(key) if self.transport is None else None
         if rec is not None:
+            self.replayHits += 1
             return int(rec["response"]["move"]), str(rec["response"]["text"])
         if self.transport is None or self.ledger is None:
             raise ReplayMissing(f"第 {obs.step} 步")
         chars = len(req["system"]) + len(req["persona"]) + len(req["user"]) + len(canonical(req["schema"]))
         self.ledger.before(self.prices.estimate_chars(self.model, chars, self.max_tokens))
+        self.freshCalls += 1
         reply = self.transport.create(api_params(self.model, req))
         cost = self.prices.cost(self.model, reply.usage)
         self.ledger.add(model=self.tag, usage=reply.usage, cost=cost, kind=KIND)
@@ -494,14 +535,24 @@ class Played:
     status: str  # 最后的快照状态：ended = 走到了结局
     stopped: str | None  # 没走到结局时为什么停：max-steps / no-moves
     transcript: list[tuple[str, str]]  # （说话的人物 ID 或 "player"，原话）
+    diagnostics: Json = field(default_factory=dict)
+
+
+def _act(session: EvalSession, step: Mapping[str, Json]) -> StepResult:
+    a = step["act"]
+    if "actionId" in a:
+        return session.act(a["kind"], a.get("target"), a.get("params", {}), action_id=a["actionId"])
+    return session.act(a["kind"], a.get("target"), a.get("params", {}))
 
 
 _STEP_CALLS: dict[StepKind, Callable[[EvalSession, Mapping[str, Json]], StepResult]] = {
     "say": lambda s, m: s.say(m["to"], m["say"]),
-    "act": lambda s, m: s.act(m["act"]["kind"], m["act"].get("target"), m["act"].get("params", {})),
+    "act": _act,
     "retract": lambda s, m: s.retract(m["retract"]["step"]),
     "propose": lambda s, m: s.propose(m["propose"]),
     "choose": lambda s, m: s.choose(m["choose"]["exit"], m["choose"].get("enRoute")),
+    "confirm": lambda s, m: s.confirm(m["confirm"]),
+    "deleteMemoryId": lambda s, m: s.delete_memory_id(m["deleteMemoryId"]),
 }
 
 
@@ -525,13 +576,18 @@ def play(
     last_said: int | None = None
     refused = False
     stopped: str | None = None
+    counts: Counter[str] = Counter()
     while True:
         if snap.get("status") != "active":
             break
         if len(steps) >= max_steps:
             stopped = "max-steps"
             break
-        moves = legal_moves(snap, names, last_said)
+        memory_book = getattr(session, "memory_book", None)
+        if memory_book is None and persona.id == "persona.deleter":
+            raise EvalNotImplemented("memory_book")
+        notebook = memory_book() if memory_book is not None else None
+        moves = legal_moves(snap, names, last_said, notebook)
         if not moves:
             stopped = "no-moves"
             break
@@ -542,6 +598,7 @@ def play(
             text = "……"
         step = move.with_text(text)
         result = _STEP_CALLS[move.kind](session, step)
+        counts[move.kind if move.kind != "act" else f"act:{step['act']['kind']}"] += 1
         steps.append(step)
         results.append(result)
         last_said = len(steps) if move.kind == "say" else None
@@ -556,7 +613,11 @@ def play(
         history += seen_events(view["events"])
         seen = max([seen] + [e["seq"] for e in view["events"]])
         progress(f"{persona.id} 第 {len(steps)} 步：{move.label}")
-    return Played(persona.id, steps, results, snap.get("playthroughId"), str(snap.get("status")), stopped, transcript)
+    diagnostics: Json = {k: int(getattr(player, k, 0)) for k in ("freshCalls", "replayHits", "bad")}
+    diagnostics["actions"] = dict(counts)
+    return Played(
+        persona.id, steps, results, snap.get("playthroughId"), str(snap.get("status")), stopped, transcript, diagnostics
+    )
 
 
 # —— 统计（data-design 9.1、evals/README.md「问句怎么数」） ——
@@ -621,6 +682,7 @@ def sim_stats(played: Played, events: Sequence[Mapping[str, Json]] | None, endin
         "steps": len(played.steps),
         "status": played.status,
         "questions": question_stats(played.transcript),
+        "player": played.diagnostics,
     }
     if played.stopped:
         out["stopped"] = played.stopped
@@ -631,5 +693,9 @@ def sim_stats(played: Played, events: Sequence[Mapping[str, Json]] | None, endin
         out["beat20"] = beat_outcome(events, "beat.20")
     if ending is not None:
         world = ending.get("world") or {}
-        out["ending"] = {"outcome": world.get("outcome"), "variant": (world.get("variant") or {}).get("id")}
+        out["ending"] = {
+            "outcome": world.get("outcome"),
+            "variant": (world.get("variant") or {}).get("id"),
+            "signature": world.get("signature"),
+        }
     return out

@@ -27,13 +27,14 @@
   `EvalNotImplemented("<名字>")`；
   回放里查不到抛 `ReplayMissing`。账本到上限抛 `BudgetStop`，模型回 429 抛 `RateLimited`：这两个要整次停下，不是跳过
   这一例。运行器按类名认。
-- 每次调用在自己的事件循环里跑（`asyncio.run`）、用不进连接池的连接，运行器的超时（SIGALRM）中途打断时，
+- 一局共用一个事件循环，数据库用不进连接池的连接；运行器的超时（SIGALRM）中途打断时，
   丢下的那一局只是留在测试库里。
 """
 
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import copy
 import json
 import time
@@ -116,6 +117,7 @@ def _scenarios(world_dir: Path) -> dict[str, Json]:
 
 
 def _run[T](coro: Coroutine[Any, Any, T]) -> T:
+    """兼容测试的独立数据库操作；Session 的模型调用使用实例持久循环。"""
     return asyncio.run(coro)
 
 
@@ -150,7 +152,11 @@ def setup(setup: Mapping[str, Json], *, mode: str = "text") -> Session:
     if setup["role"] not in book.roles:
         raise ValueError(f"没有这个身份：{setup['role']}")
     s = Session(settings, library, book, setup, mode)
-    s._run(s._open() if s.persona is not None else s._setup())
+    try:
+        s._run(s._open() if s.persona is not None else s._setup())
+    except BaseException:
+        s.close()
+        raise
     return s
 
 
@@ -186,11 +192,17 @@ class Session:
         self.monitor = Monitor(library)
         self.monitor.attach(book)
         self._manifest: Manifest | None = None
+        # 真客户端的连接池跨步骤复用；整局必须共用一个事件循环。
+        self._runner = asyncio.Runner()
 
     def _run[T](self, coro: Coroutine[Any, Any, T]) -> T:
-        """每次调用一个事件循环；这期间记的账带这一局的 playthroughId。"""
+        """一局共用一个事件循环；这期间记的账带这一局的 playthroughId。"""
         with playthrough(self.pid or None):
-            return asyncio.run(coro)
+            return self._runner.run(coro, context=contextvars.copy_context())
+
+    def close(self) -> None:
+        """评测运行器在成功、失败、预算停止后都关闭本局的事件循环。"""
+        self._runner.close()
 
     # —— 连接和叙事者：每次调用新建（各自的事件循环） ——
 
@@ -375,6 +387,11 @@ class Session:
     def _events_of(self, done: Sequence[Result]) -> list[Json]:
         return [e for r in done for e in self._step_events(r)]
 
+    @staticmethod
+    def _set_pieces(done: Sequence[Result]) -> list[Json]:
+        """只给玩家实际收到的固定演出；不从 manifest 或世界模型读未来台词。"""
+        return [copy.deepcopy(m) for r in done for m in r.push if m.get("type") == "set_piece"]
+
     async def _say(self, to: str, text: str, hold: bool = False) -> Json:
         engine = self._engine()
         try:
@@ -427,6 +444,7 @@ class Session:
                     "reply": reply,
                     "characterTextMissing": reply is None,
                     "events": self._events_of(pre),
+                    "setPieces": self._set_pieces(pre),
                     "clockMinutes": sum(r.minutes for r in pre),
                     "traceId": turn_id,
                     "held": True,
@@ -446,6 +464,7 @@ class Session:
             "reply": reply,
             "characterTextMissing": reply is None,
             "events": self._events_of([*pre, *done]),
+            "setPieces": self._set_pieces([*pre, *done]),
             "clockMinutes": sum(r.minutes for r in [*pre, *done]),
             "traceId": turn_id,
         }
@@ -513,7 +532,11 @@ class Session:
             done = await self._close_draft(engine, answer, "button" if answer is not None else "timeout")
         finally:
             await engine.dispose()
-        out: Json = {"events": self._events_of([*pre, *done]), "clockMinutes": sum(r.minutes for r in [*pre, *done])}
+        out: Json = {
+            "events": self._events_of([*pre, *done]),
+            "setPieces": self._set_pieces([*pre, *done]),
+            "clockMinutes": sum(r.minutes for r in [*pre, *done]),
+        }
         mine = [r for r in done if r.task.kind == "confirm"]
         if mine:
             out["traceId"] = mine[-1].task.turn_id
@@ -523,7 +546,7 @@ class Session:
         return out
 
     @_timed
-    def act(self, kind: str, target: str | None, params: Mapping[str, Json]) -> Json:
+    def act(self, kind: str, target: str | None, params: Mapping[str, Json], *, action_id: str | None = None) -> Json:
         """动作（api-contract 3.8）：和 `action` 消息一样写一行任务，叙事者判定。还没有 3D 布局的场景里的 `move`
         （归途、村子：路程和过河跟 S-081 的停靠点一起做，M3）抛 `EvalNotImplemented`，用例记成跳过。`move` 的
         `params.crossing`（过河的走法，E5-008）是评测专用参数：契约 3.8 的 `move` 没有 params，正式客户端不发；走不通时
@@ -534,6 +557,8 @@ class Session:
                 raise EvalNotImplemented("move（没有布局的场景）")
         self.steps += 1
         request: Json = {"clientMsgId": f"eval-{self.steps}", "kind": kind, "params": dict(params or {})}
+        if action_id is not None:
+            request["actionId"] = action_id
         if target is not None:
             request["target"] = target
         r, t0 = self._run(self._task("action", request))
@@ -545,6 +570,7 @@ class Session:
             "traceId": r.task.turn_id,
             "status": info.get("status"),
             "pieces": list(r.pieces),
+            "setPieces": self._set_pieces([r]),
             "aid": info.get("aid"),
         }
         for k in ("narration", "setPiece"):
@@ -602,6 +628,7 @@ class Session:
             "triesLeft": info.get("triesLeft"),
             "narration": info.get("narration", []),
             "pieces": list(r.pieces),
+            "setPieces": self._set_pieces([r]),
         }
         if "error" in info:
             out["error"] = info["error"]
@@ -621,6 +648,7 @@ class Session:
             "clockMinutes": r.state["t"] - t0,
             "traceId": r.task.turn_id,
             "pieces": list(r.pieces),
+            "setPieces": self._set_pieces([r]),
         }
         if "error" in r.info:
             out["error"] = r.info["error"]
@@ -668,6 +696,7 @@ class Session:
         return replace(
             r,
             events=[e for p in pre for e in p.events] + r.events,
+            push=[m for p in pre for m in p.push] + r.push,
             checked=[c for p in pre for c in p.checked] + r.checked,
             minutes=sum(p.minutes for p in pre) + r.minutes,
         )
@@ -760,10 +789,17 @@ class Session:
                 row = await store.playthrough(c, self.pid)
                 st = await store.sim_state(c, self.pid)
                 log_ = await store.event_log(c, self.pid, self.book.version)
+                draft = await store.open_draft(c, self.pid)
         finally:
             await engine.dispose()
         assert row is not None and st is not None
         snap = snapshot(self.book, self.pid, self.role, row["status"], st, st["seq"], Run.of(row))
+        if draft is not None:
+            snap["pending"]["confirm"] = {
+                "draftId": draft["draft_id"],
+                "character": draft["character"],
+                "prompt": draft["prompt"],
+            }
         return {"snapshot": snap, "events": visible_events(self.book, self.role, log_, after_seq)}
 
     def manifest(self) -> Json:
@@ -827,6 +863,43 @@ class Session:
             await engine.dispose()
 
     # —— 记忆和删除（B-13） ——
+
+    def memory_book(self) -> Json:
+        """模拟玩家只读正式記憶帳投影，不读检查用的 memories() 内部字段。"""
+        self._run(self._flush())
+        return self._run(self._memory_book())
+
+    async def _memory_book(self) -> Json:
+        from zoujin_backend.gateway import memory_book
+
+        engine = self._engine()
+        try:
+            async with engine.connect() as c:
+                return await memory_book.view(c, self.book, self.pid, self.role)
+        finally:
+            await engine.dispose()
+
+    def delete_memory_id(self, memory_id: str) -> Json:
+        """玩家按記憶帳给的 ID 删除；和正式 REST 共用删除事务，不能跨局删除。"""
+        self._run(self._flush())
+        self.steps += 1
+        return self._run(self._delete_memory_id(memory_id))
+
+    async def _delete_memory_id(self, memory_id: str) -> Json:
+        engine = self._engine()
+        try:
+            async with engine.begin() as c:
+                d = await memory_delete.delete_memory(c, self.library, self.ids, self.schemas, self.pid, memory_id)
+                evs = await store.event_log(c, self.pid, self.book.version, after_seq=(d.seq or 1) - 1)
+        finally:
+            await engine.dispose()
+        self.last_reply.pop(d.character, None)
+        return {
+            "events": evs if d.seq is not None else [],
+            "clockMinutes": 0,
+            "deleted": d.memory_id,
+            "promiseVoided": d.promise_voided,
+        }
 
     def delete_memory(self, character: str, from_step: int) -> Json:
         """删这个人物来源于第 from_step 步提交的事件的那条记忆（和 REST 同一个函数；一个人物一轮最多一条，所以唯一）。
@@ -975,8 +1048,8 @@ class Session:
     def ending(self) -> Json:
         """B-9：存的 Ending（数据契约第 5 节的完整形状，含 `signature`）；还没进结局（或结局任务还没做完）返回 None。
         结局任务和别的任务一样，在触发它的那一步里同步跑完。"""
-        _run(self._flush())
-        return _run(self._ending())
+        self._run(self._flush())
+        return self._run(self._ending())
 
     async def _ending(self) -> Json:
         engine = self._engine()

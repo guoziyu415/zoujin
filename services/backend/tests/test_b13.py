@@ -405,6 +405,30 @@ def test_deleting_a_promise_memory_voids_the_promise(env: Env, monkeypatch: pyte
         s.delete_memory(OLD, 1)
 
 
+def test_simulated_player_deletes_by_public_notebook_id(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
+    from zoujin_backend.memory_delete import NotFound
+
+    s = session(env, monkeypatch)
+    other = session(env, monkeypatch)
+    try:
+        s.say(OLD, OFFER)
+        notebook = s.memory_book()
+        old = next(c for c in notebook["characters"] if c["character"] == OLD)
+        (m,) = old["memories"]
+        assert m["text"] and "fromEvents" not in m and "deletedAt" not in m
+        with pytest.raises(NotFound):
+            other.delete_memory_id(m["memoryId"])
+        result = s.delete_memory_id(m["memoryId"])
+        assert result["deleted"] == m["memoryId"] and result["promiseVoided"]
+        assert not next(c for c in s.memory_book()["characters"] if c["character"] == OLD)["memories"]
+        assert s.utterance_cleared(1)
+        with pytest.raises(NotFound):
+            s.delete_memory_id(m["memoryId"])
+    finally:
+        s.close()
+        other.close()
+
+
 def test_a_kept_promise_is_not_voided(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
     s = session(env, monkeypatch)
     step = s.say(OLD, OFFER)

@@ -26,6 +26,10 @@ class ReplayMissing(Exception):
 class Session:
     def __init__(self, behaviour: str) -> None:
         self.behaviour = behaviour
+        self.closed = False
+
+    def close(self) -> None:
+        self.closed = True
 
     def say(self, to: str, text: str) -> StepResult:
         match self.behaviour:
@@ -63,6 +67,21 @@ def test_no_backend_skips_every_case(world_ix: WorldIndex) -> None:
     got = run_cases(None, CASES, world_ix, FAST)
     assert len(got) == 100
     assert all(c.get("skip") == {"code": "not-implemented", "name": "eval_api"} for c in got)
+
+
+@pytest.mark.parametrize("behaviour", ["ok", "crash", "replay", "slow"])
+def test_sessions_close_even_after_failure_or_timeout(behaviour: str, world_ix: WorldIndex) -> None:
+    sessions: list[Session] = []
+
+    class ClosingApi(Api):
+        def setup(self, setup: Mapping[str, Any], *, mode: str = "text") -> EvalSession:
+            session = Session(behaviour)
+            sessions.append(session)
+            return session  # type: ignore[return-value]
+
+    case = {**BY_ID["E2-009"], "runs": 1}
+    run_case(ClosingApi(), case, world_ix, Options(deterministic_only=True, timeout_s=0.05, timeout_retries=0))
+    assert len(sessions) == 1 and sessions[0].closed
 
 
 def test_setup_not_implemented_skips_whole_case_once(world_ix: WorldIndex) -> None:

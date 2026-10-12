@@ -4,6 +4,32 @@
 
 这里是评测用例的**种子**：共 100 例，用来定下格式、让后端的评测入口（`backend.eval_api`）有东西可跑。v1 规模（data-design 7.1）在种子跑通后扩充。用例全部是合成的，**不用真实玩家的话**；里面的姓名、住址、电话都是编的。
 
+## R1：有限真实模型批次（2026-10-12）
+
+用户已明确恢复四幕真实文字评测和 B-22 的 200 局模拟，并授权必要模型花费；此前 D-040 的暂停是历史状态。评审员校准和预录声音仍暂缓。下面的流程是正式后端叙事、人物文字替身和真实 Claude 玩家；它不能证明 Live 语音质量或人设主观评分达标。
+
+先在本机私有目录准备独立 PostgreSQL、真实模型配置与钥匙串凭证，设置 `DATABASE_URL`、`ZJ_EVAL_LIVE=1`、`ZJ_PLAYER_MODEL`、后端的 Claude/Vertex/Armor 环境。运行器不读取生产用户数据。`EVAL_PRIVATE_DIR` 由本机操作者指定，目录与结果不提交；`ZJ_LEDGER` 是现有启动门槛要求，批次实际把账本按局保存在 `units/<id>/ledger.jsonl`，汇总覆盖半局和失败调用。
+
+```sh
+# 先不带 --confirm 查看估价，之后同命令加 --confirm 真跑。
+uv run --no-sync python -m zoujin_evals.batch --plan simulations --seeds 2 --jobs 4 \
+  --out "$EVAL_PRIVATE_DIR/smoke20" --max-item-usd 10 --max-google-usd 100 --max-claude-usd 300
+
+# 20 局烟测证明流程可靠后，单独新目录跑正式 10 画像 × 20 seeds。
+uv run --no-sync python -m zoujin_evals.batch --plan simulations --seeds 20 --jobs 4 \
+  --out "$EVAL_PRIVATE_DIR/full200" --max-item-usd 10 --max-google-usd 500 --max-claude-usd 1000 --confirm
+
+# 248 例按原始 runs 展开为 980 次；judge-only 仍执行步骤，判分明确暂缓。
+uv run --no-sync python -m zoujin_evals.batch --plan four-act --jobs 4 --keep-going \
+  --out "$EVAL_PRIVATE_DIR/four-act" --max-item-usd 10 --max-google-usd 500 --max-claude-usd 1000 --confirm
+```
+
+这些是有限上限，按实际烟测用量调整，不使用无限重试。估价表仍是旧切片推算，账本金额是按 usage 和单价估计，不是供应商发票；取消的调用保守按估价记。总账派发前为并发 worker 预留整项额度。每局最多 80 个玩家步骤，超时不自动开第二局，最大并发 4。
+
+每局在独立子进程完成，原子保存 `result.json`，同时保存实际 case/persona/seed、代码与世界指纹、有效模型标签和配置、调用状态、玩家 fresh/replay/bad 计数、动作计数、真实 ending signature。相同命令可续跑已完成批次；源或配置变化必须新建目录。已开始却没有结果的局拒绝自动再次付费，先确认原进程及数据库。不能靠退出码 0、stub、回放命中、max-steps 或跳过检查证明真实完成。
+
+`summary.json` 把基础设施退化与确定性检查失败单列。只有完整 200 个无上述退化的真实结局才计算 S-061 门槛：5 类、至少 8 个规范化署名、最大一类不超过 60%；部分样本显示未知。原来的额外 `melos-helper` 画像不进入这 200 局分母。总体发布门槛在 judge 尚未校准时保持未知。
+
 ## 目录
 
 | 文件 | 内容 |

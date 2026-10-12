@@ -76,7 +76,17 @@ def build(cases: list[CaseResult], meta: Mapping[str, Any]) -> dict[str, Any]:
     no_score = inf["timeout"]["over"]
     suites = {}
     for suite in sorted({c["suite"] for c in cases}):
-        suites[suite] = summarize([c for c in cases if c["suite"] == suite], suite, no_score=no_score)
+        suites[suite] = summarize([c for c in cases if c["suite"] == suite], suite, no_score=no_score, meta=meta)
+    expected = meta.get("expectedJudgeRuns")
+    if ("cases" in meta and meta["cases"] != len(cases)) or (
+        isinstance(expected, Mapping) and set(expected) != {c["id"] for c in cases}
+    ):
+        for s in suites.values():
+            gate = s["gate"]
+            gate["reasons"] = sorted([*gate["reasons"], "incomplete-cases"])
+            for key in ("mergeMet", "releaseMet"):
+                if gate[key] is True:
+                    gate[key] = None
     out = {"meta": dict(meta), "infra": inf, "suites": suites, "cases": cases}
     sim = simulations(cases)
     if sim is not None:
@@ -143,7 +153,9 @@ def _checks_of(r: RunResult) -> list[CheckResult]:
     return [*r["checks"], *([r["judge"]] if "judge" in r else [])]
 
 
-def summarize(cases: list[CaseResult], suite: str, *, no_score: bool = False) -> dict[str, Any]:
+def summarize(
+    cases: list[CaseResult], suite: str, *, no_score: bool = False, meta: Mapping[str, Any] | None = None
+) -> dict[str, Any]:
     """no_score：这一次超时超过 5%，不出分（通过率和门槛都写「判不了」，次数照列）。"""
     runs: Counter[str] = Counter()
     run_skips: Counter[str] = Counter()
@@ -174,6 +186,14 @@ def summarize(cases: list[CaseResult], suite: str, *, no_score: bool = False) ->
     judged = runs["pass"] + runs["fail"]
     rate = runs["pass"] / judged if judged and not no_score else None
     merge, release = GATES.get(suite, (1.0, 1.0))
+    reasons = _gate_reasons(cases, meta or {}, no_score=no_score)
+
+    def met(threshold: float) -> bool | None:
+        # 确定性检查要求 100%；已知失败不会被缺判分或跳过掩盖。
+        if checks["fail"]:
+            return False
+        return None if reasons or rate is None else rate >= threshold
+
     return {
         "name": SUITES.get(suite, suite),
         "cases": len(cases),
@@ -183,14 +203,58 @@ def summarize(cases: list[CaseResult], suite: str, *, no_score: bool = False) ->
         "gate": {
             "merge": merge,
             "release": release,
-            "mergeMet": None if rate is None else rate >= merge,
-            "releaseMet": None if rate is None else rate >= release,
+            "mergeMet": met(merge),
+            "releaseMet": met(release),
+            "reasons": reasons,
         },
         "checks": {"pass": checks["pass"], "fail": checks["fail"], "skip": dict(sorted(check_skips.items()))},
         "judge": {"pass": judge["pass"], "fail": judge["fail"], "skip": judge["skip"]},
         "hard": {"label": hard_label, "checked": hard["pass"] + hard["fail"], "fail": hard["fail"]},
         "skippedCases": dict(sorted(skipped_cases.items())),
     }
+
+
+GATE_REASONS = {
+    "deterministic-only": "只跑了确定性检查",
+    "timeouts-over-limit": "超时超过 5%",
+    "filtered-cases": "只选了套件中的部分用例",
+    "incomplete-cases": "计划的用例未全部得到结果",
+    "incomplete-runs": "计划的运行次数未全部得到结果",
+    "skipped-checks": "存在跳过的运行、检查或判分",
+    "judge-coverage-unknown": "未声明每例需要的判分次数",
+    "incomplete-judge": "需要的判分次数与实际结果不符",
+    "unscored-runs": "存在没有检查或判分的运行",
+}
+
+
+def _gate_reasons(cases: list[CaseResult], meta: Mapping[str, Any], *, no_score: bool) -> list[str]:
+    """通过率仅描述已判的结果；门槛还要求完整覆盖。没有 judge 的用例可显式声明 0 次。"""
+    reasons: set[str] = set()
+    if meta.get("deterministicOnly"):
+        reasons.add("deterministic-only")
+    if no_score:
+        reasons.add("timeouts-over-limit")
+    if (meta.get("filter") or {}).get("case"):
+        reasons.add("filtered-cases")
+    expected = meta.get("expectedJudgeRuns")
+    for c in cases:
+        rows = c.get("results", [])
+        if "skip" in c:
+            reasons.add("skipped-checks")
+        elif sorted(r["run"] for r in rows) != list(range(1, c["runs"] + 1)):
+            reasons.add("incomplete-runs")
+        for r in rows:
+            checks = _checks_of(r)
+            if r["status"] == "skip" or "skip" in r or any(x["status"] == "skip" for x in checks):
+                reasons.add("skipped-checks")
+            if not checks and r["status"] == "pass":
+                reasons.add("unscored-runs")
+        n = expected.get(c["id"]) if isinstance(expected, Mapping) else None
+        if type(n) is not int or not 0 <= n <= c["runs"]:
+            reasons.add("judge-coverage-unknown")
+        elif sum("judge" in r for r in rows) != n:
+            reasons.add("incomplete-judge")
+    return sorted(reasons)
 
 
 def _hard_case(c: CaseResult, suite: str) -> bool:
@@ -249,7 +313,11 @@ def markdown(report: Mapping[str, Any]) -> str:
         )
     lines += [""]
     if det_only:
-        lines += ["只跑了确定性检查：通过率只按确定性检查算。套件门槛还要算上判分，这里的「达标」不等于过了门槛。", ""]
+        lines += ["只跑了确定性检查：通过率只按确定性检查算，不能据此判定套件门槛通过。", ""]
+    for sid, s in suites.items():
+        if reasons := s["gate"].get("reasons"):
+            lines.append(f"{sid} 门槛证据不完整：" + "；".join(GATE_REASONS[r] for r in reasons) + "。")
+    lines += [""]
     lines += [
         "## 确定性检查（门槛一律 100%）",
         "",

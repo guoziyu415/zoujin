@@ -16,7 +16,7 @@ from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from types import FrameType
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 from zoujin_llm import Stop
 
@@ -49,6 +49,7 @@ class Options:
     # 模拟局的 AI 玩家：按用例造一个（player.py）。None = 模拟局记「要真模型」
     player: Callable[[Mapping[str, Json]], Player] | None = None
     personas: Mapping[str, Persona] = field(default_factory=load_personas)
+    timeout_retries: int = 1  # 有限批次可设 0：超时的半局留证，不自动重开付费局
 
 
 class RunTimeout(BaseException):
@@ -121,7 +122,7 @@ def _timeout(case: Mapping[str, Json], opts: Options) -> float:
 
 
 def _run_with_retry(api: EvalApi, case: Mapping[str, Json], world: WorldIndex, opts: Options, i: int) -> RunResult:
-    for _ in range(2):
+    for _ in range(opts.timeout_retries + 1):
         try:
             with time_limit(_timeout(case, opts)):
                 return run_once(api, case, world, opts, i)
@@ -131,6 +132,24 @@ def _run_with_retry(api: EvalApi, case: Mapping[str, Json], world: WorldIndex, o
 
 
 def run_once(api: EvalApi, case: Mapping[str, Json], world: WorldIndex, opts: Options, i: int) -> RunResult:
+    sessions: list[EvalSession] = []
+
+    class ClosingApi:
+        def setup(self, setup: Mapping[str, Json], *, mode: Literal["text", "voice"] = "text") -> EvalSession:
+            session = api.setup(setup, mode=mode)
+            sessions.append(session)
+            return session
+
+    try:
+        return _run_once(ClosingApi(), case, world, opts, i)
+    finally:
+        for session in sessions:
+            close = getattr(session, "close", None)
+            if close is not None:
+                close()
+
+
+def _run_once(api: EvalApi, case: Mapping[str, Json], world: WorldIndex, opts: Options, i: int) -> RunResult:
     results: list[StepResult] = []
     played: Played | None = None
     try:
@@ -209,6 +228,8 @@ _STEP_CALLS: dict[str, tuple[str, Callable[[Any], tuple[Any, ...]]]] = {
     "to": ("say", lambda s: (s["to"], s["say"])),
     "act": ("act", lambda s: (s["act"]["kind"], s["act"].get("target"), s["act"].get("params", {}))),
     "deleteMemory": ("delete_memory", lambda s: (s["deleteMemory"]["character"], s["deleteMemory"]["fromStep"])),
+    "deleteMemoryId": ("delete_memory_id", lambda s: (s["deleteMemoryId"],)),
+    "confirm": ("confirm", lambda s: (s["confirm"],)),
     "retract": ("retract", lambda s: (s["retract"]["step"],)),
     "deletePlaythrough": ("delete_playthrough", lambda s: ()),
     "newPlaythrough": ("new_playthrough", lambda s: ()),
@@ -224,7 +245,11 @@ def call_step(session: EvalSession, step: Mapping[str, Json]) -> StepResult:
     fn = getattr(session, method, None)
     if fn is None:
         raise EvalNotImplemented(method)
-    result: StepResult = fn(*args(step))
+    result: StepResult = (
+        fn(*args(step), action_id=step["act"]["actionId"])
+        if method == "act" and "actionId" in step["act"]
+        else fn(*args(step))
+    )
     return result
 
 
