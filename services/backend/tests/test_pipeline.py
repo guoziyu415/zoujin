@@ -226,6 +226,18 @@ def test_bad_effect_shape_is_r7_not_a_commit_error() -> None:
 # —— 别名 ——
 
 
+def test_model_location_alias_tracks_relocation_without_rewriting_state() -> None:
+    s = at()
+    stale = s["vars"]["var.melos.location"]
+    s["locations"]["char.melos"] = "place.groom-house"
+    before = copy.deepcopy(s)
+    view = state_view(BOOK, s)
+    assert stale != "place.groom-house"
+    assert view.doc["vars"]["var.melos.location"] == view.doc["people"]["char.melos"]["place"] == "place.groom-house"
+    assert "var.king.location" not in view.doc["vars"]
+    assert s == before
+
+
 def test_promises_and_run_facts_use_aliases_in_requests() -> None:
     s0 = at()
     s = rules.trial(BOOK.world, s0, PROMISE, rules.fill_ids(PROMISE["effects"], IdGen(seed=1)))

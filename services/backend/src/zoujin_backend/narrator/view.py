@@ -56,8 +56,15 @@ def state_view(book: Book, state: SimState) -> View:
         return out.get(x, x)
 
     people: dict[str, Json] = {}
+    variables = dict(state["vars"])
     for c in sorted(state["locations"]):
         people[c] = {"place": state["locations"][c], "activity": activity(book.world, state, c)}
+        # relocate 更新 locations。兼容世界中的旧位置变量，避免向模型同时给出两个地点；
+        # 这里只构造请求投影，不改持久化状态，也不给其他书凭空添加变量。
+        if c.startswith("char."):
+            alias = f"var.{c.removeprefix('char.')}.location"
+            if alias in variables:
+                variables[alias] = state["locations"][c]
     promises = [
         {"ref": a(p["promiseId"]), **{k: p[k] for k in ("from", "to", "text", "status", "due", "template") if k in p}}
         for p in sorted(state["promises"].values(), key=lambda p: a(p["promiseId"]))
@@ -71,7 +78,7 @@ def state_view(book: Book, state: SimState) -> View:
         "time": book.label(state["t"]),
         "act": book.act_of(state["vars"]),
         "role": state["role"],
-        "vars": dict(sorted(state["vars"].items())),
+        "vars": dict(sorted(variables.items())),
         "beats": dict(sorted(state["beats"].items())),
         "beatTimes": dict(sorted(state["times"].items())),
         "beatChanges": {b: dict(o) for b, o in sorted(state["overrides"].items())},
