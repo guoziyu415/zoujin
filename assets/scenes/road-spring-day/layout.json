@@ -28,26 +28,11 @@
     {
       "name": "the road, the meadow up to y 16 and the spring (the pool and the ledge are blocked by their own height) (3.1)",
       "polygon": [
-        [
-          -30,
-          -6
-        ],
-        [
-          24,
-          -6
-        ],
-        [
-          24,
-          16
-        ],
-        [
-          -16,
-          16
-        ],
-        [
-          -30,
-          -2
-        ]
+        [-30, -6],
+        [24, -6],
+        [24, 16],
+        [-16, 16],
+        [-30, -2]
       ]
     }
   ],
@@ -66,94 +51,46 @@
   ],
   "spots": {
     "road-spring": {
-      "at": [
-        -12,
-        -4
-      ],
-      "face": [
-        -2,
-        -4
-      ],
+      "at": [-12, -4],
+      "face": [-2, -4],
       "about": "landing; the default camera 9 m behind it (-21, -4) sees only the road (3.2)"
     },
     "melos-stagger": {
-      "at": [
-        -5,
-        -3.5
-      ],
-      "face": [
-        5,
-        -3.5
-      ],
+      "at": [-5, -3.5],
+      "face": [5, -3.5],
       "about": "Melos staggers two or three steps on the road"
     },
     "melos-down": {
-      "at": [
-        2.5,
-        3.8
-      ],
-      "face": [
-        4.2,
-        2.8
-      ],
+      "at": [2.5, 3.8],
+      "face": [4.2, 2.8],
       "about": "15:00: he falls here, on his back, head to the south-east, the trickle at his feet",
       "auto": false
     },
     "melos-drink": {
-      "at": [
-        -0.2,
-        4.4
-      ],
-      "face": [
-        -0.2,
-        7
-      ],
+      "at": [-0.2, 4.4],
+      "face": [-0.2, 7],
       "about": "16:30: kneeling at the pool",
       "auto": false
     },
     "player-crouch": {
-      "at": [
-        3.3,
-        2.6
-      ],
-      "face": [
-        3.3,
-        5
-      ],
+      "at": [3.3, 2.6],
+      "face": [3.3, 5],
       "about": "you crouch south of his head; the low camera behind your shoulder (3.45, 1.7, 0.95 m)",
       "auto": false
     },
     "spring-side": {
-      "at": [
-        1.4,
-        4.6
-      ],
-      "face": [
-        0,
-        5.3
-      ],
+      "at": [1.4, 4.6],
+      "face": [0, 5.3],
       "about": "standing by the pool (「水を汲んで渡す」)"
     },
     "way.west": {
-      "at": [
-        -26,
-        -4
-      ],
-      "face": [
-        -36,
-        -4
-      ],
+      "at": [-26, -4],
+      "face": [-36, -4],
       "about": "the road back up to the pass"
     },
     "way.east": {
-      "at": [
-        22,
-        -4
-      ],
-      "face": [
-        32,
-        -4
-      ],
+      "at": [22, -4],
+      "face": [32, -4],
       "about": "the road on east"
     }
   }

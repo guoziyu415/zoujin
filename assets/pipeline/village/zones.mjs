@@ -10,13 +10,17 @@ const [, , LAYOUT, DIR] = process.argv;
 const layout = JSON.parse(fs.readFileSync(LAYOUT, "utf8"));
 const file = path.join(DIR, "scene.json");
 const scene = JSON.parse(fs.readFileSync(file, "utf8"));
-scene.cameraZones = (layout.cameraZones ?? []).map(({ about: _, ...z }) => ({
-  ...z,
-  polygon: z.polygon.map(([x, y]) => {
-    const [X, , Z] = planToWorld(x, y, 0, layout.rotationDeg);
-    return [X, Z];
-  }),
-}));
+scene.cameraZones = (layout.cameraZones ?? []).map((zone) => {
+  const z = { ...zone };
+  delete z.about;
+  return {
+    ...z,
+    polygon: z.polygon.map(([x, y]) => {
+      const [X, , Z] = planToWorld(x, y, 0, layout.rotationDeg);
+      return [X, Z];
+    }),
+  };
+});
 fs.writeFileSync(file, JSON.stringify(scene, null, 1) + "\n");
 console.log(
   `camera zones: ${scene.cameraZones.map((z) => z.id).join(", ") || "none"}`,

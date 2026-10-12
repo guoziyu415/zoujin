@@ -6,15 +6,8 @@
   },
   "runway": {
     "tileLengthM": 36,
-    "scroll": [
-      "ground",
-      "arch",
-      "proxy",
-      "tile_*"
-    ],
-    "static": [
-      "far"
-    ],
+    "scroll": ["ground", "arch", "proxy", "tile_*"],
+    "static": ["far"],
     "about": "the tile repeats every tileLengthM along plan +x: the page lays copies end to end and scrolls them back under the runners (scroll), the far land stays put; set_* nodes are set pieces placed on one tile",
     "setPieces": {
       "feast": {
@@ -57,22 +50,10 @@
     {
       "name": "the road and its verges, the length of the tile",
       "polygon": [
-        [
-          -17.5,
-          -3
-        ],
-        [
-          17.5,
-          -3
-        ],
-        [
-          17.5,
-          3
-        ],
-        [
-          -17.5,
-          3
-        ]
+        [-17.5, -3],
+        [17.5, -3],
+        [17.5, 3],
+        [-17.5, 3]
       ]
     }
   ],
@@ -91,58 +72,28 @@
   ],
   "spots": {
     "run-player": {
-      "at": [
-        0,
-        -0.8
-      ],
-      "face": [
-        10,
-        -0.8
-      ],
+      "at": [0, -0.8],
+      "face": [10, -0.8],
       "about": "where you run on the spot"
     },
     "run-melos": {
-      "at": [
-        0,
-        0.8
-      ],
-      "face": [
-        10,
-        0.8
-      ],
+      "at": [0, 0.8],
+      "face": [10, 0.8],
       "about": "where Melos runs on the spot"
     },
     "run-third": {
-      "at": [
-        -0.6,
-        2.2
-      ],
-      "face": [
-        9.4,
-        2.2
-      ],
+      "at": [-0.6, 2.2],
+      "face": [9.4, 2.2],
       "about": "a third runner (Philostratus in the field road)"
     },
     "way.east": {
-      "at": [
-        16,
-        0
-      ],
-      "face": [
-        26,
-        0
-      ],
+      "at": [16, 0],
+      "face": [26, 0],
       "about": "the gate"
     },
     "way.west": {
-      "at": [
-        -16,
-        0
-      ],
-      "face": [
-        -26,
-        0
-      ],
+      "at": [-16, 0],
+      "face": [-26, 0],
       "about": "back the way you came"
     }
   }

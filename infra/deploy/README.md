@@ -25,14 +25,14 @@ infra/deploy/deploy.sh invite 5         # 5 个邀请码，写进 ~/.zoujin/depl
 
 ## 拓扑
 
-| 东西     | 怎么建                                                             | 说明                                                                                                                                                                     |
-| -------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 网关     | Cloud Run，`asia-northeast1`，服务名随机 `s-` 加 8 位              | 默认 IAM 私有，外层整站密码加内层邀请码会话；同源发前端（`ZJ_WEB_DIST`）和场景包（`/scenes/<版本>/…`），不上负载均衡和 CDN；WebSocket 超时 60 分钟、会话亲和；最小 0 个实例、最多 3 个 |
-| 叙事者   | Cloud Run，同一个镜像，服务名随机                                  | 不许匿名，只给网关的服务账号调用权限（`ZJ_NARRATOR_AUTH=iam`，网关带 OIDC 令牌）                                                                                         |
-| 数据库   | Cloud SQL PostgreSQL 17，`db-f1-micro`，单区，开删除保护，每天备份 | 库 `zoujin`；`zj_owner` 跑迁移，`zj_gw`、`zj_nr` 两个应用账号只能增删改查，不能建表                                                                                      |
-| 密钥     | Secret Manager：`zj-db-owner`、`zj-db-gw`、`zj-db-nr`、`zj-claude`、`zj-site-password` | 应用账号的连接串只给对应的服务账号读，Claude 的 Key 两个都能读，站点密码只给网关读                                                                                      |
-| 服务账号 | `zj-gateway`、`zj-narrator`                                        | `cloudsql.client`、`aiplatform.user`、`modelarmor.user`；网关另有调叙事者的权限                                                                                          |
-| 镜像     | Artifact Registry `images`，标签是提交的前 7 位加时间              | 在 Mac 上 `docker buildx --platform linux/amd64` 构建，不用 Cloud Build                                                                                                  |
+| 东西     | 怎么建                                                                                 | 说明                                                                                                                                                                                   |
+| -------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 网关     | Cloud Run，`asia-northeast1`，服务名随机 `s-` 加 8 位                                  | 默认 IAM 私有，外层整站密码加内层邀请码会话；同源发前端（`ZJ_WEB_DIST`）和场景包（`/scenes/<版本>/…`），不上负载均衡和 CDN；WebSocket 超时 60 分钟、会话亲和；最小 0 个实例、最多 3 个 |
+| 叙事者   | Cloud Run，同一个镜像，服务名随机                                                      | 不许匿名，只给网关的服务账号调用权限（`ZJ_NARRATOR_AUTH=iam`，网关带 OIDC 令牌）                                                                                                       |
+| 数据库   | Cloud SQL PostgreSQL 17，`db-f1-micro`，单区，开删除保护，每天备份                     | 库 `zoujin`；`zj_owner` 跑迁移，`zj_gw`、`zj_nr` 两个应用账号只能增删改查，不能建表                                                                                                    |
+| 密钥     | Secret Manager：`zj-db-owner`、`zj-db-gw`、`zj-db-nr`、`zj-claude`、`zj-site-password` | 应用账号的连接串只给对应的服务账号读，Claude 的 Key 两个都能读，站点密码只给网关读                                                                                                     |
+| 服务账号 | `zj-gateway`、`zj-narrator`                                                            | `cloudsql.client`、`aiplatform.user`、`modelarmor.user`；网关另有调叙事者的权限                                                                                                        |
+| 镜像     | Artifact Registry `images`，标签是提交的前 7 位加时间                                  | 在 Mac 上 `docker buildx --platform linux/amd64` 构建，不用 Cloud Build                                                                                                                |
 
 模型照开发期（D-028）：Claude 用 `zj-claude`，Gemini Live、补转写、Model Armor（模板 `zoujin-safety-v1`）用服务账号。每个实例的账本在 `/tmp`，上限 `config.env` 的 `ZJ_MAX_CLAUDE_USD`、`ZJ_MAX_GOOGLE_USD`（默认各 10 美元，实例重启归零；总额靠项目的预算提醒 G-2）。
 

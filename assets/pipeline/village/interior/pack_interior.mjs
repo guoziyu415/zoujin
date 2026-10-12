@@ -149,7 +149,11 @@ for (const [key, slot] of [...used].sort()) {
     slot,
     from: sources[key]?.from ?? "unknown",
     sourceSha256: sha(src),
-    std: { file: put(`tex/${key}.ktx2`, s.buf), size: SIZE[slot], mean: s.mean },
+    std: {
+      file: put(`tex/${key}.ktx2`, s.buf),
+      size: SIZE[slot],
+      mean: s.mean,
+    },
   };
 }
 
@@ -212,7 +216,10 @@ const pack = {
   prims,
   room,
   // the feast's flames (the hearth, then the lamps): glTF position of the flame's foot and its height
-  flames: meta.flames.map(([x, y, z, size]) => ({ pos: toGltf([x, y], z), size })),
+  flames: meta.flames.map(([x, y, z, size]) => ({
+    pos: toGltf([x, y], z),
+    size,
+  })),
   lightmapRes: meta.res,
   lightSets,
   materials,

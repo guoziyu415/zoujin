@@ -31,7 +31,8 @@ def beat_event(drafts: list[Any], beat: str) -> dict[str, Any]:
 
 
 def test_the_rain_reaches_the_wedding() -> None:
-    """契约 1.12 的规则：beat.12 的大雨（W-2 起落在婚礼的 place.melos-home），玩家在同一场景的花婿家（place.groom-house）
+    """契约 1.12：beat.12 的大雨（W-2 起落在婚礼的 place.melos-home），
+    玩家在同一场景的花婿家（place.groom-house），
     也算看见了：settle 在大雨的系统事件里给玩家写 learn，后端照同一条规则把它推给玩家。"""
     drafts, s = settle(WORLD, at(GROOM), 3660)
     rain = beat_event(drafts, RAIN)

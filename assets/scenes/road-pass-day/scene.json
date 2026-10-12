@@ -8,7 +8,7 @@
  "placeholderTextures": true,
  "inputs": {
   "files": {
-   "assets/scenes/road-pass-day/layout.json": "be20d09cb555686e326bd85a4398d7811f4ed476c756b48fd02e375f9efb287b",
+   "assets/scenes/road-pass-day/layout.json": "f0fefcebc61be7f3beee3584fa515c614c18f9ef13c7fb59992e7f8fc2398df4",
    "assets/pipeline/road/build_rest.sh": "407628974f1bf9f35c3aacdf008d9b69252b12d0f3414533c9db98eaf3c894aa",
    "assets/pipeline/road/rest_tex.py": "8160091d58e2a3a65a10a0e43cda182f6b1165650d67262b367b5b19ca0e37ef",
    "assets/pipeline/common/road_tex.py": "a31a2a76e5421dccc6f5fa6e8ed272578569ea1133e8c581a05a13a4f0abdad6",

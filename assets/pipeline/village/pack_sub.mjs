@@ -14,7 +14,6 @@ import { fileURLToPath } from "url";
 import { ktx2 } from "./ktx2.mjs";
 
 const [, , WORK, LAYOUT, VILLAGE] = process.argv;
-const STEM = process.env.SCENE_STEM ?? "village";
 const layout = JSON.parse(fs.readFileSync(LAYOUT, "utf8"));
 const subDir = (pack) => {
   const parts = path.resolve(VILLAGE).split(path.sep);

@@ -2,15 +2,8 @@
   "sceneId": "road-run-night",
   "runway": {
     "tileLengthM": 36,
-    "scroll": [
-      "ground",
-      "arch",
-      "proxy",
-      "tile_*"
-    ],
-    "static": [
-      "far"
-    ],
+    "scroll": ["ground", "arch", "proxy", "tile_*"],
+    "static": ["far"],
     "about": "the tile repeats every tileLengthM along plan +x: the page lays copies end to end and scrolls them back under the runners (scroll), the far land stays put; set_* nodes are set pieces placed on one tile; speedMps: act 2's night road is walked fast, not run (homeward-road.md 5)",
     "setPieces": {
       "spring": {
@@ -33,22 +26,10 @@
     {
       "name": "the road and its verges, the length of the tile",
       "polygon": [
-        [
-          -17.5,
-          -3
-        ],
-        [
-          17.5,
-          -3
-        ],
-        [
-          17.5,
-          3
-        ],
-        [
-          -17.5,
-          3
-        ]
+        [-17.5, -3],
+        [17.5, -3],
+        [17.5, 3],
+        [-17.5, 3]
       ]
     }
   ],
@@ -56,46 +37,24 @@
   "exits": [],
   "spots": {
     "run-player": {
-      "at": [
-        0,
-        -0.8
-      ],
-      "face": [
-        10,
-        -0.8
-      ],
+      "at": [0, -0.8],
+      "face": [10, -0.8],
       "about": "where you run on the spot"
     },
     "run-melos": {
-      "at": [
-        0,
-        0.8
-      ],
-      "face": [
-        10,
-        0.8
-      ],
+      "at": [0, 0.8],
+      "face": [10, 0.8],
       "about": "where Melos runs on the spot"
     },
     "run-third": {
-      "at": [
-        -0.6,
-        2.2
-      ],
-      "face": [
-        9.4,
-        2.2
-      ],
+      "at": [-0.6, 2.2],
+      "face": [9.4, 2.2],
       "about": "a third runner (Philostratus in the field road)"
     }
   },
   "standsIn": {
     "act": "act.2",
-    "scenes": [
-      "scene.road-pass",
-      "scene.road-spring",
-      "scene.road-field"
-    ],
+    "scenes": ["scene.road-pass", "scene.road-spring", "scene.road-field"],
     "about": "in act 2 these scenes are stretches of the night road: their index.json gives this pack for act.2"
   },
   "hiTextures": {
