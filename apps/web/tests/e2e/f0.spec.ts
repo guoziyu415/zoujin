@@ -25,17 +25,27 @@ const problems: string[] = [];
 // HTTP errors the browser logs on its own and the flow expects: the 401 before login, the 409 at the start, and the
 // prerecorded lines the manifest names (preloaded on focus, F-1) while B-6's files aren't in git
 let expectedStatus = ["401", "409"];
+let intentionallyOffline = false;
 
 test.beforeEach(async ({ page, context }) => {
   problems.length = 0;
   expectedStatus = ["401", "409"];
+  intentionallyOffline = false;
   page.on("pageerror", (e) => problems.push(`pageerror: ${e.message}`));
   page.on("console", (m) => {
     const expected = new RegExp(
       `WebSocket connection to .* failed|status of (${expectedStatus.join("|")}) `,
     );
     const voiceFile = m.location().url.includes("/assets/voice/");
-    if (m.type() === "error" && !voiceFile && !expected.test(m.text()))
+    const expectedOffline =
+      intentionallyOffline &&
+      m.text().includes("net::ERR_INTERNET_DISCONNECTED");
+    if (
+      m.type() === "error" &&
+      !voiceFile &&
+      !expectedOffline &&
+      !expected.test(m.text())
+    )
       problems.push(`console: ${m.text()}`);
   });
   await without3d(context);
@@ -195,6 +205,7 @@ test("five seconds offline: the commit made meanwhile arrives once, nothing is l
   await expect(page.locator(".world")).toHaveAttribute("data-last-seq", "0");
 
   // the network goes; the mock's script goes on and records the commit
+  intentionallyOffline = true;
   await context.setOffline(true);
   await mock(page, "drop");
   await expect(page.getByText("つながり直しています").first()).toBeVisible();
@@ -206,6 +217,7 @@ test("five seconds offline: the commit made meanwhile arrives once, nothing is l
   await expect(page.locator(".world")).toHaveAttribute("data-last-seq", "1", {
     timeout: 15_000,
   });
+  intentionallyOffline = false;
   await expect(page.locator(".world")).toHaveAttribute("data-events", "1");
   await expect(
     page.getByTestId("toast").filter({ hasText: "メロスは覚えた" }),

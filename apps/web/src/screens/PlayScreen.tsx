@@ -67,6 +67,9 @@ export default function PlayScreen({ pid }: { pid: string }) {
 
   useEffect(() => {
     if (!manifest.data) return;
+    // HUD-only browser tests omit WorldScreen, so there is no renderer to report
+    // a walkable scene. Their act transitions must still reach the arrival line.
+    if (flags.no3d) useUi.setState({ scene: "ready" });
     play.setManifest(manifest.data);
     let alive = true;
     const handed = takeSnapshot(pid);

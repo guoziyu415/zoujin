@@ -157,7 +157,8 @@ test("M2-0 gate: invite → role → plaza → walk (move) → tap メロス (fo
   await mock(page, "scenario", { name: "full-turn" });
   // the pack comes from the manifest's assetUrl, shaped as B-7 makes it (version first, api-contract 2.1); the
   // fixture's is a placeholder, so it's set here. Every file of the pack then loads from under that address.
-  await page.route("**/v1/books/*/manifest", async (route) => {
+  // Active games pin the world version in the query string; cover both requests.
+  await page.route(/\/v1\/books\/[^/]+\/manifest(?:\?.*)?$/, async (route) => {
     const res = await route.fetch();
     const doc = (await res.json()) as {
       scenes: { sceneId: string; assetUrl: string }[];
