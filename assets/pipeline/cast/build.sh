@@ -14,6 +14,8 @@
 # MPFB 2 is fetched at the same pinned commit as the crowd (crowd/build.sh), or MPFB_SRC = that extension directory.
 # Optional: UAL_GLB = Quaternius's UAL1_Standard.glb (CC0, never in the repo, sha256 checked) -> the mocap clips;
 # without it lod_export writes its procedural placeholders.
+# Optional: CAST_QA_DIR = local directory for the source .blend and uncompressed GLBs, so clothing, proportions
+# and animation can be inspected after the temporary build directory is removed. Do not commit these files.
 set -euo pipefail
 MPFB_COMMIT=d0a32e57a7f915cb2f2b95410e2117648c7bbb7e # MPFB 2.0.18
 MELOS_SHA256=3cbe09375437f542732b1542d9156521bb096683a5e970aa24634473b1a61d36 # melos_v2.blend
@@ -62,21 +64,24 @@ for row in "${ALL[@]}"; do
   echo "== $name"
   work="$RES/$name"
   mkdir -p "$work" "$OUT/$name"
-  if [ "$name" = melos ]; then
-    # Melos is the A-0 file itself: straight to the export
-    cp "$MELOS_BLEND" "$work/$name.blend"
-    echo '{"id": "char.melos", "source": "melos_v2.blend"}' > "$OUT/$name/build_report.json"
-  else
-    BLENDER_USER_RESOURCES="$RES" "$PY" -I "$HERE/build_cast.py" -- "$MELOS_BLEND" "$id" "$work/$name.blend" ${variant:+"$variant"} \
-      > "$work/build.log" 2>&1 || { tail -30 "$work/build.log" >&2; exit 1; }
-    grep '^CAST_REPORT ' "$work/build.log" | cut -d' ' -f2- > "$OUT/$name/build_report.json"
-  fi
+  # Melos also needs the corrected clothes, skin masking and material setup;
+  # exporting the untouched A-0 prototype retains its clipping and eye material defects.
+  BLENDER_USER_RESOURCES="$RES" "$PY" -I "$HERE/build_cast.py" -- "$MELOS_BLEND" "$id" "$work/$name.blend" ${variant:+"$variant"} \
+    > "$work/build.log" 2>&1 || { tail -30 "$work/build.log" >&2; exit 1; }
+  grep '^CAST_REPORT ' "$work/build.log" | cut -d' ' -f2- > "$OUT/$name/build_report.json"
   "$PY" -I "$PIPE/lod_export.py" "$work/$name.blend" "$work/raw" > "$work/lod.log" 2>&1 \
     || { tail -30 "$work/lod.log" >&2; exit 1; }
   cp "$work/raw/lod_report.json" "$OUT/$name/"
   node "$PIPE/compress.mjs" "$work/raw" "$work/phone" > "$work/compress.log" 2>&1 \
     || { tail -30 "$work/compress.log" >&2; exit 1; }
   for f in talk_high.glb talk_std.glb walk.glb anims.glb compress_report.json; do cp "$work/phone/$f" "$OUT/$name/"; done
+  if [ -n "${CAST_QA_DIR:-}" ]; then
+    mkdir -p "$CAST_QA_DIR/$name"
+    cp "$work/$name.blend" "$CAST_QA_DIR/$name/"
+    cp -R "$work/raw" "$CAST_QA_DIR/$name/"
+    cp "$work/lod.log" "$work/compress.log" "$CAST_QA_DIR/$name/"
+    if [ -f "$work/build.log" ]; then cp "$work/build.log" "$CAST_QA_DIR/$name/"; fi
+  fi
   rm -rf "$work"
 done
 echo "== check"

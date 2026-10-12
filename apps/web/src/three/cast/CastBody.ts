@@ -67,7 +67,12 @@ function prepare(root: Object3D): Mesh[] {
     o.frustumCulled = false; // skinned: the bind-pose bounds don't follow the clips
     const mats = Array.isArray(o.material) ? o.material : [o.material];
     for (const m of mats) m.onBeforeCompile = fogUniforms;
-    if (o.morphTargetDictionary) morphs.push(o);
+    if (o.morphTargetDictionary) {
+      // Earlier exports retained the values used while transferring all shape keys.
+      // Start from a neutral face before the voice/blink driver touches individual keys.
+      o.morphTargetInfluences?.fill(0);
+      morphs.push(o);
+    }
   });
   return morphs;
 }
@@ -168,6 +173,7 @@ export class CastBody {
     const v = this.talkWanted && this.talk ? this.talk : this.walk;
     if (!v) return;
     const g = gaitWeights(speed);
+    const stride = this.name === "old-man" ? 0.55 : 1;
     const a = v.actions;
     if (a.idle) a.idle.setEffectiveWeight(g.idle);
     if (a.talk && a.idle && voice > 0) {
@@ -177,11 +183,11 @@ export class CastBody {
     if (a.walk)
       a.walk
         .setEffectiveWeight(g.walk)
-        .setEffectiveTimeScale(clipRate("walk", Math.max(speed, 0.5)));
+        .setEffectiveTimeScale(clipRate("walk", Math.max(speed, 0.5), stride));
     if (a.run)
       a.run
         .setEffectiveWeight(g.run)
-        .setEffectiveTimeScale(clipRate("run", Math.max(speed, 2)));
+        .setEffectiveTimeScale(clipRate("run", Math.max(speed, 2), stride));
     if (a.sprint) a.sprint.setEffectiveWeight(0);
     v.mixer.update(dt);
     if (!v.morphs.length) return;

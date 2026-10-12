@@ -16,6 +16,9 @@ export const CAST: Readonly<Record<string, string>> = {
   "char.old-man": "old-man",
   "char.young-man": "young-man",
   "char.maiden": "maiden",
+  "char.guards": "guards",
+  "char.bandits": "bandits",
+  "char.travelers": "travelers",
 };
 
 // wedding clothes (village.md: the saffron dress and veil Melos bought in town; the groom's myrtle wreath)
@@ -54,8 +57,15 @@ export function gaitWeights(speed: number): Gait {
 }
 
 /** Playback rate of a clip so the feet don't slide. */
-export function clipRate(clip: "walk" | "run", speed: number): number {
-  return Math.max(0.6, Math.min(1.6, speed / GROUND_SPEED[clip]));
+export function clipRate(
+  clip: "walk" | "run",
+  speed: number,
+  strideScale = 1,
+): number {
+  return Math.max(
+    0.6,
+    Math.min(1.6, speed / (GROUND_SPEED[clip] * strideScale)),
+  );
 }
 
 /** Mouth shapes from the voice's level (0..1, audio/engine.ts levels.mouth): the jaw opens with loudness, the round

@@ -6,6 +6,7 @@
 
 - 新增 `GET /v1/books` 与 `GET /v1/library`，正式网关和开发 mock 同形。契约生成 TypeScript / Python 类型，不手写复制。
 - 世界目录从 `ZJ_WORLD` 加 `ZJ_WORLDS` 显式读取。每本书只选一个新局版本，所有保留的旧版本仍可恢复；拒绝跨书复用同一个世界版本 ID。
+- 保留现有单账号同时一局的规则；多书目录和历史按书区分，但本次没有改成多本书同时进行多局。当前只发布一本书，不借测试用第二书宣称已制作第二本产品内容。
 - 目录 availability 来自真实 manifest 和开放身份。manifest、预录音频、场景资源按书查。真实语音模式合并各书声音配置，跨书人物 ID 若使用冲突声音则启动失败，不混用声音。
 - library 只按当前会话账号查询。active 带书和世界版本；endings 要求局真实结束、结局已落库、局/版本/结局 ID 一致；未落库的尾声单列 pending，未完成、已放弃、其他账号的记录不列入完成回忆。
 - 历史列表只返回结局卡标题/副标题；完整结局仍由原 ending 接口按 owner 校验读取。删除整局后 CASCADE 删除结局，下一次查询立即消失。
@@ -38,8 +39,8 @@
 - 门禁单测：缺密码生产关闭、错误/过期/伪造/轮换票、限速、跨站 WS、Secure cookie 和缓存头通过。
 - 场景：完整 check_scene 校验真实文件 hash 并解码两档颜色通过；entry 4.79 MB、19616 三角形、166 nav polygons 均未增加。
 - `ruff`、`git diff --check`、部署脚本 `bash -n` 通过。
-- 全仓 mypy 用 CI 的 real extra 后，192 个文件全部通过。旧 `test_voice.py` 的三处 dict 不变性错误以显式测试数据类型注解修正，没有改语音运行逻辑。
-- 全后端测试在独立库 `zoujin_home_test` 完整运行：629 passed、3 failed、1 skipped，用时 749.53 秒。三处均已修正：正式/mock manifest 共用 `private, no-store`（两项缓存头断言），mock 端点覆盖增加 books/library 并断言空历史、真实 active 与完成后 ending（一项遗漏）。修复后把整个 manifest、新 library、真实 gateway、门禁、world/站位、pack 检查及 mock 相关用例一起复跑，55 passed，7.57 秒；没有遗留失败。全量运行没有出现交接中提过的其它基线运行失败。
+- 全仓 mypy 用 CI 的 real extra 后，193 个文件全部通过。旧 `test_voice.py` 的三处 dict 不变性错误以显式测试数据类型注解修正，没有改语音运行逻辑。
+- 最终全后端测试在独立库 `zoujin_home_test` 完整运行：635 passed，0 failed，0 skipped，用时 728.58 秒。首次全量曾检出正式/mock manifest 缓存头断言与 mock 新端点覆盖遗漏，修正后重新完整运行，未以定向测试代替最终全量结果。
 - 部署 pack 检查只忽略顶层生成器说明 `note`（同一 road-common 会被村子和归途管线生成），文件/贴图/嵌套结构/inputs 校验不放宽；两条差异回归通过。
 - 总协调末次审核发现访问状态查询失败被当私有、invoker IAM 禁用标志未检查、匿名冒烟重试耗尽仍能写 DEPLOYED，均已修正。15 项真实 Bash 控制流测试用假的 gcloud 验证：查询/解析/令牌失败停止；仅成功空列表可作首次新服务；两个公开成员与禁用 IAM 标志均被隐私锁拦住；第六次仍失败不继续，第六次成功才可标记。测试不读真实配置、不访问云端。
 

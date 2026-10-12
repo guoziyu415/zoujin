@@ -2,17 +2,23 @@
 // stand-ins until their files arrive, and for everyone not built yet): standing on the spots
 // the server gives (world.characters[id].place / spot / activity). A new spot is a story move: they walk there on the
 // navmesh, or run when the activity says so; leaving the scene they walk to the nearest exit spot (way.*) first.
-// Picked by the player they stop and face them until the conversation ends (ux-design 6.5). Crowds (group: true) are
-// F-4's; "absent" isn't drawn. Moving about on the spot (8.6 表演走動) comes with the real characters' animations.
+// Picked by the player they stop and face them until the conversation ends (ux-design 6.5). Named groups with a
+// cast pack have a visible representative; the narrative state still describes the full group. Other crowds stay
+// in F-4; "absent" isn't drawn. Moving about on the spot uses the real characters' animations.
 import type { Api } from "@zoujin/contracts";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import { Group } from "three";
+import { flags } from "../app/flags";
 import { usePlayer } from "../stores/player";
 import { useWorld } from "../stores/world";
 import { levels } from "../audio/engine";
 import { useQuality } from "./quality/quality";
 import { castName } from "./cast/cast";
+import { groupPlacement, type GroupCandidate } from "./cast/groupPlacement";
+import { crowdCount } from "./crowd/presence";
+import { scatter } from "./crowd/scatter";
+import { crowdSpec } from "./crowd/zone";
 import type { CastBody } from "./cast/CastBody";
 import { makeMannequin } from "./mannequin";
 import type { NavPoint } from "./nav/navmesh";
@@ -39,7 +45,7 @@ const angleTo = (from: number, to: number) =>
   Math.atan2(Math.sin(to - from), Math.cos(to - from));
 
 const drawn = (c: Api.CharacterPresence) =>
-  !c.group && c.activity !== "absent" && !!c.spot;
+  c.activity !== "absent" && (c.group ? castName(c.id) !== null : !!c.spot);
 
 export function People({ scene }: { scene: LoadedScene }) {
   const { nav, manifest } = scene;
@@ -55,6 +61,7 @@ export function People({ scene }: { scene: LoadedScene }) {
   }, [group]);
 
   useEffect(() => {
+    const noRoom = new Set<string>();
     const pointAt = (spot: string): [NavPoint, number] | null => {
       const s = manifest.spots[spot];
       if (!s) return null;
@@ -94,11 +101,92 @@ export function People({ scene }: { scene: LoadedScene }) {
         p.path.push(...(path ? path.slice(1) : [goal]));
         from = goal;
       }
-      p.speed = r?.speed ?? (run ? RUN : WALK);
+      p.speed = r?.speed ?? (id === "char.old-man" ? 0.65 : run ? RUN : WALK);
     };
     const sync = (chars: Record<string, Api.CharacterPresence>) => {
+      const stableOccupied: Pick<NavPoint, "x" | "z">[] = [];
       for (const c of Object.values(chars)) {
-        const target = drawn(c) ? pointAt(c.spot!) : null;
+        if (!c.group && c.spot && c.activity !== "absent") {
+          const at = pointAt(c.spot)?.[0];
+          if (at) stableOccupied.push(at);
+          const actual = people.get(c.id)?.at;
+          if (actual) stableOccupied.push(actual);
+        }
+      }
+      // Reserve exactly the seeded F-4 crowd positions before its async mesh pack
+      // finishes loading. During ending choreography People is hidden as a whole.
+      const count = crowdCount(chars, flags.crowd);
+      const spec = count > 0 ? crowdSpec(scene, count) : null;
+      if (spec)
+        for (const [x, z] of scatter(spec.zone, spec.count, spec))
+          stableOccupied.push({ x, z });
+      const occupied: Pick<NavPoint, "x" | "z">[] = [
+        ...stableOccupied,
+        rig.player,
+      ];
+      const playerSpot = useWorld.getState().world?.player.spot;
+      if (playerSpot) {
+        const at = pointAt(playerSpot)?.[0];
+        if (at) occupied.push(at);
+      }
+      const candidates: GroupCandidate[] = nav.data.polys.map(
+        (vertices, poly) => {
+          const x =
+            vertices.reduce((sum, i) => sum + nav.data.verts[i * 3]!, 0) /
+            vertices.length;
+          const z =
+            vertices.reduce((sum, i) => sum + nav.data.verts[i * 3 + 2]!, 0) /
+            vertices.length;
+          return {
+            key: `group-poly:${poly}`,
+            place: nav.placeOf(poly),
+            at: { poly, x, z, y: nav.heightAt(poly, x, z) },
+            yaw: 0,
+          };
+        },
+      );
+      const grouped = new Map<string, GroupCandidate>();
+      for (const c of Object.values(chars)
+        .filter((c) => c.group && drawn(c))
+        .sort((a, b) => a.id.localeCompare(b.id))) {
+        const previous = people.get(c.id);
+        const chosen = groupPlacement(
+          c.id,
+          c.place,
+          candidates,
+          occupied,
+          previous
+            ? {
+                key: previous.spot,
+                place: nav.placeOf(previous.at.poly),
+                at: previous.at,
+                yaw: previous.yaw,
+              }
+            : undefined,
+          stableOccupied,
+        );
+        if (chosen) {
+          grouped.set(c.id, chosen);
+          occupied.push(chosen.at);
+          stableOccupied.push(chosen.at);
+          noRoom.delete(c.id);
+        } else if (!noRoom.has(c.id)) {
+          noRoom.add(c.id);
+          console.warn(
+            `No clear nav point for group representative ${c.id} in ${c.place}`,
+          );
+        }
+      }
+      for (const c of Object.values(chars)) {
+        const representative = grouped.get(c.id);
+        const spot = representative?.key ?? c.spot;
+        const target: [NavPoint, number] | null = !drawn(c)
+          ? null
+          : representative
+            ? [representative.at, representative.yaw]
+            : c.spot
+              ? pointAt(c.spot)
+              : null;
         const p = people.get(c.id);
         if (!target) {
           if (p) remove(c.id);
@@ -112,21 +200,23 @@ export function People({ scene }: { scene: LoadedScene }) {
           obj.userData.character = c.id;
           group.add(obj);
           // a staged entrance (castle.md 4): they come on at its start spot and walk to theirs
-          const from = rig.route?.(c.id, c.spot!, true)?.from;
+          const from = c.group
+            ? undefined
+            : rig.route?.(c.id, spot!, true)?.from;
           const start = from ? pointAt(from) : null;
           const np: Person = {
             obj,
             body: null,
             at: (start ?? target)[0],
             yaw: (start ?? target)[1],
-            spot: c.spot!,
+            spot: spot!,
             path: [],
             speed: WALK,
             endYaw: target[1],
             leaving: false,
           };
           people.set(c.id, np);
-          if (start) walk(np, c.id, c.spot!, target[0], false, true);
+          if (start) walk(np, c.id, spot!, target[0], false, true);
           const name = castName(c.id);
           if (name)
             void import("./cast/CastBody").then(({ CastBody }) => {
@@ -143,10 +233,10 @@ export function People({ scene }: { scene: LoadedScene }) {
           continue;
         }
         p.leaving = false;
-        if (p.spot === c.spot) continue;
-        p.spot = c.spot!;
+        if (p.spot === spot) continue;
+        p.spot = spot!;
         p.endYaw = target[1];
-        walk(p, c.id, c.spot!, target[0], c.activity === "run");
+        walk(p, c.id, spot!, target[0], c.activity === "run");
       }
       // left the scene (3.4: their place isn't one of this scene's): out by the nearest exit
       for (const [id, p] of people) {
@@ -178,7 +268,7 @@ export function People({ scene }: { scene: LoadedScene }) {
       off();
       for (const id of [...people.keys()]) remove(id);
     };
-  }, [nav, manifest, group, people, gl]);
+  }, [scene, nav, manifest, group, people, gl]);
 
   useFrame((_, dtRaw) => {
     group.visible = !rig.staged; // the ending's staging plays its own people (ending/Staging.tsx)

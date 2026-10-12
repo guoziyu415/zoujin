@@ -7,33 +7,56 @@
       "variant": null,
       "files": {
         "talk_high": {
-          "bytes": 1911960,
-          "sha256": "4f90d510420914203f2e8a5e56a8f9090a5d706a1d547d46b6d83ff69c8b9320",
-          "tris": 32299,
+          "bytes": 1934216,
+          "sha256": "aa91fbeac49b9661d4c5eaa629bd743e3d65ed42932295c72d0a502d0bb0c599",
+          "tris": 35607,
           "morphs": 65
         },
         "talk_std": {
-          "bytes": 1581988,
-          "sha256": "37ceac4dcc29d2a28e889505dd513446c9454034cbeba3f0ae395dfece016eeb",
-          "tris": 25072,
+          "bytes": 1571384,
+          "sha256": "f66605d842830820957c1af4cd2a25c46bd12f229bd28b5cf859dfa2d4ac1bab",
+          "tris": 24971,
           "morphs": 65
         },
         "walk": {
-          "bytes": 305532,
-          "sha256": "e540fa15a104ab1355ed9deae206dd5db3bb2aa213b1dd9219eaab2605e19f54",
-          "tris": 7999
+          "bytes": 310172,
+          "sha256": "bed8e9c26f5ba6f2b85c8c16c73fdcf2686fb80a73c094a75d8cdbf6099546e0",
+          "tris": 8000
         },
         "anims": {
-          "bytes": 243716,
-          "sha256": "78b79009c155cfd48efa8949d5cdba7dea05a8d1b503bd49375e20b5d054d1e9",
+          "bytes": 242852,
+          "sha256": "5c6d5761261c0c54c1534233f4297b29f3774de7af2f6036609aee72f4f8a543",
           "tris": 0,
-          "clips": [
-            "idle",
-            "talk",
-            "walk",
-            "run",
-            "sprint"
-          ]
+          "clips": ["idle", "talk", "walk", "run", "sprint"]
+        }
+      }
+    },
+    "bandits": {
+      "id": "char.bandits",
+      "variant": null,
+      "files": {
+        "talk_high": {
+          "bytes": 1848892,
+          "sha256": "e8dfdcd38bcfb50114b1751d63ab29e4dc9fd549f9789462798b5bf1e57bfcde",
+          "tris": 37267,
+          "morphs": 65
+        },
+        "talk_std": {
+          "bytes": 1500880,
+          "sha256": "65eb9e063f2d4b3aaf578114d826b781cfbb170a997aba2b7369d3c3efed4790",
+          "tris": 24971,
+          "morphs": 65
+        },
+        "walk": {
+          "bytes": 296460,
+          "sha256": "d4be82f91688f1eac8eeab2333c6956e72a8a7623ce8728ff1d1ab0d738f8082",
+          "tris": 8000
+        },
+        "anims": {
+          "bytes": 244060,
+          "sha256": "402d389370843753ca91354b0216c99cc0004d096548c2fd0c67d2f9b7a7edbe",
+          "tris": 0,
+          "clips": ["idle", "talk", "walk", "run", "sprint"]
         }
       }
     },
@@ -42,33 +65,27 @@
       "variant": null,
       "files": {
         "talk_high": {
-          "bytes": 2314632,
-          "sha256": "be82920029be8063cc1230a4ce2476ff9c41329c072d5c595d22f7078c14553a",
-          "tris": 35531,
+          "bytes": 2315376,
+          "sha256": "f4a4a5e43aa7fc6cdcf012bdfc2d5be64ad5a2cb83865bd10be5971522167cbe",
+          "tris": 38885,
           "morphs": 65
         },
         "talk_std": {
-          "bytes": 1999676,
-          "sha256": "cb653aa3d00b2080332183059ee73d5f321797778ae010b1825e2a9da0bc30d9",
-          "tris": 26687,
+          "bytes": 1972244,
+          "sha256": "042a09b330ca6be627bfeeb7ecbdb4336545f65e956b80e9c72f4160d1788224",
+          "tris": 26587,
           "morphs": 65
         },
         "walk": {
-          "bytes": 284252,
-          "sha256": "1689455de4444e2a679051ed4d027408d86d37bc79808980c6036a570da929b1",
-          "tris": 7999
+          "bytes": 290120,
+          "sha256": "87998260adb7f0c12f2e144e19be8ed62179297c625fc06ac1c2b59b5c83e789",
+          "tris": 8000
         },
         "anims": {
-          "bytes": 243728,
-          "sha256": "8b626e959f67a6b8e15e177452ebddadba6654051c381a94f13d426cd7473193",
+          "bytes": 243592,
+          "sha256": "46f62e2c79b359baadff83e28b6084f54bf179a5b85d8a8aabc8380fd0eff7eb",
           "tris": 0,
-          "clips": [
-            "idle",
-            "talk",
-            "walk",
-            "run",
-            "sprint"
-          ]
+          "clips": ["idle", "talk", "walk", "run", "sprint"]
         }
       }
     },
@@ -77,33 +94,56 @@
       "variant": "groom-wedding",
       "files": {
         "talk_high": {
-          "bytes": 2349552,
-          "sha256": "4da38da4a4fc4b6da10196921955390cd5f77a8beb6b09f9265a018200fee0c0",
-          "tris": 36418,
+          "bytes": 2343508,
+          "sha256": "646fede23527f1dc019af2ca83d06cce86ed0f0c08811ab0fa1375429ba67999",
+          "tris": 39205,
           "morphs": 65
         },
         "talk_std": {
-          "bytes": 2024864,
-          "sha256": "1952574704561a281d417005b9f48730b14486046751980e330ef57d419bb9ff",
-          "tris": 26687,
+          "bytes": 1996084,
+          "sha256": "ddde6d47395080d5f2fec314430e190a7cb48a781b18c472aa411c13014c524e",
+          "tris": 26578,
           "morphs": 65
         },
         "walk": {
-          "bytes": 291648,
-          "sha256": "00cebcdbfc37d9d31f720a00815afa1ddbe93a61e31e0a965cd5690ecf783350",
+          "bytes": 286580,
+          "sha256": "e04a3406680b78f020283655b22d80dfea67ab8be18639d66aad726099ac9bfa",
           "tris": 7999
         },
         "anims": {
-          "bytes": 243728,
-          "sha256": "8b626e959f67a6b8e15e177452ebddadba6654051c381a94f13d426cd7473193",
+          "bytes": 243592,
+          "sha256": "46f62e2c79b359baadff83e28b6084f54bf179a5b85d8a8aabc8380fd0eff7eb",
           "tris": 0,
-          "clips": [
-            "idle",
-            "talk",
-            "walk",
-            "run",
-            "sprint"
-          ]
+          "clips": ["idle", "talk", "walk", "run", "sprint"]
+        }
+      }
+    },
+    "guards": {
+      "id": "char.guards",
+      "variant": null,
+      "files": {
+        "talk_high": {
+          "bytes": 1852356,
+          "sha256": "cf17b32496f3209186e5434e25595af97a156858c564da00ac7ea5e1305950d9",
+          "tris": 38123,
+          "morphs": 65
+        },
+        "talk_std": {
+          "bytes": 1472704,
+          "sha256": "5b719e5c8edbccdadd95636f7838cddd1c294f6cb7ecc4980b55ac8ec9b519fe",
+          "tris": 24967,
+          "morphs": 65
+        },
+        "walk": {
+          "bytes": 235608,
+          "sha256": "04202e66b979c513957d49d8ae939657acd27dcbf99f49906f49f31532e0b267",
+          "tris": 7999
+        },
+        "anims": {
+          "bytes": 235976,
+          "sha256": "a4df818dbb20cf878a5dddc56545f1502e1db6028fa5c9294ecbd962fd49b2e0",
+          "tris": 0,
+          "clips": ["idle", "talk", "walk", "run", "sprint"]
         }
       }
     },
@@ -112,33 +152,114 @@
       "variant": null,
       "files": {
         "talk_high": {
-          "bytes": 2512936,
-          "sha256": "9a2031e31755f245a50587c9a0af288d58763e5b49741ddc036b408978a6516d",
-          "tris": 37269,
+          "bytes": 2517076,
+          "sha256": "089d33dd4206964ddddc11196a41c09dd62af2b0d97be17029b06bc06f540bf8",
+          "tris": 39989,
           "morphs": 65
         },
         "talk_std": {
-          "bytes": 2103292,
-          "sha256": "5931144dee1d56cefc6779c34716c2a2cc972d32916d99b26d8ea1ca3bf05fd8",
-          "tris": 26548,
+          "bytes": 2083260,
+          "sha256": "82b2308dd82740781a2932a6224964e9f0c5c4ae37161cce25aec7743d2710d4",
+          "tris": 26547,
           "morphs": 65
         },
         "walk": {
-          "bytes": 282332,
-          "sha256": "55377b3aeebf3b2f0ea4b17a38fd9ce63f5265a03b7fadf07a4e15ac9e575223",
+          "bytes": 275464,
+          "sha256": "69707a508f7915c5e9f4c91ae5af606c27e603a348775ac664fc3f513ff6d982",
+          "tris": 8000
+        },
+        "anims": {
+          "bytes": 246284,
+          "sha256": "c50ef5739ca3984ecd7e41f01d81104f7671d443704dedd3955517e0f57f3d97",
+          "tris": 0,
+          "clips": ["idle", "talk", "walk", "run", "sprint"]
+        }
+      }
+    },
+    "maiden": {
+      "id": "char.maiden",
+      "variant": null,
+      "files": {
+        "talk_high": {
+          "bytes": 1935016,
+          "sha256": "71b9895d79e70c4956cc43c9b84c933e9e809cf013a817ba0c813bd3424b07ef",
+          "tris": 35523,
+          "morphs": 65
+        },
+        "talk_std": {
+          "bytes": 1554812,
+          "sha256": "11e078a8088e4afc24d122854315f92f73f03548187b7e9daac70e6e88cba56e",
+          "tris": 25088,
+          "morphs": 65
+        },
+        "walk": {
+          "bytes": 290580,
+          "sha256": "d2d0c14b5280d7cb4d2442c44c5f9e730e9ae53f9b53f7929183bc8e988e5657",
           "tris": 7999
         },
         "anims": {
-          "bytes": 245788,
-          "sha256": "2b1b0f06f70590f6251993a3706a8d76332063bf5a665e60a4b5be056ebdb026",
+          "bytes": 245276,
+          "sha256": "3883867bcb3e6b4fa4569745ed5a9d60273b7d60fbd6ce865e000976d9d2846e",
           "tris": 0,
-          "clips": [
-            "idle",
-            "talk",
-            "walk",
-            "run",
-            "sprint"
-          ]
+          "clips": ["idle", "talk", "walk", "run", "sprint"]
+        }
+      }
+    },
+    "melos": {
+      "id": "char.melos",
+      "variant": null,
+      "files": {
+        "talk_high": {
+          "bytes": 1847104,
+          "sha256": "1d60f7f1c2344fcdb16cad69bf41802807e68dfc4a2901a3e0da63d8fcffcb8b",
+          "tris": 36217,
+          "morphs": 65
+        },
+        "talk_std": {
+          "bytes": 1464156,
+          "sha256": "32b531df1b1d56f9b2bd81307539d5f0c19602c33b482bb9ba84af3948c9a78e",
+          "tris": 25157,
+          "morphs": 65
+        },
+        "walk": {
+          "bytes": 269404,
+          "sha256": "2ab7db04998c57210859f37c37db463f1a2bc35e65136f82c334734b1907f87c",
+          "tris": 8000
+        },
+        "anims": {
+          "bytes": 243056,
+          "sha256": "87adb437f521cf1668b1463da18e21ab597529b64b33b4a1649a07e261c7c619",
+          "tris": 0,
+          "clips": ["idle", "talk", "walk", "run", "sprint"]
+        }
+      }
+    },
+    "old-man": {
+      "id": "char.old-man",
+      "variant": null,
+      "files": {
+        "talk_high": {
+          "bytes": 2559724,
+          "sha256": "f8e3cca6a3f60354a9d68f31911a67cd38c9214b48b8dd0f786c0a4e187e8f69",
+          "tris": 39529,
+          "morphs": 65
+        },
+        "talk_std": {
+          "bytes": 2155508,
+          "sha256": "1279718390b6792b5720fcd7474cff337452925a2ec1548badbcf15a521ea838",
+          "tris": 26612,
+          "morphs": 65
+        },
+        "walk": {
+          "bytes": 300360,
+          "sha256": "e3561074f6793171122ed8fce7bce5c192cda5c0e969e98bb7a099e478504aa0",
+          "tris": 7999
+        },
+        "anims": {
+          "bytes": 235752,
+          "sha256": "47c307d7bf69fd3e6d7fd79246584805c3002cc2f630d2058a01e76d90a5d555",
+          "tris": 0,
+          "clips": ["idle", "talk", "walk", "run", "sprint"]
         }
       }
     },
@@ -147,33 +268,27 @@
       "variant": null,
       "files": {
         "talk_high": {
-          "bytes": 1889348,
-          "sha256": "c968f2f80dad4bc156725b0698f6e040f33adf0f30f6af1ec82eccea6515f163",
-          "tris": 32023,
+          "bytes": 1923644,
+          "sha256": "e6791b7f7891d80891303113030e64e2d1c217258239d0e27a0adf871112c889",
+          "tris": 35319,
           "morphs": 65
         },
         "talk_std": {
-          "bytes": 1562412,
-          "sha256": "a44024e0b77f840b0ee865c35b11999e4c0b9e95f4f0677ec370d599d3dac58b",
-          "tris": 25070,
+          "bytes": 1568636,
+          "sha256": "48fae90c177b9801ff8741ff2f008908916be40b9c4a4eee72614b11a7886c29",
+          "tris": 24967,
           "morphs": 65
         },
         "walk": {
-          "bytes": 297484,
-          "sha256": "2743581c49f6686c6a74f57d52fdca765bbd7d6f6bef0fe87bedd82867e7fe96",
-          "tris": 7999
+          "bytes": 294680,
+          "sha256": "ab61bfa1cd18623a584e66645efeb0a4a2442993abde0776cc9708a99856e398",
+          "tris": 8000
         },
         "anims": {
-          "bytes": 242928,
-          "sha256": "6fe73eb40fb3010df052498ca961d1dea002923cae884b571ed64ac95205f0ae",
+          "bytes": 243632,
+          "sha256": "7e1425b1c96991b23fc3eb71e0705f0ed48246c04bc1b90d0fdab52e54ab18de",
           "tris": 0,
-          "clips": [
-            "idle",
-            "talk",
-            "walk",
-            "run",
-            "sprint"
-          ]
+          "clips": ["idle", "talk", "walk", "run", "sprint"]
         }
       }
     },
@@ -182,33 +297,27 @@
       "variant": null,
       "files": {
         "talk_high": {
-          "bytes": 2442536,
-          "sha256": "92d98d130a71abd4e1280748b2829eedb65b9c42f37123ff2948f106d18896e9",
-          "tris": 33590,
+          "bytes": 2461092,
+          "sha256": "7320f0991b24bec78c545fe05437e78c48a5f61014c2aad80ca4ed650a969f1c",
+          "tris": 36951,
           "morphs": 65
         },
         "talk_std": {
-          "bytes": 2118228,
-          "sha256": "ba7e9e1cb7cbba8cffeaf4adb19b5235357488027151bc27cad0fc89bd649657",
-          "tris": 26488,
+          "bytes": 2109736,
+          "sha256": "04332fed278889b9f7962ba04d25dabca25a21476bae5d20e73ad4d76e425af0",
+          "tris": 26384,
           "morphs": 65
         },
         "walk": {
-          "bytes": 302728,
-          "sha256": "9e2dfb7185d604839983d3777c1d4a708cbb23046047d7d679ff642d8ff83e8d",
-          "tris": 7998
+          "bytes": 298968,
+          "sha256": "9ac1e5745d45214014973939c15397cb56b74ff8c6709b8ba34a33fc4e922221",
+          "tris": 7999
         },
         "anims": {
-          "bytes": 243952,
-          "sha256": "6ccc12a259a65c53ceff9014b9dd655f200c7fa6c811d39479f7f579ee2a71da",
+          "bytes": 244624,
+          "sha256": "8303092d25006e4cc5b1c94775a73aab7a93cd67d7f936a942dfe7911089bfb6",
           "tris": 0,
-          "clips": [
-            "idle",
-            "talk",
-            "walk",
-            "run",
-            "sprint"
-          ]
+          "clips": ["idle", "talk", "walk", "run", "sprint"]
         }
       }
     },
@@ -217,33 +326,27 @@
       "variant": null,
       "files": {
         "talk_high": {
-          "bytes": 1737516,
-          "sha256": "c36ab052b05657dc5c30a9885c86f513413a95261a589813031ad0a274cf96de",
-          "tris": 34415,
+          "bytes": 1778196,
+          "sha256": "c383847237512b4666c83f059f8be47eb6dd7a167ffe410242067c82a280c796",
+          "tris": 33821,
           "morphs": 65
         },
         "talk_std": {
-          "bytes": 1415580,
-          "sha256": "1e508ef15768273d24395ebb84454c06a6dd6ef4e9eaa04429faba56cea0298b",
-          "tris": 24872,
+          "bytes": 1460968,
+          "sha256": "91867578bd76efcadd30fd4f08d1022f53bab197e34469537519718ee190f744",
+          "tris": 24754,
           "morphs": 65
         },
         "walk": {
-          "bytes": 293124,
-          "sha256": "e017be9cb13a278169e3ebca1be85a69b22f280dc543ef0c8b6fda32ad27c1f2",
+          "bytes": 286816,
+          "sha256": "2d2d7657e08166f229edae21a214caf99df107f62c5da983cc6ac44c5f5dcee9",
           "tris": 7999
         },
         "anims": {
-          "bytes": 244700,
-          "sha256": "d14921f11d7f18a3ec785ba35fe22f39dbf1a32ad3018364fe1e8b0023dc8839",
+          "bytes": 243488,
+          "sha256": "b404522f0b1dc08fb9f85638f082ee8e16f3343d22db59277b8a8f44d1c4455d",
           "tris": 0,
-          "clips": [
-            "idle",
-            "talk",
-            "walk",
-            "run",
-            "sprint"
-          ]
+          "clips": ["idle", "talk", "walk", "run", "sprint"]
         }
       }
     },
@@ -252,33 +355,27 @@
       "variant": null,
       "files": {
         "talk_high": {
-          "bytes": 1973592,
-          "sha256": "6d6069a597cf0d2b8a29cb84af66777e864a118ac6f1dfe491b883fd05a66e50",
-          "tris": 37609,
+          "bytes": 1909772,
+          "sha256": "9ea75f8141e09b5eb80ac8ee2edfc3effc39e0fb2759ef5ff0c5828bea51a6ea",
+          "tris": 35591,
           "morphs": 65
         },
         "talk_std": {
-          "bytes": 1573192,
-          "sha256": "cb85dc689ea4b9a3797d306a18e57bf28a448e1e8b600de1ff6aa3b846d9943a",
-          "tris": 25080,
+          "bytes": 1540624,
+          "sha256": "714e7e006a0509416269b11c411070c318ee520d5ad058cea33e6ab480a16182",
+          "tris": 25084,
           "morphs": 65
         },
         "walk": {
-          "bytes": 303456,
-          "sha256": "dfddb5eee5d1446b2317b8f55e993a8d5e9a9fd748e80340902f46ffac6e65cf",
-          "tris": 8000
+          "bytes": 285236,
+          "sha256": "5fdc1116f41445c45666ed9cb6f667d8c6d816adf2e0d7ef25a5e58658c19b93",
+          "tris": 7999
         },
         "anims": {
-          "bytes": 243412,
-          "sha256": "f03e8ede4dc2a3139efaf00050107b85a1a02087c2f002b4295ea83154113008",
+          "bytes": 244508,
+          "sha256": "5b1fb1f6c0e599b4315fb991589e4f6238275d091831e909d854511f90f1c27b",
           "tris": 0,
-          "clips": [
-            "idle",
-            "talk",
-            "walk",
-            "run",
-            "sprint"
-          ]
+          "clips": ["idle", "talk", "walk", "run", "sprint"]
         }
       }
     },
@@ -287,33 +384,114 @@
       "variant": "sister-wedding",
       "files": {
         "talk_high": {
-          "bytes": 1985328,
-          "sha256": "1c2b0bcffb88cd70d6b21618e1d58b63f0a9025a31bd01858b75e4d4326a09a6",
-          "tris": 37793,
+          "bytes": 1914700,
+          "sha256": "5de9f2a7319f13283c42618101e7f50a60564a276ab71829d864dd5820562dfb",
+          "tris": 35751,
           "morphs": 65
         },
         "talk_std": {
-          "bytes": 1580632,
-          "sha256": "cd89cd04752e3501447a51aaa142b939cf64931aa357a3e3f4c47a3a6d8568e7",
-          "tris": 25080,
+          "bytes": 1540832,
+          "sha256": "761e6fa4d8f19b74ceb87b256e753268be1d07a4cf48c76de8c55e40d49b726b",
+          "tris": 25084,
           "morphs": 65
         },
         "walk": {
-          "bytes": 305428,
-          "sha256": "990d9592fe3317de692bdca6f53e2ee8384128767e8fc34c3576820f162e4118",
+          "bytes": 284512,
+          "sha256": "3d1a209a5df9d9afba7701e36db5742f41f4db0ed764379f1712da35475209fb",
           "tris": 8000
         },
         "anims": {
-          "bytes": 243412,
-          "sha256": "f03e8ede4dc2a3139efaf00050107b85a1a02087c2f002b4295ea83154113008",
+          "bytes": 244508,
+          "sha256": "5b1fb1f6c0e599b4315fb991589e4f6238275d091831e909d854511f90f1c27b",
           "tris": 0,
-          "clips": [
-            "idle",
-            "talk",
-            "walk",
-            "run",
-            "sprint"
-          ]
+          "clips": ["idle", "talk", "walk", "run", "sprint"]
+        }
+      }
+    },
+    "traveler": {
+      "id": "role.traveler",
+      "variant": null,
+      "files": {
+        "talk_high": {
+          "bytes": 1923424,
+          "sha256": "2877bb69e44574c44daa2cacd3a8c94a4766d3ef78a3945a091d5b0ad53ecaa1",
+          "tris": 38011,
+          "morphs": 65
+        },
+        "talk_std": {
+          "bytes": 1530684,
+          "sha256": "423028f2bef56bd5dfebe2f91850975252b10e076c55f138afb0bac91560096b",
+          "tris": 25079,
+          "morphs": 65
+        },
+        "walk": {
+          "bytes": 291920,
+          "sha256": "a55dcec934013cbf8a07ae5a8da7d87f6a209a42247f8d97567f131e6e17dbb2",
+          "tris": 7999
+        },
+        "anims": {
+          "bytes": 236628,
+          "sha256": "eeb241c6af93678f0a3f787b1cb83d17bd57c208f613c6264e62f25603ef0e63",
+          "tris": 0,
+          "clips": ["idle", "talk", "walk", "run", "sprint"]
+        }
+      }
+    },
+    "travelers": {
+      "id": "char.travelers",
+      "variant": null,
+      "files": {
+        "talk_high": {
+          "bytes": 2502708,
+          "sha256": "b37cce749edd3d453e8100b6954686db822a0a3cc3f4ccbf223124878a7c0062",
+          "tris": 39651,
+          "morphs": 65
+        },
+        "talk_std": {
+          "bytes": 2097828,
+          "sha256": "bd908e28a8c8b48ce468ef9f49ac6352429f424919702aa97101bfe585dae2df",
+          "tris": 26437,
+          "morphs": 65
+        },
+        "walk": {
+          "bytes": 292448,
+          "sha256": "2fb29ff80306b34387a221f56865f8e317da4f5b1c7f9ff3e850fd6a8a21a550",
+          "tris": 8000
+        },
+        "anims": {
+          "bytes": 236288,
+          "sha256": "a0bbcdfcd0ecdc8e15b81bdfc2052e1d374cd21def6a1b9c1000e52d6ee51738",
+          "tris": 0,
+          "clips": ["idle", "talk", "walk", "run", "sprint"]
+        }
+      }
+    },
+    "young-man": {
+      "id": "char.young-man",
+      "variant": null,
+      "files": {
+        "talk_high": {
+          "bytes": 1835976,
+          "sha256": "cae54c8cd5312c88c812f86d0a125aea8c174fddc6518573a4188c4cfcd59e64",
+          "tris": 35287,
+          "morphs": 65
+        },
+        "talk_std": {
+          "bytes": 1479960,
+          "sha256": "f327d36b97d598eff4ad955b81ebae8c8ef4a54a52596876b4e5cdc1ef71a076",
+          "tris": 24971,
+          "morphs": 65
+        },
+        "walk": {
+          "bytes": 269732,
+          "sha256": "e0ba8d446187c6597b845852d4324e24fe3ab58dcea2c139265f282d8462d8f5",
+          "tris": 7998
+        },
+        "anims": {
+          "bytes": 245284,
+          "sha256": "d10becf5d483927a48e6b80e7f92b73015b31d19718e21b9f2ec1d06d48a1840",
+          "tris": 0,
+          "clips": ["idle", "talk", "walk", "run", "sprint"]
         }
       }
     }

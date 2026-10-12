@@ -1,5 +1,5 @@
 // The characters' budgets (F-16; budgets.json "character", frontend-design 10.6.2) and the committed manifest.
-//   node check_cast.mjs <build_dir> <manifest.json>
+//   node check_cast.mjs <build_dir> <manifest.json> [--require-all]
 // build_dir/<name>/ holds what build.sh wrote: the four glbs and compress.mjs's report. The manifest (in git, the files
 // are not) lists each character's files with their size, sha256 and triangles; build.sh refreshes it. Exits 1 on a
 // file over its budget.
@@ -9,6 +9,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const [, , BUILD, MANIFEST] = process.argv;
+const requireAll = process.argv.includes("--require-all");
 const here = path.dirname(fileURLToPath(import.meta.url));
 const budgets = JSON.parse(
   fs.readFileSync(path.join(here, "../../budgets.json"), "utf8"),
@@ -50,7 +51,10 @@ const manifest = {
 const errors = [];
 for (const name of Object.keys(names).sort()) {
   const dir = path.join(BUILD, name);
-  if (!fs.existsSync(path.join(dir, "compress_report.json"))) continue;
+  if (!fs.existsSync(path.join(dir, "compress_report.json"))) {
+    if (requireAll) errors.push(`${name}: missing compress_report.json`);
+    continue;
+  }
   const reports = JSON.parse(
     fs.readFileSync(path.join(dir, "compress_report.json"), "utf8"),
   );
@@ -62,6 +66,14 @@ for (const name of Object.keys(names).sort()) {
       continue;
     }
     const buf = fs.readFileSync(p);
+    const gltf = JSON.parse(
+      buf.subarray(20, 20 + buf.readUInt32LE(12)).toString("utf8"),
+    );
+    const nonNeutral = [...(gltf.meshes ?? []), ...(gltf.nodes ?? [])].some(
+      (item) => item.weights?.some((weight) => weight !== 0),
+    );
+    if (nonNeutral)
+      errors.push(`${name}/${file}: non-neutral default morph weights`);
     const r = reports.find((x) => x.file === file) ?? {};
     const b = budgets[tier];
     const entry = {
@@ -98,7 +110,6 @@ if (fs.existsSync(MANIFEST)) {
 manifest.characters = Object.fromEntries(
   Object.entries(manifest.characters).sort(([a], [b]) => a.localeCompare(b)),
 );
-fs.writeFileSync(MANIFEST, JSON.stringify(manifest, null, 2) + "\n");
 for (const [k, v] of Object.entries(manifest.characters))
   console.log(
     k,
@@ -110,3 +121,4 @@ if (errors.length) {
   console.error(errors.join("\n"));
   process.exit(1);
 }
+fs.writeFileSync(MANIFEST, JSON.stringify(manifest, null, 2) + "\n");

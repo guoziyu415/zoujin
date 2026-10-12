@@ -315,6 +315,8 @@ def landmarks():
         "pelvis": bone_world("pelvis"),
         "thigh_l": bone_world("thigh_l"),
         "thigh_r": bone_world("thigh_r"),
+        "knee_l": bone_world("calf_l"),
+        "knee_r": bone_world("calf_r"),
         "ankle_l": bone_world("foot_l"),
         "ankle_r": bone_world("foot_r"),
         "shoulder_l": bone_world("upperarm_l"),
@@ -323,6 +325,7 @@ def landmarks():
         "elbow_r": bone_world("lowerarm_r"),
         "hand_r": bone_world("hand_r"),
         "hand_r_tip": bone_world("hand_r", tail=True),
+        "hand_l": bone_world("hand_l"),
         "mouth": co[lips].mean(0),
         "mouth_lo": co[lips, 2].min(),
         "mouth_hi": co[lips, 2].max(),
@@ -702,7 +705,16 @@ LEGS = {"thigh_l", "thigh_r", "calf_l", "calf_r"}
 FEET = {"foot_l", "foot_r", "ball_l", "ball_r"}
 TEX = 1024
 PIECE_KIND = []  # piece index -> garment spec
-RIGID_GARMENTS = {"staff": "hand_r", "hat": "head"}  # props that follow one bone
+RIGID_GARMENTS = {
+    "staff": "hand_r",
+    "hat": "head",
+    "waterskin": "pelvis",
+    "folded-cloak": "lowerarm_l",
+    "helmet": "head",
+    "spear": "hand_r",
+    "club": "hand_r",
+    "bundle": "spine_03",
+}  # props that follow one bone
 
 
 def base_parts(base, fco):
@@ -769,6 +781,34 @@ def piece(bm_all, layer, verts, fs, kind_index):
     return bm
 
 
+def soften_edges(bm, passes=4):
+    """Relax helper-mesh cut boundaries into cloth hems rather than saw teeth."""
+    boundary = {v: [e.other_vert(v) for e in v.link_edges if e.is_boundary] for v in bm.verts if v.is_boundary}
+    for _ in range(passes):
+        positions = {
+            v: v.co.lerp(sum((n.co for n in near), Vector()) / len(near), 0.45)
+            for v, near in boundary.items()
+            if len(near) == 2
+        }
+        for v, co in positions.items():
+            v.co = co
+    bm.normal_update()
+
+
+def flare_skirt(verts, hip_z, ground):
+    hems = [g["hem"] for g in SPEC["garments"] if g["kind"] in {"chiton", "himation"}]
+    hem = ground + min(hems)
+    for p in verts:
+        flare = float(np.clip((hip_z - p[2]) / max(hip_z - hem, 0.1), 0, 1))
+        p[0] *= 1 + 0.15 * flare
+        p[1] *= 1 + 0.65 * flare
+
+
+def sleeve_cuts(lm, sleeves):
+    t = {"none": 0.15, "short": 0.4, "half": 0.6}[sleeves]
+    return [(lm["shoulder_" + s] * (1 - t) + lm["elbow_" + s] * t, (sign, 0, 0)) for s, sign in (("l", 1), ("r", -1))]
+
+
 def garment_pieces(bp, lm):
     """bmesh pieces with the garment spec index they belong to."""
     out = []
@@ -783,14 +823,11 @@ def garment_pieces(bp, lm):
             upper = faces_where(
                 bp,
                 bp["tights"],
-                lambda fi, f, c: (
-                    majority(bp, f, TORSO | {"upperarm_l", "upperarm_r"})
-                    and c[2] > hip_z - 0.12
-                    and not on_arm(lm, c, sl)
-                ),
+                lambda fi, f, c: c[2] > hip_z - 0.12,
             )
             verts, fs, _ = shell(co, bp["faces"], upper, 0.011, bp["n"])
             bm = mesh_bm(verts, fs)
+            cut(bm, sleeve_cuts(lm, sl))
             cut_all(bm, neckline_planes(lm))
             planes = []
             if g.get("bare"):
@@ -802,12 +839,14 @@ def garment_pieces(bp, lm):
                     )
                 )
             cut(bm, planes)
-            out.append((bm, gi))
+            upper_bm = bm
             skirt = faces_where(bp, bp["skirt"], lambda fi, f, c: c[2] > hem - 0.01)
             verts, fs, _ = shell(co, bp["faces"], skirt, 0.014, bp["n"])
+            # Loose linen needs space for a bent knee; the helper hugs the body.
+            flare_skirt(verts, hip_z, gz)
             bm = mesh_bm(verts, fs)
             cut(bm, [(np.array([0, 0, hem]), (0, 0, -1))])
-            out.append((bm, gi))
+            out.append((stitch_waist(upper_bm, bm, hip_z), gi))
         elif k == "himation":
             hem = gz + g["hem"]
             off = 0.034 if g.get("heavy") else 0.026
@@ -815,14 +854,11 @@ def garment_pieces(bp, lm):
             up = faces_where(
                 bp,
                 bp["tights"],
-                lambda fi, f, c: (
-                    majority(bp, f, TORSO | {"upperarm_l", "upperarm_r"})
-                    and c[2] > hip_z - 0.12
-                    and not on_arm(lm, c, "half")
-                ),
+                lambda fi, f, c: c[2] > hip_z - 0.12,
             )
             verts, fs, _ = shell(co, bp["faces"], up, off, bp["n"])
             bm = mesh_bm(verts, fs)
+            cut(bm, sleeve_cuts(lm, "half"))
             cut_all(bm, neckline_planes(lm, 0.02))
             planes = []
             # the other shoulder and the armpit under it stay out (draped over one shoulder, under the other arm)
@@ -833,26 +869,24 @@ def garment_pieces(bp, lm):
                 )
             )
             cut(bm, planes)
-            out.append((bm, gi))
+            upper_bm = bm
             sk = faces_where(bp, bp["skirt"], lambda fi, f, c: c[2] > hem - 0.01)
             verts, fs, _ = shell(co, bp["faces"], sk, off + 0.006, bp["n"])
+            flare_skirt(verts, hip_z, gz)
             bm = mesh_bm(verts, fs)
             # the edge falls diagonally: lower on the draped side
             cut(bm, [(np.array([0, 0, hem]), (0, 0, -1)), (np.array([0, 0, hip_z + 0.02]), (0, 0, 1))])
-            out.append((bm, gi))
+            out.append((stitch_waist(upper_bm, bm, hip_z), gi))
         elif k == "cloak":
             top = lm["neck"][2]
             sel = faces_where(
                 bp,
                 bp["tights"],
-                lambda fi, f, c: (
-                    majority(bp, f, TORSO | {"upperarm_l", "upperarm_r"})
-                    and c[2] > top - g["to"] - 0.05
-                    and not on_arm(lm, c, "short")
-                ),
+                lambda fi, f, c: c[2] > top - g["to"] - 0.05,
             )
             verts, fs, _ = shell(co, bp["faces"], sel, 0.035 if g.get("fleece") else 0.026, bp["n"])
             bm = mesh_bm(verts, fs)
+            cut(bm, sleeve_cuts(lm, "short"))
             cut_all(bm, neckline_planes(lm, 0.0, 0.2))
             planes = [(np.array([0, 0, top - g["to"]]), (0, 0, -1))]
             cut(bm, planes)
@@ -873,26 +907,7 @@ def garment_pieces(bp, lm):
             )
             out.append((bm, gi))
         elif k == "veil":
-            # over the head and down the back to the shoulders; the face stays open
-            eye = lm["eye"]
-            sel = faces_where(
-                bp,
-                bp["body"],
-                lambda fi, f, c: (
-                    majority(bp, f, {"head", "neck_01", "spine_03", "clavicle_l", "clavicle_r"})
-                    and c[2] > lm["chest"][2] + 0.03
-                ),
-            )
-            verts, fs, _ = shell(co, bp["faces"], sel, 0.03, bp["n"])
-            bm = mesh_bm(verts, fs)
-            cut(
-                bm,
-                [
-                    (eye + [0, 0.035, 0], (0, -1, 0.35)),  # in front of the ears and over the brow line
-                    (np.array([0, 0, lm["chest"][2] + 0.05]), (0, 0, -1)),
-                ],
-            )
-            out.append((bm, gi))
+            out.append((hood_bm(lm), gi))
         elif k == "shoes":
             style = g["style"]
             if style == "none":
@@ -946,14 +961,44 @@ def garment_pieces(bp, lm):
             out.append((staff_bm(lm, g), gi))
         elif k == "hat":
             out.append((hat_bm(lm, g), gi))
+        elif k == "shoulder-strap":
+            out.append((strap_bm(bp, lm), gi))
+        elif k == "waterskin":
+            out.append((waterskin_bm(lm), gi))
+        elif k == "folded-cloak":
+            out.append((folded_cloak_bm(lm), gi))
+        elif k == "helmet":
+            out.append((helmet_bm(lm), gi))
+        elif k in {"spear", "club"}:
+            out.append((weapon_bm(lm, k), gi))
+        elif k == "bundle":
+            out.append((bundle_bm(lm), gi))
+        elif k == "face-wrap":
+            # Cloth must bridge the mouth opening, not inherit the skin's lip hole.
+            bm = bmesh.new()
+            rings = []
+            cy = float(lm["eye"][1]) + 0.055
+            for t in np.linspace(0, 1, 5):
+                z = (lm["mouth_lo"] - 0.03) * (1 - t) + (lm["eye"][2] - 0.025) * t
+                rings.append(
+                    [
+                        bm.verts.new(
+                            (0.098 * math.sin(a), cy - (0.135 + 0.004 * math.sin(t * math.pi * 3)) * math.cos(a), z)
+                        )
+                        for a in np.linspace(0, 2 * math.pi, 32, endpoint=False)
+                    ]
+                )
+            for a, b in zip(rings, rings[1:], strict=False):
+                for i in range(32):
+                    bm.faces.new([a[i], a[(i + 1) % 32], b[(i + 1) % 32], b[i]])
+            bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+            out.append((bm, gi))
         elif k == "belt":
             # a sash round the waist over the robe, the tails hanging at the left hip
             z0 = lm["pelvis"][2] + g.get("at", 0.1)
             h = g.get("width", 0.06)
-            sel = faces_where(
-                bp, bp["tights"], lambda fi, f, c, z0=z0, h=h: majority(bp, f, TORSO) and abs(c[2] - z0) < h
-            )
-            verts, fs, _ = shell(co, bp["faces"], sel, 0.024, bp["n"])
+            sel = faces_where(bp, bp["tights"], lambda fi, f, c, z0=z0, h=h: abs(c[0]) < 0.3 and abs(c[2] - z0) < h)
+            verts, fs, _ = shell(co, bp["faces"], sel, 0.018, bp["n"])
             bm = mesh_bm(verts, fs)
             cut(bm, [(np.array([0, 0, z0 + h / 2]), (0, 0, 1)), (np.array([0, 0, z0 - h / 2]), (0, 0, -1))])
             out.append((bm, gi))
@@ -963,6 +1008,226 @@ def garment_pieces(bp, lm):
                 y = float(ring[ring[:, 0] > x - 0.05, 1].mean()) - 0.02
                 out.append((tails_bm(x, y, z0 - h / 2, g["tails"]), gi))
     return out
+
+
+def stitch_waist(upper, lower, z):
+    """Join complete waist boundary loops by topology and perimeter, without folded zero-height bridges."""
+    cut(upper, [(np.array([0, 0, z]), (0, 0, -1))])
+    cut(lower, [(np.array([0, 0, z]), (0, 0, 1))])
+    result = bmesh.new()
+    rings = []
+    for part in (upper, lower):
+        bmesh.ops.remove_doubles(part, verts=part.verts[:], dist=1e-5)
+        edges = [e for e in part.edges if e.is_boundary and all(abs(v.co.z - z) < 1e-5 for v in e.verts)]
+        adjacency = {}
+        for edge in edges:
+            a, b = edge.verts
+            adjacency.setdefault(a, []).append(b)
+            adjacency.setdefault(b, []).append(a)
+        if len(adjacency) < 3 or any(len(n) != 2 for n in adjacency.values()):
+            raise ValueError("Garment must have a complete, unbranched waist boundary")
+        first = min(adjacency, key=lambda v: math.atan2(v.co.y, v.co.x) % (2 * math.pi))
+        ordered, previous, current = [first], first, adjacency[first][0]
+        while current != first:
+            if current in ordered:
+                raise ValueError("Waist boundary folds back before closing")
+            ordered.append(current)
+            previous, current = current, next(v for v in adjacency[current] if v != previous)
+        if len(ordered) != len(adjacency):
+            raise ValueError("Garment waist contains multiple loops")
+        area = sum(a.co.x * b.co.y - b.co.x * a.co.y for a, b in zip(ordered, ordered[1:] + ordered[:1]))
+        if area < 0:
+            ordered = [ordered[0]] + list(reversed(ordered[1:]))
+        mapped = {v: result.verts.new(v.co) for v in part.verts}
+        for face in part.faces:
+            result.faces.new([mapped[v] for v in face.verts])
+        rings.append([mapped[v] for v in ordered])
+        part.free()
+    a, b = rings
+
+    def parameters(ring):
+        lengths = [(v.co - ring[(i + 1) % len(ring)].co).length for i, v in enumerate(ring)]
+        total = sum(lengths)
+        return list(np.cumsum([0] + lengths) / total)
+
+    ta, tb = parameters(a), parameters(b)
+    # The lower ring follows the upper perimeter continuously, not nearest-angle
+    # vertices (which collapsed/folded triangles at the centre-back seam).
+    for i, v in enumerate(b):
+        j = min(int(np.searchsorted(ta, tb[i], side="right")) - 1, len(a) - 1)
+        t = (tb[i] - ta[j]) / max(ta[j + 1] - ta[j], 1e-9)
+        v.co = a[j].co.lerp(a[(j + 1) % len(a)].co, float(t))
+        v.co.z = z - 0.01
+    for v in a:
+        v.co.z = z + 0.01
+    ia = ib = 0
+    while ia < len(a) or ib < len(b):
+        if ib >= len(b) or ia < len(a) and ta[ia + 1] < tb[ib + 1]:
+            face = [a[ia % len(a)], a[(ia + 1) % len(a)], b[ib % len(b)]]
+            ia += 1
+        else:
+            face = [a[ia % len(a)], b[(ib + 1) % len(b)], b[ib % len(b)]]
+            ib += 1
+        result.faces.new(face)
+    result.normal_update()
+    return result
+
+
+def strap_bm(bp, lm):
+    """A leather strap follows front and back of the torso, from left shoulder to right hip."""
+    bm = bmesh.new()
+    helper_faces = [f for f in bp["faces"] if bp["tights"][list(f)].all()]
+    helper = BVHTree.FromPolygons([Vector(p) for p in bp["co"]], helper_faces)
+    start = lm["shoulder_l"].copy()
+    start[0] -= 0.035
+    end = np.array([-0.21, 0, lm["pelvis"][2] - 0.03])
+    dx, dz = end[0] - start[0], end[2] - start[2]
+    width = np.array([-dz, 0, dx]) / math.hypot(dx, dz) * 0.014
+    for back in (False, True):
+        rows = []
+        for t in np.linspace(0, 1, 28):
+            p = start * (1 - t) + end * t
+            row = []
+            for edge in (p - width, p + width):
+                origin = Vector((edge[0], 2 if back else -2, edge[2]))
+                hit = helper.ray_cast(origin, Vector((0, -1 if back else 1, 0)), 4)[0]
+                if hit is None:
+                    hit = helper.find_nearest(Vector(edge))[0]
+                edge[1] = hit.y + (0.032 if back else -0.032)
+                row.append(bm.verts.new(edge))
+            rows.append(row)
+        for a, b in zip(rows, rows[1:]):
+            bm.faces.new([a[0], a[1], b[1], b[0]] if back else [a[1], a[0], b[0], b[1]])
+    bm.normal_update()
+    return bm
+
+
+def ellipsoid(bm, centre, scale, segments=20, rings=12):
+    made = bmesh.ops.create_uvsphere(bm, u_segments=segments, v_segments=rings, radius=1)
+    for vert in made["verts"]:
+        vert.co = Vector(centre) + Vector(tuple(vert.co[i] * scale[i] for i in range(3)))
+    return made["verts"]
+
+
+def waterskin_bm(lm):
+    bm = bmesh.new()
+    p = Vector((-0.215, 0.085, lm["pelvis"][2] - 0.15))
+    verts = ellipsoid(bm, p, (0.105, 0.075, 0.17))
+    for v in verts:
+        t = (v.co.z - p.z) / 0.17
+        v.co.x = p.x + (v.co.x - p.x) * (1 - 0.3 * max(t, 0))
+        v.co.y += 0.004 * math.sin(t * 20 + v.co.x * 45)
+    ellipsoid(bm, p + Vector((0.02, 0, 0.17)), (0.025, 0.023, 0.04), 12, 8)
+    bm.normal_update()
+    return bm
+
+
+def folded_cloak_bm(lm):
+    """A compact folded wool bundle supported by the bent forearm, with a closed soft silhouette."""
+    bm = bmesh.new()
+    axis = (Vector(lm["hand_l"]) - Vector(lm["elbow_l"])).normalized()
+    across = axis.cross(Vector((0, 0, 1))).normalized()
+    up = across.cross(axis).normalized()
+    centre = Vector(lm["elbow_l"] * 0.6 + lm["hand_l"] * 0.4) + up * 0.075
+    made = bmesh.ops.create_uvsphere(bm, u_segments=32, v_segments=20, radius=1)
+    rounded = lambda value: math.copysign(abs(value) ** 0.65, value)
+    for v in made["verts"]:
+        x, y, z = (rounded(float(c)) for c in v.co)
+        # Two broad soft folds, never separate floating paper-thin panels.
+        thickness = 0.068 + 0.009 * math.cos(x * math.pi * 2) * (1 - y * y)
+        p = centre + axis * (x * 0.16) + across * (y * 0.105) + up * (z * thickness)
+        p += across * (0.006 * math.sin(x * 5 + z * 2) * (1 - abs(y) * 0.5))
+        v.co = p
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    bm.normal_update()
+    return bm
+
+
+def hood_bm(lm):
+    """A cloth hood enclosing hair and ears, opening before the face and draping over the shoulders."""
+    bm = bmesh.new()
+    eye = lm["eye"]
+    cy = float(eye[1]) + 0.12
+    rings = []
+    for z, rx, ry in (
+        (lm["crown"] + 0.055, 0.015, 0.02),
+        (lm["crown"] + 0.025, 0.09, 0.11),
+        (eye[2] + 0.055, 0.135, 0.15),
+        (eye[2] - 0.055, 0.15, 0.16),
+        (lm["neck"][2] + 0.015, 0.18, 0.18),
+        (lm["chest"][2] + 0.07, 0.25, 0.21),
+    ):
+        rings.append(
+            [
+                bm.verts.new((rx * math.cos(a), cy + ry * math.sin(a), z))
+                for a in np.linspace(0, 2 * math.pi, 32, endpoint=False)
+            ]
+        )
+    for a, b in zip(rings, rings[1:]):
+        for i in range(32):
+            bm.faces.new([a[i], a[(i + 1) % 32], b[(i + 1) % 32], b[i]])
+    bm.faces.new(list(reversed(rings[0])))
+    cut_all(bm, [(eye + [0, 0.01, 0], (0, -1, 0.12)), (eye + [0, 0, 0.055], (0, 0, -1))])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    return bm
+
+
+def helmet_bm(lm):
+    bm = bmesh.new()
+    bottom = lm["eye"][2] + 0.035
+    centre_y = lm["eye"][1] + 0.10
+    rings = []
+    # A rounded cranial dome with room for hair, rather than a cone perched on it.
+    height = lm["crown"] + 0.035 - bottom
+    for t in np.linspace(0, 1, 12):
+        radius = max(0.004, 0.132 * math.cos(t * math.pi / 2))
+        rings.append(
+            [
+                bm.verts.new(
+                    (
+                        radius * math.cos(a),
+                        centre_y + radius * 1.2 * math.sin(a),
+                        bottom + height * math.sin(t * math.pi / 2),
+                    )
+                )
+                for a in np.linspace(0, 2 * math.pi, 32, endpoint=False)
+            ]
+        )
+    for a, b in zip(rings, rings[1:], strict=False):
+        for i in range(32):
+            bm.faces.new([a[i], a[(i + 1) % 32], b[(i + 1) % 32], b[i]])
+    bm.faces.new(rings[-1])
+    bm.normal_update()
+    return bm
+
+
+def weapon_bm(lm, kind):
+    bm = staff_bm(lm, {"length": 2.4 if kind == "spear" else 1.0})
+    if kind == "club":
+        for v in bm.verts:
+            v.co.x += 0.005 * math.sin(v.co.z * 17)
+        return bm
+    hand = Vector((lm["hand_r"] + lm["hand_r_tip"]) / 2)
+    arm = Vector(lm["hand_r"] - lm["shoulder_r"]).normalized()
+    up = arm.rotation_difference(Vector((0, 0, -1))).inverted() @ Vector((0, 0, 1))
+    centre = hand + up * 1.32
+    across = up.orthogonal().normalized()
+    thick = up.cross(across) * 0.008
+    points = [centre + across * 0.035, centre - across * 0.035, centre + up * 0.19, centre + thick, centre - thick]
+    v = [bm.verts.new(p) for p in points]
+    for a, b, c in ((0, 2, 3), (2, 1, 3), (1, 0, 3), (2, 0, 4), (1, 2, 4), (0, 1, 4)):
+        bm.faces.new([v[a], v[b], v[c]])
+    bm.normal_update()
+    return bm
+
+
+def bundle_bm(lm):
+    bm = bmesh.new()
+    centre = Vector((-0.12, 0.14, lm["chest"][2] + 0.1))
+    ellipsoid(bm, centre, (0.15, 0.12, 0.19))
+    ellipsoid(bm, centre + Vector((0, 0, 0.18)), (0.06, 0.04, 0.045), 12, 8)
+    bm.normal_update()
+    return bm
 
 
 def tails_bm(x, y, z, length):
@@ -983,10 +1248,10 @@ def hat_bm(lm, g):
     """A petasos: a low round crown on the head and a wide brim drooping a little at the edge (rigid, on the head)."""
     bm = bmesh.new()
     n = 24
-    cx, cy = 0.0, float(lm["eye"][1]) + 0.07
+    cx, cy = 0.0, float(lm["eye"][1]) + 0.105
     band = float(lm["eye"][2]) + 0.06
-    top = float(lm["crown"]) + 0.025
-    rc = g.get("crown", 0.105)
+    top = float(lm["crown"]) + 0.04
+    rc = g.get("crown", 0.105) + 0.01
     rb = g.get("brim", 0.225) + 0.0
     rings = []
     for r, z in (
@@ -999,12 +1264,15 @@ def hat_bm(lm, g):
         (rc * 0.3, top),
     ):
         rings.append(
-            [bm.verts.new((cx + r * math.cos(a), cy + r * math.sin(a), z)) for a in np.linspace(0, 2 * math.pi, n, endpoint=False)]
+            [
+                bm.verts.new((cx + r * math.cos(a), cy + r * math.sin(a) * (1.25 if r <= rc + 0.006 else 1.05), z))
+                for a in np.linspace(0, 2 * math.pi, n, endpoint=False)
+            ]
         )
     for a, b in zip(rings, rings[1:]):
         for i in range(n):
             bm.faces.new([a[i], a[(i + 1) % n], b[(i + 1) % n], b[i]])
-    bm.faces.new(rings[-1][::-1])
+    bm.faces.new(rings[-1])
     # the underside of the brim
     under = [bm.verts.new(v.co + Vector((0, 0, -0.006))) for v in rings[0]]
     inner = [bm.verts.new(v.co + Vector((0, 0, -0.006))) for v in rings[2]]
@@ -1026,8 +1294,13 @@ def staff_bm(lm, g):
     r, n = 0.016, 8
     length = g.get("length", 1.5)
     rings = []
-    for t in (-0.9, -0.3, 0.3, 0.75, 1.0):
-        centre = Vector(hand) + up * (t * length * 0.55)
+    offsets = (
+        np.linspace(-0.8, length - 0.8, 5)
+        if SPEC["id"] == "char.old-man"
+        else [t * length * 0.55 for t in (-0.9, -0.3, 0.3, 0.75, 1)]
+    )
+    for distance in offsets:
+        centre = Vector(hand) + up * distance
         ax1 = up.orthogonal().normalized()
         ax2 = up.cross(ax1)
         ring = [
@@ -1056,10 +1329,31 @@ def build_clothes(base, fco, lm):
         if not bm.faces:
             bm.free()
             continue
+        if SPEC["garments"][gi]["kind"] in {"chiton", "himation", "cloak", "veil", "face-wrap"}:
+            soften_edges(bm)
+        bmesh.ops.triangulate(bm, faces=bm.faces[:])
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+        if SPEC["garments"][gi]["kind"] in {"chiton", "himation", "cloak"}:
+            # After triangulation, keep the complete connected cloth oriented
+            # consistently. Orient the shell as a whole, so inward-facing sleeve
+            # surfaces are not incorrectly flipped against the body's axis.
+            score = sum(
+                face.calc_area()
+                * face.normal.dot(
+                    Vector((face.calc_center_median().x, face.calc_center_median().y - lm["pelvis"][1], 0))
+                )
+                for face in bm.faces
+            )
+            if score < 0:
+                for face in bm.faces:
+                    face.normal_flip()
+            bm.normal_update()
+            bad = sum(edge.is_manifold and not edge.is_contiguous for edge in bm.edges)
+            if bad:
+                raise ValueError(f"Garment has {bad} inconsistent winding edges after triangulation")
         pl = bm.faces.layers.int.new("piece")
         for f in bm.faces:
             f[pl] = gi
-        bmesh.ops.triangulate(bm, faces=bm.faces[:])
         ob = new_object("TunicPart", bm)
         obs.append(ob)
     tunic = obs[0]
@@ -1085,25 +1379,41 @@ def build_clothes(base, fco, lm):
                 g.remove(rigid)
             (tunic.vertex_groups.get(bone) or tunic.vertex_groups.new(name=bone)).add(rigid, 1.0, "REPLACE")
     # skirts: below the hips the weights spread over both legs and the pelvis, so the robe doesn't split
-    skirt_like = {"chiton", "himation", "apron"}
+    skirt_like = {"chiton", "himation", "cloak", "apron", "shoulder-strap"}
     hip_z = lm["pelvis"][2]
     groups = {g.name: g for g in tunic.vertex_groups}
     for g in ("pelvis", "thigh_l", "thigh_r", "calf_l", "calf_r"):
         if g not in groups:
             groups[g] = tunic.vertex_groups.new(name=g)
     for v in tunic.data.vertices:
-        if SPEC["garments"][piece_of[v.index]]["kind"] not in skirt_like or v.co.z > hip_z - 0.05:
+        kind = SPEC["garments"][piece_of[v.index]]["kind"]
+        if kind not in skirt_like | {"belt"}:
             continue
-        t = float(np.clip((hip_z - 0.05 - v.co.z) / 0.35, 0, 1))
+        t = float(np.clip((hip_z - v.co.z) / 0.4, 0, 1))
         w = {tunic.vertex_groups[g.group].name: g.weight for g in v.groups}
-        legs = sum(w.get(n, 0) for n in LEGS)
-        mix = {n: x * (1 - 0.6 * t) for n, x in w.items()}
-        for n, share in (("pelvis", 0.4), ("thigh_l", 0.2), ("thigh_r", 0.2), ("calf_l", 0.1), ("calf_r", 0.1)):
-            mix[n] = mix.get(n, 0) + 0.6 * t * share * max(legs, 0.5) / max(legs, 0.5)
-        tot = sum(mix.values())
+        mix = w.copy()
+        if v.co.z <= hip_z:
+            # Concentric garments share an analytic weight field: nearest-skin
+            # transfer gives their skirts different knee weights and they intersect.
+            side = float(np.clip(0.5 + v.co.x / 0.18, 0, 1))
+            knee = (lm["knee_l"][2] + lm["knee_r"][2]) / 2
+            calf = float(np.clip((knee - v.co.z) / 0.3, 0, 1))
+            mix = {"pelvis": 1 - 0.99 * t}
+            for leg, share in (("l", side), ("r", 1 - side)):
+                mix["thigh_" + leg] = 0.99 * t * share * (1 - calf)
+                mix["calf_" + leg] = 0.99 * t * share * calf
+        # Blend smoothly into the shared pelvis influence across the waist.
+        # A hard boundary here creates sharp creases while the chest sways.
+        # Belts and the cloth beneath need the same field; forcing only the belt
+        # to the pelvis leaves it floating around the waist as the torso leans.
+        waist = math.exp(-(((v.co.z - hip_z) / 0.19) ** 2))
+        mix = {name: value * (1 - waist) for name, value in mix.items()}
+        mix["pelvis"] = mix.get("pelvis", 0) + waist
+        kept = sorted(mix.items(), key=lambda kv: -kv[1])[:4]
+        tot = sum(value for _, value in kept)
         for n in list(w):
             groups[n].remove([v.index])
-        for n, x in sorted(mix.items(), key=lambda kv: -kv[1])[:4]:
+        for n, x in kept:
             groups[n].add([v.index], x / tot, "REPLACE")
     tunic.data.materials.append(mat)
     # smooth shading
@@ -1122,7 +1432,7 @@ def under_clothes(tunic, lm):
     n = vertex_normals(co, faces)
     tco = coords(tunic)
     tf = [tuple(p.vertices) for p in tunic.data.polygons]
-    keep_kinds = {"staff", "hat"}
+    keep_kinds = set(RIGID_GARMENTS) | {"shoulder-strap", "shoes"}
     pa = tunic.data.attributes["piece"]
     tf = [
         f for p, f in zip(tunic.data.polygons, tf) if SPEC["garments"][pa.data[p.index].value]["kind"] not in keep_kinds
@@ -1131,12 +1441,22 @@ def under_clothes(tunic, lm):
     dom = dominant_bones(body)
     skin = in_group_mask(body, "body")  # not the joint cubes: cut in half they leave faces Surface Deform refuses
     under = np.zeros(len(co), bool)
+    skirt_under = np.zeros(len(co), bool)
+    hems = [g["hem"] for g in SPEC["garments"] if g["kind"] in {"chiton", "himation"}]
     for i, (c, nn) in enumerate(zip(co, n)):
         if dom[i] in ("head", "neck_01") or dom[i] is None or not skin[i]:
             continue
         hit = bvh.ray_cast(Vector(c), Vector(nn), 0.06)
         if hit[0] is not None:
             under[i] = True
+        # A skirt stands farther than 6 cm from the thighs. Ray distance alone
+        # leaves those legs in the export and they poke through on every step.
+        if (
+            hems
+            and dom[i] in LEGS
+            and lm["ground"] + min(hems) + SPEC.get("hem_skin_allowance", 0.08) < c[2] < lm["pelvis"][2] + 0.04
+        ):
+            skirt_under[i] = under[i] = True
 
     # opened (grown back after shrinking) so no thin strands or single vertices go: deleting those leaves faces
     # meeting at one corner, which Surface Deform in lod_export refuses to bind to; then two rings in from the edge
@@ -1171,6 +1491,7 @@ def under_clothes(tunic, lm):
     under = grow(shrink(under))
     for _ in range(2):
         under = shrink(under)
+    under |= skirt_under
     g = body.vertex_groups.get("__under_tunic") or body.vertex_groups.new(name="__under_tunic")
     g.remove(list(range(len(co))))
     g.add([int(i) for i in np.flatnonzero(under)], 1.0, "REPLACE")
@@ -1440,7 +1761,7 @@ def ambient_occlusion(skin, tunic_img):
     ao = np.clip(bake_ao(body, 1024, 0.06), 0, 1)
     darken(skin, ao, 0.5)
     tunic = bpy.data.objects["Tunic"]
-    darken(tunic_img, np.clip(bake_ao(tunic, 1024, 0.08), 0, 1), 0.75)
+    darken(tunic_img, np.clip(bake_ao(tunic, 1024, 0.08), 0, 1), 0.4)
     bpy.data.objects["EyesLow"].hide_render = False
 
 
@@ -1455,6 +1776,7 @@ def main():
             with bpy.context.temp_override(object=ob, active_object=ob, selected_objects=[ob], edit_object=ob):
                 bpy.ops.object.mode_set(mode="OBJECT")
     base, fco = reshape()
+    bpy.data.objects["Rig"]["cast_id"] = SPEC["id"]
     lm = landmarks()
     report["landmarks"] = {
         k: (round(float(v), 3) if np.ndim(v) == 0 else [round(float(x), 3) for x in v]) for k, v in lm.items()

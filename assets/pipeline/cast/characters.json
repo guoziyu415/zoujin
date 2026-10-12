@@ -352,6 +352,7 @@
     "shepherd-boy": {
       "id": "role.shepherd-boy",
       "height": 1.55,
+      "hem_skin_allowance": 0.01,
       "macro": {
         "gender": 1.0,
         "age": 0.26,
@@ -423,6 +424,18 @@
           "colour": "B1",
           "hem": 0.4,
           "sleeves": "short"
+        },
+        {
+          "kind": "shoulder-strap",
+          "colour": "K1"
+        },
+        {
+          "kind": "waterskin",
+          "colour": "K1"
+        },
+        {
+          "kind": "folded-cloak",
+          "colour": "W0"
         },
         {
           "kind": "belt",
@@ -580,7 +593,202 @@
     },
     "melos": {
       "id": "char.melos",
-      "prebuilt": true
+      "height": 1.8,
+      "hem_skin_allowance": 0.02,
+      "macro": {
+        "gender": 1.0,
+        "age": 0.42,
+        "muscle": 0.76,
+        "weight": 0.43,
+        "height": 0.65,
+        "proportions": 0.58
+      },
+      "details": {
+        "head-oval": 0.25
+      },
+      "skin": "#B27B56",
+      "hair": {
+        "style": "curly",
+        "colour": "#251C15",
+        "length": 0.015
+      },
+      "brows": "#251C15",
+      "garments": [
+        {
+          "kind": "chiton",
+          "colour": "W0",
+          "hem": 0.55,
+          "sleeves": "none",
+          "bare": "r"
+        },
+        { "kind": "belt", "colour": "K1", "at": 0.1, "width": 0.025 },
+        { "kind": "shoulder-strap", "colour": "K1" },
+        { "kind": "bundle", "colour": "F1" },
+        { "kind": "shoes", "style": "sandals", "colour": "K1" }
+      ],
+      "dust": 0.2,
+      "stone": 0.0
+    },
+    "guards": {
+      "id": "char.guards",
+      "height": 1.76,
+      "macro": {
+        "gender": 1.0,
+        "age": 0.47,
+        "muscle": 0.7,
+        "weight": 0.54,
+        "height": 0.6,
+        "proportions": 0.6
+      },
+      "details": {
+        "head-square": 0.3
+      },
+      "skin": "#956C50",
+      "hair": {
+        "style": "short",
+        "colour": "#32251C",
+        "length": 0.007
+      },
+      "brows": "#302219",
+      "garments": [
+        {
+          "kind": "chiton",
+          "colour": "N1",
+          "hem": 0.52,
+          "sleeves": "short"
+        },
+        {
+          "kind": "cloak",
+          "colour": "D1",
+          "to": 0.42
+        },
+        {
+          "kind": "helmet",
+          "colour": "#575544"
+        },
+        {
+          "kind": "spear",
+          "colour": "N1"
+        },
+        {
+          "kind": "shoes",
+          "style": "sandals",
+          "colour": "K1"
+        }
+      ],
+      "dust": 0.12,
+      "stone": 0.0
+    },
+    "bandits": {
+      "id": "char.bandits",
+      "hem_skin_allowance": 0.02,
+      "height": 1.65,
+      "macro": {
+        "gender": 1.0,
+        "age": 0.43,
+        "muscle": 0.74,
+        "weight": 0.58,
+        "height": 0.38,
+        "proportions": 0.55
+      },
+      "details": {
+        "head-square": 0.3
+      },
+      "skin": "#8F6449",
+      "hair": {
+        "style": "short",
+        "colour": "#30231A",
+        "length": 0.006
+      },
+      "brows": "#2A2119",
+      "garments": [
+        {
+          "kind": "chiton",
+          "colour": "A1",
+          "hem": 0.5,
+          "sleeves": "short"
+        },
+        {
+          "kind": "veil",
+          "colour": "N1"
+        },
+        {
+          "kind": "face-wrap",
+          "colour": "N1"
+        },
+        {
+          "kind": "belt",
+          "colour": "N1",
+          "width": 0.025
+        },
+        {
+          "kind": "club",
+          "colour": "N1"
+        },
+        {
+          "kind": "shoes",
+          "style": "closed",
+          "colour": "A1"
+        }
+      ],
+      "dust": 0.45,
+      "stone": 0.0
+    },
+    "travelers": {
+      "id": "char.travelers",
+      "height": 1.69,
+      "macro": {
+        "gender": 1.0,
+        "age": 0.52,
+        "muscle": 0.47,
+        "weight": 0.44,
+        "height": 0.5,
+        "proportions": 0.55
+      },
+      "details": {
+        "head-oval": 0.2
+      },
+      "skin": "#A07A5F",
+      "hair": {
+        "style": "short",
+        "colour": "#554A3C",
+        "length": 0.009
+      },
+      "beard": {
+        "length": 0.008,
+        "colour": "#554A3C"
+      },
+      "brows": "#4A3D30",
+      "garments": [
+        {
+          "kind": "chiton",
+          "colour": "L0",
+          "hem": 0.16,
+          "sleeves": "short"
+        },
+        {
+          "kind": "himation",
+          "colour": "G1",
+          "over": "l",
+          "hem": 0.3
+        },
+        {
+          "kind": "bundle",
+          "colour": "W0"
+        },
+        {
+          "kind": "staff",
+          "colour": "N1",
+          "length": 1.5
+        },
+        {
+          "kind": "shoes",
+          "style": "sandals",
+          "colour": "K1"
+        }
+      ],
+      "dust": 0.35,
+      "stone": 0.0
     }
   }
 }

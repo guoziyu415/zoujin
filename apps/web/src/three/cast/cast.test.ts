@@ -11,12 +11,15 @@ import {
 } from "./cast";
 
 describe("cast (F-16)", () => {
-  it("maps the seven characters and roles to their built names", () => {
-    expect(Object.keys(CAST)).toHaveLength(12);
+  it("maps the principal characters, roles and distinct group representatives", () => {
+    expect(Object.keys(CAST)).toHaveLength(15);
     expect(castName("char.king")).toBe("king");
     expect(castName("role.shepherd-boy")).toBe("shepherd-boy");
     expect(castName("char.melos")).toBe("melos"); // A-0's own file, exported the same way
     expect(castName("role.traveler")).toBe("traveler");
+    expect(castName("char.guards")).toBe("guards");
+    expect(castName("char.bandits")).toBe("bandits");
+    expect(castName("char.travelers")).toBe("travelers");
     expect(castName("char.crowd")).toBeNull();
   });
 
@@ -45,6 +48,7 @@ describe("cast (F-16)", () => {
     expect(clipRate("walk", 0.99)).toBeCloseTo(1);
     expect(clipRate("run", 3.2)).toBeCloseTo(3.2 / 3.76);
     expect(clipRate("walk", 10)).toBe(1.6);
+    expect(clipRate("walk", 0.65, 0.55)).toBeCloseTo(0.65 / (0.99 * 0.55));
   });
 
   it("keeps the mouth shut in silence and opens it with the voice", () => {

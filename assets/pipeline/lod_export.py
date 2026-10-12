@@ -342,6 +342,13 @@ def select_only(objs):
 
 
 def export(objs, path, morph=True, morph_normal=True, anim=False):
+    # shape_key_add / join_shapes may leave a newly rebuilt key at 1. The exported
+    # default must be neutral; the runtime drives one expression at a time.
+    for ob in objs:
+        if ob.type == "MESH" and ob.data.shape_keys:
+            for key in ob.data.shape_keys.key_blocks:
+                key.value = 0.0
+    bpy.context.view_layer.update()
     select_only(objs)
     bpy.ops.export_scene.gltf(
         filepath=path,
@@ -560,6 +567,9 @@ MOUTH_LAYOUT = ((1024, 512), [(0, 0, 496), (512, 0, 496)])
 
 def main():
     anims.build(rig)
+    from cast.motion import style as style_character
+
+    style_character(rig)
     o = {n: bpy.data.objects[n] for n in TALK + ["EyesLow"]}
 
     # 8 parts -> 5 materials (skin, eyes, hair cards, clothes, teeth): art-direction 9.2
@@ -578,7 +588,16 @@ def main():
     body_h, head_h = split_head(body_hi)
     for part in (body_h, head_h):
         drop_islands(part)
-    high = [body_h, head_h, o["Eyes"], hair, mouth, o["Tunic"]]
+    high = [body_h, head_h, o["Eyes"], hair, mouth]
+    # Layered garments (the old man's inner robe, mantle and hood) can exceed
+    # the high tier without any extra facial detail. Keep the face intact and
+    # simplify only excess garment topology, retaining protected props.
+    cloth_budget = 40000 - sum(tris(part) for part in high)
+    cloth_h = o["Tunic"]
+    if tris(cloth_h) > cloth_budget:
+        cloth_h = decimate_except(cloth_h, cloth_budget - 10)
+        report["high_cloth_budget"] = cloth_budget
+    high.append(cloth_h)
     report["talk_high"] = {"tris": sum(tris(x) for x in high), "parts": {x.name: tris(x) for x in high}}
     report["talk_high"]["bytes"] = export(high, os.path.join(outdir, "talk_high.glb"))
     report["talk_high"]["bytes_no_morph_normals"] = export(
