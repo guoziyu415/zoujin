@@ -83,6 +83,14 @@ def test_public_members_are_blocked_by_the_privacy_lock(tmp_path: Path, member: 
     assert result.returncode != 0 and "TRAFFIC" not in result.stdout
 
 
+@pytest.mark.parametrize("command", ["cmd_up", "cmd_promote", "cmd_rollback"])
+def test_authorized_public_review_does_not_expose_untested_candidates(tmp_path: Path, command: str) -> None:
+    # Even a valid reviewer exception cannot authorize deploying a new tagged revision.
+    result = shell(tmp_path, f"privacy_check() {{ GW_ACCESS=public; }}\n{command}")
+    assert result.returncode != 0
+    assert "TRAFFIC" not in result.stdout and "SAVED" not in result.stdout
+
+
 @pytest.mark.parametrize("v2", [False, True])
 def test_disabled_invoker_check_is_public_even_without_public_members(tmp_path: Path, v2: bool) -> None:
     (tmp_path / "privacy-lock.json").write_text("{}")

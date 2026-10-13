@@ -156,7 +156,11 @@ privacy_check() {
     die "网关服务尚不存在，禁止冒烟或切流量"
   fi
   if [[ -f "$STATE/privacy-lock.json" && "$GW_ACCESS" == public ]]; then
-    die "隐私锁存在，但网关公开授权或 invoker IAM 检查已关闭：先收紧访问，禁止自动继续"
+    # User-authorized reviewer access is restricted to one tested release, not an OPENED flag.
+    [[ -f "$STATE/reviewer-access.json" ]] &&
+      gcloud run services describe "$GW" --region="$REGION" "${PA[@]}" --format=json 2>/dev/null |
+      python3 -I "$HERE/reviewer_access.py" "$STATE/reviewer-access.json" "$GW" ||
+      die "隐私锁存在，且未匹配已验密码的评审版本：先收紧访问，禁止自动继续"
   fi
 }
 gateway_bearer() {
@@ -378,6 +382,8 @@ cmd_up() {
   guard
   [[ -n "$IMAGE" ]] || die "先跑 build"
   privacy_check allow-missing
+  [[ "$GW_ACCESS" == private || "$GW_ACCESS" == missing ]] ||
+    die "评审入口开放期间禁止创建候选地址；先恢复 IAM 私有再部署"
   [[ -s "$STATE/smoke-code" ]] || die "先跑 migrate"
   has_secret "$SEC_SITE" || die "缺少站点访问密码 Secret：先完成 setup 密钥准备，禁止无密码部署"
   local c flags=() bearer="" url
@@ -424,6 +430,7 @@ cmd_up() {
 cmd_promote() {
   guard
   privacy_check
+  [[ "$GW_ACCESS" == private ]] || die "评审入口开放期间禁止切换版本；先恢复 IAM 私有再上线"
   [[ -n "${CANDIDATE:-}" && "$CANDIDATE" == "$IMAGE" ]] || die "这个镜像还没过 up 的冒烟"
   say "切流量：叙事者、网关都到新版本"
   run gcloud run services update-traffic "$NR" --to-latest --region="$REGION" "${PA[@]}"
@@ -469,6 +476,8 @@ cmd_invite() {
 
 cmd_rollback() {
   guard
+  privacy_check
+  [[ "$GW_ACCESS" == private ]] || die "评审入口开放期间禁止直接回滚；先恢复 IAM 私有，避免旧版本无密码"
   local s prev
   for s in "$GW" "$NR"; do
     prev="$(gcloud run revisions list --service="$s" --region="$REGION" "${PA[@]}" \
