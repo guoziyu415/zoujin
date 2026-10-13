@@ -37,6 +37,23 @@ bash infra/ci-runner/setup.sh
 
 Mac 合盖、睡眠或 Docker 没开时 job 排队，机器回来接着跑。
 
+## 私有美术输入
+
+Web 浏览器验收需要实际人物文件和群众动作。模型源与生成物不进 Git；每台隔离 runner 的命名卷中另外放
+`/home/runner/ci-assets/cast/<人物>/{walk,talk_std,talk_high,anims}.glb` 及
+`/home/runner/ci-assets/UAL1_Standard.glb`。这是只含美术资源的目录，不复制凭证、账本或主机工作目录，
+也不添加主机挂载。其他 runner 可通过仓库变量 `CI_ASSET_SOURCE_ROOT` 指定等价的私有资源目录。
+
+首次配置或人物资产更新后，从本机已经审核的 `assets/cast/build` 复制人物资源，并复制
+`assets/pipeline/crowd/build.sh` 钉住 SHA-256 的 UAL 文件到上述目录。`web.yml` 每次先用
+`.github/scripts/stage_web_assets.mjs` 校验全部人物四档文件的字节数与提交清单 SHA-256，以及 UAL 的源哈希，
+再写入干净的 job 临时目录。任一缺失或不匹配就失败，不能用占位模型或过滤 404 通过验收。
+角色质量与重建仍由 cast 流水线负责；这一步验证浏览器使用的就是已审核产物，不冒称在 CI 重建了人物源文件。
+群众包使用这个 UAL 源在 CI 生成动作，缓存键与原先没有动作的包分开。
+
+现有命名卷会保留资源；新增 runner 或删除卷后必须重新配置。切换到 GitHub 托管 runner 时，也须先提供同等的
+私有输入，不能仅更改 `CI_RUNS_ON` 就跳过这项条件。
+
 ## 常用
 
 - 看状态：`docker logs --tail 20 zoujin-ci-runner`；GitHub 上：仓库 Settings → Actions → Runners。

@@ -12,6 +12,8 @@ on:
       - "assets/pipeline/road/**"
       - "assets/pipeline/common/**"
       - "assets/pipeline/crowd/**"
+      - "assets/pipeline/cast/**"
+      - "assets/cast/cast.json"
       - "assets/pipeline/package.json"
       - "assets/scenes/**"
       - "assets/budgets.json"
@@ -22,6 +24,7 @@ on:
       - "packages/contracts/**"
       - "uv.lock"
       - ".github/workflows/web.yml"
+      - ".github/scripts/stage_web_assets.mjs"
   push:
     branches: [main]
     paths:
@@ -30,6 +33,8 @@ on:
       - "assets/pipeline/road/**"
       - "assets/pipeline/common/**"
       - "assets/pipeline/crowd/**"
+      - "assets/pipeline/cast/**"
+      - "assets/cast/cast.json"
       - "assets/pipeline/package.json"
       - "assets/scenes/**"
       - "assets/budgets.json"
@@ -40,6 +45,7 @@ on:
       - "packages/contracts/**"
       - "uv.lock"
       - ".github/workflows/web.yml"
+      - ".github/scripts/stage_web_assets.mjs"
 
 permissions:
   contents: read
@@ -63,6 +69,13 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: verify and stage the private character and animation inputs
+        env:
+          CI_ASSET_SOURCE_ROOT: ${{ vars.CI_ASSET_SOURCE_ROOT || '/home/runner/ci-assets' }}
+        run: |
+          node .github/scripts/stage_web_assets.mjs "$CI_ASSET_SOURCE_ROOT" "$RUNNER_TEMP/web-inputs"
+          echo "ZOUJIN_CAST_ROOT=$RUNNER_TEMP/web-inputs/cast" >> "$GITHUB_ENV"
+          echo "UAL_GLB=$RUNNER_TEMP/web-inputs/UAL1_Standard.glb" >> "$GITHUB_ENV"
       - name: plaza draft build from the cache
         id: scene
         uses: actions/cache@v4
@@ -106,7 +119,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ runner.temp }}/crowd
-          key: crowd-${{ hashFiles('assets/pipeline/crowd/**', 'assets/pipeline/plaza/requirements.txt') }}
+          key: crowd-with-motions-${{ hashFiles('assets/pipeline/crowd/**', 'assets/pipeline/plaza/requirements.txt') }}
       - name: build the crowd pack when the cache missed
         if: steps.crowd.outputs.cache-hit != 'true'
         run: |
