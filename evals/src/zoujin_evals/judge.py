@@ -73,7 +73,8 @@ EFFORTS = ("low", "medium", "high", "xhigh", "max")
 
 
 class Line(TypedDict):
-    # 「プレイヤー」, a character's name, 「ナレーション」, 「（注）」 / 「プレイヤー」、人物の名前、「ナレーション」、「（注）」
+    # 「プレイヤー」, a character's name, 「ナレーション」, 「（注）」
+    # 「プレイヤー」、人物の名前、「ナレーション」、「（注）」
     speaker: str
     text: str
 
@@ -340,9 +341,8 @@ class AnthropicTransport:
 class Verdict:
     item: str
     sample: int
-    score: (
-        int | None
-    )  # None when no verdict came out; the reason is in error / 採点できなかったら None。理由は error に
+    # None when no verdict came out; the reason is in error / 採点できなかったら None。理由は error にある
+    score: int | None
     reason: str
     passed: bool | None
     error: str | None  # replay-missing / refusal / max_tokens / bad-json：… / errored：… / canceled / expired
@@ -497,9 +497,8 @@ class Judge:
                 else:
                     out[cid] = self._settle(item, sample, req, res, batch=True)
             pending.unlink(missing_ok=True)
-        none = (
-            "no-result"  # the batch finished but has no result for this item / バッチは完了したがこの項目の結果がない
-        )
+        # the batch finished but has no result for this item / バッチは完了したがこの項目の結果がない
+        none = "no-result"
         return [
             out.get(custom_id(i["id"], s)) or Verdict(i["id"], s, None, "", None, none, 0.0, False) for i, s in todo
         ]

@@ -1,6 +1,9 @@
-# 契约的生成物和 Schema 一致（C-1）：重新跑 `uv run contracts-gen`，仓库里的生成物不能有差异。
-# 生成要 Python（datamodel-code-generator）和 Node（json-schema-to-typescript）两边，所以单独一个 workflow。
-# Schema 的校验、例子和契约测试在 python.yml 的 pytest 里，TypeScript 类型检查在 node.yml 的 tsc 里。
+# Contract generated files match the Schema (C-1): rerun `uv run contracts-gen`; the generated files in the repo must not change.
+# 契約の生成物が Schema と一致すること（C-1）：`uv run contracts-gen` を再実行し、リポジトリの生成物に差分が出てはならない。
+# Generation needs both Python (datamodel-code-generator) and Node (json-schema-to-typescript), hence a separate workflow.
+# 生成には Python（datamodel-code-generator）と Node（json-schema-to-typescript）の両方が必要なので、workflow を分けている。
+# Schema validation, examples and contract tests are in python.yml's pytest; TypeScript type checking is in node.yml's tsc.
+# Schema の検証、例、契約テストは python.yml の pytest で、TypeScript の型チェックは node.yml の tsc で行う。
 name: contracts
 
 on:
@@ -50,7 +53,7 @@ jobs:
           enable-cache: true
       - run: uv sync --locked --all-packages
       - run: uv run contracts-gen
-      - name: 生成物和仓库里的一样
+      - name: Generated files match the repo / 生成物がリポジトリと一致
         run: |
           git status --porcelain
           git diff --exit-code

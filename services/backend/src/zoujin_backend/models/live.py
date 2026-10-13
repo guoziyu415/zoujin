@@ -1,19 +1,54 @@
-"""Live（人物的语音会话）的接口和假实现（B-0 第 6 条）。真 Live 的代理不在这里（M2）。
+"""The interface of Live (the characters' voice sessions) and its fake implementation (B-0 item 6). The real Live proxy
+is not here (M2).
 
-假 Live 读 `fixtures/fake-voice/lines.json`：每个人物一串「玩家说的话 + 人物的回答」，按轮次依次用（用完从头再来）。
-语音一轮的玩家字幕就是这一条的 `player`（假的没有语音识别）；文字一轮只用 `reply`。
-B-3：落地时先开口的人物说 `openers` 里他的一句（`speak_first`）；幕末用声音说打算时只转写，玩家字幕是 `planLines`
-依次用（`transcriber`）。
-B-4：意图确认的反问也是人物先开口，说给定的那一句（`speak_first(line)`）。作废以后会话重建：`open` 收「最近的对话」
-（这条连接上和这个人物最近几轮的文字，跳过作废的），假 Live 记下收到了什么（`opened`），测试查作废的那一轮不在里面。
-最近的对话只在网关内存里，不落库、不进 Trace。
-人物的音频是按回答的长短合成的 24 kHz PCM（`zoujin_backend.audio`），不放任何真人或模型录的声音。
+The fake Live reads `fixtures/fake-voice/lines.json`: for each character, a series of "what the player says + the
+character's answer", used turn by turn (restarting from the beginning when exhausted). The player subtitle of a voice
+turn is that entry's `player` (the fake has no speech recognition); a text turn uses only `reply`.
+B-3: on landing, the character who speaks first says their line from `openers` (`speak_first`); when a plan is spoken
+by voice at the end of an act, it is only transcribed, and the player subtitles come from `planLines` in turn
+(`transcriber`).
+B-4: the clarifying question of intent confirmation is also the character speaking first, saying the given line
+(`speak_first(line)`). After a turn is voided, the session is rebuilt: `open` receives the "recent conversation" (the
+text of the last few turns with this character on this connection, skipping voided ones), and the fake Live records
+what it received (`opened`), so tests can check that the voided turn is not in it. The recent conversation lives only
+in the gateway's memory and is never stored in the database or the Trace.
+Character audio is 24 kHz PCM synthesized from the length of the answer (`zoujin_backend.audio`); no voice recorded
+from real people or models is used.
 
-B-10：真 Live 在 `models/gemini_live.py`，和这里的假 Live 实现同一个接口。会话多了几样网关要看的：活着没有（`alive`）、
-收到 GoAway 没有（`going_away`）、完成了几轮（`turns`）、会话里已有多少秒音频（`audio_seconds`，对账用）、有变化时叫一下
-网关（`on_change`）、中途更新局势（`note`，不触发回答）。每轮说完吐一个 `usage`（这一轮的美元和用量）。
-`open` 收系统指令（`gateway/brief.py` 拼的人设、局势、最近的对话）；假 Live 只记下来给测试看。
-假 Live 的测试开关：`fail_opens`（接下来几次开会话失败）、`textless`（有声音没文字）、会话的 `goaway()`、`die()`。
+B-10: the real Live is in `models/gemini_live.py` and implements the same interface as the fake Live here. Sessions
+have a few more things for the gateway to watch: whether it is alive (`alive`), whether a GoAway was received
+(`going_away`), how many turns were completed (`turns`), how many seconds of audio the session already holds
+(`audio_seconds`, for reconciliation), a call to the gateway when something changes (`on_change`), and updating the
+situation mid-session (`note`, which does not trigger an answer). Each finished turn emits one `usage` (this turn's
+dollars and usage).
+`open` receives the system instruction (persona, situation and recent conversation assembled by `gateway/brief.py`);
+the fake Live only records it for tests to look at.
+The fake Live's test switches: `fail_opens` (the next few session opens fail), `textless` (audio without text), and
+the session's `goaway()`, `die()`.
+
+Live（登場人物の音声セッション）のインターフェースと偽の実装（B-0 第 6 項）。本物の Live
+のプロキシはここにはない（M2）。
+
+偽 Live は `fixtures/fake-voice/lines.json` を読む：登場人物ごとに「プレイヤーの発言 + 登場人物の返答」の列があり、
+ターンごとに順に使う（尽きたら最初に戻る）。音声ターンのプレイヤー字幕はその項目の `player`（偽物には音声認識がない）、
+テキストターンは `reply` だけを使う。
+B-3：着地時に先に話す登場人物は `openers` にある自分の一言を話す（`speak_first`）。
+幕末にプランを声で話すときは書き起こしだけを行い、プレイヤー字幕は `planLines` を順に使う（`transcriber`）。
+B-4：意図確認の聞き返しも登場人物が先に話し、与えられた一言を話す（`speak_first(line)`）。無効にした後はセッションを
+再構築する：`open` は「直近の会話」（この接続でのこの登場人物との直近数ターンのテキスト。無効にしたものは飛ばす）を
+受け取り、偽 Live は受け取った内容を記録する（`opened`）。テストは無効にしたターンが含まれていないことを確認する。
+直近の会話はゲートウェイのメモリにだけあり、データベースにも Trace にも入れない。
+登場人物の音声は返答の長さから合成した 24 kHz の PCM（`zoujin_backend.audio`）で、実在の人やモデルが録った声は使わない。
+
+B-10：本物の Live は `models/gemini_live.py` にあり、ここの偽 Live と同じインターフェースを実装する。セッションには
+ゲートウェイが見るものがいくつか増えた：生きているか（`alive`）、GoAway を受け取ったか（`going_away`）、何ターン
+終えたか（`turns`）、セッション内にすでに何秒の音声があるか（`audio_seconds`、突き合わせ用）、変化があったときに
+ゲートウェイを呼ぶ（`on_change`）、途中で状況を更新する（`note`、返答は起こさない）。各ターンの終わりに `usage`
+（このターンのドルと使用量）を 1 つ出す。
+`open` はシステム指示（`gateway/brief.py` が組み立てた人物設定、状況、直近の会話）を受け取る。偽 Live はテストが
+見るために記録するだけ。
+偽 Live のテスト用スイッチ：`fail_opens`（この後の何回かのセッション開始が失敗する）、`textless`（音声はあるが
+テキストがない）、セッションの `goaway()`、`die()`。
 """
 
 from __future__ import annotations
@@ -31,15 +66,23 @@ type LiveEventKind = Literal[
     "input_partial", "input_final", "audio", "output_partial", "output_final", "turn_complete", "usage"
 ]
 
-FIRST_AUDIO_MS = 900  # 松开到第一个音频分片（S-017 实测的服务端中位数附近）
+# From release to the first audio chunk (near the server-side median measured in S-017)
+# ボタンを離してから最初の音声チャンクまで（S-017 で実測したサーバー側の中央値付近）
+FIRST_AUDIO_MS = 900
 CHUNK_MS = 40
-SECONDS_PER_CHAR = 0.16  # 回答的音频长度按字数估
+SECONDS_PER_CHAR = 0.16  # answer audio length estimated from the character count / 返答の音声の長さは文字数から見積もる
 
 
 @dataclass(frozen=True)
 class LiveEvent:
-    """`output_final` 的 text 为 None：这一轮人物一个字的文字都没有（真 Live 偶尔这样，S-071，网关补转写）。
-    `usage`：这一轮的花费（`usd`）和用量（`usage`，只有数字），在 `output_final` 之后。"""
+    """`output_final` with text None: the character produced not a single character of text in this turn (the real Live
+    occasionally does this, S-071; the gateway fills in a transcription). `usage`: this turn's cost (`usd`) and usage
+    (`usage`, numbers only), after `output_final`.
+
+    text が None の `output_final`：このターンで登場人物のテキストが 1 文字もない（本物の Live でもまれに起きる、S-071。
+    ゲートウェイが書き起こしで補う）。`usage`：このターンの費用（`usd`）と使用量（`usage`、数値のみ）。`output_final`
+    の後に来る。
+    """
 
     kind: LiveEventKind
     text: str | None = None
@@ -49,7 +92,11 @@ class LiveEvent:
 
 
 class LiveLost(RuntimeError):
-    """Live 的连接断了（中途、开不起来）。消息里不带原话、地址和项目。"""
+    """The Live connection was lost (mid-session, or it could not be opened). The message carries no original words,
+    address or project.
+
+    Live の接続が切れた（途中で、または開けなかった）。メッセージには元の発言、アドレス、プロジェクトを入れない。
+    """
 
 
 class LiveSession(Protocol):
@@ -68,7 +115,11 @@ class LiveSession(Protocol):
 
 
 class Transcriber(Protocol):
-    """只转写、人物不回答（B-3：幕末用声音说打算，`activity_start purpose: "act_plan"`）。"""
+    """Transcription only, with no answer from a character (B-3: speaking a plan by voice at the end of an act,
+    `activity_start purpose: "act_plan"`).
+
+    書き起こしだけで、登場人物は答えない（B-3：幕末にプランを声で話す。`activity_start purpose: "act_plan"`）。
+    """
 
     def audio_in(self, pcm: bytes) -> list[LiveEvent]: ...
     async def finish(self) -> str | None: ...
@@ -76,7 +127,11 @@ class Transcriber(Protocol):
 
 @dataclass(frozen=True)
 class Recent:
-    """最近的一轮对话（会话重建时带进新会话）：玩家说的、人物答的。"""
+    """One recent turn of conversation (carried into the new session when a session is rebuilt): what the player said
+    and what the character answered.
+
+    直近の会話の 1 ターン（セッション再構築時に新しいセッションへ持ち込む）：プレイヤーの発言と登場人物の返答。
+    """
 
     player: str | None
     reply: str | None
@@ -108,26 +163,35 @@ class FakeLiveSession:
         self.lines = lines
         self.speed = speed
         self.opener = opener
-        self.textless = textless  # 有声音、没有人物的文字（补转写的测试）
+        # Audio without character text (test of filled-in transcription)
+        # 音声のみ（書き起こし補完のテスト）
+        self.textless = textless
         self.turn_usd = turn_usd
         self.n = 0
-        self.heard = False  # 这一轮收到过玩家的音频（第一帧时出半句玩家字幕）
+        # Player audio was received in this turn (the first frame yields half a line of player subtitles)
+        # このターンでプレイヤーの音声を受け取った（最初のフレームでプレイヤー字幕を半分出す）
+        self.heard = False
         self.alive = True
         self.going_away = False
         self.turns = 0
         self.audio_seconds = 0.0
         self.on_change: Callable[[], None] | None = None
-        self.notes: list[str] = []  # 测试看：送进来的局势更新
+        self.notes: list[str] = []  # for tests: situation updates sent in / テスト用：送られてきた状況の更新
         self.closed = False
-        self.dying = False  # die(mid_reply=True)：下一段回答说到一半断
-        self.dying_early = False  # die(before_audio=True)：下一段回答出声之前断
+        self.dying = False  # die(mid_reply=True): drops halfway through the next answer / 次の返答の途中で切れる
+        # die(before_audio=True): drops before the next answer's audio
+        # die(before_audio=True)：次の返答の音声前に切れる
+        self.dying_early = False
         try:
             self.loop: asyncio.AbstractEventLoop | None = asyncio.get_running_loop()
         except RuntimeError:
             self.loop = None
 
     def _later(self, fn: Callable[[], None]) -> None:
-        """测试线程叫的：放回会话所在的事件循环里做。"""
+        """Called from the test thread: run it back on the session's event loop.
+
+        テストのスレッドから呼ばれる：セッションのあるイベントループに戻して実行する。
+        """
         if self.loop is None:
             fn()
             return
@@ -141,7 +205,10 @@ class FakeLiveSession:
             self.loop.call_soon_threadsafe(fn)
 
     def goaway(self) -> None:
-        """测试用：Live 说这条连接快到期了。"""
+        """For tests: Live says this connection is about to expire.
+
+        テスト用：Live がこの接続はまもなく期限切れだと伝える。
+        """
 
         def go() -> None:
             self.going_away = True
@@ -151,7 +218,12 @@ class FakeLiveSession:
         self._later(go)
 
     def die(self, *, mid_reply: bool = False, before_audio: bool = False) -> None:
-        """测试用：连接断了。mid_reply：等下一段回答出了第一个音频再断；before_audio：下一段回答一开始就断。"""
+        """For tests: the connection drops. mid_reply: drop after the next answer's first audio; before_audio: drop as
+        soon as the next answer starts.
+
+        テスト用：接続が切れる。mid_reply：次の返答の最初の音声が出てから切れる。before_audio：次の返答が始まるとすぐに
+        切れる。
+        """
         if mid_reply:
             self.dying = True
             return
@@ -181,7 +253,10 @@ class FakeLiveSession:
             await asyncio.sleep(ms / 1000 * self.speed)
 
     async def respond(self, text: str | None) -> AsyncIterator[LiveEvent]:
-        """text 为 None：语音一轮（activity_end 之后）；否则是文字一轮。"""
+        """text None: a voice turn (after activity_end); otherwise a text turn.
+
+        text が None：音声ターン（activity_end の後）。それ以外はテキストターン。
+        """
         line = self._line()
         self.n += 1
         self.heard = False
@@ -191,20 +266,25 @@ class FakeLiveSession:
             yield ev
 
     async def speak_first(self, line: str | None = None) -> AsyncIterator[LiveEvent]:
-        """人物先开口（落地的 opener；意图确认的反问说给定的 line）：没有玩家的话，只有人物的一句。"""
+        """The character speaks first (the opener on landing; for the clarifying question of intent confirmation, the
+        given line): no player words, only one line from the character.
+
+        登場人物が先に話す（着地時の opener。意図確認の聞き返しでは与えられた line）：プレイヤーの発言はなく、登場人物の
+        一言だけ。
+        """
         async for ev in self._say(line or self.opener):
             yield ev
 
     async def _say(self, reply: str) -> AsyncIterator[LiveEvent]:
         if not self.alive:
-            raise LiveLost("假 Live：会话已经断了")
+            raise LiveLost("Fake Live: the session is already gone / 偽 Live：セッションはすでに切れている")
         await self._sleep(FIRST_AUDIO_MS)
         if self.dying_early:
             self.dying_early = False
             self.alive = False
             if self.on_change is not None:
                 self.on_change()
-            raise LiveLost("假 Live：出声之前断了")
+            raise LiveLost("Fake Live: dropped before speaking / 偽 Live：声を出す前に切れた")
         seconds = max(0.6, len(reply) * SECONDS_PER_CHAR)
         pcm = list(audio.chunks(seconds, CHUNK_MS))
         marks = {len(pcm) // 3: 1, 2 * len(pcm) // 3: 2}
@@ -215,7 +295,7 @@ class FakeLiveSession:
                 self.alive = False
                 if self.on_change is not None:
                     self.on_change()
-                raise LiveLost("假 Live：说到一半断了")
+                raise LiveLost("Fake Live: dropped halfway through speaking / 偽 Live：話している途中で切れた")
             if i in marks and not self.textless:
                 yield LiveEvent("output_partial", reply[: len(reply) * marks[i] // 3] or reply)
             await self._sleep(CHUNK_MS)
@@ -234,7 +314,12 @@ class FakeLiveSession:
 
 
 class FakeTranscriber:
-    """假的转写：第一帧给半句，松开给整句（`planLines` 依次用）；一帧都没收到（没出声）松开给空串。"""
+    """Fake transcription: half a line on the first frame, the whole line on release (`planLines` in turn); if not a
+    single frame was received (nothing was said), an empty string on release.
+
+    偽の書き起こし：最初のフレームで半分、離したときに全文（`planLines` を順に使う）。1 フレームも受け取らなかった
+    （声が出なかった）ときは、離したときに空文字列。
+    """
 
     def __init__(self, line: str) -> None:
         self.line = line
@@ -252,7 +337,12 @@ class FakeTranscriber:
 
 @dataclass
 class Opened:
-    """测试看：开了谁的会话、带了哪些最近的对话、系统指令。按 (人物, 最近的对话) 比较时和 B-4 的元组一样。"""
+    """For tests: whose session was opened, which recent conversation it carried, and the system instruction. Compared
+    by (character, recent conversation), it equals B-4's tuples.
+
+    テスト用：誰のセッションを開いたか、どの直近の会話を持ち込んだか、システム指示。（登場人物、直近の会話）で比べると
+    B-4 のタプルと等しい。
+    """
 
     character: str
     recent: list[Recent]
@@ -277,15 +367,19 @@ class FakeLive:
         self.plan_lines: list[str] = doc.get("planLines") or ["……"]
         self.planned = 0
         self.speed = speed
-        self.opened: list[Opened] = []  # 测试看：开了谁的会话、带了哪些最近的对话
-        self.fail_opens = 0  # 测试用：接下来几次开会话失败
-        self.textless = False  # 测试用：之后开的会话有声音没文字
-        self.turn_usd = 0.0  # 测试用：每轮记多少美元
+        # For tests: whose sessions were opened, carrying which recent conversation
+        # テスト用：誰のセッションを開いたか、どの直近の会話を持ち込んだか
+        self.opened: list[Opened] = []
+        # For tests: the next few session opens fail
+        # テスト用：この後の何回かのセッション開始が失敗
+        self.fail_opens = 0
+        self.textless = False  # for tests: sessions opened later have audio but no text / テスト用：以後は音声のみ
+        self.turn_usd = 0.0  # for tests: dollars recorded per turn / テスト用：1 ターンあたりに記録するドル
 
     async def open(self, character: str, recent: Sequence[Recent] = (), system: str = "") -> FakeLiveSession:
         if self.fail_opens > 0:
             self.fail_opens -= 1
-            raise LiveLost("假 Live：会话没建起来")
+            raise LiveLost("Fake Live: the session could not be opened / 偽 Live：セッションを開けなかった")
         opener = self.openers.get(character) or self.openers.get("default") or "……"
         lines = self.lines.get(character) or self.lines["default"]
         session = FakeLiveSession(character, lines, self.speed, opener, textless=self.textless, turn_usd=self.turn_usd)
@@ -293,7 +387,10 @@ class FakeLive:
         return session
 
     def live_sessions(self, character: str | None = None) -> list[FakeLiveSession]:
-        """测试看：还开着的会话。"""
+        """For tests: the sessions still open.
+
+        テスト用：まだ開いているセッション。
+        """
         return [
             o.session
             for o in self.opened

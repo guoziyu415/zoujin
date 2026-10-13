@@ -1,5 +1,7 @@
-# Python：格式、类型、单元测试（禁网），世界模型和评测集的校验（dev-plan 2.4）。
-# 路径过滤要包含测试读的非 .py 输入：Schema 和例子（packages/）、回放夹具、迁移配置、两份契约文档。
+# Python: formatting, types, unit tests (no network), world model and eval set checks (dev-plan 2.4).
+# Python：フォーマット、型、ユニットテスト（ネットワーク禁止）、世界モデルと評価セットの検査（dev-plan 2.4）。
+# Path filters must include the non-.py inputs the tests read: Schemas and examples (packages/), replay fixtures, migration config, the two contract docs.
+# パスフィルタには、テストが読む .py 以外の入力を含める：Schema と例（packages/）、リプレイのフィクスチャ、マイグレーション設定、2 つの契約ドキュメント。
 name: python
 
 on:
@@ -53,7 +55,8 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-      # --extra real：真客户端的可选依赖（google-auth，B-2）只为类型检查和不联网的单元测试装，CI 从不调用真模型
+      # --extra real: the real client's optional dependency (google-auth, B-2) is installed only for type checking and offline unit tests; CI never calls a real model
+      # --extra real：本物のクライアントの任意依存（google-auth、B-2）は型チェックとネットワークなしのユニットテストのためだけに入れる。CI は本物のモデルを呼ばない
       - run: uv sync --locked --all-packages --extra real
       - run: uv run ruff check
       - run: uv run ruff format --check
@@ -67,14 +70,21 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v6
-      # 工具从 W-1 的包 zoujin_worldsim import，用 workspace 的环境跑（包只用标准库）
+      # The tools import from W-1's package zoujin_worldsim and run in the workspace environment (the package uses only the standard library)
+      # ツールは W-1 のパッケージ zoujin_worldsim から import し、workspace の環境で実行する（パッケージは標準ライブラリのみ使用）
       - run: uv sync --locked --all-packages
       - run: PYTHON=.venv/bin/python bash .github/scripts/check_world.sh
 
-  # 要真 PostgreSQL 的测试（`db` 标记，B-0）：单事务、注入失败、并发、重放、网关端到端、评测入口和 E-0 的快照。
-  # lint-test 里没有 DATABASE_URL，这些测试跳过；这里只跑它们。
-  # 库是 job 里自己起的 PostgreSQL 17 进程（start_postgres.sh），不用 services: 容器：自建机器（zg 的 Mac 上的 Linux
-  # 容器，infra/ci-runner）里没有 Docker，也不给它 Docker。
+  # Tests needing a real PostgreSQL (`db` marker, B-0): single transaction, injected failures, concurrency, retries,
+  # gateway end-to-end, eval entry point and E-0 snapshots.
+  # 本物の PostgreSQL が必要なテスト（`db` マーカー、B-0）：単一トランザクション、障害注入、並行性、再送、ゲートウェイのエンドツーエンド、
+  # 評価のエントリポイントと E-0 のスナップショット。
+  # lint-test has no DATABASE_URL, so these tests are skipped there; only they run here.
+  # lint-test には DATABASE_URL がないのでこれらのテストはスキップされる。ここではそれらだけを実行する。
+  # The database is a PostgreSQL 17 process started inside the job (start_postgres.sh), not a services: container: the
+  # self-hosted runner (a Linux container on zg's Mac, infra/ci-runner) has no Docker and is not given Docker.
+  # データベースはジョブ内で起動する PostgreSQL 17 プロセス（start_postgres.sh）で、services: コンテナは使わない：セルフホストランナー
+  # （zg の Mac 上の Linux コンテナ、infra/ci-runner）には Docker がなく、Docker を与えることもしない。
   db:
     name: tests against PostgreSQL
     runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '["self-hosted","zoujin-mac"]') }}
