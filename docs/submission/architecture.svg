@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
 <rect width="1920" height="1080" fill="#f3efe6"/>
-<text x="70" y="96" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="56" fill="#273b32">zoujin</text>
+<text x="70" y="96" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="56" fill="#273b32">物語</text>
 <text x="70" y="149" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="34" fill="#273b32">会話と選択を、記憶と結末につなぐシステム</text>
 <text x="1320" y="100" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="30" fill="#273b32">システムアーキテクチャ</text>
 <text x="1320" y="138" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="23" fill="#6d7569">現在の実装の主要経路  /  Google Cloud</text>

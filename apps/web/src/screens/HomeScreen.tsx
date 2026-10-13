@@ -53,8 +53,8 @@ export default function HomeScreen() {
         )}
       </div>
       <header className="home-header">
-        <a className="home-brand" href="/" aria-label="zoujin ホーム">
-          zoujin<span>走 進</span>
+        <a className="home-brand" href="/" aria-label="物語 ホーム">
+          物語<span>Monogatari</span>
         </a>
         <p>物語と、あなたのあいだ。</p>
         <span className="home-invite">18歳以上・招待制</span>
@@ -250,7 +250,7 @@ function Book({
       <div className="home-book-jacket" aria-hidden="true">
         <span>{book.author}</span>
         <strong>{book.title}</strong>
-        <i>zoujin</i>
+        <i>物語</i>
       </div>
       <div className="home-book-info">
         <span className="home-book-status">
