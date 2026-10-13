@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+<rect width="1920" height="1080" fill="#f3efe6"/>
+<text x="70" y="96" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="56" fill="#273b32">zoujin</text>
+<text x="70" y="149" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="34" fill="#273b32">会話と選択を、記憶と結末につなぐシステム</text>
+<text x="1320" y="100" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="30" fill="#273b32">システムアーキテクチャ</text>
+<text x="1320" y="138" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="23" fill="#6d7569">現在の実装の主要経路  /  Google Cloud</text>
+<rect x="70" y="225" width="470" height="220" rx="20" fill="#ffffff" stroke="#d9d2c3" stroke-width="2"/>
+<text x="100" y="286" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="34" fill="#273b32">ブラウザ</text>
+<text x="100" y="335" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="25" fill="#273b32">React・Three.js・WebAudio</text>
+<text x="100" y="375" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="25" fill="#273b32">3D空間・字幕・テキスト入力</text>
+<text x="100" y="412" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="22" fill="#273b32">書斎・記憶帳・因果マップ・回想録</text>
+<rect x="710" y="225" width="470" height="220" rx="20" fill="#e0e8df" stroke="#9fac9d" stroke-width="2"/>
+<text x="740" y="283" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="31" fill="#273b32">Cloud Run  ゲートウェイ</text>
+<text x="740" y="335" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="25" fill="#273b32">FastAPI・HTTPS / WebSocket</text>
+<text x="740" y="373" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="23" fill="#273b32">サイトパスワード・招待セッション</text>
+<text x="740" y="413" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="23" fill="#273b32">画面・資産配信 / 音声 / 状態通知</text>
+<rect x="1340" y="225" width="500" height="220" rx="20" fill="#273b32" stroke="#273b32" stroke-width="2"/>
+<text x="1370" y="284" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="32" fill="#f3efe6">Cloud Run  叙事者</text>
+<text x="1370" y="335" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="25" fill="#f3efe6">自作Pythonエージェント処理</text>
+<text x="1370" y="375" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="25" fill="#f3efe6">意図抽出 → 規則・モデル検証</text>
+<text x="1370" y="413" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="23" fill="#f3efe6">書き換え・拒否・確認 → 一括保存</text>
+<polyline points="540,325 710,325" fill="none" stroke="#927341" stroke-width="4"/>
+<polygon points="710,325 696.8362615716444,332.19138307906303 696.8362615716444,317.80861692093697" fill="#927341"/>
+<polygon points="540,325 553.1637384283556,317.80861692093697 553.1637384283556,332.19138307906303" fill="#927341"/>
+<text x="558" y="297" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="22" fill="#273b32">HTTPS</text>
+<text x="558" y="386" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="21" fill="#273b32">音声・差分</text>
+<polyline points="1180,325 1340,325" fill="none" stroke="#927341" stroke-width="4"/>
+<polygon points="1340,325 1326.8362615716444,332.19138307906303 1326.8362615716444,317.80861692093697" fill="#927341"/>
+<text x="1194" y="296" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="21" fill="#273b32">IAM / OIDC</text>
+<text x="1194" y="386" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="21" fill="#273b32">処理依頼</text>
+<rect x="570" y="575" width="350" height="170" rx="20" fill="#ffffff" stroke="#d9d2c3" stroke-width="2"/>
+<text x="595" y="634" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="32" fill="#273b32">Gemini</text>
+<text x="595" y="684" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="24" fill="#273b32">Live：人物の音声・字幕</text>
+<text x="595" y="724" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="24" fill="#273b32">文字入力への人物応答</text>
+<polyline points="810,445 810,530 745,530 745,575" fill="none" stroke="#927341" stroke-width="4"/>
+<polygon points="745,575 737.808616920937,561.8362615716444 752.191383079063,561.8362615716444" fill="#927341"/>
+<polygon points="810,445 817.191383079063,458.1637384283556 802.808616920937,458.1637384283556" fill="#927341"/>
+<rect x="990" y="575" width="350" height="170" rx="20" fill="#ffffff" stroke="#d9d2c3" stroke-width="2"/>
+<text x="1015" y="634" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="32" fill="#273b32">Model Armor</text>
+<text x="1015" y="682" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="22" fill="#273b32">入力・出力の安全チェック</text>
+<text x="1015" y="721" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="21" fill="#273b32">安全判定を世界反映に連携</text>
+<polyline points="1100,445 1100,530 1165,530 1165,575" fill="none" stroke="#927341" stroke-width="4"/>
+<polygon points="1165,575 1157.8086169209369,561.8362615716444 1172.1913830790631,561.8362615716444" fill="#927341"/>
+<polygon points="1100,445 1107.1913830790631,458.1637384283556 1092.8086169209369,458.1637384283556" fill="#927341"/>
+<rect x="1430" y="575" width="410" height="170" rx="20" fill="#ffffff" stroke="#d9d2c3" stroke-width="2"/>
+<text x="1455" y="634" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="32" fill="#273b32">Claude</text>
+<text x="1455" y="682" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="22" fill="#273b32">テキスト推論・事件抽出・叙述</text>
+<text x="1455" y="724" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="24" fill="#273b32">検証・記憶・結末生成</text>
+<polyline points="1590,445 1590,530 1635,530 1635,575" fill="none" stroke="#927341" stroke-width="4"/>
+<polygon points="1635,575 1627.8086169209369,561.8362615716444 1642.1913830790631,561.8362615716444" fill="#927341"/>
+<polygon points="1590,445 1597.1913830790631,458.1637384283556 1582.8086169209369,458.1637384283556" fill="#927341"/>
+<rect x="610" y="820" width="1230" height="145" rx="20" fill="#e0e8df" stroke="#9fac9d" stroke-width="2"/>
+<text x="640" y="873" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="31" fill="#273b32">Cloud SQL  PostgreSQL</text>
+<text x="640" y="917" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="25" fill="#273b32">処理キュー・世界状態・イベント・約束・人物記憶・結末・費用と失敗の指標</text>
+<polyline points="950,445 950,820" fill="none" stroke="#927341" stroke-width="4"/>
+<polygon points="950,820 942.808616920937,806.8362615716444 957.191383079063,806.8362615716444" fill="#927341"/>
+<polygon points="950,445 957.191383079063,458.1637384283556 942.808616920937,458.1637384283556" fill="#927341"/>
+<text x="680" y="799" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="21" fill="#273b32">保存 / NOTIFY・LISTEN → 画面更新</text>
+<polyline points="1840,350 1880,350 1880,890 1840,890" fill="none" stroke="#927341" stroke-width="4"/>
+<polygon points="1840,890 1853.1637384283556,882.808616920937 1853.1637384283556,897.191383079063" fill="#927341"/>
+<polygon points="1840,350 1853.1637384283556,342.80861692093697 1853.1637384283556,357.19138307906303" fill="#927341"/>
+<rect x="70" y="820" width="470" height="145" rx="20" fill="#ffffff" stroke="#d9d2c3" stroke-width="2"/>
+<text x="100" y="871" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="29" fill="#273b32">運用基盤</text>
+<text x="100" y="915" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="23" fill="#273b32">Secret Manager / Artifact Registry</text>
+<text x="100" y="951" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="21" fill="#273b32">秘密情報 / サービス共通イメージ</text>
+<text x="70" y="1025" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="23" fill="#273b32">世界の変更は叙事者が検証して保存。生成された体験は原作本文と区別する。</text>
+<text x="70" y="1056" font-family="Hiragino Sans,Hiragino Kaku Gothic ProN,Noto Sans JP,sans-serif" font-size="20" fill="#6d7569">音声はストリーミング。全音声の事前審査や、全会話の記憶成功を保証する構成ではありません。</text>
+</svg>
