@@ -1,21 +1,23 @@
-## 卡
+## Card / カード
 
-<!-- 例：docs/tasks/m2-0/C-1.md -->
+<!-- Example / 例：docs/tasks/m2-0/C-1.md -->
 
-## 做了什么
+## What was done / 実施内容
 
-## 怎么验的
+## How it was verified / 検証方法
 
-<!-- 本地跑过哪些检查，结果；碰到 PRD 数字的写实测值 -->
+<!-- Which checks were run locally and the results; for anything touching PRD numbers, write the measured value / ローカルで実行したチェックとその結果。PRD の数値に関わる場合は実測値を書く -->
 
-## 评审
+## Review / レビュー
 
-<!-- 卡上写的两个角色；改 packages/contracts 的三方都要；碰 PRD 数字的加 PM -->
+<!-- The two roles named on the card; changes to packages/contracts need all three parties; add PM when touching PRD numbers / カードに書かれた 2 つのロール。packages/contracts の変更は三者すべて。PRD の数値に関わる場合は PM を追加 -->
 
-- [ ] 角色 1：
-- [ ] 角色 2：
+- [ ] Role 1 / ロール 1:
+- [ ] Role 2 / ロール 2:
 
-评审写成 PR 评论，第一行固定是 `评审通过 · <角色> · <提交前 7 位>` 或 `要改 · <角色>`。合并前查的四件见 `CONTRIBUTING.md`。
+Write the review as a PR comment whose first line is fixed as `Review approved / レビュー承認 · <role> · <first 7 characters of the commit> / <ロール> · <コミットの先頭 7 文字>` or `Changes requested / 要修正 · <role> / <ロール>`. For the four things to check before merging, see `CONTRIBUTING.md`.
 
-- [ ] 没有部署、花钱、真模型调用
-- [ ] 没有地址、项目 ID、账单 ID、密钥、测试码、邀请码、真名
+レビューは PR コメントとして書き、1 行目は固定で上記のいずれかの形式にする。マージ前に確認する 4 点は `CONTRIBUTING.md` を参照。
+
+- [ ] No deployment, spending or real model calls / デプロイ、課金、実モデル呼び出しがない
+- [ ] No addresses, project IDs, billing IDs, keys, test codes, invite codes or real names / アドレス、プロジェクト ID、請求 ID、鍵、テストコード、招待コード、本名がない

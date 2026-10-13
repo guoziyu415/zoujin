@@ -1,75 +1,123 @@
-# S7 · 写实广场（D-016 的技术样板）
+# S7 · Realistic plaza / 写実広場 (technical prototype for D-016 / D-016 の技術サンプル)
 
-〔场景流水线已整理进仓库 `assets/pipeline/plaza/`（F-2），以那里为准；这里保留 S7 当时的原样。〕
+[The scene pipeline has been organized into the repo at `assets/pipeline/plaza/` (F-2); that is authoritative. This file keeps S7 as it was at the time.]
 
-技术验证，不算正式代码。回答 PM 转来的 D-016 问题：手机浏览器上写实能做到什么样，每种手段花多少帧时间、下载和首次进入时间，人物预算够不够。结论和三档方案写在 `frontend/frontend-design.md` 10.6。
+〔シーンパイプラインはリポジトリの `assets/pipeline/plaza/`（F-2）に整理済みで、そちらが正。ここは S7 当時のまま残している。〕
 
-- 测试页（claude.ai 私有页面）：https://claude.ai/artifact/4kuxSACRpsKBZN7NjSiuYv （只有 zg 能打开）
-- 发布方式：claude.ai Artifact，只是私有测试页，不是产品部署，不涉及 Google Cloud、域名或密钥。
-- 源码：`page/index.html`（页面）；`build/` 是生成场景（`build_plaza.py`）、太阳方向（`sunpos.py`）、天空（`sky.py`）、光照图（`bake.py`、`encode.py`）的 Blender 脚本（Blender 5.2 的 Python 模块 bpy）；`build/page-tools/` 是压缩几何和人物、打包页面数据、容器里截图的脚本（gltf-transform、meshoptimizer、ktx2-encoder、playwright）。脚本里的路径是容器里的 `/tmp/spk/...`。贴图、光照图和模型这些二进制文件没有放进这里（约 22MB），需要时用脚本重新生成。
+A technical verification, not production code. It answers the D-016 question relayed by PM: how far realism can go in a mobile browser, how much frame time, download, and first-entry time each technique costs, and whether the character budget is enough. The conclusions and the three-tier plan are in `frontend/frontend-design.md` 10.6.
 
-## 页面里有什么
+技術検証であり、正式なコードではない。PM から回ってきた D-016 の問い、すなわちスマートフォンのブラウザで写実表現がどこまでできるか、各手法がフレーム時間・ダウンロード・初回入場時間をどれだけ消費するか、人物の予算は足りるか、に答える。結論と3段階の案は `frontend/frontend-design.md` 10.6 に書いてある。
 
-- 场景：按 UX 的 art-direction v1.0 摆的锡拉库萨广场。西边是城门和朝 294° 的城门大街，夏天的太阳正好从大街尽头落下；东边是王城的墙和塔，海在东边；北面神殿，南面民居，中间喷泉和两个摊位。烘焙的时刻是 18:30（太阳高度 5.6°，方位 290°）。
-- 太阳：按 UX 的公式（北纬 37°、赤纬 +19°、正午 12:00、日没 19:00）算方向，页面和烘焙用同一个公式。
-- 材质：照片扫描的石材 PBR 贴图（颜色 + 法线），512 / 1024 / 1024 KTX2 三档可切。
-- 天空：Blender 的物理天空模型（多重散射）生成的 HDR，同时用于烘焙和页面里的环境光，保证两边一致。
-- 光照（三种，可切）：
-  - 全烘焙：太阳、天空光、反射光都在 Cycles 里算好写进光照图，环境不再实时算光；人物用实时太阳，进出阴影按地面的阴影图变暗。
-  - 烘间接光 + 实时太阳：光照图里只有天空光和反射光，太阳和影子实时算（低模代理投影，约 2,700 面）。
-  - 只烘遮蔽 + 实时太阳 + 程序天空：时刻可以用滑块在 04:30〜20:30 连续改，改时刻时重新生成环境光；夜里用蓝调（day-for-night）。
-  - 「等日没」按钮：切到上面这种，从 18:00 走到 19:10，看王城墙上的影子线往上爬、最后从塔顶消失（UX 的检查点 2）。
-  - 打开时默认是「只烘遮蔽 + 实时太阳」的 18:30，因为 10.6 建议正式版以它为底。
-- 后处理：泛光（半解像度）、暗角、调色，HalfFloat + MSAA×4。
-- 雾：按视线方向混色，朝太阳的方向变暖（空气透视）。
-- 人物：灰色假人（Mixamo X Bot），8k / 12k / 28k 面三档，只用来测面数的代价，不代表写实人物的样子。「对话特写」视角可以直接切三档对比。
-- 自动计测：12 种配置（b1〜b12），每种预热 3 秒、计测 10 秒，镜头走同一条路线；记录帧时间 p50/p95/p99、超过 34ms 的帧占比、GPU 渲染耗时（每 12 帧 `gl.finish` 一次）、draw call、三角形数；首次进入记录打开到第一帧、资源下载、着色器编译、环境光生成的时间。结果存进页面数据库（collection `runs`、`loads`），前端线程用 ArtifactData 读取。
+- Test page (private claude.ai page): https://claude.ai/artifact/4kuxSACRpsKBZN7NjSiuYv (only zg can open it)
+  テストページ（claude.ai の非公開ページ）：https://claude.ai/artifact/4kuxSACRpsKBZN7NjSiuYv （zg だけが開ける）
+- Publishing method: claude.ai Artifact, only a private test page, not a product deployment; it involves no Google Cloud, domain, or keys.
+  公開方法：claude.ai Artifact。非公開のテストページにすぎず、製品のデプロイではない。Google Cloud、ドメイン、鍵は一切関係しない。
+- Source: `page/index.html` (the page); `build/` holds the Blender scripts (Blender 5.2's Python module bpy) for generating the scene (`build_plaza.py`), sun direction (`sunpos.py`), sky (`sky.py`), and lightmaps (`bake.py`, `encode.py`); `build/page-tools/` holds scripts for compressing geometry and characters, packing page data, and taking screenshots in the container (gltf-transform, meshoptimizer, ktx2-encoder, playwright). Paths in the scripts are `/tmp/spk/...` inside the container. Binary files such as textures, lightmaps, and models are not placed here (about 22MB); regenerate them with the scripts when needed.
+  ソース：`page/index.html`（ページ）。`build/` はシーン生成（`build_plaza.py`）、太陽の方向（`sunpos.py`）、空（`sky.py`）、ライトマップ（`bake.py`、`encode.py`）の Blender スクリプト（Blender 5.2 の Python モジュール bpy）。`build/page-tools/` はジオメトリと人物の圧縮、ページデータのパック、コンテナ内でのスクリーンショットのスクリプト（gltf-transform、meshoptimizer、ktx2-encoder、playwright）。スクリプト内のパスはコンテナ内の `/tmp/spk/...`。テクスチャ、ライトマップ、モデルなどのバイナリ（約22MB）はここに置いていない。必要ならスクリプトで再生成する。
 
-## 容器里得到的数字（无头 Chromium，软件渲染：只看功能和数量，不看帧率）
+## What is in the page / ページの内容
 
-| 项 | 数字 |
+- Scene: the Syracuse plaza laid out per UX's art-direction v1.0. The city gate and the gate avenue facing 294° are to the west, and the summer sun sets exactly at the end of the avenue; the royal castle's wall and tower are to the east, with the sea in the east; the temple is to the north and dwellings to the south, with a fountain and two stalls in the middle. The baked time is 18:30 (sun elevation 5.6°, azimuth 290°).
+  シーン：UX の art-direction v1.0 に従って配置したシラクサの広場。西に城門と294°を向く城門大通りがあり、夏の太陽がちょうど大通りの突き当たりに沈む。東に王城の壁と塔があり、海は東。北に神殿、南に民家、中央に噴水と2つの露店。ベイクする時刻は18:30（太陽高度 5.6°、方位 290°）。
+- Sun: direction computed with UX's formula (latitude 37°N, declination +19°, noon at 12:00, sunset at 19:00); the page and the bake use the same formula.
+  太陽：UX の式（北緯37°、赤緯 +19°、正午 12:00、日没 19:00）で方向を計算する。ページとベイクで同じ式を使う。
+- Materials: photo-scanned stone PBR textures (color + normal), switchable between three tiers of 512 / 1024 / 1024 KTX2.
+  マテリアル：写真スキャンの石材 PBR テクスチャ（カラー + 法線）。512 / 1024 / 1024 KTX2 の3段階を切り替えられる。
+- Sky: an HDR generated by Blender's physical sky model (multiple scattering), used both for baking and for the page's ambient light, keeping the two consistent.
+  空：Blender の物理ベース空モデル（多重散乱）で生成した HDR。ベイクとページの環境光の両方に使い、両者の一貫性を保つ。
+- Lighting (three kinds, switchable):
+  ライティング（3種類、切り替え可）：
+  - Fully baked: sun, sky light, and bounce light are all computed in Cycles and written into the lightmap, and the environment no longer computes light in real time; characters use the real-time sun and darken when entering or leaving shadow according to the ground's shadow map.
+    フルベイク：太陽、空の光、反射光をすべて Cycles で計算してライトマップに書き込み、環境はもうリアルタイムでライティングを計算しない。人物はリアルタイムの太陽を使い、影の出入りは地面の影マップに従って暗くなる。
+  - Baked indirect light + real-time sun: the lightmap holds only sky light and bounce light, with the sun and shadows computed in real time (low-poly proxy casting shadows, about 2,700 faces).
+    間接光をベイク + リアルタイムの太陽：ライトマップには空の光と反射光だけが入り、太陽と影はリアルタイムで計算する（低ポリのプロキシが影を落とす。約2,700面）。
+  - Bake occlusion only + real-time sun + procedural sky: the time of day can be changed continuously with a slider from 04:30 to 20:30, and the ambient light is regenerated when the time changes; at night it uses a blue tone (day-for-night).
+    遮蔽のみベイク + リアルタイムの太陽 + プロシージャル空：時刻をスライダーで04:30〜20:30の間で連続的に変えられ、時刻を変えると環境光を再生成する。夜は青味の調子（day-for-night）を使う。
+  - The "Wait for sunset" button: switches to the mode above and runs from 18:00 to 19:10, watching the shadow line on the royal castle wall climb up and finally disappear from the tower top (UX checkpoint 2).
+    「等日没」ボタン：上記のモードに切り替え、18:00から19:10まで進めて、王城の壁の影の線が上へ登り、最後に塔の頂上から消えるのを見る（UX のチェックポイント2）。
+  - On opening, the default is "occlusion-only bake + real-time sun" at 18:30, because 10.6 recommends it as the base for the production version.
+    開いたときのデフォルトは18:30の「遮蔽のみベイク + リアルタイムの太陽」。10.6 が正式版の土台として推奨しているため。
+- Post-processing: bloom (half resolution), vignette, color grading, HalfFloat + MSAA×4.
+  ポストプロセス：ブルーム（半解像度）、ビネット、カラーグレーディング、HalfFloat + MSAA×4。
+- Fog: blended by view direction, turning warmer toward the sun (aerial perspective).
+  フォグ：視線方向で色を混ぜ、太陽の方向に向かうと暖かくなる（空気遠近法）。
+- Characters: gray mannequins (Mixamo X Bot) in three tiers of 8k / 12k / 28k faces, used only to measure the face-count cost, not representing how a realistic character looks. The "dialogue close-up" view can switch directly between the three tiers for comparison.
+  人物：グレーのマネキン（Mixamo X Bot）、8k / 12k / 28k 面の3段階。面数のコストを測るためだけのもので、写実的な人物の見た目を表すものではない。「対話クローズアップ」の視点で3段階を直接切り替えて比較できる。
+- Automatic measurement: 12 configurations (b1–b12), each warmed up for 3 seconds and measured for 10 seconds with the camera following the same route; records frame time p50/p95/p99, the share of frames over 34 ms, GPU render time (`gl.finish` once every 12 frames), draw calls, and triangle count; for first entry it records the times from opening to the first frame, resource download, shader compilation, and ambient light generation. Results are stored in the page database (collections `runs`, `loads`), and the frontend thread reads them with ArtifactData.
+  自動計測：12種類の構成（b1〜b12）。それぞれ3秒ウォームアップし10秒計測して、カメラは同じルートを進む。フレーム時間 p50/p95/p99、34ms を超えたフレームの割合、GPU の描画時間（12フレームごとに `gl.finish` を1回）、draw call、三角形数を記録する。初回入場では、開いてから最初のフレームまで、リソースのダウンロード、シェーダーコンパイル、環境光生成の時間を記録する。結果はページのデータベース（collection `runs`、`loads`）に保存され、フロントエンドのスレッドが ArtifactData で読み取る。
+
+## Numbers from the container (headless Chromium, software rendering: judge function and quantities only, not frame rate) / コンテナで得た数字（ヘッドレス Chromium、ソフトウェアレンダリング：機能と数量だけを見て、フレームレートは見ない）
+
+| Item / 項目 | Number / 数字 |
 |---|---|
-| 打开到第一帧（本机文件、软件渲染） | 3.8〜4.4 秒；默认改成实时太阳以后 6.3 秒（开场要多生成一次天空的环境光） |
-| draw call | 50〜53（3 个人物、阴影 2048、后处理开） |
-| 三角形 | 约 11.7 万（含阴影那一遍和 3 个 12k 面的人物） |
-| 场景几何 | meshopt 压缩后 0.47MB（压缩前 0.97MB） |
-| 天空 HDR | 1.06MB（正式版换 Ultra HDR JPEG 约 0.1MB） |
-| 贴图（全部材质） | 1024 KTX2 5.5MB；1024 JPEG 6.3MB；512 JPEG 1.5MB |
-| 光照图每套（地面 + 建筑，一个时段） | 1024：0.35MB；2048：1.09MB |
-| 人物（meshopt 后） | 8k 面 73KB、12k 面 99KB、28k 面 200KB；两个动作 150KB |
+| Open to first frame (local file, software rendering) / 開いてから最初のフレームまで（ローカルファイル、ソフトウェアレンダリング） | 3.8–4.4 seconds; 6.3 seconds after the default changed to real-time sun (the opening must generate the sky's ambient light one more time) / 3.8〜4.4秒。デフォルトをリアルタイムの太陽に変えた後は6.3秒（開始時に空の環境光をもう一度生成する必要がある） |
+| Draw calls / draw call | 50–53 (3 characters, shadow 2048, post-processing on) / 50〜53（人物3体、影 2048、ポストプロセスあり） |
+| Triangles / 三角形 | About 117,000 (including the shadow pass and three 12k-face characters) / 約11.7万（影のパスと12k面の人物3体を含む） |
+| Scene geometry / シーンのジオメトリ | 0.47MB after meshopt compression (0.97MB before) / meshopt 圧縮後 0.47MB（圧縮前 0.97MB） |
+| Sky HDR / 空の HDR | 1.06MB (the production version switches to Ultra HDR JPEG, about 0.1MB) / 1.06MB（正式版は Ultra HDR JPEG に替えて約0.1MB） |
+| Textures (all materials) / テクスチャ（全マテリアル） | 1024 KTX2 5.5MB; 1024 JPEG 6.3MB; 512 JPEG 1.5MB |
+| Lightmap per set (ground + buildings, one time slot) / ライトマップ1セットあたり（地面 + 建物、1時間帯） | 1024: 0.35MB; 2048: 1.09MB |
+| Characters (after meshopt) / 人物（meshopt 後） | 8k faces 73KB, 12k faces 99KB, 28k faces 200KB; two animations 150KB / 8k面 73KB、12k面 99KB、28k面 200KB。2つのアニメーション 150KB |
 
-功能都跑过，控制台没有错误：三种光照切换；时刻滑块（04:30〜20:30）；「等日没」从 18:00 走到 19:10，王城墙上的影子线一路往上爬；日没后的残照、夜、正午、早上；对话特写切 8k / 12k / 28k 面。
+All features were run, with no console errors: switching among the three lighting modes; the time slider (04:30–20:30); "Wait for sunset" running from 18:00 to 19:10 with the shadow line on the royal castle wall climbing steadily; afterglow after sunset, night, noon, and morning; the dialogue close-up switching among 8k / 12k / 28k faces.
 
-调画面时发现并修好的两个问题（正式版也要注意）：
-- 朝太阳看时整屏变黑：水面上太阳的高光超出了半精度浮点的范围（变成无穷大），泛光把它扩散到全屏；另外太阳光盘的着色器里 `smoothstep` 的两个边界写反了（GLSL 里结果未定义）。现在所有材质的输出上限是 48，太阳光盘上限 60。
-- three.js 的程序天空（Sky.js）自带的太阳光盘亮度是普通天空的上千倍，在夕阳附近会让泛光糊满画面；日没后天空又会一下子全黑。现在关掉它自带的光盘，亮度封顶，日没后补一层残照和夜空的底色。
+機能はすべて動作確認済みで、コンソールにエラーはない：3種類のライティングの切り替え。時刻スライダー（04:30〜20:30）。「等日没」が18:00から19:10まで進み、王城の壁の影の線が一貫して上へ登る。日没後の残照、夜、正午、朝。対話クローズアップで 8k / 12k / 28k 面を切り替え。
 
-## 等真机回答
+Two problems found and fixed while tuning the picture (the production version needs to watch for them too):
 
-1. b4（烘间接光 + 阴影）、b5（全烘焙）、b7（加后处理）在 iPhone 12 上的 p95：决定档 A / B 的光照方式和后处理开不开。
-2. b7、b8、b9：DPR 1 / 1.5 / 2 的差距，决定默认解像度。
-3. b10、b11：7 个人物 12k 面和 28k 面的差距，决定对话版人物的面数上限。
-4. 首次进入：4G 下打开到第一帧的时间，和下载量对照。
+画面の調整中に見つかって修正した2つの問題（正式版でも注意が必要）：
+- The whole screen turned black when looking toward the sun: the sun's specular highlight on the water exceeded the range of half-precision floats (became infinity), and bloom spread it across the whole screen; in addition, the two bounds of `smoothstep` in the sun disc shader were written in reverse (undefined result in GLSL). Now the output cap of all materials is 48 and the sun disc cap is 60.
+  太陽の方を見ると画面全体が黒くなる：水面上の太陽のハイライトが半精度浮動小数点の範囲を超え（無限大になり）、ブルームがそれを画面全体に広げた。さらに、太陽ディスクのシェーダーで `smoothstep` の2つの境界が逆に書かれていた（GLSL では結果が未定義）。現在は全マテリアルの出力上限が 48、太陽ディスクの上限が 60。
+- The procedural sky of three.js (Sky.js) has a built-in sun disc thousands of times brighter than the ordinary sky, which makes bloom smear across the screen near the setting sun; after sunset the sky also goes pitch black all at once. Now its built-in disc is turned off, brightness is capped, and after sunset a layer of afterglow and a night-sky base color is added.
+  three.js のプロシージャル空（Sky.js）に組み込まれた太陽ディスクは通常の空の数千倍の明るさがあり、夕日の近くではブルームが画面いっぱいににじむ。日没後は空が一気に真っ黒にもなる。現在は組み込みのディスクをオフにして明るさに上限を設け、日没後に残照と夜空の下地色を重ねている。
 
-zg 的手机是 iPhone 17 Pro Max，帧率被 Safari 锁在 60。第一版用的 `finishMs`（`gl.finish()` 计时）在 iPhone 上不等 GPU，量出来全是 1〜3ms，不能用。第二版（2026-10-06）改成加压：每项先照常走 6.5 秒，再停在固定机位把同一帧连画 2、4、8、16、32 遍，画到平均帧间隔 ≥ 45ms，一帧的 GPU 耗时 `gpuMs` ≈ 间隔 / 遍数（`stress` 字段里有每一步和上下限）。× 3.4 推到 iPhone 12〔推算〕：≤ 7.3ms 能过，7.3〜9.8ms 要旧机实测，> 9.8ms 过不了。依据见 frontend-design 10.6。
+## Awaiting real-device answers / 実機での回答待ち
 
-第一次实测（2026-10-06 14:31Z，suiteId `muws14jn`）：解像度 1.5 时 11 项中位 17ms（60 帧上限），b8（解像度 2）中位 25ms / p95 32ms；首次进入 13.5 秒、9.05MB。
+1. p95 of b4 (baked indirect light + shadows), b5 (fully baked), and b7 (with post-processing) on iPhone 12: decides the lighting approach for tiers A / B and whether post-processing is on.
+   iPhone 12 での b4（間接光ベイク + 影）、b5（フルベイク）、b7（ポストプロセス追加）の p95：段 A / B のライティング方式とポストプロセスを入れるかどうかを決める。
+2. b7, b8, b9: the difference between DPR 1 / 1.5 / 2, decides the default resolution.
+   b7、b8、b9：DPR 1 / 1.5 / 2 の差。デフォルトの解像度を決める。
+3. b10, b11: the difference between seven characters at 12k and 28k faces, decides the face-count cap for dialogue-version characters.
+   b10、b11：7体の人物で12k面と28k面の差。対話版の人物の面数上限を決める。
+4. First entry: the time from opening to the first frame over 4G, compared against the download size.
+   初回入場：4G で開いてから最初のフレームまでの時間を、ダウンロード量と照らし合わせる。
 
-第二次实测（加压版，2026-10-06 14:55Z，suiteId `muwsw58a`）：12 项不加压全部 60 帧；一帧 GPU 耗时 b1 2.0 / b2 1.7 / b3 2.6 / b4 2.1 / b5 2.3 / b6 2.3 / b7 2.6 / b8 4.3 / b9 1.0 / b10 2.8 / b11 2.9 / b12 2.5ms → iPhone 12〔推算〕3.5〜14.6ms，全部在 25ms 内。首次进入第二次 8.5 秒（着色器已缓存）。b8 第一次的 40 帧没有复现。详细见 frontend-design 10.6。
+zg's phone is an iPhone 17 Pro Max, with frame rate locked to 60 by Safari. The first version's `finishMs` (timing `gl.finish()`) does not wait for the GPU on iPhone, and everything measured 1–3 ms, so it is unusable. The second version (2026-10-06) switched to stress testing: each item first runs normally for 6.5 seconds, then stops at a fixed camera position and draws the same frame 2, 4, 8, 16, 32 times in a row until the average frame interval is ≥ 45 ms; the GPU time of one frame `gpuMs` ≈ interval / number of passes (the `stress` field has every step and the bounds). Scaled ×3.4 to iPhone 12 [estimate]: ≤ 7.3 ms passes, 7.3–9.8 ms needs measurement on an older device, > 9.8 ms fails. See frontend-design 10.6 for the basis.
 
-## 局限
+zg のスマートフォンは iPhone 17 Pro Max で、フレームレートは Safari に 60 で固定されている。第1版が使った `finishMs`（`gl.finish()` の計時）は iPhone では GPU を待たず、測定値はすべて 1〜3ms になり、使えない。第2版（2026-10-06）は負荷方式に変更した。各項目をまず通常どおり 6.5 秒走らせ、次に固定カメラ位置で止まって同じフレームを 2、4、8、16、32 回続けて描画し、平均フレーム間隔が 45ms 以上になるまで続ける。1フレームの GPU 時間 `gpuMs` ≈ 間隔 / 回数（`stress` フィールドに各ステップと上下限がある）。× 3.4 で iPhone 12 に換算〔推算〕：7.3ms 以下なら合格、7.3〜9.8ms は旧機種での実測が必要、9.8ms 超は不合格。根拠は frontend-design 10.6 を参照。
 
-- Artifact 页面跑在 claude.ai 的 iframe 里，资源以 base64 内嵌（Artifact 不收 .glb / .hdr），比正式部署多解码一步，首次进入的数字偏慢；正式版按「meshopt 后」那一栏的大小算下载。
-- 建筑是程序生成的方块，正式美术的三角形和材质会多一些；光照图的接缝和分辨率也还没有精修。
-- 只有一个时刻（18:30）的光照图。别的时段的反射光图和时段之间的混合，在 10.6 里按每套光照图的大小估算。
-- 人物是假人，所以 UX 的检查点 3（和老爷面对面）现在判断不了，要等用 MPFB 做的写实人物。
+First measurement (2026-10-06 14:31Z, suiteId `muws14jn`): at resolution 1.5, the median of 11 items was 17 ms (60-frame cap); b8 (resolution 2) had a median of 25 ms / p95 of 32 ms; first entry took 13.5 seconds and 9.05MB.
 
-## 第三版画面（2026-10-06，按 `ux/reviews/frontend-s7.md`）
+1回目の実測（2026-10-06 14:31Z、suiteId `muws14jn`）：解像度 1.5 で 11 項目の中央値は 17ms（60フレーム上限）。b8（解像度 2）は中央値 25ms / p95 32ms。初回入場は 13.5 秒、9.05MB。
 
-- 直射光颜色按黑体曲线：太阳高度 0° 约 2000K、35° 约 4000K、正午约 5500K（18:30 约 2670K）；强度随高度下降。烘焙模式 A / B 的太阳也用同一条曲线。
-- 色调映射默认改为 Neutral：AgX 把夕阳照亮的石墙冲成浅米色（对比图 `shots/v2-tone-compare.jpg`，这张拍于天空调整之前）。夜里 Neutral 暗部更暗，所以夜间曝光提高。
-- 朝太阳看：雾的浓度降到三分之一（0.0042 → 0.0014），雾里朝太阳的散射色取阳光颜色；泛光阈值 2.2 → 3.0、半径 0.4 → 0.2；面朝太阳时曝光最多降 40%（镜头切换时立即生效，转头时约一秒适应）。
-- 天空：低太阳附近染成琥珀色；Sky.js 的亮度上限从逐通道截断改为保留色相的软压缩（截断会把夕阳那一侧变白）；日没前后东边有粉色的 Venus belt，深蓝从 19:30 前后开始。
-- 第一屏：新视角「西南角」朝东北，17:30（第一幕开局）。17:30 时西边的房子已经把整个广场罩进影子里，暖光只在王城和塔上，所以第一屏的对比是「影子里偏冷的广场 + 金色的王城」。
-- 截图：`shots/v2-sheet1.jpg`（第一屏、朝城门 17:30〜18:55、正午）、`shots/v2-sheet2.jpg`（王城 17:30〜19:10、19:30 和 20:30 的城门）。
-- 自动计测不受影响：计测时固定 18:30、色调映射固定 AgX，和前两次可比。
+Second measurement (stress version, 2026-10-06 14:55Z, suiteId `muwsw58a`): all 12 items without stress reached 60 frames; one-frame GPU time b1 2.0 / b2 1.7 / b3 2.6 / b4 2.1 / b5 2.3 / b6 2.3 / b7 2.6 / b8 4.3 / b9 1.0 / b10 2.8 / b11 2.9 / b12 2.5 ms → iPhone 12 [estimate] 3.5–14.6 ms, all within 25 ms. Second first-entry took 8.5 seconds (shaders already cached). The 40 frames of b8's first run did not reproduce. See frontend-design 10.6 for details.
+
+2回目の実測（負荷版、2026-10-06 14:55Z、suiteId `muwsw58a`）：負荷なしでは 12 項目すべてが 60 フレーム。1フレームの GPU 時間は b1 2.0 / b2 1.7 / b3 2.6 / b4 2.1 / b5 2.3 / b6 2.3 / b7 2.6 / b8 4.3 / b9 1.0 / b10 2.8 / b11 2.9 / b12 2.5ms → iPhone 12〔推算〕3.5〜14.6ms、すべて 25ms 以内。初回入場は2回目で 8.5 秒（シェーダーはキャッシュ済み）。b8 の1回目の 40 フレームは再現しなかった。詳細は frontend-design 10.6 を参照。
+
+## Limitations / 制約
+
+- The Artifact page runs inside a claude.ai iframe, with resources embedded as base64 (Artifact does not accept .glb / .hdr), which adds one decoding step compared with a real deployment, so first-entry numbers are on the slow side; the production version counts download size from the "after meshopt" column.
+  Artifact ページは claude.ai の iframe 内で動き、リソースは base64 で埋め込まれている（Artifact は .glb / .hdr を受け付けない）。実際のデプロイより復号が1段多く、初回入場の数字は遅めに出る。正式版は「meshopt 後」の列の大きさでダウンロードを見積もる。
+- The buildings are procedurally generated blocks; production art will have more triangles and materials, and the lightmap seams and resolution have not been polished yet either.
+  建物はプロシージャルに生成したブロックで、正式なアートは三角形もマテリアルももっと多くなる。ライトマップの継ぎ目と解像度もまだ磨いていない。
+- Only one time of day (18:30) has a lightmap. Bounce-light maps for other time slots and blending between slots are estimated in 10.6 from the size of each lightmap set.
+  ライトマップは1つの時刻（18:30）しかない。他の時間帯の反射光マップと時間帯間のブレンドは、10.6 でライトマップ1セットごとの大きさから見積もっている。
+- The characters are mannequins, so UX checkpoint 3 (face to face with 老爺) cannot be judged yet; it has to wait for the realistic characters made with MPFB.
+  人物はマネキンなので、UX のチェックポイント3（老爺と向き合う）はまだ判断できない。MPFB で作る写実的な人物を待つ必要がある。
+
+## Third-version picture / 第3版の画面 (2026-10-06, per `ux/reviews/frontend-s7.md`)
+
+- Direct light color follows a blackbody curve: about 2000K at sun elevation 0°, about 4000K at 35°, about 5500K at noon (about 2670K at 18:30); intensity falls with elevation. The sun in bake modes A / B uses the same curve.
+  直射光の色は黒体曲線に従う：太陽高度 0° で約2000K、35° で約4000K、正午で約5500K（18:30 で約2670K）。強度は高度とともに下がる。ベイクモード A / B の太陽も同じ曲線を使う。
+- Tone mapping default changed to Neutral: AgX washes the stone walls lit by the setting sun out to a pale beige (comparison image `shots/v2-tone-compare.jpg`, taken before the sky adjustment). Neutral makes shadows darker at night, so night exposure was raised.
+  トーンマッピングのデフォルトを Neutral に変更：AgX は夕日に照らされた石壁を淡いベージュに白飛びさせる（比較画像 `shots/v2-tone-compare.jpg`。これは空の調整前に撮影）。夜は Neutral だと暗部がさらに暗くなるため、夜間の露出を上げた。
+- Looking toward the sun: fog density reduced to one third (0.0042 → 0.0014), the in-fog scattering color toward the sun takes the sunlight color; bloom threshold 2.2 → 3.0, radius 0.4 → 0.2; exposure is lowered by at most 40% when facing the sun (takes effect immediately on camera switch, adapting over about a second when turning the head).
+  太陽の方を見たとき：フォグの濃度を3分の1に下げ（0.0042 → 0.0014）、フォグ内の太陽方向への散乱色は日光の色にする。ブルームのしきい値 2.2 → 3.0、半径 0.4 → 0.2。太陽に向いたときは露出を最大40%下げる（カメラ切り替え時は即座に反映、頭を回したときは約1秒で順応）。
+- Sky: near the low sun it is tinted amber; Sky.js's brightness cap changed from per-channel clipping to hue-preserving soft compression (clipping turns the setting-sun side white); around sunset there is a pink Venus belt in the east, and deep blue begins around 19:30.
+  空：低い太陽の近くは琥珀色に染める。Sky.js の明るさ上限をチャンネルごとの切り捨てから、色相を保つソフトな圧縮に変更（切り捨てると夕日側が白くなる）。日没前後は東にピンク色の Venus belt が出て、濃い青は19:30前後から始まる。
+- First screen: new viewpoint "southwest corner" facing northeast, at 17:30 (the start of Act 1). At 17:30 the houses in the west already cast the whole plaza into shadow, with warm light only on the royal castle and tower, so the first screen's contrast is "a cool plaza in shadow + a golden royal castle".
+  最初の画面：新しい視点「南西の角」は北東を向き、17:30（第1幕の開始）。17:30 には西の家がすでに広場全体を影で覆い、暖かい光は王城と塔だけに当たっているので、最初の画面のコントラストは「影の中の冷たい広場 + 金色の王城」になる。
+- Screenshots: `shots/v2-sheet1.jpg` (first screen, facing the gate 17:30–18:55, noon), `shots/v2-sheet2.jpg` (royal castle 17:30–19:10, the gate at 19:30 and 20:30).
+  スクリーンショット：`shots/v2-sheet1.jpg`（最初の画面、城門に向かって 17:30〜18:55、正午）、`shots/v2-sheet2.jpg`（王城 17:30〜19:10、19:30 と 20:30 の城門）。
+- Automatic measurement is unaffected: measurement fixes 18:30 and tone mapping to AgX, comparable with the first two runs.
+  自動計測は影響を受けない：計測時は18:30とトーンマッピングの AgX に固定しており、前の2回と比較できる。

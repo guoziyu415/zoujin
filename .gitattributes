@@ -1,9 +1,9 @@
 * text=auto eol=lf
 
-# 青空文库的原始文件按字节原样保存（换行和编码都不动，sha256 才对得上）
+# Raw Aozora Bunko files are stored byte for byte (line endings and encoding untouched, so the sha256 matches) / 青空文庫の原文ファイルはバイト単位でそのまま保存する（改行も文字コードも触らない。sha256 が一致するように）
 worlds/**/sources/raw/** -text
 
-# 美术大文件走 Git LFS（dev-plan 2.1；CI 只在需要的 job 里检出）
+# Large art files go through Git LFS (dev-plan 2.1; CI checks them out only in the jobs that need them) / 大きなアート素材は Git LFS を使う（dev-plan 2.1。CI は必要なジョブでのみチェックアウトする）
 assets/**/*.blend filter=lfs diff=lfs merge=lfs -text
 assets/**/*.glb filter=lfs diff=lfs merge=lfs -text
 assets/**/*.ktx2 filter=lfs diff=lfs merge=lfs -text
@@ -16,10 +16,10 @@ assets/**/*.opus filter=lfs diff=lfs merge=lfs -text
 assets/**/*.mp3 filter=lfs diff=lfs merge=lfs -text
 assets/**/*.m4a filter=lfs diff=lfs merge=lfs -text
 assets/**/*.wav filter=lfs diff=lfs merge=lfs -text
-# 预录音频走普通 git（S-084：项目线程的容器推不了 LFS；每条远小于 1 MB，check_large_files.py 照旧管着）
+# Prerecorded audio uses plain git (S-084: the project thread container cannot push LFS; each file is far under 1 MB, and check_large_files.py still covers them) / 録音済み音声は通常の git を使う（S-084：プロジェクトスレッドのコンテナは LFS に push できない。1 本ずつ 1 MB よりはるかに小さく、check_large_files.py が引き続き監視する）
 assets/voice/** !filter !diff !merge
 
-# 其余二进制
+# Other binaries / その他のバイナリ
 *.png binary
 *.jpg binary
 *.glb binary

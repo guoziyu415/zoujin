@@ -1,1 +1,3 @@
-CC0 源素材的下载清单（地址和 sha256）。A-0 和 F-2 往里放。源素材本身不进仓库。
+Download manifest for CC0 source materials (URLs and sha256). A-0 and F-2 add entries here. The source materials themselves are not kept in the repo.
+
+CC0 ソース素材のダウンロード一覧（URL と sha256）。A-0 と F-2 がここに追加する。ソース素材そのものはリポジトリに入れない。

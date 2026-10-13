@@ -1,3 +1,5 @@
 # worlds
 
-每本书的世界模型。数据负责。`hashire-merosu/` 是『走れメロス』：`1.0.0-draft/` 里 `world.src.json` 是编写源，`world.json`、`report.md`、`REVIEW.md` 是生成的（不要手改）；`sources/` 是青空文库的原文。
+World models for each book. Owned by data. `hashire-merosu/` is 『走れメロス』: in `1.0.0-draft/`, `world.src.json` is the authoring source, while `world.json`, `report.md` and `REVIEW.md` are generated (do not edit by hand); `sources/` holds the original text from Aozora Bunko.
+
+各本の世界モデル。データ担当。`hashire-merosu/` は『走れメロス』：`1.0.0-draft/` 内の `world.src.json` が編集元で、`world.json`、`report.md`、`REVIEW.md` は生成物（手で編集しない）。`sources/` は青空文庫の原文。

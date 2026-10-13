@@ -1,23 +1,28 @@
-# zoujin
+# 物語 (Monogatari)
 
-走进物语（暂名）的代码和设计文档：走进『走れメロス』的 3D 网页世界，用日语语音和书里的人物说话。手机浏览器优先。
+Code and design docs for 物語 (Monogatari): step into the 3D web world of 『走れメロス』 and talk with the characters in the book using spoken Japanese. Mobile browser first.
 
-- 开发计划：`docs/pm/dev-plan.md`；决定记录：`docs/pm/decisions.md`；PRD：`docs/pm/prd.md`。
-- 怎么加东西、怎么评审和合并：`CONTRIBUTING.md`。
-- 任务卡：`docs/tasks/`。
+物語 (Monogatari) のコードと設計ドキュメント。『走れメロス』の 3D ウェブ世界に入り、日本語の音声で本の登場人物と話します。モバイルブラウザ優先。
 
-## 目录
+- Development plan: `docs/pm/dev-plan.md`; decision log: `docs/pm/decisions.md`; PRD: `docs/pm/prd.md`.
+  開発計画：`docs/pm/dev-plan.md`、決定記録：`docs/pm/decisions.md`、PRD：`docs/pm/prd.md`。
+- How to add things, and how to review and merge: `CONTRIBUTING.md`.
+  追加の仕方、レビューとマージの手順：`CONTRIBUTING.md`。
+- Task cards: `docs/tasks/`.
+  タスクカード：`docs/tasks/`。
 
-| 目录                 | 放什么                                                         | 谁负责            |
-| -------------------- | -------------------------------------------------------------- | ----------------- |
-| `apps/web`           | 网页前端                                                       | 前端              |
-| `services/backend`   | 网关、叙事者、mock 服务（一个 Python 包）                      | 后端              |
-| `packages/contracts` | 数据契约和接口的 JSON Schema，生成的 Python 和 TypeScript 类型 | 后端、数据        |
-| `packages/worldsim`  | 世界状态的共享规则库（`reference/` 是参考实现）                | 数据              |
-| `worlds`             | 每本书的世界模型和原文                                         | 数据              |
-| `evals`              | 评测集、探针题、安全样本和它们的生成器                         | 数据              |
-| `fixtures`           | 测试用的固定数据：模型回放、假 Live 的音频                     | 后端、数据        |
-| `assets`             | 美术流水线、素材清单、预算（大文件走 LFS）                     | 前端（UX 定标准） |
-| `infra`              | Terraform，只写不跑                                            | 后端              |
-| `docs`               | 设计文档、决定、任务卡                                         | 各角色，PM 汇总   |
-| `spikes`             | 验证阶段的代码，只作参考                                       | 原作者            |
+## Directories / ディレクトリ
+
+| Directory / ディレクトリ | Contents / 内容 | Owner / 担当 |
+| --- | --- | --- |
+| `apps/web` | Web frontend / ウェブフロントエンド | Frontend / フロントエンド |
+| `services/backend` | Gateway, narrator, mock service (one Python package) / ゲートウェイ、ナレーター、モックサービス（Python パッケージ 1 つ） | Backend / バックエンド |
+| `packages/contracts` | JSON Schemas for data contracts and interfaces, plus generated Python and TypeScript types / データ契約とインターフェースの JSON Schema、生成された Python と TypeScript の型 | Backend, Data / バックエンド、データ |
+| `packages/worldsim` | Shared rules library for world state (`reference/` is the reference implementation) / 世界状態の共有ルールライブラリ（`reference/` は参考実装） | Data / データ |
+| `worlds` | World model and source text for each book / 本ごとの世界モデルと原文 | Data / データ |
+| `evals` | Eval sets, probe questions, safety samples, and their generators / 評価セット、プローブ問題、安全性サンプルとそのジェネレーター | Data / データ |
+| `fixtures` | Fixed test data: model replays, audio for the fake Live / テスト用の固定データ：モデルのリプレイ、偽 Live の音声 | Backend, Data / バックエンド、データ |
+| `assets` | Art pipeline, asset manifests, budgets (large files via LFS) / アートパイプライン、素材リスト、予算（大きなファイルは LFS） | Frontend (UX sets standards) / フロントエンド（UX が基準を定める） |
+| `infra` | Terraform, written but not run / Terraform（書くだけで実行しない） | Backend / バックエンド |
+| `docs` | Design docs, decisions, task cards / 設計ドキュメント、決定、タスクカード | All roles, PM consolidates / 各ロール、PM が集約 |
+| `spikes` | Code from the validation phase, for reference only / 検証フェーズのコード（参考のみ） | Original authors / 元の作者 |

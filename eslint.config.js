@@ -1,4 +1,5 @@
-// ESLint flat config（R-0）。搬进来的文档、数据和 spikes 不按产品规则查。
+// ESLint flat config (R-0). Imported docs, data and spikes are not checked against product rules.
+// ESLint flat config（R-0）。取り込んだドキュメント、データ、spikes は製品ルールでは検査しない。
 import js from "@eslint/js";
 import globals from "globals";
 import tseslint from "typescript-eslint";
@@ -26,7 +27,8 @@ export default tseslint.config(
     files: ["apps/web/**/*.{ts,tsx}"],
     languageOptions: { globals: globals.browser },
   },
-  // 只有网络层碰 WebSocket：组件和 3D 层读 store、调 net/play 的动作（F-0，frontend-design 4）
+  // Only the network layer touches WebSocket: components and the 3D layer read the store and call net/play actions (F-0, frontend-design 4)
+  // WebSocket に触れるのはネットワーク層のみ：コンポーネントと 3D 層は store を読み、net/play のアクションを呼ぶ（F-0、frontend-design 4）
   {
     files: ["apps/web/src/**/*.{ts,tsx}"],
     ignores: ["apps/web/src/net/**"],
@@ -36,7 +38,7 @@ export default tseslint.config(
         {
           name: "WebSocket",
           message:
-            "WebSocket 只在 src/net/ 里用；组件调 net/play 的动作、读 store。",
+            "WebSocket is only used in src/net/; components call net/play actions and read the store. / WebSocket は src/net/ 内でのみ使用する。コンポーネントは net/play のアクションを呼び、store を読む。",
         },
       ],
       "no-restricted-properties": [
@@ -44,12 +46,12 @@ export default tseslint.config(
         {
           object: "window",
           property: "WebSocket",
-          message: "WebSocket 只在 src/net/ 里用。",
+          message: "WebSocket is only used in src/net/. / WebSocket は src/net/ 内でのみ使用する。",
         },
         {
           object: "globalThis",
           property: "WebSocket",
-          message: "WebSocket 只在 src/net/ 里用。",
+          message: "WebSocket is only used in src/net/. / WebSocket は src/net/ 内でのみ使用する。",
         },
       ],
     },

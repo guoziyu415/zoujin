@@ -1,5 +1,7 @@
-# gitleaks 规则（R-0）：默认规则 + 这个项目自己的几种。
-# 地址、项目 ID、账单 ID、密钥、测试码、邀请码都不进仓库（README 的部署规范）。
+# gitleaks rules (R-0): default rules plus this project's own.
+# Addresses, project IDs, billing IDs, keys, test codes and invite codes must not enter the repo (deployment rules in the README).
+# gitleaks ルール（R-0）：デフォルトルール＋このプロジェクト独自のもの。
+# アドレス、プロジェクト ID、請求 ID、鍵、テストコード、招待コードはリポジトリに入れない（README のデプロイ規約）。
 title = "zoujin"
 
 [extend]
@@ -7,41 +9,41 @@ useDefault = true
 
 [[rules]]
 id = "zoujin-invite-code"
-description = "邀请码（B-0 第 3 条的格式）"
+description = "Invite code (format from B-0 item 3) / 招待コード（B-0 第 3 項の形式）"
 regex = '''(?i)\binv-[0-9a-hjkmnp-tv-z]{4}(?:-[0-9a-hjkmnp-tv-z]{4}){3}\b'''
 keywords = ["inv-"]
 
   [[rules.allowlists]]
-  description = "文档里的占位写法"
+  description = "Placeholder form used in docs / ドキュメント内のプレースホルダー表記"
   regexes = ['''(?i)^inv-xxxx-xxxx-xxxx-xxxx$''']
 
 [[rules]]
 id = "zoujin-run-app-url"
-description = "Cloud Run 的地址：随机串加 .a.run 加 .app，以及 服务名-项目号.区域 加 .run.app"
+description = "Cloud Run address: random string plus .a.run plus .app, and service-name-project-number.region plus .run.app / Cloud Run のアドレス：ランダム文字列＋.a.run＋.app、およびサービス名-プロジェクト番号.リージョン＋.run.app"
 regex = '''(?i)\b[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9-]+)*\.run\.app\b'''
 keywords = ["run.app"]
 
 [[rules]]
 id = "zoujin-billing-account-id"
-description = "GCP 账单账号 ID（三组 6 位十六进制，用短横线连）"
+description = "GCP billing account ID (three groups of 6 hex digits joined by hyphens) / GCP 請求アカウント ID（6 桁の 16 進数 3 組をハイフンで連結）"
 regex = '''(?i)\b[0-9a-f]{6}-[0-9a-f]{6}-[0-9a-f]{6}\b'''
 
 [[rules]]
 id = "zoujin-service-account-email"
-description = "GCP 服务账号邮箱"
+description = "GCP service account email / GCP サービスアカウントのメールアドレス"
 regex = '''(?i)\b[a-z0-9-]+@[a-z0-9-]+\.iam\.gserviceaccount\.com\b'''
 keywords = ["iam.gserviceaccount.com"]
 
   [[rules.allowlists]]
-  description = "后端离线测试里的假地址（spikes/backend/tests/test_s1b.py）"
+  description = "Fake address in backend offline tests (spikes/backend/tests/test_s1b.py) / バックエンドのオフラインテスト内の偽アドレス（spikes/backend/tests/test_s1b.py）"
   regexes = ['''(?i)@offline-test\.iam\.gserviceaccount\.com$''']
 
 [[rules]]
 id = "zoujin-macos-home-path"
-description = "macOS 家目录路径（/Users/ 加用户名）：Mac 上的用户名和路径不进仓库，从 Mac 拿回来的日志和结果最容易带进来"
+description = "macOS home directory path (/Users/ plus username): usernames and paths from a Mac must not enter the repo; logs and results brought back from a Mac are the most likely to carry them / macOS ホームディレクトリのパス（/Users/＋ユーザー名）：Mac のユーザー名とパスはリポジトリに入れない。Mac から持ち帰ったログや結果に最も混入しやすい"
 regex = '''/Users/[A-Za-z0-9._-]+'''
 keywords = ["/users/"]
 
   [[rules.allowlists]]
-  description = "文档里的占位写法和系统共享目录"
+  description = "Placeholder forms used in docs and the system shared directory / ドキュメント内のプレースホルダー表記とシステム共有ディレクトリ"
   regexes = ['''(?i)^/Users/(?:shared|you|your-name|username|user|name|example)$''']
