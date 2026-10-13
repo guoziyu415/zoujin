@@ -1,9 +1,22 @@
-"""部署时网关同源发前端（B-23）：不上负载均衡和 CDN，前端构建、场景包和 API 走同一个地址。
+"""When deployed, the gateway serves the frontend from the same origin (B-23): no load balancer or CDN; the frontend
+build, scene packs and the API share one address.
 
-- `/scenes/<assetVersion>/<目录>/…`：manifest 引用的场景包（`ZJ_SCENE_PACKS`，B-7），地址带版本，长缓存；
-- `/assets/…`：vite 构建出来的带 hash 的文件，长缓存；
-- 其余 GET：`ZJ_WEB_DIST` 里有这个文件就发（不长缓存），没有就回 `index.html`（前端自己的路由）；
-- `/v1`、`/internal` 下没挂的地址照旧回第 5 节的 404，不回页面。
+- `/scenes/<assetVersion>/<dir>/…`: scene packs referenced by the manifest (`ZJ_SCENE_PACKS`, B-7); the address
+  carries the version, cached long;
+- `/assets/…`: hashed files built by vite, cached long;
+- any other GET: serve the file if `ZJ_WEB_DIST` has it (not cached long), otherwise `index.html` (the frontend's own
+  routing);
+- unmounted addresses under `/v1` and `/internal` still answer with the section 5 404, not the page.
+
+デプロイ時はゲートウェイが同一オリジンでフロントエンドを配信する（B-23）：ロードバランサーも CDN も使わず、
+フロントエンドのビルド、シーンパック、API が同じアドレスを通る。
+
+- `/scenes/<assetVersion>/<ディレクトリ>/…`：manifest が参照するシーンパック（`ZJ_SCENE_PACKS`、B-7）。アドレスに
+  バージョンが入るので長期キャッシュ；
+- `/assets/…`：vite がビルドしたハッシュ付きのファイル。長期キャッシュ；
+- それ以外の GET：`ZJ_WEB_DIST` にそのファイルがあれば配信し（長期キャッシュしない）、なければ `index.html`
+  （フロントエンド自身のルーティング）；
+- `/v1`、`/internal` の下でマウントされていないアドレスは、ページではなく従来どおり第 5 節の 404 を返す。
 """
 
 from __future__ import annotations
@@ -44,7 +57,10 @@ def media_type(path: Path) -> str:
 
 
 def under(top: Path, rel: str) -> Path | None:
-    """`top` 下的一个文件；走出 `top`（`..`、符号链接）、不是文件都是 None。"""
+    """A file under `top`; None if it escapes `top` (`..`, symlinks) or isn't a file.
+
+    `top` の下のファイル。`top` の外に出る（`..`、シンボリックリンク）か、ファイルでなければ None。
+    """
     if not rel:
         return None
     path = (top / rel).resolve()
@@ -80,7 +96,9 @@ def router(dist: Path) -> APIRouter:
             cache = IMMUTABLE if rel.startswith("assets/") else NO_CACHE
             return FileResponse(path, media_type=media_type(path), headers={"Cache-Control": cache})
         if "." in rel.rsplit("/", 1)[-1] or not index.is_file():
-            return Response(status_code=404)  # 要的是文件（有扩展名）而没有：不拿页面顶
+            # A file was asked for (it has an extension) and isn't there: don't answer with the page instead.
+            # ファイル（拡張子あり）を求められたのに無い：代わりにページを返さない。
+            return Response(status_code=404)
         return FileResponse(index, media_type=TYPES[".html"], headers={"Cache-Control": NO_CACHE})
 
     return r

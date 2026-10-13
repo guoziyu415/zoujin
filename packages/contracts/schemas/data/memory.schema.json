@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "data/memory.schema.json",
-  "description": "数据契约 1.5：MemoryItem、Relationship（第 4 节）和 Promise（3.1，约定）",
+  "description": "Data contract 1.5: MemoryItem, Relationship (section 4) and Promise (3.1, promises) / データ契約 1.5：MemoryItem、Relationship（第 4 節）と Promise（3.1、約束）",
   "$ref": "#/$defs/MemoryItem",
   "$defs": {
     "MemoryItem": {
       "title": "MemoryItem",
-      "description": "角色对玩家的记忆，可删除（第 4 节）。只由已提交的事件生成",
+      "description": "A character's memory of the player, deletable (section 4). Generated only from committed events / 登場人物がプレイヤーについて持つ記憶。削除できる（第 4 節）。コミット済みのイベントからのみ生成する",
       "type": "object",
       "properties": {
         "schemaVersion": {
@@ -20,7 +20,7 @@
         },
         "character": {
           "$ref": "common.schema.json#/$defs/CharacterId",
-          "description": "谁记得"
+          "description": "Who remembers / 誰が覚えているか"
         },
         "kind": {
           "enum": [
@@ -34,7 +34,7 @@
         },
         "text": {
           "type": "string",
-          "description": "角色视角的一句日语，給記憶帳显示；不含现实个人信息；删除后清空"
+          "description": "One Japanese sentence from the character's point of view, shown in the 記憶帳; no real-world personal information; cleared after deletion / 登場人物の視点による日本語の一文。記憶帳に表示する。現実の個人情報は含めない。削除後は空にする"
         },
         "fromEvents": {
           "type": "array",
@@ -42,7 +42,7 @@
             "$ref": "common.schema.json#/$defs/EventId"
           },
           "minItems": 1,
-          "description": "来自哪些事件；记忆只由已提交的事件生成（第 4 节），所以至少一个"
+          "description": "Which events it came from; memories are generated only from committed events (section 4), so at least one / どのイベントから来たか。記憶はコミット済みのイベントからのみ生成する（第 4 節）ので、少なくとも 1 つ"
         },
         "t": {
           "$ref": "common.schema.json#/$defs/StoryTime"
@@ -51,28 +51,28 @@
           "type": "integer",
           "minimum": -20,
           "maximum": 20,
-          "description": "这条记忆对信任的影响，-20..+20"
+          "description": "This memory's effect on trust, -20..+20 / この記憶が信頼に与える影響。-20..+20"
         },
         "salience": {
           "type": "number",
           "minimum": 0,
           "maximum": 1,
-          "description": "0..1，检索排序用"
+          "description": "0..1, used for retrieval ranking / 0..1。検索の並べ替えに使う"
         },
         "via": {
           "enum": ["witnessed", "told", "rumor"],
-          "description": "（1.1）見た / 聞いた / 噂で"
+          "description": "(1.1) 見た / 聞いた / 噂で (saw / heard / by rumor) / （1.1）見た / 聞いた / 噂で"
         },
         "promiseId": {
           "$ref": "common.schema.json#/$defs/PromiseId",
-          "description": "（1.1）这条记忆属于哪个约定"
+          "description": "(1.1) Which promise this memory belongs to / （1.1）この記憶がどの約束に属するか"
         },
         "createdAt": {
           "$ref": "common.schema.json#/$defs/RecordedAt"
         },
         "deletedAt": {
           "$ref": "common.schema.json#/$defs/RecordedAt",
-          "description": "删除后：text 清空，只留 ID 和删除时间（审计用）"
+          "description": "After deletion: text is cleared; only the ID and deletion time remain (for auditing) / 削除後：text を空にし、ID と削除時刻だけを残す（監査用）"
         }
       },
       "required": [
@@ -92,7 +92,7 @@
     },
     "Relationship": {
       "title": "Relationship",
-      "description": "关系，不单独存，按记忆推出（第 4 节）",
+      "description": "Relationship; not stored separately, derived from memories (section 4) / 関係。別に保存せず、記憶から導く（第 4 節）",
       "type": "object",
       "properties": {
         "character": {
@@ -102,16 +102,16 @@
           "type": "integer",
           "minimum": -100,
           "maximum": 100,
-          "description": "初值 + 未删除记忆的 trustDelta 之和，截断到 -100..100"
+          "description": "Initial value + the sum of trustDelta over undeleted memories, clamped to -100..100 / 初期値 + 削除されていない記憶の trustDelta の合計。-100..100 に切り詰める"
         },
         "label": {
           "type": "string",
-          "description": "由 trust 区间映射（第 4 节的表）"
+          "description": "Mapped from the trust range (the table in section 4) / trust の区間から対応付ける（第 4 節の表）"
         },
         "level": {
           "type": "integer",
           "enum": [1, 2, 3, 4, 5],
-          "description": "（1.5）同一区间的档位，接口里叫 relationLevel"
+          "description": "(1.5) The level within the same range; called relationLevel in the API / （1.5）同じ区間内の段階。API では relationLevel と呼ぶ"
         }
       },
       "required": ["character", "trust", "label", "level"],
@@ -119,7 +119,7 @@
     },
     "Promise": {
       "title": "StoryPromise",
-      "description": "（1.1）约定，由 promise 效果推出，不单独写（3.1）。生成的代码里叫 StoryPromise，避开 JS 的 Promise",
+      "description": "(1.1) Promise, derived from promise effects, not written separately (3.1). Called StoryPromise in the generated code to avoid JS's Promise / （1.1）約束。promise エフェクトから導き、別には書かない（3.1）。生成コードでは JS の Promise を避けて StoryPromise と呼ぶ",
       "type": "object",
       "properties": {
         "promiseId": {
@@ -134,7 +134,7 @@
               "$ref": "common.schema.json#/$defs/CharacterId"
             }
           ],
-          "description": "许下的一方"
+          "description": "The party who made the promise / 約束した側"
         },
         "to": {
           "anyOf": [
@@ -145,11 +145,11 @@
               "$ref": "common.schema.json#/$defs/CharacterId"
             }
           ],
-          "description": "对方"
+          "description": "The other party / 相手"
         },
         "text": {
           "type": "string",
-          "description": "约定的内容（日语，中性，不是原话）"
+          "description": "What was promised (Japanese, neutral, not the verbatim words) / 約束の内容（日本語、中立的、発言そのものではない）"
         },
         "due": {
           "type": "object",
@@ -168,15 +168,15 @@
         },
         "status": {
           "enum": ["open", "kept", "broken", "voided"],
-          "description": "まだ / 果たされた / 破られた / 作废"
+          "description": "Open / kept / broken / voided (まだ / 果たされた / 破られた / 無効) / まだ / 果たされた / 破られた / 無効"
         },
         "madeBy": {
           "$ref": "common.schema.json#/$defs/EventId",
-          "description": "成立的事件"
+          "description": "The event that made it / 成立したイベント"
         },
         "resolvedBy": {
           "$ref": "common.schema.json#/$defs/EventId",
-          "description": "兑现、违背或作废的事件"
+          "description": "The event that kept, broke or voided it / 果たされた、破られた、または無効になったイベント"
         }
       },
       "required": ["promiseId", "from", "to", "text", "status", "madeBy"],

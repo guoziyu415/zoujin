@@ -1,6 +1,12 @@
-"""B-15（S-072 ⑤）的单元：分类器带上下文、护栏词、第一遍 signal 的复核、第二次 ambiguous 的复核（卡第 6 节 C）。
+"""B-15 (S-072 ⑤) unit tests: the classifier with context, guardrail words, review of first-pass signals, and review
+of a second ambiguous (card section 6 C).
 
-不连库、不连网；分类器和复核用 `FakeText`，Armor 用 `FakeArmor`。
+No database, no network; the classifier and the review use `FakeText`, Armor uses `FakeArmor`.
+
+B-15（S-072 ⑤）のユニットテスト：文脈付きの分類器、ガードレール語、1 回目の signal の再確認、2 回目の ambiguous の
+再確認（カード第 6 節 C）。
+
+データベースにもネットワークにもつながない。分類器と再確認は `FakeText`、Armor は `FakeArmor` を使う。
 """
 
 from __future__ import annotations
@@ -25,7 +31,9 @@ FAKE_ARMOR = REPO / "fixtures" / "fake-armor"
 MAIN_SET = REPO / "evals" / "safety" / "s4_selfharm.jsonl"
 
 CTX = Context(character="メロス", place="シラクスの広場", previous="王を、このままにしてはおけぬ。")
-STORY = "もう生きていたくない"  # 假分类器判 signal，没有护栏词以外的说法
+# The fake classifier judges this signal; no wording beyond the guardrail words.
+# 偽の分類器は signal と判定する。ガードレール語以外の言い方はない。
+STORY = "もう生きていたくない"
 
 
 def screener(rules: list[Json] | None = None, *, tracer: Tracer | None = None, **kw: Any) -> tuple[Screener, FakeText]:
@@ -53,7 +61,7 @@ def kinds(text: FakeText) -> list[str]:
     return [k for k, _ in text.calls]
 
 
-# —— 护栏词 ——
+# —— Guardrail words / ガードレール語 ——
 
 
 def test_the_guard_covers_every_real_signal_in_the_main_set() -> None:
@@ -69,7 +77,7 @@ def test_the_guard_leaves_plain_story_lines_alone(text: str) -> None:
     assert not decided(text)
 
 
-# —— 上下文 ——
+# —— Context / 文脈 ——
 
 
 def test_context_goes_into_the_request_and_the_prompt() -> None:
@@ -91,7 +99,7 @@ def test_previous_is_cut_to_its_cap() -> None:
     assert len(Context(previous="あ" * 500).to_json()["previous"]) == PREVIOUS_MAX
 
 
-# —— 第一遍 signal 的复核 ——
+# —— Review of first-pass signals / 1 回目の signal の再確認 ——
 
 
 def test_a_story_line_is_downgraded_to_ambiguous_and_gets_the_hint() -> None:
@@ -146,7 +154,7 @@ def test_review_off_is_b12() -> None:
     assert kinds(text) == ["safety"]
 
 
-# —— 第二次 ambiguous（C） ——
+# —— A second ambiguous (C) / 2 回目の ambiguous（C） ——
 
 
 def test_second_ambiguous_told_story_does_not_pause() -> None:
@@ -175,7 +183,7 @@ def test_second_look_skips_what_was_already_reviewed() -> None:
     assert again is first and kinds(text).count("safety_review") == 1
 
 
-# —— 不记原话 ——
+# —— Player utterances aren't recorded / 発話は記録しない ——
 
 
 def test_the_review_span_carries_no_text_or_verdict(caplog: pytest.LogCaptureFixture) -> None:
@@ -213,7 +221,7 @@ def test_safety_eval_with_context_and_review(
     assert rep["reviewed"] == {"guarded": 1, "kept": 1, "downgraded": 0, "failed": 0, "storyDowngraded": 0}
     assert rep["realMissed"] == []
     printed = capsys.readouterr().out
-    assert "复核：护栏词命中 1 次" in printed
+    assert "Review: guardrail hits 1," in printed
     written = "".join(p.read_text(encoding="utf-8") for p in out.iterdir())
     for text in (str(r["text"]) for r in rows):
         assert text not in printed and text not in written

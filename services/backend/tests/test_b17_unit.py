@@ -1,5 +1,6 @@
-"""B-17（三层结局完整版）里不要数据库的部分：加权排序、关系、生成的世界结局和人物结局的主张、删过记忆的人物、
-作废约定的引用、模型检查的请求。走到结局和模型检查的重写在 `test_b9.py`（test_b17_*）。"""
+"""B-17（3 層のエンディングの完全版）のうちデータベースの要らない部分：重み付きの順位、関係、生成した世界の
+エンディングと登場人物のエンディングの主張、記憶を削除された登場人物、無効になった約束の引用、モデルの検査の
+リクエスト。エンディングまで進める流れとモデルの検査による書き直しは `test_b9.py`（test_b17_*）にある。"""
 
 from __future__ import annotations
 
@@ -41,11 +42,11 @@ def test_rank_weights_memories_promises_and_aid() -> None:
     st = state()
     st["promises"]["sp_1"] = {"promiseId": "sp_1", "from": "player", "to": KING, "text": "x", "status": "open"}
     st["promises"]["sp_2"] = {"promiseId": "sp_2", "from": MELOS, "to": "player", "text": "y", "status": "voided"}
-    events = [ev(1, actor=MELOS, origin="plan", beneficiary="player")]  # 梅洛斯为玩家做的：互助 1
+    events = [ev(1, actor=MELOS, origin="plan", beneficiary="player")]  # メロスがプレイヤーのためにした：助け合い 1
     got = E.rank(BOOK, st, events, [], [mem(1, OLD)], {OLD: 25})
-    assert got[KING]["score"] == E.W_PROMISE  # 约定 2；作废的不算
+    assert got[KING]["score"] == E.W_PROMISE  # 約束 2。無効になったものは数えない
     assert got[MELOS]["score"] == E.W_AID
-    assert got[OLD]["score"] == E.W_MEMORY + 2  # 记忆 1 + 信任 25 → 2
+    assert got[OLD]["score"] == E.W_MEMORY + 2  # 記憶 1 + 信頼 25 → 2
     assert [got[c]["rank"] for c in (OLD, KING, MELOS)] == [1, 2, 3]
 
 
@@ -53,7 +54,7 @@ def test_relationships_come_from_kept_memories() -> None:
     ctx = ctx_with([mem(1, OLD, 30), mem(2, OLD, -5, deleted=True), mem(3, KING, 0)])
     rel = {r["character"]: r for r in E.relationships(ctx)}
     assert rel[OLD]["trust"] == 30 and rel[OLD]["label"] == "気を許している"
-    assert rel[OLD]["memoryIds"] == [f"{MEM}01"]  # 删了的不算
+    assert rel[OLD]["memoryIds"] == [f"{MEM}01"]  # 削除したものは数えない
     assert rel[KING]["memoryIds"] == [f"{MEM}03"]
     assert ctx.forgot == {OLD}
     out = good(ctx)
@@ -125,7 +126,7 @@ def test_forgotten_character_is_not_written_as_remembering() -> None:
     out = good(ctx)
     out["epilogue"][0]["sentence"] = f"{BOOK.characters[OLD]['name']}は旅人を思い出していた。"
     assert ("forgot", "epilogue[0]") in rules(ctx, out)
-    # 没删过记忆的人物可以记得
+    # 記憶を削除されていない登場人物は覚えていてよい
     ctx2 = ctx_with([])
     out = good(ctx2)
     out["epilogue"][0]["sentence"] = "老爺は旅人を覚えていた。"
@@ -143,7 +144,7 @@ def test_cites_cannot_rest_only_on_a_voided_promise() -> None:
     assert ("cite-voided", "epilogue[0]") in rules(ctx, out)
     out["epilogue"][0]["cites"] = [made, EVENTS[0]["eventId"]]
     assert ("cite-voided", "epilogue[0]") not in rules(ctx, out)
-    assert E.request_of(ctx)["promises"] == []  # 作废的约定不进请求
+    assert E.request_of(ctx)["promises"] == []  # 無効になった約束はリクエストに入れない
 
 
 def test_check_request_uses_aliases_and_no_utterances() -> None:

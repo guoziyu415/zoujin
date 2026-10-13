@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "api/rest/auth-logout.schema.json",
   "title": "POST /v1/auth/logout",
-  "description": "登出（第 1 节）",
+  "description": "Log out (section 1) / ログアウト（第 1 節）",
   "x-endpoint": {
     "method": "POST",
     "path": "/v1/auth/logout",

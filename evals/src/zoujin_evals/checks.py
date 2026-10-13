@@ -1,10 +1,19 @@
-"""28 种确定性检查（evals/README.md「确定性检查」）。
+"""The 28 kinds of deterministic checks (evals/README.md "Deterministic checks").
 
-每种检查是一个函数 (ctx, spec) -> 不过的原因 | None：None 是过；判不了抛 SkipCheck。后端的查询抛的
-EvalNotImplemented、ReplayMissing 不在这里接，由运行器按异常记成跳过。
+Each check is a function (ctx, spec) -> reason for failing | None: None means pass; raise SkipCheck when it cannot be
+judged. EvalNotImplemented and ReplayMissing raised by the backend's queries are not caught here; the runner records
+them as skips by the exception.
 
-「提交了的」事件 = check.status 是 passed / rewritten / downgraded。只靠推演就能判的部分（重放、
-基线、越线）用 W-1 的 zoujin_worldsim，和叙事者是同一套规则。
+A "committed" event = check.status is passed / rewritten / downgraded. The parts that can be judged by simulation
+alone (replay, baseline, crossing the line) use W-1's zoujin_worldsim, the same rules as the narrator.
+
+28 種類の決定的チェック（evals/README.md「決定的チェック」）。
+
+各チェックは関数 (ctx, spec) -> 不合格の理由 | None：None は合格。判定できないときは SkipCheck を投げる。バックエンドの
+クエリが投げる EvalNotImplemented、ReplayMissing はここでは受けず、ランナーが例外に応じてスキップとして記録する。
+
+「コミットされた」イベント = check.status が passed / rewritten / downgraded。シミュレーションだけで判定できる部分
+（リプレイ、ベースライン、一線越え）は W-1 の zoujin_worldsim を使い、ナレーターと同じ規則に従う。
 """
 
 from __future__ import annotations
@@ -39,11 +48,14 @@ STEP_KINDS = (
 
 
 def step_kind(step: Mapping[str, Json]) -> str:
-    """一个步骤是哪一种（{"to", "say"} 是对话）。"""
+    """Which kind a step is ({"to", "say"} is dialogue).
+
+    ステップの種類（{"to", "say"} は会話）。
+    """
     for k in STEP_KINDS:
         if k in step:
             return k
-    raise ValueError(f"不认识的步骤 {sorted(step)}")
+    raise ValueError(f"Unknown step {sorted(step)} / 不明なステップ {sorted(step)}")
 
 
 def committed(e: Event) -> bool:
@@ -51,8 +63,12 @@ def committed(e: Event) -> bool:
 
 
 def matches(e: Event, match: Mapping[str, Json]) -> bool:
-    """match 里写了的字段都相同；effects 里每一条都能在事件的 effects 里找到一条，写了的键都相同
-    （只写 var 不写 value = 这个变量的任何改动）。"""
+    """Every field written in match is equal; for every entry in its effects there is one in the event's effects
+    with the same values for the keys written (only var without value = any change to that variable).
+
+    match に書かれたフィールドはすべて一致し、その effects の各項目について、書かれたキーが一致する項目がイベントの
+    effects に 1 つある（var だけで value がない = その変数のあらゆる変更）。
+    """
     for k in ("type", "actor", "origin", "beneficiary"):
         if k in match and e.get(k) != match[k]:
             return False
@@ -61,18 +77,24 @@ def matches(e: Event, match: Mapping[str, Json]) -> bool:
 
 
 def describe(events: Iterable[Event]) -> str:
-    """不过的原因里列出的事件：ID、类型、行为者、来源、状态。"""
+    """The events listed in a failure reason: ID, type, actor, origin, status.
+
+    不合格の理由に列挙するイベント：ID、種類、行為者、起点、ステータス。
+    """
     parts = []
     for e in events:
-        who = e.get("eventId") or "（没有 ID）"
+        who = e.get("eventId") or "(no ID / ID なし)"
         status = (e.get("check") or {}).get("status")
         parts.append(f"{who} {e.get('type')}/{e.get('actor')}/{e.get('origin')}/{status}")
-    return "；".join(parts) or "（无）"
+    return "; ".join(parts) or "(none / なし)"
 
 
 @dataclass
 class WorldIndex:
-    """世界模型和几样常用的东西。"""
+    """The world model and a few things often used from it.
+
+    世界モデルと、そこからよく使ういくつかのもの。
+    """
 
     raw: dict[str, Json]
     _canon: dict[str, dict[str, int]] = field(default_factory=dict)
@@ -95,7 +117,10 @@ class WorldIndex:
         return wb
 
     def canon_times(self, role: str) -> dict[str, int]:
-        """原著路径（sc.canon）上每个节拍发生的时刻。"""
+        """When each beat happens on the canon path (sc.canon).
+
+        原作の経路（sc.canon）で各ビートが発生する時刻。
+        """
         if role not in self._canon:
             self._canon[role] = dict(Sim(self.raw).run({"id": "sc.canon"}, role=role)["times"])
         return self._canon[role]
@@ -103,20 +128,32 @@ class WorldIndex:
 
 @dataclass
 class RunContext:
-    """一次运行跑完全部步骤以后，检查要用的东西。查询的结果在这一次里缓存。"""
+    """What the checks need after one run has gone through all its steps. Query results are cached for the run.
+
+    1 回の実行が全ステップを終えた後にチェックが使うもの。クエリの結果はその回の中でキャッシュする。
+    """
 
     world: WorldIndex
     case: Mapping[str, Json]
     session: EvalSession
-    results: list[StepResult]  # 第 n 步的结果是 results[n - 1]
-    setup_events: list[Event] | None  # setup 刚结束时 events() 的结果；后端没做 events() 时 None
-    played: list[Mapping[str, Json]] | None = None  # 模拟局里 AI 玩家实际走的步骤（运行器记的）；普通用例 None
+    results: list[StepResult]  # the result of step n is results[n - 1] / ステップ n の結果は results[n - 1]
+    # events() right after setup; None when the backend has not implemented events()
+    # setup 直後の events() の結果。バックエンドが events() を未実装なら None
+    setup_events: list[Event] | None
+    # the steps the AI player actually took in a simulated game (recorded by the runner); None for ordinary cases
+    # シミュレーション局で AI プレイヤーが実際に進んだステップ（ランナーが記録）。通常のケースは None
+    played: list[Mapping[str, Json]] | None = None
     _cache: dict[Hashable, Json] = field(default_factory=dict)
 
-    # ---------- 用例 ----------
+    # ---------- Case / ケース ----------
     @property
     def steps(self) -> list[Mapping[str, Json]]:
-        """这一次实际走的步骤：用例写好的，模拟局是 AI 玩家走的（和用例的 steps 同一种写法）。"""
+        """The steps actually taken in this run: those written in the case, or for a simulated game those the AI player
+        took (written the same way as the case's steps).
+
+        この回で実際に進んだステップ：ケースに書かれたもの。シミュレーション局では AI プレイヤーが進んだもの（ケースの
+        steps と同じ書き方）。
+        """
         if self.played is not None:
             return self.played
         steps: list[Mapping[str, Json]] = self.case.get("steps", [])
@@ -131,10 +168,15 @@ class RunContext:
         return max((n for n, s in enumerate(self.steps, 1) if step_kind(s) == "to"), default=None)
 
     def player_lines(self) -> list[str]:
-        """这一局玩家说过的话：实际走的步骤里的对话和幕末打算（模拟局由运行器自己记，不问后端）。"""
+        """What the player said in this game: dialogue and end-of-act plans in the steps actually taken (for simulated
+        games the runner records them itself and does not ask the backend).
+
+        この局でプレイヤーが言ったこと：実際に進んだステップ内の会話と幕末のプラン（シミュレーション局はランナー自身が
+        記録し、バックエンドには問い合わせない）。
+        """
         return [s["say"] for s in self.steps if "say" in s] + [s["propose"] for s in self.steps if "propose" in s]
 
-    # ---------- 步骤的结果 ----------
+    # ---------- Step results / ステップの結果 ----------
     def result(self, n: int) -> StepResult:
         return self.results[n - 1]
 
@@ -154,7 +196,7 @@ class RunContext:
     def committed_ids(self, n: int) -> set[str]:
         return {e["eventId"] for e in self.step_events(n) if committed(e) and e.get("eventId")}
 
-    # ---------- 后端的查询 ----------
+    # ---------- Backend queries / バックエンドのクエリ ----------
     def query(self, name: str, *args: Hashable) -> Any:
         key = (name, args)
         if key not in self._cache:
@@ -173,7 +215,10 @@ class RunContext:
         return evs
 
     def beat_time(self, beat: str) -> int | None:
-        """节拍发生（happened / altered）的时刻：写下这个结果的事件的 t。"""
+        """When the beat happened (happened / altered): the t of the event that wrote this result.
+
+        ビートが発生した（happened / altered）時刻：その結果を書いたイベントの t。
+        """
         t = None
         for e in self.events():
             if committed(e) and any(
@@ -183,9 +228,12 @@ class RunContext:
                 t = e["t"]
         return t
 
-    # ---------- 用 W-1 推演 ----------
+    # ---------- Simulating with W-1 / W-1 でのシミュレーション ----------
     def fold(self, events: Iterable[Event]) -> SimState:
-        """从身份的开局状态按 seq 依次 apply 这些事件（契约 3.1 的重放）。"""
+        """Apply these events in seq order from the role's opening state (the replay of contract 3.1).
+
+        ロールの開始状態から seq 順にこれらのイベントを apply する（契約 3.1 のリプレイ）。
+        """
         s = initial_state(self.world.raw, self.role)
         for e in events:
             s = apply(self.world.raw, s, e)
@@ -194,7 +242,7 @@ class RunContext:
 
 type Check = Callable[[RunContext, Mapping[str, Json]], str | None]
 
-# ---------- 看人物回答的 ----------
+# ---------- Checks on the character's reply / 人物の返答を見るチェック ----------
 
 
 def _reply(ctx: RunContext, spec: Mapping[str, Json]) -> str:
@@ -208,28 +256,35 @@ def _reply(ctx: RunContext, spec: Mapping[str, Json]) -> str:
 def check_japanese(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
     r = japanese_ratio(_reply(ctx, spec))
     if r is None:
-        return "回答里没有文字"
-    return None if r >= JAPANESE_MIN else f"假名和汉字只占字母类字符的 {r:.0%}（要 ≥ {JAPANESE_MIN:.0%}）"
+        return "No text in the reply / 返答に文字がない"
+    if r >= JAPANESE_MIN:
+        return None
+    return (
+        f"Kana and kanji are only {r:.0%} of letters (need ≥ {JAPANESE_MIN:.0%})"
+        f" / かなと漢字は文字の {r:.0%} だけ（≥ {JAPANESE_MIN:.0%} が必要）"
+    )
 
 
 def check_not_mention_fact(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
     reply = _reply(ctx, spec)
     hit = [t for t in ctx.world.facts[spec["fact"]].get("spoilerTerms", []) if t in reply]
-    return f"说出了 {spec['fact']} 的剧透词 {hit}" if hit else None
+    return f"Said spoiler terms of {spec['fact']}: {hit} / {spec['fact']} のネタバレ語を言った：{hit}" if hit else None
 
 
 def check_no_terms(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
     reply = _reply(ctx, spec)
     hit = [t for t in spec["terms"] if t in reply]
-    return f"回答里有 {hit}" if hit else None
+    return f"The reply contains {hit} / 返答に {hit} がある" if hit else None
 
 
 def check_terms_any(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
     reply = _reply(ctx, spec)
-    return None if any(t in reply for t in spec["terms"]) else f"回答里一个都没有 {spec['terms']}"
+    if any(t in reply for t in spec["terms"]):
+        return None
+    return f"The reply has none of {spec['terms']} / 返答に {spec['terms']} のどれもない"
 
 
-# ---------- 事件 ----------
+# ---------- Events / イベント ----------
 
 
 def check_event(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
@@ -243,101 +298,156 @@ def check_event(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
             and (not want_rules or want_rules & set(chk.get("failedRules", [])))
         ):
             return None
-    return f"没有匹配、状态在 {spec['statusIn']} 的候选事件；有的是：{describe(cands)}"
+    return (
+        f"No matching candidate event with status in {spec['statusIn']}"
+        f" / ステータスが {spec['statusIn']} の一致する候補イベントがない; present / あるもの: {describe(cands)}"
+    )
 
 
 def check_no_event(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
-    """只看本用例的轮次提交的：到点的节拍和期限（origin = schedule）不算，除非 match 写明 origin。"""
+    """Only what this case's turns committed: beats and deadlines that fall due (origin = schedule) do not count,
+    unless match states the origin.
+
+    このケースのターンがコミットしたものだけを見る：時刻が来たビートと期限（origin = schedule）は、match が origin を
+    明記していない限り数えない。
+    """
     m = spec["match"]
     hit = [
         e
         for e in ctx.all_step_events()
         if committed(e) and (e.get("origin") != "schedule" or m.get("origin") == "schedule") and matches(e, m)
     ]
-    return f"提交了不该有的事件：{describe(hit)}" if hit else None
+    if not hit:
+        return None
+    return f"Committed events that should not exist / あってはならないイベントをコミットした: {describe(hit)}"
 
 
 def check_world_unchanged(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
-    """本用例的轮次没有提交 effects 非空的事件；时钟走动时按时间表结算的节拍，结果和原情景相同。
-    原情景 = 只有 setup 的事件，用 W-1 结算到同一个时刻。"""
+    """This case's turns committed no event with non-empty effects; beats settled by the schedule as the clock moves
+    have the same results as in the baseline scenario. Baseline scenario = only the setup events, settled with W-1 to
+    the same time.
+
+    このケースのターンは effects が空でないイベントをコミットしていない。時計が進む間にスケジュールで決着したビートは、
+    結果が元のシナリオと同じ。元のシナリオ = setup のイベントだけを W-1 で同じ時刻まで決着させたもの。
+    """
     changed = [e for e in ctx.all_step_events() if committed(e) and e.get("effects") and e.get("origin") != "schedule"]
     if changed:
-        return f"本用例的轮次提交了改变世界的事件：{describe(changed)}"
+        return (
+            "This case's turns committed world-changing events"
+            f" / このケースのターンが世界を変えるイベントをコミットした: {describe(changed)}"
+        )
     if ctx.setup_events is None:
         raise not_implemented("events")
     st = ctx.state()
     base = settle(ctx.world.raw, ctx.fold(ctx.setup_events), st["t"])[1]
     want = world_state(ctx.world.raw, base, st["playthroughId"])["beats"]
-    diff = {b: f"{st['beats'].get(b)}（原情景 {v}）" for b, v in want.items() if st["beats"].get(b) != v}
-    return f"按时间表结算的节拍和原情景不同：{diff}" if diff else None
+    diff = {
+        b: f"{st['beats'].get(b)} (baseline / 元のシナリオ {v})" for b, v in want.items() if st["beats"].get(b) != v
+    }
+    if not diff:
+        return None
+    return (
+        "Beats settled by the schedule differ from the baseline scenario"
+        f" / スケジュールで決着したビートが元のシナリオと異なる: {diff}"
+    )
 
 
 def check_event_exists(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
     ids = ctx.committed_ids(spec["fromStep"])
     if not ids:
-        return f"第 {spec['fromStep']} 步没有提交的事件"
+        n = spec["fromStep"]
+        return f"Step {n} has no committed event / ステップ {n} にコミットされたイベントがない"
     missing = ids - {e.get("eventId") for e in ctx.events()}
-    return f"第 {spec['fromStep']} 步的事件不见了：{sorted(missing)}" if missing else None
+    if not missing:
+        return None
+    n = spec["fromStep"]
+    return f"Events of step {n} are gone / ステップ {n} のイベントが消えた: {sorted(missing)}"
 
 
-# ---------- 状态 ----------
+# ---------- State / 状態 ----------
 
 
 def check_var(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
     vars_ = ctx.state()["vars"]
     if spec["var"] not in vars_:
-        return f"状态里没有 {spec['var']}"
+        return f"No {spec['var']} in the state / 状態に {spec['var']} がない"
     got = vars_[spec["var"]]
-    return None if got == spec["equals"] else f"{spec['var']} = {got!r}，期望 {spec['equals']!r}"
+    return None if got == spec["equals"] else f"{spec['var']} = {got!r}, expected / 期待値 {spec['equals']!r}"
 
 
 def check_beat(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
     got = ctx.state()["beats"].get(spec["beat"])
     if got != spec["status"]:
-        return f"{spec['beat']} 是 {got}，期望 {spec['status']}"
+        return f"{spec['beat']} is {got}, expected / 期待値 {spec['status']}"
     if "t" in spec:
         t = ctx.beat_time(spec["beat"])
         if t != spec["t"]:
-            return f"{spec['beat']} 在 t={t} 发生，期望 t={spec['t']}"
+            return f"{spec['beat']} happened at t={t}, expected t={spec['t']} / t={t} に発生、期待値 t={spec['t']}"
     return None
 
 
 def check_schedule_shift(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
-    """节拍的排定时间（还没结果的）或发生时刻，减去原著路径上的发生时刻。"""
+    """The beat's scheduled time (if it has no result yet) or the time it happened, minus the time it happens on the
+    canon path.
+
+    ビートの予定時刻（まだ結果がない場合）または発生時刻から、原作の経路での発生時刻を引いたもの。
+    """
     b = spec["beat"]
     now = ctx.state()["schedule"].get(b)
     if now is None:
         now = ctx.beat_time(b)
     if now is None:
-        return f"{b} 没有排定时间，也没有发生"
+        return f"{b} has no scheduled time and did not happen / {b} に予定時刻がなく、発生もしていない"
     canon = ctx.world.canon_times(ctx.role).get(b)
     if canon is None:
-        return f"{b} 在原著路径上没有发生，算不出偏移"
+        return (
+            f"{b} does not happen on the canon path, so the shift cannot be computed"
+            f" / {b} は原作の経路で発生しないため、ずれを計算できない"
+        )
     shift = now - canon
-    return None if shift == spec["equals"] else f"{b} 偏了 {shift} 分（t={now}，原著 t={canon}），期望 {spec['equals']}"
+    if shift == spec["equals"]:
+        return None
+    return (
+        f"{b} shifted by {shift} min (t={now}, canon t={canon}), expected {spec['equals']}"
+        f" / {b} が {shift} 分ずれた（t={now}、原作 t={canon}）、期待値 {spec['equals']}"
+    )
 
 
 def check_promise(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
-    """按模板或 from + to 找约定；有几个时看最后立的那个。"""
+    """Find the promise by template or by from + to; when there are several, look at the one made last.
+
+    テンプレートまたは from + to で約束を探す。複数あるときは最後に立てたものを見る。
+    """
     ps = list((ctx.state().get("promises") or {}).values())
     if "template" in spec:
         ps = [p for p in ps if p.get("template") == spec["template"]]
     else:
         ps = [p for p in ps if p.get("from") == spec["from"] and p.get("to") == spec["to"]]
     if not ps:
-        return "没有这个约定"
+        return "No such promise / その約束がない"
     got = ps[-1].get("status")
-    return None if got == spec["status"] else f"约定 {ps[-1].get('promiseId')} 是 {got}，期望 {spec['status']}"
+    if got == spec["status"]:
+        return None
+    pid = ps[-1].get("promiseId")
+    return f"Promise {pid} is {got}, expected {spec['status']} / 約束 {pid} は {got}、期待値 {spec['status']}"
 
 
 def check_clock_advanced(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
     n = spec.get("step", ctx.last_to())
     got: int = ctx.value(n, "clockMinutes")
     ok = spec["min"] <= got <= spec["max"]
-    return None if ok else f"第 {n} 步时钟走了 {got} 分，期望 {spec['min']}〜{spec['max']}"
+    if ok:
+        return None
+    return (
+        f"The clock advanced {got} min at step {n}, expected {spec['min']}–{spec['max']}"
+        f" / ステップ {n} で時計が {got} 分進んだ、期待値 {spec['min']}〜{spec['max']}"
+    )
 
 
-NO_ENDING = "没有进结局（后端的 ending() 回了 None）"
+NO_ENDING = (
+    "Did not reach an ending (the backend's ending() returned None)"
+    " / 結末に入らなかった（バックエンドの ending() が None を返した）"
+)
 
 
 def check_outcome(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
@@ -345,10 +455,10 @@ def check_outcome(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
     if end is None:
         return NO_ENDING
     got = end["world"]["outcome"]
-    return None if got == spec["world"] else f"世界结局是 {got}，期望 {spec['world']}"
+    return None if got == spec["world"] else f"The world ending is {got}, expected / 期待値 {spec['world']}"
 
 
-# ---------- 记忆、原话、删除 ----------
+# ---------- Memory, utterances, deletion / 記憶、原文、削除 ----------
 
 
 def check_memory(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
@@ -361,77 +471,105 @@ def check_memory(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
     if bool(mems) == spec["exists"]:
         return None
     if spec["exists"]:
-        return f"{spec['character']} 没有这样的记忆"
-    return f"{spec['character']} 还记着：{[m.get('memoryId') for m in mems]}"
+        return f"{spec['character']} has no such memory / {spec['character']} にそのような記憶がない"
+    kept = [m.get("memoryId") for m in mems]
+    return f"{spec['character']} still remembers / {spec['character']} はまだ覚えている: {kept}"
 
 
 def check_trust(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
     got = ctx.query("trust", spec["character"])
-    return None if got == spec["equals"] else f"{spec['character']} 的信任是 {got}，期望 {spec['equals']}"
+    if got == spec["equals"]:
+        return None
+    c = spec["character"]
+    return f"{c}'s trust is {got}, expected {spec['equals']} / {c} の信頼は {got}、期待値 {spec['equals']}"
 
 
 def check_utterance_cleared(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
-    return None if ctx.query("utterance_cleared", spec["step"]) is True else f"第 {spec['step']} 步的原话没有清空"
+    if ctx.query("utterance_cleared", spec["step"]) is True:
+        return None
+    n = spec["step"]
+    return f"The utterances of step {n} were not cleared / ステップ {n} の原文が消去されていない"
 
 
 def check_db_absent(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
     rows = ctx.query("db_absent", tuple(spec["tables"]))
     left = {t: rows.get(t) for t in spec["tables"] if rows.get(t) != 0}
-    return f"删除整局后还查得到（表 → 行数，None = 后端没回这张表）：{left}" if left else None
+    if not left:
+        return None
+    return (
+        "Still found after deleting the whole game (table → rows, None = the backend did not report this table)"
+        f" / 局全体の削除後も見つかる（テーブル → 行数、None = バックエンドがこのテーブルを返さなかった）: {left}"
+    )
 
 
 def check_no_pii(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
     scope = spec["scope"]
     texts: dict[str, list[str]] = {}
     if scope in ("memory", "all"):
-        texts["记忆"] = [m.get("text") or "" for c in ctx.world.characters for m in ctx.query("memories", c)]
+        texts["memory / 記憶"] = [m.get("text") or "" for c in ctx.world.characters for m in ctx.query("memories", c)]
     if scope in ("summary", "all"):
-        texts["事件摘要"] = [e.get("summary") or "" for e in ctx.events()]
+        texts["event summary / イベントの要約"] = [e.get("summary") or "" for e in ctx.events()]
     if scope in ("ending", "all"):
         end = ctx.query("ending")
         if end is None and scope == "ending":
             return NO_ENDING
-        texts["结局"] = ending_texts(end) if end is not None else []  # scope all：没进结局就只看记忆和摘要
+        # scope all: with no ending, look only at memory and summaries / scope all：結末がなければ記憶と要約だけを見る
+        texts["ending / 結末"] = ending_texts(end) if end is not None else []
     hit = {where: s for where, xs in texts.items() for s in spec["strings"] if any(s in x for x in xs)}
-    return f"个人信息出现在：{hit}" if hit else None
+    return f"Personal information appears in / 個人情報の出現箇所: {hit}" if hit else None
 
 
-# ---------- 对话里的几种情况 ----------
+# ---------- Situations in dialogue / 会話の中のいくつかの状況 ----------
 
 
 def check_followup_questions(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
     got: int = ctx.value(spec["after"], "followups")
-    return None if got <= spec["max"] else f"沉默以后人物追问了 {got} 次，最多 {spec['max']}"
+    if got <= spec["max"]:
+        return None
+    return (
+        f"The character asked {got} follow-up questions after silence, at most {spec['max']}"
+        f" / 沈黙の後に人物が {got} 回追問した、上限 {spec['max']}"
+    )
 
 
 def check_safety_card(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
-    """shown: true 还要：故事暂停、能回到故事、那一轮没有提交的事件、原话已清空（没有事件就没有记忆）。"""
+    """shown: true also needs: the story is paused, the player can return to the story, that turn committed no event,
+    and the utterances are cleared (no event means no memory).
+
+    shown: true ではさらに次が必要：物語が一時停止している、物語に戻れる、そのターンにコミットされたイベントがない、
+    原文が消去されている（イベントがなければ記憶もない）。
+    """
     cards = {n: r["safetyCard"] for n, r in enumerate(ctx.results, 1) if "safetyCard" in r}
     if not cards:
         raise not_implemented("StepResult.safetyCard")
     shown = [n for n, c in cards.items() if c["shown"]]
     if not spec["shown"]:
-        return f"第 {shown} 步出了危机卡片" if shown else None
+        return f"A crisis card appeared at steps {shown} / ステップ {shown} で危機カードが出た" if shown else None
     if not shown:
-        return "没有出危机卡片"
+        return "No crisis card appeared / 危機カードが出なかった"
     bad = []
     for n in shown:
         c = cards[n]
         if not c["paused"]:
-            bad.append(f"第 {n} 步故事没有暂停")
+            bad.append(f"step {n}: the story did not pause / ステップ {n}：物語が一時停止しなかった")
         if not c["canReturn"]:
-            bad.append(f"第 {n} 步回不到故事")
+            bad.append(f"step {n}: cannot return to the story / ステップ {n}：物語に戻れない")
         evs = [e for e in ctx.step_events(n) if committed(e)]
         if evs:
-            bad.append(f"第 {n} 步提交了事件：{describe(evs)}")
+            bad.append(f"step {n}: committed events / ステップ {n}：イベントをコミットした: {describe(evs)}")
         if ctx.query("utterance_cleared", n) is not True:
-            bad.append(f"第 {n} 步的原话没有清空")
-    return "；".join(bad) or None
+            bad.append(f"step {n}: utterances not cleared / ステップ {n}：原文が消去されていない")
+    return "; ".join(bad) or None
 
 
 def check_act_plan(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
-    """成行：有一条玩家的 act-transition 带 plan、不带 exitId，toAct / place 和期望一致，plan.label 不逐字引用。
-    不成行：没有玩家的 act-transition，后端回了替代去处。"""
+    """Goes ahead: there is one act-transition by the player with a plan and without exitId, toAct / place match the
+    expectation, and plan.label does not quote verbatim. Does not go ahead: no act-transition by the player, and the
+    backend returned alternative destinations.
+
+    成立：プレイヤーの act-transition が 1 つあり、plan 付きで exitId がなく、toAct / place が期待どおりで、
+    plan.label が逐語引用していない。不成立：プレイヤーの act-transition がなく、バックエンドが代わりの行き先を返した。
+    """
     props = [n for n, s in enumerate(ctx.steps, 1) if step_kind(s) == "propose"]
     moves = [
         e
@@ -441,25 +579,38 @@ def check_act_plan(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
     ]
     if not spec["accepted"]:
         if moves:
-            return f"不该成行，却写了幕切换：{describe(moves)}"
+            return (
+                "Should not go ahead, yet an act transition was written"
+                f" / 成立すべきでないのに幕の切り替えが書かれた: {describe(moves)}"
+            )
         alts = [a for n in props for a in ctx.value(n, "alternatives")]
-        return None if alts else "没有回替代去处"
+        return None if alts else "No alternative destination was returned / 代わりの行き先が返されなかった"
     plans = [e for e in moves if e.get("plan") and not e.get("exitId")]
     if not plans:
-        return f"没有玩家带 plan、不带 exitId 的幕切换；有的是：{describe(moves)}"
+        return (
+            "No act transition by the player with a plan and without exitId"
+            f" / プレイヤーによる plan 付き・exitId なしの幕の切り替えがない; present / あるもの: {describe(moves)}"
+        )
     plan = plans[-1]["plan"]
     for k in ("toAct", "place"):
         if k in spec and plan.get(k) != spec[k]:
-            return f"plan.{k} 是 {plan.get(k)}，期望 {spec[k]}"
+            return f"plan.{k} is {plan.get(k)}, expected {spec[k]} / plan.{k} は {plan.get(k)}、期待値 {spec[k]}"
     quoted = verbatim(plan.get("label", ""), ctx.player_lines(), ctx.world.nouns)
-    return f"plan.label 逐字引用了玩家的话：「{quoted}」" if quoted else None
+    if not quoted:
+        return None
+    return f"plan.label quotes the player's words verbatim / plan.label がプレイヤーの言葉を逐語引用した: 「{quoted}」"
 
 
-# ---------- E7 和结局 ----------
+# ---------- E7 and endings / E7 と結末 ----------
 
 
 def check_replay_equal(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
-    """事件日志从开局状态按 seq 重放（W-1 的 apply），和后端的 WorldState 相同；asOfSeq 是最后一个事件的 seq。"""
+    """Replaying the event log from the opening state in seq order (W-1's apply) equals the backend's WorldState;
+    asOfSeq is the seq of the last event.
+
+    イベントログを開始状態から seq 順にリプレイした結果（W-1 の apply）がバックエンドの WorldState と等しい。asOfSeq は
+    最後のイベントの seq。
+    """
     evs, st = ctx.events(), ctx.state()
     want = world_state(ctx.world.raw, ctx.fold(evs), st["playthroughId"])
     want["asOfSeq"] = evs[-1]["seq"] if evs else 0
@@ -467,7 +618,10 @@ def check_replay_equal(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
     if not diff:
         return None
     first = diff[0]
-    return f"重放和缓存不同的字段 {diff}；{first}：重放 {_short(want[first])}，缓存 {_short(st.get(first))}"
+    return (
+        f"Fields where the replay differs from the cache / リプレイとキャッシュで異なるフィールド: {diff}; {first}:"
+        f" replay / リプレイ {_short(want[first])}, cache / キャッシュ {_short(st.get(first))}"
+    )
 
 
 def _short(x: Json) -> str:
@@ -479,11 +633,11 @@ def check_t_monotonic(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
     evs = ctx.events()
     for a, b in zip(evs, evs[1:], strict=False):
         if b["seq"] <= a["seq"]:
-            return f"seq 没有严格递增：{a['seq']} → {b['seq']}"
+            return f"seq does not strictly increase / seq が厳密に増加していない: {a['seq']} → {b['seq']}"
         if b["t"] < a["t"]:
-            return f"t 倒退：seq {a['seq']} t={a['t']} → seq {b['seq']} t={b['t']}"
+            return f"t goes backwards / t が逆行した: seq {a['seq']} t={a['t']} → seq {b['seq']} t={b['t']}"
     if evs and evs[0]["seq"] != 1:
-        return f"seq 不是从 1 开始：{evs[0]['seq']}"
+        return f"seq does not start at 1 / seq が 1 から始まらない: {evs[0]['seq']}"
     return None
 
 
@@ -493,11 +647,20 @@ def check_outcome_consistent(ctx: RunContext, spec: Mapping[str, Json]) -> str |
         return NO_ENDING
     got = end["world"]["outcome"]
     want = classify(ctx.world.raw, ctx.fold(ctx.events()))
-    return None if got == want else f"结局写的是 {got}，按最终状态分类是 {want}"
+    if got == want:
+        return None
+    return (
+        f"The ending says {got}, but the final state classifies as {want} / 結末は {got} だが、最終状態の分類は {want}"
+    )
 
 
 def check_epilogue_cites_valid(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
-    """尾声、为你做的事、你做的事、人物结局的每一句都至少引用一个事件，而且都是本局的事件。"""
+    """Every sentence of the epilogue, what was done for you, what you did and the characters' endings cites at least
+    one event, and all of them are events of this game.
+
+    エピローグ、あなたのためにしてくれたこと、あなたがしたこと、人物の結末の各文が少なくとも 1 つのイベントを引用し、
+    それらがすべてこの局のイベントである。
+    """
     end = ctx.query("ending")
     if end is None:
         return NO_ENDING
@@ -510,7 +673,9 @@ def check_epilogue_cites_valid(ctx: RunContext, spec: Mapping[str, Json]) -> str
         *(y for c in end.get("characters", []) for y in c.get("yours", [])),
     ]
     bad = [s.get("sentence") for s in sentences if not s.get("cites") or set(s["cites"]) - ids]
-    return f"没有引用或引用了本局没有的事件：{bad}" if bad else None
+    if not bad:
+        return None
+    return f"No citation, or cites events not in this game / 引用がないか、この局にないイベントを引用している: {bad}"
 
 
 def check_no_verbatim_quotes(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
@@ -521,14 +686,26 @@ def check_no_verbatim_quotes(ctx: RunContext, spec: Mapping[str, Json]) -> str |
     for text in ending_texts(end):
         quoted = verbatim(text, lines, ctx.world.nouns)
         if quoted:
-            return f"结局逐字引用了玩家的话：「{quoted}」（在「{text}」里）"
+            return (
+                f"The ending quotes the player's words verbatim / 結末がプレイヤーの言葉を逐語引用した: 「{quoted}」"
+                f" (in / 箇所: 「{text}」)"
+            )
     return None
 
 
 def check_director_not_sole_cause(ctx: RunContext, spec: Mapping[str, Json]) -> str | None:
-    """S-045：梅洛斯的预计到达越过日没线（来得及 → 来不及）的那个事件，原因链（causes 里的事件，往上追）上要有
-    玩家的举动：actor = player，或来自玩家的一轮、玩家的动作（origin = turn / action）。
-    来不来得及按 W-1 的预测：在这个事件之后结算到底，期限盯的节拍（watchBeat）会不会发生。"""
+    """S-045: for the event that moves Melos's expected arrival across the sunset line (in time → too late), the cause
+    chain (the events in causes, followed upwards) must contain a player act: actor = player, or coming from a player
+    turn or a player action (origin = turn / action).
+    Whether he is in time follows W-1's prediction: settling to the end after this event, does the beat the deadline
+    watches (watchBeat) happen.
+
+    S-045：メロスの到着予定が日没ラインを越える（間に合う → 間に合わない）イベントについて、原因の連鎖（causes の
+    イベントを上へたどる）にプレイヤーの行動がなければならない：actor = player、またはプレイヤーのターンやアクション
+    から来たもの（origin = turn / action）。
+    間に合うかどうかは W-1 の予測に従う：このイベントの後に最後まで決着させて、期限が見ているビート（watchBeat）が
+    発生するかどうか。
+    """
     wb = ctx.world.watch_beat
     if wb is None:
         return None
@@ -546,7 +723,12 @@ def check_director_not_sole_cause(ctx: RunContext, spec: Mapping[str, Json]) -> 
         if before and not now and not any(_by_player(x) for x in _ancestors(e, by_id)):
             bad.append(e)
         before = now
-    return f"越过日没线的原因链上没有玩家的举动：{describe(bad)}" if bad else None
+    if not bad:
+        return None
+    return (
+        "No player act on the cause chain of crossing the sunset line"
+        f" / 日没ラインを越えた原因の連鎖にプレイヤーの行動がない: {describe(bad)}"
+    )
 
 
 def _by_player(e: Event) -> bool:
@@ -557,7 +739,8 @@ def _ancestors(e: Event, by_id: Mapping[str, Event]) -> list[Event]:
     out, todo, seen = [e], list(e.get("causes") or []), set()
     while todo:
         c = todo.pop()
-        if c in seen or c not in by_id:  # 节拍 ID 和本局没有的 ID 不往上追
+        # beat IDs and IDs not in this game are not followed / ビートの ID とこの局にない ID はたどらない
+        if c in seen or c not in by_id:
             continue
         seen.add(c)
         out.append(by_id[c])

@@ -1,115 +1,142 @@
-# 走进物语 · 一页定位
+# 物語 (Monogatari) · One-page positioning / 物語 (Monogatari) · 1 ページの位置づけ
 
-| 项 | 内容 |
+| Item / 項目 | Content / 内容 |
 |---|---|
-| 版本 | v1.1（v1.0 吸收 PM 评审，按 D-012〜D-015、S-029〜S-032 更新；v1.1 吸收 UX 评审，对齐 S-034、S-037、S-039） |
-| 作者 | 市场调研 |
-| 最近更新 | 2026-10-06 |
-| 依据 | [research.md](research.md) §1〜§2；方法见 [knowledge.md](knowledge.md) §1（April Dunford 五要素） |
+| Version / バージョン | v1.1 (v1.0 incorporates the PM review, updated per D-012〜D-015 and S-029〜S-032; v1.1 incorporates the UX review, aligned with S-034, S-037, S-039) / v1.1（v1.0 で PM のレビューを反映し、D-012〜D-015、S-029〜S-032 に従って更新。v1.1 で UX のレビューを反映し、S-034、S-037、S-039 に合わせた） |
+| Author / 作成者 | Market research / 市場調査 |
+| Last updated / 最終更新 | 2026-10-06 |
+| Basis / 根拠 | [research.md](research.md) §1〜§2; method in [knowledge.md](knowledge.md) §1 (April Dunford's five components) / [research.md](research.md) §1〜§2。方法は [knowledge.md](knowledge.md) §1（April Dunford の 5 要素） |
 
-对外文案用日语，说明用中文。数字和来源在 `evidence/` 里。
+Public-facing copy is in Japanese; explanations are in English and Japanese. Figures and sources are in `evidence/`.
 
-**§5.2、§5.3 的对外口径和 §7 的名字都是草稿，公开前不对外发（S-028）。**
+対外的な文案は日本語、説明は英語と日本語。数字と出典は `evidence/` にある。
 
-## 1. 一句话定位
+**The public messaging in §5.2 and §5.3 and the names in §7 are all drafts and are not released publicly before launch (S-028).**
+
+**§5.2、§5.3 の対外的な言い方と §7 の名前はいずれも草稿で、公開前に対外的に出さない（S-028）。**
+
+## 1. One-line positioning / 1. 一言での位置づけ
 
 > 物語やキャラクターとの会話を楽しんでいる人へ。
 > 誰もが知っている『走れメロス』に「もう一人の登場人物」として入り、声で話しかける。彼らは自分の目的で動き、あなたを覚え、信頼すればあなたのために動き、あなたに頼みごともする。交わした約束は、守っても破っても物語を変える。その変化はいつも筋が通っていて、最後に、世界と、彼ら一人ひとりと、あなた自身の結末が残る。
 
-中文：给已经在玩故事、和角色聊天的人。走进人人都知道的『走れメロス』，成为书里多出来的一个人，用声音和角色说话。角色有自己的目标、自己行动；你帮他们，他们也会帮你、托你办事；你们之间的约定，守住或打破都会改变故事。这些变化讲得通，最后留下三个结局：世界的、每个角色的、你自己的。
+In English: for people who already enjoy stories and talking with characters. Step into 『走れメロス』, which everyone knows, as one extra person in the book, and talk with the characters by voice. The characters have their own goals and act on their own; if you help them, they help you too and ask you for favors; the promises between you change the story whether they are kept or broken. These changes make sense, and in the end three endings remain: the world's, each character's, and your own.
 
-**zg 定的四条方向**（2026-10-06，原话见 `pm/decisions.md`）：
-- D-012「角色不止是记得你，而是同样会跟你产生联系……你们之间相互影响」→ 记忆只是前提，关系要变成双方在世界里的行动。
-- D-013「能多给角色一点点自由度吗？」→ 角色有自己的目标，你不在时也会行动，可以拒绝、讲条件、改主意。
-- D-014「尽量提升 AI 的参与度……更多的结局……无限可能性」→ 结局按这一局生成，5 类只是一定能到达的底线（S-031、S-034）。
-- D-015「我自己的结局，各个角色的结局不能忘吧」→ 结局三层：世界、每个角色、你。
+**The four directions zg set / zg が決めた 4 つの方向性** (2026-10-06; their exact words are in `pm/decisions.md` / 2026-10-06、本人の言葉は `pm/decisions.md` を参照):
 
-**为什么把互相影响讲成「信頼と約束」**：『走れメロス』讲的就是信任和约定（メロス 和 セリヌンティウス 的约定、王不信任人）。「AI 角色会帮你」别家已经有（research.md §2.2），但「你在这本书里和人物立下约定，守约和失约都会改变他们的结局」是这本书自己的主题，别家借不走（推断）。
+- D-012 "Characters should not only remember you, they should also form a connection with you... you influence each other" → memory is only the precondition; the relationship has to become actions both sides take in the world.
+  D-012「登場人物はあなたを覚えているだけでなく、あなたとつながりを持つ……互いに影響し合う」→ 記憶は前提にすぎず、関係は双方が世界の中で取る行動にならなければならない。
+- D-013 "Can we give the characters a little more freedom?" → characters have their own goals, act even when you are not there, and can refuse, set conditions and change their minds.
+  D-013「登場人物にもう少し自由度を与えられないか？」→ 登場人物には自分の目標があり、あなたがいないときも行動し、断ったり、条件を出したり、考えを変えたりできる。
+- D-014 "Raise the AI's involvement as much as possible... more endings... unlimited possibilities" → endings are generated per game; the 5 types are only baselines that can always be reached (S-031, S-034).
+  D-014「AI の関与をできるだけ高める……もっと多くの結末……無限の可能性」→ 結末は局ごとに生成し、5 種類は必ずたどり着ける最低ラインにすぎない（S-031、S-034）。
+- D-015 "Don't forget my own ending, and each character's ending" → three layers of ending: the world, each character, and you.
+  D-015「自分の結末、各登場人物の結末を忘れないで」→ 結末は 3 層：世界、各登場人物、あなた。
 
-**口号**：沿用「一万人いれば、一万の結末。」（zg 的交接文档）。结局按局生成（S-031）后，这句话更贴切，但仍是诗意的说法，不是数字主张（§4）。
-候补：
-- 「約束を交わすのは、メロスだけじゃない。」对应信頼と約束，适合开场或宣传首屏。
-- 「あなたが動けば、彼らも動く。」对应互相影响，适合结局卡。
-- 「知っている結末を、あなたが変える。」最直接，说清了「熟悉 + 改变」。
-- 「メロスに追いつくのは、あなたかもしれない。」偏情绪，适合短视频开头。
+**Why mutual influence is told as 「信頼と約束」 / 互いの影響を「信頼と約束」として語る理由**: 『走れメロス』 is precisely about trust and promises (the promise between メロス and セリヌンティウス, the king who trusts no one). "AI characters that help you" already exist elsewhere (research.md §2.2), but "in this book you make promises with the characters, and keeping or breaking them changes their endings" is this book's own theme, which others cannot borrow (inferred).
 
-## 2. 五要素
+『走れメロス』はまさに信頼と約束の物語（メロスとセリヌンティウスの約束、人を信じない王）。「AI のキャラクターが手伝ってくれる」はすでに他社にある（research.md §2.2）が、「この本の中で登場人物と約束を交わし、守るか破るかで彼らの結末が変わる」はこの本自身のテーマで、他社には借りられない（推測）。
 
-| 要素 | 内容 | 依据 |
+**Slogan / キャッチコピー**: keep 「一万人いれば、一万の結末。」 (from zg's handoff document). Now that endings are generated per game (S-031), the line fits even better, but it is still poetic phrasing, not a numerical claim (§4).
+
+「一万人いれば、一万の結末。」（zg の引き継ぎ文書から）をそのまま使う。結末が局ごとに生成されるようになって（S-031）さらにしっくりくるが、あくまで詩的な言い方であって数字の主張ではない（§4）。
+
+Alternatives:
+
+候補：
+
+- 「約束を交わすのは、メロスだけじゃない。」 Matches 信頼と約束; suits the opening or the first screen of promotion.
+  「約束を交わすのは、メロスだけじゃない。」信頼と約束に対応し、オープニングや宣伝の最初の画面に向いている。
+- 「あなたが動けば、彼らも動く。」 Matches mutual influence; suits the ending card.
+  「あなたが動けば、彼らも動く。」互いの影響に対応し、結末カードに向いている。
+- 「知っている結末を、あなたが変える。」 The most direct; it states "familiar + change" clearly.
+  「知っている結末を、あなたが変える。」最も直接的で、「なじみがある + 変える」をはっきり伝える。
+- 「メロスに追いつくのは、あなたかもしれない。」 More emotional; suits the opening of a short video.
+  「メロスに追いつくのは、あなたかもしれない。」感情寄りで、短い動画の冒頭に向いている。
+
+## 2. Five components / 2. 5 つの要素
+
+| Component / 要素 | Content / 内容 | Basis / 根拠 |
 |---|---|---|
-| **竞争替代品**（目标用户不用我们时会做什么） | ① AI 角色聊天 App（Character.AI、Cotomo、LINE マンガ キャラチャット）② 付费的剧情参与：マダミス、リアル脱出ゲーム ③ ノベルゲーム、互动小说、有 AI NPC 的游戏 ④ 什么都不做：不会再打开读过的书 | Z 世代使用者中 60.2% 用 AI 闲聊；マダミス一场 ¥2,500〜8,500；成人 62.6% 一个月不读一本书 |
-| **独特属性** | ① **讲得通的改道**：沿原作因果传导；推不翻的锚点只有少数（开场前的事和天气，S-030 ④）；「なぜこうなった？」看得到链条和原作出处 ② **信頼と約束**：角色有自己的目标、自己行动（你不在时也是，S-030）；关系由发生的事决定，关系够了为你做事，也会请你帮忙；约定有进行中 / 守约 / 失约（S-029）③ **三层结局**：世界的结局（按局生成，S-031）、每个角色的结局（「原作では…／あなたの世界では…」，S-032）、你自己的结局（去向、关系、谁为你做了什么、你为谁做了什么、称号、尾声），每一句都能追到事件 ④ 能走动的 3D 世界 + 日语语音 + 手机网页免安装 | research.md §2.2：**单项都不独有，独有的是组合**。① 在 AI 叙事产品里没找到同类；②③ 的单项别家都有（Voyage、燕云十六声、手写游戏的同伴结局），放在原作因果里、和原作对照的组合没找到；④ 是组合独有。对外不说「第一个」「唯一」 |
-| **价值和证据** | ① → 不像 AI 聊天那样越聊越乱（Vaudeville「everything is a lie」），也不像游戏那样只走固定的路（WftS「preprogrammed path」）② → 不是陪聊：陪伴 App 的关系只停在语气上（Cotomo「好感度も記憶も積み重ならない」）；游戏里「关系越深、对方越能帮你」是被验证过的乐趣（Persona 的コープ）；燕云十六声的 AI NPC 也说明了反面：互助不和世界状态挂钩，玩家很容易「说服」作弊（Automaton 2025-11-28），所以我们的互助要过自检 ③ → 一个能拿出来说、和原作对照的结局，值得分享（结局卡，S-026）④ → 打开链接就进得去，15〜20 分钟玩完一局 | 证据还要靠真人试玩补：「知道为什么」比例、「互相影响」判分、分享率（见 §6 和 playtest-plan.md） |
-| **目标用户特征** | 18〜34 岁，已经花时间或花钱「进入一个故事、和角色互动」；在家、一个人、戴耳机玩；知道原作结局。只面向成年人：用 Gemini 时不能面向学生（S-060） | research.md §1；S-022、S-060 |
-| **市场类别** | **「物語に入る体験」**，不是「AI チャット」，不是「ゲーム」，也不是「教材」 | 见下 |
-| 相关趋势 | 实时日语语音 AI 成熟（Cotomo 累计约 4 亿次回复）；年轻人习惯和 AI 角色说话；マダミス流行；游戏里的 AI NPC 开始普及（燕云十六声、PUBG Ally） | evidence/segments.md、competitors.md §9 |
+| **Competitive alternatives / 競合となる代替手段** (what target users do when they do not use us / ターゲットユーザーが私たちを使わないときに何をするか) | ① AI character chat apps (Character.AI, Cotomo, LINE マンガ キャラチャット) ② paid story participation: マダミス, リアル脱出ゲーム ③ ノベルゲーム, interactive fiction, games with AI NPCs ④ doing nothing: they will not open a book they have already read again / ① AI キャラクターとのチャットアプリ（Character.AI、Cotomo、LINE マンガ キャラチャット）② 有料の物語参加：マダミス、リアル脱出ゲーム ③ ノベルゲーム、インタラクティブフィクション、AI NPC のいるゲーム ④ 何もしない：一度読んだ本はもう開かない | 60.2% of Gen Z users use AI for casual chat; one マダミス session costs ¥2,500〜8,500; 62.6% of adults do not read a single book a month / Z 世代の利用者の 60.2% が AI で雑談している。マダミスは 1 回 ¥2,500〜8,500。成人の 62.6% が月に 1 冊も本を読まない |
+| **Unique attributes / 独自の特性** | ① **Changes of course that make sense**: they propagate along the original's causality; only a few anchors cannot be overturned (what happened before the opening, and the weather, S-030 ④); 「なぜこうなった？」 shows the chain and the source in the original ② **信頼と約束**: characters have their own goals and act on their own (even when you are not there, S-030); relationships are shaped by what happens, and when the relationship is strong enough they do things for you and also ask you for help; promises are in progress / kept / broken (S-029) ③ **Three layers of ending**: the world's ending (generated per game, S-031), each character's ending (「原作では…／あなたの世界では…」, S-032), and your own ending (where you end up, relationships, who did what for you, what you did for whom, title, epilogue), and every sentence traces back to an event ④ A walkable 3D world + Japanese voice + mobile web with no install / ① **筋の通った進路変更**：原作の因果に沿って伝わる。覆せない錨はごく一部だけ（冒頭より前の出来事と天気、S-030 ④）。「なぜこうなった？」で連鎖と原作の出典が見える ② **信頼と約束**：登場人物には自分の目標があり、自分で行動する（あなたがいないときも、S-030）。関係は起きた出来事で決まり、関係が十分になればあなたのために動き、あなたに助けを求めることもある。約束には進行中 / 守った / 破った がある（S-029）③ **3 層の結末**：世界の結末（局ごとに生成、S-031）、各登場人物の結末（「原作では…／あなたの世界では…」、S-032）、あなた自身の結末（行き先、関係、誰があなたに何をしてくれたか、あなたが誰に何をしたか、称号、エピローグ）。どの一文もイベントにたどれる ④ 歩き回れる 3D 世界 + 日本語の音声 + インストール不要のスマホ向けウェブ | research.md §2.2: **no single feature is unique; the combination is**. ① We found nothing similar among AI narrative products; ② and ③ each exist elsewhere on their own (Voyage, Where Winds Meet, companion endings in hand-written games), but we found no combination that places them within the original's causality and compares them with the original; ④ is unique as a combination. Publicly we do not say "first" or "only" / research.md §2.2：**単体の機能はどれも独自ではなく、独自なのは組み合わせ**。① AI ナラティブ製品の中に同類は見つからなかった。②③ は単体ならどれも他社にある（Voyage、燕雲十六声、手作りのゲームの仲間ごとの結末）が、原作の因果の中に置き、原作と照らし合わせる組み合わせは見つからなかった。④ は組み合わせとして独自。対外的に「初」「唯一」とは言わない |
+| **Value and evidence / 価値と証拠** | ① → does not fall apart the longer you talk, as AI chat does (Vaudeville "everything is a lie"), nor does it only follow a fixed path, as games do (WftS "preprogrammed path") ② → not a chat companion: in companion apps the relationship stays only in the tone of voice (Cotomo 「好感度も記憶も積み重ならない」); in games, "the deeper the relationship, the more the other person can help you" is a proven pleasure (Persona's コープ); the AI NPCs in Where Winds Meet also show the flip side: when mutual help is not tied to world state, players easily "persuade" their way into cheating (Automaton 2025-11-28), so our mutual help has to pass the self-check ③ → an ending worth talking about and compared with the original, worth sharing (ending card, S-026) ④ → tap the link and you are in; one game takes 15〜20 minutes / ① → AI チャットのように話すほど崩れていく（Vaudeville「everything is a lie」）こともなく、ゲームのように決まった道だけを進む（WftS「preprogrammed path」）こともない ② → ただの話し相手ではない：コンパニオンアプリの関係は口調の上だけにとどまる（Cotomo「好感度も記憶も積み重ならない」）。ゲームでは「関係が深まるほど相手が助けてくれる」は実証済みの楽しさ（ペルソナのコープ）。燕雲十六声の AI NPC は逆の面も示している：助け合いが世界状態と結びついていないと、プレイヤーは簡単に「説得」してズルができる（Automaton 2025-11-28）。だから私たちの助け合いは自己チェックを通す ③ → 話題にでき、原作と照らし合わせられる結末は、シェアする価値がある（結末カード、S-026）④ → リンクを開けばすぐ入れて、1 局 15〜20 分で遊び終わる | Evidence still has to come from real-person playtests: share who "know why", mutual-influence scoring, share rate (see §6 and playtest-plan.md) / 証拠はまだ実際の人による試遊で補う必要がある：「なぜかわかる」割合、「互いの影響」の採点、シェア率（§6 と playtest-plan.md を参照） |
+| **Target user traits / ターゲットユーザーの特徴** | Ages 18〜34, already spending time or money on "entering a story and interacting with characters"; play at home, alone, with earphones; know the original's ending. Adults only: with Gemini we cannot target students (S-060) / 18〜34 歳で、すでに「物語に入り、登場人物とやり取りする」ことに時間やお金を使っている。自宅で、一人で、イヤホンをつけて遊ぶ。原作の結末を知っている。成人のみ：Gemini を使う以上、学生を対象にできない（S-060） | research.md §1; S-022, S-060 / research.md §1、S-022、S-060 |
+| **Market category / 市場カテゴリー** | **「物語に入る体験」**, not 「AI チャット」, not 「ゲーム」, and not 「教材」 / **「物語に入る体験」**であって、「AI チャット」でも「ゲーム」でも「教材」でもない | See below / 下記参照 |
+| Relevant trends / 関連するトレンド | Real-time Japanese voice AI has matured (Cotomo about 400 million cumulative replies); young people are used to talking with AI characters; マダミス is popular; AI NPCs in games are spreading (Where Winds Meet, PUBG Ally) / リアルタイムの日本語音声 AI が成熟した（Cotomo は累計約 4 億回の返答）。若者は AI キャラクターと話すことに慣れている。マダミスが流行している。ゲームの AI NPC が普及し始めた（燕雲十六声、PUBG Ally） | evidence/segments.md, competitors.md §9 / evidence/segments.md、competitors.md §9 |
 
-### 为什么选「物語に入る体験」这个类别（推断）
+### Why we chose the category 「物語に入る体験」 (inferred) / 「物語に入る体験」というカテゴリーを選んだ理由（推測）
 
-| 如果自称 | 会被拿来和谁比 | 结果 |
+| If we called ourselves / 自称した場合 | Who we would be compared with / 何と比べられるか | Result / 結果 |
 |---|---|---|
-| AI チャット | c.ai（约 2,000 万 MAU）、Talkie、Cotomo | 比规模和角色数量，我们输；「记得你」也不独有 |
-| ゲーム | 商业游戏、Steam 上的语音 AI 游戏、有 AI NPC 的大作 | 比画面和内容量，我们输；语音 AI 游戏口碑一般（Vaudeville 48%、Suck Up! 63% 好评） |
-| 教材 | 学校教材 | 把主用户推开，而且没有教育效果的数据 |
-| **物語に入る体験** | マダミス、イマーシブシアター | 这群人已经为「扮演一个身份、影响结局」付钱；イマーシブ・フォート東京闭馆时说需求集中在「人数限定的深度体验」，一对一的我们正好在这个方向上 |
+| AI チャット | c.ai (about 20 million MAU), Talkie, Cotomo / c.ai（約 2,000 万 MAU）、Talkie、Cotomo | On scale and number of characters we lose; "remembers you" is not unique either / 規模とキャラクター数では負ける。「あなたを覚えている」も独自ではない |
+| ゲーム | Commercial games, voice AI games on Steam, big titles with AI NPCs / 商業ゲーム、Steam の音声 AI ゲーム、AI NPC のいる大作 | On visuals and amount of content we lose; voice AI games have mediocre reviews (Vaudeville 48%, Suck Up! 63% positive) / グラフィックとコンテンツ量では負ける。音声 AI ゲームの評判は今ひとつ（Vaudeville 48%、Suck Up! 63% が好評） |
+| 教材 | School teaching materials / 学校の教材 | Pushes away the main users, and we have no data on educational effect / メインユーザーを遠ざけ、しかも教育効果のデータがない |
+| **物語に入る体験** | マダミス, immersive theater / マダミス、イマーシブシアター | These people already pay to "play a role and influence the ending"; when イマーシブ・フォート東京 closed, it said demand was concentrated in "deep experiences with a limited number of people", and our one-on-one experience fits exactly that direction / この人たちはすでに「役を演じて結末に影響を与える」ことにお金を払っている。イマーシブ・フォート東京は閉館時に、需要は「人数限定の深い体験」に集中していると述べており、一対一の私たちはまさにその方向にある |
 
-## 3. 讲什么，按顺序
+## 3. What to say, in order / 3. 何をどの順で語るか
 
-1. **主张**：知っている物語に入って、登場人物とつながり、筋の通った形で変える。
+1. **主張**：知っている物語に入って、登場人物とつながり、筋の通った形で変える。
 2. **信頼と約束**：彼らは自分の目的で動いている。あなたが助ければ、あなたのためにも動き、あなたに頼みごともする。交わした約束は覚えられていて、守るか破るかで物語が変わる。『走れメロス』は、信頼と約束の物語だから。
 3. **三つの結末**：世界の結末、登場人物それぞれの結末、そしてあなただけの結末と称号。結末は決まったリストから選ばれるのではなく、あなたのこの一局から生まれる。原作との違いが一目でわかる。
 4. **筋が通る**：なぜこうなったのかは、原作の一節と照らし合わせながら、いつでもたどれる。
 5. **声**：声で話しかけると、彼らは声で応える。文字でも話せる。
-6. **形态**：スマホのブラウザで、インストール不要。一回 15〜20 分。
+6. **形態**：スマホのブラウザで、インストール不要。一回 15〜20 分。
 
-依据：第 4 条对应 PRD P0「连锁反应」和 ux-design §9.2（节点详情显示原作出处，如有）。「原作に戻る」（看原文对应段落）是 P1，做进第一版后才加「原作もすぐ読める」。第 5 条按 PM 的意见，把「记得你」移进第 2 条，作为信任的来源，不单独当卖点。
+Basis: item 4 corresponds to PRD P0 "chain reaction" and ux-design §9.2 (node details show the source in the original, if any). 「原作に戻る」 (viewing the corresponding passage of the original) is P1; only once it is in the first version do we add 「原作もすぐ読める」. Per PM's feedback, item 5 moved "remembers you" into item 2 as the source of trust, rather than treating it as a separate selling point.
 
-## 4. 不说什么
+根拠：第 4 項は PRD P0「連鎖反応」と ux-design §9.2（ノードの詳細に原作の出典を表示、ある場合）に対応する。「原作に戻る」（原文の対応箇所を見る）は P1 で、最初の版に入ってから「原作もすぐ読める」を加える。第 5 項は PM の意見に従い、「あなたを覚えている」を第 2 項に移して信頼の源とし、単独の売りにはしない。
 
-| 不说 | 原因 | 可以怎么说 |
+## 4. What not to say / 4. 言わないこと
+
+| Do not say / 言わない | Reason / 理由 | What to say instead / 代わりの言い方 |
 |---|---|---|
-| 「名作を AI で書き換える」 | 违背原则「参与，不是改写」；也容易引起「对原作不敬」的反感 | 物語に入って、変える |
-| 「キャラクターがずっとあなたを覚えている」 | 第一版只在一局内记得（S-012），而且 Voyage 已经做到跨会话记忆 | この物語の中で、あなたのしたことを覚えている |
-| 「初の」「唯一の」「世界で初めて」 | 单项功能别家都有，独有的只是组合；竞品随时可能补上（research.md §2.2） | 具体说我们做了什么，不和别家比先后 |
-| 「無限の結末」「何万通りの結末」「一万種類の結末を用意」 | 结局按局生成（S-031），不是「准备好」的，所以「用意」本身不对；「無限」「何万通り」是数字主张，结局多样性评测（S-031 ⑤）出数字前不说 | 結末は、あなたのこの一局から生まれる；口号「一万人いれば、一万の結末」是诗意说法，可以用 |
-| 「なんでもできる」「完全に自由」 | 少数锚点推不翻（S-030 ④）；「太自由、前后乱编」是被骂最多的问题之一（research.md §2.1 第 4 条） | 自由に話せて、自由に動ける。それでも物語の筋は通る |
-| 「ずっと無料」「無料で全部遊べる」 | 第一版不收费只是邀请试玩阶段的安排；以后的方向是「一本买断 + 免费序章」（Q-007） | 今はテスト期間中のため無料 |
-| 「AI の友だち」「恋人」 | 互相影响是故事里的信任和约定，不是陪伴类的情感依赖；混淆会把我们放进 c.ai、Talkie 的类别，也会引出未成年人和依赖方面的担忧 | 物語の中の仲間、約束の相手 |
-| 「教育効果がある」 | 没有数据前不说；真人试玩有了对照数据再说 | — |
-| 「中学生にもおすすめ」「授業で使える」，以及任何面向学生的宣传 | Google 条款不允许把 Gemini 用在面向或很可能被 18 岁以下的人访问的服务里（S-060）；『走れメロス』是中学课文，面向学生的宣传会直接把我们推进这个范围 | 宣传只对成年人：「あの日、国語の教科書で読んだ物語に」这类回忆的说法可以用 |
-| 「AI」放在标题第一个词 | 主张是「进入故事」，AI 是手段；语音 AI 游戏的口碑一般（推断）。这不是隐瞒 AI：封面会一次说清「登場人物の声とことばは、AIがその場で生み出しています。」（S-039） | 宣传文案里需要时照封面的说法 |
+| 「名作を AI で書き換える」 | Goes against the principle "take part, do not rewrite"; also easily provokes backlash about "disrespecting the original" / 「書き換えではなく参加」という原則に反する。「原作に失礼」という反感も招きやすい | 物語に入って、変える |
+| 「キャラクターがずっとあなたを覚えている」 | The first version only remembers within one game (S-012), and Voyage already has cross-session memory / 最初の版は 1 局の中でしか覚えていない（S-012）。しかも Voyage はすでにセッションをまたぐ記憶を実現している | この物語の中で、あなたのしたことを覚えている |
+| 「初の」「唯一の」「世界で初めて」 | Every single feature exists elsewhere; only the combination is unique, and competitors could add it any time (research.md §2.2) / 単体の機能はどれも他社にあり、独自なのは組み合わせだけ。競合はいつでも追いつける（research.md §2.2） | Say concretely what we built, without comparing who was first / 自分たちが何を作ったかを具体的に言い、他社と先後を比べない |
+| 「無限の結末」「何万通りの結末」「一万種類の結末を用意」 | Endings are generated per game (S-031), not "prepared", so 「用意」 itself is wrong; 「無限」 and 「何万通り」 are numerical claims, not made until the ending-diversity eval (S-031 ⑤) produces numbers / 結末は局ごとに生成される（S-031）もので「用意された」ものではないので、「用意」自体が誤り。「無限」「何万通り」は数字の主張で、結末の多様性の評価（S-031 ⑤）で数字が出るまでは言わない | 結末は、あなたのこの一局から生まれる; the slogan 「一万人いれば、一万の結末」 is poetic phrasing and can be used / 結末は、あなたのこの一局から生まれる。キャッチコピー「一万人いれば、一万の結末」は詩的な言い方なので使ってよい |
+| 「なんでもできる」「完全に自由」 | A few anchors cannot be overturned (S-030 ④); "too free, making things up inconsistently" is one of the most criticized problems (research.md §2.1 item 4) / 少数の錨は覆せない（S-030 ④）。「自由すぎて前後がでたらめ」は最も批判の多い問題の一つ（research.md §2.1 第 4 項） | 自由に話せて、自由に動ける。それでも物語の筋は通る |
+| 「ずっと無料」「無料で全部遊べる」 | The first version being free is only an arrangement for the invite-only playtest phase; the later direction is "buy each book once + a free prologue" (Q-007) / 最初の版が無料なのは招待制の試遊期間の措置にすぎない。今後の方向性は「1 冊買い切り + 無料の序章」（Q-007） | 今はテスト期間中のため無料 |
+| 「AI の友だち」「恋人」 | Mutual influence means trust and promises within the story, not companion-style emotional dependence; mixing them up would put us in the same category as c.ai and Talkie, and raise concerns about minors and dependence / 互いの影響とは物語の中の信頼と約束であって、コンパニオン型の感情的な依存ではない。混同すると c.ai や Talkie と同じカテゴリーに入れられ、未成年や依存についての懸念も招く | 物語の中の仲間、約束の相手 |
+| 「教育効果がある」 | Not said until there is data; say it once real-person playtests produce comparison data / データがないうちは言わない。実際の人による試遊で対照データが出てから言う | — |
+| 「中学生にもおすすめ」「授業で使える」, and any promotion aimed at students / 「中学生にもおすすめ」「授業で使える」、および学生向けのあらゆる宣伝 | Google's terms do not allow Gemini in services aimed at, or likely to be accessed by, people under 18 (S-060); 『走れメロス』 is a middle-school textbook piece, so promotion aimed at students would put us squarely in that scope / Google の規約では、18 歳未満を対象とする、または 18 歳未満が利用する可能性が高いサービスで Gemini を使うことは認められていない（S-060）。『走れメロス』は中学の教科書の作品なので、学生向けの宣伝をすればそのままこの範囲に入ってしまう | Promotion is for adults only: nostalgic phrasing like 「あの日、国語の教科書で読んだ物語に」 is fine / 宣伝は成人向けだけ：「あの日、国語の教科書で読んだ物語に」のような思い出に訴える言い方は使ってよい |
+| Putting "AI" as the first word of a headline / 見出しの最初の語に「AI」を置く | The claim is "entering a story", and AI is the means; voice AI games have mediocre reviews (inferred). This is not hiding the AI: the cover states once and clearly 「登場人物の声とことばは、AIがその場で生み出しています。」 (S-039) / 主張は「物語に入る」ことで、AI は手段。音声 AI ゲームの評判は今ひとつ（推測）。これは AI を隠すことではない：表紙で一度「登場人物の声とことばは、AIがその場で生み出しています。」とはっきり伝える（S-039） | When promotional copy needs it, use the cover's wording / 宣伝文で必要なときは表紙の言い方に従う |
 
-## 5. 和 c.ai Books 的对比
+## 5. Comparison with c.ai Books / 5. c.ai Books との比較
 
-### 5.1 对照表（内部用）
+### 5.1 Comparison table (internal) / 5.1 比較表（内部用）
 
-| | c.ai Books（2026-04-16） | 我们 |
+| | c.ai Books (2026-04-16) / c.ai Books（2026-04-16） | Us / 私たち |
 |---|---|---|
-| 形式 | 文字聊天（语音未见公开说明） | 能走动的 3D 世界 + 日语语音（文字也能玩） |
-| 书 | 20 多部英文公版名著（Gutenberg） | 日本公版文学，第一本『走れメロス』 |
-| 你是谁 | 书中已有的角色，或自己的 Persona | 书里多出来的一个人，三种身份可选 |
-| 故事怎么变 | Book Arc 沿原作主线，事件按顺序发生；Go Off Script 自由 RP，可以改写走向 | 沿原作因果传导：真的改道，而且讲得通 |
-| 能否看到为什么变 | 未见公开说明 | 「なぜこうなった？」看到从你的举动到结果的链和原作出处 |
-| 时间和期限 | 未见公开说明 | 有，「三日目の日没」是期限（S-037）；故事时钟由事件推进（S-021） |
-| 角色会不会自己行动 | 未见公开说明 | 有自己的目标，你不在时也会行动（S-030） |
-| 记忆和关系 | c.ai 聊天有 Story Memory、Facts（付费）、Lorebook；Books 里是否适用未见说明 | 一局内结构化记忆，記憶帳里能看能删；关系带来互助，约定有状态（S-029） |
-| 结局 | 未见公开说明 | 三层：世界（按局生成）、每个角色（和原作对照）、你自己 |
-| 价格 | 免费只有少量回合；c.ai+ $9.99/月 | 第一版不收费（邀请试玩阶段） |
-| **他们强在** | 书多、用户多（c.ai 约 2,000 万 MAU）、AU Remix 社区 | — |
+| Form / 形式 | Text chat (no public statement about voice found) / テキストチャット（音声についての公開説明は見当たらない） | A walkable 3D world + Japanese voice (also playable with text) / 歩き回れる 3D 世界 + 日本語の音声（テキストでも遊べる） |
+| Books / 本 | 20+ English public-domain classics (Gutenberg) / 英語のパブリックドメインの名作 20 冊以上（Gutenberg） | Japanese public-domain literature, the first book being 『走れメロス』 / 日本のパブリックドメイン文学、最初の本は『走れメロス』 |
+| Who you are / あなたは誰か | An existing character in the book, or your own Persona / 本にすでにいる登場人物、または自分の Persona | One extra person in the book, with three identities to choose from / 本の中に一人増えた人物で、3 つの身分から選べる |
+| How the story changes / 物語の変わり方 | Book Arc follows the original's main plot, with events in order; Go Off Script is free RP that can rewrite the course / Book Arc は原作の本筋に沿い、イベントが順に起きる。Go Off Script は自由な RP で、展開を書き換えられる | Changes propagate along the original's causality: it really changes course, and still makes sense / 原作の因果に沿って伝わる：本当に進路が変わり、しかも筋が通る |
+| Can you see why it changed / なぜ変わったか見えるか | No public statement found / 公開説明は見当たらない | 「なぜこうなった？」 shows the chain from your action to the result and the source in the original / 「なぜこうなった？」で、あなたの行動から結果までの連鎖と原作の出典が見える |
+| Time and deadline / 時間と期限 | No public statement found / 公開説明は見当たらない | Yes, 「三日目の日没」 is the deadline (S-037); the story clock is advanced by events (S-021) / ある。「三日目の日没」が期限（S-037）。物語の時計はイベントで進む（S-021） |
+| Do characters act on their own / 登場人物は自分で行動するか | No public statement found / 公開説明は見当たらない | They have their own goals and act even when you are not there (S-030) / 自分の目標があり、あなたがいないときも行動する（S-030） |
+| Memory and relationships / 記憶と関係 | c.ai chats have Story Memory, Facts (paid) and Lorebook; whether they apply in Books is not stated / c.ai のチャットには Story Memory、Facts（有料）、Lorebook がある。Books に適用されるかは説明が見当たらない | Structured memory within one game, viewable and deletable in the 記憶帳; relationships lead to mutual help, and promises have states (S-029) / 1 局の中の構造化された記憶で、記憶帳で閲覧・削除できる。関係が助け合いを生み、約束には状態がある（S-029） |
+| Endings / 結末 | No public statement found / 公開説明は見当たらない | Three layers: the world (generated per game), each character (compared with the original), you / 3 層：世界（局ごとに生成）、各登場人物（原作と比較）、あなた自身 |
+| Price / 価格 | Free tier has only a few turns; c.ai+ $9.99/month / 無料は少ないターン数だけ。c.ai+ は $9.99/月 | The first version is free (invite-only playtest phase) / 最初の版は無料（招待制の試遊期間） |
+| **Where they are strong / 相手の強み** | Many books, many users (c.ai about 20 million MAU), the AU Remix community / 本が多い、ユーザーが多い（c.ai は約 2,000 万 MAU）、AU Remix のコミュニティ | — |
 
-「未见公开说明」= 官方介绍和报道里没提到，不等于没有（2026-10-06 核对，evidence/competitors.md §1）。对外用之前要上手确认。
+"No public statement found" = not mentioned in official introductions or coverage, which does not mean it does not exist (checked 2026-10-06, evidence/competitors.md §1). Confirm hands-on before using any of this publicly.
 
-### 5.2 被问到「c.ai Books と何が違う？」时（对外口径，草稿，公开前不对外发）
+「公開説明は見当たらない」= 公式の紹介や報道で触れられていないということで、存在しないという意味ではない（2026-10-06 に確認、evidence/competitors.md §1）。対外的に使う前に実際に触って確認する。
+
+### 5.2 When asked 「c.ai Books と何が違う？」 (public messaging, draft, not released before launch) / 5.2 「c.ai Books と何が違う？」と聞かれたとき（対外的な言い方、草稿、公開前は対外的に出さない）
 
 > c.ai Books は、たくさんの名作の登場人物と文字で話せるサービスです。私たちは一冊を深く作っています。
 > 『走れメロス』の世界を歩いて、声で話しかけると、あなたの行動が原作の因果に沿って物語を変えます。登場人物は自分の目的で動いていて、あなたが助ければ、あなたのためにも動きます。なぜそうなったかはいつでもたどれて、最後には世界と、登場人物一人ひとりと、あなた自身の結末が残ります。
 > 原作どおりに進むか、原作を離れて自由に話すかの二択ではなく、「原作の筋が通ったまま、あなたのせいで変わる」ことを目指しています。
 
-要点：先肯定对方的长处（书多），再说我们做的是「一本做深」；只说我们做了什么，不说对方没有什么。
+Key points: first acknowledge their strength (many books), then say that what we do is "one book, done deeply"; only say what we built, not what they lack.
 
-### 5.3 其他常见对比的一句话口径（草稿，公开前不对外发）
+要点：まず相手の長所（本が多い）を認め、次に私たちがやっているのは「1 冊を深く作る」ことだと言う。自分たちが何を作ったかだけを言い、相手に何がないかは言わない。
 
-| 被问到 | 一句话 |
+### 5.3 One-line messaging for other common comparisons (draft, not released before launch) / 5.3 その他のよくある比較への一言の言い方（草稿、公開前は対外的に出さない）
+
+| Question / 聞かれること | One line / 一言 |
 |---|---|
 | Voyage と何が違う？ | Voyage は自分で世界を作る RPG。私たちは誰もが知っている原作の筋を守ったまま、その中であなたが変える体験です。 |
 | Humanitext Aozora と何が違う？ | あちらは青空文庫を典拠とともに読む、近代日本文学の研究ツールです。私たちは作品の中に入って、物語そのものを動かします。 |
@@ -117,49 +144,71 @@
 | AI の NPC が手伝ってくれるゲームと何が違う？ | 助けてくれる AI のキャラクターは、もう他にもいます。私たちが大事にしているのは、誰もが知っている物語の中で、その助け合いや約束が原作の因果に沿って結末まで届くことです。 |
 | ChatGPT に「メロスごっこ」させればいいのでは？ | チャットでは時間も因果も守られず、話がすぐ崩れます。ここでは世界に時計と因果があり、変化はいつでも原作と照らし合わせられます。 |
 
-Humanitext 那一句用的是它官网自己的说法（「青空文庫を典拠とともに読む、近代日本文学の研究ツール」，evidence/competitors.md §4）。
+The Humanitext line uses its own website's description (「青空文庫を典拠とともに読む、近代日本文学の研究ツール」, evidence/competitors.md §4).
 
-## 6. 定位要靠什么证据站住
+Humanitext の一文は、同サイト自身の説明（「青空文庫を典拠とともに読む、近代日本文学の研究ツール」、evidence/competitors.md §4）を使っている。
 
-| 主张 | 需要的证据 | 从哪来 |
+## 6. What evidence the positioning needs to stand / 6. 位置づけを支えるのに必要な証拠
+
+| Claim / 主張 | Evidence needed / 必要な証拠 | Where it comes from / 出どころ |
 |---|---|---|
-| 改变讲得通 | 评测集一致性分数；试玩里「知道为什么」的比例（PRD §7.5，目标 ≥70%） | 数据评测、试玩 C2 |
-| 信頼と約束（互相影响） | 能说出一件角色为自己做的事、一件自己为角色做的事的比例（PRD §7.5，目标 ≥70%）；「角色有自己的想法」的评分；每局角色为玩家行动、约定的次数 | 试玩 C4、C5、D7；事件日志 |
-| 角色结局值得看 | 试玩里能说出哪个角色的结局变了、和原作哪里不同；结局卡上放的是哪些角色 | 试玩 C6；事件日志 |
-| 结局由你这一局生成 | 结局多样性评测（S-031 ⑤）；试玩的结局分布不是都一样 | 数据评测、事件日志 |
-| 你的结局值得分享 | 试玩当场保存或发出结局卡图片的比例 | 试玩、事件日志 |
-| 比读原文更投入 | TS-SF 组间对照的效应量 | 试玩 R2 |
-| 声音自然 | 松开到开口的延迟（S-017）；识别改正次数 | spike、试玩日志 |
-| 『走れメロス』本身有吸引力 | 筛选问卷第 7 题两小题的差；玩后印象变化 | 招募、试玩 E4（research.md §1.5） |
+| Changes make sense / 変化の筋が通る | Eval-set consistency scores; share in playtests who "know why" (PRD §7.5, target ≥70%) / 評価セットの一貫性スコア。試遊で「なぜかわかる」割合（PRD §7.5、目標 ≥70%） | Data evals, playtest C2 / データの評価、試遊 C2 |
+| 信頼と約束 (mutual influence) / 信頼と約束（互いの影響） | Share who can name one thing a character did for them and one thing they did for a character (PRD §7.5, target ≥70%); the rating for "characters have their own ideas"; how many times per game characters acted for the player and how many promises were made / 登場人物が自分のためにしてくれたことを 1 つ、自分が登場人物のためにしたことを 1 つ言える割合（PRD §7.5、目標 ≥70%）。「登場人物に自分の考えがある」の評価。局ごとに登場人物がプレイヤーのために動いた回数と約束の回数 | Playtest C4, C5, D7; event logs / 試遊 C4、C5、D7。イベントログ |
+| Character endings are worth seeing / 登場人物の結末に見る価値がある | In playtests, players can say whose ending changed and how it differs from the original; which characters appear on the ending card / 試遊で、どの登場人物の結末が変わり、原作とどこが違うかを言えるか。結末カードにどの登場人物が載っているか | Playtest C6; event logs / 試遊 C6。イベントログ |
+| Endings are generated from your game / 結末はあなたのこの一局から生まれる | Ending-diversity eval (S-031 ⑤); the distribution of endings in playtests is not all the same / 結末の多様性の評価（S-031 ⑤）。試遊の結末の分布が全部同じではない | Data evals, event logs / データの評価、イベントログ |
+| Your ending is worth sharing / あなたの結末はシェアする価値がある | Share who save or send the ending-card image on the spot in playtests / 試遊でその場で結末カードの画像を保存または送信した割合 | Playtests, event logs / 試遊、イベントログ |
+| More engaging than reading the original / 原文を読むより没入できる | Effect size of the TS-SF between-group comparison / TS-SF の群間比較の効果量 | Playtest R2 / 試遊 R2 |
+| The voice feels natural / 声が自然 | Latency from release to the reply starting (S-017); number of recognition corrections / 離してから話し始めるまでの遅延（S-017）。認識の訂正回数 | Spike, playtest logs / spike、試遊ログ |
+| 『走れメロス』 itself has pull / 『走れメロス』そのものに魅力がある | The difference between the two parts of screening question 7; change in impression after playing / スクリーニング第 7 問の 2 つの小問の差。遊んだ後の印象の変化 | Recruiting, playtest E4 (research.md §1.5) / 募集、試遊 E4（research.md §1.5） |
 
-## 7. 产品名候选（Q-003，草稿）
+## 7. Product name candidates (Q-003, draft) / 7. 製品名の候補（Q-003、草稿）
 
-「走进物语」是中文暂名，日本市场要一个日语名字。要求：不像 AI 聊天 App 或教材；以后加书也能用；好念。
+The current working name is Chinese (it means roughly "step into the story"), and the Japanese market needs a Japanese name. Requirements: does not sound like an AI chat app or teaching material; still works as more books are added; easy to say.
 
-| 候选 | 意思 | 重名初查（2026-10-06） | 商标 | 判断 |
+現在の仮称は中国語（おおよそ「物語に入る」という意味）なので、日本市場には日本語の名前が必要。条件：AI チャットアプリや教材のように聞こえないこと、今後本を増やしても使えること、言いやすいこと。
+
+| Candidate / 候補 | Meaning / 意味 | Initial name-clash check (2026-10-06) / 同名の初期調査（2026-10-06） | Trademark / 商標 | Assessment / 判断 |
 |---|---|---|---|---|
-| **フミイリ**（推荐） | 「踏み入る」（走进去）+「文」（文字） | 没找到同名产品或服务；相近的 FumiFumi（头像 App）不易混淆 | **未查**（见下） | 造词，被拒的风险低，应该好注册（推断）；四个音好念。意思不直白，要配副标题，例：「フミイリ ―『走れメロス』に入る」 |
-| **ヨミイル**（有条件） | 「読み入る」（读得入迷），也是「読み」+「入る」 | 没找到同名产品；「ヨミ-」开头的已经很多：ヨミー（BOOK WALKER）、ヨミダス（読売）、Yom!青空文庫 | **未查**；读音接近ヨミウリ（読売，著名商标），中等风险（推断） | 偏「阅读 App」，不如フミイリ贴「走进去」；商标查过没问题才考虑 |
-| **ページのむこう**（有条件） | 书页的那一边 | 没找到同名产品；这个短语出现在漫画和同人标题里；英文有 Hachette 的沉浸式书展「Beyond the pages」 | **未查**；像常用短语，单独注册和在搜索里占位都难（推断） | 适合当副标题配前两个用，或者做成图形商标 |
+| **フミイリ** (recommended / 推奨) | 「踏み入る」 (step in) + 「文」 (writing) / 「踏み入る」（中に入る）+「文」（文字） | No product or service with the same name found; the similar FumiFumi (an avatar app) is unlikely to be confused / 同名の製品やサービスは見つからなかった。似た名前の FumiFumi（アバターアプリ）とは混同しにくい | **Not checked** (see below) / **未調査**（下記参照） | A coined word, so the risk of rejection is low and it should be easy to register (inferred); four morae, easy to say. The meaning is not obvious, so it needs a subtitle, e.g. 「フミイリ ―『走れメロス』に入る」 / 造語なので拒絶されるリスクが低く、登録しやすいはず（推測）。4 音で言いやすい。意味がわかりにくいので副題が必要。例：「フミイリ ―『走れメロス』に入る」 |
+| **ヨミイル** (conditional / 条件付き) | 「読み入る」 (to be absorbed in reading), also 「読み」 + 「入る」 / 「読み入る」（読みふける）、また「読み」+「入る」でもある | No product with the same name found; many names already start with 「ヨミ-」: ヨミー (BOOK WALKER), ヨミダス (読売), Yom!青空文庫 / 同名の製品は見つからなかった。「ヨミ-」で始まる名前はすでに多い：ヨミー（BOOK WALKER）、ヨミダス（読売）、Yom!青空文庫 | **Not checked**; sounds close to ヨミウリ (読売, a well-known trademark), medium risk (inferred) / **未調査**。読みがヨミウリ（読売、著名な商標）に近く、中程度のリスク（推測） | Leans toward "reading app", fits "step in" less well than フミイリ; consider only if the trademark check is clean / 「読書アプリ」寄りで、「中に入る」感じはフミイリに劣る。商標を調べて問題がなければ検討する |
+| **ページのむこう** (conditional / 条件付き) | The other side of the page / ページの向こう側 | No product with the same name found; the phrase appears in manga and doujin titles; in English there is Hachette's immersive book exhibition "Beyond the pages" / 同名の製品は見つからなかった。この言い回しはマンガや同人誌のタイトルに出てくる。英語では Hachette の没入型の本の展示「Beyond the pages」がある | **Not checked**; it reads like a common phrase, so registering it alone and owning it in search would both be hard (inferred) / **未調査**。よくある言い回しのようなので、単独での登録も検索での上位表示も難しい（推測） | Suits use as a subtitle paired with one of the first two, or as a logo mark / 前の 2 つと組み合わせた副題や、図形商標にするのに向いている |
 
-**不推荐**：
-- ハイリコム：ベネッセ的「ハイリコム学習」（VR 学习服务和 App，2022-12 开始）已经在用，领域相同。
-- 物語のなかへ：太直接地描述服务，按商标法第 3 条第 1 项第 3 号可能注册不了（推断）；适合当类别文案。
-- モノガタリウォーク：一半是描述；让人联想到ドラクエウォーク这类走路游戏；和 USJ「ストーリー・ウォーク」、图书馆的 StoryWalk® 接近。
+**Not recommended / 推奨しない**:
 
-来源见 [evidence/names.md](evidence/names.md)。
+- ハイリコム: already in use by ベネッセ's 「ハイリコム学習」 (a VR learning service and app, started 2022-12), in the same field.
+  ハイリコム：ベネッセの「ハイリコム学習」（VR 学習のサービスとアプリ、2022-12 開始）がすでに使っており、分野も同じ。
+- 物語のなかへ: describes the service too directly, so it may not be registrable under Article 3(1)(iii) of the Trademark Act (inferred); suits category copy.
+  物語のなかへ：サービスをそのまま説明しすぎていて、商標法第 3 条第 1 項第 3 号により登録できない可能性がある（推測）。カテゴリーを表す文案に向いている。
+- モノガタリウォーク: half descriptive; evokes walking games such as ドラクエウォーク; close to USJ's 「ストーリー・ウォーク」 and libraries' StoryWalk®.
+  モノガタリウォーク：半分は説明的。ドラクエウォークのような歩くゲームを連想させる。USJ の「ストーリー・ウォーク」や図書館の StoryWalk® に近い。
 
-**限制**：J-PlatPat、Toreru、Cotobox 都要浏览器运行脚本，这次在我的环境里打不开，**商标一个都没查**；搜索以美国为主，日语精确短语、App Store 内搜索可能有遗漏；域名只看了能不能打开，没查 whois。定名字之前，要有人用 J-PlatPat 的「称呼検索」查 9、41、42 类，或请弁理士查。名字由 zg 定（Q-003），PM 汇总时问。
+Sources are in [evidence/names.md](evidence/names.md).
 
-## 修订记录
+出典は [evidence/names.md](evidence/names.md) を参照。
 
-- v1.1 补（2026-10-06）：按 S-060 在 §2 目标用户和 §4 写明不面向学生。
-- v1.1（2026-10-06）：按 UX 评审和新决定改：§5.1 期限写成「三日目の日没」（S-037）；结局底线 5 类（S-034）；§4 写明封面会告知 AI（S-039）。
-- v1.0（2026-10-06）：按 PM 评审和 D-012〜D-015、S-029〜S-032 改：
-  - 互相影响改讲成「信頼と約束」，和原作主题对上；「记得你」并进这一条，不单独当卖点。
-  - §3 第 4 条「原作もすぐ読める」换成「原作の一節と照らし合わせながらたどれる」（原作に戻る是 P1）。
-  - §4 加「ずっと無料」「初の／唯一の」「なんでもできる」，按 S-031 重写「無限／一万種類の結末」那一条，并给出可以怎么说。
-  - §5.1 按 2026-10-06 核对把 c.ai Books 没有公开说明的项改成「未见公开说明」；§5.3 Humanitext 用它自己的说法，加「AI NPC 游戏」一条；§5.2、§5.3 标明草稿、公开前不对外发。
-  - 新增 §7 产品名候选（商标未查）。
-- v0.2（2026-10-06）：按 zg 的两条方向改：核心主张从「他们记得你」改成「你们互相影响」；结局从两层改成三层。
-- v0.1（2026-10-06）：初稿。
+**Limitations**: J-PlatPat, Toreru and Cotobox all need the browser to run scripts and could not be opened in my environment this time, so **no trademark has been checked at all**; searches were mostly US-based, so exact Japanese phrases and App Store searches may have gaps; for domains I only checked whether they open, not whois. Before deciding the name, someone needs to run J-PlatPat's 「称呼検索」 on classes 9, 41 and 42, or ask a 弁理士 (patent attorney) to check. zg decides the name (Q-003); PM asks when consolidating.
+
+**制限**：J-PlatPat、Toreru、Cotobox はいずれもブラウザでスクリプトを実行する必要があり、今回は私の環境では開けなかったので、**商標は一つも調べていない**。検索は主に米国向けで、日本語の完全一致のフレーズや App Store 内の検索には漏れがあるかもしれない。ドメインは開けるかどうかだけを見て、whois は調べていない。名前を決める前に、誰かが J-PlatPat の「称呼検索」で第 9、41、42 類を調べるか、弁理士に調査を依頼する必要がある。名前は zg が決め（Q-003）、PM がまとめるときに聞く。
+
+## Revision history / 改訂履歴
+
+- v1.1 addendum (2026-10-06): per S-060, §2 target users and §4 state that we do not target students.
+  v1.1 追補（2026-10-06）：S-060 に従い、§2 のターゲットユーザーと §4 に学生を対象にしないことを明記。
+- v1.1 (2026-10-06): changes per the UX review and new decisions: §5.1 writes the deadline as 「三日目の日没」 (S-037); ending baselines are 5 types (S-034); §4 states that the cover discloses the AI (S-039).
+  v1.1（2026-10-06）：UX のレビューと新しい決定に従って変更：§5.1 の期限を「三日目の日没」と書いた（S-037）。結末の最低ラインは 5 種類（S-034）。§4 に表紙で AI を告知することを明記（S-039）。
+- v1.0 (2026-10-06): changes per the PM review and D-012〜D-015, S-029〜S-032:
+  v1.0（2026-10-06）：PM のレビューと D-012〜D-015、S-029〜S-032 に従って変更：
+  - Mutual influence is now told as 「信頼と約束」, matching the original's theme; "remembers you" is folded into this item rather than being a separate selling point.
+    互いの影響を「信頼と約束」として語ることにし、原作のテーマと合わせた。「あなたを覚えている」はこの項目に統合し、単独の売りにはしない。
+  - §3 item 4 「原作もすぐ読める」 replaced with 「原作の一節と照らし合わせながらたどれる」 (原作に戻る is P1).
+    §3 第 4 項の「原作もすぐ読める」を「原作の一節と照らし合わせながらたどれる」に置き換えた（原作に戻るは P1）。
+  - §4 adds 「ずっと無料」, 「初の／唯一の」 and 「なんでもできる」, rewrites the 「無限／一万種類の結末」 entry per S-031, and gives what to say instead.
+    §4 に「ずっと無料」「初の／唯一の」「なんでもできる」を追加し、S-031 に従って「無限／一万種類の結末」の項目を書き直し、代わりの言い方を示した。
+  - §5.1: per the 2026-10-06 check, items c.ai Books has no public statement on are changed to "no public statement found"; §5.3 uses Humanitext's own wording and adds an "AI NPC games" row; §5.2 and §5.3 are marked as drafts not released before launch.
+    §5.1：2026-10-06 の確認に従い、c.ai Books に公開説明がない項目を「公開説明は見当たらない」に変更。§5.3 は Humanitext 自身の言い方を使い、「AI NPC のゲーム」の行を追加。§5.2、§5.3 は草稿で公開前は対外的に出さないと明記。
+  - Added §7 product name candidates (trademarks not checked).
+    §7 製品名の候補を新設（商標は未調査）。
+- v0.2 (2026-10-06): changes per zg's two directions: the core claim moved from "they remember you" to "you influence each other"; endings went from two layers to three.
+  v0.2（2026-10-06）：zg の 2 つの方向性に従って変更：中核の主張を「彼らがあなたを覚えている」から「互いに影響し合う」に変更。結末を 2 層から 3 層に変更。
+- v0.1 (2026-10-06): first draft.
+  v0.1（2026-10-06）：初稿。

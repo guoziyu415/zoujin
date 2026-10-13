@@ -1,5 +1,12 @@
-"""B-16（四幕的世界推进和导演）的验收：完整草稿走通四幕；幕切换时世界推进和节拍按时刻合并；每幕中段的推进和在玩家
-面前的导演事件；迁移 0011。走评测入口（和网关同一条路），假模型的 `world` 按规则给候选。"""
+"""Acceptance checks for B-16 (world advancement and the director across four acts): the full draft runs through
+four acts; at act transitions world advancement and beats are merged by time; mid-act advancement and director events
+in front of the player; migration 0011. Goes through the eval entry point (the same path as the gateway), with the fake
+model's `world` giving candidates by rule.
+
+B-16（4 幕にわたる世界の進行とディレクター）の受け入れ確認：完全版の草稿で 4 幕を通す。幕切り替えでは世界の進行と
+ビートを時刻順に合わせる。各幕の中盤の進行と、プレイヤーの目の前でのディレクターのイベント。マイグレーション 0011。
+評価の入口（ゲートウェイと同じ経路）を通り、偽モデルの `world` が規則に従って候補を出す。
+"""
 
 from __future__ import annotations
 
@@ -21,13 +28,17 @@ from .test_b3 import CITY, DRAFT, Game
 
 pytestmark = pytest.mark.db
 
-game = test_b3.game  # 和 B-3 同一个 fixture：评测入口的一局
+# The same fixture as B-3: one game via the eval entry point / B-3 と同じ fixture：評価の入口の 1 ゲーム
+game = test_b3.game
 
 Json = Any
 
 
 def rule(g: Game, output: Json, **when: Any) -> None:
-    """给这一局的假模型加一条 `world` 的输出。"""
+    """Add one `world` output to this game's fake model.
+
+    このゲームの偽モデルに `world` の出力を 1 つ加える。
+    """
     text = g.s.text
     assert isinstance(text, FakeText)
     text.rules.append(FakeText._rule({"kind": "world", "when": when, "output": output, "times": 1}, "<test>"))
@@ -40,17 +51,25 @@ def calls(g: Game, kind: str) -> list[Json]:
 
 
 def close_act(g: Game) -> Json:
-    """快进到这一幕收幕，返回幕末。"""
+    """Fast-forward until this act closes and return the end of act.
+
+    この幕が閉じるまで早送りし、幕末を返す。
+    """
     for _ in range(80):
         end = g.row()["act_end"]
         if end is not None:
             return end
         g.s.advance(60)
-    raise AssertionError("这一幕没有收")
+    raise AssertionError("The act didn't close / 幕が閉じなかった")
 
 
 def test_four_acts_on_the_full_draft(game: Callable[..., Game]) -> None:
-    """完整草稿：第一幕 → 第二幕 → 第三幕 → 第四幕 → 结局。每次换幕调一次世界推进，节拍时间表照走。"""
+    """Full draft: act 1 → act 2 → act 3 → act 4 → ending. Each act change calls world advancement once, and the beat
+    schedule runs as usual.
+
+    完全版の草稿：第一幕 → 第二幕 → 第三幕 → 第四幕 → エンディング。幕を移るたびに世界の進行を 1 回呼び、ビートの
+    予定表は通常どおり進む。
+    """
     g = game("sc.canon@beat.07", world=DRAFT)
     seen = []
     for exit_id, to_act, t in (("exit.1.city", "act.2", 1440), ("exit.2.city", "act.3", 2040)):
@@ -77,8 +96,14 @@ def test_four_acts_on_the_full_draft(game: Callable[..., Game]) -> None:
 
 
 def test_world_events_are_written_with_the_beats_at_act_change(game: Callable[..., Game]) -> None:
-    """切片选 city：花婿照打算去村子（不在场，写在 beat.08 之后），导演候选没有原因（D5）、超出时间段的丢掉；
-    「その頃」不列玩家没见过的人物的打算；指标记 1 件打算。"""
+    """Slice, choosing city: the groom goes to the village as planned (not present, written after beat.08); the director
+    candidate without a cause (D5) and the one outside the window are dropped; 「その頃」 doesn't list plans of
+    characters the player hasn't met; the metrics record 1 plan.
+
+    スライスで city を選ぶ：花婿はプランどおり村へ行く（その場にいない、beat.08 のあとに書く）。原因のないディレクター
+    の候補（D5）と時間帯の外のものは捨てる。「その頃」はプレイヤーが会っていない登場人物のプランを載せない。指標には
+    プランを 1 件記録する。
+    """
     g = game("sc.canon@beat.07")
     t0 = int(eval_api._run(g.s._state())["t"])
     beat08 = 2040
@@ -140,15 +165,22 @@ def test_world_events_are_written_with_the_beats_at_act_change(game: Callable[..
 
 
 def test_mid_act_advance_after_eight_talks_and_a_director_event_in_sight(game: Callable[..., Game]) -> None:
-    """这一幕判完 8 轮对话排一个 `mid` 的世界推进：广场上的环境变化（导演，在玩家面前，原因是玩家的一轮）写进去、
-    推给前端；同一幕第二件在玩家面前的被 D3 / D4 挡掉（名额用完）。"""
+    """After 8 judged dialogue turns in this act, a `mid` world advancement is queued: an environmental change in the
+    square (director, in front of the player, caused by a player turn) is written and pushed to the frontend; a second
+    one in front of the player in the same act is blocked by D3 / D4 (quota used up).
+
+    この幕で対話 8 ターンの判定が済むと `mid` の世界の進行を 1 つ積む：広場の環境の変化（ディレクター、プレイヤーの
+    目の前、原因はプレイヤーのターン）を書き、フロントエンドにプッシュする。同じ幕でプレイヤーの目の前の 2 件目は
+    D3 / D4 で止まる（枠を使い切った）。
+    """
     g = game("sc.canon@beat.02")
     for i in range(6):
         g.s.say("char.old-man", f"そうなのですか、{i}")
     seventh = g.s.say("char.old-man", "なるほど")
     assert calls(g, "world") == []
     cause = next(e["eventId"] for e in reversed(seventh["events"]) if e["actor"] == "player")
-    t8 = int(eval_api._run(g.s._state())["t"]) + 10  # 第 8 轮以后的此刻（第一幕一轮 10 分）
+    # The time after the 8th turn (10 minutes per turn in act 1) / 8 ターン目のあとの時刻（第一幕は 1 ターン 10 分）
+    t8 = int(eval_api._run(g.s._state())["t"]) + 10
     learn = [{"op": "learn", "character": "char.young-man", "fact": "fact.six-killed-today"}]
     bell = {
         "t": t8,
@@ -162,7 +194,9 @@ def test_mid_act_advance_after_eight_talks_and_a_director_event_in_sight(game: C
     }
     rule(g, {"events": [bell, {**bell, "summary": "もう一度、鐘が鳴った"}]}, reason="mid")
     seq = g.seq
-    g.s.say("char.old-man", "そうでしたか")  # 第 8 轮：提交的事务里排 `mid`，这一步的叙事者接着做掉
+    # 8th turn: `mid` is queued in the commit transaction, and this step's narrator run handles it next.
+    # 8 ターン目：コミットのトランザクションで `mid` を積み、このステップのナレーターが続けて処理する。
+    g.s.say("char.old-man", "そうでしたか")
     (req,) = calls(g, "world")
     assert req["reason"] == "mid" and req["director"] == {"present": True, "absent": 3}
     assert req["window"] == {**req["window"], "from": t8, "to": t8}

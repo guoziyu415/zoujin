@@ -1,8 +1,18 @@
-"""假的 Vertex Live 服务（B-10 的测试用）：本机 127.0.0.1 上的 WebSocket，按脚本回 `setupComplete`、两边的转写、音频、
-`interrupted`、`turnComplete`、用量、`goAway`，也能中途断开、不回 setup。台词是为测试写的，声音是静音的 PCM。
+"""A fake Vertex Live service (for B-10's tests): a WebSocket on the local 127.0.0.1 that, following a script, returns
+`setupComplete`, transcriptions on both sides, audio, `interrupted`, `turnComplete`, usage and `goAway`, and can also
+drop mid-way or not answer setup. The lines are written for tests, and the audio is silent PCM.
 
-一个连接一份 `Script`；每收到一轮（`activityEnd`，或 `clientContent` 的 `turnComplete: true` 且角色是 user）就照
-`Script.replies` 的下一条回。收到的消息都记在 `Conn.got` 里，测试查 setup 和发出去的东西。
+One `Script` per connection; each time a turn is received (`activityEnd`, or `clientContent` with `turnComplete: true`
+and the role user), it answers with the next entry in `Script.replies`. All received messages are recorded in
+`Conn.got`, where tests check the setup and what was sent.
+
+偽の Vertex Live サービス（B-10 のテスト用）：ローカルの 127.0.0.1 上の WebSocket で、スクリプトに従って
+`setupComplete`、両側の書き起こし、音声、`interrupted`、`turnComplete`、使用量、`goAway` を返す。途中で切断したり、
+setup に答えなかったりもできる。セリフはテスト用に書いたもので、音声は無音の PCM。
+
+接続ごとに `Script` が 1 つ。ターンを受け取るたびに（`activityEnd`、または role が user で `turnComplete: true` の
+`clientContent`）、`Script.replies` の次の項目で答える。受け取ったメッセージはすべて `Conn.got` に記録し、テストは
+そこで setup と送られた内容を確認する。
 """
 
 from __future__ import annotations
@@ -19,16 +29,18 @@ from typing import Any
 from websockets.asyncio.server import ServerConnection, serve
 
 Json = Any
-CHUNK = bytes(960 * 2)  # 40 ms 的 24 kHz 静音
+CHUNK = bytes(960 * 2)  # 40 ms of 24 kHz silence / 40 ms の 24 kHz 無音
 
 
 @dataclass
 class Reply:
-    player: str = ""  # 玩家一侧的转写（语音一轮）
-    text: list[str] = field(default_factory=lambda: ["……そうか。"])  # 人物一侧的转写，分几段
-    chunks: int = 3  # 音频分片
-    late: list[str] = field(default_factory=list)  # turnComplete 之后才到的人物文字
-    late_player: str = ""  # turnComplete 之后才到的玩家文字
+    player: str = ""  # player-side transcription (voice turn) / プレイヤー側の書き起こし（音声ターン）
+    # Character-side transcription, in several pieces / 登場人物側の書き起こし（いくつかに分ける）
+    text: list[str] = field(default_factory=lambda: ["……そうか。"])
+    chunks: int = 3  # audio chunks / 音声チャンク
+    # Character text that arrives only after turnComplete / turnComplete の後に届く登場人物のテキスト
+    late: list[str] = field(default_factory=list)
+    late_player: str = ""  # player text arriving after turnComplete / turnComplete の後に届くプレイヤーのテキスト
     usage: Json | None = field(
         default_factory=lambda: {
             "promptTokenCount": 100,
@@ -38,16 +50,20 @@ class Reply:
             "candidatesTokensDetails": [{"modality": "AUDIO", "tokenCount": 50}],
         }
     )
-    goaway: bool = False  # 回答之前先发 goAway
-    drop_after_audio: bool = False  # 出了第一个音频就断开
-    delay: float = 0.0  # 每条消息之间等几秒
+    goaway: bool = False  # send goAway before answering / 返答の前に goAway を送る
+    drop_after_audio: bool = False  # drop after the first audio / 最初の音声を出したら切断する
+    delay: float = 0.0  # seconds to wait between messages / メッセージ間の待ち秒数
 
 
 @dataclass
 class Script:
     replies: list[Reply] = field(default_factory=list)
-    setup: str = "ok"  # ok / silent（不回）/ close（直接关）/ wrong（第一条不是 setupComplete）
-    reject: Callable[[Json], bool] | None = None  # setup 合这个条件就像 Vertex 不收字段那样 1007 关掉
+    # ok / silent (no answer) / close (close at once) / wrong (the first message is not setupComplete)
+    # ok / silent（答えない）/ close（すぐ閉じる）/ wrong（最初のメッセージが setupComplete ではない）
+    setup: str = "ok"
+    # If setup meets this condition, close with 1007 as Vertex does for a field it does not accept
+    # setup がこの条件に合えば、Vertex が受け付けないフィールドのときと同じく 1007 で閉じる
+    reject: Callable[[Json], bool] | None = None
 
 
 @dataclass
@@ -65,7 +81,8 @@ class Conn:
 
 @dataclass
 class FakeVertexLive:
-    scripts: list[Script] = field(default_factory=list)  # 按连接的先后用；用完都用最后一份
+    # Used in order of connection; once exhausted, the last one is used / 接続順に使い、尽きたら最後のものを使う
+    scripts: list[Script] = field(default_factory=list)
     conns: list[Conn] = field(default_factory=list)
     url: str = ""
 
@@ -107,7 +124,7 @@ class FakeVertexLive:
                     r = next(replies, Reply())
                     if not await self.play(ws, r):
                         return
-        except Exception:  # noqa: BLE001 - 客户端关了
+        except Exception:  # noqa: BLE001 - the client closed / クライアントが閉じた
             pass
         finally:
             conn.closed = True

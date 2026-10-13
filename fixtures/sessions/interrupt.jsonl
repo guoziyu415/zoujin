@@ -1,4 +1,4 @@
-{"note": "打断：先 focus メロス，说一句；他说话（6 秒）时再按下说话或发文字。mock 回 interrupted，剩下的音频不发。"}
+{"note": "Interruption: focus メロス first and say a line; while he is speaking (6 seconds), press to talk again or send text. The mock answers interrupted and doesn't send the rest of the audio. / 割り込み：先に メロス に focus し、ひとこと話す。彼が話している間（6 秒）にもう一度押して話すか文字を送る。mock は interrupted を返し、残りの音声は送らない。"}
 {"on": ["activity_start", "text"]}
 {"when": "voice", "delayMs": 700, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "メロスさん、", "final": false}}
 {"on": "activity_end", "if": {"trigger.type": "activity_start"}}
@@ -6,7 +6,7 @@
 {"delayMs": 850, "audio": {"seconds": 2.0}}
 {"send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.melos", "text": "いかにも、メロスだ。", "final": false}}
 {"audio": {"seconds": 4.0}}
-{"note": "没被打断时照常说完；被打断时定稿只到打断处，不发 turn_complete"}
+{"note": "If not interrupted, he finishes as usual; if interrupted, the final transcript only goes up to the interruption and turn_complete is not sent / 割り込まれなければいつもどおり話し終える。割り込まれたら確定文は割り込んだところまでで、turn_complete は送らない"}
 {"if": {"interrupted": false}, "send": {"type": "turn_complete", "turnId": "{{turnId}}", "audio": true, "metrics": {"serverReleaseToFirstAudioMs": 850}}}
 {"if": {"interrupted": false}, "delayMs": 200, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.melos", "text": "いかにも、メロスだ。妹の婚礼の支度を買いに、村から来た。", "final": true, "source": "live"}}
 {"if": {"interrupted": true}, "delayMs": 100, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.melos", "text": "いかにも、メロスだ。妹の", "final": true, "source": "live"}}

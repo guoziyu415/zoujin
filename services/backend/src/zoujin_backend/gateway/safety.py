@@ -1,17 +1,45 @@
-"""网关里的安全筛查（B-12，api-contract 3.12，backend-design 5.5）。`gateway/ws.py` 只在几处调这里。
+"""Safety screening in the gateway (B-12, api-contract 3.12, backend-design 5.5). `gateway/ws.py` calls into here in
+only a few places.
 
-- 玩家这一句的定稿一到（文字一轮的 `text`，语音一轮 Live 的 `input_final`）就开始筛查（`Guard.start`），人物照常回答。
-- 判成 signal、或同一局第二次 ambiguous：`Guard.pause`：停止转发人物的回答（不推 `interrupted`、不推人物定稿），推
-  `turn_settled { outcome: "paused" }` 和 `safety_pause`；这一轮写一行 `outcome: "paused"`、不写原话、不叫叙事者；
-  玩家这时
-  按着说话键的新一轮整个丢掉；关掉这条连接上所有人物的会话；这一局记 `paused`（`welcome.pending.safetyPause`）。
-- 一局第一次 ambiguous：推 `safety_hint`（一局最多一次），这一轮带 `ambiguous` 标记照常交给叙事者（不提取事件）。
-- 暂停期间对话、动作、幕末都回 `invalid_request`；`focus` 不开会话、不回错误；`safety_resume` → `safety_resumed`。
-- 交给叙事者之前等筛查的结果（`Guard.result`），不会先提交再暂停。
-- 判定结果不存、不进日志（S-057），`playthrough_metrics` 只记次数。
-- B-15：筛查带上下文（这一轮的人物、玩家所在的地点、这个人物在内存里的上一句）；同一局第二次 ambiguous 先复核
-  （`Screener.second_look`），复核说是故事里的话就不升级。复核期间人物还没发的声音和字幕先扣住（`Turn.flowing`）：
-  暂停就丢掉，不暂停就放出。
+- Screening starts as soon as the final of the player's line arrives (`text` for a text turn, Live's `input_final`
+  for a voice turn) (`Guard.start`); the character answers as usual.
+- Judged signal, or ambiguous for the second time in a playthrough: `Guard.pause`: stop forwarding the character's
+  answer (no `interrupted`, no character final), push `turn_settled { outcome: "paused" }` and `safety_pause`; the
+  turn is written as one row with `outcome: "paused"`, without the words said and without calling the narrator; a new
+  turn the player is holding the talk button for is dropped entirely; every character session on this connection is
+  closed; the playthrough records `paused` (`welcome.pending.safetyPause`).
+- First ambiguous in a playthrough: push `safety_hint` (at most once per playthrough); the turn goes to the narrator
+  as usual with the `ambiguous` flag (no events extracted).
+- While paused, conversation, actions and end-of-act all get `invalid_request`; `focus` opens no session and returns no
+  error; `safety_resume` → `safety_resumed`.
+- The screening result is awaited before handing to the narrator (`Guard.result`), so nothing is committed and then
+  paused.
+- Verdicts are neither stored nor logged (S-057); `playthrough_metrics` records only counts.
+- B-15: screening carries context (this turn's character, the player's location, the character's previous line in
+  memory); the second ambiguous in a playthrough is first reviewed again (`Screener.second_look`), and if the review
+  says it's in-story talk it isn't escalated. During the review, the character's audio and subtitles not yet sent are
+  held back (`Turn.flowing`): dropped on pause, released otherwise.
+
+ゲートウェイ内の安全チェック（B-12、api-contract 3.12、backend-design 5.5）。`gateway/ws.py` はわずかな箇所で
+ここを呼ぶだけ。
+
+- プレイヤーの発言の確定文が届いたらすぐ（文字のターンなら `text`、音声のターンなら Live の `input_final`）
+  チェックを始め（`Guard.start`）、登場人物はいつもどおり答える。
+- signal と判定、または同じプレイで 2 回目の ambiguous：`Guard.pause`：登場人物の答えの転送を止め（`interrupted`
+  も登場人物の確定文も送らない）、`turn_settled { outcome: "paused" }` と `safety_pause` を送る。このターンは
+  `outcome: "paused"` の 1 行として書き、発言そのものは書かず、ナレーターも呼ばない。プレイヤーがそのとき話すボタンを
+  押している新しいターンは丸ごと捨てる。この接続上のすべての登場人物のセッションを閉じる。プレイには `paused` を
+  記録する（`welcome.pending.safetyPause`）。
+- プレイで 1 回目の ambiguous：`safety_hint` を送り（1 プレイに最大 1 回）、このターンは `ambiguous` の印を付けて
+  いつもどおりナレーターに渡す（イベントは抽出しない）。
+- 一時停止中は会話、アクション、幕末のどれにも `invalid_request` を返す。`focus` はセッションを開かず、エラーも
+  返さない。`safety_resume` → `safety_resumed`。
+- ナレーターに渡す前にチェックの結果を待つ（`Guard.result`）ので、commit してから一時停止することはない。
+- 判定結果は保存もログもしない（S-057）。`playthrough_metrics` には回数だけを記録する。
+- B-15：チェックには文脈を付ける（このターンの登場人物、プレイヤーのいる場所、その登場人物のメモリ上の直前の
+  発言）。同じプレイで 2 回目の ambiguous はまず見直し（`Screener.second_look`）、物語の中の話だと判断されたら
+  引き上げない。見直しの間、登場人物のまだ送っていない音声と字幕は止めておく（`Turn.flowing`）：一時停止なら捨て、
+  そうでなければ流す。
 """
 
 from __future__ import annotations
@@ -39,11 +67,19 @@ log = logging.getLogger("zoujin.gateway")
 Json = Any
 
 PAUSED_REFUSED = ("text", "activity_start", "action", "act_choose", "act_propose", "act_landed")
-# 暂停期间的 focus（重连时前端自动发）：不开会话、不回错误；safety_resume 以后前端重新 focus（UX 在 #112 的评审）
+# focus while paused (the frontend sends it automatically on reconnect): no session opened, no error returned; after
+# safety_resume the frontend focuses again (UX's #112 review).
+# 一時停止中の focus（再接続時にフロントエンドが自動で送る）：セッションを開かず、エラーも返さない。safety_resume の
+# あとフロントエンドがもう一度 focus する（UX の #112 のレビュー）。
 
 
 def build_screener(settings: Settings, tracer: Tracer | None = None) -> Screener:
-    """网关用的筛查：文本模型和 Model Armor 按 `ZJ_MODEL`（CI 和容器是假的；真的只在 Mac 上）。"""
+    """The gateway's screener: text model and Model Armor per `ZJ_MODEL` (fake in CI and containers; real only on
+    the Mac).
+
+    ゲートウェイ用の安全チェック：テキストモデルと Model Armor は `ZJ_MODEL` に従う（CI とコンテナでは偽物、本物は
+    Mac 上だけ）。
+    """
     return Screener(
         text=text_model(settings.model, fake_rules=settings.fake_text, replays=settings.replays, settings=settings),
         armor=armor(settings.model, replays=settings.replays),
@@ -52,11 +88,16 @@ def build_screener(settings: Settings, tracer: Tracer | None = None) -> Screener
 
 
 class Guard:
-    """一条连接上的安全状态。状态本身在库里（`playthroughs.safety`），这里每次判完读、改、写回。"""
+    """Safety state on one connection. The state itself lives in the database (`playthroughs.safety`); here it is
+    read, changed and written back after each verdict.
+
+    1 本の接続上の安全の状態。状態そのものは DB（`playthroughs.safety`）にあり、ここでは判定のたびに読んで、変えて、
+    書き戻す。
+    """
 
     def __init__(self, conn: Conn) -> None:
         self.conn = conn
-        self.paused = False  # 内存里的副本：handle() 先看它
+        self.paused = False  # in-memory copy: handle() checks it first / メモリ上の写し：handle() が先に見る
         self.lock = asyncio.Lock()
 
     @property
@@ -68,23 +109,34 @@ class Guard:
             self.paused = SafetyState.of(await store.safety_state(c, self.conn.pid)).paused
 
     def start(self, t: Turn, said: str | None) -> None:
-        """这一轮的玩家定稿到了：开始筛查（一轮只筛一次）。"""
+        """The player's final for this turn arrived: start screening (only once per turn).
+
+        このターンのプレイヤーの確定文が届いた：チェックを始める（1 ターンに 1 回だけ）。
+        """
         if t.screen is not None or not said:
             return
         t.screen = asyncio.ensure_future(self._run(t, said))
 
     async def result(self, t: Turn) -> Screen:
-        """交给叙事者之前等筛查的结果；这一轮没有玩家的话（没听清、人物先开口）= 没筛。"""
+        """Wait for the screening result before handing to the narrator; a turn with no player words (not heard, or
+        the character spoke first) = not screened.
+
+        ナレーターに渡す前にチェックの結果を待つ。このターンにプレイヤーの言葉がない（聞き取れなかった、登場人物が先に
+        話した）= チェックしていない。
+        """
         if t.screen is None:
             return NOT_SCREENED
         try:
             return await t.screen
         except Exception:
-            log.exception("安全筛查出错（%s）", t.turn_id)
+            log.exception("Safety screening failed (%s) / 安全チェックでエラー", t.turn_id)
             return NOT_SCREENED
 
     async def context(self, character: str | None) -> Context:
-        """B-15：分类器和复核看的上下文。读不到的项就不给。"""
+        """B-15: the context the classifier and the review see. Items that can't be read are left out.
+
+        B-15：分類器と見直しが見る文脈。読めない項目は渡さない。
+        """
         conn = self.conn
         async with conn.gw.engine.connect() as c:
             pt = await conn.gw.pt(c, conn.pid)
@@ -98,7 +150,12 @@ class Guard:
         return said[-1] if said else None
 
     async def _second_look(self, s: Screen, said: str, ctx: Context, t: Turn | None = None, **span: object) -> Screen:
-        """这一句是 ambiguous、这一局已经有过一次（这次要升级）：先复核（卡第 6 节的 C）。"""
+        """This line is ambiguous and the playthrough already had one (so this one would escalate): review it first
+        (C in section 6 of the card).
+
+        この発言が ambiguous で、このプレイですでに 1 回あった（今回は引き上げになる）：まず見直す
+        （カード第 6 節の C）。
+        """
         if s.self_harm != "ambiguous" or s.reviewed is not None:
             return s
         async with self.conn.gw.engine.connect() as c:
@@ -106,7 +163,9 @@ class Guard:
         if st.ambiguous < 1 or st.paused:
             return s
         if t is not None:
-            t.flowing.clear()  # 这次要升级：复核期间人物也先停住
+            # This would escalate: hold the character during the review too.
+            # 引き上げになるので、見直しの間は登場人物も止めておく。
+            t.flowing.clear()
         return await self.screener.second_look(s, said, ctx, **span)
 
     async def _run(self, t: Turn, said: str) -> Screen:
@@ -118,11 +177,13 @@ class Guard:
             s = await self._second_look(s, said, ctx, t, **span)
             decision = await self._decide(s)
             if decision == "pause":
-                await self.pause(t)  # 扣住的部分随这一轮一起丢掉
+                await self.pause(t)  # what was held back is dropped with the turn / 止めていた分はターンごと捨てる
                 return s
         finally:
             if not t.paused:
-                t.flowing.set()  # 复核降下来、保留但这一局已经暂停过：放出扣住的部分
+                # The review lowered it, or it was kept but the playthrough had already paused: release what was held.
+                # 見直しで下がった、または維持されたがこのプレイはすでに一時停止済み：止めていた分を流す。
+                t.flowing.set()
         if decision == "hint":
             conn.monitor.calm()
             await conn.send({"type": "safety_hint"})
@@ -132,7 +193,9 @@ class Guard:
         conn = self.conn
         async with self.lock, conn.gw.engine.begin() as c:
             st = SafetyState.of(await store.safety_state(c, conn.pid, lock=True))
-            if st.paused:  # 已经暂停了（前一句）：这一句不再算，只记花费
+            # Already paused (by an earlier line): this line no longer counts; only record the cost.
+            # すでに一時停止済み（前の発言で）：この発言はもう数えず、費用だけを記録する。
+            if st.paused:
                 costs = {k: v for k, v in counts_of(s, "pass").items() if k.startswith("cost_")}
                 await store.count(c, conn.pid, **costs)
                 return "pass"
@@ -144,7 +207,12 @@ class Guard:
         return decision
 
     async def screen_plan(self, said: str | None) -> Screen:
-        """幕末说的打算也筛（玩家的每一句）：signal → 暂停，打算不交给叙事者。没有人物在说，不用等人物的回答。"""
+        """Plans said at the end of an act are screened too (every player line): signal → pause, and the plan isn't
+        handed to the narrator. No character is speaking, so there's no answer to wait for.
+
+        幕末に言うプランもチェックする（プレイヤーのすべての発言）：signal → 一時停止し、プランはナレーターに渡さない。
+        話している登場人物はいないので、答えを待つ必要はない。
+        """
         if not said:
             return NOT_SCREENED
         ctx = await self.context(None)
@@ -159,25 +227,38 @@ class Guard:
         return s
 
     async def pause(self, t: Turn | None) -> None:
-        """停下这一轮（和之后还没交上去的几轮）、丢掉按着说话键的新一轮、关掉会话，推 turn_settled 和 safety_pause。"""
+        """Stop this turn (and later turns not yet handed over), drop the new turn whose talk button is held, close the
+        sessions, and push turn_settled and safety_pause.
+
+        このターン（とその後のまだ渡していないターン）を止め、話すボタンを押している新しいターンを捨て、セッションを
+        閉じて、turn_settled と safety_pause を送る。
+        """
         conn = self.conn
         stopped = []
         cur = conn.turn
         for x in (t, cur):
             if x is None or x.paused or x in stopped:
                 continue
-            if not x.ended:  # 玩家还按着说话键：整个丢掉，之后的音频和 activity_end 都忽略（3.12）
+            # The player is still holding the talk button: drop it entirely and ignore later audio and activity_end
+            # (3.12).
+            # プレイヤーがまだ話すボタンを押している：丸ごと捨て、その後の音声と activity_end は無視する（3.12）。
+            if not x.ended:
                 conn.memory.pop(x.turn_id, None)
                 if conn.turn is x:
                     conn.turn = None
                 continue
-            if x.handing:  # 已经在写进库里（交给叙事者）了：来不及停，叙事者照常判
+            # Already being written to the database (handed to the narrator): too late to stop; the narrator judges
+            # as usual.
+            # すでに DB に書き込み中（ナレーターに渡した）：止めるには遅いので、ナレーターがいつもどおり判定する。
+            if x.handing:
                 continue
             x.paused = True
             stopped.append(x)
             if x.stream is not None and not x.stream.done():
                 x.stream.cancel()
-        if conn.plan is not None:  # 幕末按着说话键说打算：同样丢掉
+        # Saying a plan at the end of an act with the talk button held: drop it as well.
+        # 幕末に話すボタンを押してプランを言っている：同じく捨てる。
+        if conn.plan is not None:
             conn.plan.retracted = True
             conn.plan = None
         for x in stopped:
@@ -189,7 +270,11 @@ class Guard:
         await conn.close_sessions()
 
     async def write_paused(self, t: Turn) -> None:
-        """暂停的一轮：写一行 outcome = paused、0 分，不写原话，不叫叙事者（3.12）。"""
+        """A paused turn: write one row with outcome = paused and 0 minutes, without the words said and without calling
+        the narrator (3.12).
+
+        一時停止したターン：outcome = paused、0 分の 1 行を書く。発言そのものは書かず、ナレーターも呼ばない（3.12）。
+        """
         conn = self.conn
         async with conn.gw.engine.begin() as c:
             exists = await c.scalar(select(turns.c.turn_id).where(turns.c.turn_id == t.turn_id))
@@ -223,7 +308,10 @@ class Guard:
 
 
 def context_of(book: Book, place: str | None, character: str | None, previous: str | None) -> Context:
-    """B-15：人物、地点换成显示名（网关和评测入口共用）。"""
+    """B-15: replace character and place with display names (shared by the gateway and the eval entry point).
+
+    B-15：登場人物と場所を表示名に置き換える（ゲートウェイと評価の入口で共用）。
+    """
     places = {p["id"]: p["name"] for p in book.world["places"]}
     who = book.characters.get(character or "", {}).get("name")
     return Context(character=who, place=places.get(place or ""), previous=previous)

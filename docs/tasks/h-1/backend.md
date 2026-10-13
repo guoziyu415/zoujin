@@ -1,53 +1,93 @@
-# H-1 后端与数据：书房、多书目录、私密门禁
+# H-1 backend and data: the study, the multi-book catalog, the private gate / H-1 バックエンドとデータ：書斎、複数の本のカタログ、非公開のゲート
 
-## 交付范围与标准
+## Delivery scope and standards / 納品の範囲と基準
 
-书房是多书平台的入口，目前目录只开放真实已制作的《走れメロス》。新书必须有世界模型、场景、角色、声音和验收，不能把候选书、草稿或同一本书的多个版本冒充可玩的第二本。回书房不创建、不放弃、不删除任何局；继续进度和回忆都以服务器记录为准。
+The study is the entrance to the multi-book platform; for now the catalog only opens 『走れメロス』, which has actually been made. A new book must have a world model, scenes, characters, voices and acceptance checks; candidate books, drafts or several versions of the same book must not pass as a playable second book. Returning to the study does not create, abandon or delete any game; continuing progress and recollections are both based on the server's records.
 
-- 新增 `GET /v1/books` 与 `GET /v1/library`，正式网关和开发 mock 同形。契约生成 TypeScript / Python 类型，不手写复制。
-- 世界目录从 `ZJ_WORLD` 加 `ZJ_WORLDS` 显式读取。每本书只选一个新局版本，所有保留的旧版本仍可恢复；拒绝跨书复用同一个世界版本 ID。
-- 保留现有单账号同时一局的规则；多书目录和历史按书区分，但本次没有改成多本书同时进行多局。当前只发布一本书，不借测试用第二书宣称已制作第二本产品内容。
-- 目录 availability 来自真实 manifest 和开放身份。manifest、预录音频、场景资源按书查。真实语音模式合并各书声音配置，跨书人物 ID 若使用冲突声音则启动失败，不混用声音。
-- library 只按当前会话账号查询。active 带书和世界版本；endings 要求局真实结束、结局已落库、局/版本/结局 ID 一致；未落库的尾声单列 pending，未完成、已放弃、其他账号的记录不列入完成回忆。
-- 历史列表只返回结局卡标题/副标题；完整结局仍由原 ending 接口按 owner 校验读取。删除整局后 CASCADE 删除结局，下一次查询立即消失。
-- 旧存档可用 `manifest?worldModelVersion=...`；服务端核对该账号确有该版本的局，版本不可用返回 404，不悄悄换成当前书。部署须保留旧场景、人物、站位兼容资源。
-- 无 WebSocket 的回想入口读取 ending 202 时唤醒原有队列任务，复用 PostgreSQL 租约/幂等保护；已完成结果直接返回，不再调用模型。
+書斎は複数の本を扱うプラットフォームの入口で、現在カタログで公開しているのは実際に制作済みの『走れメロス』だけ。新しい本には世界モデル、シーン、登場人物、音声、受け入れ確認がそろっていなければならず、候補の本、草稿、同じ本の複数バージョンを遊べる 2 冊目と偽ってはならない。書斎に戻っても、どの局も作成・放棄・削除しない。進行の再開も回想も、サーバーの記録を基準とする。
 
-## 私密访问
+- Added `GET /v1/books` and `GET /v1/library`, with the same shape in the production gateway and the dev mock. The contract generates TypeScript / Python types; they are not copied by hand.
+  `GET /v1/books` と `GET /v1/library` を追加し、本番のゲートウェイと開発用 mock で同じ形にした。型は契約から TypeScript / Python で生成し、手で書き写さない。
+- The world catalog is read explicitly from `ZJ_WORLD` plus `ZJ_WORLDS`. Each book selects only one version for new games, and all retained old versions can still be restored; reusing the same world version ID across books is rejected.
+  世界のカタログは `ZJ_WORLD` と `ZJ_WORLDS` から明示的に読む。本ごとに新しい局用のバージョンは 1 つだけ選び、保持している旧バージョンはすべて引き続き復元できる。複数の本で同じ世界バージョン ID を使い回すことは拒否する。
+- The existing rule of one game at a time per account is kept; the multi-book catalog and history are split by book, but this change does not allow several books to be played in parallel games. Only one book is released for now, and the second book used in tests is not used to claim that a second product's content has been made.
+  1 アカウントにつき同時に 1 局という既存のルールは維持する。複数の本のカタログと履歴は本ごとに分けるが、今回は複数の本で同時に複数の局を進められるようには変えていない。現在リリースしているのは 1 冊だけで、テスト用の 2 冊目を根拠に 2 冊目の製品コンテンツを制作済みと主張しない。
+- Catalog availability comes from the real manifest and the opened identities. Manifests, pre-recorded audio and scene resources are looked up per book. Real voice mode merges each book's voice configuration; if a character ID across books uses a conflicting voice, startup fails, so voices are never mixed.
+  カタログの availability は実際の manifest と公開している ID から決まる。manifest、事前収録音声、シーンのリソースは本ごとに参照する。実音声モードは各本の音声設定を統合し、本をまたいだ登場人物 ID が矛盾する音声を使っていれば起動に失敗させ、音声を混ぜない。
+- The library queries only for the current session's account. active carries the book and world version; endings require the game to have really ended, the ending to be stored in the database, and the game/version/ending IDs to agree; epilogues not yet stored are listed separately as pending, and records that are unfinished, abandoned or from other accounts are not listed among completed recollections.
+  library は現在のセッションのアカウントだけを照会する。active は本と世界バージョンを持つ。endings は、局が実際に終わっていること、エンディングがデータベースに保存されていること、局/バージョン/エンディングの ID が一致することを求める。まだ保存されていないエピローグは pending として別に示し、未完了、放棄済み、他のアカウントの記録は完了した回想に含めない。
+- The history list returns only the ending card's title/subtitle; the full ending is still read through the original ending endpoint with an owner check. When a whole game is deleted, the ending is removed by CASCADE and disappears from the very next query.
+  履歴の一覧はエンディングカードのタイトル/サブタイトルだけを返す。完全なエンディングは引き続き元の ending のエンドポイントから owner を検証して読む。局全体を削除すると CASCADE でエンディングも削除され、次の照会からすぐに消える。
+- Old saves can use `manifest?worldModelVersion=...`; the server verifies that the account really has a game of that version, and an unavailable version returns 404 rather than quietly switching to the current book. Deployments must keep the compatibility resources for old scenes, characters and positions.
+  古いセーブは `manifest?worldModelVersion=...` を使える。サーバーはそのアカウントにそのバージョンの局が実際にあるかを確認し、利用できないバージョンには 404 を返し、黙って現在の本に切り替えたりしない。デプロイでは旧シーン、登場人物、立ち位置の互換リソースを残さなければならない。
+- When the recollection entry, which has no WebSocket, reads an ending 202, it wakes the existing queue task, reusing the PostgreSQL lease/idempotency protection; a completed result is returned directly without calling the model again.
+  WebSocket を持たない回想の入口が ending の 202 を読んだときは既存のキューのタスクを起こし、PostgreSQL のリース/冪等性の保護を再利用する。完了済みの結果はそのまま返し、モデルを再度呼ばない。
 
-最外层 ASGI 门禁覆盖全部页面、脚本、模型、贴图、场景、音频、REST 和 WebSocket；只豁免空的 `/healthz` 204。生产没有 `ZJ_SITE_PASSWORD` 则 503 关闭访问，只有显式本地 dev 可不设置密码。
+## Private access / 非公開アクセス
 
-密码从环境 / Secret 注入，至少 16 字符，不进入日志、URL、响应或数据表；恒定时间比较。通行票 HMAC 签名、随机 nonce、12 小时到期，cookie 使用 HttpOnly、生产 Secure、SameSite=Strict。密码轮换使旧票失效。登录表单和 WS 校验同源 Origin；每来源 IP 15 分钟最多 10 次密码提交（进程内有界计数）。通行后仍需邀请码账号，不把站点密码当成账号权限。
+The outermost ASGI gate covers all pages, scripts, models, textures, scenes, audio, REST and WebSocket; only the empty `/healthz` 204 is exempt. In production, without `ZJ_SITE_PASSWORD`, access is closed with 503; only explicit local dev may run without a password.
 
-所有私密响应 `private, no-store`，密码失效时 API 返回 `X-Site-Access: required` 供前端返回门禁。成功/失效要求清旧浏览器缓存和离线存储，前端也撤销旧 Service Worker。以前已缓存/保存的内容无法追溯撤回；本地代码/测试通过不意味着旧线上已关闭。
+最外層の ASGI ゲートは、すべてのページ、スクリプト、モデル、テクスチャ、シーン、音声、REST、WebSocket を覆う。除外するのは空の `/healthz` 204 だけ。本番で `ZJ_SITE_PASSWORD` がなければ 503 でアクセスを閉じ、パスワードなしで動かせるのは明示的なローカルの dev だけ。
 
-部署脚本仅做准备：网关 Secret 引用、缺密码停止、冒烟先密码再邀请码、检查匿名资产拒绝。`promote` 不再自动添加 allUsers；新服务默认 IAM 私有，up/promote/verify 根据真实 IAM 选择身份令牌，不信旧 OPENED 标记。隐私锁存在且 IAM 公开时停止，脚本从不删除锁。本后端子任务没有执行云端部署、模型调用或云端权限写入；线上收紧访问由总协调单独处理和验证。
+The password is injected from the environment / Secret, is at least 16 characters, and never enters logs, URLs, responses or database tables; it is compared in constant time. The pass ticket is HMAC-signed with a random nonce and expires after 12 hours; the cookie uses HttpOnly, Secure in production, and SameSite=Strict. Rotating the password invalidates old tickets. The login form and WS check for a same-origin Origin; each source IP may submit the password at most 10 times per 15 minutes (a bounded in-process counter). After passing, an invite-code account is still needed; the site password is not treated as account permission.
 
-## 石工房人物重叠
+パスワードは環境変数 / Secret から注入し、16 文字以上で、ログ、URL、レスポンス、データベースのテーブルには入れない。比較は定数時間で行う。通行チケットは HMAC で署名し、ランダムな nonce を持ち、12 時間で失効する。cookie は HttpOnly、本番では Secure、SameSite=Strict を使う。パスワードをローテーションすると古いチケットは無効になる。ログインフォームと WS は同一オリジンの Origin を検証する。送信元 IP ごとに 15 分あたり最大 10 回までパスワードを送信できる（プロセス内の上限付きカウンター）。通過した後も招待コードのアカウントが必要で、サイトのパスワードをアカウントの権限とはみなさない。
 
-原 `character_spots` 在自动位置不足时会把多个非群体人物放到同一点。石工房原来只有两个自动点，玩家占一个后必然重叠。
+All private responses are `private, no-store`; when the password is no longer valid, the API returns `X-Site-Access: required` so the frontend can go back to the gate. Success/invalidation requires clearing old browser caches and offline storage, and the frontend also unregisters the old Service Worker. Content that was cached/saved earlier cannot be retroactively withdrawn; local code/tests passing does not mean the old live site has been closed.
 
-新增 8 个真实平地位置，连同原有位置共 10 个自动点，可容纳当前世界全部 9 位非群体人物和玩家；演出专用门口点不参与自动分配。新增位置避开墙、门扇、工作台、石料，经过现有 navmesh 验证地点归属、平地高度，彼此和原点至少相隔 1.2 米。
+非公開のレスポンスはすべて `private, no-store`。パスワードが無効になると API は `X-Site-Access: required` を返し、フロントエンドがゲートに戻れるようにする。成功時/失効時には古いブラウザのキャッシュとオフラインストレージを消す必要があり、フロントエンドは古い Service Worker も登録解除する。以前にキャッシュ/保存された内容は遡って回収できない。ローカルのコードやテストが合格しても、旧本番環境が閉じられたことにはならない。
 
-`refresh_spots.mjs` 只允许新增平地站位，验证旧布局及所有管线输入 hash，拒绝地形/已有点/斜坡台阶变更。scene.json 是运行时唯一位置真值；没有让运行时读取 layout 补坐标。更新清单与复制到本工作树的 build 相匹配，几何、nav、纹理和光照字节/预算不变。
+The deployment script only prepares: the gateway Secret reference, stopping when the password is missing, smoke tests that check the password first and then the invite code, and checking that anonymous assets are refused. `promote` no longer adds allUsers automatically; new services are IAM-private by default, and up/promote/verify choose an identity token based on the real IAM rather than trusting the old OPENED marker. If the privacy lock exists and IAM is public, the script stops; it never deletes the lock. This backend subtask did not perform cloud deployment, model calls or cloud permission writes; tightening access on the live site is handled and verified separately by the overall coordinator.
 
-## 验证记录
+デプロイスクリプトは準備だけを行う：ゲートウェイの Secret 参照、パスワードがなければ停止、スモークテストはパスワード、次に招待コードの順、匿名アセットが拒否されることの確認。`promote` は allUsers を自動で追加しなくなった。新しいサービスはデフォルトで IAM 非公開で、up/promote/verify は実際の IAM に基づいて ID トークンを選び、古い OPENED マーカーは信用しない。プライバシーロックが存在し IAM が公開になっている場合は停止し、スクリプトがロックを削除することはない。このバックエンドのサブタスクでは、クラウドへのデプロイ、モデルの呼び出し、クラウドの権限の書き込みは行っていない。本番環境でのアクセスの引き締めは全体の調整役が別途処理し検証する。
 
-- 契约：507 passed，6 skipped（跳过项为已有生成器/样例条件）；包含新增接口响应类型、封闭对象和引用校验。
-- 新功能定向：真实 PostgreSQL 的目录、第二书测试夹具、owner 隔离、删除、换设备、版本锁定、pending 尾声无 WS 恢复通过。
-- 真 gateway + web_dist：未通行页面/JS/scene JSON+GLB/cast/音频/API/WS 被拒；密码后静态内容 no-store、API 仍需邀请码；密码和邀请码后收到真实 WS welcome。
-- 门禁单测：缺密码生产关闭、错误/过期/伪造/轮换票、限速、跨站 WS、Secure cookie 和缓存头通过。
-- 场景：完整 check_scene 校验真实文件 hash 并解码两档颜色通过；entry 4.79 MB、19616 三角形、166 nav polygons 均未增加。
-- `ruff`、`git diff --check`、部署脚本 `bash -n` 通过。
-- 全仓 mypy 用 CI 的 real extra 后，193 个文件全部通过。旧 `test_voice.py` 的三处 dict 不变性错误以显式测试数据类型注解修正，没有改语音运行逻辑。
-- 最终全后端测试在独立库 `zoujin_home_test` 完整运行：635 passed，0 failed，0 skipped，用时 728.58 秒。首次全量曾检出正式/mock manifest 缓存头断言与 mock 新端点覆盖遗漏，修正后重新完整运行，未以定向测试代替最终全量结果。
-- 部署 pack 检查只忽略顶层生成器说明 `note`（同一 road-common 会被村子和归途管线生成），文件/贴图/嵌套结构/inputs 校验不放宽；两条差异回归通过。
-- 总协调末次审核发现访问状态查询失败被当私有、invoker IAM 禁用标志未检查、匿名冒烟重试耗尽仍能写 DEPLOYED，均已修正。15 项真实 Bash 控制流测试用假的 gcloud 验证：查询/解析/令牌失败停止；仅成功空列表可作首次新服务；两个公开成员与禁用 IAM 标志均被隐私锁拦住；第六次仍失败不继续，第六次成功才可标记。测试不读真实配置、不访问云端。
+## Overlapping characters in the stonemason's house / 石工の家での登場人物の重なり
 
-## 交叉审核与边界
+The original `character_spots` put several non-crowd characters at the same point when there were not enough automatic positions. The stonemason's house originally had only two automatic points, so once the player took one, overlap was inevitable.
 
-前端反馈旧版本 manifest 可能误用当前版本，已补版本参数与 owner 校验；前端已把 Play/Ending 接到该参数。前端提出 pending 尾声没有 WS 的恢复问题，已补幂等唤醒和真实数据库回归。后端复查书房、Play、Ending、私有状态清理；原作链接仅在已知对应书展示，不把《走れメロス》链接用于未来其他书。后端审核发现站点密码过期时 WS 在 accept 前拒绝，浏览器通常只得 1006；前端已补单 flight、30 秒冷却的 REST 会话探测，靠门禁 header 跳密码页，并补两条回归，避免无限重连。
+元の `character_spots` は、自動配置の位置が足りないと複数の群衆でない登場人物を同じ地点に置いていた。石工の家にはもともと自動配置の地点が 2 つしかなく、プレイヤーが 1 つを占めると必ず重なっていた。
 
-本次不执行生产部署、不生成第二本产品内容、不把开发 mock 历史当成真实用户结局。真实手机操作、实际模型体验和审美验收由整体验收继续完成。
+8 real flat-ground positions were added, giving 10 automatic points together with the original ones, enough for all 9 non-crowd characters in the current world plus the player; the doorway point reserved for set pieces does not take part in automatic assignment. The new positions avoid walls, door leaves, workbenches and stone blocks, were verified against the existing navmesh for location membership and flat-ground height, and are at least 1.2 m from each other and from the original points.
 
-本机开发预览通过 `uv run python infra/deploy/local-preview.py` 启动，实际网关在 `127.0.0.1:8091` 发生产构建并强制密码，内部假模型叙事者只监听回环 `8092`。独立数据库 `zoujin_home_preview` 不种历史；凭证仅写 `~/.zoujin/local-previews/h-1/credentials.json` 的 0600 文件，不进工具输出。`ZJ_DEV=1` 仅用于本机 HTTP cookie 和内部调用，显式站点密码仍然启用。
+実際の平地の位置を 8 つ追加し、元の位置と合わせて自動配置の地点を 10 にした。現在の世界の群衆でない登場人物 9 人全員とプレイヤーを収容できる。演出専用の戸口の地点は自動割り当てに参加しない。新しい位置は壁、扉、作業台、石材を避け、既存の navmesh で場所の帰属と平地の高さを検証し、互いにも元の地点からも 1.2 メートル以上離している。
+
+`refresh_spots.mjs` only allows adding flat-ground positions; it verifies the old layout and the hashes of all pipeline inputs, and rejects changes to terrain, existing points or slopes/steps. scene.json is the single runtime source of truth for positions; the runtime was not made to read layout to fill in coordinates. The updated manifest matches the build copied into this working tree, and the geometry, nav, texture and lighting bytes/budgets are unchanged.
+
+`refresh_spots.mjs` は平地の立ち位置の追加だけを許し、旧レイアウトとすべてのパイプライン入力の hash を検証し、地形/既存の地点/坂や段差の変更を拒否する。scene.json が実行時の位置の唯一の正であり、実行時に layout を読んで座標を補うようにはしていない。更新したマニフェストはこの作業ツリーにコピーした build と一致し、ジオメトリ、nav、テクスチャ、ライティングのバイト数/予算は変わっていない。
+
+## Verification record / 検証記録
+
+- Contracts: 507 passed, 6 skipped (the skips are existing generator/sample conditions); includes the new endpoint response types, closed objects and reference validation.
+  契約：507 passed、6 skipped（スキップは既存のジェネレーター/サンプルの条件によるもの）。新しいインターフェースのレスポンス型、閉じたオブジェクト、参照の検証を含む。
+- Targeted tests for the new features: on real PostgreSQL, the catalog, the second-book test fixture, owner isolation, deletion, switching devices, version locking and recovering a pending epilogue without WS all passed.
+  新機能の対象テスト：実際の PostgreSQL で、カタログ、2 冊目のテスト用フィクスチャ、owner の分離、削除、端末の切り替え、バージョンの固定、WS なしでの pending のエピローグの復旧に合格した。
+- Real gateway + web_dist: without a pass, pages/JS/scene JSON+GLB/cast/audio/API/WS are refused; after the password, static content is no-store and the API still needs the invite code; after the password and invite code, a real WS welcome is received.
+  実際の gateway + web_dist：通行前はページ/JS/scene JSON+GLB/cast/音声/API/WS が拒否される。パスワードの後は静的コンテンツが no-store で、API には引き続き招待コードが必要。パスワードと招待コードの後に実際の WS の welcome を受け取った。
+- Gate unit tests: production closed when the password is missing, wrong/expired/forged/rotated tickets, rate limiting, cross-site WS, the Secure cookie and cache headers all passed.
+  ゲートの単体テスト：パスワード欠如時の本番の閉鎖、誤り/期限切れ/偽造/ローテーション後のチケット、レート制限、クロスサイトの WS、Secure cookie、キャッシュヘッダーに合格した。
+- Scenes: the full check_scene verified the real file hashes and decoded both color tiers successfully; entry 4.79 MB, 19616 triangles and 166 nav polygons did not increase.
+  シーン：完全な check_scene で実ファイルの hash を検証し、2 段階の色をデコードして合格した。entry の 4.79 MB、19616 三角形、166 nav polygons はいずれも増えていない。
+- `ruff`, `git diff --check` and `bash -n` on the deployment scripts passed.
+  `ruff`、`git diff --check`、デプロイスクリプトの `bash -n` に合格した。
+- Repo-wide mypy with CI's real extra passed on all 193 files. Three dict invariance errors in the old `test_voice.py` were fixed with explicit type annotations on the test data; the voice runtime logic was not changed.
+  CI の real extra を使ったリポジトリ全体の mypy で、193 ファイルすべてが合格した。旧 `test_voice.py` の dict の不変性エラー 3 か所は、テストデータに明示的な型注釈を付けて修正し、音声の実行ロジックは変えていない。
+- The final full backend test suite ran completely on the separate database `zoujin_home_test`: 635 passed, 0 failed, 0 skipped, in 728.58 seconds. The first full run caught production/mock manifest cache-header assertions and missing mock coverage of the new endpoints; after fixing them the full run was repeated, and targeted tests were not substituted for the final full result.
+  最終的なバックエンド全体のテストは、独立したデータベース `zoujin_home_test` で完全に実行した：635 passed、0 failed、0 skipped、所要 728.58 秒。最初の全量実行で、本番/mock の manifest のキャッシュヘッダーのアサーションと、mock の新エンドポイントのカバー漏れが見つかった。修正後に改めて完全に実行し、対象テストで最終的な全量の結果を代用してはいない。
+- The deployment pack check only ignores the top-level generator note `note` (the same road-common is generated by both the village and the return-journey pipelines); validation of files/textures/nested structure/inputs is not loosened; the two diff regressions passed.
+  デプロイ用 pack のチェックが無視するのはトップレベルのジェネレーターの説明 `note` だけ（同じ road-common が村と帰路の両方のパイプラインで生成されるため）。ファイル/テクスチャ/入れ子の構造/inputs の検証は緩めていない。差分の回帰テスト 2 件に合格した。
+- The overall coordinator's final review found that a failed access-state query was treated as private, the invoker IAM disabled flag was not checked, and DEPLOYED could still be written after the anonymous smoke retries were exhausted; all have been fixed. 15 real Bash control-flow tests verify with a fake gcloud: failures in querying/parsing/tokens stop the script; only a successful empty list can count as a first new service; two public members and the disabled IAM flag are both blocked by the privacy lock; a sixth failure does not continue, and only a sixth success may be marked. The tests read no real configuration and do not access the cloud.
+  全体の調整役の最終レビューで、アクセス状態の照会の失敗が非公開として扱われていること、invoker IAM の無効化フラグを確認していないこと、匿名のスモークテストのリトライを使い切っても DEPLOYED を書き込めることが見つかり、いずれも修正した。15 件の実際の Bash 制御フローのテストで偽の gcloud を使って検証した：照会/解析/トークンの失敗で停止する。成功した空のリストだけが初回の新サービスとして扱える。公開メンバー 2 つと IAM の無効化フラグはどちらもプライバシーロックで止まる。6 回目も失敗したら続行せず、6 回目に成功した場合に限りマークできる。テストは実際の設定を読まず、クラウドにもアクセスしない。
+
+## Cross-review and boundaries / クロスレビューと境界
+
+The frontend reported that an old version's manifest might wrongly use the current version; a version parameter and owner check were added, and the frontend has wired Play/Ending to that parameter. The frontend raised the problem of recovering a pending epilogue without WS; idempotent wake-up and a real database regression were added. The backend re-checked the study, Play, Ending and private-state cleanup; the link to the original text is shown only for a book known to correspond to it, and the 『走れメロス』 link is not used for other future books. The backend review found that when the site password expires, WS is refused before accept, so the browser usually only gets 1006; the frontend added a single-flight REST session probe with a 30-second cooldown that relies on the gate header to jump to the password page, plus two regressions, to avoid endless reconnects.
+
+フロントエンドから、旧バージョンの manifest が現在のバージョンを誤って使う可能性があると指摘があり、バージョンのパラメータと owner の検証を追加した。フロントエンドは Play/Ending をそのパラメータにつないだ。フロントエンドが提起した、WS のない pending のエピローグの復旧の問題については、冪等な起動と実データベースの回帰テストを追加した。バックエンドは書斎、Play、Ending、非公開状態の後始末を再確認した。原作へのリンクは対応がわかっている本でだけ表示し、『走れメロス』のリンクを将来の他の本には使わない。バックエンドのレビューで、サイトのパスワードの期限が切れると WS が accept の前に拒否され、ブラウザには通常 1006 しか届かないことがわかった。フロントエンドは single-flight で 30 秒のクールダウンを持つ REST のセッション探査を追加し、ゲートのヘッダーでパスワードページに移動するようにし、回帰テストを 2 件追加して、無限の再接続を防いだ。
+
+This change does not do a production deployment, does not generate a second book's product content, and does not treat dev-mock history as real user endings. Real phone operation, actual model experience and aesthetic acceptance checks continue under the overall acceptance check.
+
+今回は本番のデプロイを行わず、2 冊目の製品コンテンツも生成せず、開発用 mock の履歴を実際のユーザーのエンディングとして扱わない。実際のスマホでの操作、実際のモデルの体験、見た目の受け入れ確認は、全体の受け入れ確認で引き続き行う。
+
+The local dev preview is started with `uv run python infra/deploy/local-preview.py`; the real gateway serves the production build on `127.0.0.1:8091` with the password enforced, and the internal fake-model narrator listens only on loopback `8092`. The separate database `zoujin_home_preview` is not seeded with history; credentials are written only to the 0600 file `~/.zoujin/local-previews/h-1/credentials.json` and do not appear in tool output. `ZJ_DEV=1` is used only for the local HTTP cookie and internal calls; the explicit site password stays enabled.
+
+ローカルの開発プレビューは `uv run python infra/deploy/local-preview.py` で起動する。実際のゲートウェイが `127.0.0.1:8091` で本番ビルドを配信してパスワードを強制し、内部の偽モデルのナレーターはループバックの `8092` だけをリッスンする。独立したデータベース `zoujin_home_preview` には履歴を投入しない。認証情報は 0600 のファイル `~/.zoujin/local-previews/h-1/credentials.json` にだけ書き込み、ツールの出力には出さない。`ZJ_DEV=1` はローカルの HTTP cookie と内部呼び出しにだけ使い、明示的なサイトのパスワードは引き続き有効。

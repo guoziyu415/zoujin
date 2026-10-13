@@ -1,6 +1,15 @@
-# 网页前端（F-2b、F-0）：单元测试、打包体积预算、世界屏幕和外壳的 Playwright 验收（无头 Chromium + 软件渲染）。
-# 场景生成物不进仓库，这里用草稿档生成广场（和 assets.yml 同一条命令），按流水线、布局和锁文件缓存；
-# 外壳的验收对着 B-1 的 mock 跑（Playwright 自己起 `uv run --all-packages zoujin-mock`）。截图作为构件上传，给 UX 看。
+# Web frontend (F-2b, F-0): unit tests, bundle size budget, Playwright acceptance checks for the world screen and the shell
+# (headless Chromium + software rendering).
+# Web フロントエンド（F-2b、F-0）：ユニットテスト、バンドルサイズ予算、ワールド画面とシェルの Playwright 受け入れ確認
+# （ヘッドレス Chromium + ソフトウェアレンダリング）。
+# Scene generated files are not in the repo, so the plaza is built here at the draft tier (same command as assets.yml),
+# cached by pipeline, layout and lock files;
+# シーンの生成物はリポジトリに入れないので、ここでドラフト品質で広場を生成し（assets.yml と同じコマンド）、パイプライン、
+# レイアウト、ロックファイルをキーにキャッシュする。
+# the shell acceptance checks run against B-1's mock (Playwright starts `uv run --all-packages zoujin-mock` itself).
+# Screenshots are uploaded as artifacts for UX to review.
+# シェルの受け入れ確認は B-1 のモックに対して実行する（Playwright が自分で `uv run --all-packages zoujin-mock` を起動）。
+# スクリーンショットはアーティファクトとしてアップロードし、UX が確認する。
 name: web
 
 on:
@@ -103,7 +112,8 @@ jobs:
       - name: build the plaza and the river (draft lightmaps) where the cache missed
         if: steps.scene.outputs.cache-hit != 'true' || steps.road.outputs.cache-hit != 'true'
         run: |
-          # 自建机器（infra/ci-runner）的镜像里已经装好，那里也没有 sudo
+          # Already installed in the self-hosted runner image (infra/ci-runner), which has no sudo either
+          # セルフホストランナー（infra/ci-runner）のイメージにはインストール済みで、sudo もない
           if [ -z "${ZOUJIN_CI_PREINSTALLED:-}" ]; then
             sudo apt-get update -q
             sudo apt-get install -y -q --no-install-recommends libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1
@@ -140,7 +150,8 @@ jobs:
       - name: bundle budget (shell <= 120 KB, 3D chunk <= 250 KB, brotli)
         run: pnpm --filter @zoujin/web check:bundle
       - name: Chromium for Playwright
-        # 系统依赖：自建机器的镜像里已经装好（没有 sudo），GitHub 自带的机器上用 --with-deps 装
+        # System dependencies: already installed in the self-hosted runner image (no sudo); on GitHub-hosted runners install with --with-deps
+        # システム依存：セルフホストランナーのイメージにはインストール済み（sudo なし）。GitHub 提供のランナーでは --with-deps でインストール
         run: |
           if [ -n "${ZOUJIN_CI_PREINSTALLED:-}" ]; then deps=""; else deps="--with-deps"; fi
           pnpm --filter @zoujin/web exec playwright install $deps chromium

@@ -1,7 +1,16 @@
-"""S-2 的运行脚本（B-2 验收第 6 组的回放、第 7 组）：假模型跑公开的 10 条、接着跑、真模型的开关、回放。
+"""S-2 runner script (B-2 acceptance check group 6's replays, group 7): the fake model on the public 10 items,
+resuming, the real-model switch, replays.
 
-假模型的检查全过，所以判不过的只有第 3 步拦住的：标成 `rules` 的 4 条判对，标成 `model` 的 2 条（s2d-02 的 R1、s2d-05 的
-R5）漏判，合规的 4 条判对。下面的数按这个手算。
+The fake model's check passes everything, so the only fails are those stopped in step 3: the 4 items labelled `rules`
+are judged correctly, the 2 labelled `model` (s2d-02's R1, s2d-05's R5) are missed, and the 4 compliant ones are judged
+correctly. The numbers below are worked out by hand from this.
+
+S-2 の実行スクリプト（B-2 受け入れ確認 第 6 組のリプレイ、第 7 組）：偽モデルで公開の 10 件、続きからの実行、
+本物のモデルのスイッチ、リプレイ。
+
+偽モデルのチェックはすべて合格なので、不合格になるのは第 3 段階で止めたものだけ：`rules` とラベルした 4 件は正しく
+判定し、`model` とラベルした 2 件（s2d-02 の R1、s2d-05 の R5）は見逃し、適合の 4 件は正しく判定する。
+下の数字はこれをもとに手で計算した。
 """
 
 from __future__ import annotations
@@ -20,7 +29,7 @@ from .conftest import Env
 Json = Any
 
 DEV = REPO / "evals" / "s2" / "s2_dev.jsonl"
-KEY = "sk-ant-test-marker-0000"  # 假的；查它不打印出来
+KEY = "sk-ant-test-marker-0000"  # Fake; checked that it is never printed / 偽物。表示されないことを確認する
 
 
 def run(monkeypatch: pytest.MonkeyPatch, env: Env, out: Path, *extra: str, runs: int = 3) -> int:
@@ -54,9 +63,11 @@ def test_fake_model_on_the_public_ten(env: Env, monkeypatch: pytest.MonkeyPatch,
     assert rep["meta"]["checkPromptVersion"].startswith("p") and rep["meta"]["dataset"] == "s2_dev.jsonl"
     assert rep["meta"]["checkPromptFinal"] is True
     md = (tmp_path / "out" / "report.md").read_text(encoding="utf-8")
-    assert "| 一致率（最差的一次） | 80.0% |" in md and "s2d-02 第 1 次" in md and f"`{s2.CHECK_FINAL}`（定稿）" in md
+    assert "| Agreement (worst run) / 一致率（最も低い回） | 80.0% |" in md and "s2d-02 run 1" in md
+    assert f"`{s2.CHECK_FINAL}` (final / 確定版)" in md
     for item in (json.loads(x) for x in DEV.read_text(encoding="utf-8").splitlines()):
-        assert item["turn"]["player"] not in md and item["candidate"]["summary"] not in md  # 不抄原话和摘要
+        # Original words and summaries are not copied / 発話の原文と要約は写さない
+        assert item["turn"]["player"] not in md and item["candidate"]["summary"] not in md
 
 
 @pytest.mark.db
@@ -64,9 +75,11 @@ def test_resume_skips_what_is_done(env: Env, monkeypatch: pytest.MonkeyPatch, tm
     monkeypatch.delenv("ZJ_MODEL", raising=False)
     out = tmp_path / "out"
     assert run(monkeypatch, env, out, runs=1) == 0
-    assert run(monkeypatch, env, out, runs=1) == s2.EXIT_CONFIG  # 已有结果，不加 --resume 不跑
+    # Results exist: without --resume it does not run / 結果があるので --resume なしでは実行しない
+    assert run(monkeypatch, env, out, runs=1) == s2.EXIT_CONFIG
     lines = (out / s2.RESULTS).read_text(encoding="utf-8").splitlines()
-    (out / s2.RESULTS).write_text("\n".join(lines[:7]) + "\n", encoding="utf-8")  # 像是第 8 条时断了
+    # As if it broke off at item 8 / 8 件目で途切れたかのように
+    (out / s2.RESULTS).write_text("\n".join(lines[:7]) + "\n", encoding="utf-8")
     called: list[str] = []
     real = s2.check_one
 
@@ -78,7 +91,8 @@ def test_resume_skips_what_is_done(env: Env, monkeypatch: pytest.MonkeyPatch, tm
     assert run(monkeypatch, env, out, "--resume", runs=1) == 0
     assert called == ["s2d-08", "s2d-09", "s2d-10"]
     assert report(out)["complete"] and len((out / s2.RESULTS).read_text(encoding="utf-8").splitlines()) == 10
-    assert run(monkeypatch, env, out, "--resume", runs=2) == s2.EXIT_CONFIG  # 次数变了不让接着跑
+    # The number of runs changed: resuming is refused / 回数が変わったので続きからは実行させない
+    assert run(monkeypatch, env, out, "--resume", runs=2) == s2.EXIT_CONFIG
 
 
 @pytest.mark.db
@@ -90,7 +104,7 @@ def test_budget_stop_still_writes_the_report(env: Env, monkeypatch: pytest.Monke
     def broke(item: Json, *a: Any) -> Json:
         n.append(1)
         if len(n) > 4:
-            raise eval_api.BudgetStop("到上限了")
+            raise eval_api.BudgetStop("Cap reached / 上限に達した")
         return real(item, *a)
 
     monkeypatch.setattr(s2, "check_one", broke)
@@ -103,7 +117,12 @@ def test_budget_stop_still_writes_the_report(env: Env, monkeypatch: pytest.Monke
 def test_replays_recorded_from_the_fake_give_the_same_report(
     env: Env, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """真模型的回放要等 Mac 第一次跑完才有；先用假模型录的回放测这条路（ZJ_RECORD_REPLAYS → ZJ_REPLAYS）。"""
+    """Real-model replays only exist after the first run on the Mac; until then test this path with replays recorded
+    from the fake model (ZJ_RECORD_REPLAYS → ZJ_REPLAYS).
+
+    本物のモデルのリプレイは Mac で最初の実行が終わるまでない。それまでは偽モデルで録ったリプレイでこの経路をテストする
+    （ZJ_RECORD_REPLAYS → ZJ_REPLAYS）。
+    """
     monkeypatch.delenv("ZJ_MODEL", raising=False)
     monkeypatch.setenv("ZJ_RECORD_REPLAYS", str(tmp_path / "rec"))
     assert run(monkeypatch, env, tmp_path / "fake", runs=1) == 0
@@ -118,7 +137,8 @@ def test_replays_recorded_from_the_fake_give_the_same_report(
     assert verdicts(tmp_path / "fake") == verdicts(tmp_path / "replay")
     monkeypatch.setenv("ZJ_REPLAYS", str(tmp_path / "empty"))
     (tmp_path / "empty").mkdir()
-    assert run(monkeypatch, env, tmp_path / "missing", runs=1) == s2.EXIT_CONFIG  # 回放缺失：停下
+    # Missing replay: stop / リプレイがない：止まる
+    assert run(monkeypatch, env, tmp_path / "missing", runs=1) == s2.EXIT_CONFIG
 
 
 def live_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
@@ -131,16 +151,17 @@ def live_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
 
 
 def never(*a: Any, **k: Any) -> None:
-    raise AssertionError("不该起局、调用")
+    raise AssertionError("Must not start a playthrough or call / プレイの開始や呼び出しをしてはならない")
 
 
 @pytest.mark.parametrize(
     ("live", "args"),
     [
-        (None, ["--max-item-usd", "0.5", "--max-claude-usd", "30", "--confirm"]),  # 没设 ZJ_EVAL_LIVE
-        ("1", ["--max-claude-usd", "30", "--confirm"]),  # 少一个上限
-        ("1", ["--max-item-usd", "0.5", "--max-claude-usd", "30"]),  # 不带 --confirm
-        ("no-key", ["--max-item-usd", "0.5", "--max-claude-usd", "30", "--confirm"]),  # 没把 Key 读进环境
+        (None, ["--max-item-usd", "0.5", "--max-claude-usd", "30", "--confirm"]),  # No ZJ_EVAL_LIVE / 未設定
+        ("1", ["--max-claude-usd", "30", "--confirm"]),  # One cap missing / 上限が 1 つない
+        ("1", ["--max-item-usd", "0.5", "--max-claude-usd", "30"]),  # No --confirm / --confirm なし
+        # The key was not read into the environment / キーを環境に読み込んでいない
+        ("no-key", ["--max-item-usd", "0.5", "--max-claude-usd", "30", "--confirm"]),
     ],
 )
 def test_live_gate_only_prints(
@@ -161,14 +182,18 @@ def test_live_gate_only_prints(
     monkeypatch.setattr(eval_api, "setup", never)
     assert s2.main([str(DEV), "--out", str(tmp_path / "out"), *args]) == 0
     printed = capsys.readouterr().out
-    assert "预计花费" in printed and "只打印，不调用" in printed and "zoujin-s2" in printed
-    assert KEY not in printed and "marker" not in printed  # 只打印变量名，Key 和模型 ID 不打印
-    assert "sonnet-5.5" in printed  # 档名加版本可以
+    assert "Estimated cost" in printed and "Printing only, no calls" in printed and "zoujin-s2" in printed
+    # Only variable names are printed, never the key or model IDs / 変数名だけを表示し、キーとモデル ID は表示しない
+    assert KEY not in printed and "marker" not in printed
+    assert "sonnet-5.5" in printed  # Tier name plus version is fine / ティア名とバージョンはよい
     assert not (tmp_path / "out").exists() and not (tmp_path / "ledger.jsonl").exists()
 
 
 def test_check_prompt_is_the_final_one() -> None:
-    # 定稿以后改了 check 的文本或 Schema，S-2 的结果就不代表新提示：要数据出新的测量集，再改 s2.CHECK_FINAL（B-2 卡）
+    # If the check text or Schema changes after it is final, the S-2 results no longer represent the new prompt: data
+    # must produce a new measurement set before s2.CHECK_FINAL is changed (card B-2)
+    # 確定後に check のテキストか Schema を変えると、S-2 の結果は新しいプロンプトを表さなくなる：
+    # データ担当が新しい測定セットを作ってから s2.CHECK_FINAL を変える（B-2 カード）
     assert PROMPTS["check"].version == s2.CHECK_FINAL
 
 
@@ -178,13 +203,15 @@ def test_live_runs_other_sets_only_with_the_final_check_prompt(
     live_env(monkeypatch, tmp_path)
     monkeypatch.setenv("ZJ_EVAL_LIVE", "1")
     monkeypatch.setattr(eval_api, "setup", never)
-    monkeypatch.setattr(s2, "CHECK_FINAL", "p000000000000")  # 假装提示在定稿以后改过
+    # Pretend the prompt changed after it was final / 確定後にプロンプトが変わったことにする
+    monkeypatch.setattr(s2, "CHECK_FINAL", "p000000000000")
     other = tmp_path / "s2_other.jsonl"
     other.write_bytes(DEV.read_bytes())
     caps = ["--max-item-usd", "0.5", "--max-claude-usd", "30"]
     assert s2.main([str(other), "--out", str(tmp_path / "out"), *caps, "--confirm"]) == s2.EXIT_CONFIG
     got = capsys.readouterr()
-    assert "不是定稿的 p000000000000" in got.err and "预计花费" not in got.out
-    assert s2.main([str(DEV), "--out", str(tmp_path / "out"), *caps]) == 0  # 公开的 10 条照样能调提示
-    assert "预计花费" in capsys.readouterr().out
+    assert "is not the final p000000000000" in got.err and "Estimated cost" not in got.out
+    # The public 10 items can still be used to tune the prompt / 公開の 10 件ではこれまでどおりプロンプトを調整できる
+    assert s2.main([str(DEV), "--out", str(tmp_path / "out"), *caps]) == 0
+    assert "Estimated cost" in capsys.readouterr().out
     assert not (tmp_path / "out").exists() and not (tmp_path / "ledger.jsonl").exists()

@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
-# CI 的 db job 用：在这个 job 里起一个 PostgreSQL 17 进程（数据目录在 $RUNNER_TEMP，job 结束就没了），
-# 建库 zoujin_test，把 DATABASE_URL 写进 $GITHUB_ENV 给后面的步骤。
-#   bash .github/scripts/start_postgres.sh        起库
-#   bash .github/scripts/start_postgres.sh stop   停库
-# 自建机器的镜像（infra/ci-runner/Dockerfile）里已经装了 postgresql-17；GitHub 自带的 Ubuntu 机器上没有 17，
-# 这里从 PostgreSQL 官方的 apt 源（PGDG）装。只监听容器或机器自己的 127.0.0.1，用户 zoujin，本机信任登录。
+# For the CI db job: starts a PostgreSQL 17 process inside this job (data directory in $RUNNER_TEMP, gone when the job ends),
+# creates the database zoujin_test and writes DATABASE_URL to $GITHUB_ENV for later steps.
+# CI の db ジョブ用：このジョブ内で PostgreSQL 17 プロセスを起動し（データディレクトリは $RUNNER_TEMP、ジョブ終了で消える）、
+# データベース zoujin_test を作成して、後続のステップ用に DATABASE_URL を $GITHUB_ENV に書き込む。
+#   bash .github/scripts/start_postgres.sh        start the database / DB を起動
+#   bash .github/scripts/start_postgres.sh stop   stop the database / DB を停止
+# The self-hosted runner image (infra/ci-runner/Dockerfile) already has postgresql-17; GitHub's hosted Ubuntu runners lack 17,
+# so it is installed here from PostgreSQL's official apt repo (PGDG). Listens only on the container's or machine's own
+# 127.0.0.1, user zoujin, trust auth locally.
+# セルフホストランナーのイメージ（infra/ci-runner/Dockerfile）には postgresql-17 がインストール済み。GitHub 提供の Ubuntu ランナーには 17 がないので、
+# ここで PostgreSQL 公式の apt リポジトリ（PGDG）からインストールする。コンテナまたはマシン自身の 127.0.0.1 だけで待ち受け、
+# ユーザーは zoujin、ローカルは trust 認証。
 set -euo pipefail
 
 PORT="${PG_PORT:-5432}"
@@ -20,7 +26,7 @@ if [ "${1:-start}" = stop ]; then
 fi
 
 if [ ! -x "$BIN/pg_ctl" ]; then
-  echo "== 装 PostgreSQL 17（PGDG）"
+  echo "== Installing PostgreSQL 17 (PGDG) / PostgreSQL 17 をインストール（PGDG）"
   sudo apt-get update -q
   sudo apt-get install -y -q --no-install-recommends postgresql-common
   sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
@@ -36,4 +42,4 @@ mkdir -p "$SOCK"
 
 URL="postgresql://zoujin:zoujin@127.0.0.1:$PORT/zoujin_test"
 if [ -n "${GITHUB_ENV:-}" ]; then echo "DATABASE_URL=$URL" >>"$GITHUB_ENV"; else echo "DATABASE_URL=$URL"; fi
-echo "PostgreSQL $("$BIN/postgres" --version | awk '{print $3}') 在 127.0.0.1:$PORT"
+echo "PostgreSQL $("$BIN/postgres" --version | awk '{print $3}') at 127.0.0.1:$PORT / 127.0.0.1:$PORT で稼働中"

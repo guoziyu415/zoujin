@@ -1,8 +1,16 @@
-"""不在 LFS 里的文件超过 1 MB 就红（dev-plan 2.4）。锁文件除外。
+"""Fail when a file outside LFS is larger than 1 MB (dev-plan 2.4). Lock files are exempt.
 
-美术大文件按 .gitattributes 走 LFS；有人绕过 LFS 直接提交大文件时，这里拦住。预录音频（assets/voice/）走普通 git
-（S-084），同样受 1 MB 管着。
-匹配 LFS 规则的路径，进 git 的必须是 LFS 指针：没装 git-lfs 的地方提交 glb，会当普通文件进 git（S-075 ③）。
+Large art files go through LFS per .gitattributes; this catches anyone committing a large file while bypassing LFS.
+Pre-recorded lines (assets/voice/) go through plain git (S-084) and are subject to the same 1 MB limit.
+Paths matching an LFS rule must enter git as LFS pointers: a glb committed where git-lfs is not installed would enter
+git as a regular file (S-075 ③).
+
+LFS 外のファイルが 1 MB を超えたら失敗にする（dev-plan 2.4）。ロックファイルは除外。
+
+大きな美術ファイルは .gitattributes に従って LFS を通す。LFS を迂回して大きなファイルをコミットした場合にここで止める。
+事前収録セリフ（assets/voice/）は通常の git を通る（S-084）が、同じく 1 MB の制限を受ける。
+LFS ルールに一致するパスは、LFS ポインタとして git に入らなければならない：git-lfs をインストールしていない環境で glb を
+コミットすると、通常のファイルとして git に入ってしまう（S-075 ③）。
 """
 
 import subprocess
@@ -33,7 +41,11 @@ LFS_POINTER = b"version https://git-lfs.github.com/spec/v1"
 
 
 def not_pointers(paths: set[str]) -> list[str]:
-    """匹配 LFS 规则、但 git 里存的不是 LFS 指针的文件（看暂存区里的内容，不看工作区）。"""
+    """Files that match an LFS rule but are not stored in git as LFS pointers (checks the index, not the worktree).
+
+    LFS ルールに一致するのに、git に LFS ポインタとして保存されていないファイル
+    （作業ツリーではなくインデックスの内容を見る）。
+    """
     bad = []
     for p in sorted(paths):
         # the first bytes are enough; git-lfs stores an empty file as an empty blob, not a pointer
@@ -50,7 +62,12 @@ def main() -> int:
     lfs = lfs_paths(paths)
     raw = not_pointers(lfs)
     for p in raw:
-        print(f"{p}：匹配 LFS 规则，但进 git 的不是 LFS 指针（没装 git-lfs？生成物不进仓库，S-075）")
+        print(
+            f"{p}: matches an LFS rule, but what entered git is not an LFS pointer"
+            " (git-lfs not installed? generated files stay out of the repo, S-075)"
+            " / LFS ルールに一致するが、git に入ったものが LFS ポインタではない"
+            "（git-lfs 未インストール？生成物はリポジトリに入れない、S-075）"
+        )
     big = []
     for p in paths:
         if p in lfs or Path(p).name in EXEMPT:
@@ -60,13 +77,25 @@ def main() -> int:
             big.append((p, size))
     for p, size in big:
         if p.startswith("assets/voice/"):
-            # 预录音频走普通 git（S-084），一条应该只有几十 KB：超过 1 MB 多半是没转 AAC（WAV 原样进来了）
-            print(f"{p}: {size / LIMIT:.1f} MB。预录音频不走 LFS，要用 zoujin-voice 转好的 .m4a（每条远小于 1 MB）")
+            # Pre-recorded lines go through plain git (S-084) and each should be only tens of KB: over 1 MB usually
+            # means it was not converted to AAC (the WAV came in as is)
+            # 事前収録セリフは通常の git を通る（S-084）。1 本数十 KB のはずで、1 MB 超はたいてい AAC に変換していない
+            # （WAV がそのまま入った）
+            print(
+                f"{p}: {size / LIMIT:.1f} MB. Pre-recorded lines do not use LFS; use the .m4a converted by"
+                " zoujin-voice (each well under 1 MB)"
+                f" / {size / LIMIT:.1f} MB。事前収録セリフは LFS を使わない。zoujin-voice で変換した .m4a を使うこと"
+                "（1 本あたり 1 MB を大きく下回る）"
+            )
             continue
-        print(f"{p}: {size / LIMIT:.1f} MB，不在 LFS 里（超过 1 MB 的美术和音频文件要按 .gitattributes 走 LFS）")
+        print(
+            f"{p}: {size / LIMIT:.1f} MB, not in LFS (art and audio files over 1 MB must go through LFS per"
+            " .gitattributes) / LFS に入っていない（1 MB を超える美術・音声ファイルは .gitattributes に従って LFS を"
+            "通すこと）"
+        )
     if big or raw:
         return 1
-    print(f"{len(paths)} 个文件，LFS 之外没有超过 1 MB 的")
+    print(f"{len(paths)} files, none over 1 MB outside LFS / {len(paths)} ファイル、LFS 外に 1 MB 超はなし")
     return 0
 
 

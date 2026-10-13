@@ -1,4 +1,9 @@
-"""模型接口：Live（人物的语音会话）和文本模型。B-0 只有假实现和回放，没有真模型的调用代码。"""
+"""Model interfaces: Live (the characters' voice sessions) and the text model. B-0 had only fake implementations and
+replay, with no code for calling real models.
+
+モデルのインターフェース：Live（登場人物の音声セッション）とテキストモデル。B-0 では偽の実装とリプレイだけで、実モデルを
+呼び出すコードはなかった。
+"""
 
 from zoujin_backend.models.live import FakeLive, LiveEvent, LiveModel, LiveSession
 from zoujin_backend.models.text import FakeText, ReplayMissing, ReplayText, TextModel, TextResult, text_model

@@ -1,7 +1,7 @@
-"""Shared helpers for the 走进物语 backend spikes.
+"""Shared helpers for the 物語 (Monogatari) backend spikes.
 
 Rules (pm/decisions.md D-011):
-  - Everything runs in the new 走进物语 GCP project given by ZJ_PROJECT, never in 日々の森's project.
+  - Everything runs in the new 物語 (Monogatari) GCP project given by ZJ_PROJECT, never in 日々の森's project.
     Credentials are zg's own application-default login; the quota project is forced to ZJ_PROJECT
     in code, so the shared ADC file and the default gcloud configuration are never modified.
   - No API keys. Only model calls; no databases, services or buckets are created.
@@ -63,7 +63,10 @@ class Settings:
 def settings() -> Settings:
     project = os.environ.get("ZJ_PROJECT")
     if not project:
-        sys.exit("没有设置 ZJ_PROJECT。请先执行：export ZJ_PROJECT=你的项目ID（见 README 第 5 步）")
+        sys.exit(
+            "ZJ_PROJECT is not set. First run: export ZJ_PROJECT=<your project ID> (see README step 5) / "
+            "ZJ_PROJECT が設定されていません。先に export ZJ_PROJECT=<プロジェクトID> を実行してください（README の手順 5 を参照）"
+        )
     out = Path(os.environ.get("ZJ_OUT", Path.cwd() / "out"))
     out.mkdir(parents=True, exist_ok=True)
     return Settings(
@@ -81,7 +84,7 @@ def credentials():
     """zg's application-default credentials with the quota project forced to ZJ_PROJECT.
 
     The ADC file may name 日々の森's project as its quota project; overriding it here keeps
-    every request billed and rate-limited in the 走进物语 project without editing that file.
+    every request billed and rate-limited in the 物語 (Monogatari) project without editing that file.
     On Cloud Run (S-1b only) the service account already belongs to that project, and forcing a
     quota project there would need an extra permission, so it is left alone.
 
@@ -276,14 +279,26 @@ def run(main) -> None:
     try:
         asyncio.run(main())
     except BudgetExceeded as e:
-        print(f"\n[停止] 已到预算上限：{e}。结果已写到 out/，账本在 {LEDGER_PATH}。", file=sys.stderr)
+        print(
+            f"\n[stop / 停止] Budget cap reached / 予算上限に達しました: {e}. "
+            f"Results are in out/, ledger at / 結果は out/ に、台帳は {LEDGER_PATH}",
+            file=sys.stderr,
+        )
         sys.exit(3)
     except QuotaHit as e:
-        print(f"\n[停止] 遇到配额限制（429），按规则立即停止，不重试：{e}", file=sys.stderr)
+        print(
+            f"\n[stop / 停止] Hit a quota limit (429); stopping right away without retrying, as the rules say / "
+            f"クォータ制限（429）に達したため、ルールどおり再試行せず直ちに停止します: {e}",
+            file=sys.stderr,
+        )
         sys.exit(4)
     except Stopped as e:
-        print(f"\n[停止] {e}。已经跑完的照样写在 out/ 里，修好后用 --resume 接着跑。", file=sys.stderr)
+        print(
+            f"\n[stop / 停止] {e}. What already finished is written to out/; after fixing, continue with --resume. / "
+            "完了した分は out/ に書き出し済みです。修正後は --resume で続きから実行できます。",
+            file=sys.stderr,
+        )
         sys.exit(5)
     except KeyboardInterrupt:
-        print("\n[停止] 手动中断。", file=sys.stderr)
+        print("\n[stop / 停止] Interrupted by hand / 手動で中断しました", file=sys.stderr)
         sys.exit(130)

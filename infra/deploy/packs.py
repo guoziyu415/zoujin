@@ -1,18 +1,45 @@
-"""部署用的场景包和人物文件（B-23），由 deploy.sh build 在 zg 的 Mac 上跑。
+"""Scene packs and character files for the deploy (B-23), run by deploy.sh build on zg's Mac.
 
-    python packs.py <部署的提交的工作树> <Mac 上生成过的仓库> <输出目录>
+    python packs.py <worktree of the deployed commit> <repo on the Mac where they were built> <output dir>
 
-场景包、人物模型不进 git（S-075），由各自的流水线在 Mac 的仓库里生成：场景 `assets/scenes/<目录>/build/`，人物
-`assets/cast/build/<名字>/`。这里在 <输出目录> 下建 `scenes/<目录>` → 那个 build 的符号链接（vite build 的
-ZOUJIN_SCENE_ROOT、网关的 ZJ_SCENE_PACKS 都读它），`cast` → `assets/cast/build`（ZOUJIN_CAST_ROOT），再查：
+Scene packs and character models are not in git (S-075); each pipeline builds them in the repo on the Mac: scenes in
+`assets/scenes/<dir>/build/`, characters in `assets/cast/build/<name>/`. This creates, under <output dir>,
+`scenes/<dir>` → a symlink to that build (read by vite build's ZOUJIN_SCENE_ROOT and the gateway's ZJ_SCENE_PACKS) and
+`cast` → `assets/cast/build` (ZOUJIN_CAST_ROOT), then checks:
 
-- 缺：仓库里有清单（scene.json、index.json、pack.json）的场景目录没有 build/，或 cast.json 列的人物文件没有；
-- 旧：build 不是照部署的这个提交的流水线生成的。清单有 inputs（布局、脚本的 sha256、工具版本、环境变量）就只比
-  inputs，和流水线自己的 check_scene.mjs 一样；没有 inputs 的（road-common、光照子包、index.json）比结构：键、
-  文件名、档名一样就算同一版，数字和 sha256 不比。贴图 PNG、烘焙这些派生的字节换台机器会差一点（pack_scene.mjs
-  的 inputs 注释），zg 的 Mac 上重建的和提交里的对不上不算旧。人物文件的 sha256 和 cast.json 对不上算旧。
+- missing: a scene dir with a committed manifest (scene.json, index.json, pack.json) has no build/, or a character
+  file listed in cast.json is absent;
+- stale: the build was not made by the pipeline of the deployed commit. When the manifest has inputs (layout, scripts'
+  sha256, tool versions, env vars) only the inputs are compared, as the pipeline's own check_scene.mjs does; without
+  inputs (road-common, lighting sub-packs, index.json) the structure is compared: same keys, file names and tier names
+  means the same version, numbers and sha256 are not compared. Derived bytes such as texture PNGs and bakes differ a
+  little from machine to machine (the inputs comment in pack_scene.mjs), so a rebuild on zg's Mac that does not match
+  the commit is not stale. A character file whose sha256 does not match cast.json is stale.
 
-有缺或旧就打印是哪几个、该跑哪条命令：有缺退出码 1，只有旧退出码 2；全齐退出码 0。
+When anything is missing or stale, print which ones and the commands to run: exit code 1 if something is missing,
+2 if only stale; 0 if all are present.
+
+デプロイ用のシーンパックと登場人物のファイル（B-23）。zg の Mac 上で deploy.sh build が実行する。
+
+    python packs.py <デプロイするコミットの作業ツリー> <Mac 上で生成済みのリポジトリ> <出力ディレクトリ>
+
+シーンパックと登場人物のモデルは git に入れず（S-075）、それぞれのパイプラインが Mac のリポジトリ内で生成する：
+シーンは `assets/scenes/<ディレクトリ>/build/`、登場人物は `assets/cast/build/<名前>/`。
+ここでは <出力ディレクトリ> の下に `scenes/<ディレクトリ>` → その build へのシンボリックリンク（vite build の
+ZOUJIN_SCENE_ROOT とゲートウェイの ZJ_SCENE_PACKS が読む）と、`cast` → `assets/cast/build`（ZOUJIN_CAST_ROOT）を
+作り、次を確認する：
+
+- 欠落：リポジトリにマニフェスト（scene.json、index.json、pack.json）があるシーンのディレクトリに build/ がない、
+  または cast.json に載っている登場人物のファイルがない。
+- 古い：build がデプロイするこのコミットのパイプラインで生成されていない。マニフェストに inputs（レイアウト、
+  スクリプトの sha256、ツールのバージョン、環境変数）があれば inputs だけを比べる（パイプライン自身の
+  check_scene.mjs と同じ）。inputs がないもの（road-common、ライティングのサブパック、index.json）は構造を比べる：
+  キー、ファイル名、段階名が同じなら同じ版とみなし、数値と sha256 は比べない。テクスチャの PNG やベイクのような
+  派生したバイトはマシンが変わると少し違う（pack_scene.mjs の inputs のコメント）ので、zg の Mac で再生成したものが
+  コミットと合わなくても古いとはみなさない。登場人物のファイルの sha256 が cast.json と合わなければ古いとみなす。
+
+欠落や古いものがあれば、どれなのかと実行すべきコマンドを出力する：欠落があれば終了コード 1、古いものだけなら 2、
+すべて揃っていれば 0。
 """
 
 from __future__ import annotations
@@ -24,7 +51,8 @@ import sys
 from pathlib import Path
 
 ENTRIES = ("index.json", "scene.json", "pack.json")
-# 场景目录 → 生成它的命令（在仓库根跑，final）
+# Scene dir → the command that builds it (run at the repo root, final)
+# シーンのディレクトリ → それを生成するコマンド（リポジトリのルートで実行、final）
 BUILDERS = {
     "syracuse-square": "assets/pipeline/plaza/build.sh final && assets/pipeline/crowd/build.sh",
     "castle-throne": "assets/pipeline/castle/build.sh final",
@@ -34,8 +62,15 @@ BUILDERS = {
     "road-river-calm": "assets/pipeline/road/build.sh final",
     "road-river-flood": "assets/pipeline/road/build.sh final",
 }
-REST = "assets/pipeline/road/build_rest.sh final"  # 归途其余几处（F-15）：road-pass、-spring、-field、road-run-*
+# The rest of the way back (F-15): road-pass, -spring, -field, road-run-*
+# 帰り道の残りの場所（F-15）：road-pass、-spring、-field、road-run-*
+REST = "assets/pipeline/road/build_rest.sh final"
 CAST = "assets/pipeline/cast/build.sh"
+# Problem labels; main() tells missing from stale (exit code) and characters from scenes by these prefixes
+# 問題のラベル。main() はこの接頭辞で欠落と古いもの（終了コード）、登場人物とシーンを見分ける
+MISSING = "missing"
+STALE = "stale"
+CHARACTER = "character"
 
 
 def builder(name: str) -> str:
@@ -44,17 +79,29 @@ def builder(name: str) -> str:
     if name.startswith(("road-pass", "road-spring", "road-field", "road-run")):
         return REST
     if name.startswith("village-light-"):
-        return BUILDERS["village"]  # 村子的黄昏、夜、雨的光照子包（F-11），村子的 final 一起生成
+        # The village's dusk, night and rain lighting sub-packs (F-11), built along with the village's final
+        # 村の夕暮れ、夜、雨のライティングのサブパック（F-11）。村の final と一緒に生成される
+        return BUILDERS["village"]
     if name == "road-common":
-        return "assets/pipeline/road/build.sh final"  # 共用的路边包：河、村子、其余几处的 final 都往里加
-    return f"（不知道哪条流水线生成 {name}，问前端）"
+        # The shared roadside pack: the river's, the village's and the rest's final builds all add to it
+        # 共用の道端パック：川、村、残りの場所の final がどれもここに追加する
+        return "assets/pipeline/road/build.sh final"
+    return (
+        f"(unknown which pipeline builds {name}; ask the frontend)"
+        f" / （{name} をどのパイプラインが生成するか不明。フロントエンドに聞くこと）"
+    )
 
 
 HEX64 = re.compile(r"[0-9a-f]{64}")
 
 
 def shape(v: object) -> object:
-    """清单去掉派生的值：数字、布尔、sha256 都换成占位，只留键、文件名、档名这些"""
+    """The manifest without derived values: numbers, booleans and sha256 become placeholders; keys, file names and
+    tier names remain.
+
+    派生した値を除いたマニフェスト：数値、真偽値、sha256 はプレースホルダーに置き換え、
+    キー、ファイル名、段階名などだけを残す。
+    """
     if isinstance(v, dict):
         return {k: shape(x) for k, x in v.items()}
     if isinstance(v, list):
@@ -68,8 +115,11 @@ def same_build(committed: bytes, built: bytes) -> bool:
     a, b = json.loads(committed), json.loads(built)
     if isinstance(a, dict) and isinstance(b, dict) and "inputs" in a:
         return bool(a["inputs"] == b.get("inputs"))
-    # road-common 可由村子或归途管线合并；顶层 note 只是生成器署名，不是资源结构。
-    # 仅去掉这一个说明字段，files / textures / 嵌套结构和 inputs 校验照旧。
+    # road-common can be merged by the village or the way-back pipeline; the top-level note is just the generator's
+    # signature, not part of the asset structure. Only this one note field is dropped; files / textures / nested
+    # structure and the inputs check stay as they are.
+    # road-common は村または帰り道のパイプラインがマージしうる。トップレベルの note は生成器の署名にすぎず、
+    # アセットの構造ではない。この説明フィールドだけを外し、files / textures / 入れ子の構造と inputs の検査はそのまま。
     if isinstance(a, dict) and isinstance(b, dict):
         a.pop("note", None)
         b.pop("note", None)
@@ -94,15 +144,21 @@ def scenes(commit: Path, built: Path, out: Path) -> list[tuple[str, str]]:
         if link.is_symlink() or link.exists():
             link.unlink()
         if not build.is_dir():
-            problems.append((d.name, "缺"))
+            problems.append((d.name, f"{MISSING} / 欠落"))
             continue
         link.symlink_to(build.resolve(), target_is_directory=True)
         for c in committed:
             b = build / c.name
             if not b.is_file():
-                problems.append((d.name, f"缺 build/{c.name}"))
+                problems.append((d.name, f"{MISSING} build/{c.name} / build/{c.name} が欠落"))
             elif not same_build(c.read_bytes(), b.read_bytes()):
-                problems.append((d.name, f"旧（build/{c.name} 不是照这个提交的流水线生成的）"))
+                problems.append(
+                    (
+                        d.name,
+                        f"{STALE} (build/{c.name} was not built by this commit's pipeline)"
+                        f" / 古い（build/{c.name} はこのコミットのパイプラインで生成されていない）",
+                    )
+                )
     return problems
 
 
@@ -121,10 +177,16 @@ def cast(commit: Path, built: Path, out: Path) -> list[tuple[str, str]]:
         for kind, f in c["files"].items():
             path = build / name / f"{kind}.glb"
             if not path.is_file():
-                problems.append((f"人物 {name}", f"缺 {kind}.glb"))
+                problems.append((f"{CHARACTER} {name}", f"{MISSING} {kind}.glb / {kind}.glb が欠落"))
                 break
             if sha256(path) != f["sha256"]:
-                problems.append((f"人物 {name}", f"旧（{kind}.glb 的 sha256 和 cast.json 对不上）"))
+                problems.append(
+                    (
+                        f"{CHARACTER} {name}",
+                        f"{STALE} ({kind}.glb's sha256 does not match cast.json)"
+                        f" / 古い（{kind}.glb の sha256 が cast.json と合わない）",
+                    )
+                )
                 break
     return problems
 
@@ -135,19 +197,22 @@ def main(argv: list[str]) -> None:
     commit, built, out = Path(argv[1]).resolve(), Path(argv[2]).resolve(), Path(argv[3])
     problems = scenes(commit, built, out) + cast(commit, built, out)
     if not problems:
-        print("场景包和人物文件都齐，和提交的清单一致")
+        print(
+            "Scene packs and character files are all present and match the committed manifests"
+            " / シーンパックと登場人物のファイルはすべて揃っており、コミットのマニフェストと一致"
+        )
         return
-    print("场景包或人物文件不齐：")
+    print("Scene packs or character files are incomplete / シーンパックか登場人物のファイルが揃っていない:")
     commands: list[str] = []
     for what, why in problems:
-        print(f"  {what}：{why}")
-        cmd = CAST if what.startswith("人物") else builder(what)
+        print(f"  {what}: {why}")
+        cmd = CAST if what.startswith(CHARACTER) else builder(what)
         if cmd not in commands:
             commands.append(cmd)
-    print("在仓库根（BPY_PYTHON 设好）跑：")
+    print("Run at the repo root (with BPY_PYTHON set) / リポジトリのルートで実行（BPY_PYTHON を設定しておく）:")
     for cmd in commands:
         print(f"  {cmd}")
-    sys.exit(1 if any(not why.startswith("旧") for _, why in problems) else 2)
+    sys.exit(1 if any(not why.startswith(STALE) for _, why in problems) else 2)
 
 
 if __name__ == "__main__":

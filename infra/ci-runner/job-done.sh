@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# runner 的 job 完成钩子：清掉这个 job 的工作目录（检出的代码、生成物）和临时目录。
-# 下载过的工具和包缓存（_work/_tool、~/.cache）留着，下次快一些；它们只来自公开的源。
+# The runner's job-completed hook: clears this job's work directory (checked-out code, generated files) and temp directory.
+# runner のジョブ完了フック：このジョブの作業ディレクトリ（チェックアウトしたコード、生成物）と一時ディレクトリを空にする。
+# Downloaded tools and package caches (_work/_tool, ~/.cache) are kept to make the next run faster; they come only from public sources.
+# ダウンロード済みのツールとパッケージのキャッシュ（_work/_tool、~/.cache）は次回を速くするために残す。これらは公開ソースからしか来ない。
 set -u
 for d in "${GITHUB_WORKSPACE:-}" "${RUNNER_TEMP:-}"; do
   if [ -n "$d" ] && [ -d "$d" ]; then

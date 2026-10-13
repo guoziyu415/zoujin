@@ -1,4 +1,4 @@
-// Which shot each ending line is in (project folder ux/slice/ending-shots.md「句子对镜头」, data #107's set pieces):
+// Which shot each ending line is in (project folder ux/slice/ending-shots.md, the lines-to-shots table, data #107's set pieces):
 // by set piece, the shot of each line in order (1-based like setPieceVoices keys). The 3D layer frames the shots;
 // lines not listed here (narration from the server, an unknown piece) stay in whatever shot is on.
 const CURTAIN = [1, 2, 2, 2, 3, 3, 3, 4, 5, 5]; // storm-in / crowd-makes-way and their -you variants

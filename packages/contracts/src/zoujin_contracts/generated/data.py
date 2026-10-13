@@ -1,4 +1,5 @@
-# 生成的文件，不要手改：改 packages/contracts/schemas/ 后跑 `uv run contracts-gen`。
+# Generated file, do not edit by hand: change packages/contracts/schemas/ and run `uv run contracts-gen`.
+# 生成ファイル。手で編集しないこと：packages/contracts/schemas/ を変更して `uv run contracts-gen` を実行する。
 
 from __future__ import annotations
 
@@ -8,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 type ActId = Annotated[str, Field(pattern="^act\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="ActId")]
 """
-幕：`act.` 加小写 slug（可以有 `.` 和 `-`）
+Act: `act.` plus a lowercase slug (may contain `.` and `-`) / 幕：`act.` に小文字の slug（`.` と `-` を含めてよい）
 """
 
 
@@ -17,43 +18,43 @@ type Activity = Annotated[
     Field(title="Activity"),
 ]
 """
-（1.1）人物此刻在做什么，同 api-contract 2.3；前端不认识的按 idle（2.4）
+(1.1) What the character is doing right now, same as api-contract 2.3; the frontend treats unknown values as idle (2.4) / （1.1）登場人物がいま何をしているか。api-contract 2.3 と同じ。フロントエンドが知らない値は idle として扱う（2.4）
 """
 
 
 type AffordanceId = Annotated[str, Field(pattern="^aff\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="AffordanceId")]
 """
-情境动作（1.1）：`aff.` 加小写 slug（可以有 `.` 和 `-`）
+Affordance (situational action, 1.1): `aff.` plus a lowercase slug (may contain `.` and `-`) / 状況アクション（1.1）：`aff.` に小文字の slug（`.` と `-` を含めてよい）
 """
 
 
 type AidId = Annotated[str, Field(pattern="^aid\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="AidId")]
 """
-互助（1.1）：`aid.` 加小写 slug（可以有 `.` 和 `-`）
+Aid (1.1): `aid.` plus a lowercase slug (may contain `.` and `-`) / 助け合い（1.1）：`aid.` に小文字の slug（`.` と `-` を含めてよい）
 """
 
 
 type BeatId = Annotated[str, Field(pattern="^beat\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="BeatId")]
 """
-节拍：`beat.` 加小写 slug（可以有 `.` 和 `-`）；节拍的变体也用这个前缀（`beat.25.v-no-doubt`）
+Beat: `beat.` plus a lowercase slug (may contain `.` and `-`); beat variants use the same prefix (`beat.25.v-no-doubt`) / ビート：`beat.` に小文字の slug（`.` と `-` を含めてよい）。ビートのバリアントも同じ接頭辞を使う（`beat.25.v-no-doubt`）
 """
 
 
 type Rank = Annotated[int, Field(ge=1)]
 """
-受影响深浅，从 1 起；unchanged 时 null
+How deeply affected, starting at 1; null when unchanged / 影響の深さ。1 から始まる。unchanged のときは null
 """
 
 
 type CharacterId = Annotated[str, Field(pattern="^char\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="CharacterId")]
 """
-人物：`char.` 加小写 slug（可以有 `.` 和 `-`）
+Character: `char.` plus a lowercase slug (may contain `.` and `-`) / 登場人物：`char.` に小文字の slug（`.` と `-` を含めてよい）
 """
 
 
 class CheckResult(BaseModel):
     """
-    自检结果（第 3 节）
+    Self-check result (section 3) / セルフチェックの結果（第 3 節）
     """
 
     model_config = ConfigDict(
@@ -63,24 +64,24 @@ class CheckResult(BaseModel):
     status: Literal["passed", "rewritten", "downgraded", "rejected"]
     attempts: Annotated[int, Field(ge=1, le=3)]
     """
-    共尝试几次（改写上限 2 次，即最多 3）
+    Total number of attempts (at most 2 rewrites, so at most 3) / 試行の総回数（書き直しは最大 2 回、つまり最大 3）
     """
     failedRules: list[
         Literal["R1-anchor", "R2-precondition", "R3-time", "R4-knowledge", "R5-persona", "R6-safety", "R7-capability"]
     ]
     reason: str | None = None
     """
-    给「なぜこうなった？」和评审看的一句日语
+    One Japanese sentence for 「なぜこうなった？」 and for reviewers / 「なぜこうなった？」とレビュアー向けの日本語の一文
     """
     checker: str
     """
-    自检用的模型/规则版本
+    Model/rule version used for the self-check / セルフチェックに使ったモデル／ルールのバージョン
     """
 
 
 class Cite(BaseModel):
     """
-    原文出处，可以被机器校验（第 0 节）
+    Source in the original text, machine-checkable (section 0) / 原文の出典。機械で検証できる（第 0 節）
     """
 
     model_config = ConfigDict(
@@ -89,21 +90,21 @@ class Cite(BaseModel):
     )
     source: str
     """
-    原文版本 ID，如 "aozora:1567_ruby_4948@sha256:2a437c047d7f"（对规范化全文求哈希）
+    Original-text version ID, e.g. "aozora:1567_ruby_4948@sha256:2a437c047d7f" (hash of the normalized full text) / 原文のバージョン ID。例："aozora:1567_ruby_4948@sha256:2a437c047d7f"（正規化した全文のハッシュ）
     """
     para: Annotated[int, Field(ge=1)]
     """
-    规范化文本里的段落号，从 1 开始
+    Paragraph number in the normalized text, starting at 1 / 正規化テキスト内の段落番号。1 から始まる
     """
     quote: Annotated[str, Field(max_length=80, min_length=1)]
     """
-    原文片段，≤ 80 字。必须是该段的精确子串（跨字段的规矩，由 build_world 校验，不在 Schema 里）
+    Excerpt from the original, ≤ 80 characters. Must be an exact substring of that paragraph (a cross-field rule, checked by build_world, not in the Schema) / 原文の抜粋。80 字以内。その段落の正確な部分文字列でなければならない（フィールドをまたぐ規則なので build_world が検証し、Schema には含めない）
     """
 
 
 class ClockDeadlineEarliestArrivalCue(BaseModel):
     """
-    （1.5，S-066 ①）本局第一次到下限时说一次的话
+    (1.5, S-066 ①) A line said once, the first time this playthrough reaches the lower bound / （1.5、S-066 ①）このプレイで初めて下限に達したときに一度だけ言うセリフ
     """
 
     model_config = ConfigDict(
@@ -125,13 +126,13 @@ type Band = Annotated[list[BandItem | str], Field(max_length=2, min_length=2)]
 
 type EdgeId = Annotated[str, Field(pattern="^edge\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="EdgeId")]
 """
-因果边：`edge.` 加小写 slug（可以有 `.` 和 `-`）
+Causal edge: `edge.` plus a lowercase slug (may contain `.` and `-`) / 因果エッジ：`edge.` に小文字の slug（`.` と `-` を含めてよい）
 """
 
 
 class EndingWorldContrast(BaseModel):
     """
-    （1.1，S-026）「原作では…／あなたの世界では…」
+    (1.1, S-026) 「原作では…／あなたの世界では…」 / （1.1、S-026）「原作では…／あなたの世界では…」
     """
 
     model_config = ConfigDict(
@@ -151,13 +152,13 @@ class EndingCardCharacterLinesItem(BaseModel):
     character: CharacterId
     line: Annotated[str, Field(max_length=40, min_length=1)]
     """
-    ≤ 40 字
+    ≤ 40 characters / 40 字以内
     """
 
 
 class EndingCard(BaseModel):
     """
-    （1.1，S-049、S-051）结局卡，字数由这里保证。1.6 起每一局都生成：生成的结局取 rank 最前的 1〜3 人，一个也没排上名时放梅洛斯一句（按他的 original）；校验两次不过、改用模板尾声的局，字段取 ux-design 11.4 对应那一组的预写句子
+    (1.1, S-049, S-051) Ending card; the character limits are guaranteed here. Generated for every playthrough from 1.6: a generated ending takes the 1–3 characters with the highest rank, and when nobody is ranked puts one line for Melos (from his original); for a playthrough that failed validation twice and fell back to the template epilogue, the fields take the pre-written sentences of the matching set in ux-design 11.4 / （1.1、S-049、S-051）エンディングカード。字数はここで保証する。1.6 以降はすべてのプレイで生成する：生成されたエンディングでは rank が上位の 1〜3 人を取り、誰も順位に入らないときはメロスの一文を置く（彼の original による）。検証に 2 回失敗してテンプレートのエピローグに切り替えたプレイでは、ux-design 11.4 の該当する組の事前に書いた文をフィールドに使う
     """
 
     model_config = ConfigDict(
@@ -166,25 +167,25 @@ class EndingCard(BaseModel):
     )
     title: Annotated[str, Field(max_length=14, min_length=1)]
     """
-    称号 ≤ 14 字
+    Title ≤ 14 characters / 称号は 14 字以内
     """
     subtitle: Annotated[str, Field(max_length=26, min_length=1)]
     """
-    世界的去向 ≤ 26 字
+    Where the world ends up ≤ 26 characters / 世界の行く末は 26 字以内
     """
     contrast: Annotated[str, Field(max_length=48, min_length=1)]
     """
-    「原作との違い」≤ 48 字
+    「原作との違い」 ≤ 48 characters / 「原作との違い」は 48 字以内
     """
     characterLines: Annotated[list[EndingCardCharacterLinesItem], Field(max_length=3, min_length=1)]
     """
-    （1.6 起 1〜3 人）影响最深的 1〜3 人，一个也没排上名时是梅洛斯一句（卡片按最多 3 行排）
+    (1–3 characters from 1.6) The 1–3 most affected characters; when nobody is ranked, one line for Melos (the card is laid out for at most 3 lines) / （1.6 以降 1〜3 人）最も影響を受けた 1〜3 人。誰も順位に入らないときはメロスの一文（カードは最大 3 行でレイアウトする）
     """
 
 
 class EndingShare(BaseModel):
     """
-    生成产物的存储引用
+    Storage reference of the generated artifact / 生成された成果物の保存先への参照
     """
 
     model_config = ConfigDict(
@@ -198,49 +199,49 @@ class EndingShare(BaseModel):
 
 type EndingId = Annotated[str, Field(pattern="^end_[0-7][0-9A-HJKMNP-TV-Z]{25}$", title="EndingId")]
 """
-结局：`end_` 加 ULID（26 位 Crockford base32，大写）
+Ending: `end_` plus a ULID (26 Crockford base32 characters, uppercase) / エンディング：`end_` に ULID（Crockford base32 で 26 文字、大文字）
 """
 
 
 type EventId = Annotated[str, Field(pattern="^ev_[0-7][0-9A-HJKMNP-TV-Z]{25}$", title="EventId")]
 """
-事件：`ev_` 加 ULID（26 位 Crockford base32，大写）
+Event: `ev_` plus a ULID (26 Crockford base32 characters, uppercase) / イベント：`ev_` に ULID（Crockford base32 で 26 文字、大文字）
 """
 
 
 type ExitId = Annotated[str, Field(pattern="^exit\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="ExitId")]
 """
-幕末去处：`exit.` 加小写 slug（可以有 `.` 和 `-`）
+End-of-act destination: `exit.` plus a lowercase slug (may contain `.` and `-`) / 幕末の行き先：`exit.` に小文字の slug（`.` と `-` を含めてよい）
 """
 
 
 type FactId = Annotated[str, Field(pattern="^fact\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="FactId")]
 """
-事实：`fact.` 加小写 slug（可以有 `.` 和 `-`）
+Fact: `fact.` plus a lowercase slug (may contain `.` and `-`) / 事実：`fact.` に小文字の slug（`.` と `-` を含めてよい）
 """
 
 
 type ItemId = Annotated[str, Field(pattern="^item\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="ItemId")]
 """
-物品（1.1）：`item.` 加小写 slug（可以有 `.` 和 `-`）
+Item (1.1): `item.` plus a lowercase slug (may contain `.` and `-`) / アイテム（1.1）：`item.` に小文字の slug（`.` と `-` を含めてよい）
 """
 
 
 type MemoryId = Annotated[str, Field(pattern="^mem_[0-7][0-9A-HJKMNP-TV-Z]{25}$", title="MemoryId")]
 """
-记忆：`mem_` 加 ULID（26 位 Crockford base32，大写）
+Memory: `mem_` plus a ULID (26 Crockford base32 characters, uppercase) / 記憶：`mem_` に ULID（Crockford base32 で 26 文字、大文字）
 """
 
 
 type ObjectId = Annotated[str, Field(pattern="^obj\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="ObjectId")]
 """
-（1.7）可调查物：`obj.` 加小写 slug（可以有 `.` 和 `-`）
+(1.7) Inspectable object: `obj.` plus a lowercase slug (may contain `.` and `-`) / （1.7）調査可能オブジェクト：`obj.` に小文字の slug（`.` と `-` を含めてよい）
 """
 
 
 class PlaceCrossing(BaseModel):
     """
-    有河的地点
+    Place with a river / 川のある地点
     """
 
     model_config = ConfigDict(
@@ -255,19 +256,19 @@ class PlaceCrossing(BaseModel):
 
 type PlaceId = Annotated[str, Field(pattern="^place\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="PlaceId")]
 """
-地点：`place.` 加小写 slug（可以有 `.` 和 `-`）
+Place: `place.` plus a lowercase slug (may contain `.` and `-`) / 地点：`place.` に小文字の slug（`.` と `-` を含めてよい）
 """
 
 
 type PlaythroughId = Annotated[str, Field(pattern="^pt_[0-7][0-9A-HJKMNP-TV-Z]{25}$", title="PlaythroughId")]
 """
-一局：`pt_` 加 ULID（26 位 Crockford base32，大写）
+Playthrough: `pt_` plus a ULID (26 Crockford base32 characters, uppercase) / プレイ 1 回：`pt_` に ULID（Crockford base32 で 26 文字、大文字）
 """
 
 
 type PromiseId = Annotated[str, Field(pattern="^prm_[0-7][0-9A-HJKMNP-TV-Z]{25}$", title="PromiseId")]
 """
-约定（1.1）：`prm_` 加 ULID（26 位 Crockford base32，大写）
+Promise (1.1): `prm_` plus a ULID (26 Crockford base32 characters, uppercase) / 約束（1.1）：`prm_` に ULID（Crockford base32 で 26 文字、大文字）
 """
 
 
@@ -276,7 +277,7 @@ type PromiseTemplateId = Annotated[
     Field(pattern="^promise\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="PromiseTemplateId"),
 ]
 """
-约定模板（1.1）：`promise.` 加小写 slug（可以有 `.` 和 `-`）
+Promise template (1.1): `promise.` plus a lowercase slug (may contain `.` and `-`) / 約束テンプレート（1.1）：`promise.` に小文字の slug（`.` と `-` を含めてよい）
 """
 
 
@@ -288,13 +289,13 @@ type RecordedAt = Annotated[
     ),
 ]
 """
-真实时间，ISO 8601 UTC，以 Z 结尾（第 0 节）。只用于审计和分析，不参与故事逻辑。用 pattern 校验，不靠 format
+Real time, ISO 8601 UTC, ending in Z (section 0). Used only for auditing and analysis, not in story logic. Checked with pattern, not format / 実時間。ISO 8601 UTC で末尾は Z（第 0 節）。監査と分析にのみ使い、物語のロジックには関与しない。format ではなく pattern で検証する
 """
 
 
 class Relationship(BaseModel):
     """
-    关系，不单独存，按记忆推出（第 4 节）
+    Relationship; not stored separately, derived from memories (section 4) / 関係。別に保存せず、記憶から導く（第 4 節）
     """
 
     model_config = ConfigDict(
@@ -304,39 +305,39 @@ class Relationship(BaseModel):
     character: CharacterId
     trust: Annotated[int, Field(ge=-100, le=100)]
     """
-    初值 + 未删除记忆的 trustDelta 之和，截断到 -100..100
+    Initial value + the sum of trustDelta over undeleted memories, clamped to -100..100 / 初期値 + 削除されていない記憶の trustDelta の合計。-100..100 に切り詰める
     """
     label: str
     """
-    由 trust 区间映射（第 4 节的表）
+    Mapped from the trust range (the table in section 4) / trust の区間から対応付ける（第 4 節の表）
     """
     level: Literal[1, 2, 3, 4, 5]
     """
-    （1.5）同一区间的档位，接口里叫 relationLevel
+    (1.5) The level within the same range; called relationLevel in the API / （1.5）同じ区間内の段階。API では relationLevel と呼ぶ
     """
 
 
 type RoleId = Annotated[str, Field(pattern="^role\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="RoleId")]
 """
-玩家身份：`role.` 加小写 slug（可以有 `.` 和 `-`）
+Player role: `role.` plus a lowercase slug (may contain `.` and `-`) / プレイヤーの身分：`role.` に小文字の slug（`.` と `-` を含めてよい）
 """
 
 
 type RuleId = Annotated[str, Field(pattern="^rule\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="RuleId")]
 """
-全局规则（globalRules）：`rule.` 加小写 slug（可以有 `.` 和 `-`）
+Global rule (globalRules): `rule.` plus a lowercase slug (may contain `.` and `-`) / グローバルルール（globalRules）：`rule.` に小文字の slug（`.` と `-` を含めてよい）
 """
 
 
 type RunFactId = Annotated[str, Field(pattern="^rf_[0-7][0-9A-HJKMNP-TV-Z]{25}$", title="RunFactId")]
 """
-本局即兴设定（1.1）：`rf_` 加 ULID（26 位 Crockford base32，大写）
+Improvised fact for this playthrough (1.1): `rf_` plus a ULID (26 Crockford base32 characters, uppercase) / このプレイの即興の設定（1.1）：`rf_` に ULID（Crockford base32 で 26 文字、大文字）
 """
 
 
 type SceneId = Annotated[str, Field(pattern="^scene\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="SceneId")]
 """
-3D 场景：`scene.` 加小写 slug（可以有 `.` 和 `-`）
+3D scene: `scene.` plus a lowercase slug (may contain `.` and `-`) / 3D シーン：`scene.` に小文字の slug（`.` と `-` を含めてよい）
 """
 
 
@@ -362,13 +363,13 @@ type SchemaVersion = Annotated[
     Field(title="SchemaVersion"),
 ]
 """
-写入时的契约版本（第 0 节「版本」）。1.5 冻结，以后只做加法，每个新版本往这里加一个值。1.6：StateVar.valueRequires（C-16）、结局卡 1〜3 人。1.7：位置点（relocate 和 ActExit 的 spot、WorldState.spots）、Character.group、ActExit.arrival / sub、Affordance.playerSpot（C-18）、Act.plan（C-19）、WorldModel.setPieces（S-080 ④）、WorldModel.objects。1.8：Affordance.pastLabel，事件 summary 里玩家一律写身份名。1.9：Clock.labels.daysKnownBy。1.10：Role.summary、WorldModel.ruby，Character.reading 每个人物都填。1.11：Character.originalEnding、endings.characters / templates / fates。1.12：字段不变，没有参与人物的节拍在同一场景就算玩家在场（zoujin_worldsim.sees）。1.13：Character.knows[].inferred。1.14：Act.stops、Place.shortName、Beat.arriveBefore。1.15：Act.endLines、Act.closingLine
+Contract version at write time (section 0 "Versions"). Frozen at 1.5; later versions only add, and each new version adds a value here. 1.6: StateVar.valueRequires (C-16), ending cards with 1–3 characters. 1.7: spots (spot on relocate and ActExit, WorldState.spots), Character.group, ActExit.arrival / sub, Affordance.playerSpot (C-18), Act.plan (C-19), WorldModel.setPieces (S-080 ④), WorldModel.objects. 1.8: Affordance.pastLabel; event summaries always refer to the player by role name. 1.9: Clock.labels.daysKnownBy. 1.10: Role.summary, WorldModel.ruby; Character.reading filled for every character. 1.11: Character.originalEnding, endings.characters / templates / fates. 1.12: fields unchanged; a beat with no participating characters counts as the player being present if in the same scene (zoujin_worldsim.sees). 1.13: Character.knows[].inferred. 1.14: Act.stops, Place.shortName, Beat.arriveBefore. 1.15: Act.endLines, Act.closingLine / 書き込み時の契約バージョン（第 0 節「バージョン」）。1.5 で凍結し、以後は追加のみ。新しいバージョンごとにここへ値を 1 つ追加する。1.6：StateVar.valueRequires（C-16）、エンディングカードは 1〜3 人。1.7：位置点（relocate と ActExit の spot、WorldState.spots）、Character.group、ActExit.arrival / sub、Affordance.playerSpot（C-18）、Act.plan（C-19）、WorldModel.setPieces（S-080 ④）、WorldModel.objects。1.8：Affordance.pastLabel。イベントの summary ではプレイヤーを常に身分名で書く。1.9：Clock.labels.daysKnownBy。1.10：Role.summary、WorldModel.ruby。Character.reading は全登場人物で埋める。1.11：Character.originalEnding、endings.characters / templates / fates。1.12：フィールドは変更なし。参加する登場人物のいないビートは、同じシーンにいればプレイヤーが居合わせたとみなす（zoujin_worldsim.sees）。1.13：Character.knows[].inferred。1.14：Act.stops、Place.shortName、Beat.arriveBefore。1.15：Act.endLines、Act.closingLine
 """
 
 
 class SetPieceOnOption1(BaseModel):
     """
-    什么时候演：这个节拍发生时玩家在场（进结局时一起结算的节拍不看在场，算进结局演出，2.11），或玩家的这种动作判定之后
+    When it plays: when this beat happens with the player present (beats settled together on entering the ending ignore presence and count as part of the ending staging, 2.11), or after this kind of player action is judged / いつ演じるか：このビートが起きたときにプレイヤーが居合わせた場合（エンディングに入るときにまとめて精算するビートは居合わせたかを見ず、エンディングの演出に含める、2.11）、またはプレイヤーのこの種のアクションが判定された後
     """
 
     model_config = ConfigDict(
@@ -380,7 +381,7 @@ class SetPieceOnOption1(BaseModel):
 
 class SetPieceOnOption2(BaseModel):
     """
-    什么时候演：这个节拍发生时玩家在场（进结局时一起结算的节拍不看在场，算进结局演出，2.11），或玩家的这种动作判定之后
+    When it plays: when this beat happens with the player present (beats settled together on entering the ending ignore presence and count as part of the ending staging, 2.11), or after this kind of player action is judged / いつ演じるか：このビートが起きたときにプレイヤーが居合わせた場合（エンディングに入るときにまとめて精算するビートは居合わせたかを見ず、エンディングの演出に含める、2.11）、またはプレイヤーのこの種のアクションが判定された後
     """
 
     model_config = ConfigDict(
@@ -391,15 +392,15 @@ class SetPieceOnOption2(BaseModel):
         "examine", "give", "follow", "block", "help", "wait", "go", "shortcut", "run-together", "hasten", "move"
     ]
     """
-    api-contract 3.8 的 kind
+    The kind from api-contract 3.8 / api-contract 3.8 の kind
     """
     target: Annotated[str | None, Field(max_length=128, min_length=1)] = None
     """
-    对人物的动作写人物 ID，move 写地点 ID，go 写出口通往的地点（布局 exits[].place），examine 写 interactable 的 ID（obj.*）；省略 = 不看对象
+    For actions on a character, the character ID; for move, the place ID; for go, the place the exit leads to (layout exits[].place); for examine, the interactable's ID (obj.*); omitted = the target is not checked / 登場人物へのアクションは登場人物の ID、move は地点の ID、go は出口の行き先の地点（レイアウトの exits[].place）、examine は interactable の ID（obj.*）を書く。省略 = 対象は見ない
     """
     refused: Literal[True] | None = None
     """
-    只在被拒时演；省略 = 只在做成时（done / partial）
+    Plays only when refused; omitted = only when it succeeds (done / partial) / 拒否されたときだけ演じる。省略 = 成功したとき（done / partial）だけ
     """
 
 
@@ -419,7 +420,7 @@ class SetPieceLinesItemOption1(BaseModel):
     )
     narration: Annotated[str, Field(min_length=1)]
     """
-    一行地の文（日语）
+    One line of 地の文 (in Japanese) / 地の文 1 行（日本語）
     """
 
 
@@ -431,7 +432,7 @@ class SetPieceLinesItemOption2(BaseModel):
     speaker: CharacterId
     line: Annotated[str, Field(min_length=1)]
     """
-    预录句，也是字幕（日语）
+    A pre-recorded line, also the subtitle (in Japanese) / 事前収録セリフ。字幕も兼ねる（日本語）
     """
 
 
@@ -446,49 +447,49 @@ class SetPieceLearnsItem(BaseModel):
 
 type SetPieceId = Annotated[str, Field(pattern="^piece\\.[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="SetPieceId")]
 """
-（1.7）固定演出：`piece.` 加小写 slug（可以有 `.` 和 `-`）
+(1.7) Set piece: `piece.` plus a lowercase slug (may contain `.` and `-`) / （1.7）固定演出：`piece.` に小文字の slug（`.` と `-` を含めてよい）
 """
 
 
 type SpotId = Annotated[str, Field(max_length=64, pattern="^[a-z0-9]+(?:[.-][a-z0-9]+)*$", title="SpotId")]
 """
-（1.7）场景布局里的位置点（api-contract 第 0 节 spot，assets/scenes/<场景>/layout.json 的 spots），小写 slug，例 stake-front、way.castle。不带类型前缀：名字由前端在布局里定
+(1.7) A spot in the scene layout (api-contract section 0 spot; the spots in assets/scenes/<scene>/layout.json), a lowercase slug, e.g. stake-front, way.castle. No type prefix: the frontend sets the names in the layout / （1.7）シーンレイアウト内の位置点（api-contract 第 0 節の spot、assets/scenes/<シーン>/layout.json の spots）。小文字の slug。例：stake-front、way.castle。型の接頭辞は付けない：名前はフロントエンドがレイアウトで決める
 """
 
 
 type StoryTime = Annotated[int, Field(ge=0, title="StoryTime")]
 """
-故事时间 t：从 Day 0（约束之日）00:00 起算的故事分钟数（第 0 节）
+Story time t: story minutes counted from 00:00 on Day 0 (the day of the promise) (section 0) / 物語時間 t：Day 0（約束の日）00:00 から数えた物語上の分数（第 0 節）
 """
 
 
 type TLabel = Annotated[str, Field(title="TLabel")]
 """
-时间的说法，按世界模型的 clock.labels 生成，如「約束の日・夜」（第 0 节）
+How a time is phrased, generated from the world model's clock.labels, e.g. 「約束の日・夜」 (section 0) / 時刻の言い表し。世界モデルの clock.labels から生成する。例：「約束の日・夜」（第 0 節）
 """
 
 
 type TurnId = Annotated[str, Field(pattern="^turn_[0-7][0-9A-HJKMNP-TV-Z]{25}$", title="TurnId")]
 """
-一轮：`turn_` 加 ULID（26 位 Crockford base32，大写）
+Turn: `turn_` plus a ULID (26 Crockford base32 characters, uppercase) / ターン：`turn_` に ULID（Crockford base32 で 26 文字、大文字）
 """
 
 
 type UtteranceId = Annotated[str, Field(pattern="^utt_[0-7][0-9A-HJKMNP-TV-Z]{25}$", title="UtteranceId")]
 """
-一句话：`utt_` 加 ULID（26 位 Crockford base32，大写）
+Utterance: `utt_` plus a ULID (26 Crockford base32 characters, uppercase) / 発話：`utt_` に ULID（Crockford base32 で 26 文字、大文字）
 """
 
 
 type VarId = Annotated[str, Field(pattern="^var\\.[a-zA-Z0-9]+(?:[.-][a-zA-Z0-9]+)*$", title="VarId")]
 """
-状态变量：`var.` 加 slug（可以有 `.` 和 `-`），段里可以用驼峰（`var.player.companionOf`、`var.player.knowsShortcut`、`var.melos.knowsTyranny`），第 0 节（1.6 写清）
+State variable: `var.` plus a slug (may contain `.` and `-`); segments may use camelCase (`var.player.companionOf`, `var.player.knowsShortcut`, `var.melos.knowsTyranny`), section 0 (made explicit in 1.6) / 状態変数：`var.` に slug（`.` と `-` を含めてよい）。各セグメントはキャメルケースでもよい（`var.player.companionOf`、`var.player.knowsShortcut`、`var.melos.knowsTyranny`）。第 0 節（1.6 で明記）
 """
 
 
 type WorldEndingId = Annotated[str, Field(pattern="^[a-z0-9]+(?:-[a-z0-9]+)*$", title="WorldEndingId")]
 """
-世界结局的底线类 ID，不带前缀的小写短横线 slug，如 `canon-reunion`
+ID of a world-ending baseline class: a lowercase hyphenated slug with no prefix, e.g. `canon-reunion` / 世界のエンディングの基本類型の ID。接頭辞なしの小文字ハイフン区切り slug。例：`canon-reunion`
 """
 
 
@@ -504,7 +505,7 @@ class WorldModelBookSource(BaseModel):
     textSha256: Annotated[str, Field(pattern="^[0-9a-f]{64}$")]
     retrievedAt: str
     """
-    取得原文的日期
+    Date the original text was retrieved / 原文を取得した日付
     """
     license: Literal["public-domain"] = "public-domain"
 
@@ -516,7 +517,7 @@ class WorldModelBook(BaseModel):
     )
     id: str
     """
-    如 "hashire-merosu"
+    E.g. "hashire-merosu" / 例："hashire-merosu"
     """
     title: str
     author: str
@@ -534,7 +535,7 @@ class WorldModelGlobalRulesItem(BaseModel):
     inferred: Literal[True] = True
     cite: list[Cite] | None = None
     """
-    有原文依据时（1.4）
+    When there is support in the original text (1.4) / 原文に根拠があるとき（1.4）
     """
 
 
@@ -546,13 +547,13 @@ class WorldModelEndingsTemplatesItemLinesItem(BaseModel):
     character: CharacterId
     line: Annotated[str, Field(min_length=1)]
     """
-    这个人物的结局一句，≤ 40 字
+    One line on this character's ending, ≤ 40 characters / この登場人物の結末の一文。40 字以内
     """
 
 
 class WorldModelEndingsFates(BaseModel):
     """
-    （1.11，B-9）模板没写 fate 时的行方，按 Ending.player.fate.id 取：结局的地点在场 witness，不在 elsewhere（ux-design 11.4）
+    (1.11, B-9) The 行方 used when the template has no fate, taken by Ending.player.fate.id: witness if present at the ending's place, elsewhere if not (ux-design 11.4) / （1.11、B-9）テンプレートに fate がないときの行方。Ending.player.fate.id で取る：エンディングの地点に居合わせたら witness、いなければ elsewhere（ux-design 11.4）
     """
 
     model_config = ConfigDict(
@@ -573,17 +574,17 @@ class WorldModelRubyItem(BaseModel):
     )
     word: Annotated[str, Field(min_length=1)]
     """
-    字幕里的写法，前端按最长匹配找
+    Spelling as it appears in subtitles; the frontend finds it by longest match / 字幕での表記。フロントエンドが最長一致で探す
     """
     reading: Annotated[str, Field(min_length=1)]
     """
-    word 整个词的读音，平假名
+    Reading of the whole word, in hiragana / word 全体の読み。ひらがな
     """
 
 
 class WorldObject(BaseModel):
     """
-    （1.7）可调查物（2.12）：场景里可「調べる」的东西。服务端按它出快照的 interactables（kind examine，0 分），不写死；场景出口照布局的 exits
+    (1.7) Inspectable object (2.12): something in a scene the player can 「調べる」 (inspect). The server builds the snapshot's interactables from it (kind examine, 0 minutes) instead of hard-coding them; scene exits follow the layout's exits / （1.7）調査可能オブジェクト（2.12）：シーン内で「調べる」ことができるもの。サーバーはこれをもとにスナップショットの interactables を出す（kind examine、0 分）。ハードコードはしない。シーンの出口はレイアウトの exits に従う
     """
 
     model_config = ConfigDict(
@@ -593,15 +594,15 @@ class WorldObject(BaseModel):
     id: ObjectId
     place: PlaceId
     """
-    在哪个地点（要有场景）
+    Which place it is in (must have a scene) / どの地点にあるか（シーンが必要）
     """
     label: Annotated[str, Field(min_length=1)]
     """
-    按钮上的字（日语，UX 出）
+    The text on the button (in Japanese, written by UX) / ボタンの文字（日本語、UX が作成）
     """
     spot: SpotId | None = None
     """
-    布局里的位置点（前端加）；服务端出快照时要有
+    Spot in the layout (added by the frontend); required when the server builds the snapshot / レイアウト内の位置点（フロントエンドが追加）。サーバーがスナップショットを出すときに必要
     """
     inferred: Literal[True] = True
     note: str | None = None
@@ -609,7 +610,7 @@ class WorldObject(BaseModel):
 
 class ActStart(BaseModel):
     """
-    本幕最早从什么时候开始
+    The earliest time this act can start / この幕が最も早く始まる時刻
     """
 
     model_config = ConfigDict(
@@ -626,17 +627,17 @@ class ActEnd(BaseModel):
     )
     onBeats: list[BeatId]
     """
-    这些节拍任一有了结果就收幕
+    The act closes as soon as any of these beats has an outcome / これらのビートのいずれかに結果が出たら幕を閉じる
     """
     atLatest: StoryTime
     """
-    最迟在这个时间收幕
+    The act closes at this time at the latest / 遅くともこの時刻に幕を閉じる
     """
 
 
 class ActPlanArrival(BaseModel):
     """
-    落地，同 ActExit.arrival
+    Landing, same as ActExit.arrival / 降り立ち。ActExit.arrival と同じ
     """
 
     model_config = ConfigDict(
@@ -645,17 +646,17 @@ class ActPlanArrival(BaseModel):
     )
     line: Annotated[str, Field(min_length=1)]
     """
-    落地后的第一行叙事（地の文，日语），跳转之后显示
+    The first line of narration after landing (地の文, in Japanese), shown after the jump / 降り立った後の最初の語り（地の文、日本語）。ジャンプの後に表示する
     """
     opener: CharacterId | None = None
     """
-    落地后先开口的人物：服务端发起一轮，台词按人设生成，不是问句
+    The character who speaks first after landing: the server starts a turn; the line is generated from the character profile and is not a question / 降り立った後に最初に口を開く登場人物：サーバーがターンを開始し、セリフは人物設定に沿って生成する。疑問文にはしない
     """
 
 
 class ActExitArrival(BaseModel):
     """
-    （1.7）落地：第一行叙事和先开口的人物（ux/slice/jump-transition.md「落地」）
+    (1.7) Landing: the first line of narration and the character who speaks first (ux/slice/jump-transition.md, "Landing") / （1.7）降り立ち：最初の語りと最初に口を開く登場人物（ux/slice/jump-transition.md の「降り立ち」）
     """
 
     model_config = ConfigDict(
@@ -664,23 +665,23 @@ class ActExitArrival(BaseModel):
     )
     line: Annotated[str, Field(min_length=1)]
     """
-    落地后的第一行叙事（地の文，日语），跳转之后显示
+    The first line of narration after landing (地の文, in Japanese), shown after the jump / 降り立った後の最初の語り（地の文、日本語）。ジャンプの後に表示する
     """
     opener: CharacterId | None = None
     """
-    落地后先开口的人物：服务端发起一轮，台词按人设生成，不是问句
+    The character who speaks first after landing: the server starts a turn; the line is generated from the character profile and is not a question / 降り立った後に最初に口を開く登場人物：サーバーがターンを開始し、セリフは人物設定に沿って生成する。疑問文にはしない
     """
 
 
 type Actor = Annotated[Literal["player", "system", "narrator"] | CharacterId, Field(title="Actor")]
 """
-事件是谁做的（不是谁写的，写入方永远是叙事者）：player 玩家，system 按时间表自然发生，narrator 只用于 correction，或人物 ID（第 0 节）
+Who performed the event (not who wrote it; the writer is always the narrator): player = the player, system = happened naturally on schedule, narrator = only for correction, or a character ID (section 0) / イベントを行ったのは誰か（書いたのは誰かではない。書き込むのは常にナレーター）：player はプレイヤー、system はスケジュールどおり自然に起きたもの、narrator は correction 専用、または登場人物の ID（第 0 節）
 """
 
 
 class BeatWindow(BaseModel):
     """
-    故事分钟；原著发生在 canonical；最晚 latest 之后就不可能再发生
+    Story minutes; in the original it happens at canonical; after latest it can no longer happen / 物語上の分。原作では canonical に起きる。latest を過ぎるともう起こり得ない
     """
 
     model_config = ConfigDict(
@@ -703,7 +704,7 @@ class BeatActivitiesItem(BaseModel):
 
 class CausalEdge(BaseModel):
     """
-    因果边（2.5）
+    Causal edge (2.5) / 因果エッジ（2.5）
     """
 
     model_config = ConfigDict(
@@ -713,32 +714,32 @@ class CausalEdge(BaseModel):
     id: EdgeId
     from_: Annotated[BeatId | VarId, Field(alias="from")]
     """
-    beat 或 stateVar
+    A beat or a stateVar / beat または stateVar
     """
     to: BeatId | VarId
     """
-    beat 或 stateVar
+    A beat or a stateVar / beat または stateVar
     """
     type: Literal["enables", "requires", "prevents", "delays", "hastens"]
     timeLink: Literal["shift", "order"] | None = None
     """
-    （1.1）只用于 enables / requires；默认 shift
+    (1.1) Only for enables / requires; default shift / （1.1）enables / requires のみ。既定は shift
     """
     minutes: Annotated[int | None, Field(ge=0)] = None
     """
-    delays / hastens 必填：from 发生会让 to 推迟（提前）几分钟
+    Required for delays / hastens: by how many minutes from happening delays (or advances) to / delays / hastens では必須：from が起きると to が何分遅れる（早まる）か
     """
     note: str
     """
-    为什么有这条边（日语）
+    Why this edge exists (in Japanese) / このエッジがある理由（日本語）
     """
     cite: list[Cite] | None = None
     """
-    原文能直接支持时给出处
+    Source, when the original directly supports it / 原文が直接裏付けるときは出典を示す
     """
     inferred: bool
     """
-    原文没明说、由人推断的为 true
+    true when the original does not say so explicitly and it was inferred by a person / 原文に明記されておらず、人が推定したものは true
     """
 
 
@@ -750,11 +751,11 @@ class CharacterKnowsItem(BaseModel):
     fact: FactId
     since: BeatId | Literal["pre"]
     """
-    "pre" = 故事开始前就知道
+    "pre" = known before the story begins / "pre" = 物語の開始前から知っている
     """
     inferred: Literal[True] | None = None
     """
-    （1.13）原文没写他知道、由人推断（评审表标〔推断〕）
+    (1.13) The original does not say they know it; inferred by a person (marked 〔推断〕 in the review sheet) / （1.13）原文には知っているとは書かれておらず、人が推定したもの（レビュー表では〔推断〕と記す）
     """
 
 
@@ -771,7 +772,7 @@ class CharacterPlansItem(BaseModel):
 
 class CharacterOriginalEnding(BaseModel):
     """
-    （1.11，B-9）结局页「原作では」那一句，也是全部人物都没被波及时卡上梅洛斯那一行；endings.characters 里的人物都要有
+    (1.11, B-9) The 「原作では」 line on the ending page, which is also Melos's line on the card when no character was affected; required for every character in endings.characters / （1.11、B-9）エンディングページの「原作では」の一文。どの登場人物にも影響が及ばなかったときにカードに出るメロスの行でもある。endings.characters の登場人物には必須
     """
 
     model_config = ConfigDict(
@@ -780,7 +781,7 @@ class CharacterOriginalEnding(BaseModel):
     )
     text: Annotated[str, Field(min_length=1)]
     """
-    原作里这个人物的结局，一句，≤ 40 字，不写主语（结局页前面有名字和「原作では」）
+    This character's ending in the original, one sentence, ≤ 40 characters, no subject (the ending page already shows the name and 「原作では」 before it) / 原作でのこの登場人物の結末。一文、40 字以内、主語は書かない（エンディングページでは前に名前と「原作では」が付く）
     """
     cite: Annotated[list[Cite], Field(min_length=1)]
 
@@ -793,13 +794,13 @@ class CharacterEndingYoursItem(BaseModel):
     sentence: Annotated[str, Field(min_length=1)]
     cites: Annotated[list[EventId], Field(min_length=1)]
     """
-    至少引用一个本局事件
+    Cites at least one event from this playthrough / このプレイのイベントを少なくとも 1 つ引用する
     """
 
 
 class CharacterEnding(BaseModel):
     """
-    （1.1）每个可对话人物的结局（第 5 节）
+    (1.1) The ending of each talkable character (section 5) / （1.1）会話できる各登場人物の結末（第 5 節）
     """
 
     model_config = ConfigDict(
@@ -809,19 +810,19 @@ class CharacterEnding(BaseModel):
     character: CharacterId
     rank: Rank | None
     """
-    受影响深浅，从 1 起；unchanged 时 null
+    How deeply affected, starting at 1; null when unchanged / 影響の深さ。1 から始まる。unchanged のときは null
     """
     unchanged: bool
     """
-    玩家没碰过、世界变化也没波及到：只显示「原作どおり」，不生成句子
+    The player did not interact with them and the world's changes did not reach them: only 「原作どおり」 is shown, no sentences are generated / プレイヤーが関わらず、世界の変化も及ばなかった：「原作どおり」だけを表示し、文は生成しない
     """
     original: Annotated[str | None, Field(min_length=1)] = None
     """
-    原作里他的结局，一句（日语）
+    Their ending in the original, one sentence (in Japanese) / 原作での結末。一文（日本語）
     """
     yours: Annotated[list[CharacterEndingYoursItem] | None, Field(max_length=3, min_length=1)] = None
     """
-    1〜3 句，「あなたの世界では」；unchanged 时省略
+    1–3 sentences, 「あなたの世界では」; omitted when unchanged / 1〜3 文、「あなたの世界では」。unchanged のときは省略
     """
 
 
@@ -833,29 +834,29 @@ class ClockDeadline(BaseModel):
     t: StoryTime
     label: str
     """
-    如「三日目の日没」
+    E.g. 「三日目の日没」 / 例「三日目の日没」
     """
     cite: list[Cite]
     watchBeat: BeatId | None = None
     """
-    （1.1）决定赶不赶得上的节拍
+    (1.1) The beat that decides whether he makes it in time / （1.1）間に合うかどうかを決めるビート
     """
     earliestArrival: StoryTime | None = None
     """
-    （1.4，S-066）watchBeat 最早的时刻
+    (1.4, S-066) The earliest time of watchBeat / （1.4、S-066）watchBeat の最も早い時刻
     """
     earliestArrivalCue: Annotated[
         ClockDeadlineEarliestArrivalCue | None,
         Field(title="ClockDeadlineEarliestArrivalCue"),
     ] = None
     """
-    （1.5，S-066 ①）本局第一次到下限时说一次的话
+    (1.5, S-066 ①) A line said once, the first time this playthrough reaches the lower bound / （1.5、S-066 ①）このプレイで初めて下限に達したときに一度だけ言うセリフ
     """
 
 
 class ClockLabels(BaseModel):
     """
-    tLabel 的生成规则
+    Rules for generating tLabel / tLabel の生成規則
     """
 
     model_config = ConfigDict(
@@ -864,31 +865,31 @@ class ClockLabels(BaseModel):
     )
     days: list[str]
     """
-    下标 = Day（S-037）
+    Index = Day (S-037) / 添字 = Day（S-037）
     """
     bands: list[Band]
     """
-    一天内的时段起点（分钟）和叫法，如 [1140,"日没"]；从 0 开始严格递增
+    Start (in minutes) and name of each time of day within a day, e.g. [1140,"日没"]; starts at 0 and strictly increasing / 1 日の中の各時間帯の開始（分）と呼び方。例：[1140,"日没"]。0 から始まり狭義単調増加
     """
     format: str
     """
-    （1.1）模板，含 {day} 和 {band}
+    (1.1) Template, containing {day} and {band} / （1.1）テンプレート。{day} と {band} を含む
     """
     daysKnownBy: FactId | None = None
     """
-    （1.9）日名（days）带着情节时，要知道哪条事实才说日名。不知道这条事实的人物，给他的时间只写时段（band），如「夜」；界面、tLabel、記憶帳、地の文照旧用完整说法（S-086）。不写 = 谁都给完整说法
+    (1.9) When the day names (days) carry plot, which fact a character must know before the day name is used. A character who does not know this fact is given only the time of day (band), e.g. 「夜」; the UI, tLabel, 記憶帳 and 地の文 still use the full phrasing (S-086). Omitted = everyone gets the full phrasing / （1.9）日の名前（days）が筋に関わるとき、日の名前を言うにはどの事実を知っている必要があるか。この事実を知らない登場人物には時間帯（band）だけを渡す。例「夜」。画面、tLabel、記憶帳、地の文は従来どおり完全な言い方を使う（S-086）。省略 = 誰にでも完全な言い方を渡す
     """
     inferred: Literal[True] = True
     note: str | None = None
     cite: list[Cite] | None = None
     """
-    （1.1）时段叫法的原文依据
+    (1.1) Support in the original for the time-of-day names / （1.1）時間帯の呼び方の原文上の根拠
     """
 
 
 class Condition(BaseModel):
     """
-    条件：引用 stateVars（2.4）。节拍前提、变体、去处、情境动作、世界结局共用
+    Condition: references stateVars (2.4). Shared by beat preconditions, variants, destinations, affordances, and world endings / 条件：stateVars を参照する（2.4）。ビートの前提条件、バリアント、行き先、状況アクション、世界のエンディングで共用する
     """
 
     model_config = ConfigDict(
@@ -901,13 +902,13 @@ class Condition(BaseModel):
     inferred: Literal[True] | None = None
     note: str | None = None
     """
-    原文没写、为游戏设计的前提的说明
+    Explanation of a precondition not in the original, designed for the game / 原文にはなく、ゲームのために設計した前提条件の説明
     """
 
 
 class DesignLine(BaseModel):
     """
-    （1.4）原文没有、为游戏写的示例台词（2.1）
+    (1.4) Sample lines not in the original, written for the game (2.1) / （1.4）原文にはなく、ゲームのために書いたセリフ例（2.1）
     """
 
     model_config = ConfigDict(
@@ -916,34 +917,34 @@ class DesignLine(BaseModel):
     )
     text: str
     """
-    日语一句。角色提示里和 sampleLines 一样当示例用，不逐字照念
+    One Japanese sentence. Used in the character prompt as an example like sampleLines, not read out verbatim / 日本語の一文。キャラクタープロンプトでは sampleLines と同じく例として使い、一字一句そのまま読み上げはしない
     """
     since: BeatId | None = None
     """
-    从该节拍发生起才用（1.1）
+    Used only from when that beat happens (1.1) / そのビートが起きてから使う（1.1）
     """
     until: BeatId | None = None
     """
-    该节拍发生后不再用（1.1）
+    No longer used after that beat happens (1.1) / そのビートが起きた後は使わない（1.1）
     """
     when: list[Condition] | None = None
     """
-    此刻的 WorldState 满足这些条件才用（1.4）；since / until / when 同时写时三者都要满足
+    Used only when the current WorldState meets these conditions (1.4); when since / until / when are all given, all three must hold / 現時点の WorldState がこれらの条件を満たすときだけ使う（1.4）。since / until / when を同時に書いた場合は 3 つすべてを満たす必要がある
     """
     inferred: Literal[True] = True
     note: str | None = None
     """
-    什么场合说
+    When it is said / どんな場面で言うか
     """
     cite: list[Cite] | None = None
     """
-    依据的原文
+    The original text it is based on / 根拠とする原文
     """
 
 
 class EffectHold(BaseModel):
     """
-    （1.3）物品换手；只用于 portable 的物品
+    (1.3) An item changes hands; only for portable items / （1.3）アイテムの持ち主が変わる。portable なアイテムのみ
     """
 
     model_config = ConfigDict(
@@ -954,14 +955,14 @@ class EffectHold(BaseModel):
     item: ItemId
     to: Literal["player"] | CharacterId | None
     """
-    新的持有者；null = 被拿走、用掉
+    The new holder; null = taken away or used up / 新しい持ち主。null = 持ち去られた、使い切られた
     """
     from_: Annotated[Literal["player"] | CharacterId | None, Field(alias="from")] = None
 
 
 class EffectImprov(BaseModel):
     """
-    （1.1）即兴设定（S-030 ②），见 3.1 的 RunFact
+    (1.1) Improvised fact (S-030 ②); see RunFact in 3.1 / （1.1）即興の設定（S-030 ②）。3.1 の RunFact を参照
     """
 
     model_config = ConfigDict(
@@ -986,7 +987,7 @@ class EffectInc(BaseModel):
 
 class EffectLearn(BaseModel):
     """
-    某角色知道了某事实；（1.1）fact 也可以是 rf_…（别人的即兴设定）；（1.7）character 可以是 player（契约 2.1：人物告诉玩家时叙事者提取，玩家在节拍的地点时由共享规则写进节拍的系统事件）
+    A character learns a fact; (1.1) fact may also be rf_… (someone else's improvised fact); (1.7) character may be player (contract 2.1: when a character tells the player, the narrator extracts it; when the player is at the beat's place, the shared rules write it into the beat's system event) / ある登場人物がある事実を知る。（1.1）fact は rf_…（他人の即興の設定）でもよい。（1.7）character は player でもよい（契約 2.1：登場人物がプレイヤーに伝えたときはナレーターが抽出し、プレイヤーがビートの地点にいるときは共有ルールがビートのシステムイベントに書き込む）
     """
 
     model_config = ConfigDict(
@@ -1000,7 +1001,7 @@ class EffectLearn(BaseModel):
 
 class EffectPromiseDue(BaseModel):
     """
-    期限（时刻或节拍）
+    Deadline (a time or a beat) / 期限（時刻またはビート）
     """
 
     model_config = ConfigDict(
@@ -1013,7 +1014,7 @@ class EffectPromiseDue(BaseModel):
 
 class EffectPromise(BaseModel):
     """
-    （1.1）约定，见 3.1 的 Promise
+    (1.1) Promise; see Promise in 3.1 / （1.1）約束。3.1 の Promise を参照
     """
 
     model_config = ConfigDict(
@@ -1023,28 +1024,28 @@ class EffectPromise(BaseModel):
     op: Literal["promise"] = "promise"
     promiseId: PromiseId | None = None
     """
-    可选（1.6 契约第 3 节写清）：世界模型的效果模板（2.10）和候选事件（evals/s2/README.md）不写，提交时由叙事者分配 prm_…。提交的事件另外要求必带（Event.effects）
+    Optional (made explicit in contract section 3 in 1.6): omitted in world-model effect templates (2.10) and candidate events (evals/s2/README.md); the narrator assigns a prm_… at commit. Committed events additionally require it (Event.effects) / 任意（1.6 で契約第 3 節に明記）：世界モデルのエフェクトテンプレート（2.10）と候補イベント（evals/s2/README.md）では書かず、コミット時にナレーターが prm_… を割り当てる。コミットされたイベントでは別途必須（Event.effects）
     """
     change: Literal["made", "kept", "broken", "voided"]
     from_: Annotated[Literal["player"] | CharacterId | None, Field(alias="from")] = None
     """
-    change = made 时必填
+    Required when change = made / change = made のときは必須
     """
     to: Literal["player"] | CharacterId | None = None
     """
-    change = made 时必填
+    Required when change = made / change = made のときは必須
     """
     text: str | None = None
     """
-    change = made 时必填
+    Required when change = made / change = made のときは必須
     """
     due: Annotated[EffectPromiseDue | None, Field(title="EffectPromiseDue")] = None
     """
-    期限（时刻或节拍）
+    Deadline (a time or a beat) / 期限（時刻またはビート）
     """
     template: PromiseTemplateId | None = None
     """
-    模板 ID（可选）
+    Template ID (optional) / テンプレート ID（任意）
     """
 
 
@@ -1058,7 +1059,7 @@ class EffectRelocate(BaseModel):
     place: PlaceId
     spot: SpotId | None = None
     """
-    （1.7）站在这个地点的哪个位置点；省略 = 由后端按布局的站位规则排（第 3.1 节 WorldState.spots）
+    (1.7) Which spot at this place to stand on; omitted = the backend places them by the layout's placement rules (section 3.1 WorldState.spots) / （1.7）この地点のどの位置点に立つか。省略 = バックエンドがレイアウトの立ち位置の規則で配置する（第 3.1 節 WorldState.spots）
     """
 
 
@@ -1094,7 +1095,7 @@ class EndingWorldVariantClaimsItem(BaseModel):
 
 class EndingWorldVariant(BaseModel):
     """
-    （1.1，S-031 ①）这一局生成的世界结局；没有 = 就是底线类本身
+    (1.1, S-031 ①) The world ending generated for this playthrough; absent = the baseline class itself / （1.1、S-031 ①）このプレイで生成した世界のエンディング。ない = 基本類型そのもの
     """
 
     model_config = ConfigDict(
@@ -1103,17 +1104,17 @@ class EndingWorldVariant(BaseModel):
     )
     id: Annotated[str, Field(min_length=1)]
     """
-    本局内唯一，如 "gen.king-abdicates"（API 的 outcomeId）
+    Unique within the playthrough, e.g. "gen.king-abdicates" (the API's outcomeId) / プレイ内で一意。例："gen.king-abdicates"（API の outcomeId）
     """
     title: Annotated[str, Field(min_length=1)]
     summary: Annotated[str, Field(min_length=1)]
     claims: list[EndingWorldVariantClaimsItem]
     """
-    它主张的最终状态，必须和 finalVars 一致
+    The final state it claims; must match finalVars / これが主張する最終状態。finalVars と一致しなければならない
     """
     causedBy: Annotated[list[EventId], Field(min_length=2)]
     """
-    至少 2 个本局事件（「讲得通」）
+    At least 2 events from this playthrough ("it makes sense") / このプレイのイベントを少なくとも 2 つ（「筋が通る」）
     """
 
 
@@ -1124,38 +1125,38 @@ class EndingWorld(BaseModel):
     )
     outcome: WorldEndingId
     """
-    WorldModel.endings.world[].id（底线类）
+    WorldModel.endings.world[].id (baseline class) / WorldModel.endings.world[].id（基本類型）
     """
     summary: Annotated[str, Field(min_length=1)]
     """
-    日语
+    Japanese / 日本語
     """
     changedBeats: list[EndingWorldChangedBeatsItem]
     """
-    和原著不同的节拍，各自指回事件
+    Beats that differ from the original, each pointing back to events / 原作と異なるビート。それぞれイベントを指し示す
     """
     finalVars: dict[VarId, Any]
     title: Annotated[str | None, Field(min_length=1)] = None
     """
-    （1.1）世界结局的一句标题。1.6 起必写：模板尾声的局写世界模型 endings.world 里这一类的 label（api-contract 2.8 的 world.title）
+    (1.1) A one-line title for the world ending. Required from 1.6: a playthrough with a template epilogue writes the label of this class from the world model's endings.world (world.title in api-contract 2.8) / （1.1）世界のエンディングの一行タイトル。1.6 以降は必須：テンプレートのエピローグを使うプレイでは、世界モデルの endings.world にあるこの類型の label を書く（api-contract 2.8 の world.title）
     """
     variant: Annotated[EndingWorldVariant | None, Field(title="EndingWorldVariant")] = None
     """
-    （1.1，S-031 ①）这一局生成的世界结局；没有 = 就是底线类本身
+    (1.1, S-031 ①) The world ending generated for this playthrough; absent = the baseline class itself / （1.1、S-031 ①）このプレイで生成した世界のエンディング。ない = 基本類型そのもの
     """
     signature: dict[VarId | BeatId, Any] | None = None
     """
-    （1.1）按 endings.signature 算出的署名（2.9.1）：变量 → 最终值，节拍 → 是否照原著发生
+    (1.1) The signature computed from endings.signature (2.9.1): variable → final value, beat → whether it happened as in the original / （1.1）endings.signature から算出したシグネチャ（2.9.1）：変数 → 最終値、ビート → 原作どおりに起きたか
     """
     contrast: Annotated[EndingWorldContrast | None, Field(title="EndingWorldContrast")] = None
     """
-    （1.1，S-026）「原作では…／あなたの世界では…」
+    (1.1, S-026) 「原作では…／あなたの世界では…」 / （1.1、S-026）「原作では…／あなたの世界では…」
     """
 
 
 class EndingPlayerFate(BaseModel):
     """
-    顾问、人质、同行者、目击者、被处刑…
+    Advisor, hostage, companion, witness, executed… / 相談役、人質、同行者、目撃者、処刑された…
     """
 
     model_config = ConfigDict(
@@ -1175,7 +1176,7 @@ class EndingPlayerRelationshipsItem(BaseModel):
     character: CharacterId
     trust: Annotated[int, Field(ge=-100, le=100)]
     """
-    初值 + 未删除记忆的 trustDelta 之和，截断到 -100..100
+    Initial value + the sum of trustDelta over undeleted memories, clamped to -100..100 / 初期値 + 削除されていない記憶の trustDelta の合計。-100..100 に切り詰める
     """
     label: Annotated[str, Field(min_length=1)]
     line: Annotated[str | None, Field(min_length=1)] = None
@@ -1184,7 +1185,7 @@ class EndingPlayerRelationshipsItem(BaseModel):
 
 class EndingPlayerTitle(BaseModel):
     """
-    如「王に信を説いた旅人」
+    E.g. 「王に信を説いた旅人」 / 例「王に信を説いた旅人」
     """
 
     model_config = ConfigDict(
@@ -1203,7 +1204,7 @@ class EndingPlayerEpilogueItem(BaseModel):
     sentence: Annotated[str, Field(min_length=1)]
     cites: Annotated[list[EventId], Field(min_length=1)]
     """
-    至少引用一个本局事件
+    Cites at least one event from this playthrough / このプレイのイベントを少なくとも 1 つ引用する
     """
 
 
@@ -1216,7 +1217,7 @@ class EndingPlayerLastScene(BaseModel):
     description: Annotated[str, Field(min_length=1)]
     present: list[CharacterId] | None = None
     """
-    （1.1）结局演出里在场的人物（S-053）
+    (1.1) Characters present in the ending staging (S-053) / （1.1）エンディングの演出に居合わせる登場人物（S-053）
     """
 
 
@@ -1228,7 +1229,7 @@ class EndingPlayerDidForYouItem(BaseModel):
     sentence: Annotated[str, Field(min_length=1)]
     cites: Annotated[list[EventId], Field(min_length=1)]
     """
-    至少引用一个本局事件
+    Cites at least one event from this playthrough / このプレイのイベントを少なくとも 1 つ引用する
     """
 
 
@@ -1240,7 +1241,7 @@ class EndingPlayerYouDidItem(BaseModel):
     sentence: Annotated[str, Field(min_length=1)]
     cites: Annotated[list[EventId], Field(min_length=1)]
     """
-    至少引用一个本局事件
+    Cites at least one event from this playthrough / このプレイのイベントを少なくとも 1 つ引用する
     """
 
 
@@ -1251,31 +1252,31 @@ class EndingPlayer(BaseModel):
     )
     fate: Annotated[EndingPlayerFate, Field(title="EndingPlayerFate")]
     """
-    顾问、人质、同行者、目击者、被处刑…
+    Advisor, hostage, companion, witness, executed… / 相談役、人質、同行者、目撃者、処刑された…
     """
     relationships: list[EndingPlayerRelationshipsItem]
     title: Annotated[EndingPlayerTitle, Field(title="EndingPlayerTitle")]
     """
-    如「王に信を説いた旅人」
+    E.g. 「王に信を説いた旅人」 / 例「王に信を説いた旅人」
     """
     epilogue: list[EndingPlayerEpilogueItem]
     """
-    每句至少引用一个事件
+    Each sentence cites at least one event / 各文で少なくとも 1 つのイベントを引用する
     """
     lastScene: Annotated[EndingPlayerLastScene, Field(title="EndingPlayerLastScene")]
     didForYou: list[EndingPlayerDidForYouItem] | None = None
     """
-    （1.1，D-012）人物为你做的事
+    (1.1, D-012) What characters did for you / （1.1、D-012）登場人物があなたのためにしたこと
     """
     youDid: list[EndingPlayerYouDidItem] | None = None
     """
-    （1.1）你为人物做的事
+    (1.1) What you did for characters / （1.1）あなたが登場人物のためにしたこと
     """
 
 
 class Ending(BaseModel):
     """
-    结局（第 5 节）。1.6 起写入的结局，world.title、player.didForYou / youDid（可以是空数组）、characters、card 必写
+    Ending (section 5). For endings written from 1.6 on, world.title, player.didForYou / youDid (may be empty arrays), characters and card are required / エンディング（第 5 節）。1.6 以降に書き込むエンディングでは world.title、player.didForYou / youDid（空配列でもよい）、characters、card が必須
     """
 
     model_config = ConfigDict(
@@ -1288,7 +1289,7 @@ class Ending(BaseModel):
     worldModelVersion: str
     trigger: Literal["deadline", "story-closed", "abandoned"]
     """
-    story-closed = 最后一幕的收幕节拍有了结果
+    story-closed = the closing beat of the last act has an outcome / story-closed = 最後の幕の幕を閉じるビートに結果が出た
     """
     t: StoryTime
     decidedAt: RecordedAt
@@ -1296,21 +1297,21 @@ class Ending(BaseModel):
     player: Annotated[EndingPlayer, Field(title="EndingPlayer")]
     characters: list[CharacterEnding] | None = None
     """
-    （1.1，D-015、S-032）7 个可对话人物都在
+    (1.1, D-015, S-032) All 7 talkable characters are included / （1.1、D-015、S-032）会話できる 7 人の登場人物が全員含まれる
     """
     card: Annotated[EndingCard | None, Field(title="EndingCard")] = None
     """
-    （1.1，S-049、S-051）结局卡，字数由这里保证。1.6 起每一局都生成：生成的结局取 rank 最前的 1〜3 人，一个也没排上名时放梅洛斯一句（按他的 original）；校验两次不过、改用模板尾声的局，字段取 ux-design 11.4 对应那一组的预写句子
+    (1.1, S-049, S-051) Ending card; the character limits are guaranteed here. Generated for every playthrough from 1.6: a generated ending takes the 1–3 characters with the highest rank, and when nobody is ranked puts one line for Melos (from his original); for a playthrough that failed validation twice and fell back to the template epilogue, the fields take the pre-written sentences of the matching set in ux-design 11.4 / （1.1、S-049、S-051）エンディングカード。字数はここで保証する。1.6 以降はすべてのプレイで生成する：生成されたエンディングでは rank が上位の 1〜3 人を取り、誰も順位に入らないときはメロスの一文を置く（彼の original による）。検証に 2 回失敗してテンプレートのエピローグに切り替えたプレイでは、ux-design 11.4 の該当する組の事前に書いた文をフィールドに使う
     """
     share: Annotated[EndingShare | None, Field(title="EndingShare")] = None
     """
-    生成产物的存储引用
+    Storage reference of the generated artifact / 生成された成果物の保存先への参照
     """
 
 
 class EndingSignature(BaseModel):
     """
-    （1.1）结局署名：什么叫「世界结局实质不同」（2.9.1）
+    (1.1) Ending signature: what counts as "substantively different world endings" (2.9.1) / （1.1）エンディングシグネチャ：「世界のエンディングが実質的に異なる」とは何か（2.9.1）
     """
 
     model_config = ConfigDict(
@@ -1319,11 +1320,11 @@ class EndingSignature(BaseModel):
     )
     vars: list[VarId]
     """
-    这些变量的最终值
+    Final values of these variables / これらの変数の最終値
     """
     beats: list[BeatId]
     """
-    这些节拍是否照原著发生
+    Whether these beats happened as in the original / これらのビートが原作どおりに起きたか
     """
     inferred: Literal[True] = True
     note: str | None = None
@@ -1331,7 +1332,7 @@ class EndingSignature(BaseModel):
 
 class EventPlan(BaseModel):
     """
-    （1.2，S-031 ③）只用于 type=act-transition（actor=player）且玩家说出了自己的打算
+    (1.2, S-031 ③) Only for type=act-transition (actor=player) when the player stated their own plan / （1.2、S-031 ③）type=act-transition（actor=player）で、プレイヤーが自分のプランを述べた場合のみ
     """
 
     model_config = ConfigDict(
@@ -1340,23 +1341,23 @@ class EventPlan(BaseModel):
     )
     label: str
     """
-    叙事者的日语转述；不逐字引用玩家原话
+    The narrator's paraphrase in Japanese; does not quote the player verbatim / ナレーターによる日本語での言い換え。プレイヤーの発言をそのまま引用しない
     """
     toAct: ActId
     place: PlaceId
     t: StoryTime
     """
-    不早于 Act.start.t
+    Not earlier than Act.start.t / Act.start.t より早くない
     """
     with_: Annotated[list[CharacterId] | None, Field(alias="with")] = None
     """
-    同行的人物
+    Characters going along / 同行する登場人物
     """
 
 
 class Fact(BaseModel):
     """
-    事实（2.3）
+    Fact (2.3) / 事実（2.3）
     """
 
     model_config = ConfigDict(
@@ -1366,26 +1367,26 @@ class Fact(BaseModel):
     id: FactId
     statement: str
     """
-    中性陈述（日语）
+    Neutral statement (in Japanese) / 中立的な記述（日本語）
     """
     trueFrom: BeatId | Literal["pre"]
     """
-    从哪个 beat 起成立；"pre" = 开场前已成立
+    From which beat it holds; "pre" = already holds before the opening / どの beat から成り立つか。"pre" = 開幕前から成り立っている
     """
     visibility: Literal["public", "private"]
     """
-    public：在场的人都会知道；private：只有 knows 里的人知道
+    public: everyone present learns it; private: only those listed in knows know it / public：居合わせた人は皆知る。private：knows にいる人だけが知っている
     """
     spoilerTerms: list[str] | None = None
     """
-    说出这个事实时常用的词和别名（日语）
+    Words and aliases commonly used when stating this fact (in Japanese) / この事実を口にするときによく使う語と別名（日本語）
     """
     cite: list[Cite]
 
 
 class Item(BaseModel):
     """
-    （1.1）故事里的物品（2.10）
+    (1.1) Item in the story (2.10) / （1.1）物語に登場するアイテム（2.10）
     """
 
     model_config = ConfigDict(
@@ -1395,15 +1396,15 @@ class Item(BaseModel):
     id: ItemId
     name: str
     """
-    日语
+    Japanese / 日本語
     """
     at: list[PlaceId]
     """
-    在这些地点随手可得；能带在身上的物品写 []
+    Readily available at these places; write [] for items that can be carried / これらの地点ですぐ手に入る。持ち歩けるアイテムは [] と書く
     """
     portable: Literal[True] | None = None
     """
-    （1.3）一件实物：同一时刻只在一个人手里
+    (1.3) A single physical object: in only one person's hands at any moment / （1.3）実物 1 つ：同時に 1 人の手にしかない
     """
     inferred: Literal[True] = True
     note: str | None = None
@@ -1412,7 +1413,7 @@ class Item(BaseModel):
 
 class MemoryItem(BaseModel):
     """
-    角色对玩家的记忆，可删除（第 4 节）。只由已提交的事件生成
+    A character's memory of the player, deletable (section 4). Generated only from committed events / 登場人物がプレイヤーについて持つ記憶。削除できる（第 4 節）。コミット済みのイベントからのみ生成する
     """
 
     model_config = ConfigDict(
@@ -1424,38 +1425,38 @@ class MemoryItem(BaseModel):
     playthroughId: PlaythroughId
     character: CharacterId
     """
-    谁记得
+    Who remembers / 誰が覚えているか
     """
     kind: Literal["promise", "help", "harm", "shared-moment", "claim", "impression"]
     text: str
     """
-    角色视角的一句日语，給記憶帳显示；不含现实个人信息；删除后清空
+    One Japanese sentence from the character's point of view, shown in the 記憶帳; no real-world personal information; cleared after deletion / 登場人物の視点による日本語の一文。記憶帳に表示する。現実の個人情報は含めない。削除後は空にする
     """
     fromEvents: Annotated[list[EventId], Field(min_length=1)]
     """
-    来自哪些事件；记忆只由已提交的事件生成（第 4 节），所以至少一个
+    Which events it came from; memories are generated only from committed events (section 4), so at least one / どのイベントから来たか。記憶はコミット済みのイベントからのみ生成する（第 4 節）ので、少なくとも 1 つ
     """
     t: StoryTime
     trustDelta: Annotated[int, Field(ge=-20, le=20)]
     """
-    这条记忆对信任的影响，-20..+20
+    This memory's effect on trust, -20..+20 / この記憶が信頼に与える影響。-20..+20
     """
     salience: Annotated[float, Field(ge=0.0, le=1.0)]
     """
-    0..1，检索排序用
+    0..1, used for retrieval ranking / 0..1。検索の並べ替えに使う
     """
     via: Literal["witnessed", "told", "rumor"] | None = None
     """
-    （1.1）見た / 聞いた / 噂で
+    (1.1) 見た / 聞いた / 噂で (saw / heard / by rumor) / （1.1）見た / 聞いた / 噂で
     """
     promiseId: PromiseId | None = None
     """
-    （1.1）这条记忆属于哪个约定
+    (1.1) Which promise this memory belongs to / （1.1）この記憶がどの約束に属するか
     """
     createdAt: RecordedAt
     deletedAt: RecordedAt | None = None
     """
-    删除后：text 清空，只留 ID 和删除时间（审计用）
+    After deletion: text is cleared; only the ID and deletion time remain (for auditing) / 削除後：text を空にし、ID と削除時刻だけを残す（監査用）
     """
 
 
@@ -1471,7 +1472,7 @@ class PlaceAdjacentItem(BaseModel):
 
 class Place(BaseModel):
     """
-    地点（2.2）
+    Place (2.2) / 地点（2.2）
     """
 
     model_config = ConfigDict(
@@ -1482,24 +1483,24 @@ class Place(BaseModel):
     name: str
     shortName: Annotated[str | None, Field(max_length=8, min_length=1)] = None
     """
-    （1.14）短い名前（日语，≤ 8 字）：幕末页去处副题的前半「{地点}・{日子}の{时段}」用它，省略 = 用 name
+    (1.14) Short name (Japanese, ≤ 8 characters): used for the first half 「{place}・{day}の{time of day}」 of the destination subtitle on the end-of-act page; omitted = use name / （1.14）短い名前（日本語、8 字以内）：幕末ページの行き先の副題の前半「{地点}・{日}の{時間帯}」に使う。省略 = name を使う
     """
     description: str
     adjacent: list[PlaceAdjacentItem]
     """
-    步行分钟；跑步等节奏由叙事者按系数换算
+    Walking minutes; other paces such as running are converted by the narrator with a factor / 徒歩の分数。走るなど他のペースはナレーターが係数で換算する
     """
     crossing: Annotated[PlaceCrossing | None, Field(title="PlaceCrossing")] = None
     """
-    有河的地点
+    Place with a river / 川のある地点
     """
     sceneRef: SceneId | None
     """
-    对应的 3D 场景；null = 第一版没有场景
+    The corresponding 3D scene; null = no scene in the first version / 対応する 3D シーン。null = 最初の版ではシーンなし
     """
     inferred: bool | None = None
     """
-    原文没有这个场景、为游戏设计的地点
+    A place not in the original, designed for the game / 原文にはなく、ゲームのために設計した地点
     """
     note: str | None = None
     cite: list[Cite]
@@ -1507,7 +1508,7 @@ class Place(BaseModel):
 
 class Playthrough(BaseModel):
     """
-    一局游戏（第 1 节）
+    One playthrough of the game (section 1) / 1 回のプレイ（第 1 節）
     """
 
     model_config = ConfigDict(
@@ -1518,40 +1519,40 @@ class Playthrough(BaseModel):
     playthroughId: PlaythroughId
     userRef: str
     """
-    邀请码账号的匿名 ID（S-020），不是邮箱、不是姓名
+    Anonymous ID of the invite-code account (S-020), not an email address or a name / 招待コードアカウントの匿名 ID（S-020）。メールアドレスでも氏名でもない
     """
     worldModelVersion: str
     """
-    开局时锁定，整局不变
+    Locked at the start, unchanged for the whole playthrough / 開始時に固定し、プレイ中は変わらない
     """
     roleId: RoleId
     """
-    玩家选的身份
+    The role the player chose / プレイヤーが選んだ身分
     """
     playerAlias: str | None = None
     """
-    S-010：默认不填，第一版没有任何界面入口
+    S-010: not filled by default; the first version has no UI for it / S-010：既定では埋めない。最初の版には入力する画面がない
     """
     ageBand: Literal["under13", "13to17", "18plus", "unknown"] | None = None
     """
-    S-010：默认不收集
+    S-010: not collected by default / S-010：既定では収集しない
     """
     status: Literal["active", "ended", "abandoned", "deleted"]
     startedAt: RecordedAt
     endedAt: RecordedAt | None = None
     lastActiveAt: RecordedAt
     """
-    最后一次有玩家操作的真实时间；默认保留期按它算
+    Real time of the last player activity; the default retention period counts from it / プレイヤーが最後に操作した実時間。既定の保持期間はこれを起点に数える
     """
     lastSeq: Annotated[int, Field(ge=0)]
     """
-    最后一个事件的序号
+    Sequence number of the last event / 最後のイベントの通し番号
     """
 
 
 class PromiseTemplate(BaseModel):
     """
-    （1.1）这个人物常见的约定；叙事者写 promise 效果时引用（2.1）
+    (1.1) Promises typical for this character; the narrator references them when writing promise effects (2.1) / （1.1）この登場人物によくある約束。ナレーターが promise エフェクトを書くときに参照する（2.1）
     """
 
     model_config = ConfigDict(
@@ -1561,17 +1562,17 @@ class PromiseTemplate(BaseModel):
     id: PromiseTemplateId
     by: Literal["player"] | CharacterId
     """
-    谁许下的；另一方是模板所属的人物（by 是人物自己时，另一方是玩家）
+    Who makes the promise; the other party is the character the template belongs to (when by is that character, the other party is the player) / 誰が約束するか。相手はテンプレートが属する登場人物（by がその登場人物自身のときは、相手はプレイヤー）
     """
     text: str
     """
-    约定的内容（日语），如「必ず戻る」
+    What is promised (in Japanese), e.g. 「必ず戻る」 / 約束の内容（日本語）。例「必ず戻る」
     """
     inferred: Literal[True] | None = None
     cite: list[Cite] | None = None
     note: str | None = None
     """
-    （1.4）语气、什么场合
+    (1.4) Tone, and on what occasion / （1.4）口調、どんな場面か
     """
 
 
@@ -1587,7 +1588,7 @@ class RoleConditionalAccessItem(BaseModel):
 
 class Role(BaseModel):
     """
-    玩家身份（2.7）
+    Player role (2.7) / プレイヤーの身分（2.7）
     """
 
     model_config = ConfigDict(
@@ -1598,34 +1599,34 @@ class Role(BaseModel):
     name: str
     summary: Annotated[str, Field(min_length=1)]
     """
-    （1.10）身份页和 manifest 上给玩家看的一句（日语），文字 UX 定。note 是写给编写者的，不给玩家看
+    (1.10) One sentence shown to the player on the role page and in the manifest (in Japanese); UX decides the wording. note is for authors and not shown to the player / （1.10）身分ページと manifest でプレイヤーに見せる一文（日本語）。文言は UX が決める。note は書き手向けで、プレイヤーには見せない
     """
     release: Annotated[int, Field(ge=1)]
     """
-    第几版开放
+    Which release opens it / どの版で開放するか
     """
     startAct: ActId
     startPlace: PlaceId
     startT: StoryTime
     knownCharacters: list[CharacterId]
     """
-    一开始认识谁（这些角色开局信任 +10）
+    Whom they know from the start (these characters start with trust +10) / 最初から知っている相手（これらの登場人物は開始時に信頼 +10）
     """
     access: list[PlaceId]
     """
-    能自由进出的地点
+    Places they can enter and leave freely / 自由に出入りできる地点
     """
     conditionalAccess: list[RoleConditionalAccessItem] | None = None
     """
-    （1.1）条件满足时也能进
+    (1.1) Can also enter when the conditions are met / （1.1）条件を満たせば入ることもできる
     """
     initialKnowledge: list[FactId]
     """
-    身份自带知道的 fact
+    Facts the role knows from the outset / 身分が最初から知っている fact
     """
     items: list[ItemId] | None = None
     """
-    （1.3）开局带在身上的物品
+    (1.3) Items carried at the start / （1.3）開始時に身に付けているアイテム
     """
     inferred: Literal[True] = True
     note: str | None = None
@@ -1633,7 +1634,7 @@ class Role(BaseModel):
 
 class RunFact(BaseModel):
     """
-    （1.1）本局即兴设定（3.1）
+    (1.1) Improvised fact for this playthrough (3.1) / （1.1）このプレイの即興の設定（3.1）
     """
 
     model_config = ConfigDict(
@@ -1643,21 +1644,21 @@ class RunFact(BaseModel):
     factId: RunFactId
     character: CharacterId
     """
-    谁说的（归属于谁）
+    Who said it (whom it is attributed to) / 誰が言ったか（誰に帰属するか）
     """
     statement: str
     """
-    一句中性日语
+    One neutral Japanese sentence / 中立的な日本語の一文
     """
     madeBy: EventId
     """
-    记下它的事件
+    The event that recorded it / これを記録したイベント
     """
 
 
 class Scene(BaseModel):
     """
-    3D 场景（2.2）
+    3D scene (2.2) / 3D シーン（2.2）
     """
 
     model_config = ConfigDict(
@@ -1666,12 +1667,12 @@ class Scene(BaseModel):
     )
     id: SceneId
     """
-    ID 由前端提出（frontend-design 8.1）
+    The ID is proposed by the frontend (frontend-design 8.1) / ID はフロントエンドが提案する（frontend-design 8.1）
     """
     name: str
     release: Annotated[int, Field(ge=1)]
     """
-    第几版做
+    Which release builds it / どの版で作るか
     """
     inferred: Literal[True] = True
     note: str | None = None
@@ -1679,7 +1680,7 @@ class Scene(BaseModel):
 
 class SetPiece(BaseModel):
     """
-    （1.7）固定演出（2.11，S-080 ④）：每局一样、写好的地の文和人物的预录句，挂在节拍或玩家的动作上，由服务端在对的时机下发。只是演出：不是事件，不改世界状态；例外是 learns（演出里说出的事，听的人就知道了）
+    (1.7) Set piece (2.11, S-080 ④): pre-written 地の文 and characters' pre-recorded lines, the same in every playthrough, attached to a beat or a player action and sent by the server at the right moment. Staging only: not an event, does not change the world state; the exception is learns (what is said in the set piece becomes known to those who hear it) / （1.7）固定演出（2.11、S-080 ④）：どのプレイでも同じ、書き上げ済みの地の文と登場人物の事前収録セリフ。ビートやプレイヤーのアクションに結び付き、サーバーが適切なタイミングで送る。演出にすぎず、イベントではなく、世界状態を変えない。例外は learns（演出の中で語られたことは、聞いた人が知る）
     """
 
     model_config = ConfigDict(
@@ -1689,43 +1690,43 @@ class SetPiece(BaseModel):
     id: SetPieceId
     on: SetPieceOnOption1 | SetPieceOnOption2
     """
-    什么时候演：这个节拍发生时玩家在场（进结局时一起结算的节拍不看在场，算进结局演出，2.11），或玩家的这种动作判定之后
+    When it plays: when this beat happens with the player present (beats settled together on entering the ending ignore presence and count as part of the ending staging, 2.11), or after this kind of player action is judged / いつ演じるか：このビートが起きたときにプレイヤーが居合わせた場合（エンディングに入るときにまとめて精算するビートは居合わせたかを見ず、エンディングの演出に含める、2.11）、またはプレイヤーのこの種のアクションが判定された後
     """
     after: list[BeatId] | None = None
     """
-    这些节拍已经发生（happened / altered）
+    These beats have already happened (happened / altered) / これらのビートはすでに起きている（happened / altered）
     """
     before: list[BeatId] | None = None
     """
-    这些节拍还没发生
+    These beats have not happened yet / これらのビートはまだ起きていない
     """
     knows: list[SetPieceKnowsItem] | None = None
     """
-    这些人物知道这件事：Character.knows 里到这个时刻已经成立的（since），或这一局已提交的 learn
+    These characters know this: an entry in Character.knows that already holds at this moment (since), or a learn already committed in this playthrough / これらの登場人物がこのことを知っている：Character.knows のうちこの時点で成り立っているもの（since）、またはこのプレイでコミット済みの learn
     """
     played: list[SetPieceId] | None = None
     """
-    这些固定演出里至少有一个这一局已经演过
+    At least one of these set pieces has already played in this playthrough / これらの固定演出のうち少なくとも 1 つがこのプレイですでに演じられた
     """
     notPlayed: list[SetPieceId] | None = None
     """
-    这些固定演出这一局都还没演过
+    None of these set pieces has played yet in this playthrough / これらの固定演出はこのプレイでまだどれも演じられていない
     """
     when: list[Condition] | None = None
     """
-    别的状态条件（同节拍前提）
+    Other state conditions (same as beat preconditions) / その他の状態条件（ビートの前提条件と同じ）
     """
     once: Literal[True] | None = None
     """
-    一局只演一次
+    Plays only once per playthrough / 1 回のプレイで 1 度だけ演じる
     """
     lines: Annotated[list[SetPieceLinesItemOption1 | SetPieceLinesItemOption2], Field(min_length=1)]
     """
-    按顺序演，整条放在一条 set_piece 消息里下发（api-contract 3.14）：narration = 地の文；speaker + line = 这个人物的一句预录（构建时生成，ux-design 16.2），录音是 manifest 的 setPieceVoices["{id}/{序号}"]，序号从 1 起、地の文也算
+    Played in order; the whole entry is sent in a single set_piece message (api-contract 3.14): narration = 地の文; speaker + line = one pre-recorded line by this character (generated at build time, ux-design 16.2), whose recording is the manifest's setPieceVoices["{id}/{n}"], with n starting at 1 and 地の文 lines counted too / 順に演じ、全体を 1 つの set_piece メッセージで送る（api-contract 3.14）：narration = 地の文。speaker + line = その登場人物の事前収録セリフ 1 つ（ビルド時に生成、ux-design 16.2）。録音は manifest の setPieceVoices["{id}/{番号}"] で、番号は 1 から始まり地の文も数える
     """
     learns: Annotated[list[SetPieceLearnsItem] | None, Field(min_length=1)] = None
     """
-    演这一条时谁知道了哪件事（S-077 ⑪）：服务端在这一条演出的同一次提交里紧跟着另写一条 type learn 的事件（actor = 第一个说话的人物，只有地の文时 system；checker set-piece；动作时机 origin action，节拍时机不写 origin）。只给 learn，不给任意 effects：固定演出不过叙事者的 R1〜R7
+    Who learns what when this plays (S-077 ⑪): in the same commit as this set piece, the server writes a separate event of type learn right after it (actor = the first character who speaks, or system when there is only 地の文; checker set-piece; origin action when triggered by an action, no origin when triggered by a beat). Only learn is allowed, not arbitrary effects: set pieces do not go through the narrator's R1〜R7 / これを演じたとき誰が何を知るか（S-077 ⑪）：サーバーはこの演出と同じコミットの中で、直後に type learn のイベントを別に書く（actor = 最初に話す登場人物、地の文だけなら system。checker は set-piece。アクションがきっかけなら origin action、ビートがきっかけなら origin は書かない）。learn だけを許し、任意の effects は許さない：固定演出はナレーターの R1〜R7 を通らない
     """
     inferred: Literal[True] = True
     note: str | None = None
@@ -1738,15 +1739,15 @@ class StateVarValueRequiresItem(BaseModel):
     )
     value: Any
     """
-    这个变量的一个取值（enum 在 values 里，其余合类型）
+    One value of this variable (an enum must be in values; otherwise it must match the type) / この変数の値の 1 つ（enum は values の中、それ以外は型に合うこと）
     """
     when: Annotated[list[Condition], Field(min_length=1)]
     """
-    全部成立才能改成 value；和节拍前提同一个 Condition 和求值函数
+    All must hold before the variable can be changed to value; same Condition and evaluation function as beat preconditions / すべて成り立つときだけ value に変更できる。ビートの前提条件と同じ Condition と評価関数を使う
     """
     note: Annotated[str, Field(min_length=1)]
     """
-    为什么有这个条件（日语）；不成立时叙事者的 reason 带上变量、value 和它
+    Why this condition exists (in Japanese); when it fails, the narrator's reason includes the variable, value and this note / この条件がある理由（日本語）。成り立たないとき、ナレーターの reason に変数、value とこれを含める
     """
     inferred: Literal[True] = True
     cite: list[Cite] | None = None
@@ -1754,7 +1755,7 @@ class StateVarValueRequiresItem(BaseModel):
 
 class StateVar(BaseModel):
     """
-    状态变量（2.6）
+    State variable (2.6) / 状態変数（2.6）
     """
 
     model_config = ConfigDict(
@@ -1768,23 +1769,23 @@ class StateVar(BaseModel):
     max: float | None = None
     default: Any
     """
-    var.player.location、var.act.current 的初值由身份决定
+    The initial values of var.player.location and var.act.current are set by the role / var.player.location と var.act.current の初期値は身分で決まる
     """
     keyMoment: bool | None = None
     """
-    决定结局的变量
+    A variable that decides the ending / エンディングを決める変数
     """
     visibleToPlayer: bool | None = None
     """
-    变化能不能显示给玩家；默认 false
+    Whether changes may be shown to the player; default false / 変化をプレイヤーに表示してよいか。既定は false
     """
     valueLabels: dict[str, str] | None = None
     """
-    取值 → 一句可直接显示的日语
+    Value → a Japanese sentence that can be shown directly / 値 → そのまま表示できる日本語の一文
     """
     valueRequires: list[StateVarValueRequiresItem] | None = None
     """
-    （1.6，C-16）把变量改成某个值时要满足的条件（2.6）。① 只管叙事者提交的事件，到点的节拍和期限（origin = schedule）不判，节拍的结果由节拍前提管；② 值真的变了才判，设成现在的值不判；③ 按这个 effect 之前的状态判，同一事件里前面的 effect 已生效；④ when 不成立报 R2；⑤ 设好以后条件不再成立不自动改回、不算违规
+    (1.6, C-16) Conditions that must hold to change a variable to a given value (2.6). ① Applies only to events the narrator commits; scheduled beats and deadlines (origin = schedule) are not checked, since beat outcomes are governed by beat preconditions; ② checked only when the value actually changes, not when set to its current value; ③ evaluated against the state before this effect, with earlier effects in the same event already applied; ④ a failing when reports R2; ⑤ if the condition stops holding after the value is set, it is not reverted automatically and is not a violation / （1.6、C-16）変数をある値に変えるときに満たすべき条件（2.6）。① ナレーターがコミットするイベントだけが対象で、予定時刻のビートと期限（origin = schedule）は判定しない。ビートの結果はビートの前提条件が管理する。② 値が実際に変わるときだけ判定し、現在の値に設定する場合は判定しない。③ この effect の直前の状態で判定する（同じイベント内の前の effect は適用済み）。④ when が成り立たなければ R2 を報告する。⑤ 設定後に条件が成り立たなくなっても自動で元に戻さず、違反ともみなさない
     """
     description: str
 
@@ -1800,7 +1801,7 @@ class StoryPromiseDue(BaseModel):
 
 class StoryPromise(BaseModel):
     """
-    （1.1）约定，由 promise 效果推出，不单独写（3.1）。生成的代码里叫 StoryPromise，避开 JS 的 Promise
+    (1.1) Promise, derived from promise effects, not written separately (3.1). Called StoryPromise in the generated code to avoid JS's Promise / （1.1）約束。promise エフェクトから導き、別には書かない（3.1）。生成コードでは JS の Promise を避けて StoryPromise と呼ぶ
     """
 
     model_config = ConfigDict(
@@ -1810,35 +1811,35 @@ class StoryPromise(BaseModel):
     promiseId: PromiseId
     from_: Annotated[Literal["player"] | CharacterId, Field(alias="from")]
     """
-    许下的一方
+    The party who made the promise / 約束した側
     """
     to: Literal["player"] | CharacterId
     """
-    对方
+    The other party / 相手
     """
     text: str
     """
-    约定的内容（日语，中性，不是原话）
+    What was promised (Japanese, neutral, not the verbatim words) / 約束の内容（日本語、中立的、発言そのものではない）
     """
     due: Annotated[StoryPromiseDue | None, Field(title="StoryPromiseDue")] = None
     template: PromiseTemplateId | None = None
     status: Literal["open", "kept", "broken", "voided"]
     """
-    まだ / 果たされた / 破られた / 作废
+    Open / kept / broken / voided (まだ / 果たされた / 破られた / 無効) / まだ / 果たされた / 破られた / 無効
     """
     madeBy: EventId
     """
-    成立的事件
+    The event that made it / 成立したイベント
     """
     resolvedBy: EventId | None = None
     """
-    兑现、违背或作废的事件
+    The event that kept, broke or voided it / 果たされた、破られた、または無効になったイベント
     """
 
 
 class Utterance(BaseModel):
     """
-    玩家和角色的原话，单独存放，可删除（第 3 节）
+    Verbatim utterances of the player and characters, stored separately and deletable (section 3) / プレイヤーと登場人物の発言そのもの。別に保存し、削除できる（第 3 節）
     """
 
     model_config = ConfigDict(
@@ -1849,24 +1850,24 @@ class Utterance(BaseModel):
     playthroughId: PlaythroughId
     turnId: TurnId
     """
-    記憶帳删除时按轮清空（第 4 节）
+    Cleared per turn when deleted from the 記憶帳 (section 4) / 記憶帳から削除するとターン単位で消去する（第 4 節）
     """
     speaker: Literal["player"] | CharacterId
     text: str
     """
-    识别后的文字（不存音频）；删除后清空
+    Recognized text (audio is not stored); cleared after deletion / 認識後のテキスト（音声は保存しない）。削除後は空にする
     """
     t: StoryTime
     recordedAt: RecordedAt
     deletedAt: RecordedAt | None = None
     """
-    删除后 text 清空
+    text is cleared after deletion / 削除後は text を空にする
     """
 
 
 class WorldEnding(BaseModel):
     """
-    世界结局的底线分类（2.9，S-007）
+    Baseline classes of world endings (2.9, S-007) / 世界のエンディングの基本分類（2.9、S-007）
     """
 
     model_config = ConfigDict(
@@ -1875,19 +1876,19 @@ class WorldEnding(BaseModel):
     )
     id: WorldEndingId
     """
-    写进 Ending.world.outcome
+    Written into Ending.world.outcome / Ending.world.outcome に書き込む
     """
     order: Annotated[int, Field(ge=1)]
     """
-    判定顺序：从 1 开始，第一个条件全满足的就是本局的世界结局
+    Evaluation order: starting at 1, the first whose conditions are all met is this playthrough's world ending / 判定順：1 から始め、条件をすべて満たす最初のものがこのプレイの世界のエンディングになる
     """
     label: str
     """
-    日语，结局卡上显示
+    Japanese, shown on the ending card / 日本語。エンディングカードに表示する
     """
     when: list[Condition]
     """
-    按结局时的 WorldState 判断
+    Evaluated against the WorldState at the ending / エンディング時の WorldState で判定する
     """
     inferred: Literal[True] = True
     note: str | None = None
@@ -1902,23 +1903,23 @@ class WorldModelEndingsTemplatesItem(BaseModel):
     when: list[Condition] | None = None
     subtitle: Annotated[str, Field(min_length=1)]
     """
-    世界的去向（卡片副题），≤ 26 字
+    Where the world ends up (card subtitle), ≤ 26 characters / 世界の行く末（カードの副題）。26 字以内
     """
     title: Annotated[str, Field(min_length=1)]
     """
-    称号，带一个 {role}（换成开局身份名），去掉 {role} 以后 ≤ 9 字
+    Title, containing one {role} (replaced with the starting role name); ≤ 9 characters without {role} / 称号。{role} を 1 つ含む（開始時の身分名に置き換える）。{role} を除いて 9 字以内
     """
     fate: Annotated[str | None, Field(min_length=1)] = None
     """
-    行方。不写 = 按 fate.id 取 endings.fates
+    行方 (whereabouts). Omitted = taken from endings.fates by fate.id / 行方。省略 = fate.id で endings.fates から取る
     """
     lines: Annotated[list[WorldModelEndingsTemplatesItemLinesItem], Field(min_length=1)]
     """
-    按顺序给 rank 1、2…
+    Assigned to rank 1, 2… in order / 順に rank 1、2… に割り当てる
     """
     contrast: Annotated[str, Field(min_length=1)]
     """
-    「原作との違い」，≤ 48 字
+    「原作との違い」 (difference from the original), ≤ 48 characters / 「原作との違い」。48 字以内
     """
     note: str | None = None
 
@@ -1930,29 +1931,29 @@ class WorldModelEndings(BaseModel):
     )
     world: list[WorldEnding]
     """
-    世界结局的底线分类（S-007、S-034）
+    Baseline classes of world endings (S-007, S-034) / 世界のエンディングの基本分類（S-007、S-034）
     """
     signature: EndingSignature | None = None
     """
-    （1.1）什么叫「结局实质不同」，见 2.9.1
+    (1.1) What counts as "substantively different endings"; see 2.9.1 / （1.1）「エンディングが実質的に異なる」とは何か。2.9.1 を参照
     """
     characters: list[CharacterId] | None = None
     """
-    （1.11，B-9）结局页列人物结局的那些人，顺序就是同分时的顺序。不写 = talkable 的人物
+    (1.11, B-9) The characters whose endings the ending page lists; the order is the tie-break order. Omitted = the talkable characters / （1.11、B-9）エンディングページで結末を並べる登場人物。並び順が同点時の順序になる。省略 = talkable の登場人物
     """
     templates: list[WorldModelEndingsTemplatesItem] | None = None
     """
-    （1.11，B-9，S-065）结局走模板时用的句子（ux-design 11.4）。同一个 outcome 有几条时取第一条 when 成立的，最后一条不带 when
+    (1.11, B-9, S-065) Sentences used when the ending goes through a template (ux-design 11.4). When one outcome has several entries, the first whose when holds is taken; the last entry has no when / （1.11、B-9、S-065）エンディングがテンプレートを使うときの文（ux-design 11.4）。同じ outcome に複数あるときは when が成り立つ最初のものを取る。最後の 1 件には when を付けない
     """
     fates: Annotated[WorldModelEndingsFates | None, Field(title="WorldModelEndingsFates")] = None
     """
-    （1.11，B-9）模板没写 fate 时的行方，按 Ending.player.fate.id 取：结局的地点在场 witness，不在 elsewhere（ux-design 11.4）
+    (1.11, B-9) The 行方 used when the template has no fate, taken by Ending.player.fate.id: witness if present at the ending's place, elsewhere if not (ux-design 11.4) / （1.11、B-9）テンプレートに fate がないときの行方。Ending.player.fate.id で取る：エンディングの地点に居合わせたら witness、いなければ elsewhere（ux-design 11.4）
     """
 
 
 class WorldState(BaseModel):
     """
-    由事件推出的当前状态，不是第二份事实（3.1）：世界模型初值 + 按 seq 依次应用全部事件的 effects
+    The current state derived from events, not a second source of truth (3.1): the world model's initial values + the effects of all events applied in seq order / イベントから導いた現在の状態で、2 つ目の事実ではない（3.1）：世界モデルの初期値 + 全イベントの effects を seq の順に適用したもの
     """
 
     model_config = ConfigDict(
@@ -1962,44 +1963,44 @@ class WorldState(BaseModel):
     playthroughId: PlaythroughId
     asOfSeq: Annotated[int, Field(ge=0)]
     """
-    推导到第几个事件
+    Up to which event it has been derived / どのイベントまで導出したか
     """
     t: StoryTime
     """
-    时钟 = 所有事件 max(t + dt)
+    Clock = max(t + dt) over all events / 時計 = 全イベントの max(t + dt)
     """
     vars: dict[VarId, Any]
     """
-    所有 stateVar 的当前值
+    Current values of all stateVars / すべての stateVar の現在の値
     """
     beats: dict[BeatId, Literal["pending", "happened", "prevented", "delayed", "hastened", "altered"]]
     schedule: dict[BeatId, StoryTime]
     """
-    还没结果的节拍的本局排定时间（2.5.1）
+    This playthrough's scheduled times for beats that have no outcome yet (2.5.1) / まだ結果の出ていないビートの、このプレイでの予定時刻（2.5.1）
     """
     knowledge: dict[CharacterId, list[FactId | RunFactId]]
     """
-    角色 → 运行时新学到的 fact
+    Character → facts newly learned at runtime / 登場人物 → 実行時に新たに知った fact
     """
     locations: dict[CharacterId, PlaceId]
     """
-    角色 → 地点
+    Character → place / 登場人物 → 地点
     """
     spots: dict[CharacterId, SpotId] | None = None
     """
-    （1.7）角色 → 指定的位置点：relocate 写了 spot 才有；换到别的地点时去掉。没有的由后端按布局的站位规则排（第 3.1 节）
+    (1.7) Character → assigned spot: present only when a relocate specified a spot; removed when moving to another place. Characters without one are placed by the backend using the layout's placement rules (section 3.1) / （1.7）登場人物 → 指定された位置点：relocate に spot が書かれたときだけある。別の地点に移ると取り除く。ない場合はバックエンドがレイアウトの立ち位置の規則で配置する（第 3.1 節）
     """
     promises: dict[PromiseId, StoryPromise] | None = None
     """
-    （1.1）promiseId → 约定
+    (1.1) promiseId → promise / （1.1）promiseId → 約束
     """
     runFacts: dict[RunFactId, RunFact] | None = None
     """
-    （1.1）factId → 即兴设定
+    (1.1) factId → improvised fact / （1.1）factId → 即興の設定
     """
     holdings: dict[ItemId, Literal["player"] | CharacterId | None] | None = None
     """
-    （1.3）portable 物品 → 现在谁拿着
+    (1.3) Portable item → who holds it now / （1.3）portable なアイテム → いま誰が持っているか
     """
 
 
@@ -2010,11 +2011,11 @@ class ActEndLinesItem(BaseModel):
     )
     when: list[Condition] | None = None
     """
-    这一局的状态要满足；省略 = 总是
+    The state of this playthrough must meet this; omitted = always / このプレイの状態が満たすべき条件。省略 = 常に
     """
     line: Annotated[str, Field(min_length=1)]
     """
-    日语，地の文
+    Japanese, 地の文 (narration) / 日本語、地の文
     """
 
 
@@ -2027,15 +2028,15 @@ class CharacterTraitsItem(BaseModel):
     cite: list[Cite]
     since: BeatId | None = None
     """
-    从该节拍发生起才用（1.1）
+    Used only from when that beat happens (1.1) / そのビートが起きてから使う（1.1）
     """
     until: BeatId | None = None
     """
-    该节拍发生后不再用（1.1）
+    No longer used after that beat happens (1.1) / そのビートが起きた後は使わない（1.1）
     """
     when: list[Condition] | None = None
     """
-    此刻的 WorldState 满足这些条件才用（1.4）；since / until / when 同时写时三者都要满足
+    Used only when the current WorldState meets these conditions (1.4); when since / until / when are all given, all three must hold / 現時点の WorldState がこれらの条件を満たすときだけ使う（1.4）。since / until / when を同時に書いた場合は 3 つすべてを満たす必要がある
     """
 
 
@@ -2048,21 +2049,21 @@ class CharacterGoalsItem(BaseModel):
     cite: list[Cite]
     since: BeatId | None = None
     """
-    从该节拍发生起才用（1.1）
+    Used only from when that beat happens (1.1) / そのビートが起きてから使う（1.1）
     """
     until: BeatId | None = None
     """
-    该节拍发生后不再用（1.1）
+    No longer used after that beat happens (1.1) / そのビートが起きた後は使わない（1.1）
     """
     when: list[Condition] | None = None
     """
-    此刻的 WorldState 满足这些条件才用（1.4）；since / until / when 同时写时三者都要满足
+    Used only when the current WorldState meets these conditions (1.4); when since / until / when are all given, all three must hold / 現時点の WorldState がこれらの条件を満たすときだけ使う（1.4）。since / until / when を同時に書いた場合は 3 つすべてを満たす必要がある
     """
 
 
 class CharacterSpeechSampleLinesItem(BaseModel):
     """
-    原文台词，直接引用。契约写作 Cite & { since?, until?, when? }：这里写成关死的普通对象，source / para / quote 用 JSON 指针引 Cite 的字段（约束只有一份），不用 allOf，生成的类型也是关死的
+    Lines from the original, quoted directly. The contract writes this as Cite & { since?, until?, when? }: here it is a plain closed object whose source / para / quote reference Cite's fields by JSON pointer (so the constraints live in one place); allOf is not used, so the generated type is closed too / 原文のセリフをそのまま引用する。契約上は Cite & { since?, until?, when? } と書く：ここでは閉じた普通のオブジェクトとし、source / para / quote は JSON ポインタで Cite のフィールドを参照する（制約は 1 か所だけ）。allOf は使わないので、生成される型も閉じている
     """
 
     model_config = ConfigDict(
@@ -2071,33 +2072,33 @@ class CharacterSpeechSampleLinesItem(BaseModel):
     )
     source: str
     """
-    原文版本 ID，如 "aozora:1567_ruby_4948@sha256:2a437c047d7f"（对规范化全文求哈希）
+    Original-text version ID, e.g. "aozora:1567_ruby_4948@sha256:2a437c047d7f" (hash of the normalized full text) / 原文のバージョン ID。例："aozora:1567_ruby_4948@sha256:2a437c047d7f"（正規化した全文のハッシュ）
     """
     para: Annotated[int, Field(ge=1)]
     """
-    规范化文本里的段落号，从 1 开始
+    Paragraph number in the normalized text, starting at 1 / 正規化テキスト内の段落番号。1 から始まる
     """
     quote: Annotated[str, Field(max_length=80, min_length=1)]
     """
-    原文片段，≤ 80 字。必须是该段的精确子串（跨字段的规矩，由 build_world 校验，不在 Schema 里）
+    Excerpt from the original, ≤ 80 characters. Must be an exact substring of that paragraph (a cross-field rule, checked by build_world, not in the Schema) / 原文の抜粋。80 字以内。その段落の正確な部分文字列でなければならない（フィールドをまたぐ規則なので build_world が検証し、Schema には含めない）
     """
     since: BeatId | None = None
     """
-    从该节拍发生起才用（1.1）
+    Used only from when that beat happens (1.1) / そのビートが起きてから使う（1.1）
     """
     until: BeatId | None = None
     """
-    该节拍发生后不再用（1.1）
+    No longer used after that beat happens (1.1) / そのビートが起きた後は使わない（1.1）
     """
     when: list[Condition] | None = None
     """
-    此刻的 WorldState 满足这些条件才用（1.4）；since / until / when 同时写时三者都要满足
+    Used only when the current WorldState meets these conditions (1.4); when since / until / when are all given, all three must hold / 現時点の WorldState がこれらの条件を満たすときだけ使う（1.4）。since / until / when を同時に書いた場合は 3 つすべてを満たす必要がある
     """
 
 
 class CharacterSpeech(BaseModel):
     """
-    说话方式，给角色 Agent 和评测用
+    Way of speaking, for the character agent and evals / 話し方。キャラクター Agent と評価で使う
     """
 
     model_config = ConfigDict(
@@ -2106,22 +2107,22 @@ class CharacterSpeech(BaseModel):
     )
     firstPerson: str | None = None
     """
-    「私」「わし」…
+    「私」「わし」… / 「私」「わし」…
     """
     register_: Annotated[str, Field(alias="register")]
     sampleLines: list[CharacterSpeechSampleLinesItem]
     """
-    原文台词，直接引用
+    Lines from the original, quoted directly / 原文のセリフをそのまま引用
     """
     designLines: list[DesignLine] | None = None
     """
-    （1.4）原文没有、为游戏写的示例台词
+    (1.4) Sample lines not in the original, written for the game / （1.4）原文にはなく、ゲームのために書いたセリフ例
     """
 
 
 class ActPlan(BaseModel):
     """
-    （1.7，C-19）玩家在幕末说出的打算成行时落在哪里（2.8.1 第 2 步）：成行的事件按这里写下一幕、地点、时间、落点和落地。省略 = 叙事者按世界模型判（M3 定）
+    (1.7, C-19) Where the player lands when the plan they state at the end of the act is carried out (2.8.1 step 2): the event that carries it out writes the next act, place, time, landing spot and landing from here. Omitted = the narrator decides from the world model (set in M3) / （1.7、C-19）幕末でプレイヤーが述べたプランが実行されたとき、どこに降り立つか（2.8.1 第 2 段階）：実行のイベントは、次の幕、地点、時刻、降り立つ位置、降り立ちをここに従って書く。省略 = ナレーターが世界モデルに基づいて判断する（M3 で決定）
     """
 
     model_config = ConfigDict(
@@ -2131,29 +2132,29 @@ class ActPlan(BaseModel):
     toAct: ActId
     place: PlaceId
     """
-    下一幕的起点
+    Where the next act starts / 次の幕の開始地点
     """
     t: StoryTime
     """
-    下一幕从几点开始
+    What time the next act starts / 次の幕が始まる時刻
     """
     spot: SpotId | None = None
     """
-    玩家落在 place 的哪个位置点；省略 = 这个地点的起点（startSpots）
+    Which spot in place the player lands on; omitted = this place's starting point (startSpots) / プレイヤーが place のどの位置点に降り立つか。省略 = この地点の開始位置（startSpots）
     """
     effects: list[Effect]
     """
-    成行本身固定的效果（例：人物的 relocate）；打算自己的效果由叙事者从玩家的话里提取，照常检查后加在同一条事件上
+    Fixed effects of carrying out the plan itself (e.g. a character's relocate); the plan's own effects are extracted by the narrator from what the player says, checked as usual, and added to the same event / プラン実行そのものに伴う固定のエフェクト（例：登場人物の relocate）。プラン自体のエフェクトはナレーターがプレイヤーの発言から抽出し、通常どおり検査してから同じイベントに加える
     """
     arrival: Annotated[ActPlanArrival | None, Field(title="ActPlanArrival")] = None
     """
-    落地，同 ActExit.arrival
+    Landing, same as ActExit.arrival / 降り立ち。ActExit.arrival と同じ
     """
 
 
 class Act(BaseModel):
     """
-    幕（2.8，S-004）
+    Act (2.8, S-004) / 幕（2.8、S-004）
     """
 
     model_config = ConfigDict(
@@ -2165,32 +2166,32 @@ class Act(BaseModel):
     title: str
     start: Annotated[ActStart, Field(title="ActStart")]
     """
-    本幕最早从什么时候开始
+    The earliest time this act can start / この幕が最も早く始まる時刻
     """
     end: Annotated[ActEnd, Field(title="ActEnd")]
     scenes: list[SceneId]
     """
-    本幕可能用到的场景（前端据此预加载）
+    Scenes this act may use (the frontend preloads them based on this) / この幕で使う可能性のあるシーン（フロントエンドはこれをもとに先読みする）
     """
     exits: list[ActExit]
     """
-    幕末去处；最后一幕为空，收幕即进入结局
+    End-of-act destinations; empty for the last act, where closing the act goes straight to the ending / 幕末の行き先。最後の幕は空で、幕を閉じるとそのままエンディングに入る
     """
     endLines: list[ActEndLinesItem] | None = None
     """
-    （1.15，UX copy-ja 6.1）幕末页的第一行：按顺序取第一条 when 满足的；都不满足（例：节拍被改写）由叙事者写。只写玩家此刻能知道的事
+    (1.15, UX copy-ja 6.1) The first line of the end-of-act page: the first entry (in order) whose when is met; if none is met (e.g. a beat was rewritten) the narrator writes it. Only states what the player can know at this moment / （1.15、UX copy-ja 6.1）幕末ページの最初の行：when を満たす最初の項目を順に取る。どれも満たさない場合（例：ビートが書き換えられた）はナレーターが書く。プレイヤーがこの時点で知り得ることだけを書く
     """
     closingLine: Annotated[str | None, Field(min_length=1)] = None
     """
-    （1.15，UX copy-ja 6.1、ux-design 4.3）幕快结束时服务端下发的一行预告（日语）
+    (1.15, UX copy-ja 6.1, ux-design 4.3) A one-line preview the server sends when the act is about to end (in Japanese) / （1.15、UX copy-ja 6.1、ux-design 4.3）幕がもうすぐ終わるときにサーバーが送る 1 行の予告（日本語）
     """
     stops: list[PlaceId] | None = None
     """
-    （1.14，S-081）本幕梅洛斯停下来的地点（归途的停靠点）。跟着他的玩家（companionOf = char.melos）在别的地点随他一起移动；他离开停靠点时不带玩家。省略 = 没有停靠点
+    (1.14, S-081) Places where Melos stops in this act (stops on the way back). A player following him (companionOf = char.melos) moves with him from other places; when he leaves a stop he does not take the player along. Omitted = no stops / （1.14、S-081）この幕でメロスが立ち止まる地点（帰路の立ち寄り先）。彼についているプレイヤー（companionOf = char.melos）は、ほかの地点では彼と一緒に移動する。立ち寄り先を離れるときはプレイヤーを連れていかない。省略 = 立ち寄り先なし
     """
     plan: Annotated[ActPlan | None, Field(title="ActPlan")] = None
     """
-    （1.7，C-19）玩家在幕末说出的打算成行时落在哪里（2.8.1 第 2 步）：成行的事件按这里写下一幕、地点、时间、落点和落地。省略 = 叙事者按世界模型判（M3 定）
+    (1.7, C-19) Where the player lands when the plan they state at the end of the act is carried out (2.8.1 step 2): the event that carries it out writes the next act, place, time, landing spot and landing from here. Omitted = the narrator decides from the world model (set in M3) / （1.7、C-19）幕末でプレイヤーが述べたプランが実行されたとき、どこに降り立つか（2.8.1 第 2 段階）：実行のイベントは、次の幕、地点、時刻、降り立つ位置、降り立ちをここに従って書く。省略 = ナレーターが世界モデルに基づいて判断する（M3 で決定）
     """
     inferred: Literal[True] = True
     note: str | None = None
@@ -2198,7 +2199,7 @@ class Act(BaseModel):
 
 class ActExit(BaseModel):
     """
-    幕末推荐去处（2.8）
+    Suggested end-of-act destination (2.8) / 幕末のおすすめの行き先（2.8）
     """
 
     model_config = ConfigDict(
@@ -2208,54 +2209,54 @@ class ActExit(BaseModel):
     id: ExitId
     label: str
     """
-    玩家看到的选项（日语）
+    The option the player sees (in Japanese) / プレイヤーに見える選択肢（日本語）
     """
     toAct: ActId
     place: PlaceId
     """
-    下一幕的起点
+    Where the next act starts / 次の幕の開始地点
     """
     t: StoryTime
     """
-    下一幕从几点开始
+    What time the next act starts / 次の幕が始まる時刻
     """
     alignTo: BeatId | None = None
     """
-    跟着某个节拍走：该节拍本局被推迟/提前多少，t 就平移多少
+    Follows a beat: t shifts by however much that beat was delayed/advanced in this playthrough / あるビートに合わせる：このプレイでそのビートが遅れた／早まった分だけ t をずらす
     """
     roles: list[RoleId] | None = None
     """
-    只对这些身份开放；省略 = 全部
+    Open only to these roles; omitted = all / これらの身分にだけ開放する。省略 = すべて
     """
     requires: list[Condition] | None = None
     """
-    收幕时的状态要满足
+    The state when the act closes must meet this / 幕を閉じるときの状態が満たすべき条件
     """
     effects: list[Effect]
     """
-    选择本身的效果
+    Effects of the choice itself / 選択そのもののエフェクト
     """
     enRoute: EnRoute | None = None
     """
-    （1.4）跳过的这段路上有一个能改的节拍时，过场页给一个二选一
+    (1.4) When the skipped stretch of road contains a beat that can be changed, the transition page offers a choice between two / （1.4）飛ばした道のりに変えられるビートがあるとき、場面転換ページで二択を出す
     """
     sub: Annotated[str | None, Field(max_length=16, min_length=1)] = None
     """
-    （1.7）幕末页上这个去处副题的后半（日语，叙事口吻，不写分钟数）；前半「{地点}・{日子}の{时段}」由服务端按 place 的 Place.name 和 t 算好（日子、时段照 clock.labels，不套它的 format），和后半一起下发（ux-design 4.4）。省略 = 只有前半
+    (1.7) The second half of this destination's subtitle on the end-of-act page (in Japanese, narrative tone, no minute counts); the first half 「{place}・{day}の{time of day}」 is computed by the server from place's Place.name and t (day and time of day per clock.labels, without applying its format) and sent together with the second half (ux-design 4.4). Omitted = first half only / （1.7）幕末ページでのこの行き先の副題の後半（日本語、語りの口調、分数は書かない）。前半「{地点}・{日}の{時間帯}」はサーバーが place の Place.name と t から算出し（日と時間帯は clock.labels に従い、その format は適用しない）、後半と一緒に送る（ux-design 4.4）。省略 = 前半のみ
     """
     spot: SpotId | None = None
     """
-    （1.7）玩家落在 place 的哪个位置点；省略 = 前端按这个地点的起点（layout.json 的 startSpots）
+    (1.7) Which spot in place the player lands on; omitted = the frontend uses this place's starting point (startSpots in layout.json) / （1.7）プレイヤーが place のどの位置点に降り立つか。省略 = フロントエンドがこの地点の開始位置（layout.json の startSpots）を使う
     """
     arrival: Annotated[ActExitArrival | None, Field(title="ActExitArrival")] = None
     """
-    （1.7）落地：第一行叙事和先开口的人物（ux/slice/jump-transition.md「落地」）
+    (1.7) Landing: the first line of narration and the character who speaks first (ux/slice/jump-transition.md, "Landing") / （1.7）降り立ち：最初の語りと最初に口を開く登場人物（ux/slice/jump-transition.md の「降り立ち」）
     """
 
 
 class Affordance(BaseModel):
     """
-    （1.1）情境动作（2.10）
+    (1.1) Affordance (situational action) (2.10) / （1.1）状況アクション（2.10）
     """
 
     model_config = ConfigDict(
@@ -2266,59 +2267,59 @@ class Affordance(BaseModel):
     kind: Literal["examine", "give", "follow", "block", "help", "wait", "go", "shortcut", "run-together", "hasten"]
     label: str
     """
-    按钮上的动词短语（日语），不写耗时
+    Verb phrase on the button (in Japanese), without the time it takes / ボタン上の動詞句（日本語）。所要時間は書かない
     """
     pastLabel: Annotated[str, Field(max_length=30, min_length=1, pattern="^[^。]*[ただ]$")]
     """
-    （1.8）做完以后的事件句（日语，过去式，带对象，不带主语和「。」），例「老爺を家まで送った」。叙事者写成 summary「{Role.name}は、{pastLabel}」，下发给玩家时服务端换成「あなた」
+    (1.8) The event sentence once done (Japanese, past tense, with the object, without the subject or 「。」), e.g. 「老爺を家まで送った」. The narrator writes the summary as 「{Role.name}は、{pastLabel}」, and the server replaces it with 「あなた」 when sending it to the player / （1.8）やり終えた後のイベント文（日本語、過去形、目的語あり、主語と「。」なし）。例「老爺を家まで送った」。ナレーターは summary を「{Role.name}は、{pastLabel}」と書き、プレイヤーに送るときサーバーが「あなた」に置き換える
     """
     place: PlaceId
     """
-    在哪个地点出现
+    Which place it appears in / どの地点に現れるか
     """
     act: ActId | None = None
     """
-    只在这一幕
+    Only in this act / この幕のみ
     """
     roles: list[RoleId] | None = None
     """
-    只对这些身份；省略 = 全部
+    Only for these roles; omitted = all / これらの身分のみ。省略 = すべて
     """
     target: CharacterId | None = None
     """
-    对象人物
+    Target character / 対象の登場人物
     """
     item: ItemId | None = None
     """
-    kind = give 时必填：交出的物品
+    Required when kind = give: the item handed over / kind = give のときは必須：渡すアイテム
     """
     minutes: Annotated[int, Field(ge=0)]
     """
-    玩家花的故事时间（= 事件的 dt）
+    Story time the player spends (= the event's dt) / プレイヤーが費やす物語時間（= イベントの dt）
     """
     melos: Literal["delay", "hasten"] | None = None
     """
-    第四幕对梅洛斯的影响
+    Effect on Melos in the fourth act / 第四幕でのメロスへの影響
     """
     melosMinutes: int | None = None
     """
-    （1.4）有 melos 时必填：梅洛斯到刑场会晚（+）或早（−）几分钟
+    (1.4) Required when melos is present: how many minutes later (+) or earlier (−) Melos reaches the execution ground / （1.4）melos があるときは必須：メロスが刑場に何分遅く（+）／早く（−）着くか
     """
     when: list[Condition] | None = None
     """
-    出现条件
+    Conditions for it to appear / 出現条件
     """
     aid: AidId | None = None
     """
-    做成了就兑现这条互助（fromYou 的 MutualAid.id）
+    If it succeeds, this aid is fulfilled (MutualAid.id of a fromYou entry) / 成功したらこの助け合いを果たしたことになる（fromYou の MutualAid.id）
     """
     playerSpot: SpotId | None = None
     """
-    （1.7）做完以后玩家站在 place 的哪个位置点（布局的 spots）；省略 = 不挪。只管玩家，人物用 relocate 的 spot
+    (1.7) Which spot in place the player stands on afterwards (layout spots); omitted = does not move. Applies only to the player; characters use relocate's spot / （1.7）やり終えた後にプレイヤーが place のどの位置点に立つか（レイアウトの spots）。省略 = 動かない。プレイヤーにのみ適用し、登場人物は relocate の spot を使う
     """
     effects: list[Effect]
     """
-    效果模板：判定通过时提交的效果；空 = 只影响关系
+    Effect templates: effects committed when the check passes; empty = affects relationships only / エフェクトのテンプレート：判定に通ったときにコミットするエフェクト。空 = 関係にだけ影響する
     """
     inferred: Literal[True] = True
     note: str | None = None
@@ -2327,7 +2328,7 @@ class Affordance(BaseModel):
 
 class Beat(BaseModel):
     """
-    情节节拍（2.4）
+    Plot beat (2.4) / 筋のビート（2.4）
     """
 
     model_config = ConfigDict(
@@ -2337,46 +2338,46 @@ class Beat(BaseModel):
     id: BeatId
     order: float
     """
-    原著顺序（可以有小数，插在两个节拍之间）
+    Order in the original (may be fractional, to sit between two beats) / 原作での順序（小数でもよく、2 つのビートの間に挟める）
     """
     title: str
     summary: str
     window: Annotated[BeatWindow, Field(title="BeatWindow")]
     """
-    故事分钟；原著发生在 canonical；最晚 latest 之后就不可能再发生
+    Story minutes; in the original it happens at canonical; after latest it can no longer happen / 物語上の分。原作では canonical に起きる。latest を過ぎるともう起こり得ない
     """
     place: PlaceId
     participants: list[CharacterId]
     kind: Literal["anchor", "mutable"]
     """
-    anchor：不能被阻止或改写；mutable：可被提前、推迟、阻止或改变结果
+    anchor: cannot be prevented or rewritten; mutable: can be moved earlier, delayed, prevented, or have its outcome changed / anchor：阻止も書き換えもできない。mutable：早める、遅らせる、阻止する、結果を変えることができる
     """
     preconditions: list[Condition]
     """
-    发生前提，引用 stateVars
+    Preconditions for it to happen, referencing stateVars / 発生の前提条件。stateVars を参照する
     """
     outcomes: list[Effect]
     """
-    原著里发生后对状态的影响
+    Effect on the state after it happens in the original / 原作で起きた後の状態への影響
     """
     activities: list[BeatActivitiesItem] | None = None
     """
-    （1.1）节拍发生后这个人物在做什么
+    (1.1) What this character is doing after the beat happens / （1.1）ビートが起きた後にこの登場人物が何をしているか
     """
     variants: list[BeatVariant] | None = None
     """
-    （1.4）到点发生时，按这一局的状态换成另一种演法
+    (1.4) When it happens on schedule, swapped for another way of playing it out based on this playthrough's state / （1.4）予定時刻に起きるとき、このプレイの状態に応じて別の演じ方に差し替える
     """
     arriveBefore: Annotated[int | None, Field(ge=1)] = None
     """
-    （1.14）参与人物比本局排定时间早几分钟到这个节拍的地点（归途的停靠点：梅洛斯先到，玩家看得见他在那里）；省略 = 到点才到
+    (1.14) How many minutes before this playthrough's scheduled time the participating characters arrive at this beat's place (stops on the way back: Melos arrives first, and the player can see him there); omitted = they arrive at the scheduled time / （1.14）参加する登場人物が、このプレイの予定時刻より何分早くこのビートの地点に着くか（帰路の立ち寄り先：メロスが先に着き、プレイヤーはそこに彼がいるのを見られる）。省略 = 予定時刻ちょうどに着く
     """
     cite: list[Cite]
 
 
 class BeatVariant(BaseModel):
     """
-    （1.4，S-064）节拍到点发生时按这一局的状态换的另一种演法（2.4）
+    (1.4, S-064) Another way of playing out a beat, swapped in based on this playthrough's state when the beat happens on schedule (2.4) / （1.4、S-064）ビートが予定時刻に起きるとき、このプレイの状態に応じて差し替える別の演じ方（2.4）
     """
 
     model_config = ConfigDict(
@@ -2385,19 +2386,19 @@ class BeatVariant(BaseModel):
     )
     id: BeatId
     """
-    如 "beat.25.v-no-doubt"
+    E.g. "beat.25.v-no-doubt" / 例："beat.25.v-no-doubt"
     """
     when: list[Condition]
     """
-    节拍到点、前提成立时，按顺序取第一个 when 全满足的变体
+    When the beat is due and its preconditions hold, the first variant (in order) whose when is fully met is taken / ビートが予定時刻になり前提条件が成り立つとき、when をすべて満たす最初のバリアントを順に取る
     """
     summary: str
     """
-    这一局的演法（日语）
+    How it plays out in this playthrough (in Japanese) / このプレイでの演じ方（日本語）
     """
     outcomes: list[Effect]
     """
-    代替节拍的 outcomes
+    Replaces the beat's outcomes / ビートの outcomes の代わりになる
     """
     inferred: Literal[True] = True
     note: str | None = None
@@ -2406,7 +2407,7 @@ class BeatVariant(BaseModel):
 
 class Character(BaseModel):
     """
-    人物（2.1）
+    Character (2.1) / 登場人物（2.1）
     """
 
     model_config = ConfigDict(
@@ -2417,65 +2418,65 @@ class Character(BaseModel):
     name: str
     reading: str | None = None
     """
-    名字的读法：片假名照抄，汉字写成平假名，例「おうディオニス」。（1.10）manifest 要每个人物都有，build_world 查每个人物都填了、不带汉字
+    How the name is read: katakana copied as is, kanji written in hiragana, e.g. 「おうディオニス」. (1.10) The manifest needs one for every character; build_world checks that every character has it and that it contains no kanji / 名前の読み方：カタカナはそのまま、漢字はひらがなで書く。例「おうディオニス」。（1.10）manifest では全登場人物に必要。build_world が全員分埋まっていて漢字を含まないことを検査する
     """
     summary: str
     """
-    一两句，中性描述
+    One or two sentences, neutral description / 1〜2 文の中立的な説明
     """
     traits: list[CharacterTraitsItem]
     """
-    性格，每条有出处
+    Personality traits, each with a source / 性格。各項目に出典がある
     """
     goals: list[CharacterGoalsItem]
     """
-    动机（= S-030 的「当下目标」）
+    Motivations (= the "current goal" of S-030) / 動機（= S-030 の「当面の目標」）
     """
     speech: Annotated[CharacterSpeech, Field(title="CharacterSpeech")]
     """
-    说话方式，给角色 Agent 和评测用
+    Way of speaking, for the character agent and evals / 話し方。キャラクター Agent と評価で使う
     """
     knows: list[CharacterKnowsItem]
     """
-    知道哪个 fact，从哪个 beat 起
+    Which facts they know, and from which beat / どの fact を、どの beat から知っているか
     """
     initialPlace: PlaceId
     talkable: bool
     """
-    第一版能不能自由对话（S-003）
+    Whether free conversation is available in the first version (S-003) / 最初の版で自由に会話できるか（S-003）
     """
     group: Literal[True] | None = None
     """
-    （1.7）一群人（群众、警吏、山贼、一团旅人）：不占布局的位置点，前端按地点成群地放（站位规则见第 3.1 节 WorldState.spots）
+    (1.7) A group of people (crowd, officers, bandits, a band of travelers): does not occupy layout spots; the frontend places them as a group by place (placement rules in section 3.1 WorldState.spots) / （1.7）集団（群衆、警吏、山賊、旅人の一団）：レイアウトの位置点を占有せず、フロントエンドが地点ごとにまとめて配置する（立ち位置の規則は第 3.1 節 WorldState.spots を参照）
     """
     voiceRef: str | None = None
     """
-    声音配置的引用，具体值由后端/UX 管
+    Reference to the voice configuration; the actual values are managed by backend/UX / 音声設定への参照。具体的な値はバックエンド／UX が管理する
     """
     initialActivity: Activity | None = None
     """
-    （1.1）开局在做什么（默认 idle）
+    (1.1) What they are doing at the start (default idle) / （1.1）開始時に何をしているか（既定は idle）
     """
     items: list[ItemId] | None = None
     """
-    （1.3）开局带在身上的物品（portable 的 Item ID）
+    (1.3) Items carried at the start (Item IDs of portable items) / （1.3）開始時に身に付けているアイテム（portable な Item の ID）
     """
     cite: list[Cite]
     mutualAid: list[MutualAid] | None = None
     """
-    （1.1）互助：他能为你做的、你能为他做的
+    (1.1) Aid: what they can do for you, and what you can do for them / （1.1）助け合い：相手があなたにできること、あなたが相手にできること
     """
     promiseTemplates: list[PromiseTemplate] | None = None
     """
-    （1.1）这个人物常见的约定
+    (1.1) Promises typical for this character / （1.1）この登場人物によくある約束
     """
     plans: list[CharacterPlansItem] | None = None
     """
-    （1.1）每一幕「没人管时的打算」
+    (1.1) For each act, their "plan when left alone" / （1.1）各幕の「誰も関わらないときのプラン」
     """
     originalEnding: Annotated[CharacterOriginalEnding | None, Field(title="CharacterOriginalEnding")] = None
     """
-    （1.11，B-9）结局页「原作では」那一句，也是全部人物都没被波及时卡上梅洛斯那一行；endings.characters 里的人物都要有
+    (1.11, B-9) The 「原作では」 line on the ending page, which is also Melos's line on the card when no character was affected; required for every character in endings.characters / （1.11、B-9）エンディングページの「原作では」の一文。どの登場人物にも影響が及ばなかったときにカードに出るメロスの行でもある。endings.characters の登場人物には必須
     """
 
 
@@ -2492,7 +2493,7 @@ class ClockOnDeadlineItem(BaseModel):
 
 class Clock(BaseModel):
     """
-    时钟：开局时间、期限、时段叫法（2.6）
+    Clock: start time, deadline, names of times of day (2.6) / 時計：開始時刻、期限、時間帯の呼び方（2.6）
     """
 
     model_config = ConfigDict(
@@ -2501,20 +2502,20 @@ class Clock(BaseModel):
     )
     startT: StoryTime
     """
-    默认开局时间（各身份见 Role.startT）
+    Default start time (for each role, see Role.startT) / 既定の開始時刻（各身分は Role.startT を参照）
     """
     deadline: Annotated[ClockDeadline, Field(title="ClockDeadline")]
     sunsetMinuteOfDay: Annotated[int, Field(ge=0, le=1439)]
     """
-    日没是几点；默认 1140（19:00）
+    Time of sunset; default 1140 (19:00) / 日没の時刻。既定は 1140（19:00）
     """
     onDeadline: list[ClockOnDeadlineItem]
     """
-    到期限时自动执行（actor: "system"）；所有 if 都按期限那一刻的状态判断
+    Executed automatically when the deadline arrives (actor: "system"); every if is evaluated against the state at the moment of the deadline / 期限が来たら自動で実行する（actor: "system"）。if はすべて期限の時点の状態で判定する
     """
     labels: Annotated[ClockLabels, Field(title="ClockLabels")]
     """
-    tLabel 的生成规则
+    Rules for generating tLabel / tLabel の生成規則
     """
 
 
@@ -2523,7 +2524,7 @@ type Effect = Annotated[
     Field(discriminator="op", title="Effect"),
 ]
 """
-效果：按 op 区分的 8 种（第 3 节）。事件、节拍结果、去处、情境动作、互助、期限规则共用
+Effect: 8 kinds distinguished by op (section 3). Shared by events, beat outcomes, destinations, affordances, aid and deadline rules / エフェクト：op で区別する 8 種類（第 3 節）。イベント、ビートの結果、行き先、状況アクション、助け合い、期限の規則で共用する
 """
 
 
@@ -2538,14 +2539,14 @@ class EffectBeat(BaseModel):
     minutes: Annotated[int | None, Field(ge=0)] = None
     outcomes: list[Effect] | None = None
     """
-    altered 时 = 改变后的结果（代替世界模型里的 outcomes）
+    When altered = the changed outcomes (replacing the outcomes in the world model) / altered のとき = 変更後の結果（世界モデルの outcomes の代わり）
     """
     note: str | None = None
 
 
 class EnRoute(BaseModel):
     """
-    （1.4）过场里的二选一（2.8）
+    (1.4) A choice between two in the transition (2.8) / （1.4）場面転換での二択（2.8）
     """
 
     model_config = ConfigDict(
@@ -2554,15 +2555,15 @@ class EnRoute(BaseModel):
     )
     beat: BeatId
     """
-    跳过的这段里能改的节拍
+    The beat in the skipped stretch that can be changed / 飛ばした区間で変えられるビート
     """
     line: str
     """
-    过场页上叙事的一句（日语）
+    One line of narration on the transition page (in Japanese) / 場面転換ページの語りの一文（日本語）
     """
     choices: Annotated[list[EnRouteChoice], Field(max_length=2, min_length=2)]
     """
-    正好两个；最后一个是「照原作」，effects 为空
+    Exactly two; the last one is "as in the original", with empty effects / ちょうど 2 つ。最後の 1 つは「原作どおり」で、effects は空
     """
     inferred: Literal[True] = True
     note: str | None = None
@@ -2571,7 +2572,7 @@ class EnRoute(BaseModel):
 
 class EnRouteChoice(BaseModel):
     """
-    （1.5）过场二选一的一个选项（2.8）
+    (1.5) One option of the transition choice (2.8) / （1.5）場面転換の二択の選択肢 1 つ（2.8）
     """
 
     model_config = ConfigDict(
@@ -2580,22 +2581,22 @@ class EnRouteChoice(BaseModel):
     )
     label: str
     """
-    按钮上的动词（日语），不写分钟数
+    The verb on the button (in Japanese), without minute counts / ボタン上の動詞（日本語）。分数は書かない
     """
     effects: list[Effect]
     melosMinutes: int | None = None
     """
-    （1.5）effects 里有改节拍的一条时必填：梅洛斯到刑场早（−）晚（+）几分钟
+    (1.5) Required when effects include one that changes a beat: how many minutes earlier (−) or later (+) Melos reaches the execution ground / （1.5）effects にビートを変えるものがあるときは必須：メロスが刑場に何分早く（−）／遅く（+）着くか
     """
     after: str | None = None
     """
-    （1.5）选了这一项，进下一幕之前过场页再多一句（日语）
+    (1.5) If this option is chosen, one more line on the transition page before entering the next act (in Japanese) / （1.5）この選択肢を選んだら、次の幕に入る前に場面転換ページにもう一文出す（日本語）
     """
 
 
 class Event(BaseModel):
     """
-    运行时事件，只追加（第 3 节）。叙事者是唯一写入方
+    Runtime event, append-only (section 3). The narrator is the only writer / 実行時のイベント。追記のみ（第 3 節）。書き込むのはナレーターだけ
     """
 
     model_config = ConfigDict(
@@ -2607,79 +2608,79 @@ class Event(BaseModel):
     playthroughId: PlaythroughId
     seq: Annotated[int, Field(ge=1)]
     """
-    本局内严格递增，从 1 开始；重放按 seq
+    Strictly increasing within the playthrough, starting at 1; replay goes by seq / プレイ内で狭義単調増加、1 から始まる。リプレイは seq の順に行う
     """
     turnId: TurnId | None = None
     """
-    来自哪一轮；system 事件没有
+    Which turn it came from; system events have none / どのターンから来たか。system のイベントにはない
     """
     idempotencyKey: Annotated[str, Field(min_length=1)]
     """
-    同一轮提交重试时不重复写（后端生成，靠它去重，不能是空串）
+    Prevents a duplicate write when a turn's commit is retried (generated by the backend and used for deduplication; must not be an empty string) / 同じターンのコミットを再試行しても重複して書かない（バックエンドが生成し、重複排除に使う。空文字列は不可）
     """
     worldModelVersion: str
     t: StoryTime
     """
-    发生时的故事时间；按 seq 不递减
+    Story time when it happened; non-decreasing by seq / 起きた時点の物語時間。seq の順で減少しない
     """
     dt: Annotated[int, Field(ge=0)]
     """
-    这件事消耗的故事分钟；本事件之后时钟 = max(之前的时钟, t + dt)
+    Story minutes this takes; after this event the clock = max(previous clock, t + dt) / この出来事が費やす物語上の分。このイベントの後の時計 = max(それまでの時計, t + dt)
     """
     recordedAt: RecordedAt
     actor: Actor
     type: Literal["say", "action", "move", "beat", "learn", "act-transition", "correction", "ending", "forget"]
     origin: Literal["turn", "action", "schedule", "plan", "director", "act", "memory"] | None = None
     """
-    （1.1）事件从哪来；只给评测、Trace 和「その頃」排序，不推前端
+    (1.1) Where the event came from; only for evals, Trace and ordering 「その頃」, not pushed to the frontend / （1.1）イベントの出どころ。評価、Trace、「その頃」の並べ替えにのみ使い、フロントエンドには送らない
     """
     beneficiary: Literal["player"] | CharacterId | None = None
     """
-    （1.1）这件事是为谁做的
+    (1.1) For whom this was done / （1.1）この出来事が誰のために行われたか
     """
     confirmed: Literal[True] | None = None
     """
-    （1.1）提交前经过故事里的意图确认（S-040）
+    (1.1) Went through an in-story intent confirmation before commit (S-040) / （1.1）コミット前に物語内での意図確認を経た（S-040）
     """
     place: PlaceId
     summary: str
     """
-    叙事者写的中性日语摘要：只写故事里的行为，不含玩家原话，不含现实个人信息
+    Neutral Japanese summary written by the narrator: only actions within the story, no verbatim player words, no real-world personal information / ナレーターが書く中立的な日本語の要約：物語内の行為だけを書き、プレイヤーの発言そのものや現実の個人情報は含めない
     """
     utteranceRefs: list[UtteranceId] | None = None
     """
-    相关原话（可删除；删除后这里保留 ID 但内容取不到）
+    Related verbatim utterances (deletable; after deletion the IDs stay here but the content can no longer be retrieved) / 関連する発言そのもの（削除可能。削除後も ID はここに残るが、内容は取得できない）
     """
     causes: list[EventId | BeatId]
     """
-    因为哪些事件（ev_…）或节拍（beat.…）
+    Which events (ev_…) or beats (beat.…) caused it / どのイベント（ev_…）またはビート（beat.…）が原因か
     """
     effects: list[Effect]
     """
-    提交的事件里 promise 效果必须带 promiseId（见 Effect 的 promise 分支）
+    In committed events, promise effects must carry a promiseId (see Effect's promise branch) / コミットされたイベントの promise エフェクトには promiseId が必須（Effect の promise 分岐を参照）
     """
     keyMoment: bool
     """
-    提交时算出，（1.1）按 S-041 的四条
+    Computed at commit; (1.1) per the four rules of S-041 / コミット時に算出する。（1.1）S-041 の 4 条件に従う
     """
     check: CheckResult
     supersedes: EventId | None = None
     """
-    只用于 type=correction：修正哪一条事件
+    Only for type=correction: which event is corrected / type=correction のみ：どのイベントを修正するか
     """
     exitId: ExitId | None = None
     """
-    只用于 type=act-transition（actor=player）和过场二选一的 action 事件
+    Only for type=act-transition (actor=player) and the action events of the transition choice / type=act-transition（actor=player）と場面転換の二択の action イベントのみ
     """
     plan: Annotated[EventPlan | None, Field(title="EventPlan")] = None
     """
-    （1.2，S-031 ③）只用于 type=act-transition（actor=player）且玩家说出了自己的打算
+    (1.2, S-031 ③) Only for type=act-transition (actor=player) when the player stated their own plan / （1.2、S-031 ③）type=act-transition（actor=player）で、プレイヤーが自分のプランを述べた場合のみ
     """
 
 
 class MutualAid(BaseModel):
     """
-    （1.1）互助：他能为你做的、你能为他做的（2.1）
+    (1.1) Aid: what they can do for you, and what you can do for them (2.1) / （1.1）助け合い：相手があなたにできること、あなたが相手にできること（2.1）
     """
 
     model_config = ConfigDict(
@@ -2689,42 +2690,42 @@ class MutualAid(BaseModel):
     id: AidId
     direction: Literal["forYou", "fromYou"]
     """
-    forYou = 他能为你做的；fromYou = 你能为他做的
+    forYou = what they can do for you; fromYou = what you can do for them / forYou = 相手があなたにできること。fromYou = あなたが相手にできること
     """
     text: str
     """
-    日语一句，给叙事者和角色提示用，不直接显示给玩家
+    One Japanese sentence, for the narrator and character prompts; not shown directly to the player / 日本語の一文。ナレーターとキャラクタープロンプト用で、プレイヤーには直接表示しない
     """
     when: list[Condition] | None = None
     """
-    只在这些条件下才可能
+    Only possible under these conditions / これらの条件下でのみ可能
     """
     opening: RoleId | None = None
     """
-    这一条是该身份第一幕的「开局互助」（S-048）
+    This entry is the role's "opening aid" for the first act (S-048) / この項目はその身分の第一幕の「開始時の助け合い」（S-048）
     """
     major: Literal[True] | None = None
     """
-    只用于 forYou：兑现时算关键时刻（S-041）
+    forYou only: counts as a key moment when fulfilled (S-041) / forYou のみ：果たされたときに重要な瞬間として数える（S-041）
     """
     gives: ItemId | None = None
     """
-    （1.3）只用于 forYou：兑现时人物交给你的物品
+    (1.3) forYou only: items the character hands you when it is fulfilled / （1.3）forYou のみ：果たされたときに登場人物があなたに渡すアイテム
     """
     effects: list[Effect] | None = None
     """
-    （1.4）兑现时提交的效果模板（同 Affordance.effects）
+    (1.4) Effect templates committed when fulfilled (same as Affordance.effects) / （1.4）果たされたときにコミットするエフェクトのテンプレート（Affordance.effects と同じ）
     """
     inferred: Literal[True] = True
     cite: list[Cite] | None = None
     """
-    有原文依据时给出处
+    Source, when there is support in the original text / 原文に根拠があるときは出典を示す
     """
 
 
 class WorldModel(BaseModel):
     """
-    世界模型（第 2 节）：静态、按书版本化；由原文抽取流水线生成，人工校对后发布，运行时只读
+    World model (section 2): static, versioned per book; generated by the original-text extraction pipeline, published after human proofreading, read-only at runtime / 世界モデル（第 2 節）：静的で、本ごとにバージョン管理する。原文抽出パイプラインが生成し、人手で校正してから公開する。実行時は読み取り専用
     """
 
     model_config = ConfigDict(
@@ -2734,7 +2735,7 @@ class WorldModel(BaseModel):
     schemaVersion: SchemaVersion
     worldModelVersion: str
     """
-    内容版本，如 "hashire-merosu@1.0.0"
+    Content version, e.g. "hashire-merosu@1.0.0" / 内容のバージョン。例："hashire-merosu@1.0.0"
     """
     book: Annotated[WorldModelBook, Field(title="WorldModelBook")]
     characters: list[Character]
@@ -2744,54 +2745,54 @@ class WorldModel(BaseModel):
     causal: list[CausalEdge]
     anchors: list[FactId | BeatId]
     """
-    不能被推翻的 fact / beat ID（锚点）
+    Fact / beat IDs that cannot be overturned (anchors) / 覆せない fact / beat の ID（アンカー）
     """
     globalRules: list[WorldModelGlobalRulesItem]
     """
-    死者不复活、没有奇迹、时间不倒流、没有现代物品、人物自己做决定
+    The dead do not come back, no miracles, time does not run backwards, no modern objects, characters make their own decisions / 死者は生き返らない、奇跡は起きない、時間は巻き戻らない、現代の物はない、登場人物は自分で決める
     """
     clock: Clock
     stateVars: list[StateVar]
     roles: list[Role]
     """
-    玩家可选身份
+    Roles the player can choose / プレイヤーが選べる身分
     """
     scenes: list[Scene]
     """
-    3D 场景（S-001）
+    3D scenes (S-001) / 3D シーン（S-001）
     """
     acts: list[Act]
     """
-    幕（S-004）
+    Acts (S-004) / 幕（S-004）
     """
     endings: Annotated[WorldModelEndings, Field(title="WorldModelEndings")]
     pacing: dict[str, PacingAdditionalProperty] | None = None
     """
-    时间消耗参数（S-005、S-038），键见 2.6.1；值是故事分钟
+    Time-cost parameters (S-005, S-038); keys in 2.6.1; values are story minutes / 時間消費のパラメータ（S-005、S-038）。キーは 2.6.1 を参照。値は物語上の分
     """
     pacingNote: str | None = None
     """
-    （1.1）pacing 的说明（日语）
+    (1.1) Explanation of pacing (in Japanese) / （1.1）pacing の説明（日本語）
     """
     affordances: list[Affordance] | None = None
     """
-    （1.1）情境动作，见 2.10
+    (1.1) Affordances (situational actions); see 2.10 / （1.1）状況アクション。2.10 を参照
     """
     items: list[Item] | None = None
     """
-    （1.1）故事里的物品，见 2.10
+    (1.1) Items in the story; see 2.10 / （1.1）物語に登場するアイテム。2.10 を参照
     """
     setPieces: list[SetPiece] | None = None
     """
-    （1.7，S-080 ④）固定演出：挂在节拍或玩家的动作上的地の文和预录句，见 2.11
+    (1.7, S-080 ④) Set pieces: narration (地の文) and pre-recorded lines attached to a beat or a player action; see 2.11 / （1.7、S-080 ④）固定演出：ビートやプレイヤーのアクションに結び付いた地の文と事前収録セリフ。2.11 を参照
     """
     objects: list[WorldObject] | None = None
     """
-    （1.7）场景里可「調べる」的东西，见 2.12
+    (1.7) Things in a scene the player can 「調べる」 (inspect); see 2.12 / （1.7）シーン内で「調べる」ことができるもの。2.12 を参照
     """
     ruby: list[WorldModelRubyItem] | None = None
     """
-    （1.10）注音词表：字幕里专有名词和难读词的读音（frontend-design 7.5、UX 13），manifest 原样下发。不写 = 没有
+    (1.10) Ruby glossary: readings of proper nouns and hard-to-read words in subtitles (frontend-design 7.5, UX 13), sent as is in the manifest. Omitted = none / （1.10）ルビ辞書：字幕に出る固有名詞や難読語の読み（frontend-design 7.5、UX 13）。manifest でそのまま配信する。省略 = なし
     """
 
 

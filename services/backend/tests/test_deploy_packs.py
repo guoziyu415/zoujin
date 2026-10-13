@@ -1,4 +1,8 @@
-"""共享场景包可由不同管线合并；说明性 note 不得绕过实际结构或 inputs 校验。"""
+"""Shared scene packs can be merged from different pipelines; an explanatory note must not bypass validation of the
+actual structure or inputs.
+
+共有のシーンパックは別々のパイプラインからマージできる。説明用の note で実際の構造や inputs の検証を回避してはならない。
+"""
 
 from __future__ import annotations
 

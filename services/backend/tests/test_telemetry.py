@@ -1,4 +1,9 @@
-"""2.11 `POST /v1/telemetry`：不要会话，合 Schema 回 204、每条记一行日志，不合回 400。不联网。"""
+"""2.11 `POST /v1/telemetry`: no session needed; matching the Schema returns 204 and logs one line per entry, not
+matching returns 400. No network.
+
+2.11 `POST /v1/telemetry`：セッションは不要。Schema に合えば 204 を返して 1 件ごとにログを 1 行書き、
+合わなければ 400 を返す。ネットワークにはつながない。
+"""
 
 from __future__ import annotations
 

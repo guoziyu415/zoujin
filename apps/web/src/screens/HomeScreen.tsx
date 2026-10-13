@@ -1,4 +1,5 @@
-// 书房是书籍目录与真实存档的入口。这里的任何操作都不创建、删除或重置一局。
+// The study is the entry point to the book catalog and the real saves. Nothing here creates, deletes or resets a playthrough.
+// 書斎は本の目録と実際のセーブデータへの入口。ここでの操作は、どれもプレイを作成・削除・リセットしない。
 import type { Api } from "@zoujin/contracts";
 import { useQuery } from "@tanstack/react-query";
 import {

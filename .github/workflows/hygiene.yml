@@ -1,4 +1,5 @@
-# 每次都跑：秘密扫描、大文件（dev-plan 2.4）。
+# Runs every time: secret scanning, large files (dev-plan 2.4).
+# 毎回実行：シークレットスキャン、大きなファイル（dev-plan 2.4）。
 name: hygiene
 
 on:
@@ -31,9 +32,16 @@ jobs:
           tar -xzf "$RUNNER_TEMP/gitleaks.tgz" -C "$RUNNER_TEMP" gitleaks
       - name: Scan every commit
         run: '"$RUNNER_TEMP/gitleaks" git --config .gitleaks.toml --redact --no-banner -v .'
-      # 可选：zg 在仓库设置里加 Actions secret KNOWN_IDS（真实的项目 ID、项目号、账单 ID 等，一行一个），
-      # PR 和推到 main 时都查有没有漏进仓库，在合进 main 之前就拦住。值本身不进仓库，脚本也不打印它。
-      # 仓库是私有的、没有 fork，PR 都来自项目线程，所以 PR 的运行拿这个 secret 风险不大。没加就跳过。
+      # Optional: zg adds the Actions secret KNOWN_IDS in the repo settings (real project ID, project number, billing ID, etc.,
+      # one per line); PRs and pushes to main check whether any leaked into the repo, catching them before they merge into main.
+      # The values themselves never enter the repo, and the script does not print them.
+      # The repo is private with no forks and PRs all come from project threads, so giving this secret to PR runs is low risk.
+      # Skipped if not set.
+      # 任意：zg がリポジトリ設定で Actions secret KNOWN_IDS を追加する（実際のプロジェクト ID、プロジェクト番号、請求先 ID など、
+      # 1 行に 1 つ）。PR と main への push の両方で、リポジトリに紛れ込んでいないかを調べ、main にマージされる前に止める。
+      # 値そのものはリポジトリに入れず、スクリプトも出力しない。
+      # リポジトリは非公開で fork もなく、PR はすべてプロジェクトのスレッドから来るので、PR の実行にこの secret を渡すリスクは小さい。
+      # 未設定ならスキップする。
       - name: Known IDs
         env:
           KNOWN_IDS: ${{ secrets.KNOWN_IDS }}

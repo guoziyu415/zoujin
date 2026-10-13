@@ -2,21 +2,21 @@
 
 For the backend's S-1b plan see `backend/spikes/s1b-plan.md`. This page is served by the backend's s1b proxy at the same address; zg opens it on an iPhone (Wi-Fi off) and talks to メロス through 8 test items, and the page times and reports by itself.
 
-後端の S-1b 計画は `backend/spikes/s1b-plan.md` を参照。このページは後端の s1b プロキシが同じアドレスで配信し、zg が iPhone（Wi-Fi オフ）で開いて 8 つのテスト項目でメロスと話す。ページが自分で時間を記録して送信する。
+バックエンドの S-1b 計画は `backend/spikes/s1b-plan.md` を参照。このページはバックエンドの s1b プロキシが同じアドレスで配信し、zg が iPhone（Wi-Fi オフ）で開いて 8 つのテスト項目でメロスと話す。ページが自分で時間を記録して送信する。
 
 ## Directories / ディレクトリ
 
 | Directory / ディレクトリ | Contents / 内容 | In the image? / イメージに含めるか |
 |---|---|---|
 | `page/` | `index.html`, `app.js`, `capture-worklet.js`, `play-worklet.js` / 同左 | **Yes / 含める**: `ZJ_S1B_STATIC` / `ZJ_S1B_PAGE` point to this directory / `ZJ_S1B_STATIC` / `ZJ_S1B_PAGE` がこのディレクトリを指す |
-| `test/` | `fake_serve.py` (the backend's real proxy + a fake Live model), `e2e.mjs` (one run with Chromium's fake microphone) / `fake_serve.py`（後端の実プロキシ + 偽の Live モデル）、`e2e.mjs`（Chromium の偽マイクで 1 回通して実行） | No / 含めない |
+| `test/` | `fake_serve.py` (the backend's real proxy + a fake Live model), `e2e.mjs` (one run with Chromium's fake microphone) / `fake_serve.py`（バックエンドの実プロキシ + 偽の Live モデル）、`e2e.mjs`（Chromium の偽マイクで 1 回通して実行） | No / 含めない |
 
 The files in `page/` are sent to the phone as is, so per D-017 they stay neutral: title 「音声テスト」, and no product name or zg's name in the page text, file names or comments, only メロス. After changing `page/`, check with the command below:
 
 `page/` のファイルはそのまま携帯に送られるため、D-017 に従って中立に保つ：タイトルは「音声テスト」で、ページの文言、ファイル名、コメントに製品名や zg の名前は入れず、メロスだけを使う。`page/` を変更したら、下のコマンドで確認する：
 
 ```
-grep -n -i "zoujin\|走进\|zj\|zg\|backend\|api-contract" page/*
+grep -n -i "zoujin\|monogatari\|物語\|zj\|zg\|backend\|api-contract" page/*
 ```
 
 ## What the page does / ページの動作
@@ -32,7 +32,7 @@ grep -n -i "zoujin\|走进\|zj\|zg\|backend\|api-contract" page/*
 - Two ways to handle the microphone (item 3): "always on during the conversation" or "on/off per turn"; when opening the mic `navigator.audioSession.type = 'play-and-record'`, and when closing it set back to `playback` (iOS 17+ supports this; browsers that do not are recorded as "unsupported").
   マイクの扱い方 2 通り（項目 3）：「会話中は常時オン」または「ターンごとにオン/オフ」。マイクを開くとき `navigator.audioSession.type = 'play-and-record'`、閉じるとき `playback` に戻す（iOS 17+ 対応。非対応のブラウザは「非対応」と記録する）。
 - Item 5 shows the sentences to read quietly: two groups of 5 each from the backend's `zj_spike/data/s1b_lines.json`; when "audio output" is set to speaker use the phone-microphone group, and when set to earphones use the earphone group; the character error rate is computed from the recognized text returned by the server, removing the same characters as the backend's `cerIgnore`.
-  項目 5 は小声で読む文を表示する：後端の `zj_spike/data/s1b_lines.json` にある 5 文ずつの 2 グループ。「音の出力」でスピーカーを選んだときは携帯マイクのグループ、イヤホンを選んだときはイヤホンのグループを使う。サーバーが返す認識テキストで文字誤り率を計算し、除去する文字は後端の `cerIgnore` と同じ。
+  項目 5 は小声で読む文を表示する：バックエンドの `zj_spike/data/s1b_lines.json` にある 5 文ずつの 2 グループ。「音の出力」でスピーカーを選んだときは携帯マイクのグループ、イヤホンを選んだときはイヤホンのグループを使う。サーバーが返す認識テキストで文字誤り率を計算し、除去する文字はバックエンドの `cerIgnore` と同じ。
 - Item 7: when going to the background and coming back, check audio, microphone and connection, and show 「タップで音を戻す」 when needed.
   項目 7：バックグラウンドに切り替えて戻ったとき、音声、マイク、接続を確認し、必要なら「タップで音を戻す」を表示する。
 
@@ -61,7 +61,7 @@ Results are stored in the phone's localStorage (only numbers and test items, **n
 
 Using the backend's real `s1b_proxy.py`, with only the Live model replaced by a fake (`test/fake_serve.py`) and Chromium's fake microphone:
 
-後端の実際の `s1b_proxy.py` を使い、Live モデルだけを偽物（`test/fake_serve.py`）に置き換え、Chromium の偽マイクで実施：
+バックエンドの実際の `s1b_proxy.py` を使い、Live モデルだけを偽物（`test/fake_serve.py`）に置き換え、Chromium の偽マイクで実施：
 
 - Wrong code → 「コードが違います」; correct code → enters; a WebSocket without login is closed with 4001.
   誤ったコード →「コードが違います」。正しいコード → 入れる。未ログインの WebSocket は 4001 で閉じられる。
@@ -78,11 +78,11 @@ Using the backend's real `s1b_proxy.py`, with only the Live model replaced by a 
 
 **Changes on 2026-10-07** (gaps the backend found after the S-1b 4G test): when the player pressed to speak after the server had finished but the phone was still playing, the previous turn produced no record or only after the 30-second timeout (turns 11, 19 and 26 in the test). The cause was that the record waits for playback to end, while pressing clears playback, so that turn never reached an end. Now the interrupted turn is recorded at the moment of pressing (`bargeInCount: 1`), and if the server has not finished it waits up to 5 seconds for its `turn_complete`; `turn_complete` finds the turn by `turnId`, not only the current one. Also added `extMicCount`, because in the test the "audio output" selection was never changed, so Bluetooth earphones and speaker could not be told apart. Rerunning e2e in the container: both kinds of barge-in (server not finished / finished but still playing) produce a record for the interrupted turn, all 11 rows arrive, and there are no timeouts.
 
-**2026-10-07 の修正**（S-1b の 4G 実機テスト後に後端が見つけた不備）：サーバーが話し終えたのに携帯がまだ再生している最中に押して話すと、前のターンの記録が出ない、または 30 秒のタイムアウト後にだけ出た（テストの第 11、19、26 ターン）。原因は記録が再生の終了を待つのに、押したときに再生をクリアするため、そのターンは終了に到達しなかったこと。今は押した時点で割り込まれたターンを記録し（`bargeInCount: 1`）、サーバーがまだ話し終えていなければ、その `turn_complete` を最長 5 秒待つ。`turn_complete` は現在のターンだけでなく `turnId` でターンを探す。さらに `extMicCount` を追加した。テストでは「音の出力」の選択がずっと切り替えられず、Bluetooth イヤホンとスピーカーを区別できなかったため。コンテナで e2e を再実行：2 種類の割り込み（サーバーが話し終えていない / 話し終えたが再生中）のどちらも割り込まれたターンの記録があり、11 行すべてが届き、タイムアウトはなかった。
+**2026-10-07 の修正**（S-1b の 4G 実機テスト後にバックエンドが見つけた不備）：サーバーが話し終えたのに携帯がまだ再生している最中に押して話すと、前のターンの記録が出ない、または 30 秒のタイムアウト後にだけ出た（テストの第 11、19、26 ターン）。原因は記録が再生の終了を待つのに、押したときに再生をクリアするため、そのターンは終了に到達しなかったこと。今は押した時点で割り込まれたターンを記録し（`bargeInCount: 1`）、サーバーがまだ話し終えていなければ、その `turn_complete` を最長 5 秒待つ。`turn_complete` は現在のターンだけでなく `turnId` でターンを探す。さらに `extMicCount` を追加した。テストでは「音の出力」の選択がずっと切り替えられず、Bluetooth イヤホンとスピーカーを区別できなかったため。コンテナで e2e を再実行：2 種類の割り込み（サーバーが話し終えていない / 話し終えたが再生中）のどちらも割り込まれたターンの記録があり、11 行すべてが届き、タイムアウトはなかった。
 
-The same day per S-073 item 2: the three items "audio output / network / microphone" have no defaults, and the talk button can be pressed only after all three are chosen; the talk button shows the current conditions (e.g. 「押して話す（スピーカー・4G・会話中常時オン）」, shown in the original as "外放・4G・对话中常开" parts); changing the microphone to always-on or per-turn during a connection immediately opens or closes the microphone; when the automatically judged microphone source disagrees with "audio output", a hint appears under the settings. When switching test items, the three are cleared and must be chosen again (iPhone Safari cannot obtain the network type, so "network" can only be chosen by hand; the backend's suggestion). "AirPods" became "Bluetooth earphones" (value `bluetooth`). The "other" column of the results table marks "this turn was interrupted" and "headset microphone". e2e also covers: pressing without conditions chosen does not start a turn, and the hint appearing and disappearing.
+The same day per S-073 item 2: the three items "audio output / network / microphone" have no defaults, and the talk button can be pressed only after all three are chosen; the talk button shows the current conditions (e.g. 「押して話す（スピーカー・4G・会話中常時オン）」); changing the microphone to always-on or per-turn during a connection immediately opens or closes the microphone; when the automatically judged microphone source disagrees with "audio output", a hint appears under the settings. When switching test items, the three are cleared and must be chosen again (iPhone Safari cannot obtain the network type, so "network" can only be chosen by hand; the backend's suggestion). "AirPods" became "Bluetooth earphones" (value `bluetooth`). The "other" column of the results table marks "this turn was interrupted" and "headset microphone". e2e also covers: pressing without conditions chosen does not start a turn, and the hint appearing and disappearing.
 
-同日、S-073 ②に従って：「音の出力 / ネットワーク / マイク」の 3 項目にはデフォルトがなく、3 つすべて選んで初めて話すボタンを押せる。話すボタンには現在の条件を表示する（例「押して話す（外放・4G・会話中常時オン）」）。接続中にマイクを常時オンまたはターンごとに切り替えると、すぐにマイクを開閉する。自動判定したマイクの種類が「音の出力」と一致しないときは、設定の下にヒントを出す。テスト項目を切り替えると 3 項目はクリアされ、選び直す必要がある（iPhone Safari はネットワークの種類を取得できないため「ネットワーク」は手動選択のみ。後端の提案）。「AirPods」は「Bluetooth イヤホン」に変更（値は `bluetooth`）。結果表の「その他」欄に「このターンは割り込まれた」「イヤホンのマイク」を表示する。e2e では、条件を選ばずに押してもターンが始まらないこと、ヒントの表示と消去もカバーした。
+同日、S-073 ②に従って：「音の出力 / ネットワーク / マイク」の 3 項目にはデフォルトがなく、3 つすべて選んで初めて話すボタンを押せる。話すボタンには現在の条件を表示する（例「押して話す（スピーカー・4G・会話中常時オン）」）。接続中にマイクを常時オンまたはターンごとに切り替えると、すぐにマイクを開閉する。自動判定したマイクの種類が「音の出力」と一致しないときは、設定の下にヒントを出す。テスト項目を切り替えると 3 項目はクリアされ、選び直す必要がある（iPhone Safari はネットワークの種類を取得できないため「ネットワーク」は手動選択のみ。バックエンドの提案）。「AirPods」は「Bluetooth イヤホン」に変更（値は `bluetooth`）。結果表の「その他」欄に「このターンは割り込まれた」「イヤホンのマイク」を表示する。e2e では、条件を選ばずに押してもターンが始まらないこと、ヒントの表示と消去もカバーした。
 
 - No errors in the console (only the 401 from `/v1/me` when not logged in, which is normal).
   コンソールにエラーなし（未ログイン時の `/v1/me` の 401 のみ。正常）。

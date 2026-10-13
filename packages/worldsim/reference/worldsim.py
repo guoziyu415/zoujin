@@ -1,50 +1,101 @@
-"""世界推演：contracts 2.4.1（节拍是世界的默认时间表）和 2.5.1（时间传播）的参考实现。
+"""World simulation: the reference implementation of contracts 2.4.1 (beats are the world's default timetable) and
+2.5.1 (time propagation).
 
-1.4：节拍的 variants（到点时按状态换一种演法，记为 altered）；requires 的「发生了」包括 altered；
-到达下限 clock.deadline.earliestArrival（S-066）：帮他快超过下限的部分作废，拖慢照算全额；arrival_delta 给按钮的实际分钟数和做了以后还赶不赶得上。
+1.4: beat variants (when due, play it a different way depending on state, recorded as altered); "happened" for
+requires includes altered;
+arrival floor clock.deadline.earliestArrival (S-066): helping him go faster beyond the floor is void, slowing him down
+counts in full; arrival_delta gives a button's actual minutes and whether he still makes it after doing it.
 
-2026-10-10（为 W-1 的增量接口对齐契约，24 次推演和全部生成物不变）：同一时刻先节拍、再期限、最后事件；
-排定时间到了而前提不成立的节拍，到 window.latest 为止每一步之后再查（contracts 2.4.1 第 3 条），以前只查一次。
+2026-10-10 (aligning with the contract for W-1's incremental interface; the 24 simulations and all generated files
+unchanged): at the same time, beats first, then the deadline, events last; a beat whose scheduled time has come but
+whose preconditions fail is rechecked after every step until window.latest (contracts 2.4.1 item 3); previously it was
+checked only once.
 
-1.6（C-16）：StateVar.valueRequires，变量改成某个值时要满足的条件（value_requires()）。推演照样应用事件，
-违反的记进结果的 violations，build_world 拿它查情景，S-2 的参考判法拿它报 R2。
+1.6 (C-16): StateVar.valueRequires, the conditions that must hold when a variable is changed to a given value
+(value_requires()). The simulation still applies the events and records violations in the result's violations;
+build_world uses it to check scenarios, and the S-2 reference judgement uses it to report R2.
 
-2026-10-10（1.6 写清，后端评审 W-1）：同一个节拍的几次改动怎么合（merge_change()）。以前同方向分钟相加、换方向整条替换，
-先拖慢 30 再帮快 10 变成帮快 10。24 次推演和全部生成物不变（情景里每个节拍只有一条改动）。
+2026-10-10 (clarified in 1.6, backend review of W-1): how several changes to the same beat merge (merge_change()).
+Previously minutes in the same direction were added and a change of direction replaced the whole entry, so slowing by
+30 and then helping by 10 became helping by 10. The 24 simulations and all generated files are unchanged (in the
+scenarios each beat has only one change).
 
-build_world.py（改道情景）和 check_evals.py（评测检查点）共用这一份，免得两边规则不一致。只用标准库。
+build_world.py (rerouting scenarios) and check_evals.py (eval checkpoints) share this one copy, so the two sides do not
+diverge in their rules. Standard library only.
+
+世界シミュレーション：contracts 2.4.1（ビートは世界の既定の時刻表）と 2.5.1（時間の伝播）の参照実装。
+
+1.4：ビートの variants（期限が来たら状態に応じて別の演じ方をし、altered と記録する）。requires の「起きた」は
+altered を含む。
+到着下限 clock.deadline.earliestArrival（S-066）：下限を越えて彼を速める分は無効、遅らせる分は全額計上する。
+arrival_delta はボタンの実際の分数と、実行後もまだ間に合うかを返す。
+
+2026-10-10（W-1 の増分インターフェースのために契約に合わせた。24 回のシミュレーションとすべての生成物は不変）：
+同時刻ではビート、期限、イベントの順。予定時刻が来ても前提条件が成り立たないビートは、window.latest まで各
+ステップの後に再確認する（contracts 2.4.1 第 3 項）。以前は 1 回しか確認しなかった。
+
+1.6（C-16）：StateVar.valueRequires、変数をある値に変えるときに満たすべき条件（value_requires()）。シミュレーションは
+それでもイベントを適用し、違反は結果の violations に記録する。build_world はこれでシナリオを確認し、S-2 の参照判定は
+これで R2 を報告する。
+
+2026-10-10（1.6 で明記、W-1 のバックエンドレビュー）：同じビートへの複数の変更をどう統合するか（merge_change()）。
+以前は同じ方向の分数を足し、方向が変わると丸ごと置き換えていたので、30 分遅らせてから 10 分速めると 10 分速める
+だけになった。24 回のシミュレーションとすべての生成物は不変（シナリオでは各ビートの変更は 1 件だけ）。
+
+build_world.py（分岐シナリオ）と check_evals.py（評価のチェックポイント）がこの 1 つを共用し、両者のルールが
+食い違わないようにする。標準ライブラリのみ。
 """
 from collections import defaultdict
 
-OCCURRED = ("happened", "altered")               # contracts 2.5（1.4 写清）：requires 的「发生了」包括 altered
+# contracts 2.5 (clarified in 1.4): "happened" for requires includes altered
+# contracts 2.5（1.4 で明記）：requires の「起きた」は altered を含む
+OCCURRED = ("happened", "altered")
 OPS = {"==": lambda x, y: x == y, "!=": lambda x, y: x != y, ">=": lambda x, y: x >= y,
        "<=": lambda x, y: x <= y, "in": lambda x, y: x in y}
-SIGN = {"delayed": 1, "hastened": -1}             # 推迟的分钟为正，提前为负
+SIGN = {"delayed": 1, "hastened": -1}             # Delays are positive minutes, hastening negative / 遅延は正、前倒しは負の分
 
 
 def change_conflict(old, new):
-    """contracts 第 3 节（1.6 写清）：本局对一个还没结果的节拍只有一种改动。old 是已登记的改动（没有是 None），
-    new 是新的 {to, minutes?, outcomes?, note?}。能合返回 None，不能合返回原因（自检报 bad-state）。"""
+    """contracts section 3 (clarified in 1.6): in one run, a beat without a result yet has only one kind of change.
+    old is the registered change (None if none), new is the new {to, minutes?, outcomes?, note?}. Returns None if they
+    can be merged, otherwise the reason (the self-check reports bad-state).
+
+    contracts 第 3 節（1.6 で明記）：1 回のプレイで、まだ結果の出ていないビートへの変更は 1 種類だけ。old は登録済みの
+    変更（なければ None）、new は新しい {to, minutes?, outcomes?, note?}。統合できれば None、できなければ理由を返す
+    （セルフチェックは bad-state を報告する）。
+    """
     if old is None or (new["to"] == "prevented" and old["to"] != "prevented"):
         return None
     if old["to"] == "prevented":
-        return "已经登记了 prevented，不能再改"
+        return "prevented is already registered; it cannot be changed / すでに prevented が登録済みで、変更できない"
     if old["to"] in SIGN and new["to"] in SIGN:
         return None
-    return f"已经登记了 {old['to']}，不能再登记 {new['to']}（altered 不和推迟、提前混用，也只登记一次）"
+    return (
+        f"{old['to']} is already registered; cannot register {new['to']} as well (altered is not mixed with delays or"
+        f" hastening, and is registered only once) / すでに {old['to']} が登録済みで、{new['to']} は登録できない"
+        "（altered は遅延・前倒しと混ぜず、登録も 1 回だけ）"
+    )
 
 
 def merge_change(over, e):
-    """把一条 {op: beat} 改动合进 over（节拍 ID → 改动，就地改）：
-    - delayed、hastened 按带符号的分钟相加，净值 0 就去掉这条改动；
-    - prevented 顶掉之前的推迟、提前、改写；
-    - 其他组合（已登记 prevented 之后再改；altered 和推迟、提前混用；第二次 altered）抛 ValueError。"""
+    """Merges one {op: beat} change into over (beat ID → change, modified in place):
+    - delayed and hastened add up as signed minutes; if the net is 0, the change is removed;
+    - prevented replaces any earlier delay, hastening or rewrite;
+    - any other combination (changing after prevented is registered; mixing altered with delays or hastening; a second
+      altered) raises ValueError.
+
+    {op: beat} の変更 1 件を over（ビート ID → 変更、その場で更新）に統合する：
+    - delayed と hastened は符号付きの分数として足し合わせ、正味 0 ならその変更を取り除く；
+    - prevented はそれまでの遅延、前倒し、書き換えを上書きする；
+    - それ以外の組み合わせ（prevented 登録後の変更、altered と遅延・前倒しの混用、2 回目の altered）は ValueError を
+      送出する。
+    """
     bid = e["beat"]
     new = {k: v for k, v in e.items() if k not in ("op", "beat")}
     old = over.get(bid)
     why = change_conflict(old, new)
     if why:
-        raise ValueError(f"{bid}：{why}")
+        raise ValueError(f"{bid}: {why}")
     if new["to"] in SIGN:
         net = SIGN[new["to"]] * new["minutes"] + (SIGN[old["to"]] * old["minutes"] if old else 0)
         if net == 0:
@@ -61,9 +112,16 @@ class Sim:
         self.beats = {b["id"]: b for b in world["beats"]}
         self.chars = {c["id"]: c for c in world["characters"]}
         self.endings = sorted(world.get("endings", {}).get("world", []), key=lambda x: x["order"])
-        self.parents = defaultdict(list)          # to -> [(from, type, minutes)]；只含传递时间偏移的边
-        self.after = defaultdict(list)            # to -> [(from, type)]：timeLink = "order" 的边，只要求不早于 from（contracts 2.5.1，1.1）
-        self.timed = set()                        # 有 delays / hastens 出边的节拍：它发不发生决定后面的时间
+        # to -> [(from, type, minutes)]: only edges that pass on a time offset
+        # to -> [(from, type, minutes)]：時間のずれを伝えるエッジだけ
+        self.parents = defaultdict(list)
+        # to -> [(from, type)]: edges with timeLink = "order", which only require not being earlier than from
+        # (contracts 2.5.1, 1.1)
+        # to -> [(from, type)]：timeLink = "order" のエッジ。from より早くないことだけを求める（contracts 2.5.1、1.1）
+        self.after = defaultdict(list)
+        # Beats with outgoing delays / hastens edges: whether they happen decides later times
+        # delays / hastens の出エッジを持つビート：起きるかどうかで後の時刻が決まる
+        self.timed = set()
         for e in world["causal"]:
             if e["from"] in self.beats and e["to"] in self.beats:
                 if e.get("timeLink") == "order":
@@ -85,16 +143,33 @@ class Sim:
                 state[e["var"]] = max(v.get("min", -10**9), min(v.get("max", 10**9), state[e["var"]] + e["by"]))
             elif e["op"] == "relocate" and where is not None:
                 where[e["character"]] = e["place"]
-            elif e["op"] == "hold":                    # contracts 1.3：物品换手，持有者记在 state[物品 ID]
+            # contracts 1.3: an item changes hands; the holder is recorded in state[item ID]
+            # contracts 1.3：アイテムの持ち主が替わる。持ち主は state[アイテム ID] に記録
+            elif e["op"] == "hold":
                 state[e["item"]] = e["to"]
 
     def value_requires(self, effs, state, origin=None):
-        """contracts 2.6（1.6，C-16）StateVar.valueRequires：事件把变量改成某个值时，这个值的 when 要成立。
-        ① 只有 origin == "schedule"（到点的节拍和期限）不判，节拍的结果由节拍前提管；导演事件的 actor 也是 system，
-        origin 是 director，照样判（不能按 actor 跳过）；② 值真的变了才判，设成现在的值不判；
-        ③ 按这个 effect 之前的状态判，同一事件里前面的 effect 已经生效（先升信任再设 wavering 能过，反过来不过）；
-        ④ when 和节拍前提用同一个 holds()；⑤ 设好以后条件不再成立不追究。
-        不改 state。返回违反的条目 [{var, value, when, note}]，叙事者第 3 步报 R2，reason 带变量、value 和 note。"""
+        """contracts 2.6 (1.6, C-16) StateVar.valueRequires: when an event changes a variable to some value, that
+        value's when must hold.
+        ① Only origin == "schedule" (due beats and deadlines) is not checked; a beat's outcomes are governed by the
+        beat's preconditions. Director events also have actor system but origin director, and are still checked (do
+        not skip by actor); ② checked only when the value really changes; setting it to its current value is not
+        checked; ③ checked against the state before this effect, with earlier effects in the same event already
+        applied (raising trust first and then setting wavering passes; the reverse does not); ④ when and beat
+        preconditions use the same holds(); ⑤ once set, a condition that stops holding later is not pursued.
+        Does not change state. Returns the violated entries [{var, value, when, note}]; the narrator's step 3 reports
+        R2, with the variable, value and note in reason.
+
+        contracts 2.6（1.6、C-16）StateVar.valueRequires：イベントが変数をある値に変えるとき、その値の when が
+        成り立たなければならない。
+        ① origin == "schedule"（期限に達したビートと期限）だけは判定せず、ビートの結果はビートの前提条件が管理する。
+        ディレクターイベントの actor も system だが origin は director で、それでも判定する（actor でスキップしない）；
+        ② 値が実際に変わったときだけ判定し、今の値に設定するのは判定しない；③ この effect の前の状態で判定し、同じ
+        イベント内の前の effect はすでに反映済み（先に信頼を上げてから wavering にすれば通り、逆は通らない）；
+        ④ when とビートの前提条件は同じ holds() を使う；⑤ 設定後に条件が成り立たなくなっても追及しない。
+        state は変えない。違反した項目 [{var, value, when, note}] を返し、ナレーターの第 3 段階が R2 を報告する。
+        reason には変数、value、note を入れる。
+        """
         if origin == "schedule":
             return []
         out, cur = [], dict(state)
@@ -110,12 +185,21 @@ class Sim:
         return out
 
     def schedule(self, over, _floor=True):
-        """2.5.1：先排时间（与状态无关）。返回 (shift, late)。
+        """2.5.1: schedule times first (independent of state). Returns (shift, late).
 
-        （1.5，S-066）clock.deadline.earliestArrival：梅洛斯到 watchBeat 的时刻每一步都不早于下限。
-        把改动（over）按节拍顺序（= 玩家做的先后）一个个加上去，每加一个就看 watchBeat 的偏移变了多少（delta），
-        累计 a = max(下限 − canonical, a + delta)。所以：到了下限再帮他快 = 0（作废）；拖慢照算全额（S-066 ②）；
-        拖慢之后离开了下限，再帮他快又有用，最多回到下限（ux-design 4.3）。
+        (1.5, S-066) clock.deadline.earliestArrival: the time Melos reaches watchBeat is never earlier than the floor
+        at any step. Add the changes (over) one by one in beat order (= the order the player made them), and after each
+        one see how much watchBeat's offset changed (delta), accumulating a = max(floor − canonical, a + delta). So:
+        helping him go faster once at the floor = 0 (void); slowing him counts in full (S-066 ②); after slowing him
+        moves him off the floor, helping him go faster works again, at most back to the floor (ux-design 4.3).
+
+        2.5.1：先に時刻を決める（状態とは無関係）。(shift, late) を返す。
+
+        （1.5、S-066）clock.deadline.earliestArrival：メロスが watchBeat に着く時刻は、どのステップでも下限より早く
+        ならない。変更（over）をビート順（= プレイヤーが行った順）に 1 件ずつ加え、加えるたびに watchBeat のずれが
+        どれだけ変わったか（delta）を見て、a = max(下限 − canonical, a + delta) を累積する。したがって：下限に達して
+        からさらに速めても 0（無効）；遅らせる分は全額計上（S-066 ②）；遅らせて下限から離れた後なら、速めるのは
+        また効き、最大で下限まで戻る（ux-design 4.3）。
         """
         shift, late = {}, set()
         dl = self.world["clock"]["deadline"]
@@ -153,15 +237,33 @@ class Sim:
         return shift, late
 
     def run(self, sc, until=None, start_place="place.syracuse-square", player_items=()):
-        """按时间顺序应用效果、检查前提。
+        """Applies effects and checks preconditions in time order.
 
-        until：None = 推演到底并分类世界结局；("beat", id) = 停在该节拍刚处理完；("t", n) = 停在时刻 n（含 n 时刻的期限）。
-        停在中途时可以用 resume() 追加效果（评测 setup.events）后接着推演。
-        返回 dict：outcome（只有推演到底才有）、status、times、state、where（人物所在地）、t、stopped、auto。
-        player_items：身份开局带的物品（Role.items，contracts 1.3）；state[物品 ID] = 现在谁拿着。
+        until: None = simulate to the end and classify the world ending; ("beat", id) = stop right after that beat is
+        processed; ("t", n) = stop at time n (including the deadline at time n).
+        When stopped midway, resume() can add effects (eval setup.events) and continue the simulation.
+        Returns a dict: outcome (only when simulated to the end), status, times, state, where (characters' locations),
+        t, stopped, auto.
+        player_items: items the role starts with (Role.items, contracts 1.3); state[item ID] = who holds it now.
 
-        contracts 2.5.1：有 delays / hastens 出边的节拍，在排定时间那一刻判前提，不成立就当场记为 prevented
-        （不等到 window.latest），它的分钟照样退还。所以先整局推演，把这类节拍补进 over，直到不再变化（auto）。
+        contracts 2.5.1: a beat with outgoing delays / hastens edges has its preconditions checked at its scheduled
+        time; if they fail it is recorded as prevented on the spot (without waiting for window.latest), and its
+        minutes are still refunded. So the whole run is simulated first and such beats are added to over until
+        nothing changes (auto).
+
+        時刻順に効果を適用して前提条件を確認する。
+
+        until：None = 最後までシミュレーションして世界の結末を分類する；("beat", id) = そのビートの処理直後で止まる；
+        ("t", n) = 時刻 n で止まる（時刻 n の期限を含む）。
+        途中で止まったら resume() で効果（評価の setup.events）を追加してシミュレーションを続けられる。
+        dict を返す：outcome（最後までシミュレーションしたときだけ）、status、times、state、where（登場人物の
+        所在地）、t、stopped、auto。
+        player_items：ロールが最初に持っているアイテム（Role.items、contracts 1.3）。state[アイテム ID] = 今誰が
+        持っているか。
+
+        contracts 2.5.1：delays / hastens の出エッジを持つビートは予定時刻の時点で前提条件を判定し、成り立たなければ
+        その場で prevented と記録し（window.latest まで待たない）、その分数はそのまま戻す。そのため先にプレイ全体を
+        シミュレーションし、こうしたビートを over に加えて、変化がなくなるまで繰り返す（auto）。
         """
         over = dict(sc.get("beats", {}))
         auto = set()
@@ -181,7 +283,7 @@ class Sim:
         shift, late = self.schedule(over)
         state = {v["id"]: v["default"] for v in self.world["stateVars"]}
         state["var.player.location"] = start_place
-        for c, x in self.chars.items():                # contracts 1.3：WorldState.holdings 的初值
+        for c, x in self.chars.items():                # contracts 1.3: initial WorldState.holdings / 初期値
             for it in x.get("items", []):
                 state[it] = c
         for it in player_items:
@@ -189,15 +291,20 @@ class Sim:
         where = {c: x.get("initialPlace") for c, x in self.chars.items()}
         status, times = {}, {}
         queue = [(b["window"]["canonical"] + shift.get(b["id"], 0), 0, b["order"], "beat", b) for b in self.world["beats"]]
-        # 同一时刻：先节拍，再期限，最后事件。和叙事者逐事件提交一致：时钟走到 t 时先结算到点（≤ t）的节拍和期限，
-        # 玩家在 t 做的事排在它们之后；run(until=("t", n)) 加 resume() 也是这个顺序（2026-10-10，W-1 增量接口）。
+        # At the same time: beats first, then the deadline, events last. This matches the narrator's event-by-event
+        # commits: when the clock reaches t, the due (≤ t) beats and deadline are settled first, and what the player
+        # does at t comes after them; run(until=("t", n)) plus resume() uses the same order (2026-10-10, W-1
+        # incremental interface).
+        # 同時刻ではビート、期限、イベントの順。ナレーターのイベントごとのコミットと一致させる：時刻が t に達したら
+        # 期限に達した（≤ t）ビートと期限を先に精算し、プレイヤーが t に行ったことはその後に並ぶ。
+        # run(until=("t", n)) と resume() も同じ順序（2026-10-10、W-1 の増分インターフェース）。
         queue += [(ev["t"], 2, 0, "event", ev) for ev in sc.get("events", [])]
         queue.append((self.world["clock"]["deadline"]["t"], 1, 0, "deadline", None))
         queue.sort(key=lambda q: q[:3])
-        variant = {}                                   # contracts 1.4：节拍 ID → 本局用的变体 ID
+        variant = {}                                   # contracts 1.4: beat ID → variant ID / ビート ID → バリアント ID
         res = {"status": status, "times": times, "state": state, "where": where, "outcome": None,
                "t": None, "stopped": until is None, "late": late, "shift": shift, "variant": variant,
-               "violations": []}                 # 1.6：违反 valueRequires 的事件 [(t, 违反的条目)]
+               "violations": []}                 # 1.6: events violating valueRequires [(t, entry)] / valueRequires 違反
         for i, (t, _, _, kind, x) in enumerate(queue):
             if until and until[0] == "t" and t > until[1]:
                 res["t"], res["stopped"], res["rest"] = until[1], True, queue[i:]
@@ -216,8 +323,14 @@ class Sim:
         return res
 
     def resume(self, res, sc, extra_effects=(), until_t=None):
-        """从 run(until=…) 的停止点继续：先应用 extra_effects，再推演到 until_t（None = 到底并分类结局）。
-        排定时间沿用 run() 算好的（extra_effects 不再改时间表）。"""
+        """Continues from where run(until=…) stopped: apply extra_effects first, then simulate to until_t (None = to
+        the end and classify the ending).
+        Scheduled times stay as run() computed them (extra_effects no longer change the timetable).
+
+        run(until=…) の停止点から続ける：先に extra_effects を適用し、until_t までシミュレーションする（None = 最後
+        まで進めて結末を分類する）。
+        予定時刻は run() が計算したものをそのまま使う（extra_effects は時刻表を変えない）。
+        """
         over = res["over"]
         state, where, status, times = res["state"], res["where"], res["status"], res["times"]
         res["violations"] += [(res["t"], v) for v in self.value_requires(extra_effects, state)]
@@ -237,11 +350,24 @@ class Sim:
         return res
 
     def arrival_delta(self, sc, effects, t, start_place="place.syracuse-square", player_items=()):
-        """S-066 ①：本局到此为止是情景 sc（beats = 已有的推迟/提前/阻止，events = 已提交的效果），
-        在时刻 t 再提交 effects，梅洛斯到刑场（watchBeat）会晚（+）或早（−）几分钟。
-        返回 {"minutes": 分钟数（含到达下限，已到下限时「帮他快」是 0）, "inTime": 做了以后还赶不赶得上}。
-        分钟数用去掉 window.latest 的副本算，所以「拖了就来不及」时也有数。
-        effects 里的节拍改动按 merge_change() 合进 sc 已有的改动；合不了（自检的 bad-state）抛 ValueError。"""
+        """S-066 ①: given that this run so far is scenario sc (beats = existing delays/hastening/preventions,
+        events = effects already submitted), if effects are also submitted at time t, how many minutes later (+) or
+        earlier (−) Melos reaches the execution ground (watchBeat).
+        Returns {"minutes": minutes (including the arrival floor; "helping him go faster" is 0 once at the floor),
+        "inTime": whether he still makes it after doing it}.
+        Minutes are computed on a copy with window.latest removed, so there is a number even when "delaying him makes
+        him too late".
+        Beat changes in effects are merged into sc's existing changes with merge_change(); if they cannot be merged
+        (the self-check's bad-state), raises ValueError.
+
+        S-066 ①：このプレイがここまでシナリオ sc（beats = 既存の遅延/前倒し/阻止、events = 提出済みの効果）だった
+        として、時刻 t にさらに effects を提出すると、メロスが刑場（watchBeat）に何分遅れる（+）か早まる（−）か。
+        {"minutes": 分数（到着下限込み。下限に達していれば「速める」は 0）, "inTime": 実行後もまだ間に合うか} を
+        返す。
+        分数は window.latest を外したコピーで計算するので、「遅らせたら間に合わない」場合も数値が出る。
+        effects 内のビート変更は merge_change() で sc の既存の変更に統合する。統合できなければ（セルフチェックの
+        bad-state）ValueError を送出する。
+        """
         wb = self.world["clock"]["deadline"].get("watchBeat")
         beats = {b: dict(o) for b, o in sc.get("beats", {}).items()}
         for e in effects:
@@ -266,13 +392,25 @@ class Sim:
         self._recheck(t, over, state, where, status, times, variant)
 
     def _waiting(self, bid, status, t):
-        """contracts 2.4.1 第 3 条：排定时间到了而前提不成立（或 requires 的前一节拍还没发生），不算结果，
-        到 window.latest 为止每次时钟前进都再查。有 delays / hastens 出边的节拍除外：当场 prevented（run() 的 auto）。"""
+        """contracts 2.4.1 item 3: when the scheduled time arrives but the preconditions fail (or the preceding
+        requires beat has not happened yet), it is not a result yet; recheck on every clock advance until
+        window.latest. Except beats with outgoing delays / hastens edges: those are prevented on the spot (run()'s
+        auto).
+
+        contracts 2.4.1 第 3 項：予定時刻になっても前提条件が成り立たない（または requires の前のビートがまだ起きて
+        いない）場合は結果とみなさず、window.latest まで時刻が進むたびに再確認する。delays / hastens の出エッジを
+        持つビートは例外で、その場で prevented になる（run() の auto）。
+        """
         return (status.get(bid) in ("precondition-failed", "blocked") and bid not in self.timed
                 and t <= self.beats[bid]["window"]["latest"])
 
     def _recheck(self, t, over, state, where, status, times, variant):
-        """每一步之后，按排定顺序再查还在等的节拍；成立的在此刻 t 发生。一个发生了可能让别的成立，所以查到不再变化。"""
+        """After every step, recheck the beats still waiting in scheduled order; those that now hold happen at this
+        time t. One happening may make another hold, so repeat until nothing changes.
+
+        各ステップの後、まだ待っているビートを予定順に再確認し、成り立ったものはこの時刻 t に起きる。1 つが起きると
+        別のものが成り立つことがあるので、変化がなくなるまで繰り返す。
+        """
         changed = True
         while changed:
             changed = False
@@ -318,12 +456,12 @@ class Sim:
         times[bid] = t
         for p in x["participants"]:
             where[p] = x["place"]
-        if o.get("to") == "altered":                   # 玩家的事件事先改了这个节拍
+        if o.get("to") == "altered":                   # A player's event changed this beat in advance / 事前に変更済み
             status[bid] = "altered"
             self.apply(o["outcomes"], state, where)
             return
         v = next((v for v in x.get("variants", []) if self.holds(v["when"], state)), None)
-        if v is not None:                              # contracts 1.4：到点时按本局状态换一种演法
+        if v is not None:                              # contracts 1.4: play it differently per state / 状態で演じ方を変える
             status[bid] = "altered"
             if variant is not None:
                 variant[bid] = v["id"]

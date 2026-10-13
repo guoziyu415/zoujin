@@ -1,16 +1,39 @@
-"""記憶帳的删除（B-13，契约第 4 节删除语义、data-design 5.2 L1 / L2、api-contract 2.7、2.9）。REST 和评测入口共用。
+"""Deletion from the 記憶帳 (memory book) (B-13, contract section 4 deletion semantics, data-design 5.2 L1 / L2,
+api-contract 2.7, 2.9). Shared by REST and the eval entry point.
 
-删一条记忆（L1），同一个事务里：
-1. 这条记忆 `text`、`keeps` 置空、写 `deleted_at`（行留着，审计）；
-2. 顺着 `from_events → events.turn_id → utterances.turn_id` 清空整轮原话（玩家和人物的），这几轮里幕末打算的转述按
-   B-3 的写法清掉（`store.clear_plan_texts`），这几轮开着的意图确认草稿丢掉；
-3. `promise_id` 指向开着的约定 → 追加一条 `forget` 事件（`origin: "memory"`、`actor: "player"`、`dt: 0`，
-   约定 `voided`），挂在一条 `kind = forget` 的任务行上，照常 NOTIFY，网关推 `commit`（`memories[]` 带 `deleted`）；
-   已经 `kept` / `broken` 的约定不动；
-4. 关系按剩下的记忆重算。
-事务之后网关丢掉那几轮在内存里的最近对话、重建这个人物开着的会话（`gateway/rest.py`）。世界的后果不撤销。
+Deleting one memory (L1), in a single transaction:
+1. set this memory's `text` and `keeps` to null and write `deleted_at` (the row stays, for audit);
+2. follow `from_events → events.turn_id → utterances.turn_id` to clear the original words of those whole turns (both
+   the player's and the character's), clear the retelling of end-of-act plans in those turns the B-3 way
+   (`store.clear_plan_texts`), and drop the intent-confirmation drafts open on those turns;
+3. if `promise_id` points to an open promise → append a `forget` event (`origin: "memory"`, `actor: "player"`,
+   `dt: 0`, promise `voided`) hung on a task row with `kind = forget`, NOTIFY as usual, and the gateway pushes `commit`
+   (`memories[]` carries `deleted`); promises already `kept` / `broken` are untouched;
+4. recompute the relationship from the remaining memories.
+After the transaction the gateway drops those turns' recent dialogue held in memory and rebuilds this character's open
+session (`gateway/rest.py`). Consequences in the world are not undone.
 
-删整局（L2）：这一局的行按外键级联删掉（`playthroughs` 一行，别的表都挂在它上面）。
+Deleting a whole playthrough (L2): the playthrough's rows are deleted by foreign-key cascade (one `playthroughs` row;
+every other table hangs off it).
+
+記憶帳の削除（B-13、契約第 4 節の削除の意味論、data-design 5.2 L1 / L2、api-contract 2.7・2.9）。
+REST と評価の入口で共有する。
+
+記憶 1 件の削除（L1）。同じトランザクションの中で：
+1. この記憶の `text`・`keeps` を null にし、`deleted_at` を書く（行は監査用に残す）。
+2. `from_events → events.turn_id → utterances.turn_id` をたどってそのターン全体の発話の原文（プレイヤーと登場人物の
+   両方）を消し、そのターンの幕末のプランの言い換えを B-3 のやり方で消し（`store.clear_plan_texts`）、
+   そのターンで開いている意図確認の草稿を捨てる。
+3. `promise_id` が開いている約束を指していれば → `forget` イベントを 1 件追加し
+   （`origin: "memory"`、`actor: "player"`、`dt: 0`、約束は `voided`）、`kind = forget` のタスク行にぶら下げ、
+   通常どおり NOTIFY して、ゲートウェイが `commit`（`memories[]` に `deleted`）を送る。
+   すでに `kept` / `broken` の約束には触れない。
+4. 残った記憶から関係を計算し直す。
+トランザクションの後、ゲートウェイはそのターンのメモリ上の最近の会話を捨て、
+この登場人物の開いているセッションを作り直す（`gateway/rest.py`）。世界での結果は取り消さない。
+
+プレイ全体の削除（L2）：このプレイの行を外部キーのカスケードで削除する（`playthroughs` の 1 行。
+ほかのテーブルはすべてそれにぶら下がっている）。
 """
 
 from __future__ import annotations
@@ -36,12 +59,17 @@ from zoujin_backend.world import Library
 
 Json = Any
 
-KIND = "forget"  # 记下 forget 事件的任务行（不进叙事者的队列，写的时候就是 done）
+# Task row that records the forget event (not in the narrator's queue; written already done)
+# forget イベントを記録するタスク行（ナレーターのキューには入らず、書いた時点で done）
+KIND = "forget"
 CHECKER = "b13:forget"
 
 
 class NotFound(LookupError):
-    """没有这条记忆（或这一局），或者已经删了。"""
+    """No such memory (or playthrough), or it is already deleted.
+
+    その記憶（またはプレイ）がない、またはすでに削除されている。
+    """
 
 
 @dataclass(frozen=True)
@@ -51,8 +79,12 @@ class Deleted:
     relation_label: str
     relation_level: int
     promise_voided: str | None
-    turn_ids: tuple[str, ...]  # 清了原话的那几轮（网关丢掉内存里的最近对话）
-    seq: int | None = None  # 写了 forget 事件时，这一局新的 lastSeq
+    # Turns whose original words were cleared (the gateway drops the recent dialogue held in memory)
+    # 発話の原文を消したターン（ゲートウェイはメモリ上の最近の会話を捨てる）
+    turn_ids: tuple[str, ...]
+    # When a forget event was written, this playthrough's new lastSeq
+    # forget イベントを書いたときの、このプレイの新しい lastSeq
+    seq: int | None = None
 
     def response(self, *, rebuilt: bool) -> Json:
         return {
@@ -69,7 +101,11 @@ class Deleted:
 async def delete_memory(
     c: AsyncConnection, library: Library, ids: IdGen, schemas: SchemaBook, pid: str, memory_id: str
 ) -> Deleted:
-    """在调用方的事务里删一条记忆（见模块说明）。没有、已删 → NotFound。"""
+    """Delete one memory inside the caller's transaction (see the module docstring). Missing or already deleted →
+    NotFound.
+
+    呼び出し側のトランザクション内で記憶を 1 件削除する（モジュールの説明を参照）。ない、または削除済み → NotFound。
+    """
     pt = (
         (await c.execute(select(playthroughs).where(playthroughs.c.playthrough_id == pid).with_for_update()))
         .mappings()
@@ -155,7 +191,12 @@ async def _forget(
     label: str,
     level: int,
 ) -> int:
-    """约定作废的 forget 事件：一条任务行（done）+ 一条事件，更新 world_state 和 lastSeq，NOTIFY。返回新的 seq。"""
+    """The forget event that voids a promise: one task row (done) + one event; update world_state and lastSeq,
+    NOTIFY. Returns the new seq.
+
+    約束を無効にする forget イベント：タスク行 1 件（done）+ イベント 1 件。world_state と lastSeq を更新し、
+    NOTIFY する。新しい seq を返す。
+    """
     turn_id = ids.new("turn")
     w = Writer(book, pid, state, key_base=turn_id, turn_id=None, ids=ids, now=recorded_at())
     name = book.characters[who]["name"]
@@ -167,7 +208,10 @@ async def _forget(
             type="forget",
             origin="memory",
             place=w.player_place,
-            # 中立的一句：不写「覚えていない」「忘れた」（UX 评审：删除不能在故事里留下痕迹）；这个人物的局势说明不带它
+            # A neutral line: never 「覚えていない」 or 「忘れた」 (UX review: deletion must leave no trace in the
+            # story); this character's situation brief does not include it
+            # 中立的な一文：「覚えていない」「忘れた」とは書かない（UX レビュー：削除が物語に痕跡を残してはならない）。
+            # この登場人物の状況説明には含めない
             summary=f"{name}との約束は、なかったことになった",
             effects=[{"op": "promise", "promiseId": promise_id, "change": "voided"}],
             check={"status": "passed", "attempts": 1, "failedRules": [], "checker": CHECKER},
@@ -211,7 +255,11 @@ async def _forget(
 
 
 async def delete_playthrough(c: AsyncConnection, pid: str) -> bool:
-    """L2：这一局的行全删（别的表按外键级联）。返回删没删到。"""
+    """L2: delete all of this playthrough's rows (other tables cascade by foreign key). Returns whether anything was
+    deleted.
+
+    L2：このプレイの行をすべて削除する（ほかのテーブルは外部キーでカスケード）。削除できたかどうかを返す。
+    """
     res = await c.execute(
         delete(playthroughs).where(playthroughs.c.playthrough_id == pid).returning(playthroughs.c.playthrough_id)
     )

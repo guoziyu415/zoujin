@@ -1,15 +1,37 @@
-"""开局到起点：eval_api 的 setup（api-contract 第 7 节）里只靠推演的那几种起点，B-0 和评测运行器共用。
+"""From the opening to a starting point: the starting points in eval_api's setup (api-contract section 7) that rely
+only on simulation, shared by B-0 and the eval runner.
 
-- `checkpoint`：`"<情景 ID>@<节拍 ID>"` = 推演到该节拍刚发生之后；
-  `"<情景 ID>@t=<分钟>"` = 推演到该时刻，含那一刻到点的节拍和期限规则，不含情景里正好在那一刻的事件；
-- `scenario`：推演到底（不调用模型）；
-- `place`：开局换个地点。
+- `checkpoint`: `"<scenario ID>@<beat ID>"` = simulate until just after that beat happens;
+  `"<scenario ID>@t=<minutes>"` = simulate to that time, including beats and deadline rules due at that moment, but
+  not the scenario's events at exactly that moment;
+- `scenario`: simulate to the end (no model calls);
+- `place`: start at a different place.
 
-顺序：`place` 在时钟 0 写一个事件；情景的节拍改动在时钟 0 合成一个事件；settle 到身份的 startT；情景的事件按 t 先 settle
-再写；最后按起点停下。到某一刻停、而那一刻没有事件时，写一个只推进时钟的事件（契约：时钟只由事件推出）。
+Order: `place` writes one event at clock 0; the scenario's beat changes are combined into one event at clock 0; settle
+to the role's startT; the scenario's events are settled up to their t first, then written; finally stop at the
+starting point. When stopping at a moment that has no event, write an event that only advances the clock (contract:
+the clock is advanced only by events).
 
-只出事件和状态。事件带 seq（从 1 起），其余字段（eventId、playthroughId、schemaVersion、summary、causes、keyMoment、
-check…）由 B-0 补上再写库。`setup.events`（评测布置）不在这里，B-0 在起点之后照 api-contract 第 7 节追加。
+Produces only events and state. Events carry seq (from 1); the other fields (eventId, playthroughId, schemaVersion,
+summary, causes, keyMoment, check…) are filled in by B-0 before writing to the database. `setup.events` (eval setup) is
+not here; B-0 appends them after the starting point per api-contract section 7.
+
+オープニングから起点まで：eval_api の setup（api-contract 第 7 節）のうちシミュレーションだけに頼る起点。B-0 と
+評価ランナーが共用する。
+
+- `checkpoint`：`"<シナリオ ID>@<ビート ID>"` = そのビートが起きた直後までシミュレーションする。
+  `"<シナリオ ID>@t=<分>"` = その時刻までシミュレーションする。その時点で期限に達するビートと期限ルールは含み、
+  シナリオ内でちょうどその時点にあるイベントは含まない；
+- `scenario`：最後までシミュレーションする（モデルは呼ばない）；
+- `place`：開始地点を変える。
+
+順序：`place` は時刻 0 にイベントを 1 件書く。シナリオのビート変更は時刻 0 に 1 件のイベントにまとめる。ロールの
+startT まで settle する。シナリオのイベントは t まで先に settle してから書く。最後に起点で止める。ある時点で止まる
+がその時点にイベントがない場合は、時刻を進めるだけのイベントを書く（契約：時刻はイベントによってのみ進む）。
+
+出すのはイベントと状態だけ。イベントは seq（1 から）を持ち、その他のフィールド（eventId、playthroughId、
+schemaVersion、summary、causes、keyMoment、check…）は B-0 が補ってから DB に書く。`setup.events`（評価の配置）は
+ここにはなく、B-0 が起点の後に api-contract 第 7 節に従って追加する。
 """
 
 from __future__ import annotations
@@ -20,24 +42,37 @@ from typing import Any, Literal, NotRequired
 from .incremental import Draft, SimState, apply, initial_state, settle
 from .sim import OCCURRED, World, role_of
 
-type Until = tuple[Literal["beat"], str] | tuple[Literal["t"], int] | None  # None = 推演到底
+# None = simulate to the end / None = 最後までシミュレーション
+type Until = tuple[Literal["beat"], str] | tuple[Literal["t"], int] | None
 
 
 class Opened(Draft):
-    """开局写出的一个事件。settle 写的照原样（source = schedule），其余 beat、variant、reason 都是 None。"""
+    """One event written by the opening. Those written by settle are kept as is (source = schedule); for the rest,
+    beat, variant and reason are all None.
 
-    source: Literal["place", "scenario", "schedule", "clock"]  # 开局地点、情景、到点的节拍和期限、只推进时钟
-    note: NotRequired[str]  # 给 B-0 写 summary 的一句（日语）；情景事件写了 note 就是它
+    オープニングが書いた 1 件のイベント。settle が書いたものはそのまま（source = schedule）、それ以外は beat、
+    variant、reason がすべて None。
+    """
+
+    # Starting place, scenario, due beats and deadlines, clock advance only
+    # 開始地点、シナリオ、期限に達したビートと期限、時刻を進めるだけ
+    source: Literal["place", "scenario", "schedule", "clock"]
+    # One sentence (Japanese) for B-0 to write the summary; if a scenario event has a note, it is that
+    # B-0 が summary を書くための一文（日本語）。シナリオのイベントに note があればそれ
+    note: NotRequired[str]
 
 
 NOTES = {"place": "開始地点", "scenario": "シナリオの設定", "clock": "時刻を進める"}
 
 
 def parse_checkpoint(checkpoint: str) -> tuple[str, Until]:
-    """ "sc.canon@beat.05" → ("sc.canon", ("beat", "beat.05"))；"sc.canon@t=1200" → ("sc.canon", ("t", 1200))。"""
+    """ "sc.canon@beat.05" → ("sc.canon", ("beat", "beat.05")); "sc.canon@t=1200" → ("sc.canon", ("t", 1200))."""
     sc, sep, at = checkpoint.partition("@")
     if not sep or not sc or not at:
-        raise ValueError(f"检查点要写成「情景 ID@节拍 ID」或「情景 ID@t=分钟」：{checkpoint!r}")
+        raise ValueError(
+            "A checkpoint must be written as 'scenario ID@beat ID' or 'scenario ID@t=minutes'"
+            f" / チェックポイントは「シナリオ ID@ビート ID」か「シナリオ ID@t=分」で書く: {checkpoint!r}"
+        )
     if at.startswith("t="):
         return sc, ("t", int(at[2:]))
     return sc, ("beat", at)
@@ -51,7 +86,12 @@ def opening(
     *,
     place: str | None = None,
 ) -> tuple[list[Opened], SimState]:
-    """按上面的顺序推演，返回（事件，状态）。scenario 是 scenarios.json 的一条；原著路径（sc.canon）给 None 或 {}。"""
+    """Simulates in the order above and returns (events, state). scenario is one entry of scenarios.json; for the
+    original story's path (sc.canon) pass None or {}.
+
+    上記の順序でシミュレーションし、（イベント, 状態）を返す。scenario は scenarios.json の 1 件。原作どおりの経路
+    （sc.canon）には None か {} を渡す。
+    """
     run = _Run(world, initial_state(world, role))
     if place is not None:
         run.write("place", {"t": 0, "effects": [{"op": "set", "var": "var.player.location", "value": place}]})
@@ -60,7 +100,7 @@ def opening(
         effects = [{"op": "beat", "beat": b, **o} for b, o in sc["beats"].items()]
         run.write("scenario", {"t": 0, "effects": effects})
     if until is not None and until[0] == "beat" and until[1] not in run.world_beats:
-        raise ValueError(f"检查点的节拍不存在：{until[1]}")
+        raise ValueError(f"The checkpoint's beat does not exist / チェックポイントのビートが存在しない: {until[1]}")
     stops = [role_of(world, role)["startT"], *sorted(e["t"] for e in sc.get("events", []))]
     events = iter(sorted(sc.get("events", []), key=lambda e: e["t"]))
     for i, t in enumerate(stops):
@@ -72,7 +112,10 @@ def opening(
     if until is None:
         run.settle_to(None)
     elif not run.settle_until(None, until):
-        raise ValueError(f"推演到底也没到检查点：{until}")
+        raise ValueError(
+            f"Simulated to the end without reaching the checkpoint / 最後までシミュレーションしてもチェックポイントに"
+            f"届かない: {until}"
+        )
     return run.out, run.s
 
 
@@ -86,7 +129,10 @@ class _Run:
     def write(
         self, source: Literal["place", "scenario", "clock"], e: Mapping[str, Any], note: str | None = None
     ) -> None:
-        """note：情景事件自己写了 note 就用它，没写用 NOTES 里的。"""
+        """note: if the scenario event has its own note, use it; otherwise use the one in NOTES.
+
+        note：シナリオのイベント自身に note があればそれを使い、なければ NOTES のものを使う。
+        """
         loc = self.s["vars"]["var.player.location"]
         event = {"actor": "system", "type": "action", "origin": "action", "dt": 0, "place": loc, **e}
         self._apply(
@@ -102,7 +148,12 @@ class _Run:
         self.out.append(d)
 
     def settle_to(self, t2: int | None, stop_after: str | None = None) -> bool:
-        """结算到 t2；stop_after 给了节拍时，写完这个节拍发生的事件就停，返回停没停。"""
+        """Settles to t2; when stop_after names a beat, stops right after writing the event in which that beat
+        happens. Returns whether it stopped.
+
+        t2 まで精算する。stop_after にビートが与えられたら、そのビートが起きるイベントを書いた時点で止まる。止まったか
+        どうかを返す。
+        """
         drafts, _ = settle(self.world, self.s, t2)
         for d in drafts:
             self._apply(_opened(d))
@@ -111,7 +162,10 @@ class _Run:
         return False
 
     def settle_until(self, t2: int | None, until: Until) -> bool:
-        """结算到 t2，碰到起点就停；返回停没停。"""
+        """Settles to t2, stopping at the starting point; returns whether it stopped.
+
+        t2 まで精算し、起点に達したら止まる。止まったかどうかを返す。
+        """
         if until is None:
             self.settle_to(t2)
             return False

@@ -1,8 +1,18 @@
-"""契约 1.6（C-16）StateVar.valueRequires 的黄金测试：参考实现 reference/worldsim.py 和包里的 Sim 都测。
+"""Golden tests for contract 1.6 (C-16) StateVar.valueRequires: both the reference implementation
+reference/worldsim.py and the package's Sim are tested.
 
-用例按 contracts.md 第 7 节 C-16 定的：39 被拒、40 能过；同一事件里顺序两种；
-只有到点的节拍和期限（origin = schedule）不受限，导演事件照样判；桥不在时设 bridge 被拒；
-值没变不判；设好以后条件不再成立不追究。逐事件推演的 check_effects() 在 test_incremental.py 里测。
+Cases as set by C-16 in contracts.md section 7: 39 is rejected, 40 passes; both orders within one event; only due beats
+and the deadline (origin = schedule) are unrestricted, director events are still checked; setting bridge when the
+bridge is gone is rejected; an unchanged value is not checked; a condition that stops holding after it is set is not
+pursued. check_effects() of the event-by-event simulation is tested in test_incremental.py.
+
+契約 1.6（C-16）StateVar.valueRequires のゴールデンテスト：参照実装 reference/worldsim.py とパッケージの Sim の
+両方をテストする。
+
+ケースは contracts.md 第 7 節の C-16 で決めたとおり：39 は拒否、40 は通る。同じイベント内の 2 通りの順序。
+期限に達したビートと期限（origin = schedule）だけは制限されず、ディレクターイベントは判定する。橋がないときに
+bridge を設定すると拒否。値が変わらなければ判定しない。設定後に条件が成り立たなくなっても追及しない。
+イベントごとのシミュレーションの check_effects() は test_incremental.py でテストする。
 """
 
 from __future__ import annotations
@@ -41,13 +51,20 @@ def sim(request: pytest.FixtureRequest) -> Any:
 
 
 def run(sim: Any, sc: dict[str, Any]) -> dict[str, Any]:
-    """参考实现开局写死在广场；包按身份读，用旅人（开局也在广场）。"""
+    """The reference implementation hard-codes the opening to the square; the package reads it from the role, so use
+    the traveler (who also starts in the square).
+
+    参照実装はオープニングを広場に固定している。パッケージはロールから読むので、旅人を使う（開始地点も広場）。
+    """
     result: dict[str, Any] = sim.run(sc, role="role.traveler") if isinstance(sim, Sim) else sim.run(sc)
     return result
 
 
 def state(**overrides: Any) -> dict[str, Any]:
-    """世界模型的初值，再按 trust=…、disposition=… 这样的简写改几项。"""
+    """The world model's initial values, with a few overridden via shorthands like trust=…, disposition=….
+
+    世界モデルの初期値に、trust=…、disposition=… のような略記でいくつかの項目を上書きしたもの。
+    """
     names = {
         "trust": "var.king.trust",
         "disposition": "var.king.disposition",
@@ -95,18 +112,24 @@ def test_threshold(sim: Any, effect: dict[str, Any], trust: int, ok: bool) -> No
 
 
 def test_order_within_one_event(sim: Any) -> None:
-    # ③ 按每个 effect 之前的状态判：先升信任再设 wavering 能过，反过来不过
+    # ③ Judged on the state before each effect: raising trust first and then setting wavering passes; the reverse
+    # does not
+    # ③ 各 effect の前の状態で判定：先に信頼を上げてから wavering にすれば通り、逆は通らない
     assert sim.value_requires([inc("var.king.trust", 35), WAVERING], state(trust=5)) == []
     assert len(sim.value_requires([WAVERING, inc("var.king.trust", 35)], state(trust=5))) == 1
 
 
 def test_scheduled_events_are_not_checked(sim: Any) -> None:
-    # ① 到点的节拍和期限（origin = schedule）不判：刑场的 beat.26 让王改心靠的是节拍前提
+    # ① Due beats and the deadline (origin = schedule) are not checked: what makes the king change his heart in
+    # beat.26 at the execution ground is the beat's preconditions
+    # ① 期限に達したビートと期限（origin = schedule）は判定しない：刑場の beat.26 で王が改心するのはビートの
+    # 前提条件による
     assert sim.value_requires([REFORMED], state(trust=5), origin="schedule") == []
 
 
 def test_director_events_are_checked(sim: Any) -> None:
-    # ① 导演事件的 actor 也是 system，但 origin 是 director，照样判：不能按 actor 跳过
+    # ① Director events also have actor system, but origin is director, so they are still checked: do not skip by actor
+    # ① ディレクターイベントの actor も system だが origin は director なので判定する：actor でスキップしてはいけない
     event = {"actor": "system", "origin": "director", "effects": [REFORMED]}
     got = sim.value_requires(event["effects"], state(trust=5), origin=event["origin"])
     assert [(x["var"], x["value"]) for x in got] == [("var.king.disposition", "reformed")]
@@ -116,25 +139,32 @@ def test_bridge(sim: Any) -> None:
     assert sim.value_requires([BRIDGE], state(bridge="intact")) == []
     got = sim.value_requires([BRIDGE], state(bridge="destroyed"))
     assert [(x["var"], x["value"]) for x in got] == [("var.river.crossing", "bridge")]
-    # 同一事件里先冲掉桥，再说过了桥：按前一个 effect 之后的状态判
+    # In one event, wash the bridge away first, then say they crossed the bridge: judged on the state after the
+    # previous effect
+    # 同じイベント内で先に橋を流し、それから橋を渡ったとする：前の effect の後の状態で判定
     destroy = set_("var.bridge", "destroyed")
     assert len(sim.value_requires([destroy, BRIDGE], state(bridge="intact"))) == 1
 
 
 def test_unchanged_value_is_not_checked(sim: Any) -> None:
-    # ② 设成现在的值不判（信任掉到 40 以下以后，再写一次 wavering 不算违规）
+    # ② Setting the current value is not checked (once trust drops below 40, writing wavering again is not a violation)
+    # ② 今の値に設定するのは判定しない（信頼が 40 未満に下がった後、もう一度 wavering を書いても違反ではない）
     assert sim.value_requires([WAVERING], state(trust=10, disposition="wavering")) == []
 
 
 def test_later_drop_is_not_a_violation(sim: Any) -> None:
-    # ⑤ 设好以后条件不再成立，不自动改回、不算违规
+    # ⑤ If the condition stops holding after it is set, it is not reverted automatically and is not a violation
+    # ⑤ 設定後に条件が成り立たなくなっても、自動で戻さず、違反ともしない
     s = state(trust=40)
     assert sim.value_requires([WAVERING, inc("var.king.trust", -20)], s) == []
-    assert s["var.king.trust"] == 40, "value_requires 不改传进来的状态"
+    assert s["var.king.trust"] == 40, (
+        "value_requires does not change the state passed in / value_requires は渡された状態を変えない"
+    )
 
 
 def test_simulation_records_violations(sim: Any) -> None:
-    # 推演照样应用事件，违反的记进 violations；build_world 拿它查情景
+    # The simulation still applies events and records violations in violations; build_world uses it to check scenarios
+    # シミュレーションはそれでもイベントを適用し、違反は violations に記録する。build_world はこれでシナリオを確認する
     bad = {"events": [{"t": 3000, "effects": [REFORMED]}], "beats": {"beat.18": {"to": "delayed", "minutes": 240}}}
     res = run(sim, bad)
     assert [(t, x["value"]) for t, x in res["violations"]] == [(3000, "reformed")]

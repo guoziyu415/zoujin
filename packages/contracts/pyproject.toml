@@ -1,7 +1,7 @@
 [project]
 name = "zoujin-contracts"
 version = "0.0.0"
-description = "前后端和数据共用的契约：从 schemas/ 生成的 pydantic 模型（C-1、C-2）"
+description = "Contracts shared by frontend, backend and data: pydantic models generated from schemas/ (C-1, C-2) / フロントエンド、バックエンド、データで共有する契約：schemas/ から生成した pydantic モデル（C-1、C-2）"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "pydantic>=2.12",
@@ -14,8 +14,11 @@ contracts-gen = "zoujin_contracts.codegen:main"
 requires = ["uv_build>=0.11,<0.12"]
 build-backend = "uv_build"
 
-# 契约测试用（C-2）：按 JSON Schema 2020-12 校验；referencing 是 jsonschema 自己的依赖，解析相对 $ref 时直接用到。
-# datamodel-code-generator：`uv run contracts-gen` 生成 pydantic 模型（C-1）。
+# For the contract tests (C-2): validation per JSON Schema 2020-12; referencing is a dependency of jsonschema itself,
+# used directly to resolve relative $refs.
+# 契約テスト用（C-2）：JSON Schema 2020-12 で検証する。referencing は jsonschema 自身の依存で、相対 $ref の解決に直接使う。
+# datamodel-code-generator: `uv run contracts-gen` generates the pydantic models (C-1).
+# datamodel-code-generator：`uv run contracts-gen` で pydantic モデルを生成する（C-1）。
 [dependency-groups]
 dev = [
     "datamodel-code-generator>=0.83.0",

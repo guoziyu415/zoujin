@@ -1,11 +1,20 @@
-# CI 的自建机器：zg 的 Mac 上 Docker 里的一个 Linux（x86_64）容器，里面跑 GitHub Actions runner。说明见 README.md。
-# 和 GitHub 自带的 ubuntu-24.04 不同的地方：job 里没有 sudo。工作流要的系统包都在这里预装好（环境变量
-# ZOUJIN_CI_PREINSTALLED=1，工作流见到它就跳过 apt-get）；新加系统包改这个文件，再在 Mac 上重跑 setup.sh。
-# 容器以 root 起，入口先封掉到 Mac 本机和局域网的连接，再丢掉全部权限换成 runner 用户（entrypoint.sh）。
-# 用 x86_64 而不是 arm64：bpy 5.2 没有 Linux arm64 的包；Apple 芯片上 Docker Desktop 用 Rosetta 跑。
+# CI's self-hosted runner: a Linux (x86_64) container in Docker on zg's Mac, running the GitHub Actions runner. See README.md.
+# CI のセルフホストランナー：zg の Mac 上の Docker 内にある Linux（x86_64）コンテナで、GitHub Actions runner を動かす。説明は README.md。
+# Differences from GitHub's hosted ubuntu-24.04: jobs have no sudo. The system packages the workflows need are preinstalled here
+# (env var ZOUJIN_CI_PREINSTALLED=1; workflows skip apt-get when they see it); to add a system package, change this file and
+# rerun setup.sh on the Mac.
+# GitHub 提供の ubuntu-24.04 との違い：ジョブに sudo がない。ワークフローが必要とするシステムパッケージはここにプリインストール済み
+# （環境変数 ZOUJIN_CI_PREINSTALLED=1。ワークフローはこれを見ると apt-get を飛ばす）。システムパッケージを追加するときはこのファイルを変え、
+# Mac で setup.sh を再実行する。
+# The container starts as root; the entrypoint first blocks connections to the Mac itself and the LAN, then drops all
+# privileges and switches to the runner user (entrypoint.sh).
+# コンテナは root で起動し、エントリポイントがまず Mac 本体と LAN への接続を遮断してから、すべての権限を捨てて runner ユーザーに切り替える（entrypoint.sh）。
+# x86_64 rather than arm64: bpy 5.2 has no Linux arm64 package; on Apple silicon Docker Desktop runs it with Rosetta.
+# arm64 ではなく x86_64 を使う：bpy 5.2 には Linux arm64 のパッケージがない。Apple シリコンでは Docker Desktop が Rosetta で動かす。
 FROM ubuntu:24.04
 
-# runner 的版本和 linux-x64 包的 sha256，由 setup.sh 从 actions/runner 最新 release 的说明里读出来传进来
+# The runner version and the linux-x64 package's sha256, read by setup.sh from the notes of the latest actions/runner release and passed in
+# runner のバージョンと linux-x64 パッケージの sha256。setup.sh が actions/runner の最新 release の説明から読み取って渡す
 ARG RUNNER_VERSION
 ARG RUNNER_SHA256
 
@@ -14,7 +23,8 @@ ENV DEBIAN_FRONTEND=noninteractive \
     LC_ALL=C.UTF-8 \
     ZOUJIN_CI_PREINSTALLED=1
 
-# 基本工具；iptables 给入口封连接用；PostgreSQL 17 给 db job（start_postgres.sh）
+# Basic tools; iptables for the entrypoint to block connections; PostgreSQL 17 for the db job (start_postgres.sh)
+# 基本ツール。iptables はエントリポイントが接続を遮断するため、PostgreSQL 17 は db ジョブ（start_postgres.sh）のため
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       ca-certificates curl git git-lfs unzip zip xz-utils zstd gnupg lsb-release locales tzdata iptables \
@@ -24,8 +34,10 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends postgresql-17 \
  && rm -rf /var/lib/apt/lists/*
 
-# 原来工作流里 sudo apt-get 装的：bpy 链接的 X11/GL 库（assets.yml、web.yml），
-# Playwright 1.63 的 Chromium 依赖和字体（`playwright install --with-deps chromium` 在 ubuntu24.04-x64 上装的那些）
+# What the workflows used to install with sudo apt-get: the X11/GL libraries bpy links (assets.yml, web.yml),
+# Playwright 1.63's Chromium dependencies and fonts (those `playwright install --with-deps chromium` installs on ubuntu24.04-x64)
+# 以前ワークフローで sudo apt-get でインストールしていたもの：bpy がリンクする X11/GL ライブラリ（assets.yml、web.yml）、
+# Playwright 1.63 の Chromium の依存とフォント（ubuntu24.04-x64 で `playwright install --with-deps chromium` が入れるもの）
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
       libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1 \

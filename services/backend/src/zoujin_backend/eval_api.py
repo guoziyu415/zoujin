@@ -1,34 +1,79 @@
-"""评测入口（api-contract 第 7 节、B-0 第 9 条的最小版）：给数据工程的运行器在 Python 包内调，不开 HTTP，生产环境没有。
+"""Eval entry point (api-contract section 7, the minimal version of B-0 item 9): called in-process by data
+engineering's runner, no HTTP, absent in production.
 
     from zoujin_backend import eval_api
     s = eval_api.setup({"role": "role.traveler", "checkpoint": "sc.canon@beat.03"}, mode="text")
     s.say("char.old-man", "…")
     s.state()
 
-- `setup` 每次读 `DATABASE_URL` 和 `ZJ_MODEL`（fake / replay / real；real 只在 Mac 上，账本和上限见
-  `models/vertex.py`）。一局是测试库里真的一局：一个新账号、一局、
-  起点的事件和 world_state，之后的步骤走和网关同一个叙事者（`Narrator.run`）。
-- 做了的：setup 的 `role`、`place`、`budgetTier`（只记下）、`scenario`、`checkpoint`、`events`；步骤 `say`（人物用文字
-  回答，再走叙事者整条流水线，B-2）、`advance`；`act`、`propose`、`choose`（B-3：和 WebSocket 同一条路，写任务、
-  叫叙事者）；`check`（第 3 步 + 按 `model_checks` 跑第 4 步，不改写、不提交）；查询 `state()`、`events()`；
-  B-9：`ending()`（还没进结局返回 None）；情景推到收幕的 setup 起点就进结局，结局任务在 setup 里同步跑完。
-  检查点停在这一幕的收幕节拍上（例 `sc.canon@beat.07`）时，setup 之后就是幕末待选。
-- B-4：`say(hold=True)` 只写这一轮、拿人物的回答，返回 `held: true`、没有事件（作废的窗口还开着）；下一次调用（任何
-  步骤或查询）开始时先让叙事者提交它，事件算在那一次里。`retract(n)` 作废还 hold 着的第 n 步（`retracted`），
-  已经提交的 `too_late`；`utterance_cleared(n)`。这一步留下了意图确认的草稿时 `StepResult.confirm` 有值，草稿最多等
-  一步：下一步 `confirm(answer)` 按它答，`say` 由叙事者判是不是在回答，别的步骤（或那句 `say` 不是在回答）按超时关掉。
-  评测的提交窗口是 0。
-- B-5 模拟局：`setup({"role": …, "persona": …, "seed": …})` 照正式开局起一局（和网关 `POST /v1/playthroughs` 同一条
-  路：写局和 `open` 任务、叫叙事者做），不用 `opening()` 推演；`persona`、`seed` 只记在 Trace（`eval.setup`）上，
-  `seed` 给假模型。AI 玩家只看 `view()`（2.3 的快照和 2.4 的玩家可见事件，和网关同一个投影）、`manifest()`（B-7 的
-  生成器）和每一步结果里玩家听得到、看得到的字段。每一步的结果带 `elapsedMs`（进来到返回）。这一局里记的账带
-  `playthroughId`（`zoujin_llm.playthrough`）。
-- 没做的步骤和查询、带 `memory` 的布置事件、没有布局的场景里的 `move` 抛
-  `EvalNotImplemented("<名字>")`；
-  回放里查不到抛 `ReplayMissing`。账本到上限抛 `BudgetStop`，模型回 429 抛 `RateLimited`：这两个要整次停下，不是跳过
-  这一例。运行器按类名认。
-- 一局共用一个事件循环，数据库用不进连接池的连接；运行器的超时（SIGALRM）中途打断时，
-  丢下的那一局只是留在测试库里。
+- `setup` reads `DATABASE_URL` and `ZJ_MODEL` each time (fake / replay / real; real only on the Mac, see
+  `models/vertex.py` for the ledger and caps). A playthrough is a real one in the test DB: a new account, a
+  playthrough, the starting events and world_state; later steps go through the same narrator as the gateway
+  (`Narrator.run`).
+- Done: setup's `role`, `place`, `budgetTier` (only recorded), `scenario`, `checkpoint`, `events`; steps `say` (the
+  character answers in text, then the narrator's whole pipeline runs, B-2), `advance`; `act`, `propose`, `choose`
+  (B-3: the same path as WebSocket, write a task and call the narrator); `check` (step 3 + step 4 per
+  `model_checks`, no rewrite, no commit); queries `state()`, `events()`; B-9: `ending()` (None while the ending has not
+  started); a setup whose scenario pushes to the close of the act enters the ending at the start, and the ending task
+  runs to completion synchronously inside setup. When the checkpoint stops on this act's closing beat (e.g.
+  `sc.canon@beat.07`), after setup the end-of-act choice is pending.
+- B-4: `say(hold=True)` only writes this turn and gets the character's answer, returning `held: true` with no events
+  (the retract window is still open); at the start of the next call (any step or query) the narrator commits it first,
+  and its events count toward that call. `retract(n)` retracts step n while it is still held (`retracted`); once
+  committed it is `too_late`; `utterance_cleared(n)`. When this step left an intent-confirmation draft,
+  `StepResult.confirm` has a value; the draft waits at most one step: the next step `confirm(answer)` answers it, for
+  `say` the narrator judges whether it is an answer, and any other step (or a `say` that is not an answer) closes it
+  as a timeout. The eval's commit window is 0.
+- B-5 simulated playthroughs: `setup({"role": …, "persona": …, "seed": …})` starts a playthrough the production way
+  (the same path as the gateway's `POST /v1/playthroughs`: write the playthrough and the `open` task, and the
+  narrator does it), without the `opening()` simulation; `persona` and `seed` are only recorded on the Trace
+  (`eval.setup`), and `seed` goes to the fake model. The AI player sees only `view()` (2.3's snapshot and 2.4's
+  player-visible events, the same projection as the gateway), `manifest()` (B-7's generator) and the fields of each
+  step result the player can hear or see. Each step result carries `elapsedMs` (from entry to return). Ledger entries
+  in this playthrough carry `playthroughId` (`zoujin_llm.playthrough`).
+- Steps and queries not done, setup events with `memory`, and `move` in scenes without a layout raise
+  `EvalNotImplemented("<name>")`;
+  a replay not found raises `ReplayMissing`. The ledger reaching its cap raises `BudgetStop`, and a 429 from the model
+  raises `RateLimited`: these two must stop the whole run, not skip this case. The runner recognises them by class
+  name.
+- A playthrough shares one event loop, and the DB uses connections outside the connection pool; when the runner's
+  timeout (SIGALRM) interrupts midway, the abandoned playthrough simply stays in the test DB.
+
+評価の入口（api-contract 第 7 節、B-0 第 9 項の最小版）：データエンジニアリングのランナーが Python
+パッケージ内で呼ぶもので、HTTP は開かず、本番環境にはない。
+
+- `setup` は毎回 `DATABASE_URL` と `ZJ_MODEL` を読む（fake / replay / real。real は Mac 上だけで、台帳と上限は
+  `models/vertex.py` を参照）。1 プレイはテスト DB の本物のプレイ：新しいアカウント、プレイ、
+  開始時点のイベントと world_state を作り、以後のステップはゲートウェイと同じナレーター（`Narrator.run`）を通る。
+- 実装済み：setup の `role`、`place`、`budgetTier`（記録だけ）、`scenario`、`checkpoint`、`events`。ステップ `say`
+  （登場人物がテキストで答え、ナレーターのパイプライン全体を通す、B-2）、`advance`。`act`、`propose`、`choose`（B-3：
+  WebSocket と同じ経路で、タスクを書いてナレーターを呼ぶ）。`check`（第 3 段階 + `model_checks` に従って第 4 段階、
+  書き換えもコミットもしない）。クエリ `state()`、`events()`。B-9：`ending()`（エンディングに入っていなければ None）。
+  シナリオで幕を閉じるところまで進む setup では開始時点でエンディングに入り、
+  エンディングのタスクは setup の中で同期的に最後まで実行する。
+  チェックポイントがこの幕の閉幕のビート（例 `sc.canon@beat.07`）で止まっているときは、
+  setup の後は幕末の選択待ちになる。
+- B-4：`say(hold=True)` はこのターンを書いて登場人物の回答を得るだけで、`held: true` を返し、
+  イベントはない（取り消し可能な時間はまだ開いている）。次の呼び出し（どのステップやクエリでも）の最初に
+  ナレーターがそれをコミットし、イベントはその呼び出しに数える。`retract(n)` はまだ hold
+  中の n ステップ目を取り消し（`retracted`）、コミット済みなら `too_late`。`utterance_cleared(n)`。
+  このステップが意図確認の草稿を残したときは `StepResult.confirm` に値があり、草稿は最大 1 ステップ待つ：
+  次のステップの `confirm(answer)` がそれに答え、`say` なら回答かどうかをナレーターが判定し、
+  ほかのステップ（または回答ではない `say`）ではタイムアウトとして閉じる。評価のコミット待ち時間は 0。
+- B-5 のシミュレーションのプレイ：`setup({"role": …, "persona": …, "seed": …})` は本番どおりにプレイを
+  開始し（ゲートウェイの `POST /v1/playthroughs` と同じ経路：プレイと `open` タスクを書き、
+  ナレーターが処理する）、`opening()` のシミュレーションは使わない。`persona`、`seed` は
+  Trace（`eval.setup`）に記録するだけで、`seed` は偽モデルに渡す。
+  AI プレイヤーが見るのは `view()`（2.3 のスナップショットと 2.4 のプレイヤーに見えるイベント。
+  ゲートウェイと同じ射影）、`manifest()`（B-7 のジェネレーター）、各ステップの結果のうちプレイヤーが聞こえる・
+  見えるフィールドだけ。各ステップの結果には `elapsedMs`（入ってから返るまで）が付く。
+  このプレイで記録した台帳には `playthroughId`（`zoujin_llm.playthrough`）が付く。
+- 未実装のステップとクエリ、`memory` 付きの配置イベント、レイアウトのないシーンでの `move` は
+  `EvalNotImplemented("<name>")` を投げる。
+  リプレイが見つからなければ `ReplayMissing`。台帳が上限に達したら `BudgetStop`、モデルが 429 を返したら
+  `RateLimited`：この 2 つは実行全体を止めるもので、このケースをスキップするのではない。ランナーはクラス名で判別する。
+- 1 プレイで 1 つのイベントループを共有し、DB はコネクションプールに入らない接続を使う。
+  ランナーのタイムアウト（SIGALRM）で途中で中断されたとき、残されたプレイはテスト DB に残るだけ。
 """
 
 from __future__ import annotations
@@ -97,7 +142,11 @@ SETUP_PASSED: Json = {"status": "passed", "attempts": 1, "failedRules": [], "che
 
 
 class EvalNotImplemented(Exception):
-    """B-0 没做的步骤或查询（运行器按类名认，记「跳过：后端未实现」）。"""
+    """A step or query B-0 did not implement (the runner recognises it by class name and records "skipped: not
+    implemented in the backend").
+
+    B-0 で未実装のステップまたはクエリ（ランナーはクラス名で判別し、「スキップ：バックエンド未実装」と記録する）。
+    """
 
 
 @cache
@@ -112,19 +161,30 @@ def _schemas(root: Path) -> SchemaBook:
 
 @cache
 def _scenarios(world_dir: Path) -> dict[str, Json]:
-    """`sc.canon` = 原著路径（不在 scenarios.json 里）。"""
+    """`sc.canon` = the original novel's path (not in scenarios.json).
+
+    `sc.canon` = 原作どおりの経路（scenarios.json にはない）。
+    """
     path = world_dir / "scenarios.json"
     listed = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else []
     return {"sc.canon": {"id": "sc.canon"}, **{s["id"]: s for s in listed}}
 
 
 def _run[T](coro: Coroutine[Any, Any, T]) -> T:
-    """兼容测试的独立数据库操作；Session 的模型调用使用实例持久循环。"""
+    """Standalone DB operations kept for tests; Session's model calls use the instance's persistent loop.
+
+    テストとの互換のための単独の DB 操作。Session のモデル呼び出しはインスタンスが持ち続けるループを使う。
+    """
     return asyncio.run(coro)
 
 
 def _timed(step: Callable[..., Json]) -> Callable[..., Json]:
-    """每一步的结果加 `elapsedMs`：从调用进来到返回，含叙事者各次模型调用和提交（B-5）。"""
+    """Add `elapsedMs` to each step result: from entering the call to returning, including the narrator's model calls
+    and commit (B-5).
+
+    各ステップの結果に `elapsedMs` を付ける：呼び出しに入ってから返るまでで、
+    ナレーターの各モデル呼び出しとコミットを含む（B-5）。
+    """
 
     @wraps(step)
     def timed(*args: Any, **kwargs: Any) -> Json:
@@ -137,23 +197,33 @@ def _timed(step: Callable[..., Json]) -> Callable[..., Json]:
     return timed
 
 
-# 带 persona 的模拟局从正式开局玩起，不和这几样一起给
+# A simulated playthrough with persona plays from the production start, so it is not given together with these
+# persona 付きのシミュレーションのプレイは本番の開始から遊ぶので、これらと一緒には渡さない
 NOT_WITH_PERSONA = ("checkpoint", "scenario", "events")
 
 
 def setup(setup: Mapping[str, Json], *, mode: str = "text") -> Session:
-    """开一局。setup 是用例的 setup 原样，mode 是 text / voice（B-0 两种都走文字的叙事者流程）。"""
+    """Start a playthrough. setup is the case's setup as is; mode is text / voice (in B-0 both go through the text
+    narrator flow).
+
+    プレイを開始する。setup はケースの setup そのまま、mode は
+    text / voice（B-0 ではどちらもテキストのナレーターの流れを通る）。
+    """
     if "persona" in setup:
         mixed = [k for k in NOT_WITH_PERSONA if k in setup]
         if mixed:
-            raise ValueError(f"persona 不和 {'、'.join(mixed)} 一起给：模拟局从正式开局玩起")
+            raise ValueError(
+                f"persona is not given together with {', '.join(mixed)}: a simulated playthrough plays from the "
+                f"production start / persona は {'、'.join(mixed)} と一緒には渡さない：シミュレーションのプレイは"
+                "本番の開始から遊ぶ"
+            )
     settings = Settings.from_env()
-    library = _library(settings.worlds, settings.scenes, settings.world)  # ZJ_WORLD 每次 setup() 都读
+    library = _library(settings.worlds, settings.scenes, settings.world)  # ZJ_WORLD is read on every setup() / 毎回読む
     book = library.book(setup.get("book", BOOK))
     if book is None:
-        raise ValueError(f"没有这本书：{setup.get('book', BOOK)}")
+        raise ValueError(f"No such book / その本がない: {setup.get('book', BOOK)}")
     if setup["role"] not in book.roles:
-        raise ValueError(f"没有这个身份：{setup['role']}")
+        raise ValueError(f"No such role / その役がない: {setup['role']}")
     s = Session(settings, library, book, setup, mode)
     try:
         s._run(s._open() if s.persona is not None else s._setup())
@@ -171,8 +241,11 @@ class Session:
         self.setup_doc = copy.deepcopy(dict(setup))
         self.mode = mode
         self.role: str = setup["role"]
-        self.budget_tier: str = setup.get("budgetTier", "normal")  # B-14：开局就设成这一档（E6）
-        self.persona: str | None = setup.get("persona")  # 模拟局的画像 ID，只进 Trace（B-5）
+        # B-14: set to this tier at the start (E6) / B-14：開始時にこの段階にする（E6）
+        self.budget_tier: str = setup.get("budgetTier", "normal")
+        # Persona ID of a simulated playthrough, only goes into the Trace (B-5)
+        # シミュレーションのプレイのペルソナ ID。Trace にだけ入れる（B-5）
+        self.persona: str | None = setup.get("persona")
         self.seed: int | None = setup.get("seed")
         self.ids = IdGen()
         self.text: TextModel = text_model(
@@ -180,35 +253,57 @@ class Session:
         )
         self.schemas = _schemas(settings.schemas)
         self.tracer = Tracer()
-        self.span: dict[str, Any] = {}  # 运行器给这一步的 Span 加的属性（例：S-2 的 trace_id）
+        # Attributes the runner adds to this step's Span (e.g. S-2's trace_id)
+        # ランナーがこのステップの Span に付ける属性（例：S-2 の trace_id）
+        self.span: dict[str, Any] = {}
         self.pid = ""
         self.user_id = ""
-        self.deleted: str | None = None  # B-13：delete_playthrough 删掉的那一局（db_absent 查它）
+        # B-13: the playthrough deleted by delete_playthrough (db_absent checks it)
+        # B-13：delete_playthrough で削除したプレイ（db_absent がこれを確認する）
+        self.deleted: str | None = None
         self.steps = 0
-        self.turns: dict[int, str] = {}  # 第几步 → 那一轮的 turnId（say；retract、utterance_cleared 用）
-        self.held: tuple[int, str] | None = None  # say(hold=True) 还没提交的那一步
-        self.draft: tuple[int, str] | None = None  # 第几步留下的、还开着的草稿
-        # B-12：玩家每一句的安全筛查和人物输出的监控，和网关同一套（Model Armor 按 ZJ_MODEL；回放查不到照样抛）
+        # Step number → that turn's turnId (say; used by retract, utterance_cleared)
+        # ステップ番号 → そのターンの turnId（say。retract、utterance_cleared が使う）
+        self.turns: dict[int, str] = {}
+        # The step of say(hold=True) not yet committed / say(hold=True) でまだコミットしていないステップ
+        self.held: tuple[int, str] | None = None
+        # The still-open draft and the step that left it / 開いたままの草稿と、それを残したステップ
+        self.draft: tuple[int, str] | None = None
+        # B-12: safety screening of every player line and monitoring of character output, the same as the gateway
+        # (Model Armor per ZJ_MODEL; a replay not found still raises)
+        # B-12：プレイヤーの発言ごとの安全スクリーニングと登場人物の出力の監視。
+        # ゲートウェイと同じ仕組み（Model Armor は ZJ_MODEL に従う。リプレイが見つからなければそのまま投げる）
         self.armor: Armor = armor(settings.model, replays=settings.replays)
         self.safety = SafetyState()
-        self.last_reply: dict[str, str] = {}  # B-15：每个人物上一句（安全筛查的上下文）
+        # B-15: each character's previous line (context for safety screening)
+        # B-15：登場人物ごとの直前のセリフ（安全スクリーニングの文脈）
+        self.last_reply: dict[str, str] = {}
         self.monitor = Monitor(library)
         self.monitor.attach(book)
         self._manifest: Manifest | None = None
-        # 真客户端的连接池跨步骤复用；整局必须共用一个事件循环。
+        # The real clients' connection pools are reused across steps; the whole playthrough must share one event loop.
+        # 本物のクライアントのコネクションプールはステップをまたいで再利用する。
+        # プレイ全体で 1 つのイベントループを共有する。
         self._runner = asyncio.Runner()
         self.call_observations: list[dict[str, Any]] = []
 
     def _run[T](self, coro: Coroutine[Any, Any, T]) -> T:
-        """一局共用一个事件循环；这期间记的账带这一局的 playthroughId。"""
+        """A playthrough shares one event loop; ledger entries made meanwhile carry this playthrough's playthroughId.
+
+        1 プレイで 1 つのイベントループを共有する。その間に記録した台帳にはこのプレイの playthroughId が付く。
+        """
         with playthrough(self.pid or None):
             return self._runner.run(coro, context=contextvars.copy_context())
 
     def close(self) -> None:
-        """评测运行器在成功、失败、预算停止后都关闭本局的事件循环。"""
+        """The eval runner closes this playthrough's event loop after success, failure or a budget stop.
+
+        評価のランナーは、成功・失敗・予算による停止のいずれの後もこのプレイのイベントループを閉じる。
+        """
         self._runner.close()
 
-    # —— 连接和叙事者：每次调用新建（各自的事件循环） ——
+    # —— Connections and narrator: created anew on each call (each with its own event loop) ——
+    # —— 接続とナレーター：呼び出しごとに新しく作る（それぞれのイベントループ） ——
 
     def _engine(self) -> AsyncEngine:
         return create_async_engine(self.settings.database_url, poolclass=NullPool)
@@ -229,12 +324,20 @@ class Session:
 
     @property
     def screener(self) -> Screener:
-        """`text` 可能被测试换掉，每次按当前的建。评测里账本到上限、429 照样整次停下。"""
+        """`text` may be swapped by tests, so build from the current one each time. In evals, the ledger cap and 429
+        still stop the whole run.
+
+        `text` はテストで差し替えられることがあるので、毎回その時点のもので作る。
+        評価でも台帳の上限と 429 では実行全体を止める。
+        """
         return Screener(self.text, self.armor, self.tracer, raise_stops=True)
 
     @property
     def pipeline(self) -> Pipeline:
-        """`text` 可能被测试换掉，每次按当前的建。"""
+        """`text` may be swapped by tests, so build from the current one each time.
+
+        `text` はテストで差し替えられることがあるので、毎回その時点のもので作る。
+        """
         return ObservedPipeline(
             self.text,
             self.schemas,
@@ -244,7 +347,7 @@ class Session:
             observations=self.call_observations,
         )
 
-    # —— 起点 ——
+    # —— Starting point / 開始の時点 ——
 
     async def _setup(self) -> None:
         engine = self._engine()
@@ -275,9 +378,14 @@ class Session:
                     now=recorded_at(),
                 )
                 play_setup(w, _scenarios(self._world_dir()), self.setup_doc)
-                laid = w.events[len(w.events) - len(self.setup_doc.get("events", [])) :]  # 评测布置的事件在最后
-                # 情景模式一口气推到了收幕（B-9 第 11 条）：起点就进结局，和叙事者提交时一样。只看最后一幕收没收，
-                # 检查点停在 beat.24 以后、还在前面几幕的不进（数据评审 #124）
+                # Events laid out by the eval come last / 評価が配置したイベントは最後にある
+                laid = w.events[len(w.events) - len(self.setup_doc.get("events", [])) :]
+                # The scenario pushed straight to the close of the act (B-9 item 11): enter the ending at the start, as
+                # when the narrator commits. Only whether the last act closed counts; a checkpoint stopped after
+                # beat.24 but still in an earlier act does not enter (data review #124)
+                # シナリオが一気に幕を閉じるところまで進んだ（B-9 第 11 項）：
+                # ナレーターのコミット時と同じく開始時点でエンディングに入る。最後の幕が閉じたかだけを見て、
+                # beat.24 以降で止まっていてもまだ前の幕にいるチェックポイントは入らない（データレビュー #124）
                 trigger = ending.closed(self.book, w.state) if ending.curtain_fell(self.book, w.state) else None
                 if trigger is not None:
                     w.ending = ending.enter(w, self.book, trigger)
@@ -306,14 +414,22 @@ class Session:
                         .values(ending_started_at=func.now())
                     )
                     await store.enqueue(c, self.ids, self.pid, kind=ending.KIND, request=w.ending["request"])
-            if w.ending is not None:  # 结局任务在 setup 里同步跑完
+            # The ending task runs to completion synchronously inside setup
+            # エンディングのタスクは setup の中で同期的に最後まで実行する
+            if w.ending is not None:
                 await self._narrator(engine).run(self.pid)
         finally:
             await engine.dispose()
 
     async def _open(self) -> None:
-        """模拟局（B-5）：照正式开局，和网关 `POST /v1/playthroughs` 同一条路（`store.create_playthrough` 写局、指标行
-        和 `open` 任务，叙事者做：startT、startAct、到点的节拍）。"""
+        """Simulated playthrough (B-5): start the production way, the same path as the gateway's
+        `POST /v1/playthroughs` (`store.create_playthrough` writes the playthrough, the metrics row and the `open` task,
+        and the narrator does it: startT, startAct, the beats that are due).
+
+        シミュレーションのプレイ（B-5）：本番どおりに開始し、ゲートウェイの
+        `POST /v1/playthroughs` と同じ経路を通る（`store.create_playthrough` がプレイ、指標の行、`open` タスクを書き、
+        ナレーターが処理する：startT、startAct、時刻が来たビート）。
+        """
         engine = self._engine()
         try:
             async with engine.begin() as c:
@@ -331,14 +447,24 @@ class Session:
             await engine.dispose()
 
     async def _user(self, c: Any) -> str:
-        """这一局的账号：第一次建，`new_playthrough` 用同一个（E6-008：同一个账号换一局）。"""
+        """This playthrough's account: created the first time; `new_playthrough` uses the same one (E6-008: the same
+        account switches to a new playthrough).
+
+        このプレイのアカウント：最初に作り、`new_playthrough` は同じものを使う（E6-008：
+        同じアカウントで別のプレイにする）。
+        """
         if not self.user_id:
             self.user_id = self.ids.new("usr")
             await c.execute(insert(users).values(user_id=self.user_id))
         return self.user_id
 
     async def _seed_memories(self, c: Any, laid: Sequence[Json]) -> None:
-        """setup 的事件带 `memory: {character, kind, text}`：直接种一条记忆（不调模型，过同样的三道过滤）。"""
+        """A setup event with `memory: {character, kind, text}`: seed a memory directly (no model call, through the same
+        three filters).
+
+        `memory: {character, kind, text}` 付きの setup のイベント：記憶を直接 1 件植える（モデルは呼ばず、
+        同じ 3 段のフィルターを通す）。
+        """
         todo = [
             (ev, d["memory"]) for ev, d in zip(laid, self.setup_doc.get("events", []), strict=True) if "memory" in d
         ]
@@ -349,27 +475,46 @@ class Session:
         for ev, spec in todo:
             text = str(spec["text"]).strip()
             if not (memory.rule_ok(text) and await m._armor_ok(text, memory.Written())):
-                raise ValueError(f"setup 种的记忆过不了过滤：{spec['character']}")
+                raise ValueError(
+                    f"A memory seeded by setup fails the filters / setup で植えた記憶がフィルターを通らない: "
+                    f"{spec['character']}"
+                )
             rows.append(memory.seeded(self.ids, self.pid, ev, spec["character"], spec["kind"], text))
         await c.execute(insert(memory_items), rows)
 
     def _world_dir(self) -> Path:
-        """情景 `scenarios.json` 和开局用的 world.json 在同一个目录（setup 只用 `Library.current`）。"""
+        """The scenarios file `scenarios.json` is in the same directory as the world.json used for new playthroughs
+        (setup only uses `Library.current`).
+
+        シナリオの `scenarios.json` は開始に使う world.json と同じディレクトリにある（setup は
+        `Library.current` だけを使う）。
+        """
         return self.settings.world.parent
 
-    # —— 步骤 ——
+    # —— Steps / ステップ ——
 
     @_timed
     def say(self, to: str, text: str, hold: bool = False) -> Json:
-        """文字代替语音：人物用文字回答（`reply`），原话和这一轮写进去，走叙事者整条流水线。hold：先不提交（B-4）。"""
+        """Text instead of voice: the character answers in text (`reply`), the original words and this turn are
+        written, and the narrator's whole pipeline runs. hold: do not commit yet (B-4).
+
+        音声の代わりにテキスト：登場人物がテキストで答え（`reply`）、発話の原文とこのターンを書き込み、
+        ナレーターのパイプライン全体を通す。hold：まだコミットしない（B-4）。
+        """
         self.steps += 1
         return self._run(self._say(to, text, hold))
 
-    # —— B-4：hold 着的一轮、等回答的草稿 ——
+    # —— B-4: the held turn, the draft awaiting an answer / B-4：hold 中のターン、回答待ちの草稿 ——
 
     async def _prelude(self, engine: AsyncEngine, kind: str, retract: int | None = None) -> list[Result]:
-        """每次调用开始时：hold 着的那一轮先提交（retract 的正是它就不提交）；草稿等过了一步、这一步又不是
-        confirm、say 的，按超时关掉。返回这期间叙事者提交的。"""
+        """At the start of each call: commit the held turn first (unless it is the one being retracted); a draft that
+        has waited one step, when this step is neither confirm nor say, is closed as a timeout. Returns what the
+        narrator committed meanwhile.
+
+        各呼び出しの最初に：hold 中のターンを先にコミットする（retract の対象がそれならコミットしない）。
+        草稿が 1 ステップ待ったうえで、このステップが confirm でも say でもなければタイムアウトとして閉じる。
+        その間にナレーターがコミットしたものを返す。
+        """
         done: list[Result] = []
         if self.held is not None and self.held[0] != retract:
             self.held = None
@@ -387,7 +532,10 @@ class Session:
         return await self._narrator(engine).run(self.pid) if written is not None else []
 
     async def _flush(self) -> None:
-        """查询之前：hold 着的那一轮先提交（草稿不动，查询不算一步）。"""
+        """Before a query: commit the held turn first (the draft is untouched; a query does not count as a step).
+
+        クエリの前に：hold 中のターンを先にコミットする（草稿には触れず、クエリは 1 ステップと数えない）。
+        """
         if self.held is None:
             return
         engine = self._engine()
@@ -402,7 +550,11 @@ class Session:
 
     @staticmethod
     def _set_pieces(done: Sequence[Result]) -> list[Json]:
-        """只给玩家实际收到的固定演出；不从 manifest 或世界模型读未来台词。"""
+        """Only the set pieces the player actually received; future lines are never read from the manifest or the
+        world model.
+
+        プレイヤーが実際に受け取った固定演出だけを返す。manifest や世界モデルから先のセリフを読むことはしない。
+        """
         return [copy.deepcopy(m) for r in done for m in r.push if m.get("type") == "set_piece"]
 
     async def _say(self, to: str, text: str, hold: bool = False) -> Json:
@@ -415,10 +567,16 @@ class Session:
             spend = Spend()
             ctx = context_of(self.book, st["vars"]["var.player.location"], to, self.last_reply.get(to))
             screen = await self.screener.screen(text, ctx, **self.span)
-            if self.safety.ambiguous >= 1:  # B-15：第二次 ambiguous 先复核
+            if (
+                self.safety.ambiguous >= 1
+            ):  # B-15: a second ambiguous is reviewed first / 2 回目の ambiguous は先に再確認
                 screen = await self.screener.second_look(screen, text, ctx, **self.span)
             decision = decide(screen, self.safety)
-            if decision == "pause":  # 出戏卡（3.12）：人物的回答不出、这一轮不进叙事者、不花时间、原话不存
+            # Out-of-character card (3.12): no character answer, the turn does not go to the narrator, no time
+            # passes, the original words are not stored
+            # 物語の外に出るカード（3.12）：登場人物の回答は出さず、このターンはナレーターに渡さず、時間を進めず、
+            # 発話の原文は保存しない
+            if decision == "pause":
                 return await self._paused(engine, to, pre, screen)
             if decision == "hint":
                 self.monitor.calm()
@@ -467,7 +625,9 @@ class Session:
                 }
             done = await self._narrator(engine).run(self.pid)
             self._only(done, turn_id)
-            if self.draft is not None:  # 等回答的草稿：这句话不是在回答，按超时关掉
+            # A draft awaiting an answer: this line is not an answer, so close it as a timeout
+            # 回答待ちの草稿：この発言は回答ではないので、タイムアウトとして閉じる
+            if self.draft is not None:
                 done += await self._close_draft(engine, None, "timeout")
             asking = await self._draft_of(engine, turn_id)
         finally:
@@ -490,8 +650,14 @@ class Session:
         return out
 
     async def _paused(self, engine: AsyncEngine, to: str, pre: Sequence[Result], screen: Screen) -> Json:
-        """出戏卡停下的一轮（B-12，3.12）：写一行 outcome = paused、0 分，没有原话，不叫叙事者。评测里玩家下一步
-        就算选了「物語に戻る」（canReturn），暂停随即解除。"""
+        """A turn stopped by the out-of-character card (B-12, 3.12): write a row with outcome = paused, 0 minutes, no
+        original words, and do not call the narrator. In evals the player's next step counts as choosing 「物語に戻る」
+        (canReturn), and the pause is lifted at once.
+
+        物語の外に出るカードで止まったターン（B-12、3.12）：outcome = paused、0 分の行を書き、発話の原文はなく、
+        ナレーターは呼ばない。評価ではプレイヤーの次のステップを「物語に戻る」（canReturn）を選んだものとみなし、
+        一時停止はすぐに解除する。
+        """
         async with engine.begin() as c:
             turn_id = await store.enqueue(
                 c, self.ids, self.pid, kind="talk", input_mode="text", character=to, status="done"
@@ -503,7 +669,7 @@ class Session:
             )
             await store.count(c, self.pid, **counts_of(screen, "pause"))
         self.turns[self.steps] = turn_id
-        self.safety.paused = False  # 评测的下一步 = 玩家回到了故事
+        self.safety.paused = False  # The eval's next step = the player returned to the story / プレイヤーが物語に戻った
         return {
             "safetyCard": {"shown": True, "paused": True, "canReturn": True},
             "safety": screen.self_harm,
@@ -524,7 +690,10 @@ class Session:
             await engine.dispose()
 
     async def _draft_of(self, engine: AsyncEngine, turn_id: str) -> Json | None:
-        """这一轮留下的草稿（StepResult.confirm）。"""
+        """The draft this turn left (StepResult.confirm).
+
+        このターンが残した草稿（StepResult.confirm）。
+        """
         async with engine.connect() as c:
             draft = await store.open_draft(c, self.pid)
         if draft is None or draft["turn_id"] != turn_id:
@@ -533,9 +702,17 @@ class Session:
 
     @_timed
     def confirm(self, answer: str | None) -> Json:
-        """回答上一步留下的意图确认：yes / no / None（没答、超时）。没有草稿在等时 `error: "no_draft"`。"""
+        """Answer the intent confirmation left by the previous step: yes / no / None (no answer, timeout). With no
+        draft waiting, `error: "no_draft"`.
+
+        前のステップが残した意図確認に答える：yes / no / None（未回答、タイムアウト）。待っている草稿がなければ
+        `error: "no_draft"`。
+        """
         if answer not in ("yes", "no", None):
-            raise ValueError(f"answer 只能是 yes / no / None，得到 {answer!r}")
+            raise ValueError(
+                f"answer must be yes / no / None, got {answer!r} / "
+                f"answer は yes / no / None のいずれか、指定は {answer!r}"
+            )
         self.steps += 1
         return self._run(self._confirm(answer))
 
@@ -563,14 +740,22 @@ class Session:
 
     @_timed
     def act(self, kind: str, target: str | None, params: Mapping[str, Json], *, action_id: str | None = None) -> Json:
-        """动作（api-contract 3.8）：和 `action` 消息一样写一行任务，叙事者判定。还没有 3D 布局的场景里的 `move`
-        （归途、村子：路程和过河跟 S-081 的停靠点一起做，M3）抛 `EvalNotImplemented`，用例记成跳过。`move` 的
-        `params.crossing`（过河的走法，E5-008）是评测专用参数：契约 3.8 的 `move` 没有 params，正式客户端不发；走不通时
-        记一条被否决的 move（R2-precondition）。"""
+        """Action (api-contract 3.8): write a task row like the `action` message, and the narrator judges it. `move` in
+        a scene without a 3D layout yet (the way back, the village: distance and the river crossing come with S-081's
+        stops, M3) raises `EvalNotImplemented`, and the case is recorded as skipped. `move`'s `params.crossing` (how to
+        cross the river, E5-008) is an eval-only parameter: contract 3.8's `move` has no params and the production
+        client never sends it; when it is impossible, a vetoed move is recorded (R2-precondition).
+
+        アクション（api-contract 3.8）：`action` メッセージと同じくタスクの行を書き、ナレーターが判定する。
+        まだ 3D レイアウトのないシーン（帰り道、村：道のりと川渡りは S-081 の停留地点と一緒に作る、
+        M3）での `move` は `EvalNotImplemented` を投げ、ケースはスキップとして記録される。`move` の
+        `params.crossing`（川の渡り方、E5-008）は評価専用のパラメーター：契約 3.8 の `move` には params がなく、
+        本番のクライアントは送らない。通れないときは却下された move を 1 件記録する（R2-precondition）。
+        """
         if kind == "move":
             here = self._run(self._state())["vars"]["var.player.location"]
             if self.book.places.get(here, {}).get("sceneRef") not in self.book.scenes:
-                raise EvalNotImplemented("move（没有布局的场景）")
+                raise EvalNotImplemented("move (scene without a layout / レイアウトのないシーン)")
         self.steps += 1
         request: Json = {"clientMsgId": f"eval-{self.steps}", "kind": kind, "params": dict(params or {})}
         if action_id is not None:
@@ -578,7 +763,9 @@ class Session:
         if target is not None:
             request["target"] = target
         r, t0 = self._run(self._task("action", request))
-        self.turns[self.steps] = r.task.turn_id  # B-13：delete_memory 按这一步的事件找记忆
+        # B-13: delete_memory finds the memory by this step's events
+        # delete_memory はこのステップのイベントで記憶を探す
+        self.turns[self.steps] = r.task.turn_id
         info = r.info
         out: Json = {
             "events": self._step_events(r),
@@ -609,12 +796,24 @@ class Session:
 
     @_timed
     def propose(self, text: str) -> Json:
-        """幕末用文字说出打算（3.11）：原话存进 utterances，叙事者的 plan 判能不能成行。收幕以前、试过 2 次以后
-        返回 `error: "invalid_request"`、没有事件（网关这时回 invalid_request，不写任务）。"""
+        """State a plan in text at the end of the act (3.11): the original words go into utterances, and the narrator's
+        plan judges whether it can go ahead. Before the act closes, or after 2 tries, returns
+        `error: "invalid_request"` with no events (the gateway answers invalid_request then, without writing a task).
+
+        幕末にテキストでプランを話す（3.11）：発話の原文は utterances に保存し、
+        ナレーターの plan が実行できるかを判定する。幕を閉じる前、
+        または 2 回試した後は `error: "invalid_request"` を返し、
+        イベントはない（ゲートウェイはこのとき invalid_request を返し、タスクを書かない）。
+        """
         self.steps += 1
-        screen = self._run(self._screen_plan(text))  # 幕末的打算也筛（UX 在 #112 的评审）
+        # End-of-act plans are screened too (UX's review in #112)
+        # 幕末のプランもスクリーニングする（#112 の UX レビュー）
+        screen = self._run(self._screen_plan(text))
         decision = decide(screen, self.safety)
-        if decision == "pause":  # 不交给叙事者、不算试次；回到故事以后幕末页照原样
+        # Not handed to the narrator and not counted as a try; after returning to the story the end-of-act page is as
+        # it was
+        # ナレーターには渡さず、試行回数にも数えない。物語に戻った後、幕末のページは元のまま
+        if decision == "pause":
             self.safety.paused = False
             self._run(self._count(**counts_of(screen, decision)))
             return {
@@ -652,8 +851,13 @@ class Session:
 
     @_timed
     def choose(self, exit: str, en_route: int | None = None) -> Json:
-        """幕末选去处（3.11）：给定去处，或打算不成行时的替代去处（`plan_…`）。不在选项里返回
-        `error: "invalid_choice"`、没有事件（E4-103）。"""
+        """Choose a destination at the end of the act (3.11): a given destination, or the alternative offered when the
+        plan is not feasible (`plan_…`). Not among the options: returns `error: "invalid_choice"` with no events
+        (E4-103).
+
+        幕末に行き先を選ぶ（3.11）：決まった行き先、またはプランが成り立たないときの代わりの行き先（`plan_…`）。
+        選択肢にないものは `error: "invalid_choice"` を返し、イベントはない（E4-103）。
+        """
         self.steps += 1
         request: Json = {"clientMsgId": f"eval-{self.steps}", "optionId": exit}
         if en_route is not None:
@@ -670,14 +874,22 @@ class Session:
             out["error"] = r.info["error"]
         else:
             out["toAct"] = r.info.get("toAct")
-            self.monitor.act_ended()  # 似是而非之后的提示带到这一幕结束
+            # The note after an ambiguous line lasts until the end of this act
+            # ambiguous の後の注意はこの幕の終わりまで続く
+            self.monitor.act_ended()
         return out
 
     async def _task(
         self, kind: str, request: Json, said: str | None = None, flags: Iterable[str] | None = None
     ) -> tuple[Result, int]:
-        """写一行任务（打算还存原话），叫叙事者做完。返回这一步的结果和之前的故事时刻。hold 着的那一轮先提交、
-        等回答的草稿按超时关掉，它们的事件放在这一步的前面（B-4）。"""
+        """Write a task row (a plan also stores the original words) and have the narrator finish it. Returns this
+        step's result and the story time before it. The held turn is committed first and a draft awaiting an answer is
+        closed as a timeout; their events are placed before this step's (B-4).
+
+        タスクの行を書き（プランは発話の原文も保存する）、ナレーターに最後まで処理させる。このステップの結果と、
+        その前の物語の時刻を返す。hold 中のターンを先にコミットし、回答待ちの草稿はタイムアウトとして閉じ、
+        それらのイベントはこのステップの前に置く（B-4）。
+        """
         engine = self._engine()
         try:
             async with engine.connect() as c:
@@ -706,7 +918,12 @@ class Session:
 
     @staticmethod
     def _merged(pre: Sequence[Result], r: Result) -> Result:
-        """这一步之前提交的（hold 着的那一轮、超时关掉的草稿）的事件并进这一步的结果。"""
+        """Merge the events committed before this step (the held turn, drafts closed as a timeout) into this step's
+        result.
+
+        このステップの前にコミットしたもの（hold 中のターン、タイムアウトで閉じた草稿）のイベントをこのステップの
+        結果にまとめる。
+        """
         if not pre:
             return r
         return replace(
@@ -739,11 +956,18 @@ class Session:
         for r in done:
             if r.task.turn_id == turn_id:
                 return r
-        raise RuntimeError(f"叙事者没有提交这一步（{turn_id}）")
+        raise RuntimeError(
+            f"The narrator did not commit this step / ナレーターがこのステップをコミットしなかった ({turn_id})"
+        )
 
     @staticmethod
     def _step_events(result: Result) -> list[Json]:
-        """这一步写的全部事件；被否决的给候选原本的 effects（日志里那条 effects 是空的，契约第 3 节）。"""
+        """All events written by this step; vetoed ones get the candidate's original effects (in the log that event's
+        effects is empty, contract section 3).
+
+        このステップが書いたすべてのイベント。却下されたものには候補の元の effects を付ける（ログ上のそのイベントの
+        effects は空、契約第 3 節）。
+        """
         original = {c.candidate.get("eventId"): c.effects for c in result.checked if not c.passed}
         out = []
         for ev in result.events:
@@ -754,10 +978,19 @@ class Session:
         return out
 
     def check(self, candidate: Mapping[str, Json], turn: Mapping[str, Json], model_checks: str = "scoped") -> Json:
-        """S-2：候选事件交给第 3 步，再按 `model_checks` 跑第 4 步（`scoped` = 正式范围：过了第 3 步、`effects`
-        不为空的；`all` = 都跑），不改写、不提交。没跑第 4 步的 R5 和 R6 其余部分记 skipped。"""
+        """S-2: hand the candidate event to step 3, then run step 4 per `model_checks` (`scoped` = the production
+        scope: those that passed step 3 with non-empty `effects`; `all` = run them all), without rewriting or
+        committing. R5 and the rest of R6 are recorded as skipped when step 4 did not run.
+
+        S-2：候補イベントを第 3 段階に渡し、`model_checks` に従って第 4 段階を実行する（`scoped` = 本番の範囲：
+        第 3 段階を通り、`effects` が空でないもの。`all` = すべて実行）。書き換えもコミットもしない。
+        第 4 段階を実行しなかった R5 と R6 の残りは skipped と記録する。
+        """
         if model_checks not in ("scoped", "all"):
-            raise ValueError(f"model_checks 只能是 scoped / all，得到 {model_checks!r}")
+            raise ValueError(
+                f"model_checks must be scoped / all, got {model_checks!r} / "
+                f"model_checks は scoped / all のいずれか、指定は {model_checks!r}"
+            )
         st = self._run(self._state())
         t = TurnInput(
             character=turn.get("to"),
@@ -770,7 +1003,7 @@ class Session:
         )
         return {"check": checked.check, "rules": checked.rules}
 
-    # —— 查询 ——
+    # —— Queries / クエリ ——
 
     async def _state(self) -> SimState:
         engine = self._engine()
@@ -783,7 +1016,12 @@ class Session:
         return st
 
     def diagnostics(self) -> Json:
-        """评测专用：只给统计器，不进 AI 玩家的公开观察。旧批次缺字段保持未知。"""
+        """Eval only: for the statistics only, never part of the AI player's public observations. Fields missing in old
+        batches stay unknown.
+
+        評価専用：統計にだけ渡し、AI プレイヤーが公に観察できるものには入れない。
+        古いバッチで欠けているフィールドは不明のままにする。
+        """
         return self._run(self._diagnostics())
 
     async def _diagnostics(self) -> Json:
@@ -829,18 +1067,30 @@ class Session:
         }
 
     def state(self) -> Json:
-        """契约 3.1 的 WorldState（W-1 的 world_state()）。"""
+        """Contract 3.1's WorldState (W-1's world_state()).
+
+        契約 3.1 の WorldState（W-1 の world_state()）。
+        """
         self._run(self._flush())
         return world_state(self.book.world, self._run(self._state()), self.pid)
 
     def events(self) -> list[Json]:
-        """这一局的全部事件（含评测布置的、被否决的），按 seq。"""
+        """All events of this playthrough (including those laid out by the eval and vetoed ones), in seq order.
+
+        このプレイのすべてのイベント（評価が配置したもの、却下されたものを含む）。seq 順。
+        """
         self._run(self._flush())
         return self._run(self._events())
 
     def view(self, after_seq: int = 0) -> Json:
-        """AI 玩家看的（B-5）：2.3 的快照和 2.4 的玩家可见事件（seq 大于 after_seq 的），和网关 `GET …/snapshot`、
-        `GET …/events` 同一个投影。没有变量、节拍结果、不可见的事件。"""
+        """What the AI player sees (B-5): 2.3's snapshot and 2.4's player-visible events (seq greater than after_seq),
+        the same projection as the gateway's `GET …/snapshot` and `GET …/events`. No variables, beat results or
+        invisible events.
+
+        AI プレイヤーが見るもの（B-5）：2.3 のスナップショットと 2.4 のプレイヤーに見えるイベント（seq が
+        after_seq より大きいもの）。ゲートウェイの `GET …/snapshot`、`GET …/events` と同じ射影。変数、ビートの結果、
+        見えないイベントは含まない。
+        """
         self._run(self._flush())
         return self._run(self._view(after_seq))
 
@@ -865,8 +1115,12 @@ class Session:
         return {"snapshot": snap, "events": visible_events(self.book, self.role, log_, after_seq)}
 
     def manifest(self) -> Json:
-        """2.1 的 manifest（B-7 的生成器），和正式网关 `GET /v1/books/{id}/manifest` 一样：身份的说明、人物的名字
-        和读法。"""
+        """2.1's manifest (B-7's generator), the same as the production gateway's `GET /v1/books/{id}/manifest`: role
+        descriptions, characters' names and readings.
+
+        2.1 の manifest（B-7 のジェネレーター）。本番のゲートウェイの `GET /v1/books/{id}/manifest` と同じ：役の説明、
+        登場人物の名前と読み。
+        """
         if self._manifest is None:
             s = self.settings
             self._manifest = generate(self.book, self.schemas, packs=s.packs, voices=s.voice_dir, release=s.release)
@@ -874,7 +1128,12 @@ class Session:
 
     @_timed
     def retract(self, step: int) -> Json:
-        """作废第 step 步那一轮（B-4）：还 hold 着就作废（原话清空、不产生事件），已经提交了 `too_late`。"""
+        """Retract the turn of step `step` (B-4): if still held it is retracted (original words cleared, no events);
+        if already committed, `too_late`.
+
+        step ステップ目のターンを取り消す（B-4）：まだ hold 中なら取り消し（発話の原文を消し、イベントは出さない）、
+        コミット済みなら `too_late`。
+        """
         self.steps += 1
         return self._run(self._retract(step))
 
@@ -900,11 +1159,16 @@ class Session:
         return out
 
     def utterance_cleared(self, step: int) -> bool:
-        """第 step 步那一轮玩家和人物的原话都清空了（B-4：作废的一轮当场清空）。"""
+        """Whether both the player's and the character's original words of step `step`'s turn are cleared (B-4: a
+        retracted turn is cleared on the spot).
+
+        step ステップ目のターンのプレイヤーと登場人物の発話の原文がどちらも消えているか（B-4：
+        取り消したターンはその場で消す）。
+        """
         self._run(self._flush())
         turn_id = self.turns.get(step)
         if turn_id is None:
-            raise ValueError(f"第 {step} 步不是对话")
+            raise ValueError(f"Step {step} is not a conversation / {step} ステップ目は会話ではない")
         return self._run(self._cleared(turn_id))
 
     async def _cleared(self, turn_id: str) -> bool:
@@ -924,10 +1188,14 @@ class Session:
         finally:
             await engine.dispose()
 
-    # —— 记忆和删除（B-13） ——
+    # —— Memories and deletion (B-13) / 記憶と削除（B-13） ——
 
     def memory_book(self) -> Json:
-        """模拟玩家只读正式記憶帳投影，不读检查用的 memories() 内部字段。"""
+        """The simulated player reads only the production 記憶帳 (memory book) projection, never the internal fields of
+        memories() used for checks.
+
+        シミュレーションのプレイヤーは本番の記憶帳の射影だけを読み、チェック用の memories() の内部フィールドは読まない。
+        """
         self._run(self._flush())
         return self._run(self._memory_book())
 
@@ -942,7 +1210,12 @@ class Session:
             await engine.dispose()
 
     def delete_memory_id(self, memory_id: str) -> Json:
-        """玩家按記憶帳给的 ID 删除；和正式 REST 共用删除事务，不能跨局删除。"""
+        """The player deletes by the ID the 記憶帳 gave; shares the deletion transaction with the production REST and
+        cannot delete across playthroughs.
+
+        プレイヤーは記憶帳が渡した ID で削除する。本番の REST と削除のトランザクションを共有し、
+        プレイをまたいで削除することはできない。
+        """
         self._run(self._flush())
         self.steps += 1
         return self._run(self._delete_memory_id(memory_id))
@@ -964,13 +1237,21 @@ class Session:
         }
 
     def delete_memory(self, character: str, from_step: int) -> Json:
-        """删这个人物来源于第 from_step 步提交的事件的那条记忆（和 REST 同一个函数；一个人物一轮最多一条，所以唯一）。
-        没有这样的记忆 → ValueError（评测报错，不静默成功）。"""
+        """Delete this character's memory derived from the events committed in step from_step (the same function as
+        REST; a character has at most one per turn, so it is unique). No such memory → ValueError (the eval reports an
+        error rather than silently succeeding).
+
+        この登場人物の、from_step ステップ目でコミットしたイベントから生まれた記憶を削除する（REST と同じ関数。
+        登場人物 1 人につき 1 ターンに多くても 1 件なので一意）。
+        そのような記憶がなければ → ValueError（評価はエラーを報告し、黙って成功したことにはしない）。
+        """
         self._run(self._flush())
         self.steps += 1
         turn_id = self.turns.get(from_step)
         if turn_id is None:
-            raise ValueError(f"第 {from_step} 步没有提交的一轮")
+            raise ValueError(
+                f"Step {from_step} has no committed turn / {from_step} ステップ目にコミットしたターンがない"
+            )
         return self._run(self._delete_memory(character, turn_id))
 
     async def _delete_memory(self, character: str, turn_id: str) -> Json:
@@ -990,8 +1271,13 @@ class Session:
                     (r["memory_id"] for r in await memory.alive(c, self.pid, character) if ids & set(r["from_events"])),
                     None,
                 )
-                if target is None:  # 不静默成功（数据评审）：评测报错
-                    raise ValueError(f"{character} 没有来源于这一步的记忆")
+                # Do not succeed silently (data review): the eval reports an error
+                # 黙って成功したことにしない（データレビュー）：評価はエラーを報告する
+                if target is None:
+                    raise ValueError(
+                        f"{character} has no memory derived from this step / "
+                        f"{character} にはこのステップから生まれた記憶がない"
+                    )
                 d = await memory_delete.delete_memory(c, self.library, self.ids, self.schemas, self.pid, target)
                 evs = await store.event_log(c, self.pid, self.book.version, after_seq=(d.seq or 1) - 1)
         finally:
@@ -1004,7 +1290,10 @@ class Session:
         }
 
     def delete_playthrough(self) -> Json:
-        """L2：这一局全删（和 REST 同一个函数）。之后 `db_absent` 查的就是这一局。"""
+        """L2: delete this whole playthrough (the same function as REST). Afterwards `db_absent` checks this one.
+
+        L2：このプレイをすべて削除する（REST と同じ関数）。以後 `db_absent` が確認するのはこのプレイ。
+        """
         self._run(self._flush())
         self.steps += 1
         self._run(self._delete_playthrough())
@@ -1020,7 +1309,12 @@ class Session:
         self.deleted = self.pid
 
     def new_playthrough(self) -> Json:
-        """同一个账号、同一个起点再开一局；这一局放弃（`abandoned`）。之后的步骤和查询都对新的一局。"""
+        """Start another playthrough with the same account and the same starting point; this one is abandoned
+        (`abandoned`). Later steps and queries all apply to the new playthrough.
+
+        同じアカウント、同じ開始時点でもう 1 つプレイを始める。このプレイは放棄（`abandoned`）する。
+        以後のステップとクエリはすべて新しいプレイに対して行う。
+        """
         self._run(self._flush())
         self.steps += 1
         self._run(self._new_playthrough())
@@ -1045,7 +1339,10 @@ class Session:
             await self._setup()
 
     def memories(self, character: str) -> list[Json]:
-        """契约第 4 节的 MemoryItem，删了的也在（带 deletedAt，text 是空的）。"""
+        """Contract section 4's MemoryItem, deleted ones included (with deletedAt, and text empty).
+
+        契約第 4 節の MemoryItem。削除済みのものも含む（deletedAt 付きで、text は空）。
+        """
         self._run(self._flush())
         return self._run(self._memories(character))
 
@@ -1077,8 +1374,16 @@ class Session:
             await engine.dispose()
 
     def db_absent(self, tables: Sequence[str]) -> Mapping[str, int]:
-        """每张表里还剩这一局（删了的那一局，没删过就是现在这一局）几行。data-design 5.3 里还没建的表
-        （`NOT_BUILT`，局势说明不存库）答 0；名单外不认识的表名不答（评测报「后端没回这张表」，数据评审）。"""
+        """How many rows of this playthrough (the deleted one, or the current one if none was deleted) remain in each
+        table. Tables in data-design 5.3 that are not built yet (`NOT_BUILT`; situation briefs are not stored) answer
+        0; unknown table names outside the list get no answer (the eval reports "the backend did not answer for this
+        table", data review).
+
+        各テーブルにこのプレイ（削除したプレイ。削除していなければ現在のプレイ）の行が何行残っているか。
+        data-design 5.3 のうちまだ作っていないテーブル（`NOT_BUILT`。状況説明は DB に保存しない）は 0 を返し、
+        一覧にない不明なテーブル名には答えない（評価は「バックエンドがこのテーブルに答えなかった」と報告する、
+        データレビュー）。
+        """
         return self._run(self._db_absent(tables))
 
     async def _db_absent(self, tables: Sequence[str]) -> Mapping[str, int]:
@@ -1099,7 +1404,7 @@ class Session:
             await engine.dispose()
         return out
 
-    # —— 还没做的 ——
+    # —— Not done yet / まだ実装していないもの ——
 
     def _no(self, name: str) -> NoReturn:
         raise EvalNotImplemented(name)
@@ -1108,8 +1413,14 @@ class Session:
         self._no("silence")
 
     def ending(self) -> Json:
-        """B-9：存的 Ending（数据契约第 5 节的完整形状，含 `signature`）；还没进结局（或结局任务还没做完）返回 None。
-        结局任务和别的任务一样，在触发它的那一步里同步跑完。"""
+        """B-9: the stored Ending (the full shape of data contract section 5, including `signature`); None while the
+        ending has not started (or the ending task has not finished). Like other tasks, the ending task runs to
+        completion synchronously in the step that triggered it.
+
+        B-9：保存された Ending（データ契約第 5 節の完全な形、`signature` を含む）。
+        エンディングに入っていない（またはエンディングのタスクが終わっていない）ときは None を返す。
+        エンディングのタスクもほかのタスクと同じく、それを引き起こしたステップの中で同期的に最後まで実行する。
+        """
         self._run(self._flush())
         return self._run(self._ending())
 
@@ -1124,10 +1435,20 @@ class Session:
 
 
 def play_setup(w: Writer, scenarios: Mapping[str, Json], setup: Mapping[str, Json]) -> None:
-    """起点：用 W-1 的 `opening()` 推演（和评测运行器同一套），结果写成这一局的初始事件（B-0 第 9 条）。
+    """Starting point: simulate with W-1's `opening()` (the same as the eval runner) and write the result as this
+    playthrough's initial events (B-0 item 9).
 
-    `place`、情景的节拍改动、情景的事件、到点的节拍和期限、只推进时钟的事件都由 `opening()` 给，这里只补成完整的
-    事件（eventId、summary、check）再按 seq 应用；之后在起点时刻追加 `events`（评测布置，api-contract 第 7 节）。
+    `place`, the scenario's beat changes, the scenario's events, beats and deadlines that are due, and clock-only events
+    all come from `opening()`; here they are only completed into full events (eventId, summary, check) and applied in
+    seq order; afterwards `events` are appended at the starting time (laid out by the eval, api-contract section 7).
+
+    開始時点：W-1 の `opening()` でシミュレーションし（評価のランナーと同じ仕組み）、
+    結果をこのプレイの初期イベントとして書く（B-0 第 9 項）。
+
+    `place`、シナリオによるビートの変更、シナリオのイベント、時刻が来たビートと期限、
+    時計を進めるだけのイベントはすべて `opening()` が出す。ここでは完全なイベント（eventId、summary、
+    check）に補って seq 順に適用するだけ。その後、開始時刻に `events` を追加する（評価による配置、
+    api-contract 第 7 節）。
     """
     if "scenario" in setup:
         sc_id, until = str(setup["scenario"]), None
@@ -1152,8 +1473,14 @@ def play_setup(w: Writer, scenarios: Mapping[str, Json], setup: Mapping[str, Jso
 
 
 def setup_act_end(book: Book, w: Writer, setup: Mapping[str, Json]) -> Json | None:
-    """检查点停在这一幕的收幕节拍上（例 `sc.canon@beat.07`）：setup 之后就是幕末待选（B-3 第 5 条），幕末的去处
-    记在局上。只认收幕节拍本身：停在更后面的节拍上的老用例（`opening()` 不换幕）照旧可以对话。"""
+    """The checkpoint stops on this act's closing beat (e.g. `sc.canon@beat.07`): after setup the end-of-act choice
+    is pending (B-3 item 5), and the end-of-act destinations are recorded on the playthrough. Only the closing beat
+    itself counts: old cases stopped on a later beat (`opening()` does not change acts) can still talk as before.
+
+    チェックポイントがこの幕の閉幕のビート（例 `sc.canon@beat.07`）で止まっている：
+    setup の後は幕末の選択待ちになり（B-3 第 5 項）、幕末の行き先はプレイに記録する。閉幕のビートそのものだけを認める：
+    それより後のビートで止まる古いケース（`opening()` は幕を切り替えない）はこれまでどおり会話できる。
+    """
     if "checkpoint" not in setup:
         return None
     _, until = parse_checkpoint(str(setup["checkpoint"]))
@@ -1166,7 +1493,10 @@ def setup_act_end(book: Book, w: Writer, setup: Mapping[str, Json]) -> Json | No
 
 
 def _setup_event(w: Writer, d: Opened) -> Json:
-    """开局地点、情景、只推进时钟的事件：summary 用 `opening()` 给的 note。"""
+    """Starting place, scenario and clock-only events: summary uses the note given by `opening()`.
+
+    開始地点、シナリオ、時計を進めるだけのイベント：summary には `opening()` が出す note を使う。
+    """
     e = d["event"]
     return w.full(
         t=e["t"],

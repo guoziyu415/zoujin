@@ -1,4 +1,5 @@
-/* 原创书房界面：薄铜线、羊皮纸文字、留给空间的呼吸。手机优先，所有入口都有 DOM 等效。 */
+/* Original study UI: thin brass lines, parchment-colored text, room to breathe. Mobile first; every entry point has a DOM equivalent.
+   オリジナルの書斎の UI：細い真鍮の線、羊皮紙色の文字、空間に残す余白。モバイル優先で、すべての入口に DOM の同等物がある。 */
 .reader-home {
   position: fixed;
   inset: 0;
@@ -531,7 +532,8 @@
   }
 }
 @media (max-width: 759px) {
-  /* 手机的檐线位于副标位置；省去副标，避免文字叠在亮色建筑细节上。 */
+  /* On phones the eave line sits where the subtitle would be; drop the subtitle so text does not overlap bright architectural detail.
+     スマホでは軒の線がサブタイトルの位置に来る。文字が明るい建築の細部に重ならないよう、サブタイトルを省く。 */
   .home-welcome > p:last-child {
     display: none;
   }

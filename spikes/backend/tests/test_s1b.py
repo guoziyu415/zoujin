@@ -144,20 +144,25 @@ class S1b(unittest.TestCase):
 
         self.assertTrue(asyncio.run(run(1)).ok)
         failed = [c.name for c in asyncio.run(run(2)).checks if not c.ok]
-        self.assertEqual(failed, ["会话就绪"])
+        self.assertEqual(failed, ["Session ready / セッション準備完了"])
 
     def test_only_voice_failures_qualify_for_the_retry(self):
+        REST_REFUSED = "REST refused without a cookie / Cookie なしの REST は拒否"
+        LOGIN_OK = "Correct test code logs in / 正しいテストコードでログイン可"
+        READY = "Session ready / セッション準備完了"
+        TURN_1 = "Turn 1 has a voice reply / 第 1 ターンに音声の返答あり"
+
         def result(*failed):
             r = sp.SmokeResult()
-            for name in ["没有 Cookie 时 REST 被拒", "正确的测试码能登录", "会话就绪", "第 1 轮有声音回答"]:
+            for name in [REST_REFUSED, LOGIN_OK, READY, TURN_1]:
                 r.checks.append(sp.Check(name, name not in failed))
             return r
 
-        self.assertTrue(sp.only_voice_failed(result("会话就绪")))
-        self.assertTrue(sp.only_voice_failed(result("第 1 轮有声音回答")))
+        self.assertTrue(sp.only_voice_failed(result(READY)))
+        self.assertTrue(sp.only_voice_failed(result(TURN_1)))
         self.assertFalse(sp.only_voice_failed(result()))
-        self.assertFalse(sp.only_voice_failed(result("会话就绪", "没有 Cookie 时 REST 被拒")))
-        self.assertFalse(sp.only_voice_failed(result("正确的测试码能登录")))
+        self.assertFalse(sp.only_voice_failed(result(READY, REST_REFUSED)))
+        self.assertFalse(sp.only_voice_failed(result(LOGIN_OK)))
 
     def test_nothing_the_phone_sees_names_the_product(self):
         """D-017: no product name in the page, headers or cookie; welcome says the cookie arrived."""
@@ -180,6 +185,8 @@ class S1b(unittest.TestCase):
         page, me, login, welcome, error = asyncio.run(run())
         seen = " ".join([page.text, me.text, login.text, json.dumps(error, ensure_ascii=False)]
                         + [f"{k}: {v}" for r in (page, me, login) for k, v in r.headers.items()]).lower()
+        # "走进物语" is the project's old (Chinese) working name, kept on purpose as leak-check data.
+        # 「走进物语」はプロジェクトの旧（中国語の）仮名称。名前漏れチェック用のデータとして意図的に残している。
         for word in ("zoujin", "走进物语", "zj_", "uvicorn"):
             self.assertNotIn(word, seen)
         self.assertTrue(welcome["cookieSeen"])
@@ -347,7 +354,7 @@ class Image(unittest.TestCase):
         out = io.StringIO()
         with mock.patch.dict(os.environ, {"ZJ_S1B_STATIC": str(self.page(0o644))}), redirect_stdout(out):
             self.assertEqual(sp.cmd_selfcheck(None), 0, out.getvalue())
-        self.assertIn("测试页", out.getvalue())
+        self.assertIn("test page", out.getvalue())
 
     def test_no_path_cloud_run_reserves(self):
         """Cloud Run answers paths ending in "z" (e.g. /healthz) and /_ah/* at its front end, before IAM or the
@@ -413,7 +420,7 @@ class Upstream(unittest.TestCase):
 
         hub, res = asyncio.run(run())
         failed = [c for c in res.checks if not c.ok]
-        self.assertEqual([c.name for c in failed], ["会话就绪"])
+        self.assertEqual([c.name for c in failed], ["Session ready / セッション準備完了"])
         sent = json.loads(failed[0].detail)["error"]
         self.assertEqual(sent["upstream"], "permission")
         self.assertNotIn("aiplatform", failed[0].detail)  # the phone never sees the upstream text
@@ -460,7 +467,7 @@ class Upstream(unittest.TestCase):
         code, out = self.sacheck(client)
         self.assertEqual(code, 0, out)
         self.assertEqual(len(client.connect_configs), 3)
-        self.assertIn("第 3 次", out)
+        self.assertIn("attempt 3", out)
 
     def test_sacheck_stops_at_once_on_quota_and_gives_up_after_wait(self):
         quota = RuntimeError("1011 RESOURCE_EXHAUSTED: Quota exceeded")

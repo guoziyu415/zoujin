@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "data/utterance.schema.json",
-  "description": "数据契约 1.5：Utterance（第 3 节）",
+  "description": "Data contract 1.5: Utterance (section 3) / データ契約 1.5：Utterance（第 3 節）",
   "$ref": "#/$defs/Utterance",
   "$defs": {
     "Utterance": {
       "title": "Utterance",
-      "description": "玩家和角色的原话，单独存放，可删除（第 3 节）",
+      "description": "Verbatim utterances of the player and characters, stored separately and deletable (section 3) / プレイヤーと登場人物の発言そのもの。別に保存し、削除できる（第 3 節）",
       "type": "object",
       "properties": {
         "utteranceId": {
@@ -17,7 +17,7 @@
         },
         "turnId": {
           "$ref": "common.schema.json#/$defs/TurnId",
-          "description": "記憶帳删除时按轮清空（第 4 节）"
+          "description": "Cleared per turn when deleted from the 記憶帳 (section 4) / 記憶帳から削除するとターン単位で消去する（第 4 節）"
         },
         "speaker": {
           "anyOf": [
@@ -31,7 +31,7 @@
         },
         "text": {
           "type": "string",
-          "description": "识别后的文字（不存音频）；删除后清空"
+          "description": "Recognized text (audio is not stored); cleared after deletion / 認識後のテキスト（音声は保存しない）。削除後は空にする"
         },
         "t": {
           "$ref": "common.schema.json#/$defs/StoryTime"
@@ -41,7 +41,7 @@
         },
         "deletedAt": {
           "$ref": "common.schema.json#/$defs/RecordedAt",
-          "description": "删除后 text 清空"
+          "description": "text is cleared after deletion / 削除後は text を空にする"
         }
       },
       "required": [

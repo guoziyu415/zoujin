@@ -1,2 +1,2 @@
-{"note": "今天的语音还剩 5 分钟（ux-design 第 12 节）：推一次 limits。"}
+{"note": "5 minutes of voice left today (ux-design section 12): push limits once. / 今日の音声は残り 5 分（ux-design 第 12 節）：limits を 1 回送る。"}
 {"delayMs": 1000, "send": {"type": "limits", "voiceMinutesLeft": 5}}

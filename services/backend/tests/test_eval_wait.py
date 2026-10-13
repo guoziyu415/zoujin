@@ -1,4 +1,9 @@
-"""真实模拟发现：最终幕离开刑场时，等待不能无限 refused 而让时钟停住。"""
+"""Found in a real simulation: when leaving the execution ground in the final act, waiting must not be refused
+forever and stop the clock.
+
+本物のシミュレーションで見つかった問題：最後の幕で刑場を離れるとき、
+待機がずっと refused になって時計が止まってはならない。
+"""
 
 import pytest
 from zoujin_backend import eval_api

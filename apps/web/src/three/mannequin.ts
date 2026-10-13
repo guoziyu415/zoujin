@@ -1,4 +1,4 @@
-// Grey stand-in person until A-0's realistic characters come in (F-2 range 2: 人物先用灰色假人). 1.7 m, front = +Z.
+// Grey stand-in person until A-0's realistic characters come in (F-2 range 2: grey dummies stand in for characters at first). 1.7 m, front = +Z.
 import {
   CapsuleGeometry,
   Group,

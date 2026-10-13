@@ -1,5 +1,7 @@
-// 把 codegen 拼好的一个 bundle（只有 $defs）编成 TypeScript，C-1。由 `uv run contracts-gen` 调用，不单独跑。
-// 用法：node gen/json2ts.mjs <bundle.json> <out.ts> <头部注释>
+// Compile one bundle (only $defs) assembled by codegen into TypeScript, C-1. Called by `uv run contracts-gen`, not run on its own.
+// codegen がまとめた bundle 1 つ（$defs のみ）を TypeScript にコンパイルする（C-1）。`uv run contracts-gen` から呼ばれ、単独では実行しない。
+// Usage: node gen/json2ts.mjs <bundle.json> <out.ts> <header comment>
+// 使い方：node gen/json2ts.mjs <bundle.json> <out.ts> <ヘッダーコメント>
 import { readFile, writeFile } from "node:fs/promises";
 import { compile } from "json-schema-to-typescript";
 
@@ -11,7 +13,8 @@ let ts = await compile(bundle, rootName, {
   bannerComment: "",
   unreachableDefinitions: true,
   additionalProperties: false,
-  // 长度上下限不变成元组，数组一律 T[]（C-1 前端评审：minItems 也会生成元组，前端从数组拼时报 TS2322）。
+  // Length bounds do not become tuples; arrays are always T[] (C-1 frontend review: minItems also produced tuples, and building them from arrays in the frontend raised TS2322).
+  // 長さの上下限をタプルにせず、配列は常に T[] とする（C-1 フロントエンドレビュー：minItems でもタプルが生成され、フロントエンドで配列から組み立てると TS2322 になった）。
   ignoreMinAndMaxItems: true,
   strictIndexSignatures: true,
   unknownAny: true,
@@ -20,14 +23,19 @@ let ts = await compile(bundle, rootName, {
   $refOptions: { resolve: { file: false, http: false } },
 });
 
-// bundle 的根只是个容器，生成的根类型删掉。
+// The bundle's root is only a container, so delete the generated root type.
+// bundle のルートは入れ物にすぎないので、生成されたルートの型を削除する。
 const rootDecl = new RegExp(
   `^export (?:interface ${rootName} \\{[^]*?^\\}|type ${rootName} = [^;]*;)\\n`,
   "m",
 );
-if (!rootDecl.test(ts)) throw new Error(`没找到根类型 ${rootName}`);
+if (!rootDecl.test(ts))
+  throw new Error(
+    `Root type ${rootName} not found / ルートの型 ${rootName} が見つからない`,
+  );
 ts = ts.replace(rootDecl, "");
-// 去掉生成器给每个 $defs 条目加的「referenced by …」注释，只留 Schema 里的说明。
+// Remove the "referenced by …" comments the generator adds to each $defs entry, keeping only the Schema's descriptions.
+// 生成器が各 $defs 項目に付ける「referenced by …」のコメントを取り除き、Schema の説明だけを残す。
 ts = ts
   .replace(
     /^ \* This interface was referenced by `\w+`'s JSON-Schema\n \* via the `definition` "\w+"\.\n/gm,

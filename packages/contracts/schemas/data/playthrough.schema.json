@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "data/playthrough.schema.json",
-  "description": "数据契约 1.5：Playthrough（第 1 节）",
+  "description": "Data contract 1.5: Playthrough (section 1) / データ契約 1.5：Playthrough（第 1 節）",
   "$ref": "#/$defs/Playthrough",
   "$defs": {
     "Playthrough": {
       "title": "Playthrough",
-      "description": "一局游戏（第 1 节）",
+      "description": "One playthrough of the game (section 1) / 1 回のプレイ（第 1 節）",
       "type": "object",
       "properties": {
         "schemaVersion": {
@@ -17,23 +17,23 @@
         },
         "userRef": {
           "type": "string",
-          "description": "邀请码账号的匿名 ID（S-020），不是邮箱、不是姓名"
+          "description": "Anonymous ID of the invite-code account (S-020), not an email address or a name / 招待コードアカウントの匿名 ID（S-020）。メールアドレスでも氏名でもない"
         },
         "worldModelVersion": {
           "type": "string",
-          "description": "开局时锁定，整局不变"
+          "description": "Locked at the start, unchanged for the whole playthrough / 開始時に固定し、プレイ中は変わらない"
         },
         "roleId": {
           "$ref": "common.schema.json#/$defs/RoleId",
-          "description": "玩家选的身份"
+          "description": "The role the player chose / プレイヤーが選んだ身分"
         },
         "playerAlias": {
           "type": "string",
-          "description": "S-010：默认不填，第一版没有任何界面入口"
+          "description": "S-010: not filled by default; the first version has no UI for it / S-010：既定では埋めない。最初の版には入力する画面がない"
         },
         "ageBand": {
           "enum": ["under13", "13to17", "18plus", "unknown"],
-          "description": "S-010：默认不收集"
+          "description": "S-010: not collected by default / S-010：既定では収集しない"
         },
         "status": {
           "enum": ["active", "ended", "abandoned", "deleted"]
@@ -46,12 +46,12 @@
         },
         "lastActiveAt": {
           "$ref": "common.schema.json#/$defs/RecordedAt",
-          "description": "最后一次有玩家操作的真实时间；默认保留期按它算"
+          "description": "Real time of the last player activity; the default retention period counts from it / プレイヤーが最後に操作した実時間。既定の保持期間はこれを起点に数える"
         },
         "lastSeq": {
           "type": "integer",
           "minimum": 0,
-          "description": "最后一个事件的序号"
+          "description": "Sequence number of the last event / 最後のイベントの通し番号"
         }
       },
       "required": [

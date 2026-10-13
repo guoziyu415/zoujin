@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "api/rest/memory-delete.schema.json",
   "title": "DELETE /v1/playthroughs/{id}/memories/{memoryId}",
-  "description": "删除一条记忆，立即生效（2.7）",
+  "description": "Delete one memory, taking effect immediately (2.7) / 記憶を 1 件削除する。直ちに反映される（2.7）",
   "x-endpoint": {
     "method": "DELETE",
     "path": "/v1/playthroughs/{id}/memories/{memoryId}",
@@ -42,7 +42,7 @@
           "$ref": "../../data/memory.schema.json#/$defs/Relationship/properties/level"
         },
         "promiseVoided": {
-          "description": "作废了约定时给它的 ID",
+          "description": "The ID of the promise, when one was voided / 約束を無効にしたときはその ID",
           "anyOf": [
             {
               "$ref": "../../data/common.schema.json#/$defs/PromiseId"

@@ -1,4 +1,9 @@
-"""接口和数据契约对得上（C-1 卡 2）：抄过来的枚举和数据那边一样；接口在数据类型上加减的字段和 api-contract 写的一样。"""
+"""The API and the data contracts line up (C-1 card 2): copied enums match the data side, and the fields the API adds
+to or removes from data types match what api-contract says.
+
+API とデータ契約が一致する（C-1 カード 2）：写した列挙はデータ側と同じで、API がデータ型に加減したフィールドは
+api-contract の記述どおり。
+"""
 
 from __future__ import annotations
 
@@ -27,7 +32,7 @@ def effect_variant(contracts: Contracts, op: str) -> Json:
         v = contracts.resolve("data/event.schema.json", v["$ref"]) if "$ref" in v else v
         if v["properties"]["op"].get("const") == op:
             return v
-    raise AssertionError(f"Effect 里没有 op = {op}")
+    raise AssertionError(f"No op = {op} in Effect / Effect に op = {op} がない")
 
 
 def enum_of(contracts: Contracts, base: str, schema: Json) -> list[str]:
@@ -35,7 +40,7 @@ def enum_of(contracts: Contracts, base: str, schema: Json) -> list[str]:
         return enum_of(contracts, base, contracts.resolve(base, schema["$ref"]))
     if "enum" in schema:
         return list(schema["enum"])
-    raise AssertionError(f"不是枚举：{schema}")
+    raise AssertionError(f"Not an enum / 列挙ではない：{schema}")
 
 
 def test_beat_change_matches_effect_beat_to(contracts: Contracts) -> None:
@@ -61,7 +66,10 @@ def test_action_kind_is_affordance_kind_plus_move(contracts: Contracts) -> None:
 
 
 def test_timeline_beat_status_is_world_state_beats_with_canon(contracts: Contracts) -> None:
-    """时间线节拍的 status 就是 WorldState.beats 的取值，只把 happened 叫作 canon（2.5）。"""
+    """The status of timeline beats is the values of WorldState.beats, with happened renamed to canon (2.5).
+
+    タイムラインのビートの status は WorldState.beats の値そのもので、happened だけを canon と呼ぶ（2.5）。
+    """
     api = api_def(contracts, "rest/timeline.schema.json#/$defs/TimelineBeatItem")["properties"]["status"]["enum"]
     beats = data_def(contracts, "world-state", "/$defs/WorldState/properties/beats/additionalProperties")
     data = enum_of(contracts, "data/world-state.schema.json", beats)
@@ -69,7 +77,10 @@ def test_timeline_beat_status_is_world_state_beats_with_canon(contracts: Contrac
 
 
 def test_ending_trigger_is_subset_of_data(contracts: Contracts) -> None:
-    """接口的结局演出只有 deadline、story-closed（3.13）；abandoned 的局不演结局。"""
+    """The API's ending staging has only deadline and story-closed (3.13); abandoned playthroughs get no ending staging.
+
+    API のエンディング演出は deadline と story-closed だけ（3.13）。abandoned のプレイではエンディングを演じない。
+    """
     api = api_def(contracts, "ws/server.schema.json#/$defs/EndingStartedMessage")["properties"]["trigger"]["enum"]
     data = enum_of(
         contracts, "data/ending.schema.json", data_def(contracts, "ending", "/$defs/Ending/properties/trigger")
@@ -78,8 +89,12 @@ def test_ending_trigger_is_subset_of_data(contracts: Contracts) -> None:
 
 
 def test_telemetry_enums_match_messages(contracts: Contracts) -> None:
-    """data-design 9.3：turn_retracted.result 和 turn_retract_result.status 一致；degraded_shown.reason 同 degraded；
-    ending_performed.trigger 同 ending_started。"""
+    """data-design 9.3: turn_retracted.result matches turn_retract_result.status; degraded_shown.reason matches
+    degraded; ending_performed.trigger matches ending_started.
+
+    data-design 9.3：turn_retracted.result は turn_retract_result.status と一致し、degraded_shown.reason は
+    degraded と、ending_performed.trigger は ending_started と同じ。
+    """
     tele = "telemetry.schema.json#/$defs/"
     ws = "ws/server.schema.json#/$defs/"
     pairs = [
@@ -93,36 +108,43 @@ def test_telemetry_enums_match_messages(contracts: Contracts) -> None:
         assert t == w, t_def
 
 
-# 接口对象 → （对照的数据对象, 接口多的字段, 接口少的字段, 出处）。数据契约以后加字段，要不要给前端由 api-contract 定。
+# API object → (data object it is compared with, fields the API adds, fields the API drops, source). When the data
+# contracts add fields later, api-contract decides whether the frontend gets them.
+# API のオブジェクト → （比較するデータのオブジェクト、API で増えるフィールド、API で減るフィールド、出典）。
+# 今後データ契約にフィールドが増えたとき、フロントエンドに渡すかどうかは api-contract が決める。
 FIELD_DIFFS = [
     (
         "rest/ending.schema.json#/$defs/EndingCardView",
         ("ending", "/$defs/Ending/properties/card"),
         {"fallbackImageUrl"},
         set(),
-        "2.8：card 由后端补 fallbackImageUrl",
+        "2.8: the backend adds fallbackImageUrl to card / 2.8：card にはバックエンドが fallbackImageUrl を補う",
     ),
     (
         "rest/ending.schema.json#/$defs/EndingView",
         ("ending", "/$defs/Ending"),
         {"you"},
         {"schemaVersion", "playthroughId", "worldModelVersion", "trigger", "t", "decidedAt", "player", "share"},
-        "2.8：三层 world / you / characters 加 card；player 改叫 you",
+        "2.8: three layers world / you / characters plus card; player is renamed you / "
+        "2.8：world / you / characters の 3 層と card。player は you と呼び替える",
     ),
     (
         "rest/ending.schema.json#/$defs/EndingWorldView",
         ("ending", "/$defs/Ending/properties/world"),
         {"outcomeId", "baseline", "epilogue"},
         {"outcome", "summary", "changedBeats", "finalVars", "variant", "signature"},
-        "2.8：outcomeId = variant?.id ?? outcome，baseline = 没有 variant，epilogue 从 player 挪来；"
-        "finalVars、changedBeats、signature 不给",
+        "2.8: outcomeId = variant?.id ?? outcome, baseline = no variant, epilogue moved over from player; "
+        "finalVars, changedBeats and signature are not sent / "
+        "2.8：outcomeId = variant?.id ?? outcome、baseline = variant なし、epilogue は player から移す。"
+        "finalVars、changedBeats、signature は送らない",
     ),
     (
         "rest/ending.schema.json#/$defs/EndingYouView",
         ("ending", "/$defs/Ending/properties/player"),
         set(),
         {"relationships", "epilogue", "lastScene"},
-        "2.8：you.title = player.title.text，you.fate = player.fate.label",
+        "2.8: you.title = player.title.text, you.fate = player.fate.label / "
+        "2.8：you.title = player.title.text、you.fate = player.fate.label",
     ),
     (
         "common.schema.json#/$defs/VisibleEvent",
@@ -143,7 +165,9 @@ FIELD_DIFFS = [
             "exitId",
             "plan",
         },
-        "第 0 节「可见性」、2.4：只推玩家可见投影，check、origin 这类内部字段不推",
+        'Section 0 "Visibility", 2.4: only the player-visible projection is pushed; internal fields such as '
+        "check and origin are not / 第 0 節「可視性」、2.4：プレイヤーに見える射影だけを送り、check や origin のような"
+        "内部フィールドは送らない",
     ),
     (
         "common.schema.json#/$defs/MemoryView",
@@ -159,18 +183,21 @@ FIELD_DIFFS = [
             "createdAt",
             "deletedAt",
         },
-        "2.7：按人物分好，所以不重复 character；数值不给",
+        "2.7: already grouped by character, so character is not repeated; numeric values are not sent / "
+        "2.7：登場人物ごとに分けてあるので character は繰り返さない。数値は送らない",
     ),
     (
         "common.schema.json#/$defs/PromiseView",
         ("memory", "/$defs/Promise"),
         {"direction", "eventId"},
         {"from", "to", "due", "template", "madeBy", "resolvedBy"},
-        "2.7：from / to 换成 direction，eventId = madeBy",
+        "2.7: from / to are replaced by direction, eventId = madeBy / "
+        "2.7：from / to は direction に置き換え、eventId = madeBy",
     ),
 ]
 
-# 同名字段但接口自己定了形状（各自在上面单独对照）
+# Fields with the same name whose shape the API defines itself (each compared separately above)
+# 同名のフィールドだが API が独自に形を決めたもの（それぞれ上で個別に比較している）
 OWN_SHAPE = {("EndingView", "world"), ("EndingView", "card")}
 
 
@@ -185,7 +212,8 @@ def test_field_diff(
     a, d = set(api["properties"]), set(data["properties"])
     assert (a - d, d - a) == (added, removed), why
 
-    # 共有的字段直接用 JSON 指针引用数据那边的字段（字数等约束不抄第二份）
+    # Shared fields reference the data-side field directly by JSON pointer (constraints such as lengths are not copied)
+    # 共通のフィールドは JSON ポインタでデータ側のフィールドを直接参照する（字数などの制約を二重に書かない）
     name = api_ref.rsplit("/", 1)[-1]
     data_file, data_ptr = data_ref
     for field in sorted(a & d):
@@ -193,4 +221,7 @@ def test_field_diff(
             continue
         refs = [n["$ref"] for _, n in contracts.walk(api["properties"][field]) if isinstance(n, dict) and "$ref" in n]
         want = f"data/{data_file}.schema.json#{data_ptr}/properties/{field}"
-        assert any(r.endswith(want) or f"{want}/" in r for r in refs), f"{name}.{field} 应该引用 {want}，现在是 {refs}"
+        assert any(r.endswith(want) or f"{want}/" in r for r in refs), (
+            f"{name}.{field} should reference {want}, but has {refs} / "
+            f"{name}.{field} は {want} を参照すべきだが、現在は {refs}"
+        )

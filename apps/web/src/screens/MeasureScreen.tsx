@@ -4,8 +4,8 @@
 // the same frame drawn 2, 4, 8, 16, 32 times until the interval reaches 45 ms: one frame's GPU time ~ interval / draws
 // (frontend-design 10.6.5). Then the bloom check UX asked for (PR #46): L0 against L1 at 18:45 looking at the west gate
 // (the sun in the gateway) and at night by a fire, as pictures. Inside the claude.ai page a button saves the numbers
-// and the pictures into the page itself (its db and assets), so the team reads them there. For the team; the words
-// are Chinese like the dev panel.
+// and the pictures into the page itself (its db and assets), so the team reads them there. For the team; the text
+// is English / Japanese like the dev panel.
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Color, PCFShadowMap, type WebGLRenderer } from "three";
@@ -206,11 +206,13 @@ async function measureLevel(
       ? "high"
       : "standard";
   quality.force(level, tier);
-  onMsg(`${level}：换档，等着色器和阴影`);
+  onMsg(
+    `${level}: switching level, waiting for shaders and shadows / 段階を切り替え、シェーダーと影を待機中`,
+  );
   rec.route = true;
   rec.t = -2;
   await sleep(2000);
-  onMsg(`${level}：沿 S7 的路线走 6.5 秒`);
+  onMsg(`${level}: walking S7's route for 6.5 s / S7 のルートを 6.5 秒歩行中`);
   const calls0 = frameStats.calls;
   const ft = await record(ROUTE_MS);
   const drawCalls = Math.max(calls0, frameStats.calls);
@@ -221,7 +223,7 @@ async function measureLevel(
   let last = { n: 1, tMean: VSYNC };
   for (const n of STEPS) {
     quality.stressReps = n;
-    onMsg(`${level}：加压 ×${n}`);
+    onMsg(`${level}: stress ×${n} / 負荷 ×${n}`);
     await record(600, 6);
     const q = await record(2500, 30);
     last = { n, tMean: r1(trimMean(q)) };
@@ -276,7 +278,7 @@ async function shootLooks(
     };
     for (const level of LOOK_LEVELS) {
       quality.force(level);
-      onMsg(`泛光：${look.name} ${level}`);
+      onMsg(`Bloom / ブルーム: ${look.name} ${level}`);
       await sleep(2500);
       shots.push({ look: look.name, level, url: await capture() });
     }
@@ -350,10 +352,16 @@ async function saveRun(
   shots: Shot[],
 ): Promise<{ id: string; pictures: boolean }> {
   const use = host()?.use;
-  if (!use) throw new Error("不在 claude.ai 页面里");
+  if (!use)
+    throw new Error(
+      "Not inside a claude.ai page / claude.ai のページ内ではありません",
+    );
   const db = (await use("db")) as Db | null;
   const assets = (await use("assets")) as Assets | null;
-  if (!db) throw new Error("页面的数据库用不了");
+  if (!db)
+    throw new Error(
+      "The page database is unavailable / ページのデータベースが使えません",
+    );
   if (assets)
     for (const s of shots) {
       const key = `${s.look}-${s.level}`;
@@ -366,6 +374,8 @@ async function saveRun(
   return { id: ref.id, pictures: !!assets };
 }
 
+const NOT_SAVED = "Not saved";
+
 function errorText(e: unknown): string {
   const { code, message } = (e ?? {}) as { code?: string; message?: string };
   return code ?? message ?? String(e);
@@ -374,7 +384,9 @@ function errorText(e: unknown): string {
 export default function MeasureScreen() {
   const [stage, setStage] = useState<LoadStage>("loading");
   const [go, setGo] = useState(0);
-  const [msg, setMsg] = useState("加载广场，同时跑起始档自测……");
+  const [msg, setMsg] = useState(
+    "Loading the plaza and running the start-level probe… / 広場を読み込み、開始段階の自己テストを実行中…",
+  );
   const [result, setResult] = useState<string>("");
   const [rows, setRows] = useState<Row[]>([]);
   const [shots, setShots] = useState<Shot[]>([]);
@@ -385,8 +397,9 @@ export default function MeasureScreen() {
   const t0 = useRef(new Date().toISOString());
   const onStage = useCallback((s: LoadStage) => {
     setStage(s);
-    if (s === "ready") setMsg("广场好了。");
-    if (s === "failed") setMsg(`加载失败：${loadInfo.error}`);
+    if (s === "ready") setMsg("The plaza is ready. / 広場の準備ができました。");
+    if (s === "failed")
+      setMsg(`Loading failed / 読み込み失敗: ${loadInfo.error}`);
   }, []);
   const onDone = useCallback(
     (r: Row[], env: ReturnType<typeof envInfo>, pics: Shot[]) => {
@@ -394,8 +407,8 @@ export default function MeasureScreen() {
       setShots(pics);
       setMsg(
         canSave()
-          ? "完成。点「保存结果」，前端就能在这一页里读到。"
-          : "完成。把下面的结果复制给前端。",
+          ? 'Done. Tap "Save results" and the frontend can read them on this page. / 完了。「結果を保存」を押せば、フロントエンドがこのページで読めます。'
+          : "Done. Copy the results below and send them to the frontend. / 完了。下の結果をコピーしてフロントエンドに送ってください。",
       );
       const probe = quality.probe;
       setResult(
@@ -425,16 +438,18 @@ export default function MeasureScreen() {
     [],
   );
   const onSave = useCallback(() => {
-    setSaved("保存中……");
+    setSaved("Saving… / 保存中…");
     saveRun(JSON.parse(result) as object, shots).then(
       ({ id, pictures }) =>
         setSaved(
           pictures
-            ? `已保存（runs/${id}），告诉前端跑完了就行。`
-            : `数字已保存（runs/${id}），图没存上（这一页的图片存储用不了）。告诉前端跑完了就行。`,
+            ? `Saved (runs/${id}); just tell the frontend the run is done. / 保存しました（runs/${id}）。フロントエンドに完了を伝えるだけで大丈夫です。`
+            : `Numbers saved (runs/${id}), pictures not saved (this page's image storage is unavailable); just tell the frontend the run is done. / 数値は保存しました（runs/${id}）が、画像は保存できませんでした（このページの画像ストレージが使えません）。フロントエンドに完了を伝えるだけで大丈夫です。`,
         ),
       (e: unknown) =>
-        setSaved(`没存上：${errorText(e)}。请点「复制结果」发给前端。`),
+        setSaved(
+          `${NOT_SAVED}: ${errorText(e)}. Tap "Copy results" and send them to the frontend. / 保存できませんでした：${errorText(e)}。「結果をコピー」を押してフロントエンドに送ってください。`,
+        ),
     );
   }, [result, shots]);
   const probe = quality.probe;
@@ -471,36 +486,48 @@ export default function MeasureScreen() {
         }}
       >
         <div>
-          计测页 · {stage} · 现在 {level}
-          {hiReady ? " · 高档贴图已下" : ""}
+          Measuring page / 計測ページ · {stage} · now / 現在 {level}
+          {hiReady
+            ? " · high-tier textures loaded / 高品質テクスチャ取得済み"
+            : ""}
         </div>
         <div>
-          起始档自测：
+          Start-level probe / 開始段階の自己テスト:{" "}
           {probe
             ? `${probe.gpuMs.toFixed(1)} ms（${probe.bound}，×${probe.reps}，${probe.ms} ms）→ ${pickStartLevel(probe.gpuMs, devicePixelRatio)}`
             : "……"}
         </div>
         <div>{msg}</div>
-        {stage === "ready" && !hiReady && !go && <div>下高档贴图……</div>}
+        {stage === "ready" && !hiReady && !go && (
+          <div>Loading high-tier textures… / 高品質テクスチャを取得中…</div>
+        )}
         {stage === "ready" && hiReady && !go && (
           <button
             style={{ font: "inherit", margin: "6px 0" }}
             onClick={() => setGo(1)}
           >
-            开始计测（约 1〜2 分钟，手机别锁屏、别切走）
+            Start measuring (about 1-2 minutes; keep the phone unlocked and stay
+            on this page) / 計測開始（約 1〜2
+            分。スマホをロックせず、他のアプリに切り替えないでください）
           </button>
         )}
         {rows.length > 0 && (
           <table style={{ borderCollapse: "collapse", margin: "6px 0" }}>
             <thead>
               <tr>
-                {["档", "DPR", "p50", "p95", "掉帧%", "draw", "GPU ms"].map(
-                  (h) => (
-                    <th key={h} style={{ textAlign: "right", paddingRight: 8 }}>
-                      {h}
-                    </th>
-                  ),
-                )}
+                {[
+                  "Level / 段階",
+                  "DPR",
+                  "p50",
+                  "p95",
+                  "Jank% / コマ落ち%",
+                  "draw",
+                  "GPU ms",
+                ].map((h) => (
+                  <th key={h} style={{ textAlign: "right", paddingRight: 8 }}>
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -537,7 +564,9 @@ export default function MeasureScreen() {
               <figure key={`${p.look}-${p.level}`} style={{ margin: 0 }}>
                 <img src={p.url} alt="" style={{ width: "100%" }} />
                 <figcaption>
-                  {p.look === "sunset-gate" ? "18:45 西门" : "夜里火光（替身）"}{" "}
+                  {p.look === "sunset-gate"
+                    ? "18:45 west gate / 西門"
+                    : "Firelight at night (stand-in) / 夜の火明かり（代役）"}{" "}
                   {p.level}
                 </figcaption>
               </figure>
@@ -548,10 +577,11 @@ export default function MeasureScreen() {
           <div>
             <button
               style={{ font: "inherit", margin: "6px 0" }}
-              disabled={saved !== "" && !saved.startsWith("没存上")}
+              disabled={saved !== "" && !saved.startsWith(NOT_SAVED)}
               onClick={onSave}
             >
-              保存结果（数字和 4 张图存进这一页）
+              Save results (numbers and 4 pictures go into this page) /
+              結果を保存（数値と画像 4 枚をこのページに保存）
             </button>
             {saved && <div>{saved}</div>}
           </div>
@@ -562,7 +592,7 @@ export default function MeasureScreen() {
               style={{ font: "inherit" }}
               onClick={() => void navigator.clipboard?.writeText(result)}
             >
-              复制结果
+              Copy results / 結果をコピー
             </button>
             <textarea
               readOnly

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "api/rest/playthroughs-create.schema.json",
   "title": "POST /v1/playthroughs",
-  "description": "开局（2.2）",
+  "description": "Start a playthrough (2.2) / プレイを開始する（2.2）",
   "x-endpoint": {
     "method": "POST",
     "path": "/v1/playthroughs",

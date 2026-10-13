@@ -1,7 +1,14 @@
-"""叙事者提交后的 NOTIFY → 网关推送（B-0 第 7 条第 5 步）。
+"""The narrator's NOTIFY after a commit → gateway push (B-0 item 7, step 5).
 
-网关进程开一条 autocommit 的 psycopg 连接 `LISTEN zoujin_commit`；收到一条就交给 Gateway.on_commit。
-连接断了就重连，重连后把开着的连接都推一遍（断开期间的提交不会丢：推送按 seq 从库里读）。
+The gateway process opens an autocommit psycopg connection with `LISTEN zoujin_commit` and hands each notification to
+Gateway.on_commit. If the connection drops it reconnects, then pushes to every open connection once (commits made while
+disconnected are not lost: pushes read from the database by seq).
+
+ナレーターの commit 後の NOTIFY → ゲートウェイのプッシュ（B-0 第 7 項の第 5 段階）。
+
+ゲートウェイのプロセスは autocommit の psycopg 接続を 1 本開いて `LISTEN zoujin_commit` し、通知を 1 件受け取るたびに
+Gateway.on_commit に渡す。接続が切れたら再接続し、再接続後に開いている接続すべてへ 1 回プッシュする（切断中の commit は
+失われない：プッシュは seq に従ってデータベースから読む）。
 """
 
 from __future__ import annotations
@@ -21,7 +28,10 @@ RETRY_SECONDS = 1.0
 
 
 def plain_url(url: str) -> str:
-    """SQLAlchemy 的 postgresql+psycopg:// → psycopg 认的 postgresql://。"""
+    """SQLAlchemy's postgresql+psycopg:// → the postgresql:// that psycopg accepts.
+
+    SQLAlchemy の postgresql+psycopg:// → psycopg が受け付ける postgresql://。
+    """
     return url.replace("postgresql+psycopg://", "postgresql://", 1)
 
 
@@ -59,12 +69,15 @@ class Hub:
                         try:
                             payload = json.loads(note.payload)
                         except json.JSONDecodeError:
-                            log.warning("看不懂的 NOTIFY")
+                            log.warning("Unreadable NOTIFY / 読めない NOTIFY")
                             continue
                         self.gw.spawn(self.gw.on_commit(payload))
             except asyncio.CancelledError:
                 raise
             except Exception:
                 self.listening.clear()
-                log.exception("LISTEN 连接断了，%.0f 秒后重连", RETRY_SECONDS)
+                log.exception(
+                    "LISTEN connection dropped, reconnecting in %.0f s / LISTEN 接続が切れたので再接続する",
+                    RETRY_SECONDS,
+                )
                 await asyncio.sleep(RETRY_SECONDS)

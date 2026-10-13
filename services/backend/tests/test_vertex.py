@@ -1,7 +1,16 @@
-"""真文本模型的客户端（B-2 验收第 8 组）：传输层换成 httpx.MockTransport，不联网、不用凭证。
+"""The real text model's client (B-2 acceptance group 8): the transport layer is swapped for httpx.MockTransport, with
+no network and no credentials.
 
-项目 ID 用一个假的记号，查它不出现在账本、回放、日志和异常消息里。B-8 以后分流和提取走 Claude（`test_claude.py`），
-Google 的客户端对哪种提示都一样：这里把分流和提取临时换回 B-2 时的 Google 设定来测它。
+The project ID is a fake marker, and the tests check that it does not appear in the ledger, replays, logs or exception
+messages. Since B-8 triage and extraction go through Claude (`test_claude.py`), but the Google client behaves the same
+for every prompt kind: here triage and extraction are temporarily switched back to their B-2 Google settings to test it.
+
+実テキストモデルのクライアント（B-2 受け入れ確認 第 8 グループ）：トランスポート層を httpx.MockTransport に差し替え、
+ネットワークにも認証情報にも頼らない。
+
+プロジェクト ID は偽の目印で、それが台帳、リプレイ、ログ、例外メッセージに現れないことを確認する。B-8 以降、振り分けと
+抽出は Claude を通る（`test_claude.py`）が、Google のクライアントはどのプロンプト種別でも同じに動く：ここでは振り分けと
+抽出を一時的に B-2 のときの Google の設定に戻してテストする。
 """
 
 from __future__ import annotations
@@ -39,7 +48,7 @@ from .test_rules import BOOK, OLD, at
 
 Json = Any
 
-PROJECT = "proj-marker-0000"  # 假的；查它有没有漏出去
+PROJECT = "proj-marker-0000"  # fake; checks whether it leaks / 偽物。漏れていないか確認する
 REQ = {"worldModelVersion": BOOK.version, "turn": {"character": OLD, "mode": "text", "player": "<b>宿</b>はどこ？"}}
 USAGE = {
     "promptTokenCount": 12000,
@@ -119,13 +128,16 @@ def test_request_shape(tmp_path: Path) -> None:
     assert cfg["responseMimeType"] == "application/json" and cfg["responseJsonSchema"] == PROMPTS["extract"].schema
     assert cfg["thinkingConfig"] == {"thinkingLevel": "LOW"} and cfg["temperature"] == 0.2
     user = body["contents"][0]["parts"][0]["text"]
-    assert user.startswith("<world>\n") and "aozora:" not in user  # 前缀在最前，不带出处
+    # The prefix comes first and carries no sources / プレフィックスは先頭にあり、出典は含まない
+    assert user.startswith("<world>\n") and "aozora:" not in user
     assert user.index("<world>") < user.index("<state>") < user.index("<turn>")
-    assert '<utterance speaker="player">＜b＞宿＜/b＞はどこ？</utterance>' in user  # 尖括号换成全角
+    # Angle brackets become full-width / 山括弧は全角に置き換える
+    assert '<utterance speaker="player">＜b＞宿＜/b＞はどこ？</utterance>' in user
     regional = client(ok({"route": "chat"}, seen), tmp_path, location="asia-northeast1")
     asyncio.run(regional.call("triage", {"turn": REQ["turn"]}))
     assert seen[-1].url.host == "asia-northeast1-aiplatform.googleapis.com"
-    assert "thinkingConfig" not in json.loads(seen[-1].content)["generationConfig"]  # flash-lite 不设思考档
+    # flash-lite sets no thinking level / flash-lite は思考レベルを設定しない
+    assert "thinkingConfig" not in json.loads(seen[-1].content)["generationConfig"]
 
 
 def test_cost_by_price_list_and_ledger_line(tmp_path: Path) -> None:
@@ -169,10 +181,13 @@ def test_rate_limit_and_errors(tmp_path: Path) -> None:
     with pytest.raises(BadOutput) as e3:
         asyncio.run(client(garbage, tmp_path).call("extract", REQ))
     limit, fail, line = lines(tmp_path / "ledger.jsonl")
-    assert [(x["status"], x["costUsd"]) for x in (limit, fail)] == [("error", 0), ("error", 0)]  # 没有回应：花费 0
+    # No response: cost 0 / 応答なし：費用 0
+    assert [(x["status"], x["costUsd"]) for x in (limit, fail)] == [("error", 0), ("error", 0)]
     assert PROJECT not in json.dumps([limit, fail])
-    assert line["status"] == "bad-output" and line["ms"] >= 0  # 不合 Schema 的那次也花了钱，记账
-    assert line["costUsd"] > 0 and e3.value.cost_usd == pytest.approx(line["costUsd"])  # 叙事者拿它加进这一轮的花费
+    # The call that failed the Schema also cost money and is recorded / Schema に合わなかった回も費用がかかり、記録する
+    assert line["status"] == "bad-output" and line["ms"] >= 0
+    # The narrator adds it to this turn's cost / ナレーターはこれをこのターンの費用に加える
+    assert line["costUsd"] > 0 and e3.value.cost_usd == pytest.approx(line["costUsd"])
 
 
 def test_budget_caps_are_cumulative(tmp_path: Path) -> None:
@@ -185,22 +200,30 @@ def test_budget_caps_are_cumulative(tmp_path: Path) -> None:
         encoding="utf-8",
     )  # fmt: skip
     books = Ledger(tmp_path / "ledger.jsonl", 1.0)
-    assert books.spent() == pytest.approx(0.95)  # 总上限只算 Google 那本账
-    assert books.spent("e0-x") == pytest.approx(0.99)  # 单项上限两本账合起来（数据 #49）
+    # The total cap counts only the Google ledger
+    # 総上限は Google の台帳のみ
+    assert books.spent() == pytest.approx(0.95)
+    # The per-item cap combines both ledgers (data #49) / 項目ごとの上限は 2 つの台帳の合計（データ #49）
+    assert books.spent("e0-x") == pytest.approx(0.99)
     rt = client(ok({"candidates": []}, seen), tmp_path, max_total=1.0)
     with pytest.raises(BudgetStop):
-        asyncio.run(rt.call("extract", REQ))  # 账本里已经花了 0.95（E-0 记的），加这一次的预计超过 1.0
+        # The ledger has already spent 0.95 (recorded by E-0); with this call's estimate it exceeds 1.0
+        # 台帳ではすでに 0.95 使っており（E-0 が記録）、今回の見積もりを足すと 1.0 を超える
+        asyncio.run(rt.call("extract", REQ))
     assert seen == [] and guess > 0.05
     rt = client(ok({"candidates": []}, seen), tmp_path, max_total=100.0, max_item=0.01, item="s2d-01")
     with pytest.raises(BudgetStop):
-        asyncio.run(rt.call("extract", REQ))  # 单项上限
+        asyncio.run(rt.call("extract", REQ))  # per-item cap / 項目ごとの上限
     assert seen == []
     rt = client(ok({"candidates": []}, seen), tmp_path, max_total=100.0)
     asyncio.run(rt.call("extract", REQ))
-    assert len(seen) == 1 and Ledger(tmp_path / "ledger.jsonl", 1.0).spent() > 0.95  # Claude 那本账不算
+    # The Claude ledger does not count / Claude の台帳は数えない
+    assert len(seen) == 1 and Ledger(tmp_path / "ledger.jsonl", 1.0).spent() > 0.95
     rt = client(ok({"candidates": []}, seen), tmp_path, max_total=100.0, max_item=1.0, item="e0-x")
     with pytest.raises(BudgetStop):
-        asyncio.run(rt.call("extract", REQ))  # Google 0.95 + Claude 0.04 + 这次的预计 > 1.0：Claude 那行也算进单项
+        # Google 0.95 + Claude 0.04 + this call's estimate > 1.0: the Claude line also counts toward the item
+        # Google 0.95 + Claude 0.04 + 今回の見積もり > 1.0：Claude の行も項目ごとの上限に数える
+        asyncio.run(rt.call("extract", REQ))
     assert len(seen) == 1
 
 
@@ -214,11 +237,15 @@ def test_cancelled_call_is_billed_at_the_estimate(tmp_path: Path) -> None:
     p = Pipeline(rt, SCHEMAS, IdGen(), Tracer(), {"triage": 0.05, "extract": 0.05, "check": 0.05, "rewrite": 0.05})
     spend = Spend()
     ex = asyncio.run(p.extract(BOOK, at(), TurnInput(character=OLD, player="宿は？"), spend))
-    assert ex.timed_out  # 分流两次超时当「可能」，提取两次超时 → 只走时钟
+    # Triage timing out twice counts as "possible"; extraction timing out twice → only the clock moves
+    # 振り分けが 2 回タイムアウトしたら「可能性あり」、抽出が 2 回タイムアウトしたら → 時計だけ進む
+    assert ex.timed_out
     billed = lines(tmp_path / "ledger.jsonl")
     assert [x["kind"] for x in billed] == ["triage", "triage", "extract", "extract"]
     assert all(x["costUsd"] > 0 and x["usage"] == {} for x in billed)
-    assert spend.usd == pytest.approx(by_kind(billed))  # 这一轮的花费（playthrough_metrics）和账本对得上
+    # This turn's cost (playthrough_metrics) matches the ledger
+    # このターンの費用（playthrough_metrics）は台帳と一致する
+    assert spend.usd == pytest.approx(by_kind(billed))
 
 
 def test_invalid_output_is_in_the_turn_spend(tmp_path: Path) -> None:
@@ -230,7 +257,9 @@ def test_invalid_output_is_in_the_turn_spend(tmp_path: Path) -> None:
     p = Pipeline(client(garbage, tmp_path), SCHEMAS, IdGen(), Tracer())
     spend = Spend()
     ex = asyncio.run(p.extract(BOOK, at(), TurnInput(character=OLD, player="宿は？"), spend))
-    assert ex.timed_out  # 两次都不合格：分流当「可能」，提取 → 只走时钟
+    # Both attempts invalid: triage counts as "possible", extraction → only the clock moves
+    # 2 回とも不合格：振り分けは「可能性あり」、抽出 → 時計だけ進む
+    assert ex.timed_out
     billed = lines(tmp_path / "ledger.jsonl")
     assert [x["kind"] for x in billed] == ["triage", "triage", "extract", "extract"]
     assert spend.usd == pytest.approx(by_kind(billed)) and all(v > 0 for v in spend.usd.values())

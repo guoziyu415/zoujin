@@ -1,3 +1,5 @@
 # schema.md
 
-世界状态 Schema 和其他三个数据契约统一放在 [contracts.md](contracts.md)（负责人：数据工程）。本文件只是指路，请以 contracts.md 为准。
+The world state schema and the other three data contracts all live in [contracts.md](contracts.md) (owner: data engineering). This file is only a pointer; contracts.md is authoritative.
+
+世界状態のスキーマとほかの 3 つのデータ契約は、まとめて [contracts.md](contracts.md) に置いている（担当：データエンジニアリング）。このファイルは案内だけなので、contracts.md を正とする。

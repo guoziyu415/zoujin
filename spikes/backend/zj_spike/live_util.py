@@ -354,7 +354,10 @@ def read_pcm16k(path: Path) -> bytes:
         if ok:
             return w.readframes(w.getnframes())
     if not shutil.which("ffmpeg"):
-        raise SystemExit(f"{path} 不是 16 kHz 单声道 16 位 WAV，且没有 ffmpeg 可转换")
+        raise SystemExit(
+            f"{path} is not a 16 kHz mono 16-bit WAV and there is no ffmpeg to convert it / "
+            "16 kHz モノラル 16 ビット WAV ではなく、変換に使う ffmpeg もありません"
+        )
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "conv.wav"
         subprocess.run(
@@ -368,11 +371,18 @@ def read_pcm16k(path: Path) -> bytes:
 def japanese_say_voice() -> str:
     """Pick a Japanese macOS `say` voice, preferring Kyoko."""
     if not shutil.which("say"):
-        raise SystemExit("找不到 macOS 的 say 命令。请在 Mac 上运行，或用 --wav-dir 指定自己录的 WAV。")
+        raise SystemExit(
+            "macOS `say` command not found. Run this on a Mac, or pass your own recorded WAVs with --wav-dir. / "
+            "macOS の say コマンドが見つかりません。Mac で実行するか、--wav-dir で自分で録音した WAV を指定してください。"
+        )
     listing = subprocess.run(["say", "-v", "?"], capture_output=True, text=True, check=True).stdout
     names = [line.split()[0] for line in listing.splitlines() if "ja_JP" in line and line.split()]
     if not names:
-        raise SystemExit("这台 Mac 没有日语朗读声音。系统设置 → 辅助功能 → 朗读内容 → 系统声音里添加 Kyoko，或用 --wav-dir。")
+        raise SystemExit(
+            "This Mac has no Japanese speech voice. Add Kyoko under System Settings → Accessibility → Spoken Content → "
+            "System Voice, or use --wav-dir. / この Mac には日本語の読み上げ音声がありません。システム設定 → アクセシビリティ → "
+            "読み上げコンテンツ → システムの声 で Kyoko を追加するか、--wav-dir を使ってください。"
+        )
     return "Kyoko" if "Kyoko" in names else names[0]
 
 
@@ -396,7 +406,7 @@ def synth_utterances(lines: list[str], out_dir: Path, trailing_silence_ms: int =
 def load_wav_dir(wav_dir: Path) -> list[tuple[str, bytes]]:
     files = sorted(p for p in wav_dir.iterdir() if p.suffix.lower() == ".wav")
     if not files:
-        raise SystemExit(f"{wav_dir} 里没有 .wav 文件")
+        raise SystemExit(f"No .wav files in {wav_dir} / {wav_dir} に .wav ファイルがありません")
     return [(p.name, read_pcm16k(p)) for p in files]
 
 

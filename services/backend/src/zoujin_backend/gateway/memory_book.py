@@ -1,10 +1,26 @@
-"""記憶帳（api-contract 2.7，ux-design 10.1，B-13）：只列玩家见过的人物，每人四栏（约定、为你做的、你做的、记忆）。
+"""記憶帳 (the memory book; api-contract 2.7, ux-design 10.1, B-13): lists only the characters the player has met,
+with four columns each (promises, what they did for you, what you did, memories).
 
-- 见过 = 按事件重放，这个人物在某一刻和玩家在同一个地点（能对话、不是一群人的），或者已经有他的约定、记忆。
-- 约定：现在的状态里和玩家有关的，`voided` 照给（前端不显示）。
-- してくれたこと / あなたがしたこと：提交了的事件里，他为玩家做的（actor = 他、beneficiary = player）、玩家为他做的
-  （actor = player、beneficiary = 他）；句子是事件的 summary，身份名换成「あなた」。
-- 记忆：没删的，按时间排。关系按没删的记忆算（`narrator/memory.py`）。
+- Met = replaying the events, the character was at some moment in the same place as the player (one you can talk to,
+  not a crowd), or already has promises or memories involving them.
+- Promises: the ones in the current state that involve the player; `voided` ones are included too (the frontend
+  doesn't show them).
+- してくれたこと / あなたがしたこと: among committed events, what the character did for the player (actor = them,
+  beneficiary = player) and what the player did for the character (actor = player, beneficiary = them); the sentence
+  is the event's summary with the player's role name replaced by 「あなた」.
+- Memories: the ones not deleted, in time order. The relationship is computed from the memories not deleted
+  (`narrator/memory.py`).
+
+記憶帳（api-contract 2.7、ux-design 10.1、B-13）：プレイヤーが会ったことのある登場人物だけを並べ、各人 4 欄
+（約束、してくれたこと、あなたがしたこと、記憶）。
+
+- 会った = イベントをリプレイして、その登場人物がある時点でプレイヤーと同じ場所にいた（会話でき、群衆ではない）、
+  あるいはすでにその人との約束や記憶がある。
+- 約束：現在の状態でプレイヤーに関わるもの。`voided` もそのまま渡す（フロントエンドは表示しない）。
+- してくれたこと / あなたがしたこと：commit 済みのイベントのうち、その人がプレイヤーのためにしたこと（actor = その人、
+  beneficiary = player）と、プレイヤーがその人のためにしたこと（actor = player、beneficiary = その人）。文はイベントの
+  summary で、役名を「あなた」に置き換える。
+- 記憶：削除されていないものを時刻順に。関係は削除されていない記憶から計算する（`narrator/memory.py`）。
 """
 
 from __future__ import annotations

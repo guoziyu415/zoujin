@@ -1,8 +1,19 @@
-"""运行时的表（B-0 用到的那几张）。列按 data-design 第 3 节和数据契约（Playthrough、Event、Utterance、WorldState），
-后端自己的表（turns、sessions、invite_codes、idempotency_keys）按 backend-design 3.4、3.5、5.2。
+"""Runtime tables (the ones B-0 uses). Columns follow data-design section 3 and the data contract (Playthrough, Event,
+Utterance, WorldState); the backend's own tables (turns, sessions, invite_codes, idempotency_keys) follow
+backend-design 3.4, 3.5, 5.2.
 
-建表走 Alembic（`migrations/versions/`），这里的定义给查询用，两边要一致（测试比对）。
-其余的表（promises、run_facts、briefs、approach_log）由用到它们的 M2 卡建；memory_items 是 B-13（0007）。
+Tables are created by Alembic (`migrations/versions/`); the definitions here are for queries, and the two must match
+(a test compares them). The other tables (promises, run_facts, briefs, approach_log) are created by the M2 cards that
+use them; memory_items is B-13 (0007).
+
+ランタイムのテーブル（B-0 が使うもの）。列は data-design 第 3 節とデータ契約（Playthrough、Event、Utterance、
+WorldState）に従い、バックエンド独自のテーブル（turns、sessions、invite_codes、idempotency_keys）は backend-design
+3.4・3.5・5.2 に従う。
+
+テーブルの作成は Alembic（`migrations/versions/`）で行い、ここの定義はクエリ用。
+両者は一致していなければならない（テストで比較する）。ほかのテーブル（promises、run_facts、briefs、
+approach_log）はそれを使う M2 のカードが作る。
+memory_items は B-13（0007）。
 """
 
 from __future__ import annotations
@@ -39,7 +50,8 @@ def _pt_fk() -> Column[str]:
     return Column("playthrough_id", Text, ForeignKey("playthroughs.playthrough_id", ondelete="CASCADE"), nullable=False)
 
 
-# 邀请码账号（S-020）：userRef 就是这一行的 ID，没有任何个人信息
+# Invite-code accounts (S-020): userRef is this row's ID; no personal information at all
+# 招待コードのアカウント（S-020）：userRef はこの行の ID そのもので、個人情報は一切ない
 users = Table(
     "users",
     metadata,
@@ -48,17 +60,20 @@ users = Table(
     _ts("last_login_at"),
 )
 
-# 只存哈希（backend-design 5.2）。一个码对应一个账号：第一次登录时建账号，之后同一个码回到同一个账号（data-design 5.2）
+# Only hashes are stored (backend-design 5.2). One code maps to one account: the account is created at the first
+# login, and afterwards the same code returns to the same account (data-design 5.2)
+# ハッシュだけを保存する（backend-design 5.2）。1 つのコードに 1 つのアカウント：最初のログインでアカウントを作り、
+# 以後同じコードは同じアカウントに戻る（data-design 5.2）
 invite_codes = Table(
     "invite_codes",
     metadata,
-    Column("code_hash", Text, primary_key=True),  # 规范化之后的码的 sha256
+    Column("code_hash", Text, primary_key=True),  # sha256 of the normalised code / 正規化したコードの sha256
     Column("user_id", Text, ForeignKey("users.user_id", ondelete="SET NULL"), unique=True),
     _ts("created_at", nullable=False, now=True),
-    _ts("revoked_at"),  # L3 删除后作废
+    _ts("revoked_at"),  # Revoked after L3 deletion / L3 削除の後に無効化
 )
 
-# 会话 Cookie：库里只存令牌的哈希
+# Session cookie: the DB stores only the token's hash / セッション Cookie：DB にはトークンのハッシュだけを保存する
 sessions = Table(
     "sessions",
     metadata,
@@ -77,77 +92,127 @@ playthroughs = Table(
     Column("book_id", Text, nullable=False),
     Column("world_model_version", Text, nullable=False),
     Column("role_id", Text, nullable=False),
-    Column("status", Text, nullable=False),  # active / ended / abandoned（deleted 的行直接删掉）
+    # active / ended / abandoned (deleted rows are simply removed)
+    # active / ended / abandoned（deleted の行はそのまま削除）
+    Column("status", Text, nullable=False),
     _ts("started_at", nullable=False, now=True),
     _ts("ended_at"),
     _ts("last_active_at", nullable=False, now=True),
     Column("last_seq", Integer, nullable=False, server_default="0"),
-    # B-3（0003）：这一局的几样不是事件、不进 WorldState 的东西（契约 3.1、2.11，api-contract 3.11），都随整局删除
-    Column("player_spot", Text),  # 玩家站的位置点；空 = 所在地点的起点（startSpots）
-    Column("played_pieces", JSONB, nullable=False, server_default=text("'[]'::jsonb")),  # 演过的固定演出 ID
-    Column("act_end", JSONB),  # 收了幕、还没选定：pending.actEnd（和 act_ended 同形，不带 type）
-    Column("plan_tries", Integer, nullable=False, server_default="0"),  # 这次幕末说过几次打算
-    Column("plan_alternative", JSONB),  # 打算不成行时给的替代去处（幕切换时清掉）
-    Column("arrival", JSONB),  # 落地带 opener、还没收到 act_landed：{actId, line, opener}
-    # B-12（0006）：安全筛查的这一局状态 {paused, hinted, ambiguous}（出戏卡开着、小提示推过、似是而非几次），只有网关写
+    # B-3 (0003): the bits of this playthrough that are not events and do not go into WorldState (contract 3.1, 2.11,
+    # api-contract 3.11); all deleted with the playthrough
+    # B-3（0003）：このプレイのうちイベントではなく WorldState にも入らないもの（契約 3.1・2.11、api-contract 3.11）。
+    # すべてプレイごと削除する
+    # The spot where the player stands; empty = the place's starting spot (startSpots)
+    # プレイヤーが立っている位置。空 = いる場所の開始位置（startSpots）
+    Column("player_spot", Text),
+    # IDs of set pieces already played / 演じ終えた固定演出の ID
+    Column("played_pieces", JSONB, nullable=False, server_default=text("'[]'::jsonb")),
+    # Act closed but not yet chosen: pending.actEnd (same shape as act_ended, without type)
+    # 幕を閉じたがまだ選んでいない：pending.actEnd（act_ended と同じ形で、type は持たない）
+    Column("act_end", JSONB),
+    # How many times a plan was stated at this end of act / この幕末にプランを何回話したか
+    Column("plan_tries", Integer, nullable=False, server_default="0"),
+    # Alternative destination offered when the plan is not feasible (cleared at the act change)
+    # プランが成り立たないときに出した代わりの行き先（幕の切り替えで消す）
+    Column("plan_alternative", JSONB),
+    # Landing with an opener, act_landed not yet received: {actId, line, opener}
+    # opener 付きで着地し、まだ act_landed を受け取っていない：{actId, line, opener}
+    Column("arrival", JSONB),
+    # B-12 (0006): this playthrough's safety screening state {paused, hinted, ambiguous} (out-of-character card open,
+    # small hint shown, how many ambiguous); only the gateway writes it
+    # B-12（0006）：このプレイの安全スクリーニングの状態 {paused, hinted, ambiguous}（物語の外に出るカードが開いている、
+    # 小さなヒントを出した、あいまいだった回数）。書くのはゲートウェイだけ
     Column("safety", JSONB, nullable=False, server_default=text("'{}'::jsonb")),
-    # B-14（0008）：预算档 normal / saving / degraded（backend-design 5.3），只升不降；叙事者和网关都按它走
+    # B-14 (0008): budget tier normal / saving / degraded (backend-design 5.3), only goes up, never down; both the
+    # narrator and the gateway follow it
+    # B-14（0008）：予算の段階 normal / saving / degraded（backend-design 5.3）。上がるだけで下がらない。
+    # ナレーターもゲートウェイもこれに従う
     Column("budget_tier", Text, nullable=False, server_default="normal"),
-    # 每账号同时 1 局（backend-design 5.2）
+    # One active playthrough per account at a time (backend-design 5.2)
+    # 1 アカウントにつき同時に 1 プレイ（backend-design 5.2）
     Index("playthroughs_one_active", "user_ref", unique=True, postgresql_where=text("status = 'active'")),
 )
 
-# 叙事者的任务表（backend-design 3.4）：只存 ID、状态、租约，不存原话。
-# kind：open（开局）、talk（一轮对话，语音或文字）、advance（快进，只给测试和评测）；B-3：action（动作）、
-# choose（幕末选去处）、plan（幕末说出打算）、arrival（落地后人物先开口，只留记录，叙事者不处理）；
-# B-4：confirm（回答意图确认，request 带 draftId、optionId、by）；B-16：world（世界推进，request 带 reason：key / mid）
+# The narrator's task table (backend-design 3.4): only IDs, status and leases, never the original words.
+# kind: open (start a playthrough), talk (one conversation turn, voice or text), advance (fast-forward, only for tests
+# and evals); B-3: action (action), choose (choose a destination at the end of act), plan (state a plan at the end of
+# act), arrival (a character speaks first after landing; kept only as a record, the narrator does not process it);
+# B-4: confirm (answer an intent confirmation, request carries draftId, optionId, by); B-16: world (world advance,
+# request carries reason: key / mid)
+# ナレーターのタスクテーブル（backend-design 3.4）：ID、状態、リースだけを保存し、発話の原文は保存しない。
+# kind：open（プレイ開始）、talk（会話 1 ターン、音声またはテキスト）、advance（早送り、テストと評価専用）。B-3：
+# action（アクション）、choose（幕末に行き先を選ぶ）、plan（幕末にプランを話す）、arrival（着地後に登場人物が先に話す。
+# 記録だけ残し、ナレーターは処理しない）。B-4：confirm（意図確認への回答、request に draftId・optionId・by）。
+# B-16：world（世界の進行、request に reason：key / mid）
 turns = Table(
     "turns",
     metadata,
     Column("turn_id", Text, primary_key=True),
     _pt_fk(),
     Column("kind", Text, nullable=False),
-    Column("input_mode", Text),  # talk：voice / text
-    Column("character", Text),  # talk：和谁说
-    Column("turn_seq", BigInteger),  # 前端的 turnSeq
-    Column("minutes", Integer),  # advance：快进几分钟；完成后：这一轮花了几分钟（turn_settled.minutes）
-    Column("status", Text, nullable=False),  # pending / leased / done / retracted / failed / lost（断线时人物没说完）
+    Column("input_mode", Text),  # talk: voice / text
+    Column("character", Text),  # talk: who is spoken to / 誰と話すか
+    Column("turn_seq", BigInteger),  # The frontend's turnSeq / フロントエンドの turnSeq
+    # advance: how many minutes to fast-forward; when done: how many minutes this turn took (turn_settled.minutes)
+    # advance：何分早送りするか。完了後：このターンにかかった分数（turn_settled.minutes）
+    Column("minutes", Integer),
+    # pending / leased / done / retracted / failed / lost (character had not finished when the connection dropped)
+    # pending / leased / done / retracted / failed / lost（接続が切れたとき登場人物が話し終えていなかった）
+    Column("status", Text, nullable=False),
     Column("outcome", Text),  # turn_settled.outcome
     _ts("lease_until"),
     Column("attempts", Integer, nullable=False, server_default="0"),
-    Column("idempotency_key", Text, nullable=False),  # 这一轮写的事件的幂等键都以它开头
+    # The idempotency keys of the events this turn writes all start with it
+    # このターンが書くイベントの冪等キーはすべてこれで始まる
+    Column("idempotency_key", Text, nullable=False),
     Column("character_text_missing", Boolean, nullable=False, server_default=text("false")),
-    # B-3（0003）：前端的 clientMsgId；请求（动作的 kind / target / params / actionId，幕末的 optionId /
-    # enRouteChoice，不放原话）；结果（提交以后按顺序要推的消息，和这次演的固定演出）
+    # B-3 (0003): the frontend's clientMsgId; the request (an action's kind / target / params / actionId, the end of
+    # act's optionId / enRouteChoice, never the original words); the result (messages to push in order after the commit,
+    # and the set pieces played this time)
+    # B-3（0003）：フロントエンドの clientMsgId。リクエスト（アクションの kind / target / params / actionId、
+    # 幕末の optionId / enRouteChoice。発話の原文は入れない）。結果（コミット後に順に送るメッセージと、
+    # 今回演じた固定演出）
     Column("client_msg_id", Text),
     Column("request", JSONB),
     Column("result", JSONB),
     _ts("created_at", nullable=False, now=True),
     _ts("settled_at"),
-    _ts("commit_after"),  # B-4（0004）：叙事者最早什么时候提交这一轮（turn_complete、打算的定稿 + 3 秒，作废的窗口）
-    # B-12（0006）：第 0 步安全筛查给叙事者的标记（injection / pii / harmful / unscreened / ambiguous），不放判定的分数
+    # B-4 (0004): the earliest time the narrator commits this turn (turn_complete or the plan's final text + 3 seconds,
+    # the retract window)
+    # B-4（0004）：ナレーターがこのターンを最短でいつコミットするか（turn_complete、プランの確定 + 3 秒、
+    # 取り消し可能な時間）
+    _ts("commit_after"),
+    # B-12 (0006): step-0 safety screening flags for the narrator (injection / pii / harmful / unscreened / ambiguous);
+    # the judgement scores are not stored
+    # B-12（0006）：第 0 段階の安全スクリーニングがナレーターに渡す
+    # フラグ（injection / pii / harmful / unscreened / ambiguous）。判定のスコアは入れない
     Column("flags", JSONB),
     UniqueConstraint("playthrough_id", "idempotency_key", name="turns_idempotency"),
     Index("turns_queue", "playthrough_id", "status", "created_at"),
 )
 
-# 原话（data-design 3、5.2）：作废、删除时清空 text，行留着
+# Original words (data-design 3, 5.2): on retract or delete, text is cleared and the row stays
+# 発話の原文（data-design 3・5.2）：取り消し・削除のときは text を空にし、行は残す
 utterances = Table(
     "utterances",
     metadata,
     Column("utterance_id", Text, primary_key=True),
     _pt_fk(),
     Column("turn_id", Text, ForeignKey("turns.turn_id", ondelete="CASCADE"), nullable=False),
-    Column("speaker", Text, nullable=False),  # player / 人物 ID
+    Column("speaker", Text, nullable=False),  # player / character ID / 登場人物 ID
     Column("text", Text),
-    Column("source", Text),  # 人物的话：live / script / fallback
+    Column("source", Text),  # Character's words: live / script / fallback / 登場人物の発話：live / script / fallback
     Column("t", Integer, nullable=False),
     _ts("recorded_at", nullable=False, now=True),
     _ts("deleted_at"),
     Index("utterances_turn", "turn_id"),
 )
 
-# 事件日志（data-design 3）：只追加。契约 Event 的每个字段都有地方放：常用的是列，其余可选字段在 extra
+# Event log (data-design 3): append only. Every field of the contract Event has a place: common ones are columns, the
+# other optional fields go in extra
+# イベントログ（data-design 3）：追記のみ。契約の Event の各フィールドには置き場所がある：よく使うものは列、
+# ほかの任意フィールドは extra
 events = Table(
     "events",
     metadata,
@@ -170,13 +235,14 @@ events = Table(
     Column("check_result", JSONB, nullable=False),
     Column("supersedes", Text),
     Column("exit_id", Text),
-    Column("extra", JSONB, nullable=False, server_default=text("'{}'::jsonb")),  # beneficiary、confirmed 等
+    Column("extra", JSONB, nullable=False, server_default=text("'{}'::jsonb")),  # beneficiary, confirmed, etc.
     _ts("recorded_at", nullable=False),
     UniqueConstraint("playthrough_id", "seq", name="events_seq"),
     UniqueConstraint("playthrough_id", "idempotency_key", name="events_idempotency"),
 )
 
-# W-1 的 SimState（JSON），可以从事件重放（data-design 4.4）
+# W-1's SimState (JSON), can be replayed from events (data-design 4.4)
+# W-1 の SimState（JSON）。イベントからリプレイできる（data-design 4.4）
 world_state = Table(
     "world_state",
     metadata,
@@ -185,7 +251,8 @@ world_state = Table(
     Column("state", JSONB, nullable=False),
 )
 
-# REST 的 Idempotency-Key（api-contract 第 0 节）：同一个键、同样的请求回上次的结果
+# REST Idempotency-Key (api-contract section 0): the same key with the same request returns the previous result
+# REST の Idempotency-Key（api-contract 第 0 節）：同じキーで同じリクエストなら前回の結果を返す
 idempotency_keys = Table(
     "idempotency_keys",
     metadata,
@@ -198,7 +265,8 @@ idempotency_keys = Table(
     PrimaryKeyConstraint("user_id", "key"),
 )
 
-# 每局一行（backend-design 3.5）：先放轮数和各部分的模型花费，不含任何文字
+# One row per playthrough (backend-design 3.5): for now turn counts and each part's model spend, no text at all
+# 1 プレイにつき 1 行（backend-design 3.5）：まずはターン数と各部分のモデル費用。文章は一切含まない
 playthrough_metrics = Table(
     "playthrough_metrics",
     metadata,
@@ -212,12 +280,16 @@ playthrough_metrics = Table(
     Column("voice_in_seconds", Numeric(10, 1), nullable=False, server_default="0"),
     Column("voice_out_seconds", Numeric(10, 1), nullable=False, server_default="0"),
     _ts("degraded_at"),
-    # B-14（0008）：进节约档的时刻；降级的原因（budget / daily / service，第一次降级的那个）
+    # B-14 (0008): when the saving tier was entered; the degradation reason (budget / daily / service, the first one)
+    # B-14（0008）：節約段階に入った時刻。降格の理由（budget / daily / service、最初に降格したときのもの）
     _ts("budget_saving_at"),
     Column("degraded_reason", Text),
-    # B-21（0010）：候选话语的花费
+    # B-21 (0010): spend on suggested utterances / 発話候補の費用
     Column("cost_suggest_usd", Numeric(12, 6), nullable=False, server_default="0"),
-    # B-2（0002）：分流和改写的花费；流水线的计数（分流跳过、超时降级的轮，改写、降级、拒绝、因要确认而丢弃的候选）
+    # B-2 (0002): triage and rewrite spend; pipeline counts (turns where triage was skipped or that degraded on timeout;
+    # candidates rewritten, downgraded, rejected, or dropped because they needed confirmation)
+    # B-2（0002）：振り分けと書き換えの費用。パイプラインの件数（振り分けを飛ばしたターン、
+    # タイムアウトで降格したターン、書き換え・降格・却下・確認が必要なため破棄した候補）
     Column("cost_triage_usd", Numeric(12, 6), nullable=False, server_default="0"),
     Column("cost_rewrite_usd", Numeric(12, 6), nullable=False, server_default="0"),
     Column("turns_triage_skipped", Integer, nullable=False, server_default="0"),
@@ -226,31 +298,50 @@ playthrough_metrics = Table(
     Column("candidates_downgraded", Integer, nullable=False, server_default="0"),
     Column("candidates_rejected", Integer, nullable=False, server_default="0"),
     Column("candidates_confirm_dropped", Integer, nullable=False, server_default="0"),
-    # B-3（0003）：一行地の文和幕末打算的花费；动作的次数（收幕时队列里回 refused 的另数），打算成行、不成行的次数
+    # B-3 (0003): spend on one-line 地の文 (narration) and end-of-act plans; action counts (those answered refused from
+    # the queue when the act closed are counted separately), counts of feasible and infeasible plans
+    # B-3（0003）：一行の地の文と幕末のプランの費用。アクションの回数（幕を閉じたときにキューで
+    # refused を返したものは別に数える）、プランが成り立った回数と成り立たなかった回数
     Column("cost_narrate_usd", Numeric(12, 6), nullable=False, server_default="0"),
     Column("cost_plan_usd", Numeric(12, 6), nullable=False, server_default="0"),
     Column("actions", Integer, nullable=False, server_default="0"),
     Column("actions_act_ended", Integer, nullable=False, server_default="0"),
     Column("plans_accepted", Integer, nullable=False, server_default="0"),
     Column("plans_refused", Integer, nullable=False, server_default="0"),
-    # B-4（0004）：推出的意图确认（= yes + no + timeout，局终了时最多还开着 1 个），答「是」以后重查没过的
+    # B-4 (0004): intent confirmations pushed (= yes + no + timeout, at most 1 still open when the playthrough ends),
+    # those that failed the re-check after a "yes"
+    # B-4（0004）：出した意図確認（= yes + no + timeout、プレイ終了時に開いたままなのは多くても 1 つ）、
+    # 「はい」の後の再チェックを通らなかったもの
     Column("confirms_asked", Integer, nullable=False, server_default="0"),
     Column("confirms_yes", Integer, nullable=False, server_default="0"),
     Column("confirms_no", Integer, nullable=False, server_default="0"),
     Column("confirms_timeout", Integer, nullable=False, server_default="0"),
     Column("confirms_rejected", Integer, nullable=False, server_default="0"),
-    # B-9（0005）：结局开演的时刻、世界结局的分类、走没走模板（S-065）、调了几次模型、生成用了多久、结局的花费
+    # B-9 (0005): when the ending started playing, the world ending's category, whether the template was used (S-065),
+    # how many model calls, how long generation took, the ending's spend
+    # B-9（0005）：エンディングの開始時刻、世界のエンディングの分類、テンプレートを使ったか（S-065）、
+    # モデルの呼び出し回数、生成にかかった時間、エンディングの費用
     _ts("ending_started_at"),
     Column("ending_outcome", Text),
     Column("ending_template", Boolean),
     Column("ending_calls", Integer),
     Column("ending_ms", Integer),
     Column("cost_ending_usd", Numeric(12, 6), nullable=False, server_default="0"),
-    # B-12（0006）：只记次数（S-057、S-069 ③），列名按数据评审 #112 的表。安全分类器（含重发）和 Model Armor 的花费；
-    # 出戏卡（信号和第二次 ambiguous）、ambiguous 的次数（含出小提示的那次）、小提示、没判定、分类器拒答、
-    # 带注入 / 个人信息 / 有害标记交给叙事者的轮数、Model Armor 出错（输入输出两边）；
-    # 输出侧：过了监控的人物定稿句数（分母）、命中剧透的句数、判有害的句数、剧透重建会话、以问句结尾的句数、
-    # 同一人物重复问同一句、问句过多的提示打开
+    # B-12 (0006): counts only (S-057, S-069 ③); column names follow the table in data review #112. Spend on the
+    # safety classifier (including resends) and Model Armor; out-of-character cards (signal and second ambiguous),
+    # ambiguous counts (including the one that showed the small hint), small hints, not judged, classifier refusals,
+    # turns handed to the narrator with an injection / personal information / harmful flag, Model Armor errors (both
+    # input and output);
+    # output side: finalised character lines that passed monitoring (the denominator), lines that hit a spoiler, lines
+    # judged harmful, sessions rebuilt for spoilers, lines ending in a question, the same character repeating the same
+    # question, the too-many-questions note switched on
+    # B-12（0006）：回数だけを記録する（S-057、S-069 ③）。列名はデータレビュー #112 の表に従う。
+    # 安全分類器（再送を含む）と Model Armor の費用。物語の外に出るカード（signal と 2 回目の ambiguous）、
+    # ambiguous の回数（小さなヒントを出した回を含む）、小さなヒント、判定なし、分類器の回答拒否、
+    # インジェクション / 個人情報 / 有害のフラグ付きでナレーターに渡したターン数、Model Armor のエラー（入力・
+    # 出力の両側）。出力側：監視を通った登場人物の確定セリフ数（分母）、ネタバレに当たったセリフ数、
+    # 有害と判定したセリフ数、ネタバレによるセッション再構築、疑問文で終わるセリフ数、
+    # 同じ登場人物が同じ質問を繰り返した数、質問が多すぎるときの注意を出した数
     Column("cost_safety_usd", Numeric(12, 6), nullable=False, server_default="0"),
     Column("cost_armor_usd", Numeric(12, 6), nullable=False, server_default="0"),
     Column("safety_pauses", Integer, nullable=False, server_default="0"),
@@ -269,44 +360,63 @@ playthrough_metrics = Table(
     Column("output_questions", Integer, nullable=False, server_default="0"),
     Column("output_questions_repeated", Integer, nullable=False, server_default="0"),
     Column("output_question_notes", Integer, nullable=False, server_default="0"),
-    # B-13（0007）：记忆一句和「不会撤销的后果」一句的花费；写了的记忆、三道过滤没过的、模型出错超时没写的、
-    # 在記憶帳删掉的（Model Armor 的花费和出错照旧记在 cost_armor_usd、armor_errors）
+    # B-13 (0007): spend on the memory line and the "consequence that will not be undone" line; memories written,
+    # those that failed the three filters, those not written because the model errored or timed out, those deleted in
+    # the 記憶帳 (Model Armor's spend and errors are still recorded in cost_armor_usd, armor_errors)
+    # B-13（0007）：記憶の一文と「取り消されない結果」の一文の費用。書いた記憶、3 段のフィルターを通らなかったもの、
+    # モデルのエラーやタイムアウトで書かなかったもの、記憶帳で削除したもの（Model Armor の費用とエラーはこれまでどおり
+    # cost_armor_usd、armor_errors に記録する）
     Column("cost_memory_usd", Numeric(12, 6), nullable=False, server_default="0"),
     Column("memories_written", Integer, nullable=False, server_default="0"),
     Column("memories_filtered", Integer, nullable=False, server_default="0"),
     Column("memories_failed", Integer, nullable=False, server_default="0"),
     Column("memories_deleted", Integer, nullable=False, server_default="0"),
-    # B-15（0009，S-072 ⑤）：复核的花费；复核了几次（含第二次 ambiguous 的）、降成 ambiguous 的、
-    # 复核失败保留 signal 的、护栏命中不复核的
+    # B-15 (0009, S-072 ⑤): review spend; number of reviews (including second ambiguous ones), those downgraded to
+    # ambiguous, those that kept signal because the review failed, those not reviewed because a guardrail hit
+    # B-15（0009、S-072 ⑤）：再確認の費用。再確認の回数（2 回目の ambiguous を含む）、ambiguous に下げたもの、
+    # 再確認に失敗して signal を残したもの、ガードレールに当たったため再確認しなかったもの
     Column("cost_safety_review_usd", Numeric(12, 6), nullable=False, server_default="0"),
     Column("safety_reviews", Integer, nullable=False, server_default="0"),
     Column("safety_downgrades", Integer, nullable=False, server_default="0"),
     Column("safety_review_failed", Integer, nullable=False, server_default="0"),
     Column("safety_guarded", Integer, nullable=False, server_default="0"),
-    # B-16（0011）：世界推进的花费；写了的人物打算的事件、导演事件（origin plan / director）
+    # B-16 (0011): world advance spend; character-plan events and director events written (origin plan / director)
+    # B-16（0011）：世界の進行の費用。書いた登場人物のプランのイベント、ディレクターのイベント（origin plan / director）
     Column("cost_world_usd", Numeric(12, 6), nullable=False, server_default="0"),
     Column("world_events", Integer, nullable=False, server_default="0"),
     Column("director_events", Integer, nullable=False, server_default="0"),
 )
 
-# 意图确认的草稿（B-4，api-contract 3.9）：叙事者提出、还没答的那一个候选（不放原话）。关掉就删行，随整局删除。
-# turn_id 是提出它的那一轮（确认以后的事件挂在那一轮上，记憶帳删那一轮时草稿按「不是」丢掉）
+# Intent-confirmation drafts (B-4, api-contract 3.9): the one candidate the narrator proposed that is not answered yet
+# (no original words). The row is deleted when closed, and deleted with the playthrough.
+# turn_id is the turn that proposed it (events after confirmation hang off that turn; when the 記憶帳 deletes that
+# turn, the draft is dropped as a "no")
+# 意図確認の草稿（B-4、api-contract 3.9）：ナレーターが出して、まだ回答のない候補 1 つ（発話の原文は入れない）。
+# 閉じたら行を削除し、プレイごと削除する。turn_id はそれを出したターン（確認後のイベントはそのターンにぶら下がる。
+# 記憶帳でそのターンを削除すると、草稿は「いいえ」として捨てる）
 drafts = Table(
     "drafts",
     metadata,
     Column("draft_id", Text, primary_key=True),  # draft_ + ULID
     _pt_fk(),
     Column("turn_id", Text, ForeignKey("turns.turn_id", ondelete="CASCADE"), nullable=False),
-    Column("character", Text, nullable=False),  # 反问的人物
-    Column("candidate", JSONB, nullable=False),  # 过了检查的候选：actor、type、summary、effects、place 等
-    Column("prompt", Text, nullable=False),  # 人物反问的那一句（confirm.prompt）
-    Column("asked", Boolean, nullable=False),  # 人物这一轮的回答已经在反问（不另起一轮）
+    Column("character", Text, nullable=False),  # The character asking back / 聞き返す登場人物
+    # The candidate that passed the check: actor, type, summary, effects, place, etc.
+    # チェックを通った候補：actor、type、summary、effects、place など
+    Column("candidate", JSONB, nullable=False),
+    # The line in which the character asks back (confirm.prompt) / 登場人物が聞き返す一言（confirm.prompt）
+    Column("prompt", Text, nullable=False),
+    # The character's answer this turn is already the question back (no separate turn)
+    # 登場人物のこのターンの回答がすでに聞き返しになっている（別のターンを起こさない）
+    Column("asked", Boolean, nullable=False),
     _ts("created_at", nullable=False, now=True),
-    _ts("expires_at"),  # 推出 confirm 时写：推出 + 30 秒
+    _ts("expires_at"),  # Written when confirm is pushed: push + 30 s / confirm を送るときに書く：送信 + 30 秒
     Index("drafts_playthrough", "playthrough_id"),
 )
 
-# 结局（B-9，data-design 第 84 行）：一局一行，body 是数据契约第 5 节的 Ending，随整局删除
+# Endings (B-9, data-design line 84): one row per playthrough; body is the Ending from data contract section 5;
+# deleted with the playthrough
+# エンディング（B-9、data-design 第 84 行）：1 プレイにつき 1 行。body はデータ契約第 5 節の Ending。プレイごと削除する
 endings = Table(
     "endings",
     metadata,
@@ -317,8 +427,13 @@ endings = Table(
     UniqueConstraint("playthrough_id", name="endings_playthrough"),
 )
 
-# 人物对玩家的记忆（B-13，契约第 4 节）：删了 text 置空、写 deleted_at，行留着（审计）；随整局删除。
-# keeps：删除确认里「不会撤销的后果」一句的缓存，keeps_done = 算过了（算出 null 也缓存）
+# Characters' memories of the player (B-13, contract section 4): on deletion text is set to null and deleted_at is
+# written, the row stays (audit); deleted with the playthrough.
+# keeps: cache of the "consequence that will not be undone" line in the delete confirmation; keeps_done = already
+# computed (a null result is cached too)
+# 登場人物のプレイヤーについての記憶（B-13、契約第 4 節）：削除すると text を null にして deleted_at を書き、
+# 行は残す（監査用）。プレイごと削除する。
+# keeps：削除確認の「取り消されない結果」の一文のキャッシュ。keeps_done = 計算済み（null になってもキャッシュする）
 memory_items = Table(
     "memory_items",
     metadata,
@@ -338,15 +453,22 @@ memory_items = Table(
     Column("keeps_done", Boolean, nullable=False, server_default=text("false")),
     _ts("created_at", nullable=False, now=True),
     _ts("deleted_at"),
-    # 局势说明和算关系只读没删的（数据评审）
+    # Situation briefs and relationship calculation read only undeleted rows (data review)
+    # 状況説明と関係の計算は削除されていないものだけを読む（データレビュー）
     Index("memory_items_character", "playthrough_id", "character", postgresql_where=text("deleted_at IS NULL")),
 )
 
-# data-design 5.3 的删除清单里还没建的表（局势说明不存库，每次开会话现拼），eval_api 的 db_absent 答 0
+# Tables on data-design 5.3's deletion list that are not built yet (situation briefs are not stored; they are assembled
+# fresh each time a session opens); eval_api's db_absent answers 0 for them
+# data-design 5.3 の削除リストのうち、まだ作っていないテーブル（状況説明は DB に保存せず、
+# セッションを開くたびにその場で組み立てる）。eval_api の db_absent はこれらに 0 を返す
 NOT_BUILT = ("briefs",)
 
-# B-14（0008）：每账号每天（日本时间）开了几局、说了多少秒语音（backend-design 5.2）。删局不退次数，所以不从
-# playthroughs 现数；只有数，随账号删除
+# B-14 (0008): per account per day (Japan time), how many playthroughs were started and how many seconds of voice were
+# spoken (backend-design 5.2). Deleting a playthrough does not refund the count, so it is not counted live from
+# playthroughs; numbers only, deleted with the account
+# B-14（0008）：アカウントごと・1 日（日本時間）ごとに開始したプレイ数と話した音声の秒数（backend-design 5.2）。
+# プレイを削除しても回数は戻らないので、playthroughs からその場で数えない。数字だけで、アカウントごと削除する
 account_days = Table(
     "account_days",
     metadata,
@@ -357,7 +479,8 @@ account_days = Table(
     PrimaryKeyConstraint("user_id", "day"),
 )
 
-# B-14（0008）：运维开关（现在只有 voice_enabled，backend-design 5.3 的全局熔断）
+# B-14 (0008): operations switches (for now only voice_enabled, backend-design 5.3's global circuit breaker)
+# B-14（0008）：運用スイッチ（今は voice_enabled だけ。backend-design 5.3 の全体サーキットブレーカー）
 app_settings = Table(
     "app_settings",
     metadata,
@@ -366,7 +489,8 @@ app_settings = Table(
     _ts("updated_at", nullable=False, now=True),
 )
 
-# data-design 5.3 的删除清单里，已经建了的表（eval_api 的 db_absent 查这些）
+# Tables on data-design 5.3's deletion list that are already built (eval_api's db_absent checks these)
+# data-design 5.3 の削除リストのうち、作成済みのテーブル（eval_api の db_absent はこれらを確認する）
 PER_PLAYTHROUGH = (
     "playthroughs",
     "turns",

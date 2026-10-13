@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "api/rest/telemetry.schema.json",
   "title": "POST /v1/telemetry",
-  "description": "前端遥测（2.11、data-design 9.3）。成功回 204，没有响应体（C-1 评审定）",
+  "description": "Frontend telemetry (2.11, data-design 9.3). Returns 204 with no response body on success (decided in the C-1 review) / フロントエンドのテレメトリ（2.11、data-design 9.3）。成功時は 204 を返し、レスポンスボディはない（C-1 レビューで決定）",
   "x-endpoint": {
     "method": "POST",
     "path": "/v1/telemetry",

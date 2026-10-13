@@ -1,4 +1,5 @@
-// H-1 的真实页面流程：目录/存档由可控 API 返回，绝不在产品中注入示例结局。
+// H-1's real page flow: catalog and saves come from a controllable API; sample endings are never injected into the product.
+// H-1 の実際のページの流れ：目録とセーブデータは制御可能な API から返し、製品にサンプルのエンディングを注入することは決してしない。
 import { expect, test } from "@playwright/test";
 import {
   login,

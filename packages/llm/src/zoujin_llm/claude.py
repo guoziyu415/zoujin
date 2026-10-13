@@ -1,12 +1,30 @@
-"""Claude 这一家（D-028、B-8）：模型档名、单价、回放的键、Anthropic 的连接。叙事者和评审员共用这一份。
+"""The Claude provider (D-028, B-8): model tier names, prices, replay keys, and the Anthropic connection. The narrator
+and the judge share this one copy.
 
-- **模型 ID 不进仓库**：运行时由 Mac 上的环境变量或命令行给，回放、账本、报告里只写档名加版本（`model_tag()`，
-  如 "sonnet-5.5"）。认不出档名的不调。
-- **单价**只有一份：本包的 `claude-prices.json`，按档认（Haiku、Sonnet、Opus、Fable）。
-- **回放的键** `<provider>|<模型>|<提示版本>|<请求的 sha256>`，Google 和 Claude 同一个函数，换了供应商查不到。
-- **连接**：同步（评审员、Batch）、异步（叙事者）两个客户端都 `max_retries=0`，Key 只从环境变量 `ANTHROPIC_API_KEY`
-  读（SDK 自己读，这里不碰）。SDK 的错误换成不带原消息的异常：429、529 → `RateLimited`，别的 →
-  `ModelCallFailed`（只有状态码）。SDK 在可选依赖 `real` 里，只在真调时才 import。
+- **Model IDs stay out of the repo**: they are given at runtime by environment variables or the command line on the Mac;
+  replays, the ledger and reports record only the tier name plus version (`model_tag()`, e.g. "sonnet-5.5"). A model
+  whose tier name cannot be recognized is not called.
+- **Prices** exist in one place only: this package's `claude-prices.json`, matched by tier (Haiku, Sonnet, Opus, Fable).
+- **Replay keys** `<provider>|<model>|<prompt version>|<sha256 of the request>`: Google and Claude use the same
+  function, and a key is not found after switching providers.
+- **Connection**: both the sync client (judge, Batch) and the async client (narrator) use `max_retries=0`; the key is
+  read only from the environment variable `ANTHROPIC_API_KEY` (the SDK reads it itself; this code does not touch it).
+  SDK errors are turned into exceptions without the original message: 429, 529 → `RateLimited`, anything else →
+  `ModelCallFailed` (status code only). The SDK is in the optional dependency `real` and is imported only for real
+  calls.
+
+Claude というプロバイダ（D-028、B-8）：モデルのティア名、単価、リプレイのキー、Anthropic への接続。ナレーターと審査員は
+この 1 つを共用する。
+
+- **モデル ID はリポジトリに入れない**：実行時に Mac 上の環境変数かコマンドラインで与え、リプレイ、台帳、レポートには
+  ティア名とバージョンだけを書く（`model_tag()`、例 "sonnet-5.5"）。ティア名を判別できないものは呼び出さない。
+- **単価**は 1 か所だけ：このパッケージの `claude-prices.json` で、ティアで照合する（Haiku、Sonnet、Opus、Fable）。
+- **リプレイのキー** `<provider>|<モデル>|<プロンプトバージョン>|<リクエストの sha256>`。Google と Claude
+  で同じ関数を使い、プロバイダを変えると見つからない。
+- **接続**：同期（審査員、Batch）と非同期（ナレーター）の 2 つのクライアントはどちらも `max_retries=0`。キーは環境変数
+  `ANTHROPIC_API_KEY` からだけ読む（SDK 自身が読み、ここでは触らない）。SDK のエラーは元のメッセージを含まない例外に
+  変える：429、529 → `RateLimited`、それ以外 → `ModelCallFailed`（ステータスコードのみ）。SDK はオプション依存 `real`
+  にあり、実際に呼び出すときだけ import する。
 """
 
 from __future__ import annotations
@@ -26,53 +44,82 @@ from zoujin_llm.errors import ModelCallFailed, RateLimited
 type Json = Any
 
 PROVIDER = "claude"
-TAG_RE = re.compile(r"(opus|sonnet|haiku|fable)-(\d+)-(\d+)")  # 模型 ID 里的档名和版本
+# Tier name and version in a model ID
+# モデル ID 内のティア名とバージョン
+TAG_RE = re.compile(r"(opus|sonnet|haiku|fable)-(\d+)-(\d+)")
 PRICES_PATH = Path(__file__).with_name("claude-prices.json")
-LIMITS = (429, 529)  # 限流、过载：第一次就停
+LIMITS = (429, 529)  # rate limited, overloaded: stop at the first one / レート制限、過負荷：最初の 1 回で止まる
 
 
 def model_tag(model: str) -> str:
-    """模型 ID → 档名加版本（"…-opus-5-5…" → "opus-5.5"）。回放的键、回放和账本的行、报告都用它，模型 ID 不进仓库。
-    认不出（没有档名、档名不止一个、档名后面没有两段数字）就不调。"""
+    """Model ID → tier name plus version ("…-opus-5-5…" → "opus-5.5"). Replay keys, replay and ledger lines, and
+    reports all use it, so model IDs stay out of the repo. If it cannot be recognized (no tier name, more than one tier
+    name, or the tier name is not followed by two numbers), the model is not called.
+
+    モデル ID → ティア名とバージョン（"…-opus-5-5…" → "opus-5.5"）。リプレイのキー、リプレイと台帳の行、レポートはすべて
+    これを使い、モデル ID はリポジトリに入れない。判別できない場合（ティア名がない、ティア名が複数ある、ティア名の後に
+    2 つの数字がない）は呼び出さない。
+    """
     hits = TAG_RE.findall(model.lower())
     if len({h[0] for h in hits}) != 1:
-        raise ValueError(f"认不出模型 {model!r} 的档名和版本，不调")
+        raise ValueError(
+            f"Unrecognized model {model!r}: no tier name and version; not calling / "
+            f"モデル {model!r} のティア名とバージョンを判別できないため、呼び出さない"
+        )
     tier, major, minor = hits[0]
     return f"{tier}-{major}.{minor}"
 
 
 def tier_of(model: str) -> str:
-    """模型 ID 或档名加版本 → 档名（"sonnet-5.5" → "sonnet"）。"""
+    """Model ID or tier name plus version → tier name ("sonnet-5.5" → "sonnet").
+
+    モデル ID またはティア名とバージョン → ティア名（"sonnet-5.5" → "sonnet"）。
+    """
     return model_tag(model.replace(".", "-")).split("-")[0]
 
 
 def canonical(request: Json) -> str:
-    """规范化请求：键排序、不转义非 ASCII、没有多余空白。"""
+    """Normalize a request: sorted keys, non-ASCII not escaped, no extra whitespace.
+
+    リクエストの正規化：キーをソートし、非 ASCII はエスケープせず、余分な空白を入れない。
+    """
     return json.dumps(request, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
 
 
 def replay_key(provider: str, model: str, version: str, request: Json) -> str:
-    """回放的键。model：Google 写模型 ID，Claude 写档名加版本。"""
+    """The replay key. model: the model ID for Google, the tier name plus version for Claude.
+
+    リプレイのキー。model：Google はモデル ID、Claude はティア名とバージョン。
+    """
     return f"{provider}|{model}|{version}|{hashlib.sha256(canonical(request).encode()).hexdigest()}"
 
 
-# —— 单价 ——
+# —— Prices / 単価 ——
 
 
 @dataclass(frozen=True)
 class Price:
-    input: float  # 美元 / 百万 token
+    input: float  # US dollars per million tokens / 100 万トークンあたりの米ドル
     output: float
-    cache_read: float  # 缓存读取，各档不同
-    tokenizer: float = 1.0  # 同样的文字比别的档多算几倍 token（Haiku 约 1.3），只用在调用前的预计
+    cache_read: float  # cache reads, different per tier / キャッシュ読み取り。ティアごとに異なる
+    # How many times more tokens the same text counts as than in other tiers (Haiku about 1.3); used only for the
+    # estimate before a call
+    # 同じ文字列をほかのティアの何倍のトークンに数えるか（Haiku は約 1.3）。呼び出し前の見積もりにだけ使う
+    tokenizer: float = 1.0
 
 
 @dataclass(frozen=True)
 class ClaudePrices:
-    tiers: Mapping[str, Price]  # 模型档（opus / sonnet / haiku / fable）→ 单价
-    batch_discount: float  # Batch 两头的折扣（0.5 = 半价）
-    cache_write: float  # 缓存写入是输入价的几倍（5 分钟的）
-    chars_per_token: float  # 估输入 token 用：日语、中文按每字一个 token 估，偏高
+    tiers: Mapping[str, Price]  # model tier (opus / sonnet / haiku / fable) → price / モデルのティア → 単価
+    # Batch discount on both input and output (0.5 = half price)
+    # Batch の入出力の割引（0.5 = 半額）
+    batch_discount: float
+    # Cache-write multiple of the input price (5-minute)
+    # キャッシュ書き込みは入力単価の何倍か（5 分間）
+    cache_write: float
+    # For estimating input tokens: Japanese and Chinese are estimated at one token per character, on the high side
+    # 入力トークンの見積もり用：日本語と中国語は 1 文字 1 トークンで見積もり、高めになる
+    chars_per_token: float
 
     @classmethod
     def from_json(cls, d: Mapping[str, Any]) -> ClaudePrices:
@@ -83,14 +130,26 @@ class ClaudePrices:
         return cls(tiers, float(d["batchDiscount"]), float(d["cacheWriteMultiplier"]), float(d["charsPerToken"]))
 
     def price(self, model: str) -> Price:
-        """按档认：模型 ID 或档名加版本里含哪个档名就用哪个，认不出就不调。"""
+        """Match by tier: use whichever tier name the model ID or tier name plus version contains; if it cannot be
+        recognized, do not call.
+
+        ティアで照合する：モデル ID またはティア名とバージョンに含まれるティア名を使う。判別できなければ呼び出さない。
+        """
         hits = [t for t in self.tiers if t in model.lower()]
         if len(hits) != 1:
-            raise ValueError(f"认不出模型 {model!r} 的价目档（{'/'.join(self.tiers)}），不调")
+            raise ValueError(
+                f"Unrecognized model {model!r}: no price tier ({'/'.join(self.tiers)}); not calling / "
+                f"モデル {model!r} の価格ティア（{'/'.join(self.tiers)}）を判別できないため、呼び出さない"
+            )
         return self.tiers[hits[0]]
 
     def cost(self, model: str, usage: Mapping[str, int], *, batch: bool = False) -> float:
-        """usage：inputTokens（没走缓存的输入）、cacheReadTokens、cacheWriteTokens、outputTokens（含思考）。"""
+        """usage: inputTokens (input not served from the cache), cacheReadTokens, cacheWriteTokens, outputTokens
+        (including thinking).
+
+        usage：inputTokens（キャッシュを通らなかった入力）、cacheReadTokens、cacheWriteTokens、
+        outputTokens（思考を含む）。
+        """
         p = self.price(model)
         usd = (
             (usage.get("inputTokens", 0) + usage.get("cacheWriteTokens", 0) * self.cache_write) * p.input
@@ -100,13 +159,21 @@ class ClaudePrices:
         return usd * (self.batch_discount if batch else 1.0)
 
     def estimate_chars(self, model: str, chars: int, max_output: int, *, batch: bool = False) -> float:
-        """调用前的预计（偏高）：输入按字数估、不算缓存，乘这一档的分词倍数；输出按上限（思考也算输出）。"""
+        """The estimate before a call (on the high side): input is estimated from the character count, ignoring the
+        cache, times this tier's tokenizer multiple; output is taken at the cap (thinking also counts as output).
+
+        呼び出し前の見積もり（高め）：入力は文字数から見積もり、キャッシュは考えず、このティアのトークナイザー倍率を
+        掛ける。出力は上限で見積もる（思考も出力に数える）。
+        """
         p = self.price(model)
         tokens = int(chars / self.chars_per_token * p.tokenizer) + 1
         return self.cost(model, {"inputTokens": tokens, "outputTokens": max_output}, batch=batch)
 
     def estimate(self, model: str, request: Mapping[str, Json], *, batch: bool) -> float:
-        """评审员的请求（system、user、schema、maxTokens）的预计。"""
+        """The estimate for a judge request (system, user, schema, maxTokens).
+
+        審査員のリクエスト（system、user、schema、maxTokens）の見積もり。
+        """
         chars = len(request["system"]) + len(request["user"]) + len(canonical(request["schema"]))
         return self.estimate_chars(model, chars, int(request["maxTokens"]), batch=batch)
 
@@ -116,20 +183,27 @@ def claude_prices() -> ClaudePrices:
     return ClaudePrices.from_json(json.loads(PRICES_PATH.read_text(encoding="utf-8")))
 
 
-# —— 和 API 之间 ——
+# —— Talking to the API / API とのやりとり ——
 
 
 @dataclass(frozen=True)
 class Reply:
-    text: str | None  # 第一段 text（结构化输出的 JSON）；没有时 None
+    # The first text block (structured output JSON); None if absent
+    # 最初の text ブロック（構造化出力の JSON）。なければ None
+    text: str | None
     stop_reason: str | None
-    # inputTokens（没走缓存的）、cacheReadTokens、cacheWriteTokens、outputTokens（含思考）、thinkingTokens（其中思考的，
-    # 只用来看，算钱不再加）
+    # inputTokens (not served from the cache), cacheReadTokens, cacheWriteTokens, outputTokens (including thinking),
+    # thinkingTokens (the thinking part of those, for information only; not added again when computing cost)
+    # inputTokens（キャッシュを通らなかったもの）、cacheReadTokens、cacheWriteTokens、outputTokens（思考を含む）、
+    # thinkingTokens（そのうちの思考分。参考用で、費用計算では重ねて足さない）
     usage: dict[str, int]
 
 
 def reply_of(msg: Any) -> Reply:
-    """SDK 的 Message → Reply（只取文字和用量，思考的内容不取）。"""
+    """SDK Message → Reply (takes only the text and usage, not the thinking content).
+
+    SDK の Message → Reply（テキストと使用量だけを取り、思考の内容は取らない）。
+    """
     u = msg.usage
     usage = {
         "inputTokens": int(u.input_tokens),
@@ -147,7 +221,10 @@ def thinking_tokens(usage: Any) -> int:
     return int(getattr(details, "thinking_tokens", 0) or 0)
 
 
-# API 错误的类型（`error.type`，如 authentication_error）：没有 ID 和 Key，用来分清是 Key、请求还是额度的问题
+# The API error type (`error.type`, e.g. authentication_error): contains no IDs or keys, and tells apart problems with
+# the key, the request or the quota
+# API エラーの種類（`error.type`、例 authentication_error）：ID もキーも含まず、キー、リクエスト、利用枠のどれの問題かを
+# 見分けるのに使う
 ERROR_TYPE = re.compile(r"[a-z_]{1,40}")
 
 
@@ -156,7 +233,10 @@ def error_type(e: BaseException) -> str:
     return f" {t}" if isinstance(t, str) and ERROR_TYPE.fullmatch(t) else ""
 
 
-# 原消息不记；只按这几个词认出是哪一类，带上这里写死的类名（消息里的字一个都不出去）。先认的在前
+# The original message is not recorded; only these words are used to recognize the category, and the hardcoded class
+# name here is attached (not one word of the message gets out). Earlier entries are matched first
+# 元のメッセージは記録しない。これらの語だけでどの種類かを見分け、ここに固定で書いた種類名を付ける（メッセージの文字は
+# 一つも外に出さない）。先に書いたものから照合する
 HINTS = (
     ("too complex", "schema-too-complex"),
     ("optional parameter", "too-many-optional"),
@@ -179,28 +259,45 @@ def hint(e: BaseException) -> str:
     if not isinstance(message, str):
         return ""
     low = message.lower()
-    return next((f"提示 {tag}；" for word, tag in HINTS if word in low), "")
+    return next((f"hint {tag}; " for word, tag in HINTS if word in low), "")
 
 
 def translate(e: BaseException) -> Exception:
-    """SDK 的错误 → 不带原消息的异常。调用方 `raise translate(e) from None`，原消息不进日志和 Trace。"""
+    """SDK error → an exception without the original message. Callers `raise translate(e) from None`, so the original
+    message never reaches logs or the Trace.
+
+    SDK のエラー → 元のメッセージを含まない例外。呼び出し側は `raise translate(e) from None` とし、元のメッセージは
+    ログにも Trace にも入らない。
+    """
     import anthropic
 
     if isinstance(e, anthropic.APIStatusError):
         if e.status_code in LIMITS:
             return RateLimited(
-                f"Claude 回 {e.status_code}（限流或过载），停下",
+                f"Claude returned {e.status_code} (rate limited or overloaded); stopping / "
+                f"Claude が {e.status_code} を返した（レート制限または過負荷）。停止する",
                 provider="claude",
                 status=e.status_code,
                 retry_after=e.response.headers.get("retry-after"),
             )
-        return ModelCallFailed(f"Claude HTTP {e.status_code}{error_type(e)}（{hint(e)}消息不记）")
-    if isinstance(e, anthropic.APIError):  # 连接断开、超时
-        return ModelCallFailed(f"Claude 连不上：{type(e).__name__}（消息不记）")
-    return ModelCallFailed(f"Claude 调用出错：{type(e).__name__}（消息不记）")
+        return ModelCallFailed(
+            f"Claude HTTP {e.status_code}{error_type(e)} ({hint(e)}message not logged / メッセージは記録しない)"
+        )
+    if isinstance(e, anthropic.APIError):  # connection dropped, timeout / 接続切断、タイムアウト
+        return ModelCallFailed(
+            f"Claude unreachable / Claude に接続できない: {type(e).__name__} "
+            "(message not logged / メッセージは記録しない)"
+        )
+    return ModelCallFailed(
+        f"Claude call failed / Claude の呼び出しでエラー: {type(e).__name__} "
+        "(message not logged / メッセージは記録しない)"
+    )
 
 
-# SDK 和它的 HTTP 库的调试日志带请求的全文（提示、玩家的话、模型 ID）和错误的原消息：只留 WARNING 以上
+# Debug logs of the SDK and its HTTP libraries carry the full request (prompt, the player's words, model ID) and the
+# original error message: keep only WARNING and above
+# SDK とその HTTP ライブラリのデバッグログにはリクエストの全文（プロンプト、プレイヤーの発話、モデル ID）とエラーの元の
+# メッセージが含まれる：WARNING 以上だけを残す
 QUIET = ("anthropic", "httpx", "httpx2", "httpcore")
 
 
@@ -210,7 +307,10 @@ def quiet() -> None:
 
 
 def client() -> Any:
-    """同步客户端（评审员、Batch）。Key 由 SDK 从 ANTHROPIC_API_KEY 读，不自己重试。"""
+    """The sync client (judge, Batch). The SDK reads the key from ANTHROPIC_API_KEY; it does not retry on its own.
+
+    同期クライアント（審査員、Batch）。キーは SDK が ANTHROPIC_API_KEY から読み、自分では再試行しない。
+    """
     import anthropic
 
     quiet()
@@ -218,7 +318,10 @@ def client() -> Any:
 
 
 def async_client() -> Any:
-    """异步客户端（叙事者）。"""
+    """The async client (narrator).
+
+    非同期クライアント（ナレーター）。
+    """
     import anthropic
 
     quiet()
@@ -226,7 +329,10 @@ def async_client() -> Any:
 
 
 class AsyncTransport:
-    """叙事者用的传输层：一次 Messages 调用。测试换成假的，不联网。"""
+    """The narrator's transport layer: one Messages call. Tests swap in a fake and do not go online.
+
+    ナレーター用のトランスポート層：Messages の呼び出し 1 回。テストでは偽物に差し替え、ネットワークに出ない。
+    """
 
     def __init__(self, sdk: Any | None = None) -> None:
         quiet()

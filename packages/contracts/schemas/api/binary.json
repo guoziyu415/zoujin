@@ -1,5 +1,5 @@
 {
-  "description": "WebSocket 二进制帧（api-contract 3.1）：字节 0 类型，字节 1–4 turnSeq（uint32 大端），之后 PCM16 小端单声道",
+  "description": "WebSocket binary frame (api-contract 3.1): byte 0 type, bytes 1–4 turnSeq (uint32 big-endian), then PCM16 little-endian mono / WebSocket のバイナリフレーム（api-contract 3.1）：バイト 0 が種別、バイト 1–4 が turnSeq（uint32 ビッグエンディアン）、その後に PCM16 リトルエンディアンのモノラル",
   "headerBytes": 5,
   "turnSeqByteOrder": "big",
   "pcmByteOrder": "little",

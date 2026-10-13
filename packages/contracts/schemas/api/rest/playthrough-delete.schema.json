@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "api/rest/playthrough-delete.schema.json",
   "title": "DELETE /v1/playthroughs/{id}",
-  "description": "删除整局（2.9），后台按 data-design 5.2 L2 执行",
+  "description": "Delete a whole playthrough (2.9); carried out in the background per data-design 5.2 L2 / プレイ全体を削除する（2.9）。data-design 5.2 L2 に従いバックグラウンドで実行する",
   "x-endpoint": {
     "method": "DELETE",
     "path": "/v1/playthroughs/{id}",

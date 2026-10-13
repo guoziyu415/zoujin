@@ -236,42 +236,42 @@
     "workshop-northwest": {
       "at": [-15, -17.6],
       "face": [-11.5, -19.5],
-      "about": "石工房内的独立人物站位，避开门扇、工作台、石料和既有演出站位。"
+      "about": "A spot of its own for a character inside the stonemason's workshop, clear of the door leaves, the workbench, the stone blocks and the existing set-piece spots. / 石工房の中にある登場人物ひとり分の立ち位置。扉、作業台、石材、既存の演出用立ち位置を避ける。"
     },
     "workshop-entry": {
       "at": [-11.4, -17.7],
       "face": [-11.5, -19.5],
-      "about": "石工房内的独立人物站位，避开门扇、工作台、石料和既有演出站位。"
+      "about": "A spot of its own for a character inside the stonemason's workshop, clear of the door leaves, the workbench, the stone blocks and the existing set-piece spots. / 石工房の中にある登場人物ひとり分の立ち位置。扉、作業台、石材、既存の演出用立ち位置を避ける。"
     },
     "workshop-northeast": {
       "at": [-8.9, -17.1],
       "face": [-11.5, -19.5],
-      "about": "石工房内的独立人物站位，避开门扇、工作台、石料和既有演出站位。"
+      "about": "A spot of its own for a character inside the stonemason's workshop, clear of the door leaves, the workbench, the stone blocks and the existing set-piece spots. / 石工房の中にある登場人物ひとり分の立ち位置。扉、作業台、石材、既存の演出用立ち位置を避ける。"
     },
     "workshop-shed-front": {
       "at": [-15.8, -20.2],
       "face": [-11.5, -19.5],
-      "about": "石工房内的独立人物站位，避开门扇、工作台、石料和既有演出站位。"
+      "about": "A spot of its own for a character inside the stonemason's workshop, clear of the door leaves, the workbench, the stone blocks and the existing set-piece spots. / 石工房の中にある登場人物ひとり分の立ち位置。扉、作業台、石材、既存の演出用立ち位置を避ける。"
     },
     "workshop-shed-side": {
       "at": [-14, -21],
       "face": [-11.5, -19.5],
-      "about": "石工房内的独立人物站位，避开门扇、工作台、石料和既有演出站位。"
+      "about": "A spot of its own for a character inside the stonemason's workshop, clear of the door leaves, the workbench, the stone blocks and the existing set-piece spots. / 石工房の中にある登場人物ひとり分の立ち位置。扉、作業台、石材、既存の演出用立ち位置を避ける。"
     },
     "workshop-center": {
       "at": [-11.2, -19],
       "face": [-11.5, -19.5],
-      "about": "石工房内的独立人物站位，避开门扇、工作台、石料和既有演出站位。"
+      "about": "A spot of its own for a character inside the stonemason's workshop, clear of the door leaves, the workbench, the stone blocks and the existing set-piece spots. / 石工房の中にある登場人物ひとり分の立ち位置。扉、作業台、石材、既存の演出用立ち位置を避ける。"
     },
     "workshop-east": {
       "at": [-8, -20.5],
       "face": [-11.5, -19.5],
-      "about": "石工房内的独立人物站位，避开门扇、工作台、石料和既有演出站位。"
+      "about": "A spot of its own for a character inside the stonemason's workshop, clear of the door leaves, the workbench, the stone blocks and the existing set-piece spots. / 石工房の中にある登場人物ひとり分の立ち位置。扉、作業台、石材、既存の演出用立ち位置を避ける。"
     },
     "workshop-west": {
       "at": [-17, -17],
       "face": [-11.5, -19.5],
-      "about": "石工房内的独立人物站位，避开门扇、工作台、石料和既有演出站位。"
+      "about": "A spot of its own for a character inside the stonemason's workshop, clear of the door leaves, the workbench, the stone blocks and the existing set-piece spots. / 石工房の中にある登場人物ひとり分の立ち位置。扉、作業台、石材、既存の演出用立ち位置を避ける。"
     }
   }
 }

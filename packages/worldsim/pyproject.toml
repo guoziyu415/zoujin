@@ -1,7 +1,7 @@
 [project]
 name = "zoujin-worldsim"
 version = "0.0.0"
-description = "世界状态的共享规则库（W-1 从 reference/ 整理成包）"
+description = "Shared rule library for world state (W-1, packaged from reference/) / 世界状態の共有ルールライブラリ（W-1、reference/ をパッケージ化）"
 requires-python = ">=3.13,<3.14"
 dependencies = []
 

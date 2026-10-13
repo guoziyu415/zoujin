@@ -1,8 +1,19 @@
-"""一口气推演：参考实现 reference/worldsim.py 的 Sim 原样移植（W-1），加类型标注，行为不改。
+"""Whole-run simulation: the Sim of the reference implementation reference/worldsim.py ported verbatim (W-1), with
+type annotations added and behaviour unchanged.
 
-只改了一处：开局状态不再写死成广场，按身份读（Role.startPlace、Role.items，另按契约 3.1 把 var.act.current
-设成 Role.startAct；没有条件用到它，推演结果不变），所以 run()、arrival_delta() 要传 role。
-规则的来由见参考实现的文件头和 docs/data/contracts.md 2.4.1、2.5.1、2.6（1.6 的取值条件）。
+Only one thing changed: the opening state is no longer hard-coded to the square but read from the role
+(Role.startPlace, Role.items, and per contract 3.1 var.act.current is set to Role.startAct; no condition uses it, so
+simulation results are unchanged), so run() and arrival_delta() take role.
+For where the rules come from, see the reference implementation's file header and docs/data/contracts.md 2.4.1, 2.5.1,
+2.6 (value conditions in 1.6).
+
+一括シミュレーション：参照実装 reference/worldsim.py の Sim をそのまま移植（W-1）し、型注釈を加えた。挙動は
+変えていない。
+
+変えたのは 1 か所だけ：オープニングの状態を広場に固定せず、ロールから読む（Role.startPlace、Role.items。さらに
+契約 3.1 に従い var.act.current を Role.startAct にする。これを使う条件はなく、シミュレーション結果は変わらない）。
+そのため run()、arrival_delta() には role を渡す。
+ルールの由来は参照実装のファイル冒頭と docs/data/contracts.md 2.4.1、2.5.1、2.6（1.6 の値の条件）を参照。
 """
 
 from __future__ import annotations
@@ -19,7 +30,9 @@ type Condition = Mapping[str, Any]
 type Scenario = Mapping[str, Any]
 type Override = dict[str, Any]
 
-OCCURRED = ("happened", "altered")  # contracts 2.5（1.4 写清）：requires 的「发生了」包括 altered
+# contracts 2.5 (clarified in 1.4): "happened" for requires includes altered
+# contracts 2.5（1.4 で明記）：requires の「起きた」は altered を含む
+OCCURRED = ("happened", "altered")
 OPS: dict[str, Callable[[Any, Any], bool]] = {
     "==": lambda x, y: x == y,
     "!=": lambda x, y: x != y,
@@ -28,32 +41,50 @@ OPS: dict[str, Callable[[Any, Any], bool]] = {
     "in": lambda x, y: x in y,
 }
 BIG = 10**9
-SIGN = {"delayed": 1, "hastened": -1}  # 推迟的分钟为正，提前为负
+SIGN = {"delayed": 1, "hastened": -1}  # Delays are positive minutes, hastening negative / 遅延は正、前倒しは負の分
 
 
 def change_conflict(old: Override | None, new: Mapping[str, Any]) -> str | None:
-    """contracts 第 3 节（1.6 写清）：本局对一个还没结果的节拍只有一种改动。old 是已登记的改动（没有是 None），
-    new 是新的 {to, minutes?, outcomes?, note?}。能合返回 None，不能合返回原因（自检报 bad-state）。"""
+    """contracts section 3 (clarified in 1.6): in one run, a beat without a result yet has only one kind of change.
+    old is the registered change (None if none), new is the new {to, minutes?, outcomes?, note?}. Returns None if they
+    can be merged, otherwise the reason (the self-check reports bad-state).
+
+    contracts 第 3 節（1.6 で明記）：1 回のプレイで、まだ結果の出ていないビートへの変更は 1 種類だけ。old は登録済みの
+    変更（なければ None）、new は新しい {to, minutes?, outcomes?, note?}。統合できれば None、できなければ理由を返す
+    （セルフチェックは bad-state を報告する）。
+    """
     if old is None or (new["to"] == "prevented" and old["to"] != "prevented"):
         return None
     if old["to"] == "prevented":
-        return "已经登记了 prevented，不能再改"
+        return "prevented is already registered; it cannot be changed / すでに prevented が登録済みで、変更できない"
     if old["to"] in SIGN and new["to"] in SIGN:
         return None
-    return f"已经登记了 {old['to']}，不能再登记 {new['to']}（altered 不和推迟、提前混用，也只登记一次）"
+    return (
+        f"{old['to']} is already registered; cannot register {new['to']} as well (altered is not mixed with delays or"
+        f" hastening, and is registered only once) / すでに {old['to']} が登録済みで、{new['to']} は登録できない"
+        "（altered は遅延・前倒しと混ぜず、登録も 1 回だけ）"
+    )
 
 
 def merge_change(over: dict[str, Override], e: Effect) -> None:
-    """把一条 {op: beat} 改动合进 over（节拍 ID → 改动，就地改）：
-    - delayed、hastened 按带符号的分钟相加，净值 0 就去掉这条改动；
-    - prevented 顶掉之前的推迟、提前、改写；
-    - 其他组合（已登记 prevented 之后再改；altered 和推迟、提前混用；第二次 altered）抛 ValueError。"""
+    """Merges one {op: beat} change into over (beat ID → change, modified in place):
+    - delayed and hastened add up as signed minutes; if the net is 0, the change is removed;
+    - prevented replaces any earlier delay, hastening or rewrite;
+    - any other combination (changing after prevented is registered; mixing altered with delays or hastening; a second
+      altered) raises ValueError.
+
+    {op: beat} の変更 1 件を over（ビート ID → 変更、その場で更新）に統合する：
+    - delayed と hastened は符号付きの分数として足し合わせ、正味 0 ならその変更を取り除く；
+    - prevented はそれまでの遅延、前倒し、書き換えを上書きする；
+    - それ以外の組み合わせ（prevented 登録後の変更、altered と遅延・前倒しの混用、2 回目の altered）は ValueError を
+      送出する。
+    """
     bid = e["beat"]
     new: Override = {k: copy.deepcopy(v) for k, v in e.items() if k not in ("op", "beat")}
     old = over.get(bid)
     why = change_conflict(old, new)
     if why:
-        raise ValueError(f"{bid}：{why}")
+        raise ValueError(f"{bid}: {why}")
     if new["to"] in SIGN:
         net = SIGN[new["to"]] * new["minutes"] + (SIGN[old["to"]] * old["minutes"] if old else 0)
         if net == 0:
@@ -67,7 +98,7 @@ def role_of(world: World, role_id: str) -> Mapping[str, Any]:
     for r in world["roles"]:
         if r["id"] == role_id:
             return r  # type: ignore[no-any-return]
-    raise KeyError(f"身份不存在：{role_id}")
+    raise KeyError(f"Role does not exist / ロールが存在しない: {role_id}")
 
 
 class Sim:
@@ -77,11 +108,15 @@ class Sim:
         self.beats: dict[str, Mapping[str, Any]] = {b["id"]: b for b in world["beats"]}
         self.chars: dict[str, Mapping[str, Any]] = {c["id"]: c for c in world["characters"]}
         self.endings = sorted(world.get("endings", {}).get("world", []), key=lambda x: x["order"])
-        # to -> [(from, type, minutes)]：只含传递时间偏移的边
+        # to -> [(from, type, minutes)]: only edges that pass on a time offset
+        # to -> [(from, type, minutes)]：時間のずれを伝えるエッジだけ
         self.parents: defaultdict[str, list[tuple[str, str, int]]] = defaultdict(list)
-        # to -> [(from, type)]：timeLink = "order" 的边，只要求不早于 from（contracts 2.5.1，1.1）
+        # to -> [(from, type)]: edges with timeLink = "order", which only require not being earlier than from
+        # (contracts 2.5.1, 1.1)
+        # to -> [(from, type)]：timeLink = "order" のエッジ。from より早くないことだけを求める（contracts 2.5.1、1.1）
         self.after: defaultdict[str, list[tuple[str, str]]] = defaultdict(list)
-        # 有 delays / hastens 出边的节拍：它发不发生决定后面的时间
+        # Beats with outgoing delays / hastens edges: whether they happen decides later times
+        # delays / hastens の出エッジを持つビート：起きるかどうかで後の時刻が決まる
         self.timed: set[str] = set()
         for e in world["causal"]:
             if e["from"] in self.beats and e["to"] in self.beats:
@@ -105,17 +140,30 @@ class Sim:
                 state[e["var"]] = max(v.get("min", -BIG), min(v.get("max", BIG), state[e["var"]] + e["by"]))
             elif e["op"] == "relocate" and where is not None:
                 where[e["character"]] = e["place"]
-            elif e["op"] == "hold":  # contracts 1.3：物品换手，持有者记在 state[物品 ID]
+            # contracts 1.3: an item changes hands; the holder is recorded in state[item ID]
+            # contracts 1.3：アイテムの持ち主が替わる。持ち主は state[アイテム ID] に記録
+            elif e["op"] == "hold":
                 state[e["item"]] = e["to"]
 
     def value_requires(
         self, effs: Iterable[Effect], state: Mapping[str, Any], origin: str | None = None
     ) -> list[dict[str, Any]]:
-        """contracts 2.6（1.6，C-16）StateVar.valueRequires：事件把变量改成某个值时，这个值的 when 要成立。
-        ① 只有 origin == "schedule"（到点的节拍和期限）不判；导演事件的 actor 也是 system，照样判，不能按 actor 跳过；
-        ② 值真的变了才判；③ 按这个 effect 之前的状态判，同一事件里前面的 effect 已经生效；
-        ④ when 和节拍前提用同一个 holds()；⑤ 设好以后条件不再成立不追究。
-        不改 state。返回违反的条目 [{var, value, when, note}]。"""
+        """contracts 2.6 (1.6, C-16) StateVar.valueRequires: when an event changes a variable to some value, that
+        value's when must hold.
+        ① Only origin == "schedule" (due beats and deadlines) is not checked; director events also have actor system
+        and are still checked, so skipping by actor is wrong; ② checked only when the value really changes; ③ checked
+        against the state before this effect, with earlier effects in the same event already applied; ④ when and beat
+        preconditions use the same holds(); ⑤ once set, a condition that stops holding later is not pursued.
+        Does not change state. Returns the violated entries [{var, value, when, note}].
+
+        contracts 2.6（1.6、C-16）StateVar.valueRequires：イベントが変数をある値に変えるとき、その値の when が
+        成り立たなければならない。
+        ① origin == "schedule"（期限に達したビートと期限）だけは判定しない。ディレクターイベントの actor も system
+        だが、それでも判定する（actor でスキップしてはいけない）；② 値が実際に変わったときだけ判定する；③ この
+        effect の前の状態で判定し、同じイベント内の前の effect はすでに反映済み；④ when とビートの前提条件は同じ
+        holds() を使う；⑤ 設定後に条件が成り立たなくなっても追及しない。
+        state は変えない。違反した項目 [{var, value, when, note}] を返す。
+        """
         if origin == "schedule":
             return []
         out: list[dict[str, Any]] = []
@@ -132,7 +180,11 @@ class Sim:
         return out
 
     def schedule(self, over: Mapping[str, Override], _floor: bool = True) -> tuple[dict[str, int], set[str]]:
-        """2.5.1：先排时间（与状态无关）。返回 (shift, late)。到达下限的算法见参考实现。"""
+        """2.5.1: schedule times first (independent of state). Returns (shift, late). For the arrival-floor algorithm,
+        see the reference implementation.
+
+        2.5.1：先に時刻を決める（状態とは無関係）。(shift, late) を返す。到着下限のアルゴリズムは参照実装を参照。
+        """
         shift: dict[str, int] = {}
         late: set[str] = set()
         dl = self.world["clock"]["deadline"]
@@ -176,13 +228,26 @@ class Sim:
     def run(
         self, sc: Scenario, until: tuple[str, Any] | None = None, *, role: str, place: str | None = None
     ) -> dict[str, Any]:
-        """按时间顺序应用效果、检查前提，返回值和参考实现 run() 一样（outcome、status、times、state、where、t、
-        stopped、late、shift、variant、violations、auto、over，停在中途时另有 rest）。
-        role：身份 ID，开局地点、随身物品和开始的幕从它读（参考实现是传 start_place、player_items）。
-        place：评测用例的 setup.place 另给开局地点时用，不给 = 身份的 startPlace。
+        """Applies effects and checks preconditions in time order; the return value is the same as the reference
+        implementation's run() (outcome, status, times, state, where, t, stopped, late, shift, variant, violations,
+        auto, over, plus rest when stopped midway).
+        role: role ID; the starting place, carried items and starting act are read from it (the reference
+        implementation takes start_place, player_items).
+        place: used when an eval case's setup.place gives a different starting place; omitted = the role's
+        startPlace.
 
-        contracts 2.5.1：有 delays / hastens 出边的节拍，在排定时间那一刻判前提，不成立就当场记为 prevented，
-        它的分钟照样退还。所以先整局推演，把这类节拍补进 over，直到不再变化（auto）。
+        contracts 2.5.1: a beat with outgoing delays / hastens edges has its preconditions checked at its scheduled
+        time; if they fail it is recorded as prevented on the spot, and its minutes are still refunded. So the whole
+        run is simulated first and such beats are added to over until nothing changes (auto).
+
+        時刻順に効果を適用して前提条件を確認する。戻り値は参照実装の run() と同じ（outcome、status、times、state、
+        where、t、stopped、late、shift、variant、violations、auto、over。途中で止まった場合は rest も）。
+        role：ロール ID。開始地点、所持品、開始の幕をここから読む（参照実装では start_place、player_items を渡す）。
+        place：評価ケースの setup.place が別の開始地点を与えるときに使う。省略 = ロールの startPlace。
+
+        contracts 2.5.1：delays / hastens の出エッジを持つビートは予定時刻の時点で前提条件を判定し、成り立たなければ
+        その場で prevented と記録し、その分数はそのまま戻す。そのため先にプレイ全体をシミュレーションし、こうした
+        ビートを over に加えて、変化がなくなるまで繰り返す（auto）。
         """
         r = role_of(self.world, role)
         start = {"var.player.location": place or r["startPlace"]}
@@ -218,8 +283,10 @@ class Sim:
     ) -> dict[str, Any]:
         shift, late = self.schedule(over)
         state: State = {v["id"]: v["default"] for v in self.world["stateVars"]}
-        state.update(start)  # 身份决定的初值（var.player.location、var.act.current）
-        for c, x in self.chars.items():  # contracts 1.3：WorldState.holdings 的初值
+        # Initial values set by the role (var.player.location, var.act.current)
+        # ロールが決める初期値（var.player.location、var.act.current）
+        state.update(start)
+        for c, x in self.chars.items():  # contracts 1.3: initial WorldState.holdings / WorldState.holdings の初期値
             for it in x.get("items", []):
                 state[it] = c
         for it in player_items:
@@ -230,11 +297,13 @@ class Sim:
         queue: list[tuple[int, int, int, str, Any]] = [
             (b["window"]["canonical"] + shift.get(b["id"], 0), 0, b["order"], "beat", b) for b in self.world["beats"]
         ]
-        # 同一时刻：先节拍，再期限，最后事件（2026-10-10，W-1 增量接口）
+        # At the same time: beats first, then the deadline, events last (2026-10-10, W-1 incremental interface)
+        # 同時刻ではビート、期限、イベントの順（2026-10-10、W-1 の増分インターフェース）
         queue += [(ev["t"], 2, 0, "event", ev) for ev in sc.get("events", [])]
         queue.append((self.world["clock"]["deadline"]["t"], 1, 0, "deadline", None))
         queue.sort(key=lambda q: q[:3])
-        variant: dict[str, str] = {}  # contracts 1.4：节拍 ID → 本局用的变体 ID
+        # contracts 1.4: beat ID → variant ID used in this run / ビート ID → このプレイで使うバリアント ID
+        variant: dict[str, str] = {}
         res: dict[str, Any] = {
             "status": status,
             "times": times,
@@ -246,7 +315,8 @@ class Sim:
             "late": late,
             "shift": shift,
             "variant": variant,
-            "violations": [],  # 1.6：违反 valueRequires 的事件 [(t, 违反的条目)]
+            # 1.6: events violating valueRequires [(t, violated entry)] / valueRequires に違反したイベント
+            "violations": [],
         }
         for i, (t, _, _, kind, x) in enumerate(queue):
             if until and until[0] == "t" and t > until[1]:
@@ -272,8 +342,14 @@ class Sim:
         extra_effects: Sequence[Effect] = (),
         until_t: int | None = None,
     ) -> dict[str, Any]:
-        """从 run(until=…) 的停止点继续：先应用 extra_effects，再推演到 until_t（None = 到底并分类结局）。
-        排定时间沿用 run() 算好的（extra_effects 不再改时间表）。"""
+        """Continues from where run(until=…) stopped: apply extra_effects first, then simulate to until_t (None = to
+        the end and classify the ending).
+        Scheduled times stay as run() computed them (extra_effects no longer change the timetable).
+
+        run(until=…) の停止点から続ける：先に extra_effects を適用し、until_t までシミュレーションする（None = 最後
+        まで進めて結末を分類する）。
+        予定時刻は run() が計算したものをそのまま使う（extra_effects は時刻表を変えない）。
+        """
         over = res["over"]
         state, where, status, times = res["state"], res["where"], res["status"], res["times"]
         res["violations"] += [(res["t"], v) for v in self.value_requires(extra_effects, state)]
@@ -295,9 +371,20 @@ class Sim:
     def arrival_delta(
         self, sc: Scenario, effects: Sequence[Effect], t: int, *, role: str, place: str | None = None
     ) -> dict[str, Any]:
-        """S-066 ①：本局到此为止是情景 sc，在时刻 t 再提交 effects，梅洛斯到刑场（watchBeat）会晚（+）或早（−）几分钟。
-        返回 {"minutes": 分钟数（含到达下限）, "inTime": 做了以后还赶不赶得上}。分钟数用去掉 window.latest 的副本算。
-        effects 里的节拍改动按 merge_change() 合进 sc 已有的改动；合不了（自检的 bad-state）抛 ValueError。"""
+        """S-066 ①: given that this run so far is scenario sc, if effects are also submitted at time t, how many
+        minutes later (+) or earlier (−) Melos reaches the execution ground (watchBeat).
+        Returns {"minutes": minutes (including the arrival floor), "inTime": whether he still makes it after doing
+        it}. Minutes are computed on a copy with window.latest removed.
+        Beat changes in effects are merged into sc's existing changes with merge_change(); if they cannot be merged
+        (the self-check's bad-state), raises ValueError.
+
+        S-066 ①：このプレイがここまでシナリオ sc だったとして、時刻 t にさらに effects を提出すると、メロスが刑場
+        （watchBeat）に何分遅れる（+）か早まる（−）か。
+        {"minutes": 分数（到着下限込み）, "inTime": 実行後もまだ間に合うか} を返す。分数は window.latest を外した
+        コピーで計算する。
+        effects 内のビート変更は merge_change() で sc の既存の変更に統合する。統合できなければ（セルフチェックの
+        bad-state）ValueError を送出する。
+        """
         wb = self.world["clock"]["deadline"].get("watchBeat")
         beats: dict[str, Override] = {b: dict(o) for b, o in sc.get("beats", {}).items()}
         for e in effects:
@@ -342,8 +429,14 @@ class Sim:
         self._recheck(t, over, state, where, status, times, variant)
 
     def _waiting(self, bid: str, status: Mapping[str, str], t: int) -> bool:
-        """contracts 2.4.1 第 3 条：排定时间到了而前提不成立（或 requires 的前一节拍还没发生），到 window.latest 为止
-        每次时钟前进都再查。有 delays / hastens 出边的节拍除外：当场 prevented（run() 的 auto）。"""
+        """contracts 2.4.1 item 3: when the scheduled time arrives but the preconditions fail (or the preceding
+        requires beat has not happened yet), recheck on every clock advance until window.latest. Except beats with
+        outgoing delays / hastens edges: those are prevented on the spot (run()'s auto).
+
+        contracts 2.4.1 第 3 項：予定時刻になっても前提条件が成り立たない（または requires の前のビートがまだ起きて
+        いない）場合、window.latest まで時刻が進むたびに再確認する。delays / hastens の出エッジを持つビートは例外で、
+        その場で prevented になる（run() の auto）。
+        """
         return (
             status.get(bid) in ("precondition-failed", "blocked")
             and bid not in self.timed
@@ -360,7 +453,12 @@ class Sim:
         times: dict[str, int],
         variant: dict[str, str] | None,
     ) -> None:
-        """每一步之后，按排定顺序再查还在等的节拍；成立的在此刻 t 发生。查到不再变化。"""
+        """After every step, recheck the beats still waiting in scheduled order; those that now hold happen at this
+        time t. Repeat until nothing changes.
+
+        各ステップの後、まだ待っているビートを予定順に再確認し、成り立ったものはこの時刻 t に起きる。変化が
+        なくなるまで繰り返す。
+        """
         changed = True
         while changed:
             changed = False
@@ -431,12 +529,14 @@ class Sim:
         times[bid] = t
         for p in x["participants"]:
             where[p] = x["place"]
-        if o.get("to") == "altered":  # 玩家的事件事先改了这个节拍
+        if o.get("to") == "altered":  # A player's event changed this beat in advance / プレイヤーのイベントが事前に変更
             status[bid] = "altered"
             self.apply(o["outcomes"], state, where)
             return
         v = self.variant_of(x, state)
-        if v is not None:  # contracts 1.4：到点时按本局状态换一种演法
+        # contracts 1.4: when due, play it a different way depending on this run's state
+        # contracts 1.4：期限が来たら、このプレイの状態に応じて別の演じ方にする
+        if v is not None:
             status[bid] = "altered"
             if variant is not None:
                 variant[bid] = v["id"]

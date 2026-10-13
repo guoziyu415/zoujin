@@ -1,4 +1,4 @@
-{"note": "一整轮对话（api-contract 3.5）：先 focus メロス，再说一句或发一句文字。这一轮有事件、记忆和关键时刻（reveal）。"}
+{"note": "A full turn of conversation (api-contract 3.5): focus メロス first, then say a line or send a line of text. This turn has events, memories and a key moment (reveal). / 会話の 1 ターン丸ごと（api-contract 3.5）：先に メロス に focus し、ひとこと話すか文字を 1 行送る。このターンにはイベント、記憶、重要な瞬間（reveal）がある。"}
 {"on": ["activity_start", "text"]}
 {"when": "voice", "delayMs": 700, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "この市の王は、", "final": false}}
 {"on": "activity_end", "if": {"trigger.type": "activity_start"}}

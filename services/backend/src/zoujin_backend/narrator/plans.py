@@ -1,12 +1,29 @@
-"""幕末选去处和说出打算（B-3 第 4 条；api-contract 3.11，契约 2.8.1）。
+"""Choosing a destination and stating a plan at the end of an act (B-3 item 4; api-contract 3.11, contract 2.8.1).
 
-- 选去处（`choose`）：这次 `act_ended` 的去处，或上一次打算不成行时给的替代去处；不在里面、`enRouteChoice` 不对的回
-  `invalid_choice`、不写事件。过场二选一选了不是最后一项的，那一项的效果过第 3、4 步。
-- 说出打算（`plan`）：提示 `plan` 判能不能成行。这一幕有 `Act.plan` 时，打算自己的效果过第 3〜5 步（在
-  `Act.plan.effects` 试算之后的状态上判），过了就跳；没有 `Act.plan` 的幕本卡一律不成行。不成行不写事件，试次加一，
-  替代去处记在局上。
-- 打算的转述（label、narration、替代去处的 label）都从玩家的话来：写入前过和事件摘要一样的过滤（个人信息的模式、
-  和玩家原话连续 8 字相同、第 0 步的标记、长度），不过的换成固定的、不转述的说法（`clean`）。
+- Choosing a destination (`choose`): a destination from this `act_ended`, or the alternative offered when the previous
+  plan didn't go ahead; anything not among them, or a bad `enRouteChoice`, gets `invalid_choice` and no event. If an
+  option other than the last was chosen in the en-route choice, that option's effects go through steps 3 and 4.
+- Stating a plan (`plan`): the `plan` prompt judges whether it can go ahead. When this act has `Act.plan`, the plan's
+  own effects go through steps 3-5 (judged on the state after trial-applying `Act.plan.effects`), and if they pass we
+  jump; in acts without `Act.plan`, this card never lets a plan go ahead. A plan that doesn't go ahead writes no event,
+  adds one to the try count, and records the alternative destination on the run.
+- Plan paraphrases (label, narration, the alternative destination's label) all come from the player's words: before
+  being written they go through the same filter as event summaries (personal-information patterns, 8 consecutive
+  characters identical to the player's words, step 0 flags, length), and failures are replaced with a fixed wording that
+  doesn't paraphrase (`clean`).
+
+幕末の行き先の選択とプランの表明（B-3 第 4 項。api-contract 3.11、契約 2.8.1）。
+
+- 行き先の選択（`choose`）：今回の `act_ended` の行き先か、前回プランが実行されなかったときに示した代わりの行き先。
+  そのどれでもない、または `enRouteChoice` が誤っていれば `invalid_choice` を返し、イベントは書かない。道中の二択で
+  最後以外の選択肢を選んだら、その選択肢の効果を第 3・4 ステップに通す。
+- プランの表明（`plan`）：プロンプト `plan` が実行できるかを判定する。この幕に `Act.plan` があれば、プラン自身の効果を
+  第 3〜5 ステップに通し（`Act.plan.effects` を試算したあとの状態で判定）、通れば幕を飛ぶ。`Act.plan` のない幕では、
+  このカードでは常に実行しない。実行しないときはイベントを書かず、試行回数を 1 増やし、
+  代わりの行き先をゲームに記録する。
+- プランの言い換え（label、narration、代わりの行き先の label）はどれもプレイヤーの言葉から来る：書き込む前にイベントの
+  要約と同じフィルター（個人情報のパターン、プレイヤーの発話と 8 文字連続で一致、第 0 ステップの印、長さ）に通し、
+  通らなければ言い換えない固定の言い方に替える（`clean`）。
 """
 
 from __future__ import annotations
@@ -32,20 +49,25 @@ if TYPE_CHECKING:
 log = logging.getLogger("zoujin.narrator")
 
 Json = Any
-World = tuple[list[Any], list[Json]]  # B-16：世界推进过了检查的候选（advance.Item）和读到的事件日志
+# B-16: world advancement candidates that passed the checks (advance.Item) and the event log that was read.
+# B-16：世界の進行のうち検査を通った候補（advance.Item）と、読み込んだイベントログ。
+World = tuple[list[Any], list[Json]]
 
 LABEL_MAX = 30
 LINE_MAX = 60
 LABEL_FALLBACK = "自分で決めた道を行く"
 REFUSAL_FALLBACK = "その考えは、いまは形にならなかった。"
-# 声音说打算没转写出字：不算试次（文案 UX 定的，10-10）
+# A plan spoken by voice produced no transcript: doesn't count as a try (copy decided by UX, 10-10).
+# 音声で言ったプランが文字起こしされなかった：試行回数に数えない（文言は UX が決めた、10-10）。
 NOT_HEARD = "声が届かなかったようです。もう一度、聞かせてください。"
 INVALID_CHOICE = "その行き先は選べません。"
 INVALID_REQUEST = "うまく送れませんでした。"
-FLAGS = frozenset(
-    {"injection", "pii", "harmful", "unscreened", "ambiguous"}
-)  # 第 0 步（B-12 安全筛查）的标记，有就不转述
-NARRATE_FALLBACK = {  # narrate 两次都不行、或过滤不过时的一句（和假模型的默认一样）
+# Step 0 (B-12 safety screening) flags; if any is set, don't paraphrase.
+# 第 0 ステップ（B-12 の安全スクリーニング）の印。あれば言い換えない。
+FLAGS = frozenset({"injection", "pii", "harmful", "unscreened", "ambiguous"})
+# The line used when narrate fails twice or doesn't pass the filter (same as the fake model's default).
+# narrate が 2 回ともだめ、またはフィルターを通らないときの一文（偽モデルの既定と同じ）。
+NARRATE_FALLBACK = {
     "done": "あなたは、そうした。",
     "partial": "思ったようには、いかなかった。",
     "refused": "それは、いまはかなわなかった。",
@@ -57,8 +79,14 @@ def narrate_fallback(status: str) -> str:
 
 
 def clean(text: str | None, said: str, flags: frozenset[str], *, limit: int) -> str | None:
-    """模型从玩家的话转述出来的一句，能不能写进去（data-design 5.1，同事件的 summary）：不空、不超过 limit 字、
-    没有个人信息的模式、没有和玩家原话连续 8 字相同、第 0 步没有标记。不过返回 None，调用方换固定的说法。"""
+    """Whether a sentence the model paraphrased from the player's words may be written (data-design 5.1, same as an
+    event summary): not empty, at most limit characters, no personal-information patterns, no 8 consecutive characters
+    identical to the player's words, and no step 0 flags. If it fails, return None and the caller uses a fixed wording.
+
+    モデルがプレイヤーの言葉から言い換えた一文を書き込んでよいか（data-design 5.1、イベントの summary と同じ）：
+    空でない、limit 文字以内、個人情報のパターンがない、プレイヤーの発話と 8 文字連続で一致しない、第 0 ステップの印が
+    ない。通らなければ None を返し、呼び出し側が固定の言い方に替える。
+    """
     if text is None:
         return None
     text = text.strip()
@@ -73,11 +101,16 @@ def error_msg(code: str, message: str) -> Json:
     return {"type": "error", "error": {"code": code, "message": message, "retryable": False, "retryAfterSeconds": None}}
 
 
-# —— 选去处 ——
+# —— Choosing a destination / 行き先の選択 ——
 
 
 def choice_of(book: Book, state: SimState, run: Run, req: Mapping[str, Any]) -> tuple[str, Json] | None:
-    """这次能选的：("exit", 去处) 或 ("plan", 替代的打算)。不在这次的去处和替代去处里、或 enRouteChoice 不对 → None。"""
+    """What can be chosen this time: ("exit", destination) or ("plan", the alternative plan). Not among this time's
+    destinations and alternative, or a bad enRouteChoice → None.
+
+    今回選べるもの：("exit", 行き先) または ("plan", 代わりのプラン)。今回の行き先と代わりの行き先にない、
+    または enRouteChoice が誤り → None。
+    """
     from zoujin_backend.narrator.acts import exit_of
 
     if run.act_end is None:
@@ -101,7 +134,10 @@ def choice_of(book: Book, state: SimState, run: Run, req: Mapping[str, Any]) -> 
 
 
 def en_route_candidate(book: Book, state: SimState, ex: Mapping[str, Any], choice: int | None) -> Json | None:
-    """过场二选一：选了不是最后一项（不带 = 最后一项）时的候选事件。"""
+    """The en-route choice: the candidate event when an option other than the last was chosen (none given = the last).
+
+    道中の二択：最後以外の選択肢を選んだとき（渡さなければ最後の選択肢）の候補イベント。
+    """
     er = ex.get("enRoute")
     if er is None or choice is None or choice >= len(er["choices"]) - 1:
         return None
@@ -127,12 +163,19 @@ async def talked(n: Narrator, pid: str) -> list[str]:
 
 
 async def seen(n: Narrator, book: Book, pid: str, role_id: str) -> set[str]:
-    """「その頃」要的玩家见过的人物（读这一局的全部事件和对话过的人物）。"""
+    """The characters the player has seen, for 「その頃」 (reads all of this game's events and the characters talked
+    to).
+
+    「その頃」に使う、プレイヤーが会った登場人物（このゲームの全イベントと話した登場人物を読む）。
+    """
     return (await seen_and_log(n, book, pid, role_id))[0]
 
 
 async def seen_and_log(n: Narrator, book: Book, pid: str, role_id: str) -> tuple[set[str], list[Json]]:
-    """玩家见过的人物，和这一局的事件日志（世界推进也要，B-16）。"""
+    """The characters the player has seen, and this game's event log (world advancement needs it too, B-16).
+
+    プレイヤーが会った登場人物と、このゲームのイベントログ（世界の進行にも要る、B-16）。
+    """
     from zoujin_backend.db import store
     from zoujin_backend.narrator.acts import seen_characters
 
@@ -152,7 +195,11 @@ async def world_ahead(
     spend: Spend,
     span: Mapping[str, Any],
 ) -> World:
-    """B-16：幕切换的世界推进，此刻到目标时刻（事务外调模型，事务里和节拍合并着写）。"""
+    """B-16: world advancement for an act transition, from now to the target time (the model is called outside the
+    transaction; inside it the results are written merged with the beats).
+
+    B-16：幕切り替えの世界の進行。いまから目標時刻まで（モデルはトランザクションの外で呼び、中でビートと合わせて書く）。
+    """
     from zoujin_backend.narrator import advance
 
     window = advance.Window("act", int(state["t"]), max(int(state["t"]), t), to_act)
@@ -172,7 +219,9 @@ async def run_choose(n: Narrator, task: Task) -> Result:
         got = choice_of(book, state, run, req)
         if got is None:
             return await n._commit(task, pt["last_seq"], lambda w, b: invalid(INVALID_CHOICE, "invalid_choice"))
-        spend = task.spend  # 跟着任务走：重来的、没提交的也算（B-8 第 7 条）
+        # Follows the task: retries and uncommitted attempts count too (B-8 item 7).
+        # タスクに付いて回る：やり直しやコミットしなかった分も数える（B-8 第 7 項）。
+        spend = task.spend
         span = {"playthrough_id": task.pid, "turn_id": task.turn_id, "world_model_version": book.version}
         who, log_ = await seen_and_log(n, book, task.pid, pt["role_id"])
         if got[0] == "plan":
@@ -215,8 +264,8 @@ async def run_choose(n: Narrator, task: Task) -> Result:
         try:
             return await n._commit(task, pt["last_seq"], write, spend=spend)
         except Stale:
-            log.info("lastSeq 变了，%s 重来", task.turn_id)
-    raise RuntimeError(f"{task.turn_id}：lastSeq 一直在变")
+            log.info("lastSeq changed; redoing %s / lastSeq が変わったのでやり直す", task.turn_id)
+    raise RuntimeError(f"{task.turn_id}: lastSeq keeps changing / {task.turn_id}：lastSeq が変わり続けている")
 
 
 def invalid(message: str, code: str) -> Planned:
@@ -239,8 +288,13 @@ def transition(
     head: Sequence[Json] = (),
     world: World | None = None,
 ) -> Planned:
-    """幕切换（契约 2.8.1）：给定去处（ex）或成行的打算（plan = (label, with, 打算自己的效果的判定)）。
-    world：世界推进过了检查的候选和读到的事件日志（B-16），第 3 步和节拍合并着写。"""
+    """Act transition (contract 2.8.1): a given destination (ex) or a plan that goes ahead (plan = (label, with, the
+    judgment of the plan's own effects)). world: the world advancement candidates that passed the checks and the event
+    log that was read (B-16), written in step 3 merged with the beats.
+
+    幕切り替え（契約 2.8.1）：決まった行き先（ex）か、実行されるプラン（plan = (label, with, プラン自身の効果の判定)）。
+    world：世界の進行のうち検査を通った候補と読み込んだイベントログ（B-16）。第 3 ステップでビートと合わせて書く。
+    """
     from zoujin_backend.narrator import acts
     from zoujin_backend.narrator.core import Planned
 
@@ -284,7 +338,9 @@ def transition(
         "fromActId": moved.from_act,
         "toActId": moved.to_act,
         "recap": items,
-        "snapshot": None,  # 提交前按落地以后的状态补（core._commit）
+        # Filled in before commit from the state after landing (core._commit).
+        # コミット前に着地後の状態から補う（core._commit）。
+        "snapshot": None,
     }
     if moved.arrival:
         msg["arrival"] = moved.arrival
@@ -300,11 +356,14 @@ def transition(
     )
 
 
-# —— 说出打算 ——
+# —— Stating a plan / プランの表明 ——
 
 
 def option_ref(book: Book, run: Run, option_id: str) -> Json | None:
-    """act_ended 里的一个去处 → PlanAlternative 的形状。"""
+    """A destination from act_ended → the shape of PlanAlternative.
+
+    act_ended の行き先 1 つ → PlanAlternative の形。
+    """
     o = next((x for x in (run.act_end or {}).get("options", []) if x["optionId"] == option_id), None)
     if o is None:
         return None
@@ -341,9 +400,15 @@ async def verify_plan(
     spend: Spend,
     span: Mapping[str, Any],
 ) -> Checked | None:
-    """打算自己的效果过第 3〜5 步：在 `Act.plan.effects` 试算之后的状态上判（例：去处让玩家知道了约定，
-    才能把约定告诉别人），时长 = 跳过的这段。没有效果的不用判（返回 None 以外的结果由调用方当作过了）。
-    被否决返回 None。"""
+    """Run the plan's own effects through steps 3-5: judged on the state after trial-applying `Act.plan.effects` (e.g.
+    the destination lets the player learn about the promise, which is what makes it possible to tell others about it),
+    with the duration = the skipped stretch. Without effects there is nothing to judge (any result other than None is
+    treated as passing by the caller). Returns None when rejected.
+
+    プラン自身の効果を第 3〜5 ステップに通す：`Act.plan.effects` を試算したあとの状態で判定する（例：行き先で
+    プレイヤーが約束を知るので、その約束をほかの人に話せる）。所要時間 = 飛ばす区間。効果がなければ判定しない
+    （None 以外の結果は呼び出し側が通ったものとみなす）。却下されたら None を返す。
+    """
     from zoujin_backend.narrator.acts import PASSED_EXIT, current_act, target_t
 
     act = current_act(book, state)
@@ -355,12 +420,19 @@ async def verify_plan(
     try:
         trial = apply(book.world, state, {"t": state["t"], "dt": 0, "origin": "act", "effects": p.get("effects", [])})
     except ValueError:
-        log.info("Act.plan.effects 试算不了，在原状态上判")
+        log.info(
+            "Act.plan.effects can't be trial-applied; judging on the original state"
+            " / Act.plan.effects を試算できないので元の状態で判定する"
+        )
     cand = {
         "actor": "player",
-        "type": "action",  # 只用来判效果（改写的输出不收 act-transition）；写进去的是玩家的 act-transition
+        # Only used to judge the effects (rewrite output doesn't accept act-transition); what gets written is the
+        # player's act-transition.
+        # 効果の判定だけに使う（書き換えの出力は act-transition を受け付けない）。
+        # 書き込むのはプレイヤーの act-transition。
+        "type": "action",
         "origin": "act",
-        "summary": "幕末の打算",
+        "summary": "幕末のプラン",
         "causes": [],
         "effects": [dict(e) for e in effects],
     }
@@ -381,7 +453,9 @@ async def run_plan(n: Narrator, task: Task, said: str | None) -> Result:
         book = n.library.version(pt["world_model_version"])
         if run.act_end is None or run.plan_tries >= 2:
             return await n._commit(task, pt["last_seq"], lambda w, b: invalid(INVALID_REQUEST, "invalid_request"))
-        spend = task.spend  # 跟着任务走：重来的、没提交的也算（B-8 第 7 条）
+        # Follows the task: retries and uncommitted attempts count too (B-8 item 7).
+        # タスクに付いて回る：やり直しやコミットしなかった分も数える（B-8 第 7 項）。
+        spend = task.spend
         span = {"playthrough_id": task.pid, "turn_id": task.turn_id, "world_model_version": book.version}
         text = said or ""
         request = plan_request(book, state, run, text, req.get("mode", "text"))
@@ -428,7 +502,9 @@ async def run_plan(n: Narrator, task: Task, said: str | None) -> Result:
         else:
             lines = [x for x in (clean(s, text, frozenset(), limit=LINE_MAX) for s in out.get("narration", [])) if x]
             lines = lines[:2] or [REFUSAL_FALLBACK]
-            if bool(out["accepted"]) and request["hasPlan"]:  # 判过不过：不转述模型的成行说法
+            # Accepted, then failed the checks: don't paraphrase the model's go-ahead wording.
+            # 受け入れたが検査を通らなかった：モデルの実行する旨の言い方は言い換えない。
+            if bool(out["accepted"]) and request["hasPlan"]:
                 lines = [REFUSAL_FALLBACK]
             alt = alternative(n, book, state, run, out.get("alternative"), text, request)
 
@@ -437,16 +513,21 @@ async def run_plan(n: Narrator, task: Task, said: str | None) -> Result:
 
             write = refuse
 
-        await n.wait_window(task)  # 用声音说的打算：定稿推出 3 秒以内可以作废（B-4）
+        # A plan spoken by voice can be cancelled within 3 seconds of the final transcript being pushed (B-4).
+        # 音声で言ったプランは、確定した文字起こしを送ってから 3 秒以内なら取り消せる（B-4）。
+        await n.wait_window(task)
         try:
             return await n._commit(task, pt["last_seq"], write, spend=spend)
         except Stale:
-            log.info("lastSeq 变了，%s 重来", task.turn_id)
-    raise RuntimeError(f"{task.turn_id}：lastSeq 一直在变")
+            log.info("lastSeq changed; redoing %s / lastSeq が変わったのでやり直す", task.turn_id)
+    raise RuntimeError(f"{task.turn_id}: lastSeq keeps changing / {task.turn_id}：lastSeq が変わり続けている")
 
 
 def reply_to(task: Task, req: Mapping[str, Any]) -> Json:
-    """act_plan_result 带 clientMsgId（文字）或 turnId（声音）。"""
+    """act_plan_result carries clientMsgId (text) or turnId (voice).
+
+    act_plan_result は clientMsgId（テキスト）か turnId（音声）を持つ。
+    """
     return (
         {"turnId": task.turn_id}
         if req.get("mode") == "voice"
@@ -457,8 +538,14 @@ def reply_to(task: Task, req: Mapping[str, Any]) -> Json:
 def alternative(
     n: Narrator, book: Book, state: SimState, run: Run, raw: Json | None, said: str, request: Mapping[str, Any]
 ) -> Json:
-    """替代去处（局上记的形状：PlanAlternative 的四个字段 + kind，打算的还带 with 和 effects）。
-    给定去处用去处 ID；另一个打算用 plan_ 加 ULID，label 过滤不过就改给第一个给定去处。"""
+    """The alternative destination (the shape recorded on the run: PlanAlternative's four fields + kind, and for a plan
+    also with and effects). A given destination uses its destination ID; another plan uses plan_ plus a ULID, and if
+    its label fails the filter, offer the first given destination instead.
+
+    代わりの行き先（ゲームに記録する形：PlanAlternative の 4 つのフィールド + kind。プランなら with と effects も
+    持つ）。決まった行き先なら行き先 ID を使う。別のプランなら plan_ に ULID を付け、label がフィルターを通らなければ
+    最初の決まった行き先に替える。
+    """
     first = (run.act_end or {}).get("options", [{}])[0].get("optionId")
     if isinstance(raw, Mapping) and raw.get("exit"):
         ref = option_ref(book, run, str(raw["exit"]))
@@ -484,11 +571,18 @@ def alternative(
     return {**ref, "kind": "exit"}
 
 
-PUBLIC = ("optionId", "label", "sceneId", "toActId", "tLabel")  # toActId：v1.0.14，局上记的老替代去处没有
+# toActId: v1.0.14; older alternatives recorded on runs don't have it.
+# toActId：v1.0.14。ゲームに記録された古い代わりの行き先にはない。
+PUBLIC = ("optionId", "label", "sceneId", "toActId", "tLabel")
 
 
 def refused(w: Writer, task: Task, req: Mapping[str, Any], lines: list[str], alt: Json) -> Planned:
-    """不成行：不写事件，试次加一，替代去处记在局上，幕末页的 freeform 跟着变。"""
+    """The plan doesn't go ahead: no event, the try count goes up by one, the alternative destination is recorded on the
+    run, and the end-of-act page's freeform changes accordingly.
+
+    実行しない：イベントは書かず、試行回数を 1 増やし、代わりの行き先をゲームに記録し、幕末ページの freeform もそれに
+    合わせて変える。
+    """
     from zoujin_backend.narrator.core import Planned
 
     run = w.run

@@ -1,4 +1,8 @@
-"""结果的形状：每例每次每条检查是过、不过、跳过之一（E-0 卡第 2 条），跳过带原因。"""
+"""Shape of the results: each check of each run of each case is one of pass, fail or skip (E-0 card item 2), and a skip
+carries its reason.
+
+結果の形：各ケースの各回の各チェックは合格・不合格・スキップのいずれか（E-0 カード第 2 条）で、スキップには理由が付く。
+"""
 
 from __future__ import annotations
 
@@ -10,28 +14,43 @@ type SkipCode = Literal["not-implemented", "needs-live-model", "replay-missing",
 
 class Skip(TypedDict):
     code: SkipCode
-    name: NotRequired[str]  # not-implemented：没做的步骤或查询的名字
+    # not-implemented: name of the step or query that is not implemented
+    # not-implemented：未実装のステップまたはクエリの名前
+    name: NotRequired[str]
 
 
 class CheckResult(TypedDict):
-    index: int  # expect.deterministic 里的第几条，从 1 起；判分是 0
-    type: str  # 检查的 type；判分是 "judge"
+    # which item in expect.deterministic, from 1; 0 for the judge
+    # expect.deterministic の何番目か（1 から）。採点は 0
+    index: int
+    type: str  # the check's type; "judge" for the judge / チェックの type。採点は "judge"
     status: Status
-    reason: NotRequired[str]  # 不过的原因（中文）
+    reason: NotRequired[str]  # why it failed (English / Japanese) / 不合格の理由（英語 / 日本語）
     skip: NotRequired[Skip]
-    score: NotRequired[int]  # 判分：1〜5（rubric 和 pass 条件在用例的 expect.judge 里）
+    # judge: 1–5 (the rubric and pass condition are in the case's expect.judge)
+    # 採点：1〜5（rubric と合格条件はケースの expect.judge にある）
+    score: NotRequired[int]
 
 
 class RunResult(TypedDict):
-    run: int  # 第几次，从 1 起
-    status: Status  # 有一条不过就是不过；没有不过、有跳过就是跳过；全过才是过
+    run: int  # which run, from 1 / 何回目か（1 から）
+    # One failing check means fail; no fail but some skip means skip; only all passing means pass.
+    # 不合格が 1 つでもあれば不合格。不合格がなくスキップがあればスキップ。すべて合格して初めて合格。
+    status: Status
     checks: list[CheckResult]
     judge: NotRequired[CheckResult]
-    skip: NotRequired[Skip]  # 这一次整个没跑完：回放缺失或过期、超时
-    error: NotRequired[str]  # 后端抛了「没做」以外的异常：这一次算不过
+    # this run did not complete at all: replay missing or stale, timeout
+    # この回はまるごと完了しなかった：リプレイが無いか期限切れ、タイムアウト
+    skip: NotRequired[Skip]
+    # the backend raised an exception other than "not implemented": this run counts as failed
+    # バックエンドが「未実装」以外の例外を投げた：この回は不合格とする
+    error: NotRequired[str]
     traceIds: list[str]
-    playthroughId: NotRequired[str | None]  # 模拟局：这一局的 ID（S-5 的报告脚本按它对账本）
-    sim: NotRequired[dict[str, Any]]  # 模拟局的统计（player.sim_stats）
+    # simulated game: this game's ID (S-5's report script matches the ledger by it)
+    # シミュレーション局：この局の ID（S-5 のレポートスクリプトはこれで台帳と照合する）
+    playthroughId: NotRequired[str | None]
+    # statistics of the simulated game (player.sim_stats) / シミュレーション局の統計（player.sim_stats）
+    sim: NotRequired[dict[str, Any]]
 
 
 class CaseResult(TypedDict):
@@ -40,13 +59,21 @@ class CaseResult(TypedDict):
     title: str
     mode: str
     runs: int
-    deletes: NotRequired[bool]  # 有删除步骤（deleteMemory / deletePlaythrough）：E6 的硬指标只算这些例
-    skip: NotRequired[Skip]  # 整例跳过：setup 或某一步后端没做（每次都一样，只试第一次）
+    # has deletion steps (deleteMemory / deletePlaythrough): E6's hard metric counts only these cases
+    # 削除ステップがある（deleteMemory / deletePlaythrough）：E6 の厳格な指標はこれらのケースだけを数える
+    deletes: NotRequired[bool]
+    # whole case skipped: the backend has not implemented setup or some step (the same every time, so only the first
+    # run is tried)
+    # ケースまるごとスキップ：バックエンドが setup かあるステップを未実装（毎回同じなので最初の 1 回だけ試す）
+    skip: NotRequired[Skip]
     results: NotRequired[list[RunResult]]
 
 
 class SkipCheck(Exception):
-    """检查判不了：跳过，带原因。"""
+    """The check cannot be judged: skip it, with a reason.
+
+    チェックが判定できない：理由付きでスキップする。
+    """
 
     def __init__(self, skip: Skip) -> None:
         super().__init__(skip)
@@ -57,23 +84,30 @@ def not_implemented(name: str) -> SkipCheck:
     return SkipCheck({"code": "not-implemented", "name": name})
 
 
-def skip_label(s: Skip) -> str:
-    """报告里的写法。"""
+def skip_label(s: Skip) -> tuple[str, str]:
+    """How the report writes it, in English and in Japanese.
+
+    レポートでの書き方（英語、日本語）。
+    """
     match s["code"]:
         case "not-implemented":
-            return f"跳过：后端未实现（{s.get('name', '?')}）"
+            name = s.get("name", "?")
+            return f"backend not implemented ({name})", f"バックエンド未実装（{name}）"
         case "needs-live-model":
-            return "跳过：要真模型"
+            return "needs a real model", "実モデルが必要"
         case "replay-missing":
-            return "回放缺失或过期"
+            return "replay missing or stale", "リプレイが無いか期限切れ"
         case "no-character-text":
-            return "无原话"
+            return "no character text", "原文なし"
         case "timeout":
-            return "超时"
+            return "timeout", "タイムアウト"
 
 
 def run_status(checks: list[CheckResult], judge: CheckResult | None = None) -> Status:
-    """一条都没判（只有判分的用例只跑确定性检查时）也是跳过。"""
+    """Nothing judged at all (a judge-only case run with deterministic checks only) is also a skip.
+
+    何も判定されなかった場合（採点だけのケースを決定的チェックだけで実行したとき）もスキップ。
+    """
     statuses = [c["status"] for c in checks] + ([judge["status"]] if judge else [])
     if "fail" in statuses:
         return "fail"

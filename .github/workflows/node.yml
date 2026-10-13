@@ -1,4 +1,5 @@
-# Node：eslint、prettier、tsc、预算文件（dev-plan 2.4）；场景清单对照布局和世界模型（改了 world.json 也查，F-2）。
+# Node: eslint, prettier, tsc, budget file (dev-plan 2.4); scene manifests checked against layout and world model (also when world.json changes, F-2).
+# Node：eslint、prettier、tsc、予算ファイル（dev-plan 2.4）。シーンのマニフェストをレイアウトと世界モデルに照合する（world.json を変えたときも確認、F-2）。
 name: node
 
 on:
@@ -64,15 +65,19 @@ jobs:
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm typecheck
-      # F-0（首屏 JS）、F-2（场景、人物）接上真正的预算检查；现在只确认文件能读。
+      # F-0 (first-screen JS) and F-2 (scenes, characters) hook up the real budget checks; for now this only confirms the file parses.
+      # F-0（初回画面の JS）と F-2（シーン、登場人物）で本当の予算チェックをつなぐ。今はファイルが読めることだけ確認する。
       - run: node -e "JSON.parse(require('fs').readFileSync('assets/budgets.json','utf8'))"
-      # 进仓库的场景清单：预算、位置点和 layout.json、用到这个场景的世界模型（地点、sceneRef、出口）。不生成，几秒钟
+      # Committed scene manifest: budgets, anchor points and layout.json, the world model that uses this scene (locations, sceneRef, exits). No build, a few seconds
+      # リポジトリのシーンのマニフェスト：予算、位置ポイントと layout.json、このシーンを使う世界モデル（場所、sceneRef、出口）。生成はせず数秒で終わる
       - run: node assets/pipeline/plaza/check_scene.mjs assets/scenes/syracuse-square
-      # 归途的川（F-10）：两个包、共用包、scene.road-river 的索引和合起来的布局
+      # The river on the way back (F-10): two packs, the shared pack, the scene.road-river index and the combined layout
+      # 帰り道の川（F-10）：2 つのパック、共用パック、scene.road-river のインデックスと結合したレイアウト
       - run: |
           for p in road-river-calm road-river-flood; do node assets/pipeline/plaza/check_scene.mjs assets/scenes/$p; done
           node assets/pipeline/road/check_road.mjs assets/scenes/road-common assets/scenes/road-river-calm assets/scenes/road-river-flood assets/scenes/road-river
-      # 归途其余（F-15）：峠、泉、野の道和跑段的包，它们在共用包里的部分，三处的索引和合起来的布局
+      # The rest of the way back (F-15): packs for 峠, 泉, 野の道 and the running stretch, their parts in the shared pack, the indexes of the three places and the combined layout
+      # 帰り道の残り（F-15）：峠、泉、野の道と走行区間のパック、共用パック内のそれらの部分、3 か所のインデックスと結合したレイアウト
       - run: bash assets/pipeline/road/check_committed.sh
-      # 王城（F-14）
+      # Royal castle (F-14) / 王城（F-14）
       - run: node assets/pipeline/plaza/check_scene.mjs assets/scenes/castle-throne

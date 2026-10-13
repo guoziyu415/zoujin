@@ -1,4 +1,4 @@
-{"note": "作废（3.6）：先 focus 市の老爺。第 1 轮在人物回答后约 4 秒内发 turn_retract → retracted；第 2 轮 turn_settled 之后再发 turn_retract → too_late；第 3 轮玩家字幕识别错了（往生），发 turn_retract 加 text {via: correction, replaces} 改正。"}
+{"note": "Retraction (3.6): focus 市の老爺 first. Turn 1: send turn_retract within about 4 seconds of the character's answer → retracted; turn 2: send turn_retract after turn_settled → too_late; turn 3: the player's subtitles were misrecognized (往生); send turn_retract plus text {via: correction, replaces} to correct it. / 取り消し（3.6）：先に 市の老爺 に focus する。1 ターン目：登場人物の答えから約 4 秒以内に turn_retract を送る → retracted。2 ターン目：turn_settled の後に turn_retract を送る → too_late。3 ターン目：プレイヤーの字幕が誤認識された（往生）ので、turn_retract と text {via: correction, replaces} を送って訂正する。"}
 {"on": ["activity_start", "text"]}
 {"when": "voice", "delayMs": 700, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "王様のことを、", "final": false}}
 {"on": "activity_end", "if": {"trigger.type": "activity_start"}}
@@ -30,7 +30,7 @@
 {"delayMs": 200, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.old-man", "text": "……なんじゃと？", "final": true, "source": "live"}}
 {"delayMs": 4000, "send": {"type": "commit", "turnId": "{{playerTurnId}}", "events": [], "patch": {"clock": {"t": "{{t+10}}", "tLabel": "{{tLabel+10}}"}}, "memories": [], "promises": [], "narration": [], "cue": null, "reveal": null}}
 {"delayMs": 100, "send": {"type": "turn_settled", "turnId": "{{playerTurnId}}", "outcome": "no_change", "eventIds": [], "minutes": 10}}
-{"note": "改正后的那一轮（text via correction）"}
+{"note": "The corrected turn (text via correction) / 訂正後のターン（text via correction）"}
 {"on": ["activity_start", "text"]}
 {"when": "voice", "delayMs": 700, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "王城は、", "final": false}}
 {"on": "activity_end", "if": {"trigger.type": "activity_start"}}

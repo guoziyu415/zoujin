@@ -1,4 +1,5 @@
-// 私密预览：旧离线副本撤销，新页面与场景不得绕过服务端密码门禁。
+// Private preview: old offline copies are retired; new pages and scenes must not bypass the server's password gate.
+// 非公開プレビュー：古いオフラインのコピーは撤去し、新しいページとシーンはサーバーのパスワードゲートを迂回してはならない。
 import { expect, test } from "@playwright/test";
 import { without3d } from "./shell";
 

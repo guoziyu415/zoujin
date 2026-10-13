@@ -1,5 +1,11 @@
-"""快照里的位置点怎么分（前端 assets/pipeline/plaza/README.md 的规则）：人物按布局顺序站第一个空着的，
-`way.*` 和 `auto: false` 的除外；玩家站的算占着。开新局用哪个世界模型。下发的事件句里玩家写成「あなた」。"""
+"""How spots are assigned in the snapshot (the rule in the frontend's assets/pipeline/plaza/README.md): characters
+take the first free spot in layout order, except `way.*` and `auto: false` ones; the player's spot counts as taken.
+Which world model new games use. In delivered event sentences the player is written as 「あなた」.
+
+スナップショットでの立ち位置の割り当て（フロントエンドの assets/pipeline/plaza/README.md の規則）：登場人物は
+レイアウト順に最初の空いた立ち位置に立ち、`way.*` と `auto: false` のものは除く。プレイヤーの立ち位置は埋まっている
+とみなす。新しいゲームでどの世界モデルを使うか。送るイベント文ではプレイヤーを「あなた」と書く。
+"""
 
 from __future__ import annotations
 
@@ -41,29 +47,38 @@ def test_automatic_placement_skips_way_and_manual_spots(tmp_path: Path) -> None:
     s = scene(tmp_path)
     assert s.manual == {"stake", "king-west"}
     assert s.auto_spots(GROUND) == ["stake-front", "ground-west"]
-    assert s.player_spot(GROUND) == "stake-front"  # 没有 startSpots 时：第一个能自动用的
+    # Without startSpots: the first auto-assignable one / startSpots がないとき：自動で使える最初のもの
+    assert s.player_spot(GROUND) == "stake-front"
     people = [("char.old-man", GROUND), ("char.melos", GROUND), ("char.king", GROUND)]
     assert s.character_spots(people, {"stake-front"}) == {
         "char.old-man": "ground-west",
-        "char.melos": "ground-west",  # 不够了和别的人物重叠，不站到 stake、king-west、玩家身上
+        # Out of spots: overlap with other characters, never on stake, king-west or the player.
+        # 足りなければほかの登場人物と重なり、stake、king-west、プレイヤーの上には立たない。
+        "char.melos": "ground-west",
         "char.king": "ground-west",
     }
 
 
 def test_fallbacks(tmp_path: Path) -> None:
     s = scene(tmp_path)
-    # 这个地点只有玩家站的那一个点：只能重叠
+    # This place only has the player's spot: overlapping is the only option.
+    # この場所にはプレイヤーの立ち位置しかない：重なるしかない。
     assert s.character_spots([("char.old-man", SQUARE)], {"fountain"}) == {"char.old-man": "fountain"}
-    # 布局里没有这个地点：用地点 ID 的最后一段
+    # The place isn't in the layout: use the last segment of the place ID.
+    # レイアウトにこの場所がない：場所 ID の最後の部分を使う。
     assert s.character_spots([("char.melos", "place.castle")]) == {"char.melos": "castle"}
     assert s.player_spot("place.castle") == "castle"
 
 
-# —— 开新局用哪个世界模型（数据评审 #26：不按目录排序，按配置）——
+# —— Which world model new games use (data review #26: by configuration, not directory order) ——
+# —— 新しいゲームでどの世界モデルを使うか（データレビュー #26：ディレクトリの並び順ではなく設定で決める） ——
 
 
 def later_world(tmp_path: Path) -> Path:
-    """一份目录名排在草稿后面的世界模型（像以后的 1.0.0-slice）。"""
+    """A world model whose directory name sorts after the draft (like a later 1.0.0-slice).
+
+    ディレクトリ名が草稿より後に並ぶ世界モデル（将来の 1.0.0-slice のようなもの）。
+    """
     w = json.loads(DEFAULT_WORLD.read_text(encoding="utf-8"))
     w["worldModelVersion"] = "hashire-merosu@9.9.9-test"
     path = tmp_path / "worlds" / "hashire-merosu" / "9.9.9-test" / "world.json"
@@ -74,7 +89,7 @@ def later_world(tmp_path: Path) -> Path:
 
 def test_new_playthroughs_use_the_configured_world_not_the_last_directory(tmp_path: Path) -> None:
     later = later_world(tmp_path)
-    for p in sorted((REPO / "worlds").glob("*/*/world.json")):  # 仓库里的也在
+    for p in sorted((REPO / "worlds").glob("*/*/world.json")):  # the repo's are there too / リポジトリのものもある
         dst = tmp_path / "worlds" / p.relative_to(REPO / "worlds")
         dst.parent.mkdir(parents=True, exist_ok=True)
         dst.write_bytes(p.read_bytes())
@@ -85,17 +100,19 @@ def test_new_playthroughs_use_the_configured_world_not_the_last_directory(tmp_pa
     book = lib.book("hashire-merosu")
     assert book is not None and book.version == draft
     assert lib.book("no-such-book") is None
-    assert lib.version("hashire-merosu@9.9.9-test").version == "hashire-merosu@9.9.9-test"  # 已有的局照样查得到
+    # Existing games can still look it up / 既存のゲームは従来どおり引ける
+    assert lib.version("hashire-merosu@9.9.9-test").version == "hashire-merosu@9.9.9-test"
 
-    lib = Library(REPO / "worlds", scenes, world_path({"ZJ_WORLD": str(later)}))  # 仓库外的文件也行
+    # A file outside the repo works too / リポジトリの外のファイルでもよい
+    lib = Library(REPO / "worlds", scenes, world_path({"ZJ_WORLD": str(later)}))
     assert lib.current.version == "hashire-merosu@9.9.9-test"
     assert lib.version(draft).version == draft
 
 
 def test_zj_world_must_be_an_absolute_path_to_a_file(tmp_path: Path) -> None:
-    with pytest.raises(ConfigError, match="绝对路径"):
+    with pytest.raises(ConfigError, match="absolute path"):
         world_path({"ZJ_WORLD": "worlds/hashire-merosu/1.0.0-draft/world.json"})
-    with pytest.raises(ConfigError, match="不存在"):
+    with pytest.raises(ConfigError, match="does not exist"):
         world_path({"ZJ_WORLD": str(tmp_path / "nope.json")})
 
 
@@ -110,14 +127,14 @@ def test_extra_books_are_explicit_and_do_not_replace_pinned_versions(tmp_path: P
     assert set(lib.available) == {"hashire-merosu", "test-book"}
     assert lib.book("test-book") is lib.version("test-book@1.0.0")
     assert lib.book("hashire-merosu") is lib.current
-    with pytest.raises(ValueError, match="重复"):
+    with pytest.raises(ValueError, match="Duplicate open book"):
         Library(REPO / "worlds", REPO / "assets/scenes", DEFAULT_WORLD, (DEFAULT_WORLD,))
     for invalid in ("{}", '"no"', "[1]", '["relative.json"]', "not json"):
         with pytest.raises(ConfigError):
             released_worlds({"ZJ_WORLDS": invalid})
     w["worldModelVersion"] = lib.current.version
     p.write_text(json.dumps(w))
-    with pytest.raises(ValueError, match="不同书籍复用"):
+    with pytest.raises(ValueError, match="reused by different books"):
         Library(REPO / "worlds", REPO / "assets/scenes", DEFAULT_WORLD, (p,))
 
 
@@ -131,7 +148,10 @@ def test_workshop_has_separate_positions_for_every_individual_and_player() -> No
     placed = scene.character_spots(people, {player})
     assert len(set(placed.values())) == len(people)
     assert player not in placed.values() and "workshop-door" not in placed.values()
-    # 不只比较 ID：真实生成坐标也必须离开彼此，保留至少 1.2m 给人物身体和轻微动作。
+    # Don't just compare IDs: the real generated coordinates must also be apart, leaving at least 1.2 m for the
+    # characters' bodies and small movements.
+    # ID を比べるだけでなく、実際に生成した座標も互いに離れていること。
+    # 登場人物の体と小さな動きのために少なくとも 1.2m 空ける。
     doc = json.loads((REPO / "assets/scenes/syracuse-square/scene.json").read_text())
     spots = [doc["spots"][s] for s in [player, *placed.values()]]
     from math import hypot
@@ -143,7 +163,12 @@ def test_workshop_has_separate_positions_for_every_individual_and_player() -> No
 
 
 def test_delivered_lines_call_the_player_anata() -> None:
-    """下发的事件句里玩家是「あなた」（UX 10-10）；名字里含身份名的人物不换；period 只在没有句末标点时补「。」。"""
+    """In delivered event sentences the player is 「あなた」 (UX 10-10); characters whose names contain the role name
+    are left alone; period only adds 「。」 when there is no sentence-final punctuation.
+
+    送るイベント文ではプレイヤーは「あなた」（UX 10-10）。名前に役柄名を含む登場人物は置き換えない。period は
+    文末に句読点がないときだけ「。」を補う。
+    """
     from zoujin_backend.projection import as_you
 
     from .conftest import BOOK
@@ -155,7 +180,12 @@ def test_delivered_lines_call_the_player_anata() -> None:
 
 
 def test_characters_whose_name_holds_the_role_name_are_kept() -> None:
-    """契约 1.8 起世界模型里的人物名不再含身份名（数据的自检），这里用自己搭的一本书查兜底。"""
+    """Since contract 1.8, character names in world models no longer contain role names (the data self-check), so this
+    checks the fallback with a hand-built book.
+
+    契約 1.8 以降、世界モデルの登場人物名に役柄名は含まれない（データのセルフチェック）ので、ここでは自前で組んだ本で
+    保険を確かめる。
+    """
     from types import SimpleNamespace
 
     from zoujin_backend.projection import as_you
@@ -195,7 +225,10 @@ def test_commit_events_call_the_player_anata_without_a_period() -> None:
 
 
 def test_recap_lines_call_the_player_anata_with_a_period() -> None:
-    """「その頃」：line 用 summary，玩家写成「あなた」、句末补「。」。"""
+    """「その頃」: line uses summary, with the player written as 「あなた」 and 「。」 added at the end.
+
+    「その頃」：line は summary を使い、プレイヤーは「あなた」と書き、文末に「。」を補う。
+    """
     from zoujin_backend.narrator.acts import recap
 
     from .conftest import BOOK
@@ -226,8 +259,13 @@ def test_recap_lines_call_the_player_anata_with_a_period() -> None:
 
 
 def test_events_are_written_with_the_newest_contract_version() -> None:
-    """写事件用的 `SCHEMA_VERSION` 跟着契约走：是 `SchemaVersion` 里最新的那个，也是仓库里世界模型写的版本。
-    数据升契约时这条会红，提醒后端一起升。"""
+    """The `SCHEMA_VERSION` used to write events follows the contract: it is the newest in `SchemaVersion`, and also
+    the version the repo's world model is written in. When the data side bumps the contract this goes red, reminding
+    the backend to bump along.
+
+    イベントを書くときの `SCHEMA_VERSION` は契約に従う：`SchemaVersion` の最新のもので、リポジトリの世界モデルが
+    書かれたバージョンでもある。データ側が契約を上げるとこれが赤くなり、バックエンドも一緒に上げるよう知らせる。
+    """
     common = json.loads((REPO / "packages/contracts/schemas/data/common.schema.json").read_text(encoding="utf-8"))
     assert SCHEMA_VERSION == common["$defs"]["SchemaVersion"]["enum"][-1]
     world = json.loads(DEFAULT_WORLD.read_text(encoding="utf-8"))
@@ -235,8 +273,14 @@ def test_events_are_written_with_the_newest_contract_version() -> None:
 
 
 def test_weather_beats_are_seen_from_anywhere_in_the_same_scene() -> None:
-    """数据契约 1.12：没有参与人物的节拍（beat.12 大雨，在 place.village）在同一个场景（scene.village）就推；
-    别的场景、没有场景的地点不推；有参与人物的节拍照旧要在它的地点；玩家做的照旧推；被否决的不推。"""
+    """Data contract 1.12: a beat without participating characters (beat.12, the heavy rain at place.village) is
+    pushed anywhere in the same scene (scene.village); not in other scenes or at places without a scene; beats with
+    participants still require being at their place; what the player does is still pushed; rejected ones aren't.
+
+    データ契約 1.12：参加する登場人物のいないビート（beat.12 の大雨、place.village）は同じ場面（scene.village）なら
+    どこでもプッシュする。別の場面や場面のない場所ではしない。参加者のいるビートは従来どおりその場所にいる必要がある。
+    プレイヤーがしたことは従来どおりプッシュする。却下されたものはしない。
+    """
     from zoujin_backend.projection import is_visible
 
     draft = REPO / "worlds" / "hashire-merosu" / "1.0.0-draft" / "world.json"
@@ -252,10 +296,12 @@ def test_weather_beats_are_seen_from_anywhere_in_the_same_scene() -> None:
 
     rain = beat("beat.12", "place.village")
     assert is_visible(book, rain, "place.village")
-    assert is_visible(book, rain, "place.melos-home")  # 同一个场景
-    assert not is_visible(book, rain, "place.river")  # 别的场景
-    assert not is_visible(book, beat("beat.15", "place.neighbor-village"), "place.village")  # 节拍的地点没有场景
-    wedding = beat("beat.13", "place.melos-home")  # 有参与人物：要在它的地点
+    assert is_visible(book, rain, "place.melos-home")  # same scene / 同じ場面
+    assert not is_visible(book, rain, "place.river")  # another scene / 別の場面
+    # The beat's place has no scene / ビートの場所に場面がない
+    assert not is_visible(book, beat("beat.15", "place.neighbor-village"), "place.village")
+    # Has participants: must be at its place / 参加者がいる：その場所にいる必要がある
+    wedding = beat("beat.13", "place.melos-home")
     assert book.beats["beat.13"]["participants"]
     assert is_visible(book, wedding, "place.melos-home")
     assert not is_visible(book, wedding, "place.village")

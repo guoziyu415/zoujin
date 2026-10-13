@@ -1,4 +1,5 @@
-// 原创书房的可复现材质。纹理只含表面信息，窗光与灯光由真实光源给出。
+// Reproducible materials for the original study. Textures hold surface information only; window light and lamplight come from real light sources.
+// オリジナルの書斎の再現可能な素材。テクスチャは表面の情報だけを持ち、窓の光と灯りは実際の光源が与える。
 import {
   CanvasTexture,
   MeshStandardMaterial,
@@ -36,7 +37,8 @@ function wood(seed: number, light: boolean) {
   const rng = random(seed);
   g.fillStyle = light ? "#9b7950" : "#66513a";
   g.fillRect(0, 0, 512, 512);
-  // 长纤维、轻微年轮和不规则孔隙；每块木材不会变成同一张噪声贴纸。
+  // Long fibers, faint growth rings and irregular pores, so no two pieces of wood look like the same noise decal.
+  // 長い繊維、かすかな年輪、不規則な孔。どの木材も同じノイズのステッカーにはならない。
   for (let i = 0; i < 1800; i++) {
     const y = rng() * 512;
     const k = rng();

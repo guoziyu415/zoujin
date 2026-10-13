@@ -1,8 +1,16 @@
-"""`zoujin-probe`（B-8 验收第 6 组）：不带 --confirm 只打印；带了串行跑，第一个 429、529 就停，到上限就停，
-结果只有数字。
+"""`zoujin-probe` (B-8 acceptance check group 6): without --confirm it only prints; with it, it runs serially, stops at
+the first 429 or 529, stops at the cap, and the results are numbers only.
 
-真跑的那几条用 `httpx2.MockTransport` 接住 SDK 的流式请求（SSE），不联网；CI 里没装可选依赖 real 的任务跳过。
-请求取 CI 的回放（假模型录的、为测试写的台词）。
+The real-run tests catch the SDK's streaming requests (SSE) with `httpx2.MockTransport`, no network; CI jobs without
+the optional dependency group real skip them. Requests are taken from CI's replays (recorded with the fake model, lines
+written for tests).
+
+`zoujin-probe`（B-8 受け入れ確認 第 6 組）：--confirm なしでは表示だけ。ありでは直列に実行し、最初の 429・529 で止まり、
+上限で止まり、結果は数字だけ。
+
+本当に実行するテストは `httpx2.MockTransport` で SDK のストリーミングリクエスト（SSE）を受け止め、
+ネットワークにはつながない。CI でオプションの依存グループ real を入れていないジョブはスキップする。
+リクエストは CI のリプレイ（偽モデルで録った、テスト用に書いたセリフ）から取る。
 """
 
 from __future__ import annotations
@@ -27,7 +35,9 @@ ENV = {
 }
 FIXTURE = REPO / "fixtures" / "model-replays" / "b0-minimal.jsonl"
 RECORDS = [json.loads(x) for x in FIXTURE.read_text(encoding="utf-8").splitlines()]
-WORDS = ["宿", "老爺", "羊"]  # 请求和回答里的字：结果文件里不该有
+# Words in requests and answers: must not appear in result files
+# リクエストと回答に含まれる語：結果ファイルにあってはならない
+WORDS = ["宿", "老爺", "羊"]
 
 
 @pytest.fixture
@@ -40,15 +50,21 @@ def requests(tmp_path: Path) -> Path:
 
 def test_load_takes_only_claude_kinds_once(requests: Path) -> None:
     got = probe.load(requests)
-    # reply 留在 Google，不量；memory 是 B-13 那一轮提交以后写的印象
+    # reply stays on Google, not measured; memory is the impression B-13 writes after the turn commits
+    # reply は Google に残すので測らない。memory は B-13 でターンのコミット後に書く印象
     assert list(got) == ["triage", "extract", "check", "rewrite", "safety", "memory"]
-    assert [len(v) for v in got.values()] == [1, 1, 1, 2, 1, 1]  # 同样的请求只算一个
+    assert [len(v) for v in got.values()] == [1, 1, 1, 2, 1, 1]  # Identical requests count once / 同じリクエストは 1 件
     picked = probe.pick(got, 3)
     assert [k for k, _ in picked].count("rewrite") == 3 and len(picked) == 18
 
 
 def test_ending_requests_print_an_estimate(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    """B-9 验收第 13 条：切片两条路的结局请求（b9-ending.jsonl）各 10 次，不带 --confirm 只打印估价。"""
+    """B-9 acceptance check item 13: ending requests for the slice's two routes (b9-ending.jsonl), 10 each; without
+    --confirm it only prints the estimate.
+
+    B-9 受け入れ確認 第 13 項：スライスの 2 つのルートのエンディングのリクエスト（b9-ending.jsonl）を各 10 回。
+    --confirm なしでは見積もりを表示するだけ。
+    """
     d = tmp_path / "requests"
     d.mkdir()
     (d / "b9.jsonl").write_text((FIXTURE.parent / "b9-ending.jsonl").read_text(encoding="utf-8"), encoding="utf-8")
@@ -57,11 +73,11 @@ def test_ending_requests_print_an_estimate(tmp_path: Path, capsys: pytest.Captur
         "ending-check": 2,
         "memory": 1,
         "world": 2,
-    }  # B-17；B-16 的世界推进
+    }  # B-17; B-16's world advance / B-16 の世界の進行
     argv = ["--requests", str(d), "--out", str(tmp_path / "out"), "--kind", "ending", "--per-kind", "20"]
     assert probe.main([*argv, "--max-item-usd", "1", "--max-claude-usd", "100"], env=ENV) == 0
     printed = capsys.readouterr().out
-    assert "小测：20 次调用" in printed and "预计花费" in printed and not (tmp_path / "out").exists()
+    assert "Probe: 20 calls" in printed and "Estimated cost" in printed and not (tmp_path / "out").exists()
 
 
 def test_holdout_is_never_read(tmp_path: Path) -> None:
@@ -75,27 +91,29 @@ def test_without_confirm_it_only_prints(requests: Path, tmp_path: Path, capsys: 
     out = tmp_path / "out"
     argv = ["--requests", str(requests), "--out", str(out), "--per-kind", "5", "--max-item-usd", "2"]
     env = ENV | {"ZJ_LEDGER": str(tmp_path / "ledger.jsonl")}
-    assert probe.main([*argv, "--max-claude-usd", "100"], env=env) == 0  # 没带 --confirm
+    assert probe.main([*argv, "--max-claude-usd", "100"], env=env) == 0  # No --confirm / --confirm なし
     printed = capsys.readouterr().out
-    assert "小测：30 次调用" in printed and "预计花费" in printed and "只打印，不调用：没带 --confirm" in printed
-    (cmd,) = [x for x in printed.splitlines() if x.startswith("命令：")]
+    assert "Probe: 30 calls" in printed and "Estimated cost" in printed
+    assert "Printing only, no calls / 表示のみで呼び出さない: no --confirm / --confirm がない" in printed
+    (cmd,) = [x for x in printed.splitlines() if x.startswith("Command / コマンド: ")]
     assert (
         "uv run --all-packages --extra real zoujin-probe" in cmd
         and cmd.endswith("--confirm")
         and cmd.count("--confirm") == 1
     )
     assert "sonnet-5.5" in printed and KEY not in printed and "idmark" not in printed
-    assert probe.main([*argv, "--confirm"], env=ENV) == 0  # 少账本、少总上限：也只打印
+    # Missing the ledger and the total cap: also only prints / 台帳と総上限がない：これも表示だけ
+    assert probe.main([*argv, "--confirm"], env=ENV) == 0
     printed = capsys.readouterr().out
-    assert "没设 ZJ_LEDGER" in printed and "少 --max-claude-usd" in printed
+    assert "ZJ_LEDGER not set" in printed and "missing --max-claude-usd" in printed
     assert not out.exists() and not (tmp_path / "ledger.jsonl").exists()
     only = [*argv, "--max-claude-usd", "100", "--kind", "check", "--kind", "rewrite"]
-    assert probe.main(only, env=env) == 0  # 只补跑某几种
+    assert probe.main(only, env=env) == 0  # Re-run only some kinds / 一部の種類だけを再実行
     printed = capsys.readouterr().out
-    assert "小测：10 次调用" in printed and "  check " in printed and "  triage " not in printed
+    assert "Probe: 10 calls" in printed and "  check " in printed and "  triage " not in printed
 
 
-# —— 真跑（假的 SSE） ——
+# —— Real run (fake SSE) / 本当に実行（偽の SSE） ——
 
 
 def kind_of(body: Json) -> str:
@@ -173,7 +191,7 @@ def run_probe(
     anthropic = pytest.importorskip("anthropic")
     httpx = pytest.importorskip("httpx2")
     for k, v in ENV.items():
-        monkeypatch.setenv(k, v)  # SDK 自己从环境变量读 Key
+        monkeypatch.setenv(k, v)  # The SDK reads the key from env vars itself / SDK は環境変数からキーを自分で読む
     sdk = anthropic.AsyncAnthropic(max_retries=0, http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
     real = probe.Timed
     monkeypatch.setattr(probe, "Timed", lambda: real(sdk))
@@ -202,7 +220,8 @@ def test_a_run_writes_only_numbers(
     check = summary["kinds"]["check"]
     assert check["model"] == "sonnet-5.5" and check["calls"] == 3 and check["thinkingTokens"] == 40
     assert set(check["totalMs"]) == {"p50", "p95", "max"} and summary["meta"]["stoppedBy"] is None
-    assert summary["meta"]["requests"] == "requests"  # 只写目录名，不写 Mac 上的路径
+    # Only the directory name, never the path on the Mac / ディレクトリ名だけを書き、Mac 上のパスは書かない
+    assert summary["meta"]["requests"] == "requests"
     ledger = [json.loads(x) for x in (tmp_path / "ledger.jsonl").read_text(encoding="utf-8").splitlines()]
     assert len(ledger) == 18 and {(x["provider"], x["item"], x["use"]) for x in ledger} == {
         ("claude", "b8-probe", "product")
@@ -222,7 +241,9 @@ def test_the_first_limit_stops_the_run(
     )
     assert exit_code == 3
     rows = [json.loads(x) for x in (out / probe.ROWS).read_text(encoding="utf-8").splitlines()]
-    assert [r["kind"] for r in rows] == ["triage"] * 3 + ["extract"]  # 第二次提取 429：停下，后面的都不调
+    # The second extract gets 429: stop, nothing after it is called
+    # 2 回目の抽出で 429：止まり、その後は何も呼ばない
+    assert [r["kind"] for r in rows] == ["triage"] * 3 + ["extract"]
     summary = json.loads((out / probe.SUMMARY).read_text(encoding="utf-8"))
     assert summary["meta"]["stoppedBy"] == "RateLimited"
     assert KEY not in capsys.readouterr().out

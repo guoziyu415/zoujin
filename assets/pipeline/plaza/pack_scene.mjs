@@ -140,7 +140,7 @@ for (const m of root.listMaterials()) {
 for (const t of root.listTextures()) t.dispose();
 // Blender's exporter sorts vertices but not always triangles: two runs from the same input gave the far cypress
 // primitive the same triangles in a different order. Sort each primitive's triangles (winding kept) so the same input
-// packs to the same bytes (README, 复现性).
+// packs to the same bytes (README, "Reproducibility / 再現性").
 const sortedIdx = new Set();
 for (const me of root.listMeshes())
   for (const p of me.listPrimitives()) {
@@ -289,7 +289,7 @@ if (nav.errors.length) {
 // sha256), the tool versions, and the environment variables the scripts read (build.sh runs every step in one
 // environment, so what this step sees is what the sky and the bake saw). check_scene.mjs compares the committed
 // manifest's inputs with a fresh build's, so a pipeline change that was not followed by a new final build shows up
-// in CI. Derived bytes (texture PNGs, bakes) are left out: they can differ a little between machines (README, 复现性).
+// in CI. Derived bytes (texture PNGs, bakes) are left out: they can differ a little between machines (README, "Reproducibility / 再現性").
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(HERE, "../../..");
 // SCENE_INPUTS: another scene's own scripts (repo-relative, comma-separated) in place of the plaza's build.sh,

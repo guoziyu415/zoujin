@@ -1,14 +1,16 @@
 [project]
 name = "zj-spike"
 version = "0.1.0"
-description = "走进物语 后端技术验证脚本（只调用模型类服务；Model Armor 模板会自动删除；S-1b 的临时服务只在 zg 同意后由 s1b_deploy.sh 创建并删除）"
+description = "物語 (Monogatari) backend technical validation scripts (only model services are called; the Model Armor template is deleted automatically; the temporary S-1b service is created and deleted by s1b_deploy.sh only after zg agrees) / 物語 (Monogatari) バックエンド技術検証スクリプト（呼び出すのはモデル系サービスのみ。Model Armor テンプレートは自動で削除。S-1b の一時サービスは zg の同意後にのみ s1b_deploy.sh が作成・削除する）"
 requires-python = ">=3.13,<3.14"
 dependencies = [
   "google-genai==2.28.0",
   "google-cloud-modelarmor==0.7.2",
   "fastapi==0.142.2",
   "uvicorn==0.54.0",
-  # S-068 重测的两种判定走 Claude（D-028、S-086）：账本、单价、Anthropic 的连接用仓库里的共用包
+  # The two judgments in the S-068 retest go through Claude (D-028, S-086): ledger, unit prices and the Anthropic
+  # connection come from the repo's shared package
+  # S-068 再テストの 2 種類の判定は Claude で行う（D-028、S-086）：台帳、単価、Anthropic への接続はリポジトリの共有パッケージを使う
   "zoujin-llm[real]",
   "anthropic==1.13.0",
 ]

@@ -1,4 +1,4 @@
-{"note": "降级为文字回答：先推 degraded，之后 session_ready.voiceAvailable 为 false；发一句文字，人物只回字幕（没有音频，turn_complete audio false），再照常判定。先 focus 市の老爺。"}
+{"note": "Fallback to text answers: push degraded first, after which session_ready.voiceAvailable is false; send a line of text, the character answers with subtitles only (no audio, turn_complete audio false), then the turn is judged as usual. Focus 市の老爺 first. / 文字での応答に縮退：まず degraded を送り、以後 session_ready.voiceAvailable は false。文字を 1 行送ると登場人物は字幕だけで答え（音声なし、turn_complete audio false）、そのあといつもどおり判定する。先に 市の老爺 に focus する。"}
 {"delayMs": 800, "send": {"type": "degraded", "voice": false, "reason": "budget"}}
 {"on": ["text", "activity_end"]}
 {"delayMs": 1200, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "char.old-man", "text": "……日が沈む前に、刑場へ行ってみなされ。", "final": true, "source": "live"}}

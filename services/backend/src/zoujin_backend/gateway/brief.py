@@ -1,16 +1,42 @@
-"""Live 会话的系统指令（B-10，backend-design 2.3）：规则（`prompt_texts/live.txt`）+ 人设 + 此刻的局势 + 话し相手 +
-さっきまでの会話。
+"""System instructions for a Live session (B-10, backend-design 2.3): rules (`prompt_texts/live.txt`) + persona +
+the current situation + 話し相手 + さっきまでの会話.
 
-- 人设、局势、玩家三段用叙事者给 `reply` 的同一套（`narrator/view.py` 的 `persona`、`situation`、`player_card`），
-  排成日语的条目。所以知情边界（S-086：不知道日名那条事实的人物只给时段）和评测里的人物一样。
-- **不放世界模型前缀**：Live 每轮把整段上下文重新计费，前缀放进去每轮多约 0.03 美元〔推算〕。
-- 「さっきまでの会話」：网关内存里这个人物最近几轮的文字（跳过作废、删除的），只在内存里，不落库、不进 Trace。
-- 局势的条目（`facts`）也用来算中途更新：和上次送进会话的比，只送变了的（`changes`）。
-- 版本号 = 规则文本的哈希（同 `Prompt.version` 的做法），记进 Trace 的 `live.session`。
-- `live.txt` 和叙事者的 `reply.txt` 是一对（提示文本里不能写注释，写在这里）：S-068 的结论改 `reply.txt` 时，`live.txt`
-  同一个 PR 跟着改（#111 数据评审）。
-- 「気をつけること」：B-12 输出侧监控的提示（`monitor.notes`），开会话时带上；剧透纠正不点名那个词。
-- 玩家的称呼用「話し相手」那一段的名字（`player_card` 的 `name`，即身份名；契约 1.8 起身份名只指玩家）。
+- The persona, situation and player sections use the same building blocks the narrator gives `reply`
+  (`persona`, `situation`, `player_card` in `narrator/view.py`), laid out as Japanese entries. So the knowledge
+  boundary (S-086: a character who doesn't know the fact naming the day only gets the time of day) is the same as for
+  the characters in the evals.
+- **No world model prefix**: Live bills the whole context again every turn, and the prefix would add about $0.03 per
+  turn 〔estimate〕.
+- 「さっきまでの会話」: the character's last few turns of text held in the gateway's memory (skipping retracted and
+  deleted ones); memory only, never written to the database or Trace.
+- The situation entries (`facts`) are also used for mid-session updates: compared with what was last sent into the
+  session, only what changed is sent (`changes`).
+- Version = hash of the rules text (the same approach as `Prompt.version`), recorded in Trace's `live.session`.
+- `live.txt` and the narrator's `reply.txt` are a pair (prompt text can't hold comments, so the note is here): when an
+  S-068 conclusion changes `reply.txt`, `live.txt` changes in the same PR (#111 data review).
+- 「気をつけること」: hints from B-12's output-side monitor (`monitor.notes`), included when the session opens; a
+  spoiler correction never names the word itself.
+- The player is addressed by the name in the 「話し相手」 section (`name` from `player_card`, i.e. the role name; since
+  contract 1.8 the role name refers only to the player).
+
+Live セッションのシステム指示（B-10、backend-design 2.3）：ルール（`prompt_texts/live.txt`）＋人物設定＋いまの状況＋
+話し相手＋さっきまでの会話。
+
+- 人物設定、状況、プレイヤーの 3 つは、ナレーターが `reply` に渡すのと同じもの（`narrator/view.py` の `persona`、
+  `situation`、`player_card`）を日本語の項目として並べる。そのため知っていることの境界（S-086：日付を示す事実を
+  知らない登場人物には時間帯だけを渡す）は評価での登場人物と同じになる。
+- **世界モデルのプレフィックスは入れない**：Live は毎ターン文脈全体を課金し直すので、プレフィックスを入れると
+  1 ターンあたり約 0.03 ドル増える〔推計〕。
+- 「さっきまでの会話」：ゲートウェイのメモリにあるこの登場人物の直近数ターンの文字（取り消し・削除済みは飛ばす）。
+  メモリ内だけで、データベースにも Trace にも入れない。
+- 状況の項目（`facts`）は途中の更新にも使う：前回セッションに送ったものと比べ、変わったものだけを送る（`changes`）。
+- バージョン = ルール文のハッシュ（`Prompt.version` と同じやり方）。Trace の `live.session` に記録する。
+- `live.txt` とナレーターの `reply.txt` は対になっている（プロンプト文にはコメントを書けないのでここに書く）：
+  S-068 の結論で `reply.txt` を変えるときは、同じ PR で `live.txt` も変える（#111 データのレビュー）。
+- 「気をつけること」：B-12 の出力側モニターのヒント（`monitor.notes`）。セッションを開くときに付ける。
+  ネタバレの訂正ではその語を名指ししない。
+- プレイヤーの呼び方は「話し相手」の名前（`player_card` の `name`、つまり役名。契約 1.8 以降、役名はプレイヤー
+  だけを指す）。
 """
 
 from __future__ import annotations
@@ -44,7 +70,9 @@ def version() -> str:
 @dataclass(frozen=True)
 class Brief:
     system: str
-    facts: tuple[str, ...]  # 局势的条目（「時：…」「場所：…」「知っていること：…」），中途更新时比较
+    # Situation entries (「時：…」「場所：…」「知っていること：…」), compared for mid-session updates.
+    # 状況の項目（「時：…」「場所：…」「知っていること：…」）。途中の更新のときに比べる。
+    facts: tuple[str, ...]
 
 
 def _names(book: Book) -> dict[str, str]:
@@ -54,7 +82,12 @@ def _names(book: Book) -> dict[str, str]:
 
 
 def _by_world(book: Book, state: SimState, who: str, fact: str) -> bool:
-    """按世界模型（`Character.knows`）他此刻本来就知道：since 是 pre，或那个节拍已经发生 / 改写了。"""
+    """By the world model (`Character.knows`) the character already knows this now: since is pre, or that beat has
+    happened / been altered.
+
+    世界モデル（`Character.knows`）上、この登場人物はいま元から知っている：since が pre、またはそのビートが
+    すでに起きた / 書き換えられた。
+    """
     beats = state["beats"]
     return any(
         k["fact"] == fact and (k["since"] == "pre" or beats.get(k["since"]) in OCCURRED)
@@ -74,20 +107,27 @@ def situation_facts(book: Book, state: SimState, who: str, forgotten: frozenset[
     visible_facts: set[str] = set()
     for k in s["knows"]:
         real = view.real(k)
-        if real in forgotten and not _by_world(book, state, who, real):  # 世界模型让他知道的照给（数据复看）
+        # What the world model lets the character know is still given (data review).
+        # 世界モデル上知っていることはそのまま渡す（データの見直し）。
+        if real in forgotten and not _by_world(book, state, who, real):
             continue
         if real in statements:
             lines.append("知っていること：" + statements[real])
             visible_facts.add(real)
         elif real in run:
             lines.append("知っていること：" + str(run[real]["statement"]))
-    # 亲历的时间只标在已经获准给人物的事实上。整段 beat.summary 是全知叙述，
-    # 可能含尚未发生的时长、他人内心或原作相对日期，不能当作人物亲历注入。
+    # Lived-through times are marked only on facts the character is already allowed to have. A whole beat.summary is
+    # omniscient narration that may hold durations that haven't happened yet, other people's inner thoughts or the
+    # novel's relative dates, so it must not be injected as the character's own experience.
+    # 自分で経験した時刻は、登場人物に渡してよいと認められた事実にだけ付ける。beat.summary 全体は全知の語りで、
+    # まだ起きていない長さ、他人の内心、原作の相対的な日付を含みうるので、登場人物の体験として入れてはならない。
     for recent in s["recent"]:
         beat = book.beats[recent["beat"]]
         variant = next((v for v in beat.get("variants", []) if v["id"] == recent.get("variant")), None)
         if state["beats"].get(beat["id"]) == "altered" and variant is None:
-            # 自由改写的节拍没有原作摘要的权限，不能拿原作结果冒充本局亲历。
+            # A freely altered beat has no right to the novel's summary; the novel's outcome must not pose as what
+            # happened in this game.
+            # 自由に書き換えられたビートには原作の要約を使う権限がない。原作の結果をこのゲームの体験に見せかけない。
             continue
         for fact in book.world["facts"]:
             if fact["id"] in visible_facts and fact["trueFrom"] == beat["id"]:
@@ -106,13 +146,31 @@ def build(
     *,
     samples: int = 4,
 ) -> Brief:
-    """notes：B-12 输出侧监控给这个人物加的几句提示（剧透纠正、问句过多、不往死亡推，`gateway/monitor.py`），
-    放在「# いまの状況」后面的「# 気をつけること」。只在开会话时带上（中途更新只比较 `facts`）。
-    memories：B-13 这个人物对玩家没删的记忆（`narrator/memory.memories_for_brief`，按 salience 取、按时间排），
-    放在「# いまの状況」后面的「# 覚えていること」；在記憶帳删了的不在这里，会话也随删除重建。
-    forgotten：删了的记忆的来源事件里他才学到的事实（`narrator/memory.forgotten_facts`），「知っていること」不带
-    （UX 评审：人物就是不知道这件事，玩家再提他当新的事听）。作废的约定和 forget 事件本来就不进局势说明。
-    samples：「口ぶりの例」几句（B-14 节约档 2 句；记忆条数和最近对话的轮数由调用的人截）。"""
+    """notes: the few hints B-12's output-side monitor adds for this character (spoiler correction, too many
+    questions, not pushing toward death; `gateway/monitor.py`), placed in 「# 気をつけること」 after
+    「# いまの状況」. Included only when the session opens (mid-session updates only compare `facts`).
+    memories: B-13, this character's undeleted memories of the player (`narrator/memory.memories_for_brief`, picked by
+    salience, ordered by time), placed in 「# 覚えていること」 after 「# いまの状況」; ones deleted in the 記憶帳 are
+    not here, and the session is rebuilt on deletion.
+    forgotten: facts the character learned only in the source events of deleted memories
+    (`narrator/memory.forgotten_facts`), left out of 「知っていること」 (UX review: the character simply doesn't know
+    it, and if the player brings it up again they hear it as new). Voided promises and forget events never enter the
+    situation description anyway.
+    samples: how many 「口ぶりの例」 lines (2 in B-14's economy tier; the caller trims the number of memories and of
+    recent turns).
+
+    notes：B-12 の出力側モニターがこの登場人物に加えるいくつかのヒント（ネタバレの訂正、質問が多すぎる、死へ
+    押しやらない。`gateway/monitor.py`）。「# いまの状況」の後の「# 気をつけること」に置く。セッションを開くときだけ
+    付ける（途中の更新では `facts` だけを比べる）。
+    memories：B-13、この登場人物のプレイヤーについての削除されていない記憶（`narrator/memory.memories_for_brief`。
+    salience で選び、時刻順に並べる）。「# いまの状況」の後の「# 覚えていること」に置く。記憶帳で削除したものは
+    ここになく、削除に合わせてセッションも作り直す。
+    forgotten：削除した記憶の元のイベントで初めて知った事実（`narrator/memory.forgotten_facts`）。
+    「知っていること」には入れない（UX のレビュー：登場人物はそのことを知らないだけで、プレイヤーがまた話せば新しい
+    話として聞く）。無効になった約束や forget イベントはもともと状況の説明に入らない。
+    samples：「口ぶりの例」を何行入れるか（B-14 の節約モードでは 2 行。記憶の件数と直近の会話のターン数は
+    呼び出し側が切り詰める）。
+    """
     p = persona(book, state, who)
     me = player_card(book, state, who)
     facts = situation_facts(book, state, who, forgotten)
@@ -130,7 +188,10 @@ def build(
         out.append(f"口調：{speech['register']}")
     for q in speech.get("sampleLines", [])[:samples]:
         out.append(f"口ぶりの例：「{q}」")
-    # 人设里的读心自信属于信念，不给人物额外的事实权限；放在人设之后明确两者的边界。
+    # Confidence in reading minds in the persona is a belief and grants no extra access to facts; it goes after the
+    # persona to make the boundary between the two explicit.
+    # 人物設定にある心を読む自信は信念であり、登場人物に事実への追加の権限を与えない。人物設定の後に置いて両者の
+    # 境界をはっきりさせる。
     out += [
         "",
         "# 人柄と知識の区別",
@@ -161,7 +222,12 @@ def build(
 
 
 def changes(old: Sequence[str], new: Sequence[str]) -> str | None:
-    """中途更新：只送新出现的条目（变了的时刻、地点、在场的人，新知道的事）。没有变化回 None。"""
+    """Mid-session update: send only the new entries (a changed time, place or people present, newly known things).
+    None if nothing changed.
+
+    途中の更新：新しく現れた項目だけを送る（変わった時刻、場所、その場にいる人、新しく知ったこと）。変化がなければ
+    None を返す。
+    """
     added = [x for x in new if x not in set(old)]
     if not added:
         return None
@@ -169,5 +235,8 @@ def changes(old: Sequence[str], new: Sequence[str]) -> str | None:
 
 
 def _flat(s: str) -> str:
-    """原话里的换行和「#」开头不让它冒充指令的段落。"""
+    """Line breaks and a leading 「#」 in what was said must not pose as instruction sections.
+
+    発言の中の改行や先頭の「#」が指示の段落になりすまさないようにする。
+    """
     return " ".join(s.split()).lstrip("#")

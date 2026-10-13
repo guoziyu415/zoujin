@@ -19,7 +19,7 @@
       "required": ["target"],
       "properties": {
         "target": {
-          "description": "事件、节拍、关键时刻的 ID，或 forecast",
+          "description": "The ID of an event, beat or key moment, or forecast / イベント、ビート、重要な瞬間の ID、または forecast",
           "anyOf": [
             {
               "$ref": "../../data/common.schema.json#/$defs/EventId"
@@ -44,7 +44,7 @@
       "required": ["target", "chain", "collapsed"],
       "properties": {
         "target": {
-          "description": "同 query 的 target",
+          "description": "Same as the target in the query / query の target と同じ",
           "anyOf": [
             {
               "$ref": "../../data/common.schema.json#/$defs/EventId"
@@ -61,7 +61,7 @@
           ]
         },
         "chain": {
-          "description": "按时间正序，最长 12 步",
+          "description": "In chronological order, at most 12 steps / 時系列順、最大 12 段階",
           "type": "array",
           "items": {
             "$ref": "../common.schema.json#/$defs/WhyStep"
@@ -69,7 +69,7 @@
           "maxItems": 12
         },
         "collapsed": {
-          "description": "中间折叠了几步",
+          "description": "How many steps in the middle were collapsed / 途中で折りたたんだ段階の数",
           "type": "integer",
           "minimum": 0
         }

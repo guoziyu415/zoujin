@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "api/rest/events.schema.json",
   "title": "GET /v1/playthroughs/{id}/events",
-  "description": "补拉事件（2.4），只含玩家可见投影",
+  "description": "Fetch missed events (2.4), player-visible projection only / 取りこぼしたイベントを取得する（2.4）。プレイヤーに見える射影のみ",
   "x-endpoint": {
     "method": "GET",
     "path": "/v1/playthroughs/{id}/events",

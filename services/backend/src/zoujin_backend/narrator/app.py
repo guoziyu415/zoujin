@@ -1,9 +1,21 @@
-"""叙事者服务（`zoujin-narrator`）：只有网关调的内部接口，形状按以后 Cloud Run 服务间调用的样子（B-0 第 7 条第 7 步）。
+"""Narrator service (`zoujin-narrator`): an internal API only the gateway calls, shaped like the later Cloud Run
+service-to-service calls (B-0 item 7, step 7).
 
-`POST /internal/v1/playthroughs/{pid}/run`：把这一局排着的任务按顺序做完，回 `{"processed": n}`。别的进程正在做
-这一局时直接回 0（那边做完会接着取）。调用方的身份校验（OIDC）由 Cloud Run 做（B-23）：服务只开内部入口、不许匿名，
-只有网关的服务账号有调用权限，`ZJ_NARRATOR_AUTH=iam` 表示是这样部署的。开发开关打开时不查；两样都没有一律回 401，
-免得没配好就对外开着。
+`POST /internal/v1/playthroughs/{pid}/run`: work through this game's queued tasks in order and return
+`{"processed": n}`. If another process is already working on this game, return 0 right away (that one picks up the
+rest when it is done). Caller authentication (OIDC) is done by Cloud Run (B-23): the service only opens internal
+ingress, allows no anonymous calls, and only the gateway's service account may invoke it; `ZJ_NARRATOR_AUTH=iam` says
+it is deployed that way. With the dev switch on nothing is checked; with neither, every call gets 401, so a
+misconfigured service is never left open.
+
+ナレーターサービス（`zoujin-narrator`）：ゲートウェイだけが呼ぶ内部 API。形は将来の Cloud Run のサービス間呼び出しに
+合わせる（B-0 第 7 項第 7 ステップ）。
+
+`POST /internal/v1/playthroughs/{pid}/run`：このゲームに積まれたタスクを順に片づけ、`{"processed": n}` を返す。
+別のプロセスがこのゲームを処理中ならすぐ 0 を返す（向こうが終わったら続きを取る）。呼び出し元の認証（OIDC）は
+Cloud Run が行う（B-23）：サービスは内部の入口だけを開き、匿名を許さず、ゲートウェイのサービスアカウントだけが
+呼び出せる。`ZJ_NARRATOR_AUTH=iam` はそのようにデプロイしたことを示す。開発スイッチがオンなら確認しない。
+どちらもなければ常に 401 を返し、設定し損ねたまま外に開いてしまうのを防ぐ。
 """
 
 from __future__ import annotations
@@ -36,8 +48,11 @@ def build(settings: Settings) -> Narrator:
         text=text_model(settings.model, fake_rules=settings.fake_text, replays=settings.replays, settings=settings),
         schemas=SchemaBook(settings.schemas),
         deadlines=settings.deadlines,
-        on_rate_limit="degrade",  # 服务玩家：429、529 不停服，按时限的规则处理（B-8）
-        armor=armor(settings.model, replays=settings.replays),  # B-13：记忆一句的第二道过滤
+        # Serving players: 429/529 don't stop the service; handled by the deadline rules (B-8).
+        # プレイヤー向け：429・529 でもサービスを止めず、時間制限の規則で処理する（B-8）。
+        on_rate_limit="degrade",
+        # B-13: the second filter for memory lines / B-13：記憶の一文に対する 2 段目のフィルター
+        armor=armor(settings.model, replays=settings.replays),
     )
 
 
@@ -60,7 +75,10 @@ def create_app(settings: Settings, narrator: Narrator | None = None) -> FastAPI:
     @app.post("/internal/v1/playthroughs/{pid}/run")
     async def run(request: Request, pid: str) -> Response:
         if not settings.dev and settings.narrator_auth != "iam":
-            log.warning("没有开发开关，也不是 ZJ_NARRATOR_AUTH=iam 的部署，拒绝")
+            log.warning(
+                "No dev switch and not a ZJ_NARRATOR_AUTH=iam deployment; refusing"
+                " / 開発スイッチがなく、ZJ_NARRATOR_AUTH=iam のデプロイでもないため拒否"
+            )
             return JSONResponse({"error": "unauthenticated"}, status_code=401)
         done = await n.run(pid)
         return JSONResponse({"processed": len(done)})
@@ -69,8 +87,16 @@ def create_app(settings: Settings, narrator: Narrator | None = None) -> FastAPI:
 
 
 def main(argv: list[str] | None = None) -> None:
-    p = argparse.ArgumentParser(prog="zoujin-narrator", description="叙事者（B-0）：只给网关调")
-    p.add_argument("--host", default="127.0.0.1", help="默认只听本机；容器里用 0.0.0.0")
+    p = argparse.ArgumentParser(
+        prog="zoujin-narrator",
+        description="Narrator (B-0): called only by the gateway / ナレーター（B-0）：ゲートウェイだけが呼ぶ",
+    )
+    p.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Listens on this machine only by default; use 0.0.0.0 in a container"
+        " / 既定ではこのマシンだけで待ち受ける。コンテナでは 0.0.0.0",
+    )
     p.add_argument("--port", type=int, default=8002)
     p.add_argument("--log-level", default="info", choices=["debug", "info", "warning", "error"])
     args = p.parse_args(argv)

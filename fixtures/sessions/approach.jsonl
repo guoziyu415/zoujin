@@ -1,4 +1,4 @@
-{"note": "人物走过来（3.10）：mock 推 approach，前端演出走近，到了发 approach_arrived（或 approach_dismiss）。到了以后老爺先开口；回他一句（说话、文字或点候选话语），再点动作「家まで送る」→ action_result。"}
+{"note": "A character walks over (3.10): the mock pushes approach, the frontend plays the approach, and on arrival sends approach_arrived (or approach_dismiss). After arrival 老爺 speaks first; answer him (by voice, text or a suggested line), then tap the action 「家まで送る」 → action_result. / 登場人物が歩み寄る（3.10）：mock が approach を送り、フロントエンドが近づく演出をして、着いたら approach_arrived（または approach_dismiss）を送る。着いたら老爺が先に話し出す。ひとこと返し（声、文字、候補のセリフのどれでも）、アクション「家まで送る」を押す → action_result。"}
 {"delayMs": 1500, "send": {"type": "approach", "character": "char.old-man", "kind": "request"}}
 {"on": ["approach_arrived", "approach_dismiss"]}
 {"set": {"arrived": "{{trigger.type}}"}}

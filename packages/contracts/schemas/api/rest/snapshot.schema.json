@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "api/rest/snapshot.schema.json",
   "title": "GET /v1/playthroughs/{id}/snapshot",
-  "description": "当前场景的世界投影（2.3）",
+  "description": "Projection of the world for the current scene (2.3) / 現在のシーンの世界の射影（2.3）",
   "x-endpoint": {
     "method": "GET",
     "path": "/v1/playthroughs/{id}/snapshot",

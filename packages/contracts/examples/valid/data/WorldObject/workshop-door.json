@@ -4,5 +4,5 @@
   "label": "戸を叩く",
   "spot": "workshop-door",
   "inferred": true,
-  "note": "工房关着的屋门（切片，UX ux/slice/act1-end-and-gate.md 第 4 节）"
+  "note": "The closed door of the workshop (slice, UX ux/slice/act1-end-and-gate.md section 4) / 工房の閉まった戸（スライス、UX ux/slice/act1-end-and-gate.md 第 4 節）"
 }

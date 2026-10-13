@@ -1,9 +1,21 @@
-# 场景资产（F-2；归途的川 F-10 照同样的做法）：查进仓库的清单（预算、两档颜色、位置点和布局、世界模型），再在干净环境里用草稿档从头生成广场，
-# 证明「一条命令跑通」；仓库里的清单要和这次是同一份输入；在另一个目录再生成一遍，两份清单逐字节一致（能复现）。
-# 正式档的光照图要约半小时，不在 CI 里烘。
-# 村子（F-11）同样，另查它用的共用路边包文件。
-# 王城（F-14）同样，一个包。
-# 刑场的群众（F-4）同样：查进仓库的群众包清单，从头生成两遍（MPFB 按钉住的提交现场取），逐字节一致，清单和仓库里的相同。
+# Scene assets (F-2; the river on the way back, F-10, works the same way): check the committed manifest (budgets, both color
+# tiers, anchor points and layout, world model), then build the plaza from scratch with the draft tier in a clean environment
+# to prove "one command does it all"; the committed manifest must come from the same inputs as this build; build again in
+# another directory and the two manifests must be byte-identical (reproducible).
+# シーンアセット（F-2。帰り道の川 F-10 も同じやり方）：リポジトリにあるマニフェスト（予算、2 段階の色、位置ポイントとレイアウト、
+# 世界モデル）を確認し、クリーンな環境でドラフト品質で広場を一から生成して「コマンド 1 つで通る」ことを示す。リポジトリの
+# マニフェストは今回と同じ入力から作られていなければならない。別のディレクトリでもう一度生成し、2 つのマニフェストがバイト単位で
+# 一致する（再現できる）ことを確認する。
+# Lightmaps at the final tier take about half an hour, so they are not baked in CI.
+# 本番品質のライトマップは約 30 分かかるので、CI では焼かない。
+# The village (F-11) works the same way, and also checks the shared roadside pack files it uses.
+# 村（F-11）も同様で、使用する共用の道端パックのファイルも確認する。
+# The royal castle (F-14) works the same way, as one pack.
+# 王城（F-14）も同様で、パックは 1 つ。
+# The execution-ground crowd (F-4) works the same way: check the committed crowd pack manifest, build it from scratch twice
+# (MPFB fetched on the spot at the pinned commit), byte-identical, and the manifest matches the committed one.
+# 刑場の群衆（F-4）も同様：リポジトリの群衆パックのマニフェストを確認し、一から 2 回生成して（MPFB は固定したコミットをその場で取得）、
+# バイト単位で一致し、マニフェストがリポジトリのものと同じであることを確認する。
 name: assets
 
 on:
@@ -64,7 +76,8 @@ jobs:
           cache-dependency-glob: assets/pipeline/plaza/requirements.txt
       - name: Blender as a Python module (bpy) and the X11/GL libraries it links
         run: |
-          # 自建机器（infra/ci-runner）的镜像里已经装好，那里也没有 sudo
+          # Already installed in the self-hosted runner image (infra/ci-runner), which has no sudo either
+          # セルフホストランナー（infra/ci-runner）のイメージにはインストール済みで、sudo もない
           if [ -z "${ZOUJIN_CI_PREINSTALLED:-}" ]; then
             sudo apt-get update -q
             sudo apt-get install -y -q --no-install-recommends libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1
@@ -76,7 +89,7 @@ jobs:
         run: BPY_PYTHON="$RUNNER_TEMP/bpy/bin/python" bash assets/pipeline/plaza/build.sh draft "$RUNNER_TEMP/plaza"
       - name: committed manifest built from the same inputs (layout, scripts, tool versions)
         run: node assets/pipeline/plaza/check_scene.mjs "$RUNNER_TEMP/plaza" assets/scenes/syracuse-square/layout.json --manifest assets/scenes/syracuse-square/scene.json
-      - name: build again in other directories; the two manifests must be byte-identical (README, 复现性)
+      - name: build again in other directories; the two manifests must be byte-identical (README, reproducibility) / 別のディレクトリで再生成し、2 つのマニフェストはバイト単位で一致すること（README、再現性）
         # runs even when the manifest above is stale, so a red stale check still tells whether the build reproduces
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: |
@@ -105,7 +118,8 @@ jobs:
           cache-dependency-glob: assets/pipeline/plaza/requirements.txt
       - name: Blender as a Python module (bpy) and the X11/GL libraries it links
         run: |
-          # 自建机器（infra/ci-runner）的镜像里已经装好，那里也没有 sudo
+          # Already installed in the self-hosted runner image (infra/ci-runner), which has no sudo either
+          # セルフホストランナー（infra/ci-runner）のイメージにはインストール済みで、sudo もない
           if [ -z "${ZOUJIN_CI_PREINSTALLED:-}" ]; then
             sudo apt-get update -q
             sudo apt-get install -y -q --no-install-recommends libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1
@@ -155,7 +169,8 @@ jobs:
           cache-dependency-glob: assets/pipeline/plaza/requirements.txt
       - name: Blender as a Python module (bpy) and the X11/GL libraries it links
         run: |
-          # 自建机器（infra/ci-runner）的镜像里已经装好，那里也没有 sudo
+          # Already installed in the self-hosted runner image (infra/ci-runner), which has no sudo either
+          # セルフホストランナー（infra/ci-runner）のイメージにはインストール済みで、sudo もない
           if [ -z "${ZOUJIN_CI_PREINSTALLED:-}" ]; then
             sudo apt-get update -q
             sudo apt-get install -y -q --no-install-recommends libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1
@@ -239,7 +254,8 @@ jobs:
           cache-dependency-glob: assets/pipeline/plaza/requirements.txt
       - name: Blender as a Python module (bpy) and the X11/GL libraries it links
         run: |
-          # 自建机器（infra/ci-runner）的镜像里已经装好，那里也没有 sudo
+          # Already installed in the self-hosted runner image (infra/ci-runner), which has no sudo either
+          # セルフホストランナー（infra/ci-runner）のイメージにはインストール済みで、sudo もない
           if [ -z "${ZOUJIN_CI_PREINSTALLED:-}" ]; then
             sudo apt-get update -q
             sudo apt-get install -y -q --no-install-recommends libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1
@@ -280,7 +296,8 @@ jobs:
           cache-dependency-glob: assets/pipeline/plaza/requirements.txt
       - name: Blender as a Python module (bpy) and the X11/GL libraries it links
         run: |
-          # 自建机器（infra/ci-runner）的镜像里已经装好，那里也没有 sudo
+          # Already installed in the self-hosted runner image (infra/ci-runner), which has no sudo either
+          # セルフホストランナー（infra/ci-runner）のイメージにはインストール済みで、sudo もない
           if [ -z "${ZOUJIN_CI_PREINSTALLED:-}" ]; then
             sudo apt-get update -q
             sudo apt-get install -y -q --no-install-recommends libx11-6 libxext6 libxrender1 libxfixes3 libxi6 libxkbcommon0 libsm6 libgl1

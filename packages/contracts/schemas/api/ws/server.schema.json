@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "api/ws/server.schema.json",
   "title": "ServerMessage",
-  "description": "WebSocket 服务端 → 客户端的 JSON 消息（api-contract 3.3），按 type 区分",
+  "description": "WebSocket server → client JSON messages (api-contract 3.3), distinguished by type / WebSocket のサーバー → クライアントの JSON メッセージ（api-contract 3.3）。type で区別する",
   "oneOf": [
     {
       "$ref": "#/$defs/WelcomeMessage"
@@ -100,7 +100,7 @@
   ],
   "$defs": {
     "WelcomeMessage": {
-      "description": "回应 hello（第 4 节）",
+      "description": "Reply to hello (section 4) / hello への応答（第 4 節）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "lastSeq", "voice", "lastTurn", "pending"],
@@ -115,7 +115,7 @@
           "$ref": "../common.schema.json#/$defs/Voice"
         },
         "lastTurn": {
-          "description": "这一局还没有对话时为 null",
+          "description": "null when this playthrough has no conversation yet / このプレイでまだ会話がないときは null",
           "anyOf": [
             {
               "$ref": "../common.schema.json#/$defs/LastTurn"
@@ -132,7 +132,7 @@
       "title": "WelcomeMessage"
     },
     "SessionPreparingMessage": {
-      "description": "需要等待演出（人物转身、吸气）",
+      "description": "Staging needs to wait (the character turns around, takes a breath) / 演出を待つ必要がある（登場人物が振り向く、息を吸う）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "character", "reason", "etaMs"],
@@ -155,7 +155,7 @@
       "title": "SessionPreparingMessage"
     },
     "SessionReadyMessage": {
-      "description": "这个人物可以说话了",
+      "description": "This character can talk now / この登場人物と話せるようになった",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "character", "voiceAvailable"],
@@ -173,7 +173,7 @@
       "title": "SessionReadyMessage"
     },
     "TurnStartedMessage": {
-      "description": "服务端发起的一轮：人物先开口（3.9、3.10、3.11 的落地）",
+      "description": "A turn started by the server: the character speaks first (3.9, 3.10, and the landing of 3.11) / サーバーが開始するターン：登場人物が先に口を開く（3.9、3.10、3.11 の降り立ち）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "turnId", "turnSeq", "speaker", "reason"],
@@ -193,13 +193,13 @@
         "reason": {
           "type": "string",
           "enum": ["approach", "leaving", "confirm", "arrival"],
-          "description": "arrival（v1.0.4）= 幕切换落地后 opener 先开口（3.11）。approach、arrival 的一轮服务端把 speaker 当作已经 focus 的人物，前端不用另发 focus"
+          "description": "arrival (v1.0.4) = the opener speaks first after landing from an act change (3.11). For approach and arrival turns, the server treats speaker as the already-focused character, so the frontend does not need to send focus separately / arrival（v1.0.4）= 幕の切り替えで降り立った後に opener が先に口を開く（3.11）。approach と arrival のターンでは、サーバーは speaker をすでに focus 済みの登場人物として扱うので、フロントエンドは別途 focus を送らなくてよい"
         }
       },
       "title": "TurnStartedMessage"
     },
     "TranscriptMessage": {
-      "description": "字幕。人物每一轮恰好一条 final = true，没回答的轮、出戏卡停下的轮、一个字没说就被打断的轮除外；定稿可能晚于 turn_complete",
+      "description": "Subtitles. Exactly one final = true per character turn, except turns with no answer, turns stopped by the out-of-story card, and turns interrupted before a single word was said; the final version may arrive after turn_complete / 字幕。登場人物の各ターンにちょうど 1 つ final = true がある。ただし応答のないターン、物語の外に出るカードで止まったターン、一言も話さないうちに割り込まれたターンは除く。確定版は turn_complete より後に届くことがある",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "turnId", "speaker", "text", "final"],
@@ -214,7 +214,7 @@
           "$ref": "../common.schema.json#/$defs/Speaker"
         },
         "text": {
-          "description": "只有补转写也失败的人物定稿为 null",
+          "description": "null only for a character's final version when the follow-up transcription also failed / 補完の文字起こしも失敗した登場人物の確定版だけが null",
           "anyOf": [
             {
               "type": "string",
@@ -229,7 +229,7 @@
           "type": "boolean"
         },
         "source": {
-          "description": "只在人物的 final = true 上给（S-071）",
+          "description": "Given only on a character's final = true (S-071) / 登場人物の final = true にだけ付ける（S-071）",
           "type": "string",
           "enum": ["live", "script", "fallback"]
         }
@@ -290,7 +290,7 @@
       "title": "TranscriptMessage"
     },
     "InterruptedMessage": {
-      "description": "服务端确认打断：人物还在说时被新的一轮打断。被打断的轮没有 turn_complete，照常交给叙事者（v1.0.3）",
+      "description": "The server confirms an interruption: a new turn interrupted the character while still speaking. The interrupted turn has no turn_complete and is handed to the narrator as usual (v1.0.3) / サーバーが割り込みを確認した：登場人物がまだ話している最中に新しいターンで割り込まれた。割り込まれたターンには turn_complete がなく、通常どおりナレーターに渡す（v1.0.3）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "turnId"],
@@ -305,7 +305,7 @@
       "title": "InterruptedMessage"
     },
     "TurnCompleteMessage": {
-      "description": "人物这一轮说完；被打断的轮没有这条（v1.0.3）",
+      "description": "The character finished this turn; interrupted turns do not get this (v1.0.3) / 登場人物がこのターンを話し終えた。割り込まれたターンにはない（v1.0.3）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "turnId", "audio", "metrics"],
@@ -317,7 +317,7 @@
           "$ref": "../../data/common.schema.json#/$defs/TurnId"
         },
         "audio": {
-          "description": "false = 人物这一轮没有出声，前端立即进入 no-response",
+          "description": "false = the character made no sound this turn; the frontend immediately goes to no-response / false = 登場人物がこのターンで声を出さなかった。フロントエンドは直ちに no-response に入る",
           "type": "boolean"
         },
         "metrics": {
@@ -326,10 +326,10 @@
           "required": ["serverReleaseToFirstAudioMs"],
           "properties": {
             "serverReleaseToFirstAudioMs": {
-              "description": "audio = false 时没有第一个音频分片，给 null（C-1 评审定）",
+              "description": "When audio = false there is no first audio chunk, so null (decided in the C-1 review) / audio = false のときは最初の音声チャンクがないので null（C-1 レビューで決定）",
               "anyOf": [
                 {
-                  "description": "收到 activity_end 到发出第一个音频分片（第 6 节）",
+                  "description": "From receiving activity_end to sending the first audio chunk (section 6) / activity_end を受け取ってから最初の音声チャンクを送るまで（第 6 節）",
                   "type": "integer",
                   "minimum": 0
                 },
@@ -344,7 +344,7 @@
       "title": "TurnCompleteMessage"
     },
     "SuggestionsMessage": {
-      "description": "候选话语 2〜3 个（3.5）；新的一条替换旧的",
+      "description": "2〜3 suggested utterances (3.5); a new message replaces the old one / 候補の発話 2〜3 個（3.5）。新しいものが古いものを置き換える",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "character", "items"],
@@ -382,7 +382,7 @@
       "title": "SuggestionsMessage"
     },
     "TurnSettledMessage": {
-      "description": "每一轮判完都推（3.4）；之后这一轮不能再作废",
+      "description": "Pushed after every turn is judged (3.4); after that the turn can no longer be retracted / 各ターンの判定が終わるたびに送る（3.4）。以後そのターンは取り消せない",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "turnId", "outcome", "eventIds", "minutes"],
@@ -417,7 +417,7 @@
       "title": "TurnSettledMessage"
     },
     "CommitMessage": {
-      "description": "叙事者的一次提交，前端一次原子地应用（3.4）；覆盖 fromSeq〜seq（含两端）",
+      "description": "One commit by the narrator, applied atomically by the frontend (3.4); covers fromSeq〜seq (inclusive on both ends) / ナレーターによる 1 回のコミット。フロントエンドは一度にアトミックに適用する（3.4）。fromSeq〜seq（両端を含む）を対象とする",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -443,7 +443,7 @@
           "$ref": "../common.schema.json#/$defs/Seq"
         },
         "turnId": {
-          "description": "没有 turnId 的 commit 来自到点的节拍、人物的打算、导演事件或幕切换",
+          "description": "A commit without a turnId comes from a scheduled beat, a character's plan, a director event or an act change / turnId のない commit は、予定時刻のビート、登場人物のプラン、ディレクターイベント、または幕の切り替えから来る",
           "$ref": "../../data/common.schema.json#/$defs/TurnId"
         },
         "events": {
@@ -498,7 +498,7 @@
       "title": "CommitMessage"
     },
     "NarrationMessage": {
-      "description": "不随事件的叙事一行（灰色地の文）",
+      "description": "A line of narration not tied to an event (gray 地の文) / イベントに伴わない語りの 1 行（灰色の地の文）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "line"],
@@ -511,7 +511,7 @@
           "minLength": 1
         },
         "ref": {
-          "description": "服务端内部的来源标记（例：节拍 ID、离题提示的规则名），只给日志和评测对照；前端不用、不显示（C-1 评审定）",
+          "description": "Server-internal source marker (e.g. a beat ID, the rule name of an off-topic hint), only for cross-checking in logs and evals; the frontend does not use or show it (decided in the C-1 review) / サーバー内部の出どころの印（例：ビートの ID、脱線ヒントのルール名）。ログと評価での照合にのみ使い、フロントエンドは使わず表示もしない（C-1 レビューで決定）",
           "type": "string",
           "minLength": 1,
           "maxLength": 128
@@ -520,7 +520,7 @@
       "title": "NarrationMessage"
     },
     "SetPieceMessage": {
-      "description": "（v1.0.4）固定演出（3.14，契约 2.11）：写好的地の文和人物的预录句，按顺序演。不是事件，不占 seq，断线时没收到的不补发",
+      "description": "(v1.0.4) Set piece (3.14, contract 2.11): pre-written 地の文 and characters' pre-recorded lines, played in order. Not an event, does not take a seq, and is not resent if missed during a disconnect / （v1.0.4）固定演出（3.14、契約 2.11）：書き上げ済みの地の文と登場人物の事前収録セリフを順に演じる。イベントではなく seq を消費せず、切断中に受け取れなかったものは再送しない",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "pieceId", "lines"],
@@ -532,7 +532,7 @@
           "$ref": "../../data/common.schema.json#/$defs/SetPieceId"
         },
         "lines": {
-          "description": "人物的句子播 manifest 的 setPieceVoices[\"<pieceId>/<序号>\"]（序号 = 在 lines 里的位置，从 1 起，地の文也算）",
+          "description": "A character's line plays the manifest's setPieceVoices[\"<pieceId>/<n>\"] (n = position in lines, starting at 1, with 地の文 lines counted too) / 登場人物のセリフは manifest の setPieceVoices[\"<pieceId>/<番号>\"] を再生する（番号 = lines 内の位置。1 から始まり、地の文も数える）",
           "type": "array",
           "items": {
             "$ref": "../common.schema.json#/$defs/SetPieceLine"
@@ -543,7 +543,7 @@
       "title": "SetPieceMessage"
     },
     "ConfirmMessage": {
-      "description": "意图确认（3.9）",
+      "description": "Intent confirmation (3.9) / 意図確認（3.9）",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -583,7 +583,7 @@
       "title": "ConfirmMessage"
     },
     "ConfirmClosedMessage": {
-      "description": "确认结束",
+      "description": "The confirmation has ended / 確認が終わった",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "draftId", "optionId", "by"],
@@ -595,7 +595,7 @@
           "$ref": "../common.schema.json#/$defs/DraftId"
         },
         "optionId": {
-          "description": "null = 当作「不是」",
+          "description": "null = treated as \"no\" / null = 「いいえ」として扱う",
           "anyOf": [
             {
               "type": "string",
@@ -614,7 +614,7 @@
       "title": "ConfirmClosedMessage"
     },
     "ApproachMessage": {
-      "description": "人物要走过来找你（3.10）",
+      "description": "A character is going to walk over to you (3.10) / 登場人物があなたのところへ歩み寄ってくる（3.10）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "character", "kind"],
@@ -633,7 +633,7 @@
       "title": "ApproachMessage"
     },
     "ActionResultMessage": {
-      "description": "动作的判定结果（3.8）",
+      "description": "Result of judging an action (3.8) / アクションの判定結果（3.8）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "clientMsgId", "status", "eventIds", "minutes"],
@@ -655,12 +655,12 @@
           }
         },
         "narration": {
-          "description": "一句故事里的说明；拒绝也在故事里说。这个动作挂着固定演出时没有（v1.0.4），和 setPiece 正好有一个",
+          "description": "One in-story sentence of explanation; refusals are also told within the story. Absent when the action has a set piece attached (v1.0.4); exactly one of this and setPiece is present / 物語の中での説明の一文。拒否も物語の中で伝える。このアクションに固定演出が結び付いているときはない（v1.0.4）。これと setPiece のちょうど一方がある",
           "type": "string",
           "minLength": 1
         },
         "setPiece": {
-          "description": "（v1.0.4）这个动作挂着固定演出（契约 2.11 的 on.act）：它的 ID，紧接着推那条 set_piece（3.14），代替 narration",
+          "description": "(v1.0.4) This action has a set piece attached (on.act in contract 2.11): its ID; that set_piece (3.14) is pushed right after, replacing narration / （v1.0.4）このアクションに固定演出が結び付いている（契約 2.11 の on.act）：その ID。直後にその set_piece（3.14）を送り、narration の代わりとする",
           "$ref": "../../data/common.schema.json#/$defs/SetPieceId"
         },
         "minutes": {
@@ -681,7 +681,7 @@
       }
     },
     "ActEndedMessage": {
-      "description": "幕结束，给出去处（3.11）；除 type 外和 ActEnd 同形。每个去处带副题的前半 where 和后半 sub（v1.0.4）",
+      "description": "The act has ended; gives the destinations (3.11); same shape as ActEnd apart from type. Each destination carries the first half of its subtitle, where, and the second half, sub (v1.0.4) / 幕が終わり、行き先を示す（3.11）。type 以外は ActEnd と同じ形。各行き先は副題の前半 where と後半 sub を持つ（v1.0.4）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "actId", "recapLines", "options", "freeform"],
@@ -693,7 +693,7 @@
           "$ref": "../../data/common.schema.json#/$defs/ActId"
         },
         "recapLines": {
-          "description": "玩家这一幕什么都没动时为空（v1.0.5 放宽，原来 2〜4 条）",
+          "description": "Empty when the player changed nothing in this act (relaxed in v1.0.5; previously 2〜4 entries) / プレイヤーがこの幕で何も動かさなかったときは空（v1.0.5 で緩和。以前は 2〜4 件）",
           "type": "array",
           "items": {
             "type": "string",
@@ -716,7 +716,7 @@
       "title": "ActEndedMessage"
     },
     "ActPlanResultMessage": {
-      "description": "幕末说出的打算能不能成行（3.11）",
+      "description": "Whether the plan stated at the end of the act can be carried out (3.11) / 幕末で述べたプランが実行できるか（3.11）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "accepted", "narration", "triesLeft"],
@@ -725,11 +725,11 @@
           "const": "act_plan_result"
         },
         "clientMsgId": {
-          "description": "用文字说打算时：act_propose 的 clientMsgId。和 turnId 正好有一个（C-1 评审定）",
+          "description": "When the plan was stated in text: the clientMsgId of act_propose. Exactly one of this and turnId is present (decided in the C-1 review) / テキストでプランを述べたとき：act_propose の clientMsgId。これと turnId のちょうど一方がある（C-1 レビューで決定）",
           "$ref": "../common.schema.json#/$defs/ClientMsgId"
         },
         "turnId": {
-          "description": "用声音说打算时（activity_start purpose = act_plan）：那一轮的 turnId，前端按它对上语音那一轮、丢掉已作废那一轮的结果（C-1 评审加）",
+          "description": "When the plan was stated by voice (activity_start purpose = act_plan): that turn's turnId, which the frontend uses to match the voice turn and to discard results for a retracted turn (added in the C-1 review) / 声でプランを述べたとき（activity_start purpose = act_plan）：そのターンの turnId。フロントエンドはこれで音声のターンと照合し、取り消したターンの結果を捨てる（C-1 レビューで追加）",
           "$ref": "../../data/common.schema.json#/$defs/TurnId"
         },
         "accepted": {
@@ -766,7 +766,7 @@
       }
     },
     "ActTransitionMessage": {
-      "description": "进入下一幕：「その頃」（≤ 3 件）、新场景的快照和落地（3.11）",
+      "description": "Entering the next act: 「その頃」 (≤ 3 items), the new scene's snapshot and the landing (3.11) / 次の幕に入る：「その頃」（3 件以内）、新しいシーンのスナップショットと降り立ち（3.11）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "fromActId", "toActId", "recap", "snapshot"],
@@ -791,14 +791,14 @@
           "$ref": "../common.schema.json#/$defs/Snapshot"
         },
         "arrival": {
-          "description": "（v1.0.4）落地：第一行地の文 line 和先开口的人物 opener；去处（或成行的打算）没写 arrival 时省略。有 opener 时前端落地后发 act_landed",
+          "description": "(v1.0.4) Landing: the first line of 地の文, line, and the character who speaks first, opener; omitted when the destination (or the plan carried out) has no arrival. When there is an opener, the frontend sends act_landed after landing / （v1.0.4）降り立ち：最初の地の文 line と最初に口を開く登場人物 opener。行き先（または実行されたプラン）に arrival がなければ省略。opener があるとき、フロントエンドは降り立った後に act_landed を送る",
           "$ref": "../common.schema.json#/$defs/Arrival"
         }
       },
       "title": "ActTransitionMessage"
     },
     "SafetyPauseMessage": {
-      "description": "出戏卡（3.12）",
+      "description": "Out-of-story card (3.12) / 物語の外に出るカード（3.12）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type"],
@@ -810,7 +810,7 @@
       "title": "SafetyPauseMessage"
     },
     "SafetyHintMessage": {
-      "description": "不暂停的小提示（S-069），一局最多一次",
+      "description": "A small hint that does not pause (S-069), at most once per playthrough / 一時停止しない小さなヒント（S-069）。1 回のプレイで最大 1 度",
       "type": "object",
       "additionalProperties": false,
       "required": ["type"],
@@ -822,7 +822,7 @@
       "title": "SafetyHintMessage"
     },
     "SafetyResumedMessage": {
-      "description": "回到故事",
+      "description": "Back to the story / 物語に戻る",
       "type": "object",
       "additionalProperties": false,
       "required": ["type"],
@@ -834,7 +834,7 @@
       "title": "SafetyResumedMessage"
     },
     "EndingStartedMessage": {
-      "description": "进入结局演出（3.13）",
+      "description": "Entering the ending staging (3.13) / エンディングの演出に入る（3.13）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "trigger", "staging"],
@@ -853,7 +853,7 @@
       "title": "EndingStartedMessage"
     },
     "EndingReadyMessage": {
-      "description": "结局已生成，用 2.8 取",
+      "description": "The ending has been generated; fetch it with 2.8 / エンディングが生成された。2.8 で取得する",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "endingId"],
@@ -868,7 +868,7 @@
       "title": "EndingReadyMessage"
     },
     "TurnRetractResultMessage": {
-      "description": "「取り消す」「言い直す」的结果（3.6）",
+      "description": "Result of 「取り消す」 (retract) or 「言い直す」 (rephrase) (3.6) / 「取り消す」「言い直す」の結果（3.6）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "turnId", "status"],
@@ -887,7 +887,7 @@
       "title": "TurnRetractResultMessage"
     },
     "LimitsMessage": {
-      "description": "今天的语音时间剩 5 分钟时推一次",
+      "description": "Pushed once when 5 minutes of today's voice time remain / 今日の音声時間が残り 5 分になったときに 1 回送る",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "voiceMinutesLeft"],
@@ -902,7 +902,7 @@
       "title": "LimitsMessage"
     },
     "DegradedMessage": {
-      "description": "降级为文字回答",
+      "description": "Degraded to text replies / テキストでの応答に格下げした",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "voice", "reason"],
@@ -921,7 +921,7 @@
       "title": "DegradedMessage"
     },
     "GoawayMessage": {
-      "description": "服务端要关闭连接，前端按第 4 节重连",
+      "description": "The server is about to close the connection; the frontend reconnects per section 4 / サーバーが接続を閉じようとしている。フロントエンドは第 4 節に従って再接続する",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "reason", "reconnectAfterMs"],
@@ -941,7 +941,7 @@
       "title": "GoawayMessage"
     },
     "ErrorMessage": {
-      "description": "不致命的错误（第 5 节的形状）；致命错误后服务端关闭连接",
+      "description": "A non-fatal error (shape from section 5); after a fatal error the server closes the connection / 致命的でないエラー（第 5 節の形）。致命的なエラーの後はサーバーが接続を閉じる",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "error"],
@@ -967,7 +967,7 @@
       "title": "PongMessage"
     },
     "EventRejectedMessage": {
-      "description": "非生产（hello.debug = true）：候选事件被否决",
+      "description": "Non-production (hello.debug = true): a candidate event was rejected / 本番以外（hello.debug = true）：候補イベントが却下された",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "turnId", "candidate", "failedRules", "reason"],
@@ -979,7 +979,7 @@
           "$ref": "../../data/common.schema.json#/$defs/TurnId"
         },
         "candidate": {
-          "description": "被否决的候选事件，就是写进事件流的那条 rejected 事件：完整的 Event，check.status = rejected、effects 为空、dt = 0（数据契约第 3 节）。导演事件不过 3.2 节的规矩时直接丢掉，不发 event_rejected（C-1 评审定）",
+          "description": "The rejected candidate event, i.e. the rejected event written into the event stream: a complete Event with check.status = rejected, empty effects and dt = 0 (data contract section 3). Director events that fail the rules of section 3.2 are simply dropped without sending event_rejected (decided in the C-1 review) / 却下された候補イベント。つまりイベントストリームに書き込まれた rejected のイベント：完全な Event で、check.status = rejected、effects は空、dt = 0（データ契約第 3 節）。ディレクターイベントが 3.2 節の規則を満たさないときはそのまま捨て、event_rejected は送らない（C-1 レビューで決定）",
           "$ref": "../../data/event.schema.json#/$defs/Event"
         },
         "failedRules": {

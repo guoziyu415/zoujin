@@ -1,4 +1,9 @@
-"""开局到起点（opening）：和逐事件推演一致、检查点停在对的地方、写出的事件 B-0 能直接补字段写库。"""
+"""From the opening to a starting point (opening): matches the event-by-event simulation, checkpoints stop at the right
+place, and B-0 can fill in fields on the written events and store them directly.
+
+オープニングから起点まで（opening）：イベントごとのシミュレーションと一致し、チェックポイントは正しい位置で止まり、
+書き出したイベントは B-0 がそのままフィールドを補って DB に書ける。
+"""
 
 from __future__ import annotations
 
@@ -32,13 +37,18 @@ def test_parse_checkpoint() -> None:
     assert parse_checkpoint("sc.canon@beat.05") == ("sc.canon", ("beat", "beat.05"))
     assert parse_checkpoint("sc.king-hardened@t=1200") == ("sc.king-hardened", ("t", 1200))
     for bad in ("sc.canon", "sc.canon@", "@beat.05"):
-        with pytest.raises(ValueError, match="检查点"):
+        with pytest.raises(ValueError, match="checkpoint"):
             parse_checkpoint(bad)
 
 
 @pytest.mark.parametrize("sc", SCENARIOS, ids=lambda sc: sc["id"])
 def test_scenario_equals_playing_it(sc: dict[str, Any], played: Played) -> None:
-    """推演到底 = conftest 里按 W-1 卡逐事件推演的结果，事件一条不差。"""
+    """Simulating to the end = the result of conftest's event-by-event simulation per the W-1 card, with not a single
+    event different.
+
+    最後までシミュレーション = conftest で W-1 カードに従ってイベントごとにシミュレーションした結果で、イベントは
+    1 件も違わない。
+    """
     out, s = opening(WORLD, ROLE, sc)
     want_s, want_log = played(sc["id"])
     assert s == want_s
@@ -63,8 +73,8 @@ def test_what_each_event_is() -> None:
     ]
     hardened = next(d for d in out if d["source"] == "scenario")
     assert hardened["event"]["t"] == 1235 and hardened["event"]["origin"] == "action"
-    assert hardened["event"]["place"] == "place.execution-ground"  # 玩家所在地
-    assert hardened["note"] == "シナリオの設定"  # 情景事件没写 note
+    assert hardened["event"]["place"] == "place.execution-ground"  # The player's location / プレイヤーの所在地
+    assert hardened["note"] == "シナリオの設定"  # The scenario event has no note / シナリオのイベントに note なし
     noted = {**scenario("sc.king-hardened")}
     noted["events"] = [{**e, "note": "王が刑場で笑う"} for e in noted["events"]]
     out, _ = opening(WORLD, ROLE, noted, ("beat", "beat.07"))
@@ -79,11 +89,14 @@ def test_checkpoint_stops_right_after_the_beat(beat: str) -> None:
     out, s = opening(WORLD, ROLE, None, ("beat", beat))
     assert out[-1]["beat"] == beat and s["beats"][beat] == "happened"
     assert s["t"] == s["times"][beat]
-    assert finish(s) == opening(WORLD, ROLE, None)[1], "从检查点接着结算 = 一口气推演到底"
+    assert finish(s) == opening(WORLD, ROLE, None)[1], (
+        "Settling on from the checkpoint = simulating the whole run to the end"
+        " / チェックポイントから続けて精算 = 一括で最後までシミュレーション"
+    )
 
 
 def test_checkpoint_at_a_minute_moves_the_clock() -> None:
-    out, s = opening(WORLD, ROLE, None, ("t", 1210))  # beat.04 在 1200，beat.05 在 1230
+    out, s = opening(WORLD, ROLE, None, ("t", 1210))  # beat.04 at 1200, beat.05 at 1230 / 1200 と 1230
     assert s["t"] == 1210 and s["beats"] == {
         "beat.01": "happened",
         "beat.02": "happened",
@@ -92,9 +105,13 @@ def test_checkpoint_at_a_minute_moves_the_clock() -> None:
     }
     assert out[-1]["source"] == "clock" and out[-1]["event"]["effects"] == []
     _, at_beat = opening(WORLD, ROLE, None, ("t", 1200))
-    assert at_beat["t"] == 1200 and at_beat["beats"]["beat.04"] == "happened", "那一刻到点的节拍也算"
+    assert at_beat["t"] == 1200 and at_beat["beats"]["beat.04"] == "happened", (
+        "Beats due at that moment count too / その時点で期限に達したビートも含む"
+    )
     full = opening(WORLD, ROLE, None)[1]
-    assert finish(s) == {**full, "seq": full["seq"] + 1}, "多了一个推时钟的事件，别的一样"
+    assert finish(s) == {**full, "seq": full["seq"] + 1}, (
+        "One extra clock-advancing event, otherwise the same / 時刻を進めるイベントが 1 件多いだけで、ほかは同じ"
+    )
 
 
 def test_checkpoint_at_the_deadline_includes_the_deadline_rule() -> None:
@@ -106,7 +123,9 @@ def test_checkpoint_at_the_deadline_includes_the_deadline_rule() -> None:
 
 def test_checkpoint_before_a_scenario_event_leaves_it_out() -> None:
     sc = scenario("sc.king-hardened")
-    for t in (1230, 1235):  # 情景事件在 1235：正好在那一刻也不算（先停）
+    # The scenario event is at 1235: even exactly at that moment it does not count (stop first)
+    # シナリオのイベントは 1235：ちょうどその時点でも含まない（先に止まる）
+    for t in (1230, 1235):
         _, s = opening(WORLD, ROLE, sc, ("t", t))
         assert s["vars"]["var.king.trust"] == initial_state(WORLD, ROLE)["vars"]["var.king.trust"]
     _, s = opening(WORLD, ROLE, sc, ("t", 1240))
@@ -114,11 +133,11 @@ def test_checkpoint_before_a_scenario_event_leaves_it_out() -> None:
 
 
 def test_checkpoint_errors() -> None:
-    with pytest.raises(ValueError, match="不存在"):
+    with pytest.raises(ValueError, match="does not exist"):
         opening(WORLD, ROLE, None, ("beat", "beat.99"))
     prevented = next(sc for sc in SCENARIOS if any(o.get("to") == "prevented" for o in sc.get("beats", {}).values()))
     beat = next(b for b, o in prevented["beats"].items() if o["to"] == "prevented")
-    with pytest.raises(ValueError, match="没到检查点"):
+    with pytest.raises(ValueError, match="without reaching the checkpoint"):
         opening(WORLD, ROLE, prevented, ("beat", beat))
 
 

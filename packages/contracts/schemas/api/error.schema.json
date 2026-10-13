@@ -2,10 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "api/error.schema.json",
   "title": "api/error",
-  "description": "错误（api-contract 第 5 节）",
+  "description": "Errors (api-contract section 5) / エラー（api-contract 第 5 節）",
   "$defs": {
     "ErrorCode": {
-      "description": "第 5 节的错误码，加第 1 节的 invalid_invite（登录 401）和 invalid_request（400：请求体、参数或 WebSocket 消息不合 Schema，是前端的毛病，不给玩家具体原因）（C-1 评审定）",
+      "description": "The error codes of section 5, plus invalid_invite from section 1 (login 401) and invalid_request (400: the request body, parameters or WebSocket message do not match the Schema; a frontend bug, so the player is not told the specific reason) (decided in the C-1 review) / 第 5 節のエラーコードに、第 1 節の invalid_invite（ログイン 401）と invalid_request（400：リクエストボディ、パラメータ、または WebSocket メッセージが Schema に合わない。フロントエンドの不具合なので、プレイヤーには具体的な理由を伝えない）を加えたもの（C-1 レビューで決定）",
       "type": "string",
       "enum": [
         "invalid_request",
@@ -32,7 +32,7 @@
           "$ref": "#/$defs/ErrorCode"
         },
         "message": {
-          "description": "可以直接给玩家看的日语短句",
+          "description": "A short Japanese sentence that can be shown to the player directly / プレイヤーにそのまま見せられる日本語の短い文",
           "type": "string",
           "minLength": 1
         },
@@ -40,7 +40,7 @@
           "type": "boolean"
         },
         "retryAfterSeconds": {
-          "description": "rate_limited、daily_limit 时给",
+          "description": "Given for rate_limited and daily_limit / rate_limited、daily_limit のときに送る",
           "anyOf": [
             {
               "type": "integer",
@@ -55,7 +55,7 @@
       "title": "ErrorBody"
     },
     "ErrorResponse": {
-      "description": "REST 的错误响应（第 5 节）",
+      "description": "REST error response (section 5) / REST のエラーレスポンス（第 5 節）",
       "type": "object",
       "additionalProperties": false,
       "required": ["error"],
@@ -64,7 +64,7 @@
           "$ref": "#/$defs/ErrorBody"
         },
         "activePlaythrough": {
-          "description": "只在 active_playthrough_exists（409）时给，同 /v1/me，放在 error 外面（C-1 评审定）",
+          "description": "Given only for active_playthrough_exists (409), same as /v1/me, placed outside error (decided in the C-1 review) / active_playthrough_exists（409）のときだけ送る。/v1/me と同じで、error の外に置く（C-1 レビューで決定）",
           "$ref": "common.schema.json#/$defs/ActivePlaythrough"
         }
       },

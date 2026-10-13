@@ -1,4 +1,8 @@
-"""评测观察器必须按逻辑请求关联重试，不改变正式输入、退路或花费。"""
+"""The eval observer must associate retries by logical request, without changing production input, fallbacks or
+spend.
+
+評価のオブザーバーは再試行を論理的なリクエストごとに関連づけなければならず、本番の入力、フォールバック、費用は変えない。
+"""
 
 import asyncio
 from typing import Any

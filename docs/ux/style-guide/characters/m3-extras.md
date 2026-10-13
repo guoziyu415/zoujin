@@ -1,66 +1,80 @@
-# M3 的群演和动物
+# M3 extras and animals / M3 のエキストラと動物
 
-村子、归途、王城里不对话（或只说一句、不对口型）的人，和羊、狗。都是**走动版**（8k 面，2 个材质，art-direction 9.2），和广场的群众共用骨架和低模（ending-cast.md「刑场的群众」），加各自的东西。共用规则见 [README](../README.md)。图：[m3-cast.svg](m3-cast.svg)。
+The people in the village, on the way back and in the royal castle who do not talk (or say only one line, without lip sync), plus the sheep and dogs. All are **walking versions** (8k polygons, 2 materials, art-direction 9.2), sharing the skeleton and low-poly model with the square's crowd (ending-cast.md, "The execution-ground crowd"), each with their own additions. For shared rules see the [README](../README.md). Figure: [m3-cast.svg](m3-cast.svg).
 
-**所有场景都照的规矩**（从 ending-cast.md 搬过来，加了 M3 的）：群演里不放
+村、帰り道、王城で会話しない（あるいは一言だけで口の形を合わせない）人々と、羊、犬。すべて**歩行版**（8k ポリゴン、マテリアル 2 個、art-direction 9.2）で、広場の群衆とスケルトンとローポリモデルを共有し（ending-cast.md「刑場の群衆」）、それぞれのものを足す。共通のルールは [README](../README.md) を参照。図：[m3-cast.svg](m3-cast.svg)。
 
-- 宽檐帽（旅人的）、「盖头 + 拐杖」（老爺的）、锥形帽和长杆（警吏的）、光着上身的人（结局的梅洛斯）；
-- 皮围裙（石屋の弟子和工房的セリヌンティウス的）、牧杖和羊皮披肩（村の牧童的）；
-- 浅菘蓝的头巾（妹的）、番红花黄（新娘的）；
-- 緋色和其他红；赭色（梅洛斯的）；
-- 露一边肩的短衣（露右肩是梅洛斯，露左肩是セリヌンティウス）。
+**Rules for every scene** (carried over from ending-cast.md, with M3 additions): extras never have
 
-## 峠の山賊（5 人，峠）
+**すべてのシーンに共通するルール**（ending-cast.md から移し、M3 の分を足した）：エキストラには次のものを置かない
+
+- wide-brimmed hats (the traveler's), "covered head + staff" (the old man's), conical caps and long poles (the guards'), or bare upper bodies (Melos in the ending);
+  つば広の帽子（旅人のもの）、「頭をかぶる＋杖」（老爺のもの）、円錐形の帽子と長い棒（警吏のもの）、上半身裸の人（エンディングのメロス）。
+- leather aprons (the 石屋の弟子's and Selinuntius's in the workshop), crooks or sheepskin capes (the 村の牧童's);
+  革の前掛け（石屋の弟子と工房のセリヌンティウスのもの）、牧杖と羊皮のケープ（村の牧童のもの）。
+- light woad headscarves (the sister's) or saffron yellow (the bride's);
+  淡い大青の頭巾（妹のもの）、サフラン黄（花嫁のもの）。
+- scarlet or any other red; ochre (Melos's);
+  緋色やその他の赤。黄土（メロスのもの）。
+- tunics with one bare shoulder (the bare right shoulder is Melos, the bare left shoulder Selinuntius).
+  片肩を出した短衣（右肩を出すのはメロス、左肩を出すのはセリヌンティウス）。
+
+## 峠の山賊 (5 people, the pass) / 峠の山賊（5 人、峠）
 
 > 山賊たちは、ものも言わず一斉に棍棒を振り挙げた。
 
-| 项 | 要求 |
+| Item / 項目 | Requirement / 要件 |
 |---|---|
-| 人数和动作 | 5 人：3 个扑上来被梅洛斯打倒，2 个退缩（「残る者のひるむ隙に」，homeward-road 2.2） |
-| 脸 | **头巾蒙住下半张脸**，只露眼睛（homeward-road 2.2）。脸 ≤ 屏幕高 6%（ending-shots 规则 1）。不做口型：说话的那一句「どっこい放さぬ。持ちもの全部を置いて行け。」只出声音和字幕 |
-| 衣服 | 粗羊毛短衣到膝上，两肩盖住，褐 N1、灰褐 A1、褐羊毛 W2 三种；腰上一根绳。小腿缠着破布条，不穿凉鞋 |
-| 头巾 | 灰褐的粗布，包住头发、绕过下巴蒙住嘴鼻 |
-| 武器 | 木棍，约 1 m。**没有盔甲、没有刀剑**。打斗照 art-direction 5.7：没有血花 |
-| 体型 | 两种：瘦高、矮壮。和梅洛斯（第 2 级，湿）放在一起时，梅洛斯最高 |
+| Number and action / 人数と動き | 5 people: 3 rush in and are knocked down by Melos, 2 shrink back (「残る者のひるむ隙に」, homeward-road 2.2) / 5 人：3 人が襲いかかってメロスに倒され、2 人はひるむ（「残る者のひるむ隙に」、homeward-road 2.2） |
+| Face / 顔 | **A headcloth masks the lower half of the face**, only the eyes show (homeward-road 2.2). Face ≤ 6% of screen height (ending-shots rule 1). No lip sync: the line 「どっこい放さぬ。持ちもの全部を置いて行け。」 is voice and subtitles only / **頭巾で顔の下半分を覆い**、目だけを出す（homeward-road 2.2）。顔は画面の高さの 6% 以下（ending-shots ルール 1）。口の形は合わせない：セリフ「どっこい放さぬ。持ちもの全部を置いて行け。」は声と字幕だけ |
+| Clothes / 衣服 | Coarse wool tunics to just above the knee, covering both shoulders, in three colors: brown N1, gray-brown A1, brown wool W2; a cord at the waist. Calves wrapped in rag strips, no sandals / 粗い羊毛の膝上までの短衣、両肩を覆う。色は褐色 N1、灰褐色 A1、褐色の羊毛 W2 の三種。腰に縄一本。ふくらはぎにぼろ布を巻き、サンダルは履かない |
+| Headcloth / 頭巾 | Coarse gray-brown cloth, wrapping the hair and passing under the chin to cover the mouth and nose / 灰褐色の粗い布で、髪を包み、顎の下を回して口と鼻を覆う |
+| Weapons / 武器 | Wooden clubs, about 1 m. **No armor, no blades**. The fight follows art-direction 5.7: no blood spatter / 木の棍棒、約 1 m。**鎧も刀剣もない**。乱闘は art-direction 5.7 に従う：血しぶきはない |
+| Build / 体型 | Two kinds: tall and thin, short and stocky. Placed with Melos (stage 2, wet), Melos is the tallest / 二種類：痩せて背が高い、背が低くがっしり。メロス（第 2 段階、濡れている）と並べたとき、メロスが最も背が高い |
 
-## 群臣（约 6 人，王座之间）
+## Courtiers (about 6, the throne room) / 群臣（約 6 人、玉座の間）
 
-| 项 | 要求 |
+| Item / 項目 | Requirement / 要件 |
 |---|---|
-| 做法 | 群众男装（长衣加外袍）的变体，衣服更好：布更细、褶更整齐、没有磨损和尘土 |
-| 颜色 | 未染的亚麻 L0 的长衣，外袍用橄榄 G1、旧的灰褐 A1、胡桃褐 N1。**不用深紫**（王的）、**不用金**（王的头带和戒指）、**不用海色 B1**（旅人会被带进王座之间，站在群臣旁边） |
-| 姿势 | 站在两排柱子之间，低着头，离王远。王说话时没人动。原作「王は、民の忠誠をさえ疑って居られる」：他们怕他 |
-| 位置 | castle.md 第 4 节的位置点 |
+| How they are made / 作り方 | A variant of the crowd's male costume (long robe plus outer robe), with better clothes: finer cloth, neater folds, no wear or dust / 群衆の男性衣装（長衣に外衣）のバリエーションで、衣服がより上等：布がより細かく、襞が整い、摩耗も埃もない |
+| Color / 色 | Long robes in undyed linen L0, outer robes in olive G1, old gray-brown A1, walnut brown N1. **No deep purple** (the king's), **no gold** (the king's headband and ring), **no sea color B1** (the traveler can be taken into the throne room and will stand next to the courtiers) / 長衣は染めていない亜麻 L0、外衣はオリーブ G1、古い灰褐色 A1、胡桃色 N1。**濃紫は使わない**（王のもの）、**金は使わない**（王の頭帯と指輪）、**海の色 B1 は使わない**（旅人は玉座の間に連れて来られ、群臣のそばに立つことがある） |
+| Posture / 姿勢 | Standing between the two rows of pillars, heads lowered, far from the king. No one moves when the king speaks. The original: 「王は、民の忠誠をさえ疑って居られる」: they fear him / 二列の柱の間に立ち、頭を垂れ、王から離れている。王が話すとき誰も動かない。原作「王は、民の忠誠をさえ疑って居られる」：彼らは王を恐れている |
+| Position / 位置 | The position points in castle.md section 4 / castle.md 第 4 節の位置点 |
 
-## 村里的人（村子）
+## Village people (the village) / 村の人々（村）
 
-| 谁 | 人数 | 要点 |
+| Who / 誰 | Number / 人数 | Key points / 要点 |
 |---|---|---|
-| 收麦的人 | 一日目上午田里约 6〜8 人 | 短衣到膝上，两肩盖住，W0、L0、A1；**草帽**（高顶宽檐的草编帽，ST `#C9B27A`），手里镰刀。村里的草帽和旅人的毡帽一个是浅色的草、一个是深色的毡，而且旅人进不了村子，不会同框（世界模型 `role.traveler.access`） |
-| 婚礼和宴席的客人 | 15〜20 人（village.md 6.1） | 男：长衣加外袍，洗干净的；女：长衣，外袍拉起来盖住头。有几个人头上戴桃金娘的枝叶（M1）。**不用番红花黄**：那是新娘一个人的颜色。宴席在屋里，人挤着坐 |
-| 孩子 | 2〜3 个，婚礼时 | 群众的体型缩小，不戴帽、不拿杖（和牧童分开） |
+| Wheat harvesters / 麦刈りの人 | About 6–8 in the fields on the morning of 一日目 / 一日目の午前、畑に約 6〜8 人 | Tunics to just above the knee, covering both shoulders, W0, L0, A1; **straw hats** (tall-crowned, wide-brimmed woven straw, ST `#C9B27A`), sickles in hand. The village's straw hats and the traveler's felt hat are light straw versus dark felt, and the traveler cannot enter the village anyway, so they never share a frame (world model `role.traveler.access`) / 膝上までの短衣、両肩を覆う、W0、L0、A1。**麦わら帽子**（山が高くつばの広い草編みの帽子、ST `#C9B27A`）、手に鎌。村の麦わら帽子と旅人のフェルト帽は、一方は明るい草、一方は暗いフェルトで、しかも旅人は村に入れないので、同じ画面に入ることはない（世界モデル `role.traveler.access`） |
+| Wedding and feast guests / 婚礼と祝宴の客 | 15–20 (village.md 6.1) / 15〜20 人（village.md 6.1） | Men: long robe plus outer robe, freshly washed; women: long robe, outer robe pulled up over the head. A few wear myrtle sprigs (M1) on their heads. **No saffron yellow**: that is the bride's color alone. The feast is indoors, with people crowded together seated / 男性：長衣に外衣、洗いたて。女性：長衣で、外衣を引き上げて頭にかぶる。何人かは頭にミルトの枝葉（M1）を飾る。**サフラン黄は使わない**：それは花嫁一人の色。祝宴は屋内で、人々は詰めて座る |
+| Children / 子ども | 2–3, at the wedding / 2〜3 人、婚礼のとき | The crowd's body scaled down, no hats, no staffs (to keep them apart from the shepherd boy) / 群衆の体型を縮小し、帽子はかぶらず、杖も持たない（牧童と区別するため） |
 
-- 下雨（二日目 12:30 起）：在外面的人头上顶着外袍跑，湿（材质参数）。
+- Rain (from 二日目 12:30): people outdoors run with their outer robes held over their heads, wet (material parameters).
+  雨（二日目 12:30 から）：外にいる人は外衣を頭にかぶって走り、濡れる（マテリアルのパラメータ）。
 
-## 归途上的人
+## People on the way back / 帰り道の人々
 
-homeward-road 第 7 节已经列了人数和精度，这里只补衣服：
+homeward-road section 7 already lists the numbers and fidelity; only the clothes are added here:
 
-| 谁 | 衣服 |
+homeward-road 第 7 節に人数と精度がすでに書かれているので、ここでは衣服だけを補う：
+
+| Who / 誰 | Clothes / 衣服 |
 |---|---|
-| 路上的行人 2〜3 人和一头驴 | 群众男女装。驴背上驮着两个筐 |
-| 野地里酒宴的人 8〜12 人 | 收麦的人那一套（草帽、短衣），坐在地上，有酒罐 |
-| 旅の一団 3〜4 人（约 17:45） | 群众男装，外袍裹紧，**手里拿走路的杖、肩上用棍子挑着包袱**（剪影里认作旅人）。**不戴宽檐帽**（宽檐只给玩家的旅人）。说那一句的人只要声音，不对口型 |
+| 2–3 travelers on the road and a donkey / 道を行く人 2〜3 人とロバ 1 頭 | The crowd's male and female costumes. The donkey carries two baskets on its back / 群衆の男性・女性衣装。ロバは背に籠を二つ載せている |
+| 8–12 people at a drinking party in the fields / 野原の酒宴の人 8〜12 人 | The wheat harvesters' outfit (straw hats, tunics), sitting on the ground, with wine jars / 麦刈りの人と同じ衣装（麦わら帽子、短衣）で、地面に座り、酒の壺がある |
+| 旅の一団, 3–4 people (around 17:45) / 旅の一団 3〜4 人（17:45 頃） | The crowd's male costume, outer robes wrapped tight, **walking staffs in hand and bundles slung on poles over the shoulder** (read as travelers in silhouette). **No wide-brimmed hats** (wide brims are only for the player's traveler). The one who speaks the line is voice only, no lip sync / 群衆の男性衣装で、外衣をきっちり巻き、**手に旅の杖を持ち、肩に棒で包みを担ぐ**（シルエットで旅人と分かる）。**つば広の帽子はかぶらない**（つば広はプレイヤーの旅人だけ）。一言話す人は声だけで、口の形は合わせない |
 
-## 动物
+## Animals / 動物
 
-| 谁 | 在哪 | 精度 | 要点 |
+| Who / 誰 | Where / どこに | Fidelity / 精度 | Key points / 要点 |
 |---|---|---|---|
-| 羊 | 村子，约 20 只（一日目上午在牧场，夜里在羊圈） | 实例化低模（village.md 6.1） | 毛色不齐：本色、褐、几只黑脸的。夏天剪过毛〔推断：初夏〕，毛不厚。走的时候成群，一只停下别的也慢下来 |
-| 牧羊犬 | 村子跟着妹妹；野の道（梅洛斯踢开的那条） | 一个模型两处用（village.md 6.1） | 中等大小，短毛，褐白相间。野の道那条要有扑上来、被踢开、跑掉三个动作（homeward-road 第 6 节「野の道踢开狗」） |
-| 驴 | 野の道 | 低模 | 灰褐，驮两个筐 |
+| Sheep / 羊 | The village, about 20 (in the pasture on the morning of 一日目, in the sheepfold at night) / 村、約 20 頭（一日目の午前は牧草地、夜は羊囲い） | Instanced low-poly (village.md 6.1) / インスタンス化したローポリ（village.md 6.1） | Mixed fleece colors: natural, brown, a few with black faces. Shorn for summer [inferred: early summer], so the fleece is not thick. They move as a flock; when one stops, the others slow down too / 毛色は不揃い：生成り、褐色、顔の黒いものが数頭。夏に向けて毛を刈ってあり〔推定：初夏〕、毛は厚くない。群れで動き、一頭が止まるとほかも遅くなる |
+| Sheepdog / 牧羊犬 | In the village following the sister; on the 野の道 (the one Melos kicks away) / 村では妹について回る。野の道（メロスが蹴り払う犬） | One model used in both places (village.md 6.1) / 一つのモデルを二か所で使う（village.md 6.1） | Medium-sized, short-haired, brown and white. The 野の道 dog needs three animations: lunging, being kicked away, running off (homeward-road section 6, "kicking the dog away on the 野の道") / 中型、短毛、褐色と白のぶち。野の道の犬には飛びかかる、蹴り払われる、逃げ去るの三つの動きが必要（homeward-road 第 6 節「野の道で犬を蹴り払う」） |
+| Donkey / ロバ | 野の道 | Low-poly / ローポリ | Gray-brown, carrying two baskets / 灰褐色、籠を二つ背負う |
 
-## 验收
+## Acceptance check / 受け入れ確認
 
-1. 每一群里放一个对应的主要人物（村子里放牧童，峠放梅洛斯，王座之间放旅人），从探索镜头看 60 px 的剪影：主要人物一眼找得到（m3-cast.svg 下方两格就是这个测法）。
-2. 群演身上找不到上面「不放」那张表里的任何一样。
+1. Put the corresponding main character into each group (the shepherd boy in the village, Melos at the pass, the traveler in the throne room) and view the 60 px silhouette from the exploration camera: the main character can be found at a glance (the two panels at the bottom of m3-cast.svg are this test).
+   各群れに対応する主要人物を一人入れ（村には牧童、峠にはメロス、玉座の間には旅人）、探索カメラから 60 px のシルエットで見る：主要人物が一目で見つかる（m3-cast.svg 下部の二つの枠がこのテスト方法）。
+2. Nothing from the "never have" list above can be found on any extra.
+   エキストラの身に、上の「置かない」リストのものが一つもない。

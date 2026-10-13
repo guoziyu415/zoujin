@@ -1,4 +1,7 @@
-"""合成的人物音频（api-contract 3.1 的下行帧）：不放任何真人或模型录的声音。"""
+"""Synthetic character audio (api-contract 3.1 downstream frames): contains no recorded human or model voice.
+
+合成した人物の音声（api-contract 3.1 の下りフレーム）：実在の人やモデルが録音した声は一切含まない。
+"""
 
 from __future__ import annotations
 
@@ -7,17 +10,23 @@ import sys
 from array import array
 from collections.abc import Iterator
 
-RATE = 24_000  # 下行 24 kHz、PCM16 小端、单声道
+RATE = 24_000  # Downstream: 24 kHz, PCM16 little-endian, mono / 下り：24 kHz、PCM16 リトルエンディアン、モノラル
 FRAME_CHARACTER = 0x02
 
 
 def frame(turn_seq: int, pcm: bytes) -> bytes:
-    """字节 0 类型，1–4 turnSeq（uint32 大端），5– PCM。"""
+    """Byte 0 is the type, 1–4 the turnSeq (uint32 big-endian), 5– the PCM.
+
+    バイト 0 が種別、1–4 が turnSeq（uint32 ビッグエンディアン）、5– が PCM。
+    """
     return bytes([FRAME_CHARACTER]) + turn_seq.to_bytes(4, "big") + pcm
 
 
 def chunks(seconds: float, chunk_ms: int) -> Iterator[bytes]:
-    """像说话一样一阵一阵的低音量哼声（每秒约 4 个音节），按 chunk_ms 切片。"""
+    """A low-volume hum in bursts like speech (about 4 syllables a second), cut into chunk_ms pieces.
+
+    話し声のように断続する小さなハミング（毎秒約 4 音節）を chunk_ms ごとに切り分ける。
+    """
     total = max(1, round(seconds * RATE))
     per = max(1, RATE * chunk_ms // 1000)
     for start in range(0, total, per):

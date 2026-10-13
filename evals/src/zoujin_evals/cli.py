@@ -1,11 +1,23 @@
-"""命令行：uv run zoujin-eval --mode fake --deterministic-only（CI 用的就是这个）。
+"""Command line: uv run zoujin-eval --mode fake --deterministic-only (this is exactly what CI uses).
 
-- fake：后端的假文本模型（CI 默认）；replay：后端的回放（ZJ_MODEL=replay）；
-  live：真模型，只在 zg 的 Mac 上（见 live.py）。
-- 模拟局（persona + seed）的 AI 玩家（player.py）：--player scripted 不调模型（fake、replay 用）；--player claude
-  在 live 里调 Claude、在 replay 里只读 AI 玩家的回放（--player-replays）。不给 --player：fake、replay 里模拟局照旧记
-  「要真模型」，live 里用 claude。
-- 报告写到 --out 下的 report.json 和 report.md。检查不过不改退出码：CI 拿 report.json 和快照比。
+- fake: the backend's fake text model (CI default); replay: the backend's replay (ZJ_MODEL=replay);
+  live: real models, only on zg's Mac (see live.py).
+- The AI player of simulated games (persona + seed) (player.py): --player scripted calls no model (for fake and
+  replay); --player claude calls Claude in live and only reads the AI player's replays in replay (--player-replays).
+  Without --player: in fake and replay, simulated games still record "needs a real model"; live uses claude.
+- The report is written to report.json and report.md under --out. Failing checks do not change the exit code: CI
+  compares report.json with the snapshot.
+
+コマンドライン：uv run zoujin-eval --mode fake --deterministic-only（CI が使うのはまさにこれ）。
+
+- fake：バックエンドの偽テキストモデル（CI のデフォルト）。replay：バックエンドのリプレイ（ZJ_MODEL=replay）。
+  live：実モデル、zg の Mac でのみ（live.py を参照）。
+- シミュレーション局（persona + seed）の AI プレイヤー（player.py）：--player scripted はモデルを呼ばない（fake、
+  replay 用）。--player claude は live では Claude を呼び、replay では AI プレイヤーのリプレイ（--player-replays）だけを
+  読む。--player なし：fake と replay ではシミュレーション局は従来どおり「実モデルが必要」と記録し、live では claude を
+  使う。
+- レポートは --out 下の report.json と report.md に書く。チェックが不合格でも終了コードは変えない：CI は report.json を
+  スナップショットと比べる。
 """
 
 from __future__ import annotations
@@ -33,32 +45,99 @@ PRICES = Path("evals/config/live-cost.json")
 
 
 def parse(argv: Sequence[str]) -> argparse.Namespace:
-    ap = argparse.ArgumentParser(prog="zoujin-eval", description="评测运行器（E-0）")
+    ap = argparse.ArgumentParser(prog="zoujin-eval", description="Eval runner (E-0) / 評価ランナー（E-0）")
     ap.add_argument("--mode", choices=("fake", "replay", "live"), default="fake")
-    ap.add_argument("--deterministic-only", action="store_true", help="只跑确定性检查，不跑判分")
-    ap.add_argument("--suite", action="append", default=[], help="只跑这个套件（可以给多次）")
-    ap.add_argument("--case", action="append", default=[], help="只跑这个用例（可以给多次）")
-    ap.add_argument("--slice", action="store_true", help=f"跑切片用例 {SLICE_CASES}，世界模型用切片版（S-077 ⑨）")
-    ap.add_argument("--cases", type=Path, help=f"用例目录（默认 {CASES}）")
-    ap.add_argument("--world", type=Path, help=f"世界模型 world.json（默认 {WORLD}）")
-    ap.add_argument("--out", type=Path, default=Path("evals/out"), help="报告写到哪里")
-    ap.add_argument("--timeout", type=float, help="每次运行的时限（秒）；不给 = 文字 600、语音和模拟局 1800；0 = 不限")
-    ap.add_argument("--quiet", action="store_true", help="不打印每次运行的进度")
-    g = ap.add_argument_group("live（只在 zg 的 Mac 上）")
-    g.add_argument("--max-item-usd", type=float, help="单项上限（美元，两本账合起来），live 必填")
-    g.add_argument("--max-google-usd", type=float, help="Google 账的总上限（美元，人物的文字回答、Live），live 必填")
-    g.add_argument("--max-claude-usd", type=float, help="Claude 账的总上限（美元，叙事者、评审员、AI 玩家），live 必填")
-    g.add_argument("--confirm", action="store_true", help="zg 看过预计花费、同意了")
-    g.add_argument("--prices", type=Path, default=PRICES, help="每步估价")
-    g.add_argument("--item", help="账本里记在哪一项下（如 s5），单项上限按它算，live 必填")
-    p = ap.add_argument_group("模拟局的 AI 玩家")
+    ap.add_argument(
+        "--deterministic-only",
+        action="store_true",
+        help="Run deterministic checks only, no judging / 決定的チェックだけを実行し、採点しない",
+    )
+    ap.add_argument(
+        "--suite",
+        action="append",
+        default=[],
+        help="Run only this suite (can be given several times) / このスイートだけを実行（複数回指定可）",
+    )
+    ap.add_argument(
+        "--case",
+        action="append",
+        default=[],
+        help="Run only this case (can be given several times) / このケースだけを実行（複数回指定可）",
+    )
+    ap.add_argument(
+        "--slice",
+        action="store_true",
+        help=f"Run the slice cases {SLICE_CASES} on the slice world model (S-077 ⑨)"
+        f" / スライスのケース {SLICE_CASES} を実行し、世界モデルはスライス版を使う（S-077 ⑨）",
+    )
+    ap.add_argument(
+        "--cases", type=Path, help=f"Case directory (default {CASES}) / ケースのディレクトリ（デフォルト {CASES}）"
+    )
+    ap.add_argument(
+        "--world",
+        type=Path,
+        help=f"World model world.json (default {WORLD}) / 世界モデル world.json（デフォルト {WORLD}）",
+    )
+    ap.add_argument(
+        "--out", type=Path, default=Path("evals/out"), help="Where to write the report / レポートの書き出し先"
+    )
+    ap.add_argument(
+        "--timeout",
+        type=float,
+        help="Time limit per run (seconds); omitted = 600 for text, 1800 for voice and simulated games; 0 = no limit"
+        " / 各回の時間制限（秒）。省略時はテキスト 600、音声とシミュレーション局 1800。0 = 無制限",
+    )
+    ap.add_argument(
+        "--quiet", action="store_true", help="Do not print the progress of each run / 各回の進捗を表示しない"
+    )
+    g = ap.add_argument_group("live (only on zg's Mac) / live（zg の Mac でのみ）")
+    g.add_argument(
+        "--max-item-usd",
+        type=float,
+        help="Per-item cap (US dollars, both ledgers combined); required for live"
+        " / 項目ごとの上限（米ドル、2 つの台帳の合算）。live では必須",
+    )
+    g.add_argument(
+        "--max-google-usd",
+        type=float,
+        help="Total cap of the Google ledger (US dollars; characters' text replies, Live); required for live"
+        " / Google 台帳の総上限（米ドル。人物のテキスト返答、Live）。live では必須",
+    )
+    g.add_argument(
+        "--max-claude-usd",
+        type=float,
+        help="Total cap of the Claude ledger (US dollars; narrator, judge, AI player); required for live"
+        " / Claude 台帳の総上限（米ドル。ナレーター、審査員、AI プレイヤー）。live では必須",
+    )
+    g.add_argument(
+        "--confirm",
+        action="store_true",
+        help="zg has seen the estimated cost and agreed / zg が見積もり費用を確認し、同意した",
+    )
+    g.add_argument("--prices", type=Path, default=PRICES, help="Estimated price per step / ステップごとの見積もり単価")
+    g.add_argument(
+        "--item",
+        help="The ledger item to record under (e.g. s5); the per-item cap is computed by it; required for live"
+        " / 台帳のどの項目に記録するか（例 s5）。項目ごとの上限はそれで計算する。live では必須",
+    )
+    p = ap.add_argument_group("AI player of simulated games / シミュレーション局の AI プレイヤー")
     p.add_argument(
-        "--player", choices=("scripted", "claude"), help="不给：live 用 claude，别的模式里模拟局记「要真模型」"
+        "--player",
+        choices=("scripted", "claude"),
+        help='Omitted: live uses claude; in other modes simulated games record "needs a real model"'
+        " / 省略時：live は claude を使い、他のモードではシミュレーション局を「実モデルが必要」と記録する",
     )
     p.add_argument(
-        "--player-model", default=os.environ.get("ZJ_PLAYER_MODEL"), help="AI 玩家的模型 ID（或 ZJ_PLAYER_MODEL）"
+        "--player-model",
+        default=os.environ.get("ZJ_PLAYER_MODEL"),
+        help="The AI player's model ID (or ZJ_PLAYER_MODEL) / AI プレイヤーのモデル ID（または ZJ_PLAYER_MODEL）",
     )
-    p.add_argument("--player-replays", type=Path, help="AI 玩家的回放目录（默认 --out 下的 player-replays）")
+    p.add_argument(
+        "--player-replays",
+        type=Path,
+        help="Directory of the AI player's replays (default player-replays under --out)"
+        " / AI プレイヤーのリプレイのディレクトリ（デフォルトは --out 下の player-replays）",
+    )
     a = ap.parse_args(argv)
     a.cases = a.cases or (SLICE_CASES if a.slice else CASES)
     a.world = a.world or (SLICE_WORLD if a.slice else WORLD)
@@ -88,15 +167,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(msg, file=sys.stderr if code else sys.stdout)
         if code is not None:
             if code == 0:
-                print("仅估算；尚未调用模型、尚未生成运行结果。")
+                print(
+                    "Estimate only; no model has been called and no run results have been produced."
+                    " / 見積もりのみ。モデルはまだ呼んでおらず、実行結果もまだ生成していない。"
+                )
             return code
         assert a.item is not None and a.max_item_usd is not None
         os.environ.update(
             live.backend_env(item=a.item, max_item_usd=a.max_item_usd, caps={k: float(v or 0) for k, v in caps.items()})
         )
     else:
-        os.environ["ZJ_MODEL"] = a.mode  # B-0 按它选假模型或回放
-    os.environ["ZJ_WORLD"] = str(a.world.resolve())  # B-0 按它读世界模型（--slice 时是切片版），绝对路径
+        # B-0 picks the fake model or replay by it / B-0 はこれで偽モデルかリプレイを選ぶ
+        os.environ["ZJ_MODEL"] = a.mode
+    # B-0 reads the world model by it (the slice version with --slice); an absolute path
+    # B-0 はこれで世界モデルを読む（--slice のときはスライス版）。絶対パス
+    os.environ["ZJ_WORLD"] = str(a.world.resolve())
     api = load_backend()
     world = WorldIndex(json.loads(a.world.read_text(encoding="utf-8")))
     opts = Options(
@@ -122,26 +207,36 @@ def main(argv: Sequence[str] | None = None) -> int:
     a.out.mkdir(parents=True, exist_ok=True)
     (a.out / "report.json").write_text(json.dumps(rep, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     (a.out / "report.md").write_text(report.markdown(rep), encoding="utf-8")
-    print(f"报告：{a.out / 'report.md'}，{a.out / 'report.json'}")
+    print(f"Report / レポート: {a.out / 'report.md'}, {a.out / 'report.json'}")
     if a.mode == "live":
         return int(any(c.get("skip") or any(r["status"] != "pass" for r in c.get("results", [])) for c in results))
     return 0
 
 
 def players(a: argparse.Namespace) -> Callable[[Mapping[str, Any]], Player] | None:
-    """按用例造 AI 玩家。ScriptedPlayer 每局一个（随机数按 seed）；ClaudePlayer 每局一个，共用回放和账本。"""
+    """Make the AI player per case. One ScriptedPlayer per game (random numbers by seed); one ClaudePlayer per game,
+    sharing the replays and the ledger.
+
+    ケースごとに AI プレイヤーを作る。ScriptedPlayer は 1 局に 1 つ（乱数は seed による）。ClaudePlayer も 1 局に 1 つ
+    で、リプレイと台帳を共有する。
+    """
     kind = a.player or ("claude" if a.mode == "live" else None)
     if kind is None:
         return None
     if kind == "scripted":
         return lambda case: ScriptedPlayer(seed=int(case["setup"].get("seed", 0)))
     if not a.player_model:
-        raise SystemExit("--player claude 要模型 ID：--player-model 或 ZJ_PLAYER_MODEL（仓库里不写）")
+        raise SystemExit(
+            "--player claude needs a model ID: --player-model or ZJ_PLAYER_MODEL (not written in the repo)"
+            " / --player claude にはモデル ID が必要：--player-model または ZJ_PLAYER_MODEL（リポジトリには書かない）"
+        )
     from zoujin_llm import claude_prices
 
     replays = PlayerReplays(a.player_replays or a.out / "player-replays")
     prices = claude_prices()
-    if a.mode != "live":  # 只读回放：查不到这一局记「回放缺失或过期」
+    # read replays only: if this game is not found it records "replay missing or stale"
+    # リプレイだけを読む：この局が見つからなければ「リプレイが無いか期限切れ」と記録する
+    if a.mode != "live":
         return lambda case: ClaudePlayer(a.player_model, replays, prices)
     from .judge import AnthropicTransport, ClaudeLedger
 

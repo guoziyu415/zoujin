@@ -4,16 +4,16 @@ The 39 types in `docs/data/contracts.md` 1.7, written as JSON Schema 2020-12 (C-
 
 `docs/data/contracts.md` 1.7 の 39 個の型を JSON Schema 2020-12 で記述したもの（C-2、データ担当）。フィールドを変更するときは先に contracts.md を変更し、次にここを変更する。契約テストが両者を型ごと、トップレベルフィールドごとに突き合わせる。
 
-| File / ファイル | Main type / 主な型 | `$defs` |
-| --- | --- | --- |
-| `common.schema.json` | — | `Cite`, plus shared definitions: `SchemaVersion`, `StoryTime`, `RecordedAt`, the various IDs, etc. / `Cite`、および共通定義：`SchemaVersion`、`StoryTime`、`RecordedAt`、各種 ID など |
-| `playthrough.schema.json` | `Playthrough` | `Playthrough` |
-| `world-model.schema.json` | `WorldModel` | The 26 world model types / 世界モデルの 26 個の型 |
-| `event.schema.json` | `Event` | `Event`, `Effect`, `CheckResult` |
-| `utterance.schema.json` | `Utterance` | `Utterance` |
-| `world-state.schema.json` | `WorldState` | `WorldState`, `RunFact` |
-| `memory.schema.json` | `MemoryItem` | `MemoryItem`, `Relationship`, `Promise` (titled `StoryPromise`) / `Promise`（タイトルは `StoryPromise`） |
-| `ending.schema.json` | `Ending` | `Ending`, `CharacterEnding` |
+| File / ファイル           | Main type / 主な型 | `$defs`                                                                                                                                                                               |
+| ------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `common.schema.json`      | —                  | `Cite`, plus shared definitions: `SchemaVersion`, `StoryTime`, `RecordedAt`, the various IDs, etc. / `Cite`、および共通定義：`SchemaVersion`、`StoryTime`、`RecordedAt`、各種 ID など |
+| `playthrough.schema.json` | `Playthrough`      | `Playthrough`                                                                                                                                                                         |
+| `world-model.schema.json` | `WorldModel`       | The 26 world model types / 世界モデルの 26 個の型                                                                                                                                     |
+| `event.schema.json`       | `Event`            | `Event`, `Effect`, `CheckResult`                                                                                                                                                      |
+| `utterance.schema.json`   | `Utterance`        | `Utterance`                                                                                                                                                                           |
+| `world-state.schema.json` | `WorldState`       | `WorldState`, `RunFact`                                                                                                                                                               |
+| `memory.schema.json`      | `MemoryItem`       | `MemoryItem`, `Relationship`, `Promise` (titled `StoryPromise`) / `Promise`（タイトルは `StoryPromise`）                                                                              |
+| `ending.schema.json`      | `Ending`           | `Ending`, `CharacterEnding`                                                                                                                                                           |
 
 ## For writers / 書き込み側向け
 
