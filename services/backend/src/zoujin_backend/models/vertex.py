@@ -1,16 +1,43 @@
-"""真文本模型：Vertex AI 上的 Gemini（`ZJ_MODEL=real`，只在 zg 的 Mac 上跑，G-7）。项目里的线程和 CI 从不调用。
-B-8 以后只剩 `config.TEXT` 里 provider 是 google 的提示（评测里替 Live 当人物的 `reply`），其余走 `models/claude.py`。
+"""Real text model: Gemini on Vertex AI (`ZJ_MODEL=real`, runs only on zg's Mac, G-7). Threads in the project and CI
+never call it. Since B-8 only the prompts whose provider in `config.TEXT` is google remain (`reply`, standing in for
+Live as the character in evals); everything else goes through `models/claude.py`.
 
-- 认证用 Mac 上 gcloud 登录的应用默认凭证（ADC，`google-auth`，可选依赖组 `real`），没有 API Key。
-- **项目 ID 和地区只从显式设的环境变量读**（`ZJ_VERTEX_PROJECT`、`ZJ_VERTEX_LOCATION`），只在 real 时读；没设就退出，
-  不发请求。不用 ADC 或 gcloud 推断出来的默认项目（Mac 上 gcloud 的默认配置不是这个项目的）。项目 ID 不进日志、
-  Trace、回放、账本和异常消息：传输层的错误换成不带原消息的 `ModelCallFailed`。
-- 走 REST（`generateContent`，httpx），传输层可以换成假的（测试用 `httpx.MockTransport`，不联网）。
-- 每次调用：渲染提示（世界模型前缀放最前）→ 账本判上限（`BudgetStop`）→ 调用（429 → `RateLimited`，第一个就停）→
-  记账 → 输出过 Schema（不过 → `BadOutput`，由流水线按时限的规则重发）。设了 `ZJ_RECORD_REPLAYS` 时由
-  `models.text.Recording` 录一行回放。
-- 被时限取消的调用按预计花费记账（可能已经计费了，宁多记）。每行带耗时和状态（B-5：`ok`、`timeout`、`bad-output`；
-  没有回应的记 `error`、花费 0）。
+- Authentication uses the application default credentials from the gcloud login on the Mac (ADC, `google-auth`,
+  optional dependency group `real`); there is no API key.
+- **The project ID and region are read only from explicitly set environment variables** (`ZJ_VERTEX_PROJECT`,
+  `ZJ_VERTEX_LOCATION`), and only under real; if unset, exit without sending a request. The default project inferred by
+  ADC or gcloud is not used (gcloud's default configuration on the Mac is not for this project). The project ID never
+  goes into logs, the Trace, replays, the ledger or exception messages: transport errors become `ModelCallFailed`
+  without the original message.
+- Uses REST (`generateContent`, httpx), and the transport layer can be swapped for a fake (tests use
+  `httpx.MockTransport`, with no network).
+- Each call: render the prompt (world model prefix first) → check the ledger caps (`BudgetStop`) → call (429 →
+  `RateLimited`, stop at the first one) → record in the ledger → validate the output against the Schema (failure →
+  `BadOutput`, resent by the pipeline under the time-limit rules). When `ZJ_RECORD_REPLAYS` is set,
+  `models.text.Recording` records one replay line.
+- A call cancelled by the time limit is recorded at the estimated cost (it may already have been billed, so better to
+  over-record). Every line carries the duration and status (B-5: `ok`, `timeout`, `bad-output`; no response is
+  recorded as `error` with cost 0).
+
+実テキストモデル：Vertex AI 上の Gemini（`ZJ_MODEL=real`、zg の Mac 上でのみ実行、G-7）。プロジェクト内のスレッドと CI
+は決して呼び出さない。B-8 以降は `config.TEXT` で provider が google のプロンプト（評価で Live の代わりに登場人物を
+務める `reply`）だけが残り、それ以外は `models/claude.py` を通る。
+
+- 認証は Mac 上で gcloud にログインしたアプリケーションのデフォルト認証情報（ADC、`google-auth`、オプション依存
+  グループ `real`）を使い、API キーはない。
+- **プロジェクト ID とリージョンは明示的に設定した環境変数からだけ読む**（`ZJ_VERTEX_PROJECT`、`ZJ_VERTEX_LOCATION`）。
+  real のときだけ読み、未設定ならリクエストを送らずに終了する。ADC や gcloud
+  が推定したデフォルトのプロジェクトは使わない（Mac 上の gcloud のデフォルト設定はこのプロジェクトのものではない）。
+  プロジェクト ID はログ、Trace、リプレイ、台帳、例外メッセージに入れない：
+  トランスポート層のエラーは元のメッセージを含まない `ModelCallFailed` に置き換える。
+- REST（`generateContent`、httpx）を使い、トランスポート層は偽物に差し替えられる（テストは `httpx.MockTransport`
+  を使い、ネットワークに出ない）。
+- 呼び出しごとに：プロンプトをレンダリング（世界モデルのプレフィックスを先頭）→ 台帳で上限を判定（`BudgetStop`）→
+  呼び出し（429 → `RateLimited`、最初の 1 回で止まる）→ 台帳に記録 → 出力を Schema で検証（通らなければ
+  `BadOutput`。パイプラインが時間制限の規則で再送する）。`ZJ_RECORD_REPLAYS` を設定していれば
+  `models.text.Recording` がリプレイを 1 行録る。
+- 時間制限で取り消された呼び出しは見積もり費用で記録する（すでに課金されているかもしれないので、多めに記録する）。
+  各行に所要時間と状態を付ける（B-5：`ok`、`timeout`、`bad-output`。応答がないものは `error`、費用 0）。
 """
 
 from __future__ import annotations
@@ -53,21 +80,31 @@ class Auth(Protocol):
 
 
 class AdcAuth:
-    """ADC 的访问令牌，快过期了再刷新。只取凭证，不用 google.auth.default() 返回的项目。"""
+    """The ADC access token, refreshed when it is about to expire. Takes only the credentials, not the project returned
+    by google.auth.default().
+
+    ADC のアクセストークン。期限が近づいたら更新する。認証情報だけを取り、google.auth.default() が返すプロジェクトは
+    使わない。
+    """
 
     def __init__(self) -> None:
         try:
             import google.auth
             import google.auth.transport.requests
-        except ImportError as e:  # pragma: no cover - 只在 Mac 上
-            raise ConfigError("ZJ_MODEL=real 要可选依赖组 real：uv sync --extra real") from e
-        self._creds, _ = google.auth.default(scopes=[SCOPE])  # 第二个返回值是推断的项目：不用
+        except ImportError as e:  # pragma: no cover - only on the Mac / Mac 上のみ
+            raise ConfigError(
+                "ZJ_MODEL=real needs the optional dependency group real: uv sync --extra real / "
+                "ZJ_MODEL=real にはオプション依存グループ real が必要：uv sync --extra real"
+            ) from e
+        # The second return value is the inferred project: not used / 2 つ目の戻り値は推定したプロジェクト：使わない
+        self._creds, _ = google.auth.default(scopes=[SCOPE])
         self._request = google.auth.transport.requests.Request()
         self._at = 0.0
 
-    def token(self) -> str:  # pragma: no cover - 只在 Mac 上
+    def token(self) -> str:  # pragma: no cover - only on the Mac / Mac 上のみ
         if not self._creds.valid or time.monotonic() - self._at > 45 * 60:
-            self._creds.refresh(self._request)  # type: ignore[no-untyped-call]  # google-auth 这个方法没标类型
+            # google-auth does not annotate this method / google-auth のこのメソッドには型注釈がない
+            self._creds.refresh(self._request)  # type: ignore[no-untyped-call]
             self._at = time.monotonic()
         return str(self._creds.token)
 
@@ -77,10 +114,15 @@ class Transport(Protocol):
 
 
 class RestTransport:
-    """Vertex AI 的 `generateContent`（REST）。global 端点和地区端点的地址不同。"""
+    """Vertex AI's `generateContent` (REST). The global endpoint and the regional endpoints have different addresses.
+
+    Vertex AI の `generateContent`（REST）。global エンドポイントとリージョンのエンドポイントはアドレスが異なる。
+    """
 
     def __init__(self, project: str, location: str, auth: Auth, client: httpx.AsyncClient | None = None) -> None:
-        for name in ("httpx", "httpcore"):  # httpx 的 INFO 日志带完整的 URL（里面有项目 ID）
+        # httpx's INFO logs carry the full URL (which contains the project ID)
+        # httpx の INFO ログには完全な URL（プロジェクト ID を含む）が出る
+        for name in ("httpx", "httpcore"):
             logging.getLogger(name).setLevel(logging.WARNING)
         self._project = project
         self._location = location
@@ -99,16 +141,19 @@ class RestTransport:
         try:
             resp = await self._client.post(self.url(model), json=body, headers=headers)
         except httpx.HTTPError:
-            raise ModelCallFailed("网络错误（消息不记）") from None
+            raise ModelCallFailed(
+                "Network error (message not logged) / ネットワークエラー（メッセージは記録しない）"
+            ) from None
         if resp.status_code == 429:
             raise RateLimited(
-                "模型回 429（配额或限流），停下",
+                "The model returned 429 (quota or rate limit); stopping / "
+                "モデルが 429 を返した（利用枠またはレート制限）。停止する",
                 provider="google",
                 status=429,
                 retry_after=resp.headers.get("retry-after"),
             )
         if resp.status_code >= 400:
-            raise ModelCallFailed(f"HTTP {resp.status_code}（消息不记）")
+            raise ModelCallFailed(f"HTTP {resp.status_code} (message not logged / メッセージは記録しない)")
         data = resp.json()
         parts = ((data.get("candidates") or [{}])[0].get("content") or {}).get("parts") or []
         text = "".join(p.get("text", "") for p in parts if not p.get("thought"))
@@ -141,19 +186,22 @@ def body(kind: str, user: str) -> Json:
 
 
 def estimate_usd(model: str, kind: str, chars: int, *, regional: bool) -> float:
-    """调用前的预计花费，偏高：输入按一字一个 token，输出按上限。"""
+    """The estimated cost before a call, on the high side: input at one token per character, output at the cap.
+
+    呼び出し前の見積もり費用（高め）：入力は 1 文字 1 トークン、出力は上限で見積もる。
+    """
     usage = {"inputTokens": chars, "outputTokens": spec(kind).max_output}
     return cost_usd(model, usage, regional=regional)
 
 
-# —— 客户端 ——
+# —— Client / クライアント ——
 
 
 @dataclass
 class RealText:
     transport: Transport
     ledger: Ledger
-    worlds: Callable[[str], Json]  # worldModelVersion → 世界模型
+    worlds: Callable[[str], Json]  # worldModelVersion → world model / worldModelVersion → 世界モデル
     regional: bool
     mode: ModelMode = "real"
     _prefix: dict[str, str] = field(default_factory=dict)
@@ -188,17 +236,28 @@ class RealText:
                 jsonschema.validate(output, PROMPTS[kind].schema)
             except (ValueError, jsonschema.ValidationError):
                 bill.done(got.usage, cost, ok=False)
-                raise BadOutput(f"{kind} 的输出不是合 Schema 的 JSON", cost) from None
+                raise BadOutput(
+                    f"{kind}: output is not JSON matching the Schema / 出力が Schema に合う JSON ではない", cost
+                ) from None
             bill.done(got.usage, cost)
         return TextResult(output, kind, model, version, dict(got.usage), cost)
 
 
 def vertex_env(env: Mapping[str, str] | None = None) -> tuple[str, str]:
-    """real 时才调：项目和地区只从这两个环境变量读，没设就退出（不发请求，不推断默认项目）。"""
+    """Called only under real: the project and region are read only from these two environment variables; if unset,
+    exit (no request is sent, and no default project is inferred).
+
+    real のときだけ呼ぶ：プロジェクトとリージョンはこの 2 つの環境変数からだけ読み、未設定なら終了する（リクエストは
+    送らず、デフォルトのプロジェクトも推定しない）。
+    """
     e = os.environ if env is None else env
     project, location = e.get(PROJECT_ENV, ""), e.get(LOCATION_ENV, "")
     if not project or not location:
-        raise ConfigError(f"ZJ_MODEL=real 要显式设 {PROJECT_ENV} 和 {LOCATION_ENV}（只在 Mac 上），没设，不调用")
+        raise ConfigError(
+            f"ZJ_MODEL=real requires {PROJECT_ENV} and {LOCATION_ENV} to be set explicitly (only on the Mac); they are "
+            f"not set, so not calling / ZJ_MODEL=real では {PROJECT_ENV} と {LOCATION_ENV} を明示的に設定する必要が"
+            "ある（Mac 上のみ）。未設定なので呼び出さない"
+        )
     return project, location
 
 
@@ -209,11 +268,19 @@ def real_text(
     transport: Transport | None = None,
     env: Mapping[str, str] | None = None,
 ) -> RealText:
-    """按 Settings 建真客户端。账本和总上限必须给（ZJ_LEDGER、ZJ_MAX_GOOGLE_USD，或 S-2 运行器传进来的 ledger）。"""
+    """Build the real client from Settings. The ledger and the total cap are required (ZJ_LEDGER, ZJ_MAX_GOOGLE_USD, or
+    the ledger passed in by the S-2 runner).
+
+    Settings から実クライアントを作る。台帳と総上限は必須（ZJ_LEDGER、ZJ_MAX_GOOGLE_USD、または S-2 のランナーが
+    渡す ledger）。
+    """
     project, location = vertex_env(env)
     if ledger is None:
         if settings.ledger is None or settings.max_google_usd is None:
-            raise ConfigError("ZJ_MODEL=real 要账本和 Google 的总上限：ZJ_LEDGER、ZJ_MAX_GOOGLE_USD，没有默认值")
+            raise ConfigError(
+                "ZJ_MODEL=real needs a ledger and Google's total cap: ZJ_LEDGER, ZJ_MAX_GOOGLE_USD, with no defaults / "
+                "ZJ_MODEL=real には台帳と Google の総上限が必要：ZJ_LEDGER、ZJ_MAX_GOOGLE_USD。デフォルト値はない"
+            )
         ledger = Ledger(settings.ledger, settings.max_google_usd, settings.max_item_usd, settings.ledger_item)
     library = Library(settings.worlds, settings.scenes, settings.world, settings.released_worlds)
     return RealText(

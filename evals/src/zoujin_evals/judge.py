@@ -1,16 +1,44 @@
-"""评审员（data-design 7.3）：Claude 按用例的评分细则给一次回答打 1〜5 分。
+"""Judge (data-design 7.3): Claude scores one reply 1〜5 by the case's rubric.
 
-- 只在评测包和 zg 的 Mac 上用，后端不依赖它。真调用要 Mac 上的开关（ZJ_EVAL_LIVE=1）和 Anthropic 的 Key
-  （zg 在控制台建，只放在 Mac 上，不进仓库、文档和聊天）。
-- 模型 ID 运行时给（--model 或 ZJ_JUDGE_MODEL），仓库里不写；单价按模型档查共用包 zoujin_llm 的
-  claude-prices.json（B-8：叙事者和评审员共用这一份，账本类、回放的键、Anthropic 的连接也在那个包里）。
-  回放、报告和账本里只写档名加版本（model_tag，如 opus-5.5），ID 只发给 API。
-- 判分存成回放（kind "judge"，键 = claude|档名加版本|提示版本|请求的 sha256），重判不花钱。同一条判几次，
-  请求里的 sample 不同（只进键，不发给模型）。
-- 真调用前查账本（ZJ_LEDGER，和后端同一个文件、同一种行）：Claude 的累计加这次的预计超过总上限，或这一项
-  两本账合起来超过单项上限，就不发、抛 BudgetStop。429 和 529 第一次就停（RateLimited），SDK 不自己重试。
-- 走 Batch 时整批先按预计花费查一次账本；交上去的批号写进 pending 文件，中途断了再跑会接着收这一批，不重交。
-- 评审的提示不拿留出样本调。真人试玩的对话（R1 起）要等隐私说明写明交给 Anthropic 以后才判（D-028）。
+- Used only in the eval package and on zg's Mac; the backend does not depend on it. A real call needs the Mac switch
+  (ZJ_EVAL_LIVE=1) and an Anthropic key (zg creates it in the console; it stays only on the Mac, never in the repo,
+  the docs or chat).
+- The model ID is given at runtime (--model or ZJ_JUDGE_MODEL) and is not written in the repo; unit prices are looked
+  up by model tier in claude-prices.json of the shared package zoujin_llm (B-8: the narrator and the judge share that
+  one file; the ledger classes, the replay keys and the Anthropic connection are in that package too). Replays,
+  reports and the ledger record only the tier name plus version (model_tag, e.g. opus-5.5); the ID goes only to the
+  API.
+- Verdicts are saved as replays (kind "judge", key = claude|tier name plus version|prompt version|sha256 of the
+  request), so judging again costs nothing. When the same item is judged several times, the request's sample differs
+  (it goes only into the key and is not sent to the model).
+- Before a real call the ledger is checked (ZJ_LEDGER, the same file and the same kind of row as the backend): if
+  Claude's running total plus this call's estimate exceeds the total cap, or this item across both ledgers exceeds the
+  per-item cap, nothing is sent and BudgetStop is raised. 429 and 529 stop at the first occurrence (RateLimited); the
+  SDK does not retry by itself.
+- With Batch the whole batch is checked against the ledger once by its estimated cost; the submitted batch ID is
+  written to the pending file, so a rerun after an interruption goes on collecting that batch instead of resubmitting.
+- The judge's prompt is not tuned on the holdout samples. Real playtest dialogue (from R1 on) is judged only after the
+  privacy notice states that it is sent to Anthropic (D-028).
+
+審査員（data-design 7.3）：Claude がケースの評価基準に従って 1 回の返答を 1〜5 点で採点する。
+
+- 評価パッケージと zg の Mac でのみ使い、バックエンドはこれに依存しない。実際の呼び出しには Mac のスイッチ
+  （ZJ_EVAL_LIVE=1）と Anthropic のキーが必要（zg がコンソールで作成し、Mac にだけ置く。リポジトリ、ドキュメント、
+  チャットには入れない）。
+- モデル ID は実行時に与え（--model または ZJ_JUDGE_MODEL）、リポジトリには書かない。単価はモデルのティアで共有
+  パッケージ zoujin_llm の claude-prices.json を引く（B-8：ナレーターと審査員がこの 1 つを共有し、台帳のクラス、
+  リプレイのキー、Anthropic への接続もそのパッケージにある）。リプレイ、レポート、台帳にはティア名とバージョン
+  （model_tag、例 opus-5.5）だけを書き、ID は API にだけ送る。
+- 採点はリプレイとして保存する（kind "judge"、キー = claude|ティア名とバージョン|プロンプトのバージョン|リクエストの
+  sha256）ので、再採点に費用はかからない。同じ項目を何回か採点するときは、リクエストの sample が異なる（キーにだけ
+  入り、モデルには送らない）。
+- 実際の呼び出しの前に台帳（ZJ_LEDGER、バックエンドと同じファイル、同じ種類の行）を確認する：Claude の累計に今回の
+  見積もりを足すと総上限を超えるか、この項目の 2 つの台帳の合計が項目ごとの上限を超えるなら、送らずに BudgetStop を
+  投げる。429 と 529 は最初の発生で止まり（RateLimited）、SDK は自分でリトライしない。
+- Batch を使うときはバッチ全体の見積もり費用で台帳を 1 回確認する。提出したバッチ ID は pending ファイルに書くので、
+  中断後に再実行するとそのバッチの回収を続け、再提出しない。
+- 審査のプロンプトはホールドアウトサンプルで調整しない。実際の試遊の会話（R1 以降）は、プライバシーの説明に
+  Anthropic へ渡すと明記されてから採点する（D-028）。
 """
 
 from __future__ import annotations
@@ -24,7 +52,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, NotRequired, Protocol, TypedDict
 
-# 共用包的这几样，评审员的调用方（calibrate、测试）照旧从这里拿
+# These come from the shared package; the judge's callers (calibrate, tests) keep importing them from here
+# 共有パッケージのこれらは、審査員の呼び出し側（calibrate、テスト）が従来どおりここから取得する
 from zoujin_llm import BudgetStop as BudgetStop
 from zoujin_llm import ClaudePrices as ClaudePrices
 from zoujin_llm import Ledger
@@ -44,16 +73,25 @@ EFFORTS = ("low", "medium", "high", "xhigh", "max")
 
 
 class Line(TypedDict):
-    speaker: str  # 「プレイヤー」、人物的名字、「ナレーション」、「（注）」
+    # 「プレイヤー」, a character's name, 「ナレーション」, 「（注）」 / 「プレイヤー」、人物の名前、「ナレーション」、「（注）」
+    speaker: str
     text: str
 
 
-# 交给评审员的一条：评分细则、判定线、场景、对话记录。键 pass 是 Python 关键字，所以用函数式写法
+# One item given to the judge: rubric, pass line, scenario, transcript. The key pass is a Python keyword, hence the
+# functional syntax.
+# 審査員に渡す 1 項目：評価基準、合格ライン、場面、会話記録。キー pass は Python の予約語なので関数形式で書く。
 Item = TypedDict(
     "Item",
     {"id": str, "rubric": str, "pass": str, "context": NotRequired[str], "transcript": list[Line]},
 )
 
+# The judge prompt (SYSTEM below and the headings in user_text) is hashed into the replay keys of the real recorded
+# calibration verdicts in evals/judge/replays (judge-1). Changing a single character orphans them and needs a paid
+# re-calibration, so this text stays exactly as recorded.
+# 審査員のプロンプト（下の SYSTEM と user_text の見出し）は evals/judge/replays にある実際に記録したキャリブレーションの
+# 採点（judge-1）のリプレイキーにハッシュとして含まれる。1 文字でも変えるとそれらが使えなくなり、有料の再キャリブレー
+# ションが必要になるので、このテキストは記録時のまま残す。
 SYSTEM = (
     (
         "你是评测员，给一款日语互动故事里的一次回答打分。故事改编自太宰治『走れメロス』："
@@ -100,7 +138,10 @@ def user_text(item: Item) -> str:
 
 
 def keyed_request(item: Item, *, effort: str, max_tokens: int, sample: int) -> Json:
-    """回放的键算的就是它。sample 只进键，不发给模型。"""
+    """This is what the replay key is computed from. sample goes only into the key and is not sent to the model.
+
+    リプレイのキーはこれから計算する。sample はキーにだけ入り、モデルには送らない。
+    """
     return {
         "system": SYSTEM,
         "user": user_text(item),
@@ -112,7 +153,12 @@ def keyed_request(item: Item, *, effort: str, max_tokens: int, sample: int) -> J
 
 
 def api_params(model: str, request: Mapping[str, Json]) -> Json:
-    """发给 Messages API 的参数：思考关不掉（不写 thinking），深浅用 effort；输出用 JSON Schema 定死。"""
+    """Parameters sent to the Messages API: thinking cannot be turned off (no thinking field), its depth is set by
+    effort; the output is fixed by a JSON Schema.
+
+    Messages API に送るパラメーター：思考はオフにできない（thinking は書かない）、深さは effort で決める。出力は
+    JSON Schema で固定する。
+    """
     return {
         "model": model,
         "max_tokens": request["maxTokens"],
@@ -127,10 +173,13 @@ def replay_key(tag: str, request: Json, version: str = PROMPT_VERSION) -> str:
 
 
 def threshold(spec: str) -> int:
-    """判定线 ">=4/5" → 4。"""
+    """Pass line ">=4/5" → 4.
+
+    合格ライン ">=4/5" → 4。
+    """
     m = re.fullmatch(r">=([1-5])/5", spec)
     if not m:
-        raise ValueError(f"不认识的判定线：{spec!r}（只认 >=n/5）")
+        raise ValueError(f"Unknown pass line {spec!r} (only >=n/5) / 不明な合格ライン {spec!r}（>=n/5 のみ）")
     return int(m.group(1))
 
 
@@ -140,14 +189,14 @@ class BadVerdict(ValueError):
 
 def parse_verdict(text: str | None) -> tuple[int, str]:
     if not text:
-        raise BadVerdict("没有文字")
+        raise BadVerdict("no text / テキストなし")
     try:
         d = json.loads(text)
     except json.JSONDecodeError as e:
-        raise BadVerdict(f"不是 JSON：{e}") from e
+        raise BadVerdict(f"not JSON / JSON ではない: {e}") from e
     score, reason = (d.get("score"), d.get("reason")) if isinstance(d, dict) else (None, None)
     if type(score) is not int or not 1 <= score <= 5 or not isinstance(reason, str):
-        raise BadVerdict("score 不是 1〜5 的整数或没有 reason")
+        raise BadVerdict("score is not an integer 1–5, or no reason / score が 1〜5 の整数でないか、reason がない")
     return score, reason
 
 
@@ -155,18 +204,28 @@ def now_z() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-# —— 账本 ——
+# —— Ledger / 台帳 ——
 
 
 class ClaudeLedger(Ledger):
-    """共用的账本（zoujin_llm.Ledger）记 Claude 那本：provider 写 claude、kind 写 judge，和后端的 Google 账本
-    同一个文件、同一种行。评审员的 use 是 "eval"（S-079 ④：S-5 的单局成本只加产品）。"""
+    """The shared ledger (zoujin_llm.Ledger) recording the Claude book: provider claude, kind judge, in the same file
+    and the same kind of row as the backend's Google ledger. The judge's use is "eval" (S-079 ④: S-5's per-game cost
+    adds up only the product).
+
+    共有の台帳（zoujin_llm.Ledger）で Claude の分を記録する：provider は claude、kind は judge。バックエンドの Google の
+    台帳と同じファイル、同じ種類の行。審査員の use は "eval"（S-079 ④：S-5 の 1 局あたりのコストは製品分だけを足す）。
+    """
 
     def __init__(self, path: Path, max_total_usd: float, max_item_usd: float, item: str, use: str = "eval") -> None:
         super().__init__(path, PROVIDER, max_total_usd, max_item_usd, item, use)
 
     def spent(self) -> tuple[float, float]:
-        """（Claude 的累计，这一项两本账合起来的累计）。每次重读文件：后端和别的跑可能同时在记。"""
+        """(Claude's running total, this item's running total across both ledgers). The file is reread every time: the
+        backend and other runs may be recording at the same time.
+
+        （Claude の累計、この項目の 2 つの台帳の合計）。毎回ファイルを読み直す：バックエンドや他の実行が同時に記録して
+        いるかもしれない。
+        """
         assert self.item is not None
         return self.spent_total(), self.spent_on(self.item)
 
@@ -174,11 +233,14 @@ class ClaudeLedger(Ledger):
         super().add(kind=kind, model=model, usage=usage, cost=cost)
 
 
-# —— 回放 ——
+# —— Replays / リプレイ ——
 
 
 class ReplayStore:
-    """目录下的 *.jsonl 里 kind 是 judge 的行；新判的追加到 judge.jsonl。"""
+    """The rows with kind judge in the directory's *.jsonl files; new verdicts are appended to judge.jsonl.
+
+    ディレクトリ内の *.jsonl のうち kind が judge の行。新しい採点は judge.jsonl に追記する。
+    """
 
     def __init__(self, directory: Path) -> None:
         self.dir = directory
@@ -191,7 +253,7 @@ class ReplayStore:
                 if rec.get("kind") != KIND:
                     continue
                 if rec["key"] != replay_key(rec["model"], rec["request"], rec["promptVersion"]):
-                    raise ValueError(f"{p.name}:{n} 的 key 和内容对不上")
+                    raise ValueError(f"{p.name}:{n}: key does not match the content / key と内容が一致しない")
                 self.records[rec["key"]] = rec
 
     def get(self, key: str) -> Json | None:
@@ -204,24 +266,34 @@ class ReplayStore:
         self.records[rec["key"]] = rec
 
 
-# —— 和 API 之间 ——
+# —— Talking to the API / API とのやり取り ——
 
 
 @dataclass(frozen=True)
 class Failed:
-    why: str  # Batch 里这一条没成：errored（带错误类型）/ canceled / expired
+    # this item did not succeed in the Batch: errored (with the error type) / canceled / expired
+    # Batch でこの項目が成功しなかった：errored（エラーの種類付き）/ canceled / expired
+    why: str
 
 
 class Transport(Protocol):
     def create(self, params: Json) -> Reply: ...
-    def submit(self, requests: Sequence[tuple[str, Json]]) -> str: ...  # 交一批，返回批号
+    # submit a batch and return its ID / バッチを提出し、その ID を返す
+    def submit(self, requests: Sequence[tuple[str, Json]]) -> str: ...
     def ended(self, batch_id: str) -> bool: ...
-    def results(self, batch_id: str) -> Iterator[tuple[str, Reply | Failed]]: ...  # (custom_id, 结果)，顺序不定
+    # (custom_id, result), in no particular order / （custom_id、結果）。順序は不定
+    def results(self, batch_id: str) -> Iterator[tuple[str, Reply | Failed]]: ...
 
 
 class AnthropicTransport:
-    """官方 SDK（real 可选依赖），连接用共用包的：Key 由 SDK 从 ANTHROPIC_API_KEY 读，不自己重试；错误换成不带原消息的
-    异常（429、529 → RateLimited，第一次就停，之后用回放接着跑；别的 → ModelCallFailed，只有状态码）。"""
+    """The official SDK (the real optional dependency), connected through the shared package: the SDK reads the key from
+    ANTHROPIC_API_KEY and does not retry by itself; errors become exceptions without the original message (429, 529 →
+    RateLimited, stop at the first one and continue from the replays later; others → ModelCallFailed, status code only).
+
+    公式 SDK（real のオプション依存）。接続は共有パッケージのものを使う：キーは SDK が ANTHROPIC_API_KEY から読み、
+    自分ではリトライしない。エラーは元のメッセージを含まない例外に変える（429、529 → RateLimited。最初の 1 回で止まり、
+    その後はリプレイで続ける。それ以外 → ModelCallFailed。ステータスコードのみ）。
+    """
 
     def __init__(self) -> None:
         import anthropic
@@ -261,20 +333,24 @@ class AnthropicTransport:
                 yield r.custom_id, Failed(res.type)
 
 
-# —— 评审员 ——
+# —— Judge / 審査員 ——
 
 
 @dataclass(frozen=True)
 class Verdict:
     item: str
     sample: int
-    score: int | None  # 没判出来时 None，原因在 error
+    score: (
+        int | None
+    )  # None when no verdict came out; the reason is in error / 採点できなかったら None。理由は error に
     reason: str
     passed: bool | None
     error: str | None  # replay-missing / refusal / max_tokens / bad-json：… / errored：… / canceled / expired
     cost_usd: float
     replayed: bool
-    usage: dict[str, int] = field(default_factory=dict)  # 回放里的或这次的用量；没调时空
+    # usage from the replay or from this call; empty when nothing was called
+    # リプレイ内の、または今回の使用量。呼び出していなければ空
+    usage: dict[str, int] = field(default_factory=dict)
 
     def to_json(self) -> Json:
         return {
@@ -301,19 +377,22 @@ class Judge:
     max_tokens: int
     replays: ReplayStore
     prices: ClaudePrices
-    ledger: ClaudeLedger | None = None  # 只读回放时 None
-    transport: Transport | None = None  # 只读回放时 None
+    ledger: ClaudeLedger | None = None  # None when only reading replays / リプレイを読むだけのときは None
+    transport: Transport | None = None  # None when only reading replays / リプレイを読むだけのときは None
     poll: Callable[[], None] = field(default=lambda: time.sleep(30))
     progress: Callable[[str], None] = field(default=lambda _: None)
     tag: str = field(init=False)  # model_tag(model)
 
     def __post_init__(self) -> None:
-        self.tag = model_tag(self.model)  # 回放、账本、报告里只写它
+        # replays, the ledger and reports record only this / リプレイ、台帳、レポートにはこれだけを書く
+        self.tag = model_tag(self.model)
         if self.effort not in EFFORTS:
-            raise ValueError(f"effort 只能是 {'/'.join(EFFORTS)}")
+            raise ValueError(f"effort must be one of / effort は次のいずれか: {'/'.join(EFFORTS)}")
         if (self.ledger is None) != (self.transport is None):
-            raise ValueError("真调用要同时给账本和客户端")
-        self.prices.price(self.model)  # 认不出价目档就不开始
+            raise ValueError(
+                "A real call needs both a ledger and a client / 実際の呼び出しには台帳とクライアントの両方が必要"
+            )
+        self.prices.price(self.model)  # do not start without a known price tier / 価格ティアが分からなければ始めない
 
     def request(self, item: Item, sample: int) -> Json:
         return keyed_request(item, effort=self.effort, max_tokens=self.max_tokens, sample=sample)
@@ -327,7 +406,12 @@ class Judge:
         return Verdict(item["id"], sample, None, "", None, "replay-missing", 0.0, False)
 
     def _settle(self, item: Item, sample: int, request: Json, reply: Reply, *, batch: bool) -> Verdict:
-        """收到一条回答：记账，判出分就存回放。拒答、截断、JSON 坏了都不存，下次会重判。"""
+        """One answer received: record it in the ledger, and save a replay if it gave a score. Refusals, truncations and
+        broken JSON are not saved and will be judged again next time.
+
+        回答を 1 つ受け取った：台帳に記録し、点数が出ればリプレイに保存する。拒否、切り詰め、壊れた JSON は保存せず、
+        次回また採点する。
+        """
         assert self.ledger is not None
         cost = self.prices.cost(self.model, reply.usage, batch=batch)
         self.ledger.add(model=self.tag, usage=reply.usage, cost=cost)
@@ -357,7 +441,10 @@ class Judge:
         return Verdict(item["id"], sample, score, reason, ok, None, cost, False, reply.usage)
 
     def one(self, item: Item, sample: int = 1) -> Verdict:
-        """判一条，不走 Batch（校准用：快）。"""
+        """Judge one item, not through Batch (for calibration: fast).
+
+        1 項目を採点する。Batch は使わない（キャリブレーション用：速い）。
+        """
         req = self.request(item, sample)
         rec = self.replays.get(replay_key(self.tag, req))
         if rec is not None:
@@ -369,7 +456,12 @@ class Judge:
         return self._settle(item, sample, req, reply, batch=False)
 
     def batch(self, todo: Sequence[tuple[Item, int]], pending: Path) -> list[Verdict]:
-        """一批，走 Batch（半价）。回放里有的不交；pending 文件里有没收完的批就接着收，不重交。"""
+        """A batch, through Batch (half price). Items already in the replays are not submitted; if the pending file has
+        a batch not yet collected, go on collecting it instead of resubmitting.
+
+        1 バッチを Batch で処理する（半額）。リプレイにあるものは提出しない。pending ファイルに未回収のバッチがあれば
+        その回収を続け、再提出しない。
+        """
         out: dict[str, Verdict] = {}
         ask: dict[str, tuple[Item, int, Json]] = {}
         for item, sample in todo:
@@ -390,7 +482,10 @@ class Judge:
                 batch_id = self.transport.submit([(cid, api_params(self.model, r)) for cid, (_, _, r) in ask.items()])
                 pending.parent.mkdir(parents=True, exist_ok=True)
                 pending.write_text(json.dumps({"batchId": batch_id, "customIds": sorted(ask)}) + "\n", encoding="utf-8")
-            self.progress(f"批 {batch_id}：{len(ask)} 条，等它跑完")
+            self.progress(
+                f"Batch {batch_id}: {len(ask)} items, waiting for it to finish"
+                f" / バッチ {batch_id}：{len(ask)} 件、完了を待つ"
+            )
             while not self.transport.ended(batch_id):
                 self.poll()
             for cid, res in self.transport.results(batch_id):
@@ -402,7 +497,9 @@ class Judge:
                 else:
                     out[cid] = self._settle(item, sample, req, res, batch=True)
             pending.unlink(missing_ok=True)
-        none = "no-result"  # 批跑完了，结果里却没有这一条
+        none = (
+            "no-result"  # the batch finished but has no result for this item / バッチは完了したがこの項目の結果がない
+        )
         return [
             out.get(custom_id(i["id"], s)) or Verdict(i["id"], s, None, "", None, none, 0.0, False) for i, s in todo
         ]
@@ -412,6 +509,11 @@ class Judge:
             return None
         p = json.loads(pending.read_text(encoding="utf-8"))
         if set(p["customIds"]) != set(ask):
-            raise ValueError(f"{pending} 里没收完的批和这次要判的条目不一样：先收完那一批，或确认作废后删掉这个文件")
+            raise ValueError(
+                f"The uncollected batch in {pending} differs from the items to judge this time: collect that batch"
+                " first, or delete this file after confirming it is void"
+                f" / {pending} の未回収のバッチと今回採点する項目が異なる：まずそのバッチを回収するか、"
+                "無効と確認してからこのファイルを削除する"
+            )
         batch_id: str = p["batchId"]
         return batch_id
