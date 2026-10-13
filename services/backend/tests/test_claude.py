@@ -1,8 +1,18 @@
-"""Claude 的真客户端（B-8 验收第 2、3、4 组）：传输层换成假的，不联网、不用真 Key。
+"""Claude's real client (B-8 acceptance groups 2, 3, 4): the transport layer is swapped for a fake, with no network and
+no real key.
 
-要 SDK 的几条（SDK 的错误怎么换、Key 不漏）用 `httpx.MockTransport` 接住 SDK 发的请求；CI 里没装可选依赖 real 的
-任务跳过它们。模型 ID 用假的（`test-sonnet-5-5`：认得出档名和版本就行），Key 用一个假的记号，查它们不出现在账本、
-回放、日志、Span 和异常消息里。台词都是为测试写的。
+The tests that need the SDK (how SDK errors are converted, the key not leaking) catch the SDK's requests with
+`httpx.MockTransport`; CI jobs without the optional dependency real skip them. Model IDs are fake (`test-sonnet-5-5`:
+enough for the tier name and version to be recognized), and the key is a fake marker; the tests check that they do not
+appear in the ledger, replays, logs, Spans or exception messages. All lines are written for tests.
+
+Claude の実クライアント（B-8 受け入れ確認 第 2、3、4 グループ）：トランスポート層を偽物に差し替え、ネットワークにも
+本物のキーにも頼らない。
+
+SDK が必要なテスト（SDK のエラーの変換、キーが漏れないこと）は `httpx.MockTransport` で SDK が送るリクエストを受け取る。
+オプション依存 real を入れていない CI のジョブではスキップする。モデル ID は偽物（`test-sonnet-5-5`：ティア名と
+バージョンを判別できれば十分）、キーは偽の目印で、それらが台帳、リプレイ、ログ、Span、例外メッセージに現れないことを
+確認する。セリフはすべてテスト用に書いたもの。
 """
 
 from __future__ import annotations
@@ -55,8 +65,8 @@ from .test_rules import BOOK, OLD, at
 
 Json = Any
 
-KEY = "sk-ant-test-marker-0000"  # 假的；查它有没有漏出去
-IDS = {"haiku": "test-haiku-5-5-idmark", "sonnet": "test-sonnet-5-5-idmark"}  # 假的模型 ID
+KEY = "sk-ant-test-marker-0000"  # fake; checks whether it leaks / 偽物。漏れていないか確認する
+IDS = {"haiku": "test-haiku-5-5-idmark", "sonnet": "test-sonnet-5-5-idmark"}  # fake model IDs / 偽のモデル ID
 ENV = {"ANTHROPIC_API_KEY": KEY, "ZJ_CLAUDE_HAIKU": IDS["haiku"], "ZJ_CLAUDE_SONNET": IDS["sonnet"]}
 REQ = {"worldModelVersion": BOOK.version, "turn": {"character": OLD, "mode": "text", "player": "<b>宿</b>はどこ？"}}
 USAGE = {"inputTokens": 1500, "cacheReadTokens": 17000, "cacheWriteTokens": 0, "outputTokens": 300}
@@ -73,7 +83,11 @@ CANDIDATE = {
 
 
 class Fake:
-    """假的传输层：记下发了什么，按顺序回给定的回答（或抛给定的异常）。"""
+    """A fake transport layer: records what was sent and returns the given replies in order (or raises the given
+    exceptions).
+
+    偽のトランスポート層：送られたものを記録し、与えられた返答を順に返す（または与えられた例外を投げる）。
+    """
 
     def __init__(self, *replies: Reply | BaseException | Callable[[], Any]) -> None:
         self.replies = list(replies)
@@ -115,7 +129,7 @@ def by_kind(billed: list[Json]) -> dict[str, float]:
     return out
 
 
-# —— 第 2 组：请求的形状 ——
+# —— Group 2: the shape of the request / 第 2 グループ：リクエストの形 ——
 
 
 def test_request_shape(tmp_path: Path) -> None:
@@ -126,22 +140,27 @@ def test_request_shape(tmp_path: Path) -> None:
     (p,) = fake.sent
     assert p["model"] == IDS["sonnet"] and p["max_tokens"] == config.TEXT["extract"].max_output
     world, instructions = p["system"]
-    assert world["text"].startswith("<world>\n") and "aozora:" not in world["text"]  # 前缀不带出处
-    assert world["cache_control"] == {"type": "ephemeral"}  # 缓存点打在世界模型前缀上
+    # The prefix carries no sources / プレフィックスに出典は含まない
+    assert world["text"].startswith("<world>\n") and "aozora:" not in world["text"]
+    # The cache breakpoint is on the world model prefix / キャッシュポイントは世界モデルのプレフィックスに打つ
+    assert world["cache_control"] == {"type": "ephemeral"}
     assert instructions == {"type": "text", "text": PROMPTS["extract"].text, "cache_control": {"type": "ephemeral"}}
     (msg,) = p["messages"]
     assert msg["role"] == "user" and msg["content"] == render_body("extract", REQ | {"state": {"t": 1080}})
     assert "<world>" not in msg["content"] and msg["content"].index("<state>") < msg["content"].index("<turn>")
-    assert '<utterance speaker="player">＜b＞宿＜/b＞はどこ？</utterance>' in msg["content"]  # 尖括号换成全角
+    # Angle brackets become full-width / 山括弧は全角に置き換える
+    assert '<utterance speaker="player">＜b＞宿＜/b＞はどこ？</utterance>' in msg["content"]
     assert p["output_config"] == {"format": {"type": "json_schema", "schema": api_schema("extract")}, "effort": "low"}
-    assert p["thinking"] == {"type": "between_tools"} and "temperature" not in p  # API 没有温度这个参数
+    # The API has no temperature parameter / API に temperature パラメータはない
+    assert p["thinking"] == {"type": "between_tools"} and "temperature" not in p
 
     fake = Fake(ok({"route": "chat"}))
     asyncio.run(client(fake, tmp_path).call("triage", {"turn": REQ["turn"]}))
     (p,) = fake.sent
     assert p["model"] == IDS["haiku"] and p["thinking"] == {"type": "disabled"} and "temperature" not in p
     assert "effort" not in p["output_config"]
-    assert [b["text"] for b in p["system"]] == [PROMPTS["triage"].text]  # 没有世界模型版本：没有前缀那一段
+    # No world model version: no prefix block / 世界モデルのバージョンなし：プレフィックスのブロックもない
+    assert [b["text"] for b in p["system"]] == [PROMPTS["triage"].text]
 
     fake = Fake(ok({"results": []}))
     asyncio.run(client(fake, tmp_path).call("check", REQ | {"candidates": []}))
@@ -163,19 +182,19 @@ def test_the_prefix_is_built_once_per_version(tmp_path: Path) -> None:
     assert built == [BOOK.version]
 
 
-# —— 第 2 组：发给 API 的 Schema ——
+# —— Group 2: the Schema sent to the API / 第 2 グループ：API に送る Schema ——
 
 
 def test_api_schemas_pass_the_local_check() -> None:
     for kind in PROMPTS:
         assert schema_problems(api_schema(kind)) == [], kind
     assert schema_problems({"type": "object", "properties": {"a": {"type": "string", "maxLength": 3}}}) == [
-        "$：对象没有 additionalProperties: false",
-        "$.a：有 maxLength",
+        "$: object without additionalProperties: false / オブジェクトに additionalProperties: false がない",
+        "$.a: has maxLength / maxLength がある",
     ]
     many = {f"p{i}": {"type": "string"} for i in range(25)}
     assert schema_problems({"type": "object", "properties": many, "additionalProperties": False}) == [
-        "可选参数 25 个，超过 24"
+        "25 optional parameters, over 24 / 省略可能なパラメータが 25 個で 24 を超える"
     ]
 
 
@@ -189,31 +208,44 @@ def unions(node: Json) -> int:
 
 
 def test_api_schemas_stay_as_small_as_what_passed() -> None:
-    """B-8 小测（10-11）：提取 4 个联合类型、改写 5 个都过了，幕末打算原来 10 个，第一次调用就回 400。"""
+    """B-8 small test (10-11): extraction with 4 unions and rewrite with 5 both passed; the end-of-act plan originally
+    had 10, and the very first call returned 400.
+
+    B-8 の小テスト（10-11）：抽出のユニオン型 4 個、書き換えの 5 個はどちらも通った。幕末のプランは元は 10 個で、最初の
+    呼び出しで 400 が返った。
+    """
     assert {k: unions(api_schema(k)) for k in ("extract", "rewrite", "plan")} == {"extract": 4, "rewrite": 5, "plan": 4}
     assert all(unions(api_schema(k)) <= 5 for k in PROMPTS)
     plan = api_schema("plan")["properties"]
     ops = {v["properties"]["op"]["const"] for v in plan["effects"]["items"]["anyOf"]}
-    assert ops == {"inc", "beat", "learn", "relocate", "improv"}  # 不要 set、hold、promise
+    assert ops == {"inc", "beat", "learn", "relocate", "improv"}  # no set, hold, promise / set、hold、promise は不要
     alt = plan["alternative"]["anyOf"]
     assert alt[1] == {"type": "null"} and set(alt[0]["properties"]) == {"exit", "label", "with", "effects"}
     for out in ({"exit": "exit.1.city"}, {"label": "広場で待つ", "with": [], "effects": []}, None):
         doc = {"accepted": False, "label": None, "with": [], "effects": [], "narration": ["x"], "alternative": out}
         jsonschema.validate(doc, api_schema("plan"))
-        jsonschema.validate(doc, PROMPTS["plan"].schema)  # 本地照旧按三种验
+        # Locally still the three forms
+        # ローカルは従来どおり 3 種類で検証
+        jsonschema.validate(doc, PROMPTS["plan"].schema)
 
 
 def test_the_full_schema_is_still_checked_locally(tmp_path: Path) -> None:
     four = {"candidates": [CANDIDATE] * 4}
-    jsonschema.validate(four, api_schema("extract"))  # API 那份没有 maxItems：模型可能给 4 个
+    # The API copy has no maxItems: the model may give 4 / API 用には maxItems がない：モデルは 4 個返しうる
+    jsonschema.validate(four, api_schema("extract"))
     with pytest.raises(BadOutput):
-        asyncio.run(client(Fake(ok(four)), tmp_path).call("extract", REQ))  # 本地的完整 Schema 拦住
+        # The full local Schema catches it / ローカルの完全な Schema が止める
+        asyncio.run(client(Fake(ok(four)), tmp_path).call("extract", REQ))
     got = asyncio.run(client(Fake(ok({"candidates": [CANDIDATE]})), tmp_path).call("extract", REQ))
     assert got.output["candidates"] == [CANDIDATE]
 
 
 def test_fixture_outputs_fit_both_schemas() -> None:
-    """假模型的规则里写的输出（模型会怎么答的样子）在发给 API 的 Schema 下也写得出来。"""
+    """The outputs written in the fake model's rules (what the model's answers would look like) can also be written
+    under the Schema sent to the API.
+
+    偽モデルのルールに書いた出力（モデルがどう答えるかの見本）は、API に送る Schema でも書ける。
+    """
     seen = 0
     for path in sorted((REPO / "fixtures" / "fake-text").glob("*.json")):
         for r in json.loads(path.read_text(encoding="utf-8"))["rules"]:
@@ -236,7 +268,7 @@ def test_effect_variants_follow_the_contract() -> None:
     assert len(API_EFFECT["anyOf"]) == 8
 
 
-# —— 第 2 组：回答、账本 ——
+# —— Group 2: replies, ledger / 第 2 グループ：返答、台帳 ——
 
 
 def test_ledger_line(tmp_path: Path) -> None:
@@ -253,7 +285,7 @@ def test_ledger_line(tmp_path: Path) -> None:
     )
     assert line["costUsd"] == pytest.approx(want) and line["usage"] == USAGE
     assert line["status"] == "ok" and isinstance(line["ms"], int) and line["ms"] >= 0  # B-5
-    assert "idmark" not in json.dumps(line)  # 模型 ID 不进账本
+    assert "idmark" not in json.dumps(line)  # model IDs stay out of the ledger / モデル ID は台帳に入れない
 
 
 @pytest.mark.parametrize(
@@ -274,8 +306,11 @@ def test_failed_answers_are_billed(reply: Reply, tmp_path: Path) -> None:
 
 
 def test_no_answer_is_a_free_error_line(tmp_path: Path) -> None:
-    """没有回应（连不上、5xx、429）：记一行 error，花费 0，照旧抛出（B-5）。"""
-    for err in (ModelCallFailed("Claude HTTP 500"), RateLimited("Claude 回 429")):
+    """No response (unreachable, 5xx, 429): one error line, cost 0, re-raised as usual (B-5).
+
+    応答なし（接続できない、5xx、429）：error の行を 1 つ記録し、費用 0、例外はそのまま投げる（B-5）。
+    """
+    for err in (ModelCallFailed("Claude HTTP 500"), RateLimited("Claude returned 429")):
         with pytest.raises(type(err)):
             asyncio.run(client(Fake(err), tmp_path).call("extract", REQ))
     rows = lines(tmp_path / "ledger.jsonl")
@@ -290,12 +325,14 @@ def test_budget_stops_before_sending(tmp_path: Path) -> None:
         encoding="utf-8",
     )  # fmt: skip
     fake = Fake(ok({"candidates": []}))
-    with pytest.raises(BudgetStop, match="Claude 账本"):
-        asyncio.run(client(fake, tmp_path, max_total=1.0).call("extract", REQ))  # 总上限只算 Claude 那本
-    with pytest.raises(BudgetStop, match="单项上限"):
+    with pytest.raises(BudgetStop, match="Claude ledger"):
+        # The total cap counts only the Claude ledger / 総上限は Claude の台帳だけを数える
+        asyncio.run(client(fake, tmp_path, max_total=1.0).call("extract", REQ))
+    with pytest.raises(BudgetStop, match="per-item cap"):
         asyncio.run(client(fake, tmp_path, max_total=100.0, max_item=5.5, item="e0-x").call("extract", REQ))
     assert fake.sent == []
-    asyncio.run(client(fake, tmp_path, max_total=100.0).call("extract", REQ))  # Google 的 5 美元不算进 Claude 的总上限
+    # Google's 5 dollars do not count toward Claude's total cap / Google の 5 ドルは Claude の総上限に数えない
+    asyncio.run(client(fake, tmp_path, max_total=100.0).call("extract", REQ))
     assert len(fake.sent) == 1
 
 
@@ -312,26 +349,34 @@ def test_cancelled_call_is_billed_at_the_estimate(tmp_path: Path) -> None:
     billed = lines(tmp_path / "ledger.jsonl")
     assert [x["kind"] for x in billed] == ["triage", "triage", "extract", "extract"]
     assert all(x["costUsd"] > 0 and x["usage"] == {} and x["provider"] == "claude" for x in billed)
-    # 记到取消为止：慢回答要 1 秒，时限 50 毫秒。`ms` 从额度检查之后才计时，比 `wait_for` 起算得晚，
-    # 负载高时差得更多，所以不卡下限
+    # Recorded up to the cancellation: the slow answer takes 1 second and the time limit is 50 ms. `ms` starts timing
+    # only after the quota check, later than `wait_for` starts, and the gap grows under high load, so there is no lower
+    # bound
+    # 取り消しまでを記録する：遅い返答は 1 秒、時間制限は 50 ミリ秒。`ms` は利用枠の確認の後から計時するので
+    # `wait_for` より開始が遅く、負荷が高いと差が広がるため、下限は設けない
     assert all(x["status"] == "timeout" and 0 < x["ms"] < 1000 for x in billed)
     assert billed[2]["costUsd"] == pytest.approx(rt.cancelled_cost("extract", extract_request()))
-    assert spend.usd == pytest.approx(by_kind(billed))  # 这一轮的花费（playthrough_metrics）和账本对得上
+    # This turn's cost (playthrough_metrics) matches the ledger
+    # このターンの費用（playthrough_metrics）は台帳と一致する
+    assert spend.usd == pytest.approx(by_kind(billed))
 
 
 def extract_request() -> Json:
-    """流水线给 TURN 发的提取请求（同样的局面请求一样）。"""
+    """The extraction request the pipeline sends for TURN (the same situation gives the same request).
+
+    パイプラインが TURN に対して送る抽出のリクエスト（同じ局面なら同じリクエスト）。
+    """
     fake = FakeText()
     asyncio.run(Pipeline(fake, SCHEMAS, IdGen(), Tracer()).extract(BOOK, at(), TURN, Spend()))
     return next(r for k, r in fake.calls if k == "extract")
 
 
-# —— 第 2 组：429、529 和别的错误（要 SDK） ——
+# —— Group 2: 429, 529 and other errors (needs the SDK) / 第 2 グループ：429、529 とその他のエラー（SDK が必要） ——
 
 
 def sdk_client(handler: Callable[[Any], Any]) -> Any:
     anthropic = pytest.importorskip("anthropic")
-    httpx = pytest.importorskip("httpx2")  # SDK 用的 httpx 分支
+    httpx = pytest.importorskip("httpx2")  # the httpx fork the SDK uses / SDK が使う httpx のフォーク
     http = httpx.AsyncClient(transport=httpx.MockTransport(handler))
     return anthropic.AsyncAnthropic(max_retries=0, http_client=http)
 
@@ -372,7 +417,9 @@ def test_sdk_errors_and_the_key_never_leave(
 
     def handler(r: Any) -> Any:
         seen.append(r)
-        assert r.headers["x-api-key"] == KEY  # SDK 自己从环境变量读的
+        # The SDK read it from the environment itself
+        # SDK 自身が環境変数から読んだ
+        assert r.headers["x-api-key"] == KEY
         code = next(statuses)
         if code == 200:
             out: Json = {"route": "maybe"} if json.loads(r.content)["model"] == IDS["haiku"] else {"candidates": []}
@@ -389,7 +436,7 @@ def test_sdk_errors_and_the_key_never_leave(
     assert sent["model"] == IDS["sonnet"] and sent["output_config"]["format"]["type"] == "json_schema"
     assert sent["messages"][0]["content"] == render_body("extract", extract_request())
     errors: list[BaseException] = []
-    for _ in range(2):  # 跑：第一个 429、529 就停，不重发
+    for _ in range(2):  # runs stop at the first 429, 529, no resend / 実行は最初の 429、529 で止まり、再送しない
         with pytest.raises(RateLimited) as e:
             asyncio.run(p.extract(BOOK, at(), TURN, Spend()))
         errors.append(e.value)
@@ -397,14 +444,15 @@ def test_sdk_errors_and_the_key_never_leave(
         with pytest.raises(ModelCallFailed) as e2:
             asyncio.run(rt.call("extract", REQ))
         errors.append(e2.value)
-    assert len(seen) == 6  # SDK 不自己重试
+    assert len(seen) == 6  # the SDK does not retry on its own / SDK は自分では再試行しない
     assert [str(e) for e in errors] == [
-        "Claude 回 429（限流或过载），停下",
-        "Claude 回 529（限流或过载），停下",
-        "Claude HTTP 500 api_error（消息不记）",
-        "Claude HTTP 400 invalid_request_error（消息不记）",
+        "Claude returned 429 (rate limited or overloaded); stopping / Claude が 429 を返した（レート制限または過負荷）。停止する",
+        "Claude returned 529 (rate limited or overloaded); stopping / Claude が 529 を返した（レート制限または過負荷）。停止する",
+        "Claude HTTP 500 api_error (message not logged / メッセージは記録しない)",
+        "Claude HTTP 400 invalid_request_error (message not logged / メッセージは記録しない)",
     ]
-    assert all(e.__cause__ is None and e.__suppress_context__ for e in errors)  # 原异常不跟着打印
+    # The original exception is not printed along / 元の例外は一緒に出力されない
+    assert all(e.__cause__ is None and e.__suppress_context__ for e in errors)
     spans = json.dumps([s.attrs for s in tracer.spans], ensure_ascii=False)
     outputs = [
         caplog.text,
@@ -414,17 +462,19 @@ def test_sdk_errors_and_the_key_never_leave(
         *(f.read_text(encoding="utf-8") for f in (tmp_path / "rec").glob("*.jsonl")),
     ]
     for text in outputs:
-        assert KEY not in text and "idmark" not in text  # Key、模型 ID 都不出去
+        assert KEY not in text and "idmark" not in text  # neither key nor model ID leaks / キーもモデル ID も外に出ない
     recs = [r for f in sorted((tmp_path / "rec").glob("*.jsonl")) for r in lines(f)]
     assert [(r["kind"], r["provider"], r["model"]) for r in recs] == [
         ("extract", "claude", "sonnet-5.5"),
         ("triage", "claude", "haiku-5.5"),
     ]
-    assert recs[0]["usage"] == USAGE | {"thinkingTokens": 120}  # 思考的 token 只用来看，含在 outputTokens 里
+    # Thinking tokens are for information only and included in outputTokens
+    # 思考トークンは参考用で、outputTokens に含まれる
+    assert recs[0]["usage"] == USAGE | {"thinkingTokens": 120}
     assert recs[0]["costUsd"] == pytest.approx(claude_prices().cost("sonnet-5.5", USAGE))
 
 
-# —— 第 3 组：配置 ——
+# —— Group 3: configuration / 第 3 グループ：設定 ——
 
 
 def settings(tmp: Path, **kw: Any) -> Settings:
@@ -435,11 +485,11 @@ def settings(tmp: Path, **kw: Any) -> Settings:
 @pytest.mark.parametrize(
     ("env", "said"),
     [
-        ({k: v for k, v in ENV.items() if k != "ANTHROPIC_API_KEY"}, "没设 ANTHROPIC_API_KEY"),
-        ({k: v for k, v in ENV.items() if k != "ZJ_CLAUDE_SONNET"}, "没设 ZJ_CLAUDE_SONNET"),
-        (ENV | {"ZJ_CLAUDE_SONNET": "test-sonnet-5-6-idmark"}, "ZJ_CLAUDE_SONNET 认出来是 sonnet-5.6"),
-        (ENV | {"ZJ_CLAUDE_HAIKU": "mystery-model-idmark"}, "ZJ_CLAUDE_HAIKU 认不出档名和版本"),
-        (ENV | {"ZJ_CLAUDE_HAIKU": IDS["sonnet"]}, "ZJ_CLAUDE_HAIKU 认出来是 sonnet-5.5"),
+        ({k: v for k, v in ENV.items() if k != "ANTHROPIC_API_KEY"}, "ANTHROPIC_API_KEY is not set"),
+        ({k: v for k, v in ENV.items() if k != "ZJ_CLAUDE_SONNET"}, "ZJ_CLAUDE_SONNET is not set"),
+        (ENV | {"ZJ_CLAUDE_SONNET": "test-sonnet-5-6-idmark"}, "ZJ_CLAUDE_SONNET is recognized as sonnet-5.6"),
+        (ENV | {"ZJ_CLAUDE_HAIKU": "mystery-model-idmark"}, "ZJ_CLAUDE_HAIKU: cannot recognize the tier name"),
+        (ENV | {"ZJ_CLAUDE_HAIKU": IDS["sonnet"]}, "ZJ_CLAUDE_HAIKU is recognized as sonnet-5.5"),
     ],
 )
 def test_claude_needs_key_ids_and_cap(env: dict[str, str], said: str, tmp_path: Path) -> None:
@@ -464,13 +514,18 @@ def test_claude_only_runs_do_not_need_vertex(tmp_path: Path, monkeypatch: pytest
         monkeypatch.setenv(k, v)
     for k in ("ZJ_VERTEX_PROJECT", "ZJ_VERTEX_LOCATION"):
         monkeypatch.delenv(k, raising=False)
-    routed = real_text_model(settings(tmp_path))  # 没设 Vertex 的环境变量也建得起来
+    # Can be built without Vertex's environment variables / Vertex の環境変数がなくても作れる
+    routed = real_text_model(settings(tmp_path))
     assert asyncio.run(routed.call("extract", REQ)).model == "sonnet-5.5" and len(fake.sent) == 1
     with pytest.raises(ConfigError, match="ZJ_VERTEX_PROJECT"):
-        asyncio.run(routed.call("reply", REQ))  # 真要调 Google 的那一种才查
+        # Checked only for the kind that calls Google
+        # Google を呼ぶ種類のときだけ確認
+        asyncio.run(routed.call("reply", REQ))
     monkeypatch.delenv("ANTHROPIC_API_KEY")
     with pytest.raises(ConfigError, match="ANTHROPIC_API_KEY"):
-        real_text_model(settings(tmp_path))  # Claude 的少了：一开始就退出
+        # Claude's is missing: exits at the start
+        # Claude の分が欠けている：最初に終了
+        real_text_model(settings(tmp_path))
 
 
 def test_tier_override() -> None:
@@ -491,14 +546,17 @@ def test_tier_override_moves_keys_and_ids(monkeypatch: pytest.MonkeyPatch) -> No
     assert problems == [] and ids == IDS
     monkeypatch.setenv("ZJ_TEXT_MODELS", "check=haiku-5.6")
     _, problems = claude_ids(ENV)
-    assert problems == ["同一档配了两个版本：haiku-5.5、haiku-5.6"]
+    assert problems == [
+        "two versions configured for the same tier / 同じティアに 2 つのバージョンが設定されている: haiku-5.5, haiku-5.6"
+    ]
 
 
-# —— 第 4 组：回放按供应商分开 ——
+# —— Group 4: replays are separated by provider / 第 4 グループ：リプレイはプロバイダごとに分ける ——
 
 
 def test_a_google_replay_does_not_answer_claude(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    google = TextSpec("google", "sonnet-5.5", 15.0, 4096, thinking="LOW")  # 型号的写法一样，只差供应商
+    # The model is written the same way, only the provider differs / モデルの書き方は同じで、プロバイダだけが違う
+    google = TextSpec("google", "sonnet-5.5", 15.0, 4096, thinking="LOW")
     monkeypatch.setitem(config.TEXT, "extract", google)
     asyncio.run(Recording(FakeText(), tmp_path).call("extract", REQ))
     assert asyncio.run(ReplayText(tmp_path).call("extract", REQ)).output == DEFAULTS["extract"](REQ)
@@ -507,7 +565,8 @@ def test_a_google_replay_does_not_answer_claude(tmp_path: Path, monkeypatch: pyt
         asyncio.run(ReplayText(tmp_path).call("extract", REQ))
 
 
-# —— 服务玩家时的 429、529：当作这一次失败（B-8 第 4 条） ——
+# —— 429, 529 while serving players: treated as a failure of this call (B-8 item 4)
+# プレイヤーに提供中の 429、529：この呼び出しの失敗として扱う（B-8 第 4 項） ——
 
 
 @pytest.mark.parametrize("mode", ["stop", "degrade"])
@@ -522,7 +581,8 @@ def test_rate_limit_stops_runs_and_degrades_serving(mode: str) -> None:
         assert [k for k, _ in fake.calls] == ["triage", "extract"]
         return
     ex = asyncio.run(run)
-    assert ex.timed_out and ex.candidates == []  # 重发一次还不行：这一轮只走时钟
+    # Still failing after one resend: this turn only advances the clock / 1 回再送してもだめ：このターンは時計だけ進む
+    assert ex.timed_out and ex.candidates == []
     assert [k for k, _ in fake.calls] == ["triage", "extract", "extract"]
     assert [s["status"] for s in tracer.named("narrator.extract")] == [
         "rate_limited",
@@ -539,6 +599,9 @@ def test_spans_say_which_provider() -> None:
 
 
 def test_module_has_no_model_ids() -> None:
-    """仓库里只写档名加版本：真的模型 ID 只在 Mac 的环境变量里。"""
+    """The repo contains only tier names plus versions: real model IDs live only in environment variables on the Mac.
+
+    リポジトリにはティア名とバージョンだけを書く：本物のモデル ID は Mac の環境変数にだけある。
+    """
     for path in (Path(claude.__file__), Path(config.__file__)):
         assert "claude-" not in path.read_text(encoding="utf-8").replace("claude-prices", "")

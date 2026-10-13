@@ -1,18 +1,42 @@
-"""文本模型的接口和三种实现：假模型（`fake`）、回放（`replay`）、真模型（`real`，只在 Mac 上：Claude 走
-`models/claude.py`，Google 走 `models/vertex.py`，按提示类型选，`config.TEXT`）。
+"""The text model interface and its three implementations: fake model (`fake`), replay (`replay`), real model (`real`,
+only on the Mac: Claude goes through `models/claude.py` and Google through `models/vertex.py`, chosen per prompt kind,
+`config.TEXT`).
 
-- 假模型：每种提示一个确定的、过 Schema 的默认输出（分流 = 可能，提取 = 没有候选，检查 = 全过，改写 = 原样，
-  降级 = 做不到，回答 = 一句固定的话）。`fixtures/fake-text/*.json` 的规则按提示类型和条件覆盖默认值，也能注入延迟和
-  错误（测时限、重发和 429）。规则的写法见 `fixtures/fake-text/README.md`。
-- 回放：按（供应商、模型、提示版本、规范化请求的 sha256）从 `fixtures/model-replays/*.jsonl` 查，查不到抛
-  `ReplayMissing`，不悄悄回空、不退回假模型。同一个请求在 Google 下录的回放，换到 Claude 查不到。
+- Fake model: each prompt kind has one deterministic, Schema-passing default output (triage = possible, extraction =
+  no candidates, check = all pass, rewrite = unchanged, downgrade = cannot be done, reply = one fixed line). The rules
+  in `fixtures/fake-text/*.json` override the defaults by prompt kind and condition, and can also inject latency and
+  errors (to test time limits, resends and 429). How to write rules: see `fixtures/fake-text/README.md`.
+- Replay: looked up in `fixtures/model-replays/*.jsonl` by (provider, model, prompt version, sha256 of the normalized
+  request); if not found, `ReplayMissing` is raised, with no silent empty answer and no fallback to the fake model. A
+  replay recorded for a request under Google is not found after switching to Claude.
 
-回放一行的格式（Mac 上录真模型、E-0 的 live 存回放都用它）：
-`key`、`kind`（提示类型）、`provider`、`model`、`promptVersion`、`request`（脱敏后）、`response`、`usage`
-（`inputTokens`、`outputTokens`；Google 另有 `cachedTokens`、`thoughtTokens`，Claude 另有 `cacheReadTokens`、
-`cacheWriteTokens`）、`costUsd`、`recordedAt`（以 Z 结尾）。`model`：Google 写模型 ID，Claude 只写档名加版本
-（如 `sonnet-5.5`，模型 ID 不进仓库）。`key` = `<provider>|<model>|<promptVersion>|<请求的 sha256>`
-（共用包 `zoujin_llm.replay_key`，和数据的评审员同一个函数）。
+The format of one replay line (used both for recording real models on the Mac and for E-0's live run saving replays):
+`key`, `kind` (prompt kind), `provider`, `model`, `promptVersion`, `request` (after redaction), `response`, `usage`
+(`inputTokens`, `outputTokens`; Google also has `cachedTokens`, `thoughtTokens`, Claude also has `cacheReadTokens`,
+`cacheWriteTokens`), `costUsd`, `recordedAt` (ending in Z). `model`: the model ID for Google, only the tier name plus
+version for Claude (e.g. `sonnet-5.5`; model IDs stay out of the repo). `key` =
+`<provider>|<model>|<promptVersion>|<sha256 of the request>` (the shared package's `zoujin_llm.replay_key`, the same
+function as the data team's judge).
+
+テキストモデルのインターフェースと 3 つの実装：偽モデル（`fake`）、リプレイ（`replay`）、実モデル（`real`。Mac 上のみ：
+Claude は `models/claude.py`、Google は `models/vertex.py` を通り、プロンプトの種類ごとに選ぶ。`config.TEXT`）。
+
+- 偽モデル：プロンプトの種類ごとに、決定的で Schema を通るデフォルト出力が 1 つある（振り分け = 可能性あり、抽出 =
+  候補なし、チェック = 全通過、書き換え = 原文のまま、格下げ = できない、返答 = 決まった一言）。
+  `fixtures/fake-text/*.json` のルールがプロンプトの種類と条件でデフォルトを上書きし、遅延やエラーも注入できる（時間
+  制限、再送、429 のテスト用）。ルールの書き方は `fixtures/fake-text/README.md` を参照。
+- リプレイ：（プロバイダ、モデル、プロンプトバージョン、正規化したリクエストの sha256）で
+  `fixtures/model-replays/*.jsonl`
+  から探し、見つからなければ `ReplayMissing` を投げる。黙って空を返したり、偽モデルにフォールバックしたりはしない。
+  Google で録ったリクエストのリプレイは、Claude に切り替えると見つからない。
+
+リプレイ 1 行の形式（Mac 上で実モデルを録るときも、E-0 の live がリプレイを保存するときも使う）：
+`key`、`kind`（プロンプトの種類）、`provider`、`model`、`promptVersion`、`request`（マスキング後）、`response`、
+`usage`（`inputTokens`、`outputTokens`。Google はほかに `cachedTokens`、`thoughtTokens`、Claude はほかに
+`cacheReadTokens`、`cacheWriteTokens`）、`costUsd`、`recordedAt`（末尾は Z）。`model`：Google はモデル ID、Claude は
+ティア名とバージョンだけ（例 `sonnet-5.5`。モデル ID はリポジトリに入れない）。`key` =
+`<provider>|<model>|<promptVersion>|<リクエストの sha256>`（共用パッケージの `zoujin_llm.replay_key`。データ担当の
+審査員と同じ関数）。
 """
 
 from __future__ import annotations
@@ -40,17 +64,29 @@ log = logging.getLogger("zoujin.models")
 
 Json = Any
 
-# 要整次停下的错误（`Stop`：`BudgetStop`、`RateLimited`）和 `ModelCallFailed` 在共用包里，叙事者和评审员同一套
+# The errors that stop the whole run (`Stop`: `BudgetStop`, `RateLimited`) and `ModelCallFailed` live in the shared
+# package, the same set for the narrator and the judge
+# 実行全体を止めるエラー（`Stop`：`BudgetStop`、`RateLimited`）と `ModelCallFailed` は共用パッケージにあり、ナレーターと
+# 審査員で同じものを使う
 __all__ = ["BudgetStop", "ModelCallFailed", "RateLimited", "Stop", "canonical"]
 
 
 class ReplayMissing(LookupError):
-    """回放里查不到这次调用（回放缺失或过期）。E-0 按类名认。"""
+    """This call was not found in the replays (replay missing or stale). E-0 recognizes it by class name.
+
+    この呼び出しがリプレイに見つからない（リプレイが無いか期限切れ）。E-0 はクラス名で判別する。
+    """
 
 
 class BadOutput(ValueError):
-    """模型的输出不是 JSON 或不过 Schema：算这次调用失败，按时限的规则重发一次。`cost_usd`：这次调用已经花的钱
-    （真客户端拿到了回答才知道不合格，已经记了账；叙事者把它也加进这一轮的花费）。"""
+    """The model's output is not JSON or fails the Schema: this call counts as failed and is resent once under the
+    time-limit rules. `cost_usd`: what this call has already cost (the real client only learns the answer is unusable
+    after receiving it, and has already recorded it in the ledger; the narrator also adds it to this turn's cost).
+
+    モデルの出力が JSON でないか Schema を通らない：この呼び出しは失敗とみなし、時間制限の規則に従って 1 回再送する。
+    `cost_usd`：この呼び出しですでにかかった費用（実クライアントは返答を受け取って初めて不合格と分かり、すでに台帳に
+    記録している。ナレーターはこれもこのターンの費用に加える）。
+    """
 
     def __init__(self, message: str, cost_usd: float = 0.0) -> None:
         super().__init__(message)
@@ -58,8 +94,12 @@ class BadOutput(ValueError):
 
 
 class Refused(BadOutput):
-    """模型自己的安全过滤拒答了（Claude 的 `stop_reason: "refusal"`，没有输出）。安全筛查按有害输入处理（5.5），
-    别的提示和 BadOutput 一样按重发算。"""
+    """The model's own safety filter refused to answer (Claude's `stop_reason: "refusal"`, no output). Safety screening
+    treats it as harmful input (5.5); other prompts count it as a resend, like BadOutput.
+
+    モデル自身の安全フィルターが回答を拒否した（Claude の `stop_reason: "refusal"`、出力なし）。安全審査は有害な入力と
+    して扱い（5.5）、それ以外のプロンプトは BadOutput と同じく再送として数える。
+    """
 
 
 @dataclass(frozen=True)
@@ -78,7 +118,12 @@ class TextModel(Protocol):
     async def call(self, kind: str, request: Json) -> TextResult: ...
 
     def cancelled_cost(self, kind: str, request: Json) -> float:
-        """这次调用被时限取消时记多少钱（真客户端按调用前的预计，和账本那行同一个数；假模型、回放是 0）。"""
+        """How much to record when this call is cancelled by the time limit (the real client uses the estimate made
+        before the call, the same number as that ledger line; the fake model and replay use 0).
+
+        この呼び出しが時間制限で取り消されたときに記録する費用（実クライアントは呼び出し前の見積もりで、台帳のその行と
+        同じ数。偽モデルとリプレイは 0）。
+        """
         ...
 
 
@@ -87,10 +132,14 @@ def replay_key(provider: str, model: str, prompt_version: str, request: Json) ->
 
 
 def spec(kind: str) -> TextSpec:
-    """这种提示走哪家、哪个模型（Claude 是档名加版本）、思考多深、时限多长（`config.TEXT`，加上 `ZJ_TEXT_MODELS`
-    的换档）。"""
+    """Which provider and model this prompt kind uses (for Claude, the tier name plus version), how deep the thinking
+    is, and how long the time limit is (`config.TEXT`, plus tier overrides from `ZJ_TEXT_MODELS`).
+
+    このプロンプトの種類がどのプロバイダ、どのモデル（Claude はティア名とバージョン）を使い、思考の深さと時間制限は
+    どれだけか（`config.TEXT` と、`ZJ_TEXT_MODELS` によるティアの差し替え）。
+    """
     if kind not in PROMPTS:
-        raise ValueError(f"没有这种提示：{kind}")
+        raise ValueError(f"No such prompt kind / そのようなプロンプトの種類はない: {kind}")
     return text_spec(kind)
 
 
@@ -103,7 +152,7 @@ def key_of(kind: str, request: Json) -> str:
     return replay_key(spec(kind).provider, model, version, request)
 
 
-# —— 假模型 ——
+# —— Fake model / 偽モデル ——
 
 NO_USAGE = {"inputTokens": 0, "outputTokens": 0}
 
@@ -117,7 +166,9 @@ def _rewrite_same(request: Mapping[str, Any]) -> Json:
     return {"candidate": copy.deepcopy(request.get("candidate")) if request.get("mode") == "rewrite" else None}
 
 
-NARRATE_LINES = {  # 假模型的一行地の文：每种 status 一句（为测试写的）
+# The fake model's one line of 地の文: one line per status (written for tests)
+# 偽モデルの地の文 1 行：status ごとに 1 文（テスト用に書いたもの）
+NARRATE_LINES = {
     "done": "あなたは、そうした。",
     "partial": "思ったようには、いかなかった。",
     "refused": "それは、いまはかなわなかった。",
@@ -127,14 +178,21 @@ FAKE_FATES = {"witness": "刑場で、日没を見届けた。", "elsewhere": "�
 
 
 def _ending(request: Mapping[str, Any]) -> Json:
-    """假模型的结局（B-9）：按输入确定地写一份能过校验的。尾声从最后几个事件的摘要拼，每句引用那个事件；
-    这一局有人被处刑时跳过带禁用写法的摘要。"""
+    """The fake model's ending (B-9): deterministically writes, from the input, one that passes validation. The epilogue
+    is assembled from the summaries of the last few events, each sentence citing that event; when someone was executed
+    in this playthrough, summaries with forbidden wordings are skipped.
+
+    偽モデルのエンディング（B-9）：入力から検証を通るものを決定的に書く。エピローグは最後の数件のイベントの要約から組み
+    立て、各文がそのイベントを引用する。この周回で誰かが処刑された場合は、禁止された書き方を含む要約を飛ばす。
+    """
     forbidden = list(request.get("forbidden", []))
     events = [
         e
         for e in request.get("events", [])
         if not any(w in str(e.get("summary", "")) for w in forbidden)
-        and (e.get("beat") or {}).get("to", "happened") == "happened"  # 没照原作发生的节拍，summary 是原作那一句
+        # For a beat that did not happen as in the original, summary is the original's line
+        # 原作どおりに起きなかったビートの summary は原作のその一文
+        and (e.get("beat") or {}).get("to", "happened") == "happened"
     ]
     events = events or list(request.get("events", []))
     last = [str(events[-1]["eventId"])] if events else []
@@ -173,7 +231,10 @@ def _ending(request: Mapping[str, Any]) -> Json:
 
 
 def _ending_broken(request: Mapping[str, Any]) -> Json:
-    """`broken: true` 的结局：引用全空（cite-empty），测重写和模板。"""
+    """The ending for `broken: true`: all citations empty (cite-empty), to test the rewrite and the template.
+
+    `broken: true` のエンディング：引用をすべて空にする（cite-empty）。書き直しとテンプレートのテスト用。
+    """
     out = _ending(request)
     for row in out["epilogue"]:
         row["cites"] = []
@@ -181,27 +242,44 @@ def _ending_broken(request: Mapping[str, Any]) -> Json:
 
 
 def _memory(request: Mapping[str, Any]) -> Json:
-    """第一条事件的摘要，身份名换成「あの人」、去掉句末的「。」，截到 30 字。"""
+    """The first event's summary, with the role name replaced by 「あの人」, the trailing 「。」 removed, cut to 30
+    characters.
+
+    最初のイベントの要約。身分の名前を「あの人」に替え、文末の「。」を除き、30 字で切る。
+    """
     said = str(request["events"][0]["summary"]).replace(str(request.get("role") or "\0"), "あの人")
     return {"text": said.rstrip("。")[:30], "weight": 1}
 
 
 def _keeps(request: Mapping[str, Any]) -> Json:
-    """有可见的结果才有一句（没有 = null，删除确认里不显示那一行）。"""
+    """There is a line only when there is a visible result (none = null, and the deletion confirmation does not show
+    that line).
+
+    目に見える結果があるときだけ一文を返す（ない = null。削除確認ではその行を表示しない）。
+    """
     shown = any(e.get("visibleEffects") for e in request.get("events", []))
     return {"keeps": "そのとき起きたこと" if shown else None}
 
 
 DEFAULTS: dict[str, Callable[[Mapping[str, Any]], Json]] = {
     "triage": lambda r: {"route": "maybe"},
-    "extract": lambda r: {"candidates": []},  # 没有候选事件：只走时钟
+    # No candidate events: only the clock moves
+    # 候補イベントなし：時計だけ進む
+    "extract": lambda r: {"candidates": []},
     "check": _check_all_pass,
-    "rewrite": _rewrite_same,  # 改写 = 原样；降级 = 做不到
+    # Rewrite = unchanged; downgrade = cannot be done
+    # 書き換え = 原文のまま、格下げ = できない
+    "rewrite": _rewrite_same,
     "reply": lambda r: {"text": "……そうか。"},
-    "safety": lambda r: {"selfHarm": "none", "injection": False},  # B-12：默认什么都不是
-    "safety_review": lambda r: {"story": False},  # B-15：默认不降（宁可误停）
+    # B-12: by default nothing
+    # B-12：デフォルトは何もなし
+    "safety": lambda r: {"selfHarm": "none", "injection": False},
+    # B-15: by default not lowered (better to pause by mistake) / B-15：デフォルトでは下げない（誤って止めるほうがよい）
+    "safety_review": lambda r: {"story": False},
     "narrate": lambda r: {"text": NARRATE_LINES.get(str(r.get("status")), NARRATE_LINES["done"])},
-    "plan": lambda r: {  # 不成行，替代去处是第一个给定去处（B-3 卡「接口」）
+    # Does not go ahead; the alternative is the first given destination (B-3 card "interface")
+    # 実行しない。代わりの行き先は最初に与えられた行き先（B-3 カード「インターフェース」）
+    "plan": lambda r: {
         "accepted": False,
         "label": None,
         "with": [],
@@ -210,16 +288,24 @@ DEFAULTS: dict[str, Callable[[Mapping[str, Any]], Json]] = {
         "alternative": {"exit": r["options"][0]["optionId"]} if r.get("options") else None,
     },
     "ending": _ending,
-    "ending-check": lambda r: {"coherent": True, "fields": []},  # B-17：默认讲得通
-    "memory": _memory,  # B-13：事件的摘要截短（假模型不分人物视角）
+    # B-17: makes sense by default
+    # B-17：デフォルトは筋が通る
+    "ending-check": lambda r: {"coherent": True, "fields": []},
+    # B-13: the event summary cut short (the fake model has no character point of view)
+    # B-13：イベントの要約を短く切る（偽モデルは登場人物の視点を区別しない）
+    "memory": _memory,
     "keeps": _keeps,
-    "suggest": lambda r: {  # B-21：一个问句、一个表态（不全是问句）
+    # B-21: one question and one statement of intent (not all questions)
+    # B-21：質問 1 つと意思表示 1 つ（すべて質問にはしない）
+    "suggest": lambda r: {
         "items": [
             {"text": "もう少し詳しく聞かせてください。", "kind": "ask"},
             {"text": "私にできることはありますか。", "kind": "act"},
         ]
     },
-    "world": lambda r: {"events": []},  # B-16：世界推进默认什么都不写
+    # B-16: world advance writes nothing by default
+    # B-16：世界の進行はデフォルトで何も書かない
+    "world": lambda r: {"events": []},
 }
 ERRORS = ("rate-limit", "invalid", "unavailable", "refusal")
 
@@ -231,9 +317,16 @@ def _summaries(request: Mapping[str, Any]) -> list[str]:
 
 
 def _matches(when: Mapping[str, Any], request: Mapping[str, Any]) -> bool:
-    """fake-text 规则的条件，每个键都满足才算：`playerContains` / `replyContains` 看这一轮的原话里有没有这几个字，
-    `summaryContains` 看候选的摘要，`character` 比这一轮的人物，`confirmOpen` 看提取的请求里有没有在等回答的反问
-    （B-4 的 `<confirm>`），其他键要等于请求里同名的值。"""
+    """Conditions of a fake-text rule; it matches only when every key holds: `playerContains` / `replyContains` check
+    whether this turn's original words contain these characters, `summaryContains` checks the candidates' summaries,
+    `character` compares this turn's character, `confirmOpen` checks whether the extraction request has a question
+    asked back awaiting an answer (B-4's `<confirm>`), and any other key must equal the same-named value in the request.
+
+    fake-text ルールの条件。すべてのキーを満たしたときだけ一致する：`playerContains` / `replyContains` はこのターンの
+    元の発言に特定の文字が含まれるか、`summaryContains` は候補の要約、`character` はこのターンの登場人物と比べ、
+    `confirmOpen` は抽出のリクエストに回答待ちの聞き返しがあるか（B-4 の `<confirm>`）を見る。それ以外のキーは
+    リクエスト内の同名の値と等しくなければならない。
+    """
     turn = request.get("turn") or {}
     for k, v in when.items():
         if k == "playerContains":
@@ -244,7 +337,8 @@ def _matches(when: Mapping[str, Any], request: Mapping[str, Any]) -> bool:
             ok = any(v in s for s in _summaries(request))
         elif k == "character":
             who = turn.get("character") or request.get("character")
-            ok = (who.get("id") if isinstance(who, dict) else who) == v  # B-13：记忆的请求里是人设摘要
+            # B-13: in a memory request it is the persona summary / B-13：記憶のリクエストでは人物設定の要約
+            ok = (who.get("id") if isinstance(who, dict) else who) == v
         elif k == "confirmOpen":
             ok = ("confirm" in request) == v
         else:
@@ -258,10 +352,13 @@ class FakeText:
     mode: ModelMode = "fake"
 
     def __init__(self, rules_dir: Path | None = None, rules: list[Json] | None = None, seed: int | None = None) -> None:
-        self.seed = seed  # 模拟局的种子（B-5）：现在按输入确定地回答、用不上，以后要随机时用它
+        # The seed of a simulated playthrough (B-5): answers are now deterministic from the input, so it is unused;
+        # it is for when randomness is needed later
+        # 模擬周回のシード（B-5）：今は入力から決定的に答えるので使わない。後でランダムにするときに使う
+        self.seed = seed
         self.rules: list[dict[str, Any]] = []
-        self.used: dict[int, int] = {}  # 规则序号 → 用过几次（`times`）
-        self.calls: list[tuple[str, Json]] = []  # 测试看调用了什么
+        self.used: dict[int, int] = {}  # rule index → times used (`times`) / ルール番号 → 使用回数（`times`）
+        self.calls: list[tuple[str, Json]] = []  # what was called, for tests / テストが見る呼び出し内容
         if rules_dir is not None and rules_dir.is_dir():
             for p in sorted(rules_dir.glob("*.json")):
                 for r in json.loads(p.read_text(encoding="utf-8"))["rules"]:
@@ -272,9 +369,9 @@ class FakeText:
     @staticmethod
     def _rule(r: Json, source: str) -> dict[str, Any]:
         if r["kind"] not in DEFAULTS:
-            raise ValueError(f"{source}：没有这种提示 {r['kind']}")
+            raise ValueError(f"{source}: no such prompt kind / そのようなプロンプトの種類はない: {r['kind']}")
         if r.get("error") not in (None, *ERRORS):
-            raise ValueError(f"{source}：不认识的 error {r['error']!r}（{' / '.join(ERRORS)}）")
+            raise ValueError(f"{source}: unknown error / 不明な error: {r['error']!r} ({' / '.join(ERRORS)})")
         return {**r, "source": source}
 
     def _pick(self, kind: str, request: Json) -> dict[str, Any] | None:
@@ -296,13 +393,22 @@ class FakeText:
             if rule.get("latencyMs"):
                 await asyncio.sleep(rule["latencyMs"] / 1000)
             if rule.get("error") == "rate-limit":
-                raise RateLimited(f"假模型：{kind} 回 429（{rule['source']}）")
+                raise RateLimited(
+                    f"Fake model: {kind} returned 429 / 偽モデル：{kind} が 429 を返した ({rule['source']})"
+                )
             if rule.get("error") == "refusal":
-                raise Refused(f"假模型：{kind} 拒答（{rule['source']}）")
+                raise Refused(
+                    f"Fake model: {kind} refused to answer / 偽モデル：{kind} が回答を拒否 ({rule['source']})"
+                )
             if rule.get("error") == "invalid":
-                raise BadOutput(f"假模型：{kind} 的输出不过 Schema（{rule['source']}）")
+                raise BadOutput(
+                    f"Fake model: {kind} output fails the Schema / 偽モデル：{kind} の出力が Schema を通らない "
+                    f"({rule['source']})"
+                )
             if rule.get("error") == "unavailable":
-                raise ModelCallFailed(f"假模型：{kind} 调用失败（{rule['source']}）")
+                raise ModelCallFailed(
+                    f"Fake model: {kind} call failed / 偽モデル：{kind} の呼び出しが失敗 ({rule['source']})"
+                )
             if "output" in rule:
                 output = copy.deepcopy(rule["output"])
             elif "fail" in rule and kind == "check":
@@ -316,7 +422,12 @@ class FakeText:
 
 
 def _check_failing(request: Mapping[str, Any], rule: Mapping[str, Any]) -> Json:
-    """`fail` 的简写：摘要含 `when.summaryContains` 的候选（没写就是全部）这条规则判 fail，其余全过。"""
+    """Shorthand for `fail`: candidates whose summary contains `when.summaryContains` (all of them if it is not given)
+    fail this rule, and everything else passes.
+
+    `fail` の略記：要約に `when.summaryContains` を含む候補（書かなければすべて）はこのルールで fail、それ以外はすべて
+    通過する。
+    """
     out = _check_all_pass(request)
     needle = rule.get("when", {}).get("summaryContains")
     for res, cand in zip(out["results"], request.get("candidates", []), strict=True):
@@ -328,7 +439,7 @@ def _check_failing(request: Mapping[str, Any], rule: Mapping[str, Any]) -> Json:
     return out
 
 
-# —— 回放 ——
+# —— Replay / リプレイ ——
 
 
 class ReplayText:
@@ -343,14 +454,20 @@ class ReplayText:
                 rec = json.loads(line)
                 want = replay_key(rec.get("provider", ""), rec["model"], rec["promptVersion"], rec["request"])
                 if rec["key"] != want:
-                    raise ValueError(f"{p.name}:{n} 的 key 和内容对不上（应为 {want}）")
+                    raise ValueError(
+                        f"{p.name}:{n}: key does not match the content (should be {want}) / "
+                        f"key が内容と一致しない（正しくは {want}）"
+                    )
                 self.records[rec["key"]] = rec
 
     async def call(self, kind: str, request: Json) -> TextResult:
         model, version = model_and_version(kind)
         rec = self.records.get(key_of(kind, request))
         if rec is None:
-            raise ReplayMissing(f"回放缺失或过期：{kind}（{spec(kind).provider} {model}，提示 {version}）")
+            raise ReplayMissing(
+                f"Replay missing or stale / リプレイが無いか期限切れ: {kind} "
+                f"({spec(kind).provider} {model}, prompt {version})"
+            )
         return TextResult(
             copy.deepcopy(rec["response"]), kind, model, version, dict(rec["usage"]), float(rec["costUsd"])
         )
@@ -368,7 +485,10 @@ def record(
     usage: Mapping[str, int] | None = None,
     cost_usd: float = 0.0,
 ) -> Json:
-    """一行回放（假模型录的 fixture、真模型录的回放都用它）。"""
+    """One replay line (used both for fixtures recorded from the fake model and for replays recorded from real models).
+
+    リプレイ 1 行（偽モデルで録ったフィクスチャにも、実モデルで録ったリプレイにも使う）。
+    """
     model, version = model_and_version(kind)
     return {
         "key": key_of(kind, request),
@@ -385,8 +505,14 @@ def record(
 
 
 class Recording:
-    """录回放（`ZJ_RECORD_REPLAYS=<目录>`）：每次成功的调用按回放格式在 `<目录>/<kind>.jsonl` 追加一行。
-    Mac 上录真模型用；假模型也能录（测试回放这条路）。只录合成输入（S-2 的条目、评测用例），不录真人玩家的话。"""
+    """Record replays (`ZJ_RECORD_REPLAYS=<directory>`): every successful call appends one line in replay format to
+    `<directory>/<kind>.jsonl`. Used for recording real models on the Mac; the fake model can be recorded too (to test
+    the replay path). Only synthetic input is recorded (S-2 entries, eval cases), never the words of real players.
+
+    リプレイを録る（`ZJ_RECORD_REPLAYS=<ディレクトリ>`）：成功した呼び出しごとに、リプレイ形式で
+    `<ディレクトリ>/<kind>.jsonl` に 1 行追記する。Mac 上で実モデルを録るのに使う。偽モデルも録れる（リプレイの経路の
+    テスト用）。合成入力（S-2 の項目、評価のケース）だけを録り、実際のプレイヤーの発言は録らない。
+    """
 
     def __init__(self, inner: TextModel, directory: Path) -> None:
         self.inner = inner
@@ -410,8 +536,14 @@ def now_z() -> str:
 
 
 class Routed:
-    """真模型：每种提示按 `config.TEXT` 的 provider 交给那一家的客户端（一次评测里两家可以都有：`reply` 走 Google）。
-    客户端第一次要用时才建：只调 Claude 的跑（S-2、小测）不要求 Vertex 的环境变量。"""
+    """Real model: each prompt kind is handed to the client of the provider in `config.TEXT` (one eval can use both:
+    `reply` goes to Google). A client is built only when first needed: runs that only call Claude (S-2, small tests) do
+    not require Vertex's environment variables.
+
+    実モデル：プロンプトの種類ごとに `config.TEXT` の provider のクライアントに渡す（1 回の評価で両方を使うこともある：
+    `reply` は Google）。クライアントは最初に必要になったときに作る：Claude だけを呼ぶ実行（S-2、小テスト）は Vertex の
+    環境変数を必要としない。
+    """
 
     mode: ModelMode = "real"
 
@@ -432,8 +564,14 @@ class Routed:
 
 
 def real_text_model(settings: Settings) -> Routed:
-    """real：Claude 的客户端当场建（少 Key、模型 ID、上限就退出，不发请求），Google 的到第一次调 `reply` 时才建。"""
-    # 只在 real 时 import，别的模式不碰真客户端
+    """real: Claude's client is built right away (if the key, model ID or cap is missing, it exits without sending a
+    request); Google's is built only at the first `reply` call.
+
+    real：Claude のクライアントはその場で作る（キー、モデル ID、上限が欠けていればリクエストを送らずに終了する）。
+    Google のものは最初に `reply` を呼ぶときに作る。
+    """
+    # Import only for real; other modes never touch the real clients
+    # real のときだけ import し、ほかのモードでは実クライアントに触れない
     from zoujin_backend.models.claude import claude_text
     from zoujin_backend.models.vertex import real_text
 
@@ -451,7 +589,12 @@ def text_model(
     settings: Settings | None = None,
     seed: int | None = None,
 ) -> TextModel:
-    """settings 给了、设了 `record_replays`：fake 和 real 的调用录下来（replay 不录）。seed 只给假模型（B-5）。"""
+    """With settings given and `record_replays` set, fake and real calls are recorded (replay is not). seed is only for
+    the fake model (B-5).
+
+    settings があり `record_replays` が設定されていれば、fake と real の呼び出しを録る（replay は録らない）。seed は
+    偽モデルにだけ渡す（B-5）。
+    """
     inner: TextModel
     if mode == "fake":
         inner = FakeText(fake_rules, seed=seed)
@@ -459,7 +602,10 @@ def text_model(
         return ReplayText(replays)
     else:
         if settings is None:
-            raise ValueError("ZJ_MODEL=real 要用 Settings 建客户端（账本、上限、录回放的目录）")
+            raise ValueError(
+                "ZJ_MODEL=real needs Settings to build the clients (ledger, caps, replay recording directory) / "
+                "ZJ_MODEL=real ではクライアントを作るのに Settings が必要（台帳、上限、リプレイを録るディレクトリ）"
+            )
         inner = real_text_model(settings)
     if settings is not None and settings.record_replays is not None:
         return Recording(inner, settings.record_replays)

@@ -1,14 +1,34 @@
-"""叙事者第 3 步：确定性规则 R1〜R4、R7 和 R6 的规则部分（backend-design 2.4，契约第 3 节），不调模型。
+"""Narrator step 3: the deterministic rules R1-R4, R7 and the rule part of R6 (backend-design 2.4, contract section
+3), without calling models.
 
-- 判法至少覆盖 `evals/s2/README.md`「确定性规则的最简判法」（`evals/s2_check.py` 的 `judge()`）：它报的这里都报，
-  `tests/test_rules.py` 逐条对照。比它多判的几处写在各函数里（行为者和对象要在场、不在场的人物、给东西的人手上要有）。
-- 世界规则（条件求值、应用效果、`valueRequires`、`OCCURRED`、`knows`、`travel_minutes`、引用和取值的检查）
-  只从 W-1 拿，这里不另写一份。
-- R5 和 R6 的其余部分是第 4 步（模型检查，`narrator/pipeline.py`）。
+- The judging covers at least the "simplest judging of the deterministic rules" in `evals/s2/README.md` (`judge()` in
+  `evals/s2_check.py`): everything it reports is reported here too, compared item by item in `tests/test_rules.py`. The
+  few places that judge more than it are noted in each function (actor and targets must be present, characters who are
+  absent, the giver must hold the item).
+- World rules (condition evaluation, applying effects, `valueRequires`, `OCCURRED`, `knows`, `travel_minutes`, checks
+  of references and values) come only from W-1; no second copy here.
+- R5 and the rest of R6 are step 4 (model check, `narrator/pipeline.py`).
 
-一个候选的效果按顺序判：前面的效果先在一份平铺的状态（变量 + 物品持有者）和人物所在地上生效，后面的在它之后判
-（和 `judge()`、`Sim.value_requires` 一样）。同一轮的几个候选也按顺序，前面通过的先试算进状态（`check_candidates`）。
-`reason` 是一句日语（契约 CheckResult.reason），用世界模型里的名字，不含玩家原话。
+A candidate's effects are judged in order: earlier effects take effect first on a flattened state (variables + item
+holders) and the characters' locations, and later ones are judged after them (like `judge()` and
+`Sim.value_requires`). Several candidates in one turn are also taken in order, with earlier passing ones trial-applied
+to the state first (`check_candidates`). `reason` is one Japanese sentence (contract CheckResult.reason) using names
+from the world model and never the player's words.
+
+ナレーターの第 3 ステップ：決定的な規則 R1〜R4、R7 と R6 の規則部分（backend-design 2.4、契約第 3 節）。
+モデルは呼ばない。
+
+- 判定は少なくとも `evals/s2/README.md` の「決定的な規則の最も簡単な判定」（`evals/s2_check.py` の `judge()`）を
+  カバーする：それが報告するものはここでもすべて報告し、`tests/test_rules.py` で 1 つずつ照合する。それより多く判定する
+  箇所は各関数に書いてある（行為者と対象がその場にいること、absent の登場人物、物を渡す人が手に持っていること）。
+- 世界の規則（条件評価、効果の適用、`valueRequires`、`OCCURRED`、`knows`、`travel_minutes`、参照と値の検査）は
+  W-1 からだけ取り、ここに別の写しは書かない。
+- R5 と R6 の残りは第 4 ステップ（モデルの検査、`narrator/pipeline.py`）。
+
+1 つの候補の効果は順に判定する：前の効果がまず平らにした状態（変数 + 物の持ち主）と登場人物の居場所に反映され、
+後の効果はその後で判定する（`judge()`、`Sim.value_requires` と同じ）。同じターンの複数の候補も順に扱い、先に通った
+ものを状態に試算してから次を判定する（`check_candidates`）。`reason` は日本語の一文（契約 CheckResult.reason）で、
+世界モデルの名前を使い、プレイヤーの発話は含めない。
 """
 
 from __future__ import annotations
@@ -37,15 +57,25 @@ from zoujin_worldsim import (
 Json = Any
 
 RULES = ("R1-anchor", "R2-precondition", "R3-time", "R4-knowledge", "R5-persona", "R6-safety", "R7-capability")
-STEP3 = ("R1-anchor", "R2-precondition", "R3-time", "R4-knowledge", "R7-capability")  # 只由第 3 步判
-MODEL_ONLY = ("R5-persona",)  # 只由第 4 步判；R6 两步都判，R1 写在文字里的那部分也是第 4 步
-VERSION = "b3.1"  # 判法改了就加一（b3.1：幕末打算的对象按「这一段能碰到」判在场）
+# Judged only by step 3 / 第 3 ステップだけが判定する
+STEP3 = ("R1-anchor", "R2-precondition", "R3-time", "R4-knowledge", "R7-capability")
+# Judged only by step 4; R6 is judged by both steps, and the part of R1 written in text is also step 4.
+# 第 4 ステップだけが判定する。R6 は両方のステップで判定し、R1 のうち文章に書かれた部分も第 4 ステップ。
+MODEL_ONLY = ("R5-persona",)
+# Bump when the judging changes (b3.1: targets of end-of-act plans count as present if "reachable during the skip").
+# 判定を変えたら上げる（b3.1：幕末のプランの対象は「この間に行ける」ならその場にいるとみなす）。
+VERSION = "b3.1"
 CHECKER = f"rules@{VERSION}"
 
-# 死了的不复活（rule.no-resurrection）：变量到了这个值就不能再改回别的
+# The dead don't come back (rule.no-resurrection): once a variable reaches this value it can't change to anything else.
+# 死んだ者は生き返らない（rule.no-resurrection）：変数がこの値になったら、ほかの値には戻せない。
 TERMINAL = {"var.hostage.fate": "executed", "var.player.custody": "executed", "var.melos.custody": "executed"}
-# R6 的规则部分：个人信息的模式（`safety.pii`，B-12 起和存原话、记忆过滤同一套），加上 judge() 核标注用的那条老写法
-# （横线隔开的三段数字，不要求 0 开头；`evals/s2_check.py` 的 PII），和玩家原话连续 8 字相同
+# R6's rule part: personal-information patterns (`safety.pii`, shared since B-12 with storing utterances and the memory
+# filter), plus the old pattern judge() uses for label checking (three groups of digits separated by dashes, not
+# required to start with 0; PII in `evals/s2_check.py`), and 8 consecutive characters identical to the player's words.
+# R6 の規則部分：個人情報のパターン（`safety.pii`。B-12 以降、発話の保存や記憶のフィルターと共通）に、judge() が
+# ラベル確認に使う古い書き方（ハイフンで区切った 3 組の数字、0 始まりは必須でない。`evals/s2_check.py` の PII）を加え、
+# プレイヤーの発話と 8 文字連続で一致するもの。
 _D = "[0-9０-９]"
 PII_EXTRA = re.compile(rf"{_D}{{2,4}}[-‐－]{_D}{{2,4}}[-‐－]{_D}{{3,4}}|[@＠][\w.-]+[.．]\w+|〒")
 
@@ -58,8 +88,11 @@ VERBATIM = 8
 FLAG_REASON = {
     "injection": "この発話は、物語の外からの指示として止められた",
     "pii": "この発話に現実の個人情報が含まれていた",
-    "harmful": "この発話は、物語に書けない内容として止められた",  # B-12：Model Armor の HIGH、分類器の拒答
-    "unscreened": "この発話は、安全の確認がとれなかった",  # B-12：分類器が二度とも判定できなかった（最も控えめに）
+    # B-12: Model Armor HIGH, or the classifier refused / B-12：Model Armor の HIGH、分類器の拒答
+    "harmful": "この発話は、物語に書けない内容として止められた",
+    # B-12: the classifier couldn't decide twice (most conservative).
+    # B-12：分類器が二度とも判定できなかった（最も控えめに）。
+    "unscreened": "この発話は、安全の確認がとれなかった",
 }
 BEAT_TO = {
     "prevented": "起きなかったこと",
@@ -68,7 +101,9 @@ BEAT_TO = {
     "altered": "変えること",
 }
 BEAT_RESULT = {"happened": "もう起きた", "altered": "もう形を変えて起きた", "prevented": "もう起きないと決まった"}
-SHAPE = {  # W-1 check_effects 的代码 → 规则和一句日语（引用、取值、op 不对：这个世界里做不到）
+# W-1 check_effects codes → rule and one Japanese sentence (bad reference, value or op: impossible in this world).
+# W-1 check_effects のコード → 規則と日本語の一文（参照、値、op の誤り：この世界ではできない）。
+SHAPE = {
     "unknown-id": ("R7-capability", "この世界にいない人、ない物や場所が出てくる"),
     "bad-value": ("R7-capability", "その値は、この世界では取りえない"),
     "bad-op": ("R7-capability", "その変化は、この世界の決まりでは起こせない"),
@@ -78,9 +113,14 @@ SHAPE = {  # W-1 check_effects 的代码 → 规则和一句日语（引用、�
 
 @dataclass(frozen=True)
 class Turn:
-    """第 3 步要的这一轮。said = 玩家原话（只用来比 8 字照抄，不进日志）；act = 动作（`kind`、`target`、`params`，
-    有情境动作时带 `affordance`）；flags = 第 0 步的筛查标记（`injection`、`pii`、`harmful`、`unscreened`、
-    `ambiguous`，B-12 的安全筛查填）。"""
+    """The turn as step 3 needs it. said = the player's words (only used for the 8-character copying check, never
+    logged); act = the action (`kind`, `target`, `params`, plus `affordance` for a situational action); flags = step 0
+    screening flags (`injection`, `pii`, `harmful`, `unscreened`, `ambiguous`, filled by B-12's safety screening).
+
+    第 3 ステップが必要とするこのターン。said = プレイヤーの発話（8 文字の書き写しの比較だけに使い、ログには入れない）。
+    act = アクション（`kind`、`target`、`params`。状況アクションなら `affordance` も付く）。flags = 第 0 ステップの
+    スクリーニングの印（`injection`、`pii`、`harmful`、`unscreened`、`ambiguous`。B-12 の安全スクリーニングが入れる）。
+    """
 
     said: str = ""
     act: Mapping[str, Any] | None = None
@@ -93,13 +133,20 @@ NO_TURN = Turn()
 @dataclass(frozen=True)
 class Hit:
     rule: str
-    code: str  # 判法名（Trace、指标和测试用，不含原话）
-    reason: str  # 一句日语
+    # Name of the check (for Trace, metrics and tests; never contains the player's words).
+    # 判定の名前（Trace、指標、テスト用。発話は含めない）。
+    code: str
+    reason: str  # one Japanese sentence / 日本語の一文
 
 
 @dataclass
 class Checked:
-    """一个候选事件和它的检查结果。effects 是候选原本的（promiseId 等已补上）；提交时被否决的写空 effects。"""
+    """A candidate event and its check result. effects are the candidate's own (with promiseId etc. filled in); a
+    rejected one is committed with empty effects.
+
+    候補イベントとその検査結果。effects は候補の元のもの（promiseId などは補ってある）。却下されたものはコミット時に
+    effects を空にする。
+    """
 
     candidate: Json
     effects: list[Json]
@@ -113,7 +160,10 @@ class Checked:
 
 
 class Index:
-    """一本书的世界模型，按 ID 建好索引（每个世界模型版本一份，见 `index()`）。"""
+    """One book's world model, indexed by ID (one per world model version, see `index()`).
+
+    1 冊の本の世界モデルを ID で索引したもの（世界モデルのバージョンごとに 1 つ、`index()` を参照）。
+    """
 
     def __init__(self, world: Json) -> None:
         self.world = world
@@ -128,7 +178,7 @@ class Index:
             a for a in world["anchors"] if a.startswith("beat.")
         }
 
-    # —— 名字（日语 reason 用） ——
+    # —— Names (for the Japanese reason) / 名前（日本語の reason 用） ——
 
     def who(self, x: str | None) -> str:
         if x == "player":
@@ -160,7 +210,10 @@ _INDEX: dict[str, Index] = {}
 
 
 def index(world: Json) -> Index:
-    """按 worldModelVersion 缓存（世界模型只读）。"""
+    """Cached by worldModelVersion (world models are read-only).
+
+    worldModelVersion ごとにキャッシュする（世界モデルは読み取り専用）。
+    """
     key = str(world["worldModelVersion"])
     got = _INDEX.get(key)
     if got is None or got.world is not world:
@@ -168,11 +221,19 @@ def index(world: Json) -> Index:
     return got
 
 
-# —— 世界状态上的几个判断（W-1 没有的，B-2 卡：先问数据要不要进 W-1，等答复前写在这里） ——
+# —— A few judgments on the world state (not in W-1; B-2 card: ask the data side whether they belong in W-1, and keep
+# them here until they answer) ——
+# —— 世界状態に対するいくつかの判断（W-1 にないもの。B-2 カード：W-1 に入れるべきかデータ側に聞き、返事が来るまで
+# ここに書く） ——
 
 
 def anchor_locked(ix: Index, state: SimState) -> dict[str, Json]:
-    """已发生的锚点节拍写下、之后没有别的节拍改过的变量 → 值（推翻它 = R1）。和 judge() 的 anchor_locked 一样。"""
+    """Variables written by an anchor beat that happened and not changed by any later beat → value (overturning it =
+    R1). Same as judge()'s anchor_locked.
+
+    起きたアンカーのビートが書き、その後ほかのビートが変えていない変数 → 値（覆すと R1）。
+    judge() の anchor_locked と同じ。
+    """
     locked: dict[str, Json] = {}
     times = state["times"]
     for bid in sorted(times, key=lambda b: (times[b], ix.sim.beats[b]["order"])):
@@ -189,13 +250,23 @@ def anchor_locked(ix: Index, state: SimState) -> dict[str, Json]:
 
 
 def absent(ix: Index, state: SimState, who: str) -> bool:
-    """S-077 ⑩：此刻不在场（例：切片里石工房的两人第一幕在屋里）。快照照样列出，`activity: absent`。
-    判法在 W-1 的 `activity()`：开局 absent、还没被节拍或事件带走的人物。"""
+    """S-077 ⑩: not present right now (e.g. in the slice, the two at the stonemason's workshop are indoors in act 1).
+    The snapshot still lists them, with `activity: absent`. The test is W-1's `activity()`: characters absent at the
+    start and not yet taken away by a beat or event.
+
+    S-077 ⑩：いまその場にいない（例：スライスでは石工の工房の 2 人は第一幕で屋内にいる）。スナップショットには
+    そのまま載せ、`activity: absent` とする。判定は W-1 の `activity()`：開始時に absent で、まだビートやイベントに
+    連れ出されていない登場人物。
+    """
     return activity(ix.world, state, who) == "absent"
 
 
 def reach(ix: Index, state: SimState, cur: Mapping[str, Any]) -> set[str]:
-    """玩家此刻能进的地点：身份的 access + 此刻成立的 conditionalAccess + 现在所在的地点。"""
+    """The places the player can enter right now: the role's access + the conditionalAccess that holds now + the
+    current place.
+
+    プレイヤーがいま入れる場所：役柄の access + いま成り立つ conditionalAccess + いまいる場所。
+    """
     role = ix.roles[state["role"]]
     ok = set(role["access"]) | {
         ca["place"] for ca in role.get("conditionalAccess", []) if ix.sim.holds(ca["when"], cur)
@@ -205,7 +276,10 @@ def reach(ix: Index, state: SimState, cur: Mapping[str, Any]) -> set[str]:
 
 
 def lcs_len(a: str, b: str) -> int:
-    """最长公共子串的长度（judge() 和评测的 no_verbatim_quotes 同样的比法）。"""
+    """Length of the longest common substring (the same comparison as judge() and the eval's no_verbatim_quotes).
+
+    最長共通部分文字列の長さ（judge() と評価の no_verbatim_quotes と同じ比べ方）。
+    """
     best, prev = 0, [0] * (len(b) + 1)
     for x in a:
         now = [0] * (len(b) + 1)
@@ -217,37 +291,54 @@ def lcs_len(a: str, b: str) -> int:
     return best
 
 
-# —— 判法 ——
+# —— Judging / 判定 ——
 
 
 class _Judge:
-    """一个候选事件的第 3 步。"""
+    """Step 3 for one candidate event.
+
+    1 つの候補イベントに対する第 3 ステップ。
+    """
 
     def __init__(self, ix: Index, state: SimState, cand: Json, effects: Sequence[Json], turn: Turn) -> None:
         self.ix, self.state, self.cand, self.effects, self.turn = ix, state, cand, effects, turn
         self.hits: list[Hit] = []
-        self.cur: dict[str, Any] = flat(state)  # 平铺的状态，按效果的顺序生效
+        # Flattened state, updated in effect order / 平らにした状態。効果の順に反映する
+        self.cur: dict[str, Any] = flat(state)
         self.where: dict[str, str] = dict(state["locations"])
         self.ppl: str = state["vars"]["var.player.location"]
         self.actor: str = cand.get("actor", "")
-        self.walked: dict[str, int] = {}  # 这个候选里谁走了几分钟（R3：几段路加起来不超过 dt）
+        # Minutes each character walked in this candidate (R3: the legs together must not exceed dt).
+        # この候補で誰が何分歩いたか（R3：何区間でも合計が dt を超えない）。
+        self.walked: dict[str, int] = {}
 
     def hit(self, rule: str, code: str, reason: str) -> None:
         if not any(h.rule == rule and h.reason == reason for h in self.hits):
             self.hits.append(Hit(rule, code, reason))
 
     def here(self, who: str | None) -> bool:
-        """在玩家身边：玩家自己；或不是不在场、和玩家同一地点或玩家正跟着他（幕末的打算见下）。"""
+        """With the player: the player themself; or someone not absent who is at the player's place or whom the player
+        is accompanying (end-of-act plans: see below).
+
+        プレイヤーのそば：プレイヤー自身。または absent でなく、プレイヤーと同じ場所にいるか、プレイヤーが同行している者
+        （幕末のプランは下を参照）。
+        """
         if who in (None, "player"):
             return True
         assert who is not None
         if (self.turn.act or {}).get("kind") == "world":
-            # 世界推进（B-16）：人物在玩家不在的地方做事。行为者只要不是不在场；对象和行为者在同一个地点才碰得到
+            # World advancement (B-16): characters act where the player isn't. The actor just must not be absent;
+            # targets are reachable only at the actor's place.
+            # 世界の進行（B-16）：登場人物はプレイヤーのいない場所で動く。行為者は absent でなければよく、対象は行為者と
+            # 同じ場所にいるときだけ届く。
             if absent(self.ix, self.state, who):
                 return False
             return who == self.actor or self.where.get(who) == self.where.get(self.actor, self.ppl)
         if (self.turn.act or {}).get("kind") == "plan":
-            # 幕末的打算（B-3）：说的是跳过的这段时间里要做的事，对象在玩家能去的地方就算碰得到（此刻不在场也算）
+            # End-of-act plans (B-3): they describe what to do during the skipped time, so a target counts as reachable
+            # if it is somewhere the player can go (even if absent right now).
+            # 幕末のプラン（B-3）：飛ばす間にすることを言うので、対象がプレイヤーの行ける場所にいれば届くとみなす
+            # （いまその場にいなくても）。
             return self.where.get(who) in reach(self.ix, self.state, self.cur)
         if absent(self.ix, self.state, who):
             return False
@@ -276,10 +367,18 @@ class _Judge:
         self.affordance()
         return self.hits
 
-    # 引用、取值、op、约定的状态、节拍的改动能不能合、valueRequires：W-1 的 check_effects
+    # References, values, op, promise state, whether beat changes can combine, valueRequires: W-1's check_effects.
+    # 参照、値、op、約束の状態、ビートの変更を合わせられるか、valueRequires：W-1 の check_effects。
     def shape(self) -> set[int]:
-        """报引用、取值、op 的问题，返回判法和试算用不了的效果的下标（节拍不存在或 `to` 不对、`inc` 的变量不对）。
-        别的有问题的效果照判（例：取值不合法的 `set` 照样看锚点和权限），和 judge() 一样不因为形状漏报。"""
+        """Report problems with references, values and op, and return the indexes of effects that judging and trial
+        application can't use (beat doesn't exist or bad `to`, bad variable for `inc`). Other faulty effects are still
+        judged (e.g. a `set` with an invalid value is still checked for anchors and access), so, like judge(), nothing
+        is missed because of shape.
+
+        参照、値、op の問題を報告し、判定と試算に使えない効果の添字を返す（ビートが存在しない、`to` が誤り、`inc` の
+        変数が誤り）。ほかの問題のある効果はそのまま判定する（例：値が不正な `set` もアンカーと権限は見る）。judge() と
+        同じく、形の問題のせいで報告漏れが出ないようにする。
+        """
         broken: set[int] = set()
         for p in check_effects(self.ix.world, self.state, self.effects, self.cand.get("origin", "turn")):
             e = self.effects[p["index"]]
@@ -300,7 +399,8 @@ class _Judge:
                     "beat-change-conflict",
                     f"「{self.ix.beat(e['beat'])}」には、もう別の変化が決まっている",
                 )
-            # beat-happened、beat-has-result 由 op_beat 判（同样的条件，reason 用节拍名）
+            # beat-happened and beat-has-result are judged by op_beat (same conditions, with the beat name in reason).
+            # beat-happened と beat-has-result は op_beat が判定する（同じ条件で、reason にビート名を使う）。
         return broken
 
     def op_beat(self, e: Json) -> None:
@@ -313,7 +413,11 @@ class _Judge:
         if st is not None:
             self.hit("R2-precondition", "beat-has-result", f"「{ix.beat(b)}」は{BEAT_RESULT.get(st, 'もう決まった')}")
             return
-        if to == "happened":  # 节拍到点由系统结算，要早用 hastened（契约 2.4.1；W-1 也报 beat-happened）
+        # Beats are settled by the system when their time comes; to move one earlier use hastened (contract 2.4.1;
+        # W-1 also reports beat-happened).
+        # ビートは時刻が来たらシステムが精算する。早めるなら hastened を使う（契約 2.4.1。
+        # W-1 も beat-happened を報告する）。
+        if to == "happened":
             self.hit(
                 "R2-precondition",
                 "beat-happened",
@@ -348,8 +452,14 @@ class _Judge:
         self.walk(ch, self.where.get(ch), e["place"])
 
     def walk(self, who: str, src: str | None, dst: str) -> None:
-        """R3：玩家换地点、排程以外的 relocate，按 places.adjacent 的最短路程（W-1 travel_minutes）不超过 dt。
-        按排程走的人物看排程，不在这里（backend-design 2.4）；候选事件里的 relocate 都是排程以外的。"""
+        """R3: a player change of place, or a relocate outside the schedule, must not take longer than dt along the
+        shortest route over places.adjacent (W-1 travel_minutes). Characters moving by schedule are governed by the
+        schedule, not here (backend-design 2.4); relocates in candidate events are all outside the schedule.
+
+        R3：プレイヤーの場所の移動や予定外の relocate は、places.adjacent の最短の道のり（W-1 travel_minutes）が dt を
+        超えてはならない。予定どおりに動く登場人物は予定に従い、ここでは見ない（backend-design 2.4）。候補イベントの
+        relocate はすべて予定外のもの。
+        """
         if src is None or src == dst:
             return
         d = travel_minutes(self.ix.world, src, dst)
@@ -371,13 +481,16 @@ class _Judge:
             self.hit("R4-knowledge", "fact-not-yet", f"「{ix.fact(f)}」は、この時点ではまだ事実ではない")
         elif (self.actor == "player" or self.actor in ix.chars) and not knows(ix.world, self.state, self.actor, f):
             self.hit("R4-knowledge", "actor-unaware", f"{ix.who(self.actor)}は、この時点で「{ix.fact(f)}」を知らない")
-        # 比 judge() 多：告诉的对象要在身边（R7「和对象在同一地点」）
+        # More than judge(): the person told must be nearby (R7 "at the same place as the target").
+        # judge() より多く判定：伝える相手がそばにいること（R7「対象と同じ場所」）。
         if e["character"] != self.actor and not self.here(e["character"]):
             self.hit("R7-capability", "target-away", f"{ix.who(e['character'])}は、いまここにいない")
 
     def op_improv(self, e: Json) -> None:
         ix, ch, text = self.ix, e["character"], e["statement"]
-        for said in spoilers(ix.world, self.state, ch, text).values():  # 共享规则库，和输出侧监控、E2 同一个口径
+        # Shared rule library, the same scope as output-side monitoring and E2.
+        # 共有の規則ライブラリで、出力側の監視や E2 と同じ範囲。
+        for said in spoilers(ix.world, self.state, ch, text).values():
             self.hit(
                 "R4-knowledge",
                 "spoiler",
@@ -387,9 +500,13 @@ class _Judge:
     def op_hold(self, e: Json) -> None:
         ix, item, to = self.ix, e["item"], e.get("to")
         held = self.cur.get(item)
-        if self.actor == "player" and held != "player":  # judge()：玩家交出、用掉的东西要在玩家手上
+        # judge(): what the player hands over or uses up must be in the player's hands.
+        # judge()：プレイヤーが渡す・使い切る物はプレイヤーの手もとにあること。
+        if self.actor == "player" and held != "player":
             self.hit("R7-capability", "not-holding", f"{ix.item(item)}は、プレイヤーの手もとにない")
-        elif "from" in e and e["from"] is not None and held != e["from"]:  # 比 judge() 多：写明了从谁手上
+        # More than judge(): when it names whose hands it comes from.
+        # judge() より多く判定：誰の手からかが明記されているとき。
+        elif "from" in e and e["from"] is not None and held != e["from"]:
             self.hit("R7-capability", "not-holding", f"{ix.item(item)}は、{ix.who(e['from'])}の手もとにない")
         if to not in (None, "player", self.actor) and not self.here(to):
             self.hit("R7-capability", "target-away", f"{ix.who(to)}はここにいないので、渡せない")
@@ -397,13 +514,19 @@ class _Judge:
     def op_promise(self, e: Json) -> None:
         if e.get("change") != "made":
             return
-        for k in ("from", "to"):  # 比 judge() 多：约定当面立，对方要在身边
+        # More than judge(): promises are made face to face, so the other party must be nearby.
+        # judge() より多く判定：約束は面と向かって交わすので、相手がそばにいること。
+        for k in ("from", "to"):
             x = e.get(k)
             if x not in (None, "player", self.actor) and not self.here(x):
                 self.hit("R7-capability", "target-away", f"{self.ix.who(x)}は、いまここにいない")
 
     def affordance(self) -> None:
-        """情境动作的 place、roles、when、要用的物品（judge() 的 R7 最后一段）。条件按这一轮开始时的状态。"""
+        """A situational action's place, roles, when and needed item (the last part of judge()'s R7). Conditions use
+        the state at the start of this turn.
+
+        状況アクションの place、roles、when、要る物（judge() の R7 の最後の部分）。条件はこのターン開始時の状態で見る。
+        """
         act = self.turn.act or {}
         a = self.ix.affs.get(act.get("affordance") or "")
         if a is None:
@@ -422,7 +545,13 @@ class _Judge:
             self.hit("R7-capability", "affordance-item", f"「{label}」に要る{self.ix.item(it['id'])}が、手もとにない")
 
     def safety(self) -> None:
-        """R6 的规则部分：每条摘要和即兴设定查个人信息的模式、和玩家原话连续 8 字相同；有效果的查第 0 步的标记。"""
+        """R6's rule part: check every summary and improvised fact for personal-information patterns and for 8
+        consecutive characters identical to the player's words; candidates with effects are checked for step 0 flags.
+
+        R6 の規則部分：各要約と即興設定について、個人情報のパターンと、
+        プレイヤーの発話と 8 文字連続で一致するかを調べる。
+        効果のあるものは第 0 ステップの印を調べる。
+        """
         texts = [self.cand.get("summary", "")] + [e["statement"] for e in self.effects if e.get("op") == "improv"]
         if any(has_pii(x) for x in texts):
             self.hit(
@@ -439,20 +568,32 @@ class _Judge:
 def judge(
     world: Json, state: SimState, cand: Json, effects: Sequence[Json] | None = None, turn: Turn = NO_TURN
 ) -> list[Hit]:
-    """第 3 步判一个候选事件（不改 state）。effects 不给 = 候选的 effects。返回违反的规则，空 = 第 3 步过了。"""
+    """Step 3 judges one candidate event (state is not changed). No effects given = the candidate's effects. Returns
+    the rules violated; empty = step 3 passed.
+
+    第 3 ステップで 1 つの候補イベントを判定する（state は変えない）。effects を渡さなければ候補の effects。
+    違反した規則を返し、空なら第 3 ステップを通った。
+    """
     effs = list(cand.get("effects", []) if effects is None else effects)
     return _Judge(index(world), state, cand, effs, turn).run()
 
 
 def failed(hits: Iterable[Hit]) -> list[str]:
-    """违反的规则，按 RULES 的顺序（第一条是主规则）。"""
+    """The violated rules, in RULES order (the first one is the main rule).
+
+    違反した規則を RULES の順に（最初のものが主な規則）。
+    """
     rules = {h.rule for h in hits}
     return [r for r in RULES if r in rules]
 
 
 def rule_rows(hits: Sequence[Hit], model: Mapping[str, Json] | None = None) -> list[Json]:
-    """api-contract 第 7 节 check() 的 `rules`：每条规则 pass / fail / skipped（+ reason）。model = 第 4 步给的
-    {规则: {status, reason}}，没跑第 4 步时 R5 和 R6 的其余部分记 skipped。"""
+    """The `rules` of check() in api-contract section 7: pass / fail / skipped (+ reason) per rule. model = what step 4
+    gave, {rule: {status, reason}}; if step 4 didn't run, R5 and the rest of R6 are recorded as skipped.
+
+    api-contract 第 7 節 check() の `rules`：規則ごとに pass / fail / skipped（+ reason）。model = 第 4 ステップが
+    返した {規則: {status, reason}}。第 4 ステップを実行していなければ R5 と R6 の残りは skipped とする。
+    """
     out = []
     for r in RULES:
         mine = [h for h in hits if h.rule == r]
@@ -469,7 +610,12 @@ def rule_rows(hits: Sequence[Hit], model: Mapping[str, Json] | None = None) -> l
 
 
 def fill_ids(effects: Sequence[Mapping[str, Any]], ids: IdGen) -> list[Json]:
-    """约定成立时分配 promiseId，即兴设定没有 factId 时分配（提交时才分配，S-2 的候选不带）。"""
+    """Assign a promiseId when a promise is made, and a factId to an improvised fact without one (assigned only at
+    commit; S-2's candidates don't carry them).
+
+    約束が成立したら promiseId を、factId のない即興設定には factId を割り当てる（コミット時にだけ割り当て、S-2 の
+    候補には付いていない）。
+    """
     out = []
     for given in effects:
         e: dict[str, Any] = copy.deepcopy(dict(given))
@@ -482,7 +628,11 @@ def fill_ids(effects: Sequence[Mapping[str, Any]], ids: IdGen) -> list[Json]:
 
 
 def trial(world: Json, state: SimState, cand: Json, effects: Sequence[Json]) -> SimState:
-    """把通过的候选试算进状态，同一轮后面的候选在它之后判。时钟不动（dt 在提交时才算）。"""
+    """Trial-apply a passing candidate to the state, so later candidates in the same turn are judged after it. The
+    clock doesn't move (dt only counts at commit).
+
+    通った候補を状態に試算し、同じターンの後の候補はその後で判定する。時計は動かさない（dt はコミット時にだけ数える）。
+    """
     if not effects:
         return state
     ev = {
@@ -498,7 +648,12 @@ def trial(world: Json, state: SimState, cand: Json, effects: Sequence[Json]) -> 
 def check_candidates(
     world: Json, state: SimState, candidates: Sequence[Json], ids: IdGen, turn: Turn = NO_TURN
 ) -> list[Checked]:
-    """只跑第 3 步（没有模型检查和改写）：按顺序判，前面通过的候选先试算进状态。"""
+    """Run step 3 only (no model check or rewriting): judge in order, trial-applying earlier passing candidates to
+    the state first.
+
+    第 3 ステップだけを実行する（モデルの検査と書き換えはなし）：順に判定し、
+    先に通った候補を状態に試算してから次を見る。
+    """
     out = []
     now = state
     for cand in candidates:

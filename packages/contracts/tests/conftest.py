@@ -1,4 +1,9 @@
-"""契约测试共用的东西（C-1）：读全部 Schema，按 $id 建 referencing 的 Registry，按目录找例子要对哪个 Schema。"""
+"""Shared pieces of the contract tests (C-1): read every Schema, build a referencing Registry by $id, and map each
+example's directory to the Schema it is validated against.
+
+契約テストの共通部分（C-1）：すべての Schema を読み込み、$id ごとに referencing の Registry を作り、ディレクトリから
+各例を検証する Schema を決める。
+"""
 
 from __future__ import annotations
 
@@ -28,7 +33,10 @@ def load(path: Path) -> Json:
 
 
 def walk(node: Json, path: str = "") -> Iterator[tuple[str, Json]]:
-    """深度优先走遍一个 Schema，给出（JSON 指针, 子节点）。"""
+    """Walk a Schema depth-first, yielding (JSON pointer, child node).
+
+    Schema を深さ優先でたどり、（JSON ポインタ, 子ノード）を返す。
+    """
     yield path, node
     if isinstance(node, dict):
         for k, v in node.items():
@@ -40,7 +48,12 @@ def walk(node: Json, path: str = "") -> Iterator[tuple[str, Json]]:
 
 @dataclass
 class Contracts:
-    """测试通过 fixture `contracts` 拿到它（--import-mode=importlib 下测试文件不能 import conftest）。"""
+    """Tests get this through the `contracts` fixture (test files cannot import conftest under
+    --import-mode=importlib).
+
+    テストは fixture `contracts` でこれを受け取る（--import-mode=importlib ではテストファイルから conftest を import
+    できない）。
+    """
 
     docs: dict[str, dict[str, Json]] = field(default_factory=dict)
     walk = staticmethod(walk)
@@ -61,7 +74,10 @@ class Contracts:
         return Registry().with_resources((k, DRAFT202012.create_resource(v)) for k, v in self.docs.items())
 
     def validator(self, base: str, ref: str) -> Draft202012Validator:
-        """对 base 文件里的 ref（相对引用）校验的 validator。"""
+        """A validator for ref (a relative reference) in the base file.
+
+        base ファイル内の ref（相対参照）に対して検証する validator。
+        """
         return Draft202012Validator({"$ref": urljoin(base, ref)}, registry=self.registry)
 
     def resolve(self, base: str, ref: str) -> Json:
@@ -74,7 +90,10 @@ class Contracts:
         return {k: v for k, v in self.docs.items() if k.startswith("data/")}
 
     def endpoints(self) -> dict[str, dict[str, Json]]:
-        """rest/ 下每个文件的 x-endpoint，键是文件名（不含 .schema.json）。"""
+        """The x-endpoint of each file under rest/, keyed by file name (without .schema.json).
+
+        rest/ 配下の各ファイルの x-endpoint。キーはファイル名（.schema.json を除く）。
+        """
         out = {}
         for k, v in self.docs.items():
             if k.startswith("api/rest/"):
@@ -82,16 +101,26 @@ class Contracts:
         return out
 
     def ws_types(self, side: str) -> dict[str, str]:
-        """client / server 里每种消息的 type → $defs 名。"""
+        """For client / server, each message's type → its $defs name.
+
+        client / server の各メッセージの type → $defs の名前。
+        """
         doc = self.docs[f"api/ws/{side}.schema.json"]
         return {d["properties"]["type"]["const"]: name for name, d in doc["$defs"].items()}
 
     def example_target(self, rel: Path) -> tuple[str, str, str]:
-        """接口例子相对 examples/valid/api/、examples/invalid/api/ 的路径 → （base 文件, ref, 名字）。
+        """Path of an API example relative to examples/valid/api/ or examples/invalid/api/ → (base file, ref, name).
 
-        - ws/client/<type>/x.json、ws/server/<type>/x.json：对整个联合校验；
-        - rest/<endpoint>/<request|query|params|状态码>/x.json：对 x-endpoint 里写的那个 Schema 校验；
-        - <文件>/<$defs 名>/x.json：对那个文件的 $defs 条目校验（例 error/ErrorResponse）。
+        - ws/client/<type>/x.json, ws/server/<type>/x.json: validated against the whole union;
+        - rest/<endpoint>/<request|query|params|status code>/x.json: validated against the Schema named in x-endpoint;
+        - <file>/<$defs name>/x.json: validated against that file's $defs entry (e.g. error/ErrorResponse).
+
+        examples/valid/api/、examples/invalid/api/ からの API の例の相対パス → （base ファイル, ref, 名前）。
+
+        - ws/client/<type>/x.json、ws/server/<type>/x.json：ユニオン全体に対して検証する。
+        - rest/<endpoint>/<request|query|params|ステータスコード>/x.json：x-endpoint に書かれた Schema に対して
+          検証する。
+        - <ファイル>/<$defs 名>/x.json：そのファイルの $defs の項目に対して検証する（例：error/ErrorResponse）。
         """
         parts = rel.parts
         if parts[0] == "ws":
@@ -100,7 +129,7 @@ class Contracts:
             base = f"api/rest/{parts[1]}.schema.json"
             ep = self.docs[base]["x-endpoint"]
             ref = ep[parts[2]] if parts[2] in ("request", "query", "params") else ep["responses"][parts[2]]
-            assert isinstance(ref, str), f"{rel}：{parts[2]} 没有响应体"
+            assert isinstance(ref, str), f"{rel}: {parts[2]} has no response body / {parts[2]} にレスポンスボディがない"
             return base, ref, parts[2]
         base = f"api/{'/'.join(parts[:-2])}.schema.json"
         return base, f"#/$defs/{parts[-2]}", parts[-2]

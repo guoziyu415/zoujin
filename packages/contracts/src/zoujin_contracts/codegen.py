@@ -1,12 +1,25 @@
-"""`uv run contracts-gen`：从 schemas/ 重新生成全部 TypeScript 和 Python 类型（C-1）。
+"""`uv run contracts-gen`: regenerate all TypeScript and Python types from schemas/ (C-1).
 
-- 数据（schemas/data/）和接口（schemas/api/）各拼成一个只有 `$defs` 的 bundle，再交给生成器：
-  TypeScript 用 json-schema-to-typescript（gen/json2ts.mjs），Python 用 datamodel-code-generator（pydantic v2）。
-- 接口整个引用数据类型的地方，生成的代码直接用数据那边的类型（TS 里是 `Data.X`，Python 从 generated.data 导入）；
-  指到数据类型里某个字段的 JSON 指针，就地展开成那个字段的 Schema。
-- 生成物提交进仓库，CI 重新生成后 `git diff --exit-code`；不要手改。
+- Data (schemas/data/) and API (schemas/api/) are each merged into one bundle holding only `$defs`, then handed to
+  the generators: json-schema-to-typescript for TypeScript (gen/json2ts.mjs), datamodel-code-generator (pydantic v2)
+  for Python.
+- Where the API references a whole data type, the generated code uses the data-side type directly (`Data.X` in TS,
+  imported from generated.data in Python); a JSON pointer into a field of a data type is expanded in place into that
+  field's Schema.
+- The generated files are committed; CI regenerates them and runs `git diff --exit-code`. Do not edit them by hand.
 
-需要 node 和 `pnpm install` 装好的 json-schema-to-typescript。
+Needs node and json-schema-to-typescript installed by `pnpm install`.
+
+`uv run contracts-gen`：schemas/ からすべての TypeScript と Python の型を再生成する（C-1）。
+
+- データ（schemas/data/）と API（schemas/api/）をそれぞれ `$defs` だけを持つ 1 つの bundle にまとめ、生成器に渡す：
+  TypeScript は json-schema-to-typescript（gen/json2ts.mjs）、Python は datamodel-code-generator（pydantic v2）。
+- API がデータ型を丸ごと参照する箇所では、生成コードはデータ側の型をそのまま使う（TS では `Data.X`、Python では
+  generated.data から import）。データ型の中のフィールドを指す JSON ポインタは、その場でそのフィールドの
+  Schema に展開する。
+- 生成物はリポジトリにコミットし、CI が再生成して `git diff --exit-code` を実行する。手で編集しないこと。
+
+node と、`pnpm install` でインストールした json-schema-to-typescript が必要。
 """
 
 from __future__ import annotations
@@ -28,10 +41,17 @@ TS_OUT = PKG / "src" / "generated"
 PY_OUT = PKG / "src" / "zoujin_contracts" / "generated"
 PY_MODULE = "zoujin_contracts.generated"
 
-TS_HEADER = "// 生成的文件，不要手改：改 packages/contracts/schemas/ 后跑 `uv run contracts-gen`。"
-PY_HEADER = "# 生成的文件，不要手改：改 packages/contracts/schemas/ 后跑 `uv run contracts-gen`。"
+TS_HEADER = (
+    "// Generated file, do not edit by hand: change packages/contracts/schemas/ and run `uv run contracts-gen`.\n"
+    "// 生成ファイル。手で編集しないこと：packages/contracts/schemas/ を変更して `uv run contracts-gen` を実行する。"
+)
+PY_HEADER = (
+    "# Generated file, do not edit by hand: change packages/contracts/schemas/ and run `uv run contracts-gen`.\n"
+    "# 生成ファイル。手で編集しないこと：packages/contracts/schemas/ を変更して `uv run contracts-gen` を実行する。"
+)
 
-# Python 里按 type / name / kind 一次解析到对的类（pydantic 的 discriminated union）。
+# In Python, parse straight to the right class by type / name / kind (pydantic discriminated unions).
+# Python では type / name / kind で一度に正しいクラスへ解析する（pydantic の discriminated union）。
 DISCRIMINATORS = {
     "Effect": "op",
     "ClientMessage": "type",
@@ -51,7 +71,10 @@ def load_docs() -> dict[str, dict[str, Json]]:
         doc = json.loads(path.read_text(encoding="utf-8"))
         rel = path.relative_to(SCHEMAS).as_posix()
         if doc.get("$id") != rel:
-            raise SystemExit(f"{rel}: $id 应该是 {rel!r}，现在是 {doc.get('$id')!r}")
+            raise SystemExit(
+                f"{rel}: $id should be {rel!r}, but is {doc.get('$id')!r} / "
+                f"$id は {rel!r} であるべきだが、現在は {doc.get('$id')!r}"
+            )
         docs[rel] = doc
     return docs
 
@@ -70,7 +93,10 @@ def get_pointer(doc: Json, pointer: str) -> Json:
 
 
 def type_name(doc: dict[str, Json], name: str) -> str:
-    """生成器给一个 $defs 条目起的名字：有 title 用 title（例：Promise 的 title 是 StoryPromise）。"""
+    """The name the generator gives a $defs entry: the title if there is one (e.g. Promise's title is StoryPromise).
+
+    生成器が $defs の項目に付ける名前：title があれば title を使う（例：Promise の title は StoryPromise）。
+    """
     title = doc["$defs"][name].get("title")
     return title if isinstance(title, str) else name
 
@@ -79,12 +105,18 @@ def is_ws_root(doc: dict[str, Json]) -> bool:
     return "oneOf" in doc and "$defs" in doc
 
 
-# 值是 JSON 数据、不是 Schema 的关键字；但 properties 里同名的字段（例：StateVar.default）还是 Schema。
+# Keywords whose values are JSON data, not Schemas; but a field of the same name under properties (e.g.
+# StateVar.default) is still a Schema.
+# 値が Schema ではなく JSON データであるキーワード。ただし properties 内の同名のフィールド（例：StateVar.default）は
+# Schema のまま。
 DATA_KEYWORDS = ("const", "enum", "default", "examples")
 
 
 def map_schema(node: dict[str, Json], f: Callable[[Json], Json]) -> dict[str, Json]:
-    """对一个 Schema 对象的子 Schema 逐个调用 f（DATA_KEYWORDS 的值原样留着）。"""
+    """Call f on each sub-Schema of a Schema object (values of DATA_KEYWORDS are kept as is).
+
+    Schema オブジェクトの各サブ Schema に f を呼ぶ（DATA_KEYWORDS の値はそのまま残す）。
+    """
     out: dict[str, Json] = {}
     for k, v in node.items():
         if k in DATA_KEYWORDS:
@@ -96,17 +128,23 @@ def map_schema(node: dict[str, Json], f: Callable[[Json], Json]) -> dict[str, Js
     return out
 
 
-# external(doc_id, def_name) -> 替换成的 Schema；返回 None = 不是外部类型
+# external(doc_id, def_name) -> the Schema to substitute; returning None = not an external type
+# external(doc_id, def_name) -> 置き換え先の Schema。None を返す = 外部の型ではない
 External = Callable[[str, str], dict[str, Json] | None]
 
 
 def bundle(
     docs: dict[str, dict[str, Json]], prefix: str, title: str, external: External, wrap_refs: bool = False
 ) -> dict[str, Json]:
-    """把 prefix 下全部文件的 $defs 拼成一个 bundle。
+    """Merge the $defs of all files under prefix into one bundle.
 
-    wrap_refs：带说明的内部 $ref 改写成 allOf 包一层（json-schema-to-typescript 遇到 $ref 旁边有别的键会复制出
-    `X1` 这样的重复类型）。
+    wrap_refs: rewrite internal $refs that carry a description into a one-element allOf (when a $ref has other keys
+    next to it, json-schema-to-typescript copies it into a duplicate type such as `X1`).
+
+    prefix 配下のすべてのファイルの $defs を 1 つの bundle にまとめる。
+
+    wrap_refs：説明付きの内部 $ref を allOf で 1 層包む形に書き換える（json-schema-to-typescript は $ref の横に
+    別のキーがあると `X1` のような重複した型を作ってしまう）。
     """
     members = [k for k in docs if k.startswith(prefix)]
     defs: dict[str, Json] = {}
@@ -114,7 +152,10 @@ def bundle(
 
     def add(name: str, schema: Json, doc_id: str) -> None:
         if name in defs:
-            raise SystemExit(f"$defs 重名：{name}（{owner[name]} 和 {doc_id}）")
+            raise SystemExit(
+                f"Duplicate $defs name: {name} ({owner[name]} and {doc_id}) / "
+                f"$defs の名前が重複：{name}（{owner[name]} と {doc_id}）"
+            )
         defs[name] = schema
         owner[name] = doc_id
 
@@ -175,14 +216,19 @@ def py_external(docs: dict[str, dict[str, Json]], defined: set[str]) -> External
             return None
         py_name = type_name(docs[doc_id], name)
         if py_name not in defined:
-            return None  # 生成器把它折进了用到它的地方（简单类型），这里也就地展开
+            # The generator folded it into the places that use it (a simple type), so expand it in place here too
+            # 生成器が使用箇所に畳み込んだ（単純な型）ので、ここでもその場で展開する
+            return None
         return {"customTypePath": f"{PY_MODULE}.data.{py_name}"}
 
     return ext
 
 
 def py_names(path: Path) -> set[str]:
-    """生成的模块顶层定义了哪些类型。"""
+    """Which types the generated module defines at top level.
+
+    生成されたモジュールのトップレベルで定義されている型。
+    """
     return set(re.findall(r"^(?:class|type) (\w+)", path.read_text(encoding="utf-8"), re.M))
 
 
@@ -190,14 +236,23 @@ def run(cmd: list[str], cwd: Path | None = None) -> None:
     proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
     if proc.returncode != 0:
         sys.stderr.write(proc.stdout + proc.stderr)
-        raise SystemExit(f"失败：{' '.join(cmd[:3])} …")
+        raise SystemExit(f"Failed / 失敗：{' '.join(cmd[:3])} …")
 
 
 def closed_tuples(node: Json) -> Json:
-    """定长元组（`prefixItems` 加 `items: false`，例：数据的 Clock.labels.bands）改写成 draft-07 的 `items` 数组。
+    """Rewrite fixed-length tuples (`prefixItems` plus `items: false`, e.g. the data's Clock.labels.bands) into a
+    draft-07 `items` array.
 
-    两个生成器都不认 `prefixItems`：json-schema-to-typescript 生成 `never[]`，datamodel-code-generator 生成不限长的
-    联合数组。改写后 TS 是 `[number, string]`，Python 是定长 2 的数组。只改喂给生成器的 bundle，Schema 不动。
+    Neither generator understands `prefixItems`: json-schema-to-typescript emits `never[]`, and
+    datamodel-code-generator emits an unbounded array of the union. After the rewrite TS gets `[number, string]` and
+    Python an array of fixed length 2. Only the bundle fed to the generators changes; the Schema stays as is.
+
+    固定長のタプル（`prefixItems` と `items: false`。例：データの Clock.labels.bands）を draft-07 の `items` 配列に
+    書き換える。
+
+    どちらの生成器も `prefixItems` を理解しない：json-schema-to-typescript は `never[]` を、
+    datamodel-code-generator は長さ無制限のユニオンの配列を生成する。書き換え後は TS が `[number, string]`、
+    Python が長さ 2 固定の配列になる。変えるのは生成器に渡す bundle だけで、Schema はそのまま。
     """
     if isinstance(node, list):
         return [closed_tuples(v) for v in node]
@@ -208,7 +263,11 @@ def closed_tuples(node: Json) -> Json:
         items = out.pop("prefixItems")
         assert isinstance(items, list)
         if out.get("items") is not False or out.get("minItems") != len(items):
-            raise SystemExit("只处理定长元组：prefixItems 要配 items: false，minItems 等于元素个数")
+            raise SystemExit(
+                "Only fixed-length tuples are handled: prefixItems needs items: false and minItems equal to the "
+                "number of elements / 固定長のタプルのみ扱う：prefixItems には items: false が必要で、"
+                "minItems は要素数と等しくなければならない"
+            )
         out.update(items=items, additionalItems=False, maxItems=len(items))
     return out
 
@@ -217,9 +276,14 @@ SHAPE_KEYWORDS = {"type", "$ref", "enum", "const", "properties", "items", "oneOf
 
 
 def ts_unknown_for_any(node: Json) -> Json:
-    """不限类型的字段（只有说明，例：StateVar.default）写明 `unknown`。
+    """Mark untyped fields (description only, e.g. StateVar.default) explicitly as `unknown`.
 
-    json-schema-to-typescript 遇到名叫 `default` 的这种字段会生成成 `{[k: string]: unknown}`。
+    For such a field named `default`, json-schema-to-typescript would emit `{[k: string]: unknown}`.
+
+    型の制約がないフィールド（説明のみ。例：StateVar.default）を明示的に `unknown` にする。
+
+    json-schema-to-typescript は `default` という名前のこうしたフィールドを `{[k: string]: unknown}` として
+    生成してしまう。
     """
     if isinstance(node, list):
         return [ts_unknown_for_any(v) for v in node]
@@ -236,7 +300,10 @@ def ts_unknown_for_any(node: Json) -> Json:
 def gen_ts(bundles: dict[str, dict[str, Json]], tmp: Path) -> None:
     node = shutil.which("node")
     if node is None:
-        raise SystemExit("找不到 node：先装 Node（.nvmrc）并在仓库根目录 pnpm install")
+        raise SystemExit(
+            "node not found: install Node (.nvmrc) first and run pnpm install at the repo root / "
+            "node が見つからない：先に Node（.nvmrc）をインストールし、リポジトリのルートで pnpm install を実行する"
+        )
     TS_OUT.mkdir(parents=True, exist_ok=True)
     for name, b in bundles.items():
         src = tmp / f"{name}.ts.json"
@@ -248,10 +315,15 @@ def gen_ts(bundles: dict[str, dict[str, Json]], tmp: Path) -> None:
 
 
 def with_discriminators(b: dict[str, Json]) -> dict[str, Json]:
-    """给 DISCRIMINATORS 里的联合加 discriminator。
+    """Add a discriminator to the unions in DISCRIMINATORS.
 
-    就地写的分支（数据的 Effect）提出来按区分字段的值起名（EffectSet、EffectBeat…），
-    不然生成器起成 Effect1…Effect8，也不保留联合本身的名字。
+    Inline branches (the data's Effect) are pulled out and named after the discriminating field's value
+    (EffectSet, EffectBeat…); otherwise the generator names them Effect1…Effect8 and drops the union's own name.
+
+    DISCRIMINATORS にあるユニオンに discriminator を付ける。
+
+    その場で書かれた分岐（データの Effect）は取り出して、判別フィールドの値で名前を付ける（EffectSet、EffectBeat…）。
+    そうしないと生成器は Effect1…Effect8 と名付け、ユニオン自体の名前も残さない。
     """
     defs = b["$defs"]
     for name, prop in DISCRIMINATORS.items():
@@ -264,7 +336,10 @@ def with_discriminators(b: dict[str, Json]) -> dict[str, Json]:
             value = branch["properties"][prop]["const"]
             branch_name = name + "".join(w.capitalize() for w in re.split(r"[^A-Za-z0-9]+", value))
             if branch_name in defs:
-                raise SystemExit(f"$defs 重名：{branch_name}（{name} 的 {prop}={value!r} 分支）")
+                raise SystemExit(
+                    f"Duplicate $defs name: {branch_name} (the {prop}={value!r} branch of {name}) / "
+                    f"$defs の名前が重複：{branch_name}（{name} の {prop}={value!r} の分岐）"
+                )
             defs[branch_name] = branch
             union["oneOf"][n] = {"$ref": f"#/$defs/{branch_name}"}
         union["discriminator"] = {"propertyName": prop}
@@ -277,10 +352,19 @@ def pascal(s: str) -> str:
 
 
 def name_inline_objects(b: dict[str, Json]) -> dict[str, Json]:
-    """就地写的对象按位置起名（例：Ending 里 player.relationships 的元素 → EndingPlayerRelationshipsItem）。
+    """Name inline objects by position (e.g. the items of player.relationships in Ending →
+    EndingPlayerRelationshipsItem).
 
-    不然生成器按字段名起名，和 $defs 重名时给 $defs 那个加数字（数据的 Relationship 会变成 Relationship1），
-    哪个带数字还随 Schema 变。if / then / else / not 里的只是条件，生成器不看，不起名。
+    Otherwise the generator names them by field name, and on a clash with $defs it appends a number to the $defs one
+    (the data's Relationship would become Relationship1), and which one gets the number shifts as the Schema changes.
+    Objects inside if / then / else / not are only conditions; the generator ignores them, so they are not named.
+
+    その場で書かれたオブジェクトに位置で名前を付ける（例：Ending の player.relationships の要素 →
+    EndingPlayerRelationshipsItem）。
+
+    そうしないと生成器はフィールド名で名前を付け、$defs と重複したときは $defs 側に番号を付けてしまう（データの
+    Relationship が Relationship1 になる）。しかもどちらに番号が付くかは Schema によって変わる。if / then / else / not
+    の中は条件にすぎず、生成器は見ないので名前を付けない。
     """
     taken = set(b["$defs"])
 
@@ -289,7 +373,10 @@ def name_inline_objects(b: dict[str, Json]) -> dict[str, Json]:
             return
         if not top and "properties" in node and "title" not in node:
             if name in taken:
-                raise SystemExit(f"就地对象的名字和别的类型重名：{name}")
+                raise SystemExit(
+                    f"The name of an inline object clashes with another type: {name} / "
+                    f"その場のオブジェクトの名前がほかの型と重複：{name}"
+                )
             node["title"] = name
             taken.add(name)
         for key, sub in node.get("properties", {}).items():
@@ -355,16 +442,21 @@ def gen_py(docs: dict[str, dict[str, Json]], tmp: Path) -> None:
         )
         strip_py_root(out, b["title"])
     (PY_OUT / "__init__.py").write_text(
-        f'{PY_HEADER}\n"""从 schemas/ 生成的 pydantic 模型：data（数据契约）、api（接口）、binary（帧格式）。"""\n'
+        f'{PY_HEADER}\n"""Pydantic models generated from schemas/: data (data contracts), api (API),\n'
+        "binary (frame format).\n\n"
+        'schemas/ から生成した pydantic モデル：data（データ契約）、api（API）、binary（フレーム形式）。\n"""\n'
     )
 
 
 def strip_py_root(path: Path, root: str) -> None:
-    """bundle 的根只是个容器，生成的根类型删掉。"""
+    """The bundle's root is only a container, so delete the generated root type.
+
+    bundle のルートは入れ物にすぎないので、生成されたルートの型を削除する。
+    """
     lines = path.read_text(encoding="utf-8").split("\n")
     starts = [n for n, line in enumerate(lines) if line.startswith((f"type {root} =", f"class {root}("))]
     if len(starts) != 1:
-        raise SystemExit(f"{path.name}：没找到根类型 {root}")
+        raise SystemExit(f"{path.name}: root type {root} not found / ルートの型 {root} が見つからない")
     end = starts[0] + 1
     while end < len(lines) and (not lines[end] or lines[end][0] in " ])"):
         end += 1
@@ -413,7 +505,7 @@ def main() -> None:
         gen_py(docs, tmp)
     gen_binary()
     ruff([PY_OUT])
-    print(f"已生成：{TS_OUT.relative_to(PKG)}/、{PY_OUT.relative_to(PKG)}/")
+    print(f"Generated / 生成済み：{TS_OUT.relative_to(PKG)}/, {PY_OUT.relative_to(PKG)}/")
 
 
 if __name__ == "__main__":

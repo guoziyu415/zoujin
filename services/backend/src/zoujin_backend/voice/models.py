@@ -1,16 +1,36 @@
-"""照读（Live）和补转写的真实现、假实现。
+"""Real and fake implementations of read-aloud (Live) and transcript backfill.
 
-真的只在 zg 的 Mac 上（`ZJ_MODEL=real`，G-7）：
-- 照读：Vertex AI 的 Live（WebSocket，`BidiGenerateContent`），一条会话一个声音、一份系统指令，每句作为一轮文字送进去，
-  收 PCM16、24 kHz、单声道。消息的形状照 google-genai SDK 发的（`spikes/backend/zj_spike` 用 SDK 在 Mac 上跑通过）；
-  这里直接用 `websockets`，不为一个构建脚本给后端加 SDK 依赖。
-- 补转写：Vertex AI 的 `generateContent`（`models/vertex.py` 的 REST 传输层），文本模型听这一遍的音频写出文字
-  （S-071 ③）。
-  Claude 不收音频，所以这一步和照读一样留在 Google（D-028）。
-- 认证用 Mac 上的 ADC；项目 ID 和地区只从显式设的环境变量读，不进日志、账本和异常消息。
+The real ones run only on zg's Mac (`ZJ_MODEL=real`, G-7):
+- Read-aloud: Vertex AI Live (WebSocket, `BidiGenerateContent`), one voice and one system instruction per session, each
+  line sent as one text turn, receiving PCM16, 24 kHz, mono. The message shapes follow what the google-genai SDK sends
+  (`spikes/backend/zj_spike` ran it with the SDK on the Mac); here `websockets` is used directly, so the backend does
+  not take an SDK dependency for one build script.
+- Transcript backfill: Vertex AI `generateContent` (the REST transport in `models/vertex.py`); a text model listens to
+  the take's audio and writes down the text (S-071 ③).
+  Claude does not accept audio, so this step stays on Google like read-aloud (D-028).
+- Authentication uses ADC on the Mac; the project ID and location are read only from explicitly set environment
+  variables and never go into logs, the ledger or exception messages.
 
-假的（CI、项目线程）：按句子的拍数合成「说话」的声音，可以设成截断、读两遍、太长、没声音、出错、429；补转写从假的
-照读那里查这段声音「说了」什么。不放任何真人或模型录的声音。
+The fake ones (CI, project threads): synthesize a "speaking" sound from the line's mora count, and can be set to
+truncate, read twice, run too long, be silent, fail, or return 429; the fake transcript backfill looks up what that
+audio "said" from the fake read-aloud. No recorded human or model voice is included.
+
+読み上げ（Live）と文字起こしの補完の本実装・偽実装。
+
+本物は zg の Mac でのみ動く（`ZJ_MODEL=real`、G-7）：
+- 読み上げ：Vertex AI の Live（WebSocket、`BidiGenerateContent`）。1 セッションに声 1 つ、システム指示 1 つで、
+  各セリフを 1 ターンの文字として送り、PCM16・24 kHz・モノラルを受け取る。メッセージの形は google-genai SDK が送る
+  ものに合わせている（`spikes/backend/zj_spike` で SDK を使って Mac 上で動作確認済み）。ここでは `websockets` を
+  直接使い、1 つのビルドスクリプトのためにバックエンドへ SDK の依存を加えない。
+- 文字起こしの補完：Vertex AI の `generateContent`（`models/vertex.py` の REST 転送層）。テキストモデルがそのテイクの
+  音声を聞いて文字を書き出す（S-071 ③）。
+  Claude は音声を受け付けないので、この工程は読み上げと同じく Google に残す（D-028）。
+- 認証は Mac 上の ADC。プロジェクト ID とリージョンは明示的に設定した環境変数からのみ読み、ログ・台帳・例外
+  メッセージには入れない。
+
+偽物（CI、プロジェクトスレッド）：セリフのモーラ数から「話している」音を合成し、途切れ・二度読み・長すぎ・無音・
+エラー・429 を起こすよう設定できる。文字起こしの補完は、その音声が何を「言った」かを偽の読み上げから引く。実在の人や
+モデルが録音した声は一切含まない。
 """
 
 from __future__ import annotations
@@ -37,17 +57,22 @@ from zoujin_backend.voice.checks import mora
 Json = Any
 log = logging.getLogger("zoujin.voice")
 
-LIVE_MODEL = "gemini-3.8-live"  # backend-design 第 7 节（us-central1）
-TRANSCRIBE_MODEL = "gemini-3.5-flash-lite"  # S-071 ③ 的补转写
+LIVE_MODEL = "gemini-3.8-live"  # backend-design section 7 (us-central1) / backend-design 第 7 節（us-central1）
+TRANSCRIBE_MODEL = "gemini-3.5-flash-lite"  # Transcript backfill of S-071 ③ / S-071 ③ の文字起こしの補完
 LIVE_LOCATION_ENV = "ZJ_LIVE_LOCATION"
-LIVE_LOCATION = "us-central1"  # Live 只在美欧（backend-design 第 7 节）
-# Live 的价目（每 100 万 token 的美元，docs/data/cost/pricing-2026-10-06.md 第 1 节）。音频 25 token/秒
+# Live is only in the US and Europe (backend-design section 7) / Live は米国と欧州のみ（backend-design 第 7 節）
+LIVE_LOCATION = "us-central1"
+# Live prices (USD per million tokens, docs/data/cost/pricing-2026-10-06.md section 1). Audio is 25 tokens/s
+# Live の価格（100 万トークンあたりの米ドル、docs/data/cost/pricing-2026-10-06.md 第 1 節）。音声は 25 トークン/秒
 LIVE_PRICES = {"inText": 0.75, "inAudio": 3.00, "outText": 4.50, "outAudio": 12.00}
 AUDIO_TOKENS_PER_S = 25
 TURN_TIMEOUT_S = 30.0
 SETUP_TIMEOUT_S = 30.0
-TAIL_QUIET_S = 0.6  # turnComplete 以后再等一会儿收晚到的用量
-NO_USAGE_USD = 0.01  # 这一轮没收到用量：按这个记，不让它看起来是免费的（同 S-1）
+# After turnComplete, wait a little longer for late usage / turnComplete の後、遅れて届く使用量を少し待つ
+TAIL_QUIET_S = 0.6
+# No usage received for the turn: record this so it doesn't look free (same as S-1)
+# このターンの使用量が届かなかったとき：無料に見えないようこの額で記録する（S-1 と同じ）
+NO_USAGE_USD = 0.01
 TRANSCRIBE_PROMPT = (
     "次の音声は日本語の台詞です。聞こえたとおりに書き起こしてください。"
     "書き起こした文だけを出力し、説明や引用符は付けないでください。"
@@ -56,7 +81,12 @@ TRANSCRIBE_PROMPT = (
 
 @dataclass(frozen=True)
 class Spoken:
-    """照读的一轮：声音、Live 自己的文字（照读时常常没有，S-071，只记不用）、用量和花费。"""
+    """One read-aloud turn: audio, Live's own text (often missing when reading aloud, S-071; recorded but unused),
+    usage and cost.
+
+    読み上げの 1 ターン：音声、Live 自身の文字（読み上げでは出ないことが多い、S-071。記録するだけで使わない）、
+    使用量と費用。
+    """
 
     pcm: bytes
     live_text: str
@@ -65,12 +95,20 @@ class Spoken:
 
 
 class ReadFailed(RuntimeError):
-    """这一轮没读成（超时、连接断了）：记进审查单，这一遍算不过，不停下整个跑。"""
+    """The turn wasn't read (timeout, dropped connection): goes into the audit sheet, the take counts as failed, and the
+    whole run doesn't stop.
+
+    このターンは読めなかった（タイムアウト、接続切れ）：監査シートに記録し、このテイクは不合格として扱い、実行全体は
+    止めない。
+    """
 
 
 class ReaderSession(Protocol):
     async def read(self, text: str) -> Spoken:
-        """送一轮文字（照读时是「」括起来的台词，自由对话时是问题），收这一轮的声音。"""
+        """Send one text turn (a line in 「」 when reading aloud, a question in free talk) and receive its audio.
+
+        1 ターンの文字を送り（読み上げでは「」で囲んだセリフ、自由会話では質問）、そのターンの音声を受け取る。
+        """
         ...
 
     async def close(self) -> None: ...
@@ -91,12 +129,18 @@ class Transcriber(Protocol):
     async def transcribe(self, pcm: bytes) -> Heard: ...
 
 
-# —— 预计花费（调用前判上限，偏高） ——
+# —— Estimated cost (checked against the caps before calling; errs high) ——
+# —— 見積もり費用（呼び出し前に上限と照らす。高めに見積もる） ——
 
 
 def live_turn_estimate(system: str, text: str, history_s: float, history_chars: int) -> float:
-    """一轮照读：输入 = 系统指令和这条会话里前面的文字（一字一个 token）+ 前面几轮的声音（每轮都重新计费）；
-    输出 = 这句的声音按拍数估的上限 + 1 秒，加同样长的文字转写。"""
+    """One read-aloud turn: input = the system instruction and the earlier text in this session (one token per
+    character) + the earlier turns' audio (billed again every turn); output = the line's audio at the mora-based upper
+    bound + 1 second, plus a text transcript of the same length.
+
+    読み上げ 1 ターン：入力 = システム指示とこのセッションのそれまでの文字（1 字 1 トークン）+ それまでのターンの音声
+    （毎ターン課金し直される）。出力 = このセリフの音声をモーラ数で見積もった上限 + 1 秒と、同じ長さの文字起こし。
+    """
     out_s = mora(text) * 0.25 + 1.0
     usd = (len(system) + history_chars + len(text) + 20) * LIVE_PRICES["inText"]
     usd += history_s * AUDIO_TOKENS_PER_S * LIVE_PRICES["inAudio"]
@@ -105,13 +149,22 @@ def live_turn_estimate(system: str, text: str, history_s: float, history_chars: 
 
 
 def transcribe_estimate(seconds: float, *, regional: bool) -> float:
-    """补转写：音频按每秒 32 token（generateContent 的音频）、提示约 100 token，输出按 256 的上限。"""
+    """Transcript backfill: audio at 32 tokens per second (generateContent audio), about 100 prompt tokens, output at
+    the 256 cap.
+
+    文字起こしの補完：音声は毎秒 32 トークン（generateContent の音声）、プロンプトは約 100 トークン、出力は上限の 256。
+    """
     usage = {"inputTokens": int(seconds * 32) + 100, "outputTokens": 256}
     return cost_usd(TRANSCRIBE_MODEL, usage, regional=regional)
 
 
 def live_cost(usage: Mapping[str, int]) -> float:
-    """按 Live 用量的分项算（文字、音频分开；没有分项的输入按音频、输出按音频，偏高）。思考按输出文字。"""
+    """Computed from Live's usage breakdown (text and audio separately; without a breakdown, input and output are both
+    priced as audio, erring high). Thinking is priced as output text.
+
+    Live の使用量の内訳から計算する（文字と音声を分ける。内訳がなければ入力も出力も音声として計算し、高めになる）。
+    思考は出力の文字として計算する。
+    """
     p = LIVE_PRICES
     usd = usage.get("inputTextTokens", 0) * p["inText"] + usage.get("inputAudioTokens", 0) * p["inAudio"]
     usd += usage.get("outputTextTokens", 0) * p["outText"] + usage.get("outputAudioTokens", 0) * p["outAudio"]
@@ -120,14 +173,22 @@ def live_cost(usage: Mapping[str, int]) -> float:
 
 
 def live_cost_parts(usage: Mapping[str, int]) -> tuple[float, float]:
-    """`live_cost` 分成输入、输出两半（美元）。S-090 对账只拿输入那一半和 results-s1 8.5 的公式比（#111 数据评审）。"""
+    """`live_cost` split into input and output halves (USD). S-090 reconciliation compares only the input half with the
+    results-s1 8.5 formula (#111 data review).
+
+    `live_cost` を入力と出力の 2 つに分ける（米ドル）。S-090 の照合では入力側だけを results-s1 8.5 の式と比べる
+    （#111 データレビュー）。
+    """
     p = LIVE_PRICES
     inp = usage.get("inputTextTokens", 0) * p["inText"] + usage.get("inputAudioTokens", 0) * p["inAudio"]
     return inp / 1_000_000, live_cost(usage) - inp / 1_000_000
 
 
 def live_usage(meta: Json) -> dict[str, int]:
-    """Vertex 的 usageMetadata → 账本的 usage（只有数字）。"""
+    """Vertex usageMetadata → the ledger's usage (numbers only).
+
+    Vertex の usageMetadata → 台帳の usage（数値のみ）。
+    """
     u = {"inputTokens": int(meta.get("promptTokenCount", 0)), "outputTokens": int(meta.get("candidatesTokenCount", 0))}
     u["thoughtTokens"] = int(meta.get("thoughtsTokenCount", 0))
     for side, details, total in (
@@ -149,13 +210,21 @@ def live_usage(meta: Json) -> dict[str, int]:
     return u
 
 
-# —— 真的：Live 照读 ——
+# —— Real: Live read-aloud / 本物：Live の読み上げ ——
 
 
 def _stop_if_quota(text: str) -> None:
     t = text.upper()
     if "RESOURCE_EXHAUSTED" in t or "429" in t or "QUOTA" in t or "529" in t:
-        raise RateLimited("Live 回配额或限流错误，停下")
+        raise RateLimited(
+            "Live returned a quota or rate-limit error; stopping / "
+            "Live がクォータまたはレート制限のエラーを返したので止める"
+        )
+
+
+def _no_turn_complete() -> str:
+    s = f"{TURN_TIMEOUT_S:.0f}"
+    return f"No turnComplete within {s} seconds / {s} 秒以内に turnComplete が届かなかった"
 
 
 class LiveSession:
@@ -171,7 +240,7 @@ class LiveSession:
         except websockets.ConnectionClosed as e:
             reason = f"{e.rcvd.code} {e.rcvd.reason}" if e.rcvd else "1006"
             _stop_if_quota(reason)
-            raise ReadFailed(f"Live 连接断了（{reason[:4]}）") from None
+            raise ReadFailed(f"Live connection dropped ({reason[:4]}) / Live の接続が切れた（{reason[:4]}）") from None
         return json.loads(raw)
 
     async def read(self, text: str) -> Spoken:
@@ -185,13 +254,13 @@ class LiveSession:
         while True:
             left = deadline - time.monotonic() if not done else TAIL_QUIET_S
             if left <= 0:
-                raise ReadFailed(f"{TURN_TIMEOUT_S:.0f} 秒内没收到 turnComplete")
+                raise ReadFailed(_no_turn_complete())
             try:
                 msg = await self._next(left)
             except TimeoutError:
                 if done:
                     break
-                raise ReadFailed(f"{TURN_TIMEOUT_S:.0f} 秒内没收到 turnComplete") from None
+                raise ReadFailed(_no_turn_complete()) from None
             meta = msg.get("usageMetadata")
             if meta and (usage is None or meta.get("totalTokenCount", 0) >= usage.get("totalTokenCount", 0)):
                 usage = meta
@@ -204,7 +273,7 @@ class LiveSession:
             if sc.get("turnComplete"):
                 done = True
                 if usage is not None:
-                    break  # 用量已经到了，不再等
+                    break  # Usage already arrived; stop waiting / 使用量はもう届いたので待たない
         self._chars += len(text) + len(heard)
         if usage is None:
             return Spoken(bytes(pcm), heard, {}, NO_USAGE_USD)
@@ -214,13 +283,17 @@ class LiveSession:
     async def close(self) -> None:
         try:
             await self._ws.close()
-        except Exception:  # noqa: BLE001 - 关的时候出错不影响结果
+        except Exception:  # noqa: BLE001 - errors on close don't matter / 閉じるときのエラーは無視
             pass
 
 
 class LiveReader:
-    """Vertex AI 的 Live。setup 的形状和 google-genai 2.x 对 Vertex 发的一样：模型写全路径，输出音频，开人物一侧的
-    转写。"""
+    """Vertex AI Live. The setup shape matches what google-genai 2.x sends to Vertex: the model as a full path, audio
+    output, transcription of the character's side turned on.
+
+    Vertex AI の Live。setup の形は google-genai 2.x が Vertex に送るものと同じ：モデルはフルパスで書き、音声を出力し、
+    人物側の文字起こしを有効にする。
+    """
 
     def __init__(self, project: str, location: str, auth: Auth, model: str = LIVE_MODEL) -> None:
         self._project = project
@@ -247,7 +320,7 @@ class LiveReader:
             }
         }
 
-    async def open(self, voice: str, system: str) -> LiveSession:  # pragma: no cover - 只在 Mac 上
+    async def open(self, voice: str, system: str) -> LiveSession:  # pragma: no cover - Mac only / Mac のみ
         import websockets
 
         headers = {"Authorization": f"Bearer {self._auth.token()}"}
@@ -258,24 +331,36 @@ class LiveReader:
             )
         except websockets.InvalidStatus as e:
             if e.response.status_code == 429:
-                raise RateLimited("Live 回 429，停下") from None
-            raise ModelCallFailed(f"Live 握手 HTTP {e.response.status_code}（消息不记）") from None
+                raise RateLimited("Live returned 429; stopping / Live が 429 を返したので止める") from None
+            code = e.response.status_code
+            raise ModelCallFailed(
+                f"Live handshake HTTP {code} (message not logged) / "
+                f"Live のハンドシェイク HTTP {code}（メッセージは記録しない）"
+            ) from None
         except (OSError, TimeoutError):
-            raise ModelCallFailed("Live 连不上（消息不记）") from None
+            raise ModelCallFailed(
+                "Can't connect to Live (message not logged) / Live に接続できない（メッセージは記録しない）"
+            ) from None
         session = LiveSession(ws)
         await ws.send(json.dumps(self.setup(voice, system), ensure_ascii=False))
         try:
             first = await session._next(SETUP_TIMEOUT_S)
         except (TimeoutError, ReadFailed):
             await session.close()
-            raise ModelCallFailed("Live 会话没建起来（消息不记）") from None
+            raise ModelCallFailed(
+                "Live session not set up (message not logged) / "
+                "Live のセッションが確立できなかった（メッセージは記録しない）"
+            ) from None
         if "setupComplete" not in first:
             await session.close()
-            raise ModelCallFailed("Live 会话没建起来：第一条消息不是 setupComplete")
+            raise ModelCallFailed(
+                "Live session not set up: the first message isn't setupComplete / "
+                "Live のセッションが確立できなかった：最初のメッセージが setupComplete ではない"
+            )
         return session
 
 
-# —— 真的：补转写 ——
+# —— Real: transcript backfill / 本物：文字起こしの補完 ——
 
 
 @dataclass
@@ -284,7 +369,7 @@ class RestTranscriber:
     regional: bool
     model: str = TRANSCRIBE_MODEL
 
-    async def transcribe(self, pcm: bytes) -> Heard:  # pragma: no cover - 只在 Mac 上
+    async def transcribe(self, pcm: bytes) -> Heard:  # pragma: no cover - Mac only / Mac のみ
         data = base64.b64encode(audio.wav(pcm)).decode("ascii")
         body = {
             "contents": [
@@ -299,12 +384,12 @@ class RestTranscriber:
         return Heard(got.text.strip(), got.usage, cost_usd(self.model, got.usage, regional=self.regional))
 
 
-def real_models(env: Mapping[str, str]) -> tuple[LiveReader, RestTranscriber]:  # pragma: no cover - 只在 Mac 上
+def real_models(env: Mapping[str, str]) -> tuple[LiveReader, RestTranscriber]:  # pragma: no cover - Mac only / Mac のみ
     from zoujin_backend.models.vertex import AdcAuth, vertex_env
 
     project, location = vertex_env(env)
     if TRANSCRIBE_MODEL not in PRICES:
-        raise ConfigError(f"config.PRICES 里没有 {TRANSCRIBE_MODEL}")
+        raise ConfigError(f"{TRANSCRIBE_MODEL} is not in config.PRICES / config.PRICES に {TRANSCRIBE_MODEL} がない")
     auth = AdcAuth()
     live_location = env.get(LIVE_LOCATION_ENV) or LIVE_LOCATION
     reader = LiveReader(project, live_location, auth)
@@ -312,7 +397,7 @@ def real_models(env: Mapping[str, str]) -> tuple[LiveReader, RestTranscriber]:  
     return reader, transcriber
 
 
-# —— 假的 ——
+# —— Fake / 偽物 ——
 
 FAULTS = ("truncated", "double", "long", "silent", "error", "rate_limit")
 FAKE_SEC_PER_MORA = 0.13
@@ -335,26 +420,37 @@ def _silence(seconds: float) -> array[int]:
 
 @dataclass
 class FakeReader:
-    """faults：送给 Live 的文字 → 第几次读到这句时出什么问题（列表按次序用，None = 正常）。
-    rate_limit_at：整个跑里第几次照读（从 1 起）回 429。"""
+    """faults: text sent to Live → what goes wrong on the nth read of that line (the list is used in order, None =
+    normal). rate_limit_at: the read-aloud call (counting from 1 across the whole run) that returns 429.
+
+    faults：Live に送る文字 → そのセリフを何回目に読んだときに何が起きるか（リストを順に使い、None = 正常）。
+    rate_limit_at：実行全体で何回目（1 から数える）の読み上げで 429 を返すか。
+    """
 
     faults: dict[str, list[str | None]] = field(default_factory=dict)
     rate_limit_at: int | None = None
     calls: int = 0
     reads: dict[str, int] = field(default_factory=dict)
-    sessions: list[tuple[str, str]] = field(default_factory=list)  # (声音, 系统指令)，测试看分组
-    said: dict[str, str] = field(default_factory=dict)  # 声音的 sha256 → 「说了」什么（给假的补转写）
+    # (voice, system instruction); tests check the grouping / （声、システム指示）。テストがグループ分けを確認する
+    sessions: list[tuple[str, str]] = field(default_factory=list)
+    # Audio sha256 → what it "said" (for the fake transcript backfill)
+    # 音声の sha256 → 何を「言った」か（偽の文字起こし用）
+    said: dict[str, str] = field(default_factory=dict)
 
     async def open(self, voice: str, system: str) -> FakeReaderSession:
         self.sessions.append((voice, system))
         return FakeReaderSession(self)
 
     def speak(self, sent: str) -> Spoken:
-        """照读时 sent 是「」括起来的台词：按括号里的文字读；自由对话时按问题本身长短「回答」。"""
+        """When reading aloud, sent is a line in 「」: read the text inside the brackets; in free talk, "answer" with a
+        length based on the question itself.
+
+        読み上げでは sent は「」で囲んだセリフなので、括弧の中の文字を読む。自由会話では質問そのものの長さで「答える」。
+        """
         text = sent[1:-1] if sent.startswith("「") and sent.endswith("」") else sent
         self.calls += 1
         if self.rate_limit_at is not None and self.calls == self.rate_limit_at:
-            raise RateLimited("假的 Live 回 429")
+            raise RateLimited("Fake Live returned 429 / 偽 Live が 429 を返した")
         n = self.reads.get(text, 0)
         self.reads[text] = n + 1
         plan = self.faults.get(text, [])
@@ -362,9 +458,9 @@ class FakeReader:
         speech = max(0.2, mora(text) * FAKE_SEC_PER_MORA)
         said = text
         if fault == "error":
-            raise ReadFailed("假的 Live：这一轮没读成")
+            raise ReadFailed("Fake Live: this turn wasn't read / 偽 Live：このターンは読めなかった")
         if fault == "rate_limit":
-            raise RateLimited("假的 Live 回 429")
+            raise RateLimited("Fake Live returned 429 / 偽 Live が 429 を返した")
         if fault == "silent":
             a = _silence(1.0)
         elif fault == "truncated":
@@ -397,7 +493,9 @@ class FakeReaderSession:
 @dataclass
 class FakeTranscriber:
     reader: FakeReader
-    wrong: dict[str, str] = field(default_factory=dict)  # 原来「说了」什么 → 补转写写成什么（读错）
+    # What was originally "said" → what the transcript backfill writes instead (misreading)
+    # もともと何を「言った」か → 文字起こしの補完で何と書くか（読み誤り）
+    wrong: dict[str, str] = field(default_factory=dict)
     calls: int = 0
 
     async def transcribe(self, pcm: bytes) -> Heard:

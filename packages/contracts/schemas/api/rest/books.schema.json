@@ -54,7 +54,7 @@
           "$ref": "../common.schema.json#/$defs/AssetPath"
         }
       },
-      "description": "只列明确配置的已制作书籍，不因发现世界草稿就自动开放；availability 由可加载资源和开放身份决定。"
+      "description": "Lists only explicitly configured, finished books; a book is not opened automatically just because a world draft is found. availability is decided by loadable assets and open roles. / 明示的に設定された制作済みの本だけを列挙する。世界の草稿が見つかっただけで自動的に公開はしない。availability は読み込めるリソースと公開されている身分で決まる。"
     },
     "BooksResponse": {
       "title": "BooksResponse",

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "api/rest/me.schema.json",
   "title": "GET /v1/me",
-  "description": "当前账号、今天的额度和进行中的局（第 1 节）",
+  "description": "The current account, today's quota and the playthrough in progress (section 1) / 現在のアカウント、今日の利用枠、進行中のプレイ（第 1 節）",
   "x-endpoint": {
     "method": "GET",
     "path": "/v1/me",
@@ -46,7 +46,7 @@
           }
         },
         "activePlaythrough": {
-          "description": "没有进行中的局时为 null",
+          "description": "null when there is no playthrough in progress / 進行中のプレイがないときは null",
           "anyOf": [
             {
               "$ref": "../common.schema.json#/$defs/ActivePlaythrough"

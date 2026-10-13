@@ -52,7 +52,7 @@
           "minLength": 1
         }
       },
-      "description": "当前账号唯一的进行中体验，按该局锁定的书和世界版本恢复。"
+      "description": "The current account's single experience in progress, resumed with the book and world version locked for that playthrough. / 現在のアカウントで唯一の進行中の体験。そのプレイで固定された本と世界のバージョンで再開する。"
     },
     "LibraryPendingEnding": {
       "title": "LibraryPendingEnding",
@@ -93,7 +93,7 @@
           "$ref": "../../data/common.schema.json#/$defs/RecordedAt"
         }
       },
-      "description": "已结束、尾声尚未落库；必须以生成中展示，不能当成已完成结局。"
+      "description": "Finished, but the epilogue has not been stored yet; it must be shown as generating and must not be treated as a completed ending. / 終了したが、エピローグはまだ保存されていない。生成中として表示しなければならず、完了したエンディングとして扱ってはならない。"
     },
     "LibraryEnding": {
       "title": "LibraryEnding",
@@ -146,7 +146,7 @@
           "$ref": "../../data/ending.schema.json#/$defs/Ending/properties/card/properties/subtitle"
         }
       },
-      "description": "只来自该账号 status=ended 且已落库的 endings；不包含未体验的结局和内部因果、变量。"
+      "description": "Only from this account's endings with status=ended that have been stored; does not include endings not yet experienced, or internal causality and variables. / このアカウントの status=ended で保存済みの endings からのみ取る。未体験のエンディングや、内部の因果と変数は含まない。"
     },
     "LibraryResponse": {
       "title": "LibraryResponse",

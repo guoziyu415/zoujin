@@ -1,24 +1,55 @@
-"""`zoujin-voice`：预录句的生成（B-6 卡「生成脚本」）。
+"""`zoujin-voice`: generating the pre-recorded lines (B-6 card "generation script").
 
-    uv run zoujin-voice                       # 假模型：合成的声音，看流程和输出（CI、项目线程）
-    # 真模型：只在 zg 的 Mac 上。先不带 --confirm 跑一次，看条数、遍数和预计花费；在已批的范围内再带 --confirm
-    ZJ_MODEL=real ZJ_LEDGER=<账本> ZJ_VERTEX_PROJECT=… ZJ_VERTEX_LOCATION=… \\
-        uv run --all-packages --extra real zoujin-voice --max-google-usd <Google 那本账的总上限> [--max-usd 1] --confirm
-    uv run zoujin-voice --resume out/b6/<时间> [--only <键> …]  # 都读过了就不调用，重挑、重出 release
+`zoujin-voice`：事前収録セリフの生成（B-6 カード「生成スクリプト」）。
 
-- 每句读 3 遍、相槌 6 遍（每遍一条会话，不在同一条会话里连读）；同一遍里，声音和系统指令相同的句子在同一条会话里
-  一句一轮。每读完一句马上补转写。串行，遇到第一个 429 就停；账本到上限（总上限，或这一次跑的上限 `--max-usd`，
-  默认 $1）就停。
-- 输出在 `out/b6/<时间>/`：`takes/`（每遍的原始 WAV 和检查用的数字，留在 Mac）、`ref/`（对照用的自由对话）、
-  `release/`（选中的 `.m4a`、`voices.json`、`audit.md`、`ref/`）和 `release` 的 zip，最后打印 zip 的 sha256。
-  release 里的句子调到说话人的目标响度（源文件的 `loudness`），真峰值压到 −1 dBTP 以下；音量不进签名，改了只重出。
-- `--resume <目录>` 接着跑，读过的不再花钱；源文件改了的句子（声音、说明、文字变了）自动重读。`--only` 只重读给定的
-  句子（录音 ID 或键，旧的几遍挪进 `takes/discarded/`），清单照样按全部句子重出。
-- 源文件写了 6 句的人物都录（B-6b：七个人）；世界模型里此刻不能对话的，manifest 不给。`--world` 换世界模型（例
-  `1.0.0-draft`）：读过的不再读；没有固定演出的世界模型，清单里也没有固定演出。
-- 日志和账里不写台词的文字，只写键、条数、长度和花费；`audit.md` 里有选中那遍和 ref 的补转写（我们自己的台词稿和对
-  固定问题的回答，不是玩家的话）。
-- 退出码：0 跑完；2 配置不对；3 到上限或 429 停下（`--resume` 接着跑）；130 Ctrl-C。
+    # Fake models: synthesized audio, to see the flow and output (CI, project threads)
+    # 偽モデル：合成した音声で流れと出力を見る（CI、プロジェクトスレッド）
+    uv run zoujin-voice
+    # Real models: only on zg's Mac. First run without --confirm to see the counts, takes and estimated cost; then
+    # run with --confirm within the approved budget
+    # 本物のモデル：zg の Mac のみ。まず --confirm なしで一度実行し、本数・テイク数・見積もり費用を見る。承認済みの
+    # 範囲内で --confirm を付けて実行する
+    ZJ_MODEL=real ZJ_LEDGER=<ledger> ZJ_VERTEX_PROJECT=… ZJ_VERTEX_LOCATION=… \\
+        uv run --all-packages --extra real zoujin-voice --max-google-usd <Google total cap> [--max-usd 1] --confirm
+    # If everything is already read there are no calls: re-pick and re-emit the release
+    # すべて読み済みなら呼び出さず、選び直して release を出し直す
+    uv run zoujin-voice --resume out/b6/<time> [--only <key> …]
+
+- Each line is read 3 times, aizuchi 6 times (one session per take, never reading in a row within one session); within
+  a take, lines with the same voice and system instruction share a session, one line per turn. Each line is
+  transcribed right after it is read. Serial; stops at the first 429, and stops when the ledger reaches a cap (the
+  total cap, or this run's cap `--max-usd`, default $1).
+- Output goes to `out/b6/<time>/`: `takes/` (each take's raw WAV and the numbers used by the checks, kept on the Mac),
+  `ref/` (free talk for comparison), `release/` (the chosen `.m4a`, `voices.json`, `audit.md`, `ref/`) and a zip of
+  `release`, finally printing the zip's sha256. Lines in the release are brought to the speaker's target loudness (the
+  source file's `loudness`) with the true peak held below −1 dBTP; volume is not part of the signature, so changing it
+  only means re-emitting.
+- `--resume <dir>` continues a run, without paying again for what was read; lines whose source changed (voice,
+  direction, text) are re-read automatically. `--only` re-reads only the given lines (recording ID or key; the old takes
+  move into `takes/discarded/`), and the manifest is still re-emitted for all lines.
+- Every character with 6 lines in the source file is recorded (B-6b: seven people); those who can't be talked to in
+  the world model right now are left out of the manifest. `--world` switches the world model (e.g. `1.0.0-draft`): what
+  was read isn't read again; with a world model without set pieces, the manifest has no set pieces either.
+- Logs and the ledger never contain line text, only keys, counts, lengths and costs; `audit.md` has the transcripts of
+  the chosen takes and the refs (our own script and answers to fixed questions, not the player's words).
+- Exit codes: 0 done; 2 bad configuration; 3 stopped at a cap or on 429 (continue with `--resume`); 130 Ctrl-C.
+
+- 各句は 3 回、相槌は 6 回読む（1 テイクに 1 セッションで、同じセッションで続けて読まない）。同じテイクの中では、声と
+  システム指示が同じ句を同じセッションで 1 句 1 ターンで読む。1 句読むごとにすぐ文字起こしする。直列で実行し、最初の
+  429 で止まる。台帳が上限（総上限、またはこの実行の上限 `--max-usd`、デフォルト $1）に達したら止まる。
+- 出力は `out/b6/<時刻>/`：`takes/`（各テイクの元の WAV と検査用の数値。Mac に残す）、`ref/`（比較用の自由会話）、
+  `release/`（選んだ `.m4a`、`voices.json`、`audit.md`、`ref/`）と `release` の zip。最後に zip の sha256 を表示する。
+  release の句は話者の目標ラウドネス（元ファイルの `loudness`）に合わせ、真のピークを −1 dBTP 未満に抑える。音量は
+  署名に入らないので、変えたら出し直すだけでよい。
+- `--resume <ディレクトリ>` で続きを実行し、読み済みのものに再びお金はかけない。元ファイルが変わった句（声・説明・文字が
+  変わったもの）は自動で読み直す。`--only` は指定した句（録音 ID またはキー。古いテイクは `takes/discarded/` に移す）
+  だけを読み直し、リストはそれでも全句について出し直す。
+- 元ファイルに 6 句が書いてある人物はすべて録る（B-6b：7 人）。世界モデルで今は会話できない人は manifest に出さない。
+  `--world` で世界モデルを切り替える（例 `1.0.0-draft`）：読み済みのものは読まない。固定演出のない世界モデルでは、リスト
+  にも固定演出はない。
+- ログと台帳にはセリフの文字を書かず、キー・本数・長さ・費用だけを書く。`audit.md` には選んだテイクと ref の文字起こしが
+  ある（自分たちの台本と決まった質問への答えで、プレイヤーの言葉ではない）。
+- 終了コード：0 完了。2 設定の誤り。3 上限または 429 で停止（`--resume` で続ける）。130 Ctrl-C。
 """
 
 from __future__ import annotations
@@ -59,7 +90,11 @@ from zoujin_backend.voice.spec import SLOTS, Plan, Recording, Ref, SpecError, pl
 Json = Any
 
 TAKES = 3
-AIZUCHI_TAKES = 6  # 相槌短、过的少（Mac 第二次真跑 15 遍全不过）：一次读 6 遍，一遍才 $0.0013
+# Aizuchi are short and few pass (in the second real run on the Mac all 15 takes failed): read 6 takes at once, at
+# only $0.0013 a take
+# 相槌は短く合格が少ない（Mac での 2 回目の本番実行では 15 テイクすべて不合格）：一度に 6 テイク読む。1 テイクわずか
+# $0.0013
+AIZUCHI_TAKES = 6
 
 
 def takes_of(r: Recording) -> int:
@@ -72,25 +107,66 @@ MANIFEST = "api/rest/manifest.schema.json"
 
 
 def parse(argv: Sequence[str]) -> argparse.Namespace:
-    p = argparse.ArgumentParser(prog="zoujin-voice", description="B-6：预录句的生成（照读三遍、自动检查、声音清单）")
-    p.add_argument("--book", default="hashire-merosu")
-    p.add_argument("--world", help="世界模型的版本目录（worlds/<book>/<这个>），默认用源文件的 world")
-    p.add_argument("--out", type=Path, default=Path("out") / "b6", help="新跑的上一级目录（默认 out/b6）")
-    p.add_argument("--resume", type=Path, help="接着跑的目录（out/b6/<时间>）")
-    p.add_argument(
-        "--only", nargs="+", default=[], help="只重读这几句：录音 ID（melos-aizuchi-1）或键（piece.gate-taken/2）"
+    p = argparse.ArgumentParser(
+        prog="zoujin-voice",
+        description="B-6: generate the pre-recorded lines (three read-aloud takes, automatic checks, voice manifest) / "
+        "B-6：事前収録セリフの生成（3 テイクの読み上げ、自動検査、音声マニフェスト）",
     )
-    p.add_argument("--max-usd", type=float, default=1.0, help="这一次跑（含 --resume 接着跑的）的上限，默认 $1")
-    p.add_argument("--max-google-usd", type=float, help="真模型：Google 那本账的总上限（含账本里已有的）")
-    p.add_argument("--confirm", action="store_true", help="真模型：看过预计花费，确认要调用")
+    p.add_argument("--book", default="hashire-merosu")
+    p.add_argument(
+        "--world",
+        help="World model version directory (worlds/<book>/<this>); defaults to the source file's world / "
+        "世界モデルのバージョンディレクトリ（worlds/<book>/<これ>）。デフォルトは元ファイルの world",
+    )
+    p.add_argument(
+        "--out",
+        type=Path,
+        default=Path("out") / "b6",
+        help="Parent directory of a new run (default out/b6) / 新しい実行の親ディレクトリ（デフォルト out/b6）",
+    )
+    p.add_argument(
+        "--resume",
+        type=Path,
+        help="Directory of the run to continue (out/b6/<time>) / 続きを実行するディレクトリ（out/b6/<時刻>）",
+    )
+    p.add_argument(
+        "--only",
+        nargs="+",
+        default=[],
+        help="Re-read only these lines: recording ID (melos-aizuchi-1) or key (piece.gate-taken/2) / "
+        "これらの句だけ読み直す：録音 ID（melos-aizuchi-1）またはキー（piece.gate-taken/2）",
+    )
+    p.add_argument(
+        "--max-usd",
+        type=float,
+        default=1.0,
+        help="Cap for this run (including continuations with --resume), default $1 / "
+        "この実行（--resume での続きを含む）の上限。デフォルト $1",
+    )
+    p.add_argument(
+        "--max-google-usd",
+        type=float,
+        help="Real models: total cap on the Google ledger (including what it already holds) / "
+        "本物のモデル：Google 台帳の総上限（台帳に既にある分を含む）",
+    )
+    p.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Real models: you've seen the estimated cost and confirm the calls / "
+        "本物のモデル：見積もり費用を見たうえで呼び出しを承認する",
+    )
     return p.parse_args(argv)
 
 
-# —— 一次跑的目录 ——
+# —— A run's directory / 1 回の実行のディレクトリ ——
 
 
 def sig(voice: str, system: str, spoken: str) -> str:
-    """一句录音的内容签名：声音、系统指令、送给 Live 的文字。源文件改了，签名就变，旧的几遍作废。"""
+    """Content signature of a recording: voice, system instruction, and the text sent to Live. When the source file
+    changes, the signature changes and the old takes are void.
+
+    録音の内容の署名：声、システム指示、Live に送る文字。元ファイルが変わると署名が変わり、古いテイクは無効になる。
+    """
     return hashlib.sha256(json.dumps([voice, system, spoken], ensure_ascii=False).encode()).hexdigest()[:16]
 
 
@@ -98,7 +174,9 @@ def sig(voice: str, system: str, spoken: str) -> str:
 class Run:
     root: Path
     plan: Plan
-    item: str  # 账本里记在哪一项下（这一次跑的上限按它算）
+    # The ledger item it is recorded under (this run's cap is computed from it)
+    # 台帳のどの項目に記録するか（この実行の上限はこれで計算する）
+    item: str
 
     @property
     def takes(self) -> Path:
@@ -123,7 +201,11 @@ class Run:
         tmp.replace(path)
 
     def done(self, r: Recording, n: int) -> bool:
-        """这一遍读过、补转写过（或这一轮出错记下了），而且是照现在的源文件读的。"""
+        """This take has been read and transcribed (or the turn's error was recorded), from the current source file.
+
+        このテイクは読み済みで文字起こしも済み（またはこのターンのエラーを記録済み）で、しかも今の元ファイルどおりに
+        読んだもの。
+        """
         m = self.take_meta(r.id, n)
         return m is not None and m.get("sig") == sig(r.speaker.voice, r.system, r.spoken) and m.get("complete") is True
 
@@ -137,7 +219,10 @@ class Run:
         )
 
     def discard(self, r: Recording) -> None:
-        """--only：旧的几遍挪到 takes/discarded/<时间>/，不删（留在 Mac 上对照）。"""
+        """--only: move the old takes to takes/discarded/<time>/ without deleting them (kept on the Mac to compare).
+
+        --only：古いテイクを takes/discarded/<時刻>/ に移し、削除しない（Mac に残して比べる）。
+        """
         dest = self.takes / "discarded" / time.strftime("%Y%m%d-%H%M%S")
         for p in sorted(self.takes.glob(f"{r.id}.*")):
             dest.mkdir(parents=True, exist_ok=True)
@@ -149,10 +234,15 @@ def open_run(args: argparse.Namespace, p: Plan) -> Run:
         root = args.resume
         meta_path = root / "run.json"
         if not meta_path.is_file():
-            raise ConfigError(f"{root} 不是 zoujin-voice 的输出目录（没有 run.json）")
+            raise ConfigError(
+                f"{root} is not a zoujin-voice output directory (no run.json) / "
+                f"{root} は zoujin-voice の出力ディレクトリではない（run.json がない）"
+            )
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
         if meta["book"] != p.book:
-            raise ConfigError(f"{root} 是 {meta['book']} 的，不是 {p.book}")
+            raise ConfigError(
+                f"{root} belongs to {meta['book']}, not {p.book} / {root} は {p.book} ではなく {meta['book']} のもの"
+            )
         return Run(root, p, meta["item"])
     stamp = time.strftime("%Y%m%d-%H%M%S")
     root = args.out / stamp
@@ -163,13 +253,15 @@ def open_run(args: argparse.Namespace, p: Plan) -> Run:
     return Run(root, p, item)
 
 
-# —— 要做的事和预计花费 ——
+# —— Work to do and estimated cost / やることと見積もり費用 ——
 
 
 @dataclass
 class Work:
-    reads: list[tuple[int, Recording]]  # (第几遍, 录音)：要照读的
-    transcribe_only: list[tuple[int, Recording]]  # 读过了、还没补转写的
+    # (take, recording): to be read aloud / （テイク番号、録音）：読み上げるもの
+    reads: list[tuple[int, Recording]]
+    # Read but not yet transcribed / 読み済みでまだ文字起こししていないもの
+    transcribe_only: list[tuple[int, Recording]]
     refs: list[Ref]
 
     @property
@@ -178,7 +270,10 @@ class Work:
 
 
 def pending(run: Run, recs: Sequence[Recording], with_refs: bool, redo: frozenset[str] = frozenset()) -> Work:
-    """redo：--only 的录音 ID，读过的也全部重读。"""
+    """redo: the --only recording IDs, re-read entirely even if already read.
+
+    redo：--only の録音 ID。読み済みでもすべて読み直す。
+    """
     reads: list[tuple[int, Recording]] = []
     only: list[tuple[int, Recording]] = []
     for n in range(1, AIZUCHI_TAKES + 1):
@@ -194,18 +289,28 @@ def pending(run: Run, recs: Sequence[Recording], with_refs: bool, redo: frozense
 
 
 def sessions(reads: Sequence[tuple[int, Recording]]) -> list[tuple[int, tuple[str, str], list[Recording]]]:
-    """按（第几遍, 声音和系统指令）分会话，保持清单的先后。"""
+    """Split into sessions by (take, voice and system instruction), keeping the list order.
+
+    （テイク番号、声とシステム指示）でセッションに分け、リストの順序は保つ。
+    """
     out: dict[tuple[int, tuple[str, str]], list[Recording]] = {}
     for n, r in reads:
         out.setdefault((n, r.group), []).append(r)
     return [(n, g, rs) for (n, g), rs in out.items()]
 
 
-MARGIN = 1.3  # 预计花费再加 30% 余量（同 data/cost 的估算表）
+# Add a 30% margin to the estimated cost (same as the data/cost estimate sheet)
+# 見積もり費用にさらに 30% の余裕を足す（data/cost の見積もり表と同じ）
+MARGIN = 1.3
 
 
 def estimate(work: Work, *, regional: bool) -> float:
-    """打印给人看的预计花费：逐轮估（偏高）的合计再乘余量。调用前判上限用的是逐轮的估计，不乘。"""
+    """The estimated cost printed for people: the sum of the per-turn estimates (erring high) times the margin. The cap
+    check before each call uses the per-turn estimate without the margin.
+
+    人に見せる見積もり費用：ターンごとの見積もり（高め）の合計に余裕を掛けたもの。呼び出し前の上限判定はターンごとの
+    見積もりを使い、余裕は掛けない。
+    """
     return MARGIN * _estimate(work, regional=regional)
 
 
@@ -221,22 +326,26 @@ def _estimate(work: Work, *, regional: bool) -> float:
             history_chars += len(r.spoken) * 2
     for _, r in work.transcribe_only:
         usd += transcribe_estimate(checks.mora(r.spoken) * 0.25 + 1.0, regional=regional)
-    for x in work.refs:  # 自由对话一句按 15 秒估
+    for x in work.refs:  # Free talk: 15 seconds per line / 自由会話は 1 句 15 秒で見積もる
         usd += live_turn_estimate(x.system, x.question, 15.0, 200) + transcribe_estimate(15.0, regional=regional)
     return usd
 
 
 def describe(run: Run, recs: Sequence[Recording], work: Work, usd: float) -> str:
     keys = sum(len(r.keys) for r in recs)
+    book, wv = run.plan.book, run.plan.world_version
+    reads, transcribe, refs = len(work.reads), len(work.reads) + len(work.transcribe_only), len(work.refs)
     return (
-        f"{run.plan.book}（{run.plan.world_version}）：{len(recs)} 条录音（{keys} 个键），"
-        f"每条 {TAKES} 遍（相槌 {AIZUCHI_TAKES} 遍）；"
-        f"这次要照读 {len(work.reads)} 轮、补转写 {len(work.reads) + len(work.transcribe_only)} 次，"
-        f"对照的自由对话 {len(work.refs)} 句。预计花费（Google，偏高，含 30% 余量）≈ ${usd:.2f}"
+        f"{book} ({wv}): {len(recs)} recordings ({keys} keys), {TAKES} takes each ({AIZUCHI_TAKES} for aizuchi); "
+        f"this run reads aloud {reads} turns, transcribes {transcribe} times, and {refs} free-talk lines for "
+        f"comparison. Estimated cost (Google, errs high, incl. 30% margin) ≈ ${usd:.2f} / "
+        f"{book}（{wv}）：録音 {len(recs)} 本（キー {keys} 個）、各 {TAKES} テイク（相槌は {AIZUCHI_TAKES} テイク）。"
+        f"今回は読み上げ {reads} ターン、文字起こし {transcribe} 回、比較用の自由会話 {refs} 句。"
+        f"見積もり費用（Google、高め、30% の余裕込み）≈ ${usd:.2f}"
     )
 
 
-# —— 跑 ——
+# —— Running / 実行 ——
 
 
 @dataclass
@@ -281,10 +390,13 @@ async def generate(run: Run, work: Work, reader: Reader, t: Transcriber, spend: 
                 try:
                     got = await session.read(f"「{r.spoken}」")
                 except ReadFailed as e:
-                    # 可能已经计费了：按预计花费记（宁多记）。这条会话的状态说不清了，关掉、下一句开新的
+                    # It may already have been billed: record the estimated cost (better too much). The session's
+                    # state is unclear now, so close it and open a new one for the next line
+                    # すでに課金されたかもしれない：見積もり費用で記録する（多めに記録するほうがよい）。このセッションの
+                    # 状態はもう分からないので閉じ、次の句から新しいセッションを開く
                     spend.add(KIND_READ, LIVE_MODEL, {}, est)
                     run.write_meta(meta_path, base | {"error": str(e), "complete": True})
-                    print(f"  {r.id} 第 {n} 遍没读成：{e}")
+                    print(f"  {r.id} take {n} not read / テイク {n} 読めず: {e}")
                     await session.close()
                     session = await reader.open(voice, system)
                     history_s, history_chars = 0.0, 0
@@ -296,13 +408,15 @@ async def generate(run: Run, work: Work, reader: Reader, t: Transcriber, spend: 
                 history_s += len(got.pcm) / 2 / audio.RATE
                 history_chars += len(r.spoken) + len(got.live_text)
                 await transcribe_take(run, r, n, t, spend, regional)
-                print(f"  {r.id} 第 {n} 遍：{len(got.pcm) / 2 / audio.RATE:.2f}s")
+                print(f"  {r.id} take {n} / テイク {n}: {len(got.pcm) / 2 / audio.RATE:.2f}s")
         finally:
             await session.close()
     by_speaker: dict[str, list[Ref]] = {}
     for x in work.refs:
         by_speaker.setdefault(x.speaker.id, []).append(x)
-    for refs in by_speaker.values():  # 一个人物一条会话，两问依次问（自由对话）
+    # One session per character, asking the two questions in turn (free talk)
+    # 人物ごとに 1 セッションで、2 つの質問を順に聞く（自由会話）
+    for refs in by_speaker.values():
         session = await reader.open(refs[0].speaker.voice, refs[0].system)
         history_s = 0.0
         try:
@@ -313,7 +427,7 @@ async def generate(run: Run, work: Work, reader: Reader, t: Transcriber, spend: 
                     got = await session.read(x.question)
                 except ReadFailed as e:
                     spend.add(KIND_READ, LIVE_MODEL, {}, est)
-                    print(f"  {x.id} 没读成：{e}（--resume 再试）")
+                    print(f"  {x.id} not read (retry with --resume) / 読めず（--resume で再試行）: {e}")
                     break
                 spend.add(KIND_READ, LIVE_MODEL, got.usage, got.cost)
                 history_s += len(got.pcm) / 2 / audio.RATE
@@ -323,26 +437,30 @@ async def generate(run: Run, work: Work, reader: Reader, t: Transcriber, spend: 
                 heard = await t.transcribe(got.pcm)
                 spend.add(KIND_TRANSCRIBE, TRANSCRIBE_MODEL, heard.usage, heard.cost)
                 run.write_meta(run.refs / f"{x.id}.json", {"question": x.question, "transcript": heard.text})
-                print(f"  {x.id}：{len(got.pcm) / 2 / audio.RATE:.2f}s")
+                print(f"  {x.id}: {len(got.pcm) / 2 / audio.RATE:.2f}s")
         finally:
             await session.close()
 
 
-# —— 检查、挑选、出清单 ——
+# —— Checks, selection, manifest output / 検査・選択・リストの出力 ——
 
 
 @dataclass
 class Chosen:
     rec: Recording
     verdict: checks.Verdict
-    file: str | None = None  # release/ 里的文件名
+    file: str | None = None  # File name in release/ / release/ 内のファイル名
     duration_ms: int | None = None
     mix: Mix | None = None
 
 
 @dataclass(frozen=True)
 class Mix:
-    """构建时的音量：裁好的那段原来多响、目标、调了多少，成品多响、真峰值。"""
+    """Volume at build time: how loud the trimmed clip was, the target, how much it was adjusted, how loud the output
+    is, and its true peak.
+
+    ビルド時の音量：トリムしたクリップの元のラウドネス、目標、調整量、出力のラウドネス、真のピーク。
+    """
 
     before_dbfs: float
     target_dbfs: float | None
@@ -351,7 +469,8 @@ class Mix:
     true_peak_dbtp: float
 
 
-LOUDNESS_TOL_DB = 1.5  # 和同一人物自由对话差在 ±1.5 dB 以内（UX 量测）
+# Within ±1.5 dB of the same character's free talk (UX measurement) / 同じ人物の自由会話との差が ±1.5 dB 以内（UX 計測）
+LOUDNESS_TOL_DB = 1.5
 
 
 def judge_all(run: Run) -> list[Chosen]:
@@ -363,7 +482,7 @@ def judge_all(run: Run) -> list[Chosen]:
             if m is None or not m.get("complete"):
                 continue
             if "error" in m:
-                takes[n] = f"没读成：{m['error']}"
+                takes[n] = f"Not read / 読めなかった: {m['error']}"
                 continue
             pcm = audio.read_wav(run.takes / f"{r.id}.{n}.wav")
             takes[n] = (audio.shape(pcm, pitch=r.aizuchi or r.talk is not None), m.get("transcript"))
@@ -404,13 +523,18 @@ def build_release(run: Run, chosen: list[Chosen], encoder: audio.Encoder, schema
         c.mix = Mix(before, target, gain, enc.loudness_dbfs, enc.true_peak_dbtp)
         if target is not None and abs(enc.loudness_dbfs - target) > LOUDNESS_TOL_DB:
             c.verdict.flags.append(
-                f"调完 {enc.loudness_dbfs:.1f} dBFS，离目标 {target:.1f} 超过 {LOUDNESS_TOL_DB} dB（限幅压下去了？）"
+                f"After adjustment {enc.loudness_dbfs:.1f} dBFS, more than {LOUDNESS_TOL_DB} dB from the target "
+                f"{target:.1f} (held down by the limiter?) / 調整後 {enc.loudness_dbfs:.1f} dBFS で、目標 {target:.1f} "
+                f"から {LOUDNESS_TOL_DB} dB 以上離れている（リミッターで抑えられた？）"
             )
         (rel / c.file).write_bytes(enc.data)
     voices = voices_doc(run.plan, chosen)
     problems = voices_errors(schemas, voices)
     if problems:
-        raise ConfigError("voices.json 不合 manifest 的 Schema：" + "；".join(problems))
+        raise ConfigError(
+            "voices.json doesn't match the manifest Schema / voices.json が manifest の Schema に合わない: "
+            + "; ".join(problems)
+        )
     (rel / "voices.json").write_text(json.dumps(voices, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     refs = []
     for x in run.plan.refs:
@@ -418,7 +542,9 @@ def build_release(run: Run, chosen: list[Chosen], encoder: audio.Encoder, schema
         if not meta.is_file():
             continue
         raw = audio.read_wav(run.refs / f"{x.id}.wav")
-        enc = encoder.encode(audio.trim(raw, audio.shape(raw)))  # 对照用的不调音量，只压真峰值
+        # Comparison clips: no volume adjustment, only the true peak is held down
+        # 比較用は音量を調整せず、真のピークだけ抑える
+        enc = encoder.encode(audio.trim(raw, audio.shape(raw)))
         name = f"{x.id}{encoder.suffix}"
         (rel / "ref").mkdir(exist_ok=True)
         (rel / "ref" / name).write_bytes(enc.data)
@@ -428,7 +554,12 @@ def build_release(run: Run, chosen: list[Chosen], encoder: audio.Encoder, schema
 
 
 def voices_doc(p: Plan, chosen: list[Chosen]) -> Json:
-    """manifest 的两块：人物的 6 句（缺一句这个人物整块不进）和固定演出的键（缺一句只少那个键）。"""
+    """The manifest's two blocks: characters' 6 lines (missing one drops that character's whole block) and set-piece
+    keys (missing one drops only that key).
+
+    manifest の 2 ブロック：人物の 6 句（1 句でも欠ければその人物のブロックごと入れない）と固定演出のキー（1 句欠けても
+    そのキーだけが抜ける）。
+    """
     clips: dict[tuple[str, str], Json] = {}
     for c in chosen:
         if c.file is None or c.duration_ms is None:
@@ -475,60 +606,98 @@ def _cell(text: str | None) -> str:
 def _mix_cells(m: Mix | None) -> str:
     if m is None:
         return "— | — | —"
-    target = "不调" if m.target_dbfs is None else f"{m.target_dbfs:.1f}"
+    target = "no adjustment / 調整なし" if m.target_dbfs is None else f"{m.target_dbfs:.1f}"
     return (
-        f"{m.before_dbfs:.1f} → {m.after_dbfs:.1f} dBFS（{target}） | {m.gain_db:+.1f} dB | {m.true_peak_dbtp:.1f} dBTP"
+        f"{m.before_dbfs:.1f} → {m.after_dbfs:.1f} dBFS ({target}) | {m.gain_db:+.1f} dB | {m.true_peak_dbtp:.1f} dBTP"
     )
 
 
 def audit_md(run: Run, chosen: list[Chosen], voices: Json, refs: list[tuple[Ref, str, str]]) -> str:
     p = run.plan
     passed = [c for c in chosen if c.verdict.chosen is not None]
+    chars = ", ".join(voices["characters"])
+    n_pieces = len(voices["setPieceVoices"])
+    cer, ai_max, ai_file = f"{checks.MAX_CER:.0%}", checks.AIZUCHI_MAX_S, checks.AIZUCHI_FILE_MAX_S
+    ai_pitched, st, rate = (
+        f"{checks.AIZUCHI_MIN_PITCHED:.0%}",
+        f"{checks.TALK_MAX_ST:.0f}",
+        f"{checks.TALK_MAX_RATE:.0%}",
+    )
     lines = [
-        f"# 预录句审查单：{p.book}（{p.world_version}）",
+        f"# Pre-recorded lines audit sheet: {p.book} ({p.world_version}) / "
+        f"事前収録セリフの監査シート：{p.book}（{p.world_version}）",
         "",
-        f"- 跑的目录：`{run.root.name}`；每句 {TAKES} 遍（相槌 {AIZUCHI_TAKES} 遍）；"
-        f"过了的 {len(passed)}/{len(chosen)} 条。",
-        f"- 进声音清单的人物：{', '.join(voices['characters']) or '无'}；"
-        f"固定演出的键 {len(voices['setPieceVoices'])} 个。",
-        "- 检查（backend-design 3.6）：有声长度和几遍的中位数比（一倍以上、一半以下不要），和拍数估的范围比；"
-        f"最后 0.1 秒还有声音算截断；补转写字错率超过 {checks.MAX_CER:.0%} 或原文出现两遍不要。"
-        f"相槌另要有声不超过 {checks.AIZUCHI_MAX_S} 秒、裁好不超过 {checks.AIZUCHI_FILE_MAX_S} 秒、有音高的窗至少 "
-        f"{checks.AIZUCHI_MIN_PITCHED:.0%}；只在字错率上不过、或原始那遍一开头就有声的相槌不扔，只标出来。",
-        f"- 人物的「听不清」「等一下」和同一人物的自由对话比：音高中位差 ±{checks.TALK_MAX_ST:.0f} 半音、语速差 "
-        f"±{checks.TALK_MAX_RATE:.0%} 以内的优先；都不在就挑最近的一遍，标出来。"
-        "语速 = 拍数（估）÷ 不算停顿的有声时间。",
-        "- 音量：有目标响度的说话人（同一人物自由对话的响度）整句调到目标，没有的不动；真峰值都压到 "
-        f"{audio.PEAK_DBFS} dBTP 以下。响度是有声的窗的 RMS（UX 量测的做法）。",
-        "- 补转写是文本模型听音频写的，古语和生僻词常听错（S-071），字错率高的那几遍请听一下原始的那遍再判。",
+        f"- Run directory: `{run.root.name}`; {TAKES} takes per line ({AIZUCHI_TAKES} for aizuchi); "
+        f"{len(passed)}/{len(chosen)} passed.",
+        f"  実行ディレクトリ：`{run.root.name}`。1 句 {TAKES} テイク（相槌は {AIZUCHI_TAKES} テイク）。"
+        f"合格 {len(passed)}/{len(chosen)} 本。",
+        f"- Characters in the voice manifest: {chars or 'none'}; {n_pieces} set-piece keys.",
+        f"  音声マニフェストに入る人物：{chars or 'なし'}。固定演出のキー {n_pieces} 個。",
+        "- Checks (backend-design 3.6): voiced length against the median of the takes (more than double or under half "
+        "is rejected) and against the mora-based range; still voiced in the last 0.1 seconds counts as truncated; a "
+        f"transcript CER over {cer} or the original appearing twice is rejected. Aizuchi also need voiced ≤ {ai_max} "
+        f"seconds, trimmed ≤ {ai_file} seconds and at least {ai_pitched} pitched windows; aizuchi failing only on CER, "
+        "or whose raw take is voiced from the very start, are not discarded, only flagged.",
+        "  検査（backend-design 3.6）：有声の長さを各テイクの中央値と比べ（2 倍以上・半分未満は不採用）、モーラ数による"
+        "範囲とも比べる。最後の 0.1 秒にまだ音があれば途切れとする。文字起こしの文字誤り率が "
+        f"{cer} を超えるもの、原文が 2 回出てくるものは不採用。相槌はさらに有声 {ai_max} 秒以下、トリム後 {ai_file} 秒"
+        f"以下、ピッチのある窓 {ai_pitched} 以上が必要。文字誤り率だけで不合格の相槌や、元のテイクが冒頭から有声の"
+        "相槌は捨てずに印だけ付ける。",
+        f'- A character\'s "unheard" and "wait" lines against the same character\'s free talk: takes within '
+        f"±{st} semitones of median pitch and ±{rate} speech rate are preferred; if none is, the closest take is "
+        "picked and flagged. Speech rate = morae (estimated) ÷ voiced time excluding pauses.",
+        f"  人物の「聞き返し」「待って」は同じ人物の自由会話と比べる：ピッチ中央値の差 ±{st} 半音、話速の差 ±{rate} "
+        "以内を優先し、どれも範囲外なら最も近いテイクを選んで印を付ける。話速 = モーラ数（推定）÷ 間を除いた有声時間。",
+        "- Volume: speakers with a target loudness (the loudness of the same character's free talk) have the whole "
+        f"line brought to the target, others are left alone; the true peak is always held below {audio.PEAK_DBFS} "
+        "dBTP. Loudness is the RMS of the voiced windows (the UX measurement method).",
+        "  音量：目標ラウドネス（同じ人物の自由会話のラウドネス）のある話者はセリフ全体を目標に合わせ、ない話者は"
+        f"そのままにする。真のピークはすべて {audio.PEAK_DBFS} dBTP 未満に抑える。ラウドネスは有声の窓の RMS"
+        "（UX の計測方法）。",
+        "- The transcript is written by a text model listening to the audio and often mishears archaic or rare words "
+        "(S-071); for takes with a high CER, please listen to the raw take before deciding.",
+        "  文字起こしはテキストモデルが音声を聞いて書いたもので、古語や珍しい語をよく聞き誤る（S-071）。文字誤り率の"
+        "高いテイクは、元のテイクを聞いてから判断してほしい。",
         "",
-        "## 要 UX 看的",
+        "## For UX to check / UX が確認するもの",
         "",
     ]
     todo = [c for c in chosen if c.verdict.chosen is None or c.verdict.flags]
     if not todo:
-        lines.append("没有：每句都有过了的一遍，也没有标出来的。")
+        lines.append(
+            "None: every line has a passing take and nothing is flagged. / "
+            "なし：すべての句に合格したテイクがあり、印の付いたものもない。"
+        )
     for c in todo:
-        why = "；".join(c.verdict.flags) if c.verdict.chosen is not None else "几遍都不过，不进清单"
-        lines.append(f"- `{c.rec.id}`（{'、'.join(c.rec.keys)}）「{c.rec.text}」：{why}")
+        if c.verdict.chosen is not None:
+            why = "; ".join(c.verdict.flags)
+        else:
+            why = "No take passed; left out of the manifest / どのテイクも不合格、リストに入れない"
+        lines.append(f"- `{c.rec.id}` ({', '.join(c.rec.keys)}) 「{c.rec.text}」: {why}")
     missing = [sid for sid in p.lines if sid not in voices["characters"]]
     for sid in missing:
+        name = p.speakers[sid].name
         lines.append(
-            f"- {p.speakers[sid].name}（{sid}）的 6 句有没过的，这个人物这次没有 `prerecorded`（前端照没有预录处理）"
+            f"- {name} ({sid}): some of the 6 lines failed, so this character has no `prerecorded` this time (the "
+            f"frontend treats it as having no pre-recorded lines) / {name}（{sid}）の 6 句に不合格のものがあり、"
+            "この人物には今回 `prerecorded` がない（フロントエンドは事前収録なしとして扱う）"
         )
     lines += [
         "",
-        "## 逐句",
+        "## Line by line / 句ごと",
         "",
-        "| 录音 | 键 | 声音 | 原文 | 拍数估的范围 | 各遍的有声长度 | 选中 | 文件 | 长度 "
-        "| 响度：原 → 成品（目标） | 增益 | 真峰值 | 选中那遍和自由对话比 | 选中那遍的补转写 | 不过的原因 |",
+        "| Recording / 録音 | Keys / キー | Voice / 声 | Original / 原文 | Mora-based range / モーラ数による範囲 "
+        "| Voiced length per take / 各テイクの有声の長さ | Chosen / 選択 | File / ファイル | Length / 長さ "
+        "| Loudness: raw → output (target) / ラウドネス：元 → 出力（目標） | Gain / ゲイン | True peak / 真のピーク "
+        "| Chosen take vs free talk / 選んだテイクと自由会話の比較 "
+        "| Chosen take's transcript / 選んだテイクの文字起こし | Why rejected / 不合格の理由 |",
         "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for c in chosen:
         v = c.verdict
         lens = " / ".join("—" if t.speech is None else f"{t.speech:.2f}" for t in v.takes)
         pick = next((t for t in v.takes if t.take == v.chosen), None)
-        why = "<br>".join(f"第 {t.take} 遍：{'；'.join(t.problems)}" for t in v.takes if t.problems)
+        why = "<br>".join(f"take {t.take} / テイク {t.take}: {'; '.join(t.problems)}" for t in v.takes if t.problems)
         lines.append(
             f"| `{c.rec.id}` | {'<br>'.join(c.rec.keys)} | {c.rec.speaker.voice} | {_cell(c.rec.text)} "
             f"| {v.expected[0]:.2f}〜{v.expected[1]:.2f}s | {lens} | {v.chosen or '—'} | {c.file or '—'} "
@@ -536,21 +705,30 @@ def audit_md(run: Run, chosen: list[Chosen], voices: Json, refs: list[tuple[Ref,
             f"| {_cell(pick.talk if pick else None)} | {_cell(pick.transcript if pick else None)} "
             f"| {why or '—'} |"
         )
-    lines += ["", "## 对照用的自由对话（`ref/`，不进声音清单、不进仓库）", ""]
+    lines += [
+        "",
+        "## Free talk for comparison (`ref/`, not in the voice manifest or the repo) / "
+        "比較用の自由会話（`ref/`。音声マニフェストにもリポジトリにも入れない）",
+        "",
+    ]
     if not refs:
-        lines.append("这次没有。")
+        lines.append("None this time. / 今回はなし。")
     for x, name, heard in refs:
         lines.append(
-            f"- `ref/{name}`（{x.speaker.name}，{x.speaker.voice}）问「{x.question}」→ 补转写「{_cell(heard)}」"
+            f"- `ref/{name}` ({x.speaker.name}, {x.speaker.voice}) asked / 質問「{x.question}」 → "
+            f"transcript / 文字起こし「{_cell(heard)}」"
         )
-    lines += ["", "## 系统指令", ""]
+    lines += ["", "## System instructions / システム指示", ""]
     for voice, system in dict.fromkeys(r.group for r in p.recordings):
-        lines += [f"- {voice}：", "", "  ```", *[f"  {s}" for s in system.splitlines()], "  ```"]
+        lines += [f"- {voice}:", "", "  ```", *[f"  {s}" for s in system.splitlines()], "  ```"]
     return "\n".join(lines) + "\n"
 
 
 def zip_release(run: Run) -> tuple[Path, str]:
-    """release/ 打成 zip（文件按名字排、时间固定），返回路径和 sha256。"""
+    """Zip release/ (files sorted by name, fixed timestamps) and return the path and sha256.
+
+    release/ を zip にまとめ（ファイルは名前順、時刻は固定）、パスと sha256 を返す。
+    """
     path = run.root / f"b6-release-{run.root.name}.zip"
     with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
         for f in sorted(run.release.rglob("*")):
@@ -561,29 +739,37 @@ def zip_release(run: Run) -> tuple[Path, str]:
     return path, hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-# —— 入口 ——
+# —— Entry point / エントリーポイント ——
 
 
 def gate(args: argparse.Namespace, env: Mapping[str, str], argv: Sequence[str]) -> list[str]:
-    """真模型要齐的东西；少一样就只打印不调用。"""
+    """What real models need; if anything is missing, only print and don't call.
+
+    本物のモデルに必要なもの。1 つでも欠けていれば表示だけして呼び出さない。
+    """
     missing = []
     if not env.get("ZJ_LEDGER"):
-        missing.append("没设 ZJ_LEDGER（Google 那本账）")
+        missing.append("ZJ_LEDGER not set (the Google ledger) / ZJ_LEDGER が未設定（Google の台帳）")
     if args.max_google_usd is None:
-        missing.append("少 --max-google-usd")
+        missing.append("--max-google-usd missing / --max-google-usd がない")
     if not env.get("ZJ_VERTEX_PROJECT") or not env.get("ZJ_VERTEX_LOCATION"):
-        missing.append("没设 ZJ_VERTEX_PROJECT / ZJ_VERTEX_LOCATION")
+        missing.append(
+            "ZJ_VERTEX_PROJECT or ZJ_VERTEX_LOCATION not set / ZJ_VERTEX_PROJECT または ZJ_VERTEX_LOCATION が未設定"
+        )
     if not args.confirm:
-        missing.append("没带 --confirm")
+        missing.append("--confirm not given / --confirm が付いていない")
     cmd = [x for x in argv if x != "--confirm"]
     names = " ".join(f"{k}=…" for k in ("ZJ_MODEL", "ZJ_LEDGER", "ZJ_VERTEX_PROJECT", "ZJ_VERTEX_LOCATION"))
-    print(f"命令：{names} uv run --all-packages --extra real zoujin-voice {shlex.join(cmd)} --confirm")
+    print(f"Command / コマンド: {names} uv run --all-packages --extra real zoujin-voice {shlex.join(cmd)} --confirm")
     return missing
 
 
 @dataclass
 class Deps:
-    """测试换成假的；None = 按 ZJ_MODEL 建。"""
+    """Tests swap in fakes; None = build according to ZJ_MODEL.
+
+    テストでは偽物に差し替える。None = ZJ_MODEL に従って作る。
+    """
 
     reader: Reader | None = None
     transcriber: Transcriber | None = None
@@ -611,13 +797,17 @@ def main(argv: Sequence[str] | None = None, deps: Deps | None = None, env: Mappi
         work = pending(run, recs, with_refs=not args.only, redo=redo)
         regional = env.get("ZJ_VERTEX_LOCATION", "global") != "global"
         print(describe(run, recs, work, estimate(work, regional=regional)))
-        print(f"这一次跑的上限 ${args.max_usd:.2f}（账本里记在 {run.item} 下，--resume 接着跑的也算进去）")
-        print(f"目录：{run.root}")
+        cap = f"${args.max_usd:.2f}"
+        print(
+            f"Cap for this run {cap} (recorded under {run.item} in the ledger; --resume continuations count too) / "
+            f"この実行の上限 {cap}（台帳では {run.item} の下に記録。--resume での続きも含む）"
+        )
+        print(f"Directory / ディレクトリ: {run.root}")
         reader, transcriber, ledger = deps.reader, deps.transcriber, deps.ledger
         if real and reader is None:
             missing = gate(args, env, argv)
             if missing:
-                print("只打印，不调用：" + "；".join(missing))
+                print("Print only, no calls / 表示のみで呼び出さない: " + "; ".join(missing))
                 return 0
             from zoujin_backend.voice.models import real_models
 
@@ -630,44 +820,70 @@ def main(argv: Sequence[str] | None = None, deps: Deps | None = None, env: Mappi
             fake = FakeReader()
             reader, transcriber = fake, FakeTranscriber(fake)
             if work.reads or work.transcribe_only:
-                print("假模型：合成的声音，不调用任何模型")
-            else:  # --resume 一个都读完了的目录：只按现在的检查重挑、重出 release，用的全是已录的
-                print("都读过了：不调用模型，只用已录的重挑、重出 release")
+                print(
+                    "Fake models: synthesized audio, no model is called / "
+                    "偽モデル：合成した音声で、モデルは一切呼び出さない"
+                )
+            else:
+                # --resume of a directory where everything is read: only re-pick by the current checks and re-emit
+                # the release, all from existing takes
+                # すべて読み済みのディレクトリを --resume：今の検査で選び直して release を出し直すだけで、すべて
+                # 録音済みのものを使う
+                print(
+                    "All takes already read: no model calls, re-picking and re-emitting the release from existing "
+                    "takes / すべて読み済み：モデルは呼び出さず、録音済みのものだけで選び直して release を出し直す"
+                )
         encoder = deps.encoder or audio.FfmpegEncoder()
         schemas = SchemaBook(deps.repo / "packages" / "contracts" / "schemas")
-        # 只打印估价的那次不动旧的几遍：真跑才挪
+        # A run that only prints the estimate leaves the old takes alone: they move only on a real run
+        # 見積もりを表示するだけの実行では古いテイクを動かさない：本当に実行するときだけ移す
         for r in recs if args.only else []:
             run.discard(r)
     except (ConfigError, SpecError, RuntimeError) as e:
-        print(f"zoujin-voice：{e}", file=sys.stderr)
+        print(f"zoujin-voice: {e}", file=sys.stderr)
         return EXIT_CONFIG
     spend = Spend(ledger)
     try:
         asyncio.run(generate(run, work, reader, transcriber, spend, regional))
     except (BudgetStop, RateLimited, ModelCallFailed) as e:
-        print(f"停下（{type(e).__name__}）：{e}", file=sys.stderr)
-        print(f"这次花了 ${spend.usd:.4f}。接着跑：uv run zoujin-voice --resume {run.root}", file=sys.stderr)
+        print(f"Stopped / 停止 ({type(e).__name__}): {e}", file=sys.stderr)
+        resume = f"uv run zoujin-voice --resume {run.root}"
+        print(
+            f"Spent ${spend.usd:.4f} this time. To continue: {resume} / 今回の費用 ${spend.usd:.4f}。続きは：{resume}",
+            file=sys.stderr,
+        )
         return EXIT_STOP
     except KeyboardInterrupt:
-        print(f"中断。接着跑：uv run zoujin-voice --resume {run.root}", file=sys.stderr)
+        resume = f"uv run zoujin-voice --resume {run.root}"
+        print(f"Interrupted. To continue: {resume} / 中断。続きは：{resume}", file=sys.stderr)
         return 130
     left = pending(run, p.recordings, with_refs=False)
     if left.reads or left.transcribe_only:
-        print(f"还有 {len(left.reads)} 遍没读（这次只跑了 --only 的那几句）：先 --resume {run.root} 跑完再出清单")
+        n = len(left.reads)
+        print(
+            f"{n} takes still unread (this run only did the --only lines): finish with --resume {run.root} before "
+            f"the manifest is emitted / まだ読んでいないテイクが {n} 本（今回は --only の句だけ実行）："
+            f"--resume {run.root} で最後まで実行してからリストを出す"
+        )
         return 0
     try:
         chosen = judge_all(run)
         voices = build_release(run, chosen, encoder, schemas)
     except ConfigError as e:
-        print(f"zoujin-voice：{e}", file=sys.stderr)
+        print(f"zoujin-voice: {e}", file=sys.stderr)
         return EXIT_CONFIG
     path, sha = zip_release(run)
     ok = sum(1 for c in chosen if c.verdict.chosen is not None)
-    print(f"这次花了 ${spend.usd:.4f}（{', '.join(f'{k} {v} 次' for k, v in spend.calls.items()) or '没有调用'}）")
-    print(f"过了 {ok}/{len(chosen)} 条；进清单的人物 {len(voices['characters'])} 个，", end="")
-    print(f"固定演出的键 {len(voices['setPieceVoices'])} 个")
-    print(f"审查单：{run.release / 'audit.md'}")
-    print(f"zip：{path}  sha256 {sha}")
+    calls_en = ", ".join(f"{k} ×{v}" for k, v in spend.calls.items()) or "no calls"
+    calls_ja = "、".join(f"{k} {v} 回" for k, v in spend.calls.items()) or "呼び出しなし"
+    print(f"Spent ${spend.usd:.4f} this time ({calls_en}) / 今回の費用 ${spend.usd:.4f}（{calls_ja}）")
+    n_chars, n_keys = len(voices["characters"]), len(voices["setPieceVoices"])
+    print(
+        f"Passed {ok}/{len(chosen)}; {n_chars} characters and {n_keys} set-piece keys in the manifest / "
+        f"合格 {ok}/{len(chosen)} 本。リストに入る人物 {n_chars} 人、固定演出のキー {n_keys} 個"
+    )
+    print(f"Audit sheet / 監査シート: {run.release / 'audit.md'}")
+    print(f"zip: {path}  sha256 {sha}")
     return 0
 
 

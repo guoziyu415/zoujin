@@ -92,7 +92,8 @@ def step_kind(step):
     keys = set(step) - {"to"}
     if len(keys) != 1 or (kind := next(iter(keys))) not in EVAL_MIX:
         raise SystemExit(f"m2_budget.py does not know this kind of step: {sorted(step)}; add it to EVAL_MIX first"
-                         f" / m2_budget.py はこの種類のステップを知らない：{sorted(step)}。先に EVAL_MIX に追加すること")
+                         f" / m2_budget.py はこの種類のステップを知らない：{sorted(step)}。"
+                         "先に EVAL_MIX に追加すること")
     return kind
 
 
@@ -182,12 +183,14 @@ def budget(plan, prices):
          "50 items × 3 already spent; after the J23 and J24 rubric change, retest 2 items × 3"
          " / 50 件 × 3 回は支出済み。J23・J24 の細則変更後に 2 件 × 3 回を再テスト",
          CALIBRATED_USD + 6 * judge_call(prices, False)),
-        ("claude", DATA, "S-2 holdout set (Sonnet, then one Haiku pass) / S-2 ホールドアウトセット（Sonnet、続けて Haiku で 1 回）",
+        ("claude", DATA,
+         "S-2 holdout set (Sonnet, then one Haiku pass) / S-2 ホールドアウトセット（Sonnet、続けて Haiku で 1 回）",
          "50 items × 3, one pass per tier / 50 件 × 3 回、両ティアで 1 回ずつ",
          checks(150, "sonnet", prices) + checks(150, "haiku", prices)),
         ("claude", DATA, "Slice eval: narrator / スライス評価：ナレーター",
          f"{n_cases} cases; one full Sonnet pass, one Haiku comparison pass, {later:g} passes for prompt tuning and"
-         f" gating / {n_cases} ケース。Sonnet で 1 回分、比較用に Haiku で 1 回分、プロンプト調整と合格判定で {later:g} 回分",
+         f" gating / {n_cases} ケース。Sonnet で 1 回分、比較用に Haiku で 1 回分、"
+         f"プロンプト調整と合格判定で {later:g} 回分",
          first[0] + compare[0] + later * chosen[0]),
         ("claude", DATA, "Slice eval: scoring / スライス評価：採点",
          f"{judged} per pass × {n_passes:g} passes, via Batch / 1 回分 {judged} 回 × {n_passes:g} 回分、Batch 経由",
@@ -196,10 +199,11 @@ def budget(plan, prices):
          "11 personas × 2 playthroughs, about 15 turns each, including the AI player"
          " / 11 ペルソナ × 2 プレイ、1 プレイ約 15 ターン、AI プレイヤー込み", 22 * persona),
         ("claude", DATA, "E1 jailbreak sample expansion / E1 脱獄サンプルの拡充", "Very small / ごく少量", 1.0),
-        ("claude", BACKEND, "B-8 mini test / B-8 小テスト", "7 prompts × 20 calls (B-8) / 7 種のプロンプト × 20 回（B-8）",
-         1.0),
+        ("claude", BACKEND, "B-8 mini test / B-8 小テスト",
+         "7 prompts × 20 calls (B-8) / 7 種のプロンプト × 20 回（B-8）", 1.0),
         ("claude", BACKEND,
-         "Check prompt tuning (before the tier is chosen, on Sonnet) / チェックプロンプトの調整（ティア決定前、Sonnet で）",
+         "Check prompt tuning (before the tier is chosen, on Sonnet)"
+         " / チェックプロンプトの調整（ティア決定前、Sonnet で）",
          "10 public items × 3 × 5 rounds / 公開の 10 件 × 3 回 × 5 ラウンド", checks(150, "sonnet", prices)),
         ("claude", BACKEND, "S-5 simulated playthroughs / S-5 模擬プレイ",
          "10 playthroughs × 40 turns, including the AI player / 10 プレイ × 40 ターン、AI プレイヤー込み", 10 * s5),

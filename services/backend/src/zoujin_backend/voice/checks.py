@@ -1,18 +1,42 @@
-"""自动检查和挑选（B-6 卡「自动检查」，backend-design 3.6）。
+"""Automatic checks and take selection (B-6 card "automatic checks", backend-design 3.6).
 
-每句三遍（相槌六遍），逐遍查：
-1. 长度：有声长度比几遍的中位数长一倍以上或不到一半的不要；再和拍数估的长度比（每拍 0.08〜0.25 秒），超出的不要。
-   中位数只取长度在拍数范围里的几遍（两遍坏了时不让坏的拉偏中位数）。
-2. 截断：原始那一遍最后 0.1 秒还有声音的不要。
-3. 读错、读两遍：补转写和原文按字算错误率，超过 20% 的不要；补转写里原文出现两遍的不要。
-4. 相槌另有三条（UX 量测 20261011-121014）：有声范围（`audio.level`，UX 的量法）超过 0.5 秒的不要，裁好的文件超过
-   0.6 秒的不要（补 AAC 帧之前；相槌两头合计只留 0.1 秒），有音高的窗不到四成的（耳语、气声）不要。都不过就再跑
-   一次，不放宽。
-5. 不扔、标给 UX 的：相槌只在字错率上不过（「うむ」听成「うん」），相槌原始那遍一开头就有声（可能切了头）。
-6. 人物的「听不清」「等一下」和同一人物的自由对话比（B-6 卡、UX 量测）：音高中位差 ±2 半音、语速差 ±25% 以内的优先；
-   过了的几遍都不在范围里就挑最近的一遍，标出来留给 zg 听，不再跑。
-过了的里面先挑没有要标的，再挑像自由对话的，再挑有声长度最接近中位数的一遍；都不过，这句不进声音清单，审查单
-写明原因。
+Three takes per line (six for aizuchi), each checked:
+1. Length: reject takes whose voiced length is more than twice or under half the median of the takes; then compare with
+   the mora-based length (0.08–0.25 seconds per mora) and reject those outside it. The median uses only the takes
+   whose length is within the mora range (so two bad takes don't skew it).
+2. Truncation: reject takes still voiced in the last 0.1 seconds of the raw take.
+3. Misreading, reading twice: character error rate of the transcript against the original text; reject over 20%;
+   reject when the original text appears twice in the transcript.
+4. Aizuchi have three more rules (UX measurement 20261011-121014): reject a voiced span (`audio.level`, the UX method)
+   over 0.5 seconds, a trimmed file over 0.6 seconds (before AAC frame padding; aizuchi keep only 0.1 seconds in total
+   at both ends), and fewer than 40% pitched windows (whisper, breathy). If none pass, run again; don't loosen.
+5. Kept but flagged for UX: an aizuchi failing only on character error rate (「うむ」 heard as 「うん」), an aizuchi
+   whose raw take is voiced from the very start (the onset may be cut).
+6. A character's "unheard" and "wait" lines against the same character's free talk (B-6 card, UX measurement): takes
+   within ±2 semitones of median pitch and ±25% speech rate are preferred; if no passing take is within range, the
+   closest is picked and flagged for zg to listen to, without another run.
+Among passing takes, first prefer ones with nothing flagged, then ones like free talk, then the one whose voiced length
+is closest to the median; if none pass, the line stays out of the voice manifest and the audit sheet states why.
+
+自動検査とテイクの選択（B-6 カード「自動検査」、backend-design 3.6）。
+
+1 句につき 3 テイク（相槌は 6 テイク）を、1 つずつ検査する：
+1. 長さ：有声の長さが各テイクの中央値の 2 倍以上、または半分未満のものは不採用。さらにモーラ数から見積もった長さ
+   （1 モーラ 0.08〜0.25 秒）と比べ、外れるものは不採用。中央値は長さがモーラ数の範囲内にあるテイクだけで取る
+   （2 テイクが壊れていても、壊れたものが中央値を引きずらないように）。
+2. 途切れ：元のテイクの最後の 0.1 秒にまだ音があるものは不採用。
+3. 読み誤り、二度読み：文字起こしと原文の文字誤り率が 20% を超えるものは不採用。文字起こしに原文が 2 回出てくるものも
+   不採用。
+4. 相槌にはさらに 3 条件（UX 計測 20261011-121014）：有声範囲（`audio.level`、UX の測り方）が 0.5 秒を超えるもの、
+   トリム後のファイルが 0.6 秒を超えるもの（AAC のフレームを補う前。相槌は両端合わせて 0.1 秒しか残さない）、
+   ピッチのある窓が 4 割未満のもの（ささやき声、息まじり）は不採用。どれも合格しなければもう一度実行し、基準は緩めない。
+5. 捨てずに UX 向けに印を付けるもの：文字誤り率だけで不合格の相槌（「うむ」が「うん」と聞き取られる）、元のテイクが
+   冒頭から有声の相槌（頭が切れているかもしれない）。
+6. 人物の「聞き返し」「待って」は同じ人物の自由会話と比べる（B-6 カード、UX 計測）：ピッチ中央値の差 ±2 半音、
+   話速の差 ±25% 以内のものを優先する。合格したテイクがどれも範囲外なら最も近いものを選び、印を付けて zg が聞けるよう
+   にし、再実行はしない。
+合格したものの中から、まず印のないもの、次に自由会話に近いもの、次に有声の長さが中央値に最も近いものを選ぶ。どれも
+不合格なら、その句は音声マニフェストに入れず、監査シートに理由を書く。
 """
 
 from __future__ import annotations
@@ -26,24 +50,39 @@ from zoujin_backend.voice.audio import Shape, aizuchi_pads, head_voiced, release
 
 MAX_CER = 0.2
 SEC_PER_MORA = (0.08, 0.25)
-# 拍数估的长度另给句中停顿的余量：「、」「。」「！」后面和「……」都会停一下，只放宽上限
+# The mora-based length gets extra allowance for pauses inside the line: there is a short pause after 「、」「。」「！」
+# and at 「……」; only the upper bound is loosened
+# モーラ数から見積もった長さには文中の間の余裕を足す：「、」「。」「！」の後と「……」では少し間が空くので、上限だけ緩める
 PAUSE_ALLOWANCE_S = 0.35
-AIZUCHI_MAX_S = 0.5  # 有声范围（ux-design 16.2 第 4 样）
-AIZUCHI_FILE_MAX_S = 0.6  # 裁好的整个文件
-AIZUCHI_MIN_PITCHED = 0.4  # UX 量过的：过的相槌 0.56〜0.84，气声的「ああ。」0.07，耳语的「ああ、ああ。」0.04
-# 两三拍的短句（「うむ。」「へえ。」）上限按拍数只有 0.5 秒上下，太紧：上限至少给到 0.8 秒（相槌另有 0.5 秒那条管着）
+AIZUCHI_MAX_S = 0.5  # Voiced span (ux-design 16.2 item 4) / 有声範囲（ux-design 16.2 の 4 つ目）
+AIZUCHI_FILE_MAX_S = 0.6  # The whole trimmed file / トリム後のファイル全体
+# Measured by UX: passing aizuchi 0.56–0.84, the breathy 「ああ。」 0.07, the whispered 「ああ、ああ。」 0.04
+# UX の計測値：合格した相槌 0.56〜0.84、息まじりの「ああ。」0.07、ささやき声の「ああ、ああ。」0.04
+AIZUCHI_MIN_PITCHED = 0.4
+# For short lines of two or three morae (「うむ。」「へえ。」) the mora-based upper bound is only about 0.5 seconds, too
+# tight: give the upper bound at least 0.8 seconds (aizuchi are also governed by the 0.5-second rule)
+# 2〜3 モーラの短い句（「うむ。」「へえ。」）はモーラ数による上限が 0.5 秒前後しかなく厳しすぎる：上限は最低 0.8 秒
+# にする（相槌には別に 0.5 秒の条件がある）
 MIN_UPPER_S = 0.8
-TALK_MAX_ST = 2.0  # 和自由对话的音高中位差（半音）
-TALK_MAX_RATE = 0.25  # 语速差（比例）
+TALK_MAX_ST = 2.0  # Median pitch difference from free talk (semitones) / 自由会話とのピッチ中央値の差（半音）
+TALK_MAX_RATE = 0.25  # Speech rate difference (ratio) / 話速の差（比率）
 
 _PUNCT = set(" 　、。，．,.!?！？「」『』（）()・…ー〜~")
-_SMALL = set("ゃゅょぁぃぅぇぉゎャュョァィゥェォヮ")  # 和前一个假名合成一拍（っ、ん、ー各算一拍）
+# Merge with the preceding kana into one mora (っ, ん, ー each count as one mora)
+# 前の仮名と合わせて 1 モーラ（っ、ん、ー はそれぞれ 1 モーラ）
+_SMALL = set("ゃゅょぁぃぅぇぉゎャュョァィゥェォヮ")
 _PAUSES = ("、", "。", "！", "？", "……")
-KANJI_MORA = 2  # 汉字没有读音表，一个字按 2 拍估（音读多是 1〜2 拍）〔估〕
+# No reading table for kanji: each counts as 2 morae (on'yomi are mostly 1–2 morae) [estimate]
+# 漢字の読みの表はないので 1 字 2 モーラと見積もる（音読みはたいてい 1〜2 モーラ）〔推定〕
+KANJI_MORA = 2
 
 
 def mora(text: str) -> float:
-    """拍数（估）：假名一个一拍、拗音的小字不另算、汉字一个按 2 拍、标点不算。"""
+    """Mora count (estimate): one per kana, small kana of yōon not counted separately, 2 per kanji, punctuation not
+    counted.
+
+    モーラ数（推定）：仮名 1 字 1 モーラ、拗音の小書き文字は数えない、漢字 1 字 2 モーラ、句読点は数えない。
+    """
     n = 0.0
     for ch in text:
         if ch in _PUNCT and ch != "ー" or ch in _SMALL:
@@ -57,7 +96,7 @@ def mora(text: str) -> float:
 
 
 def pauses(text: str) -> int:
-    t = text.rstrip("。！？")  # 句末的标点后面不停
+    t = text.rstrip("。！？")  # No pause after sentence-final punctuation / 文末の句読点の後は間を取らない
     return sum(t.count(p) for p in _PAUSES)
 
 
@@ -77,8 +116,12 @@ _VOWEL = {ch: v for v, row in _VOWEL_ROWS.items() for ch in row}
 
 
 def _norm(text: str) -> str:
-    """去掉标点和空格，片假名换平假名，全角半角统一，「ー」换成前一个假名的元音（あー→ああ、へー→へえ）：
-    补转写的写法不一样时不算读错。"""
+    """Drop punctuation and spaces, turn katakana into hiragana, unify full- and half-width, replace 「ー」 with the
+    preceding kana's vowel (あー→ああ, へー→へえ): a transcript spelled differently doesn't count as a misreading.
+
+    句読点と空白を除き、カタカナをひらがなに、全角・半角をそろえ、「ー」を前の仮名の母音に置き換える（あー→ああ、
+    へー→へえ）：文字起こしの書き方が違うだけなら読み誤りとしない。
+    """
     out: list[str] = []
     for ch in unicodedata.normalize("NFKC", text):
         code = ord(ch)
@@ -115,15 +158,30 @@ def read_twice(reference: str, hypothesis: str) -> bool:
 @dataclass
 class TakeCheck:
     take: int
-    speech: float | None = None  # 有声长度（秒）；None = 这遍没录到（出错）
+    # Voiced length (seconds); None = this take wasn't recorded (error)
+    # 有声の長さ（秒）。None = このテイクは録れていない（エラー）
+    speech: float | None = None
     transcript: str | None = None
     cer: float | None = None
     problems: list[str] = field(default_factory=list)
-    soft: list[str] = field(default_factory=list)  # 不扔、标给 UX 的（相槌只在字错率上不过、开头就有声）
-    talk: str | None = None  # 和自由对话比的音高、语速（要比的句子才有）
-    talk_off: float = 0.0  # 离范围多远：两样各除以允许的差取大的，≤ 1 在范围里
-    heard_as: bool = False  # 字错率只靠源文件 heardAs 的写法才过（对原文和读音替换后的都不过）
-    breathy: float = 0.0  # 源文件 breathyOk 的相槌：有音高的比例离下限差多少（挑最不气的一遍）；别的都是 0
+    # Kept but flagged for UX (aizuchi failing only on CER, voiced from the start)
+    # 捨てずに UX 向けに印を付けるもの（文字誤り率だけで不合格の相槌、冒頭から有声）
+    soft: list[str] = field(default_factory=list)
+    # Pitch and speech rate against free talk (only for lines that are compared)
+    # 自由会話と比べたピッチと話速（比べる句だけ）
+    talk: str | None = None
+    # How far outside the range: each of the two divided by its allowed difference, the larger one; ≤ 1 is in range
+    # 範囲からどれだけ外れているか：2 つをそれぞれ許容差で割って大きいほう。1 以下なら範囲内
+    talk_off: float = 0.0
+    # CER passes only thanks to the source file's heardAs spelling (fails against both the original and the reading
+    # substitution)
+    # 文字誤り率が元ファイルの heardAs の書き方でしか合格しない（原文にも読み替え後にも合格しない）
+    heard_as: bool = False
+    # Aizuchi in the source file's breathyOk: how far the pitched ratio is below the minimum (to pick the least breathy
+    # take); 0 for everything else
+    # 元ファイルの breathyOk の相槌：ピッチのある割合が下限からどれだけ足りないか（いちばん息まじりでない
+    # テイクを選ぶ）。それ以外はすべて 0
+    breathy: float = 0.0
 
     @property
     def ok(self) -> bool:
@@ -135,8 +193,8 @@ class Verdict:
     takes: list[TakeCheck]
     median: float | None
     expected: tuple[float, float]
-    chosen: int | None  # 选中的第几遍；None = 都不过
-    flags: list[str] = field(default_factory=list)  # 标给 UX 的（不扔）
+    chosen: int | None  # The chosen take; None = none passed / 選んだテイク。None = どれも不合格
+    flags: list[str] = field(default_factory=list)  # Flagged for UX (kept) / UX 向けの印（捨てない）
 
 
 def judge(
@@ -149,13 +207,22 @@ def judge(
     heard_as: tuple[str, ...] = (),
     breathy_ok: bool = False,
 ) -> Verdict:
-    """takes：第几遍 → (形状, 补转写) 或出错的原因。补转写对原文 `text` 和送给 Live 的 `spoken`（读音替换后）都比，
-    取小的；拍数按 `spoken` 估（替换后的假名更准）。"""
+    """takes: take number → (shape, transcript) or the reason it failed. The transcript is compared with both the
+    original `text` and the `spoken` sent to Live (after reading substitutions), taking the smaller; morae are estimated
+    from `spoken` (the substituted kana are more accurate).
+
+    takes：テイク番号 → （形、文字起こし）または失敗の理由。文字起こしは原文 `text` とも Live に送った `spoken`
+    （読み替え後）とも比べて小さいほうを取る。モーラ数は `spoken` で見積もる（置き換え後の仮名のほうが正確）。
+    """
     lo, hi = expected_range(spoken or text)
     checks: list[TakeCheck] = []
     speeches = [v[0].speech for v in takes.values() if not isinstance(v, str)]
-    # 中位数只取长度在拍数范围里的几遍：三遍里两遍坏了（一遍太长、一遍读两遍）时，三遍的中位数本身就偏了，会把唯一
-    # 好的那遍当成「不到一半」扔掉。范围里一遍都没有才用全部的
+    # The median uses only takes whose length is within the mora range: when two of three takes are bad (one too long,
+    # one read twice), the median of all three is itself skewed and would throw away the only good take as "under
+    # half". Use all takes only when none is in range
+    # 中央値は長さがモーラ数の範囲内にあるテイクだけで取る：3 テイク中 2 つが壊れている（1 つは長すぎ、1 つは
+    # 二度読み）と、3 つの中央値そのものが偏り、唯一の良いテイクを「半分未満」として捨ててしまう。範囲内のものが
+    # 1 つもないときだけ全部を使う
     plausible = [x for x in speeches if lo <= x <= hi]
     median = statistics.median(plausible or speeches) if speeches else None
     for n in sorted(takes):
@@ -166,42 +233,69 @@ def judge(
         s, heard = v
         c = TakeCheck(n, speech=round(s.speech, 3), transcript=heard)
         if s.speech <= 0:
-            c.problems.append("没有声音")
+            c.problems.append("No audio / 音声がない")
         else:
             if median is not None and len(plausible or speeches) >= 2:
                 if s.speech > 2 * median:
-                    c.problems.append(f"比中位数 {median:.2f}s 长一倍以上（读两遍？）")
+                    c.problems.append(
+                        f"More than twice the median {median:.2f}s (read twice?) / "
+                        f"中央値 {median:.2f}s の 2 倍以上（二度読み？）"
+                    )
                 elif s.speech < 0.5 * median:
-                    c.problems.append(f"不到中位数 {median:.2f}s 的一半（截断？）")
+                    c.problems.append(
+                        f"Under half the median {median:.2f}s (truncated?) / "
+                        f"中央値 {median:.2f}s の半分未満（途切れ？）"
+                    )
             if s.speech < lo:
-                c.problems.append(f"比拍数估的下限 {lo:.2f}s 短")
+                c.problems.append(
+                    f"Shorter than the mora-based lower bound {lo:.2f}s / モーラ数から見積もった下限 {lo:.2f}s より短い"
+                )
             elif s.speech > hi:
-                c.problems.append(f"比拍数估的上限 {hi:.2f}s 长")
+                c.problems.append(
+                    f"Longer than the mora-based upper bound {hi:.2f}s / モーラ数から見積もった上限 {hi:.2f}s より長い"
+                )
             if aizuchi:
                 _aizuchi(s, c, breathy_ok)
             if talk is not None:
                 _talk(s, c, talk, mora(spoken or text))
         if s.tail_voiced:
-            c.problems.append("最后 0.1 秒还有声音（截断）")
+            c.problems.append("Still voiced in the last 0.1 s (truncated) / 最後の 0.1 秒にまだ音がある（途切れ）")
         if heard is None:
-            c.problems.append("没有补转写")
+            c.problems.append("No transcript / 文字起こしがない")
         else:
-            refs = [text] if not spoken or spoken == text else [text, spoken]  # 补转写可能写汉字也可能写假名
+            # The transcript may be written in kanji or in kana / 文字起こしは漢字で書くことも仮名で書くこともある
+            refs = [text] if not spoken or spoken == text else [text, spoken]
             plain = min(cer(r, heard) for r in refs)
-            refs += heard_as  # 源文件 heardAs：补转写固定写错的（「ちと」写成「ちょっと」），只对这一句
+            # Source file heardAs: a transcript that is always wrong in the same way (「ちと」 written
+            # 「ちょっと」), for this line only
+            # 元ファイルの heardAs：文字起こしがいつも同じように間違える（「ちと」を「ちょっと」と書く）もの。
+            # この句だけに効く
+            refs += heard_as
             c.cer = min(cer(r, heard) for r in refs)
             c.heard_as = plain > MAX_CER >= c.cer
             if any(read_twice(r, heard) for r in refs):
-                c.problems.append("补转写里原文出现两遍（读两遍）")
+                c.problems.append(
+                    "The original text appears twice in the transcript (read twice) / "
+                    "文字起こしに原文が 2 回出てくる（二度読み）"
+                )
             elif c.cer > MAX_CER:
-                why = f"字错率 {c.cer:.0%} 超过 {MAX_CER:.0%}"
-                # 相槌（「うむ」听成「うん」）多半是补转写的毛病，不是读错：只在字错率上不过时不扔，标给 UX（UX #82）
-                (c.soft if aizuchi else c.problems).append(f"的补转写「{heard}」{why}")
+                why = (
+                    f"Transcript 「{heard}」: CER {c.cer:.0%} over {MAX_CER:.0%} / "
+                    f"文字起こし「{heard}」：文字誤り率 {c.cer:.0%} が {MAX_CER:.0%} を超える"
+                )
+                # For aizuchi (「うむ」 heard as 「うん」) it's mostly the transcript's fault, not a misreading:
+                # when failing only on CER, keep it and flag it for UX (UX #82)
+                # 相槌（「うむ」が「うん」と聞き取られる）はたいてい文字起こしの問題で、読み誤りではない：
+                # 文字誤り率だけで不合格なら捨てずに UX 向けに印を付ける（UX #82）
+                (c.soft if aizuchi else c.problems).append(why)
         checks.append(c)
     passed = [c for c in checks if c.ok]
     chosen = None
     if passed and median is not None:
-        # 没有软问题的优先；其次在自由对话的范围里的，都不在就挑最近的；再其次长度最接近中位数
+        # Prefer no soft problems; next, within the free-talk range, or the closest if none is; next, length closest
+        # to the median
+        # ソフトな問題がないものを優先。次に自由会話の範囲内のもの（なければ最も近いもの）。その次に長さが中央値に最も
+        # 近いもの
         chosen = min(
             passed,
             key=lambda c: (bool(c.soft), c.breathy, max(1.0, c.talk_off), abs((c.speech or 0) - median), c.take),
@@ -209,45 +303,71 @@ def judge(
     flags = []
     if chosen is not None:
         pick = next(c for c in checks if c.take == chosen)
-        flags = [f"相槌{why}，不扔，请听一下" for why in pick.soft]
+        flags = [f"Aizuchi / 相槌: {why} — kept, please listen / 捨てずに残す、聞いて確認を" for why in pick.soft]
         if pick.heard_as:
-            flags.append(f"补转写「{pick.transcript}」只对上 heardAs 的写法才过，请听一下读的是不是原文")
+            flags.append(
+                f"Transcript 「{pick.transcript}」 passes only with the heardAs spelling; please listen to check "
+                f"it reads the original / 文字起こし「{pick.transcript}」は heardAs の書き方でしか合格しない。"
+                "原文どおりに読んでいるか聞いて確認を"
+            )
         if pick.talk_off > 1:
-            flags.append(f"和自由对话比 {pick.talk}，过了的几遍都不在范围里，挑了最近的一遍，请听一下")
+            flags.append(
+                f"Against free talk / 自由会話との比較: {pick.talk} — no passing take is within range, picked the "
+                "closest, please listen / 合格したテイクがどれも範囲外なので最も近いものを選んだ。聞いて確認を"
+            )
     return Verdict(checks, median, (round(lo, 2), round(hi, 2)), chosen, flags)
 
 
 def _talk(s: Shape, c: TakeCheck, talk: tuple[float, float], moras: float) -> None:
     hz, rate = talk
-    parts, off = [], 0.0
+    en: list[str] = []
+    ja: list[str] = []
+    off = 0.0
     if s.pitch_hz:
         st = 12 * math.log2(s.pitch_hz / hz)
-        parts.append(f"音高 {s.pitch_hz:.0f} Hz（{st:+.1f} 半音）")
+        en.append(f"pitch {s.pitch_hz:.0f} Hz ({st:+.1f} semitones)")
+        ja.append(f"ピッチ {s.pitch_hz:.0f} Hz（{st:+.1f} 半音）")
         off = max(off, abs(st) / TALK_MAX_ST)
     else:
-        parts.append("没量到音高")
+        en.append("pitch not measured")
+        ja.append("ピッチを測れなかった")
         off = max(off, 2.0)
     if s.sounding:
         r = moras / s.sounding
         dev = r / rate - 1
-        parts.append(f"语速 {r:.1f} 拍/秒（{dev:+.0%}）")
+        en.append(f"speech rate {r:.1f} morae/s ({dev:+.0%})")
+        ja.append(f"話速 {r:.1f} モーラ/秒（{dev:+.0%}）")
         off = max(off, abs(dev) / TALK_MAX_RATE)
-    c.talk, c.talk_off = "，".join(parts), round(off, 3)
+    c.talk, c.talk_off = f"{', '.join(en)} / {'、'.join(ja)}", round(off, 3)
 
 
 def _aizuchi(s: Shape, c: TakeCheck, breathy_ok: bool = False) -> None:
     span = s.span if s.span is not None else s.speech
     if span > AIZUCHI_MAX_S:
-        c.problems.append(f"相槌有声 {span:.2f}s，超过 {AIZUCHI_MAX_S}s")
+        c.problems.append(
+            f"Aizuchi voiced for {span:.2f}s, over {AIZUCHI_MAX_S}s / "
+            f"相槌の有声 {span:.2f}s が {AIZUCHI_MAX_S}s を超える"
+        )
     file_s = released_seconds(s, aizuchi_pads(s))
     if file_s > AIZUCHI_FILE_MAX_S:
-        c.problems.append(f"相槌裁好是 {file_s:.2f}s，超过 {AIZUCHI_FILE_MAX_S}s")
+        c.problems.append(
+            f"Aizuchi is {file_s:.2f}s after trimming, over {AIZUCHI_FILE_MAX_S}s / "
+            f"相槌はトリム後 {file_s:.2f}s で {AIZUCHI_FILE_MAX_S}s を超える"
+        )
     if s.pitched is not None and s.pitched < AIZUCHI_MIN_PITCHED:
-        why = f"有音高的只有 {s.pitched:.0%}（耳语或气声？）"
-        if breathy_ok:  # 源文件 breathyOk：不扔，挑最不气的一遍标给 UX
+        why = (
+            f"Only {s.pitched:.0%} pitched (whisper or breathy?) / "
+            f"ピッチのある部分が {s.pitched:.0%} しかない（ささやき声か息まじり？）"
+        )
+        # Source file breathyOk: keep it, pick the least breathy take and flag it for UX
+        # 元ファイルの breathyOk：捨てずに、いちばん息まじりでないテイクを選んで UX 向けに印を付ける
+        if breathy_ok:
             c.soft.append(why)
             c.breathy = round(AIZUCHI_MIN_PITCHED - s.pitched, 3)
         else:
             c.problems.append(why)
     if head_voiced(s):
-        c.soft.append("原始那遍一开头就有声（可能切了头；已在前面补够静音）")
+        c.soft.append(
+            "The raw take is voiced from the very start (the onset may be cut; enough silence was padded in front) / "
+            "元のテイクが冒頭から有声（頭が切れているかもしれない。前に十分な無音を補った）"
+        )

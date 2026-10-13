@@ -1,2 +1,7 @@
-# 生成的文件，不要手改：改 packages/contracts/schemas/ 后跑 `uv run contracts-gen`。
-"""从 schemas/ 生成的 pydantic 模型：data（数据契约）、api（接口）、binary（帧格式）。"""
+# Generated file, do not edit by hand: change packages/contracts/schemas/ and run `uv run contracts-gen`.
+# 生成ファイル。手で編集しないこと：packages/contracts/schemas/ を変更して `uv run contracts-gen` を実行する。
+"""Pydantic models generated from schemas/: data (data contracts), api (API),
+binary (frame format).
+
+schemas/ から生成した pydantic モデル：data（データ契約）、api（API）、binary（フレーム形式）。
+"""

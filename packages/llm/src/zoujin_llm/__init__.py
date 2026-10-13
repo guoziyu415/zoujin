@@ -1,4 +1,7 @@
-"""叙事者和评审员共用的模型调用部分（B-8）。"""
+"""The model-calling parts shared by the narrator and the judge (B-8).
+
+ナレーターと審査員が共用するモデル呼び出し部分（B-8）。
+"""
 
 from zoujin_llm.claude import (
     PRICES_PATH,

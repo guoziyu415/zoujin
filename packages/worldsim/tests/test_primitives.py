@@ -1,5 +1,9 @@
-"""knows()（R4）、spoilers()（R4、输出侧监控）、travel_minutes()（R3 的路程）和 activity()（R7、快照）：
-叙事者的确定性规则和评测 S-2 用同一份。"""
+"""knows() (R4), spoilers() (R4, output-side monitoring), travel_minutes() (R3 distances) and activity() (R7,
+snapshots): the narrator's deterministic rules and eval S-2 use the same ones.
+
+knows()（R4）、spoilers()（R4、出力側の監視）、travel_minutes()（R3 の道のり）、activity()（R7、スナップショット）：
+ナレーターの決定的ルールと評価 S-2 が同じものを使う。
+"""
 
 from __future__ import annotations
 
@@ -37,7 +41,7 @@ def at(t: int, effects: list[dict[str, Any]] | None = None) -> SimState:
 def test_since_learn_and_own_improv() -> None:
     s = at(0)
     assert knows(WORLD, s, "char.selinuntius", "fact.friendship")  # since pre
-    assert not knows(WORLD, s, "char.selinuntius", "fact.promise")  # since beat.06，还没发生
+    assert not knows(WORLD, s, "char.selinuntius", "fact.promise")  # since beat.06, not happened yet / まだ起きていない
     s = at(1411)
     assert knows(WORLD, s, "char.selinuntius", "fact.promise")
     assert not knows(WORLD, s, "char.crowd", "fact.promise")
@@ -46,8 +50,8 @@ def test_since_learn_and_own_improv() -> None:
         {"op": "improv", "factId": RF, "character": "char.old-man", "statement": "…"},
     ]})  # fmt: skip
     assert knows(WORLD, s, "char.crowd", "fact.promise")
-    assert knows(WORLD, s, "char.old-man", RF)  # 自己的即兴设定
-    assert not knows(WORLD, s, "char.melos", RF)  # 别人的，没学到
+    assert knows(WORLD, s, "char.old-man", RF)  # Their own improvised fact / 自分の即興設定
+    assert not knows(WORLD, s, "char.melos", RF)  # Someone else's, not learned / 他人のもので、知っていない
     s = apply(WORLD, s, {"t": s["t"], "dt": 0, "origin": "turn",
                          "effects": [{"op": "learn", "character": "char.melos", "fact": RF}]})  # fmt: skip
     assert knows(WORLD, s, "char.melos", RF)
@@ -56,24 +60,46 @@ def test_since_learn_and_own_improv() -> None:
 
 
 def test_a_fact_that_is_not_true_this_run_is_known_by_nobody() -> None:
-    """契约 2.3（1.4）：trueFrom 的节拍没发生，谁的 knows、学到的都不算（S-064）。"""
-    early = at(0, [{"op": "learn", "character": "char.crowd", "fact": "fact.promise"}])  # 布置的，R4 本该拒
+    """Contract 2.3 (1.4): if the trueFrom beat has not happened, neither anyone's knows nor what they learned counts
+    (S-064).
+
+    契約 2.3（1.4）：trueFrom のビートが起きていなければ、誰の knows も、知ったことも数えない（S-064）。
+    """
+    # Set up by hand; R4 would reject it
+    # 手で配置したもの。R4 なら拒否する
+    early = at(0, [{"op": "learn", "character": "char.crowd", "fact": "fact.promise"}])
     assert not knows(WORLD, early, "char.crowd", "fact.promise")
-    assert knows(WORLD, settle(WORLD, early, 1411)[1], "char.crowd", "fact.promise")  # beat.05 发生以后才算
+    # Counts only after beat.05 happens
+    # beat.05 が起きてから数える
+    assert knows(WORLD, settle(WORLD, early, 1411)[1], "char.crowd", "fact.promise")
     s = at(1411)
-    late = {**copy.deepcopy(s), "beats": {**s["beats"], "beat.25": "happened"}}  # Melos 的 since 是 beat.25
-    for s2, known in [(None, False), ("prevented", False), ("happened", True)]:  # trueFrom 是 beat.s2
+    # Melos's since is beat.25
+    # Melos の since は beat.25
+    late = {**copy.deepcopy(s), "beats": {**s["beats"], "beat.25": "happened"}}
+    # trueFrom is beat.s2
+    # trueFrom は beat.s2
+    for s2, known in [(None, False), ("prevented", False), ("happened", True)]:
         beats = late["beats"] if s2 is None else {**late["beats"], "beat.s2": s2}
         assert knows(WORLD, {**late, "beats": beats}, "char.melos", "fact.selinuntius-doubted-once") is known
 
 
 def test_spoilers_are_terms_of_facts_the_speaker_does_not_know() -> None:
-    """B-12：人物话里有他此刻不知道的事实的剧透词就算；知道的、这一局已经成立又学到的不算。"""
-    start, later = at(0), at(1500)  # 1500：beat.01〜07 已发生
-    assert spoilers(WORLD, start, "char.old-man", "今日は六人殺された") == {}  # 老爷 since pre
+    """B-12: a spoiler term of a fact the character does not know right now counts when it appears in what they say;
+    facts they know, or that became true in this run and were then learned, do not.
+
+    B-12：登場人物の発話に、その人が今知らない事実のネタバレ語があれば数える。知っている事実や、このプレイで成立
+    してから知った事実は数えない。
+    """
+    start, later = at(0), at(1500)  # 1500: beat.01〜07 have happened / beat.01〜07 は発生済み
+    # The old man: since pre
+    # 老爺は since pre
+    assert spoilers(WORLD, start, "char.old-man", "今日は六人殺された") == {}
     assert spoilers(WORLD, start, "char.melos", "今日は六人殺された") == {"fact.six-killed-today": ["六人"]}
-    assert spoilers(WORLD, later, "char.melos", "今日は六人殺された") == {}  # 梅洛斯 since beat.03
-    # 约定 beat.05 才成立：之前谁说都算；之后知道的（セリヌンティウス since beat.06）不算，不知道的（老爷）照算
+    assert spoilers(WORLD, later, "char.melos", "今日は六人殺された") == {}  # Melos: since beat.03 / メロス
+    # The promise only becomes true at beat.05: before that it counts for anyone; after that it does not count for
+    # those who know it (セリヌンティウス since beat.06) but still counts for those who do not (the old man)
+    # 約束は beat.05 で初めて成立する：それより前は誰が言っても数える。その後は知っている人（セリヌンティウス
+    # since beat.06）は数えず、知らない人（老爺）はそのまま数える
     line = "わたしが身代わりになろう。三日目の日没までに帰る"
     hit = {"fact.promise": ["身代わり", "三日目の日没", "日没までに帰"]}
     assert spoilers(WORLD, start, "char.selinuntius", line) == hit
@@ -83,48 +109,74 @@ def test_spoilers_are_terms_of_facts_the_speaker_does_not_know() -> None:
 
 
 def test_spoilers_skip_what_the_player_just_said() -> None:
-    """玩家这一轮自己说出的词，人物接着说不算（E2 出题的规则：玩家的问题里不能有剧透词）；没说的词照算。"""
+    """A term the player said themselves this turn does not count when the character repeats it (the rule for E2
+    cases: the player's question must not contain spoiler terms); terms the player did not say still count.
+
+    プレイヤーがこのターンで自分から口にした語は、登場人物が続けて言っても数えない（E2 の出題規則：プレイヤーの
+    質問にネタバレ語を入れてはいけない）。言っていない語はそのまま数える。
+    """
     s = at(0)
     assert spoilers(WORLD, s, "char.old-man", "山賊？ 待ち伏せなど聞いたことがない", said="山賊がいるらしい") == {
         "fact.bandits-ambush": ["待ち伏せ"]
     }
     assert spoilers(WORLD, s, "char.old-man", "山賊？", said="山賊がいるらしい") == {}
-    assert spoilers(WORLD, s, "player", "大雨になる") == {"fact.storm": ["大雨"]}  # 玩家也按 knows 判
+    # The player is judged by knows too
+    # プレイヤーも knows で判定
+    assert spoilers(WORLD, s, "player", "大雨になる") == {"fact.storm": ["大雨"]}
 
 
 def test_the_player_knows_what_the_role_knows_and_what_they_learn() -> None:
-    """玩家 = 身份的 initialKnowledge + 这一局学到的（契约 2.1，1.7）。"""
+    """Player = the role's initialKnowledge + what was learned in this run (contract 2.1, 1.7).
+
+    プレイヤー = ロールの initialKnowledge + このプレイで知ったこと（契約 2.1、1.7）。
+    """
     s = at(0)
     assert knows(WORLD, s, "player", "fact.city-silent")
     assert not knows(WORLD, s, "player", "fact.king-killings")
     assert check_effects(WORLD, s, [{"op": "learn", "character": "player", "fact": "fact.king-killings"}], "turn") == []
     bad = check_effects(WORLD, s, [{"op": "learn", "character": "char.nobody", "fact": "fact.king-killings"}], "turn")
     assert [p["code"] for p in bad] == ["unknown-id"]
-    told = [{"op": "learn", "character": "player", "fact": "fact.king-killings"}]  # 老爺告诉玩家的
+    # What the old man told the player
+    # 老爺がプレイヤーに話したこと
+    told = [{"op": "learn", "character": "player", "fact": "fact.king-killings"}]
     s = apply(WORLD, s, {"t": 0, "dt": 0, "origin": "turn", "effects": told})
     assert knows(WORLD, s, "player", "fact.king-killings")
-    assert not knows(WORLD, s, "char.melos", "fact.king-killings")  # 梅洛斯 since beat.03
+    assert not knows(WORLD, s, "char.melos", "fact.king-killings")  # Melos: since beat.03 / メロスは beat.03 から
     boy = settle(WORLD, initial_state(WORLD, "role.shepherd-boy"), 1980)[1]
     assert knows(WORLD, boy, "player", "fact.sister-engaged")
     assert not knows(WORLD, boy, "player", "fact.city-silent")
 
 
 def test_the_player_learns_public_facts_of_beats_they_see() -> None:
-    """节拍发生时玩家在节拍的地点：settle 在那个系统事件里写 learn，只写 public 的（契约 2.1、2.3，1.7）。"""
+    """When a beat happens with the player at the beat's place, settle writes learn into that system event, public
+    facts only (contract 2.1, 2.3, 1.7).
+
+    ビートが起きたときプレイヤーがビートの場所にいれば、settle はそのシステムイベントに learn を書く。public な
+    ものだけ（契約 2.1、2.3、1.7）。
+    """
     drafts, s = settle(WORLD, at(0, [{"op": "set", "var": "var.player.location", "value": GROUND}]), 1201)
-    arrest = next(d["event"] for d in drafts if d["beat"] == "beat.04")  # 捕缚在王城前庭
+    # The arrest is in the castle forecourt
+    # 捕縛は王城の前庭
+    arrest = next(d["event"] for d in drafts if d["beat"] == "beat.04")
     assert {"op": "learn", "character": "player", "fact": "fact.melos-dagger"} in arrest["effects"]
     assert knows(WORLD, s, "player", "fact.melos-dagger")
-    drafts, s = settle(WORLD, s, 1411)  # 立约（beat.05）、人质（beat.06）在王城里，玩家不在
+    # The promise (beat.05) and hostage (beat.06) are inside the castle; the player is not there
+    # 約束（beat.05）と人質（beat.06）は王城内で、プレイヤーはいない
+    drafts, s = settle(WORLD, s, 1411)
     assert not any(e.get("character") == "player" for d in drafts for e in d["event"]["effects"])
     assert not knows(WORLD, s, "player", "fact.promise")
-    away = at(1411)  # 一直在广场
+    away = at(1411)  # Stayed in the square all along / ずっと広場にいる
     assert not knows(WORLD, away, "player", "fact.melos-dagger")
     assert not any(e["op"] == "learn" for d in settle(WORLD, at(0), 1201)[0] for e in d["event"]["effects"])
 
 
 def test_the_player_is_away_while_an_act_change_settles() -> None:
-    """幕切换的第 3 步（契约 2.8.1）：玩家的地点还没换，但这一段算不在场，不写 learn；别的照旧。"""
+    """Step 3 of an act switch (contract 2.8.1): the player's place has not changed yet, but for this stretch they
+    count as absent and no learn is written; everything else is unchanged.
+
+    幕切り替えの第 3 段階（契約 2.8.1）：プレイヤーの場所はまだ変わっていないが、この区間は不在とみなし、learn を
+    書かない。ほかはそのまま。
+    """
     there = at(0, [{"op": "set", "var": "var.player.location", "value": GROUND}])
     seen, s_seen = settle(WORLD, there, 1201)
     away, s_away = settle(WORLD, there, 1201, player_present=False)
@@ -144,16 +196,24 @@ def test_walking_minutes_take_the_shortest_way() -> None:
         return travel_minutes(WORLD, f"place.{a}", f"place.{b}")
 
     assert m("syracuse-square", "syracuse-square") == 0
-    # 同一场景里走动 0 分（S-038，api-contract 3.8）：广场、工房、刑场
+    # Walking within one scene takes 0 minutes (S-038, api-contract 3.8): square, workshop, execution ground
+    # 同じシーン内の移動は 0 分（S-038、api-contract 3.8）：広場、工房、刑場
     assert m("syracuse-square", "execution-ground") == m("stonemason-workshop", "execution-ground") == 0
     assert m("village", "groom-house") == m("melos-home", "groom-house") == 0
-    # 跨场景按 adjacent，取最短：广场 → 王城直接 10 分，经刑场 0 + 5 分更短
+    # Across scenes, use adjacent and take the shortest: square → castle directly is 10 minutes; via the execution
+    # ground, 0 + 5 minutes is shorter
+    # シーンをまたぐときは adjacent で最短を取る：広場 → 王城は直接だと 10 分、刑場経由なら 0 + 5 分で短い
     assert m("syracuse-square", "castle") == m("stonemason-workshop", "castle") == m("execution-ground", "castle") == 5
     assert m("castle", "syracuse-square") == 5
-    assert m("village", "neighbor-village") == 120  # 邻村没有场景（sceneRef null）
+    # The neighbouring village has no scene (sceneRef null)
+    # 隣村にはシーンがない
+    assert m("village", "neighbor-village") == 120
     assert m("neighbor-village", "river") == 180
     assert m("road-to-city", "syracuse-square") == 60
-    # 归途每个停留点一个场景（S-081 ②：「ひとりで先へ行く」要花路上的时间），按 adjacent 的步行分钟
+    # Each stop on the return journey is its own scene (S-081 ②: 「ひとりで先へ行く」 costs time on the road), so
+    # use adjacent's walking minutes
+    # 帰路の立ち寄り地点はそれぞれ 1 つのシーン（S-081 ②：「ひとりで先へ行く」は道中の時間を使う）なので、
+    # adjacent の徒歩分数を使う
     assert m("river", "mountain-pass") == 100
     assert m("river", "road-to-city") == 100 + 45 + 120
     assert m("melos-home", "syracuse-square") == 120 + 180 + 100 + 45 + 120 + 60
@@ -172,33 +232,57 @@ def test_unreachable_and_no_pacing() -> None:
 
 
 def test_activity_follows_the_beats_until_someone_is_moved() -> None:
-    """契约 2.4（1.1）：开局是 initialActivity，节拍给的 activity 持续到下一个给他的节拍或移动为止。"""
-    assert activity(WORLD, at(0), "char.sister") == "work"  # initialActivity，在 initialPlace
-    assert activity(WORLD, at(0), "char.melos") == "idle"  # 省略 = idle
-    assert activity(WORLD, at(2040), "char.sister") == "talk"  # beat.08 给的
+    """Contract 2.4 (1.1): at the opening it is initialActivity; an activity given by a beat lasts until the next beat
+    that gives them one, or a move.
+
+    契約 2.4（1.1）：オープニングでは initialActivity。ビートが与えた activity は、その人に次に activity を与える
+    ビートか移動まで続く。
+    """
+    assert activity(WORLD, at(0), "char.sister") == "work"  # initialActivity, at initialPlace / initialPlace にいる
+    assert activity(WORLD, at(0), "char.melos") == "idle"  # Omitted = idle / 省略 = idle
+    assert activity(WORLD, at(2040), "char.sister") == "talk"  # Given by beat.08 / beat.08 が与えた
     assert activity(WORLD, at(1180), "char.melos") == "talk"  # beat.03
-    assert activity(WORLD, at(1200), "char.melos") == "idle"  # beat.04 把他移进王城、没给 activity
+    # beat.04 moves him into the castle with no activity
+    # activity なしで王城へ移す
+    assert activity(WORLD, at(1200), "char.melos") == "idle"
     assert activity(WORLD, at(1230), "char.melos") == "talk"  # beat.05
     assert activity(WORLD, at(2070), "char.melos") == "sleep"  # beat.09
-    assert activity(WORLD, at(3150), "char.melos") == "talk"  # beat.10，在花婿家
-    assert activity(WORLD, at(3600), "char.melos") == "idle"  # beat.11 把参与人物带回家、没给 activity
-    assert activity(WORLD, at(3600), "char.sister") == "talk"  # 一直在家，beat.08 给的还算
+    assert activity(WORLD, at(3150), "char.melos") == "talk"  # beat.10, at the groom's house / 花婿の家
+    # beat.11 takes participants home with no activity
+    # activity なしで家へ
+    assert activity(WORLD, at(3600), "char.melos") == "idle"
+    # Home all along; beat.08 still counts
+    # ずっと家にいて beat.08 が有効
+    assert activity(WORLD, at(3600), "char.sister") == "talk"
     assert activity(WORLD, at(0), "player") == "idle"
     assert activity(WORLD, at(0), "char.nobody") == "idle"
 
 
 def test_absent_lasts_only_while_nobody_moves_them() -> None:
-    """S-077 ⑩：absent 的人物被节拍带走（参与人物移到节拍地点，契约 3.1）以后就在场了。"""
-    assert activity(WORLD, at(5390), "char.crowd") == "absent"  # 开局 absent，还在广场
-    s = at(5400)  # beat.s1：群众是参与人物，移到刑场，节拍没给它 activity
+    """S-077 ⑩: an absent character becomes present once a beat takes them away (participants move to the beat's
+    place, contract 3.1).
+
+    S-077 ⑩：absent の登場人物は、ビートに連れ出された（参加人物はビートの場所に移る、契約 3.1）後は在場になる。
+    """
+    assert activity(WORLD, at(5390), "char.crowd") == "absent"  # absent at the opening, still in the square / まだ広場
+    # beat.s1: the crowd is a participant, moved to the execution ground; the beat gives it no activity
+    # beat.s1：群衆は参加人物で刑場へ移り、ビートは activity を与えない
+    s = at(5400)
     assert s["locations"]["char.crowd"] == GROUND
     assert activity(WORLD, s, "char.crowd") == "idle"
-    assert activity(WORLD, s, "char.maiden") == "idle"  # 不是参与人物，被 outcomes 的 relocate 移过去
-    assert activity(WORLD, s, "char.selinuntius") == "idle"  # beat.s1 给的
+    # Not a participant; moved there by the outcomes' relocate
+    # outcomes の relocate で移動
+    assert activity(WORLD, s, "char.maiden") == "idle"
+    assert activity(WORLD, s, "char.selinuntius") == "idle"  # Given by beat.s1 / beat.s1 が与えた
 
 
 def test_activity_ends_when_an_event_moves_someone() -> None:
-    """叙事者或人物的事件挪了人（不是节拍）：SimState 没有历史，按「此刻不在节拍让他在的地方」判，回到 idle。"""
+    """An event by the narrator or a character moved someone (not a beat): SimState has no history, so it judges by
+    "right now they are not where the beats put them" and falls back to idle.
+
+    ナレーターや登場人物のイベントが人を動かした（ビートではない）：SimState には履歴がないので、「今ビートが
+    置いた場所にいない」ことで判定し、idle に戻る。
+    """
     s = at(2070)
     assert activity(WORLD, s, "char.melos") == "sleep"
     moved = {"op": "relocate", "character": "char.melos", "place": "place.village"}
@@ -207,11 +291,18 @@ def test_activity_ends_when_an_event_moves_someone() -> None:
 
 
 def test_activity_uses_the_outcomes_this_run_used() -> None:
-    """节拍被玩家事先改了（altered）：按这一局实际的结果算他该在哪，不按原作的 relocate。"""
-    canon = at(4590)  # beat.14：原作把梅洛斯移到村里
+    """A beat changed by the player in advance (altered): where he should be is computed from this run's actual
+    outcomes, not the original story's relocate.
+
+    プレイヤーが事前に変えたビート（altered）：その人がいるべき場所は、原作の relocate ではなく、このプレイの実際の
+    結果から計算する。
+    """
+    canon = at(4590)  # beat.14: the original story moves Melos to the village / 原作ではメロスを村へ移す
     assert canon["locations"]["char.melos"] == "place.village"
     assert activity(WORLD, canon, "char.melos") == "run"
-    s = at(4590, [{"op": "beat", "beat": "beat.14", "to": "altered", "outcomes": []}])  # 改成不挪他
+    # Changed so it does not move him
+    # 彼を動かさないように変更
+    s = at(4590, [{"op": "beat", "beat": "beat.14", "to": "altered", "outcomes": []}])
     assert s["beats"]["beat.14"] == "altered"
     assert s["locations"]["char.melos"] == "place.melos-home"
     assert activity(WORLD, s, "char.melos") == "run"

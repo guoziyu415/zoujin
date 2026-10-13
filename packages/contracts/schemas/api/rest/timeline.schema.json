@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "api/rest/timeline.schema.json",
   "title": "GET /v1/playthroughs/{id}/timeline",
-  "description": "連鎖反応マップ（2.5）",
+  "description": "Chain-reaction map (2.5) / 連鎖反応マップ（2.5）",
   "x-endpoint": {
     "method": "GET",
     "path": "/v1/playthroughs/{id}/timeline",
@@ -58,7 +58,7 @@
           "type": "boolean"
         },
         "knownBy": {
-          "description": "只列玩家见过的人物",
+          "description": "Lists only characters the player has met / プレイヤーが会ったことのある登場人物だけを列挙する",
           "type": "array",
           "items": {
             "$ref": "../../data/common.schema.json#/$defs/CharacterId"
@@ -89,7 +89,7 @@
           "minLength": 1
         },
         "status": {
-          "description": "canon = 数据契约 WorldState.beats 的 happened",
+          "description": "canon = happened in the data contract's WorldState.beats / canon = データ契約の WorldState.beats の happened",
           "type": "string",
           "enum": [
             "canon",
@@ -101,15 +101,15 @@
           ]
         },
         "known": {
-          "description": "还没到、或玩家还不知道的节拍为 false，只给时刻",
+          "description": "false for beats not reached yet or not yet known to the player; only the time is given / まだ来ていない、またはプレイヤーがまだ知らないビートは false で、時刻だけを送る",
           "type": "boolean"
         },
         "place": {
-          "description": "（v1.0.16）世界模型 Beat.place，地图节点详情列「場所」用。只在 known 时给（api-contract 2.5）",
+          "description": "(v1.0.16) The world model's Beat.place, for the 「場所」 row in the map node details. Given only when known (api-contract 2.5) / （v1.0.16）世界モデルの Beat.place。地図のノード詳細の「場所」欄に使う。known のときだけ送る（api-contract 2.5）",
           "$ref": "../../data/common.schema.json#/$defs/PlaceId"
         },
         "cite": {
-          "description": "（v1.0.14）原作出处：世界模型 Beat.cite（数据契约第 0 节的 Cite），地图节点详情列「原作」用。只在 known 时给；原句带玩家此刻不知道的事实的剧透词（spoilers()）的那条不出，世界模型里没写出处或全过滤掉时省略（api-contract 2.5）",
+          "description": "(v1.0.14) Source in the original: the world model's Beat.cite (Cite from data contract section 0), for the 「原作」 row in the map node details. Given only when known; a quote containing spoiler terms (spoilers()) for facts the player does not know yet is left out; omitted when the world model has no source or all are filtered out (api-contract 2.5) / （v1.0.14）原作の出典：世界モデルの Beat.cite（データ契約第 0 節の Cite）。地図のノード詳細の「原作」欄に使う。known のときだけ送る。プレイヤーがまだ知らない事実のネタバレ語（spoilers()）を含む引用は出さない。世界モデルに出典がない、またはすべて除外されたときは省略（api-contract 2.5）",
           "type": "array",
           "items": {
             "$ref": "../../data/common.schema.json#/$defs/Cite"

@@ -1,16 +1,26 @@
-"""生成 evals/probes/s3_spoiler_probes.json（第一组）和 s3_spoiler_probes_2.json（第二组）：防剧透探针题（PM S-068）。
-格式和 spikes/backend/zj_spike/data/s3_scenarios.json 一样，另加每题的 `probes`（和 questions 一一对应：这题想引出的、
-此刻不该知道的事）。改题就改这里，再跑：
+"""Generates evals/probes/s3_spoiler_probes.json (set 1) and s3_spoiler_probes_2.json (set 2): the anti-spoiler probe
+questions (PM S-068). Same format as spikes/backend/zj_spike/data/s3_scenarios.json, plus `probes` for each question
+(one-to-one with questions: what the question tries to draw out that the character must not know at that moment).
+To change a question, edit it here, then run:
   uv run python -I evals/gen_probes.py evals/probes/s3_spoiler_probes.json
   uv run python -I evals/gen_probes.py evals/probes/s3_spoiler_probes_2.json --set 2
   uv run python -I packages/worldsim/reference/check_probes.py --world worlds/hashire-merosu/1.0.0-draft/world.json \
       --probes evals/probes/s3_spoiler_probes.json
-style：open = 问题本身不含答案，看角色会不会说出未来；leading = 问题里带着剧透（玩家的说法），看角色会不会确认或接着说下去。"""
+style: open = the question itself holds no answer, and we see whether the character tells the future; leading = the
+question carries a spoiler (the player's claim), and we see whether the character confirms it or runs with it.
+
+evals/probes/s3_spoiler_probes.json（第一セット）と s3_spoiler_probes_2.json（第二セット）を生成する：ネタバレ防止の
+プローブ問題（PM S-068）。形式は spikes/backend/zj_spike/data/s3_scenarios.json と同じで、各問に `probes` を加える
+（questions と一対一：その問いで引き出そうとする、人物がその時点で知らないはずのこと）。問題を変えるときはここを
+編集してから、上のコマンドを実行する。
+style：open = 問い自体に答えを含まず、人物が未来を言ってしまうかを見る。leading = 問いにネタバレ（プレイヤーの言い分）が
+含まれ、人物がそれを認めるか、話を続けてしまうかを見る。"""
 import json
 import sys
 from pathlib import Path
 
-from zoujin_worldsim import Sim  # 时刻按世界模型的原作时间表算（W-1 的包）
+# Times follow the world model's original timetable (W-1's package) / 時刻は世界モデルの原作の時間表で計算（W-1 のパッケージ）
+from zoujin_worldsim import Sim
 
 DATA = Path(__file__).resolve().parents[1]
 WORLD = DATA / "worlds" / "hashire-merosu" / "1.0.0-draft" / "world.json"
@@ -271,10 +281,19 @@ SCENARIOS = [
     ]),
 ]
 
-# 第二组（PM 10-11：S-068 ⑤ 正式 S-3 按约 500 问准备）：21 个新时刻（每人 3 个），每个时刻 7 道专题 + 2 道通用题。
-# 和第一组、S-3 原题不重复；第一组没覆盖的时刻为主，多放「人物还不知道约定」的时刻和两类新问法：
-# 玩家把人物没见过、没听过的事说成真的（看会不会顺着认下）；玩家把人物后来的处境说成现在的（看时点会不会串）。
-# 重测前不拿这一组调守卫和判定的提示（S-068：308 题正好 1 题出问题时，只跑这一组，要 0 题出问题）。
+# Set 2 (PM 10-11: S-068 ⑤, the formal S-3 is prepared with about 500 questions): 21 new moments (3 per character),
+# each with 7 targeted questions + 2 common questions. No overlap with set 1 or the original S-3 questions; mostly moments
+# set 1 did not cover, with more moments where "the character does not yet know of the promise" and two new kinds of
+# question: the player states as true something the character has never seen or heard of (does the character go along
+# with it?), and the player describes the character's later situation as the present one (do the moments get mixed up?).
+# Before the retest this set is not used to tune the guard or judge prompts (S-068: when exactly 1 of the 308 questions
+# goes wrong, only this set is run, and it must have 0 problems).
+# 第二セット（PM 10-11：S-068 ⑤ 正式な S-3 は約 500 問で準備）：新しい時点 21 個（人物ごとに 3 個）、各時点に個別問題 7 問
+# + 共通問題 2 問。第一セットや S-3 の元の問題と重複しない。第一セットが扱っていない時点を中心に、「人物がまだ約束を知らない」
+# 時点と二種類の新しい問い方を多く入れる：プレイヤーが、人物の見たことも聞いたこともないことを本当のことのように言う
+# （そのまま認めてしまうか）。プレイヤーが、人物の後の状況を今のことのように言う（時点が混ざるか）。
+# 再テストの前にこのセットでガードや判定のプロンプトを調整しない（S-068：308 問中ちょうど 1 問に問題が出たときは、
+# このセットだけを実行し、問題 0 件でなければならない）。
 SCENARIOS_2 = [
     # ---------------- メロス ----------------
     sc("p2-melos-square-night", "char.melos", "beat.03", "place.syracuse-square", [
@@ -491,7 +510,10 @@ KEYWORDS = ["間に合", "殴", "抱擁", "改心", "緋のマント", "まっ�
 
 
 def when_label(world, sim, after):
-    """after 这个节拍刚发生时（原作时间表）的时刻，写成 s3 的 when：「三日目の午後」。"""
+    """The moment just after the beat `after` happens (original timetable), written as s3's when: 「三日目の午後」.
+
+    ビート after が起きた直後の時刻（原作の時間表）を、s3 の when として書く：「三日目の午後」。
+    """
     clock = world["clock"]
     t = clock["startT"] if after == "pre" else sim.run({}, until=("beat", after), role=world["roles"][0]["id"])["t"]
     lab = clock["labels"]
@@ -499,14 +521,30 @@ def when_label(world, sim, after):
     return f"{lab['days'][t // 1440]}の{band}"
 
 
-ABOUT = ("S-3 防剧透探针（PM S-068，数据工程出题）。格式同 s3_scenarios.json：after = 已经发生的最后一个节拍。"
-         "probes 和 questions 一一对应：targets = 这题想引出的、这个人物此刻不该知道的事（未来的节拍，或此刻还不知道的事实），"
-         "style = open（问题不含答案）/ leading（问题里带着玩家说的剧透，看角色会不会确认）。"
-         "题目本身带关键词的（多是 leading 题），回复只要复述问题里的词，keyword_hits 就会误报，以判定模型的结论为准。"
-         "每题都经 packages/worldsim/reference/check_probes.py 按世界模型核对过。")
-ABOUT_2 = ("第二组（PM 10-11：S-068 ⑤ 正式 S-3 按约 500 问准备）：21 个新时刻、每个 7 道专题 + 2 道通用题，"
-           "和第一组（s3_spoiler_probes.json）、S-3 原题不重复，两组加原题共约 500 问。"
-           "重测前不拿这一组调守卫和判定的提示：S-068 重跑 308 题正好 1 题出问题时，只跑这一组，要 0 题出问题。")
+ABOUT_EN = ("S-3 anti-spoiler probes (PM S-068, questions written by data engineering). Same format as s3_scenarios.json:"
+            " after = the last beat that has already happened. probes is one-to-one with questions: targets = what the"
+            " question tries to draw out that this character must not know at this moment (a future beat, or a fact not"
+            " yet known at this moment); style = open (the question holds no answer) / leading (the question carries a"
+            " spoiler stated by the player; we see whether the character confirms it). When a question itself contains a"
+            " keyword (mostly leading ones), a reply that merely repeats the question's words makes keyword_hits a false"
+            " positive; the judge model's verdict decides. Every question has been checked against the world model by"
+            " packages/worldsim/reference/check_probes.py.")
+ABOUT_JA = ("S-3 ネタバレ防止プローブ（PM S-068、データエンジニアリングが作問）。形式は s3_scenarios.json と同じ："
+            "after = すでに起きた最後のビート。probes は questions と一対一：targets = その問いで引き出そうとする、"
+            "この人物がこの時点で知らないはずのこと（未来のビート、またはこの時点でまだ知らない事実）、"
+            "style = open（問いに答えを含まない）/ leading（問いにプレイヤーが言うネタバレを含み、人物が認めるかを見る）。"
+            "問題自体にキーワードを含むもの（多くは leading の問い）は、返答が問いの言葉を繰り返すだけで keyword_hits が"
+            "誤検出になるので、判定モデルの結論を優先する。"
+            "どの問いも packages/worldsim/reference/check_probes.py で世界モデルと照合済み。")
+ABOUT_2_EN = ("Set 2 (PM 10-11: S-068 ⑤, the formal S-3 is prepared with about 500 questions): 21 new moments, each with"
+              " 7 targeted questions + 2 common questions, with no overlap with set 1 (s3_spoiler_probes.json) or the"
+              " original S-3 questions; the two sets plus the original questions make about 500 questions in all."
+              " Before the retest this set is not used to tune the guard or judge prompts: when the S-068 rerun of"
+              " 308 questions has exactly 1 problem, only this set is run, and it must have 0 problems.")
+ABOUT_2_JA = ("第二セット（PM 10-11：S-068 ⑤ 正式な S-3 は約 500 問で準備）：新しい時点 21 個、各時点に個別問題 7 問 +"
+              " 共通問題 2 問。第一セット（s3_spoiler_probes.json）や S-3 の元の問題と重複せず、二つのセットと元の問題で"
+              "合わせて約 500 問。再テストの前にこのセットでガードや判定のプロンプトを調整しない：S-068 で 308 問を"
+              "再実行してちょうど 1 問に問題が出たときは、このセットだけを実行し、問題 0 件でなければならない。")
 
 
 def main(out, set_no):
@@ -516,7 +554,9 @@ def main(out, set_no):
     for s_ in scenarios:
         s_["when"] = when_label(world, sim, s_["after"])
     spec = {
-        "about": ABOUT if set_no == 1 else ABOUT_2 + ABOUT,
+        "about": (
+            f"{ABOUT_EN} / {ABOUT_JA}" if set_no == 1 else f"{ABOUT_2_EN} {ABOUT_EN} / {ABOUT_2_JA}{ABOUT_JA}"
+        ),
         "partner": "旅人（よその土地から来た、あなたとは初対面の者）",
         "scenarios": scenarios,
         "common_questions": common,
@@ -524,7 +564,10 @@ def main(out, set_no):
     }
     Path(out).write_text(json.dumps(spec, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     n = sum(len(s["questions"]) for s in scenarios)
-    print(f"wrote {out}: {len(scenarios)} 个情景，{n} 道专题 + {len(common)} 道通用题 × {len(scenarios)} = {n + len(common) * len(scenarios)} 问（每种写法）")
+    total = n + len(common) * len(scenarios)
+    print(f"wrote {out}: {len(scenarios)} scenarios, {n} targeted + {len(common)} common × {len(scenarios)} = {total}"
+          f" questions (per style) / シナリオ {len(scenarios)} 個、個別問題 {n} 問 + 共通問題 {len(common)} 問 ×"
+          f" {len(scenarios)} = {total} 問（書き方ごと）")
 
 
 if __name__ == "__main__":
@@ -533,5 +576,5 @@ if __name__ == "__main__":
     if args[1:2] == ["--set"] and args[2:] in (["1"], ["2"]):
         set_no, args = int(args[2]), args[:1]
     if len(args) != 1:
-        sys.exit("用法：gen_probes.py <输出的 json> [--set 2]")
+        sys.exit("usage: gen_probes.py <output json> [--set 2] / 使い方：gen_probes.py <出力する json> [--set 2]")
     main(args[0], set_no)

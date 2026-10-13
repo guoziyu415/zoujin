@@ -1,6 +1,14 @@
-"""Span（data-design 第 8 节）：叙事者每次调文本模型一个 Span，只带 ID、计数、规则名和耗时，不带原话、摘要和理由的文字。
+"""Spans (data-design section 8): one Span each time the narrator calls the text model, carrying only IDs, counts, rule
+names and durations, never the original words or the text of summaries and reasons.
 
-B-2 先记进内存和日志（`zoujin.trace`，一行一个 Span）；接 Cloud Trace（OpenTelemetry）是部署的卡，属性名照这里。
+B-2 first records them in memory and in the log (`zoujin.trace`, one Span per line); hooking up Cloud Trace
+(OpenTelemetry) is the deployment card, and the attribute names follow this file.
+
+Span（data-design 第 8 節）：ナレーターがテキストモデルを呼ぶたびに Span を 1 つ作り、ID、件数、規則名、所要時間だけを
+持たせ、元の発言、要約や理由の文章は持たせない。
+
+B-2 ではまずメモリとログ（`zoujin.trace`、1 行に 1 Span）に記録する。Cloud Trace（OpenTelemetry）への接続はデプロイの
+カードで、属性名はここに従う。
 """
 
 from __future__ import annotations
@@ -15,7 +23,9 @@ from typing import Any
 
 log = logging.getLogger("zoujin.trace")
 
-# 只有这些属性能进 Span（值只能是数、布尔、ID 和规则名这样的短字符串，或它们的列表）
+# Only these attributes may go into a Span (values may only be numbers, booleans, short strings such as IDs and rule
+# names, or lists of them)
+# Span に入れられるのはこれらの属性だけ（値は数値、真偽値、ID や規則名のような短い文字列、またはそれらのリストのみ）
 ATTRS = frozenset(
     {
         "playthrough_id",
@@ -39,46 +49,76 @@ ATTRS = frozenset(
         "cost_usd",
         "duration_ms",
         "route",
-        "action_kind",  # B-3：动作的 kind、演的固定演出、打算成没成行、第几次
+        # B-3: the action's kind, the set piece played, whether the plan went ahead, which try
+        # B-3：アクションの kind、演じた固定演出、プランが実行されたか、何回目か
+        "action_kind",
         "piece_id",
         "accepted",
         "tries",
-        "turn_kind",  # B-4：作废的一轮的 kind、到了哪一步；意图确认的回答、谁答的、结果、这一局第几次
+        # B-4: the kind of a voided turn and how far it got; for intent confirmation, the answer, who answered, the
+        # result, and which time in this playthrough
+        # B-4：無効にしたターンの kind とどのステップまで進んだか。意図確認の回答、誰が答えたか、結果、
+        # この周回で何回目か
+        "turn_kind",
         "stage",
         "answer",
         "by",
         "result",
         "nth",
-        "kind",  # B-12：输出侧监控命中的种类（spoiler / harmful）、事实 ID、RAI 类别、这一句让会话重建了没有
+        # B-12: the kind of an output-side monitor hit (spoiler / harmful), fact IDs, RAI category, whether this line
+        # made the session rebuild
+        # B-12：出力側の監視でヒットした種類（spoiler / harmful）、事実 ID、RAI カテゴリ、
+        # この一文でセッションを再構築したか
+        "kind",
         "fact_ids",
         "category",
         "rebuild",
-        "trigger",  # B-9：结局的触发、分类、走没走模板、调了几次
+        # B-9: ending trigger, category, template or not, calls
+        # B-9：エンディングの契機、分類、テンプレートか、呼び出し回数
+        "trigger",
         "outcome",
         "template",
         "calls",
-        "run_cost_jpy_so_far",  # B-14：预算档变的时候（budget）、降级的原因
+        # B-14: when the budget tier changes (budget), and the degradation reason
+        # B-14：予算ティアが変わったとき（budget）、劣化の理由
+        "run_cost_jpy_so_far",
         "tier",
         "degraded",
-        "eval.persona",  # B-5：模拟局的画像 ID、种子（评测入口开局的 Span）
+        # B-5: the persona ID and seed of a simulated playthrough (the Span of a playthrough start at the eval entry)
+        # B-5：模擬周回のペルソナ ID、シード（評価の入口での周回開始の Span）
+        "eval.persona",
         "eval.seed",
-        "reason",  # B-10：Live 会话为什么开（warm / switch / rebuild / rebuild_turns / rebuild_goaway / arrival）
+        # B-10: why a Live session was opened (warm / switch / rebuild / rebuild_turns / rebuild_goaway / arrival)
+        # B-10：Live セッションを開いた理由（warm / switch / rebuild / rebuild_turns / rebuild_goaway / arrival）
+        "reason",
         "prompt_chars",
         "notes",
         "first_audio_ms",
         "audio_s",
         "session_audio_s",
         "session_turn",
-        "gap_ms",  # B-11：断线到重连、接手了几条会话、带回几轮最近对话、哪一种、是不是重连、会话是不是接上的
+        # B-11: from disconnect to reconnect, how many sessions were taken over, how many recent turns were brought
+        # back, which kind, whether it was a reconnect, whether the session was resumed
+        # B-11：切断から再接続まで、引き継いだセッション数、持ち帰った直近の会話のターン数、どの種類か、再接続か、
+        # セッションがつながったままか
+        "gap_ms",
         "carried",
         "recent_turns",
         "resume_kind",
         "reconnect",
         "reused",
-        "usage_estimated",  # #111 数据评审：live.turn 的用量是不是按 0.01 美元估的、玩家打断没有、人物字幕的来源
+        # Data review #111: whether live.turn's usage was estimated at 0.01 dollars, whether the player interrupted,
+        # the source of the character's subtitles
+        # データ担当のレビュー #111：live.turn の使用量を 0.01 ドルで見積もったか、プレイヤーが割り込んだか、登場人物の
+        # 字幕の出どころ
+        "usage_estimated",
         "interrupted",
         "transcript_source",
-        "event_id",  # B-13：记忆来自哪条事件、哪条记忆；删除时清了几轮原话、作废了约定没有、重建了会话没有
+        # B-13: which event a memory came from, which memory; on deletion, how many turns of original words were
+        # cleared, whether a promise was voided, whether the session was rebuilt
+        # B-13：記憶がどのイベントから来たか、どの記憶か。削除時に元の発言を何ターン消したか、約束を無効にしたか、
+        # セッションを再構築したか
+        "event_id",
         "memory_id",
         "turns",
         "voided",
@@ -95,13 +135,16 @@ class Span:
     def set(self, **attrs: Any) -> None:
         for k, v in attrs.items():
             if k not in ATTRS:
-                raise KeyError(f"Span 不收这个属性：{k}")
+                raise KeyError(f"Span does not accept this attribute / Span はこの属性を受け付けない: {k}")
             self.attrs[k] = v
 
 
 @dataclass
 class Tracer:
-    """一个进程一个；`spans` 留最近的（测试看）。"""
+    """One per process; `spans` keeps the most recent ones (for tests to look at).
+
+    プロセスごとに 1 つ。`spans` は直近のものを残す（テストが見る）。
+    """
 
     keep: int = 1000
     spans: list[Span] = field(default_factory=list)
@@ -114,7 +157,8 @@ class Tracer:
         try:
             yield s
         finally:
-            s.attrs.setdefault("duration_ms", round((time.perf_counter() - start) * 1000, 1))  # 记事的 Span 自己给耗时
+            # A Span that records an event supplies its own duration / 出来事を記録する Span は所要時間を自分で与える
+            s.attrs.setdefault("duration_ms", round((time.perf_counter() - start) * 1000, 1))
             self.spans.append(s)
             del self.spans[: -self.keep]
             log.info("%s %s", name, json.dumps(s.attrs, ensure_ascii=False, sort_keys=True))

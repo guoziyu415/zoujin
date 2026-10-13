@@ -1,4 +1,9 @@
-"""B-6 预录句的生成：清单、自动检查、跑法、输出、mock（卡「验收」）。不联网：假的 Live、假的补转写、假的编码器。"""
+"""B-6 pre-recorded line generation: the list, automatic checks, running, output, mock (card "acceptance check").
+Offline: fake Live, fake transcript backfill, fake encoder.
+
+B-6 事前収録セリフの生成：リスト、自動検査、実行方法、出力、mock（カードの「受け入れ確認」）。ネットワークなし：
+偽 Live、偽の文字起こしの補完、偽エンコーダー。
+"""
 
 from __future__ import annotations
 
@@ -30,7 +35,8 @@ PIECE_KEYS = {
     "piece.gate-promise/2",
     "piece.gate-promise/3",
     "piece.workshop-knock/1",
-    # 收幕（S-087）：键从 1 数，地の文也算
+    # Closing the act (S-087): keys count from 1, narration (地の文) included
+    # 幕を閉じる場面（S-087）：キーは 1 から数え、地の文も数に入る
     *(f"{pc}/{n}" for pc in ("piece.crowd-makes-way", "piece.crowd-makes-way-you") for n in (4, 5, 7)),
     *(f"{pc}/{n}" for pc in ("piece.storm-in", "piece.storm-in-you") for n in (4, 7)),
     "piece.embrace/2",
@@ -48,12 +54,12 @@ def slice_plan() -> Plan:
     return plan(spec, world_of(spec, REPO / "worlds"))
 
 
-# —— 1. 清单 ——
+# —— 1. The list / リスト ——
 
 
 def test_slice_has_58_recordings_and_26_set_piece_keys() -> None:
     p = slice_plan()
-    assert len(p.recordings) == 58  # 切片 28 条 + B-6b 五个人的 6 句
+    assert len(p.recordings) == 58  # Slice 28 + B-6b's 6 lines for five people / スライス 28 本 + B-6b の 5 人の 6 句
     by_speaker: dict[str, int] = {}
     for r in p.recordings:
         by_speaker[r.speaker.id] = by_speaker.get(r.speaker.id, 0) + 1
@@ -96,12 +102,15 @@ def test_slice_has_58_recordings_and_26_set_piece_keys() -> None:
         "char.groom": "Sadachbia",
         "char.philostratus": "Rasalgethi",
     }
-    assert p.recording("melos-arrival_capped-1").text == "……これなら、間に合う。"  # 从世界模型读
+    # From the world model / 世界モデルから読む
+    assert p.recording("melos-arrival_capped-1").text == "……これなら、間に合う。"
 
 
 def test_lines_match_ux_design_16_2() -> None:
-    # 相槌两句按 UX 量测改了字（ux/reviews/prerecorded-listen.md）：メロス「……なるほど。」→「そうか。」→「おう。」，
-    # 老爺「ああ、ああ。」→「ああ。」
+    # Two aizuchi had their wording changed after UX measurement (ux/reviews/prerecorded-listen.md): メロス
+    # 「……なるほど。」→「そうか。」→「おう。」, 老爺「ああ、ああ。」→「ああ。」
+    # 相槌 2 句は UX の計測で文言を変えた（ux/reviews/prerecorded-listen.md）：メロス「……なるほど。」→「そうか。」→
+    # 「おう。」、老爺「ああ、ああ。」→「ああ。」
     p = slice_plan()
     assert p.lines["char.melos"] == {
         "aizuchi": ["うむ。", "ああ。", "おう。"],
@@ -115,7 +124,8 @@ def test_lines_match_ux_design_16_2() -> None:
     }
 
 
-# ux-design 16.2 的表，切片以外的五个人物（M3）
+# The ux-design 16.2 table, the five characters outside the slice (M3)
+# ux-design 16.2 の表、スライス以外の 5 人の人物（M3）
 M3_LINES = {
     "char.king": (["ふん。", "ほう。", "うむ。"], ["聞こえぬ。", "はっきり申せ。"], "……しばし待て。"),
     "char.selinuntius": (
@@ -141,7 +151,10 @@ M3_LINES = {
 }
 
 
-# 假声音下 6 句全过的人物（相槌超 0.5 秒的人整块不进清单；三拍以上的四句 UX 已换成两拍，七个人都过）
+# Characters whose 6 lines all pass with the fake audio (anyone with an aizuchi over 0.5 seconds drops out as a
+# block; UX already changed the four lines of three or more morae to two, so all seven pass)
+# 偽の音声で 6 句すべて合格する人物（相槌が 0.5 秒を超える人はブロックごとリストに入らない。3 モーラ以上の 4 句は
+# UX が 2 モーラに変えたので、7 人とも合格）
 FAKE_CHARACTERS = {"char.melos", "char.old-man", *M3_LINES}
 
 
@@ -152,7 +165,12 @@ def draft_plan() -> Plan:
 
 
 def test_all_seven_characters_have_their_six_lines() -> None:
-    """B-6b：七个人的 6 句都录，声音按 D-025、D-036；切片里不能和五个新人物说话，manifest 照旧不给（test_manifest）。"""
+    """B-6b: the 6 lines of all seven are recorded, voices per D-025 and D-036; the five new characters can't be talked
+    to in the slice, so the manifest still leaves them out (test_manifest).
+
+    B-6b：7 人の 6 句をすべて録り、声は D-025、D-036 に従う。スライスでは 5 人の新しい人物と話せないので、manifest には
+    従来どおり出さない（test_manifest）。
+    """
     s = slice_plan()
     assert {k: (v["aizuchi"], v["unheard"], v["wait"][0]) for k, v in s.lines.items() if k in M3_LINES} == M3_LINES
     assert set(s.lines) == {"char.melos", "char.old-man", *M3_LINES}
@@ -164,7 +182,9 @@ def test_all_seven_characters_have_their_six_lines() -> None:
         "char.philostratus": "Rasalgethi",
     }
     assert len(s.refs) == 7 * 2
-    # 新人物没有自由对话的响度，等量了 ref 再定；王的 −16.3 只管收幕那两段
+    # The new characters have no free-talk loudness yet; it's set after the refs are measured. The king's −16.3 only
+    # covers those two act-closing pieces
+    # 新しい人物には自由会話のラウドネスがまだなく、ref を測ってから決める。王の −16.3 は幕を閉じるその 2 場面だけ
     assert all(
         r.loudness is None for r in s.recordings if r.speaker.id in M3_LINES and not r.keys[0].startswith("piece.")
     )
@@ -173,7 +193,12 @@ def test_all_seven_characters_have_their_six_lines() -> None:
 
 
 def test_draft_world_has_the_same_recordings_as_the_slice() -> None:
-    """--world 1.0.0-draft：W-2 起切片的固定演出写在完整版里，录音和切片一样多；同一句签名一样，换世界模型不重读。"""
+    """--world 1.0.0-draft: since W-2 the slice's set pieces are written in the full version, so there are as many
+    recordings as in the slice; the same line has the same signature, so switching the world model re-reads nothing.
+
+    --world 1.0.0-draft：W-2 以降スライスの固定演出は完全版に書かれているので、録音の数はスライスと同じ。同じ句は署名も
+    同じなので、世界モデルを切り替えても読み直さない。
+    """
     s, d = slice_plan(), draft_plan()
     assert {r.id for r in d.recordings} == {r.id for r in s.recordings}
     old = {r.id: cli.sig(r.speaker.voice, r.system, r.spoken) for r in s.recordings}
@@ -181,11 +206,16 @@ def test_draft_world_has_the_same_recordings_as_the_slice() -> None:
 
 
 def test_resume_of_a_run_made_before_b6b_reads_only_the_five(tmp_path: Path) -> None:
-    """Mac 上切片那次的目录 --resume：只读五个新人物的 6 句（相槌 6 遍，其余 3 遍）和 ref，切片的 28 条不重读。"""
+    """--resume of the directory from the slice run on the Mac: only the five new characters' 6 lines (6 takes for
+    aizuchi, 3 for the rest) and the refs are read; the slice's 28 are not re-read.
+
+    Mac でのスライスの実行ディレクトリを --resume：5 人の新しい人物の 6 句（相槌は 6 テイク、ほかは 3 テイク）と ref
+    だけを読み、スライスの 28 本は読み直さない。
+    """
     repo = fake_repo(tmp_path)
     src = repo / "services" / "backend" / "voice" / "hashire-merosu.json"
     spec = json.loads(src.read_text(encoding="utf-8"))
-    for sid in M3_LINES:  # B-6b 之前的源文件
+    for sid in M3_LINES:  # The source file before B-6b / B-6b より前の元ファイル
         for k in ("lines", "scenes", "ref", "breathyOk"):
             spec["speakers"][sid].pop(k, None)
     src.write_text(json.dumps(spec, ensure_ascii=False), encoding="utf-8")
@@ -197,9 +227,11 @@ def test_resume_of_a_run_made_before_b6b_reads_only_the_five(tmp_path: Path) -> 
     assert cli.main(["--resume", str(run)], cli.Deps(again, FakeTranscriber(again), audio.FakeEncoder()), {}) == 0
     lines = {t: n for t, n in again.reads.items() if any(t in (*a, *u, w) for a, u, w in M3_LINES.values())}
     assert sum(lines.values()) == 5 * (3 * 6 + 3 * 3)
-    assert set(again.reads) - set(lines)  # 另外的是 ref
+    assert set(again.reads) - set(lines)  # The rest are refs / 残りは ref
     voices = json.loads((run / "release" / "voices.json").read_text(encoding="utf-8"))
-    # 假声音按拍数定长度，相槌超 0.5 秒的人整块不进清单（FAKE_CHARACTERS）
+    # The fake audio's length follows the mora count; anyone with an aizuchi over 0.5 seconds drops out as a block
+    # (FAKE_CHARACTERS)
+    # 偽の音声の長さはモーラ数で決まる。相槌が 0.5 秒を超える人はブロックごとリストに入らない（FAKE_CHARACTERS）
     assert set(voices["characters"]) == FAKE_CHARACTERS
     assert len(voices["setPieceVoices"]) == len(PIECE_KEYS)
 
@@ -219,7 +251,10 @@ def test_scene_line_only_where_there_is_a_scene() -> None:
 
 
 def test_speaker_scenes_direct_one_slot_of_one_speaker() -> None:
-    # UX 量完以后，只给要重录的 9 句加演法：「aizuchi/3」两人都有，写在说话人块里只管这个人
+    # After UX measured them, direction was added only to the 9 lines to re-record: both people have 「aizuchi/3」,
+    # and in the speaker block it applies only to that person
+    # UX の計測後、録り直す 9 句にだけ演じ方を足した：「aizuchi/3」は 2 人ともあるが、話者ブロックに書けばその人
+    # だけに効く
     p = slice_plan()
     redo = ["melos-aizuchi-2", "melos-aizuchi-3", "old-man-aizuchi-1", "old-man-aizuchi-2", "old-man-aizuchi-3"]
     scene = "\n場面：相づち。聞いているしるしに、短く一度だけ。間を置かず、語尾を上げず、ささやかずに。"
@@ -228,10 +263,14 @@ def test_speaker_scenes_direct_one_slot_of_one_speaker() -> None:
     assert p.recording("melos-wait-1").system.endswith(calm)
     usual = "\n場面：ふだん話すときと同じ高さと速さで。"
     assert all(p.recording(rid).system.endswith(usual) for rid in ["old-man-unheard-1", "old-man-unheard-2"])
-    # メロス unheard/2 加了演法两次都多读出「それ」「そう」，第三轮照 UX 的默认去掉演法
+    # With direction added, メロス unheard/2 twice read an extra 「それ」「そう」; in the third round the direction was
+    # removed, per UX's default
+    # メロス unheard/2 は演じ方を足すと 2 回とも「それ」「そう」を余計に読んだので、3 回目は UX の既定どおり
+    # 演じ方を外した
     for rid in ["melos-aizuchi-1", "melos-unheard-1", "melos-unheard-2", "old-man-wait-1"]:
         assert "場面：" not in p.recording(rid).system
-    # 改了演法的句子签名变了：--resume 只重读这几句
+    # Lines whose direction changed have a new signature: --resume re-reads only those
+    # 演じ方を変えた句は署名が変わる：--resume はそれらだけを読み直す
     spec = read_spec("hashire-merosu")
     spec["speakers"]["char.old-man"].pop("scenes")
     plain = plan(spec, world_of(spec, REPO / "worlds"))
@@ -240,7 +279,7 @@ def test_speaker_scenes_direct_one_slot_of_one_speaker() -> None:
         r.speaker.voice, plain.recording("old-man-aizuchi-2").system, r.spoken
     )
     spec["speakers"]["char.old-man"]["scenes"] = {"aizuchi/9": "x"}
-    with pytest.raises(SpecError, match="char.old-man 的 aizuchi/9"):
+    with pytest.raises(SpecError, match="char.old-man aizuchi/9"):
         plan(spec, world_of(spec, REPO / "worlds"))
 
 
@@ -250,7 +289,10 @@ def test_sessions_never_mix_scenes(tmp_path: Path) -> None:
     assert code == 0
     systems = [s for _, s in reader.sessions if "旅の者と話しています" not in s]
     groups = {r.group for r in slice_plan().recordings}
-    # 每遍每组一条会话：场面不同的不在同一条会话里；第 4〜6 遍只有相槌（相槌读 6 遍）
+    # One session per group per take: different scenes never share a session; takes 4–6 are aizuchi only (aizuchi
+    # are read 6 times)
+    # テイクごと・グループごとに 1 セッション：場面が違うものは同じセッションに入れない。4〜6 テイク目は相槌だけ
+    # （相槌は 6 回読む）
     aizuchi_groups = {r.group for r in slice_plan().recordings if r.aizuchi}
     assert len(systems) == 3 * len(groups) + 3 * len(aizuchi_groups)
     assert set(systems) == {g[1] for g in groups}
@@ -266,12 +308,13 @@ def test_refs_go_to_release_ref_not_into_voices(tmp_path: Path) -> None:
     voices = (rel / "voices.json").read_text(encoding="utf-8")
     assert "ref" not in voices
     talk = [s for _, s in reader.sessions if "旅の者と話しています" in s]
-    assert len(talk) == 7 and all("場面：" not in s for s in talk)  # 一个人物一条会话，人物那层、不带场面
+    # One session per character, the character layer, no scene / 人物ごとに 1 セッション、人物の層だけで場面なし
+    assert len(talk) == 7 and all("場面：" not in s for s in talk)
     audit = (rel / "audit.md").read_text(encoding="utf-8")
     assert "こんにちは。あなたはどんな方ですか。" in audit
 
 
-# —— 2. 自动检查 ——
+# —— 2. Automatic checks / 自動検査 ——
 
 
 def shape(speech: float, *, tail: bool = False) -> audio.Shape:
@@ -284,8 +327,8 @@ def test_one_too_long_one_truncated_picks_the_third() -> None:
         text, {1: (shape(5.0), text), 2: (shape(2.2, tail=True), text), 3: (shape(2.3), text)}, aizuchi=False
     )
     assert v.chosen == 3
-    assert any("截断" in p for p in v.takes[1].problems)
-    assert any("长" in p for p in v.takes[0].problems)
+    assert any("truncated" in p for p in v.takes[1].problems)
+    assert any("Longer than" in p for p in v.takes[0].problems)
 
 
 def test_misread_and_double_read_are_rejected() -> None:
@@ -298,8 +341,8 @@ def test_misread_and_double_read_are_rejected() -> None:
         aizuchi=False,
     )  # fmt: skip
     assert v.chosen == 3
-    assert "读两遍" in v.takes[0].problems[0]
-    assert "字错率" in v.takes[1].problems[0]
+    assert "read twice" in v.takes[0].problems[0]
+    assert "CER" in v.takes[1].problems[0]
 
 
 def test_transcript_in_kana_for_a_replaced_reading_is_not_a_misread() -> None:
@@ -313,17 +356,20 @@ def test_transcript_in_kana_for_a_replaced_reading_is_not_a_misread() -> None:
     ("text", "heard"), [("ああ。", "あー"), ("へえ。", "へー"), ("ああ、ああ。", "あーあー"), ("へえ。", "ヘー")]
 )
 def test_long_vowel_mark_is_not_a_misread(text: str, heard: str) -> None:
-    assert checks.cer(text, heard) == 0.0  # 「ー」换成前一个假名的元音再比（UX #82）
+    # 「ー」 is replaced by the preceding kana's vowel before comparing (UX #82)
+    # 「ー」を前の仮名の母音に置き換えてから比べる（UX #82）
+    assert checks.cer(text, heard) == 0.0
 
 
 def test_aizuchi_failing_only_on_cer_is_kept_and_flagged() -> None:
     v = checks.judge("うむ。", {1: (shape(0.3), "うん"), 2: (shape(0.3), "うん")}, aizuchi=True)
     assert v.chosen == 1
-    assert v.flags and "うん" in v.flags[0] and "不扔" in v.flags[0]
+    assert v.flags and "うん" in v.flags[0] and "kept" in v.flags[0]
     v = checks.judge("うむ。", {1: (shape(0.3), "うん"), 2: (shape(0.31), "うむ")}, aizuchi=True)
-    assert v.chosen == 2 and not v.flags  # 有补转写对得上的那遍就选它
+    # A take whose transcript matches is chosen when there is one / 文字起こしが合うテイクがあればそれを選ぶ
+    assert v.chosen == 2 and not v.flags
     not_aizuchi = checks.judge("もう一度、頼む。", {1: (shape(1.0), "もう一度、たのしむ。。")}, aizuchi=False)
-    assert not_aizuchi.chosen is None  # 不是相槌的照旧扔
+    assert not_aizuchi.chosen is None  # Non-aizuchi are still rejected / 相槌でないものは従来どおり捨てる
 
 
 def test_aizuchi_with_other_problems_is_still_rejected() -> None:
@@ -340,42 +386,53 @@ def ai_shape(span: float, *, pitched: float = 0.7, start: float = 0.3, speech: f
 
 
 def test_aizuchi_over_half_a_second_is_rejected() -> None:
-    # UX 量测：相槌有声超过 0.5 秒的重录，不再只是标出来
+    # UX measurement: aizuchi voiced over 0.5 seconds are re-recorded, no longer just flagged
+    # UX 計測：有声が 0.5 秒を超える相槌は録り直す。印を付けるだけにはしない
     v = checks.judge("へえ。", {1: (ai_shape(0.74), "へえ"), 2: (ai_shape(0.4), "へえ")}, aizuchi=True)
     assert v.chosen == 2 and not v.flags
-    assert any("超过 0.5s" in p for p in v.takes[0].problems)
-    # 有声范围用 UX 的量法（span）；没量的按 speech
+    assert any("over 0.5s" in p for p in v.takes[0].problems)
+    # The voiced span uses the UX method (span); when not measured, speech is used
+    # 有声範囲は UX の測り方（span）を使う。測っていなければ speech を使う
     assert checks.judge("へえ。", {1: (shape(0.62), "へえ")}, aizuchi=True).chosen is None
-    # 三遍都超：不放宽，这句不进清单
+    # All three over: no loosening, the line stays out of the manifest
+    # 3 テイクとも超える：基準は緩めず、この句はリストに入れない
     v = checks.judge("ああ。", {n: (ai_shape(0.6 + n / 100), "ああ") for n in (1, 2, 3)}, aizuchi=True)
     assert v.chosen is None
 
 
 def test_aizuchi_file_over_0_6_s_is_rejected() -> None:
-    # UX 的量法有声 0.45 秒，但 −45 dBFS 算的有声（裁头尾用的）0.52 秒：裁好加两头合计 0.1 秒超过 0.6 秒
+    # Voiced is 0.45 seconds by the UX method, but 0.52 seconds by the −45 dBFS measure (used for trimming): trimmed
+    # plus 0.1 seconds in total at both ends is over 0.6 seconds
+    # UX の測り方では有声 0.45 秒だが、−45 dBFS で測った有声（頭尾のトリムに使う）は 0.52 秒：トリム後に両端合計
+    # 0.1 秒を足すと 0.6 秒を超える
     v = checks.judge("うむ。", {1: (ai_shape(0.45, speech=0.52), "うむ")}, aizuchi=True)
     assert v.chosen is None
-    assert any("裁好" in p and "0.6" in p for p in v.takes[0].problems)
+    assert any("after trimming" in p and "0.6" in p for p in v.takes[0].problems)
     assert checks.judge("うむ。", {1: (ai_shape(0.4, speech=0.42), "うむ")}, aizuchi=True).chosen == 1
 
 
 def test_whispered_aizuchi_is_rejected() -> None:
-    # 老爺「ああ、ああ。」是耳语，メロス「ああ。」后面是气声（UX 量到有音高的窗 0.04 / 0.07）
+    # 老爺「ああ、ああ。」 is whispered and メロス「ああ。」 turns breathy (UX measured pitched windows at 0.04 / 0.07)
+    # 老爺「ああ、ああ。」はささやき声、メロス「ああ。」は後半が息まじり（UX の計測でピッチのある窓 0.04 / 0.07）
     v = checks.judge("ああ。", {1: (ai_shape(0.35, pitched=0.07), "あっ"), 2: (ai_shape(0.33), "ああ")}, aizuchi=True)
     assert v.chosen == 2
-    assert any("音高" in p for p in v.takes[0].problems)
+    assert any("pitched" in p for p in v.takes[0].problems)
 
 
 def test_breathy_ok_keeps_the_least_breathy_take_and_flags_it() -> None:
-    # 花婿「ああ。」重读了还是气声（12〜36%）：源文件 breathyOk 只对这一句收，挑最不气的一遍标给 UX，不再重读
+    # 花婿「ああ。」 stays breathy even when re-read (12–36%): the source file's breathyOk accepts it for this line
+    # only, picking the least breathy take and flagging it for UX, without re-reading
+    # 花婿「ああ。」は読み直しても息まじり（12〜36%）：元ファイルの breathyOk でこの句だけ受け入れ、いちばん息まじりで
+    # ないテイクを選んで UX 向けに印を付け、読み直さない
     takes: dict[int, tuple[audio.Shape, str | None] | str] = {
         1: (ai_shape(0.3, pitched=0.12), "ああ"),
         2: (ai_shape(0.32, pitched=0.36), "ああ"),
     }
     assert checks.judge("ああ。", takes, aizuchi=True).chosen is None
     v = checks.judge("ああ。", takes, aizuchi=True, breathy_ok=True)
-    assert v.chosen == 2 and "音高" in v.flags[0]
-    takes[3] = (ai_shape(0.33), "ああ")  # 有一遍不气的还是挑它
+    assert v.chosen == 2 and "pitched" in v.flags[0]
+    # A take that isn't breathy is still preferred / 息まじりでないテイクがあればやはりそれを選ぶ
+    takes[3] = (ai_shape(0.33), "ああ")
     assert checks.judge("ああ。", takes, aizuchi=True, breathy_ok=True).chosen == 3
     groom = [r for r in slice_plan().recordings if r.speaker.id == "char.groom"]
     assert [r.id for r in groom if r.breathy_ok] == ["groom-aizuchi-1"]
@@ -386,15 +443,19 @@ def test_aizuchi_voiced_from_the_first_frame_is_flagged_and_the_other_take_prefe
     v = checks.judge("ああ。", {1: (ai_shape(0.3, start=0.0), "ああ"), 2: (ai_shape(0.4), "ああ")}, aizuchi=True)
     assert v.chosen == 2 and not v.flags
     v = checks.judge("ああ。", {1: (ai_shape(0.3, start=0.0), "ああ")}, aizuchi=True)
-    assert v.chosen == 1 and v.flags and "开头就有声" in v.flags[0]
+    assert v.chosen == 1 and v.flags and "voiced from the very start" in v.flags[0]
 
 
 def test_slow_aizuchi_over_mora_upper_is_rejected_again() -> None:
-    # 1825ca1 让相槌超拍数上限只标不扔；UX 量完改回扔（另有 0.5 秒那条）
+    # 1825ca1 made aizuchi over the mora upper bound flagged rather than rejected; after UX measured, they are
+    # rejected again (there is also the 0.5-second rule)
+    # 1825ca1 でモーラ数の上限を超えた相槌は捨てずに印だけ付けるようにしたが、UX の計測後に捨てるよう戻した（別に
+    # 0.5 秒の条件もある）
     v = checks.judge("ああ。", {1: (ai_shape(0.45, speech=0.85), "ああ")}, aizuchi=True)
     assert v.chosen is None
-    assert any("上限" in p for p in v.takes[0].problems)
-    # 读两遍照旧扔：一遍是另两遍的两倍以上
+    assert any("upper bound" in p for p in v.takes[0].problems)
+    # Reading twice is still rejected: one take is more than twice the other two
+    # 二度読みは従来どおり捨てる：1 テイクがほかの 2 テイクの 2 倍以上
     v = checks.judge(
         "へえ。", {1: (shape(0.2), "へえ"), 2: (shape(0.22), "へえ"), 3: (shape(0.45), "へえ")}, aizuchi=True
     )
@@ -410,7 +471,9 @@ def talk_shape(speech: float, hz: float | None, sounding: float) -> audio.Shape:
 
 
 def test_unheard_and_wait_prefer_the_take_like_free_talk() -> None:
-    # UX 量测：メロス「待ってくれ」比自由对话高 5.9 半音。范围里的那遍优先，哪怕离长度中位数远一点
+    # UX measurement: メロス「待ってくれ」 is 5.9 semitones above free talk. The take within range is preferred, even if
+    # a little further from the median length
+    # UX 計測：メロス「待ってくれ」は自由会話より 5.9 半音高い。範囲内のテイクを優先する（長さの中央値から少し遠くても）
     text = "待ってくれ。少し、考えさせてくれ。"
     talk = (152.0, 8.5)
     moras = checks.mora(text)
@@ -421,8 +484,9 @@ def test_unheard_and_wait_prefer_the_take_like_free_talk() -> None:
         talk=talk,
     )
     assert v.chosen == 2 and not v.flags
-    assert "+0.9 半音" in (v.takes[1].talk or "")
-    # 都不在范围里：挑最近的一遍，标出来，不扔
+    assert "+0.9 semitones" in (v.takes[1].talk or "")
+    # None within range: pick the closest take and flag it, don't reject
+    # どれも範囲外：最も近いテイクを選んで印を付け、捨てない
     v = checks.judge(
         text,
         {1: (talk_shape(2.3, 250, moras / 8.3), text), 2: (talk_shape(2.4, 214, moras / 8.3), text)},
@@ -430,15 +494,16 @@ def test_unheard_and_wait_prefer_the_take_like_free_talk() -> None:
         talk=talk,
     )
     assert v.chosen == 2
-    assert v.flags and "不在范围里" in v.flags[0] and "+5.9 半音" in v.flags[0]
-    # 语速慢了 28% 也算不在范围里（老爺「耳が遠うてな」）
+    assert v.flags and "no passing take is within range" in v.flags[0] and "+5.9 semitones" in v.flags[0]
+    # A speech rate 28% slow is also out of range (老爺「耳が遠うてな」)
+    # 話速が 28% 遅いのも範囲外（老爺「耳が遠うてな」）
     old = checks.judge(
         "……すまぬ、耳が遠うてな。",
         {1: (talk_shape(3.2, 114, 2.8), "すまぬ、耳が遠うてな")},
         aizuchi=False,
         talk=(114.0, 6.0),
     )
-    assert old.chosen == 1 and old.flags and "语速" in old.flags[0]
+    assert old.chosen == 1 and old.flags and "speech rate" in old.flags[0]
 
 
 def test_only_unheard_and_wait_are_compared_with_free_talk() -> None:
@@ -450,7 +515,10 @@ def test_only_unheard_and_wait_are_compared_with_free_talk() -> None:
 
 
 def test_heard_as_accepts_a_known_transcript_spelling_for_that_line_only() -> None:
-    # 老爺「ちと」补转写总写成「ちょっと」（字错率 22%）：源文件 heardAs 只对这一句，不放宽 20%
+    # 老爺「ちと」 is always transcribed as 「ちょっと」 (CER 22%): the source file's heardAs applies to this line only,
+    # without loosening the 20%
+    # 老爺の「ちと」は文字起こしでいつも「ちょっと」になる（文字誤り率 22%）：元ファイルの heardAs はこの句だけに効き、
+    # 20% は緩めない
     text = "ちと、待ってくだされ。"
     r = slice_plan().recording("old-man-wait-1")
     assert r.heard_as == ("ちょっと、待ってくだされ。",)
@@ -458,7 +526,9 @@ def test_heard_as_accepts_a_known_transcript_spelling_for_that_line_only() -> No
     assert checks.judge(text, {1: (shape(1.8), heard)}, aizuchi=False).chosen is None
     v = checks.judge(text, {1: (shape(1.8), heard)}, aizuchi=False, heard_as=r.heard_as)
     assert v.chosen == 1 and v.takes[0].heard_as
-    assert [f for f in v.flags if "heardAs" in f]  # 只靠 heardAs 过的那遍在 audit.md 标出来（UX）
+    # A take passing only thanks to heardAs is flagged in audit.md (UX)
+    # heardAs でしか合格しないテイクは audit.md で印を付ける（UX）
+    assert [f for f in v.flags if "heardAs" in f]
     ok = checks.judge(text, {1: (shape(1.8), "ちと、待って くだされ。")}, aizuchi=False, heard_as=r.heard_as)
     assert ok.chosen == 1 and not ok.takes[0].heard_as and not ok.flags
     assert slice_plan().recording("old-man-unheard-1").heard_as == ()
@@ -469,24 +539,30 @@ def test_heard_as_accepts_a_known_transcript_spelling_for_that_line_only() -> No
 
 
 def test_loudness_offset_lowers_one_line_only() -> None:
-    # 原作写明声音小的句子（S-087 メロス「嗄れた声が幽かに」）：目标响度按键再低 6 dB，四个键共用一条录音
+    # A line the source work describes as quiet (S-087 メロス「嗄れた声が幽かに」): the target loudness is 6 dB lower by
+    # key, and four keys share one recording
+    # 原作に声が小さいと書かれたセリフ（S-087 メロス「嗄れた声が幽かに」）：キーごとに目標ラウドネスをさらに 6 dB
+    # 下げる。4 つのキーで 1 本の録音を共有する
     p = slice_plan()
     assert p.recording("melos-crowd-makes-way-4").loudness == pytest.approx(-22.3)
     assert p.recording("melos-crowd-makes-way-7").loudness == pytest.approx(-16.3)
     assert p.recording("melos-unheard-1").loudness == pytest.approx(-16.3)
-    assert p.recording("crowd-crowd-makes-way-5").loudness is None  # 群衆不调
+    assert p.recording("crowd-crowd-makes-way-5").loudness is None  # 群衆: no adjustment / 群衆は調整しない
     spec = read_spec("hashire-merosu")
     spec["speakers"]["char.melos"]["loudnessOffset"] = {"wait/9": -6}
     with pytest.raises(SpecError, match="loudnessOffset"):
         plan(spec, world_of(spec, REPO / "worlds"))
     spec = read_spec("hashire-merosu")
     spec["speakers"]["char.crowd"]["loudnessOffset"] = {"piece.king-asks/4": -3}
-    with pytest.raises(SpecError, match="没有目标响度"):
+    with pytest.raises(SpecError, match="without a target loudness"):
         plan(spec, world_of(spec, REPO / "worlds"))
 
 
 def test_piece_loudness_levels_the_curtain() -> None:
-    # 收幕那一串（beat.24〜27）不同的人拉到同一个电平（メロスの −16.3，UX）；セリヌンティウス其余的句子不调
+    # In the act-closing sequence (beat.24–27) different people are brought to the same level (メロスの −16.3, UX);
+    # セリヌンティウス's other lines are not adjusted
+    # 幕を閉じる一連の場面（beat.24〜27）では違う人を同じレベルにそろえる（メロスの −16.3、UX）。セリヌンティウスの
+    # ほかのセリフは調整しない
     p = slice_plan()
     for rid in ("selinuntius-embrace-4", "selinuntius-embrace-selinuntius-doubted-2", "selinuntius-scarlet-cloak-2"):
         assert p.recording(rid).loudness == pytest.approx(-16.3)
@@ -507,17 +583,17 @@ def test_all_three_fail_goes_to_audit_not_voices(tmp_path: Path) -> None:
     assert "piece.gate-taken-again/2" not in voices["setPieceVoices"]
     assert set(voices["setPieceVoices"]) == PIECE_KEYS - {"piece.gate-again/1", "piece.gate-taken-again/2"}
     audit = (rel / "audit.md").read_text(encoding="utf-8")
-    assert "`guards-gate-taken-again-2`" in audit and "几遍都不过" in audit
-    assert "截断" in audit and "没读成" in audit
+    assert "`guards-gate-taken-again-2`" in audit and "No take passed" in audit
+    assert "truncated" in audit and "Not read" in audit
 
 
 def test_character_missing_one_line_drops_the_whole_block(tmp_path: Path) -> None:
-    reader = FakeReader(faults={"へえ。": ["silent"] * 6})  # 相槌读 6 遍
+    reader = FakeReader(faults={"へえ。": ["silent"] * 6})  # Aizuchi are read 6 times / 相槌は 6 回読む
     assert run_fake(tmp_path, reader) == 0
     voices = json.loads((only_run(tmp_path) / "release" / "voices.json").read_text(encoding="utf-8"))
     assert set(voices["characters"]) == FAKE_CHARACTERS - {"char.old-man"}
     audit = (only_run(tmp_path) / "release" / "audit.md").read_text(encoding="utf-8")
-    assert "市の老爺（char.old-man）的 6 句有没过的" in audit
+    assert "市の老爺 (char.old-man): some of the 6 lines failed" in audit
 
 
 def test_one_bad_take_out_of_three(tmp_path: Path) -> None:
@@ -531,7 +607,7 @@ def test_one_bad_take_out_of_three(tmp_path: Path) -> None:
     assert "| 3 |" in row
 
 
-# —— 3. 跑法 ——
+# —— 3. Running / 実行方法 ——
 
 
 def test_real_without_confirm_only_prints(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -539,7 +615,7 @@ def test_real_without_confirm_only_prints(tmp_path: Path, capsys: pytest.Capture
     code = cli.main(["--out", str(tmp_path / "out")], cli.Deps(encoder=audio.FakeEncoder()), env)
     assert code == 0
     out = capsys.readouterr().out
-    assert "预计花费" in out and "只打印，不调用" in out and "没带 --confirm" in out
+    assert "Estimated cost" in out and "Print only, no calls" in out and "--confirm not given" in out
     assert "--max-google-usd" in out and "ZJ_VERTEX_PROJECT" in out
     assert not list((tmp_path / "out").glob("*/takes"))
     assert not (tmp_path / "ledger.jsonl").exists()
@@ -554,7 +630,8 @@ def test_rate_limit_stops_and_resume_continues_from_there(tmp_path: Path) -> Non
     assert [r["kind"] for r in rows] == ["prerecorded", "prerecorded-transcribe"] * 2
     assert all(r["item"].startswith("b6/hashire-merosu/") for r in rows)
     run = only_run(tmp_path)
-    # 第一条会话是メロス不带场面的那组（相槌 2、3 有场面，另一组）
+    # The first session is メロス's group without a scene (aizuchi 2 and 3 have a scene and form another group)
+    # 最初のセッションはメロスの場面なしのグループ（相槌 2、3 は場面があり、別のグループ）
     assert sorted(p.name for p in (run / "takes").glob("*.wav")) == ["melos-aizuchi-1.1.wav", "melos-unheard-1.1.wav"]
     again = FakeReader()
     code = cli.main(
@@ -563,8 +640,11 @@ def test_rate_limit_stops_and_resume_continues_from_there(tmp_path: Path) -> Non
         {},
     )
     assert code == 0
-    assert again.reads["おう。"] == 6  # 第 3 条从第 1 遍读起（相槌读 6 遍）
-    # メロス的第 1 条已经读过第 1 遍；王和セリヌンティウス的相槌也有「うむ。」，各读 6 遍
+    # The 3rd is read from take 1 (aizuchi are read 6 times) / 3 本目はテイク 1 から読む（相槌は 6 回読む）
+    assert again.reads["おう。"] == 6
+    # メロス's 1st already has take 1 read; the king's and セリヌンティウス's aizuchi also include 「うむ。」, 6 reads
+    # each
+    # メロスの 1 本目はテイク 1 を読み済み。王とセリヌンティウスの相槌にも「うむ。」があり、それぞれ 6 回読む
     assert again.reads["うむ。"] == 5 + 6 + 6
     assert (run / "release" / "voices.json").is_file()
 
@@ -599,7 +679,9 @@ def test_only_rereads_the_given_keys(tmp_path: Path) -> None:
 
 
 def test_only_estimate_without_confirm_leaves_the_old_takes(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    # Mac 上先不带 --confirm 看估价：旧的几遍不挪，估价照重读算
+    # On the Mac, first look at the estimate without --confirm: the old takes don't move, and the estimate counts the
+    # re-reads
+    # Mac ではまず --confirm なしで見積もりを見る：古いテイクは動かさず、見積もりは読み直す分で計算する
     assert run_fake(tmp_path, FakeReader()) == 0
     run = only_run(tmp_path)
     capsys.readouterr()
@@ -607,14 +689,15 @@ def test_only_estimate_without_confirm_leaves_the_old_takes(tmp_path: Path, caps
     argv = ["--resume", str(run), "--only", "melos-aizuchi-2", "old-man-aizuchi-3"]
     assert cli.main(argv, cli.Deps(encoder=audio.FakeEncoder()), env) == 0
     out = capsys.readouterr().out
-    assert "照读 12 轮" in out and "只打印，不调用" in out  # 相槌一句 6 遍
+    # 6 takes per aizuchi line / 相槌は 1 句 6 テイク
+    assert "reads aloud 12 turns" in out and "Print only, no calls" in out
     assert not (run / "takes" / "discarded").exists()
     assert len(list((run / "takes").glob("melos-aizuchi-2.*.wav"))) == 6
 
 
 def test_only_rejects_unknown_keys(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert run_fake(tmp_path, FakeReader(), "--only", "piece.nope/1") == cli.EXIT_CONFIG
-    assert "认不出" in capsys.readouterr().err
+    assert "unrecognized" in capsys.readouterr().err
 
 
 def test_changed_source_rereads_only_that_line(tmp_path: Path) -> None:
@@ -643,10 +726,10 @@ def test_total_cap_counts_what_the_ledger_already_has(tmp_path: Path) -> None:
     path = tmp_path / "ledger.jsonl"
     path.write_text(json.dumps({"provider": "google", "kind": "s2", "costUsd": 50.0}) + "\n", encoding="utf-8")
     assert run_fake(tmp_path, FakeReader(), ledger=Ledger(path, 50.0)) == cli.EXIT_STOP
-    assert len(path.read_text(encoding="utf-8").splitlines()) == 1  # 一次都没调
+    assert len(path.read_text(encoding="utf-8").splitlines()) == 1  # Not a single call / 一度も呼び出していない
 
 
-# —— 4. 输出 ——
+# —— 4. Output / 出力 ——
 
 
 def test_voices_json_passes_the_manifest_schema(tmp_path: Path) -> None:
@@ -658,8 +741,9 @@ def test_voices_json_passes_the_manifest_schema(tmp_path: Path) -> None:
     assert set(melos["cues"]) == {"arrival_capped"}
     assert voices["characters"]["char.old-man"]["cues"] == {}
     gate = voices["setPieceVoices"]
-    assert gate["piece.gate-taken/2"] == gate["piece.gate-turned-away/2"]  # 同一条录音给两个键
-    assert gate["piece.gate-promise/3"]["text"] == PROMISE_3  # 字幕是原文
+    # One recording serves two keys / 1 本の録音を 2 つのキーに使う
+    assert gate["piece.gate-taken/2"] == gate["piece.gate-turned-away/2"]
+    assert gate["piece.gate-promise/3"]["text"] == PROMISE_3  # Subtitles are the original text / 字幕は原文
 
 
 def test_file_names_carry_a_content_hash_and_the_real_duration(tmp_path: Path) -> None:
@@ -686,7 +770,9 @@ def test_released_audio_is_trimmed_to_80ms_each_side(tmp_path: Path) -> None:
 
 
 def test_trim_pads_a_take_that_starts_and_ends_voiced() -> None:
-    # メロス「ああ。」原始那遍一开头就有声，裁完头上没留出 80 毫秒（UX 量测）：补静音补够
+    # メロス「ああ。」's raw take is voiced from the very start, so trimming left no 80 ms at the head (UX
+    # measurement): pad enough silence
+    # メロス「ああ。」の元のテイクは冒頭から有声で、トリム後に頭の 80 ミリ秒が残らなかった（UX 計測）：無音を十分に補う
     pcm = audio.to_bytes(audio_tone(0.3))
     s = audio.shape(pcm)
     assert audio.head_voiced(s)
@@ -697,7 +783,10 @@ def test_trim_pads_a_take_that_starts_and_ends_voiced() -> None:
 
 
 def test_aizuchi_pads_20_ms_head_80_ms_tail_unless_the_onset_is_a_step() -> None:
-    # UX：相槌头 20、尾 80 毫秒；第一帧有声就离最响不到 6 dB（硬起头）的退回各 50 毫秒。合计都是 0.1 秒
+    # UX: aizuchi get 20 ms at the head and 80 ms at the tail; when the first voiced frame is within 6 dB of the loudest
+    # (a hard onset) it falls back to 50 ms each. Both total 0.1 seconds
+    # UX：相槌は頭 20、尾 80 ミリ秒。最初の有声フレームが最も大きいものから 6 dB 以内（硬い立ち上がり）なら各 50 ミリ秒
+    # に戻す。どちらも合計 0.1 秒
     n = round(0.3 * audio.RATE)
     ramp = array("h", (round(x * min(1.0, i / n)) for i, x in enumerate(audio_tone(0.3)))) + audio_tone(0.1)
     soft = audio.to_bytes(audio_silence(0.3) + ramp + audio_silence(0.3))
@@ -713,12 +802,17 @@ def test_aizuchi_pads_20_ms_head_80_ms_tail_unless_the_onset_is_a_step() -> None
 
 
 def test_level_measures_like_ux() -> None:
-    # 180 Hz、振幅 3000 的正弦：RMS = 3000/√2 → −23.8 dBFS（两头 5 毫秒的淡入淡出再低一点）；前后的静音不算
+    # A 180 Hz sine with amplitude 3000: RMS = 3000/√2 → −23.8 dBFS (a little lower with the 5 ms fades at both
+    # ends); the silence before and after doesn't count
+    # 180 Hz、振幅 3000 の正弦波：RMS = 3000/√2 → −23.8 dBFS（両端 5 ミリ秒のフェードでさらに少し下がる）。前後の無音は
+    # 数えない
     pcm = audio.to_bytes(audio_silence(0.3) + audio_tone(0.4) + audio_silence(0.3))
     lv = audio.level(pcm)
     assert lv.loudness_dbfs == pytest.approx(-23.8, abs=0.5)
-    assert lv.span == pytest.approx(0.46, abs=0.02)  # 40 毫秒的窗压着两头的边也算有声：比 0.4 秒多一点，UX 的量法一样
-    # 中间停一下也算在范围里
+    # A 40 ms window overlapping either edge also counts as voiced: a bit over 0.4 seconds, same as the UX method
+    # 両端の境目にかかる 40 ミリ秒の窓も有声になる：0.4 秒より少し長い。UX の測り方と同じ
+    assert lv.span == pytest.approx(0.46, abs=0.02)
+    # A pause in the middle is also within the span / 途中で間があっても範囲に含める
     two = audio.to_bytes(audio_tone(0.2) + audio_silence(0.5) + audio_tone(0.2))
     assert 0.9 <= audio.level(two).span <= 0.96
 
@@ -727,10 +821,12 @@ def test_pitched_tells_voice_from_whisper() -> None:
     import random
 
     rng = random.Random(6)
-    noise = array("h", (rng.randint(-3000, 3000) for _ in range(audio.RATE // 2)))  # 耳语、气声：没有周期
+    # Whisper, breathy voice: no period / ささやき声、息まじりの声：周期がない
+    noise = array("h", (rng.randint(-3000, 3000) for _ in range(audio.RATE // 2)))
     assert audio.pitched(audio.to_bytes(audio_tone(0.4))) > 0.9
     assert audio.pitched(audio.to_bytes(noise)) < 0.1
-    assert audio.shape(audio.to_bytes(noise)).pitched is None  # 不要就不量（慢）
+    # Not measured unless asked (slow) / 不要なら測らない（遅い）
+    assert audio.shape(audio.to_bytes(noise)).pitched is None
 
 
 def test_release_is_brought_to_the_speakers_loudness(tmp_path: Path) -> None:
@@ -741,17 +837,19 @@ def test_release_is_brought_to_the_speakers_loudness(tmp_path: Path) -> None:
         assert p.recording(rid).speaker.loudness == target
         name = next(rel.glob(f"{rid}.*.wav"))
         assert audio.level(audio.read_wav(name)).loudness_dbfs == pytest.approx(target, abs=0.2)
-    # 收幕：セリヌンティウス跟着メロス的电平，「待て。…」再低 6 dB
+    # Closing the act: セリヌンティウス follows メロス's level, and 「待て。…」 is another 6 dB lower
+    # 幕を閉じる場面：セリヌンティウスはメロスのレベルに合わせ、「待て。…」はさらに 6 dB 下げる
     for rid, target in [("selinuntius-embrace-4", -16.3), ("melos-crowd-makes-way-4", -22.3)]:
         name = next(rel.glob(f"{rid}.*.wav"))
         assert audio.level(audio.read_wav(name)).loudness_dbfs == pytest.approx(target, abs=0.2)
     crowd = audio.read_wav(next(rel.glob("crowd-crowd-makes-way-5.*.wav")))
-    assert audio.level(crowd).loudness_dbfs == pytest.approx(-23.8, abs=0.5)  # 没有目标的不调
+    # No target, no adjustment / 目標がなければ調整しない
+    assert audio.level(crowd).loudness_dbfs == pytest.approx(-23.8, abs=0.5)
     audit = (rel / "audit.md").read_text(encoding="utf-8")
     row = next(x for x in audit.splitlines() if x.startswith("| `melos-wait-1`"))
-    assert "→ -16.3 dBFS（-16.3）" in row and "| +7." in row and "dBTP" in row
+    assert "→ -16.3 dBFS (-16.3)" in row and "| +7." in row and "dBTP" in row
     row = next(x for x in audit.splitlines() if x.startswith("| `crowd-crowd-makes-way-5`"))
-    assert "（不调）" in row and "+0.0 dB" in row
+    assert "(no adjustment / 調整なし)" in row and "+0.0 dB" in row
 
 
 def test_fake_encoder_gain_never_goes_over_minus_1() -> None:
@@ -768,7 +866,9 @@ def test_logs_and_ledger_have_no_line_text(tmp_path: Path, capsys: pytest.Captur
     for t in texts:
         assert t not in logged
     audit = (only_run(tmp_path) / "release" / "audit.md").read_text(encoding="utf-8")
-    assert PROMISE_3 in audit  # 审查单带原文和选中那遍的补转写
+    # The audit sheet has the original text and the chosen take's transcript
+    # 監査シートには原文と選んだテイクの文字起こしがある
+    assert PROMISE_3 in audit
 
 
 def test_voice_files_are_not_in_lfs_but_art_still_is() -> None:
@@ -783,18 +883,25 @@ def test_voice_files_are_not_in_lfs_but_art_still_is() -> None:
     assert attr("assets/scenes/x.m4a") == "lfs"
 
 
-@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="没有 ffmpeg（Mac 上有；CI 用假的编码器）")
+NO_FFMPEG = (
+    "No ffmpeg (the Mac has it; CI uses the fake encoder) / ffmpeg がない（Mac にはある。CI は偽エンコーダーを使う）"
+)
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason=NO_FFMPEG)
 def test_ffmpeg_encoder_makes_a_24k_mono_aac() -> None:
     pcm = audio.to_bytes(audio_tone(1.2))
     enc = audio.FfmpegEncoder().encode(pcm)
     assert enc.data[4:8] == b"ftyp"
     assert 1150 <= enc.duration_ms <= 1300
-    assert audio.FfmpegEncoder().encode(pcm).data == enc.data  # 可复现：hash 才稳定
+    # Reproducible, so the hash is stable / 再現可能なので hash が安定する
+    assert audio.FfmpegEncoder().encode(pcm).data == enc.data
 
 
-@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="没有 ffmpeg（Mac 上有；CI 用假的编码器）")
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason=NO_FFMPEG)
 def test_ffmpeg_encoder_hits_the_loudness_and_keeps_true_peak_under_minus_1() -> None:
-    loud = audio.to_bytes(array("h", (x * 10 for x in audio_tone(1.0))))  # −0.8 dBFS 的峰，再 +3 dB
+    # A −0.8 dBFS peak, then +3 dB / −0.8 dBFS のピークにさらに +3 dB
+    loud = audio.to_bytes(array("h", (x * 10 for x in audio_tone(1.0))))
     enc = audio.FfmpegEncoder().encode(loud, 3.0)
     assert enc.true_peak_dbtp <= audio.PEAK_DBFS
     quiet = audio.to_bytes(audio_tone(1.0))
@@ -815,7 +922,7 @@ def audio_silence(seconds: float) -> Any:
     return _silence(seconds)
 
 
-# —— 真客户端的形状（不联网） ——
+# —— Shape of the real client (offline) / 本物のクライアントの形（ネットワークなし） ——
 
 
 def test_live_setup_matches_what_the_sdk_sends() -> None:
@@ -855,7 +962,8 @@ def test_live_usage_splits_text_and_audio() -> None:
     )
     assert u["inputTextTokens"] == 200 and u["inputAudioTokens"] == 100
     assert u["outputAudioTokens"] == 75 and u["outputTextTokens"] == 15
-    assert live_usage({"promptTokenCount": 10, "candidatesTokenCount": 5})["outputAudioTokens"] == 5  # 没分项按音频
+    # Without a breakdown it counts as audio / 内訳がなければ音声として数える
+    assert live_usage({"promptTokenCount": 10, "candidatesTokenCount": 5})["outputAudioTokens"] == 5
 
 
 # —— 5. mock ——
@@ -887,7 +995,11 @@ def test_mock_manifest_uses_voices_json(tmp_path: Path) -> None:
 
 
 def test_mock_without_voices_json_has_no_prerecorded_lines(tmp_path: Path) -> None:
-    """B-7：mock 不再有示意的预录句，和正式网关一样照没有预录处理。"""
+    """B-7: the mock no longer has placeholder pre-recorded lines; like the production gateway it handles them as
+    absent.
+
+    B-7：mock にはもう仮の事前収録セリフはなく、本番のゲートウェイと同じく事前収録なしとして扱う。
+    """
     with TestClient(create_app(Config(speed=0, strict=True, voices=tmp_path))) as c:
         c.post("/v1/auth/login", json={"inviteCode": "mock"}, headers={"Origin": str(c.base_url)})
         doc = c.get("/v1/books/hashire-merosu/manifest").json()
@@ -910,7 +1022,7 @@ def test_mock_serves_listed_voice_files_with_immutable_cache(tmp_path: Path) -> 
         assert c.get("/assets/voice/other-book/x.m4a").status_code == 404
 
 
-# —— 共用 ——
+# —— Shared / 共通 ——
 
 
 def run_fake(tmp_path: Path, reader: FakeReader, *extra: str, ledger: Ledger | None = None) -> int:
@@ -925,7 +1037,11 @@ def only_run(tmp_path: Path) -> Path:
 
 
 def fake_repo(tmp_path: Path) -> Path:
-    """改源文件的测试用：源文件拷一份，世界模型和 Schema 指回仓库。"""
+    """For tests that edit the source file: copy the source file, and point the world model and Schema back to the
+    repo.
+
+    元ファイルを書き換えるテスト用：元ファイルをコピーし、世界モデルと Schema はリポジトリを指す。
+    """
     repo = tmp_path / "repo"
     (repo / "services" / "backend").mkdir(parents=True)
     shutil.copytree(REPO / "services" / "backend" / "voice", repo / "services" / "backend" / "voice")
@@ -941,5 +1057,7 @@ def test_resume_of_a_finished_run_says_it_reuses_takes(tmp_path: Path, capsys: p
     capsys.readouterr()
     assert cli.main(["--resume", str(run)], cli.Deps(encoder=audio.FakeEncoder()), {}) == 0
     out = capsys.readouterr().out
-    assert "都读过了" in out and "假模型" not in out  # Mac 上按新检查重挑时，别让人以为换成了合成的声音
+    # When re-picking with new checks on the Mac, don't make people think it switched to synthesized audio
+    # Mac で新しい検査により選び直すとき、合成音声に切り替わったと思わせない
+    assert "All takes already read" in out and "Fake models" not in out
     assert sorted(p.name for p in (run / "release").glob("*.wav")) == before

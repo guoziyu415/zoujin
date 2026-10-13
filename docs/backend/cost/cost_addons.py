@@ -39,7 +39,7 @@ LEVERS = dict(
 )
 
 
-BASE_ROW = "Data's baseline (v1.0 basis) / データ担当の基準（v1.0 の算定基準）"
+BASE_ROW = "Data engineering's baseline (v1.0 basis) / データエンジニアリングの基準（v1.0 の算定基準）"
 SUBTOTAL_ROW = "Subtotal (with additions) / 小計（追加分を含む）"
 TOTAL_ROW = "Total (with levers) / 合計（レバー適用後）"
 

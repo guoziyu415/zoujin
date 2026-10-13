@@ -1,13 +1,30 @@
-"""用参考实现 reference/worldsim.py 生成 W-1 的黄金文件。参考实现改了（规则改动先改它）就重跑，CI 查生成物一致。
+"""Generates the W-1 golden files with the reference implementation reference/worldsim.py. Rerun whenever the
+reference implementation changes (rule changes go there first); CI checks that the generated files match.
 
     python3 -I packages/worldsim/tests/golden/gen_golden.py
 
-写三个文件（都用旅人：Role.startPlace、Role.items）：
-- runs.json：原作和 scenarios.json 的情景，一共 24 次推演各自跑到底的结果；
-- canon_beats.json：原作里每个节拍刚发生时的 t 和人物所在地（防剧透探针的 place / when 靠它）；
-- arrival.json：每个带 melosMinutes 的动作，在第四幕开始到它改的节拍发生前每 15 分钟（第四幕说一轮话的长度，
-  pacing.talkTurnMinutesAct4）的 arrival_delta；
-  过场二选一的选项在收幕时选，只算收幕那一刻。
+Writes three files (all with the traveler: Role.startPlace, Role.items):
+- runs.json: the original story and the scenarios of scenarios.json, the result of each of the 24 simulations run to
+  the end;
+- canon_beats.json: for each beat in the original story, t and the characters' locations right after it happens (the
+  anti-spoiler probes' place / when rely on it);
+- arrival.json: for each action with melosMinutes, arrival_delta every 15 minutes (the length of one exchange in act
+  4, pacing.talkTurnMinutesAct4) from the start of act 4 until before the beat it changes happens;
+  the either-or options of an interlude are chosen when closing the act, so only the moment of closing the act is
+  computed.
+
+参照実装 reference/worldsim.py で W-1 のゴールデンファイルを生成する。参照実装が変わったら（ルールの変更はまず
+そちらに入れる）再実行する。CI は生成物の一致を確認する。
+
+    python3 -I packages/worldsim/tests/golden/gen_golden.py
+
+3 つのファイルを書く（すべて旅人：Role.startPlace、Role.items）：
+- runs.json：原作と scenarios.json のシナリオ、計 24 回のシミュレーションをそれぞれ最後まで実行した結果；
+- canon_beats.json：原作の各ビートが起きた直後の t と登場人物の所在地（ネタバレ防止プローブの place / when は
+  これに頼る）；
+- arrival.json：melosMinutes を持つ各アクションについて、第四幕の開始からそれが変えるビートの発生前まで 15 分ごと
+  （第四幕で 1 回やりとりする長さ、pacing.talkTurnMinutesAct4）の arrival_delta；
+  幕間の二択は幕を閉じるときに選ぶので、幕を閉じる時点だけを計算する。
 """
 
 from __future__ import annotations
@@ -22,7 +39,7 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[3]
 W = REPO / "worlds" / "hashire-merosu" / "1.0.0-draft"
 ROLE = "role.traveler"
-STEP = 15  # 第四幕一轮的长度：玩家每个能做的时刻
+STEP = 15  # Length of one exchange in act 4: each moment the player can act / 第四幕の 1 回のやりとりの長さ
 
 
 def load_reference() -> ModuleType:
@@ -41,7 +58,12 @@ def scenarios() -> list[dict[str, Any]]:
 
 
 def melos_actions(world: dict[str, Any]) -> list[tuple[str, list[dict[str, Any]], list[int]]]:
-    """(动作, effects, 算哪些时刻)。时刻 = 第四幕开始到它改的节拍在原作里发生前，每 STEP 分钟。"""
+    """(action, effects, which moments to compute). Moments = every STEP minutes from the start of act 4 until before
+    the beat it changes happens in the original story.
+
+    （アクション, effects, 計算する時刻）。時刻 = 第四幕の開始から、それが変えるビートが原作で起きる前まで、STEP 分
+    ごと。
+    """
     beats = {b["id"]: b for b in world["beats"]}
     acts = {a["id"]: a for a in world["acts"]}
     out = []

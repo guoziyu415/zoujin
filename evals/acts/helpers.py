@@ -15,7 +15,8 @@ are unchanged). See evals/acts/README.md.
 personas.json を書き出す（生成物、手で編集しない）。
 ケース ID は幕ごとに範囲を分けているので衝突しない：第二幕 E?-201〜299、第三幕 E?-301〜399、第四幕 E?-401〜499。
 ペルソナ ID は persona.a{N}-… を使う。
-検証：bash .github/scripts/check_world.sh（全部を再生成、check_evals、生成物の一致）。説明は evals/acts/README.md を参照。
+検証：bash .github/scripts/check_world.sh（全部を再生成、check_evals、生成物の一致）。
+説明は evals/acts/README.md を参照。
 """
 
 import json

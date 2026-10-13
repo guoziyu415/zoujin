@@ -1,14 +1,37 @@
-"""一次提交里的事件：分配 eventId、seq、幂等键，按 seq 用 W-1 的 apply 应用（B-0 第 7 条第 4 步）。
+"""The events of one commit: assign eventId, seq and idempotency keys, and apply them in seq order with W-1's apply
+(B-0 item 7, step 4).
 
-到点的节拍和期限用 W-1 的 settle 结算，草稿补成完整的事件再 apply，所以 world_state 缓存和「初值 + 按 seq 应用
-全部事件」的重放逐字段相同（data-design 4.4）。同一时刻先节拍、再期限、最后事件：调用方先 settle 到事件的 t。
+Beats and the deadline that come due are settled with W-1's settle, and the drafts are filled out into full events
+before apply, so the world_state cache is field-for-field identical to the replay "initial values + apply every event in
+seq order" (data-design 4.4). At the same moment: beats first, then the deadline, then the event; the caller settles up
+to the event's t first.
+
+B-3:
+- Closing the act (api-contract 3.11): while the act is still open, settling only goes as far as the closing beat (an
+  `end.onBeats` beat has a result) or `end.atLatest`; the rest waits for step 3 of the act transition. The last act (no
+  exits) isn't held back; closing it into the ending is the ending card's job.
+- Set pieces (contract 2.11): after each beat's system event is applied, ask W-1's `pick_set_piece`; pieces that played
+  are recorded on the run (`run.played`), ones with `learns` are written as a learn event right after (once all beats at
+  that moment are settled), and the `set_piece` message is left for the gateway to push.
+- Step 3 of an act transition: the player always counts as not present (`present=False`), doesn't learn the beats'
+  public facts, and set pieces aren't asked for.
+
+1 回のコミットのイベント：eventId、seq、冪等キーを割り当て、W-1 の apply で seq 順に適用する
+（B-0 第 7 項第 4 ステップ）。
+
+時刻が来たビートと期限は W-1 の settle で精算し、下書きを完全なイベントに仕上げてから apply する。そのため
+world_state のキャッシュは「初期値 + seq 順にすべてのイベントを適用」したリプレイとフィールド単位で一致する
+（data-design 4.4）。同じ時刻ならビート、期限、イベントの順：呼び出し側はまずイベントの t まで settle する。
 
 B-3：
-- 收幕（api-contract 3.11）：这一幕还开着时，结算只到收幕节拍（`end.onBeats` 有了结果）或 `end.atLatest` 为止，
-  之后的留到幕切换的第 3 步。最后一幕（没有 exits）不拦，收幕进结局是结局那张卡的事。
-- 固定演出（契约 2.11）：每个节拍的系统事件应用以后问 W-1 的 `pick_set_piece`；演了的记在局上（`run.played`），
-  带 `learns` 的写成紧跟着的一条 learn 事件（同一时刻的节拍都结算完以后），`set_piece` 消息留给网关推。
-- 幕切换的第 3 步：玩家一律算不在场（`present=False`），不 learn 节拍的 public 事实，也不问固定演出。
+- 幕を閉じる（api-contract 3.11）：この幕がまだ開いている間、精算は幕を閉じるビート（`end.onBeats` に結果が出た）か
+  `end.atLatest` までにとどめ、その先は幕切り替えの第 3 ステップに回す。最後の幕（exits なし）は止めない。
+  幕を閉じてエンディングに入るのはエンディングのカードの担当。
+- 演出（固定演出、契約 2.11）：各ビートのシステムイベントを適用したあと W-1 の `pick_set_piece` に問い合わせる。
+  演じたものはゲームに記録し（`run.played`）、`learns` を持つものは直後の learn イベントとして書き
+  （同じ時刻のビートをすべて精算してから）、`set_piece` メッセージはゲートウェイがプッシュするよう残す。
+- 幕切り替えの第 3 ステップ：プレイヤーは常にその場にいないとみなし（`present=False`）、ビートの public な事実を
+  learn せず、演出も問い合わせない。
 """
 
 from __future__ import annotations
@@ -24,14 +47,20 @@ from zoujin_worldsim import OCCURRED, SimState, apply, pick_set_piece, settle
 
 Json = Any
 
-SCHEMA_VERSION = "1.15"  # 写入时的数据契约版本：契约 `SchemaVersion` 里最新的那个（test_world 管着）
+# The data contract version written into events: the newest in the contract's `SchemaVersion` (test_world guards it).
+# 書き込むときのデータ契約バージョン：契約の `SchemaVersion` の最新のもの（test_world が見張る）。
+SCHEMA_VERSION = "1.15"
 CHECKER_SYSTEM = "w1-settle"
 CHECKER_PIECE = "set-piece"
 
 
 def act_closed(book: Book, state: SimState) -> bool:
-    """这一幕收了没有：`end.onBeats` 里有一个有了结果（发生、改变、阻止，过了 window.latest 的也是阻止），
-    或时钟到了 `end.atLatest`（api-contract 3.11）。"""
+    """Whether this act has closed: one of `end.onBeats` has a result (happened, altered or prevented; past
+    window.latest also counts as prevented), or the clock has reached `end.atLatest` (api-contract 3.11).
+
+    この幕が閉じたか：`end.onBeats` のどれかに結果が出た（起きた・変わった・阻止された。window.latest を過ぎたものも
+    阻止）、または時計が `end.atLatest` に達した（api-contract 3.11）。
+    """
     act = book.acts[book.act_of(state["vars"])]
     end = act["end"]
     return any(b in state["beats"] for b in end["onBeats"]) or state["t"] >= end["atLatest"]
@@ -61,14 +90,29 @@ class Writer:
         self.ids = ids
         self.now = now
         self.events: list[Json] = []
-        self.system: list[Json] = []  # settle 写的系统事件（StepResult 和 Trace 用）
-        self.run = Run()  # 局上记的（提交的事务里读进来，写回去）
-        self.pieces: list[Json] = []  # 这次提交里节拍时机演的固定演出（set_piece 消息）
-        self.seen: list[str] = []  # 玩家可见的事件 ID（turn_settled.eventIds，api-contract 2.4）
-        self.away = Away()  # 幕切换第 3 步结算的不算玩家看到（和网关推 commit、补推同一条规则）
-        # 这一幕在这次提交开始时还开着（有去处的幕）：结算按收幕拦住
+        # System events written by settle (for StepResult and Trace).
+        # settle が書いたシステムイベント（StepResult と Trace 用）。
+        self.system: list[Json] = []
+        # What is recorded on the run (read in the commit transaction and written back).
+        # ゲームに記録するもの（コミットのトランザクションで読み込み、書き戻す）。
+        self.run = Run()
+        # Set pieces played at beat timing in this commit (set_piece messages).
+        # このコミットでビートのタイミングに演じた演出（set_piece メッセージ）。
+        self.pieces: list[Json] = []
+        # Event IDs visible to the player (turn_settled.eventIds, api-contract 2.4).
+        # プレイヤーに見えるイベント ID（turn_settled.eventIds、api-contract 2.4）。
+        self.seen: list[str] = []
+        # Events settled in step 3 of an act transition don't count as seen by the player (the same rule as the
+        # gateway's commit push and catch-up push).
+        # 幕切り替えの第 3 ステップで精算したものはプレイヤーが見たとみなさない（ゲートウェイの commit プッシュ・
+        # 追いつきプッシュと同じ規則）。
+        self.away = Away()
+        # The act is still open at the start of this commit (an act with somewhere to go): settling stops at its close.
+        # この幕はこのコミットの開始時にまだ開いている（行き先のある幕）：精算は幕を閉じるところで止める。
         self.guard = has_exits(book, state) and not act_closed(book, state)
-        self.ending: Json | None = None  # B-9：这次提交进了结局（`ending.enter` 的结果）
+        # B-9: this commit entered the ending (the result of `ending.enter`).
+        # B-9：このコミットでエンディングに入った（`ending.enter` の結果）。
+        self.ending: Json | None = None
 
     @property
     def player_place(self) -> str:
@@ -119,9 +163,17 @@ class Writer:
         return ev
 
     def add(self, ev: Json) -> Json:
-        """按 seq 应用并记下。ev 由 full() 生成；W-1 的 apply 不收就抛 ValueError（整轮回滚）。"""
+        """Apply in seq order and record it. ev comes from full(); if W-1's apply rejects it, raise ValueError (the
+        whole turn rolls back).
+
+        seq 順に適用して記録する。ev は full() が作る。W-1 の apply が受け付けなければ ValueError を投げる
+        （ターン全体をロールバック）。
+        """
         if ev["seq"] != self.state["seq"] + 1:
-            raise ValueError(f"seq 不连续：{ev['seq']}，上一个是 {self.state['seq']}")
+            raise ValueError(
+                f"Non-consecutive seq: {ev['seq']}, previous is {self.state['seq']}"
+                f" / seq が連続していない：{ev['seq']}、直前は {self.state['seq']}"
+            )
         if not self.away(ev) and is_visible(self.book, ev, self.player_place):
             self.seen.append(ev["eventId"])
         self.state = apply(self.book.world, self.state, ev)
@@ -130,7 +182,10 @@ class Writer:
 
     @property
     def closed(self) -> bool:
-        """这一幕（开始时还开着的）在这次提交里收了。"""
+        """This act (open at the start) closed during this commit.
+
+        この幕（開始時に開いていたもの）がこのコミットの中で閉じた。
+        """
         return self.guard and act_closed(self.book, self.state)
 
     def settle(
@@ -142,11 +197,26 @@ class Writer:
         guard: bool = True,
         anywhere: bool = False,
     ) -> list[Json]:
-        """结算到 t2（None = 到底）。stop_after 给了节拍时，写完它的系统事件就停（评测的检查点「刚发生之后」）。
+        """Settle up to t2 (None = to the end). When stop_after names a beat, stop right after writing its system event
+        (the eval checkpoint "just after it happened").
 
-        guard：这一幕开始时还开着，就只结算到收幕为止（收幕节拍那一刻的都结完）；幕已经收了就不再结算。
-        present=False：幕切换的第 3 步，玩家不在场（W-1 settle 的 player_present），不问固定演出。
-        anywhere：节拍的固定演出不看玩家在不在节拍的地点（B-9：进结局时收幕的那几段算进结局演出，镜头在刑场）。"""
+        guard: if this act was open at the start, settle only up to its close (everything at the moment of the closing
+        beat is settled); once the act has closed, settle nothing more.
+        present=False: step 3 of an act transition; the player isn't present (W-1 settle's player_present), and set
+        pieces aren't asked for.
+        anywhere: beat set pieces don't depend on whether the player is at the beat's place (B-9: when entering the
+        ending, the closing parts count as the ending set piece, with the camera at the execution ground).
+
+        t2 まで精算する（None = 最後まで）。stop_after にビートを渡すと、そのシステムイベントを書いたところで止める
+        （評価のチェックポイント「起きた直後」）。
+
+        guard：この幕が開始時に開いていれば、幕を閉じるところまでだけ精算する（幕を閉じるビートの時刻のものは
+        すべて精算する）。幕がもう閉じていれば何も精算しない。
+        present=False：幕切り替えの第 3 ステップ。プレイヤーはその場にいない（W-1 settle の player_present）。
+        演出は問い合わせない。
+        anywhere：ビートの演出は、プレイヤーがビートの場所にいるかを見ない（B-9：エンディングに入るとき、
+        幕を閉じる部分はエンディングの演出に含め、カメラは刑場にある）。
+        """
         if guard and self.guard:
             if self.closed:
                 return []
@@ -154,7 +224,9 @@ class Writer:
             t2 = at_latest if t2 is None else min(t2, at_latest)
         drafts, _ = settle(self.book.world, self.state, t2, player_present=present)
         out: list[Json] = []
-        learns: list[Json] = []  # 节拍时机的固定演出带的 learns，同一时刻的都结算完再写
+        # learns carried by beat-timed set pieces, written once everything at that moment is settled.
+        # ビートのタイミングの演出が持つ learns。同じ時刻のものをすべて精算してから書く。
+        learns: list[Json] = []
         closed_at: int | None = None
         for d in drafts:
             t = d["event"]["t"]
@@ -174,7 +246,12 @@ class Writer:
         return out
 
     def curtain(self, beat: str) -> bool:
-        """最后一幕里期限盯的节拍和它之后的节拍（B-9：收幕的固定演出算进结局演出，不看玩家在哪）。"""
+        """The beat the deadline watches in the last act, and the beats after it (B-9: the closing set pieces count as
+        the ending set piece, wherever the player is).
+
+        最後の幕で期限が見張るビートと、それ以降のビート（B-9：幕を閉じる演出はエンディングの演出に含め、
+        プレイヤーの居場所を問わない）。
+        """
         watch = self.book.world["clock"]["deadline"].get("watchBeat")
         if watch is None or has_exits(self.book, self.state):
             return False
@@ -182,7 +259,9 @@ class Writer:
 
     def _beat_piece(self, beat: str, t: int, learns: list[Json], *, anywhere: bool = False) -> None:
         state = self.state
-        if anywhere or self.curtain(beat):  # W-1 只在玩家在节拍的地点时给：问的时候把玩家当作站在那里
+        # W-1 only gives one when the player is at the beat's place: ask as if the player stood there.
+        # W-1 はプレイヤーがビートの場所にいるときだけ返す：問い合わせるときはプレイヤーがそこに立っているとみなす。
+        if anywhere or self.curtain(beat):
             vars_ = {**state["vars"], "var.player.location": self.book.beats[beat]["place"]}
             state = cast(SimState, {**state, "vars": vars_})
         piece = pick_set_piece(self.book.world, state, {"beat": beat}, self.run.played)
@@ -193,7 +272,10 @@ class Writer:
             learns.append({"t": t, "piece": piece})
 
     def play(self, piece: Mapping[str, Any]) -> Json:
-        """演一条固定演出：记在局上（once 的不再演），返回 set_piece 消息。"""
+        """Play one set piece: record it on the run (once pieces don't play again) and return the set_piece message.
+
+        演出を 1 つ演じる：ゲームに記録し（once のものは二度と演じない）、set_piece メッセージを返す。
+        """
         self.run.played.append(piece["id"])
         msg = {"type": "set_piece", "pieceId": piece["id"], "lines": [dict(x) for x in piece["lines"]]}
         if "beat" in piece["on"]:
@@ -206,8 +288,14 @@ class Writer:
         learns.clear()
 
     def piece_learn(self, piece: Mapping[str, Any], t: int, *, origin: str | None) -> Json | None:
-        """固定演出的 learns 写成一条 learn 事件（契约 2.11）：actor 是第一个说话的人物，只有地の文时是 system；
-        动作时机的 origin 是 action，节拍时机的不写（schedule 只给节拍和期限）。已经知道的不再写。"""
+        """Write a set piece's learns as one learn event (contract 2.11): the actor is the first character who
+        speaks, or system when there is only 地の文; at action timing origin is action, at beat timing it is left out
+        (schedule is only for beats and the deadline). Facts already known aren't written again.
+
+        演出の learns を 1 つの learn イベントとして書く（契約 2.11）：actor は最初に話す登場人物で、地の文だけのときは
+        system。アクションのタイミングなら origin は action、ビートのタイミングなら書かない（schedule はビートと期限
+        専用）。すでに知っているものは書かない。
+        """
         effects = [
             {"op": "learn", "character": k["character"], "fact": k["fact"]}
             for k in piece.get("learns", [])
@@ -236,7 +324,10 @@ class Writer:
         return self.state["beats"].get(beat) in OCCURRED
 
     def from_draft(self, d: Json) -> Json:
-        """W-1 的 settle 草稿（或 `opening()` 里 source = schedule 的那些）补成完整的系统事件。"""
+        """Fill out a W-1 settle draft (or the ones in `opening()` with source = schedule) into a full system event.
+
+        W-1 の settle の下書き（または `opening()` のうち source = schedule のもの）を完全なシステムイベントに仕上げる。
+        """
         e = d["event"]
         check: Json = {"status": "passed", "attempts": 1, "failedRules": [], "checker": CHECKER_SYSTEM}
         if d.get("reason"):

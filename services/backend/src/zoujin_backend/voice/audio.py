@@ -1,13 +1,35 @@
-"""照读出来的 PCM（16 位、24 kHz、单声道，Live 的下行格式）：分析、裁静音、调音量、编码成 AAC。
+"""PCM from read-aloud (16-bit, 24 kHz, mono, Live's downstream format): analysis, silence trimming, volume
+adjustment, AAC encoding.
 
-- 有声的范围按 10 毫秒一帧的 RMS 判：高于 `SILENCE_DBFS` 算有声。截断和裁头尾用它。
-- 截断：原始那一遍最后 0.1 秒还有声音（没落到静音）。
-- 裁头尾：先查截断再裁，有声范围前后各留 80 毫秒（相槌头 20、尾 80；硬起头的各 50）；原始那遍头尾不够的补静音。
-- 响度和相槌的长度照 UX 量测的做法（`level`）：40 毫秒的窗、10 毫秒一跳，比最响的窗低 30 dB 以内（且高于 −55 dBFS）
-  的算有声；响度 = 这些窗的 RMS。音高（`pitched`）：YIN 找得到周期的窗占几成，耳语找不到。
-- 音量：有目标响度的说话人（源文件的 `loudness`，同一人物自由对话的响度）整句调到目标；没有的不动。真峰值都压到
-  −1 dBTP 以下（ux-design 16.2 第 3 样，UX 量测）。
-- 编码：AAC-LC、单声道、24 kHz、48 kbps 的 `.m4a`（Mac 上用 ffmpeg）；`durationMs` 按转好的文件算（ffprobe）。
+- The voiced range is judged by RMS over 10 ms frames: above `SILENCE_DBFS` counts as voiced. Used for truncation and
+  for trimming the ends.
+- Truncation: the raw take is still voiced in its last 0.1 seconds (it didn't fall to silence).
+- Trimming the ends: check truncation first, then trim, keeping 80 ms on each side of the voiced range (aizuchi: 20 at
+  the head, 80 at the tail; 50 each for a hard onset); where the raw take has too little at either end, pad silence.
+- Loudness and aizuchi length follow the UX measurement method (`level`): 40 ms windows with a 10 ms hop; windows within
+  30 dB of the loudest (and above −55 dBFS) count as voiced; loudness = the RMS of those windows. Pitch (`pitched`): the
+  share of windows where YIN finds a period; whispers have none.
+- Volume: for speakers with a target loudness (the source file's `loudness`, the loudness of the same character's free
+  talk) the whole line is brought to the target; others are left alone. True peak is always held below −1 dBTP
+  (ux-design 16.2 item 3, UX measurement).
+- Encoding: AAC-LC, mono, 24 kHz, 48 kbps `.m4a` (ffmpeg on the Mac); `durationMs` is computed from the encoded file
+  (ffprobe).
+
+読み上げで得た PCM（16 ビット、24 kHz、モノラル、Live の下りの形式）：解析、無音のトリム、音量調整、AAC への
+エンコード。
+
+- 有声の範囲は 10 ミリ秒 1 フレームの RMS で判定する：`SILENCE_DBFS` より大きければ有声。途切れの判定と頭尾のトリムに
+  使う。
+- 途切れ：元のテイクの最後の 0.1 秒にまだ音がある（無音まで落ちていない）。
+- 頭尾のトリム：先に途切れを調べてからトリムし、有声範囲の前後に 80 ミリ秒ずつ残す（相槌は頭 20、尾 80。硬い立ち上がり
+  なら各 50）。元のテイクの頭尾が足りなければ無音を補う。
+- ラウドネスと相槌の長さは UX の計測方法（`level`）に従う：40 ミリ秒の窓を 10 ミリ秒ずつずらし、最も大きい窓から
+  30 dB 以内（かつ −55 dBFS より大きい）の窓を有声とする。ラウドネス = それらの窓の RMS。ピッチ（`pitched`）：YIN が
+  周期を見つけられる窓の割合。ささやき声では見つからない。
+- 音量：目標ラウドネスのある話者（元ファイルの `loudness`、同じ人物の自由会話のラウドネス）はセリフ全体を目標に合わせ、
+  ない話者はそのままにする。真のピークはすべて −1 dBTP 未満に抑える（ux-design 16.2 の 3 つ目、UX 計測）。
+- エンコード：AAC-LC、モノラル、24 kHz、48 kbps の `.m4a`（Mac では ffmpeg）。`durationMs` は変換後のファイルから
+  求める（ffprobe）。
 """
 
 from __future__ import annotations
@@ -30,18 +52,26 @@ FRAME = RATE // 100  # 10 ms
 SILENCE_DBFS = -45.0
 TAIL_S = 0.1
 PAD_S = 0.08
-# 相槌两头合计只留 0.1 秒：UX 的「有声 ≤ 0.5 秒、整个文件 ≤ 0.6 秒」两条才是一个意思（两头各 80 毫秒时文件那条更紧，
-# 有声只能到 0.44 秒；Mac 上第二次真跑 15 遍里好几遍只差这一点）。头 20 毫秒、尾 80 毫秒（声音早出来，尾巴留着收音）；
-# 起头有台阶的（第一帧有声就离最响的帧不到 6 dB，硬起头）头尾各 50 毫秒（UX）
+# Aizuchi keep only 0.1 seconds in total at both ends: only then do UX's two rules "voiced ≤ 0.5 seconds, whole file
+# ≤ 0.6 seconds" mean the same thing (with 80 ms at each end the file rule is tighter and voiced can only reach 0.44
+# seconds; in the second real run on the Mac several of the 15 takes missed by just that). 20 ms at the head and 80 ms
+# at the tail (the sound comes in early, the tail is kept for the decay); with a step at the onset (the first voiced
+# frame is within 6 dB of the loudest frame, a hard onset) 50 ms at each end (UX)
+# 相槌は両端合わせて 0.1 秒しか残さない：こうして初めて UX の「有声 ≤ 0.5 秒、ファイル全体 ≤ 0.6 秒」の 2 条件が同じ
+# 意味になる（両端 80 ミリ秒ずつだとファイルの条件のほうが厳しく、有声は 0.44 秒までしか許されない。Mac での 2 回目の
+# 本番実行では 15 テイクのうち何本もがこの差だけで落ちた）。頭 20 ミリ秒、尾 80 ミリ秒（声は早めに出し、尾は余韻を
+# 残す）。立ち上がりに段差があるもの（最初の有声フレームが最も大きいフレームから 6 dB 以内、硬い立ち上がり）は頭尾
+# 各 50 ミリ秒（UX）
 AIZUCHI_PADS = (0.02, 0.08)
 AIZUCHI_STEP_PADS = (0.05, 0.05)
 ONSET_STEP_DB = 6.0
-PEAK_DBFS = -1.0  # 真峰值的上限（dBTP）
-WIN = 4  # level 的窗：4 帧 = 40 毫秒
+PEAK_DBFS = -1.0  # True peak ceiling (dBTP) / 真のピークの上限（dBTP）
+WIN = 4  # Window for level: 4 frames = 40 ms / level の窓：4 フレーム = 40 ミリ秒
 REL_GATE_DB = 30.0
 FLOOR_DBFS = -55.0
 MERGE_GAP_S = 0.06
-PITCH_RATE = 8_000  # 音高降到 8 kHz 算（纯 Python，快三倍）
+# Pitch is computed at 8 kHz (pure Python, 3x faster) / ピッチは 8 kHz に落として計算する（純 Python で 3 倍速い）
+PITCH_RATE = 8_000
 PITCH_GATE_DB = 20.0
 YIN_THRESH = 0.15
 F0_RANGE = (60.0, 400.0)
@@ -75,21 +105,34 @@ def _rms(a: array[int], start: int, end: int) -> float:
 
 @dataclass(frozen=True)
 class Shape:
-    seconds: float  # 整段
-    voiced_start: float  # 第一帧有声的开始（秒）；整段无声时 = seconds
-    voiced_end: float  # 最后一帧有声的结束
-    tail_voiced: bool  # 最后 0.1 秒还有声音：截断
+    seconds: float  # The whole clip / 全体
+    # Start of the first voiced frame (seconds); = seconds when the whole clip is silent
+    # 最初の有声フレームの開始（秒）。全体が無音なら = seconds
+    voiced_start: float
+    voiced_end: float  # End of the last voiced frame / 最後の有声フレームの終わり
+    tail_voiced: bool  # Still voiced in the last 0.1 seconds: truncated / 最後の 0.1 秒にまだ音がある：途切れ
     peak_dbfs: float
-    onset_db: float | None = None  # 第一帧有声比最响的一帧低多少 dB（≥ 0）；None = 没有声音
-    span: float | None = None  # level 量的有声范围（UX 的做法）；None = 没量，按 speech
+    # How many dB the first voiced frame is below the loudest frame (≥ 0); None = no sound
+    # 最初の有声フレームが最も大きいフレームより何 dB 低いか（≥ 0）。None = 音がない
+    onset_db: float | None = None
+    # Voiced span measured by level (the UX method); None = not measured, use speech
+    # level で測った有声範囲（UX の方法）。None = 測っていないので speech を使う
+    span: float | None = None
     loudness_dbfs: float | None = None
-    pitched: float | None = None  # 有音高的窗占几成；None = 没量（只给要比的句子量，慢）
-    pitch_hz: float | None = None  # 有音高的窗的基频中位数
-    sounding: float | None = None  # 不算停顿的有声时间
+    # Share of pitched windows; None = not measured (only measured for lines being compared, it's slow)
+    # ピッチのある窓の割合。None = 測っていない（比べる句だけ測る。遅いため）
+    pitched: float | None = None
+    pitch_hz: float | None = None  # Median F0 of the pitched windows / ピッチのある窓の基本周波数の中央値
+    sounding: float | None = None  # Voiced time excluding pauses / 間を除いた有声時間
 
     @property
     def speech(self) -> float:
-        """有声范围的长度（中间的停顿也算）。长度检查都用它，不用整段（头尾的静音每遍不一样）。"""
+        """Length of the voiced range (pauses in between included). All length checks use this rather than the whole
+        clip (the leading and trailing silence differs from take to take).
+
+        有声範囲の長さ（途中の間も含む）。長さの検査はすべてこれを使い、全体の長さは使わない（頭尾の無音はテイクごとに
+        違うため）。
+        """
         return max(0.0, self.voiced_end - self.voiced_start)
 
 
@@ -120,8 +163,13 @@ def shape(pcm: bytes, *, pitch: bool = False) -> Shape:
 
 
 def trim(pcm: bytes, s: Shape, pads: tuple[float, float] = (PAD_S, PAD_S)) -> bytes:
-    """有声范围前后各留 80 毫秒（相槌见 `aizuchi_pads`）。原始那遍一开头就有声（UX 量到メロス「ああ。」头 10 毫秒
-    −29 dB）或结尾不够的，补静音补够。"""
+    """Keep 80 ms on each side of the voiced range (for aizuchi see `aizuchi_pads`). If the raw take is voiced from
+    the very start (UX measured メロス「ああ。」 at −29 dB in its first 10 ms) or is short at the end, pad enough
+    silence.
+
+    有声範囲の前後に 80 ミリ秒ずつ残す（相槌は `aizuchi_pads` を参照）。元のテイクが冒頭から有声（UX の計測では
+    メロス「ああ。」の頭 10 ミリ秒が −29 dB）だったり、末尾が足りなかったりするときは、無音を十分に補う。
+    """
     n = len(pcm) // 2
     start = round(s.voiced_start * RATE) - round(pads[0] * RATE)
     end = round(s.voiced_end * RATE) + round(pads[1] * RATE)
@@ -135,20 +183,30 @@ def aizuchi_pads(s: Shape) -> tuple[float, float]:
 
 
 def released_seconds(s: Shape, pads: tuple[float, float]) -> float:
-    """裁好、补够静音以后的长度。按 AAC 补帧之前算（补的是静音，UX）。"""
+    """Length after trimming and padding silence. Computed before AAC frame padding (what's padded is silence, UX).
+
+    トリムして無音を補った後の長さ。AAC のフレームを補う前で計算する（補うのは無音、UX）。
+    """
     return round(s.speech + pads[0] + pads[1], 3)
 
 
 def head_voiced(s: Shape) -> bool:
-    """原始那遍第一帧就有声：可能被切了头。"""
+    """The raw take is voiced from its first frame: the onset may have been cut.
+
+    元のテイクが最初のフレームから有声：頭が切れているかもしれない。
+    """
     return s.voiced_start < FRAME / RATE
 
 
 @dataclass(frozen=True)
 class Level:
-    span: float  # 第一个有声的窗到最后一个（秒），中间的停顿也算
-    loudness_dbfs: float  # 有声的窗的 RMS
-    sounding: float = 0.0  # 不算停顿的有声时间（不到 60 毫秒的停顿并起来）：语速用
+    # From the first voiced window to the last (seconds), pauses in between included
+    # 最初の有声の窓から最後まで（秒）。途中の間も含む
+    span: float
+    loudness_dbfs: float  # RMS of the voiced windows / 有声の窓の RMS
+    # Voiced time excluding pauses (pauses under 60 ms are merged): for speech rate
+    # 間を除いた有声時間（60 ミリ秒未満の間はつなげる）：話速に使う
+    sounding: float = 0.0
 
 
 def _block_energy(a: array[int]) -> list[float]:
@@ -156,10 +214,14 @@ def _block_energy(a: array[int]) -> list[float]:
 
 
 def level(pcm: bytes) -> Level:
-    """UX 量测的做法（ux/tools/b6-measure/measure.py）：40 毫秒的窗、10 毫秒一跳；比最响的窗低 30 dB 以内、且高于
-    −55 dBFS 的窗算有声。"""
+    """The UX measurement method (ux/tools/b6-measure/measure.py): 40 ms windows with a 10 ms hop; windows within 30 dB
+    of the loudest and above −55 dBFS count as voiced.
+
+    UX の計測方法（ux/tools/b6-measure/measure.py）：40 ミリ秒の窓を 10 ミリ秒ずつずらし、最も大きい窓から 30 dB 以内
+    かつ −55 dBFS より大きい窓を有声とする。
+    """
     e = _block_energy(samples(pcm))
-    wins = [sum(e[k : k + WIN]) / (WIN * FRAME) for k in range(len(e) - WIN + 1)]  # 窗的均方
+    wins = [sum(e[k : k + WIN]) / (WIN * FRAME) for k in range(len(e) - WIN + 1)]  # Window mean square / 窓の二乗平均
     if not wins:
         return Level(0.0, -120.0)
     db = [dbfs(math.sqrt(w)) for w in wins]
@@ -181,8 +243,12 @@ def level(pcm: bytes) -> Level:
 
 
 def _yin(fr: list[float], rate: int) -> float | None:
-    """这一窗的基频（Hz）；找不到周期（累计均值归一化差值都不低于阈值）为 None。和 UX 的一样：过阈以后再往下走到谷底，
-    抛物线插值。"""
+    """F0 of this window (Hz); None when no period is found (no cumulative mean normalized difference below the
+    threshold). Same as UX: after crossing the threshold, keep going down to the trough, then parabolic interpolation.
+
+    この窓の基本周波数（Hz）。周期が見つからない（累積平均正規化差分がどれも閾値を下回らない）ときは None。UX と同じく、
+    閾値を下回ったあとも谷底まで進み、放物線補間する。
+    """
     w = len(fr)
     mean = sum(fr) / w
     x = [v - mean for v in fr]
@@ -213,13 +279,19 @@ def _yin(fr: list[float], rate: int) -> float | None:
 
 @dataclass(frozen=True)
 class Pitch:
-    pitched: float  # 有音高的窗占几成
-    median_hz: float | None  # 有音高的窗的基频中位数
+    pitched: float  # Share of pitched windows / ピッチのある窓の割合
+    median_hz: float | None  # Median F0 of the pitched windows / ピッチのある窓の基本周波数の中央値
 
 
 def pitch_of(pcm: bytes) -> Pitch:
-    """比最响的窗低 20 dB 以内的窗里，YIN（阈 0.15、60〜400 Hz）找得到周期的占几成、基频中位数。三个采样取平均降到
-    8 kHz 再算（纯 Python）。耳语、气声找不到周期（UX 量到メロス「ああ。」只有头 0.09 秒有音高）。"""
+    """Among windows within 20 dB of the loudest, the share where YIN (threshold 0.15, 60–400 Hz) finds a period, and
+    the median F0. Computed after averaging every three samples down to 8 kHz (pure Python). Whispers and breathy voice
+    have no period (UX measured メロス「ああ。」 as pitched only in its first 0.09 seconds).
+
+    最も大きい窓から 20 dB 以内の窓のうち、YIN（閾値 0.15、60〜400 Hz）が周期を見つけられた割合と、基本周波数の中央値。
+    3 サンプルずつ平均して 8 kHz に落としてから計算する（純 Python）。ささやき声や息まじりの声では周期が見つからない
+    （UX の計測ではメロス「ああ。」は頭の 0.09 秒しかピッチがなかった）。
+    """
     a = samples(pcm)
     step = RATE // PITCH_RATE
     x = [sum(a[i : i + step]) / step for i in range(0, len(a) - step + 1, step)]
@@ -250,11 +322,13 @@ def wav(pcm: bytes, rate: int = RATE) -> bytes:
 def read_wav(path: Path) -> bytes:
     with wave.open(str(path), "rb") as w:
         if w.getframerate() != RATE or w.getnchannels() != 1 or w.getsampwidth() != 2:
-            raise ValueError(f"{path.name}：要 24 kHz、单声道、16 位")
+            raise ValueError(
+                f"{path.name}: must be 24 kHz, mono, 16-bit / {path.name}：24 kHz、モノラル、16 ビットが必要"
+            )
         return w.readframes(w.getnframes())
 
 
-# —— 编码 ——
+# —— Encoding / エンコード ——
 
 TP_TRIES = 6
 TP_MARGIN_DB = 0.2
@@ -264,8 +338,9 @@ TP_MARGIN_DB = 0.2
 class Encoded:
     data: bytes
     duration_ms: int
-    true_peak_dbtp: float  # 成品的真峰值（假编码器：采样峰值）
-    loudness_dbfs: float  # 成品的有声响度（level）
+    # True peak of the output (fake encoder: sample peak) / 出力の真のピーク（偽エンコーダーではサンプルピーク）
+    true_peak_dbtp: float
+    loudness_dbfs: float  # Voiced loudness of the output (level) / 出力の有声ラウドネス（level）
 
 
 class Encoder(Protocol):
@@ -275,20 +350,33 @@ class Encoder(Protocol):
 
 
 class FfmpegEncoder:
-    """AAC-LC、单声道、24 kHz、48 kbps 的 m4a。去掉元数据、按位可复现（文件名里的 hash 才稳定）。
+    """AAC-LC, mono, 24 kHz, 48 kbps m4a. Metadata stripped and bit-for-bit reproducible (so the hash in the file name
+    is stable).
 
-    `gain_db` 整句调音量；编完量真峰值（ebur128），超过 −1 dBTP 就加限幅器（alimiter，不自动补增益、补回延迟）
-    重编，限幅按超出的量往下调，最多 6 次。没超的不加限幅器。"""
+    `gain_db` adjusts the whole line's volume; after encoding, the true peak is measured (ebur128), and above −1 dBTP a
+    limiter is added (alimiter, no automatic makeup gain, latency compensated) and it is re-encoded, lowering the limit
+    by the overshoot, at most 6 times. No limiter when nothing goes over.
+
+    AAC-LC、モノラル、24 kHz、48 kbps の m4a。メタデータを除き、ビット単位で再現できる（ファイル名の hash が安定する
+    ように）。
+
+    `gain_db` でセリフ全体の音量を調整する。エンコード後に真のピークを測り（ebur128）、−1 dBTP を超えたらリミッター
+    （alimiter、自動のゲイン補正なし、遅延は補正）を加えて再エンコードし、超えた分だけリミットを下げる。最大 6 回。
+    超えなければリミッターは加えない。
+    """
 
     suffix = ".m4a"
 
     def __init__(self) -> None:
         for tool in ("ffmpeg", "ffprobe"):
             if shutil.which(tool) is None:
-                raise RuntimeError(f"没有 {tool}（Mac 上：brew install ffmpeg）")
+                raise RuntimeError(
+                    f"{tool} not found (on the Mac: brew install ffmpeg) / "
+                    f"{tool} がない（Mac では brew install ffmpeg）"
+                )
 
     def encode(self, pcm: bytes, gain_db: float = 0.0) -> Encoded:
-        limit: float | None = None  # 限幅（dBFS）
+        limit: float | None = None  # Limit (dBFS) / リミット（dBFS）
         with tempfile.TemporaryDirectory() as d:
             src, dst = Path(d) / "in.wav", Path(d) / "out.m4a"
             src.write_bytes(wav(pcm))
@@ -312,7 +400,10 @@ class FfmpegEncoder:
                 if tp <= PEAK_DBFS:
                     return Encoded(dst.read_bytes(), probe_ms(dst), tp, level(decode(dst)).loudness_dbfs)
                 limit = (PEAK_DBFS if limit is None else limit) - (tp - PEAK_DBFS) - TP_MARGIN_DB
-        raise RuntimeError(f"压了 {TP_TRIES} 次真峰值还在 {tp:.1f} dBTP，超过 {PEAK_DBFS} dBTP")
+        raise RuntimeError(
+            f"After {TP_TRIES} tries the true peak is still {tp:.1f} dBTP, over {PEAK_DBFS} dBTP / "
+            f"{TP_TRIES} 回抑えても真のピークが {tp:.1f} dBTP で、{PEAK_DBFS} dBTP を超えている"
+        )
 
 
 def probe_ms(path: Path) -> int:
@@ -326,7 +417,10 @@ def probe_ms(path: Path) -> int:
 
 
 def true_peak(path: Path) -> float:
-    """ffmpeg ebur128 的真峰值（dBTP），UX 量测用的同一个。"""
+    """True peak (dBTP) from ffmpeg ebur128, the same one UX measures with.
+
+    ffmpeg ebur128 による真のピーク（dBTP）。UX の計測と同じもの。
+    """
     err = subprocess.run(
         ["ffmpeg", "-nostdin", "-nostats", "-i", str(path), "-af", "ebur128=peak=true", "-f", "null", "-"],
         check=True,
@@ -338,7 +432,7 @@ def true_peak(path: Path) -> float:
         if line.strip().startswith("Peak:"):
             value = line.split(":", 1)[1].split()[0]
             return -120.0 if value == "-inf" else float(value)
-    raise RuntimeError("ebur128 没给出真峰值")
+    raise RuntimeError("ebur128 gave no true peak / ebur128 が真のピークを出さなかった")
 
 
 def decode(path: Path) -> bytes:
@@ -350,7 +444,12 @@ def decode(path: Path) -> bytes:
 
 
 class FakeEncoder:
-    """CI 用：不调 ffmpeg，「编码」结果就是 WAV，长度按 PCM 算。音量在 Python 里调，峰值硬削到 −1 dBFS。"""
+    """For CI: no ffmpeg; the "encoded" result is just WAV and the length is computed from the PCM. Volume is adjusted
+    in Python and peaks are hard-clipped to −1 dBFS.
+
+    CI 用：ffmpeg を呼ばず、「エンコード」結果はそのまま WAV で、長さは PCM から求める。音量は Python で調整し、ピークは
+    −1 dBFS で強制的にクリップする。
+    """
 
     suffix = ".wav"
 

@@ -1,19 +1,48 @@
-"""预算和降级（B-14，backend-design 5.2、5.3，S-019）。叙事者和网关共用，状态都在库里。
+"""Budget and degradation (B-14, backend-design 5.2, 5.3, S-019). Shared by the narrator and the gateway; all state is
+in the database.
 
-| 档 | 什么时候 | 谁做什么 |
+| Tier | When | Who does what |
 |---|---|---|
-| 正常 `normal` | 一局花费 < 300 日元的 80% | — |
-| 节约 `saving` | ≥ 240 日元 | 局势说明短一些、记忆 8 → 4、中段世界推进停、候选话语按「？」（`Policy`） |
-| 降级 `degraded` | ≥ 300 日元 | 网关：下一轮开始前 `degraded { reason: "budget" }`，人物改文字回答；叙事者照常 |
+| Normal `normal` | cost < 80% of 300 yen | — |
+| Saving `saving` | ≥ 240 yen | shorter situation, memories 8 → 4, no mid-act world advance, suggestions on 「？」 |
+| Degraded `degraded` | ≥ 300 yen | gateway: `degraded { reason: "budget" }` before the next turn, text answers |
 
-节约档现在做到的：口ぶりの例 4 → 2、さっきまでの会話 6 → 3 轮、覚えていること 8 → 4 条；每幕中段的世界推进、
-候选话语还没有（B-16、B-21），做它们的卡读 `policy(tier)`。
+(Saving is `Policy`; in degraded the narrator carries on as usual.)
 
-- 一局的花费 = `playthrough_metrics` 里全部 `cost_*_usd` 之和 × 150（data-design 第 3 节，换算同 `s5.py`）。
-- 档位只升不降，网关在每一轮开始前和 `focus` 时 `refresh()`；进档时记 `budget_saving_at`、`degraded_at`，
-  Trace 记一条 `budget`（不带文字）。
-- 每账号每天（日本时间 0 点切）：开局 5 次、语音 60 分钟，记在 `account_days`（删局不退次数）。
-- 全局语音开关：`app_settings` 的 `voice_enabled`，`zoujin-admin voice off|on` 改。自动熔断和告警跟部署的卡。
+What the saving tier does now: 口ぶりの例 4 → 2, さっきまでの会話 6 → 3 turns, 覚えていること 8 → 4 items; the mid-act
+world advance and suggested lines are not there yet (B-16, B-21), and the cards doing them read `policy(tier)`.
+
+- A playthrough's cost = the sum of all `cost_*_usd` in `playthrough_metrics` × 150 (data-design section 3, same
+  conversion as `s5.py`).
+- The tier only goes up, never down; the gateway calls `refresh()` before every turn starts and on `focus`; on entering
+  a tier it records `budget_saving_at`, `degraded_at`, and the Trace records one `budget` (without text).
+- Per account per day (cut over at midnight Japan time): 5 playthrough starts and 60 minutes of voice, recorded in
+  `account_days` (deleting a playthrough does not refund a start).
+- Global voice switch: `voice_enabled` in `app_settings`, changed with `zoujin-admin voice off|on`. Automatic circuit
+  breaking and alerts follow the deployment card.
+
+予算と劣化動作（B-14、backend-design 5.2、5.3、S-019）。ナレーターとゲートウェイが共用し、状態はすべて
+データベースにある。
+
+| ティア | いつ | 誰が何をするか |
+|---|---|---|
+| 通常 `normal` | 1 周回の費用 < 300 円の 80% | — |
+| 節約 `saving` | ≥ 240 円 | 状況説明を短く、記憶 8 → 4、幕の中盤の世界の進行を停止、発言候補は「？」で |
+| 劣化 `degraded` | ≥ 300 円 | ゲートウェイ：次のターンの前に `degraded { reason: "budget" }`、テキストで答える |
+
+（節約は `Policy`。劣化でもナレーターは通常どおり動く。）
+
+節約ティアで今できていること：口ぶりの例 4 → 2、さっきまでの会話 6 → 3 ターン、覚えていること 8 → 4 件。幕ごとの中盤の
+世界の進行と発言候補はまだない（B-16、B-21）。それらを担うカードが `policy(tier)` を読む。
+
+- 1 周回の費用 = `playthrough_metrics` のすべての `cost_*_usd` の合計 × 150（data-design 第 3 節、換算は
+  `s5.py` と同じ）。
+- ティアは上がるだけで下がらない。ゲートウェイは各ターンの開始前と `focus` のときに `refresh()` を呼ぶ。ティアに入ると
+  `budget_saving_at`、`degraded_at` を記録し、Trace に `budget` を 1 件記録する（テキストは含まない）。
+- アカウントごと、1 日ごと（日本時間 0 時で切り替え）：周回の開始 5 回、音声 60 分。`account_days` に記録する（周回を
+  削除しても回数は戻らない）。
+- 全体の音声スイッチ：`app_settings` の `voice_enabled`。`zoujin-admin voice off|on` で変える。自動遮断とアラートは
+  デプロイのカードに従う。
 """
 
 from __future__ import annotations
@@ -30,13 +59,17 @@ from sqlalchemy.dialects.postgresql import insert
 from zoujin_backend.db.tables import account_days, app_settings, playthrough_metrics, playthroughs
 from zoujin_backend.trace import Tracer
 
-USD_JPY = 150.0  # 同 s5.py
-RUN_CAP_JPY = 300.0  # PRD 7.4 的单局上限；ZJ_RUN_CAP_JPY 可改（测试、R1 前调数）
+USD_JPY = 150.0  # same as s5.py / s5.py と同じ
+# PRD 7.4's per-playthrough cap; ZJ_RUN_CAP_JPY can change it (tests, tuning before R1)
+# PRD 7.4 の 1 周回の上限。ZJ_RUN_CAP_JPY で変更できる（テスト、R1 前の調整）
+RUN_CAP_JPY = 300.0
 CAP_ENV = "ZJ_RUN_CAP_JPY"
 SAVING_RATIO = 0.8
 RUNS_PER_DAY = 5
 VOICE_MINUTES = 60
-WARN_MINUTES = 5  # 剩 5 分钟推一次 limits（ux-design 第 12 节）
+# Push limits once at 5 minutes left (ux-design section 12)
+# 残り 5 分で limits を 1 回送る（ux-design 第 12 節）
+WARN_MINUTES = 5
 JST = timezone(timedelta(hours=9))
 
 TIERS = ("normal", "saving", "degraded")
@@ -45,13 +78,26 @@ COSTS = tuple(c for c in playthrough_metrics.c if c.name.startswith("cost_"))
 
 @dataclass(frozen=True)
 class Policy:
-    """一档的做法。degraded 的叙事者照节约档。"""
+    """What a tier does. In degraded, the narrator follows the saving tier.
 
-    brief_samples: int  # Live 系统指令里「口ぶりの例」几句
-    recent_turns: int  # 带进新会话的「さっきまでの会話」几轮
-    memory_inject: int  # 记忆注入几条（记忆的卡读）
-    mid_act_progression: bool  # 每幕中段的世界推进（世界推进的卡读）
-    candidates_on_demand: bool  # 候选话语只在玩家点「？」时生成（候选话语的卡读）
+    ティアごとのやり方。degraded のナレーターは節約ティアに従う。
+    """
+
+    # how many 「口ぶりの例」 lines in the Live system instruction
+    # Live のシステム指示の「口ぶりの例」の数
+    brief_samples: int
+    # How many turns of 「さっきまでの会話」 are carried into a new session
+    # 新しいセッションに持ち込む「さっきまでの会話」のターン数
+    recent_turns: int
+    # how many memories are injected (read by the memory card)
+    # 注入する記憶の件数（記憶のカードが読む）
+    memory_inject: int
+    # Mid-act world advance in every act (read by the world advance card)
+    # 幕ごとの中盤の世界の進行（世界の進行のカードが読む）
+    mid_act_progression: bool
+    # Suggested lines are generated only when the player taps 「？」 (read by the suggested lines card)
+    # 発言候補はプレイヤーが「？」をタップしたときだけ生成する（発言候補のカードが読む）
+    candidates_on_demand: bool
 
 
 POLICY = {
@@ -94,7 +140,12 @@ async def tier_of(c: Any, pid: str) -> str:
 
 
 async def refresh(c: Any, pid: str, tracer: Tracer | None = None) -> str:
-    """按花费升档（只升不降），返回现在的档。升了记时刻和 Trace 的 `budget`。"""
+    """Raise the tier by cost (only up, never down) and return the current tier. When it goes up, record the time and
+    a Trace `budget`.
+
+    費用に応じてティアを上げ（上がるだけで下がらない）、現在のティアを返す。上がったら時刻と Trace の `budget`
+    を記録する。
+    """
     cur = await tier_of(c, pid)
     jpy = await run_cost_jpy(c, pid)
     want = tier_for(jpy)
@@ -106,7 +157,7 @@ async def refresh(c: Any, pid: str, tracer: Tracer | None = None) -> str:
         .where(playthroughs.c.playthrough_id == pid, playthroughs.c.budget_tier.in_(lower))
         .values(budget_tier=want)
     )
-    if not done.rowcount:  # 别处同时升了
+    if not done.rowcount:  # raised elsewhere at the same time / 別の場所で同時に上がった
         return await tier_of(c, pid)
     await _mark(c, pid, want, "budget")
     if tracer is not None:
@@ -118,13 +169,20 @@ async def refresh(c: Any, pid: str, tracer: Tracer | None = None) -> str:
 
 
 async def set_tier(c: Any, pid: str, tier: str) -> None:
-    """评测入口的 `setup.budgetTier`（E6）：直接设档。"""
+    """The eval entry point's `setup.budgetTier` (E6): set the tier directly.
+
+    評価の入口の `setup.budgetTier`（E6）：ティアを直接設定する。
+    """
     await c.execute(update(playthroughs).where(playthroughs.c.playthrough_id == pid).values(budget_tier=tier))
     await _mark(c, pid, tier, "budget")
 
 
 async def mark_degraded(c: Any, pid: str, reason: str) -> None:
-    """这一局第一次降级（任何原因）：记 `degraded_at` 和原因，之后的不改。"""
+    """The first degradation in this playthrough (for any reason): record `degraded_at` and the reason; later ones do
+    not change it.
+
+    この周回で最初の劣化（理由は問わない）：`degraded_at` と理由を記録し、以後は変えない。
+    """
     m = playthrough_metrics.c
     await c.execute(
         update(playthrough_metrics)
@@ -146,7 +204,7 @@ async def _mark(c: Any, pid: str, tier: str, reason: str) -> None:
         await mark_degraded(c, pid, reason)
 
 
-# —— 每账号每天 ——
+# —— Per account per day / アカウントごと、1 日ごと ——
 
 
 def jst_day(now: datetime | None = None) -> date:
@@ -154,7 +212,10 @@ def jst_day(now: datetime | None = None) -> date:
 
 
 def seconds_to_midnight(now: datetime | None = None) -> int:
-    """到日本时间下一个 0 点还有几秒（`429 daily_limit` 的 `retryAfterSeconds`）。"""
+    """Seconds until the next midnight Japan time (`retryAfterSeconds` of `429 daily_limit`).
+
+    日本時間の次の 0 時までの秒数（`429 daily_limit` の `retryAfterSeconds`）。
+    """
     now = (now or datetime.now(UTC)).astimezone(JST)
     nxt = datetime.combine(now.date() + timedelta(days=1), datetime.min.time(), tzinfo=JST)
     return max(1, math.ceil((nxt - now).total_seconds()))
@@ -205,7 +266,7 @@ async def add_voice(c: Any, user_id: str, seconds: float) -> None:
     )
 
 
-# —— 全局语音开关 ——
+# —— Global voice switch / 全体の音声スイッチ ——
 
 
 async def voice_enabled(c: Any) -> bool:

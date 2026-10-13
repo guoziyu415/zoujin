@@ -4,15 +4,15 @@ All transport shapes of `docs/backend/api-contract.md` v1.0. Data fields follow 
 
 `docs/backend/api-contract.md` v1.0 のすべての伝送形状。データフィールドは `schemas/data/`（C-2、データ担当）に従い、ここでは参照するだけ。
 
-| File / ファイル | Contents / 内容 |
-| ----------------------- | ---- |
-| `common.schema.json` | Shapes shared in several places: snapshot (2.3), visible projection of events (2.4), causal chain (2.6), memories and promises (2.7, 3.4), end of act (3.11), ending presentation (3.13), resume play (section 4) / 複数箇所で共有される形状：スナップショット（2.3）、イベントの可視射影（2.4）、因果チェーン（2.6）、記憶と約束（2.7、3.4）、幕末（3.11）、結末演出（3.13）、続きからのプレイ（第 4 節） |
-| `ws/client.schema.json` | The 17 message kinds of 3.2, as a whole a `oneOf` discriminated by `type` (`ClientMessage`) / 3.2 の 17 種のメッセージ。全体は `type` で区別する `oneOf`（`ClientMessage`） |
-| `ws/server.schema.json` | The 30 message kinds of 3.3 (`ServerMessage`) / 3.3 の 30 種のメッセージ（`ServerMessage`） |
-| `rest/*.schema.json` | One file per endpoint; `x-endpoint` records method, path, whether `Idempotency-Key` is required, path parameters, query parameters, request body and the response for each status code (`null` = no response body) / エンドポイントごとに 1 ファイル。`x-endpoint` にメソッド、パス、`Idempotency-Key` の要否、パスパラメータ、クエリパラメータ、リクエストボディ、各ステータスコードのレスポンスを記す（`null` = レスポンスボディなし） |
-| `error.schema.json` | Errors of section 5 / 第 5 節のエラー |
-| `telemetry.schema.json` | Request body of `POST /v1/telemetry` (data-design 9.3, fields set by data) / `POST /v1/telemetry` のリクエストボディ（data-design 9.3、フィールドはデータ側が決める） |
-| `binary.json` | Binary frame constants of 3.1 (not a Schema; generates `binary.ts` / `binary.py`) / 3.1 のバイナリフレーム定数（Schema ではない。`binary.ts` / `binary.py` を生成する） |
+| File / ファイル         | Contents / 内容                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `common.schema.json`    | Shapes shared in several places: snapshot (2.3), visible projection of events (2.4), causal chain (2.6), memories and promises (2.7, 3.4), end of act (3.11), ending presentation (3.13), resume play (section 4) / 複数箇所で共有される形状：スナップショット（2.3）、イベントの可視射影（2.4）、因果チェーン（2.6）、記憶と約束（2.7、3.4）、幕末（3.11）、結末演出（3.13）、続きからのプレイ（第 4 節）                               |
+| `ws/client.schema.json` | The 17 message kinds of 3.2, as a whole a `oneOf` discriminated by `type` (`ClientMessage`) / 3.2 の 17 種のメッセージ。全体は `type` で区別する `oneOf`（`ClientMessage`）                                                                                                                                                                                                                                                              |
+| `ws/server.schema.json` | The 30 message kinds of 3.3 (`ServerMessage`) / 3.3 の 30 種のメッセージ（`ServerMessage`）                                                                                                                                                                                                                                                                                                                                              |
+| `rest/*.schema.json`    | One file per endpoint; `x-endpoint` records method, path, whether `Idempotency-Key` is required, path parameters, query parameters, request body and the response for each status code (`null` = no response body) / エンドポイントごとに 1 ファイル。`x-endpoint` にメソッド、パス、`Idempotency-Key` の要否、パスパラメータ、クエリパラメータ、リクエストボディ、各ステータスコードのレスポンスを記す（`null` = レスポンスボディなし） |
+| `error.schema.json`     | Errors of section 5 / 第 5 節のエラー                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `telemetry.schema.json` | Request body of `POST /v1/telemetry` (data-design 9.3, fields set by data) / `POST /v1/telemetry` のリクエストボディ（data-design 9.3、フィールドはデータ側が決める）                                                                                                                                                                                                                                                                    |
+| `binary.json`           | Binary frame constants of 3.1 (not a Schema; generates `binary.ts` / `binary.py`) / 3.1 のバイナリフレーム定数（Schema ではない。`binary.ts` / `binary.py` を生成する）                                                                                                                                                                                                                                                                  |
 
 ## Conventions / 書き方
 
@@ -26,10 +26,10 @@ All transport shapes of `docs/backend/api-contract.md` v1.0. Data fields follow 
   データ型をそのまま使う箇所では `data/` の `$defs` を `$ref` する。API がデータ型のフィールドを加減する場合（結末、イベントの可視射影、記憶帳）は API 独自のオブジェクトとして書き、共通のフィールドは JSON ポインタでデータ側のフィールドを参照する。どのフィールドを加減したかは `tests/test_alignment.py` に列挙されている。
 - Names in `$defs` are the generated type names and must not collide with those in `data/`.
   `$defs` の名前は生成される型名であり、`data/` のものと重複してはならない。
-- Things that exist only in non-production environments (`hello.debug`, `fakeVoice`, `event_rejected`, `POST /v1/test/…`) are still written, with "non-production" marked in `description`.
-  非本番環境にのみ存在するもの（`hello.debug`、`fakeVoice`、`event_rejected`、`POST /v1/test/…`）も同様に書き、`description` に「非生産」と記す。
-- Where the document was unclear and the point was settled at the C-1 review, mark "（C-1 评审定）" (settled at C-1 review) at the end of `description`; api-contract v1.0.1 has written them into the main text.
-  文書に明記がなく C-1 レビューで決めた箇所は、`description` の末尾に「（C-1 评审定）」（C-1 レビューで決定）と記す。api-contract v1.0.1 でそれらは本文に取り込まれている。
+- Things that exist only in non-production environments (`hello.debug`, `fakeVoice`, `event_rejected`, `POST /v1/test/…`) are still written, with "Non-production / 本番以外" marked in `description`.
+  非本番環境にのみ存在するもの（`hello.debug`、`fakeVoice`、`event_rejected`、`POST /v1/test/…`）も同様に書き、`description` に「Non-production / 本番以外」と記す。
+- Where the document was unclear and the point was settled at the C-1 review, mark "(decided in the C-1 review)" at the end of the English part of `description` and 「（C-1 レビューで決定）」 at the end of the Japanese part ("(added in the C-1 review)" / 「（C-1 レビューで追加）」 for fields added there); api-contract v1.0.1 has written them into the main text.
+  文書に明記がなく C-1 レビューで決めた箇所は、`description` の英語部分の末尾に "(decided in the C-1 review)"、日本語部分の末尾に「（C-1 レビューで決定）」と記す（そこで追加したフィールドは "(added in the C-1 review)" /「（C-1 レビューで追加）」）。api-contract v1.0.1 でそれらは本文に取り込まれている。
 
 After changes, run `uv run contracts-gen` to regenerate the types, then `uv run pytest packages/contracts`.
 

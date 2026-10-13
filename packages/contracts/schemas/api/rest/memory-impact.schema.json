@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "api/rest/memory-impact.schema.json",
   "title": "GET /v1/playthroughs/{id}/memories/{memoryId}/impact",
-  "description": "删除确认里「不会撤销的后果」（2.7）",
+  "description": "The \"consequences that will not be undone\" in the delete confirmation (2.7) / 削除確認の「取り消されない結果」（2.7）",
   "x-endpoint": {
     "method": "GET",
     "path": "/v1/playthroughs/{id}/memories/{memoryId}/impact",
@@ -18,10 +18,10 @@
       "required": ["keeps", "voidsPromise"],
       "properties": {
         "keeps": {
-          "description": "没有就是 null",
+          "description": "null if none / なければ null",
           "anyOf": [
             {
-              "description": "已经发生、删除也不撤销的后果，一句话",
+              "description": "A consequence that has already happened and is not undone by deletion, in one sentence / すでに起きていて、削除しても取り消されない結果。一文で",
               "type": "string",
               "minLength": 1
             },
@@ -31,7 +31,7 @@
           ]
         },
         "voidsPromise": {
-          "description": "true = 删除后这条记忆所属的约定变成 voided",
+          "description": "true = after deletion, the promise this memory belongs to becomes voided / true = 削除後、この記憶が属する約束が voided になる",
           "type": "boolean"
         }
       },

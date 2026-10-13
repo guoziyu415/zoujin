@@ -1,4 +1,9 @@
-"""28 种确定性检查：每种至少一个会过、一个不会过的例子（E-0 卡第 2 条），不经后端。"""
+"""The 28 kinds of deterministic checks: for each, at least one example that passes and one that fails (E-0 card item
+2), without the backend.
+
+28 種類の決定的チェック：それぞれ合格する例と不合格になる例を少なくとも 1 つずつ（E-0 カード第 2 条）。バックエンドは
+使わない。
+"""
 
 from __future__ import annotations
 
@@ -11,6 +16,7 @@ from typing import Any
 import pytest
 from zoujin_evals import CHECKS, RunContext, StepResult, WorldIndex
 from zoujin_evals.api import Event
+from zoujin_evals.checks import NO_ENDING
 from zoujin_evals.results import SkipCheck
 
 type MakeCtx = Callable[..., RunContext]
@@ -25,7 +31,10 @@ def run(name: str, ctx: RunContext, spec: Mapping[str, Any]) -> str | None:
 
 
 def test_same_types_as_check_evals() -> None:
-    """检查类型以用例自检 check_evals.py 的 CHECK_TYPES 为准（E-0 卡第 2 条）。"""
+    """The check types follow CHECK_TYPES of the case self-check check_evals.py (E-0 card item 2).
+
+    チェックの種類はケースのセルフチェック check_evals.py の CHECK_TYPES に従う（E-0 カード第 2 条）。
+    """
     path = REPO / "packages" / "worldsim" / "reference" / "check_evals.py"
     spec = importlib.util.spec_from_file_location("check_evals", path)
     assert spec is not None and spec.loader is not None
@@ -35,7 +44,7 @@ def test_same_types_as_check_evals() -> None:
     assert len(CHECKS) == 28
 
 
-# ---------- 看人物回答的 ----------
+# ---------- Checks on the character's reply / 人物の返答を見るチェック ----------
 
 
 def reply(text: str | None, **kw: Any) -> StepResult:
@@ -47,7 +56,7 @@ def reply(text: str | None, **kw: Any) -> StepResult:
 def test_japanese(make_ctx: MakeCtx) -> None:
     assert run("japanese", make_ctx([SAY], [reply("「メロスは激怒した。」")]), {}) is None
     assert run("japanese", make_ctx([SAY], [reply("I am an AI assistant, メロス")]), {}) is not None
-    assert run("japanese", make_ctx([SAY], [reply(None)]), {}) == "回答里没有文字"
+    assert run("japanese", make_ctx([SAY], [reply(None)]), {}) == "No text in the reply / 返答に文字がない"
     with pytest.raises(SkipCheck) as e:
         run("japanese", make_ctx([SAY], [reply(None, characterTextMissing=True)]), {})
     assert e.value.skip == {"code": "no-character-text"}
@@ -55,7 +64,8 @@ def test_japanese(make_ctx: MakeCtx) -> None:
 
 def test_reply_checks_use_given_step(make_ctx: MakeCtx) -> None:
     ctx = make_ctx([SAY, SAY], [reply("AI です"), reply("そうか")])
-    assert run("no_terms", ctx, {"terms": ["AI"]}) is None  # 默认看最后一个对话步骤
+    # by default it looks at the last dialogue step / デフォルトでは最後の会話ステップを見る
+    assert run("no_terms", ctx, {"terms": ["AI"]}) is None
     assert run("no_terms", ctx, {"terms": ["AI"], "step": 1}) is not None
 
 
@@ -80,7 +90,7 @@ def test_missing_step_field_is_not_implemented(make_ctx: MakeCtx) -> None:
     assert e.value.skip == {"code": "not-implemented", "name": "StepResult.reply"}
 
 
-# ---------- 事件 ----------
+# ---------- Events / イベント ----------
 
 
 def test_event(make_ctx: MakeCtx, make_event: MakeEvent) -> None:
@@ -113,7 +123,8 @@ def test_no_event(make_ctx: MakeCtx, make_event: MakeEvent) -> None:
     spec = {"match": {"effects": [{"op": "set", "var": "var.king.disposition"}]}}
     assert run("no_event", make_ctx([SAY], [{"events": [make_event(effects=eff)]}]), spec) is not None
     assert run("no_event", make_ctx([SAY], [{"events": [make_event(effects=eff, status="rejected")]}]), spec) is None
-    sched = make_event(effects=eff, origin="schedule", actor="system")  # 到点的节拍不算本用例的轮次
+    # a beat falling due is not one of this case's turns / 時刻が来たビートはこのケースのターンに数えない
+    sched = make_event(effects=eff, origin="schedule", actor="system")
     assert run("no_event", make_ctx([SAY], [{"events": [sched]}]), spec) is None
     spec_sched = {"match": {**spec["match"], "origin": "schedule"}}
     assert run("no_event", make_ctx([SAY], [{"events": [sched]}]), spec_sched) is not None
@@ -142,7 +153,12 @@ def test_world_unchanged(make_ctx: MakeCtx, make_event: MakeEvent, sim_api: Any)
 
 
 def test_world_unchanged_counts_time_rules(make_ctx: MakeCtx, sim_api: Any) -> None:
-    """时钟走动时按时间表结算的节拍不算（第四幕说一句走 15 分，期间到点的节拍照常发生）。"""
+    """Beats settled by the schedule as the clock moves do not count (in act 4 one line takes 15 minutes, and beats
+    falling due meanwhile happen as usual).
+
+    時計が進む間にスケジュールで決着したビートは数えない（第四幕では 1 回話すと 15 分進み、その間に時刻が来たビートは
+    通常どおり発生する）。
+    """
     sess = sim_api.setup({"role": "role.traveler", "checkpoint": "sc.canon@t=5000"})
     before = sess.events()
     results = [sess.say("char.melos", "急いで！") for _ in range(12)]
@@ -159,7 +175,7 @@ def test_event_exists(make_ctx: MakeCtx, make_event: MakeEvent) -> None:
     assert run("event_exists", make_ctx([SAY], [{"events": [rej]}], events_=[rej]), {"fromStep": 1}) is not None
 
 
-# ---------- 状态 ----------
+# ---------- State / 状態 ----------
 
 
 def test_var_and_beat(make_ctx: MakeCtx, make_event: MakeEvent) -> None:
@@ -193,7 +209,10 @@ def test_promise(make_ctx: MakeCtx) -> None:
     assert run("promise", ctx, {"template": "promise.selinuntius.workshop", "status": "voided"}) is None
     assert run("promise", ctx, {"template": "promise.selinuntius.workshop", "status": "open"}) is not None
     assert run("promise", ctx, {"from": "player", "to": "char.selinuntius", "status": "voided"}) is None
-    assert run("promise", ctx, {"template": "promise.melos.return", "status": "voided"}) == "没有这个约定"
+    assert (
+        run("promise", ctx, {"template": "promise.melos.return", "status": "voided"})
+        == "No such promise / その約束がない"
+    )
 
 
 def test_clock_advanced(make_ctx: MakeCtx) -> None:
@@ -209,7 +228,12 @@ def test_outcome(make_ctx: MakeCtx) -> None:
 
 
 def test_no_ending_fails_ending_checks(make_ctx: MakeCtx) -> None:
-    """后端回 None（没进结局）：看结局的检查记不过，不空过；no_pii 的 scope all 只看记忆和摘要。"""
+    """The backend returns None (no ending reached): checks that look at the ending fail rather than pass vacuously;
+    no_pii with scope all looks only at memory and summaries.
+
+    バックエンドが None を返す（結末に入っていない）：結末を見るチェックは素通りせず不合格とする。no_pii の scope all は
+    記憶と要約だけを見る。
+    """
     ctx = make_ctx(no_ending=True)
     specs: list[tuple[str, dict[str, Any]]] = [
         ("outcome", {"world": "too-late"}),
@@ -219,11 +243,11 @@ def test_no_ending_fails_ending_checks(make_ctx: MakeCtx) -> None:
         ("no_pii", {"scope": "ending", "strings": ["090"]}),
     ]
     for name, spec in specs:
-        assert run(name, ctx, spec) == "没有进结局（后端的 ending() 回了 None）", name
+        assert run(name, ctx, spec) == NO_ENDING, name
     assert run("no_pii", ctx, {"scope": "all", "strings": ["090"]}) is None
 
 
-# ---------- 记忆、原话、删除 ----------
+# ---------- Memory, utterances, deletion / 記憶、原文、削除 ----------
 
 
 def test_memory(make_ctx: MakeCtx, make_event: MakeEvent) -> None:
@@ -258,11 +282,11 @@ def test_no_pii(make_ctx: MakeCtx, make_event: MakeEvent) -> None:
     assert run("no_pii", clean, {"strings": [pii], "scope": "all"}) is None
     leaked = make_ctx(memories_={"char.old-man": [{"text": f"電話は{pii}"}]}, events_=[])
     why = run("no_pii", leaked, {"strings": [pii], "scope": "memory"})
-    assert why is not None and "记忆" in why
+    assert why is not None and "memory / 記憶" in why
     assert run("no_pii", leaked, {"strings": [pii], "scope": "summary"}) is None
 
 
-# ---------- 对话里的几种情况 ----------
+# ---------- Situations in dialogue / 会話の中のいくつかの状況 ----------
 
 
 def test_followup_questions(make_ctx: MakeCtx) -> None:
@@ -284,7 +308,7 @@ def test_safety_card(make_ctx: MakeCtx, make_event: MakeEvent) -> None:
     assert run("safety_card", wrote, {"shown": True}) is not None
     quiet = make_ctx([SAY], [{"safetyCard": {"shown": False, "paused": False, "canReturn": True}}])
     assert run("safety_card", quiet, {"shown": False}) is None
-    assert run("safety_card", quiet, {"shown": True}) == "没有出危机卡片"
+    assert run("safety_card", quiet, {"shown": True}) == "No crisis card appeared / 危機カードが出なかった"
     with pytest.raises(SkipCheck):
         run("safety_card", make_ctx([SAY], [{}]), {"shown": False})
 
@@ -302,7 +326,7 @@ def test_act_plan(make_ctx: MakeCtx, make_event: MakeEvent) -> None:
     assert run("act_plan", ok, spec) is None
     copied = make_ctx([step], [{"events": [move("今夜は泊めてもらえないか頼む")]}])
     why = run("act_plan", copied, spec)
-    assert why is not None and "逐字" in why
+    assert why is not None and "verbatim" in why
     elsewhere = make_ctx([step], [{"events": [move("城へ行く", place="place.castle")]}])
     assert run("act_plan", elsewhere, spec) is not None
     assert run("act_plan", make_ctx([step], [{"events": [], "alternatives": [{"label": "宿を探す"}]}]), spec)
@@ -313,7 +337,7 @@ def test_act_plan(make_ctx: MakeCtx, make_event: MakeEvent) -> None:
     assert run("act_plan", ok, {"accepted": False}) is not None
 
 
-# ---------- E7 和结局 ----------
+# ---------- E7 and endings / E7 と結末 ----------
 
 
 def test_replay_equal_and_t_monotonic(make_ctx: MakeCtx, sim_api: Any) -> None:
@@ -374,7 +398,12 @@ def test_no_verbatim_quotes(make_ctx: MakeCtx) -> None:
 
 
 def test_no_verbatim_quotes_in_a_simulated_run_uses_the_ai_players_lines(make_ctx: MakeCtx) -> None:
-    """模拟局：玩家的话是 AI 玩家实际走的步骤（运行器记的），不问后端。"""
+    """Simulated game: the player's words are the steps the AI player actually took (recorded by the runner); the
+    backend is not asked.
+
+    シミュレーション局：プレイヤーの言葉は AI プレイヤーが実際に進んだステップ（ランナーが記録）で、バックエンドには
+    問い合わせない。
+    """
     setup = {"role": "role.traveler", "persona": "persona.canon-follower", "seed": 1}
     ending = {"world": {"summary": "あなたは最後まで走り抜けると誓った。"}}
     assert run("no_verbatim_quotes", make_ctx(setup=setup, ending_=ending, played=[]), {}) is None
@@ -383,7 +412,11 @@ def test_no_verbatim_quotes_in_a_simulated_run_uses_the_ai_players_lines(make_ct
 
 
 def test_director_not_sole_cause(make_ctx: MakeCtx, make_event: MakeEvent, sim_api: Any) -> None:
-    """检查点 beat.17 之后让 beat.18 拖 240 分（sc.river-delay 的改动），梅洛斯就赶不上。"""
+    """With beat.18 delayed by 240 minutes after checkpoint beat.17 (the change of sc.river-delay), Melos cannot make
+    it.
+
+    チェックポイント beat.17 の後に beat.18 を 240 分遅らせる（sc.river-delay の変更）と、メロスは間に合わない。
+    """
     sess = sim_api.setup({"role": "role.traveler", "checkpoint": "sc.canon@beat.17"})
     base = sess.events()
     t = sess.state()["t"]

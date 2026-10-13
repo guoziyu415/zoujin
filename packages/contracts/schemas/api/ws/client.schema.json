@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "api/ws/client.schema.json",
   "title": "ClientMessage",
-  "description": "WebSocket 客户端 → 服务端的 JSON 消息（api-contract 3.2），按 type 区分",
+  "description": "WebSocket client → server JSON messages (api-contract 3.2), distinguished by type / WebSocket のクライアント → サーバーの JSON メッセージ（api-contract 3.2）。type で区別する",
   "oneOf": [
     {
       "$ref": "#/$defs/HelloMessage"
@@ -61,7 +61,7 @@
   ],
   "$defs": {
     "HelloMessage": {
-      "description": "连接后第一条；服务端补发 lastSeq 之后的 commit",
+      "description": "The first message after connecting; the server resends the commits after lastSeq / 接続後の最初のメッセージ。サーバーは lastSeq 以降の commit を再送する",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "lastSeq", "clientVersion"],
@@ -78,18 +78,18 @@
           "maxLength": 64
         },
         "debug": {
-          "description": "非生产：打开 event_rejected 调试消息",
+          "description": "Non-production: turns on event_rejected debug messages / 本番以外：event_rejected のデバッグメッセージを有効にする",
           "type": "boolean"
         },
         "fakeVoice": {
-          "description": "非生产：服务端用录好的音频回答，不调用 Live（第 7 节）",
+          "description": "Non-production: the server answers with recorded audio instead of calling Live (section 7) / 本番以外：サーバーは Live を呼ばず、録音済みの音声で応答する（第 7 節）",
           "type": "boolean"
         }
       },
       "title": "HelloMessage"
     },
     "NearMessage": {
-      "description": "玩家进入某个可对话人物 8 m 内：服务端预热会话",
+      "description": "The player came within 8 m of a talkable character: the server warms up the session / プレイヤーが会話できる登場人物の 8 m 以内に入った：サーバーがセッションを事前に準備する",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "character"],
@@ -104,7 +104,7 @@
       "title": "NearMessage"
     },
     "FarMessage": {
-      "description": "离开 12 m",
+      "description": "Moved 12 m away / 12 m 離れた",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "character"],
@@ -119,7 +119,7 @@
       "title": "FarMessage"
     },
     "FocusMessage": {
-      "description": "玩家点了这个人物",
+      "description": "The player tapped this character / プレイヤーがこの登場人物をタップした",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "character"],
@@ -134,7 +134,7 @@
       "title": "FocusMessage"
     },
     "UnfocusMessage": {
-      "description": "离开对话",
+      "description": "Left the conversation / 会話から離れた",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "reason"],
@@ -150,7 +150,7 @@
       "title": "UnfocusMessage"
     },
     "ActivityStartMessage": {
-      "description": "按下说话；人物正在说话时也是打断",
+      "description": "Pressed to talk; also an interruption if the character is speaking / 押して話す。登場人物が話している最中なら割り込みにもなる",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "turnId", "turnSeq"],
@@ -165,7 +165,7 @@
           "$ref": "../common.schema.json#/$defs/ClientTurnSeq"
         },
         "purpose": {
-          "description": "幕末说出打算（3.11）时给，其他情况省略",
+          "description": "Given when stating a plan at the end of the act (3.11); omitted otherwise / 幕末でプランを述べるとき（3.11）に送る。それ以外は省略",
           "type": "string",
           "enum": ["act_plan"]
         }
@@ -173,7 +173,7 @@
       "title": "ActivityStartMessage"
     },
     "ActivityEndMessage": {
-      "description": "松开",
+      "description": "Released / 離した",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "turnId", "turnSeq"],
@@ -191,7 +191,7 @@
       "title": "ActivityEndMessage"
     },
     "TextMessage": {
-      "description": "文字输入，代替一轮语音",
+      "description": "Text input, replacing a voice turn / テキスト入力。音声のターンの代わり",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "turnId", "turnSeq", "text", "via"],
@@ -213,7 +213,7 @@
           "enum": ["typed", "chip", "correction"]
         },
         "replaces": {
-          "description": "识别改正时被改正的那一轮（3.6）；只在 via = correction 时给",
+          "description": "The turn being corrected when fixing recognition (3.6); given only when via = correction / 認識を訂正するときに訂正されるターン（3.6）。via = correction のときだけ送る",
           "$ref": "../../data/common.schema.json#/$defs/TurnId"
         }
       },
@@ -235,7 +235,7 @@
       "title": "TextMessage"
     },
     "TurnRetractMessage": {
-      "description": "作废一轮（3.6）",
+      "description": "Retracts a turn (3.6) / ターンを取り消す（3.6）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "turnId"],
@@ -250,7 +250,7 @@
       "title": "TurnRetractMessage"
     },
     "ActionMessage": {
-      "description": "身体动作，先判后演（3.8）",
+      "description": "A physical action: judged first, then performed (3.8) / 身体のアクション。先に判定してから演じる（3.8）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "clientMsgId", "kind"],
@@ -262,11 +262,11 @@
           "$ref": "../common.schema.json#/$defs/ClientMsgId"
         },
         "actionId": {
-          "description": "快照 actions 里的动作带它；move 和「調べる」不带",
+          "description": "Actions from the snapshot's actions carry it; move and 「調べる」 do not / スナップショットの actions にあるアクションは付ける。move と「調べる」には付けない",
           "$ref": "../common.schema.json#/$defs/ActionId"
         },
         "kind": {
-          "description": "3.8 的清单：世界模型 Affordance.kind 加上 move",
+          "description": "The list in 3.8: the world model's Affordance.kind plus move / 3.8 の一覧：世界モデルの Affordance.kind に move を加えたもの",
           "type": "string",
           "enum": [
             "examine",
@@ -283,13 +283,13 @@
           ]
         },
         "target": {
-          "description": "对象：人物 ID、地点 ID（move）或 interactable 的 ID。快照里这个动作有 target 就原样带；wait 这类没有对象的动作省略（服务端按 actionId 找回）。move、examine、go 必带（C-1 评审定）",
+          "description": "Target: a character ID, a place ID (move) or an interactable's ID. If the action has a target in the snapshot, send it as is; omit it for actions without a target such as wait (the server looks it up by actionId). Required for move, examine and go (decided in the C-1 review) / 対象：登場人物の ID、地点の ID（move）、または interactable の ID。スナップショットでこのアクションに target があればそのまま付ける。wait など対象のないアクションでは省略する（サーバーが actionId から引き当てる）。move、examine、go では必須（C-1 レビューで決定）",
           "type": "string",
           "minLength": 1,
           "maxLength": 128
         },
         "params": {
-          "description": "give 时 params.item 是交出的物品",
+          "description": "For give, params.item is the item handed over / give のとき params.item は渡すアイテム",
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -313,7 +313,7 @@
       }
     },
     "ConfirmAnswerMessage": {
-      "description": "回答意图确认（3.9）",
+      "description": "Answers an intent confirmation (3.9) / 意図確認に答える（3.9）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "draftId", "optionId"],
@@ -332,7 +332,7 @@
       "title": "ConfirmAnswerMessage"
     },
     "ApproachArrivedMessage": {
-      "description": "走过来的人物到了 2.5 m 内（3.10）",
+      "description": "The character walking over came within 2.5 m (3.10) / 歩み寄ってきた登場人物が 2.5 m 以内に入った（3.10）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "character"],
@@ -347,7 +347,7 @@
       "title": "ApproachArrivedMessage"
     },
     "ApproachDismissMessage": {
-      "description": "「いまは、いい」、走开，或等了 20 秒（3.10）",
+      "description": "「いまは、いい」, walked away, or waited 20 seconds (3.10) / 「いまは、いい」、立ち去った、または 20 秒待った（3.10）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "character", "reason"],
@@ -366,7 +366,7 @@
       "title": "ApproachDismissMessage"
     },
     "ActChooseMessage": {
-      "description": "幕末选给定的去处（3.11）",
+      "description": "Chooses one of the given destinations at the end of the act (3.11) / 幕末で提示された行き先を選ぶ（3.11）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "clientMsgId", "optionId"],
@@ -378,7 +378,7 @@
           "$ref": "../common.schema.json#/$defs/ClientMsgId"
         },
         "optionId": {
-          "description": "act_ended 的去处，或 act_plan_result 的替代去处",
+          "description": "A destination from act_ended, or the alternative destination from act_plan_result / act_ended の行き先、または act_plan_result の代わりの行き先",
           "anyOf": [
             {
               "$ref": "../../data/common.schema.json#/$defs/ExitId"
@@ -389,7 +389,7 @@
           ]
         },
         "enRouteChoice": {
-          "description": "过场二选一选的那一项的 index；不带 = 选最后一个（照原作）",
+          "description": "The index of the option chosen in the transition choice; absent = the last one (as in the original) / 場面転換の二択で選んだ項目の index。付けない = 最後の 1 つ（原作どおり）を選ぶ",
           "type": "integer",
           "minimum": 0,
           "maximum": 1
@@ -398,7 +398,7 @@
       "title": "ActChooseMessage"
     },
     "ActProposeMessage": {
-      "description": "幕末用文字说出自己的打算（3.11）",
+      "description": "States the player's own plan in text at the end of the act (3.11) / 幕末にテキストで自分のプランを述べる（3.11）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "clientMsgId", "text"],
@@ -416,7 +416,7 @@
       "title": "ActProposeMessage"
     },
     "ActLandedMessage": {
-      "description": "（v1.0.4）幕切换以后落地（3.11）：act_transition.arrival（或 pending.arrival）带 opener 时，前端显示完落地那一行、玩家能动的时候发一次；服务端收到才让 opener 先开口。actId 不是现在这一幕的、同一幕再发的，服务端忽略",
+      "description": "(v1.0.4) Landed after an act change (3.11): when act_transition.arrival (or pending.arrival) has an opener, the frontend sends this once after it has shown the landing line and the player can move; only on receiving it does the server let the opener speak first. The server ignores it if actId is not the current act, or if it is sent again for the same act / （v1.0.4）幕の切り替え後に降り立った（3.11）：act_transition.arrival（または pending.arrival）に opener があるとき、フロントエンドは降り立ちの行を表示し終えてプレイヤーが動けるようになった時点で 1 回送る。サーバーはこれを受け取って初めて opener に先に話させる。actId が現在の幕でないもの、同じ幕で再送されたものはサーバーが無視する",
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "actId"],
@@ -431,7 +431,7 @@
       "title": "ActLandedMessage"
     },
     "SafetyResumeMessage": {
-      "description": "玩家在出戏卡上选了「物語に戻る」（3.12）",
+      "description": "The player chose 「物語に戻る」 on the out-of-story card (3.12) / プレイヤーが物語の外に出るカードで「物語に戻る」を選んだ（3.12）",
       "type": "object",
       "additionalProperties": false,
       "required": ["type"],
@@ -443,7 +443,7 @@
       "title": "SafetyResumeMessage"
     },
     "PingMessage": {
-      "description": "每 20 秒一次",
+      "description": "Once every 20 seconds / 20 秒ごとに 1 回",
       "type": "object",
       "additionalProperties": false,
       "required": ["type"],

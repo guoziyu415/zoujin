@@ -1,12 +1,29 @@
-"""给文本模型的请求里的世界状态和人物（B-2；backend-design 2.3、2.4）。
+"""The world state and characters in requests to the text model (B-2; backend-design 2.3, 2.4).
 
-- `state_view`：此刻的世界状态，紧凑、确定（同样的局面每次一样，回放的键才对得上）。约定和即兴设定的 ID 是提交时随机
-  分配的，请求里换成按内容排序的别名（`prm#1`、`rf#1`）；模型输出里的别名按同一个 `View` 换回真 ID。
-- `persona`、`situation`：文字模式人物回答（`reply`）用的 2.3 第 2 段（按此刻裁剪的人设）和最小的局势说明（时刻、地点、
-  在场的人、此刻知道的事实；不知道日名那条事实的人物只给时段；这三天里亲历的节拍是今天、昨天还是前天）。完整的局势说明、
-  记忆和圆回提示是后续卡。
+- `state_view`: the current world state, compact and deterministic (the same situation gives the same result every
+  time, so replay keys match). Promise and improvised-fact IDs are assigned randomly at commit, so the request uses
+  aliases sorted by content (`prm#1`, `rf#1`); aliases in the model output are mapped back to real IDs with the same
+  `View`.
+- `persona`, `situation`: section 2 of 2.3 (the persona trimmed to the current moment) and the minimal situation notes
+  (time, place, who is present, the facts known right now; characters who don't know the day-name fact get only the
+  time band; whether beats lived through in these three days were today, yesterday or the day before) used for text-mode
+  character replies (`reply`). The full situation notes, memories and smoothing-over hints are later cards.
 
-这里只有世界模型和状态里的东西，没有玩家的原话（原话只在请求的 `turn` 里）。
+Only things from the world model and the state are here, never the player's own words (those are only in the request's
+`turn`).
+
+テキストモデルへのリクエストに入れる世界状態と登場人物（B-2。backend-design 2.3、2.4）。
+
+- `state_view`：現在の世界状態。簡潔で決定的（同じ局面なら毎回同じになり、リプレイのキーが一致する）。約束と即興設定の
+  ID はコミット時にランダムに割り当てるので、リクエストでは内容順に並べた別名（`prm#1`、`rf#1`）に置き換える。
+  モデル出力の別名は同じ `View` で本当の ID に戻す。
+- `persona`、`situation`：テキストモードの登場人物の返答（`reply`）に使う、2.3 第 2 段
+  （現在に合わせて切り詰めた人物設定）と最小限の状況説明（時刻、場所、その場にいる人、いま知っている事実。
+  日名の事実を知らない登場人物には時間帯だけを渡す。この三日間に自分で経験したビートが今日か昨日かおとといか）。
+  完全な状況説明、記憶、取り繕いのヒントは後のカード。
+
+ここには世界モデルと状態にあるものだけを入れ、プレイヤーの発話そのものは入れない
+（発話はリクエストの `turn` にだけある）。
 """
 
 from __future__ import annotations
@@ -26,8 +43,8 @@ Json = Any
 @dataclass(frozen=True)
 class View:
     doc: Json
-    out: Mapping[str, str]  # 真 ID → 别名
-    back: Mapping[str, str]  # 别名 → 真 ID
+    out: Mapping[str, str]  # real ID → alias / 本当の ID → 別名
+    back: Mapping[str, str]  # alias → real ID / 別名 → 本当の ID
 
     def alias(self, x: Any) -> Any:
         return self.out.get(x, x) if isinstance(x, str) else x
@@ -41,7 +58,11 @@ def _content(x: Mapping[str, Any], drop: tuple[str, ...]) -> str:
 
 
 def aliases(state: SimState) -> dict[str, str]:
-    """约定和即兴设定的真 ID → 别名。按内容排序，不按 ID（ID 带时间和随机数）。"""
+    """Real IDs of promises and improvised facts → aliases. Sorted by content, not by ID (IDs contain a time and a
+    random number).
+
+    約束と即興設定の本当の ID → 別名。ID ではなく内容で並べる（ID には時刻と乱数が入る）。
+    """
     proms = sorted(state["promises"].values(), key=lambda p: _content(p, ("promiseId", "madeBy", "resolvedBy")))
     facts = sorted(state["runFacts"].values(), key=lambda f: (f["character"], f["statement"]))
     out = {p["promiseId"]: f"prm#{i}" for i, p in enumerate(proms, 1)}
@@ -59,8 +80,12 @@ def state_view(book: Book, state: SimState) -> View:
     variables = dict(state["vars"])
     for c in sorted(state["locations"]):
         people[c] = {"place": state["locations"][c], "activity": activity(book.world, state, c)}
-        # relocate 更新 locations。兼容世界中的旧位置变量，避免向模型同时给出两个地点；
-        # 这里只构造请求投影，不改持久化状态，也不给其他书凭空添加变量。
+        # relocate updates locations. Keep worlds' old location variables in step so the model is never given two
+        # places at once; this only builds the request projection: it doesn't change the stored state or invent
+        # variables for other books.
+        # relocate は locations を更新する。世界に残る古い位置変数と合わせ、
+        # モデルに 2 つの場所を同時に渡さないようにする。
+        # ここではリクエスト用の投影を作るだけで、保存された状態は変えず、ほかの本に変数を勝手に足すこともしない。
         if c.startswith("char."):
             alias = f"var.{c.removeprefix('char.')}.location"
             if alias in variables:
@@ -91,11 +116,17 @@ def state_view(book: Book, state: SimState) -> View:
     return View(doc, out, {v: k for k, v in out.items()})
 
 
-# —— 文字模式的人物回答（2.3 第 2、4 段 + 最小的局势说明） ——
+# —— Text-mode character replies (2.3 sections 2 and 4 + minimal situation notes) ——
+# —— テキストモードの登場人物の返答（2.3 第 2・4 段 + 最小限の状況説明） ——
 
 
 def _live(state: SimState, cur: Mapping[str, Any], x: Mapping[str, Any], book: Book) -> bool:
-    """人设的一条此刻还算不算：`since` 的节拍发生了（或 pre）、`until` 的节拍还没发生、`when` 成立。"""
+    """Whether a persona entry still holds right now: the `since` beat has happened (or is pre), the `until` beat hasn't
+    happened yet, and `when` holds.
+
+    人物設定の 1 項目がいまも有効か：`since` のビートが起きた（または pre）、`until` のビートがまだ起きていない、
+    `when` が成り立つ。
+    """
     beats = state["beats"]
     since = x.get("since")
     if since not in (None, "pre") and beats.get(since) not in OCCURRED:
@@ -127,15 +158,31 @@ def persona(book: Book, state: SimState, who: str) -> Json:
 
 
 def situation(book: Book, state: SimState, who: str, view: View) -> Json:
-    """时刻、地点、在场的人（不含不在场的）、他此刻知道的事实（事实 ID 和即兴设定的别名）、他亲历的最近的节拍。
+    """Time, place, who is present (not counting the absent), the facts this character knows right now (fact IDs and
+    improvised-fact aliases), and the recent beats they lived through.
 
-    时刻：日名带着情节（`clock.labels.daysKnownBy`）而这个人物不知道那条事实时，只给时段（S-086：「約束の日」「三日目」
-    是从约定那天数的，不知道约定的人物说出来就是知情越界）。
+    Time: when the day names carry plot (`clock.labels.daysKnownBy`) and this character doesn't know that fact, give
+    only the time band (S-086: 「約束の日」 and 「三日目」 count from the day of the promise, so a character who doesn't
+    know about the promise saying them would be knowing more than they should).
 
-    最近的节拍（`recent`，S-092）：他亲历的节拍（worldsim 的 `lived()`：已发生，他参与的，或者没有参与人物、落在他
-    当时所在的同一场景的，比如大雨；人在节拍的地点却不参与的不算），按发生时刻和节拍顺序排，按变体演了的带变体 ID，
-    各带 UX 定的说法（「今朝」「昨夜」
-    「おととい」……；S-068 里人物把当天早上的事说成昨天，婚礼办完了还说明天的婚礼）。再早的不给。
+    Recent beats (`recent`, S-092): beats the character lived through (worldsim's `lived()`: happened, and either they
+    took part, or it has no participating characters and lands in the same scene they were in at the time, e.g. the
+    heavy rain; being at the beat's place without taking part doesn't count), sorted by time and beat order, with the
+    variant ID when it played out as a variant, each with the wording UX decided (「今朝」「昨夜」「おととい」...; in
+    S-068 a character called that morning's events yesterday, and spoke of tomorrow's wedding after it was over).
+    Nothing earlier is given.
+
+    時刻、場所、その場にいる人（いない者は除く）、この登場人物がいま知っている事実（事実 ID と即興設定の別名）、
+    自分で経験した最近のビート。
+
+    時刻：日名が筋を含み（`clock.labels.daysKnownBy`）、この登場人物がその事実を知らないときは時間帯だけを渡す
+    （S-086：「約束の日」「三日目」は約束の日から数えるので、約束を知らない登場人物が口にすれば知りすぎになる）。
+
+    最近のビート（`recent`、S-092）：自分で経験したビート（worldsim の `lived()`：起きたもので、本人が参加したもの、
+    または参加する登場人物がおらず、本人がそのときいた場面と同じ場面で起きたもの、たとえば大雨。ビートの場所にいても
+    参加していなければ数えない）を、起きた時刻とビートの順に並べ、変種で演じられたものは変種 ID を付け、それぞれに
+    UX が決めた言い方（「今朝」「昨夜」「おととい」……。S-068 では登場人物がその日の朝のことを昨日と言い、
+    婚礼が済んだのに明日の婚礼と言った）を付ける。それより前のものは渡さない。
     """
     ix = index(book.world)
     place = state["locations"].get(who, state["vars"]["var.player.location"])
@@ -160,6 +207,9 @@ def situation(book: Book, state: SimState, who: str, view: View) -> Json:
 
 
 def player_card(book: Book, state: SimState, who: str) -> Json:
-    """2.3 第 4 段：玩家是谁（身份名、这个人物认不认识这个身份）。"""
+    """2.3 section 4: who the player is (the role name, and whether this character knows that role).
+
+    2.3 第 4 段：プレイヤーが誰か（役柄名と、この登場人物がその役柄を知っているか）。
+    """
     role = book.roles[state["role"]]
     return {"role": role["id"], "name": role["name"], "knownToYou": who in role.get("knownCharacters", [])}

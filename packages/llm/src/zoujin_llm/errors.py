@@ -1,4 +1,9 @@
-"""两边共用的错误。消息里只有状态码和我们自己写的话，不带 SDK 或 HTTP 的原消息（里面可能有项目 ID、Key 的片段）。"""
+"""Errors shared by both sides. Messages contain only status codes and our own wording, never the original SDK or HTTP
+message (which may contain a project ID or fragments of a key).
+
+両者で共用するエラー。メッセージにはステータスコードと自前の文言だけを入れ、SDK や HTTP の元のメッセージ（プロジェクト
+ID やキーの断片が含まれうる）は入れない。
+"""
 
 from __future__ import annotations
 
@@ -7,15 +12,26 @@ from pathlib import Path
 
 
 class Stop(Exception):
-    """要整次停下的错误（运行器不是跳过这一例，而是停下）：`BudgetStop`、`RateLimited`。"""
+    """Errors that stop the whole run (the runner does not skip this case, it stops): `BudgetStop`, `RateLimited`.
+
+    実行全体を止めるエラー（ランナーはこのケースをスキップせずに停止する）：`BudgetStop`、`RateLimited`。
+    """
 
 
 class BudgetStop(Stop):
-    """账本到上限了（单项或总上限），这次调用没有发出去。"""
+    """The ledger reached its cap (per item or total); this call was not sent.
+
+    台帳が上限（項目ごとまたは合計）に達し、この呼び出しは送られなかった。
+    """
 
 
 class RateLimited(Stop):
-    """模型回 429 或 529（限流、过载）。Mac 上的跑第一个就停，不自动重试（S-079）。"""
+    """The model returned 429 or 529 (rate limited, overloaded). Runs on the Mac stop at the first one, with no
+    automatic retry (S-079).
+
+    モデルが 429 または 529 を返した（レート制限、過負荷）。Mac 上の実行は最初の 1 回で止まり、自動では再試行しない
+    （S-079）。
+    """
 
     def __init__(
         self,
@@ -31,20 +47,33 @@ class RateLimited(Stop):
             self.diagnostics["provider"] = provider
         if status in (429, 529):
             self.diagnostics["httpStatus"] = status
-        # 只收数字秒数；不保存供应商原文、项目、模型或任意响应头。
+        # Accept only a number of seconds; do not keep the provider's original text, project, model or any response
+        # header.
+        # 数字の秒数だけを受け取る。プロバイダの原文、プロジェクト、モデル、任意のレスポンスヘッダーは保存しない。
         if retry_after and retry_after.isascii() and retry_after.isdecimal() and len(retry_after) <= 8:
             self.diagnostics["retryAfterSeconds"] = int(retry_after)
 
 
 class ModelCallFailed(RuntimeError):
-    """模型调用失败（别的 HTTP 错误、网络断开），按时限的规则重发一次。消息只有 HTTP 状态码。"""
+    """The model call failed (another HTTP error, a dropped connection); it is resent once under the time-limit rules.
+    The message contains only the HTTP status code.
+
+    モデル呼び出しが失敗した（その他の HTTP エラー、ネットワーク切断）。時間制限の規則に従って 1 回だけ再送する。
+    メッセージは HTTP ステータスコードだけ。
+    """
 
 
 class BatchHalted(Stop):
-    """有限评测的另一 worker 已停止；不取消在途请求，不再发起新请求。"""
+    """Another worker of a bounded eval has stopped; in-flight requests are not cancelled, and no new requests are made.
+
+    上限付き評価の別の worker が停止した。処理中のリクエストは取り消さず、新しいリクエストも出さない。
+    """
 
 
 def check_batch_halt() -> None:
     marker = os.environ.get("ZJ_EVAL_BATCH_HALT")
     if marker and Path(marker).exists():
-        raise BatchHalted("批次已停止，保留本局证据；不再调用模型")
+        raise BatchHalted(
+            "Batch halted; keeping this playthrough's evidence and making no more model calls / "
+            "バッチは停止した。この周回の証拠を残し、これ以上モデルを呼び出さない"
+        )

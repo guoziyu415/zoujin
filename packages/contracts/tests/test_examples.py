@@ -1,5 +1,11 @@
-"""接口的例子（C-1 第 4、5 条）：合法例子全过、反例按写明的原因不过；每种消息和每个响应都有例子；
-全部合法例子（数据的也算）经 pydantic 解析再导出不变。数据例子对 Schema 的校验在 test_data_schemas.py。"""
+"""API examples (C-1 items 4 and 5): every valid example passes and every invalid one fails for its stated reason;
+every message and every response has an example; every valid example (data ones included) is unchanged after a
+pydantic parse and dump. Validation of the data examples against the Schemas is in test_data_schemas.py.
+
+API の例（C-1 第 4、5 項）：正しい例はすべて通り、反例は明記した理由で通らない。すべてのメッセージとレスポンスに
+例がある。正しい例はすべて（データの例も含め）pydantic で解析して出力し直しても変わらない。データの例の Schema
+による検証は test_data_schemas.py にある。
+"""
 
 from __future__ import annotations
 
@@ -23,8 +29,13 @@ VALID = sorted(VALID_API.rglob("*.json"))
 INVALID = sorted(INVALID_API.rglob("*.json"))
 VALID_DATA = sorted((EXAMPLES / "valid" / "data").glob("*/*.json"))
 
-# 每个反例该在哪个位置（JSON 指针，不带开头的 /）、因为哪个关键字被拒。新加反例在这里加一行，
-# 免得它因为别的原因被拒、测不到想测的东西。WebSocket 的反例 type 没写错时对那一种消息校验，写错了对整个联合。
+# For each invalid example: where (JSON pointer without the leading /) and by which keyword it should be rejected.
+# Add a line here for each new invalid example, so that it does not get rejected for some other reason and miss what
+# it is meant to test. A WebSocket invalid example with a correct type is validated against that one message kind;
+# with a wrong type, against the whole union.
+# 各反例がどの位置（先頭の / を除いた JSON ポインタ）で、どのキーワードによって拒否されるべきか。反例を追加したら
+# ここに 1 行加える。そうしないと別の理由で拒否されて、テストしたいことがテストされない。WebSocket の反例は、type が
+# 正しければそのメッセージの種類に対して、誤っていればユニオン全体に対して検証する。
 INVALID_BECAUSE: dict[str, tuple[str, str]] = {
     "error/ErrorResponse/unknown-code.json": ("enum", "error/code"),
     "rest/ending/200/card-extra-field.json": ("additionalProperties", "card"),
@@ -92,7 +103,10 @@ def load(p: Path) -> Any:
 
 
 def all_errors(errors: list[ValidationError]) -> Iterator[ValidationError]:
-    """连同 oneOf / anyOf 各分支里的错误一起。"""
+    """Including the errors inside each oneOf / anyOf branch.
+
+    oneOf / anyOf の各分岐内のエラーも含める。
+    """
     for e in errors:
         yield e
         yield from all_errors(list(e.context or []))
@@ -108,8 +122,11 @@ def test_valid_example(contracts: Contracts, path: Path) -> None:
     base, ref, name = contracts.example_target(rel)
     doc = load(path)
     if rel.parts[0] == "ws":
-        assert doc["type"] == name, "ws 例子放在以 type 命名的目录里"
-        # 先对这一种消息本身校验，出错时信息比整个 oneOf 的好读
+        assert doc["type"] == name, (
+            "ws examples go in a directory named after their type / ws の例は type 名のディレクトリに置く"
+        )
+        # Validate against this message kind first; its errors are easier to read than those of the whole oneOf
+        # まずこのメッセージの種類そのものに対して検証する。エラーが oneOf 全体のものより読みやすい
         single = contracts.validator(base, f"#/$defs/{contracts.ws_types(rel.parts[1])[name]}")
         errors = list(single.iter_errors(doc))
         assert not errors, explain(errors)
@@ -121,19 +138,27 @@ def test_valid_example(contracts: Contracts, path: Path) -> None:
 def test_invalid_example_fails_for_the_stated_reason(contracts: Contracts, path: Path) -> None:
     rel = path.relative_to(INVALID_API)
     key = rel.as_posix()
-    assert key in INVALID_BECAUSE, f"{key}：在 INVALID_BECAUSE 里写明它为什么不过"
+    assert key in INVALID_BECAUSE, (
+        f"{key}: state in INVALID_BECAUSE why it fails / なぜ通らないかを INVALID_BECAUSE に明記する"
+    )
     base, ref, name = contracts.example_target(rel)
     doc = load(path)
-    assert not contracts.validator(base, ref).is_valid(doc), "反例应该不过"
+    assert not contracts.validator(base, ref).is_valid(doc), "An invalid example should fail / 反例は通らないはず"
     if rel.parts[0] == "ws" and doc.get("type") == name:
-        # type 没写错的反例，对它自己那种消息找原因（不是因为落到了别的消息上才不过）
+        # For an invalid example with a correct type, look for the reason in its own message kind (it must not fail
+        # only because it fell through to another message)
+        # type が正しい反例は、自分のメッセージの種類で原因を探す（別のメッセージに当てはめられたせいで
+        # 通らないのではない）
         ref = f"#/$defs/{contracts.ws_types(rel.parts[1])[name]}"
     found = {
         (e.validator, "/".join(map(str, e.absolute_path)))
         for e in all_errors(list(contracts.validator(base, ref).iter_errors(doc)))
     }
     keyword, where = INVALID_BECAUSE[key]
-    assert (keyword, where) in found, f"{key}：没有在 {where!r} 报 {keyword}，实际 {sorted(found)}"
+    assert (keyword, where) in found, (
+        f"{key}: no {keyword} reported at {where!r}; got {sorted(found)} / "
+        f"{where!r} で {keyword} が報告されていない。実際は {sorted(found)}"
+    )
 
 
 def test_invalid_because_has_no_stale_entries() -> None:
@@ -149,7 +174,7 @@ def test_every_message_and_response_has_an_example(contracts: Contracts) -> None
         wanted = [s for s, ref in ep["responses"].items() if ref is not None]
         wanted += ["request"] if "request" in ep else []
         missing += [f"rest/{name}/{w}" for w in wanted if f"rest/{name}/{w}" not in have]
-    assert not missing, "缺例子：\n" + "\n".join(missing)
+    assert not missing, "Missing examples / 例が足りない：\n" + "\n".join(missing)
 
 
 # —— pydantic ——
@@ -165,15 +190,25 @@ def api_adapter(contracts: Contracts, rel: Path) -> TypeAdapter[Any]:
 
 
 def data_adapter(contracts: Contracts, def_name: str) -> TypeAdapter[Any]:
-    """数据例子的目录名是 $defs 名；生成的类型名有 title 时用 title（例：Promise → StoryPromise）。"""
+    """A data example's directory name is the $defs name; the generated type name is the title when there is one
+    (e.g. Promise → StoryPromise).
+
+    データの例のディレクトリ名は $defs の名前。生成される型名は title があれば title になる
+    （例：Promise → StoryPromise）。
+    """
     for doc in contracts.data().values():
         if def_name in doc.get("$defs", {}):
             return TypeAdapter(getattr(data, doc["$defs"][def_name].get("title", def_name)))
-    raise AssertionError(f"数据 Schema 里没有 {def_name}")
+    raise AssertionError(f"{def_name} not in the data Schemas / データの Schema に {def_name} がない")
 
 
 def assert_round_trip(ta: TypeAdapter[Any], doc: Any) -> None:
-    """解析再导出（by_alias，只导出给了的字段，所以显式的 null 留着）后和原文件相同。"""
+    """After parsing and dumping again (by_alias, dumping only the fields that were given, so explicit nulls stay)
+    the result equals the original file.
+
+    解析して出力し直した結果（by_alias、与えられたフィールドだけを出力するので明示的な null は残る）が元のファイルと
+    同じになる。
+    """
     parsed = ta.validate_python(doc)
     assert ta.dump_python(parsed, mode="json", by_alias=True, exclude_unset=True) == doc
 
@@ -182,7 +217,10 @@ def assert_round_trip(ta: TypeAdapter[Any], doc: Any) -> None:
 def test_pydantic_round_trip_api(contracts: Contracts, path: Path) -> None:
     rel = path.relative_to(VALID_API)
     if rel.parts[0] == "rest" and rel.parts[2] in ("query", "params"):
-        pytest.skip("路径参数和查询参数不经 pydantic")
+        pytest.skip(
+            "Path and query parameters do not go through pydantic / "
+            "パスパラメータとクエリパラメータは pydantic を通さない"
+        )
     assert_round_trip(api_adapter(contracts, rel), load(path))
 
 

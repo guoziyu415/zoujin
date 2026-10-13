@@ -1,13 +1,30 @@
-"""意图确认（B-4，api-contract 3.9，backend-design 2.4 第 6 步）：草稿、反问和回答。
+"""Intent confirmation (B-4, api-contract 3.9, backend-design 2.4 step 6): drafts, the counter-question and the answer.
 
-- 对话的一轮里，提取标了要确认、又不可逆的候选照常过第 3〜5 步；过了的不写进事件日志，存成草稿（`drafts` 一行），
-  这一轮别的候选和 10 分钟照常提交。原来那一轮先结掉（`commit` → `turn_settled`），网关再让人物反问、推 `confirm`
+- In a dialogue turn, candidates that extraction marked as needing confirmation and that are irreversible go through
+  steps 3-5 as usual; those that pass aren't written to the event log but stored as a draft (a `drafts` row), while the
+  turn's other candidates and the 10 minutes are committed as usual. The original turn is settled first (`commit` →
+  `turn_settled`), then the gateway has the character ask back and pushes `confirm` (`turns.result.confirm`).
+- At most one draft per game at a time, and at most 3 questions per game; extra ones, and new ones proposed in the turn
+  that closes the act, are dropped as in B-2 (`candidates_confirm_dropped`). A draft still open when the act closes is
+  closed as a timeout, with `confirm_closed` pushed before `act_ended`.
+- Every answer (button, voice, timeout) is a task row with `kind: "confirm"` (`store.answer_draft`), which the narrator
+  handles serially per game (`run_confirm`): `yes` rechecks from step 3 against the state at that time, committing if
+  it passes or writing a rejected event if not, both with `confirmed: true` and attached to the original turn; `no` and
+  timeouts are dropped. Closing deletes the draft row.
+
+意図の確認（B-4、api-contract 3.9、backend-design 2.4 第 6 ステップ）：下書き、聞き返し、返答。
+
+- 対話の 1 ターンで、抽出が確認要と印を付けた不可逆な候補は通常どおり第 3〜5 ステップを通す。通ったものはイベントログに
+  書かず下書き（`drafts` の 1 行）として保存し、このターンのほかの候補と 10 分は通常どおりコミットする。元のターンを
+  先に締め（`commit` → `turn_settled`）、そのあとゲートウェイが登場人物に聞き返させて `confirm` をプッシュする
   （`turns.result.confirm`）。
-- 同一局同时最多一个草稿，一局最多问 3 次；多出来的、收幕那一轮新提出的按 B-2 丢掉（`candidates_confirm_dropped`）。
-  收幕时还开着的按超时关掉，`confirm_closed` 排在 `act_ended` 前面。
-- 回答（按钮、声音、超时）都是一行 `kind: "confirm"` 的任务（`store.answer_draft`），叙事者按局串行处理
-  （`run_confirm`）：`yes` 按当时的状态从第 3 步重查，过了提交、没过写一条 rejected 的事件，两种都带
-  `confirmed: true`、挂在原来那一轮上；`no` 和超时丢掉。关掉就删草稿那一行。
+- 同じゲームで同時に開ける下書きは 1 つまで、1 ゲームで聞くのは 3 回まで。あふれたものと、幕を閉じるターンで新たに
+  出たものは B-2 のとおり捨てる（`candidates_confirm_dropped`）。幕を閉じるときにまだ開いているものはタイムアウトとして
+  閉じ、`confirm_closed` を `act_ended` の前に置く。
+- 返答（ボタン、音声、タイムアウト）はどれも `kind: "confirm"` のタスク 1 行（`store.answer_draft`）で、ナレーターが
+  ゲームごとに直列に処理する（`run_confirm`）：`yes` はその時点の状態で第 3 ステップから検査し直し、通ればコミット、
+  通らなければ rejected のイベントを書く。どちらも `confirmed: true` を付けて元のターンにぶら下げる。`no` と
+  タイムアウトは捨てる。閉じたら下書きの行を削除する。
 """
 
 from __future__ import annotations
@@ -36,17 +53,23 @@ log = logging.getLogger("zoujin.narrator")
 Json = Any
 
 QUESTION_FALLBACK = "……本気で言っているのか。"
-QUESTION_MAX = 30  # 反问的一句最多几个字（3.9）
-TIMEOUT_SEC = 30  # 推出 confirm 以后等几秒（3.9 第 3 条）
-MAX_ASKS = 3  # 一局最多问几次（S-040）
+QUESTION_MAX = 30  # max characters in the counter-question (3.9) / 聞き返しの一文の最大文字数（3.9）
+TIMEOUT_SEC = 30  # seconds to wait after pushing confirm (3.9 item 3) / confirm を送ってから待つ秒数（3.9 第 3 項）
+MAX_ASKS = 3  # max questions per game (S-040) / 1 ゲームで聞く最大回数（S-040）
 OPTIONS = ({"optionId": "yes", "label": "本気だ"}, {"optionId": "no", "label": "いや、違う"})
 ANSWERS = ("yes", "no")
-KEEP = ("actor", "type", "origin", "summary", "causes", "beneficiary")  # 草稿里存的候选字段（不放原话）
+# Candidate fields stored in the draft (never the player's words) / 下書きに保存する候補のフィールド（発話は入れない）
+KEEP = ("actor", "type", "origin", "summary", "causes", "beneficiary")
 
 
 @dataclass
 class Proposal:
-    """这一轮里过了检查、要确认的候选：存成草稿，或者丢掉（已经有草稿开着、问满了、这一轮收了幕）。"""
+    """A candidate in this turn that passed the checks and needs confirmation: stored as a draft, or dropped (a draft
+    is already open, the question limit is reached, or this turn closed the act).
+
+    このターンで検査を通り、確認が要る候補：下書きとして保存するか捨てる（すでに下書きが開いている、聞く回数を
+    使い切った、このターンで幕を閉じた）。
+    """
 
     checked: Checked
     asked: bool
@@ -55,13 +78,21 @@ class Proposal:
 
 
 def question_of(ask: Mapping[str, Any], said: str | None) -> str:
-    """反问的一句照第 3 步 R6 的规则部分查（个人信息的模式、和玩家原话连续 8 字相同），不过用固定的一句。"""
+    """The counter-question is checked like the rule part of step 3's R6 (personal-information patterns, 8 consecutive
+    characters identical to the player's words); if it fails, use the fixed line.
+
+    聞き返しの一文は第 3 ステップ R6 の規則部分と同じく検査する（個人情報のパターン、プレイヤーの発話と 8 文字連続で
+    一致）。通らなければ固定の一文を使う。
+    """
     q = ask.get("question")
     return clean(q if isinstance(q, str) else None, said or "", frozenset(), limit=QUESTION_MAX) or QUESTION_FALLBACK
 
 
 def proposes(checked: Checked, ask: Mapping[str, Any] | None) -> bool:
-    """过了第 3〜5 步、改写以后还是不可逆的大事，才问。"""
+    """Ask only for major irreversible things that passed steps 3-5 and are still irreversible after rewriting.
+
+    第 3〜5 ステップを通り、書き換え後も不可逆な大きなことだけを聞く。
+    """
     return ask is not None and checked.passed and irreversible({"effects": checked.effects})
 
 
@@ -80,22 +111,34 @@ def closed_msg(draft_id: str, option_id: str | None, by: str) -> Json:
     return {"type": "confirm_closed", "draftId": draft_id, "optionId": option_id, "by": by}
 
 
-# —— 在叙事者提交的事务里（锁着这一局时）——
+# —— Inside the narrator's commit transaction (while the game is locked) ——
+# —— ナレーターのコミットのトランザクション内（このゲームをロックしている間） ——
 
 
 async def in_commit(
     n: Narrator, c: AsyncConnection, task: Task, w: Writer, planned: Planned
 ) -> tuple[list[Json], Json | None]:
-    """这次提交里和草稿有关的：收幕时关掉开着的、丢掉新提出的；声音的回答写一行任务；新提出的存成草稿。
-    返回要排在 act_ended 前面推的（confirm_closed），和网关要做的反问（`turns.result.confirm`）。"""
+    """The draft-related parts of this commit: when the act closes, close the open draft and drop new ones; write a task
+    row for a voice answer; store a new proposal as a draft. Returns what must be pushed before act_ended
+    (confirm_closed), and the counter-question the gateway should ask (`turns.result.confirm`).
+
+    このコミットのうち下書きに関わる部分：幕を閉じるときは開いている下書きを閉じ、新しく出たものを捨てる。音声の返答は
+    タスクを 1 行書く。新しく出たものは下書きとして保存する。act_ended の前にプッシュするもの（confirm_closed）と、
+    ゲートウェイが行う聞き返し（`turns.result.confirm`）を返す。
+    """
     push: list[Json] = []
-    if w.closed or w.ending is not None:  # 收幕、进结局：不留草稿（数据评审）
+    # Closing the act or entering the ending: keep no drafts (data review).
+    # 幕を閉じる・エンディングに入る：下書きを残さない（データレビュー）。
+    if w.closed or w.ending is not None:
         draft = await store.open_draft(c, task.pid, lock=True)
         if draft is not None:
             await c.execute(delete(drafts).where(drafts.c.draft_id == draft["draft_id"]))
             planned.confirms_timeout += 1
             push.append(closed_msg(draft["draft_id"], None, "timeout"))
-            log.info("收幕，草稿 %s 按超时关掉", draft["draft_id"])
+            log.info(
+                "Act closed; draft %s closed as a timeout / 幕を閉じたので下書きをタイムアウトとして閉じる",
+                draft["draft_id"],
+            )
         planned.dropped += len(planned.proposals)
         return push, None
     if planned.answer is not None:
@@ -132,7 +175,7 @@ async def in_commit(
     return push, {"draftId": draft_id, "character": task.character, "prompt": first.question, "asked": first.asked}
 
 
-# —— 回答（`kind: "confirm"` 的任务）——
+# —— Answers (tasks with `kind: "confirm"`) / 返答（`kind: "confirm"` のタスク） ——
 
 
 async def run_confirm(n: Narrator, task: Task) -> Result:
@@ -150,11 +193,18 @@ async def run_confirm(n: Narrator, task: Task) -> Result:
             draft = (await c.execute(q)).mappings().first()
             gone = draft is not None and await deleted(c, draft["turn_id"])
             nth = await closed_count(c, task.pid) + 1
-        if draft is None:  # 已经关掉了（别的回答先到、收幕）：什么都不写，不推
-            log.info("草稿 %s 已经关掉，忽略这次回答", draft_id)
+        # Already closed (another answer arrived first, or the act closed): write nothing, push nothing.
+        # すでに閉じている（別の返答が先に届いた、幕を閉じた）：何も書かず、プッシュもしない。
+        if draft is None:
+            log.info(
+                "Draft %s already closed; ignoring this answer / 下書きはすでに閉じているので、この返答は無視する",
+                draft_id,
+            )
             return await n._commit(task, None, lambda w, b: Planned(info={"result": "ignored"}))
         span = {"playthrough_id": task.pid, "turn_id": draft["turn_id"], "world_model_version": book.version}
-        spend = task.spend  # 跟着任务走：重来的、没提交的也算（B-8 第 7 条）
+        # Follows the task: retries and uncommitted attempts count too (B-8 item 7).
+        # タスクに付いて回る：やり直しやコミットしなかった分も数える（B-8 第 7 項）。
+        spend = task.spend
         checked: Checked | None = None
         narration: list[str] = []
         if option == "yes" and not gone:
@@ -172,12 +222,16 @@ async def run_confirm(n: Narrator, task: Task) -> Result:
         try:
             return await n._commit(task, pt["last_seq"], write, spend=spend)
         except Stale:
-            log.info("lastSeq 变了，%s 重查", task.turn_id)
-    raise RuntimeError(f"{task.turn_id}：lastSeq 一直在变")
+            log.info("lastSeq changed; rechecking %s / lastSeq が変わったので検査し直す", task.turn_id)
+    raise RuntimeError(f"{task.turn_id}: lastSeq keeps changing / {task.turn_id}：lastSeq が変わり続けている")
 
 
 async def deleted(c: AsyncConnection, turn_id: str) -> bool:
-    """原来那一轮的原话在記憶帳里删掉了（記憶帳的卡做删除；那时草稿按「不是」丢掉）。"""
+    """The original turn's words were deleted in the 記憶帳 (the 記憶帳 card does deletion; the draft is then dropped as
+    a "no").
+
+    元のターンの発話が記憶帳で削除された（削除は記憶帳のカードが担当。そのとき下書きは「いいえ」として捨てる）。
+    """
     found = await c.scalar(
         select(utterances.c.utterance_id).where(utterances.c.turn_id == turn_id, utterances.c.deleted_at.is_not(None))
     )
@@ -195,14 +249,18 @@ async def closed_count(c: AsyncConnection, pid: str) -> int:
 async def recheck(
     n: Narrator, book: Book, state: Any, draft: Mapping[str, Any], spend: Spend, span: Mapping[str, Any]
 ) -> Checked:
-    """答了「是」：按此刻的状态从第 3 步重新检查（第 3〜5 步，同 B-2），地点照草稿里候选原来的。两次都超时就重试
-    这个任务（同 B-0 的失败重试）。"""
+    """Answered "yes": recheck from step 3 against the current state (steps 3-5, as in B-2), with the place kept as
+    the draft candidate's original one. If both tries time out, retry this task (like B-0's failure retries).
+
+    「はい」と答えた：現在の状態で第 3 ステップから検査し直す（第 3〜5 ステップ、B-2 と同じ）。場所は下書きの候補の
+    元のものを使う。2 回ともタイムアウトしたらこのタスクをやり直す（B-0 の失敗時のリトライと同じ）。
+    """
     lines = await n._lines(draft["turn_id"])
     turn = TurnInput(character=draft["character"], player=lines.get("player"), reply=lines.get("character"))
     cand = {k: v for k, v in draft["candidate"].items() if k != "place"}
     v = await n.pipeline.verify(book, state, [cand], turn, 0, spend, span)
     if v.timed_out or not v.checked:
-        raise RuntimeError("重查超时")
+        raise RuntimeError("Recheck timed out / 再検査がタイムアウト")
     return v.checked[0]
 
 
@@ -215,7 +273,12 @@ async def narrate_rejected(
     spend: Spend,
     span: Mapping[str, Any],
 ) -> str:
-    """重查没过：一行地の文说这件事没成（`narrate`，B-3；两次都不行、或过滤不过用固定的一句）。"""
+    """The recheck failed: one line of 地の文 saying it didn't happen (`narrate`, B-3; if both tries fail or the filter
+    rejects it, use the fixed line).
+
+    再検査で通らなかった：それが起きなかったと告げる地の文を 1 行（`narrate`、B-3。2 回ともだめ、またはフィルターを
+    通らなければ固定の一文）。
+    """
     from zoujin_backend.narrator.pipeline import CallFailed
 
     request = {
@@ -234,8 +297,13 @@ async def narrate_rejected(
 
 @dataclass
 class Shut:
-    """关掉一个草稿要的：草稿、回答（yes / no / None = 超时）、谁答的、重查的结果、没成时的一行叙事、
-    原来那一轮删了没有、这一局第几次。"""
+    """What closing a draft needs: the draft, the answer (yes / no / None = timeout), who answered, the recheck result,
+    the narration line when it didn't happen, whether the original turn was deleted, and which close this is in the
+    game.
+
+    下書きを閉じるのに要るもの：下書き、返答（yes / no / None = タイムアウト）、誰が答えたか、再検査の結果、起きなかった
+    ときの地の文 1 行、元のターンが削除されたか、このゲームで何回目か。
+    """
 
     draft: Json
     option: str | None
@@ -247,8 +315,12 @@ class Shut:
 
 
 def closed(n: Narrator, w: Writer, task: Task, shut: Shut) -> Planned:
-    """关掉草稿：答「是」写那一条事件（`confirmed: true`、`dt: 0`、挂在原来那一轮、地点照原来的），
-    推 confirm_closed。"""
+    """Close the draft: on "yes" write that event (`confirmed: true`, `dt: 0`, attached to the original turn, with the
+    original place), and push confirm_closed.
+
+    下書きを閉じる：「はい」ならそのイベントを書き（`confirmed: true`、`dt: 0`、元のターンにぶら下げ、場所は元のまま）、
+    confirm_closed をプッシュする。
+    """
     from zoujin_backend.narrator.core import Planned
 
     draft, option, by, checked, narration = shut.draft, shut.option, shut.by, shut.checked, shut.narration
@@ -305,7 +377,10 @@ def closed(n: Narrator, w: Writer, task: Task, shut: Shut) -> Planned:
     ):
         pass
     if shut.gone:
-        log.info("草稿 %s 原来那一轮已经删了，丢掉", draft["draft_id"])
+        log.info(
+            "Draft %s: the original turn was already deleted; dropping / 元のターンは削除済みなので下書きを捨てる",
+            draft["draft_id"],
+        )
     return planned
 
 

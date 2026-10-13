@@ -4,7 +4,8 @@ amounts are assumptions, to be replaced once backend spike S-5 (simulated playth
 library only.
 
 Since D-028 (2026-10-11): Live voice stays on Google, and every model step of the narrator goes to Claude; tiers,
-thinking, tokens per step and call counts follow the B-8 card (the "per-playthrough cost" table in docs/tasks/m2/B-8.md).
+thinking, tokens per step and call counts follow the B-8 card (the "per-playthrough cost" table in
+docs/tasks/m2/B-8.md).
 Google unit prices are in pricing-2026-10-06.md; Claude unit prices are read from the repo's single claude-prices.json
 (in evals/config until B-8 moves it into packages/llm), not copied here. Exchange rate: 1 USD = 150 JPY.
 
@@ -83,6 +84,7 @@ BASE = dict(
 )
 
 TOTAL = "Total / 合計"
+CLOUD_RUN = "Cloud Run share / Cloud Run の按分"
 
 
 def live_cost(p, single_session=False):
@@ -125,7 +127,7 @@ def session_cost(p, single_session=False):
                                                  + text_call(f, p["verify_in"], p["verify_out"]))
     r["Ending illustration / エンディングの挿絵"] = p["images"] * PRICE["image"][p["image_kind"]]
     r["Ending video / エンディングの短編動画"] = p["video_s"] * PRICE["veo_per_s"][p["video_kind"]]
-    r["Cloud Run share / Cloud Run の按分"] = PRICE["run_instance_hour"] * p["minutes"] / 60 / p["sessions_per_instance"]
+    r[CLOUD_RUN] = PRICE["run_instance_hour"] * p["minutes"] / 60 / p["sessions_per_instance"]
     r[TOTAL] = sum(r.values())
     return r
 
@@ -217,7 +219,6 @@ LABELS = {
 }
 CLAUDE_SUBTOTAL = "Claude subtotal / Claude 小計"
 LIVE_GOOGLE = "Voice conversation (Live, Google) / 音声会話（Live、Google）"
-CLOUD_RUN = "Cloud Run share / Cloud Run の按分"
 
 CLAUDE_BASE = dict(
     BASE,
@@ -345,7 +346,8 @@ def main_gemini():
     print(f"For comparison: over the same {BASE['turns']} turns, one Live session for the whole playthrough"
           f" (no compression) costs about ${one:.2f} in voice; reopening a session every {BASE['turns_per_conv']}"
           f" turns costs about ${split:.2f} (about {one / split:.1f}x)."
-          f" / 比較：同じ {BASE['turns']} ターンで、1 プレイ全体を Live の会話 1 本で通す（圧縮なし）と音声は約 ${one:.2f}、"
+          f" / 比較：同じ {BASE['turns']} ターンで、1 プレイ全体を Live の会話 1 本で通す（圧縮なし）と"
+          f"音声は約 ${one:.2f}、"
           f"{BASE['turns_per_conv']} ターンごとに会話を開き直すと約 ${split:.2f}（約 {one / split:.1f} 倍）。")
     base = rows[list(rows)[0]][TOTAL]
     print(f"Baseline: 1,000 playthroughs cost about ${base * 1000:,.0f}"

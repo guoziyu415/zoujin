@@ -1,15 +1,38 @@
-"""人物对玩家的记忆（B-13，契约第 4 节、backend-design 2.10）。
+"""Characters' memories of the player (B-13, contract section 4, backend-design 2.10).
 
-- **只从已提交的事件写**：叙事者一次提交的事件里，玩家做的、为玩家做的、和玩家的约定，给事件里的对方和在场的人物写。
-  哪种事件写成哪种 `kind`、`trustDelta`、`salience` 是下面的对照表（确定性的，不让模型给数）；
-  `via` 按他当时在不在场、事件里有没有写明他听说了确定（`witnessed` / `told`；`rumor` 切片里不出）。
-- **一句话由模型写**（提示 `memory`，Claude Haiku，关思考，5 秒，不重发）：输入只有事件的 `summary`、`visibleEffects`、
-  人物的人设摘要和 `via`，不给原话。三道过滤（个人信息规则、Model Armor、长度和引号里的命令句）任一不过就不写这条，
-  事件照留。模型超时、出错也不写，只计数。
-- **关系不存**：`trust` = 起始值（身份认识这个人物 +10）+ 没删的记忆的 `trustDelta` 之和，夹在 -100〜100，
-  五档按契约的表。
+- **Written only from committed events**: from the events of one narrator commit, things the player did, things done
+  for the player, and promises with the player are written for the other party in the event and the characters
+  present. Which kind of event becomes which `kind`, `trustDelta` and `salience` is the lookup table below
+  (deterministic; the model doesn't give numbers); `via` depends on whether the character was present at the time and
+  whether the event states that they heard about it (`witnessed` / `told`; `rumor` doesn't occur in the slice).
+- **The sentence is written by the model** (prompt `memory`, Claude Haiku, thinking off, 5 seconds, no resend): the
+  input is only the events' `summary` and `visibleEffects`, the character's persona summary and `via`, never the
+  player's words. If any of the three filters (personal-information rules, Model Armor, length and commands inside
+  quotes) fails, that memory isn't written; the event stays. A model timeout or error also writes nothing; it is only
+  counted.
+- **Relationships aren't stored**: `trust` = the starting value (+10 if the role knows this character) + the sum of
+  `trustDelta` of the undeleted memories, clamped to -100-100, with five levels per the contract's table.
 
-记忆的文字只进 `memory_items` 和推给这一局的 `commit`，不进日志和 Trace（Span 只有 ID、次数、状态）。
+Memory text only goes into `memory_items` and the `commit` pushed to this game, never into logs or Trace (Spans only
+have IDs, counts and statuses).
+
+登場人物のプレイヤーについての記憶（B-13、契約第 4 節、backend-design 2.10）。
+
+- **コミット済みのイベントからだけ書く**：ナレーターの 1 回のコミットのイベントのうち、プレイヤーがしたこと、
+  プレイヤーのためにされたこと、プレイヤーとの約束を、イベントの相手とその場にいる登場人物について書く。
+  どのイベントをどの `kind`、`trustDelta`、`salience` にするかは下の対応表で決める（決定的で、
+  数値はモデルに出させない）。
+  `via` はその人物がそのときその場にいたか、イベントにその人物が聞いたと明記されているかで決める
+  （`witnessed` / `told`。`rumor` はスライスでは出ない）。
+- **一文はモデルが書く**（プロンプト `memory`、Claude Haiku、思考オフ、5 秒、再送なし）：入力はイベントの `summary`、
+  `visibleEffects`、登場人物の人物設定の要約、`via` だけで、発話は渡さない。3 つのフィルター（個人情報の規則、
+  Model Armor、長さと括弧内の命令文）のどれかを通らなければその記憶は書かず、イベントはそのまま残す。
+  モデルのタイムアウトやエラーのときも書かず、数えるだけ。
+- **関係は保存しない**：`trust` = 初期値（役柄がこの登場人物を知っていれば +10）+ 削除されていない記憶の `trustDelta`
+  の合計で、-100〜100 に収め、5 段階は契約の表に従う。
+
+記憶の文章は `memory_items` とこのゲームに送る `commit` にだけ入れ、ログや Trace には入れない（Span は ID、回数、
+状態だけ）。
 """
 
 from __future__ import annotations
@@ -40,16 +63,27 @@ from zoujin_worldsim import SimState, apply, lived, sees
 
 Json = Any
 
-SCHEMA_VERSION = "1.12"  # 写入时的数据契约版本（同 narrator/writer.py）
-MAX_TEXT = 30  # 一句记忆的长度上限（NFKC 以后的字数；UX 评审 30，比数据的 40 严，取 30；超了当过滤没过）
-MAX_KEEPS = 30  # 「不会撤销的后果」一句的上限（UX 评审）
-MAX_PER_COMMIT = 3  # 一次提交最多写几条（按 salience 取前几条）
-BRIEF_LIMIT = 8  # 局势说明里带几条（节约档 4 条，E6-007）
+# The data contract version written into rows (as in narrator/writer.py).
+# 書き込むときのデータ契約バージョン（narrator/writer.py と同じ）。
+SCHEMA_VERSION = "1.12"
+# Max length of a memory line (characters after NFKC; UX review said 30, stricter than the data side's 40, so 30;
+# longer counts as failing the filter).
+# 記憶の一文の長さの上限（NFKC 後の文字数。UX レビューは 30 で、データ側の 40 より厳しいので 30 を採る。
+# 超えたらフィルターを通らなかったとみなす）。
+MAX_TEXT = 30
+# Max length of the "consequences that won't be undone" line (UX review).
+# 「取り消されない結果」の一文の上限（UX レビュー）。
+MAX_KEEPS = 30
+# Max memories written per commit (the top ones by salience) / 1 回のコミットで書く最大件数（salience の上位から）
+MAX_PER_COMMIT = 3
+# How many go into the situation notes (4 in saving mode, E6-007) / 状況説明に入れる件数（節約モードでは 4 件、E6-007）
+BRIEF_LIMIT = 8
 BRIEF_LIMIT_SAVING = 4
-KNOWN_TRUST = 10  # 身份认识的人物，起始信任
+KNOWN_TRUST = 10  # starting trust for characters the role knows / 役柄が知っている登場人物の初期の信頼
 TRUST_MIN, TRUST_MAX = -100, 100
 
-# 契约第 4 节的五档：(trust 的上限（含）, level, label)；最后一档没有上限
+# The five levels of contract section 4: (upper bound of trust (inclusive), level, label); the last has no bound.
+# 契約第 4 節の 5 段階：（trust の上限（含む）, level, label）。最後の段階には上限がない。
 LEVELS: tuple[tuple[int | None, int, str], ...] = (
     (-40, 1, "敵意を抱いている"),
     (-10, 2, "警戒している"),
@@ -58,36 +92,57 @@ LEVELS: tuple[tuple[int | None, int, str], ...] = (
     (None, 5, "信じている"),
 )
 
-# 事件 → 记忆的对照表（数据定，#153 评审）：(kind, trustDelta, salience)。每个人物、每一轮取最靠前的一行
-PROMISE_MADE = ("promise", 5, 0.8)  # 和他立了约定（谁许下的都算）
-PROMISE_KEPT = ("help", 10, 0.8)  # 玩家兑现了和他的约定
-PROMISE_BROKEN = ("harm", -15, 0.9)  # 玩家违背了和他的约定
-HELPED = ("help", 10, 0.7)  # actor = player、beneficiary = 他
-HARMED = ("harm", -10, 0.7)  # actor = player，他的信任类变量降了、他被带走（beneficiary 不是他）
-HELPED_YOU = ("shared-moment", 3, 0.5)  # actor = 他、beneficiary = player
-BEAT = ("shared-moment", 2, 0.6)  # 节拍发生、玩家看得到、他亲历（`zoujin_worldsim.lived`）
-CLAIM = ("claim", 0, 0.5)  # 玩家说自己的事（learn 效果写明他学到了，或 improv 成了他的即兴设定）
-IMPRESSION = ("impression", 0, 0.3)  # 其余 actor = player 的事件（说话、动作）
+# Event → memory lookup table (set by the data side, review #153): (kind, trustDelta, salience). For each character
+# and turn, the topmost matching row wins.
+# イベント → 記憶の対応表（データ側が決めた、レビュー #153）：(kind, trustDelta, salience)。登場人物ごと、ターンごとに
+# 最も上の行を採る。
+PROMISE_MADE = ("promise", 5, 0.8)  # made a promise with them (whoever made it) / その人物と約束した（誰がしても）
+PROMISE_KEPT = ("help", 10, 0.8)  # the player kept a promise with them / プレイヤーがその人物との約束を守った
+PROMISE_BROKEN = ("harm", -15, 0.9)  # the player broke a promise with them / プレイヤーがその人物との約束を破った
+HELPED = ("help", 10, 0.7)  # actor = player, beneficiary = them / actor = player、beneficiary = その人物
+# actor = player, and their trust-type variable went down or they were taken away (beneficiary isn't them).
+# actor = player で、その人物の信頼系の変数が下がった、またはその人物が連れて行かれた（beneficiary はその人物でない）。
+HARMED = ("harm", -10, 0.7)
+HELPED_YOU = ("shared-moment", 3, 0.5)  # actor = them, beneficiary = player / actor = その人物、beneficiary = player
+# A beat happened, the player can see it, and they lived through it (`zoujin_worldsim.lived`).
+# ビートが起き、プレイヤーに見え、その人物が自分で経験した（`zoujin_worldsim.lived`）。
+BEAT = ("shared-moment", 2, 0.6)
+# The player talks about themself (a learn effect states they learned it, or an improv became their improvised fact).
+# プレイヤーが自分のことを話す（learn の効果でその人物が知ったと明記、または improv がその人物の即興設定になった）。
+CLAIM = ("claim", 0, 0.5)
+# Other events with actor = player (talk, actions) / ほかの actor = player のイベント（発話、アクション）
+IMPRESSION = ("impression", 0, 0.3)
 ROWS = (PROMISE_MADE, PROMISE_KEPT, PROMISE_BROKEN, HELPED, HARMED, HELPED_YOU, BEAT, CLAIM, IMPRESSION)
-KEY_MOMENT_BONUS = 0.2  # keyMoment 的 salience 加分（上限 1）
-WEIGHT_STEP = 0.1  # 模型给的 weight 1〜3：salience 再加 0.1 × (weight - 1)，上限 1
-DELTA_MIN, DELTA_MAX = -20, 20  # 契约的 trustDelta 范围
+KEY_MOMENT_BONUS = 0.2  # salience bonus for keyMoment (max 1) / keyMoment の salience 加点（上限 1）
+# Model weight 1-3: salience gets another 0.1 × (weight - 1), max 1.
+# モデルが出す weight 1〜3：salience にさらに 0.1 × (weight - 1) を足す。上限 1。
+WEIGHT_STEP = 0.1
+DELTA_MIN, DELTA_MAX = -20, 20  # the contract's trustDelta range / 契約の trustDelta の範囲
 
-# 引号里的命令句（「〜しろ」之类）：记忆里不该有人对谁下命令
+# Commands inside quotes (「〜しろ」 and the like): memories shouldn't have anyone ordering anyone around.
+# 括弧内の命令文（「〜しろ」など）：記憶の中で誰かが誰かに命令していてはいけない。
 _COMMAND = re.compile(r"[「『][^」』]{0,40}(?:しろ|せよ|なさい|てくれ|ください|やれ|ろ|け)[」』]")
-# 不写记忆的系统事件（节拍照写）
+# System events that don't produce memories (beats still do).
+# 記憶を書かないシステムイベント（ビートは書く）。
 SKIP_TYPES = frozenset({"forget", "act-transition", "ending", "correction"})
 
 
 @dataclass(frozen=True)
 class Seed:
-    """要写的一条记忆（文字还没有）：一个人物一轮最多一条，这一轮和他有关的事件合在一起（`events`）。"""
+    """A memory to write (no text yet): at most one per character per turn, combining this turn's events involving
+    them (`events`).
+
+    書く記憶 1 件（文章はまだない）：登場人物ごとに 1 ターン最大 1 件で、このターンのその人物に関わるイベントをまとめる
+    （`events`）。
+    """
 
     character: str
     kind: str
     events: tuple[Json, ...]
     trust_delta: int
-    salience: float  # 对照表的值加 keyMoment；模型的 weight 在写的时候再加
+    # The table value plus keyMoment; the model's weight is added when writing.
+    # 対応表の値に keyMoment を足したもの。モデルの weight は書くときに足す。
+    salience: float
     via: str
     promise_id: str | None = None
     t: int = 0
@@ -99,7 +154,10 @@ class Seed:
 
 @dataclass
 class Written:
-    """写记忆这一步的结果：存进 `memory_items` 的行、计数、花费。"""
+    """The result of writing memories: rows stored in `memory_items`, counts, and cost.
+
+    記憶を書くステップの結果：`memory_items` に保存する行、件数、費用。
+    """
 
     rows: list[Json] = field(default_factory=list)
     filtered: int = 0
@@ -110,7 +168,10 @@ class Written:
 
 
 def relation(trust: int) -> tuple[str, int]:
-    """trust → (label, level)，契约第 4 节的表。"""
+    """trust → (label, level), per the table in contract section 4.
+
+    trust → (label, level)。契約第 4 節の表に従う。
+    """
     for top, level, label in LEVELS:
         if top is None or trust <= top:
             return label, level
@@ -135,7 +196,10 @@ def _present(state: SimState, place: str) -> set[str]:
 
 
 def _party(p: Mapping[str, Any]) -> str | None:
-    """约定里玩家以外的那一方（和玩家无关的约定是 None）。"""
+    """The party to a promise other than the player (None for promises not involving the player).
+
+    約束のプレイヤー以外の当事者（プレイヤーに関係ない約束なら None）。
+    """
     if p.get("from") == "player":
         return str(p.get("to"))
     if p.get("to") == "player":
@@ -144,13 +208,21 @@ def _party(p: Mapping[str, Any]) -> str | None:
 
 
 def _trust_var(character: str, var: str) -> bool:
-    """`var.<他>.trust` 这类变量（人物 ID 的最后一段）。"""
+    """Variables like `var.<them>.trust` (using the last segment of the character ID).
+
+    `var.<その人物>.trust` のような変数（登場人物 ID の最後の部分を使う）。
+    """
     short = character.rsplit(".", 1)[-1]
     return var.endswith(".trust") and short in var.split(".")
 
 
 def _lived(book: Book, after: SimState, ev: Json) -> set[str]:
-    """这条节拍事件里亲历了节拍的人物（`zoujin_worldsim.lived`，#154）。after = 这条事件之后的状态。"""
+    """The characters who lived through the beat in this beat event (`zoujin_worldsim.lived`, #154). after = the state
+    after this event.
+
+    このビートのイベントでビートを自分で経験した登場人物（`zoujin_worldsim.lived`、#154）。
+    after = このイベントの後の状態。
+    """
     beats = [e["beat"] for e in ev["effects"] if e.get("op") == "beat"]
     return {c for c in book.characters if any(lived(book.world, after, c, x) for x in beats)}
 
@@ -158,11 +230,17 @@ def _lived(book: Book, after: SimState, ev: Json) -> set[str]:
 def _event_rows(
     book: Book, state: SimState, after: SimState, ev: Json, addressee: str | None
 ) -> dict[str, tuple[int, str, str | None]]:
-    """一条事件给谁哪一行：人物 → (行号, via, promiseId)。state / after 是这条事件之前 / 之后的状态。"""
+    """Which row an event gives to whom: character → (row index, via, promiseId). state / after are the states before
+    / after this event.
+
+    1 つのイベントで誰にどの行を与えるか：登場人物 → (行番号, via, promiseId)。
+    state / after はこのイベントの前 / 後の状態。
+    """
     if not committed(ev) or ev["type"] in SKIP_TYPES:
         return {}
     player_place = state["vars"]["var.player.location"]
-    if ev["actor"] != "player" and not sees(book.world, player_place, ev):  # 玩家看不到的事不写
+    # What the player can't see isn't written / プレイヤーに見えないことは書かない
+    if ev["actor"] != "player" and not sees(book.world, player_place, ev):
         return {}
     present = _present(state, ev["place"])
     beat = ev.get("origin") == "schedule" and any(e.get("op") == "beat" for e in ev["effects"])
@@ -174,7 +252,7 @@ def _event_rows(
             return "witnessed"
         if c in told:
             return "told"
-        return None  # 切片不写 rumor
+        return None  # the slice writes no rumor / スライスでは rumor を書かない
 
     out: dict[str, tuple[int, str, str | None]] = {}
 
@@ -211,10 +289,15 @@ def _event_rows(
                         put(c, HARMED)
             elif e.get("op") == "relocate" and e.get("character") != b:
                 put(e.get("character"), HARMED)
-        if ev["type"] == "say":  # 玩家说自己的事：写明他学到了（learn），或成了他的即兴设定（improv）
+        # The player talks about themself: stated that they learned it (learn), or it became their improvised fact
+        # (improv).
+        # プレイヤーが自分のことを話す：その人物が知ったと明記（learn）、またはその人物の即興設定になった（improv）。
+        if ev["type"] == "say":
             for c in told | {e["character"] for e in ev["effects"] if e.get("op") == "improv"}:
                 put(c, CLAIM)
-        # 印象：说话只给说话的对象（这一轮的人物），动作给在场的人
+        # Impression: talk only gives one to the person addressed (this turn's character); actions give one to
+        # everyone present.
+        # 印象：発話は話しかけた相手（このターンの登場人物）だけに、アクションはその場にいる人に与える。
         hearers = {addressee} if ev["type"] == "say" and addressee else present
         for c in sorted(hearers):
             put(c, IMPRESSION)
@@ -227,8 +310,14 @@ def _event_rows(
 
 
 def seeds(book: Book, before: SimState, events: Sequence[Json], addressee: str | None = None) -> list[Seed]:
-    """一次提交（一轮）要写的记忆：每个人物最多一条，这一轮和他有关的事件合在一起，kind 取对照表最靠前的一行；
-    按 salience 取前 `MAX_PER_COMMIT` 个人物（同分按第一次出现的顺序）。addressee：这一轮玩家对谁说。"""
+    """The memories to write for one commit (one turn): at most one per character, combining this turn's events
+    involving them, with kind from the topmost table row; the top `MAX_PER_COMMIT` characters by salience (ties in
+    order of first appearance). addressee: who the player talked to this turn.
+
+    1 回のコミット（1 ターン）で書く記憶：登場人物ごとに最大 1 件。このターンのその人物に関わるイベントをまとめ、kind は
+    対応表の最も上の行を採る。salience の上位 `MAX_PER_COMMIT` 人を採る（同点なら最初に出た順）。
+    addressee：このターンでプレイヤーが話しかけた相手。
+    """
     state = before
     best: dict[str, tuple[int, str, str | None, Json]] = {}
     evs: dict[str, list[Json]] = {}
@@ -263,11 +352,15 @@ def seeds(book: Book, before: SimState, events: Sequence[Json], addressee: str |
 
 
 def weighted(s: Seed, weight: int) -> float:
-    """模型给的 weight（1〜3）加到 salience 上，夹在这一行的值到 1 之间。"""
+    """Add the model's weight (1-3) to salience, clamped between this row's value and 1.
+
+    モデルが出した weight（1〜3）を salience に足し、この行の値から 1 の間に収める。
+    """
     return round(max(s.salience, min(1.0, s.salience + WEIGHT_STEP * (max(1, min(3, weight)) - 1))), 3)
 
 
-# setup 直接种的记忆（评测入口）：按 kind 取对照表里第一行同一种的数
+# Memories planted directly by setup (eval entry point): take the numbers of the first table row of the same kind.
+# setup が直接植える記憶（評価の入口）：kind ごとに対応表で同じ種類の最初の行の数値を使う。
 BY_KIND = {
     "promise": PROMISE_MADE,
     "help": HELPED,
@@ -279,7 +372,10 @@ BY_KIND = {
 
 
 def seeded(ids: Any, pid: str, ev: Json, character: str, kind: str, text: str) -> Json:
-    """评测 setup 种的一条记忆（来源是布置的那条事件，`via` = witnessed）。"""
+    """A memory planted by eval setup (its source is the staged event, `via` = witnessed).
+
+    評価の setup が植える記憶 1 件（出どころは用意したイベント、`via` = witnessed）。
+    """
     _, delta, salience = BY_KIND[kind]
     return {
         "memory_id": ids.new("mem"),
@@ -302,7 +398,10 @@ def command_like(text: str) -> bool:
 
 
 def tidy(text: str) -> str:
-    """去掉整句外面的「」『』和句末的「。」（前端会加引号，UX 评审）。"""
+    """Strip 「」『』 around the whole sentence and the final 「。」 (the frontend adds quotes; UX review).
+
+    文全体を囲む「」『』と文末の「。」を取り除く（フロントエンドが括弧を付ける。UX レビュー）。
+    """
     t = text.strip()
     while len(t) >= 2 and t[0] in "「『" and t[-1] in "」』":
         t = t[1:-1].strip()
@@ -310,13 +409,22 @@ def tidy(text: str) -> str:
 
 
 def length(text: str) -> int:
-    """长度按 NFKC 以后的字数（含标点，数据评审）。"""
+    """Length in characters after NFKC (punctuation included; data review).
+
+    長さは NFKC 後の文字数（句読点を含む。データレビュー）。
+    """
     return len(unicodedata.normalize("NFKC", text))
 
 
 def rule_ok(text: str, role_name: str | None = None) -> bool:
-    """第一、三道过滤：个人信息规则（和 R6 同一套）、长度（超了不截断）、引号里的命令句、身份名（UX 评审：
-    记忆里提到玩家用「あなた」「あの人」，契约 1.8 的身份名替换只管 summary）。"""
+    """The first and third filters: personal-information rules (the same as R6), length (too long isn't truncated),
+    commands inside quotes, and the role name (UX review: memories refer to the player as 「あなた」 or 「あの人」;
+    contract 1.8's role-name replacement only covers summary).
+
+    1 段目と 3 段目のフィルター：個人情報の規則（R6 と同じ）、長さ（超えても切り詰めない）、括弧内の命令文、役柄名
+    （UX レビュー：記憶でプレイヤーに触れるときは「あなた」「あの人」を使う。
+    契約 1.8 の役柄名の置き換えは summary だけが対象）。
+    """
     t = text.strip()
     return (
         bool(t)
@@ -327,8 +435,11 @@ def rule_ok(text: str, role_name: str | None = None) -> bool:
     )
 
 
-# 「不会撤销的后果」一句里不能有的：代词（用名字）、记得和忘记（UX 评审）
-_KEEPS_BANNED = re.compile(r"彼(?![方岸])|覚え|忘れ")  # 「彼方」「彼岸」不算代词（UX 复看）
+# Not allowed in the "consequences that won't be undone" line: pronouns (use names), remembering and forgetting (UX
+# review). 「彼方」 and 「彼岸」 don't count as pronouns (UX second look).
+# 「取り消されない結果」の一文に入れてはいけないもの：代名詞（名前を使う）、覚える・忘れる（UX レビュー）。
+# 「彼方」「彼岸」は代名詞に数えない（UX の再確認）。
+_KEEPS_BANNED = re.compile(r"彼(?![方岸])|覚え|忘れ")
 
 
 def keeps_ok(text: str) -> bool:
@@ -346,8 +457,14 @@ def persona(book: Book, character: str) -> Json:
 
 
 def request(book: Book, role_id: str, s: Seed) -> Json:
-    """提示 `memory` 的请求：这一轮和他有关的事件的 summary、visibleEffects，人物的人设摘要，via。不给原话。
-    `role` 只让模型知道玩家是谁，提示里要求不写进句子（过滤也挡）。"""
+    """The request for the `memory` prompt: summary and visibleEffects of this turn's events involving them, the
+    character's persona summary, and via. Never the player's words. `role` only tells the model who the player is;
+    the prompt asks for it not to be written into the sentence (the filter blocks it too).
+
+    プロンプト `memory` へのリクエスト：このターンのその人物に関わるイベントの summary と visibleEffects、登場人物の
+    人物設定の要約、via。発話は渡さない。`role` はプレイヤーが誰かをモデルに知らせるだけで、プロンプトで文に書かないよう
+    求めている（フィルターも止める）。
+    """
     return {
         "character": persona(book, s.character),
         "role": book.roles[role_id]["name"],
@@ -359,15 +476,20 @@ def request(book: Book, role_id: str, s: Seed) -> Json:
 
 @dataclass
 class Memorizer:
-    """写记忆的模型调用和过滤。叙事者和评测入口共用。"""
+    """The model call and filters for writing memories. Shared by the narrator and the eval entry point.
+
+    記憶を書くためのモデル呼び出しとフィルター。ナレーターと評価の入口で共用する。
+    """
 
     text: TextModel
     armor: Armor | None
     ids: Any
     tracer: Tracer = field(default_factory=Tracer)
-    deadline: float | None = None  # None = config.TEXT["memory"] 的时限
+    deadline: float | None = None  # None = the deadline in config.TEXT["memory"] / config.TEXT["memory"] の時間制限
     armor_deadline: float = ARMOR_DEADLINE_S
-    raise_stops: bool = False  # True（评测）：账本到上限、429 整次停下
+    # True (evals): stop the whole run when the ledger hits its limit or on a 429.
+    # True（評価）：台帳が上限に達したときや 429 で全体を止める。
+    raise_stops: bool = False
 
     async def write(self, book: Book, pid: str, role_id: str, todo: Sequence[Seed], **span: object) -> Written:
         out = Written()
@@ -441,8 +563,12 @@ class Memorizer:
             return text, int(r.output.get("weight", 1))
 
     async def _armor_ok(self, text: str, out: Written) -> bool:
-        """第二道过滤（`sanitizeModelResponse`）：注入、RAI HIGH、SDP、恶意链接任一命中就不写。
-        1 秒没回、出错当没命中（`armor_errors` 记一次）。"""
+        """The second filter (`sanitizeModelResponse`): if any of injection, RAI HIGH, SDP or a malicious URL matches,
+        don't write it. No answer within 1 second, or an error, counts as no match (`armor_errors` records one).
+
+        2 段目のフィルター（`sanitizeModelResponse`）：インジェクション、RAI HIGH、SDP、悪意のあるリンクのどれかに
+        当たれば書かない。1 秒以内に返事がない、またはエラーなら当たらなかったとみなす（`armor_errors` に 1 回記録）。
+        """
         if self.armor is None:
             return True
         out.armor_usd += cost_usd(self.armor, text)
@@ -454,15 +580,25 @@ class Memorizer:
         return not (ar.injection or ar.harmful or ar.pii or ar.uri)
 
 
-# —— 存 ——
+# —— Storing / 保存 ——
 
 
 async def save(c: AsyncConnection, book: Book, pid: str, rows: Sequence[Json]) -> list[tuple[Json, str]]:
-    """存这一轮写出的记忆：(行, "added" / "updated")。
+    """Store the memories written this turn: (row, "added" / "updated").
 
-    印象（`impression`）每个人物每一幕最多留一条没删的（数据定，UX 的 R1 前要求）：这一幕他已经有一条印象，就用新的
-    一句改那一条（`updated`，记憶帳不多一张卡），来源事件接上、salience 取大的、trustDelta 不再加
-    （闲聊不让关系一直涨），后果一句（keeps）清掉重算。别的种类照旧每次新加。"""
+    At most one undeleted impression (`impression`) per character per act (set by the data side, a UX requirement
+    before R1): if the character already has an impression this act, update it with the new sentence (`updated`, so
+    the 記憶帳 doesn't grow another card), appending the source events, taking the larger salience, not adding
+    trustDelta again (small talk mustn't keep raising the relationship), and clearing the consequences line (keeps)
+    to be recomputed. Other kinds are added anew every time as before.
+
+    このターンで書いた記憶を保存する：(行, "added" / "updated")。
+
+    印象（`impression`）は登場人物ごと、幕ごとに削除されていないものを最大 1 件だけ残す（データ側が決めた、UX の R1 前の
+    要件）：この幕ですでに印象が 1 件あれば、新しい一文でその件を更新し（`updated`、記憶帳のカードを増やさない）、
+    出どころのイベントをつなげ、salience は大きいほうを採り、trustDelta は足さない（雑談で関係が上がり続けないように）。
+    結果の一文（keeps）は消して計算し直す。ほかの種類は従来どおり毎回新しく加える。
+    """
     out: list[tuple[Json, str]] = []
     for r in rows:
         old = await _impression_this_act(c, book, pid, r) if r["kind"] == "impression" else None
@@ -496,11 +632,14 @@ async def _impression_this_act(c: AsyncConnection, book: Book, pid: str, r: Json
     return None
 
 
-# —— 读 ——
+# —— Reading / 読み込み ——
 
 
 async def alive(c: AsyncConnection, pid: str, who: str | None = None) -> list[Json]:
-    """这一局没删的记忆（按 t、建立的先后）。"""
+    """This game's undeleted memories (ordered by t, then creation order).
+
+    このゲームの削除されていない記憶（t の順、次に作成順）。
+    """
     q = select(memory_items).where(memory_items.c.playthrough_id == pid, memory_items.c.deleted_at.is_(None))
     if who is not None:
         q = q.where(memory_items.c.character == who)
@@ -524,7 +663,12 @@ async def relation_of(c: AsyncConnection, book: Book, pid: str, role_id: str, wh
 
 
 async def memories_for_brief(c: AsyncConnection, pid: str, who: str, limit: int = BRIEF_LIMIT) -> list[str]:
-    """局势说明里带的：这个人物没删的记忆，按 salience 取前 limit 条（同分新的在前），按时间排好的文字。"""
+    """What goes into the situation notes: this character's undeleted memories, the top limit by salience (newer first
+    on ties), as text sorted by time.
+
+    状況説明に入れるもの：この登場人物の削除されていない記憶を salience の上位 limit 件（同点なら新しいものが先）取り、
+    時刻順に並べた文章。
+    """
     rows = (
         await c.execute(
             select(memory_items.c.text, memory_items.c.t)
@@ -541,8 +685,12 @@ async def memories_for_brief(c: AsyncConnection, pid: str, who: str, limit: int 
 
 
 async def forgotten_facts(c: AsyncConnection, book: Book, pid: str, who: str) -> frozenset[str]:
-    """删了的记忆的来源事件里他学到的事实（`learn`）和即兴设定（`improv`），减去别的提交事件也教过他的
-    （局势说明不带，`gateway/brief.py`）。"""
+    """Facts (`learn`) and improvised facts (`improv`) the character learned in the source events of deleted memories,
+    minus those other committed events also taught them (left out of the situation notes, `gateway/brief.py`).
+
+    削除された記憶の出どころのイベントでその人物が知った事実（`learn`）と即興設定（`improv`）から、ほかのコミット済み
+    イベントでも教わったものを除いたもの（状況説明には入れない、`gateway/brief.py`）。
+    """
     gone = (
         await c.scalars(
             select(memory_items.c.from_events).where(
@@ -555,20 +703,24 @@ async def forgotten_facts(c: AsyncConnection, book: Book, pid: str, who: str) ->
     dropped = {str(e) for evs in gone for e in evs}
     if not dropped:
         return frozenset()
-    learned: dict[str, set[str]] = {}  # 事实 → 教过他的事件
+    learned: dict[str, set[str]] = {}  # fact → events that taught them / 事実 → それを教えたイベント
     for ev in await store.event_log(c, pid, book.version):
         if not committed(ev):
             continue
         for e in ev["effects"]:
             if e.get("op") == "learn" and e.get("character") == who:
                 learned.setdefault(str(e["fact"]), set()).add(str(ev["eventId"]))
-            elif e.get("op") == "improv" and e.get("character") == who:  # 即兴设定：玩家告诉他的（rf_ ID）
+            # Improvised fact: what the player told them (rf_ ID) / 即興設定：プレイヤーがその人物に話したこと（rf_ ID）
+            elif e.get("op") == "improv" and e.get("character") == who:
                 learned.setdefault(str(e["factId"]), set()).add(str(ev["eventId"]))
     return frozenset(f for f, by in learned.items() if by and by <= dropped)
 
 
 def item_json(row: Mapping[str, Any]) -> Json:
-    """`memory_items` 的一行 → 契约的 MemoryItem（评测入口的 `memories()`）。"""
+    """A `memory_items` row → the contract's MemoryItem (the eval entry point's `memories()`).
+
+    `memory_items` の 1 行 → 契約の MemoryItem（評価の入口の `memories()`）。
+    """
     out: Json = {
         "schemaVersion": row["schema_version"],
         "memoryId": row["memory_id"],
@@ -603,16 +755,25 @@ async def keeps(
     promise: Mapping[str, Any] | None,
     **span: object,
 ) -> tuple[str | None, bool, float]:
-    """删除确认里「不会撤销的后果」一句（提示 `keeps`，只读来源事件的摘要和结果）。
-    返回（一句或 None、能不能缓存、花费）：模型出错、超时、输出不合格、过不了过滤 → None，不缓存（下次再算）；
-    模型说没有 → None，缓存。"""
+    """The "consequences that won't be undone" line in the deletion confirmation (prompt `keeps`, reading only the
+    source events' summaries and results). Returns (the line or None, whether it may be cached, the cost): model error,
+    timeout, invalid output, or failing the filter → None, not cached (computed again next time); the model says there
+    is none → None, cached.
+
+    削除の確認に出す「取り消されない結果」の一文（プロンプト `keeps`。出どころのイベントの要約と結果だけを読む）。
+    （一文または None, キャッシュしてよいか, 費用）を返す：モデルのエラー、タイムアウト、不合格の出力、フィルターを
+    通らない → None でキャッシュしない（次回また計算する）。モデルがないと言った → None でキャッシュする。
+    """
     kind = "keeps"
     model, version = model_and_version(kind)
     req: Json = {
         "character": book.characters[row["character"]]["name"],
         "events": [{"summary": e["summary"], "visibleEffects": visible_effects(book, e["effects"])} for e in evs],
         "promise": {"text": promise["text"], "status": promise["status"]} if promise else None,
-        # 约定会作废时，句子里不写这个约定（下一行就是「この約束も、なかったことになります」，UX 评审）
+        # When the promise will be voided, the line doesn't mention it (the next line is
+        # 「この約束も、なかったことになります」, UX review).
+        # 約束が無効になるときは、文にその約束を書かない（次の行が「この約束も、なかったことになります」、
+        # UX レビュー）。
         "voidsPromise": bool(promise and promise["status"] == "open"),
     }
     with tracer.span("gateway.keeps", provider=spec(kind).provider, model=model, prompt_version=version, **span) as sp:

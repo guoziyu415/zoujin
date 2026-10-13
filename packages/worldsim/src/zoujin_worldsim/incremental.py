@@ -1,30 +1,76 @@
-"""逐事件推演：叙事者用的增量接口（W-1，后端提的）。
+"""Event-by-event simulation: the incremental interface used by the narrator (W-1, proposed by backend).
 
-一局的状态 SimState 只由事件推出：initial_state() 给开局前的状态，之后每个事件（玩家的、叙事者的、
-settle() 写出的系统事件）都用 apply() 应用。settle() 自己也是先算出系统事件的草稿，再一个个 apply()，
-所以「拿事件日志从 initial_state() 重放」和「逐事件算」得到同一个状态（契约 3.1，评测 E7）。
+A run's state SimState is derived only from events: initial_state() gives the state before the opening, and after that
+every event (the player's, the narrator's, the system events written by settle()) is applied with apply(). settle()
+itself also first computes drafts of system events and then apply()s them one by one, so "replaying the event log from
+initial_state()" and "computing event by event" give the same state (contract 3.1, eval E7).
 
-规则和一口气推演（sim.Sim.run）一样，见 docs/data/contracts.md 2.4.1、2.5.1 和参考实现的文件头：
+The rules are the same as the whole-run simulation (sim.Sim.run); see docs/data/contracts.md 2.4.1, 2.5.1 and the
+reference implementation's file header:
 
-- 同一时刻先节拍（按 order），再期限，最后事件。所以调用方要先 settle 到事件的 t，再 apply 这个事件；
-  下一次 settle 的 t2 不早于这个事件的 t。
-- 节拍到了排定时间：前提成立就发生（有变体按变体演，玩家登记了 altered 按登记的演）；前提不成立的
-  到 window.latest 为止每一步之后再查，成立了就在那一刻发生，过了 latest 写 prevented（时間切れ）。
-- 有 delays / hastens 出边的节拍到点前提不成立就当场 prevented，它的分钟按 2.5.1 退还给下游；
-  排定时间超过 latest 的（late）当场 prevented，不退还。
-- 期限：时钟到 clock.deadline.t 时，按那一刻的状态判 onDeadline，成立的规则写成一个系统事件。
-  没有规则成立也写一个 effects 为空的系统事件：状态只由事件推出，靠它记下「期限已经结算过」。
+- At the same time, beats first (by order), then the deadline, events last. So the caller first settles to the event's
+  t, then applies the event; the next settle's t2 is not earlier than this event's t.
+- When a beat reaches its scheduled time: if its preconditions hold it happens (with a variant if one applies, or as
+  registered if the player registered altered); if they fail it is rechecked after every step until window.latest,
+  happening at that moment once they hold, and after latest it is written as prevented (時間切れ).
+- A beat with outgoing delays / hastens edges whose preconditions fail when due is prevented on the spot, and its
+  minutes are refunded downstream per 2.5.1; a beat scheduled past latest (late) is prevented on the spot with no
+  refund.
+- Deadline: when the clock reaches clock.deadline.t, onDeadline is judged on the state at that moment, and the rules
+  that hold are written as one system event. If no rule holds, a system event with empty effects is still written:
+  state is derived only from events, and it records that "the deadline has been settled".
 
-- 本局对一个还没结果的节拍只有一种改动（契约第 3 节，1.6 写清）：推迟、提前按带符号的分钟相加，净值 0 就去掉；
-  prevented 顶掉之前的改动；别的组合 check_effects() 报 bad-state，apply() 抛 ValueError（sim.merge_change）。
-- origin = "schedule" 只用于到点的节拍（type beat，一条 beat 结果）和期限（type action，每局一条，不早于期限）。
-- （1.7）relocate 写了 spot 就记在 spots 里；没写 spot 时换到别的地点才去掉，同一个地点里不动（节拍先把参与人物移到
-  节拍地点，已经站在那里的人保持原来的位置点）。位置点不进任何判定，给后端摆人用（契约 3.1）。
+- In one run, a beat without a result yet has only one kind of change (contract section 3, clarified in 1.6): delays
+  and hastening add up as signed minutes, and a net of 0 removes the change; prevented replaces earlier changes; any
+  other combination is reported as bad-state by check_effects() and raises ValueError in apply() (sim.merge_change).
+- origin = "schedule" is used only for due beats (type beat, one beat result) and the deadline (type action, one per
+  run, not earlier than the deadline).
+- (1.7) If relocate has a spot, it is recorded in spots; without a spot, the spot is removed only when moving to a
+  different place and kept within the same place (a beat first moves participants to the beat's place, and someone
+  already standing there keeps their spot). Spots enter no judgement; they are for the backend to position people
+  (contract 3.1).
 
-一口气推演没有、这里才有的两处，24 次推演都不受影响：
-① 玩家在 t 时登记的改动让某个还没结果的节拍的排定时间提前到 t 之前，这个节拍在 t 判
-  （一口气推演是从头就知道全部改动）；
-② 下游已经在等前提时，上游被阻止让它的排定时间推后，它回到「还没到点」，到新的排定时间再判。
+Two things that only exist here and not in the whole-run simulation; none of the 24 simulations is affected:
+① a change the player registers at t moves the scheduled time of a beat without a result yet to before t; that beat
+  is judged at t (the whole-run simulation knows all changes from the start);
+② while a downstream beat is already waiting on its preconditions, an upstream beat being prevented pushes its
+  scheduled time later; it goes back to "not yet due" and is judged again at the new scheduled time.
+
+イベントごとのシミュレーション：ナレーターが使う増分インターフェース（W-1、バックエンドの提案）。
+
+1 回のプレイの状態 SimState はイベントからのみ導かれる：initial_state() がオープニング前の状態を与え、その後の
+すべてのイベント（プレイヤーのもの、ナレーターのもの、settle() が書くシステムイベント）は apply() で適用する。
+settle() 自身もまずシステムイベントの下書きを計算し、それを 1 件ずつ apply() するので、「イベントログを
+initial_state() からリプレイする」ことと「イベントごとに計算する」ことは同じ状態になる（契約 3.1、評価 E7）。
+
+ルールは一括シミュレーション（sim.Sim.run）と同じ。docs/data/contracts.md 2.4.1、2.5.1 と参照実装のファイル冒頭を
+参照：
+
+- 同時刻ではビート（order 順）、期限、イベントの順。したがって呼び出し側はまずイベントの t まで settle してから、
+  そのイベントを apply する。次の settle の t2 はこのイベントの t より早くない。
+- ビートが予定時刻に達したとき：前提条件が成り立てば起きる（バリアントがあればバリアントで、プレイヤーが
+  altered を登録していれば登録どおりに演じる）。成り立たなければ window.latest まで各ステップの後に再確認し、
+  成り立った時点で起き、latest を過ぎたら prevented（時間切れ）と書く。
+- delays / hastens の出エッジを持つビートは、期限時に前提条件が成り立たなければその場で prevented になり、その
+  分数は 2.5.1 に従って下流に戻される。予定時刻が latest を超えたもの（late）はその場で prevented になり、戻さない。
+- 期限：時刻が clock.deadline.t に達したら、その時点の状態で onDeadline を判定し、成り立ったルールを 1 件の
+  システムイベントとして書く。成り立つルールがなくても effects が空のシステムイベントを書く：状態はイベント
+  からのみ導かれるので、これで「期限は精算済み」を記録する。
+
+- 1 回のプレイで、まだ結果の出ていないビートへの変更は 1 種類だけ（契約第 3 節、1.6 で明記）：遅延と前倒しは
+  符号付きの分数として足し、正味 0 なら取り除く。prevented はそれまでの変更を上書きする。それ以外の組み合わせは
+  check_effects() が bad-state と報告し、apply() は ValueError を送出する（sim.merge_change）。
+- origin = "schedule" は期限に達したビート（type beat、beat の結果 1 件）と期限（type action、1 プレイに 1 件、
+  期限より早くない）にだけ使う。
+- （1.7）relocate に spot があれば spots に記録する。spot がなければ、別の場所に移ったときだけ取り除き、同じ場所
+  の中では動かさない（ビートはまず参加人物をビートの場所に移すが、すでにそこに立っている人は元の立ち位置を
+  保つ）。立ち位置はどの判定にも入らず、バックエンドが人を配置するために使う（契約 3.1）。
+
+一括シミュレーションにはなく、ここにだけある 2 点。24 回のシミュレーションはどれも影響を受けない：
+① プレイヤーが t に登録した変更によって、まだ結果の出ていないビートの予定時刻が t より前に早まると、その
+  ビートは t で判定する（一括シミュレーションは最初からすべての変更を知っている）；
+② 下流のビートがすでに前提条件を待っているときに、上流が阻止されて予定時刻が後ろにずれると、それは「まだ期限
+  前」に戻り、新しい予定時刻に改めて判定する。
 """
 
 from __future__ import annotations
@@ -38,39 +84,59 @@ from typing import Any, NotRequired, TypedDict
 from .sim import BIG, OCCURRED, Effect, Override, Sim, World, change_conflict, merge_change, role_of
 from .visibility import sees
 
-SCHEDULE = "schedule"  # Event.origin：到点的节拍和期限
-SPOT = re.compile(r"[a-z0-9]+(?:[.-][a-z0-9]+)*")  # 1.7：位置点名（data common.schema.json 的 SpotId）
+SCHEDULE = "schedule"  # Event.origin: due beats and the deadline / 期限に達したビートと期限
+# 1.7: spot name (SpotId in data common.schema.json) / 立ち位置の名前（data common.schema.json の SpotId）
+SPOT = re.compile(r"[a-z0-9]+(?:[.-][a-z0-9]+)*")
 
 
 class SimState(TypedDict):
-    """一局到某个事件为止的状态，能直接存成 JSON。只由 initial_state() 和 apply() 产生。"""
+    """A run's state up to some event, storable directly as JSON. Produced only by initial_state() and apply().
+
+    1 回のプレイの、あるイベントまでの状態で、そのまま JSON として保存できる。initial_state() と apply() だけが作る。
+    """
 
     worldModelVersion: str
     role: str
-    t: int  # 时钟 = max(之前的时钟, 每个事件的 t + dt)
-    cursor: int | None  # 最后一个事件的 t；还没有事件时是 None
-    seq: int  # 应用过几个事件（WorldState.asOfSeq）
-    vars: dict[str, Any]  # 所有 stateVar
-    holdings: dict[str, str | None]  # portable 物品（和开局有人拿着的物品）→ 现在谁拿着
-    locations: dict[str, str]  # 人物 → 地点
-    spots: NotRequired[dict[str, str]]  # （1.7）人物 → 指定的位置点；1.7 之前存下的状态没有这一项
-    knowledge: dict[str, list[str]]  # 人物 → 运行时学到的事实（按学到的先后，不重复）
-    runFacts: dict[str, dict[str, Any]]  # factId → RunFact（madeBy 没有事件 ID 时是 None）
-    promises: dict[str, dict[str, Any]]  # promiseId → StoryPromise（同上）
-    beats: dict[str, str]  # 有结果的节拍：happened / altered / prevented
-    times: dict[str, int]  # 发生（happened / altered）的时刻
-    variants: dict[str, str]  # 按变体演的节拍 → 变体 ID
-    overrides: dict[str, Override]  # 本局对节拍的改动，按登记的先后（参考实现的 sc.beats）
-    deadline: bool  # 期限结算过了
+    t: int  # Clock = max(previous clock, each event's t + dt) / 時刻 = max(前の時刻, 各イベントの t + dt)
+    cursor: int | None  # t of the last event; None before any event / 最後のイベントの t。まだなければ None
+    seq: int  # How many events have been applied (WorldState.asOfSeq) / 適用したイベント数
+    vars: dict[str, Any]  # Every stateVar / すべての stateVar
+    # Portable items (and items someone holds at the opening) → who holds them now
+    # portable なアイテム（とオープニングで誰かが持っているアイテム）→ 今誰が持っているか
+    holdings: dict[str, str | None]
+    locations: dict[str, str]  # Character → place / 登場人物 → 場所
+    # (1.7) Character → assigned spot; state saved before 1.7 does not have this
+    # （1.7）登場人物 → 指定された立ち位置。1.7 より前に保存された状態にはこの項目がない
+    spots: NotRequired[dict[str, str]]
+    # Character → facts learned at runtime (in the order learned, no duplicates)
+    # 登場人物 → 実行時に知った事実（知った順、重複なし）
+    knowledge: dict[str, list[str]]
+    # factId → RunFact (madeBy is None when there is no event ID) / madeBy はイベント ID がなければ None
+    runFacts: dict[str, dict[str, Any]]
+    promises: dict[str, dict[str, Any]]  # promiseId → StoryPromise (same as above / 同上)
+    beats: dict[str, str]  # Beats with a result: happened / altered / prevented / 結果の出たビート
+    times: dict[str, int]  # When they happened (happened / altered) / 起きた時刻
+    variants: dict[str, str]  # Beat played as a variant → variant ID / バリアントで演じたビート → バリアント ID
+    # This run's changes to beats, in order of registration (sc.beats in the reference implementation)
+    # このプレイでのビートへの変更、登録順（参照実装の sc.beats）
+    overrides: dict[str, Override]
+    deadline: bool  # The deadline has been settled / 期限は精算済み
 
 
 class Draft(TypedDict):
-    """settle() 写出的系统事件草稿。event 是契约 Event 的子集，B-0 补上 eventId、seq、summary 等再写库。"""
+    """A draft system event written by settle(). event is a subset of the contract's Event; B-0 fills in eventId, seq,
+    summary and so on before writing it to the database.
+
+    settle() が書くシステムイベントの下書き。event は契約の Event のサブセットで、B-0 が eventId、seq、summary
+    などを補ってから DB に書く。
+    """
 
     event: dict[str, Any]
-    beat: str | None  # 哪个节拍（B-0 用它取 summary）；期限是 None
-    variant: str | None  # 按哪个变体演的
-    reason: str | None  # prevented 的原因，一句日语，B-0 写进 check.reason
+    beat: str | None  # Which beat (B-0 uses it for the summary); None for the deadline / どのビートか。期限は None
+    variant: str | None  # Which variant it was played as / どのバリアントで演じたか
+    # Why it was prevented, one Japanese sentence; B-0 writes it into check.reason
+    # prevented の理由。日本語の一文で、B-0 が check.reason に書く
+    reason: str | None
     reasonCode: str | None  # late / overridden / requires / precondition / expired
 
 
@@ -79,12 +145,16 @@ type Bad = Callable[[int, str, str], None]
 
 
 class Problem(TypedDict):
-    """check_effects() 报的一个问题。"""
+    """One problem reported by check_effects().
 
-    index: int  # 第几个 effect
+    check_effects() が報告する問題 1 件。
+    """
+
+    index: int  # Index of the effect / 何番目の effect か
     code: str
     message: str
-    note: NotRequired[str]  # valueRequires 的 note（日语），叙事者的 reason 用它
+    # valueRequires note (Japanese); the narrator uses it for reason / valueRequires の note（日本語）
+    note: NotRequired[str]
 
 
 REASONS = {
@@ -98,7 +168,12 @@ REASONS = {
 
 
 class _Sim(Sim):
-    """settle() 里排程要算很多次，改动列表没变时结果也不变，按内容缓存。返回的 dict / set 调用方不能改。"""
+    """settle() computes the schedule many times, and the result does not change while the change list does not, so
+    cache by content. Callers must not modify the returned dict / set.
+
+    settle() ではスケジュールを何度も計算するが、変更リストが同じなら結果も同じなので、内容でキャッシュする。
+    返した dict / set を呼び出し側は変更してはいけない。
+    """
 
     def __init__(self, world: World) -> None:
         super().__init__(world)
@@ -112,8 +187,14 @@ class _Sim(Sim):
 
 
 def initial_state(world: World, role_id: str) -> SimState:
-    """这个身份开局前的状态：时钟 0，变量初值（var.player.location = startPlace，var.act.current = startAct），
-    人物在 initialPlace，物品在 Character.items、Role.items 的人手上。调用方接着 settle 到身份的 startT。"""
+    """The state before this role's opening: clock 0, initial variable values (var.player.location = startPlace,
+    var.act.current = startAct), characters at initialPlace, items in the hands of whoever has them in
+    Character.items and Role.items. The caller then settles to the role's startT.
+
+    このロールのオープニング前の状態：時刻 0、変数の初期値（var.player.location = startPlace、var.act.current =
+    startAct）、登場人物は initialPlace に、アイテムは Character.items、Role.items の持ち主の手にある。呼び出し側は
+    続けてロールの startT まで settle する。
+    """
     role = role_of(world, role_id)
     vars_ = {v["id"]: v["default"] for v in world["stateVars"]}
     vars_["var.player.location"] = role["startPlace"]
@@ -147,35 +228,63 @@ def initial_state(world: World, role_id: str) -> SimState:
 
 
 def flat(state: SimState) -> dict[str, Any]:
-    """条件求值用的视图：变量加上物品的持有者（参考实现把两者放在同一个 dict 里）。"""
+    """The view used to evaluate conditions: variables plus item holders (the reference implementation keeps both in
+    one dict).
+
+    条件の評価に使うビュー：変数にアイテムの持ち主を加えたもの（参照実装は両者を同じ dict に入れている）。
+    """
     return {**state["holdings"], **state["vars"]}
 
 
 def apply(world: World, state: SimState, event: Mapping[str, Any]) -> SimState:
-    """应用一个事件，返回新的状态（不改传进来的）。用到 event 的 t、dt、origin、type、effects，有的话还有 eventId、seq。
+    """Applies one event and returns the new state (the one passed in is not changed). Uses the event's t, dt,
+    origin, type, effects, and eventId, seq if present.
 
-    origin = "schedule" 的系统事件里，beat 效果是节拍的结果；其他事件里是本局的改动（delayed / hastened /
-    prevented / altered，按 sim.merge_change 合），to = "happened" 契约没定义，抛 ValueError。
-    别的不合法的地方也抛 ValueError，叙事者应该先用 check_effects() 挡掉：
-    - 不是 schedule 的事件之前还有没结算的节拍或期限（没先 settle 到它的 t；同一时刻的上一个事件之后也要再 settle，
-      它可能让在等前提的节拍成立）。重放事件日志时这条能抓到漏写的系统事件；
-    - 带 seq 的事件，seq 不是上一个 + 1；
-    - schedule 事件不是到点的节拍或期限，或期限写了第二次、早于期限。"""
+    In a system event with origin = "schedule", a beat effect is the beat's result; in other events it is a change for
+    this run (delayed / hastened / prevented / altered, merged with sim.merge_change), and to = "happened" is not
+    defined by the contract and raises ValueError.
+    Other invalid input also raises ValueError; the narrator should block it first with check_effects():
+    - a non-schedule event preceded by beats or a deadline not yet settled (not settled to its t first; after the
+      previous event at the same time, settle again too, since it may make a beat waiting on its preconditions hold).
+      When replaying an event log, this catches missing system events;
+    - an event with seq where seq is not the previous one + 1;
+    - a schedule event that is not a due beat or the deadline, or the deadline written a second time or earlier than
+      the deadline.
+
+    イベントを 1 件適用し、新しい状態を返す（渡された状態は変えない）。event の t、dt、origin、type、effects、
+    あれば eventId、seq を使う。
+
+    origin = "schedule" のシステムイベントでは、beat 効果はビートの結果。それ以外のイベントではこのプレイでの変更
+    （delayed / hastened / prevented / altered、sim.merge_change で統合）で、to = "happened" は契約で定義されて
+    おらず ValueError を送出する。
+    ほかの不正な箇所も ValueError を送出する。ナレーターは先に check_effects() で弾くべき：
+    - schedule でないイベントの前に、まだ精算していないビートや期限がある（先にその t まで settle していない。
+      同時刻の前のイベントの後にも再び settle が必要で、それによって前提条件待ちのビートが成り立つことがある）。
+      イベントログのリプレイ時には、これで書き漏れたシステムイベントを検出できる；
+    - seq を持つイベントで、seq が前のもの + 1 でない；
+    - schedule イベントが期限に達したビートでも期限でもない、または期限を 2 回書いた、期限より早い。
+    """
     _same_world(world, state)
     if event.get("origin") != SCHEDULE and (state["cursor"] is None or event["t"] >= state["cursor"]):
         due = settle(world, state, event["t"])[0]
         if due:
-            what = "、".join(d["beat"] or "期限" for d in due)
-            raise ValueError(f"t={event['t']} 之前还有没结算的 {what}：先 settle 到 {event['t']} 再 apply")
+            what = ", ".join(d["beat"] or "deadline" for d in due)
+            raise ValueError(
+                f"Not yet settled before t={event['t']}: {what}; settle to {event['t']} first, then apply"
+                f" / t={event['t']} より前に未精算の {what} がある。先に {event['t']} まで settle してから apply"
+            )
     return _apply(_Sim(world), state, event)
 
 
 def _apply(sim: Sim, state: SimState, event: Mapping[str, Any]) -> SimState:
     t, dt = event["t"], event.get("dt", 0)
     if state["cursor"] is not None and t < state["cursor"]:
-        raise ValueError(f"事件的 t 倒退：{t} < {state['cursor']}")
+        raise ValueError(f"The event's t goes backwards / イベントの t が逆行している: {t} < {state['cursor']}")
     if "seq" in event and event["seq"] != state["seq"] + 1:
-        raise ValueError(f"seq 不连续：{event['seq']}，上一个是 {state['seq']}")
+        raise ValueError(
+            f"seq is not consecutive: {event['seq']}, previous was {state['seq']}"
+            f" / seq が連続していない：{event['seq']}、前は {state['seq']}"
+        )
     system = event.get("origin") == SCHEDULE
     if system:
         _check_schedule_event(sim, state, event)
@@ -183,7 +292,7 @@ def _apply(sim: Sim, state: SimState, event: Mapping[str, Any]) -> SimState:
     eid = event.get("eventId")
     for e in event["effects"]:
         _apply_effect(sim, s, e, t, system, eid)
-    if system and event.get("type") == "action":  # 期限
+    if system and event.get("type") == "action":  # Deadline / 期限
         s["deadline"] = True
     s["t"] = max(s["t"], t + dt)
     s["cursor"] = t
@@ -192,20 +301,37 @@ def _apply(sim: Sim, state: SimState, event: Mapping[str, Any]) -> SimState:
 
 
 def _check_schedule_event(sim: Sim, state: SimState, event: Mapping[str, Any]) -> None:
-    """契约第 3 节（1.6 写清）：origin = "schedule" 只用于到点的节拍和期限，别的系统事件不用它。"""
+    """Contract section 3 (clarified in 1.6): origin = "schedule" is used only for due beats and the deadline; other
+    system events do not use it.
+
+    契約第 3 節（1.6 で明記）：origin = "schedule" は期限に達したビートと期限にだけ使い、ほかのシステムイベントは
+    使わない。
+    """
     ty = event.get("type")
     if ty == "beat":
         n = sum(1 for e in event["effects"] if e["op"] == "beat")
         if n != 1:
-            raise ValueError(f"到点的节拍事件要有且只有一条 beat 效果，这里 {n} 条")
+            raise ValueError(
+                f"A due-beat event must have exactly one beat effect; this one has {n}"
+                f" / 期限に達したビートのイベントには beat 効果がちょうど 1 件必要。ここでは {n} 件"
+            )
     elif ty == "action":
         dl = sim.world["clock"]["deadline"]["t"]
         if state["deadline"]:
-            raise ValueError("期限已经结算过：每局只有一条期限事件")
+            raise ValueError(
+                "The deadline has already been settled: only one deadline event per run"
+                " / 期限は精算済み：期限イベントは 1 プレイに 1 件だけ"
+            )
         if event["t"] < dl:
-            raise ValueError(f"期限事件的 t={event['t']} 早于期限 {dl}")
+            raise ValueError(
+                f"The deadline event's t={event['t']} is earlier than the deadline {dl}"
+                f" / 期限イベントの t={event['t']} が期限 {dl} より早い"
+            )
     else:
-        raise ValueError(f"origin = schedule 只用于到点的节拍（type beat）和期限（type action），不能是 {ty!r}")
+        raise ValueError(
+            f"origin = schedule is used only for due beats (type beat) and the deadline (type action), not {ty!r}"
+            f" / origin = schedule は期限に達したビート（type beat）と期限（type action）にだけ使う。{ty!r} は不可"
+        )
 
 
 def _apply_effect(sim: Sim, s: SimState, e: Effect, t: int, system: bool, eid: str | None) -> None:
@@ -215,7 +341,10 @@ def _apply_effect(sim: Sim, s: SimState, e: Effect, t: int, system: bool, eid: s
     elif op == "inc":
         v = sim.svars[e["var"]]
         s["vars"][e["var"]] = max(v.get("min", -BIG), min(v.get("max", BIG), s["vars"][e["var"]] + e["by"]))
-    elif op == "relocate":  # 1.7：写了 spot 就站那里；没写时换了地点才去掉，同一个地点里不动（契约 3.1）
+    # 1.7: with a spot, stand there; without one, remove it only on a change of place, keep it within the same place
+    # (contract 3.1)
+    # 1.7：spot があればそこに立つ。なければ場所が変わったときだけ取り除き、同じ場所の中では動かさない（契約 3.1）
+    elif op == "relocate":
         c, spots = e["character"], s.setdefault("spots", {})
         if "spot" in e:
             spots[c] = e["spot"]
@@ -230,7 +359,7 @@ def _apply_effect(sim: Sim, s: SimState, e: Effect, t: int, system: bool, eid: s
             known.append(e["fact"])
     elif op == "improv":
         if e["factId"] in s["runFacts"]:
-            raise ValueError(f"即兴设定重复：{e['factId']}")
+            raise ValueError(f"Duplicate improvised fact / 即興設定の重複: {e['factId']}")
         s["runFacts"][e["factId"]] = {
             "factId": e["factId"],
             "character": e["character"],
@@ -245,16 +374,16 @@ def _apply_effect(sim: Sim, s: SimState, e: Effect, t: int, system: bool, eid: s
         else:
             _apply_beat_change(s, e)
     else:
-        raise ValueError(f"未知的效果 {op}")
+        raise ValueError(f"Unknown effect / 未知の効果: {op}")
 
 
 def _apply_promise(s: SimState, e: Effect, eid: str | None) -> None:
     pid = e.get("promiseId")
     if not pid:
-        raise ValueError("提交的 promise 效果要带 promiseId")
+        raise ValueError("A submitted promise effect needs a promiseId / 提出する promise 効果には promiseId が必要")
     if e["change"] == "made":
         if pid in s["promises"]:
-            raise ValueError(f"约定重复：{pid}")
+            raise ValueError(f"Duplicate promise / 約束の重複: {pid}")
         made: dict[str, Any] = {"promiseId": pid, "from": e["from"], "to": e["to"], "text": e["text"]}
         for k in ("due", "template"):
             if k in e:
@@ -264,14 +393,16 @@ def _apply_promise(s: SimState, e: Effect, eid: str | None) -> None:
         return
     p = s["promises"].get(pid)
     if p is None or p["status"] != "open":
-        raise ValueError(f"只有 open 的约定能变成 {e['change']}：{pid}")
+        raise ValueError(
+            f"Only an open promise can become {e['change']} / open の約束だけが {e['change']} になれる: {pid}"
+        )
     p["status"], p["resolvedBy"] = e["change"], eid
 
 
 def _apply_beat_result(sim: Sim, s: SimState, e: Effect, t: int, eid: str | None) -> None:
     bid, to = e["beat"], e["to"]
     if bid in s["beats"]:
-        raise ValueError(f"{bid} 已经有结果（{s['beats'][bid]}）")
+        raise ValueError(f"{bid} already has a result / すでに結果がある ({s['beats'][bid]})")
     if to in OCCURRED:
         s["beats"][bid], s["times"][bid] = to, t
         if to == "altered":
@@ -280,33 +411,59 @@ def _apply_beat_result(sim: Sim, s: SimState, e: Effect, t: int, eid: str | None
             for x in e.get("outcomes", []):
                 _apply_effect(sim, s, x, t, True, eid)
     elif to == "prevented":
-        # 2.5.1：有 delays / hastens 出边的节拍到点前提不成立而被阻止，它的分钟退还给下游（参考实现 run() 的 auto）
+        # 2.5.1: a beat with outgoing delays / hastens edges prevented because its preconditions failed when due has
+        # its minutes refunded downstream (auto in the reference implementation's run())
+        # 2.5.1：delays / hastens の出エッジを持つビートが期限時に前提条件不成立で阻止されたら、その分数を下流に戻す
+        # （参照実装 run() の auto）
         late = sim.schedule(s["overrides"])[1]
         if bid in sim.timed and bid not in late and bid not in s["overrides"] and sim.requires_met(bid, s["beats"]):
             s["overrides"][bid] = {"to": "prevented"}
         s["beats"][bid] = "prevented"
     else:
-        raise ValueError(f"系统事件里的 beat 只能是 happened / altered / prevented：{to}")
+        raise ValueError(
+            f"beat in a system event can only be happened / altered / prevented"
+            f" / システムイベントの beat は happened / altered / prevented のみ: {to}"
+        )
 
 
 def _apply_beat_change(s: SimState, e: Effect) -> None:
     bid = e["beat"]
     if e["to"] == "happened":
-        raise ValueError(f"非系统事件里的 {{op: beat, to: happened}} 契约没定义：{bid}")
+        raise ValueError(
+            f"{{op: beat, to: happened}} in a non-system event is not defined by the contract"
+            f" / システムイベント以外での {{op: beat, to: happened}} は契約で定義されていない: {bid}"
+        )
     if bid in s["beats"]:
-        raise ValueError(f"{bid} 已经有结果（{s['beats'][bid]}），不能再改")
+        raise ValueError(
+            f"{bid} already has a result ({s['beats'][bid]}) and cannot be changed"
+            f" / {bid} はすでに結果がある（{s['beats'][bid]}）ので変更できない"
+        )
     merge_change(s["overrides"], e)
 
 
 def settle(
     world: World, state: SimState, t2: int | None, *, player_present: bool = True
 ) -> tuple[list[Draft], SimState]:
-    """时钟走到 t2：按先后结算排定时间 ≤ t2 的节拍和期限。t2 = None 时结算到所有节拍都有结果、期限也结算过。
+    """Advance the clock to t2: settle, in order, the beats and deadline scheduled at ≤ t2. With t2 = None, settle
+    until every beat has a result and the deadline has been settled.
 
-    player_present=False：这一段玩家一律算不在场，节拍落在 `var.player.location` 也不给玩家写 learn（契约 2.1 ②）。
-    幕切换的第 3 步用（2.8.1）：这时玩家的地点还没换，人已经不在了。
+    player_present=False: for this stretch the player always counts as absent, and even a beat that falls on
+    `var.player.location` writes no learn for the player (contract 2.1 ②). Used in step 3 of an act switch (2.8.1):
+    at that point the player's place has not changed yet, but they are already gone.
 
-    返回 (系统事件的草稿，结算后的状态)。结算后的状态 = 把草稿依次 apply 到传进来的状态。不改传进来的状态。"""
+    Returns (drafts of system events, the settled state). The settled state = the drafts applied in order to the state
+    passed in. The state passed in is not changed.
+
+    時刻を t2 まで進める：予定時刻 ≤ t2 のビートと期限を順に精算する。t2 = None なら、すべてのビートに結果が出て
+    期限も精算されるまで精算する。
+
+    player_present=False：この区間ではプレイヤーは常に不在とみなし、ビートが `var.player.location` に落ちても
+    プレイヤーに learn を書かない（契約 2.1 ②）。幕切り替えの第 3 段階で使う（2.8.1）：このときプレイヤーの場所は
+    まだ変わっていないが、本人はもういない。
+
+    （システムイベントの下書き, 精算後の状態）を返す。精算後の状態 = 下書きを順に、渡された状態へ apply したもの。
+    渡された状態は変えない。
+    """
     _same_world(world, state)
     sim = _Sim(world)
     s = state
@@ -322,14 +479,19 @@ def settle(
         return s
 
     now = s["cursor"] if s["cursor"] is not None else -BIG
-    # 排定时间已过、还没结果的节拍在等前提（上一次 settle 判过；判一次就有结果的那几种不会在等）
+    # Beats past their scheduled time without a result are waiting on preconditions (judged by the previous settle;
+    # the kinds that get a result from a single judgement are never waiting)
+    # 予定時刻を過ぎてまだ結果のないビートは前提条件を待っている（前回の settle で判定済み。1 回の判定で結果が出る
+    # 種類のものは待たない）
     seen = {b for b, tb in _schedule(sim, s).items() if tb <= now} - _special(sim, s)
     if s["cursor"] is not None:
         _recheck(sim, now, seen, emit, current, player_present)
 
     while True:
         sched = _schedule(sim, s)
-        # 排定时间被推后的回到「还没到点」；判一次就有结果的那几种（_special）不会在等
+        # Beats whose scheduled time was pushed later go back to "not yet due"; the kinds that get a result from a
+        # single judgement (_special) are never waiting
+        # 予定時刻が後ろにずれたものは「まだ期限前」に戻る。1 回の判定で結果が出る種類（_special）は待たない
         seen &= {b for b, tb in sched.items() if tb <= now}
         seen -= _special(sim, s)
         items: list[tuple[int, int, int, str, str | None]] = []
@@ -362,13 +524,21 @@ def settle(
 
 
 def _schedule(sim: Sim, s: SimState) -> dict[str, int]:
-    """还没结果的节拍的本局排定时间（2.5.1）。"""
+    """This run's scheduled times of the beats without a result yet (2.5.1).
+
+    まだ結果のないビートの、このプレイでの予定時刻（2.5.1）。
+    """
     shift = sim.schedule(s["overrides"])[0]
     return {b: x["window"]["canonical"] + shift.get(b, 0) for b, x in sim.beats.items() if b not in s["beats"]}
 
 
 def _special(sim: Sim, s: SimState) -> set[str]:
-    """判一次就一定有结果的节拍：有 delays / hastens 出边的、排定时间超过 latest 的、玩家登记了 prevented 的。"""
+    """Beats that always get a result from a single judgement: those with outgoing delays / hastens edges, those
+    scheduled past latest, and those the player registered as prevented.
+
+    1 回の判定で必ず結果が出るビート：delays / hastens の出エッジを持つもの、予定時刻が latest を超えたもの、
+    プレイヤーが prevented を登録したもの。
+    """
     late = sim.schedule(s["overrides"])[1]
     return {
         b
@@ -378,7 +548,10 @@ def _special(sim: Sim, s: SimState) -> set[str]:
 
 
 def _first_check(sim: Sim, s: SimState, b: str, t: int, emit: Emit, player_present: bool) -> None:
-    """节拍到了排定时间（参考实现的 _step1）。"""
+    """A beat reaches its scheduled time (_step1 in the reference implementation).
+
+    ビートが予定時刻に達した（参照実装の _step1）。
+    """
     x = sim.beats[b]
     late = sim.schedule(s["overrides"])[1]
     if b in late:
@@ -388,7 +561,9 @@ def _first_check(sim: Sim, s: SimState, b: str, t: int, emit: Emit, player_prese
     elif b not in sim.timed and t > x["window"]["latest"]:
         emit(_prevented(sim, b, t, "expired" if sim.requires_met(b, s["beats"]) else "expired-requires"))
     elif not sim.requires_met(b, s["beats"]):
-        if b in sim.timed:  # 参考实现记 blocked、不再查，结局里等于 prevented
+        # The reference implementation records blocked and stops checking; for the ending it equals prevented
+        # 参照実装は blocked と記録して再確認しない。結末の上では prevented と同じ
+        if b in sim.timed:
             emit(_prevented(sim, b, t, "requires"))
     elif not sim.holds(x["preconditions"], flat(s)):
         if b in sim.timed:
@@ -400,7 +575,12 @@ def _first_check(sim: Sim, s: SimState, b: str, t: int, emit: Emit, player_prese
 def _recheck(
     sim: Sim, t: int, seen: set[str], emit: Emit, current: Callable[[], SimState], player_present: bool
 ) -> None:
-    """每一步之后按 order 再查在等前提的节拍，成立的在此刻 t 发生；查到不再变化（参考实现的 _recheck）。"""
+    """After every step, recheck in order the beats waiting on preconditions; those that now hold happen at this time
+    t; repeat until nothing changes (_recheck in the reference implementation).
+
+    各ステップの後、前提条件を待っているビートを order 順に再確認し、成り立ったものはこの時刻 t に起きる。変化が
+    なくなるまで繰り返す（参照実装の _recheck）。
+    """
     changed = True
     while changed:
         changed = False
@@ -426,16 +606,20 @@ def _recheck(
 
 
 def _occur_draft(sim: Sim, s: SimState, b: str, t: int, player_present: bool) -> Draft:
-    """节拍发生：先把参与人物移到节拍地点，再写结果（参考实现的 _occur）。"""
+    """A beat happens: first move the participants to the beat's place, then write the result (_occur in the
+    reference implementation).
+
+    ビートが起きる：まず参加人物をビートの場所に移し、それから結果を書く（参照実装の _occur）。
+    """
     x = sim.beats[b]
     effects: list[dict[str, Any]] = [{"op": "relocate", "character": p, "place": x["place"]} for p in x["participants"]]
     o = s["overrides"].get(b, {})
     variant = None
-    if o.get("to") == "altered":  # 玩家的事件事先改了这个节拍
+    if o.get("to") == "altered":  # A player's event changed this beat in advance / プレイヤーのイベントが事前に変更
         effects.append({"op": "beat", "beat": b, "to": "altered", "outcomes": copy.deepcopy(o["outcomes"])})
     else:
         v = sim.variant_of(x, flat(s))
-        if v is not None:  # 1.4：到点时按本局状态换一种演法
+        if v is not None:  # 1.4: when due, play it differently per this run's state / 状態に応じて別の演じ方
             variant = v["id"]
             effects.append(
                 {"op": "beat", "beat": b, "to": "altered", "outcomes": copy.deepcopy(v["outcomes"]), "note": v["id"]}
@@ -443,7 +627,10 @@ def _occur_draft(sim: Sim, s: SimState, b: str, t: int, player_present: bool) ->
         else:
             effects.append({"op": "beat", "beat": b, "to": "happened"})
             effects += copy.deepcopy(list(x["outcomes"]))
-    # 玩家在场：public 事实玩家也知道了（契约 2.1、2.3，1.7）。在不在场按 sees()（1.12：没有参与人物的节拍同一场景就算）
+    # Player present: the player also learns the public facts (contract 2.1, 2.3, 1.7). Presence follows sees()
+    # (1.12: for a beat with no participants, the same scene counts)
+    # プレイヤーが在場：public な事実はプレイヤーも知る（契約 2.1、2.3、1.7）。在場かどうかは sees() に従う
+    # （1.12：参加人物のないビートは同じシーンならよい）
     if player_present and sees(
         sim.world, s["vars"].get("var.player.location"), _system_event("beat", t, x["place"], effects)
     ):
@@ -474,7 +661,12 @@ def _prevented(sim: Sim, b: str, t: int, code: str) -> Draft:
 
 
 def _deadline_draft(sim: Sim, world: World, s: SimState, t: int) -> Draft:
-    """期限：onDeadline 里 if 成立的规则，全部按期限那一刻的状态判；一条都不成立也写（effects 为空）。"""
+    """Deadline: the onDeadline rules whose if holds, all judged on the state at the moment of the deadline; written
+    even if none holds (empty effects).
+
+    期限：onDeadline のうち if が成り立つルール。すべて期限の時点の状態で判定する。1 件も成り立たなくても書く
+    （effects は空）。
+    """
     dl = world["clock"]["deadline"]
     pre = flat(s)
     effects = [
@@ -496,12 +688,20 @@ def _system_event(type_: str, t: int, place: str, effects: list[dict[str, Any]])
 
 
 def world_state(world: World, state: SimState, playthrough_id: str) -> dict[str, Any]:
-    """转成契约 3.1 的 WorldState。没有事件 ID 的约定或即兴设定（提交前的试算）不能转，抛 ValueError。"""
+    """Converts to the contract 3.1 WorldState. Promises or improvised facts without an event ID (a trial computation
+    before commit) cannot be converted and raise ValueError.
+
+    契約 3.1 の WorldState に変換する。イベント ID のない約束や即興設定（コミット前の試算）は変換できず、
+    ValueError を送出する。
+    """
     _same_world(world, state)
     for kind, xs in (("promises", state["promises"]), ("runFacts", state["runFacts"])):
         for k, x in xs.items():
             if x.get("madeBy") is None or ("resolvedBy" in x and x["resolvedBy"] is None):
-                raise ValueError(f"{kind} 里的 {k} 没有事件 ID（试算的状态不能转成 WorldState）")
+                raise ValueError(
+                    f"{k} in {kind} has no event ID (a trial state cannot be converted to WorldState)"
+                    f" / {kind} の {k} にイベント ID がない（試算の状態は WorldState に変換できない）"
+                )
     sim = _Sim(world)
     sched = _schedule(sim, state)
     beats: dict[str, str] = {}
@@ -528,13 +728,24 @@ def world_state(world: World, state: SimState, playthrough_id: str) -> dict[str,
 
 
 def classify(world: World, state: SimState) -> str | None:
-    """2.9：按现在的状态落到哪一类世界结局。"""
+    """2.9: which class of world ending the current state falls into.
+
+    2.9：今の状態がどの種類の世界の結末に当たるか。
+    """
     return Sim(world).classify(flat(state))
 
 
 def signature(world: World, state: SimState) -> dict[str, Any]:
-    """2.9.1 结局署名：`endings.signature.vars` 的最终值，`beats` 是否照原著发生（happened，altered 不算）。
-    结局的 `world.signature`、数据的多样性统计都用这一份（关键时刻的第三条以后也用它）。世界模型没写署名时是空的。"""
+    """2.9.1 ending signature: the final values of `endings.signature.vars`, and whether the `beats` happened as in the
+    original story (happened; altered does not count).
+    The ending's `world.signature` and the data's diversity statistics both use this one (key moments from the third
+    onwards use it too). Empty when the world model defines no signature.
+
+    2.9.1 結末のシグネチャ：`endings.signature.vars` の最終値と、`beats` が原作どおりに起きたか（happened。altered
+    は数えない）。
+    結末の `world.signature` も、データの多様性の統計もこれを使う（キーモーメントの 3 件目以降も使う）。世界
+    モデルにシグネチャがなければ空。
+    """
     sig = world.get("endings", {}).get("signature") or {}
     out: dict[str, Any] = {v: copy.deepcopy(state["vars"].get(v)) for v in sig.get("vars", [])}
     out |= {b: state["beats"].get(b) == "happened" for b in sig.get("beats", [])}
@@ -542,14 +753,29 @@ def signature(world: World, state: SimState) -> dict[str, Any]:
 
 
 def predict(world: World, state: SimState) -> str | None:
-    """预测（backend-design 2.5）：玩家不再做任何事，在状态的副本上结算到底再分类。"""
+    """Prediction (backend-design 2.5): assuming the player does nothing more, settle a copy of the state to the end,
+    then classify.
+
+    予測（backend-design 2.5）：プレイヤーがこれ以上何もしないとして、状態のコピーを最後まで精算してから分類する。
+    """
     return classify(world, settle(world, state, None)[1])
 
 
 def arrival_delta(world: World, state: SimState, effects: Sequence[Effect], t: int) -> dict[str, Any]:
-    """S-066 ①，契约 2.10：在 t 提交 effects，梅洛斯到刑场（watchBeat）会晚（+）或早（−）几分钟，做了以后还赶不赶得上。
-    和 Sim.arrival_delta 同一个算法：分钟数在去掉 window.latest 的世界里，做和不做各结算到底再比排定时间。
-    state 要先 settle 到 t。effects 和已登记的改动合不了（check_effects 的 bad-state）时抛 ValueError。"""
+    """S-066 ①, contract 2.10: if effects are submitted at t, how many minutes later (+) or earlier (−) Melos reaches
+    the execution ground (watchBeat), and whether he still makes it after doing it.
+    The same algorithm as Sim.arrival_delta: minutes are computed in a world with window.latest removed, by settling to
+    the end both with and without doing it and comparing the scheduled times.
+    state must be settled to t first. Raises ValueError when effects cannot be merged with the registered changes
+    (check_effects' bad-state).
+
+    S-066 ①、契約 2.10：t に effects を提出すると、メロスが刑場（watchBeat）に何分遅れる（+）か早まる（−）か、
+    実行後もまだ間に合うか。
+    Sim.arrival_delta と同じアルゴリズム：分数は window.latest を外した世界で、実行した場合としない場合をそれぞれ
+    最後まで精算して予定時刻を比べる。
+    state は先に t まで settle しておく。effects が登録済みの変更と統合できない（check_effects の bad-state）ときは
+    ValueError を送出する。
+    """
     wb = world["clock"]["deadline"].get("watchBeat")
     loose = {**world, "beats": [{**b, "window": {**b["window"], "latest": BIG}} for b in world["beats"]]}
     event = {"t": t, "dt": 0, "origin": "action", "effects": list(effects)}
@@ -562,9 +788,17 @@ def arrival_delta(world: World, state: SimState, effects: Sequence[Effect], t: i
 
 
 def check_effects(world: World, state: SimState, effects: Iterable[Effect], origin: str | None) -> list[Problem]:
-    """效果本身合不合法：引用的 ID 存在、取值符合类型、op 用得对。origin 不是 "schedule" 时（叙事者的候选事件、
-    导演事件都不是）{op: beat, to: happened} 和改已经有结果的节拍也报，并按 StateVar.valueRequires（契约 1.6，C-16）
-    判。按 origin 区分，不按 actor：导演事件的 actor 也是 system。只查形状和引用；R1〜R7 是叙事者的。"""
+    """Whether the effects themselves are valid: referenced IDs exist, values match their types, ops are used
+    correctly. When origin is not "schedule" (neither the narrator's candidate events nor director events are),
+    {op: beat, to: happened} and changing a beat that already has a result are also reported, and
+    StateVar.valueRequires (contract 1.6, C-16) is checked. Distinguished by origin, not actor: director events also
+    have actor system. Only shape and references are checked; R1〜R7 belong to the narrator.
+
+    効果そのものが妥当か：参照する ID が存在し、値が型に合い、op の使い方が正しいか。origin が "schedule" でない
+    とき（ナレーターの候補イベントもディレクターイベントもそうでない）、{op: beat, to: happened} とすでに結果の
+    出たビートの変更も報告し、StateVar.valueRequires（契約 1.6、C-16）で判定する。actor ではなく origin で区別
+    する：ディレクターイベントの actor も system。調べるのは形と参照だけで、R1〜R7 はナレーターの担当。
+    """
     effects = list(effects)
     sim = Sim(world)
     chars = set(sim.chars)
@@ -574,7 +808,8 @@ def check_effects(world: World, state: SimState, effects: Iterable[Effect], orig
     templates = {x["id"] for c in world["characters"] for x in c.get("promiseTemplates", [])}
     run_facts = set(state["runFacts"])
     promises = {k: p["status"] for k, p in state["promises"].items()}
-    over = copy.deepcopy(state["overrides"])  # 同一批里前面的改动也算（merge_change）
+    # Earlier changes in the same batch count too (merge_change) / 同じバッチ内の前の変更も数える（merge_change）
+    over = copy.deepcopy(state["overrides"])
     system = origin == SCHEDULE
     out: list[Problem] = []
 
@@ -593,45 +828,82 @@ def check_effects(world: World, state: SimState, effects: Iterable[Effect], orig
         elif op == "inc":
             v = sim.svars.get(e.get("var", ""))
             if v is None or v["type"] not in ("int", "minutes"):
-                bad(i, "bad-op", f"inc 只能用于 int、minutes 变量：{e.get('var')}")
+                bad(
+                    i,
+                    "bad-op",
+                    f"inc only works on int and minutes variables / inc は int、minutes の変数専用: {e.get('var')}",
+                )
             elif not isinstance(e.get("by"), int) or isinstance(e.get("by"), bool):
-                bad(i, "bad-value", f"inc 的 by 要是整数：{e.get('by')!r}")
+                bad(
+                    i, "bad-value", f"inc's by must be an integer / inc の by は整数でなければならない: {e.get('by')!r}"
+                )
         elif op == "relocate":
             if e.get("character") not in chars or e.get("place") not in places:
-                bad(i, "unknown-id", f"relocate 引用不存在：{e.get('character')} → {e.get('place')}")
+                bad(
+                    i,
+                    "unknown-id",
+                    f"relocate references something that does not exist / relocate の参照先が存在しない:"
+                    f" {e.get('character')} → {e.get('place')}",
+                )
             if "spot" in e and not (isinstance(e["spot"], str) and SPOT.fullmatch(e["spot"])):
-                bad(i, "bad-value", f"relocate 的 spot 要是布局里的位置点名（小写 slug）：{e['spot']!r}")
+                bad(
+                    i,
+                    "bad-value",
+                    f"relocate's spot must be a spot name from the layout (lowercase slug)"
+                    f" / relocate の spot はレイアウトの立ち位置名（小文字の slug）でなければならない: {e['spot']!r}",
+                )
         elif op == "hold":
             it = items.get(e.get("item", ""))
             if not it or not it.get("portable"):
-                bad(i, "bad-op", f"hold 只能用于 portable 的物品：{e.get('item')}")
+                bad(
+                    i, "bad-op", f"hold only works on portable items / hold は portable なアイテム専用: {e.get('item')}"
+                )
             for k in ("to", "from"):
                 if k in e and e[k] is not None and not who(e[k]):
-                    bad(i, "unknown-id", f"hold.{k} 要是 player、人物 ID 或 null：{e[k]!r}")
+                    bad(
+                        i,
+                        "unknown-id",
+                        f"hold.{k} must be player, a character ID or null"
+                        f" / hold.{k} は player、登場人物 ID、null のいずれか: {e[k]!r}",
+                    )
             if "to" not in e:
-                bad(i, "bad-op", "hold 要写 to（null = 被拿走、用掉）")
+                bad(
+                    i,
+                    "bad-op",
+                    "hold needs to (null = taken away, used up) / hold には to が必要（null = 取られた、使い切った）",
+                )
         elif op == "learn":
-            if not who(e.get("character")):  # 1.7：玩家也能学（契约 2.1）
-                bad(i, "unknown-id", f"learn 的人物不存在：{e.get('character')}")
+            if not who(e.get("character")):  # 1.7: the player can learn too (contract 2.1) / プレイヤーも知れる
+                bad(
+                    i,
+                    "unknown-id",
+                    f"learn's character does not exist / learn の登場人物が存在しない: {e.get('character')}",
+                )
             if e.get("fact") not in facts and e.get("fact") not in run_facts:
-                bad(i, "unknown-id", f"learn 的事实不存在：{e.get('fact')}")
+                bad(i, "unknown-id", f"learn's fact does not exist / learn の事実が存在しない: {e.get('fact')}")
         elif op == "improv":
             if e.get("character") not in chars:
-                bad(i, "unknown-id", f"improv 的人物不存在：{e.get('character')}")
+                bad(
+                    i,
+                    "unknown-id",
+                    f"improv's character does not exist / improv の登場人物が存在しない: {e.get('character')}",
+                )
             if e.get("factId") in run_facts:
-                bad(i, "duplicate-id", f"即兴设定重复：{e.get('factId')}")
+                bad(i, "duplicate-id", f"Duplicate improvised fact / 即興設定の重複: {e.get('factId')}")
             run_facts.add(e.get("factId", ""))
         elif op == "promise":
             _check_promise(i, e, who, sim, templates, promises, bad)
         elif op == "beat":
             _check_beat(i, e, sim, state, over, system, bad)
         else:
-            bad(i, "bad-op", f"未知的效果 {op}")
-    if not system and not out:  # 形状都对了再按 valueRequires 判，规则照 Sim.value_requires（按每个 effect 之前的状态）
+            bad(i, "bad-op", f"Unknown effect / 未知の効果: {op}")
+    # Once every shape is right, check valueRequires, following Sim.value_requires (state before each effect)
+    # 形がすべて正しければ valueRequires で判定する。規則は Sim.value_requires どおり（各 effect の前の状態で）
+    if not system and not out:
         cur = flat(state)
         for i, e in enumerate(effects):
             for x in sim.value_requires([e], cur, origin):
-                msg = f"{x['var']} = {x['value']!r} 要 {x['when']}"
+                msg = f"{x['var']} = {x['value']!r} requires / には次が必要: {x['when']}"
                 out.append({"index": i, "code": "value-requires", "message": msg, "note": x["note"]})
             sim.apply([e], cur)
     return out
@@ -640,19 +912,19 @@ def check_effects(world: World, state: SimState, effects: Iterable[Effect], orig
 def _check_value(sim: Sim, places: set[str], var: Any, value: Any) -> str | None:
     v = sim.svars.get(var)
     if v is None:
-        return f"未定义的状态变量 {var}"
+        return f"Undefined state variable / 未定義の状態変数: {var}"
     ty = v["type"]
     if ty == "enum" and value not in v["values"]:
-        return f"{var} 的取值 {value!r} 不在枚举 {v['values']}"
+        return f"{var}: value {value!r} is not in the enum / 値が列挙にない: {v['values']}"
     if ty == "bool" and not isinstance(value, bool):
-        return f"{var} 要 bool，得到 {value!r}"
+        return f"{var} needs a bool, got / bool が必要だが次を受け取った: {value!r}"
     if ty in ("int", "minutes"):
         if not isinstance(value, int) or isinstance(value, bool):
-            return f"{var} 要整数，得到 {value!r}"
+            return f"{var} needs an integer, got / 整数が必要だが次を受け取った: {value!r}"
         if not v.get("min", -BIG) <= value <= v.get("max", BIG):
-            return f"{var} 的取值 {value} 超出 {v.get('min')}〜{v.get('max')}"
+            return f"{var}: value {value} is out of range / 値が範囲外: {v.get('min')}〜{v.get('max')}"
     if ty == "place" and value not in places:
-        return f"{var} 要地点 ID，得到 {value!r}"
+        return f"{var} needs a place ID, got / 場所 ID が必要だが次を受け取った: {value!r}"
     return None
 
 
@@ -663,24 +935,31 @@ def _check_promise(
     if change == "made":
         for k in ("from", "to"):
             if not who(e.get(k)):
-                bad(i, "unknown-id", f"promise.{k} 要是 player 或人物 ID：{e.get(k)!r}")
+                bad(
+                    i,
+                    "unknown-id",
+                    f"promise.{k} must be player or a character ID"
+                    f" / promise.{k} は player か登場人物 ID でなければならない: {e.get(k)!r}",
+                )
         if not e.get("text"):
-            bad(i, "bad-value", "promise made 要有 text")
+            bad(i, "bad-value", "promise made needs text / promise made には text が必要")
         if e.get("template") and e["template"] not in templates:
-            bad(i, "unknown-id", f"promise.template 不存在：{e['template']}")
+            bad(i, "unknown-id", f"promise.template does not exist / promise.template が存在しない: {e['template']}")
         if e.get("due", {}).get("beat") and e["due"]["beat"] not in sim.beats:
-            bad(i, "unknown-id", f"promise.due.beat 不存在：{e['due']['beat']}")
+            bad(i, "unknown-id", f"promise.due.beat does not exist / promise.due.beat が存在しない: {e['due']['beat']}")
         if pid and pid in promises:
-            bad(i, "duplicate-id", f"约定重复：{pid}")
+            bad(i, "duplicate-id", f"Duplicate promise / 約束の重複: {pid}")
         if pid:
             promises[pid] = "open"
     elif change in ("kept", "broken", "voided"):
         if not pid or promises.get(pid) != "open":
-            bad(i, "bad-state", f"只有 open 的约定能变成 {change}：{pid}")
+            bad(
+                i, "bad-state", f"Only an open promise can become {change} / open の約束だけが {change} になれる: {pid}"
+            )
         else:
             promises[pid] = change
     else:
-        bad(i, "bad-value", f"promise.change 不认识：{change!r}")
+        bad(i, "bad-value", f"Unrecognized promise.change / 不明な promise.change: {change!r}")
 
 
 def _check_beat(
@@ -688,34 +967,47 @@ def _check_beat(
 ) -> None:
     bid, to = e.get("beat"), e.get("to")
     if bid not in sim.beats:
-        bad(i, "unknown-id", f"节拍不存在：{bid}")
+        bad(i, "unknown-id", f"Beat does not exist / ビートが存在しない: {bid}")
         return
     if to not in ("happened", "prevented", "delayed", "hastened", "altered"):
-        bad(i, "bad-value", f"beat.to 不认识：{to!r}")
+        bad(i, "bad-value", f"Unrecognized beat.to / 不明な beat.to: {to!r}")
         return
     ok = True
     if to in ("delayed", "hastened"):
         m = e.get("minutes")
         if not isinstance(m, int) or isinstance(m, bool) or m < 0:
-            bad(i, "bad-value", f"{to} 要写 minutes（≥ 0 的整数）：{m!r}")
+            bad(i, "bad-value", f"{to} needs minutes (an integer ≥ 0) / {to} には minutes（0 以上の整数）が必要: {m!r}")
             ok = False
     if to == "altered" and not system and not isinstance(e.get("outcomes"), list):
-        bad(i, "bad-value", "altered 要写 outcomes（改变后的结果）")
+        bad(i, "bad-value", "altered needs outcomes (the changed result) / altered には outcomes（変更後の結果）が必要")
         ok = False
     if bid in state["beats"]:
-        bad(i, "beat-has-result", f"{bid} 已经有结果（{state['beats'][bid]}）")
+        bad(i, "beat-has-result", f"{bid} already has a result / すでに結果がある ({state['beats'][bid]})")
     elif not system and to == "happened":
-        bad(i, "beat-happened", f"候选事件不能让 {bid} 直接发生（节拍到点由系统结算）")
+        bad(
+            i,
+            "beat-happened",
+            f"A candidate event cannot make {bid} happen directly (due beats are settled by the system)"
+            f" / 候補イベントは {bid} を直接起こせない（期限に達したビートはシステムが精算する）",
+        )
     elif system and to in ("delayed", "hastened"):
-        bad(i, "bad-value", f"系统事件里的 beat 只能是 happened / altered / prevented：{to}")
+        bad(
+            i,
+            "bad-value",
+            f"beat in a system event can only be happened / altered / prevented"
+            f" / システムイベントの beat は happened / altered / prevented のみ: {to}",
+        )
     elif not system and ok:
         why = change_conflict(over.get(bid), e)
         if why:
-            bad(i, "bad-state", f"{bid}：{why}")
+            bad(i, "bad-state", f"{bid}: {why}")
         else:
             merge_change(over, e)
 
 
 def _same_world(world: World, state: SimState) -> None:
     if world["worldModelVersion"] != state["worldModelVersion"]:
-        raise ValueError(f"状态是 {state['worldModelVersion']} 的，世界模型是 {world['worldModelVersion']}")
+        raise ValueError(
+            f"The state is for {state['worldModelVersion']} but the world model is {world['worldModelVersion']}"
+            f" / 状態は {state['worldModelVersion']} のもので、世界モデルは {world['worldModelVersion']}"
+        )

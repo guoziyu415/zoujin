@@ -1,6 +1,11 @@
-"""网关、叙事者、评测入口共用的读写：开局、排一轮、读事件和状态。
+"""Reads and writes shared by the gateway, the narrator and the eval entry point: starting a playthrough, queueing a
+turn, reading events and state.
 
-事务由调用方开（`async with engine.begin() as c`），这里只在给定的连接上执行。
+The caller opens the transaction (`async with engine.begin() as c`); this module only executes on the given connection.
+
+ゲートウェイ、ナレーター、評価の入口が共有する読み書き：プレイの開始、ターンのキュー投入、イベントと状態の読み出し。
+
+トランザクションは呼び出し側が開く（`async with engine.begin() as c`）。ここでは渡された接続の上で実行するだけ。
 """
 
 from __future__ import annotations
@@ -24,7 +29,11 @@ Json = Any
 
 
 async def create_playthrough(c: AsyncConnection, ids: IdGen, *, user_id: str, book: Book, role_id: str) -> str:
-    """开局：一局的行、指标行和一个 open 任务（叙事者写开局事件）。返回 playthroughId。"""
+    """Start a playthrough: the playthrough row, the metrics row and one open task (the narrator writes the opening
+    events). Returns the playthroughId.
+
+    プレイの開始：プレイの行、指標の行、open タスク 1 件（ナレーターが開始イベントを書く）。playthroughId を返す。
+    """
     pid = ids.new("pt")
     await c.execute(
         insert(playthroughs).values(
@@ -34,7 +43,9 @@ async def create_playthrough(c: AsyncConnection, ids: IdGen, *, user_id: str, bo
             world_model_version=book.version,
             role_id=role_id,
             status="active",
-            arrival=roles.start_arrival(book, role_id),  # B-19：开局先开口的人（和幕切换落地同一套）
+            # B-19: who speaks first at the start (same logic as landing after an act change)
+            # B-19：開始時に先に口を開く人（幕の切り替え後の着地と同じ仕組み）
+            arrival=roles.start_arrival(book, role_id),
         )
     )
     await c.execute(insert(playthrough_metrics).values(playthrough_id=pid))
@@ -60,13 +71,28 @@ async def enqueue(
     created_at: Any = None,
     flags: Iterable[str] | None = None,
 ) -> str:
-    """排一个叙事者任务。幂等键就是 turnId：重试用同一个，这一轮写的事件的键都以它开头。
-    created_at 用 clock_timestamp()，同一个事务里排的几个也分得出先后。
-    status="lost"：断线时人物还没说完的一轮，只留记录（welcome 的 lastTurn），叙事者不处理。
-    request：动作和幕末的请求（B-3），不放原话（原话在 utterances）。
-    commit_after：叙事者最早在几秒以后提交（B-4 作废的窗口，按库的时钟算）；None = 判完就提交。
-    created_at：排队的时刻（草稿到期的超时任务排在到期那一刻，B-4）。
-    flags：第 0 步安全筛查的标记（B-12），叙事者按它们判。"""
+    """Queue one narrator task. The idempotency key is the turnId: retries use the same one, and the keys of the events
+    written by this turn all start with it.
+    created_at uses clock_timestamp(), so several tasks queued in the same transaction still have an order.
+    status="lost": a turn where the character had not finished speaking when the connection dropped; only kept as a
+    record (welcome's lastTurn), the narrator does not process it.
+    request: the action and end-of-act request (B-3), without the original words (those are in utterances).
+    commit_after: the earliest number of seconds after which the narrator commits (B-4's retract window, by the DB
+    clock); None = commit as soon as judged.
+    created_at: the time it is queued (a timeout task for an expired draft is queued at the moment it expired, B-4).
+    flags: the step-0 safety screening flags (B-12); the narrator judges by them.
+
+    ナレーターのタスクを 1 件キューに入れる。冪等キーは turnId そのもの：再試行では同じものを使い、このターンが書く
+    イベントのキーはすべてそれで始まる。
+    created_at には clock_timestamp() を使うので、同じトランザクションで入れた複数件でも前後が区別できる。
+    status="lost"：接続が切れたとき登場人物がまだ話し終えていなかったターン。記録だけ残し（welcome の lastTurn）、
+    ナレーターは処理しない。
+    request：アクションと幕末のリクエスト（B-3）。発話の原文は入れない（原文は utterances にある）。
+    commit_after：ナレーターが最短で何秒後にコミットするか（B-4 の取り消し可能な時間、DB の時計で数える）。
+    None = 判定が終わったらすぐコミット。
+    created_at：キューに入れた時刻（草稿が期限切れになったときのタイムアウトタスクは期限の時刻に入れる、B-4）。
+    flags：第 0 段階の安全スクリーニングのフラグ（B-12）。ナレーターはそれに従って判定する。
+    """
     turn_id = turn_id or ids.new("turn")
     await c.execute(
         insert(turns).values(
@@ -89,15 +115,22 @@ async def enqueue(
     return turn_id
 
 
-# —— 作废（B-4，api-contract 3.6）——
+# —— Retract (B-4, api-contract 3.6) / 取り消し（B-4、api-contract 3.6）——
 
 RETRACTABLE = ("talk", "plan")
 
 
 async def retract_queued(c: AsyncConnection, pid: str, turn_id: str) -> str | None:
-    """已经交给叙事者、还没提交的一轮（pending / leased）改成 retracted，原话清空、记 deleted_at（行留着），
-    turns_retracted 加 1。和叙事者的提交谁先拿到这一轮的行锁谁算数（叙事者只认 leased）。返回这一轮的 kind；
-    已经提交了、不认识、不能作废的返回 None（too_late）。"""
+    """Mark a turn already handed to the narrator but not yet committed (pending / leased) as retracted: clear the
+    original words, set deleted_at (the row stays) and add 1 to turns_retracted. Whichever of this and the narrator's
+    commit gets the turn's row lock first wins (the narrator only accepts leased). Returns the turn's kind; returns
+    None (too_late) if it is already committed, unknown or cannot be retracted.
+
+    ナレーターに渡したがまだコミットしていないターン（pending / leased）を retracted にし、発話の原文を消して
+    deleted_at を記録し（行は残す）、turns_retracted に 1 を足す。ナレーターのコミットと、このターンの行ロックを
+    先に取った方が有効（ナレーターは leased だけを受け付ける）。このターンの kind を返す。すでにコミット済み、
+    不明、取り消せないものは None（too_late）を返す。
+    """
     row = (
         await c.execute(
             update(turns)
@@ -127,11 +160,15 @@ async def count_retracted(c: AsyncConnection, pid: str) -> None:
     )
 
 
-# —— 意图确认的草稿（B-4，api-contract 3.9）——
+# —— Intent-confirmation drafts (B-4, api-contract 3.9) / 意図確認の草稿（B-4、api-contract 3.9）——
 
 
 async def count(c: AsyncConnection, pid: str, **by: float) -> None:
-    """playthrough_metrics 的计数、花费加几（B-12 的安全和输出侧；行不存在就不加，局已经删了）。"""
+    """Add to the counts and spend in playthrough_metrics (B-12's safety and output side; nothing is added if the row
+    does not exist, i.e. the playthrough has been deleted).
+
+    playthrough_metrics の件数と費用に加算する（B-12 の安全と出力側。行がなければ加算しない＝プレイは削除済み）。
+    """
     if not by:
         return
     await c.execute(
@@ -142,7 +179,10 @@ async def count(c: AsyncConnection, pid: str, **by: float) -> None:
 
 
 async def safety_state(c: AsyncConnection, pid: str, *, lock: bool = False) -> dict[str, Any]:
-    """这一局安全筛查的状态（B-12）：{paused, hinted, ambiguous}。"""
+    """This playthrough's safety screening state (B-12): {paused, hinted, ambiguous}.
+
+    このプレイの安全スクリーニングの状態（B-12）：{paused, hinted, ambiguous}。
+    """
     q = select(playthroughs.c.safety).where(playthroughs.c.playthrough_id == pid)
     if lock:
         q = q.with_for_update()
@@ -155,7 +195,11 @@ async def set_safety(c: AsyncConnection, pid: str, state: Mapping[str, Any]) -> 
 
 
 async def open_draft(c: AsyncConnection, pid: str, *, lock: bool = False) -> dict[str, Any] | None:
-    """这一局开着的草稿（最多一个）。lock：锁住这一行（写回答的任务、关掉草稿时）。"""
+    """This playthrough's open draft (at most one). lock: lock the row (when writing the answer task or closing the
+    draft).
+
+    このプレイで開いている草稿（多くても 1 つ）。lock：その行をロックする（回答のタスクを書くとき、草稿を閉じるとき）。
+    """
     q = select(drafts).where(drafts.c.playthrough_id == pid).order_by(drafts.c.created_at).limit(1)
     if lock:
         q = q.with_for_update()
@@ -164,7 +208,12 @@ async def open_draft(c: AsyncConnection, pid: str, *, lock: bool = False) -> dic
 
 
 async def answered(c: AsyncConnection, pid: str, draft_id: str) -> bool:
-    """这个草稿已经有一行回答的任务（按钮、声音、超时，谁先写谁算）。做失败了的不算：草稿还开着，超时还能关掉它。"""
+    """This draft already has an answer task row (button, voice or timeout; whichever is written first counts). Failed
+    ones do not count: the draft is still open and the timeout can still close it.
+
+    この草稿にはすでに回答のタスクの行がある（ボタン、音声、タイムアウトのうち先に書いた方が有効）。失敗したものは
+    数えない：草稿はまだ開いていて、タイムアウトで閉じることができる。
+    """
     found = await c.scalar(
         select(turns.c.turn_id).where(
             turns.c.playthrough_id == pid,
@@ -179,8 +228,14 @@ async def answered(c: AsyncConnection, pid: str, draft_id: str) -> bool:
 async def answer_draft(
     c: AsyncConnection, ids: IdGen, pid: str, draft_id: str, option_id: str | None, by: str, *, at: Any = None
 ) -> str | None:
-    """给开着的草稿写一行 `kind: "confirm"` 的任务（叙事者按局排队处理）。草稿不在了、已经有回答的，什么都不写，
-    返回 None。锁住草稿那一行再查，按钮、声音和超时同时来时只写一行。"""
+    """Write a `kind: "confirm"` task for the open draft (the narrator processes them queued per playthrough). If the
+    draft is gone or already answered, write nothing and return None. The check runs after locking the draft row, so
+    when a button, voice and timeout arrive at the same time only one row is written.
+
+    開いている草稿に `kind: "confirm"` のタスクを 1 行書く（ナレーターはプレイごとにキューで処理する）。草稿がもうない、
+    またはすでに回答があれば何も書かず None を返す。草稿の行をロックしてから確認するので、ボタン・音声・タイムアウトが
+    同時に来ても 1 行しか書かない。
+    """
     row = await c.scalar(
         select(drafts.c.draft_id).where(drafts.c.draft_id == draft_id, drafts.c.playthrough_id == pid).with_for_update()
     )
@@ -192,7 +247,12 @@ async def answer_draft(
 
 
 async def expire_drafts(c: AsyncConnection, ids: IdGen, pid: str) -> list[str]:
-    """到期了、还没有回答的草稿写超时的任务，排在到期的那一刻（之前来的回答先算）。返回写了的草稿 ID。"""
+    """Write timeout tasks for expired, unanswered drafts, queued at the moment they expired (answers that came before
+    count first). Returns the IDs of the drafts written.
+
+    期限切れでまだ回答のない草稿にタイムアウトのタスクを書き、期限の時刻に入れる（それより前に来た回答が優先）。
+    書いた草稿の ID を返す。
+    """
     rows = (
         await c.execute(
             select(drafts.c.draft_id, drafts.c.expires_at)
@@ -209,7 +269,12 @@ async def expire_drafts(c: AsyncConnection, ids: IdGen, pid: str) -> list[str]:
 
 @dataclass
 class Run:
-    """一局上不是事件、不进 WorldState 的几样（B-3，迁移 0003）：叙事者在提交的事务里读、改、写回，网关只读。"""
+    """The bits of a playthrough that are not events and do not go into WorldState (B-3, migration 0003): the narrator
+    reads, changes and writes them back in the commit transaction; the gateway only reads them.
+
+    プレイのうちイベントではなく WorldState にも入らないもの（B-3、マイグレーション 0003）：ナレーターがコミットの
+    トランザクション内で読み、変更し、書き戻す。ゲートウェイは読むだけ。
+    """
 
     player_spot: str | None = None
     played: list[str] = field(default_factory=list)
@@ -244,9 +309,16 @@ PLAN_TEXT_CLEARED = "cleared"
 
 
 async def clear_plan_texts(c: AsyncConnection, pid: str, turn_ids: list[str] | None = None) -> int:
-    """幕末打算的转述（label、narration、替代去处的 label）从 turns.result 里清掉（B-3 第 4 条，data-design 5.2、5.3）：
-    記憶帳按轮删除（L1）给那几轮，结局以后给 None（这一局全部）。事件里的 plan.label 不动（事件不删，写入前已过滤）。
-    返回清了几轮。"""
+    """Clear the retelling of end-of-act plans (label, narration, the alternative destination's label) from
+    turns.result (B-3 item 4, data-design 5.2, 5.3): per-turn deletion from the 記憶帳 (L1) passes those turns, after
+    the ending pass None (the whole playthrough). plan.label in events is untouched (events are not deleted and were
+    filtered before writing). Returns how many turns were cleared.
+
+    幕末のプランの言い換え（label、narration、代わりの行き先の label）を turns.result から消す（B-3 第 4 項、
+    data-design 5.2・5.3）：記憶帳のターンごとの削除（L1）ではそのターンを渡し、エンディングの後は
+    None（このプレイ全部）を渡す。イベント内の plan.label には触れない（イベントは削除せず、
+    書き込む前にフィルター済み）。消したターン数を返す。
+    """
     q = select(turns.c.turn_id, turns.c.result).where(turns.c.playthrough_id == pid, turns.c.kind == "plan")
     if turn_ids is not None:
         q = q.where(turns.c.turn_id.in_(turn_ids))
@@ -303,7 +375,10 @@ async def playthrough(c: AsyncConnection, pid: str) -> dict[str, Any] | None:
 
 
 async def sim_state(c: AsyncConnection, pid: str) -> SimState | None:
-    """world_state 缓存里的 SimState（开局任务还没做完时为 None）。"""
+    """The SimState in the world_state cache (None while the opening task has not finished).
+
+    world_state キャッシュの SimState（開始タスクがまだ終わっていなければ None）。
+    """
     st = await c.scalar(select(world_state.c.state).where(world_state.c.playthrough_id == pid))
     return cast(SimState, st) if st is not None else None
 
@@ -311,7 +386,10 @@ async def sim_state(c: AsyncConnection, pid: str) -> SimState | None:
 async def event_log(
     c: AsyncConnection, pid: str, version: str, *, after_seq: int = 0, upto_seq: int | None = None
 ) -> list[Json]:
-    """事件日志里 after_seq 之后（到 upto_seq 为止）的完整事件，按 seq。"""
+    """Full events in the event log after after_seq (up to upto_seq), in seq order.
+
+    イベントログのうち after_seq より後（upto_seq まで）の完全なイベント。seq 順。
+    """
     q = select(events).where(events.c.playthrough_id == pid, events.c.seq > after_seq)
     if upto_seq is not None:
         q = q.where(events.c.seq <= upto_seq)
@@ -320,7 +398,10 @@ async def event_log(
 
 
 def replay(book: Book, role_id: str, log: list[Json], upto_seq: int | None = None) -> SimState:
-    """初值 + 按 seq 应用全部事件（data-design 4.4）。"""
+    """Initial value + every event applied in seq order (data-design 4.4).
+
+    初期値 + 全イベントを seq 順に適用（data-design 4.4）。
+    """
     state = initial_state(book.world, role_id)
     for ev in log:
         if upto_seq is not None and ev["seq"] > upto_seq:

@@ -1,24 +1,64 @@
-"""一条连接上的 Live 会话（B-10，backend-design 3.2）：预热、切换、定期重建、GoAway、中途断了、中途更新局势、闲置关闭、
-花费。`ws.py` 只调这里；会话放在 `Conn.sessions`（B-4 的作废、意图确认、落地也看它）。
+"""Live sessions on one connection (B-10, backend-design 3.2): warm-up, switching, periodic rebuilds, GoAway, dropping
+mid-way, mid-session situation updates, idle closing, cost. `ws.py` only calls into here; sessions live in
+`Conn.sessions` (B-4's retraction, intent confirmation and landing look at it too).
 
-| 情况 | 做法 |
-|---|---|
-| `near` | 2 秒去抖后预热（不推消息）。一条连接最多 1 个 focus 的 + 1 个预热，预热别人时关掉旧的预热 |
-| `far` | 取消还没开始的预热 |
-| `focus` | 会话在、活着：照旧就绪；正在开或没有：`session_preparing { switch }`，开好推 `session_ready` |
-| 定期重建 | 完成第 N 轮（`ZJ_LIVE_REBUILD_TURNS`，7〜10，默认 8）以后，在停顿处后台开新会话，换上、关旧的。不推消息 |
-| GoAway | 同上，立即开始 |
-| 中途断了 | 那一轮按被打断收（`ws.py`）；然后 `session_preparing { rebuild }` 重开（玩家不在看他就不推） |
-| 开不起来 | 连续 2 次（或配额、账本到上限）：`degraded { voice: false }`，这条连接先不开语音，下一次 `focus` 再试 |
-| 预算、每天、开关（B-14） | `degraded { budget / daily / service }`，`focus` 不开会话、人物文字回答 |
-| 剩 5 分钟（B-14） | 今天的语音时间剩 5 分钟推一次 `limits`（一条连接一次） |
-| 叙事者提交了 | 开着的会话里局势变了就 `note()` 送变了的条目；在说话的一轮里不送，等这一轮交上去 |
-| 闲置 | 离开人物 2 分钟关掉（按 `ZJ_SPEED` 缩短；速度 0 时不关，测试另设） |
-| 断线（B-11） | 会话、最近对话、监控寄存进 `Gateway.parked`；说到一半的人物关掉。会话 30 秒、其余 10 分没人接就丢 |
-| 重连的 `hello` | 接手寄存的：会话装回来（重新 `focus` 立即就绪），最近对话和监控接着用；局势变了送一段说明 |
+- `near`: warm up after a 2-second debounce (no message pushed). At most 1 focused + 1 warmed session per connection;
+  warming someone else closes the old warmed one.
+- `far`: cancel a warm-up that hasn't started.
+- `focus`: session present and alive: ready as before; being opened or missing: `session_preparing { switch }`, then
+  `session_ready` once open.
+- Periodic rebuild: after the Nth turn (`ZJ_LIVE_REBUILD_TURNS`, 7〜10, default 8), open a new session in the
+  background at a pause, swap it in and close the old one. No message pushed.
+- GoAway: same as above, started immediately.
+- Dropped mid-way: that turn is closed out as interrupted (`ws.py`); then reopen with `session_preparing { rebuild }`
+  (not pushed if the player isn't looking at that character).
+- Fails to open: 2 times in a row (or quota, or the ledger at its cap): `degraded { voice: false }`; this connection
+  keeps voice off for now and tries again on the next `focus`.
+- Budget, daily, switch (B-14): `degraded { budget / daily / service }`; `focus` opens no session and characters answer
+  in text.
+- 5 minutes left (B-14): push `limits` once when today's voice time has 5 minutes left (once per connection).
+- Narrator committed: if the situation changed in an open session, `note()` sends the changed entries; not during a
+  turn in which someone is speaking, but after that turn is handed over.
+- Idle: close 2 minutes after leaving the character (shortened by `ZJ_SPEED`; not closed at speed 0; tests set it
+  separately).
+- Disconnect (B-11): sessions, recent conversation and the monitor are parked in `Gateway.parked`; a character cut off
+  mid-sentence is closed. Sessions are dropped after 30 seconds and the rest after 10 minutes if no one takes them over.
+- Reconnecting `hello`: takes over what was parked: sessions are put back (a new `focus` is ready immediately), recent
+  conversation and the monitor carry on; if the situation changed, a description is sent.
 
-「停顿」= 这个人物没有还没交上去的一轮（`Turn.submitted`）。换会话前一直等停顿；开新会话期间又说了一轮，新会话里没有
-那一轮，就丢掉重开。
+"Pause" = the character has no turn not yet handed over (`Turn.submitted`). Swapping sessions always waits for a pause;
+if another turn is spoken while the new session is opening, the new session lacks that turn, so it is dropped and
+reopened.
+
+1 本の接続上の Live セッション（B-10、backend-design 3.2）：ウォームアップ、切り替え、定期的な作り直し、GoAway、
+途中の切断、途中の状況更新、アイドル時のクローズ、費用。`ws.py` はここを呼ぶだけ。セッションは `Conn.sessions`
+に置く（B-4 の取り消し、意図の確認、着地もこれを見る）。
+
+- `near`：2 秒のデバウンス後にウォームアップ（メッセージは送らない）。1 本の接続で focus 中 1 つ＋
+  ウォームアップ 1 つまで。別の人をウォームアップするときは古いウォームアップを閉じる。
+- `far`：まだ始まっていないウォームアップを取り消す。
+- `focus`：セッションがあって生きている：そのまま準備完了。開いている最中かない：`session_preparing { switch }`、
+  開いたら `session_ready` を送る。
+- 定期的な作り直し：第 N ターン（`ZJ_LIVE_REBUILD_TURNS`、7〜10、既定 8）を終えたら、間（ま）のところで裏で新しい
+  セッションを開き、入れ替えて古いものを閉じる。メッセージは送らない。
+- GoAway：同上、すぐに始める。
+- 途中で切れた：そのターンは割り込まれたものとして締める（`ws.py`）。それから `session_preparing { rebuild }`
+  で開き直す（プレイヤーがその人を見ていなければ送らない）。
+- 開けない：2 回続けて（またはクォータ、台帳が上限）：`degraded { voice: false }`。この接続ではひとまず音声を使わず、
+  次の `focus` でもう一度試す。
+- 予算、1 日の上限、スイッチ（B-14）：`degraded { budget / daily / service }`。`focus` はセッションを開かず、
+  登場人物は文字で答える。
+- 残り 5 分（B-14）：今日の音声時間が残り 5 分になったら `limits` を 1 回送る（接続ごとに 1 回）。
+- ナレーターが commit した：開いているセッションで状況が変わったら `note()` で変わった項目を送る。
+  話している最中のターンでは送らず、そのターンが渡されるのを待つ。
+- アイドル：登場人物から離れて 2 分で閉じる（`ZJ_SPEED` で短縮。速度 0 なら閉じない。テストは別に設定）。
+- 切断（B-11）：セッション、直近の会話、モニターを `Gateway.parked` に預ける。話の途中の登場人物は閉じる。
+  誰も引き継がなければセッションは 30 秒、そのほかは 10 分で捨てる。
+- 再接続の `hello`：預けたものを引き継ぐ：セッションを戻し（あらためて `focus` すればすぐ準備完了）、
+  直近の会話とモニターはそのまま使う。状況が変わっていれば説明を送る。
+
+「間（ま）」= その登場人物にまだ渡していないターン（`Turn.submitted`）がないこと。セッションの入れ替えは常に間を待つ。
+新しいセッションを開いている間にまた 1 ターン話されたら、新しいセッションにはそのターンがないので、捨てて開き直す。
 """
 
 from __future__ import annotations
@@ -49,21 +89,40 @@ log = logging.getLogger("zoujin.gateway")
 
 Json = Any
 
-SESSION_ETA_MS = 800  # 预热、切换人物、重建会话（api-contract 3.5 的例子）
-WARM_DEBOUNCE_S = 2.0  # near 的服务端去抖（3.2）
-IDLE_S = 120.0  # 离开人物 2 分钟关闭（ux-design 7.2）
+# Warm-up, switching characters, rebuilding a session (the example in api-contract 3.5).
+# ウォームアップ、登場人物の切り替え、セッションの作り直し（api-contract 3.5 の例）。
+SESSION_ETA_MS = 800
+WARM_DEBOUNCE_S = 2.0  # server-side debounce for near (3.2) / near のサーバー側デバウンス（3.2）
+IDLE_S = 120.0  # close 2 minutes after leaving the character (ux-design 7.2) / 離れて 2 分で閉じる（ux-design 7.2）
 MAX_OPEN_FAILS = 2
-SWAP_RETRIES = 3  # 开新会话期间又说了一轮：丢掉重开，最多几次
-NEXT_TURN_USD = 0.03  # 下一轮的预计（账本到上限的判断，偏高：30 轮时每轮约 0.029 美元，S-073 ⑤）
-RESUME_HOLD_S = 30.0  # B-11：断线后寄存的会话留几秒（前端 1、2、4、8 秒退避重连，合计 15 秒）
-RECENT_HOLD_S = 600.0  # B-11：断线后最近对话留几秒（同 Live 单个连接的寿命）
+# Another turn was spoken while a new session was opening: drop and reopen, at most this many times.
+# 新しいセッションを開いている間にまた 1 ターン話された：捨てて開き直す。その最大回数。
+SWAP_RETRIES = 3
+# Estimate for the next turn (for the ledger-cap check, on the high side: about $0.029 per turn at 30 turns, S-073 ⑤).
+# 次のターンの見込み（台帳の上限の判定用、高めに：30 ターンで 1 ターン約 0.029 ドル、S-073 ⑤）。
+NEXT_TURN_USD = 0.03
+# B-11: how long a session parked after a disconnect is kept (the frontend reconnects with 1, 2, 4, 8 s backoff,
+# 15 s in total).
+# B-11：切断後に預けたセッションを残す秒数（フロントエンドは 1、2、4、8 秒のバックオフで再接続、計 15 秒）。
+RESUME_HOLD_S = 30.0
+# B-11: how long recent conversation is kept after a disconnect (same as the lifetime of a single Live connection).
+# B-11：切断後に直近の会話を残す秒数（Live の 1 接続の寿命と同じ）。
+RECENT_HOLD_S = 600.0
 
 
 @dataclass
 class Parked:
-    """断线后寄存的语音的东西（B-11），只在网关内存里。`recent` 和旧连接的是同一份：断线那一轮交完照常进来。
-    `monitor` 也是旧连接的那一个（B-12：说漏的词、连续剧透的计数、问句、似是而非之后的缓和），和最近对话一样留 10 分钟：
-    重连以后新会话的最近对话照样去掉说漏的那几句，纠正提示照样带上。"""
+    """Voice state parked after a disconnect (B-11), only in the gateway's memory. `recent` is the same object as the
+    old connection's: the turn cut off by the disconnect still lands in it once handed over. `monitor` is also the
+    old connection's (B-12: terms let slip, the consecutive-spoiler count, questions, the calming after an ambiguous
+    line), kept 10 minutes like the recent conversation: after reconnecting, the new session's recent conversation
+    still leaves out the lines that let something slip, and the corrective hints are still included.
+
+    切断後に預けた音声まわりのもの（B-11）。ゲートウェイのメモリ内だけにある。`recent` は古い接続と同じもので、
+    切断時のターンも渡し終えればいつもどおりここに入る。`monitor` も古い接続のもの（B-12：うっかり口にした語、
+    続いたネタバレの回数、質問、どちらとも取れる発言のあとの和らげ）で、直近の会話と同じく 10 分残す：
+    再接続後も新しいセッションの直近の会話からうっかり口にした発言を除き、訂正のヒントも付ける。
+    """
 
     sessions: dict[str, LiveSession]
     recent: dict[str, list[tuple[str, Recent]]]
@@ -92,20 +151,34 @@ class Voices:
     conn: Conn
     opening: dict[str, asyncio.Task[LiveSession]] = field(default_factory=dict)
     swapping: dict[str, asyncio.Task[None]] = field(default_factory=dict)
-    facts: dict[str, tuple[str, ...]] = field(default_factory=dict)  # 上次送进这个人物会话的局势条目
-    stale: set[str] = field(default_factory=set)  # 局势变了、还没送（在说话的一轮里）
+    # Situation entries last sent into this character's session. / この登場人物のセッションに前回送った状況の項目。
+    facts: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    # The situation changed but hasn't been sent yet (during a speaking turn).
+    # 状況が変わったがまだ送っていない（話している最中のターン）。
+    stale: set[str] = field(default_factory=set)
     warm_task: asyncio.Task[None] | None = None
     warm_for: str | None = None
     idle: dict[str, asyncio.Task[None]] = field(default_factory=dict)
     fails: int = 0
-    resumed_at: float | None = None  # B-11：hello 的时刻，重新 focus 后第一次就绪记 gateway.resume_ready
-    parked_once: bool = False  # B-11：这条连接已经寄存过了（4009 时先寄存、断开时不再寄存）
-    off: str | None = None  # 降级的原因（service / budget / daily）；Live 开不起来的下一次 focus 再试
-    warned: bool = False  # B-14：这条连接推过「今天剩 5 分钟」的 limits
-    tier: str = "normal"  # B-14：上次开会话时这一局的预算档（节约档的局势说明短一些）
-    idle_s: float | None = None  # None：按 ZJ_SPEED 算；测试直接设
+    # B-11: time of the hello; the first ready after focusing again records gateway.resume_ready.
+    # B-11：hello の時刻。あらためて focus した後の最初の準備完了で gateway.resume_ready を記録する。
+    resumed_at: float | None = None
+    # B-11: this connection has already parked (on 4009 it parks first and doesn't park again on disconnect).
+    # B-11：この接続はすでに預けた（4009 のときは先に預け、切断時にはもう預けない）。
+    parked_once: bool = False
+    # Reason for degrading (service / budget / daily); if Live fails to open, the next focus tries again.
+    # 縮退の理由（service / budget / daily）。Live が開けなかった場合は次の focus でもう一度試す。
+    off: str | None = None
+    # B-14: this connection has pushed the "5 minutes left today" limits.
+    # B-14：この接続で「今日は残り 5 分」の limits を送った。
+    warned: bool = False
+    # B-14: the playthrough's budget tier when the session was last opened (economy tier has a shorter situation).
+    # B-14：前回セッションを開いたときのこのプレイの予算モード（節約モードでは状況説明が短い）。
+    tier: str = "normal"
+    # None: computed from ZJ_SPEED; tests set it directly. / None：ZJ_SPEED から計算する。テストでは直接設定する。
+    idle_s: float | None = None
 
-    # —— 小工具 ——
+    # —— Small helpers / 小道具 ——
 
     @property
     def sessions(self) -> dict[str, LiveSession]:
@@ -120,7 +193,10 @@ class Voices:
         return self.conn.gw.settings.live_rebuild_turns
 
     def busy(self, character: str) -> bool:
-        """这个人物有还没交上去的一轮（停顿 = 不 busy）。"""
+        """The character has a turn not yet handed over (pause = not busy).
+
+        この登場人物にまだ渡していないターンがある（間 = busy でない）。
+        """
         t = self.conn.turn
         return t is not None and t.character == character and not t.submitted.is_set()
 
@@ -133,10 +209,11 @@ class Voices:
             pt = await gw.pt(c, pid)
             st = await store.sim_state(c, pid)
             self.tier = await budget.tier_of(c, pid)
-            limit = budget.policy(self.tier).memory_inject  # 节约档记忆 8 → 4（B-14）
+            # Memories 8 → 4 in economy tier (B-14). / 節約モードでは記憶 8 → 4（B-14）。
+            limit = budget.policy(self.tier).memory_inject
             remembered = await memory.memories_for_brief(c, pid, character, limit)
             if pt is None or st is None:
-                raise LiveLost("这一局没有状态")
+                raise LiveLost("The playthrough has no state / このプレイには状態がない")
             forgotten = await memory.forgotten_facts(c, pt.book, pid, character)
         pol = budget.policy(self.tier)
         return brief.build(
@@ -151,15 +228,26 @@ class Voices:
         )
 
     def _recent(self, character: str) -> list[Recent]:
-        """带进会话的最近对话：说漏了剧透的那几句不带（B-12，UX 在 #112 的评审：新会话一开头又看到那个词）。"""
+        """Recent conversation carried into the session: lines that let a spoiler slip are left out (B-12, UX's #112
+        review: otherwise the new session would see the term again right at the start).
+
+        セッションに持ち込む直近の会話：ネタバレをうっかり口にした発言は入れない（B-12、UX の #112 のレビュー：
+        新しいセッションの冒頭でまたその語を目にしてしまう）。
+        """
         terms = self.conn.monitor.terms(character)
         kept = [r for _, r in self.conn.recent.get(character, []) if not any(x in (r.reply or "") for x in terms)]
-        return kept[-budget.policy(self.tier).recent_turns :]  # 节约档少带几轮（B-14）
+        # Fewer turns in economy tier (B-14). / 節約モードでは持ち込むターンを減らす（B-14）。
+        return kept[-budget.policy(self.tier).recent_turns :]
 
-    # —— 开会话 ——
+    # —— Opening sessions / セッションを開く ——
 
     async def _open(self, character: str, reason: str) -> LiveSession:
-        """拼系统指令、开会话、挂上变化的回调。Trace：live.session（不带指令的文字）。"""
+        """Assemble the system instructions, open the session and attach the change callback. Trace: live.session
+        (without the instruction text).
+
+        システム指示を組み立て、セッションを開き、変化のコールバックを付ける。Trace：live.session（指示の文は含めな
+        い）。
+        """
         b = await self._brief(character)
         recent = self._recent(character)
         with self.conn.gw.tracer.span(
@@ -182,16 +270,24 @@ class Voices:
         return s
 
     def _ensure(self, character: str, reason: str) -> asyncio.Task[LiveSession]:
-        """正在开的就用那一个；没有就开一个。开好装进 sessions（换下来的旧会话关掉）。"""
+        """Use the one being opened if there is one; otherwise open one. Once open it goes into sessions (the old
+        session it replaces is closed).
+
+        開いている最中のものがあればそれを使い、なければ開く。開いたら sessions に入れる（入れ替えた古いセッションは閉じ
+        る）。
+        """
         task = self.opening.get(character)
         if task is not None and not task.done():
             return task
 
         async def run() -> LiveSession:
             s = await self._open(character, reason)
-            if self.conn.closed.is_set():  # 开的时候连接断了：不留没人管的会话（B-11 之前断线就全关）
+            # The connection dropped while opening: leave no orphaned session (before B-11 everything was closed on
+            # disconnect).
+            # 開いている間に接続が切れた：誰も管理しないセッションを残さない（B-11 以前は切断ですべて閉じていた）。
+            if self.conn.closed.is_set():
                 await s.close()
-                raise LiveLost("连接已经断了")
+                raise LiveLost("The connection is already closed / 接続はすでに切れている")
             old = self.sessions.get(character)
             self.sessions[character] = s
             if old is not None and old is not s:
@@ -209,7 +305,12 @@ class Voices:
         return task
 
     async def prepare(self, character: str, reason: str, *, announce: bool = True) -> None:
-        """开会话并推准备、就绪（切换人物、作废后重建、中途断了）。新的一轮等 `ready` 再送进去（ws._stream）。"""
+        """Open a session and push preparing and ready (switching characters, rebuilding after a retraction, dropped
+        mid-way). A new turn waits for `ready` before being sent in (ws._stream).
+
+        セッションを開き、準備中と準備完了を送る（登場人物の切り替え、取り消し後の作り直し、途中の切断）。
+        新しいターンは `ready` を待ってから送り込む（ws._stream）。
+        """
         conn = self.conn
         if announce:
             await conn.send(
@@ -226,7 +327,9 @@ class Voices:
                 if ok and conn.focused == character and (announce or reason in ("switch", "reconnect")):
                     await conn.send({"type": "session_ready", "character": character, "voiceAvailable": True})
                     self._resume_ready(reused=False)
-                    if reason in ("switch", "reconnect"):  # 会话刚就绪：也给一次候选话语（B-21）
+                    # The session just became ready: also give suggested lines once (B-21).
+                    # セッションが準備完了になったところ：候補のセリフも 1 回出す（B-21）。
+                    if reason in ("switch", "reconnect"):
                         conn.suggest_later(character)
             finally:
                 ev.set()
@@ -234,7 +337,10 @@ class Voices:
         self._spawn(ready())
 
     async def _try_open(self, character: str, reason: str) -> bool:
-        """开一次，失败再试一次；连续失败到上限或配额就降级。"""
+        """Open once, and try once more on failure; degrade on reaching the consecutive-failure limit or the quota.
+
+        1 回開き、失敗したらもう 1 回試す。連続失敗が上限に達するかクォータなら縮退する。
+        """
         for _ in range(MAX_OPEN_FAILS):
             try:
                 await self._ensure(character, reason)
@@ -243,7 +349,12 @@ class Voices:
                 return False
             except (LiveLost, OSError) as e:
                 self.fails += 1
-                log.info("开 %s 的会话失败（第 %d 次，%s）", character, self.fails, type(e).__name__)
+                log.info(
+                    "Opening %s's session failed (attempt %d, %s) / セッションを開けなかった",
+                    character,
+                    self.fails,
+                    type(e).__name__,
+                )
                 if self.fails >= MAX_OPEN_FAILS:
                     await self.degrade("service")
                     return False
@@ -253,8 +364,14 @@ class Voices:
         return False
 
     async def degrade(self, why: str) -> None:
-        """推 `degraded`（同一个原因只推一次），之后人物改文字回答（`ws.py`）。这一局第一次降级记进
-        `playthrough_metrics`（B-14）。预算、每天、开关的降级（不会自己好）关掉不在说话的会话。"""
+        """Push `degraded` (only once per reason); after that characters answer in text (`ws.py`). The playthrough's
+        first degrade is recorded in `playthrough_metrics` (B-14). Degrading for budget, daily or the switch (which
+        won't recover on its own) closes the sessions that aren't speaking.
+
+        `degraded` を送る（同じ理由では 1 回だけ）。以後、登場人物は文字で答える（`ws.py`）。このプレイで最初の縮退は
+        `playthrough_metrics` に記録する（B-14）。予算、1 日の上限、スイッチによる縮退（自然には戻らない）では、
+        話していないセッションを閉じる。
+        """
         if self.off == why:
             return
         self.off = why
@@ -273,7 +390,12 @@ class Voices:
                     await sess.close()
 
     async def settle(self) -> None:
-        """hello 时：已经不能用语音的（B-14）记下原因，不推 `degraded`（`welcome.voice.degraded` 已经说了）。"""
+        """On hello: if voice is already unavailable (B-14), record the reason without pushing `degraded`
+        (`welcome.voice.degraded` already says so).
+
+        hello のとき：すでに音声が使えない場合（B-14）は理由を記録し、`degraded` は送らない（`welcome.voice.degraded`
+        がすでに伝えている）。
+        """
         why = await self.blocked()
         if why is not None:
             self.off = why
@@ -281,17 +403,23 @@ class Voices:
                 await budget.mark_degraded(c, self.conn.pid, why)
 
     async def blocked(self) -> str | None:
-        """预算、每天、全局开关（B-14）：现在不能开语音的原因，见 `Gateway.voice_block`。"""
+        """Budget, daily, the global switch (B-14): why voice can't be opened now; see `Gateway.voice_block`.
+
+        予算、1 日の上限、全体のスイッチ（B-14）：いま音声を開けない理由。`Gateway.voice_block` を参照。
+        """
         return await self.conn.gw.voice_block(self.conn.pid, self.conn.user_id)
 
     async def open_now(self, character: str, reason: str) -> LiveSession | None:
-        """落地先开口（B-3）：不推准备，直接开好。"""
+        """Speaking first on landing (B-3): no preparing pushed, just open it.
+
+        着地で先に話し出す（B-3）：準備中は送らず、そのまま開く。
+        """
         if not await self._try_open(character, reason):
             return None
         self.conn.ready_at[character] = time.monotonic()
         return self.sessions.get(character)
 
-    # —— 前端的 near / far / focus ——
+    # —— near / far / focus from the frontend / フロントエンドの near / far / focus ——
 
     def near(self, character: str) -> None:
         conn = self.conn
@@ -306,13 +434,16 @@ class Voices:
 
         async def warm() -> None:
             await asyncio.sleep(WARM_DEBOUNCE_S * self.speed)
-            # 预热别人：关掉旧的预热（不在 focus、也没在说的），最多 1 个 focus + 1 个预热
+            # Warming someone else: close the old warm-up (not focused and not speaking); at most 1 focused + 1 warmed.
+            # 別の人のウォームアップ：古いウォームアップ（focus 中でも話し中でもないもの）を閉じる。focus 1
+            # つ＋ウォームアップ 1 つまで。
             for other, sess in list(self.sessions.items()):
                 if other not in (character, conn.focused) and not self.busy(other):
                     self.sessions.pop(other, None)
                     await sess.close()
             s = self.sessions.get(character)
-            if (s is not None and s.alive) or character in self.opening:  # 去抖期间已经开了（focus 了）
+            # Already opened during the debounce (it was focused). / デバウンス中にすでに開いた（focus された）。
+            if (s is not None and s.alive) or character in self.opening:
                 return
             conn.ready_at[character] = time.monotonic() + SESSION_ETA_MS / 1000 * self.speed
             with contextlib.suppress(LiveLost, OSError):
@@ -333,17 +464,22 @@ class Voices:
         if prev is not None and prev != character:
             self._schedule_idle(prev)
         why = await self.blocked()
-        if why is not None:  # 不会自己好的：不开会话，人物文字回答（B-14）
+        # Won't recover on its own: no session; characters answer in text (B-14).
+        # 自然には戻らない：セッションを開かず、登場人物は文字で答える（B-14）。
+        if why is not None:
             if self.off == why:
                 await conn.send({"type": "session_ready", "character": character, "voiceAvailable": False})
             else:
                 await self.degrade(why)
             return
         if self.off is not None:
-            self.off = None  # 再试一次
+            self.off = None  # try again / もう一度試す
             self.fails = 0
         if self.warm_for == character and self.warm_task is not None and not self.warm_task.done():
-            self.warm_task.cancel()  # 去抖还没到就点了人物：不等，下面现开（#111 前端评审）
+            # The character was tapped before the debounce ended: don't wait, open it below right away (#111 frontend
+            # review).
+            # デバウンスが終わる前に登場人物を押した：待たずに下ですぐ開く（#111 フロントエンドのレビュー）。
+            self.warm_task.cancel()
             self.warm_for = None
         s = self.sessions.get(character)
         if s is not None and s.alive and character not in self.opening:
@@ -353,11 +489,14 @@ class Voices:
                 if conn.focused == character:
                     await conn.send({"type": "session_ready", "character": character, "voiceAvailable": True})
                     self._resume_ready(reused=True)
-                    conn.suggest_later(character)  # 预热命中、续玩接上：也给一次候选话语（B-21）
+                    # Warm-up hit or resumed play: also give suggested lines once (B-21).
+                    # ウォームアップが当たった、続きから遊ぶ：候補のセリフも 1 回出す（B-21）。
+                    conn.suggest_later(character)
 
             self._spawn(ready())
             return
-        # 重连以后第一次 focus、会话已经没了：reason 是 reconnect（契约 3.3）
+        # First focus after reconnecting with the session already gone: reason is reconnect (contract 3.3).
+        # 再接続後の最初の focus でセッションがすでにない：reason は reconnect（契約 3.3）。
         await self.prepare(character, "reconnect" if self.resumed_at is not None else "switch")
 
     def unfocus(self) -> None:
@@ -365,7 +504,7 @@ class Voices:
             self._schedule_idle(self.conn.focused)
         self.conn.focused = None
 
-    # —— 闲置 ——
+    # —— Idle / アイドル ——
 
     def _idle_seconds(self) -> float | None:
         if self.idle_s is not None:
@@ -384,7 +523,7 @@ class Voices:
                 return
             s = self.sessions.pop(character, None)
             if s is not None:
-                log.info("%s 闲置，关掉会话", character)
+                log.info("%s idle, closing the session / アイドルのためセッションを閉じる", character)
                 await s.close()
 
         self.idle[character] = self._spawn(close_later())
@@ -394,10 +533,14 @@ class Voices:
         if task is not None:
             task.cancel()
 
-    # —— 作废后重建（B-4）、定期重建、GoAway、中途断了 ——
+    # —— Rebuild after retraction (B-4), periodic rebuild, GoAway, dropped mid-way ——
+    # —— 取り消し後の作り直し（B-4）、定期的な作り直し、GoAway、途中の切断 ——
 
     async def rebuild(self, character: str) -> None:
-        """作废以后：关掉旧的、开新的（没有那一轮），推准备和就绪。"""
+        """After a retraction: close the old one, open a new one (without that turn), push preparing and ready.
+
+        取り消しの後：古いものを閉じ、新しいもの（そのターンを含まない）を開き、準備中と準備完了を送る。
+        """
         task = self.swapping.pop(character, None)
         if task is not None:
             task.cancel()
@@ -407,13 +550,23 @@ class Voices:
         await self.prepare(character, "rebuild")
 
     def _changed(self, character: str, s: LiveSession) -> None:
-        """会话叫过来：GoAway 或断了。在说话的一轮里先不动，等这一轮交上去（after_turn）。"""
+        """Called by the session: GoAway or dropped. During a speaking turn do nothing yet; wait until the turn is
+        handed over (after_turn).
+
+        セッションから呼ばれた：GoAway または切断。話している最中のターンではまだ何もせず、そのターンが渡されるのを待つ
+        （after_turn）。
+        """
         if self.sessions.get(character) is not s or self.busy(character):
             return
         self.after_turn(character)
 
     def after_turn(self, character: str) -> None:
-        """这个人物的一轮交上去了（停顿）：送攒着的局势更新；会话断了就重开，轮数到了或 GoAway 就换。"""
+        """The character's turn was handed over (a pause): send the pending situation update; reopen if the session
+        dropped, swap if the turn count is reached or on GoAway.
+
+        この登場人物のターンが渡された（間）：ためていた状況の更新を送る。セッションが切れていれば開き直し、
+        ターン数に達したか GoAway なら入れ替える。
+        """
         s = self.sessions.get(character)
         if s is None or character in self.opening or self.conn.closed.is_set():
             return
@@ -427,7 +580,12 @@ class Voices:
             self.swapping[character] = self._spawn(self._swap(character, "goaway" if s.going_away else "turns"))
 
     async def _swap(self, character: str, reason: str) -> None:
-        """先开新会话、再关旧会话，玩家察觉不到（不推消息）。开的时候又说了一轮：新会话里没有那一轮，丢掉重开。"""
+        """Open the new session first, then close the old one, without the player noticing (no message pushed). If
+        another turn is spoken while opening, the new session lacks that turn: drop it and reopen.
+
+        先に新しいセッションを開いてから古いものを閉じ、プレイヤーに気づかせない（メッセージは送らない）。
+        開いている間にまた 1 ターン話されたら、新しいセッションにはそのターンがないので、捨てて開き直す。
+        """
         try:
             for _ in range(SWAP_RETRIES):
                 old = self.sessions.get(character)
@@ -437,13 +595,19 @@ class Voices:
                 try:
                     new = await self._open(character, f"rebuild_{reason}")
                 except (LiveLost, OSError) as e:
-                    log.info("换 %s 的会话没开起来（%s），下一个停顿再试", character, type(e).__name__)
+                    log.info(
+                        "Swapping %s's session failed to open (%s); retrying at the next pause / 次の間で再試行",
+                        character,
+                        type(e).__name__,
+                    )
                     return
                 while self.busy(character):
                     t = self.conn.turn
                     assert t is not None
                     await t.submitted.wait()
-                if self.sessions.get(character) is not old or self.conn.closed.is_set():  # 期间被作废重建、断线了
+                # Meanwhile it was rebuilt after a retraction, or disconnected. / その間に取り消しで作り直された、
+                # または切断された。
+                if self.sessions.get(character) is not old or self.conn.closed.is_set():
                     await new.close()
                     return
                 if old.turns != before and old.alive:
@@ -457,10 +621,15 @@ class Voices:
             if self.swapping.get(character) is asyncio.current_task():
                 self.swapping.pop(character, None)
 
-    # —— 中途更新局势 ——
+    # —— Mid-session situation updates / 途中の状況更新 ——
 
     async def refresh(self) -> None:
-        """叙事者提交了：每条开着的会话，局势变了就送变了的条目；在说话的送不了，记下来等这一轮交上去。"""
+        """The narrator committed: for every open session whose situation changed, send the changed entries; a speaking
+        one can't take it, so note it and wait until that turn is handed over.
+
+        ナレーターが commit した：開いているセッションごとに、状況が変わっていれば変わった項目を送る。
+        話している最中のものには送れないので、記録してそのターンが渡されるのを待つ。
+        """
         for character, s in list(self.sessions.items()):
             if not s.alive:
                 continue
@@ -488,11 +657,17 @@ class Voices:
         ):
             pass
 
-    # —— 花费 ——
+    # —— Cost / 費用 ——
 
     async def can_speak(self) -> bool:
-        """这一轮能不能用语音：账本到上限（开发期）、一局花到上限、今天的语音时间用完、全局开关关了（B-14）就降级，
-        这一轮不用 Live（文字一轮改文字回答，`ws.py`）。"""
+        """Whether this turn can use voice: degrade when the ledger is at its cap (during development), the playthrough
+        hit its spending cap, today's voice time is used up or the global switch is off (B-14), and this turn
+        doesn't use Live (a text turn gets a text answer, `ws.py`).
+
+        このターンで音声を使えるか：台帳が上限（開発中）、プレイの支出が上限、今日の音声時間を使い切った、
+        全体のスイッチがオフ（B-14）のどれかなら縮退し、このターンは Live を使わない（文字のターンは文字で答える、
+        `ws.py`）。
+        """
         ledger = self.conn.gw.live_ledger
         if ledger is not None:
             try:
@@ -507,8 +682,14 @@ class Voices:
         return self.off is None
 
     async def account(self, t: Turn, ev: LiveEvent, session: LiveSession, before_s: float) -> None:
-        """一轮的花费：账本（真 Live 时）、`cost_live_usd`、Trace 的 live.turn（不带原话）。
-        账本的 usage 另带输入、输出各多少微美元和「用量没到、按估计记」（S-090 对账只比输入，估计的不比）。"""
+        """A turn's cost: the ledger (with real Live), `cost_live_usd`, and Trace's live.turn (without the words said).
+        The ledger's usage also carries the input and output micro-dollars and "usage missing, recorded as an
+        estimate" (S-090 reconciliation compares only input, and skips estimates).
+
+        1 ターンの費用：台帳（本物の Live のとき）、`cost_live_usd`、Trace の live.turn（発言そのものは含めない）。
+        台帳の usage には入力・出力それぞれのマイクロドルと「使用量が届かず推計で記録」も付ける（S-090
+        の照合は入力だけを比べ、推計のものは比べない）。
+        """
         conn = self.conn
         usage = dict(ev.usage or {})
         estimated = not usage
@@ -537,7 +718,9 @@ class Voices:
                     .values(cost_live_usd=m.cost_live_usd + ev.usd)
                 )
         out_s = min(reply_s, len(t.pcm_out) / 2 / audio.RATE)
-        self._spawn(self._voice_seconds(reply_s, out_s))  # 不挡这一轮的收尾（作废、提交窗口的时序照旧）
+        # Doesn't block the turn's wrap-up (the timing of retraction and the commit window stays the same).
+        # このターンの締めくくりを妨げない（取り消しと提出の時間枠のタイミングは変わらない）。
+        self._spawn(self._voice_seconds(reply_s, out_s))
         with conn.gw.tracer.span(
             "live.turn",
             playthrough_id=conn.pid,
@@ -558,7 +741,12 @@ class Voices:
             pass
 
     async def _voice_seconds(self, total_s: float, out_s: float) -> None:
-        """这一轮进出的音频秒数：这一局的 voice_in/out_seconds、账号今天的语音时间（B-14，每天 60 分钟）。"""
+        """Audio seconds in and out for this turn: the playthrough's voice_in/out_seconds and the account's voice time
+        today (B-14, 60 minutes a day).
+
+        このターンの入出力の音声秒数：このプレイの voice_in/out_seconds と、アカウントの今日の音声時間（B-14、1 日 60
+        分）。
+        """
         conn = self.conn
         async with conn.gw.engine.begin() as c:
             m = playthrough_metrics.c
@@ -575,20 +763,32 @@ class Voices:
         await self._warn(budget.minutes_left(used))
 
     async def _warn(self, left: int) -> None:
-        """今天的语音时间剩 5 分钟时推一次 `limits`（一条连接一次）。用完的下一轮开始前降级（`can_speak`）。"""
+        """Push `limits` once when today's voice time has 5 minutes left (once per connection). Once used up, degrade
+        before the next turn starts (`can_speak`).
+
+        今日の音声時間が残り 5 分になったら `limits` を 1 回送る（接続ごとに 1 回）。使い切ったら次のターンが始まる前に
+        縮退する（`can_speak`）。
+        """
         if self.warned or left > budget.WARN_MINUTES or left <= 0:
             return
         self.warned = True
         await self.conn.send({"type": "limits", "voiceMinutesLeft": left})
 
-    # —— 断线和重连（B-11） ——
+    # —— Disconnect and reconnect (B-11) / 切断と再接続 ——
 
     def _hold(self, full: float) -> float:
         return full * self.speed if self.speed > 0 else full
 
     async def park(self) -> None:
-        """连接断了（或被同一局的新连接踢掉）：活着的会话、最近对话、局势条目寄存起来，不关会话。
-        说到一半断的（`lost`）那个人物的会话关掉：人物听到了一轮叙事者没处理的话（同作废）。"""
+        """The connection dropped (or was kicked out by a new connection to the same playthrough): park the live
+        sessions, recent conversation and situation entries without closing the sessions. The session of the
+        character cut off mid-sentence (`lost`) is closed: the character heard a turn the narrator never processed
+        (like a retraction).
+
+        接続が切れた（または同じプレイの新しい接続に追い出された）：生きているセッション、直近の会話、状況の項目を預け、
+        セッションは閉じない。話の途中で切れた（`lost`）登場人物のセッションは閉じる：ナレーターが処理していないターンを
+        登場人物が聞いてしまったため（取り消しと同じ）。
+        """
         if self.parked_once:
             return
         self.parked_once = True
@@ -605,8 +805,11 @@ class Voices:
             else:
                 shut.append(s)
         self.sessions.clear()
-        # 寄存这一步不 await：新连接的 hello 不会夹在中间、拿不到
-        stale = gw.parked.pop(conn.pid, None)  # 上一次寄存的没人接（不该有）：丢掉
+        # No await while parking: a new connection's hello can't slip in between and miss it.
+        # 預ける処理では await しない：新しい接続の hello が途中に割り込んで取りそこねることがない。
+        # What was parked last time was never taken over (shouldn't happen): drop it.
+        # 前回預けたものを誰も引き継がなかった（本来ないはず）：捨てる。
+        stale = gw.parked.pop(conn.pid, None)
         watched = bool(conn.monitor.chars) or conn.monitor.calming
         if not gw.draining and (keep or any(conn.recent.values()) or watched):
             p = Parked(keep, conn.recent, dict(self.facts), time.monotonic(), conn.monitor)
@@ -618,7 +821,11 @@ class Voices:
             await stale.drop()
 
     async def _expire(self, p: Parked) -> None:
-        """寄存的会话 30 秒、最近对话 10 分钟没人接就丢（按 ZJ_SPEED 缩短）。"""
+        """Parked sessions are dropped after 30 seconds and recent conversation after 10 minutes if no one takes them
+        over (shortened by ZJ_SPEED).
+
+        預けたセッションは 30 秒、直近の会話は 10 分、誰も引き継がなければ捨てる（ZJ_SPEED で短縮）。
+        """
         gw, pid = self.conn.gw, self.conn.pid
         hold = self._hold(RESUME_HOLD_S)
         await asyncio.sleep(hold)
@@ -631,8 +838,14 @@ class Voices:
             await p.drop()
 
     async def adopt(self) -> Parked | None:
-        """重连的 hello：接手这一局寄存的。活着的会话装回来（重新 focus 立即就绪），按闲置规则管；
-        局势在断线期间变了的送一段说明。返回接手的（Trace 用），没有就 None。"""
+        """Reconnecting hello: take over what this playthrough parked. Live sessions are put back (a new focus is ready
+        immediately) and managed by the idle rules; if the situation changed during the disconnect, a description is
+        sent. Returns what was taken over (for Trace), or None.
+
+        再接続の hello：このプレイが預けたものを引き継ぐ。生きているセッションは戻し（あらためて focus
+        すればすぐ準備完了）、アイドルの規則で管理する。切断中に状況が変わっていれば説明を送る。引き継いだもの（Trace
+        用）を返し、なければ None。
+        """
         conn, gw = self.conn, self.conn.gw
         p = gw.parked.pop(conn.pid, None)
         if p is None:
@@ -660,7 +873,10 @@ class Voices:
         return p
 
     def _resume_ready(self, *, reused: bool) -> None:
-        """重连以后第一次就绪：hello 到 session_ready 的毫秒（服务端这一段，B-11）。"""
+        """First ready after reconnecting: milliseconds from hello to session_ready (the server-side part, B-11).
+
+        再接続後の最初の準備完了：hello から session_ready までのミリ秒（サーバー側の区間、B-11）。
+        """
         if self.resumed_at is None:
             return
         ms = round((time.monotonic() - self.resumed_at) * 1000)
@@ -684,4 +900,7 @@ class Voices:
 
 
 def _ignore() -> None:
-    """寄存期间会话叫过来（GoAway、断了）：不管，接手时活着的才用。"""
+    """Called by a session while parked (GoAway, dropped): ignored; only sessions still alive at takeover are used.
+
+    預けている間にセッションから呼ばれた（GoAway、切断）：何もしない。引き継ぐときに生きているものだけを使う。
+    """

@@ -1,4 +1,7 @@
-"""200 局固定分母、逐局留证、有限预算和续跑不会重复付费。"""
+"""A fixed denominator of 200 games, evidence kept game by game, finite budgets, and resuming never pays twice.
+
+200 局の固定分母、局ごとの証拠、有限の予算、再開しても二重に課金しないこと。
+"""
 
 import json
 import subprocess
@@ -78,7 +81,7 @@ def test_completed_units_resume_without_relaunching(tmp_path: Path, monkeypatch:
     assert batch.main(args) == 0
     assert len(calls) == 10
     monkeypatch.setattr(batch, "source_hash", lambda: "different-code")
-    with pytest.raises(SystemExit, match="旧批次不能"):
+    with pytest.raises(SystemExit, match="old batch cannot"):
         batch.main(args)
 
 
@@ -88,7 +91,7 @@ def test_interrupted_unit_is_not_automatically_replayed(tmp_path: Path, monkeypa
     monkeypatch.setenv("ZJ_LEDGER", str(tmp_path / "unused.jsonl"))
     monkeypatch.setattr(batch, "runtime_config", lambda: {"test": True})
     batch.save(tmp_path / "units/E7-001-seed-01/started.json", {"pid": -1})
-    with pytest.raises(SystemExit, match="禁止自动重复付费"):
+    with pytest.raises(SystemExit, match="automatic repeat payment is forbidden"):
         batch.main(["--seeds", "1", "--out", str(tmp_path), "--confirm"])
 
 
@@ -128,7 +131,7 @@ def test_halted_batch_requires_explicit_resume_without_replaying_failed_unit(
     monkeypatch.setattr(subprocess, "run", run)
     args = ["--seeds", "1", "--out", str(tmp_path), "--confirm", "--keep-going"]
     assert batch.main(args) == 1 and len(calls) == 1
-    with pytest.raises(SystemExit, match="显式"):
+    with pytest.raises(SystemExit, match="explicitly"):
         batch.main(args)
     assert len(calls) == 1
     assert batch.main([*args, "--resume-after-stop"]) == 1

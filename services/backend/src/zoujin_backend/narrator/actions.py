@@ -1,17 +1,48 @@
-"""玩家的动作（B-3 第 2 条；api-contract 3.8，契约 2.10、2.11、2.12）：先判后演。
+"""Player actions (B-3 item 2; api-contract 3.8, contract 2.10, 2.11, 2.12): judge first, then play out.
 
-叙事者按 `kind` 判：
-- `move`：同一场景里换地点。进得去写一条 move 事件（0 分，不过模型）；进不去 refused，不写事件；带
-  `params.crossing`（过河的走法）而走不通的记一条被否决的 move（effects 空，R2-precondition，E5-008）。
-- `examine`：玩家这个地点的可调查物（objects）。0 分，不写事件；有固定演出就演，没有说一行。
-- `go`：场景出口（`way.*`，或地点 ID），候选 = 玩家走到那里，过第 3〜5 步；被拦下按契约第 3 节写 rejected 事件。
-- 有对应情境动作的（`actionId`，或评测只给 kind + target 时唯一的那条）：效果模板过第 3〜5 步，dt = minutes。
-- `give` 没有对应情境动作的：交出 `params.item`，过第 3〜5 步（物品不在世界模型里、不在手上 → R7）。
-- 别的：走提取（输入多一个 `<action>`），0〜3 个候选过第 3〜5 步，花 `pacing.situationalMinMinutes`。
-- `wait`：跳到这个地点的下一个节拍（本幕收幕之前），结算到它刚发生之后；没有 → refused。
+The narrator judges by `kind`:
+- `move`: change place within one scene. If the place can be entered, write a move event (0 minutes, no model);
+  if not, refused and no event; with `params.crossing` (how to cross the river) and no way through, record a rejected
+  move (empty effects, R2-precondition, E5-008).
+- `examine`: an examinable object (objects) at the player's place. 0 minutes, no event; play a set piece if there is
+  one, otherwise say one line.
+- `go`: a scene exit (`way.*`, or a place ID); the candidate = the player walks there, through steps 3-5; if blocked,
+  write a rejected event per contract section 3.
+- With a matching situational action (`actionId`, or the single one when an eval only gives kind + target): the effect
+  template goes through steps 3-5, dt = minutes.
+- `give` with no matching situational action: hand over `params.item`, through steps 3-5 (item not in the world model
+  or not in hand → R7).
+- Anything else: goes through extraction (the input gets an extra `<action>`), 0-3 candidates go through steps 3-5,
+  spending `pacing.situationalMinMinutes`.
+- `wait`: jump to the next beat at this place (before this act closes) and settle until just after it happens; none →
+  refused.
 
-判定（调模型的那几步）在提交的事务外做；写事件在事务里（`write`），同样的判定、同样的状态写出同样的事件。
-固定演出要看写完以后的状态，所以先在状态的副本上写一遍，知道有没有固定演出接管，再决定要不要调 `narrate` 写一行。
+Judging (the steps that call models) happens outside the commit transaction; writing events happens inside it
+(`write`), and the same judgment on the same state writes the same events. Set pieces depend on the state after writing,
+so first write once on a copy of the state to learn whether a set piece takes over, then decide whether to call
+`narrate` for a line.
+
+プレイヤーのアクション（B-3 第 2 項。api-contract 3.8、契約 2.10、2.11、2.12）：先に判定し、それから演じる。
+
+ナレーターは `kind` で判定する：
+- `move`：同じ場面の中で場所を変える。入れれば move イベントを 1 つ書く（0 分、モデルは通さない）。入れなければ
+  refused でイベントは書かない。`params.crossing`（川の渡り方）付きで通れないときは、却下された move を 1 つ記録する
+  （effects は空、R2-precondition、E5-008）。
+- `examine`：プレイヤーのいる場所の調べられる物（objects）。0 分でイベントは書かない。
+  演出があれば演じ、なければ 1 行言う。
+- `go`：場面の出口（`way.*`、または場所 ID）。候補 = プレイヤーがそこへ歩く、を第 3〜5 ステップに通す。止められたら
+  契約第 3 節に従って rejected のイベントを書く。
+- 対応する状況アクションがあるもの（`actionId`、または評価が kind + target だけを渡したときの唯一のもの）：
+  効果のテンプレートを第 3〜5 ステップに通し、dt = minutes。
+- 対応する状況アクションのない `give`：`params.item` を渡す。第 3〜5 ステップに通す（物が世界モデルにない、
+  手元にない → R7）。
+- それ以外：抽出を通し（入力に `<action>` が 1 つ増える）、0〜3 個の候補を第 3〜5 ステップに通し、
+  `pacing.situationalMinMinutes` を使う。
+- `wait`：この場所の次のビート（この幕を閉じる前）まで飛び、それが起きた直後まで精算する。なければ refused。
+
+判定（モデルを呼ぶステップ）はコミットのトランザクションの外で行い、イベントの書き込みはトランザクションの中で行う
+（`write`）。同じ判定、同じ状態からは同じイベントが書かれる。演出は書いたあとの状態で決まるので、まず状態のコピーに
+一度書いてみて演出が引き取るかを確かめ、そのうえで `narrate` を呼んで 1 行書くかを決める。
 """
 
 from __future__ import annotations
@@ -41,28 +72,47 @@ log = logging.getLogger("zoujin.narrator")
 
 Json = Any
 
-FOR_TARGET = ("help", "give")  # 这两种情境动作是为对象人物做的：事件带 beneficiary = 对象
-CHECKER_MOVE = "b3:move"  # 同一场景里换地点：只看身份进不进得去，不过模型（api-contract 3.8）
-ACT_ENDED_LINE = "この幕は、もう終わった。"  # 收幕时队列里的动作（B-3 第 4 条）
-ACT_ENDED = "act-ended"  # turns.result.reason：和判定拒绝分开数（data-design 第 3 节）
+# These two kinds of situational action are done for the target character: the event gets beneficiary = target.
+# この 2 種類の状況アクションは対象の登場人物のために行うもの：イベントに beneficiary = 対象を付ける。
+FOR_TARGET = ("help", "give")
+# Changing place within one scene: only checks whether the role may enter, no model (api-contract 3.8).
+# 同じ場面の中で場所を変える：役柄が入れるかだけを見て、モデルは通さない（api-contract 3.8）。
+CHECKER_MOVE = "b3:move"
+# For actions still queued when the act closes (B-3 item 4).
+# 幕を閉じたときキューに残っていたアクション用（B-3 第 4 項）。
+ACT_ENDED_LINE = "この幕は、もう終わった。"
+# turns.result.reason: counted separately from judgment refusals (data-design section 3).
+# turns.result.reason：判定による拒否とは別に数える（data-design 第 3 節）。
+ACT_ENDED = "act-ended"
 
 
 @dataclass
 class Decision:
-    """一个动作的判定（事务外）：写什么、对象是什么（固定演出的 target）。"""
+    """The judgment of one action (outside the transaction): what to write and what the target is (the set piece's
+    target).
+
+    1 つのアクションの判定（トランザクションの外）：何を書くか、対象は何か（演出の target）。
+    """
 
     kind: str  # move / examine / go / affordance / give / free / wait / invalid
-    act: str  # 前端的 kind
-    target: str | None  # 固定演出的 target：人物、地点，go 是出口通往的地点，examine 是 obj.*
-    ok: bool = True  # move / examine / wait：能不能做
+    act: str  # the frontend's kind / フロントエンドの kind
+    # The set piece's target: a character or place; for go, the place the exit leads to; for examine, obj.*.
+    # 演出の target：登場人物か場所。go なら出口の行き先の場所、examine なら obj.*。
+    target: str | None
+    ok: bool = True  # move / examine / wait: whether it can be done / 実行できるか
     affordance: Json | None = None
     checked: list[Checked] = field(default_factory=list)
-    minutes: int = 0  # 情境动作的 minutes、go 的路程、提取的动作的 situationalMinMinutes
-    beat: str | None = None  # wait 跳到的节拍（None：这个地点没有节拍了，等到收幕）
-    at: int = 0  # 它的排定时刻
+    # The situational action's minutes, the go distance, or situationalMinMinutes for an extracted action.
+    # 状況アクションの minutes、go の道のり、抽出したアクションの situationalMinMinutes。
+    minutes: int = 0
+    # The beat wait jumps to (None: no beats left at this place, so wait until the act closes).
+    # wait が飛ぶ先のビート（None：この場所にもうビートがないので、幕を閉じるまで待つ）。
+    beat: str | None = None
+    at: int = 0  # its scheduled time / その予定時刻
     counts: Counts = field(default_factory=Counts)
     narration: str | None = None
-    crossing: str | None = None  # move 的 params.crossing（过河的走法：bridge 等）
+    # move's params.crossing (how to cross the river: bridge etc.) / move の params.crossing（川の渡り方：bridge など）
+    crossing: str | None = None
 
 
 @dataclass
@@ -74,7 +124,12 @@ class Outcome:
 
 
 def status_of(checked: list[Checked]) -> str:
-    """全部提交（passed / rewritten）→ done；有降级的、或部分被否决 → partial；全被否决、或没有候选 → refused。"""
+    """All committed (passed / rewritten) → done; some downgraded or partly rejected → partial; all rejected or no
+    candidates → refused.
+
+    すべてコミット（passed / rewritten）→ done。格下げがある、または一部が却下 → partial。すべて却下、
+    または候補なし → refused。
+    """
     if not checked:
         return "refused"
     st = [c.check["status"] for c in checked]
@@ -90,8 +145,13 @@ def failed_rules(checked: list[Checked]) -> list[str]:
 
 
 def same_scene(book: Book, a: str, b: str) -> bool:
-    """`move` 是在一个 3D 场景里走过去：两个地点都在同一个场景的布局里。还没有布局的场景（归途、村子，M3）不收
-    `move`：路上的走法（路程、过河）跟 S-081 的停靠点一起做。"""
+    """`move` means walking over within one 3D scene: both places are in the same scene's layout. Scenes without a
+    layout yet (the way home, the village, M3) don't accept `move`: travel on the road (distance, river crossing) comes
+    with S-081's stops.
+
+    `move` は 1 つの 3D 場面の中を歩いて移ること：2 つの場所が同じ場面のレイアウトにある。まだレイアウトのない場面
+    （帰り道、村、M3）は `move` を受け付けない：道中の移動（道のり、川渡り）は S-081 の立ち寄り先と一緒に作る。
+    """
     pa, pb = book.places.get(a), book.places.get(b)
     if not (pa and pb and pa.get("sceneRef") is not None and pa.get("sceneRef") == pb.get("sceneRef")):
         return False
@@ -100,8 +160,14 @@ def same_scene(book: Book, a: str, b: str) -> bool:
 
 
 def find_affordance(book: Book, state: SimState, req: Mapping[str, Any]) -> Json | None:
-    """前端给的 actionId（所有情境动作里找，条件不成立的交给第 3 步判）；评测只给 kind + target 时，此刻成立的
-    情境动作里 kind、target 对得上的唯一一条。"""
+    """The actionId the frontend gave (searched among all situational actions; ones whose conditions don't hold are
+    left for step 3 to judge); when an eval only gives kind + target, the single situational action holding right now
+    whose kind and target match.
+
+    フロントエンドが渡した actionId（すべての状況アクションから探し、条件が成り立たないものは
+    第 3 ステップの判定に回す）。
+    評価が kind + target だけを渡したときは、いま成り立つ状況アクションのうち kind と target が一致する唯一のもの。
+    """
     aid = req.get("actionId")
     if aid:
         return next((a for a in book.world.get("affordances", []) if action_id(a["id"]) == aid), None)
@@ -116,7 +182,10 @@ def find_affordance(book: Book, state: SimState, req: Mapping[str, Any]) -> Json
 
 
 def exit_place(book: Book, state: SimState, target: str | None) -> str | None:
-    """go 的对象：布局的出口（`way.*`）换成它通往的地点；也认地点 ID。"""
+    """The target of go: a layout exit (`way.*`) is replaced by the place it leads to; place IDs are accepted too.
+
+    go の対象：レイアウトの出口（`way.*`）はその行き先の場所に置き換える。場所 ID も受け付ける。
+    """
     if target is None:
         return None
     place = state["vars"]["var.player.location"]
@@ -128,7 +197,10 @@ def exit_place(book: Book, state: SimState, target: str | None) -> str | None:
 
 
 def next_beat(book: Book, state: SimState, sched: Mapping[str, int]) -> str | None:
-    """wait：这个地点的下一个节拍（排定时刻在此刻之后、在本幕收幕之前）。"""
+    """wait: the next beat at this place (scheduled after now and before this act closes).
+
+    wait：この場所の次のビート（予定時刻がいまより後で、この幕を閉じる前）。
+    """
     place = state["vars"]["var.player.location"]
     limit = wait_limit(book, state)
     best: tuple[int, int, str] | None = None
@@ -141,7 +213,11 @@ def next_beat(book: Book, state: SimState, sched: Mapping[str, int]) -> str | No
 
 
 def wait_limit(book: Book, state: SimState) -> int:
-    """普通幕最多等到收幕；最终幕最多等到期限，由正式结局流程结算落幕。"""
+    """In a normal act, wait at most until the act closes; in the final act, at most until the deadline, and the real
+    ending flow settles the curtain.
+
+    通常の幕では最長で幕を閉じるまで待つ。最後の幕では最長で期限まで待ち、幕切れは正式なエンディングの流れが精算する。
+    """
     act = book.acts[book.act_of(state["vars"])]
     limit = int(act["end"]["atLatest"])
     if not act.get("exits"):
@@ -153,7 +229,7 @@ def role_name(book: Book, state: SimState) -> str:
     return str(book.roles[state["role"]]["name"])
 
 
-# —— 判定（事务外，调模型） ——
+# —— Judgment (outside the transaction, calls models) / 判定（トランザクションの外、モデルを呼ぶ） ——
 
 
 async def decide(
@@ -183,7 +259,11 @@ async def decide(
         sched = schedule(book, state)
         beat = next_beat(book, state, sched)
         if beat is None:
-            # 这个地点在收幕前没有节拍了：等到收幕（atLatest），途中的节拍照常结算；不然只能靠说话一轮轮推时间
+            # No beats left at this place before the act closes: wait until it closes (atLatest), settling the beats
+            # on the way as usual; otherwise time could only be moved on turn by turn through talking.
+            # この場所には幕を閉じる前のビートがもうない：幕を閉じるまで（atLatest）待ち、
+            # 途中のビートは通常どおり精算する。
+            # そうしないと、話して 1 ターンずつ時間を進めるしかなくなる。
             limit = wait_limit(book, state)
             return Decision("wait", kind, None, ok=state["t"] < limit, at=limit)
         return Decision("wait", kind, None, beat=beat, at=sched[beat])
@@ -208,12 +288,16 @@ async def decide(
             "actor": "player",
             "type": "action",
             "origin": "action",
-            "summary": f"{who}は、{aff['pastLabel']}",  # 契约 1.8：做完以后的句子，带对象（下发时身份名换成「あなた」）
+            # Contract 1.8: the sentence after it is done, with the target (the role name becomes 「あなた」 when sent).
+            # 契約 1.8：やり終えたあとの文で、対象を含む（送るときに役柄名を「あなた」に置き換える）。
+            "summary": f"{who}は、{aff['pastLabel']}",
             "causes": [],
             "effects": copy.deepcopy(aff.get("effects", [])),
         }
         if kind in FOR_TARGET and aff.get("target") in book.characters:
-            cand["beneficiary"] = aff["target"]  # 为对象人物做的（契约 2.8 的 beneficiary；记忆和结局看它）
+            # Done for the target character (contract 2.8's beneficiary; memories and the ending read it).
+            # 対象の登場人物のために行ったもの（契約 2.8 の beneficiary。記憶とエンディングが参照する）。
+            cand["beneficiary"] = aff["target"]
         minutes = affordance_minutes(book, aff)
         act = {"affordance": aff["id"], "kind": kind, "target": target, "params": params}
         turn = TurnInput(character=aff.get("target"), player=None, act=act)
@@ -235,7 +319,8 @@ async def decide(
             "actor": "player",
             "type": "action",
             "origin": "action",
-            "summary": f"{who}は、{to}に{known['name'] if known else '持っていない物'}を渡した",  # 做不到的检查会拒
+            # If it can't be done, the checks reject it / できないことなら検査が却下する
+            "summary": f"{who}は、{to}に{known['name'] if known else '持っていない物'}を渡した",
             "causes": [],
             "effects": [{"op": "hold", "item": item or "item.unknown", "to": target}],
         }
@@ -253,11 +338,16 @@ async def decide(
     return Decision("free", kind, target, checked=checked, minutes=minutes, counts=counts)
 
 
-# —— 写事件（事务里，也在副本上先写一遍） ——
+# —— Writing events (inside the transaction, and first once on a copy) ——
+# —— イベントの書き込み（トランザクションの中。先にコピーにも一度書く） ——
 
 
 def write(w: Writer, book: Book, turn_id: str, d: Decision) -> Outcome:
-    """按判定写事件、结算，问动作时机的固定演出。返回状态、分钟和演的固定演出。"""
+    """Write events per the judgment, settle, and ask for an action-timed set piece. Returns the status, the minutes and
+    the set piece played.
+
+    判定に従ってイベントを書き、精算し、アクションのタイミングの演出を問い合わせる。状態、分数、演じた演出を返す。
+    """
     t0 = w.state["t"]
     place = w.player_place
     who = role_name(book, w.state)
@@ -280,10 +370,16 @@ def write(w: Writer, book: Book, turn_id: str, d: Decision) -> Outcome:
                     turn_id=turn_id,
                 )
             )
-            w.run.player_spot = None  # 换了地点：站这个地点的起点（契约 3.1）
+            # Changed place: stand on this place's starting spot (contract 3.1).
+            # 場所が変わった：この場所の起点に立つ（契約 3.1）。
+            w.run.player_spot = None
         elif d.crossing and d.target in book.places:
-            # 过河的走法走不通（桥冲毁了还要走桥，E5-008；契约 3.8 的 move 没有 params，只有评测这样发）：照别的动作
-            # 被否决的写法记一条被否决的 move（effects 空、dt 0），玩家不动
+            # The way of crossing the river doesn't work (taking the bridge after it was washed away, E5-008; contract
+            # 3.8's move has no params, only evals send this): record a rejected move the same way other rejected
+            # actions are written (empty effects, dt 0); the player doesn't move.
+            # 川の渡り方が通用しない（橋が流されたのに橋を渡ろうとする、E5-008。契約 3.8 の move に params はなく、
+            # 評価だけがこう送る）：ほかのアクションが却下されたときと同じ書き方で却下された move を 1 つ記録し
+            # （effects は空、dt 0）、プレイヤーは動かない。
             status, failed = "refused", ["R2-precondition"]
             w.add(
                 w.full(
@@ -321,8 +417,15 @@ def write(w: Writer, book: Book, turn_id: str, d: Decision) -> Outcome:
 
 
 def _candidates(w: Writer, book: Book, turn_id: str, d: Decision) -> tuple[str, list[str]]:
-    """go、情境动作、give、提取的动作：判过的候选按顺序写（被否决的 effects 为空，dt 0）。情境动作和 go 的那一条
-    带 dt；提取的动作做成了另写一条只推进时钟的事件（同对话那一条）。写完结算这段时间里到点的节拍。"""
+    """go, situational actions, give and extracted actions: write the judged candidates in order (rejected ones with
+    empty effects, dt 0). The situational action's or go's event carries dt; when an extracted action succeeds, write a
+    separate event that only advances the clock (as for dialogue). After writing, settle the beats that came due during
+    that time.
+
+    go、状況アクション、give、抽出したアクション：判定済みの候補を順に書く（却下されたものは effects が空、dt 0）。
+    状況アクションと go のイベントは dt を持つ。抽出したアクションが成功したら、時計を進めるだけのイベントを別に書く
+    （対話のときと同じ）。書き終えたら、その間に時刻が来たビートを精算する。
+    """
     t0 = w.state["t"]
     place = w.player_place
     timed = d.kind in ("go", "affordance")
@@ -368,7 +471,11 @@ def _candidates(w: Writer, book: Book, turn_id: str, d: Decision) -> tuple[str, 
 
 
 def dry_run(book: Book, pid: str, state: SimState, run: Run, turn_id: str, d: Decision, ids: IdGen) -> Outcome:
-    """在状态的副本上写一遍：知道状态、有没有固定演出接管（不调模型、不写库）。"""
+    """Write once on a copy of the state: learn the resulting state and whether a set piece takes over (no model calls,
+    no database writes).
+
+    状態のコピーに一度書く：結果の状態と、演出が引き取るかを知る（モデルは呼ばず、データベースにも書かない）。
+    """
     w = Writer(book, pid, copy.deepcopy(state), key_base=f"{turn_id}/dry", turn_id=turn_id, ids=ids, now="")
     w.run = copy.deepcopy(run)
     return write(w, book, turn_id, d)
@@ -377,14 +484,24 @@ def dry_run(book: Book, pid: str, state: SimState, run: Run, turn_id: str, d: De
 async def narrate(
     n: Narrator, book: Book, state: SimState, d: Decision, out: Outcome, spend: Spend, span: Mapping[str, Any]
 ) -> str:
-    """一行地の文（提示 `narrate`）：按动作、判定结果和失败的规则。两次都不行、或过滤不过，用固定的一句。"""
+    """One line of 地の文 (prompt `narrate`): from the action, the judgment result and the failed rules. If both tries
+    fail or the filter rejects it, use the fixed line.
+
+    地の文 1 行（プロンプト `narrate`）：アクション、判定結果、失敗した規則から。2 回ともだめ、またはフィルターを
+    通らなければ固定の一文を使う。
+    """
     act: Json = {"kind": d.act, "target": d.target}
     if d.affordance is not None:
-        # 说明玩家试图帮什么；这不是已经做成的结果，尤其不能把 partial 写成另一个剧情。
+        # Says what the player tried to do; this is not a result already achieved, and above all a partial must not
+        # be written up as a different plot.
+        # プレイヤーが何をしようとしたかを伝える。これはすでに成し遂げた結果ではなく、特に partial を別の筋書きとして
+        # 書いてはならない。
         act["intendedAction"] = d.affordance.get("label", d.affordance.get("pastLabel", ""))
     completed = [str(c.candidate["summary"]) for c in d.checked if c.passed and c.candidate.get("summary")]
     if completed:
-        act["completedActions"] = completed  # 只给校验已通过、实际提交的候选，不带被拒绝的摘要
+        # Only candidates that passed the checks and were actually committed, never rejected summaries.
+        # 検査を通り実際にコミットした候補だけを渡し、却下された要約は含めない。
+        act["completedActions"] = completed
     if d.kind == "give":
         act["item"] = d.checked[0].candidate["effects"][0].get("item") if d.checked else None
     request = {
@@ -395,7 +512,8 @@ async def narrate(
         "failedRules": out.failed,
     }
     try:
-        # Span 的 status 是这次调用的状态；动作的结果在 narrator.action 上（data-design 第 8 节）
+        # The span's status is this call's status; the action's result is on narrator.action (data-design section 8).
+        # Span の status はこの呼び出しの状態。アクションの結果は narrator.action にある（data-design 第 8 節）。
         r = await n.pipeline.call("narrate", request, spend, span=span)
     except CallFailed:
         return narrate_fallback(out.status)
@@ -403,7 +521,12 @@ async def narrate(
 
 
 async def run_action(n: Narrator, task: Task) -> Result:
-    """一个动作：读 → 判定 → 副本上写一遍（看固定演出）→ 没有固定演出就写一行 → 单事务提交。lastSeq 变了从判定重来。"""
+    """One action: read → judge → write once on a copy (to see set pieces) → write a line if there is no set piece →
+    commit in a single transaction. If lastSeq changes, start again from judging.
+
+    1 つのアクション：読む → 判定 → コピーに一度書く（演出を見る）→ 演出がなければ 1 行書く → 単一トランザクションで
+    コミット。lastSeq が変わったら判定からやり直す。
+    """
     from zoujin_backend.narrator.core import MAX_STALE, Stale
 
     req = dict(task.request or {})
@@ -411,9 +534,13 @@ async def run_action(n: Narrator, task: Task) -> Result:
         pt, state = await n.read(task.pid)
         run = Run.of(pt)
         book = n.library.version(pt["world_model_version"])
-        if run.act_end is not None:  # 收幕以后：0 分、不写事件、不调模型（B-3 第 4 条）
+        # After the act has closed: 0 minutes, no events, no model calls (B-3 item 4).
+        # 幕を閉じたあと：0 分、イベントを書かず、モデルを呼ばない（B-3 第 4 項）。
+        if run.act_end is not None:
             return await n._commit(task, pt["last_seq"], lambda w, b: ended(req))
-        spend = task.spend  # 跟着任务走：重来的、没提交的也算（B-8 第 7 条）
+        # Follows the task: retries and uncommitted attempts count too (B-8 item 7).
+        # タスクに付いて回る：やり直しやコミットしなかった分も数える（B-8 第 7 項）。
+        spend = task.spend
         span = {"playthrough_id": task.pid, "turn_id": task.turn_id, "world_model_version": book.version}
         d = await decide(n, book, state, req, spend, span)
         out = dry_run(book, task.pid, state, run, task.turn_id, d, n.ids)
@@ -428,8 +555,8 @@ async def run_action(n: Narrator, task: Task) -> Result:
         try:
             return await n._commit(task, pt["last_seq"], write, spend=spend, counts=d.counts)
         except Stale:
-            log.info("lastSeq 变了，%s 从判定重来", task.turn_id)
-    raise RuntimeError(f"{task.turn_id}：lastSeq 一直在变")
+            log.info("lastSeq changed; judging %s again / lastSeq が変わったので判定からやり直す", task.turn_id)
+    raise RuntimeError(f"{task.turn_id}: lastSeq keeps changing / {task.turn_id}：lastSeq が変わり続けている")
 
 
 def written(n: Narrator, w: Writer, book: Book, task: Task, req: Mapping[str, Any], d: Decision) -> Planned:
@@ -476,7 +603,12 @@ def written(n: Narrator, w: Writer, book: Book, task: Task, req: Mapping[str, An
 
 
 def ended(req: Mapping[str, Any]) -> Planned:
-    """收幕以后才轮到的动作：refused、0 分、没有事件，一句固定的话（前端靠 clientMsgId 收掉待定的动作）。"""
+    """An action whose turn comes only after the act closed: refused, 0 minutes, no events, one fixed line (the
+    frontend clears the pending action by clientMsgId).
+
+    幕を閉じたあとに順番が来たアクション：refused、0 分、イベントなし、固定の一文（フロントエンドは clientMsgId で
+    保留中のアクションを片づける）。
+    """
     from zoujin_backend.narrator.core import Planned
 
     msg: Json = {

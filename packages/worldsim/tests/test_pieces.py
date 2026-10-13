@@ -1,4 +1,9 @@
-"""pick_set_piece()（契约 1.7，2.11）：在完整草稿上挂一组和切片同样写法的固定演出来测。knows() 见 test_primitives。"""
+"""pick_set_piece() (contract 1.7, 2.11): tested by attaching to the full draft a set of set pieces written the same
+way as the slice's. For knows(), see test_primitives.
+
+pick_set_piece()（契約 1.7、2.11）：完全版のドラフトに、スライスと同じ書き方の固定演出一式を付けてテストする。
+knows() は test_primitives を参照。
+"""
 
 from __future__ import annotations
 
@@ -39,7 +44,10 @@ W: dict[str, Any] = {**json.loads(WORLD.read_text(encoding="utf-8")), "setPieces
 
 
 def at(place: str, t: int) -> SimState:
-    """旅人从开局走到 place，结算到 t。"""
+    """The traveler walks from the opening to place, settled to t.
+
+    旅人がオープニングから place へ歩き、t まで精算する。
+    """
     s = initial_state(W, ROLE)
     s = apply(W, s, {"t": 0, "dt": 0, "origin": "turn",
                      "effects": [{"op": "set", "var": "var.player.location", "value": place}]})  # fmt: skip
@@ -61,16 +69,26 @@ def test_beat_pieces_play_only_when_the_player_is_at_the_beat() -> None:
 
 
 def test_open_air_beat_pieces_play_in_the_same_scene() -> None:
-    """契约 1.12：beat.12 的大雨没有参与人物，落在 place.village。婚礼上（place.melos-home，同一个场景）也演，
-    别的场景（シラクスの市）不演。和 settle 写 learn、后端推事件同一条规则（sees）。"""
+    """Contract 1.12: the downpour of beat.12 has no participants and falls on place.village. It also plays at the
+    wedding (place.melos-home, the same scene), but not in another scene (シラクスの市). The same rule (sees) as
+    settle writing learn and the backend pushing events.
+
+    契約 1.12：beat.12 の大雨には参加人物がなく、place.village に落ちる。婚礼の場（place.melos-home、同じシーン）
+    でも上演し、別のシーン（シラクスの市）では上演しない。settle の learn 書き込み、バックエンドのイベントの
+    プッシュと同じルール（sees）。
+    """
     assert pick(at("place.village", 0), {"beat": "beat.12"}, set()) == "piece.rain"
     assert pick(at("place.melos-home", 0), {"beat": "beat.12"}, set()) == "piece.rain"
     assert pick(at("place.syracuse-square", 0), {"beat": "beat.12"}, set()) is None
 
 
 def test_the_gate_in_both_orders() -> None:
-    """先被抓再走上去：下がれ（抓人那场）→ 二度は言わぬ → 叙事者。
-    先走上去再被抓：下がれ → 二度は言わぬ（抓人那场）→ 叙事者（UX 10-10）。"""
+    """Arrested first, then walking up: 下がれ (the arrest scene) → 二度は言わぬ → narrator.
+    Walking up first, then the arrest: 下がれ → 二度は言わぬ (the arrest scene) → narrator (UX 10-10).
+
+    先に捕まってから近づく：下がれ（捕縛の場面）→ 二度は言わぬ → ナレーター。
+    先に近づいてから捕まる：下がれ → 二度は言わぬ（捕縛の場面）→ ナレーター（UX 10-10）。
+    """
     before, after = at(GROUND, 600), at(GROUND, 1201)
     played: set[str] = set()
     for s, hook, want in [
@@ -90,16 +108,17 @@ def test_the_gate_in_both_orders() -> None:
         got = pick(s, hook, played)
         assert got == want
         played |= {got} if got else set()
-    assert pick(before, {**GATE, "refused": False}, set()) is None  # 只在被拒时
+    assert pick(before, {**GATE, "refused": False}, set()) is None  # Only when refused / 拒否されたときだけ
     assert pick(before, {**GATE, "target": "place.road-to-city"}, set()) is None
 
 
 def test_knows_and_when_conditions() -> None:
     s = at(GROUND, 5461)
     assert s["beats"]["beat.24"] == "happened"
-    assert pick(s, {"beat": "beat.24"}, set()) is None  # 群众本来不知道约定
+    assert pick(s, {"beat": "beat.24"}, set()) is None  # The crowd did not know the promise / 群衆は約束を知らない
     s = apply(W, s, {"t": s["t"], "dt": 0, "origin": "turn",
                      "effects": [{"op": "learn", "character": "char.crowd", "fact": "fact.promise"}]})  # fmt: skip
     assert pick(s, {"beat": "beat.24"}, set()) == "piece.crowd"
-    assert pick(s, {"act": "help", "target": "char.old-man"}, set()) == "piece.any-help"  # 没写 target = 不看对象
+    # No target written = the target is not checked / target なし = 対象を見ない
+    assert pick(s, {"act": "help", "target": "char.old-man"}, set()) == "piece.any-help"
     assert pick(s, {"act": "help", "refused": True}, set()) is None

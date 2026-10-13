@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "api/rest/test-advance.schema.json",
   "title": "POST /v1/test/playthroughs/{id}/advance",
-  "description": "非生产：快进故事时间（第 7 节）。请求给分钟数，响应给快进后的快照（C-1 评审定）",
+  "description": "Non-production: fast-forward story time (section 7). The request gives the minutes; the response gives the snapshot after fast-forwarding (decided in the C-1 review) / 本番以外：物語時間を早送りする（第 7 節）。リクエストで分数を指定し、レスポンスで早送り後のスナップショットを返す（C-1 レビューで決定）",
   "x-endpoint": {
     "method": "POST",
     "path": "/v1/test/playthroughs/{id}/advance",

@@ -1,12 +1,29 @@
-"""身份的开局（B-19；ux-design 5.1，S-002、S-048）：先开口的人物、人物怎么称呼玩家、开局的双向小互助。
+"""Role openings (B-19; ux-design 5.1, S-002, S-048): who speaks first, how characters address the player, and the
+small two-way mutual aid at the start.
 
-- 开局的互助是世界模型里人物的 `mutualAid` 里 `opening` 等于这个身份的那几条（数据写的）。
-- 先开口的人 = 开局互助里「你为他」（`fromYou`）那一条的人物：旅人是老爺、石屋の弟子是セリヌンティウス、村の牧童是
-  メロス。开局时这一局的 `arrival` 带上他（和幕切换落地同一套，api-contract 3.11）：前端显示第一行地の文
-  （身份的 `summary`）以后发 `act_landed`，人物先开口。
-- 称呼按 ux-design 5.1 的表，世界模型的 `Role` 还没有这一项，先放这里〔暂定，数据把它加进契约以后改读世界模型〕。
+- The opening mutual aid is the entries of a character's `mutualAid` in the world model whose `opening` equals this
+  role (written by the data side).
+- The one who speaks first = the character of the opening aid entry "you for them" (`fromYou`): 老爺 for
+  旅人, セリヌンティウス for 石屋の弟子, メロス for 村の牧童. At the start the game's `arrival` carries them (the same
+  mechanism as landing after an act transition, api-contract 3.11): after the frontend shows the first 地の文 line
+  (the role's `summary`) it sends `act_landed`, and the character speaks first.
+- Forms of address follow the table in ux-design 5.1; the world model's `Role` doesn't have this field yet, so it lives
+  here for now [provisional: read it from the world model once the data side adds it to the contract].
 
-只读世界模型，不碰原话。
+Only reads the world model; never touches the original text.
+
+役柄の始まり（B-19。ux-design 5.1、S-002、S-048）：最初に話しかける登場人物、登場人物によるプレイヤーの呼び方、
+開始時の双方向の小さな助け合い。
+
+- 開始時の助け合いは、世界モデルの登場人物の `mutualAid` のうち、`opening` がこの役柄に等しいもの（データ側が書く）。
+- 最初に話しかけるのは、開始時の助け合いのうち「あなたが相手に」（`fromYou`）の登場人物：旅人なら老爺、
+  石屋の弟子ならセリヌンティウス、村の牧童ならメロス。開始時にこのゲームの `arrival` がその人物を持つ
+  （幕切り替えの着地と同じ仕組み、api-contract 3.11）：フロントエンドが最初の地の文（役柄の `summary`）を
+  表示したあと `act_landed` を送り、登場人物が先に話す。
+- 呼び方は ux-design 5.1 の表に従う。世界モデルの `Role` にはまだこの項目がないので、ひとまずここに置く
+  〔暫定。データ側が契約に加えたら世界モデルから読むように変える〕。
+
+世界モデルを読むだけで、原文には触れない。
 """
 
 from __future__ import annotations
@@ -26,7 +43,12 @@ ADDRESS: dict[str, str] = {
 
 
 def opening_aids(book: Book, role: str, character: str | None = None) -> list[tuple[str, Json]]:
-    """(人物, 互助) 这个身份开局的双向小互助，按世界模型里的顺序。character 给了就只要他的。"""
+    """(character, aid) pairs of this role's small two-way opening aid, in world model order. If character is given,
+    only theirs.
+
+    （登場人物, 助け合い）：この役柄の開始時の双方向の小さな助け合い。世界モデルの順。
+    character を渡せばその人物の分だけ。
+    """
     return [
         (c["id"], a)
         for c in book.world["characters"]
@@ -37,12 +59,20 @@ def opening_aids(book: Book, role: str, character: str | None = None) -> list[tu
 
 
 def opener(book: Book, role: str) -> str | None:
-    """开局先开口的人物：开局互助里「你为他」的那个人；没有就没人先开口（玩家先说）。"""
+    """The character who speaks first at the start: the one in the opening aid's "you for them" entry; if
+    there is none, nobody speaks first (the player talks first).
+
+    開始時に最初に話しかける登場人物：開始時の助け合いのうち「あなたが相手に」の人物。いなければ誰も先に話さない
+    （プレイヤーが先に話す）。
+    """
     return next((c for c, a in opening_aids(book, role) if a.get("direction") == "fromYou"), None)
 
 
 def start_arrival(book: Book, role: str) -> Json | None:
-    """开局的 `playthroughs.arrival`：{actId, line, opener}。没有先开口的人 → None。"""
+    """The opening `playthroughs.arrival`: {actId, line, opener}. Nobody speaks first → None.
+
+    開始時の `playthroughs.arrival`：{actId, line, opener}。最初に話しかける人物がいなければ None。
+    """
     who = opener(book, role)
     r = book.roles.get(role)
     if who is None or r is None or who not in book.characters:
@@ -52,7 +82,10 @@ def start_arrival(book: Book, role: str) -> Json | None:
 
 
 def act_at(book: Book, t: int) -> str | None:
-    """时刻 t 落在哪一幕（按各幕的 `start.t`）。"""
+    """Which act time t falls in (by each act's `start.t`).
+
+    時刻 t がどの幕に入るか（各幕の `start.t` で判断）。
+    """
     cur = None
     for a in sorted(book.world["acts"], key=lambda a: a.get("order", 0)):
         if a.get("start", {}).get("t", 0) <= t:
@@ -61,22 +94,38 @@ def act_at(book: Book, t: int) -> str | None:
 
 
 def done(state: SimState, aid: Json) -> bool:
-    """这条互助已经做成了：它的效果（`set`）在这一局都已成立。没有效果的看不出来，当没做成。"""
+    """This aid has been done: all its effects (`set`) hold in this game. One without effects can't be told, so it
+    counts as not done.
+
+    この助け合いはもう済んだ：その効果（`set`）がこのゲームですべて成り立っている。効果のないものは判断できないので、
+    済んでいないとみなす。
+    """
     sets = [e for e in aid.get("effects", []) if e.get("op") == "set"]
     return bool(sets) and all(state["vars"].get(e["var"]) == e["value"] for e in sets)
 
 
 def brief_lines(book: Book, state: SimState, character: str) -> list[str]:
-    """Live 局势说明「# 話し相手」下面的几行：怎么称呼对方；开局那一幕里对方能为你做的小互助（人物视角）。
+    """The lines under 「# 話し相手」 in the Live situation brief: how to address the other person, and in the opening
+    act the small aid the other person can do for you (from the character's point of view).
 
-    「他为你」的那条不给人物：那是之后才会发生的事（例：深夜被召之前托付工房），说出来就是剧透（S-092）；
-    叙事者看世界模型里的 `mutualAid` 判。"""
+    The "they for you" entry isn't given to the character: it is something that only happens later (e.g.
+    entrusting the workshop before being summoned late at night), so saying it would be a spoiler (S-092); the
+    narrator judges it from the world model's `mutualAid`.
+
+    Live の状況説明「# 話し相手」の下に入る行：相手の呼び方と、開始の幕で相手があなたにしてくれる小さな助け合い
+    （登場人物の視点）。
+
+    「相手があなたに」の項目は登場人物に渡さない：それはあとで起きること（例：深夜に召される前に工房を託す）で、
+    口にすればネタバレになる（S-092）。ナレーターが世界モデルの `mutualAid` を見て判断する。
+    """
     role, t = state["role"], state["t"]
     out: list[str] = []
     if role in ADDRESS:
         out.append(f"呼び方：{ADDRESS[role]}")
     start = (book.roles.get(role) or {}).get("startAct")
-    now = act_at(book, t)  # 开局事件写之前（t 还是 0）当作开局那一幕
+    # Before the opening events are written (t is still 0), treat it as the opening act.
+    # 開始のイベントを書く前（t がまだ 0）は開始の幕とみなす。
+    now = act_at(book, t)
     if start is not None and now is not None and now != start:
         return out
     for _, a in opening_aids(book, role, character):

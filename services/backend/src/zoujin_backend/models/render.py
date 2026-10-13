@@ -1,8 +1,20 @@
-"""提示的渲染（B-2，B-8 从 `models/vertex.py` 挪出来两家共用）：请求（后端拼好的 JSON，回放按它算键）→ 模型的输入。
+"""Prompt rendering (B-2; in B-8 moved out of `models/vertex.py` to be shared by both providers): request (JSON
+assembled by the backend, from which replays compute their key) → the model's input.
 
-- 世界模型前缀：只留叙事者要的字段，同一版本内容不变。Google 放在用户内容最前吃隐式缓存；Claude 放在 system 的第一段，
-  打缓存点（`models/claude.py`）。
-- 玩家和人物的话只放在 `<utterance>` 数据字段里，尖括号换成全角，不能借它关掉标签。
+- World model prefix: keeps only the fields the narrator needs, and its content does not change within a version.
+  Google puts it at the very start of the user content to benefit from implicit caching; Claude puts it as the first
+  block of system, with a cache breakpoint (`models/claude.py`).
+- The words of the player and characters go only into `<utterance>` data fields, with angle brackets replaced by
+  full-width ones, so they cannot be used to close the tag.
+
+プロンプトのレンダリング（B-2。B-8 で `models/vertex.py` から切り出し、両プロバイダで共用）：リクエスト（バックエンドが
+組み立てた JSON で、リプレイはそれからキーを計算する）→ モデルの入力。
+
+- 世界モデルのプレフィックス：ナレーターに必要なフィールドだけを残し、同じバージョン内では内容が変わらない。Google は
+  ユーザーコンテンツの先頭に置いて暗黙キャッシュを効かせ、Claude は system の最初のブロックに置いてキャッシュポイントを
+  打つ（`models/claude.py`）。
+- プレイヤーと登場人物の発言は `<utterance>` データフィールドにだけ入れ、山括弧を全角に置き換えて、それを使ってタグを
+  閉じられないようにする。
 """
 
 from __future__ import annotations
@@ -15,12 +27,22 @@ Json = Any
 
 
 def _escape(text: str | None) -> str:
-    """原话放进 <utterance> 数据字段前，把尖括号换成全角，不能借它关掉标签。"""
+    """Before original words go into an <utterance> data field, replace angle brackets with full-width ones so they
+    cannot be used to close the tag.
+
+    元の発言を <utterance> データフィールドに入れる前に、山括弧を全角に置き換え、
+    それを使ってタグを閉じられないようにする。
+    """
     return (text or "").replace("<", "＜").replace(">", "＞")
 
 
 def world_prefix(world: Json) -> str:
-    """世界模型前缀：只留叙事者要的字段，去掉出处（`cite`、`inferred`、`note`），同一版本内容不变，放在最前吃隐式缓存。"""
+    """World model prefix: keeps only the fields the narrator needs and drops the sources (`cite`, `inferred`, `note`);
+    its content does not change within a version, and it goes first to benefit from implicit caching.
+
+    世界モデルのプレフィックス：ナレーターに必要なフィールドだけを残し、出典（`cite`、`inferred`、`note`）を除く。同じ
+    バージョン内では内容が変わらず、先頭に置いて暗黙キャッシュを効かせる。
+    """
     keep = {
         "characters": (
             "id",
@@ -83,7 +105,12 @@ def render_turn(turn: Mapping[str, Any]) -> str:
 
 
 def render_context(ctx: Mapping[str, Any]) -> str:
-    """B-15：安全筛查的上下文（对谁说、在哪、人物上一句）。人物的上一句也只放在 <utterance> 数据字段里。"""
+    """B-15: the context for safety screening (who is being spoken to, where, the character's previous line). The
+    character's previous line also goes only into an <utterance> data field.
+
+    B-15：安全審査の文脈（誰に話しているか、どこか、登場人物の直前の一言）。登場人物の直前の一言も <utterance>
+    データフィールドにだけ入れる。
+    """
     head = {k: ctx[k] for k in ("character", "place") if ctx.get(k)}
     lines = [json.dumps(head, ensure_ascii=False)]
     if ctx.get("previous"):
@@ -92,15 +119,24 @@ def render_context(ctx: Mapping[str, Any]) -> str:
 
 
 def render_parts(kind: str, request: Mapping[str, Any]) -> list[str]:
-    """一次调用里前缀以外的数据，一段一段：状态 → 这一轮 → 这种提示自己的字段。"""
+    """The data in one call other than the prefix, block by block: state → this turn → this prompt kind's own fields.
+
+    1 回の呼び出しのうちプレフィックス以外のデータをブロックごとに：状態 → このターン →
+    このプロンプト種別自身のフィールド。
+    """
     parts: list[str] = []
     if "state" in request:
         parts.append("<state>\n" + json.dumps(request["state"], ensure_ascii=False) + "\n</state>")
     if "turn" in request:
         parts.append(render_turn(request["turn"]))
-    if "action" in request:  # B-3：提取的输入里玩家做的动作（kind、对象、物品），数据字段
+    # B-3: the action the player took in the extraction input (kind, object, item), a data field
+    # B-3：抽出の入力にあるプレイヤーのアクション（kind、対象、アイテム）。データフィールド
+    if "action" in request:
         parts.append("<action>\n" + json.dumps(request["action"], ensure_ascii=False) + "\n</action>")
-    if "confirm" in request:  # B-4：提取的输入里在等回答的反问（反问的一句、那件事的摘要），数据字段
+    # B-4: the question asked back that awaits an answer in the extraction input (the question, the matter's summary),
+    # a data field
+    # B-4：抽出の入力にある回答待ちの聞き返し（聞き返しの一文、その件の要約）。データフィールド
+    if "confirm" in request:
         parts.append("<confirm>\n" + json.dumps(request["confirm"], ensure_ascii=False) + "\n</confirm>")
     if "context" in request:
         parts.append(render_context(request["context"]))
@@ -112,10 +148,18 @@ def render_parts(kind: str, request: Mapping[str, Any]) -> list[str]:
 
 
 def render_body(kind: str, request: Mapping[str, Any]) -> str:
-    """Claude 的用户内容（前缀在 system 里）。"""
+    """Claude's user content (the prefix is in system).
+
+    Claude のユーザーコンテンツ（プレフィックスは system にある）。
+    """
     return "\n\n".join(render_parts(kind, request))
 
 
 def render(kind: str, request: Mapping[str, Any], prefix: str) -> str:
-    """Google 一次调用的用户内容：前缀 → 状态 → 这一轮 → 这种提示自己的字段（都是数据）。前缀放最前吃隐式缓存。"""
+    """The user content of one Google call: prefix → state → this turn → this prompt kind's own fields (all data).
+    The prefix goes first to benefit from implicit caching.
+
+    Google の 1 回の呼び出しのユーザーコンテンツ：プレフィックス → 状態 → このターン → このプロンプト種別自身の
+    フィールド（すべてデータ）。プレフィックスを先頭に置いて暗黙キャッシュを効かせる。
+    """
     return "\n\n".join([prefix, *render_parts(kind, request)])

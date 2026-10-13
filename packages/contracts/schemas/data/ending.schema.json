@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "data/ending.schema.json",
-  "description": "数据契约 1.5：Ending、CharacterEnding（第 5 节）",
+  "description": "Data contract 1.5: Ending, CharacterEnding (section 5) / データ契約 1.5：Ending、CharacterEnding（第 5 節）",
   "$ref": "#/$defs/Ending",
   "$defs": {
     "Ending": {
       "title": "Ending",
-      "description": "结局（第 5 节）。1.6 起写入的结局，world.title、player.didForYou / youDid（可以是空数组）、characters、card 必写",
+      "description": "Ending (section 5). For endings written from 1.6 on, world.title, player.didForYou / youDid (may be empty arrays), characters and card are required / エンディング（第 5 節）。1.6 以降に書き込むエンディングでは world.title、player.didForYou / youDid（空配列でもよい）、characters、card が必須",
       "type": "object",
       "properties": {
         "schemaVersion": {
@@ -23,7 +23,7 @@
         },
         "trigger": {
           "enum": ["deadline", "story-closed", "abandoned"],
-          "description": "story-closed = 最后一幕的收幕节拍有了结果"
+          "description": "story-closed = the closing beat of the last act has an outcome / story-closed = 最後の幕の幕を閉じるビートに結果が出た"
         },
         "t": {
           "$ref": "common.schema.json#/$defs/StoryTime"
@@ -36,12 +36,12 @@
           "properties": {
             "outcome": {
               "$ref": "common.schema.json#/$defs/WorldEndingId",
-              "description": "WorldModel.endings.world[].id（底线类）"
+              "description": "WorldModel.endings.world[].id (baseline class) / WorldModel.endings.world[].id（基本類型）"
             },
             "summary": {
               "type": "string",
               "minLength": 1,
-              "description": "日语"
+              "description": "Japanese / 日本語"
             },
             "changedBeats": {
               "type": "array",
@@ -64,7 +64,7 @@
                 "required": ["beat", "to", "causedBy"],
                 "additionalProperties": false
               },
-              "description": "和原著不同的节拍，各自指回事件"
+              "description": "Beats that differ from the original, each pointing back to events / 原作と異なるビート。それぞれイベントを指し示す"
             },
             "finalVars": {
               "type": "object",
@@ -76,7 +76,7 @@
             "title": {
               "type": "string",
               "minLength": 1,
-              "description": "（1.1）世界结局的一句标题。1.6 起必写：模板尾声的局写世界模型 endings.world 里这一类的 label（api-contract 2.8 的 world.title）"
+              "description": "(1.1) A one-line title for the world ending. Required from 1.6: a playthrough with a template epilogue writes the label of this class from the world model's endings.world (world.title in api-contract 2.8) / （1.1）世界のエンディングの一行タイトル。1.6 以降は必須：テンプレートのエピローグを使うプレイでは、世界モデルの endings.world にあるこの類型の label を書く（api-contract 2.8 の world.title）"
             },
             "variant": {
               "type": "object",
@@ -84,7 +84,7 @@
                 "id": {
                   "type": "string",
                   "minLength": 1,
-                  "description": "本局内唯一，如 \"gen.king-abdicates\"（API 的 outcomeId）"
+                  "description": "Unique within the playthrough, e.g. \"gen.king-abdicates\" (the API's outcomeId) / プレイ内で一意。例：\"gen.king-abdicates\"（API の outcomeId）"
                 },
                 "title": {
                   "type": "string",
@@ -107,7 +107,7 @@
                     "required": ["var", "value"],
                     "additionalProperties": false
                   },
-                  "description": "它主张的最终状态，必须和 finalVars 一致"
+                  "description": "The final state it claims; must match finalVars / これが主張する最終状態。finalVars と一致しなければならない"
                 },
                 "causedBy": {
                   "type": "array",
@@ -115,12 +115,12 @@
                     "$ref": "common.schema.json#/$defs/EventId"
                   },
                   "minItems": 2,
-                  "description": "至少 2 个本局事件（「讲得通」）"
+                  "description": "At least 2 events from this playthrough (\"it makes sense\") / このプレイのイベントを少なくとも 2 つ（「筋が通る」）"
                 }
               },
               "required": ["id", "title", "summary", "claims", "causedBy"],
               "additionalProperties": false,
-              "description": "（1.1，S-031 ①）这一局生成的世界结局；没有 = 就是底线类本身"
+              "description": "(1.1, S-031 ①) The world ending generated for this playthrough; absent = the baseline class itself / （1.1、S-031 ①）このプレイで生成した世界のエンディング。ない = 基本類型そのもの"
             },
             "signature": {
               "type": "object",
@@ -135,7 +135,7 @@
                 ]
               },
               "additionalProperties": {},
-              "description": "（1.1）按 endings.signature 算出的署名（2.9.1）：变量 → 最终值，节拍 → 是否照原著发生"
+              "description": "(1.1) The signature computed from endings.signature (2.9.1): variable → final value, beat → whether it happened as in the original / （1.1）endings.signature から算出したシグネチャ（2.9.1）：変数 → 最終値、ビート → 原作どおりに起きたか"
             },
             "contrast": {
               "type": "object",
@@ -154,7 +154,7 @@
               },
               "required": ["original", "yours"],
               "additionalProperties": false,
-              "description": "（1.1，S-026）「原作では…／あなたの世界では…」"
+              "description": "(1.1, S-026) 「原作では…／あなたの世界では…」 / （1.1、S-026）「原作では…／あなたの世界では…」"
             }
           },
           "required": ["outcome", "summary", "changedBeats", "finalVars"],
@@ -184,7 +184,7 @@
               },
               "required": ["id", "label", "causedBy"],
               "additionalProperties": false,
-              "description": "顾问、人质、同行者、目击者、被处刑…"
+              "description": "Advisor, hostage, companion, witness, executed… / 相談役、人質、同行者、目撃者、処刑された…"
             },
             "relationships": {
               "type": "array",
@@ -233,7 +233,7 @@
               },
               "required": ["text", "causedBy"],
               "additionalProperties": false,
-              "description": "如「王に信を説いた旅人」"
+              "description": "E.g. 「王に信を説いた旅人」 / 例「王に信を説いた旅人」"
             },
             "epilogue": {
               "type": "array",
@@ -250,13 +250,13 @@
                       "$ref": "common.schema.json#/$defs/EventId"
                     },
                     "minItems": 1,
-                    "description": "至少引用一个本局事件"
+                    "description": "Cites at least one event from this playthrough / このプレイのイベントを少なくとも 1 つ引用する"
                   }
                 },
                 "required": ["sentence", "cites"],
                 "additionalProperties": false
               },
-              "description": "每句至少引用一个事件"
+              "description": "Each sentence cites at least one event / 各文で少なくとも 1 つのイベントを引用する"
             },
             "lastScene": {
               "type": "object",
@@ -273,7 +273,7 @@
                   "items": {
                     "$ref": "common.schema.json#/$defs/CharacterId"
                   },
-                  "description": "（1.1）结局演出里在场的人物（S-053）"
+                  "description": "(1.1) Characters present in the ending staging (S-053) / （1.1）エンディングの演出に居合わせる登場人物（S-053）"
                 }
               },
               "required": ["place", "description"],
@@ -294,13 +294,13 @@
                       "$ref": "common.schema.json#/$defs/EventId"
                     },
                     "minItems": 1,
-                    "description": "至少引用一个本局事件"
+                    "description": "Cites at least one event from this playthrough / このプレイのイベントを少なくとも 1 つ引用する"
                   }
                 },
                 "required": ["sentence", "cites"],
                 "additionalProperties": false
               },
-              "description": "（1.1，D-012）人物为你做的事"
+              "description": "(1.1, D-012) What characters did for you / （1.1、D-012）登場人物があなたのためにしたこと"
             },
             "youDid": {
               "type": "array",
@@ -317,13 +317,13 @@
                       "$ref": "common.schema.json#/$defs/EventId"
                     },
                     "minItems": 1,
-                    "description": "至少引用一个本局事件"
+                    "description": "Cites at least one event from this playthrough / このプレイのイベントを少なくとも 1 つ引用する"
                   }
                 },
                 "required": ["sentence", "cites"],
                 "additionalProperties": false
               },
-              "description": "（1.1）你为人物做的事"
+              "description": "(1.1) What you did for characters / （1.1）あなたが登場人物のためにしたこと"
             }
           },
           "required": [
@@ -340,7 +340,7 @@
           "items": {
             "$ref": "#/$defs/CharacterEnding"
           },
-          "description": "（1.1，D-015、S-032）7 个可对话人物都在"
+          "description": "(1.1, D-015, S-032) All 7 talkable characters are included / （1.1、D-015、S-032）会話できる 7 人の登場人物が全員含まれる"
         },
         "card": {
           "type": "object",
@@ -349,19 +349,19 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 14,
-              "description": "称号 ≤ 14 字"
+              "description": "Title ≤ 14 characters / 称号は 14 字以内"
             },
             "subtitle": {
               "type": "string",
               "minLength": 1,
               "maxLength": 26,
-              "description": "世界的去向 ≤ 26 字"
+              "description": "Where the world ends up ≤ 26 characters / 世界の行く末は 26 字以内"
             },
             "contrast": {
               "type": "string",
               "minLength": 1,
               "maxLength": 48,
-              "description": "「原作との違い」≤ 48 字"
+              "description": "「原作との違い」 ≤ 48 characters / 「原作との違い」は 48 字以内"
             },
             "characterLines": {
               "type": "array",
@@ -375,7 +375,7 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 40,
-                    "description": "≤ 40 字"
+                    "description": "≤ 40 characters / 40 字以内"
                   }
                 },
                 "required": ["character", "line"],
@@ -383,12 +383,12 @@
               },
               "minItems": 1,
               "maxItems": 3,
-              "description": "（1.6 起 1〜3 人）影响最深的 1〜3 人，一个也没排上名时是梅洛斯一句（卡片按最多 3 行排）"
+              "description": "(1–3 characters from 1.6) The 1–3 most affected characters; when nobody is ranked, one line for Melos (the card is laid out for at most 3 lines) / （1.6 以降 1〜3 人）最も影響を受けた 1〜3 人。誰も順位に入らないときはメロスの一文（カードは最大 3 行でレイアウトする）"
             }
           },
           "required": ["title", "subtitle", "contrast", "characterLines"],
           "additionalProperties": false,
-          "description": "（1.1，S-049、S-051）结局卡，字数由这里保证。1.6 起每一局都生成：生成的结局取 rank 最前的 1〜3 人，一个也没排上名时放梅洛斯一句（按他的 original）；校验两次不过、改用模板尾声的局，字段取 ux-design 11.4 对应那一组的预写句子"
+          "description": "(1.1, S-049, S-051) Ending card; the character limits are guaranteed here. Generated for every playthrough from 1.6: a generated ending takes the 1–3 characters with the highest rank, and when nobody is ranked puts one line for Melos (from his original); for a playthrough that failed validation twice and fell back to the template epilogue, the fields take the pre-written sentences of the matching set in ux-design 11.4 / （1.1、S-049、S-051）エンディングカード。字数はここで保証する。1.6 以降はすべてのプレイで生成する：生成されたエンディングでは rank が上位の 1〜3 人を取り、誰も順位に入らないときはメロスの一文を置く（彼の original による）。検証に 2 回失敗してテンプレートのエピローグに切り替えたプレイでは、ux-design 11.4 の該当する組の事前に書いた文をフィールドに使う"
         },
         "share": {
           "type": "object",
@@ -404,7 +404,7 @@
             }
           },
           "additionalProperties": false,
-          "description": "生成产物的存储引用"
+          "description": "Storage reference of the generated artifact / 生成された成果物の保存先への参照"
         }
       },
       "required": [
@@ -443,7 +443,7 @@
     },
     "CharacterEnding": {
       "title": "CharacterEnding",
-      "description": "（1.1）每个可对话人物的结局（第 5 节）",
+      "description": "(1.1) The ending of each talkable character (section 5) / （1.1）会話できる各登場人物の結末（第 5 節）",
       "type": "object",
       "properties": {
         "character": {
@@ -459,16 +459,16 @@
               "type": "null"
             }
           ],
-          "description": "受影响深浅，从 1 起；unchanged 时 null"
+          "description": "How deeply affected, starting at 1; null when unchanged / 影響の深さ。1 から始まる。unchanged のときは null"
         },
         "unchanged": {
           "type": "boolean",
-          "description": "玩家没碰过、世界变化也没波及到：只显示「原作どおり」，不生成句子"
+          "description": "The player did not interact with them and the world's changes did not reach them: only 「原作どおり」 is shown, no sentences are generated / プレイヤーが関わらず、世界の変化も及ばなかった：「原作どおり」だけを表示し、文は生成しない"
         },
         "original": {
           "type": "string",
           "minLength": 1,
-          "description": "原作里他的结局，一句（日语）"
+          "description": "Their ending in the original, one sentence (in Japanese) / 原作での結末。一文（日本語）"
         },
         "yours": {
           "type": "array",
@@ -485,7 +485,7 @@
                   "$ref": "common.schema.json#/$defs/EventId"
                 },
                 "minItems": 1,
-                "description": "至少引用一个本局事件"
+                "description": "Cites at least one event from this playthrough / このプレイのイベントを少なくとも 1 つ引用する"
               }
             },
             "required": ["sentence", "cites"],
@@ -493,7 +493,7 @@
           },
           "minItems": 1,
           "maxItems": 3,
-          "description": "1〜3 句，「あなたの世界では」；unchanged 时省略"
+          "description": "1–3 sentences, 「あなたの世界では」; omitted when unchanged / 1〜3 文、「あなたの世界では」。unchanged のときは省略"
         }
       },
       "required": ["character", "rank", "unchanged"],

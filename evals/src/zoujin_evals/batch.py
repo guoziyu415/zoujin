@@ -1,7 +1,14 @@
-"""有限真实模型批次：一局一个子进程、逐局留证、可续跑，绝不自动重放中断局。
+"""Finite real-model batches: one subprocess per game, evidence kept game by game, resumable, and an interrupted game
+is never replayed automatically.
 
-python -m zoujin_evals.batch --plan simulations --seeds 2 … 先估价；--confirm 才调用。
-四幕文字替身评测不等于 Live 语音验收；不运行尚未校准的 judge。
+python -m zoujin_evals.batch --plan simulations --seeds 2 … estimates the price first; only --confirm makes calls.
+The four-act text stand-in eval is not the Live voice acceptance check; the judge, not yet calibrated, is not run.
+
+有限の実モデルバッチ：1 局に 1 つのサブプロセス、局ごとに証拠を残し、再開でき、中断した局を自動で再実行することは
+決してない。
+
+python -m zoujin_evals.batch --plan simulations --seeds 2 … はまず見積もる。--confirm があって初めて呼び出す。
+四幕のテキスト代役による評価は Live 音声の受け入れ確認ではない。まだキャリブレーションしていない judge は実行しない。
 """
 
 from __future__ import annotations
@@ -35,12 +42,17 @@ REPO = Path(__file__).resolve().parents[3]
 
 def plan(kind: str, seeds: int, *, repo: Path = REPO) -> list[dict[str, Any]]:
     if not 1 <= seeds <= 20:
-        raise ValueError("seeds 必须是 1–20（正式分母：10 画像 × 20 seed）")
+        raise ValueError(
+            "seeds must be 1–20 (formal denominator: 10 personas × 20 seeds)"
+            " / seeds は 1–20 でなければならない（正式な分母：10 ペルソナ × 20 seed）"
+        )
     first = load_cases(repo / "evals/seeds")
     if kind == "simulations":
         original = [c for c in first if c["id"] in {f"E7-{n:03}" for n in range(1, 11)}]
         if len(original) != 10 or len({c["setup"]["persona"] for c in original}) != 10:
-            raise ValueError("原定 10 种画像缺失或重复")
+            raise ValueError(
+                "The planned 10 personas are missing or duplicated / 予定の 10 種のペルソナが欠けているか重複している"
+            )
         return [
             {**c, "id": f"{c['id']}-seed-{seed:02}", "runs": 1, "setup": {**c["setup"], "seed": seed}}
             for seed in range(1, seeds + 1)
@@ -55,7 +67,11 @@ def digest(value: Any) -> str:
 
 
 def source_hash(repo: Path = REPO) -> str:
-    """按内容而非 git SHA 绑定证据：其他线程提交不使同内容失效。"""
+    """Bind the evidence to content rather than to the git SHA: commits from other threads do not invalidate the same
+    content.
+
+    証拠を git SHA ではなく内容に結び付ける：他のスレッドのコミットで同じ内容が無効にならない。
+    """
     roots = ("evals/src", "services/backend/src", "packages/worldsim/src", "packages/llm/src", "worlds", "prompts")
     h = hashlib.sha256()
     for root in roots:
@@ -103,7 +119,9 @@ def runtime_config() -> dict[str, Any]:
 
 def save(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    # 各 worker 可同时触发 halt；临时文件独占，目标替换保持原子。
+    # Workers can trigger a halt at the same time; the temporary file is exclusive and replacing the target stays
+    # atomic.
+    # 各 worker が同時に halt を起こしうる。一時ファイルは排他的で、対象の置き換えはアトミックに保たれる。
     with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, prefix=f".{path.name}.", delete=False) as f:
         tmp = Path(f.name)
         f.write(json.dumps(value, ensure_ascii=False, indent=1) + "\n")
@@ -119,7 +137,8 @@ def strict_result(case: Mapping[str, Any], result: Mapping[str, Any], ledger: li
     if result.get("skip") or len(runs) != 1:
         return ["missing-run"]
     run = runs[0]
-    # 只有 judge 的案例仍执行真实步骤，但本轮不能冒充已完成判分。
+    # Judge-only cases still run the real steps, but this round must not pretend that judging is done.
+    # judge だけのケースも実際のステップは実行するが、今回は採点済みのふりをしてはならない。
     judge_only = "judge" in case.get("expect", {}) and not case["expect"].get("deterministic")
     if run.get("status") != "pass" and not (judge_only and run.get("skip", {}).get("code") == "needs-live-model"):
         reasons.append("failed-or-skipped-check")
@@ -140,7 +159,11 @@ def strict_result(case: Mapping[str, Any], result: Mapping[str, Any], ledger: li
 
 
 def simulation_quality(sim: Mapping[str, Any]) -> dict[str, Any]:
-    """样本有效性、真实退路、请求重试分开；旧记录缺诊断时明确未知。"""
+    """Keep sample validity, real fallbacks and request retries apart; old records lacking diagnostics are explicitly
+    unknown.
+
+    サンプルの有効性、実際のフォールバック、リクエストのリトライを分ける。診断のない旧記録は明示的に unknown とする。
+    """
     player = sim.get("player", {})
     valid = (
         sim.get("status") == "ended"
@@ -165,7 +188,10 @@ def simulation_quality(sim: Mapping[str, Any]) -> dict[str, Any]:
     if dialogue:
         valid = valid and dialogue.get("aligned", False) and not dialogue.get("inconsistent", 0)
         known_degraded = known_degraded or dialogue.get("missing", 0) > 0
-    # 观察器没有覆盖输出内容清洗后的固定退路，零已知失败不能认证零降级。
+    # The observer does not cover the fixed fallbacks after output sanitising, so zero known failures cannot certify
+    # zero degradation.
+    # 観測器は出力内容のサニタイズ後の固定フォールバックをカバーしていないので、既知の失敗が 0 でも劣化が 0 とは
+    # 認定できない。
     return {
         "valid": bool(valid),
         "degradation": "known-degraded" if known_degraded else "unknown",
@@ -239,7 +265,9 @@ def summarize(out: Path, jobs: list[dict[str, Any]], metadata: Mapping[str, Any]
             record["originalIssues"] = record.get("issues", [])
             record["issues"] = strict_result(record["case"], record["result"], rows)
         records.append(record)
-    # 直接累计账本，包含正在运行、预算停止、被中断而没有 result 的半局。
+    # Sum the ledgers directly, including half games that are running, stopped by the budget, or interrupted without a
+    # result.
+    # 台帳を直接合計する。実行中、予算で停止、中断されて result のない途中の局も含む。
     ledger = [json.loads(line) for p in (out / "units").glob("*/ledger.jsonl") for line in p.read_text().splitlines()]
     results = [r["result"] for r in records if "result" in r]
     summary = {
@@ -307,7 +335,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--seeds", type=int, default=2)
     parser.add_argument("--max-steps", type=int, default=MAX_STEPS)
     parser.add_argument(
-        "--resume-after-stop", action="store_true", help="显式恢复限流停点；只启动未开始样本，不重跑失败局"
+        "--resume-after-stop",
+        action="store_true",
+        help="Explicitly resume after a rate-limit stop; start only samples not yet started, never rerun failed games"
+        " / レート制限の停止点から明示的に再開する。未開始のサンプルだけを開始し、失敗した局は再実行しない",
     )
     parser.add_argument("--jobs", type=int, choices=range(1, 5), default=1)
     parser.add_argument("--out", type=Path)
@@ -317,14 +348,22 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--max-claude-usd", type=float, default=300)
     parser.add_argument("--timeout", type=float, default=1800)
     parser.add_argument("--confirm", action="store_true")
-    parser.add_argument("--keep-going", action="store_true", help="检查失败后仍跑下一例；预算或限流仍停止")
+    parser.add_argument(
+        "--keep-going",
+        action="store_true",
+        help="Keep running the next case after a failed check; the budget or rate limits still stop"
+        " / チェックが不合格でも次のケースを実行する。予算やレート制限では引き続き停止する",
+    )
     args = parser.parse_args(argv)
     if args.worker:
         return worker(args.worker)
     if args.out is None:
-        parser.error("必须显式给 --out（私有证据目录）")
+        parser.error(
+            "--out must be given explicitly (private evidence directory)"
+            " / --out を明示する必要がある（非公開の証拠ディレクトリ）"
+        )
     if min(args.max_item_usd, args.max_google_usd, args.max_claude_usd, args.timeout, args.max_steps) <= 0:
-        parser.error("预算和时限必须为正数")
+        parser.error("Budgets and time limits must be positive / 予算と時間制限は正の数でなければならない")
     cases = plan(args.plan, args.seeds)
     caps = {"google": args.max_google_usd, "claude": args.max_claude_usd}
     code, message = live.gate(
@@ -341,7 +380,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     print(message.replace("uv run zoujin-eval", "uv run python -m zoujin_evals.batch"))
     if code is not None:
-        print("仅计划；尚未运行。续跑请使用同一批次参数和 --confirm。" if code == 0 else "未运行。")
+        print(
+            "Plan only; nothing has run yet. To run or resume, use the same batch arguments with --confirm."
+            " / 計画のみ。まだ実行していない。実行・再開には同じバッチ引数と --confirm を使う。"
+            if code == 0
+            else "Not run. / 実行していない。"
+        )
         return code
     metadata = {
         "plan": args.plan,
@@ -354,10 +398,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     }
     manifest = args.out / "manifest.json"
     if manifest.exists() and json.loads(manifest.read_text()) != metadata:
-        raise SystemExit("源代码、世界或用例已变化：旧批次不能混入新结果，请使用新目录。")
+        raise SystemExit(
+            "The source, world or cases have changed: an old batch cannot take new results, use a new directory."
+            " / ソース、世界、ケースのいずれかが変わった：旧バッチに新しい結果を混ぜられないので、"
+            "新しいディレクトリを使う。"
+        )
     halted = args.out / "halted.json"
     if halted.exists() and not args.resume_after_stop:
-        raise SystemExit("上次限流或预算停止；先检查原因，再显式 --resume-after-stop。旧失败局不会重跑。")
+        raise SystemExit(
+            "The last run stopped on a rate limit or the budget; check the cause first, then explicitly pass"
+            " --resume-after-stop. Old failed games are not rerun. / 前回はレート制限か予算で停止した。まず原因を"
+            "確認し、それから明示的に --resume-after-stop を付ける。失敗した旧局は再実行しない。"
+        )
     if halted.exists():
         history = args.out / "halt-history"
         history.mkdir(exist_ok=True)
@@ -371,7 +423,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             continue
         job_path = directory / "job.json"
         if (directory / "started.json").exists():
-            raise SystemExit(f"{case['id']} 上次中断且没有结果；禁止自动重复付费，先查该进程和数据库。")
+            raise SystemExit(
+                f"{case['id']} was interrupted last time and has no result; automatic repeat payment is forbidden,"
+                f" check that process and the database first. / {case['id']} は前回中断され結果がない。自動で"
+                "再度課金することは禁止。まずそのプロセスとデータベースを確認する。"
+            )
         save(
             job_path,
             {
@@ -405,14 +461,19 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if halted.exists():
                     stopped = True
                     break
-                # 给每个进行中的 worker 预留整项额度；不会因并发绕过两本总账。
+                # Reserve a whole item's quota for each running worker; concurrency cannot get around the two
+                # total ledgers.
+                # 実行中の各 worker に項目の枠全体を予約する。並行実行で 2 つの総台帳をすり抜けることはない。
                 reserved = args.max_item_usd * (len(active) + 1)
                 if any(summary["costUsd"][p] + reserved > caps[p] for p in caps):
                     stopped = True
                     break
                 if source_hash() != metadata["sourceHash"]:
                     stopped = True
-                    print("源代码在批次中改变，停止派发，保留已运行证据。")
+                    print(
+                        "The source changed during the batch; stopping dispatch and keeping the evidence already run."
+                        " / バッチ中にソースが変わった。派遣を停止し、実行済みの証拠は保持する。"
+                    )
                     break
                 path = pending.pop(0)
                 active[pool.submit(launch, path)] = path

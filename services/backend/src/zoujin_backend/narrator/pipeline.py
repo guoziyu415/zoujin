@@ -1,23 +1,60 @@
-"""叙事者流水线的第 1〜5 步（B-2，backend-design 2.4）：分流 → 提取 → 确定性规则 → 模型检查 → 改写、降级或拒绝。
+"""Steps 1-5 of the narrator pipeline (B-2, backend-design 2.4): triage → extraction → deterministic rules → model
+check → rewrite, downgrade or reject.
 
-第 7 步（单事务提交）在 `narrator/core.py`；第 0 步（安全筛查）只有接口：`TurnInput.flags`。第 6 步（意图确认，B-4）：
-对话里提取标了要确认、又是不可逆的大事的候选照常过第 3〜5 步，带着 `confirm`（人物反问了没有、反问的一句）交给
-叙事者，过了的存成草稿（`narrator/confirm.py`）；动作里的这种候选照 B-2 丢弃（B-4 不改动作）。
-草稿开着时，对着反问的人物说的一轮不分流，提取多判一项：这句话是不是在回答（`confirmAnswer`）。
+Step 7 (single-transaction commit) is in `narrator/core.py`; step 0 (safety screening) only has an interface:
+`TurnInput.flags`. Step 6 (intent confirmation, B-4): in dialogue, candidates that extraction marked as needing
+confirmation and that are major irreversible things go through steps 3-5 as usual and are handed to the narrator with
+`confirm` (whether the character asked back, and the counter-question); those that pass are stored as drafts
+(`narrator/confirm.py`); such candidates from actions are dropped as in B-2 (B-4 doesn't change actions).
+While a draft is open, a turn addressed to the character who asked back isn't triaged, and extraction judges one more
+thing: whether the line answers the question (`confirmAnswer`).
 
-- **时限**：每次调用有截止时间（`config.DEADLINES`），超时、输出不过 Schema、调用失败就取消、立刻重发一次。
-  第二次还不行：分流当作「可能」继续；提取、检查、改写的，这一轮只提交时钟事件、候选丢弃，
-  `playthrough_metrics` 记一次超时。
-  `BudgetStop` 不重发，往上抛，整次停下。`RateLimited`（429、529）看 `on_rate_limit`：Mac 上的跑（S-2、评测、小测）
-  是 "stop"，第一个就停（S-079）；服务玩家时是 "degrade"，按上面的时限规则重发一次，还不行就这一轮只提交时钟事件，
-  `playthrough_metrics` 记一次超时（backend-design 2.4 的降级，B-8）。
-- **ID**：约定和即兴设定的 ID 在第 3 步前分配（试算要用），但不进给模型的请求：请求里的状态和候选用别名
-  （`narrator/view.py`），同样的局面请求一样，回放的键才对得上。
-- **第 3、4 步的顺序**：先按顺序跑第 3 步（前面通过的先试算进状态），再把过了第 3 步、`effects` 不为空的候选合在一次
-  检查调用里；然后按顺序定每个候选的结果（前面被模型否决的不再算进后面的状态，后面的重判第 3 步）。不过的带着失败的
-  规则和理由改写，回到第 3 步，最多改写 2 次（`attempts` ≤ 3）；还不过就降级，降级的也要过第 3、4 步，否则拒绝。
-  降级不另算一次尝试（`attempts` 是改写上限 2 次的那个数，契约第 3 节最大 3）。
-- 没有效果的候选不是事件（提取给了就不要；改写、降级成没有效果的算做不到）。
+- **Deadlines**: every call has a deadline (`config.DEADLINES`); on timeout, output that fails the Schema, or a failed
+  call, cancel and resend once right away. If the second try also fails: triage continues as "maybe"; for extraction,
+  check and rewrite, this turn commits only the clock event, drops the candidates, and `playthrough_metrics` records
+  one timeout. `BudgetStop` isn't resent; it is raised and stops the whole run. `RateLimited` (429, 529) depends on
+  `on_rate_limit`: runs on the Mac (S-2, evals, small tests) use "stop" and stop at the first one (S-079); serving
+  players uses "degrade": resend once per the deadline rule above, and if that fails too, commit only the clock event
+  for this turn and record one timeout in `playthrough_metrics` (backend-design 2.4's degradation, B-8).
+- **IDs**: promise and improvised-fact IDs are assigned before step 3 (trial application needs them), but never enter
+  requests to the model: the state and candidates in requests use aliases (`narrator/view.py`), so the same situation
+  gives the same request and replay keys match.
+- **Order of steps 3 and 4**: first run step 3 in order (earlier passing ones are trial-applied to the state first),
+  then put the candidates that passed step 3 and have non-empty `effects` into one check call; then settle each
+  candidate's result in order (ones rejected by the model no longer count toward later state, and later ones are
+  re-judged in step 3). Failures are rewritten with the failed rules and reasons and go back to step 3, at most 2
+  rewrites (`attempts` ≤ 3); if they still fail they are downgraded, and the downgraded one must also pass steps 3
+  and 4, otherwise it is rejected. Downgrading doesn't count as another attempt (`attempts` is the count capped by the 2
+  rewrites; contract section 3 max 3).
+- A candidate without effects is not an event (dropped if extraction gives one; a rewrite or downgrade to no effects
+  counts as impossible).
+
+ナレーターのパイプラインの第 1〜5 ステップ（B-2、backend-design 2.4）：振り分け → 抽出 → 決定的な規則 → モデルの検査 →
+書き換え、格下げ、または却下。
+
+第 7 ステップ（単一トランザクションのコミット）は `narrator/core.py`。第 0 ステップ（安全スクリーニング）はインター
+フェースだけ：`TurnInput.flags`。第 6 ステップ（意図の確認、B-4）：対話で、抽出が確認要と印を付けた不可逆な大きなことの
+候補は通常どおり第 3〜5 ステップを通し、`confirm`（登場人物が聞き返したか、聞き返しの一文）を付けてナレーターに渡す。
+通ったものは下書きとして保存する（`narrator/confirm.py`）。アクションでのこうした候補は B-2 のとおり捨てる
+（B-4 はアクションを変えない）。下書きが開いている間、聞き返した登場人物に向けたターンは振り分けず、抽出はもう 1 つ
+判定する：その一言が返答かどうか（`confirmAnswer`）。
+
+- **時間制限**：呼び出しごとに締め切りがある（`config.DEADLINES`）。タイムアウト、出力が Schema を通らない、呼び出しの
+  失敗のときは取り消してすぐ 1 回だけ送り直す。2 回目もだめなら：振り分けは「可能性あり」として続ける。抽出、検査、
+  書き換えなら、このターンは時計のイベントだけをコミットし、候補は捨て、`playthrough_metrics` にタイムアウトを 1 回
+  記録する。`BudgetStop` は送り直さず上に投げ、全体を止める。`RateLimited`（429、529）は `on_rate_limit` 次第：
+  Mac での実行（S-2、評価、小テスト）は "stop" で最初の 1 回で止める（S-079）。プレイヤー向けは "degrade" で、上の
+  時間制限の規則どおり 1 回送り直し、それでもだめならこのターンは時計のイベントだけをコミットし、
+  `playthrough_metrics` にタイムアウトを 1 回記録する（backend-design 2.4 の格下げ、B-8）。
+- **ID**：約束と即興設定の ID は第 3 ステップの前に割り当てる（試算に要る）が、モデルへのリクエストには入れない：
+  リクエストの状態と候補は別名を使い（`narrator/view.py`）、同じ局面なら同じリクエストになり、リプレイのキーが一致する。
+- **第 3・4 ステップの順序**：まず第 3 ステップを順に実行し（先に通ったものを状態に試算する）、次に第 3 ステップを通り
+  `effects` が空でない候補を 1 回の検査呼び出しにまとめる。それから各候補の結果を順に決める（モデルに却下された前の
+  候補は後の状態に入れず、後の候補は第 3 ステップを判定し直す）。通らないものは失敗した規則と理由を付けて書き換え、
+  第 3 ステップに戻す。書き換えは最大 2 回（`attempts` ≤ 3）。それでも通らなければ格下げし、格下げしたものも第 3・4
+  ステップを通らなければ却下する。格下げは試行回数に数えない（`attempts` は書き換え上限 2 回に対応する数で、契約第 3 節
+  で最大 3）。
+- 効果のない候補はイベントではない（抽出が出してきても使わない。書き換えや格下げで効果がなくなったらできないとみなす）。
 """
 
 from __future__ import annotations
@@ -63,11 +100,17 @@ from zoujin_worldsim import SimState
 
 Json = Any
 
-MAX_TRIES = 3  # 原本 1 次 + 改写最多 2 次（契约 CheckResult.attempts ≤ 3）
-# 第 6 步那类事件（S-040）：让节拍 prevented / altered，或改变人质、玩家的身份处境
+# The original once + at most 2 rewrites (contract CheckResult.attempts ≤ 3).
+# 元の 1 回 + 書き換え最大 2 回（契約 CheckResult.attempts ≤ 3）。
+MAX_TRIES = 3
+# Step 6 events (S-040): making a beat prevented / altered, or changing the hostage's or the player's situation.
+# 第 6 ステップの対象となるイベント（S-040）：ビートを prevented / altered にする、
+# または人質やプレイヤーの立場を変える。
 IRREVERSIBLE_BEAT = ("prevented", "altered")
 IRREVERSIBLE_VARS = ("var.hostage.who", "var.hostage.fate", "var.player.custody")
-MODEL_REASON = {  # 模型判 fail 却没给理由（或理由照抄了玩家的话）时用的一句
+# The line used when the model judges fail without a reason (or the reason copies the player's words).
+# モデルが fail と判定したのに理由がない（または理由がプレイヤーの言葉の書き写し）ときに使う一文。
+MODEL_REASON = {
     "R1-anchor": "物語の要と食い違っている",
     "R5-persona": "この人物の性格や目的からは考えにくい",
     "R6-safety": "物語に書けない内容が入っている",
@@ -76,7 +119,10 @@ FORM = ("R7-capability", "bad-shape", SHAPE["bad-op"][1])
 
 
 class CallFailed(Exception):
-    """一种提示两次都没拿到能用的输出（超时、不过 Schema、调用失败）。"""
+    """A prompt kind got no usable output in two tries (timeout, Schema failure, call failure).
+
+    あるプロンプトで 2 回とも使える出力が得られなかった（タイムアウト、Schema を通らない、呼び出しの失敗）。
+    """
 
     def __init__(self, kind: str) -> None:
         super().__init__(kind)
@@ -85,7 +131,12 @@ class CallFailed(Exception):
 
 @dataclass(frozen=True)
 class TurnInput:
-    """这一轮：对谁说（`character`）、玩家的原话、人物的回答、语音还是文字、第 0 步的标记、动作（B-3）。"""
+    """This turn: who is addressed (`character`), the player's words, the character's reply, voice or text, step 0
+    flags, and the action (B-3).
+
+    このターン：誰に話すか（`character`）、プレイヤーの発話、登場人物の返答、音声かテキストか、第 0 ステップの印、
+    アクション（B-3）。
+    """
 
     character: str | None
     player: str | None
@@ -99,7 +150,11 @@ class TurnInput:
         return Turn(said=self.player or "", act=self.act, flags=self.flags)
 
     def doc(self) -> Json:
-        """请求里的 `turn`：原话只在这里（真客户端放进 `<utterance>` 数据字段）。"""
+        """The request's `turn`: the player's words appear only here (the real client puts them in the `<utterance>`
+        data field).
+
+        リクエストの `turn`：発話はここにだけ入る（本番クライアントは `<utterance>` のデータフィールドに入れる）。
+        """
         d: Json = {"character": self.character, "mode": self.mode, "player": self.player}
         if self.reply is not None:
             d["reply"] = self.reply
@@ -110,7 +165,11 @@ class TurnInput:
 
 @dataclass
 class Counts:
-    """一轮的计数（`playthrough_metrics`）。改写、降级、拒绝按候选的最后结果数。"""
+    """Counts for one turn (`playthrough_metrics`). Rewrites, downgrades and rejections are counted by each candidate's
+    final result.
+
+    1 ターンの集計（`playthrough_metrics`）。書き換え、格下げ、却下は候補の最終結果で数える。
+    """
 
     triage_skipped: int = 0
     confirm_dropped: int = 0
@@ -125,7 +184,12 @@ class Counts:
 
 @dataclass
 class Spend:
-    """这一轮各类提示花了多少（美元），重来的、超时被取消的、输出不合格的也算（钱已经花了），和账本对得上。"""
+    """How much each prompt kind cost in this turn (USD), including retries, calls cancelled on timeout and invalid
+    output (the money is already spent), so it matches the ledger.
+
+    このターンで各プロンプトにかかった金額（米ドル）。やり直し、タイムアウトで取り消した呼び出し、不合格の出力も含める
+    （お金はもう使っている）ので、台帳と一致する。
+    """
 
     usd: dict[str, float] = field(default_factory=dict)
 
@@ -138,12 +202,17 @@ class Spend:
 
 @dataclass
 class Extracted:
-    candidates: list[Json]  # 规范化以后的（真 ID；t、dt、place 在第 3 步前按当时的状态补）
+    # Normalized (real IDs; t, dt and place are filled in before step 3 from the state at that time).
+    # 正規化済み（本当の ID。t、dt、place は第 3 ステップの前にその時点の状態から補う）。
+    candidates: list[Json]
     counts: Counts
     timed_out: bool = False
-    # B-4：和 candidates 一一对应，要确认的候选是 {"asked", "question"}，其余 None
+    # B-4: one per candidate; {"asked", "question"} for candidates needing confirmation, None otherwise.
+    # B-4：candidates と 1 対 1 で、確認が要る候補は {"asked", "question"}、それ以外は None。
     confirm: list[Json | None] = field(default_factory=list)
-    answer: str | None = None  # 草稿开着时：这句话在回答反问（yes / no），不是在回答为 None
+    # While a draft is open: the line answers the counter-question (yes / no); None if it isn't an answer.
+    # 下書きが開いている間：この一言が聞き返しへの返答（yes / no）。返答でなければ None。
+    answer: str | None = None
 
 
 @dataclass
@@ -155,7 +224,10 @@ class Verified:
 
 @dataclass
 class _Try:
-    """一个候选的一次尝试：第 3 步的结果和第 4 步的结果（没跑是 None）。"""
+    """One attempt for a candidate: the step 3 result and the step 4 result (None if not run).
+
+    1 つの候補の 1 回の試行：第 3 ステップの結果と第 4 ステップの結果（実行していなければ None）。
+    """
 
     cand: Json
     effects: list[Json]
@@ -173,7 +245,8 @@ class _Try:
         return not self.fails
 
 
-# —— 候选的规范化（模型输出 → 叙事者用的候选） ——
+# —— Normalizing candidates (model output → candidates the narrator uses) ——
+# —— 候補の正規化（モデルの出力 → ナレーターが使う候補） ——
 
 
 def _effect_in(e: Mapping[str, Any], view: View) -> Json:
@@ -181,7 +254,8 @@ def _effect_in(e: Mapping[str, Any], view: View) -> Json:
     op = out.get("op")
     if op == "promise":
         if out.get("change") == "made":
-            out.pop("promiseId", None)  # 新约定的 ID 提交时分配
+            # New promise IDs are assigned at commit / 新しい約束の ID はコミット時に割り当てる
+            out.pop("promiseId", None)
         elif "promiseId" in out:
             out["promiseId"] = view.real(out["promiseId"])
     elif op == "improv":
@@ -192,7 +266,12 @@ def _effect_in(e: Mapping[str, Any], view: View) -> Json:
 
 
 def normalize(raw: Mapping[str, Any], view: View, book: Book) -> Json:
-    """模型给的候选 → 叙事者的候选：补默认值，别名换回真 ID，只留世界模型里有的节拍做 causes。"""
+    """A candidate from the model → a narrator candidate: fill in defaults, map aliases back to real IDs, and keep only
+    beats from the world model as causes.
+
+    モデルが出した候補 → ナレーターの候補：既定値を補い、別名を本当の ID に戻し、
+    causes には世界モデルにあるビートだけを残す。
+    """
     c: Json = {
         "actor": raw.get("actor") or "player",
         "type": raw.get("type") or "say",
@@ -209,7 +288,12 @@ def normalize(raw: Mapping[str, Any], view: View, book: Book) -> Json:
 
 
 def act_doc(act: Mapping[str, Any] | None) -> Json | None:
-    """提取请求里的 `action`（B-3）：玩家做的动作的 kind、对象、物品。打算、出口、过场的 act 不是动作。"""
+    """The `action` in an extraction request (B-3): the kind, target and item of the player's action. The acts of
+    plans, exits and en-route choices are not actions.
+
+    抽出リクエストの `action`（B-3）：プレイヤーのアクションの kind、対象、物。プラン、出口、道中の二択の act は
+    アクションではない。
+    """
     if not act or "kind" not in act or act["kind"] in ("plan", "en-route", "go"):
         return None
     params = act.get("params") or {}
@@ -226,13 +310,22 @@ def irreversible(cand: Mapping[str, Any]) -> bool:
 
 
 def situate(cand: Mapping[str, Any], state: SimState, minutes: int) -> Json:
-    """第 3 步要的 t、dt、place：这一轮开始的时刻、这一轮的分钟（R3 量路程）、玩家所在地点。提交时照 B-0 写在 t0、dt 0，
-    这一轮的分钟由只推进时钟的那条事件走。"""
+    """The t, dt and place step 3 needs: the time this turn started, this turn's minutes (R3 measures travel against
+    them), and the player's place. At commit, as in B-0, it is written at t0 with dt 0, and the turn's minutes go into
+    the event that only advances the clock.
+
+    第 3 ステップが要る t、dt、place：このターンの開始時刻、このターンの分数（R3 が道のりを測る）、
+    プレイヤーのいる場所。
+    コミット時は B-0 のとおり t0、dt 0 で書き、このターンの分数は時計を進めるだけのイベントが受け持つ。
+    """
     return {**cand, "t": state["t"], "dt": minutes, "place": state["vars"]["var.player.location"]}
 
 
 def public(cand: Mapping[str, Any], effects: Sequence[Mapping[str, Any]], view: View) -> Json:
-    """给模型看的候选：分配的新 ID 去掉，已有的换成别名。"""
+    """The candidate as shown to the model: newly assigned IDs removed, existing ones replaced with aliases.
+
+    モデルに見せる候補：新たに割り当てた ID は除き、既存のものは別名に置き換える。
+    """
     effs = []
     for e in effects:
         x = copy.deepcopy(dict(e))
@@ -250,7 +343,7 @@ def public(cand: Mapping[str, Any], effects: Sequence[Mapping[str, Any]], view: 
     return {**{k: cand[k] for k in keep if k in cand}, "effects": effs, "needsConfirm": bool(cand.get("needsConfirm"))}
 
 
-# —— 流水线 ——
+# —— Pipeline / パイプライン ——
 
 
 @dataclass
@@ -260,9 +353,11 @@ class Pipeline:
     ids: IdGen
     tracer: Tracer = field(default_factory=Tracer)
     deadlines: Mapping[str, float] = field(default_factory=lambda: dict(DEADLINES))
-    on_rate_limit: str = "stop"  # "stop"：跑（第一个 429、529 就停）；"degrade"：服务玩家（当作这一次失败）
+    # "stop": runs (stop at the first 429/529); "degrade": serving players (treat it as this try failing).
+    # "stop"：実行（最初の 429・529 で止める）。"degrade"：プレイヤー向け（今回の失敗として扱う）。
+    on_rate_limit: str = "stop"
 
-    # 调用：时限、重发一次、Schema、Span
+    # Calls: deadline, one resend, Schema, Span / 呼び出し：時間制限、1 回の再送、Schema、Span
 
     async def call(
         self,
@@ -273,7 +368,11 @@ class Pipeline:
         span: Mapping[str, Any],
         extra: Callable[[Json], Mapping[str, Any] | None] | None = None,
     ) -> TextResult:
-        """extra：Schema 之外的检查（不过就抛 BadOutput，按重发算），返回要加到 Span 上的属性。"""
+        """extra: a check beyond the Schema (raise BadOutput if it fails, counted as a resend); returns attributes to
+        add to the Span.
+
+        extra：Schema 以外の検査（通らなければ BadOutput を投げ、再送として数える）。Span に加える属性を返す。
+        """
         model, version = model_and_version(kind)
         for attempt in (1, 2):
             with self.tracer.span(
@@ -291,15 +390,24 @@ class Pipeline:
                     try:
                         jsonschema.validate(r.output, PROMPTS[kind].schema)
                     except jsonschema.ValidationError:
-                        raise BadOutput(f"{kind} 的输出不过 Schema") from None
+                        raise BadOutput(
+                            f"{kind} output fails the Schema / {kind} の出力が Schema を通らない"
+                        ) from None
                     attrs = extra(r.output) if extra is not None else None
-                except TimeoutError:  # 被取消的调用可能已经计费：真客户端按预计记了账，这一轮的花费记同一个数
+                # A cancelled call may already be billed: the real client booked an estimate, and this turn's spend
+                # records the same amount.
+                # 取り消した呼び出しはすでに課金されているかもしれない：本番クライアントは見積もりで記帳しており、
+                # このターンの支出にも同じ額を記録する。
+                except TimeoutError:
                     cost = self.text.cancelled_cost(kind, request)
                     spend.charge(kind, cost)
                     sp.set(status="timeout", cost_usd=round(cost, 6))
                     continue
                 except BadOutput as e:
-                    if got is None:  # 真客户端拿到回答才知道不合格，没返回结果，钱已经花了
+                    # The real client only learns the answer is invalid after receiving it; no result came back, but
+                    # the money is spent.
+                    # 本番クライアントは返答を受け取ってから不合格と分かる。結果は返っていないが、お金はもう使っている。
+                    if got is None:
                         spend.charge(kind, e.cost_usd)
                     sp.set(status="invalid", cost_usd=round(e.cost_usd if got is None else got.cost_usd, 6))
                     continue
@@ -323,7 +431,7 @@ class Pipeline:
                 return r
         raise CallFailed(kind)
 
-    # 第 1、2 步
+    # Steps 1 and 2 / 第 1・2 ステップ
 
     async def extract(
         self,
@@ -336,8 +444,14 @@ class Pipeline:
         drafts: bool = False,
         confirm: Mapping[str, Any] | None = None,
     ) -> Extracted:
-        """drafts：要确认的候选留下来、带上 `confirm`（对话）；False 时丢弃（动作）。confirm：开着的草稿（反问的那一句
-        `prompt`、那件事的 `summary`），给了就不分流，提取多判 `confirmAnswer`。"""
+        """drafts: keep candidates needing confirmation, with `confirm` (dialogue); drop them when False (actions).
+        confirm: the open draft (the counter-question `prompt` and the matter's `summary`); if given, no triage, and
+        extraction also judges `confirmAnswer`.
+
+        drafts：確認が要る候補を残し、`confirm` を付ける（対話）。False なら捨てる（アクション）。confirm：開いている
+        下書き（聞き返しの一文 `prompt` と、その件の `summary`）。渡されたら振り分けず、
+        抽出が `confirmAnswer` も判定する。
+        """
         counts = Counts()
         span = {"world_model_version": book.version, **(span or {})}
         names = {
@@ -345,7 +459,10 @@ class Pipeline:
             "character": book.characters.get(turn.character or "", {}).get("name"),
         }
         action = act_doc(turn.act)
-        if action is None and confirm is None:  # 动作（B-3）不分流：做了就要找事件；有反问在等回答的也不分流
+        # Actions (B-3) aren't triaged: doing something always means looking for events; nor are turns while a
+        # counter-question awaits an answer.
+        # アクション（B-3）は振り分けない：何かをしたならイベントを探す。聞き返しが返答を待っている間も振り分けない。
+        if action is None and confirm is None:
             try:
                 r = await self.call(
                     "triage",
@@ -356,7 +473,8 @@ class Pipeline:
                 )
                 route = r.output["route"]
             except CallFailed:
-                route = "maybe"  # 分流两次都超时：当作「可能」
+                # Triage timed out twice: treat as "maybe" / 振り分けが 2 回ともタイムアウト：「可能性あり」とする
+                route = "maybe"
             if route == "chat":
                 counts.triage_skipped = 1
                 return Extracted([], counts)
@@ -381,7 +499,7 @@ class Pipeline:
                 continue
             ask = None
             if c["needsConfirm"] and irreversible(c):
-                if not drafts:  # 动作：照 B-2，没确认 = 不是
+                if not drafts:  # actions: as in B-2, unconfirmed = no / アクション：B-2 のとおり、未確認 = いいえ
                     counts.confirm_dropped += 1
                     continue
                 ask = {"asked": bool(raw.get("asked")), "question": raw.get("question")}
@@ -390,14 +508,21 @@ class Pipeline:
         answer = r.output.get("confirmAnswer") if confirm is not None else None
         return Extracted(cands, counts, confirm=asks, answer=answer)
 
-    # 第 3〜5 步
+    # Steps 3-5 / 第 3〜5 ステップ
 
     def step3(self, book: Book, state: SimState, cand: Json, effects: list[Json], turn: TurnInput) -> list[Hit]:
-        """确定性规则，加效果的形状（不合契约 Effect 的按 R7 否决，免得提交时才出错）和行为者存在。"""
+        """The deterministic rules, plus the shape of effects (those not matching the contract's Effect are rejected
+        under R7, so they don't fail only at commit) and that the actor exists.
+
+        決定的な規則に、効果の形（契約の Effect に合わないものは R7 で却下し、コミット時に初めてエラーになるのを防ぐ）と
+        行為者の存在を加える。
+        """
         hits = []
         bad_actor = cand.get("actor") not in ("player", *book.characters)
         if cand.get("actor") == "system" and (turn.act or {}).get("kind") == "world":
-            bad_actor = False  # B-16：导演的环境变化（钟声、天色、城门）
+            # B-16: the director's environmental changes (bells, the sky, the city gate).
+            # B-16：ディレクターによる環境の変化（鐘の音、空模様、城門）。
+            bad_actor = False
         if bad_actor or any(self.schemas.effect_errors(e) for e in effects):
             hits.append(Hit(*FORM))
         return hits + judge(book.world, state, cand, effects, turn.rules)
@@ -411,7 +536,12 @@ class Pipeline:
         spend: Spend,
         span: Mapping[str, Any],
     ) -> list[dict[str, Json]]:
-        """第 4 步：一次调用判几个候选的 R1（只写在文字里的）、R5、R6。返回每个候选 {规则: {status, reason}}。"""
+        """Step 4: one call judges R1 (the part only written in text), R5 and R6 for several candidates. Returns
+        {rule: {status, reason}} per candidate.
+
+        第 4 ステップ：1 回の呼び出しで複数の候補の R1（文章にだけ書かれた部分）、R5、R6 を判定する。候補ごとに
+        {規則: {status, reason}} を返す。
+        """
         view = state_view(book, state)
         request = {
             "worldModelVersion": book.version,
@@ -424,7 +554,7 @@ class Pipeline:
         def complete(out: Json) -> Mapping[str, Any]:
             got = {r["index"]: {x["rule"] for x in r["rules"]} for r in out["results"]}
             if any(got.get(i) != set(MODEL_RULES) for i in range(n)):
-                raise BadOutput("检查的输出缺了候选或规则")
+                raise BadOutput("Check output is missing candidates or rules / 検査の出力に候補か規則が欠けている")
             bad = {x["rule"] for r in out["results"] if r["index"] < n for x in r["rules"] if x["status"] == "fail"}
             return {"failed_rules": [x for x in RULES if x in bad]}
 
@@ -436,7 +566,8 @@ class Pipeline:
             for x in res["rules"]:
                 reason = x.get("reason") or MODEL_REASON[x["rule"]]
                 if turn.player and lcs_len(turn.player, reason) >= VERBATIM:
-                    reason = MODEL_REASON[x["rule"]]  # 理由也不照抄玩家的话
+                    # The reason must not copy the player's words either / 理由もプレイヤーの言葉を書き写さない
+                    reason = MODEL_REASON[x["rule"]]
                 row = {"status": x["status"]} | ({"reason": reason} if x["status"] == "fail" else {})
                 rows[res["index"]][x["rule"]] = row
         return rows
@@ -466,7 +597,8 @@ class Pipeline:
             "candidate": public(last.cand, last.effects, view),
             "failed": [{"rule": r, "reason": why} for r, why in _uniq(fails)],
         }
-        why = list(dict.fromkeys(f["rule"] for f in request["failed"]))  # 只有规则名，不带理由
+        # Rule names only, no reasons / 規則名だけで、理由は含めない
+        why = list(dict.fromkeys(f["rule"] for f in request["failed"]))
         r = await self.call("rewrite", request, spend, span={**span, "mode": mode, "failed_rules": why})
         raw = r.output["candidate"]
         if raw is None:
@@ -477,7 +609,10 @@ class Pipeline:
     async def _judge(
         self, book: Book, state: SimState, t: _Try, turn: TurnInput, spend: Spend, span: Mapping[str, Any]
     ) -> _Try:
-        """一次尝试：第 3 步，过了而且有效果就跑第 4 步。"""
+        """One attempt: step 3, then step 4 if it passed and has effects.
+
+        1 回の試行：第 3 ステップ。通って効果があれば第 4 ステップを実行する。
+        """
         if not t.hits and t.effects and t.model is None:
             (t.model,) = await self.model_check(book, state, [t], turn, spend, span)
         return t
@@ -492,7 +627,12 @@ class Pipeline:
         spend: Spend,
         span: Mapping[str, Any] | None = None,
     ) -> Verified:
-        """第 3〜5 步。改写、检查两次都超时：整轮只走时钟（`timed_out`），候选丢弃。"""
+        """Steps 3-5. If rewrite or check times out twice: the whole turn only moves the clock (`timed_out`), and the
+        candidates are dropped.
+
+        第 3〜5 ステップ。書き換えか検査が 2 回ともタイムアウトしたら、ターン全体で時計だけを進め（`timed_out`）、
+        候補は捨てる。
+        """
         span = {"world_model_version": book.version, **(span or {})}
         try:
             return await self._verify(book, state, candidates, turn, minutes, spend, span)
@@ -510,7 +650,8 @@ class Pipeline:
         span: Mapping[str, Any],
     ) -> Verified:
         world = book.world
-        # 第 3 步，按顺序；过了的先试算进状态
+        # Step 3, in order; passing ones are trial-applied to the state first.
+        # 第 3 ステップを順に。通ったものは先に状態に試算する。
         first: list[_Try] = []
         now = state
         for cand in candidates:
@@ -518,12 +659,14 @@ class Pipeline:
             first.append(t)
             if not t.hits:
                 now = trial(world, now, t.cand, t.effects)
-        # 第 4 步：过了第 3 步、有效果的合在一次调用里
+        # Step 4: those that passed step 3 and have effects go into one call.
+        # 第 4 ステップ：第 3 ステップを通り効果のあるものを 1 回の呼び出しにまとめる。
         scoped = [t for t in first if not t.hits and t.effects]
         if scoped:
             for t, row in zip(scoped, await self.model_check(book, state, scoped, turn, spend, span), strict=True):
                 t.model = row
-        # 按顺序定结果：前面被否决的不算进后面的状态，后面的重判第 3 步
+        # Settle results in order: earlier rejected ones don't count toward later state; later ones redo step 3.
+        # 結果を順に決める：前に却下されたものは後の状態に入れず、後のものは第 3 ステップを判定し直す。
         out: list[Checked] = []
         counts = Counts()
         now = state
@@ -551,7 +694,10 @@ class Pipeline:
         spend: Spend,
         span: Mapping[str, Any],
     ) -> Checked:
-        """第 5 步：不过的改写（最多 2 次），还不过就降级，再不过拒绝。"""
+        """Step 5: rewrite failures (at most twice); if they still fail, downgrade; if that fails, reject.
+
+        第 5 ステップ：通らないものを書き換え（最大 2 回）、それでもだめなら格下げし、さらにだめなら却下する。
+        """
         model_ran = first.model is not None
         if first.ok:
             return self._checked(first, "passed", 1, [], model_ran)
@@ -562,7 +708,9 @@ class Pipeline:
             cand = await self._rewrite(book, state, last, "rewrite", fails, turn, spend, span)
             if cand is None:
                 break
-            if _same(cand, last.cand):  # 原样改回来：同样的结果，不再检查
+            # Rewritten back to the same thing: same result, no need to check again.
+            # 元どおりに書き戻された：結果は同じなので検査し直さない。
+            if _same(cand, last.cand):
                 continue
             t = await self._judge(book, state, self._try(book, state, cand, turn, minutes), turn, spend, span)
             model_ran = model_ran or t.model is not None
@@ -585,7 +733,8 @@ class Pipeline:
         cand = {k: v for k, v in t.cand.items() if k != "needsConfirm"}
         return Checked(cand, t.effects, check, rule_rows(t.hits, t.model), t.hits)
 
-    # 评测入口的 check()：第 3 步 + 按范围跑第 4 步，不改写、不提交
+    # check() for the eval entry point: step 3 + step 4 within the given scope, no rewriting, no commit.
+    # 評価の入口の check()：第 3 ステップ + 範囲に応じて第 4 ステップ。書き換えもコミットもしない。
 
     async def check_only(
         self,
@@ -597,7 +746,12 @@ class Pipeline:
         spend: Spend,
         span: Mapping[str, Any] | None = None,
     ) -> Checked:
-        """两次都超时抛 `CallFailed`（评测入口照样抛，S-2 的运行器记成超时）。"""
+        """Raise `CallFailed` if both tries time out (the eval entry point raises it as is; the S-2 runner records a
+        timeout).
+
+        2 回ともタイムアウトしたら `CallFailed` を投げる（評価の入口はそのまま投げ、
+        S-2 のランナーがタイムアウトとして記録する）。
+        """
         c = {**cand}
         c.setdefault("t", state["t"])
         c.setdefault("dt", 0)
@@ -611,13 +765,21 @@ class Pipeline:
         check = result("rejected" if t.fails else "passed", 1, t.fails, t.model is not None)
         return Checked(c, effects, check, rule_rows(t.hits, t.model), t.hits)
 
-    # 文字模式的人物回答
+    # Text-mode character replies / テキストモードの登場人物の返答
 
     async def reply(
         self, book: Book, state: SimState, turn: TurnInput, spend: Spend, *, notes: Sequence[str] = ()
     ) -> str | None:
-        """人物用文字回答（`reply`）。两次都不行返回 None（评测入口的 `characterTextMissing`）。
-        notes：B-12 输出侧监控给局势说明加的提示，有才放进 `situation.notes`（没有时请求和以前一样，回放的键不变）。"""
+        """The character replies in text (`reply`). If both tries fail, return None (the eval entry point's
+        `characterTextMissing`).
+        notes: hints that B-12's output-side monitoring adds to the situation notes; put into `situation.notes` only
+        when there are some (without them the request is as before and replay keys don't change).
+
+        登場人物がテキストで返答する（`reply`）。2 回ともだめなら None を返す（評価の入口の `characterTextMissing`）。
+        notes：B-12 の出力側の監視が状況説明に加えるヒント。
+        あるときだけ `situation.notes` に入れる（なければリクエストは
+        従来どおりで、リプレイのキーも変わらない）。
+        """
         who = turn.character
         if who is None or who not in book.characters:
             return None
@@ -636,7 +798,7 @@ class Pipeline:
             return None
         return str(r.output["text"])
 
-    # 候选话语（B-21，ux-design 7.8）
+    # Suggested lines (B-21, ux-design 7.8) / 候補の発話（B-21、ux-design 7.8）
 
     async def suggest(
         self,
@@ -649,8 +811,13 @@ class Pipeline:
         reply: str | None = None,
         actions: Sequence[str] = (),
     ) -> list[Json] | None:
-        """玩家刚和 who 说完一轮（或刚走到他面前）：2〜3 个候选话语 `[{text, kind}]`。全是问句按不合格重发一次；
-        两次都不行返回 None（这一轮不出候选）。"""
+        """The player has just finished a turn with who (or just walked up to them): 2-3 suggested lines
+        `[{text, kind}]`. All questions counts as invalid and is resent once; if both tries fail, return None (no
+        suggestions this turn).
+
+        プレイヤーが who と 1 ターン話し終えた（または目の前まで来た）ところ：候補の発話 2〜3 個 `[{text, kind}]`。
+        すべて問いかけなら不合格として 1 回送り直す。2 回ともだめなら None を返す（このターンは候補を出さない）。
+        """
         if who not in book.characters:
             return None
         view = state_view(book, state)
@@ -667,7 +834,7 @@ class Pipeline:
 
         def not_all_questions(out: Json) -> Mapping[str, Any] | None:
             if all(x["kind"] == "ask" for x in out["items"]):
-                raise BadOutput("候选全是问句")
+                raise BadOutput("All suggestions are questions / 候補がすべて問いかけ")
             return {"candidate_count": len(out["items"])}
 
         try:
@@ -684,7 +851,10 @@ class Pipeline:
 
 
 def checker(model_ran: bool) -> str:
-    """`check.checker`：规则版本，跑了第 4 步再加检查提示的模型和版本。"""
+    """`check.checker`: the rules version, plus the check prompt's model and version if step 4 ran.
+
+    `check.checker`：規則のバージョン。第 4 ステップを実行したら検査プロンプトのモデルとバージョンも付ける。
+    """
     if not model_ran:
         return CHECKER
     model, version = model_and_version("check")
@@ -692,7 +862,11 @@ def checker(model_ran: bool) -> str:
 
 
 def result(status: str, attempts: int, fails: Sequence[tuple[str, str]], model_ran: bool) -> Json:
-    """契约的 CheckResult。failedRules 按 R1〜R7 的顺序（第一条是主规则），reason 是主规则第一次失败的理由。"""
+    """The contract's CheckResult. failedRules in R1-R7 order (the first is the main rule); reason is the main rule's
+    first failure reason.
+
+    契約の CheckResult。failedRules は R1〜R7 の順（最初が主な規則）で、reason は主な規則が最初に失敗したときの理由。
+    """
     rules = [r for r in RULES if any(f == r for f, _ in fails)]
     check: Json = {"status": status, "attempts": attempts, "failedRules": rules, "checker": checker(model_ran)}
     if rules:

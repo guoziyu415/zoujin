@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "api/rest/manifest.schema.json",
   "title": "GET /v1/books/{bookId}/manifest",
-  "description": "静态内容（2.1），URL 带版本，长期缓存",
+  "description": "Static content (2.1); the URL carries a version, cached long-term / 静的コンテンツ（2.1）。URL にバージョンを含み、長期間キャッシュする",
   "x-endpoint": {
     "method": "GET",
     "path": "/v1/books/{bookId}/manifest",
@@ -25,7 +25,7 @@
       "title": "ManifestParams"
     },
     "VoiceClip": {
-      "description": "一句预录台词（2.1）",
+      "description": "One pre-recorded line (2.1) / 事前収録セリフ 1 つ（2.1）",
       "type": "object",
       "additionalProperties": false,
       "required": ["url", "text", "durationMs"],
@@ -34,12 +34,12 @@
           "$ref": "../common.schema.json#/$defs/AssetPath"
         },
         "text": {
-          "description": "剧本原文，字幕用它（source = script）",
+          "description": "The script text, used for the subtitles (source = script) / 台本の原文。字幕にこれを使う（source = script）",
           "type": "string",
           "minLength": 1
         },
         "durationMs": {
-          "description": "实际音频长度",
+          "description": "Actual audio duration / 実際の音声の長さ",
           "type": "integer",
           "minimum": 1
         }
@@ -47,13 +47,13 @@
       "title": "VoiceClip"
     },
     "Prerecorded": {
-      "description": "ux-design 16.2 的 6 句加固定台词（2.1）",
+      "description": "The 6 lines of ux-design 16.2 plus fixed lines (2.1) / ux-design 16.2 の 6 つのセリフと固定セリフ（2.1）",
       "type": "object",
       "additionalProperties": false,
       "required": ["aizuchi", "unheard", "wait", "cues"],
       "properties": {
         "aizuchi": {
-          "description": "相槌 3 句",
+          "description": "3 aizuchi (backchannel) lines / 相槌 3 つ",
           "type": "array",
           "items": {
             "$ref": "#/$defs/VoiceClip"
@@ -62,7 +62,7 @@
           "maxItems": 3
         },
         "unheard": {
-          "description": "听不清 2 句",
+          "description": "2 lines for when the player could not be heard / 聞き取れなかったときのセリフ 2 つ",
           "type": "array",
           "items": {
             "$ref": "#/$defs/VoiceClip"
@@ -74,7 +74,7 @@
           "$ref": "#/$defs/VoiceClip"
         },
         "cues": {
-          "description": "服务端在某个时刻触发的固定台词，键是 commit.cue.kind；没有就是空对象",
+          "description": "Fixed lines the server triggers at certain moments, keyed by commit.cue.kind; an empty object if there are none / サーバーがある時点で発する固定セリフ。キーは commit.cue.kind。なければ空のオブジェクト",
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -87,13 +87,13 @@
       "title": "Prerecorded"
     },
     "SetPieceVoiceKey": {
-      "description": "（v1.0.4）manifest.setPieceVoices 的键：「{固定演出 ID}/{序号}」，序号从 1 起，例 piece.gate-taken/2",
+      "description": "(v1.0.4) Key of manifest.setPieceVoices: 「{set piece ID}/{n}」, with n starting at 1, e.g. piece.gate-taken/2 / （v1.0.4）manifest.setPieceVoices のキー：「{固定演出 ID}/{番号}」。番号は 1 から始まる。例：piece.gate-taken/2",
       "type": "string",
       "pattern": "^piece\\.[a-z0-9]+(?:[.-][a-z0-9]+)*/[1-9][0-9]*$",
       "title": "SetPieceVoiceKey"
     },
     "ManifestResponse": {
-      "description": "不变的内容（2.1），构建时由世界模型和资源清单生成",
+      "description": "Content that does not change (2.1), generated at build time from the world model and the asset manifest / 変わらない内容（2.1）。ビルド時に世界モデルとリソース一覧から生成する",
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -193,7 +193,7 @@
           "minItems": 1
         },
         "places": {
-          "description": "（v1.0.14）世界模型的全部地点和名字（Place.name），地图节点详情、幕末副题以外要显示地名的地方用。sceneId：地点所在的场景；没有场景、或场景不在 scenes 里（没有场景包）的地点为 null",
+          "description": "(v1.0.14) All places of the world model and their names (Place.name), for showing place names in the map node details and anywhere other than the end-of-act subtitle. sceneId: the scene the place is in; null for places with no scene, or whose scene is not in scenes (no scene pack) / （v1.0.14）世界モデルのすべての地点とその名前（Place.name）。地図のノード詳細や、幕末の副題以外で地名を表示する場所に使う。sceneId：地点のあるシーン。シーンがない、またはシーンが scenes にない（シーンパックがない）地点は null",
           "type": "array",
           "items": {
             "type": "object",
@@ -243,7 +243,7 @@
                 "type": "boolean"
               },
               "prerecorded": {
-                "description": "声音定了以后才有（Q-004）；不能对话的人物没有",
+                "description": "Present only once the voice is decided (Q-004); characters who cannot talk have none / 声が決まってからある（Q-004）。会話できない登場人物にはない",
                 "$ref": "#/$defs/Prerecorded"
               }
             }
@@ -315,7 +315,7 @@
           }
         },
         "setPieceVoices": {
-          "description": "（v1.0.4）固定演出里人物的预录句（2.1、3.14）。键「{固定演出 ID}/{序号}」，序号 = 这一句在那条固定演出 lines 里的位置（从 1 起，地の文也算）。构建时用这个人物的声音生成，不能对话的人物（警吏）也有；声音还没生成的句子没有键。没有固定演出时省略",
+          "description": "(v1.0.4) Characters' pre-recorded lines in set pieces (2.1, 3.14). Key 「{set piece ID}/{n}」, where n = the position of this line in that set piece's lines (starting at 1, with 地の文 lines counted too). Generated at build time with this character's voice; characters who cannot talk (the officers) have them too; lines whose voice has not been generated yet have no key. Omitted when there are no set pieces / （v1.0.4）固定演出の中の登場人物の事前収録セリフ（2.1、3.14）。キーは「{固定演出 ID}/{番号}」で、番号 = その固定演出の lines の中でのこのセリフの位置（1 から始まり、地の文も数える）。ビルド時にその登場人物の声で生成する。会話できない登場人物（警吏）にもある。声がまだ生成されていないセリフにはキーがない。固定演出がなければ省略",
           "type": "object",
           "propertyNames": {
             "$ref": "#/$defs/SetPieceVoiceKey"
@@ -336,7 +336,7 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 200,
-          "description": "恢复既有存档的锁定世界版本；当前账号须拥有该书该版本存档。"
+          "description": "The locked world version for resuming an existing save; the current account must own a save of this book at this version. / 既存のセーブを再開するための固定された世界のバージョン。現在のアカウントがこの本のこのバージョンのセーブを持っている必要がある。"
         }
       }
     }

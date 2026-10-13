@@ -1,250 +1,340 @@
-# 调研：Gemini Live 语音、iPhone Safari 的音频限制、语音优先游戏的先例
+# Research: Gemini Live voice, audio limits in iPhone Safari, precedents for voice-first games / 調査：Gemini Live の音声、iPhone Safari の音声の制約、音声ファーストのゲームの先例
 
-UX 线程 2026-10-06 整理（调研助手检索，UX 审读）。每条事实都附来源编号，URL 在文末；「推断」是推测，不是来源原话。后端、前端可直接引用；和 backend-design.md 3.2 节的结论一致的地方没有重复论证。
+Compiled by the UX thread on 2026-10-06 (searched by the research assistant, reviewed by UX). Every fact carries a source number, with URLs at the end; "inference" marks a guess, not something the source says. Backend and frontend can cite this directly; where it agrees with the conclusions of backend-design.md section 3.2, the argument is not repeated.
+
+UX スレッドが 2026-10-06 に整理（調査アシスタントが検索し、UX が査読）。すべての事実に出典番号を付け、URL は末尾にまとめた。「推測」は推測であり、出典の記述ではない。バックエンドとフロントエンドはそのまま引用してよい。backend-design.md 3.2 節の結論と一致する部分は論証を繰り返していない。
 
 
-所有来源的检查日期都是 2026-10-06。每条事实后面标了来源编号，URL 和发布/更新日期集中列在文末。标「推断」的内容来源里没有写，是我推出来的。
+All sources were checked on 2026-10-06. Each fact is followed by a source number; URLs and publication/update dates are listed together at the end. Content marked "inference" is not in the sources; I inferred it.
+
+すべての出典の確認日は 2026-10-06。各事実の後ろに出典番号を付け、URL と公開日・更新日は末尾にまとめて載せた。「推測」と記した内容は出典には書かれておらず、私が推論したもの。
 
 ---
 
-## 1. Gemini Live API（2026 年 10 月现状）
+## 1. Gemini Live API (status as of October 2026) / Gemini Live API（2026 年 10 月時点）
 
-### 1.1 当前模型
-| 模型 ID | 状态 | 要点 |
+### 1.1 Current models / 現行のモデル
+| Model ID / モデル ID | Status / 状態 | Key points / 要点 |
 |---|---|---|
-| `gemini-3.8-live` | Stable，2026-09-15 发布 | 官方定位是"大多数低延迟语音 agent 的默认选择"；`thinkingLevel` 不能配置；异步函数调用默认 `NON_BLOCKING`；输入上限 131,072 tokens [G1][G2][G9] |
-| `gemini-3.8-live-extended-thinking` | Gemini API 上标为 Stable，Cloud 博客写的是 Enterprise 上 private preview（两处说法不一致） | 推理更强；thinking 可设 low/medium/high；边推理边说话，会先说"Let me check that…"之类的口头提示 [G2][G3][G14][G15] |
-| `gemini-3.1-flash-live-preview` | Legacy preview | 不支持 affective dialog、proactive audio、异步函数调用 [G2][G3][G7] |
-| `gemini-2.5-flash-native-audio-preview-12-2025` | 只对已有用户开放 | 旧模型 [G2] |
+| `gemini-3.8-live` | Stable, released 2026-09-15 / Stable、2026-09-15 リリース | Officially positioned as "the default choice for most low-latency voice agents"; `thinkingLevel` is not configurable; asynchronous function calls default to `NON_BLOCKING`; input limit 131,072 tokens / 公式の位置づけは「ほとんどの低遅延音声エージェントのデフォルトの選択」。`thinkingLevel` は設定不可。非同期の関数呼び出しはデフォルトで `NON_BLOCKING`。入力上限は 131,072 トークン [G1][G2][G9] |
+| `gemini-3.8-live-extended-thinking` | Marked Stable on the Gemini API, while the Cloud blog says private preview on Enterprise (the two disagree) / Gemini API では Stable、Cloud ブログでは Enterprise の private preview（2 か所の記述が食い違う） | Stronger reasoning; thinking can be set to low/medium/high; it speaks while reasoning and first says verbal cues like "Let me check that…" / 推論が強い。thinking は low/medium/high に設定できる。推論しながら話し、まず "Let me check that…" のような口頭の合図を言う [G2][G3][G14][G15] |
+| `gemini-3.1-flash-live-preview` | Legacy preview | No support for affective dialog, proactive audio or asynchronous function calls / affective dialog、proactive audio、非同期の関数呼び出しに非対応 [G2][G3][G7] |
+| `gemini-2.5-flash-native-audio-preview-12-2025` | Existing users only / 既存ユーザーのみ | Old model / 旧モデル [G2] |
 
-**3.8 Live 的两个关键变化**（来自官方 model card）[G1]：
-- 「Affective dialogue is removed from the API」：情感自适应开关已经删除。
-- 「Proactive audio is now permanently enabled. Setting `proactive_audio: false` returns an error」：模型判断某句话与自己无关时可以不回应，这个行为关不掉 [G4]。
-- 另外，`turn_complete=true` 会无条件打断正在生成的回复。所以文字输入发出去时，NPC 正在说的话会被切断。
+**Two key changes in 3.8 Live** (from the official model card) [G1]:
+- 「Affective dialogue is removed from the API」: the affective adaptation switch has been removed.
+- 「Proactive audio is now permanently enabled. Setting `proactive_audio: false` returns an error」: the model may not respond when it judges an utterance has nothing to do with it, and this behavior can't be turned off [G4].
+- Also, `turn_complete=true` unconditionally interrupts the reply being generated. So when text input is sent, whatever the NPC is saying gets cut off.
 
-**Vertex AI 侧**：Google Cloud 文档的 URL 已经迁到 "Gemini Enterprise Agent Platform"。导航里列了 Gemini 3.8 Live [G16]。Cloud 博客（2026-09-24）宣布 Gemini 3.8 Live with Live Avatar GA，提供 US/EU 端点，支持 97 种语言 [G15]。Vertex 页面正文我抓不到，**模型 ID、region、voice 列表需要人工到控制台确认**。另外，2026 年 5 月到 8 月的开发者论坛帖子说 3.1 Flash Live 一直没有上 Vertex [G17]。
+**3.8 Live の 2 つの重要な変化**（公式の model card より）[G1]：
+- 「Affective dialogue is removed from the API」：感情に合わせて応答を変えるスイッチは削除された。
+- 「Proactive audio is now permanently enabled. Setting `proactive_audio: false` returns an error」：モデルはある発話が自分と無関係だと判断すると応答しないことがあり、この動作はオフにできない [G4]。
+- また、`turn_complete=true` は生成中の応答を無条件に中断する。そのため文字入力を送った瞬間、NPC が話している途中の言葉は切られる。
 
-### 1.2 日语与声音
-- **语言**：live-guide 列出 99 种语言，包括 `ja` [G3]（Cloud 博客写 97 种 [G15]）。native audio 模型「automatically choose the appropriate language and don't support explicitly setting the language code」[G3]。官方建议在 system instruction 里写「RESPOND IN {LANG}. YOU MUST RESPOND UNMISTAKABLY IN {LANG}.」[G5][G10]。
-- **预置声音**：Live API「supports any of the voices available for our TTS models」[G3]，共 30 个，默认 Puck [G10][G11]。下表的性别和特征来自 Firebase 文档：
+**On the Vertex AI side**: the Google Cloud docs URLs have moved to "Gemini Enterprise Agent Platform", and the navigation lists Gemini 3.8 Live [G16]. The Cloud blog (2026-09-24) announced Gemini 3.8 Live with Live Avatar GA, with US/EU endpoints and support for 97 languages [G15]. I couldn't fetch the body of the Vertex pages, so **the model ID, region and voice list need to be confirmed by hand in the console**. Also, developer forum posts from May to August 2026 say 3.1 Flash Live never came to Vertex [G17].
 
-| 男声 | 女声 |
+**Vertex AI 側**：Google Cloud のドキュメントの URL は「Gemini Enterprise Agent Platform」に移り、ナビゲーションに Gemini 3.8 Live が載っている [G16]。Cloud ブログ（2026-09-24）は Gemini 3.8 Live with Live Avatar の GA を発表し、US/EU のエンドポイントと 97 言語に対応するとした [G15]。Vertex のページ本文は取得できなかったので、**モデル ID、リージョン、音声の一覧はコンソールで人の手で確認する必要がある**。また、2026 年 5 月〜8 月の開発者フォーラムの投稿によれば、3.1 Flash Live は Vertex に来なかった [G17]。
+
+### 1.2 Japanese and voices / 日本語と声
+- **Language**: the live-guide lists 99 languages, including `ja` [G3] (the Cloud blog says 97 [G15]). Native audio models 「automatically choose the appropriate language and don't support explicitly setting the language code」[G3]. The official advice is to write 「RESPOND IN {LANG}. YOU MUST RESPOND UNMISTAKABLY IN {LANG}.」 in the system instruction [G5][G10].
+  **言語**：live-guide には `ja` を含む 99 言語が載っている [G3]（Cloud ブログでは 97 言語 [G15]）。native audio のモデルは「automatically choose the appropriate language and don't support explicitly setting the language code」[G3]。公式には system instruction に「RESPOND IN {LANG}. YOU MUST RESPOND UNMISTAKABLY IN {LANG}.」と書くよう勧めている [G5][G10]。
+- **Prebuilt voices**: the Live API 「supports any of the voices available for our TTS models」[G3], 30 in total, Puck by default [G10][G11]. The genders and characteristics in the table below come from the Firebase docs:
+  **プリセットの声**：Live API は「supports any of the voices available for our TTS models」[G3]。全部で 30 種類、デフォルトは Puck [G10][G11]。下の表の性別と特徴は Firebase のドキュメントによる：
+
+| Male voices / 男性の声 | Female voices / 女性の声 |
 |---|---|
 | Achird(Friendly) Algenib(Gravelly) Algieba(Smooth) Alnilam(Firm) Charon(Informative) Enceladus(Breathy) Fenrir(Excitable) Iapetus(Clear) Orus(Firm) Puck(Upbeat) Rasalgethi(Informative) Sadachbia(Lively) Sadaltager(Knowledgeable) Schedar(Even) Umbriel(Easy-going) Zubenelgenubi(Casual) | Achernar(Soft) Aoede(Breezy) Autonoe(Bright) Callirrhoe(Easy-going) Despina(Smooth) Erinome(Clear) Gacrux(Mature) Kore(Firm) Laomedeia(Upbeat) Leda(Youthful) Pulcherrima(Forward) Sulafat(Warm) Vindemiatrix(Gentle) Zephyr(Bright) |
 
-- **每个角色换一个声音**：voice 写在 `speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName` 里 [G3]。setup 消息「to be sent in the first (and only in the first)」client message [G6]，所以**一个 session 只能用一个声音，换角色就要新开 session**（推断）。已知坑：如果用 ephemeral token，把 speechConfig 写进 token 是无效的。Google 员工 2026-09-14 回复说要放在 client 的 setup 消息里 [G18]。你们走 Cloud Run 代理，在服务端写 setup 就行。
-- **语气、年龄、口音**：官方只在 best practices 里写了 persona 写法，以及「指定口音时同时指定输出语言」[G5]。TTS 模型有 `style` 字段和行内标签可以控制风格 [G11]，Live API 没有对应字段，只能靠 system instruction（推断）。日语 30 个声音各自的自然度，官方没有公开评测，**必须在 AI Studio 里逐个试听**。
+- **A different voice per character**: the voice goes in `speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName` [G3]. The setup message is 「to be sent in the first (and only in the first)」 client message [G6], so **one session can only use one voice, and switching characters means opening a new session** (inference). Known pitfall: with an ephemeral token, putting speechConfig into the token has no effect. A Google employee replied on 2026-09-14 that it has to go in the client's setup message [G18]. Since you go through a Cloud Run proxy, writing the setup on the server is enough.
+  **登場人物ごとに声を変える**：声は `speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName` に書く [G3]。setup メッセージは「to be sent in the first (and only in the first)」client message [G6] なので、**1 つのセッションでは 1 つの声しか使えず、人物を替えるには新しいセッションを開く必要がある**（推測）。既知の落とし穴：ephemeral token を使う場合、speechConfig を token に書いても効かない。Google の社員が 2026-09-14 に、client の setup メッセージに入れる必要があると回答している [G18]。皆さんは Cloud Run のプロキシを通すので、サーバー側で setup を書けばよい。
+- **Tone, age, accent**: the official docs only describe how to write a persona in the best practices, plus 「when specifying an accent, also specify the output language」[G5]. TTS models have a `style` field and inline tags to control style [G11]; the Live API has no equivalent field, so it can only be done via the system instruction (inference). There is no official evaluation of how natural each of the 30 voices sounds in Japanese, so **each one must be auditioned in AI Studio**.
+  **口調、年齢、なまり**：公式は best practices で persona の書き方と「なまりを指定するときは出力言語も指定する」ことを書いているだけ [G5]。TTS モデルには `style` フィールドと行内タグがあり、スタイルを制御できる [G11]。Live API には対応するフィールドがないため、system instruction に頼るしかない（推測）。30 種類の声それぞれの日本語の自然さについて公式の評価は公開されておらず、**AI Studio で 1 つずつ試聴する必要がある**。
 
-### 1.3 轮次检测与打断（barge-in）
-- **自动 VAD（默认）**：`automaticActivityDetection` 下可以设：`startOfSpeechSensitivity`（HIGH/LOW）、`endOfSpeechSensitivity`（HIGH/LOW）、`prefixPaddingMs`、`silenceDurationMs`。官方建议 silenceDurationMs 取 500–800ms，更短「often cause fragmented audio」[G3][G6]。
-- **手动方式（适合 push-to-talk）**：设 `disabled: true` 后，由客户端发送 `activityStart` / `activityEnd` [G3]。
-- **打断行为**：`activityHandling` 默认是 `START_OF_ACTIVITY_INTERRUPTS`，用户一开口就打断模型；也可以改成 `NO_INTERRUPTION` [G6]。被打断时服务端返回 `serverContent.interrupted: true`，还没发出的生成内容被丢弃，已经发出的部分会留在历史里 [G3]。官方要求客户端「must immediately discard your client-side audio buffer」[G5]。
-- `turnCoverage` 对 3.1 及以后版本的默认值是 `TURN_INCLUDES_AUDIO_ACTIVITY_AND_ALL_VIDEO` [G6]。
-- 3.8 Live 的 VAD 和延迟都有改进（客户 Specs 在 Cloud 博客里的引述）[G15]。
+### 1.3 Turn detection and interruption (barge-in) / ターン検出と割り込み（barge-in）
+- **Automatic VAD (default)**: under `automaticActivityDetection` you can set `startOfSpeechSensitivity` (HIGH/LOW), `endOfSpeechSensitivity` (HIGH/LOW), `prefixPaddingMs` and `silenceDurationMs`. The official advice is a silenceDurationMs of 500–800ms; shorter values 「often cause fragmented audio」[G3][G6].
+  **自動 VAD（デフォルト）**：`automaticActivityDetection` の下で `startOfSpeechSensitivity`（HIGH/LOW）、`endOfSpeechSensitivity`（HIGH/LOW）、`prefixPaddingMs`、`silenceDurationMs` を設定できる。公式は silenceDurationMs を 500–800ms にするよう勧めており、それより短いと「often cause fragmented audio」[G3][G6]。
+- **Manual mode (suits push-to-talk)**: after setting `disabled: true`, the client sends `activityStart` / `activityEnd` [G3].
+  **手動方式（プッシュトゥトークに向く）**：`disabled: true` にすると、クライアントが `activityStart` / `activityEnd` を送る [G3]。
+- **Interruption behavior**: `activityHandling` defaults to `START_OF_ACTIVITY_INTERRUPTS`, so the model is interrupted as soon as the user starts speaking; it can also be set to `NO_INTERRUPTION` [G6]. On interruption the server returns `serverContent.interrupted: true`; generated content not yet sent is discarded, and the part already sent stays in the history [G3]. The official docs require that the client 「must immediately discard your client-side audio buffer」[G5].
+  **割り込みの動作**：`activityHandling` のデフォルトは `START_OF_ACTIVITY_INTERRUPTS` で、ユーザーが話し始めるとすぐモデルを中断する。`NO_INTERRUPTION` にもできる [G6]。中断されるとサーバーは `serverContent.interrupted: true` を返し、まだ送っていない生成内容は破棄され、送信済みの部分は履歴に残る [G3]。公式はクライアントに「must immediately discard your client-side audio buffer」ことを求めている [G5]。
+- The default of `turnCoverage` for 3.1 and later is `TURN_INCLUDES_AUDIO_ACTIVITY_AND_ALL_VIDEO` [G6].
+  3.1 以降の `turnCoverage` のデフォルト値は `TURN_INCLUDES_AUDIO_ACTIVITY_AND_ALL_VIDEO` [G6]。
+- VAD and latency are both improved in 3.8 Live (a customer, Specs, quoted in the Cloud blog) [G15].
+  3.8 Live では VAD と遅延がどちらも改善された（Cloud ブログにある顧客 Specs の引用）[G15]。
 
-### 1.4 转写
-- 打开方式：在 setup 里加 `inputAudioTranscription` / `outputAudioTranscription`。输出转写的语言「inferred from the model's response」[G3]。
-- 转写随 server content 增量下发（「Incremental server update」），但「sent independently of the other server messages and there is no guaranteed ordering」[G6]。也就是说，字幕和音频的对齐要客户端自己做（推断）。
-- API reference 里 `AudioTranscriptionConfig` 新增了几个字段 [G6]：
-  - `languageCodes`（BCP-47 提示）
-  - `customVocabulary`（可以放 メロス／ディオニス／セリヌンティウス／シラクス 这些专有名词）
-  - `wordTimestamp`、`diarization`
-  - `mode`：`VERBATIM` 或 `SMART`（SMART 会去掉口头禅）
+### 1.4 Transcription / 文字起こし
+- How to turn it on: add `inputAudioTranscription` / `outputAudioTranscription` to the setup. The language of the output transcription is 「inferred from the model's response」[G3].
+  有効にする方法：setup に `inputAudioTranscription` / `outputAudioTranscription` を加える。出力の文字起こしの言語は「inferred from the model's response」[G3]。
+- Transcriptions arrive incrementally with the server content (「Incremental server update」), but are 「sent independently of the other server messages and there is no guaranteed ordering」[G6]. In other words, aligning subtitles with audio has to be done by the client (inference).
+  文字起こしは server content とともに差分で届く（「Incremental server update」）が、「sent independently of the other server messages and there is no guaranteed ordering」[G6]。つまり字幕と音声の同期はクライアントが自分で行う必要がある（推測）。
+- The API reference adds several new fields to `AudioTranscriptionConfig` [G6]:
+  API reference では `AudioTranscriptionConfig` にいくつかのフィールドが追加された [G6]：
+  - `languageCodes` (BCP-47 hints)
+    `languageCodes`（BCP-47 のヒント）
+  - `customVocabulary` (can hold proper nouns like メロス／ディオニス／セリヌンティウス／シラクス)
+    `customVocabulary`（メロス／ディオニス／セリヌンティウス／シラクスのような固有名詞を入れられる）
+  - `wordTimestamp`, `diarization`
+    `wordTimestamp`、`diarization`
+  - `mode`: `VERBATIM` or `SMART` (SMART removes filler words)
+    `mode`：`VERBATIM` または `SMART`（SMART は口癖やつなぎ言葉を取り除く）
 
-  这些字段对 3.8 Live 是否全部生效，需要实测。
-- 已知问题：
-  - 输入转写和模型实际理解的内容可能不一样（例如说的是 "wifi doesn't work"，转写成 "wife isn't well"）。论坛从 2026-03 到 09 都有人报，涉及 2.5、3.1、3.8。社区的结论是：**转写只用来显示，不要拿来驱动逻辑** [G19]。
-  - 在 2.5 上，连续说 20–40 秒以上时，转写会延迟或者丢失 [G20]。
+  Whether all of these fields take effect on 3.8 Live needs to be tested.
 
-### 1.5 延迟（没有官方毫秒数）
-Google 的发布材料只说"ultra-low latency"，没有给出毫秒数 [G1][G13][G14]。能找到的数字都是第三方报告：
-- 3.1 Flash Live 开着 Google Search 工具时，总延迟 3–3.5 秒；关掉后首包约 100ms，总延迟 1–1.5 秒（LiveKit 社区，2026-04-03）[G21]。
-- 2.5 native audio 端到端 5–6 秒（论坛，2026-02 到 03）[G22]。
-- 官方的流式建议：音频按 20–40ms 一块发送，不要缓冲 1 秒；麦克风采集要重采样到 16kHz；输出是 24kHz [G5][G8]。
+  これらのフィールドが 3.8 Live ですべて有効かどうかは、実際に試す必要がある。
+- Known issues: / 既知の問題：
+  - The input transcription can differ from what the model actually understood (e.g. "wifi doesn't work" transcribed as "wife isn't well"). The forum has reports from 2026-03 to 09, covering 2.5, 3.1 and 3.8. The community's conclusion: **use transcriptions only for display, never to drive logic** [G19].
+    入力の文字起こしは、モデルが実際に理解した内容と異なることがある（たとえば "wifi doesn't work" と言ったのに "wife isn't well" と文字起こしされる）。フォーラムには 2026-03 から 09 まで報告があり、2.5、3.1、3.8 に及ぶ。コミュニティの結論は、**文字起こしは表示にだけ使い、ロジックの駆動には使わない** [G19]。
+  - On 2.5, when someone talks continuously for more than 20–40 seconds, transcriptions are delayed or lost [G20].
+    2.5 では、20–40 秒以上続けて話すと文字起こしが遅れたり欠けたりする [G20]。
 
-**结论：首包延迟必须在 iPhone 上实测。**
+### 1.5 Latency (no official milliseconds) / 遅延（公式のミリ秒値はない）
+Google's launch materials only say "ultra-low latency" and give no figure in milliseconds [G1][G13][G14]. The only numbers available are third-party reports:
 
-### 1.6 会话时长、计费、安全、工具
-| 项 | 值 |
+Google の発表資料は "ultra-low latency" と言うだけで、ミリ秒の数値は示していない [G1][G13][G14]。見つかる数字はすべて第三者の報告：
+- 3.1 Flash Live with the Google Search tool on: 3–3.5 seconds total latency; with it off, about 100ms to the first chunk and 1–1.5 seconds total (LiveKit community, 2026-04-03) [G21].
+  3.1 Flash Live で Google Search ツールをオンにすると全体の遅延は 3–3.5 秒。オフにすると最初のチャンクまで約 100ms、全体で 1–1.5 秒（LiveKit コミュニティ、2026-04-03）[G21]。
+- 2.5 native audio: 5–6 seconds end to end (forum, 2026-02 to 03) [G22].
+  2.5 native audio はエンドツーエンドで 5–6 秒（フォーラム、2026-02〜03）[G22]。
+- Official streaming advice: send audio in 20–40ms chunks, don't buffer 1 second; resample microphone capture to 16kHz; output is 24kHz [G5][G8].
+  公式のストリーミングの推奨：音声は 20–40ms ごとに送り、1 秒分バッファしない。マイクの入力は 16kHz にリサンプリングする。出力は 24kHz [G5][G8]。
+
+**Conclusion: first-chunk latency must be measured on an iPhone.**
+
+**結論：最初のチャンクまでの遅延は iPhone の実機で測る必要がある。**
+
+### 1.6 Session length, billing, safety, tools / セッションの長さ、課金、安全性、ツール
+| Item / 項目 | Value / 値 |
 |---|---|
-| 纯音频 session（不压缩） | 15 分钟；音视频 2 分钟 [G4] |
-| 单条连接 | 约 10 分钟，断开前会收到 `GoAway`（带 `timeLeft`）[G4] |
-| Session resumption | handle 在 session 结束后 2 小时内有效 [G4] |
-| 长对话 | context window compression（sliding window + 触发 token 阈值）[G4] |
-| 音频 token 速率 | 约 25 token/秒 [G5] |
-| 价格（3.8 Live / Extended / 3.1 相同） | 音频输入 $3/1M（≈$0.005/分钟），音频输出 $12/1M（≈$0.018/分钟），文本输入 $0.75，文本输出 $4.50，有免费层 [G12] |
-| Ephemeral token | 默认 30 分钟过期，新建 session 窗口 1 分钟，只支持 v1beta，可用 `liveConnectConstraints` 锁定配置 [G23] |
-| 函数调用 | 支持。`NON_BLOCKING` 下结果回传时可选 `INTERRUPT` / `WHEN_IDLE` / `SILENT` [G7] |
-| Cloud Run WebSocket | **请求超时默认 5 分钟**，最长 60 分钟；session affinity 只是 best effort；客户端必须自己处理重连 [G24] |
+| Audio-only session (uncompressed) / 音声のみのセッション（圧縮なし） | 15 minutes; 2 minutes for audio + video / 15 分。音声＋映像は 2 分 [G4] |
+| Single connection / 1 本の接続 | About 10 minutes; a `GoAway` (with `timeLeft`) arrives before it disconnects / 約 10 分。切断前に `GoAway`（`timeLeft` 付き）が届く [G4] |
+| Session resumption | The handle is valid for 2 hours after the session ends / handle はセッション終了後 2 時間有効 [G4] |
+| Long conversations / 長い会話 | Context window compression (sliding window + trigger token threshold) / context window compression（スライディングウィンドウ＋トリガーのトークンしきい値）[G4] |
+| Audio token rate / 音声のトークンレート | About 25 tokens/second / 約 25 トークン/秒 [G5] |
+| Price (same for 3.8 Live / Extended / 3.1) / 価格（3.8 Live / Extended / 3.1 で同じ） | Audio input $3/1M (≈$0.005/minute), audio output $12/1M (≈$0.018/minute), text input $0.75, text output $4.50, with a free tier / 音声入力 $3/1M（≈$0.005/分）、音声出力 $12/1M（≈$0.018/分）、テキスト入力 $0.75、テキスト出力 $4.50、無料枠あり [G12] |
+| Ephemeral token | Expires after 30 minutes by default, 1-minute window to open a new session, v1beta only, config can be locked with `liveConnectConstraints` / デフォルトで 30 分で失効、新規セッションを開ける時間枠は 1 分、v1beta のみ対応、`liveConnectConstraints` で設定を固定できる [G23] |
+| Function calls / 関数呼び出し | Supported. Under `NON_BLOCKING`, results can be returned with `INTERRUPT` / `WHEN_IDLE` / `SILENT` / 対応。`NON_BLOCKING` では結果を返すときに `INTERRUPT` / `WHEN_IDLE` / `SILENT` を選べる [G7] |
+| Cloud Run WebSocket | **Request timeout defaults to 5 minutes**, up to 60 minutes; session affinity is only best effort; the client must handle reconnection itself / **リクエストのタイムアウトはデフォルト 5 分**、最長 60 分。session affinity はベストエフォートにすぎない。再接続はクライアントが自分で処理する必要がある [G24] |
 
 ---
 
-## 2. iPhone Safari / 移动 Web 的限制
+## 2. Limits of iPhone Safari / mobile web / iPhone Safari・モバイルウェブの制約
 
-| 问题 | 事实 | 来源 |
+| Issue / 問題 | Facts / 事実 | Sources / 出典 |
 |---|---|---|
-| 麦克风权限会不会反复弹 | 网站设置分 Ask / Deny / Allow，默认是 Ask。WebKit 工程师说，没有用户交互就调用 gUM「usually ends up triggering a prompt in Safari, except if users opt-in to always grant」。2025-06 有开发者报告，同一个 origin 的 SPA 换路由时会间歇性重新弹窗 | [I1][I2][I3] |
-| AudioContext 必须在用户手势里 resume | 「Create or resume context from inside a user gesture」 | [I4] |
-| 切走页面或锁屏 | iOS Safari 上 AudioContext 会进入 `interrupted` 状态，需要手动 `resume()` | [I5] |
-| 静音键 | Web Audio 会被静音拨片静音（`<audio>` 不会）。iOS 17 起可以用 `navigator.audioSession.type = "playback"` 绕过 | [I6][I7] |
-| 开麦后外放变小、走听筒 | WebKit bug 218012：授权麦克风后声音被路由到听筒、音量骤降。从 Safari 14 到 iOS 18.6 都有报告，最新评论是 2026-05。workaround 是采集前设 `play-and-record`、采集结束改回 `playback`，但"只是有时有效" | [I8] |
-| iOS 26.3–26.6 的严重 bug | 系统音频守护进程重置后，gUM 永久报 `NotAllowedError`，重新加载页面也恢复不了，只能重启 Safari。一家远程医疗平台的数据：约 20% 的 iPhone 访问遇到这个问题，其中 64% 没能恢复。已修复，2026-09-08 回移到 26.x，Safari 27.2 beta 的 release notes 已收录 | [I9][I10] |
-| Safari 27.0（2026-09-14） | 修复了「WebProcess AudioSession to remain active while microphone capture is live」 | [I11] |
-| 回声消除、降噪 | `echoCancellation` 是 Baseline（2020 年起）；`noiseSuppression` 支持有限，要先用 `getSupportedConstraints()` 检测 | [I12][I13] |
-| 后台和锁屏 | 有报告说锁屏或最小化时 WebSocket 会立刻触发 onclose（2022）；iOS 会在应用进入后台后不久将其挂起（Apple DTS）；LiveKit 社区 2026-07 报告切换 App 后麦克风被挂起，推荐的做法是加一个显式的"Join Audio"按钮来解锁音频 | [I14][I15][I16] |
-| 长按按钮出现选字或菜单 | `-webkit-touch-callout: none` 关闭长按菜单；`user-select` 在 Safari 上必须写 `-webkit-` 前缀；`touch-action: manipulation` 去掉双击缩放（写 `none` 会影响可访问性） | [I17][I18][I19] |
-| AudioWorklet | iOS Safari 14.5 起支持 | [I20] |
+| Does the microphone permission prompt keep coming back? / マイクの許可ダイアログは何度も出るか | Website settings have Ask / Deny / Allow, Ask by default. A WebKit engineer said calling gUM without user interaction 「usually ends up triggering a prompt in Safari, except if users opt-in to always grant」. In 2025-06 a developer reported that an SPA on the same origin intermittently re-prompts on route changes / ウェブサイト設定は Ask / Deny / Allow に分かれ、デフォルトは Ask。WebKit のエンジニアは、ユーザー操作なしに gUM を呼ぶと「usually ends up triggering a prompt in Safari, except if users opt-in to always grant」と述べた。2025-06 には、同じ origin の SPA がルートを切り替えると断続的にダイアログが再表示されるという開発者の報告がある | [I1][I2][I3] |
+| AudioContext must be resumed inside a user gesture / AudioContext はユーザー操作の中で resume する必要がある | 「Create or resume context from inside a user gesture」 | [I4] |
+| Switching away from the page or locking the screen / ページを離れる・画面をロックする | On iOS Safari the AudioContext enters the `interrupted` state and has to be `resume()`d by hand / iOS Safari では AudioContext が `interrupted` 状態になり、手動で `resume()` する必要がある | [I5] |
+| Silent switch / 消音スイッチ | Web Audio is muted by the silent switch (`<audio>` is not). Since iOS 17 this can be bypassed with `navigator.audioSession.type = "playback"` / Web Audio は消音スイッチでミュートされる（`<audio>` はされない）。iOS 17 以降は `navigator.audioSession.type = "playback"` で回避できる | [I6][I7] |
+| Speaker output gets quieter and goes to the earpiece once the mic is on / マイクを有効にするとスピーカーの音が小さくなり受話口から出る | WebKit bug 218012: after the microphone is granted, sound is routed to the earpiece and the volume drops sharply. Reported from Safari 14 through iOS 18.6, latest comment 2026-05. The workaround is to set `play-and-record` before capture and switch back to `playback` after, but it "only works sometimes" / WebKit bug 218012：マイクを許可すると音声が受話口に回され、音量が急に下がる。Safari 14 から iOS 18.6 まで報告があり、最新のコメントは 2026-05。回避策は、収録前に `play-and-record` にして、収録が終わったら `playback` に戻すことだが、「効くのは時々」 | [I8] |
+| A serious bug in iOS 26.3–26.6 / iOS 26.3–26.6 の深刻なバグ | After the system audio daemon resets, gUM permanently reports `NotAllowedError`; reloading the page doesn't recover it, only restarting Safari does. Data from a telehealth platform: about 20% of iPhone visits hit this, and 64% of those didn't recover. Fixed, backported to 26.x on 2026-09-08, and included in the Safari 27.2 beta release notes / システムの音声デーモンがリセットされると、gUM が恒久的に `NotAllowedError` を返し、ページを再読み込みしても戻らず、Safari を再起動するしかない。ある遠隔医療プラットフォームのデータでは、iPhone からのアクセスの約 20% がこの問題に遭遇し、そのうち 64% は回復しなかった。修正済みで、2026-09-08 に 26.x へバックポートされ、Safari 27.2 beta のリリースノートに載っている | [I9][I10] |
+| Safari 27.0 (2026-09-14) / Safari 27.0（2026-09-14） | Fixed 「WebProcess AudioSession to remain active while microphone capture is live」 / 「WebProcess AudioSession to remain active while microphone capture is live」を修正 | [I11] |
+| Echo cancellation, noise suppression / エコーキャンセル、ノイズ抑制 | `echoCancellation` is Baseline (since 2020); `noiseSuppression` support is limited, so detect it first with `getSupportedConstraints()` / `echoCancellation` は Baseline（2020 年から）。`noiseSuppression` の対応は限られるので、まず `getSupportedConstraints()` で確認する | [I12][I13] |
+| Background and lock screen / バックグラウンドとロック画面 | Reports say locking the screen or minimizing fires the WebSocket's onclose immediately (2022); iOS suspends an app shortly after it goes to the background (Apple DTS); the LiveKit community reported in 2026-07 that the microphone is suspended after switching apps, and recommends an explicit "Join Audio" button to unlock audio / 画面のロックや最小化で WebSocket の onclose がすぐに発火するという報告がある（2022）。iOS はアプリがバックグラウンドに入ると間もなく一時停止させる（Apple DTS）。LiveKit コミュニティは 2026-07 に、アプリを切り替えるとマイクが一時停止されると報告し、明示的な「Join Audio」ボタンで音声のロックを解除するやり方を勧めている | [I14][I15][I16] |
+| Long-pressing a button brings up text selection or a menu / ボタンを長押しすると文字選択やメニューが出る | `-webkit-touch-callout: none` turns off the long-press menu; `user-select` needs the `-webkit-` prefix on Safari; `touch-action: manipulation` removes double-tap zoom (`none` hurts accessibility) / `-webkit-touch-callout: none` で長押しメニューを無効にする。Safari では `user-select` に `-webkit-` 接頭辞が必要。`touch-action: manipulation` でダブルタップのズームをなくす（`none` にするとアクセシビリティに影響する） | [I17][I18][I19] |
+| AudioWorklet | Supported since iOS Safari 14.5 / iOS Safari 14.5 から対応 | [I20] |
 
 ---
 
-## 3. 语音优先游戏 / AI NPC 的先例
+## 3. Precedents in voice-first games / AI NPCs / 音声ファーストのゲーム・AI NPC の先例
 
-| 作品 | 输入方式 | 状态提示、延迟处理 | 听错与越狱 | 口碑 |
+| Title / 作品 | Input / 入力方式 | Status cues, latency handling / 状態の表示、遅延への対処 | Mishearing and jailbreaks / 聞き間違いと脱獄 | Reception / 評判 |
 |---|---|---|---|---|
-| **Whispers from the Star**（Anuttacon，2025-08-14，PC） | 视频通话段只能语音，信息 App 段可以打字 [U2]。玩家要求"不用再按 end 按钮"，推断是点击开始、点击结束 [U4] | 云端运行，音画不同步、延迟不稳定 [U3] | 说话说到一半停下时，Stella 会追问。但玩家分不清是没听清还是角色故意这样回答 [U5]。碰到敏感话题时内容过滤会让她出戏 [U6] | Steam 好评率 80%（1,663 条）[U1]；批评集中在重复、爱追问、闲聊没有目标，以及缺少文字模式 [U3][U4][U6] |
-| **Suck Up!**（Proxima，2023 年起，Steam 版 2025-10-01） | 真人说话，按"语气和策略"回应，后端接 ChatGPT [U7] | 未查到公开说明 | 主播靠"想办法把 NPC 玩坏"走红 [U8] | 好评率 63%（210 条）[U7] |
-| **Vaudeville**（Bumblebee，2023 年 EA，2025-11-28 正式版） | 打字或说话都行 [U9] | 未查到 | 大主播专门尝试搞坏 NPC [U10] | 好评率 48%（283 条）[U9] |
-| **Fortnite AI Darth Vader**（2025-05-16） | 专门绑定一个 "Conversational AI" 按键，HUD 上有 Vader 按钮 [U11][U12] | 未查到 | 上线几小时就被诱导说脏话和歧视语；Epic「pushed a hot fix within 30 minutes」；13 岁以下需要家长许可 [U13][U14] | 话题性很强，但安全事故也是公开的 |
-| **Fortnite Persona（UEFN AI NPC，2026-04-16 实验版）** | 语音聊天 [U15] | 官方承认「LLM response times are slower than we expect of the final release」 | 模型外加安全层；禁止做医疗、恋爱伴侣或绕过安全机制的角色；每局清空会话 [U15][U16] | 实验阶段 |
-| **Ubisoft NEO NPC**（GDC 2024，Inworld + NVIDIA） | 语音 | 屏幕上有关系值条 [U17] | 遇到离题请求时，Bloom 会先用一句俏皮话接住，再把话题拉回任务 [U18] | 试玩者评价是"护栏太重、目标太离散" [U18] |
-| **Ubisoft Teammates**（2025-11-21） | 语音指令 | 未查到 | 叙事总监说用"fences"让 NPC 在设定范围内即兴发挥 [U19] | 有几百人参加封闭测试 |
-| **PUBG Ally**（NVIDIA ACE，2026） | 语音 | 为了"可预测的响应时间"选择端侧运行；行为树负责即时反应，LLM 负责慢思考 [U20] | 只开放一张地图、一个模式来缩小领域 | — |
+| **Whispers from the Star** (Anuttacon, 2025-08-14, PC) / （Anuttacon、2025-08-14、PC） | Voice only in the video-call segments; typing allowed in the messaging-app segments [U2]. Players asked to "not have to press the end button anymore", which suggests tap to start, tap to end [U4] / ビデオ通話のパートは音声のみ、メッセージアプリのパートでは文字入力もできる [U2]。プレイヤーが「もう end ボタンを押さなくていいように」と求めていることから、タップで開始・タップで終了と推測される [U4] | Runs in the cloud; audio and video drift out of sync, and latency is unstable / クラウドで動作し、音声と映像がずれ、遅延が安定しない [U3] | When the player stops mid-sentence, Stella asks follow-up questions, but players can't tell whether she didn't hear clearly or the character answered that way on purpose [U5]. On sensitive topics the content filter breaks her character [U6] / 話の途中で止まると Stella が聞き返す。ただし、聞き取れなかったのか、キャラクターがわざとそう答えたのかプレイヤーには区別がつかない [U5]。デリケートな話題ではコンテンツフィルターのせいでキャラが崩れる [U6] | 80% positive on Steam (1,663 reviews) [U1]; criticism centers on repetition, too many follow-up questions, aimless small talk and the lack of a text mode / Steam の好評率 80%（1,663 件）[U1]。批判は繰り返し、聞き返しの多さ、目的のない雑談、文字モードの欠如に集中している [U3][U4][U6] |
+| **Suck Up!** (Proxima, since 2023, Steam version 2025-10-01) / （Proxima、2023 年から、Steam 版 2025-10-01） | The player speaks for real, NPCs respond to "tone and strategy", with ChatGPT on the backend / プレイヤーが実際に話し、「口調と作戦」に応じて反応する。バックエンドは ChatGPT [U7] | No public information found / 公開情報は見つからなかった | Streamers became popular by "finding ways to break the NPCs" / 配信者は「NPC を壊す方法を探す」ことで人気になった [U8] | 63% positive (210 reviews) / 好評率 63%（210 件）[U7] |
+| **Vaudeville** (Bumblebee, EA in 2023, full release 2025-11-28) / （Bumblebee、2023 年 EA、2025-11-28 正式版） | Typing or speaking both work / 文字入力でも音声でもよい [U9] | Not found / 見つからなかった | Big streamers deliberately tried to break the NPCs / 大物配信者がわざと NPC を壊そうとした [U10] | 48% positive (283 reviews) / 好評率 48%（283 件）[U9] |
+| **Fortnite AI Darth Vader** (2025-05-16) / （2025-05-16） | A dedicated "Conversational AI" key binding, and a Vader button on the HUD / 専用の「Conversational AI」キーが割り当てられ、HUD に Vader のボタンがある [U11][U12] | Not found / 見つからなかった | Within hours of launch it was coaxed into swearing and slurs; Epic 「pushed a hot fix within 30 minutes」; under-13s need parental permission / 公開から数時間で、汚い言葉や差別的な言葉を言うよう誘導された。Epic は「pushed a hot fix within 30 minutes」。13 歳未満は保護者の許可が必要 [U13][U14] | Lots of buzz, but the safety incident was public too / 大きな話題になったが、安全上の事故も公になった |
+| **Fortnite Persona (UEFN AI NPCs, experimental release 2026-04-16)** / **Fortnite Persona（UEFN AI NPC、2026-04-16 実験版）** | Voice chat / ボイスチャット [U15] | Officially admits 「LLM response times are slower than we expect of the final release」 / 公式に「LLM response times are slower than we expect of the final release」と認めている | A safety layer on top of the model; characters for medical use, romantic companionship or bypassing safety mechanisms are prohibited; the conversation is cleared every match / モデルの外側に安全レイヤーがある。医療、恋愛パートナー、安全機構の回避を目的とするキャラクターは禁止。1 試合ごとに会話をリセットする [U15][U16] | Experimental stage / 実験段階 |
+| **Ubisoft NEO NPC** (GDC 2024, Inworld + NVIDIA) / （GDC 2024、Inworld + NVIDIA） | Voice / 音声 | A relationship meter on screen / 画面に関係値のバーがある [U17] | On off-topic requests, Bloom first catches it with a quip, then steers the conversation back to the mission / 本筋から外れた要求には、Bloom がまず気の利いた一言で受け止めてから、話を任務に戻す [U18] | Testers felt "the guardrails are too heavy and the goals too scattered" / 試遊した人の評価は「ガードレールが重すぎ、目標が散漫すぎる」 [U18] |
+| **Ubisoft Teammates** (2025-11-21) / （2025-11-21） | Voice commands / 音声コマンド | Not found / 見つからなかった | The narrative director said they use "fences" so NPCs improvise within a set range / ナラティブディレクターは、"fences" を使って NPC が決められた範囲内で即興するようにしていると述べた [U19] | A few hundred people took part in the closed test / クローズドテストに数百人が参加 |
+| **PUBG Ally** (NVIDIA ACE, 2026) / （NVIDIA ACE、2026） | Voice / 音声 | Runs on-device for "predictable response times"; a behavior tree handles instant reactions, the LLM handles slow thinking / 「予測できる応答時間」のために端末上で動かす。行動ツリーが即時の反応を、LLM が遅い思考を担う [U20] | Only one map and one mode are open, to narrow the domain / マップ 1 つ、モード 1 つだけを公開して領域を絞っている | — |
 
-**对话延迟的研究依据**：
-- 10 种语言的轮次间隔平均差约 250ms，**日语平均只有 7ms**，是最短的；丹麦语约 500ms [R1][R2]。
-- 间隔超过 700ms 时，"拒绝、不情愿"类回应的比例明显升高，也就是说沉默本身开始带有含义 [R3]。
-- 日本人的附和（相槌）频率明显高于美国人 [R4]。
-- 语音 agent 业界的说法：人类典型响应时间约 500ms，1,500ms 的 voice-to-voice 是一个"重要目标" [R5]。
+**Research basis for conversational latency**:
+- Across 10 languages, the average gap between turns differs by about 250ms; **Japanese averages only 7ms**, the shortest, while Danish is about 500ms [R1][R2].
+- When the gap exceeds 700ms, the share of "refusal, reluctance" responses rises noticeably; in other words, the silence itself starts to carry meaning [R3].
+- Japanese speakers use backchannels (aizuchi) noticeably more often than Americans [R4].
+- What the voice agent industry says: typical human response time is about 500ms, and 1,500ms voice-to-voice is an "important target" [R5].
 
----
-
-## 4. 语音 UX 最佳实践
-
-**三种收音方式的取舍**：
-- **按住说话（PTT）**：轮次判定不含糊，但「quite different from a natural conversation」[R5]。
-- **点按切换**：比按住省力；结束靠第二次点按或 VAD。
-- **开放麦克风**：最自然，但可能误触发。OpenAI 的 semantic VAD 用 eagerness 在"等用户说完"和"抢话"之间做取舍 [R6]；Gemini 建议 silence 取 500–800ms [G3]。
-- **不能只靠语音**：语音必须是可选输入，要有非语音的替代方式 [R7]。Whispers from the Star 因为文字模式不足被大量批评 [U2][U6]。
-
-**显示"听到了什么"**：Alexa 的原则是"Always show what was heard to enable correction"[R8]。但 Gemini 的转写可能和模型实际理解的不一致 [G19]。
-
-**关键操作要确认**：Alexa 建议后果大的操作用显式确认，后果小的用隐式或上下文确认 [R8]。Google 的错误处理是逐级加提示，连续 3 次 no-match 就优雅退出 [R9]。
-
-**字幕（XAG 104）**：换说话人时标出名字；每行不超过 40 字符（英文）；最多 2 行；背景不透明度可以在 0–100% 调节；可以随时开关 [R10]。日文每行字数的标准没有查到，建议按全角约 20 字自行测试（推断）。
+**会話の遅延に関する研究の裏づけ**：
+- 10 言語でのターン間の間隔の平均は約 250ms の差があり、**日本語の平均はわずか 7ms** で最も短い。デンマーク語は約 500ms [R1][R2]。
+- 間隔が 700ms を超えると、「拒否・気乗りしない」タイプの応答の割合が明らかに上がる。つまり沈黙そのものが意味を帯び始める [R3]。
+- 日本人の相槌の頻度はアメリカ人よりはっきり高い [R4]。
+- 音声エージェント業界の言い分：人間の典型的な応答時間は約 500ms で、voice-to-voice 1,500ms が「重要な目標」[R5]。
 
 ---
 
-## 5. UX 建议（以下都是建议）
+## 4. Voice UX best practices / 音声 UX のベストプラクティス
 
-1. **默认用按住说话，设置里提供点按切换**，开放麦克风只作为实验选项。
-   - 实现：关闭自动 VAD；按下时发 `activityStart`，松开时发 `activityEnd`。
-   - 保留 `START_OF_ACTIVITY_INTERRUPTS`：一按下就打断 NPC，**同时立刻清空本地播放缓冲**，不要等服务端的 `interrupted`。
-   - 理由：可以绕开日语附和误触发打断、外放回声导致 NPC 自我打断（推断），以及 proactive audio 不回应造成的歧义；同时减少输入计费。
-2. **四个状态，加一个"无应答"状态**：待机 → 聆听（AudioWorklet 电平波形）→ 思考 → 说话（字幕流式出现）。松开按钮后 **200ms 内**角色要有可见反应（点头、抬眼），因为日语轮次间隔极短 [R1]。超过约 700ms 时，播放该角色的预录附和（「うむ…」「ほう」）[R3]，这些附和用 TTS 模型、同一个 voiceName 预先生成，保证音色一致（推断：两边的 voice 名称共用 [G3][G11]）。约 6 秒还没回应，就显示「もう一度話す／文字で送る」。
-3. **一个角色一个 Live session**：分别配 voiceName 和 system instruction（时代口吻、第一人称、「RESPOND IN JAPANESE」、护栏写法参考 Bloom 那种"先接住再拉回"的偏题处理）。走到角色附近时提前建立 session 来隐藏握手时间（推断）。剧情状态用函数调用写回游戏，转写结果不进逻辑。
-4. **选角建议（需要试听确认）**：
-   - メロス：Puck 或 Fenrir
-   - 王ディオニス：Algenib 或 Charon
-   - セリヌンティウス：Iapetus 或 Achird
-   - 妹：Leda
-   - 老人、旁白：Rasalgethi 或 Gacrux
-   - 可以做一个"演员表"页面，让评委逐个试听。
-5. **显示听到的内容**：淡色气泡显示 `inputTranscription`，点一下就进入文字输入、并预填转写内容。在 `customVocabulary` 里加入人名地名（需实测）。
-6. **关键剧情要显式确认**：比如"交出セリヌンティウス当人质"、"接受王的条件"，由模型触发函数调用，UI 弹出确认卡片，语音说「はい」也可以确认。
-7. **防出戏和越狱**：system instruction 里写护栏；服务端过滤输出；记录日志。Vader 的教训是上线当天就会有人试图破坏 NPC [U13]。
-8. **iOS 启动流程**：一个「はじめる」按钮，在这次点按里依次完成：
-   - 创建或 resume AudioContext
-   - 设置 `navigator.audioSession.type`
-   - 调用一次 gUM
-   - 建立 WebSocket
+**Trade-offs between the three capture modes**:
+- **Push-to-talk (PTT)**: turn detection is unambiguous, but it is 「quite different from a natural conversation」[R5].
+- **Tap to toggle**: less effort than holding; the turn ends with a second tap or by VAD.
+- **Open microphone**: the most natural, but can trigger by mistake. OpenAI's semantic VAD uses eagerness to trade off between "waiting for the user to finish" and "jumping in" [R6]; Gemini recommends 500–800ms of silence [G3].
+- **Never voice alone**: voice must be an optional input, with a non-voice alternative [R7]. Whispers from the Star was heavily criticized for its inadequate text mode [U2][U6].
 
-   之后再处理这些情况：
-   - 监听 `visibilitychange` 和 `interrupted`，显示「タップして再開」，并用 resumption handle 重连。
-   - 推荐戴耳机（规避听筒路由和回声问题）。
-   - gUM 报 `NotAllowedError` 但权限其实是允许状态时，提示重启 Safari，并直接切换到文字输入 [I9]。
-   - 说话按钮加上 `-webkit-user-select:none; -webkit-touch-callout:none; touch-action:manipulation`。
-9. **服务端**：Cloud Run 请求超时调到 60 分钟；处理 `GoAway`；超过 15 分钟的会话开启 context compression [G4][G24]。
-10. **字幕**：说话人名字配颜色；最多 2 行；流式出现，并按音频播放进度对齐；生僻词（邪智暴虐 等）加注假名。
+**3 つの収音方式の取捨**：
+- **押している間だけ話す（PTT）**：ターンの判定はあいまいにならないが、「quite different from a natural conversation」[R5]。
+- **タップで切り替え**：押し続けるより楽。終了は 2 回目のタップか VAD で決まる。
+- **常時マイク**：最も自然だが、誤作動の恐れがある。OpenAI の semantic VAD は eagerness で「ユーザーが話し終えるのを待つ」と「話をさえぎる」の間を調整する [R6]。Gemini は無音を 500–800ms にするよう勧めている [G3]。
+- **音声だけに頼らない**：音声は任意の入力でなければならず、音声以外の代替手段が必要 [R7]。Whispers from the Star は文字モードが不十分なことで大いに批判された [U2][U6]。
+
+**Showing "what was heard"**: Alexa's principle is "Always show what was heard to enable correction" [R8]. But Gemini's transcription may not match what the model actually understood [G19].
+
+**「何が聞こえたか」を表示する**：Alexa の原則は "Always show what was heard to enable correction" [R8]。ただし Gemini の文字起こしは、モデルが実際に理解した内容と一致しないことがある [G19]。
+
+**Confirm key actions**: Alexa recommends explicit confirmation for high-consequence actions and implicit or contextual confirmation for low-consequence ones [R8]. Google's error handling adds hints step by step and exits gracefully after 3 no-matches in a row [R9].
+
+**重要な操作は確認する**：Alexa は、影響の大きい操作には明示的な確認を、影響の小さい操作には暗黙的または文脈による確認を勧めている [R8]。Google のエラー処理は段階的にヒントを増やし、no-match が 3 回続いたらうまく終了する [R9]。
+
+**Subtitles (XAG 104)**: show the name when the speaker changes; at most 40 characters per line (English); at most 2 lines; background opacity adjustable from 0–100%; can be toggled at any time [R10]. I found no standard for characters per line in Japanese; I suggest testing with about 20 full-width characters (inference).
+
+**字幕（XAG 104）**：話者が変わるときは名前を表示する。1 行は 40 文字以内（英語）。最大 2 行。背景の不透明度は 0–100% で調整できる。いつでもオン・オフできる [R10]。日本語の 1 行あたりの文字数の基準は見つからなかった。全角約 20 文字で自分たちで試すことを勧める（推測）。
 
 ---
 
-## 来源（全部检查于 2026-10-06）
-- [G1] ai.google.dev/gemini-api/docs/models/gemini-3.8-live（更新于 2026-09-15）
-- [G2] ai.google.dev/gemini-api/docs/models（2026-10-01）
-- [G3] ai.google.dev/gemini-api/docs/live-guide（2026-09-18）
-- [G4] ai.google.dev/gemini-api/docs/live-session（2026-09-15）
-- [G5] ai.google.dev/gemini-api/docs/live-api/best-practices（2026-09-15）
-- [G6] ai.google.dev/api/live（2026-09-04）
-- [G7] ai.google.dev/gemini-api/docs/live-tools（2026-09-15）
-- [G8] ai.google.dev/gemini-api/docs/live（未注明日期）
-- [G9] ai.google.dev/gemini-api/docs/changelog（9-15 条目）
-- [G10] firebase.google.com/docs/ai-logic/live-api/configuration（2026-10-01）
-- [G11] ai.google.dev/gemini-api/docs/speech-generation（2026-10-01）
-- [G12] ai.google.dev/gemini-api/docs/pricing（检查于 2026-10-06）
-- [G13] blog.google/innovation-and-ai/technology/developers-tools/build-with-gemini-3-1-flash-live/（2026-03-26）
-- [G14] androidheadlines.com/2026/09/google-launches-gemini-3-8-live-audio-models.html（2026-09-15）；thurrott.com/a-i/google-gemini-a-i/341685/（2026-09-15）
-- [G15] cloud.google.com/blog/products/ai-machine-learning/gemini-3-8-live-with-live-avatar-is-now-generally-available（2026-09-24）
-- [G16] docs.cloud.google.com/gemini-enterprise-agent-platform/models/maas/google（正文无法读取）
-- [G17] discuss.ai.google.dev/t/…eu-region-availability/144429（2026-05 至 08）
-- [G18] discuss.ai.google.dev/t/bug-voicename-configuration-is-silently-ignored…/179065（2026-08-20，官方回复 09-14）
-- [G19] discuss.ai.google.dev/t/…input-audio-transcription-returns-incorrect-text…/128300（2026-03 至 09）
-- [G20] discuss.ai.google.dev/t/…delays-or-missing-input-audio-transcription-events/110732（2025-12 至 2026-01）
-- [G21] community.livekit.io/t/how-to-fix-latency-3-secs-of-gemini-3-1-flash-live/766（2026-04-03）
-- [G22] discuss.ai.google.dev/t/live-api-5-6-second-response-latency/123254（2026-02-16）
-- [G23] ai.google.dev/gemini-api/docs/ephemeral-tokens（2026-09-15）
-- [G24] docs.cloud.google.com/run/docs/triggering/websockets（2026-09-30）
-- [I1] lists.w3.org/Archives/Public/public-webrtc-logs/2020Mar/0214.html（2020-03-30）
-- [I2] ios.gadgethacks.com/how-to/customize-camera-microphone-location-permissions-for-specific-websites-ios-13s-safari-0198476/（iOS 13 时期）
-- [I3] developer.apple.com/forums/thread/788518（2025-06）
-- [I4] developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Best_practices（2026-08-27）
-- [I5] developer.mozilla.org/en-US/docs/Web/API/BaseAudioContext/state（2025-07-24）
-- [I6] bugs.webkit.org/show_bug.cgi?id=237322（2022 年报告，2024-09 有评论）
-- [I7] developer.mozilla.org/en-US/docs/Web/API/Audio_Session_API（2026-08-19）
-- [I8] bugs.webkit.org/show_bug.cgi?id=218012（2020 年报告，最新评论 2026-05-20）
-- [I9] bugs.webkit.org/show_bug.cgi?id=319706（2026-07-17，回移于 2026-09-08）
-- [I10] developer.apple.com/documentation/safari-release-notes/safari-27_2-release-notes（2026-09-16）
-- [I11] developer.apple.com/documentation/safari-release-notes/safari-27-release-notes（2026-09-14）
+## 5. UX recommendations (everything below is a recommendation) / UX の提案（以下はすべて提案）
+
+1. **Default to push-to-talk, offer tap-to-toggle in settings**, with the open microphone only as an experimental option.
+   **デフォルトは押している間だけ話す方式にし、設定でタップ切り替えを用意する**。常時マイクは実験的な選択肢にとどめる。
+   - Implementation: turn off automatic VAD; send `activityStart` on press and `activityEnd` on release.
+     実装：自動 VAD をオフにする。押したときに `activityStart`、離したときに `activityEnd` を送る。
+   - Keep `START_OF_ACTIVITY_INTERRUPTS`: pressing interrupts the NPC immediately, **and clears the local playback buffer at once**, without waiting for the server's `interrupted`.
+     `START_OF_ACTIVITY_INTERRUPTS` は残す：押した瞬間に NPC を中断し、**同時にローカルの再生バッファをすぐに空にする**。サーバーの `interrupted` を待たない。
+   - Reason: this avoids Japanese aizuchi falsely triggering interruptions, speaker echo making the NPC interrupt itself (inference), and the ambiguity of proactive audio not responding; it also reduces input billing.
+     理由：日本語の相槌による誤った割り込み、スピーカーのエコーで NPC が自分自身を中断すること（推測）、proactive audio が応答しないことによるあいまいさを避けられる。入力の課金も減る。
+2. **Four states, plus a "no response" state**: idle → listening (AudioWorklet level waveform) → thinking → speaking (subtitles streaming in). Within **200ms** of releasing the button the character must react visibly (a nod, a glance up), because Japanese turn gaps are extremely short [R1]. Past about 700ms, play that character's pre-recorded aizuchi (「うむ…」「ほう」) [R3]; these are pre-generated with the TTS model and the same voiceName so the timbre matches (inference: the voice names are shared between the two [G3][G11]). If there's still no response after about 6 seconds, show 「もう一度話す／文字で送る」.
+   **4 つの状態に「無応答」の状態を加える**：待機 → 聞き取り（AudioWorklet のレベル波形）→ 考え中 → 発話（字幕がストリーミングで出る）。ボタンを離してから **200ms 以内**に人物が目に見える反応（うなずく、目を上げる）をする必要がある。日本語のターン間の間隔は極めて短いからだ [R1]。約 700ms を超えたら、その人物の事前収録の相槌（「うむ…」「ほう」）を流す [R3]。この相槌は TTS モデルと同じ voiceName で事前に生成し、声色をそろえる（推測：両者の voice 名は共通 [G3][G11]）。約 6 秒たっても応答がなければ「もう一度話す／文字で送る」を表示する。
+3. **One Live session per character**: each with its own voiceName and system instruction (period-appropriate tone, first person, 「RESPOND IN JAPANESE」, and guardrails written along the lines of Bloom's "catch it, then steer back" handling of off-topic talk). Open the session early as the player approaches the character to hide the handshake time (inference). Story state is written back to the game via function calls; transcription results don't go into logic.
+   **1 人の登場人物に 1 つの Live セッション**：それぞれに voiceName と system instruction を設定する（時代に合った口調、一人称、「RESPOND IN JAPANESE」、ガードレールは Bloom の「まず受け止めてから戻す」という脱線への対処を参考に書く）。人物に近づいたら先にセッションを確立し、ハンドシェイクの時間を隠す（推測）。物語の状態は関数呼び出しでゲームに書き戻し、文字起こしの結果はロジックに入れない。
+4. **Casting suggestions (need to be confirmed by listening)**:
+   **配役の提案（試聴での確認が必要）**：
+   - メロス: Puck or Fenrir
+     メロス：Puck または Fenrir
+   - 王ディオニス: Algenib or Charon
+     王ディオニス：Algenib または Charon
+   - セリヌンティウス: Iapetus or Achird
+     セリヌンティウス：Iapetus または Achird
+   - 妹: Leda
+     妹：Leda
+   - Old man, narration: Rasalgethi or Gacrux
+     老人、ナレーション：Rasalgethi または Gacrux
+   - We could build a "cast list" page so the judges can audition each voice.
+     「キャスト表」のページを作り、審査員が 1 つずつ試聴できるようにしてもよい。
+5. **Show what was heard**: show `inputTranscription` in a pale bubble; tapping it opens text input prefilled with the transcription. Add character and place names to `customVocabulary` (needs testing).
+   **聞こえた内容を表示する**：`inputTranscription` を淡い色の吹き出しで表示し、タップすると文字入力に切り替わって文字起こしが入った状態になる。`customVocabulary` に人名・地名を入れる（要実測）。
+6. **Explicit confirmation for key story moments**: e.g. "handing over セリヌンティウス as a hostage", "accepting the king's terms"; the model triggers a function call, the UI shows a confirmation card, and saying 「はい」 aloud also confirms.
+   **重要な筋は明示的に確認する**：たとえば「セリヌンティウスを人質に差し出す」「王の条件を受け入れる」。モデルが関数呼び出しを発し、UI に確認カードを出す。声で「はい」と言っても確認できる。
+7. **Guarding against breaking character and jailbreaks**: guardrails in the system instruction; server-side output filtering; logging. Vader's lesson is that people will try to break the NPCs on launch day [U13].
+   **キャラ崩れと脱獄を防ぐ**：system instruction にガードレールを書く。サーバー側で出力をフィルタする。ログを記録する。Vader の教訓は、公開当日から NPC を壊そうとする人が出るということ [U13]。
+8. **iOS startup flow**: a single 「はじめる」 button, and in that one tap do the following in order:
+   **iOS の起動フロー**：「はじめる」ボタンを 1 つ置き、その 1 回のタップの中で次を順に行う：
+   - Create or resume the AudioContext
+     AudioContext を作成または resume する
+   - Set `navigator.audioSession.type`
+     `navigator.audioSession.type` を設定する
+   - Call gUM once
+     gUM を 1 回呼ぶ
+   - Open the WebSocket
+     WebSocket を確立する
+
+   Then handle these cases:
+
+   そのあとで次のケースに対処する：
+   - Listen for `visibilitychange` and `interrupted`, show 「タップして再開」, and reconnect with the resumption handle.
+     `visibilitychange` と `interrupted` を監視し、「タップして再開」を表示して、resumption handle で再接続する。
+   - Recommend headphones (avoids the earpiece routing and echo problems).
+     イヤホンの使用を勧める（受話口へのルーティングとエコーの問題を避ける）。
+   - When gUM reports `NotAllowedError` but the permission is actually granted, prompt the user to restart Safari and switch straight to text input [I9].
+     gUM が `NotAllowedError` を返すのに権限は実際には許可されている場合、Safari の再起動を促し、すぐに文字入力に切り替える [I9]。
+   - Add `-webkit-user-select:none; -webkit-touch-callout:none; touch-action:manipulation` to the talk button.
+     話すボタンに `-webkit-user-select:none; -webkit-touch-callout:none; touch-action:manipulation` を付ける。
+9. **Server side**: raise the Cloud Run request timeout to 60 minutes; handle `GoAway`; turn on context compression for sessions over 15 minutes [G4][G24].
+   **サーバー側**：Cloud Run のリクエストタイムアウトを 60 分にする。`GoAway` を処理する。15 分を超えるセッションでは context compression を有効にする [G4][G24]。
+10. **Subtitles**: give speaker names colors; at most 2 lines; stream them in and align them with audio playback progress; add furigana to rare words (邪智暴虐 etc.).
+    **字幕**：話者名に色を付ける。最大 2 行。ストリーミングで表示し、音声の再生位置に合わせる。難しい語（邪智暴虐 など）には振り仮名を付ける。
+
+---
+
+## Sources (all checked on 2026-10-06) / 出典（すべて 2026-10-06 に確認）
+- [G1] ai.google.dev/gemini-api/docs/models/gemini-3.8-live (updated 2026-09-15 / 2026-09-15 更新)
+- [G2] ai.google.dev/gemini-api/docs/models (2026-10-01)
+- [G3] ai.google.dev/gemini-api/docs/live-guide (2026-09-18)
+- [G4] ai.google.dev/gemini-api/docs/live-session (2026-09-15)
+- [G5] ai.google.dev/gemini-api/docs/live-api/best-practices (2026-09-15)
+- [G6] ai.google.dev/api/live (2026-09-04)
+- [G7] ai.google.dev/gemini-api/docs/live-tools (2026-09-15)
+- [G8] ai.google.dev/gemini-api/docs/live (undated / 日付なし)
+- [G9] ai.google.dev/gemini-api/docs/changelog (9-15 entry / 9-15 の項目)
+- [G10] firebase.google.com/docs/ai-logic/live-api/configuration (2026-10-01)
+- [G11] ai.google.dev/gemini-api/docs/speech-generation (2026-10-01)
+- [G12] ai.google.dev/gemini-api/docs/pricing (checked 2026-10-06 / 2026-10-06 に確認)
+- [G13] blog.google/innovation-and-ai/technology/developers-tools/build-with-gemini-3-1-flash-live/ (2026-03-26)
+- [G14] androidheadlines.com/2026/09/google-launches-gemini-3-8-live-audio-models.html (2026-09-15); thurrott.com/a-i/google-gemini-a-i/341685/ (2026-09-15)
+- [G15] cloud.google.com/blog/products/ai-machine-learning/gemini-3-8-live-with-live-avatar-is-now-generally-available (2026-09-24)
+- [G16] docs.cloud.google.com/gemini-enterprise-agent-platform/models/maas/google (body could not be read / 本文は読み取れず)
+- [G17] discuss.ai.google.dev/t/…eu-region-availability/144429 (2026-05 to 08 / 2026-05〜08)
+- [G18] discuss.ai.google.dev/t/bug-voicename-configuration-is-silently-ignored…/179065 (2026-08-20, official reply 09-14 / 2026-08-20、公式回答 09-14)
+- [G19] discuss.ai.google.dev/t/…input-audio-transcription-returns-incorrect-text…/128300 (2026-03 to 09 / 2026-03〜09)
+- [G20] discuss.ai.google.dev/t/…delays-or-missing-input-audio-transcription-events/110732 (2025-12 to 2026-01 / 2025-12〜2026-01)
+- [G21] community.livekit.io/t/how-to-fix-latency-3-secs-of-gemini-3-1-flash-live/766 (2026-04-03)
+- [G22] discuss.ai.google.dev/t/live-api-5-6-second-response-latency/123254 (2026-02-16)
+- [G23] ai.google.dev/gemini-api/docs/ephemeral-tokens (2026-09-15)
+- [G24] docs.cloud.google.com/run/docs/triggering/websockets (2026-09-30)
+- [I1] lists.w3.org/Archives/Public/public-webrtc-logs/2020Mar/0214.html (2020-03-30)
+- [I2] ios.gadgethacks.com/how-to/customize-camera-microphone-location-permissions-for-specific-websites-ios-13s-safari-0198476/ (iOS 13 era / iOS 13 の頃)
+- [I3] developer.apple.com/forums/thread/788518 (2025-06)
+- [I4] developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API/Best_practices (2026-08-27)
+- [I5] developer.mozilla.org/en-US/docs/Web/API/BaseAudioContext/state (2025-07-24)
+- [I6] bugs.webkit.org/show_bug.cgi?id=237322 (reported 2022, comments in 2024-09 / 2022 年報告、2024-09 にコメントあり)
+- [I7] developer.mozilla.org/en-US/docs/Web/API/Audio_Session_API (2026-08-19)
+- [I8] bugs.webkit.org/show_bug.cgi?id=218012 (reported 2020, latest comment 2026-05-20 / 2020 年報告、最新コメント 2026-05-20)
+- [I9] bugs.webkit.org/show_bug.cgi?id=319706 (2026-07-17, backported 2026-09-08 / 2026-07-17、2026-09-08 にバックポート)
+- [I10] developer.apple.com/documentation/safari-release-notes/safari-27_2-release-notes (2026-09-16)
+- [I11] developer.apple.com/documentation/safari-release-notes/safari-27-release-notes (2026-09-14)
 - [I12] developer.mozilla.org/en-US/docs/Web/API/MediaTrackSettings/echoCancellation
 - [I13] developer.mozilla.org/en-US/docs/Web/API/MediaTrackConstraints/noiseSuppression
-- [I14] bugs.webkit.org/show_bug.cgi?id=247943（2022–2024）
-- [I15] developer.apple.com/forums/thread/716118（2022-09）
-- [I16] community.livekit.io/t/…background-audio-suspension-for-ios-users/1649（2026-07）
+- [I14] bugs.webkit.org/show_bug.cgi?id=247943 (2022–2024)
+- [I15] developer.apple.com/forums/thread/716118 (2022-09)
+- [I16] community.livekit.io/t/…background-audio-suspension-for-ios-users/1649 (2026-07)
 - [I17] developer.mozilla.org/en-US/docs/Web/CSS/-webkit-touch-callout
-- [I18] developer.mozilla.org/en-US/docs/Web/CSS/user-select（2026-04-20）
-- [I19] developer.mozilla.org/en-US/docs/Web/CSS/touch-action（2026-04-20）
+- [I18] developer.mozilla.org/en-US/docs/Web/CSS/user-select (2026-04-20)
+- [I19] developer.mozilla.org/en-US/docs/Web/CSS/touch-action (2026-04-20)
 - [I20] caniuse.com/mdn-api_audioworklet
 - [U1] store.steampowered.com/app/3730100/
-- [U2] steamcommunity.com/app/3730100/discussions/0/608668111724477736/（2025-08-15）
-- [U3] 36kr.com/p/3428919332048259（2025-08-19）
-- [U4] vaporlens.app/app/3730100/whispers_from_the_star.md（玩家评测汇总）
-- [U5] steamcommunity.com/app/3730100/discussions/0/506216918922069229/（2025-10-18）
-- [U6] blog.soullink.io/whispers-from-the-star-review/（2026-07-01）
+- [U2] steamcommunity.com/app/3730100/discussions/0/608668111724477736/ (2025-08-15)
+- [U3] 36kr.com/p/3428919332048259 (2025-08-19)
+- [U4] vaporlens.app/app/3730100/whispers_from_the_star.md (summary of player reviews / プレイヤーレビューのまとめ)
+- [U5] steamcommunity.com/app/3730100/discussions/0/506216918922069229/ (2025-10-18)
+- [U6] blog.soullink.io/whispers-from-the-star-review/ (2026-07-01)
 - [U7] store.steampowered.com/app/2726370/Suck_Up/
 - [U8] knowyourmeme.com/memes/subcultures/suck-up
 - [U9] store.steampowered.com/app/2240920/Vaudeville/
 - [U10] knowyourmeme.com/memes/subcultures/vaudeville-video-game
-- [U11] beebom.com/how-to-talk-to-darth-vader-ai-in-fortnite/（2025-05-16）
+- [U11] beebom.com/how-to-talk-to-darth-vader-ai-in-fortnite/ (2025-05-16)
 - [U12] thespike.gg/fortnite/beginner-guides/star-wars-vader-ai
-- [U13] foxnews.com/tech/epic-games-debuts-voice-interactive-darth-vader-fortnite-its-already-being-tricked-swearing（2025-05-17）
-- [U14] nintendolife.com/news/2025/05/fortnite-turns-to-the-dark-side-with-ai-darth-vader-voice-and-of-course-its-been-swearing（2025-05）
-- [U15] fortnite.com/news/bring-npcs-to-life-with-ai-powered-conversations（2026-04-16）
+- [U13] foxnews.com/tech/epic-games-debuts-voice-interactive-darth-vader-fortnite-its-already-being-tricked-swearing (2025-05-17)
+- [U14] nintendolife.com/news/2025/05/fortnite-turns-to-the-dark-side-with-ai-darth-vader-voice-and-of-course-its-been-swearing (2025-05)
+- [U15] fortnite.com/news/bring-npcs-to-life-with-ai-powered-conversations (2026-04-16)
 - [U16] dev.epicgames.com/documentation/fortnite/developing-personas-overview-in-unreal-editor-for-fortnite
-- [U17] videogameschronicle.com/news/ubisoft-shows-off-ai-powered-game-characters-at-gdc-the-game-world-actually-listens（2024-03-19）
-- [U18] wccftech.com/inworld-ai-npc-gdc-2024-hands-on-nvidia-and-ubisoft-show-a-glimpse-of-the-future/（2024-03-30）
-- [U19] news.ubisoft.com/en-us/article/3mWlITIuWuu0MoVuR6o8ps/（2025-11-21）
-- [U20] developer.nvidia.com/blog/how-krafton-built-pubg-ally-a-co-playable-character-powered-by-nvidia-ace/（2026-06-25）
-- [R1] nationalgeographic.com/science/article/pregnant-pauses-and-rapid-fire-how-do-different-cultures-take-turns-to-talk（2009-06-19）
-- [R2] forms.mpi.nl/node/50939（Stivers et al., PNAS 2009, 106(26)）
-- [R3] eprints.whiterose.ac.uk/116177（Kendrick & Torreira, Discourse Processes 2015）
-- [R4] cambridge.org/core/journals/language-in-society/article/abs/backchannels-across-cultures-a-study-of-americans-and-japanese1/B26AC3C44C237B9A380A5494EA5693ED（White, 1989）
-- [R5] voiceaiandvoiceagents.com（2026-06 更新版）
+- [U17] videogameschronicle.com/news/ubisoft-shows-off-ai-powered-game-characters-at-gdc-the-game-world-actually-listens (2024-03-19)
+- [U18] wccftech.com/inworld-ai-npc-gdc-2024-hands-on-nvidia-and-ubisoft-show-a-glimpse-of-the-future/ (2024-03-30)
+- [U19] news.ubisoft.com/en-us/article/3mWlITIuWuu0MoVuR6o8ps/ (2025-11-21)
+- [U20] developer.nvidia.com/blog/how-krafton-built-pubg-ally-a-co-playable-character-powered-by-nvidia-ace/ (2026-06-25)
+- [R1] nationalgeographic.com/science/article/pregnant-pauses-and-rapid-fire-how-do-different-cultures-take-turns-to-talk (2009-06-19)
+- [R2] forms.mpi.nl/node/50939 (Stivers et al., PNAS 2009, 106(26))
+- [R3] eprints.whiterose.ac.uk/116177 (Kendrick & Torreira, Discourse Processes 2015)
+- [R4] cambridge.org/core/journals/language-in-society/article/abs/backchannels-across-cultures-a-study-of-americans-and-japanese1/B26AC3C44C237B9A380A5494EA5693ED (White, 1989)
+- [R5] voiceaiandvoiceagents.com (2026-06 updated edition / 2026-06 更新版)
 - [R6] developers.openai.com/api/docs/guides/realtime-vad
 - [R7] gameaccessibilityguidelines.com/ensure-that-speech-input-is-not-required-and-included-only-as-a-supplementary-alternative-input-method/
 - [R8] developer.amazon.com/en-US/alexa/alexa-haus/design-principles/be-trustworthy
-- [R9] developers.google.com/assistant/conversation-design/errors（2024-09-18）
-- [R10] learn.microsoft.com/en-us/gaming/accessibility/xbox-accessibility-guidelines/104（2026-03-04）
+- [R9] developers.google.com/assistant/conversation-design/errors (2024-09-18)
+- [R10] learn.microsoft.com/en-us/gaming/accessibility/xbox-accessibility-guidelines/104 (2026-03-04)
 
-**还没有核实的内容**：
-- Vertex AI 页面正文抓不到，所以 Vertex 上 3.8 Live 的模型 ID、region、voice 列表没有核实。
-- Whispers from the Star 和 Suck Up! 到底是按住说话还是点按切换，没有找到明确来源。
-- `customVocabulary` 等新转写字段对 3.8 Live 是否生效，需要实测。
+**Not yet verified**:
+- The body of the Vertex AI pages couldn't be fetched, so the model ID, region and voice list for 3.8 Live on Vertex are not verified.
+- No clear source was found on whether Whispers from the Star and Suck Up! use push-to-talk or tap-to-toggle.
+- Whether the new transcription fields such as `customVocabulary` take effect on 3.8 Live needs testing.
+
+**まだ確認できていない内容**：
+- Vertex AI のページ本文を取得できなかったため、Vertex 上の 3.8 Live のモデル ID、リージョン、音声の一覧は確認していない。
+- Whispers from the Star と Suck Up! が押している間だけ話す方式なのかタップ切り替えなのか、はっきりした出典は見つからなかった。
+- `customVocabulary` などの新しい文字起こしフィールドが 3.8 Live で有効かどうかは、実測が必要。

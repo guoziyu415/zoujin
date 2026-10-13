@@ -1,606 +1,683 @@
-# 日语文案表（完整版 v1.0，2026-10-11）
+# Japanese copy table (full version v1.0, 2026-10-11) / 日本語文言表（完全版 v1.0、2026-10-11）
 
-UX 维护。四幕、三个身份（旅人、石屋の弟子、村の牧童）的完整版界面上出现的固定日语，按画面排。v0.3.x 是 M2 切片版（广场、旅人、第一幕之后跳到三日目の日没）；切片专用的键仍留着，标「切片」，完整版不用。前端写进代码时以这张表为准；改字先改这张表。
+Maintained by UX. The fixed Japanese that appears in the UI of the full version (four acts, three roles: 旅人, 石屋の弟子, 村の牧童), arranged by screen. v0.3.x was the M2 slice version (the plaza, the traveler, a jump to 三日目の日没 after act 1); slice-only keys are kept and marked “slice”, and the full version does not use them. When Frontend puts copy into code, this table is the source of truth; to change wording, change this table first.
 
-- **出处**：每段标 ux-design 的节号。表里和 ux-design 不一样的地方，以这张表为准，标「改」并写理由，下一次改 ux-design 时同步。到 v0.3 为止标「改」的，ux-design 里有对应写法的都已在 ux-design v1.0.1 同步；其余几处（`role.traveler.can`、`menu.source`、`actEnd.propose.placeholder`、`memory.empty`）改的是原型里的字。
-- **状态**：定 = ux-design 或已定的切片稿里有；新 = 这张表第一次写；改 = 改了 ux-design 或原型里的字；核 = 上线前要核实（窗口、iOS 的设置路径）。
-- **对照**：标「对照」的小表是服务端下发的字（数据的切片配置、M3 的世界模型），列出来给试玩和评审对照，前端不写进代码。完整版的对照表（6.1、7.1）是 UX 写给数据的稿：数据照着写进 M3 世界模型，字段名数据定。
-- **键名**：`画面.东西`，小写驼峰，前端照用（前端抽成 `ja.json`）。**一个键只放一句**：几种说法拆成几个键，每个键写全，不写「`.desc`」这种简写。
-- **「／」和换行**：「／」只在说明列里用，日语列里不出现。要换行写 `<br>`：前端按 `<br>` 切成几行，用文本节点显示，不当 HTML 插。
-- **占位**：`{name}` 人物名（世界模型 `Character.name`）、`{role}` 身份名、`{day}` 日子、`{band}` 时段、`{place}` 地点名（世界模型 `Place.name`，见 `actEnd.when`）、`{from}` `{to}` 换之前和之后的关系标签（第 9 节 `relation.*` 的字）、`{n}` 数字、`{plan}` 叙事者转述的打算、`{text}` 服务端给的句子。
-- **不在这张表里的**：人物和叙事者的话（服务端生成）、幕末去处的标签和副题的后半（数据 `ActExit.label`、`ActExit.sub`）、落地的一行（`ActExit.arrival.line`）、世界模型里的名字和时段词（数据 `clock.labels`）、结局模板句（ux-design 11.4，后端用）、预录台词（ux-design 16.2 和切片稿，后端生成音频）。第 14 节列出要用到的预录句，方便试听时对照。
+UX が管理する。四幕、3 つの身分（旅人、石屋の弟子、村の牧童）の完全版の UI に出る固定の日本語を、画面ごとに並べる。v0.3.x は M2 のスライス版（広場、旅人、第一幕の後に三日目の日没へジャンプ）。スライス専用のキーは残したまま「スライス」と記し、完全版では使わない。フロントエンドがコードに書き込むときはこの表を正とする。文言を変えるときは、まずこの表を変える。
 
-## 0. 写法（ux-design 15）
+- **Source**: each section is tagged with its ux-design section number. Where the table differs from ux-design, this table wins; the row is marked “Changed” with the reason, and ux-design is synced the next time it is edited. Everything marked “Changed” up to v0.3 that has a counterpart in ux-design was synced in ux-design v1.0.1; the remaining few (`role.traveler.can`, `menu.source`, `actEnd.propose.placeholder`, `memory.empty`) change wording from the prototype.
+  **出典**：各段に ux-design の節番号を記す。表と ux-design が違うところはこの表を正とし、「変更」と記して理由を書き、次に ux-design を改めるときに同期する。v0.3 までに「変更」と記したもののうち、ux-design に対応する書き方があるものはすべて ux-design v1.0.1 で同期済み。残りの数か所（`role.traveler.can`、`menu.source`、`actEnd.propose.placeholder`、`memory.empty`）はプロトタイプの文言を変えたもの。
+- **Status**: Fixed = present in ux-design or in a settled slice draft; New = first written in this table; Changed = changes wording from ux-design or the prototype; Verify = must be verified before launch (helplines, iOS settings paths).
+  **状態**：確定 = ux-design または確定済みのスライス稿にある。新規 = この表で初めて書いた。変更 = ux-design またはプロトタイプの文言を変えた。要確認 = 公開前に確認が必要（窓口、iOS の設定の経路）。
+- **Reference**: the small tables marked “Reference” hold text sent by the server (Data's slice configuration, the M3 world model); they are listed so playtests and reviews can compare against them, and Frontend does not put them into code. The full version's reference tables (6.1, 7.1) are UX's drafts for Data: Data writes them into the M3 world model as given, and Data decides the field names.
+  **対照**：「対照」と記した小さな表はサーバーが送る文言（データのスライス設定、M3 の世界モデル）で、試遊やレビューで照らし合わせるために載せている。フロントエンドはコードに書き込まない。完全版の対照表（6.1、7.1）は UX がデータ向けに書いた原稿で、データがそのとおり M3 の世界モデルに書き込む。フィールド名はデータが決める。
+- **Key names**: `screen.thing`, lower camelCase, used by Frontend as is (Frontend extracts them into `ja.json`). **One key holds one sentence**: several phrasings are split into several keys, each written in full, never abbreviated like 「`.desc`」.
+  **キー名**：`画面.対象`、小文字のキャメルケースで、フロントエンドはそのまま使う（フロントエンドが `ja.json` に抽出する）。**1 つのキーには 1 文だけ**：言い方が複数あれば複数のキーに分け、どのキーも完全な形で書き、「`.desc`」のような省略形は書かない。
+- **「／」 and line breaks**: 「／」 is used only in the description columns and never appears in the Japanese column. For a line break write `<br>`: Frontend splits the string into lines at `<br>` and shows them as text nodes, never inserting them as HTML.
+  **「／」と改行**：「／」は説明の列だけで使い、日本語の列には出さない。改行は `<br>` と書く：フロントエンドは `<br>` で行に分け、テキストノードとして表示し、HTML として挿入しない。
+- **Placeholders**: `{name}` character name (world model `Character.name`), `{role}` role name, `{day}` day, `{band}` time band, `{place}` place name (world model `Place.name`; see `actEnd.when`), `{from}` `{to}` the relation labels before and after the change (the words of `relation.*` in section 9), `{n}` a number, `{plan}` the plan as restated by the narrator, `{text}` a sentence supplied by the server.
+  **プレースホルダー**：`{name}` 人物名（世界モデル `Character.name`）、`{role}` 身分名、`{day}` 日、`{band}` 時間帯、`{place}` 地点名（世界モデル `Place.name`、`actEnd.when` 参照）、`{from}` `{to}` 変わる前と後の関係ラベル（第 9 節 `relation.*` の語）、`{n}` 数字、`{plan}` ナレーターが言い換えたプラン、`{text}` サーバーが渡す文。
+- **Not in this table**: what characters and the narrator say (generated by the server), the labels of end-of-act destinations and the second half of their subtitles (Data's `ActExit.label`, `ActExit.sub`), the arrival line (`ActExit.arrival.line`), names and time-band words in the world model (Data's `clock.labels`), ending template sentences (ux-design 11.4, used by Backend), pre-recorded lines (ux-design 16.2 and the slice drafts; Backend generates the audio). Section 14 lists the pre-recorded lines needed, for comparison when listening.
+  **この表にないもの**：人物とナレーターのせりふ（サーバーが生成）、幕末の行き先のラベルと副題の後半（データの `ActExit.label`、`ActExit.sub`）、着地の 1 行（`ActExit.arrival.line`）、世界モデルの名前と時間帯の語（データの `clock.labels`）、エンディングのテンプレート文（ux-design 11.4、バックエンドが使う）、事前収録セリフ（ux-design 16.2 とスライス稿、音声はバックエンドが生成）。第 14 節には、試聴のときに照らし合わせられるよう、使う事前収録セリフを挙げる。
 
-- 界面：丁寧語，短，动词结尾。叙事（地の文）：だ・である体，短句，明朝体。故事外的话（出戏卡、试玩版说明）：界面黑体。
-- 不出现：AI（封面告知除外）、イベント、エージェント、刻、ポイント、パラメータ、エラー、クエスト、ミッション、プレイ（说「物語」）。不说「無限」「何万通り」「初の」。
-- 数字一律半角：「15分」「1時間半」。不用汉数字（「十分」会读成じゅうぶん）。60 分以上用「時間」。**改**：ux-design 4.2 的倒数写的是「あと二時間ほど」，改成半角，和按钮一致。
-- 称呼玩家：旅人是「旅の方」（人物说的，不在界面里）。界面里玩家是「あなた」。
-- **服务端下发的事件句里，玩家也是「あなた」**（v0.3.2，前端评审 #61 时问的）：幕末的「この幕であなたが動かしたこと」（`recapLines`）、「その頃」（`act_transition.recap[].line`）、两个人物交谈的灰色一行（`nearbyTalk.summary`）、连锁反应地图里的事件句。事件的 `summary` 存的是第三人称、用身份名（「旅人は老爺を家まで送ると申し出た」），模型和评测读的是这一份；下发给前端之前，服务端把这一局的身份名换成「あなた」。做法后端和数据定（api-contract、数据契约），前端照原样显示。
-  - 幕末和「その頃」是书页上一行一句，句末要有「。」，没有时服务端补上；交谈的灰色一行在括号里，不补「。」。
-  - 情境动作的事件句要写做成了的事、带对象：「あなたは、老爺を家まで送った。」，不是按钮的字加「ことにした」（「旅人は、家まで送ることにした」既没说送谁，也像是还没做）。「ことにした」只用在幕末选去处和说出打算（`actEnd.propose.accepted`），那是决定。
-  - 不换的：人物记忆的原文是人物的口吻（「暗い道を、家まで送ってくれた旅の人」）；结局的称号用身份名（「王の前で、黙らなかった旅人」）。
-- 人物之间的方向用名字，不用「彼」：「あなた → 老爺」。**改**：ux-design 10.1 写「あなた→彼」，妹是女性，用名字不会错。
+## 0. Style (ux-design 15) / 書き方（ux-design 15）
 
-## 1. 入口（ux-design 3、12）
+- UI: 丁寧語 (polite form), short, ending in a verb. Narration (地の文): だ・である style, short sentences, Mincho typeface. Words outside the story (the pause card, the trial-version note): the UI's Gothic typeface.
+  UI：丁寧語、短く、動詞で終える。語り（地の文）：だ・である体、短文、明朝体。物語の外の言葉（一時停止カード、試遊版の説明）：UI のゴシック体。
+- Never used: AI (except the notice on the cover), イベント, エージェント, 刻, ポイント, パラメータ, エラー, クエスト, ミッション, プレイ (say 「物語」). Don't say 「無限」, 「何万通り」 or 「初の」.
+  使わない：AI（カバーの告知を除く）、イベント、エージェント、刻、ポイント、パラメータ、エラー、クエスト、ミッション、プレイ（「物語」と言う）。「無限」「何万通り」「初の」とは言わない。
+- Numbers are always half-width: 「15分」, 「1時間半」. No kanji numerals (「十分」 would be read as じゅうぶん). 60 minutes or more uses 「時間」. **Changed**: the countdown in ux-design 4.2 was written 「あと二時間ほど」; changed to half-width to match the buttons.
+  数字はすべて半角：「15分」「1時間半」。漢数字は使わない（「十分」はじゅうぶんと読まれてしまう）。60 分以上は「時間」を使う。**変更**：ux-design 4.2 のカウントダウンは「あと二時間ほど」と書いていたが、ボタンとそろえて半角にした。
+- Addressing the player: the traveler is 「旅の方」 (said by characters, not in the UI). In the UI the player is 「あなた」.
+  プレイヤーの呼び方：旅人は「旅の方」（人物が言うもので、UI には出ない）。UI ではプレイヤーは「あなた」。
+- **In event sentences sent by the server, the player is also 「あなた」** (v0.3.2, asked by Frontend while reviewing #61): the end-of-act 「この幕であなたが動かしたこと」 (`recapLines`), 「その頃」 (`act_transition.recap[].line`), the gray line when two characters talk (`nearbyTalk.summary`), and the event sentences on the chain-reaction map. An event's `summary` is stored in the third person with the role name (「旅人は老爺を家まで送ると申し出た」), and that is what models and evals read; before sending it to Frontend, the server replaces this game's role name with 「あなた」. Backend and Data decide how (api-contract, data contract); Frontend shows it as is.
+  **サーバーが送るイベントの文でも、プレイヤーは「あなた」**（v0.3.2、フロントエンドが #61 のレビューで質問したもの）：幕末の「この幕であなたが動かしたこと」（`recapLines`）、「その頃」（`act_transition.recap[].line`）、2 人の人物が話しているときの灰色の 1 行（`nearbyTalk.summary`）、連鎖反応マップのイベントの文。イベントの `summary` は三人称で身分名を使って保存し（「旅人は老爺を家まで送ると申し出た」）、モデルと評価が読むのはこちら。フロントエンドに送る前に、サーバーがこの局の身分名を「あなた」に置き換える。やり方はバックエンドとデータが決め（api-contract、データ契約）、フロントエンドはそのまま表示する。
+  - The end of act and 「その頃」 are one sentence per line on a book page, and each sentence needs a closing 「。」; the server adds it if missing. The gray talk line is in parentheses and gets no 「。」.
+    幕末と「その頃」は本のページに 1 行 1 文で、文末に「。」が必要。なければサーバーが補う。会話の灰色の 1 行は括弧の中なので「。」は補わない。
+  - The event sentence for a situational action states what was done, with its object: 「あなたは、老爺を家まで送った。」, not the button text plus 「ことにした」 (「旅人は、家まで送ることにした」 neither says whom, and reads as if not yet done). 「ことにした」 is used only for choosing a destination at the end of an act and for stating a plan (`actEnd.propose.accepted`), which are decisions.
+    状況アクションのイベントの文は、やり終えたことを対象付きで書く：「あなたは、老爺を家まで送った。」。ボタンの文言に「ことにした」を付けたものではない（「旅人は、家まで送ることにした」では誰を送ったのか分からず、まだしていないようにも読める）。「ことにした」を使うのは、幕末で行き先を選ぶときとプランを伝えるとき（`actEnd.propose.accepted`）だけで、これらは決定だからだ。
+  - Not replaced: the original text of a character's memory is in the character's voice (「暗い道を、家まで送ってくれた旅の人」); ending titles use the role name (「王の前で、黙らなかった旅人」).
+    置き換えないもの：人物の記憶の原文は人物の口調のまま（「暗い道を、家まで送ってくれた旅の人」）。エンディングの称号は身分名を使う（「王の前で、黙らなかった旅人」）。
+- Direction between characters uses names, not 「彼」: 「あなた → 老爺」. **Changed**: ux-design 10.1 wrote 「あなた→彼」; 妹 is female, and a name is never wrong.
+  人物の間の向きは「彼」ではなく名前で書く：「あなた → 老爺」。**変更**：ux-design 10.1 は「あなた→彼」と書いていたが、妹は女性であり、名前なら間違いがない。
 
-| 键 | 日语 | 什么时候 | 状态 |
+## 1. Entry (ux-design 3, 12) / 入口（ux-design 3、12）
+
+| Key / キー | Japanese / 日本語 | When / 表示タイミング | Status / 状態 |
 |---|---|---|---|
-| `inapp.notice` | LINEの中のブラウザでは、声で話せないことがあります。 | 内置浏览器打开时，封面上方一条 | 定 |
-| `inapp.howto` | Safariで開く方法 | 同上，按钮 | 定 |
-| `inapp.textOnly` | このまま文字で遊ぶ | 同上，按钮 | 定 |
-| `inapp.howto.android` | Chromeで開く方法 | Android 上代替 `inapp.howto` | 改（ux-design 12 只写了 Safari；Android 的 LINE 没有 Safari） |
-| `inapp.steps.ios` | 画面のすみにある「︙」か共有のマークをタップして、「Safariで開く」を選んでください。 | 点〔Safariで開く方法〕后展开的说明，iPhone | 核（上线前在当时的 LINE 上核对按钮位置和菜单名） |
-| `inapp.steps.android` | 右上の「︙」をタップして、「他のアプリで開く」からChromeを選んでください。 | 同上，Android | 核（同上） |
-| `inapp.steps.copy` | 見つからないときは、リンクをコピーして、{browser}のアドレス欄に貼り付けてください。 | 同上，第 2 行；`{browser}` 是「Safari」或「Chrome」 | 新 |
-| `inapp.copyLink` | リンクをコピー | 同上，按钮。复制的是封面的地址（不带路径、参数）。复制不成功时，把地址作为可选中的文字显示在按钮下面 | 新 |
-| `inapp.copied` | コピーしました | 复制以后按钮下一行，约 2 秒 | 新 |
-| `inapp.steps.code` | 開き直したら、招待コードをもう一度入れてください。 | 同上，最后一行（Safari 和 LINE 不共用登录） | 新 |
-| `inapp.openOutside` | ブラウザで開く | 同上，放在最前面的按钮：带 `openExternalBrowser=1` 重新打开这一页（开的是手机默认的浏览器，所以不写 Safari / Chrome）。**在 iPhone 和 Android 的 LINE 上都试过能跳出去才放**，不行就不出，只留上面的步骤 | 新 |
-| `login.title` | 招待コード | 邀请码页标题 | 新 |
-| `login.lead` | お知らせした招待コードを入れてください。 | 标题下一行 | 新 |
-| `login.submit` | すすむ | 按钮 | 新 |
-| `login.wrong` | 招待コードが違うようです | 邀请码错 | 定 |
-| `login.tooMany` | 少し時間をおいて、もう一度お試しください | 试太多次 | 定 |
-| `cover.title` | 走れメロス | 封面书名（产品名 Q-003 定后另加） | 定 |
-| `cover.tagline` | 一万人いれば、一万の結末。 | 封面一行（zg 的交接文档，positioning 3） | 定 |
-| `cover.firstReader` | 原作を読んでいない方へ | 选书页可展开的开场背景 | 新 |
-| `cover.firstReaderGuide` | あなたは原作の主人公ではなく、本の世界に入り込むもう一人の登場人物です。原作を覚えている必要はありません。出会った人に事情を聞きながら、自分の行動を選んでください。 | 未读者的通用玩法；不透露未来剧情 | 新 |
-| `cover.note.violence` | この物語には、処刑や暴力が描かれます。 | 封面小字第 1 行 | 定 |
-| `cover.note.ai` | 登場人物の声とことばは、AIがその場で生み出しています。 | 第 2 行 | 定 |
-| `cover.note.earphones` | 声で物語の人物と話します。イヤホンでどうぞ。 | 第 3 行 | 改：ux-design 14 只有「イヤホンでどうぞ。」，原型加了前半句，告诉人要出声说话 |
-| `cover.open` | 書をひらく | 封面主按钮（同时解锁音频） | 定 |
-| `cover.resume` | 続きから | 有进行中的一局时，代替「書をひらく」 | 定 |
-| `cover.resumeMeta` | {role}として・{day}の{band} | 续玩按钮下一行，例「旅人として・一日目の夜」 | 定 |
-| `cover.new` | 新しく始める | 有进行中的一局时，`cover.resumeMeta` 下面的次要按钮，进身份页（ux-design 3） | 新 |
-| `start.conflict` | 続きの物語があります | 开局时已有一局（409） | 定 |
-| `start.conflict.resume` | 続きから | 按钮 | 定 |
-| `start.conflict.new` | 新しく始める | 按钮 | 定 |
-| `start.conflict.confirm` | いまの物語は消えます。新しく始めますか。 | 点「新しく始める」后原地确认 | 改：ux-design 12 只写「今の物語は消えます」，补成问句 |
-| `start.conflict.confirmYes` | 新しく始める | 确认按钮 | 新 |
-| `common.cancel` | やめる | 所有确认里的取消 | 定 |
-| `start.dailyLimit` | 今日はここまでです。{n}時間後に、また物語をひらけます。 | 当天次数用完 | 定 |
+| `inapp.notice` | LINEの中のブラウザでは、声で話せないことがあります。 | When opened in an in-app browser, a strip above the cover / アプリ内ブラウザで開いたとき、カバーの上に 1 本 | Fixed / 確定 |
+| `inapp.howto` | Safariで開く方法 | Same, button / 同上、ボタン | Fixed / 確定 |
+| `inapp.textOnly` | このまま文字で遊ぶ | Same, button / 同上、ボタン | Fixed / 確定 |
+| `inapp.howto.android` | Chromeで開く方法 | Replaces `inapp.howto` on Android / Android では `inapp.howto` の代わり | Changed (ux-design 12 only mentions Safari; LINE on Android has no Safari) / 変更（ux-design 12 は Safari だけを書いている。Android の LINE には Safari がない） |
+| `inapp.steps.ios` | 画面のすみにある「︙」か共有のマークをタップして、「Safariで開く」を選んでください。 | Explanation that expands after tapping 〔Safariで開く方法〕, iPhone / 〔Safariで開く方法〕を押すと開く説明、iPhone | Verify (before launch, check the button position and menu names in the LINE of that time) / 要確認（公開前に、その時点の LINE でボタンの位置とメニュー名を確認する） |
+| `inapp.steps.android` | 右上の「︙」をタップして、「他のアプリで開く」からChromeを選んでください。 | Same, Android / 同上、Android | Verify (same) / 要確認（同上） |
+| `inapp.steps.copy` | 見つからないときは、リンクをコピーして、{browser}のアドレス欄に貼り付けてください。 | Same, line 2; `{browser}` is 「Safari」 or 「Chrome」 / 同上、2 行目。`{browser}` は「Safari」か「Chrome」 | New / 新規 |
+| `inapp.copyLink` | リンクをコピー | Same, button. Copies the cover's address (no path or parameters). If copying fails, show the address as selectable text below the button / 同上、ボタン。コピーするのはカバーのアドレス（パスやパラメータなし）。コピーに失敗したら、アドレスを選択できる文字としてボタンの下に表示する | New / 新規 |
+| `inapp.copied` | コピーしました | One line below the button after copying, about 2 seconds / コピー後、ボタンの下に 1 行、約 2 秒 | New / 新規 |
+| `inapp.steps.code` | 開き直したら、招待コードをもう一度入れてください。 | Same, last line (Safari and LINE don't share the login) / 同上、最終行（Safari と LINE はログインを共有しない） | New / 新規 |
+| `inapp.openOutside` | ブラウザで開く | Same, the button placed first: reopens this page with `openExternalBrowser=1` (it opens the phone's default browser, so it doesn't say Safari / Chrome). **Include it only after testing that it gets out of LINE on both iPhone and Android**; otherwise don't show it, and keep only the steps above / 同上、いちばん前に置くボタン：`openExternalBrowser=1` を付けてこのページを開き直す（開くのはスマートフォンの既定のブラウザなので、Safari / Chrome とは書かない）。**iPhone と Android の両方の LINE で外に出られることを試してから置く**。だめなら出さず、上の手順だけを残す | New / 新規 |
+| `login.title` | 招待コード | Title of the invite code page / 招待コードページのタイトル | New / 新規 |
+| `login.lead` | お知らせした招待コードを入れてください。 | Line below the title / タイトルの下の 1 行 | New / 新規 |
+| `login.submit` | すすむ | Button / ボタン | New / 新規 |
+| `login.wrong` | 招待コードが違うようです | Wrong invite code / 招待コードが違う | Fixed / 確定 |
+| `login.tooMany` | 少し時間をおいて、もう一度お試しください | Too many attempts / 試行回数が多すぎる | Fixed / 確定 |
+| `cover.title` | 走れメロス | Book title on the cover (the product name is added separately once Q-003 is decided) / カバーの書名（製品名は Q-003 の決定後に別途追加） | Fixed / 確定 |
+| `cover.tagline` | 一万人いれば、一万の結末。 | One line on the cover (zg's handoff document, positioning 3) / カバーの 1 行（zg の引き継ぎドキュメント、positioning 3） | Fixed / 確定 |
+| `cover.firstReader` | 原作を読んでいない方へ | Expandable opening background on the book selection page / 書籍選択ページで開ける冒頭の背景 | New / 新規 |
+| `cover.firstReaderGuide` | あなたは原作の主人公ではなく、本の世界に入り込むもう一人の登場人物です。原作を覚えている必要はありません。出会った人に事情を聞きながら、自分の行動を選んでください。 | The general way to play for those who haven't read it; reveals nothing of the story to come / 未読の人向けの共通の遊び方。この先の展開は明かさない | New / 新規 |
+| `cover.note.violence` | この物語には、処刑や暴力が描かれます。 | Small print on the cover, line 1 / カバーの小さな文字の 1 行目 | Fixed / 確定 |
+| `cover.note.ai` | 登場人物の声とことばは、AIがその場で生み出しています。 | Line 2 / 2 行目 | Fixed / 確定 |
+| `cover.note.earphones` | 声で物語の人物と話します。イヤホンでどうぞ。 | Line 3 / 3 行目 | Changed: ux-design 14 has only 「イヤホンでどうぞ。」; the prototype added the first half to tell people they will speak aloud / 変更：ux-design 14 は「イヤホンでどうぞ。」だけ。プロトタイプが前半を加え、声に出して話すことを伝えている |
+| `cover.open` | 書をひらく | Main button on the cover (also unlocks audio) / カバーのメインボタン（同時に音声のロックを解除する） | Fixed / 確定 |
+| `cover.resume` | 続きから | Replaces 「書をひらく」 when there is a game in progress / 進行中の局があるとき、「書をひらく」の代わり | Fixed / 確定 |
+| `cover.resumeMeta` | {role}として・{day}の{band} | Line below the resume button, e.g. 「旅人として・一日目の夜」 / 続きボタンの下の 1 行。例「旅人として・一日目の夜」 | Fixed / 確定 |
+| `cover.new` | 新しく始める | When there is a game in progress, the secondary button below `cover.resumeMeta`; goes to the role page (ux-design 3) / 進行中の局があるとき、`cover.resumeMeta` の下のサブボタン。身分ページへ進む（ux-design 3） | New / 新規 |
+| `start.conflict` | 続きの物語があります | A game already exists when starting (409) / 開始時にすでに局がある（409） | Fixed / 確定 |
+| `start.conflict.resume` | 続きから | Button / ボタン | Fixed / 確定 |
+| `start.conflict.new` | 新しく始める | Button / ボタン | Fixed / 確定 |
+| `start.conflict.confirm` | いまの物語は消えます。新しく始めますか。 | In-place confirmation after tapping 「新しく始める」 / 「新しく始める」を押した後、その場で確認する | Changed: ux-design 12 only says 「今の物語は消えます」; completed as a question / 変更：ux-design 12 は「今の物語は消えます」だけ。問いかけの文に補った |
+| `start.conflict.confirmYes` | 新しく始める | Confirm button / 確認ボタン | New / 新規 |
+| `common.cancel` | やめる | Cancel in every confirmation / すべての確認の取り消し | Fixed / 確定 |
+| `start.dailyLimit` | 今日はここまでです。{n}時間後に、また物語をひらけます。 | The day's allowance is used up / その日の回数を使い切った | Fixed / 確定 |
 
-## 2. 身份页（ux-design 5.3）
+## 2. Role page (ux-design 5.3) / 身分ページ（ux-design 5.3）
 
-完整版三张卡，旅人在最上面（ux-design 5.1、5.3）。切片只有旅人一张卡，默认展开。卡上第一句（`Role.summary`，例「はじめてこの市に来た。誰も、あなたを知らない。」）是世界模型的字，服务端下发，不在这里。
+The full version has three cards, with the traveler at the top (ux-design 5.1, 5.3). The slice has only the traveler's card, expanded by default. The first sentence on a card (`Role.summary`, e.g. 「はじめてこの市に来た。誰も、あなたを知らない。」) is world-model text sent by the server, not listed here.
 
-| 键 | 日语 | 状态 |
+完全版はカード 3 枚で、旅人がいちばん上（ux-design 5.1、5.3）。スライスは旅人のカード 1 枚だけで、最初から開いている。カードの最初の文（`Role.summary`、例「はじめてこの市に来た。誰も、あなたを知らない。」）は世界モデルの文言でサーバーが送るので、ここには載せない。
+
+| Key / キー | Japanese / 日本語 | Status / 状態 |
 |---|---|---|
-| `role.title` | あなたは、誰としてこの物語に入りますか。 | 改：ux-design 5.3 写「この町に入りますか」，牧童从村子开始，不进「町」 |
-| `role.lead` | 原作にはいない、もう一人の登場人物になります。誰になるかで、出会う人と始まる場所が変わります。 | 定（原型） |
-| `role.badge.first` | はじめての方に | 定 |
-| `role.badge.hostage` | 友を守りたい方に | 新（石屋の弟子；5.1「想守护人质的人」） |
-| `role.badge.run` | メロスと走りたい方に | 新（村の牧童；5.1「想陪梅洛斯跑的人」） |
-| `role.field.start` | はじまり | 定（原型） |
-| `role.field.know` | 知り合い | 定（原型） |
-| `role.field.can` | できること | 定（原型） |
-| `role.traveler.name` | 旅人 | 定 |
-| `role.traveler.start` | 約束の日の夕方、シラクスの広場 | 定 |
-| `role.traveler.know` | まだ誰も | 定 |
-| `role.traveler.can` | 町を歩き、誰にでも話しかけられる。 | 改：原型写「どこへでも行ける」，王城不是谁都进得去，切片更是不开王城 |
-| `role.apprentice.name` | 石屋の弟子 | 定（5.1） |
-| `role.apprentice.start` | 約束の日の夕方、広場の一角の石工房 | 新（5.1 起点） |
-| `role.apprentice.know` | セリヌンティウス親方、兄弟子のフィロストラトス | 新（5.1 `knownCharacters`） |
-| `role.apprentice.can` | 工房を預かり、親方のそばにいられる。 | 新（5.1 独有的动作「工房を預かる」「親方のそばにいる」） |
-| `role.shepherd.name` | 村の牧童 | 定（5.1） |
-| `role.shepherd.start` | 一日目の午前、メロスの村の畑 | 新（5.1 起点） |
-| `role.shepherd.know` | メロス、メロスの妹、花婿 | 新（5.1） |
-| `role.shepherd.can` | メロスと走り、市への近道を知っている。 | 新（5.1「水を渡す」「近道を走る」；水那一半是开局的事，卡上不写） |
-| `role.shepherd.note` | 物語の途中、一日目から始まります。 | 新（牧童卡展开后最后一行小字：他从第三幕开始，约束の日和第二幕不在场，ux-design 4.1） |
-| `role.start` | {role}として、はじめる | 定 |
+| `role.title` | あなたは、誰としてこの物語に入りますか。 | Changed: ux-design 5.3 wrote 「この町に入りますか」; the shepherd boy starts in the village and doesn't enter the 「町」 / 変更：ux-design 5.3 は「この町に入りますか」と書いていた。牧童は村から始まり、「町」には入らない |
+| `role.lead` | 原作にはいない、もう一人の登場人物になります。誰になるかで、出会う人と始まる場所が変わります。 | Fixed (prototype) / 確定（プロトタイプ） |
+| `role.badge.first` | はじめての方に | Fixed / 確定 |
+| `role.badge.hostage` | 友を守りたい方に | New (石屋の弟子; 5.1 “for those who want to protect the hostage”) / 新規（石屋の弟子。5.1「人質を守りたい人」） |
+| `role.badge.run` | メロスと走りたい方に | New (村の牧童; 5.1 “for those who want to run with Melos”) / 新規（村の牧童。5.1「メロスと一緒に走りたい人」） |
+| `role.field.start` | はじまり | Fixed (prototype) / 確定（プロトタイプ） |
+| `role.field.know` | 知り合い | Fixed (prototype) / 確定（プロトタイプ） |
+| `role.field.can` | できること | Fixed (prototype) / 確定（プロトタイプ） |
+| `role.traveler.name` | 旅人 | Fixed / 確定 |
+| `role.traveler.start` | 約束の日の夕方、シラクスの広場 | Fixed / 確定 |
+| `role.traveler.know` | まだ誰も | Fixed / 確定 |
+| `role.traveler.can` | 町を歩き、誰にでも話しかけられる。 | Changed: the prototype said 「どこへでも行ける」, but not everyone can enter the castle, and the slice doesn't open the castle at all / 変更：プロトタイプは「どこへでも行ける」だったが、王城には誰でも入れるわけではなく、スライスではそもそも王城を開けていない |
+| `role.apprentice.name` | 石屋の弟子 | Fixed (5.1) / 確定（5.1） |
+| `role.apprentice.start` | 約束の日の夕方、広場の一角の石工房 | New (5.1 starting point) / 新規（5.1 の開始地点） |
+| `role.apprentice.know` | セリヌンティウス親方、兄弟子のフィロストラトス | New (5.1 `knownCharacters`) / 新規（5.1 `knownCharacters`） |
+| `role.apprentice.can` | 工房を預かり、親方のそばにいられる。 | New (5.1's role-only actions 「工房を預かる」 「親方のそばにいる」) / 新規（5.1 の固有アクション「工房を預かる」「親方のそばにいる」） |
+| `role.shepherd.name` | 村の牧童 | Fixed (5.1) / 確定（5.1） |
+| `role.shepherd.start` | 一日目の午前、メロスの村の畑 | New (5.1 starting point) / 新規（5.1 の開始地点） |
+| `role.shepherd.know` | メロス、メロスの妹、花婿 | New (5.1) / 新規（5.1） |
+| `role.shepherd.can` | メロスと走り、市への近道を知っている。 | New (5.1 「水を渡す」 「近道を走る」; the water half happens at the opening, so the card doesn't mention it) / 新規（5.1「水を渡す」「近道を走る」。水のほうは序盤の出来事なので、カードには書かない） |
+| `role.shepherd.note` | 物語の途中、一日目から始まります。 | New (small print on the last line of the expanded shepherd card: he starts from act 3 and is absent for 約束の日 and act 2, ux-design 4.1) / 新規（牧童のカードを開いたときの最終行の小さな文字：牧童は第三幕から始まり、約束の日と第二幕にはいない。ux-design 4.1） |
+| `role.start` | {role}として、はじめる | Fixed / 確定 |
 
-## 3. 世界的画面（ux-design 4.2、6、8.3）
+## 3. The world screen (ux-design 4.2, 6, 8.3) / 世界の画面（ux-design 4.2、6、8.3）
 
-**太阳带和时刻**
+**Sun band and time / 太陽帯と時刻**
 
-| 键 | 日语 | 什么时候 | 状态 |
+| Key / キー | Japanese / 日本語 | When / 表示タイミング | Status / 状態 |
 |---|---|---|---|
-| `clock.label` | {day}・{band} | 太阳带下，例「約束の日・夕方」。词来自数据 `clock.labels` | 定 |
-| `clock.delta.min` | +{n}分 | 时间因动作变化时，2 秒；60 分以下 | 定 |
-| `clock.delta.hours` | +{n}時間 | 同上，60 分以上，取整到 30 分（规则同倒数，见下），整点 | 定 |
-| `clock.delta.hoursHalf` | +{n}時間半 | 同上，半点 | 定 |
-| `deadline.line` | 期限　三日目の日没<br>遅れれば、身代わりが死ぬ | 玩家知道约定以后常驻（不是从立约起，ux-design 4.2，S-077 ⑫；服务端的 `deadline.shown`），两行。梅洛斯的菱形同样 | 定 |
-| `deadline.crisis` | このままでは、日没に間に合わない | 地图顶部，梅洛斯来不及时 | 定 |
-| `melos.eta.before` | メロスの到着見込み：日没の前 | 菱形标记的读屏名和长按说明 | 定（原型） |
-| `melos.eta.after` | メロスの到着見込み：日没に間に合わない | 同上 | 定（原型） |
-| `countdown.hours` | 日没まで、あと{n}時間ほど | 第四幕，剩 61 分以上，取整到 30 分（见下），整点 | 改：半角数字（第 0 节） |
-| `countdown.hoursHalf` | 日没まで、あと{n}時間半ほど | 同上，半点，例「あと1時間半ほど」 | 新 |
-| `countdown.last` | 日没まで、あとわずか | 最后 60 分 | 定 |
+| `clock.label` | {day}・{band} | Below the sun band, e.g. 「約束の日・夕方」. The words come from Data's `clock.labels` / 太陽帯の下。例「約束の日・夕方」。語はデータの `clock.labels` から | Fixed / 確定 |
+| `clock.delta.min` | +{n}分 | When time changes because of an action, 2 seconds; up to 60 minutes / アクションで時間が変わったとき、2 秒。60 分以下 | Fixed / 確定 |
+| `clock.delta.hours` | +{n}時間 | Same, 60 minutes or more, rounded to 30 minutes (same rule as the countdown, see below), whole hours / 同上、60 分以上、30 分単位に丸める（規則はカウントダウンと同じ、下記参照）、ちょうど○時間のとき | Fixed / 確定 |
+| `clock.delta.hoursHalf` | +{n}時間半 | Same, with a half hour / 同上、○時間半のとき | Fixed / 確定 |
+| `deadline.line` | 期限　三日目の日没<br>遅れれば、身代わりが死ぬ | Always shown once the player knows about the promise (not from when the promise is made; ux-design 4.2, S-077 ⑫; the server's `deadline.shown`), two lines. Same for Melos's diamond / プレイヤーが約束を知ってから常に表示（約束が交わされた時点からではない。ux-design 4.2、S-077 ⑫。サーバーの `deadline.shown`）、2 行。メロスのひし形も同じ | Fixed / 確定 |
+| `deadline.crisis` | このままでは、日没に間に合わない | Top of the map, when Melos won't make it / 地図の上部、メロスが間に合わないとき | Fixed / 確定 |
+| `melos.eta.before` | メロスの到着見込み：日没の前 | Screen-reader name and long-press description of the diamond marker / ひし形マーカーのスクリーンリーダー名と長押しの説明 | Fixed (prototype) / 確定（プロトタイプ） |
+| `melos.eta.after` | メロスの到着見込み：日没に間に合わない | Same / 同上 | Fixed (prototype) / 確定（プロトタイプ） |
+| `countdown.hours` | 日没まで、あと{n}時間ほど | Act 4, 61 minutes or more left, rounded to 30 minutes (see below), whole hours / 第四幕、残り 61 分以上、30 分単位に丸める（下記参照）、ちょうど○時間のとき | Changed: half-width digits (section 0) / 変更：半角数字（第 0 節） |
+| `countdown.hoursHalf` | 日没まで、あと{n}時間半ほど | Same, with a half hour, e.g. 「あと1時間半ほど」 / 同上、○時間半のとき。例「あと1時間半ほど」 | New / 新規 |
+| `countdown.last` | 日没まで、あとわずか | The last 60 minutes / 最後の 60 分 | Fixed / 確定 |
 
-取整：剩 61〜74 分写「あと1時間ほど」，75〜104 分「あと1時間半ほど」，105〜134 分「あと2時間ほど」，以此类推（60 分以下是 `countdown.last`）。只在第四幕显示。`clock.delta` 和 `cost.*` 的 60 分以上用同一个取整。
+Rounding: 61〜74 minutes left is written 「あと1時間ほど」, 75〜104 minutes 「あと1時間半ほど」, 105〜134 minutes 「あと2時間ほど」, and so on (60 minutes or less is `countdown.last`). Shown only in act 4. `clock.delta` and `cost.*` use the same rounding for 60 minutes or more.
 
-**菜单（书本按钮）**
+丸め方：残り 61〜74 分は「あと1時間ほど」、75〜104 分は「あと1時間半ほど」、105〜134 分は「あと2時間ほど」、以下同様（60 分以下は `countdown.last`）。第四幕でだけ表示する。`clock.delta` と `cost.*` の 60 分以上も同じ丸め方を使う。
 
-| 键 | 日语 | 状态 |
+**Menu (book button) / メニュー（本のボタン）**
+
+| Key / キー | Japanese / 日本語 | Status / 状態 |
 |---|---|---|
-| `menu.open` | 本をひらく | 定（原型，按钮的读屏名用下一个键） |
-| `menu.open.label` | 本をひらく（連鎖反応マップ・記憶帳・原作・設定） | 新（书本按钮的读屏名；括号里跟着菜单里实际有的几项改，切片只有地图和記憶帳时写「本をひらく（連鎖反応マップ・記憶帳）」） |
-| `menu.lead` | いつでも物語を止めて、確かめられます。 | 定（原型） |
-| `menu.map` | 連鎖反応マップ | 定 |
-| `menu.map.desc` | 原作の筋と、あなたが変えた筋。なぜこうなったかを辿れます。 | 定 |
-| `menu.memory` | 記憶帳 | 定 |
-| `menu.memory.desc` | 誰があなたの何を覚えているか。忘れてもらうこともできます。 | 定 |
-| `menu.source` | 原作を読む | 改：原型写「原作に戻る」，读起来像「回到原作的剧情」 |
-| `menu.source.desc` | いまの場面にあたる原文を読む（青空文庫）。 | 定 |
-| `menu.settings` | 設定 | 定 |
-| `menu.settings.desc` | 話し方、字幕の大きさ、ふりがな、動きを減らす。 | 定 |
-| `menu.wait` | 時を進める | 定（4.3） |
-| `menu.wait.desc` | 次の出来事が起きるまで、物語の時間を進めます。 | 定（4.3） |
-| `common.close` | 閉じる | 定 |
+| `menu.open` | 本をひらく | Fixed (prototype; the button's screen-reader name uses the next key) / 確定（プロトタイプ。ボタンのスクリーンリーダー名は次のキーを使う） |
+| `menu.open.label` | 本をひらく（連鎖反応マップ・記憶帳・原作・設定） | New (screen-reader name of the book button; the parentheses follow the items the menu actually has; when the slice has only the map and 記憶帳, write 「本をひらく（連鎖反応マップ・記憶帳）」) / 新規（本のボタンのスクリーンリーダー名。括弧の中はメニューに実際にある項目に合わせて変える。スライスで地図と記憶帳しかないときは「本をひらく（連鎖反応マップ・記憶帳）」と書く） |
+| `menu.lead` | いつでも物語を止めて、確かめられます。 | Fixed (prototype) / 確定（プロトタイプ） |
+| `menu.map` | 連鎖反応マップ | Fixed / 確定 |
+| `menu.map.desc` | 原作の筋と、あなたが変えた筋。なぜこうなったかを辿れます。 | Fixed / 確定 |
+| `menu.memory` | 記憶帳 | Fixed / 確定 |
+| `menu.memory.desc` | 誰があなたの何を覚えているか。忘れてもらうこともできます。 | Fixed / 確定 |
+| `menu.source` | 原作を読む | Changed: the prototype said 「原作に戻る」, which reads like “go back to the original plot” / 変更：プロトタイプは「原作に戻る」だったが、「原作の筋書きに戻る」と読めてしまう |
+| `menu.source.desc` | いまの場面にあたる原文を読む（青空文庫）。 | Fixed / 確定 |
+| `menu.settings` | 設定 | Fixed / 確定 |
+| `menu.settings.desc` | 話し方、字幕の大きさ、ふりがな、動きを減らす。 | Fixed / 確定 |
+| `menu.wait` | 時を進める | Fixed (4.3) / 確定（4.3） |
+| `menu.wait.desc` | 次の出来事が起きるまで、物語の時間を進めます。 | Fixed (4.3) / 確定（4.3） |
+| `common.close` | 閉じる | Fixed / 確定 |
 
-**动作按钮上的时间**（ux-design 4.3；`label` 来自数据，括号由前端按字段生成）
+**Time on action buttons** (ux-design 4.3; `label` comes from Data, and Frontend generates the parentheses from the fields)
 
-| 键 | 日语 | 什么时候 | 状态 |
+**アクションボタン上の時間**（ux-design 4.3。`label` はデータから来て、括弧はフロントエンドがフィールドから生成する）
+
+| Key / キー | Japanese / 日本語 | When / 表示タイミング | Status / 状態 |
 |---|---|---|---|
-| `cost.minutes` | （{n}分ほど） | 第一〜三幕，60 分以下，例「手伝う（10分ほど）」 | 定 |
-| `cost.hours` | （{n}時間ほど） | 第一〜三幕，60 分以上，取整到 30 分，整点 | 定 |
-| `cost.hoursHalf` | （{n}時間半ほど） | 同上，半点 | 定 |
-| `cost.melos.later` | （{n}分遅れる） | 第四幕带 `melosMinutes` 的动作，正数（切片里没有，M3） | 定 |
-| `cost.melos.earlier` | （{n}分早まる） | 同上，负数，`{n}` 写绝对值 | 定 |
-| `cost.melos.same` | （変わらない） | `melosMinutes` 为 0 | 定 |
-| `cost.flip.miss` | 日没に間に合わなくなる | 第二行小字，只在会翻转时（M3） | 定 |
-| `cost.flip.make` | 日没に間に合う | 同上 | 定 |
+| `cost.minutes` | （{n}分ほど） | Acts 1〜3, up to 60 minutes, e.g. 「手伝う（10分ほど）」 / 第一〜三幕、60 分以下。例「手伝う（10分ほど）」 | Fixed / 確定 |
+| `cost.hours` | （{n}時間ほど） | Acts 1〜3, 60 minutes or more, rounded to 30 minutes, whole hours / 第一〜三幕、60 分以上、30 分単位に丸める、ちょうど○時間のとき | Fixed / 確定 |
+| `cost.hoursHalf` | （{n}時間半ほど） | Same, with a half hour / 同上、○時間半のとき | Fixed / 確定 |
+| `cost.melos.later` | （{n}分遅れる） | Act 4 actions with `melosMinutes`, positive (not in the slice; M3) / 第四幕で `melosMinutes` を持つアクション、正の数（スライスにはない、M3） | Fixed / 確定 |
+| `cost.melos.earlier` | （{n}分早まる） | Same, negative; `{n}` is the absolute value / 同上、負の数。`{n}` には絶対値を書く | Fixed / 確定 |
+| `cost.melos.same` | （変わらない） | `melosMinutes` is 0 / `melosMinutes` が 0 | Fixed / 確定 |
+| `cost.flip.miss` | 日没に間に合わなくなる | Small second line, only when it would flip the outcome (M3) / 2 行目の小さな文字。結果が反転するときだけ（M3） | Fixed / 確定 |
+| `cost.flip.make` | 日没に間に合う | Same / 同上 | Fixed / 確定 |
 
-**移动和身边的人**
+**Movement and people nearby / 移動と近くの人**
 
-| 键 | 日语 | 什么时候 | 状态 |
+| Key / キー | Japanese / 日本語 | When / 表示タイミング | Status / 状態 |
 |---|---|---|---|
-| `hint.firstLanding` | 地面をタップすると歩きます。人をタップすると話しかけます。 | 第一次落地，一次 | 定（原型） |
-| `hint.firstLanding.ok` | わかった | 按钮 | 定（原型） |
-| `nearby.button` | 近くの人 | 右上按钮 | 定 |
-| `nearby.title` | 近くの人と、調べられるもの | 列表标题 | 定（原型） |
-| `nearby.lead` | 選ぶと、その人のところへ歩いていきます。 | 列表说明 | 定（原型） |
-| `nearby.dist.near` | すぐそば | 距离，近（阈值前端定，F-0 的常量；原型是 5 m 以内） | 定（原型） |
-| `nearby.dist.mid` | 少し先 | 距离，中（原型是 20 m 以内） | 定（原型） |
-| `nearby.dist.far` | 広場の向こう | 距离，更远，广场 | 定（原型） |
-| `nearby.dist.far.castle` | 城の奥 | 同上，王城 | 新 |
-| `nearby.dist.far.village` | 村の向こう | 同上，村子（村、メロスの家、花婿の家） | 新 |
-| `nearby.dist.far.road` | 道の先 | 同上，归途的停留点 | 新 |
-| `nearby.talk` | 話しかける | 列表里人的按钮 | 定 |
-| `nearby.examine` | 調べる | 列表里东西的按钮 | 定 |
-| `nearby.empty` | 近くに話せる人がいません。人の近くへ歩いてください。 | 列表为空 | 定（原型） |
-| `approach.slip` | {name} | 人物从画面外走过来时，画面边缘的纸条。箭头前端按方向画（左边 ←，右边 →），不在字符串里 | 定（6.5） |
-| `approach.narration` | {name}が、こちらへ歩いてくる。 | 同时出的一行灰色叙事 | 定（6.5） |
-| `nearbyTalk.summary` | （{text}） | 两个人物交谈时 8 m 内的灰色一行，`text` 是事件 `summary` | 定（6.5） |
+| `hint.firstLanding` | 地面をタップすると歩きます。人をタップすると話しかけます。 | First landing, once / 最初の着地、1 回だけ | Fixed (prototype) / 確定（プロトタイプ） |
+| `hint.firstLanding.ok` | わかった | Button / ボタン | Fixed (prototype) / 確定（プロトタイプ） |
+| `nearby.button` | 近くの人 | Top-right button / 右上のボタン | Fixed / 確定 |
+| `nearby.title` | 近くの人と、調べられるもの | List title / 一覧のタイトル | Fixed (prototype) / 確定（プロトタイプ） |
+| `nearby.lead` | 選ぶと、その人のところへ歩いていきます。 | List description / 一覧の説明 | Fixed (prototype) / 確定（プロトタイプ） |
+| `nearby.dist.near` | すぐそば | Distance, near (threshold set by Frontend, an F-0 constant; within 5 m in the prototype) / 距離、近い（しきい値はフロントエンドが決める。F-0 の定数。プロトタイプでは 5 m 以内） | Fixed (prototype) / 確定（プロトタイプ） |
+| `nearby.dist.mid` | 少し先 | Distance, medium (within 20 m in the prototype) / 距離、中くらい（プロトタイプでは 20 m 以内） | Fixed (prototype) / 確定（プロトタイプ） |
+| `nearby.dist.far` | 広場の向こう | Distance, farther; the plaza / 距離、さらに遠い。広場 | Fixed (prototype) / 確定（プロトタイプ） |
+| `nearby.dist.far.castle` | 城の奥 | Same, the castle / 同上、王城 | New / 新規 |
+| `nearby.dist.far.village` | 村の向こう | Same, the village (村, メロスの家, 花婿の家) / 同上、村（村、メロスの家、花婿の家） | New / 新規 |
+| `nearby.dist.far.road` | 道の先 | Same, stops on the homeward road / 同上、帰り道の停留地点 | New / 新規 |
+| `nearby.talk` | 話しかける | Button for a person in the list / 一覧の人のボタン | Fixed / 確定 |
+| `nearby.examine` | 調べる | Button for a thing in the list / 一覧の物のボタン | Fixed / 確定 |
+| `nearby.empty` | 近くに話せる人がいません。人の近くへ歩いてください。 | Empty list / 一覧が空 | Fixed (prototype) / 確定（プロトタイプ） |
+| `approach.slip` | {name} | A paper slip at the screen edge when a character walks in from off screen. Frontend draws the arrow by direction (left ←, right →); it is not in the string / 人物が画面外から歩いてくるとき、画面の端に出る紙片。矢印はフロントエンドが方向に合わせて描き（左は ←、右は →）、文字列には含めない | Fixed (6.5) / 確定（6.5） |
+| `approach.narration` | {name}が、こちらへ歩いてくる。 | A gray line of narration shown at the same time / 同時に出る灰色の語り 1 行 | Fixed (6.5) / 確定（6.5） |
+| `nearbyTalk.summary` | （{text}） | A gray line within 8 m when two characters talk; `text` is the event `summary` / 2 人の人物が話しているとき 8 m 以内に出る灰色の 1 行。`text` はイベントの `summary` | Fixed (6.5) / 確定（6.5） |
 
-**归途和梅洛斯身边**（ux-design 4.3、6.3，`scenes/homeward-road.md`「走的规则」、5.1）
+**The homeward road and beside Melos** (ux-design 4.3, 6.3; `scenes/homeward-road.md` “walking rules”, 5.1)
 
-| 键 | 日语 | 什么时候 | 状态 |
+**帰り道とメロスのそば**（ux-design 4.3、6.3。`scenes/homeward-road.md`「移動のルール」、5.1）
+
+| Key / キー | Japanese / 日本語 | When / 表示タイミング | Status / 状態 |
 |---|---|---|---|
-| `road.follow` | メロスを追う | 梅洛斯跑走以后，「近くの人」里和他离开后的提示。走出停留点往前的出口也等于点了这一个 | 新（homeward-road 走的规则 1） |
-| `road.goAhead` | ひとりで先へ行く | 梅洛斯还没动身时，「近くの人」里；后面接 `cost.to.*` | 新（同上） |
-| `cost.to.minutes` | （{place}まで{n}分ほど） | `road.goAhead` 按钮上的路程，60 分以下；`{place}` 用地点的短名（6.1），例「（峠まで40分ほど）」 | 新 |
-| `cost.to.hours` | （{place}まで{n}時間ほど） | 同上，60 分以上，取整到 30 分，整点 | 新 |
-| `cost.to.hoursHalf` | （{place}まで{n}時間半ほど） | 同上，半点，例「（峠まで1時間半ほど）」 | 改：homeward-road 写「1時間40分ほど」，按第 3 节的取整写成「1時間半ほど」 |
-| `talk.together.run` | 並んで走りながら話す | 第四幕在梅洛斯身边，说话键上方一行小字（不花他的时间） | 定（4.3） |
-| `talk.together.walk` | 並んで歩きながら話す | 第二幕的夜路，同上 | 新 |
-| `talk.disabled.run` | 走っているあいだは話せません | 短的跑的路段（15〜25 秒）里说话键的说明 | 新（第一版这段不能说话） |
-| `run.skip` | タップで先へ | 短的跑的路段，画面下方一行小字，开始 2 秒后淡出 | 新 |
-| `idle.wait` | 時を進める | 90 秒没有操作时说话键旁的提示，同 `menu.wait` | 定（4.3） |
-| `idle.walkOn` | 歩き続ける | 第二幕的夜路代替 `idle.wait` | 定（homeward-road 5.1） |
-| `idle.runOn` | 走り続ける | 野の道代替 `idle.wait` | 定（homeward-road 走的规则 3） |
-| `timecard.to` | {place}へ | 时间卡第一行（减少动态效果、跳过时没载完、中途不跟了），`{place}` 用地点名 | 新 |
-| `timecard.when` | {day}・{band} | 时间卡第二行，同 `clock.label` | 新 |
+| `road.follow` | メロスを追う | After Melos runs off: in 「近くの人」 and in the hint after he leaves. Walking out of a stop's forward exit also counts as tapping this / メロスが走り去った後、「近くの人」の中と、彼が去った後の案内に出る。停留地点の先へ向かう出口から出ても、これを押したのと同じ | New (homeward-road walking rule 1) / 新規（homeward-road の移動のルール 1） |
+| `road.goAhead` | ひとりで先へ行く | Before Melos sets off, in 「近くの人」; followed by `cost.to.*` / メロスがまだ出発していないとき、「近くの人」の中。後ろに `cost.to.*` が続く | New (same) / 新規（同上） |
+| `cost.to.minutes` | （{place}まで{n}分ほど） | The travel time on the `road.goAhead` button, up to 60 minutes; `{place}` uses the place's short name (6.1), e.g. 「（峠まで40分ほど）」 / `road.goAhead` ボタン上の道のり、60 分以下。`{place}` は地点の短名（6.1）を使う。例「（峠まで40分ほど）」 | New / 新規 |
+| `cost.to.hours` | （{place}まで{n}時間ほど） | Same, 60 minutes or more, rounded to 30 minutes, whole hours / 同上、60 分以上、30 分単位に丸める、ちょうど○時間のとき | New / 新規 |
+| `cost.to.hoursHalf` | （{place}まで{n}時間半ほど） | Same, with a half hour, e.g. 「（峠まで1時間半ほど）」 / 同上、○時間半のとき。例「（峠まで1時間半ほど）」 | Changed: homeward-road wrote 「1時間40分ほど」; written 「1時間半ほど」 per the rounding in section 3 / 変更：homeward-road は「1時間40分ほど」と書いていたが、第 3 節の丸め方に従い「1時間半ほど」とした |
+| `talk.together.run` | 並んで走りながら話す | In act 4 beside Melos, a small line above the talk button (doesn't cost his time) / 第四幕でメロスのそばにいるとき、話すボタンの上に出る小さな 1 行（彼の時間を使わない） | Fixed (4.3) / 確定（4.3） |
+| `talk.together.walk` | 並んで歩きながら話す | On the night road in act 2, same / 第二幕の夜道、同上 | New / 新規 |
+| `talk.disabled.run` | 走っているあいだは話せません | Description on the talk button during short running stretches (15〜25 seconds) / 短い走る区間（15〜25 秒）での話すボタンの説明 | New (in the first version you can't talk on these stretches) / 新規（最初の版ではこの区間で話せない） |
+| `run.skip` | タップで先へ | Short running stretches; a small line at the bottom of the screen that fades out 2 seconds after the start / 短い走る区間。画面下部の小さな 1 行で、始まって 2 秒後にフェードアウトする | New / 新規 |
+| `idle.wait` | 時を進める | Hint next to the talk button after 90 seconds without input; same as `menu.wait` / 90 秒操作がないとき話すボタンの横に出る案内。`menu.wait` と同じ | Fixed (4.3) / 確定（4.3） |
+| `idle.walkOn` | 歩き続ける | Replaces `idle.wait` on the night road in act 2 / 第二幕の夜道で `idle.wait` の代わり | Fixed (homeward-road 5.1) / 確定（homeward-road 5.1） |
+| `idle.runOn` | 走り続ける | Replaces `idle.wait` on 野の道 / 野の道で `idle.wait` の代わり | Fixed (homeward-road walking rule 3) / 確定（homeward-road の移動のルール 3） |
+| `timecard.to` | {place}へ | First line of the time card (with reduce motion, when skipping before loading has finished, when you stop following partway); `{place}` uses the place name / タイムカードの 1 行目（動きを減らす設定のとき、スキップ時に読み込みが終わっていないとき、途中でついて行くのをやめたとき）。`{place}` は地点名を使う | New / 新規 |
+| `timecard.when` | {day}・{band} | Second line of the time card, same as `clock.label` / タイムカードの 2 行目。`clock.label` と同じ | New / 新規 |
 
-## 4. 说话（ux-design 7）
+## 4. Talking (ux-design 7) / 話す（ux-design 7）
 
-**说话键和文字**
+**Talk button and text / 話すボタンと文字**
 
-| 键 | 日语 | 什么时候 | 状态 |
+| Key / キー | Japanese / 日本語 | When / 表示タイミング | Status / 状態 |
 |---|---|---|---|
-| `talk.hold` | 押して話す | 说话键（按住说话） | 定 |
-| `talk.tap` | タップで話す | 说话键（点按模式） | 定 |
-| `talk.listening` | 聞いています | 按住时 | 定 |
-| `talk.slideCancel` | 指を離すと取り消します | 上滑 60 px 以上 | 改：7.1 写「指を離すと取り消し」，用原型的完整句 |
-| `talk.tooShort` | 押したまま話してください | 按不到 250 ms | 定 |
-| `talk.preparing` | 準備しています | 按住满 2 秒、这个人物的会话还没好时，说话键上显示（F-1 #109、#123）。声音照样收着（最多 15 秒，api-contract 3.2），会话好了一起送出，所以只说「人物还在准备」，不写「请重说」「请等一下」 | 新（前端先写的「準備中」；和别的状态一样用「〜ています」） |
-| `talk.thinking` | 考えています | 松开后、人物出声前 | 定 |
-| `talk.disabled` | 人に近づくと話せます | 身边没人时说话键的说明 | 定（原型） |
-| `talk.reconnecting` | つながり直しています | 断线时说话键不可用 | 定 |
-| `talk.end` | 話を終える | 对话模式里的结束按钮 | 定（原型） |
-| `text.open` | 文字で話す | 说话键右边的键盘键 | 定 |
-| `text.placeholder` | 言いたいことを書く | 输入框 | 定（原型） |
-| `text.send` | 送る | 发送 | 定（原型） |
-| `text.backToVoice` | 声に戻す | 回到说话键 | 定（原型） |
-| `text.limit` | 200字までです | 超过 200 字时输入框下面（和 api-contract `text`、`act_propose` 的上限一致） | 新 |
+| `talk.hold` | 押して話す | Talk button (press and hold to talk) / 話すボタン（押している間話す） | Fixed / 確定 |
+| `talk.tap` | タップで話す | Talk button (tap mode) / 話すボタン（タップモード） | Fixed / 確定 |
+| `talk.listening` | 聞いています | While held / 押している間 | Fixed / 確定 |
+| `talk.slideCancel` | 指を離すと取り消します | Slid up 60 px or more / 60 px 以上上にスライドしたとき | Changed: 7.1 wrote 「指を離すと取り消し」; uses the prototype's full sentence / 変更：7.1 は「指を離すと取り消し」と書いていた。プロトタイプの完全な文を使う |
+| `talk.tooShort` | 押したまま話してください | Held less than 250 ms / 250 ms 未満しか押さなかったとき | Fixed / 確定 |
+| `talk.preparing` | 準備しています | Shown on the talk button when it has been held for 2 seconds and this character's session isn't ready yet (F-1 #109, #123). The voice is still being captured (up to 15 seconds, api-contract 3.2) and is sent along once the session is ready, so it only says “the character is still getting ready”, not “please say it again” or “please wait” / 2 秒押し続けても、この人物のセッションがまだ準備できていないとき、話すボタンに表示する（F-1 #109、#123）。声はそのまま受け取り続け（最大 15 秒、api-contract 3.2）、セッションが準備できたらまとめて送るので、「人物がまだ準備中」とだけ伝え、「言い直してください」「お待ちください」とは書かない | New (Frontend first wrote 「準備中」; uses 「〜ています」 like the other states) / 新規（フロントエンドが先に書いたのは「準備中」。ほかの状態と同じく「〜ています」を使う） |
+| `talk.thinking` | 考えています | After release, before the character speaks / 指を離した後、人物が声を出す前 | Fixed / 確定 |
+| `talk.disabled` | 人に近づくと話せます | Talk button description when no one is nearby / 近くに誰もいないときの話すボタンの説明 | Fixed (prototype) / 確定（プロトタイプ） |
+| `talk.reconnecting` | つながり直しています | Talk button unavailable while disconnected / 切断中は話すボタンが使えない | Fixed / 確定 |
+| `talk.end` | 話を終える | End button in dialogue mode / 会話モードの終了ボタン | Fixed (prototype) / 確定（プロトタイプ） |
+| `text.open` | 文字で話す | Keyboard button to the right of the talk button / 話すボタンの右のキーボードボタン | Fixed / 確定 |
+| `text.placeholder` | 言いたいことを書く | Input box / 入力欄 | Fixed (prototype) / 確定（プロトタイプ） |
+| `text.send` | 送る | Send / 送信 | Fixed (prototype) / 確定（プロトタイプ） |
+| `text.backToVoice` | 声に戻す | Back to the talk button / 話すボタンに戻る | Fixed (prototype) / 確定（プロトタイプ） |
+| `text.limit` | 200字までです | Below the input box when over 200 characters (matches the limits of api-contract `text` and `act_propose`) / 200 字を超えたとき入力欄の下に出る（api-contract の `text`、`act_propose` の上限と一致） | New / 新規 |
 
-**麦克风说明（7.3）**
+**Microphone explanation (7.3) / マイクの説明（7.3）**
 
-| 键 | 日语 | 状态 |
+| Key / キー | Japanese / 日本語 | Status / 状態 |
 |---|---|---|
-| `primer.title` | 声で話しかけますか | 定 |
-| `primer.body1` | ボタンを押しているあいだだけ、声を聞き取ります。 | 定 |
-| `primer.body2` | 声そのものは保存しません。話したことばは文字にして、この物語のなかだけで使い、結末ができたら消します。学習には使いません。 | 定（只在正式版模型时成立，S-059） |
-| `primer.use` | マイクを使う | 定 |
-| `primer.text` | 文字で話す | 定 |
-| `primer.ready` | 準備ができました。ボタンを押しながら、話してください。 | 定（原型，授权成功后一次） |
-| `primer.ready.tap` | 準備ができました。ボタンをタップして、話してください。 | 新（设置成「タップで話す」时代替上一句） |
+| `primer.title` | 声で話しかけますか | Fixed / 確定 |
+| `primer.body1` | ボタンを押しているあいだだけ、声を聞き取ります。 | Fixed / 確定 |
+| `primer.body2` | 声そのものは保存しません。話したことばは文字にして、この物語のなかだけで使い、結末ができたら消します。学習には使いません。 | Fixed (holds only with the production models, S-059) / 確定（本番版のモデルのときだけ成り立つ。S-059） |
+| `primer.use` | マイクを使う | Fixed / 確定 |
+| `primer.text` | 文字で話す | Fixed / 確定 |
+| `primer.ready` | 準備ができました。ボタンを押しながら、話してください。 | Fixed (prototype; once, after permission is granted) / 確定（プロトタイプ。許可が得られた後に 1 回） |
+| `primer.ready.tap` | 準備ができました。ボタンをタップして、話してください。 | New (replaces the previous sentence when set to 「タップで話す」) / 新規（「タップで話す」に設定しているときは前の文の代わり） |
 
-**字幕（7.7）**
+**Subtitles (7.7) / 字幕（7.7）**
 
-| 键 | 日语 | 什么时候 | 状态 |
+| Key / キー | Japanese / 日本語 | When / 表示タイミング | Status / 状態 |
 |---|---|---|---|
-| `sub.me` | あなた | 玩家自己那行的标 | 定 |
-| `sub.fromChip` | 候補から | 选候选说出的话 | 定 |
-| `sub.source` | 原作のことば | 原作原句，可点开看出处 | 定 |
-| `sub.transcribed` | 書き起こし | 补转写的句子，不能点 | 定 |
-| `sub.pending` | …… | 声音结束了还没有文字（灰色，不跳动） | 定 |
-| `sub.failed` | （字幕を出せませんでした） | 补转写也失败 | 定 |
-| `sub.collapse` | 字幕をたたむ | 手动收起字幕与对话候选；不清空文字或暂停声音 | 新 |
-| `sub.expand` | 字幕をひらく | 展开本次仍保留的字幕与对话候选 | 新 |
+| `sub.me` | あなた | Label on the player's own line / プレイヤー自身の行のラベル | Fixed / 確定 |
+| `sub.fromChip` | 候補から | Words said by choosing a suggestion / 候補を選んで言った言葉 | Fixed / 確定 |
+| `sub.source` | 原作のことば | A sentence from the original; tap to see the source / 原作の原文。押すと出典が見られる | Fixed / 確定 |
+| `sub.transcribed` | 書き起こし | A sentence from a backup transcription; not tappable / 補完の書き起こしの文。押せない | Fixed / 確定 |
+| `sub.pending` | …… | The voice has ended but there's no text yet (gray, not animated) / 声は終わったがまだ文字がない（灰色、動かない） | Fixed / 確定 |
+| `sub.failed` | （字幕を出せませんでした） | The backup transcription failed too / 補完の書き起こしも失敗した | Fixed / 確定 |
+| `sub.collapse` | 字幕をたたむ | Manually collapses subtitles and dialogue suggestions; doesn't clear the text or pause the voice / 字幕と会話の候補を手動でたたむ。文字を消したり声を止めたりはしない | New / 新規 |
+| `sub.expand` | 字幕をひらく | Expands the subtitles and dialogue suggestions still kept this time / 今回まだ残っている字幕と会話の候補を開く | New / 新規 |
 
-**等、撤回、听错（7.5、7.6）**
+**Waiting, retracting, mishearing (7.5, 7.6) / 待つ、取り消す、聞き間違い（7.5、7.6）**
 
-| 键 | 日语 | 什么时候 | 状态 |
+| Key / キー | Japanese / 日本語 | When / 表示タイミング | Status / 状態 |
 |---|---|---|---|
-| `wait.again` | もう一度話す | 6 秒还没声音，候选位置 | 定 |
-| `wait.text` | 文字で送る | 同上 | 定 |
-| `retract.cancel` | 取り消す | 人物还没开口 | 定 |
-| `retract.redo` | 言い直す | 人物回答后、提交前（约 5 秒） | 定 |
-| `retract.tooLate` | ……もう伝わってしまった。 | 太晚了（地の文，只出字幕） | 定 |
-| `chips.more` | ？ | 候选收起后的按钮；读屏名「話す言葉の候補」 | 定（读屏名新） |
-| `chips.notNow` | いまは、いい | 人物来找你时的候选之一 | 定 |
-| `reconnect.lostTurn` | もう一度、話しかけてください。 | 重连丢了一轮、人物不在画面上（叙事一行） | 定 |
+| `wait.again` | もう一度話す | No voice after 6 seconds; in the suggestions area / 6 秒たっても声がないとき、候補の位置 | Fixed / 確定 |
+| `wait.text` | 文字で送る | Same / 同上 | Fixed / 確定 |
+| `retract.cancel` | 取り消す | The character hasn't started speaking yet / 人物がまだ話し始めていない | Fixed / 確定 |
+| `retract.redo` | 言い直す | After the character answers, before commit (about 5 seconds) / 人物が答えた後、確定する前（約 5 秒） | Fixed / 確定 |
+| `retract.tooLate` | ……もう伝わってしまった。 | Too late (地の文, subtitles only) / 遅すぎた（地の文、字幕だけ） | Fixed / 確定 |
+| `chips.more` | ？ | Button after the suggestions collapse; screen-reader name 「話す言葉の候補」 / 候補をたたんだ後のボタン。スクリーンリーダー名は「話す言葉の候補」 | Fixed (screen-reader name is new) / 確定（スクリーンリーダー名は新規） |
+| `chips.notNow` | いまは、いい | One of the suggestions when a character comes to you / 人物が話しかけに来たときの候補のひとつ | Fixed / 確定 |
+| `reconnect.lostTurn` | もう一度、話しかけてください。 | A turn was lost on reconnect and the character isn't on screen (one line of narration) / 再接続で 1 ターン失われ、人物が画面にいないとき（語り 1 行） | Fixed / 確定 |
 
-## 5. 故事动了（ux-design 8.2、8.3）
+## 5. The story moved (ux-design 8.2, 8.3) / 物語が動いた（ux-design 8.2、8.3）
 
-| 键 | 日语 | 什么时候 | 状态 |
+| Key / キー | Japanese / 日本語 | When / 表示タイミング | Status / 状態 |
 |---|---|---|---|
-| `toast.memory` | {name}は覚えた | 蓝色小条第一行，第二行是记忆原文 | 定 |
-| `toast.relation` | {from} → {to} | 同一条里，关系标签换了。`{from}` `{to}` 是 `relation.*` 的字，例「様子を見ている → 気を許している」 | 定 |
-| `toast.promise` | {name}と約束した | 蓝色小条，结绳图标，第二行是约定内容 | 定 |
-| `toast.aid` | {name}が、あなたのために動いた | 蓝色小条，第二行是做了什么 | 定 |
-| `toast.promiseKept` | 約束は果たされた | 你在场时 | 定 |
-| `toast.promiseBroken` | 約束は破られた | 墨色 | 定 |
-| `toast.event` | 物語が動いた | 緋色细线小条，下面两行因果 | 定 |
-| `toast.more` | ほか{n}件 | 同一轮超过 2 条 | 定 |
-| `toast.toMemory` | 記憶帳で見る | 蓝色小条的读屏动作名 | 定（原型） |
-| `toast.toMap` | 地図で見る | 緋色小条的读屏动作名 | 定 |
-| `key.you` | あなた | 关键时刻线的起点标 | 定 |
-| `key.unknown` | ？ | 更远的后果 | 定 |
-| `key.continue` | つづける | 主按钮 | 定 |
-| `key.map` | 地図で見る | 副按钮 | 定 |
+| `toast.memory` | {name}は覚えた | First line of the blue strip; the second line is the memory's original text / 青い小さな帯の 1 行目。2 行目は記憶の原文 | Fixed / 確定 |
+| `toast.relation` | {from} → {to} | In the same strip, when the relation label changed. `{from}` `{to}` are the words of `relation.*`, e.g. 「様子を見ている → 気を許している」 / 同じ帯の中で、関係のラベルが変わったとき。`{from}` `{to}` は `relation.*` の語。例「様子を見ている → 気を許している」 | Fixed / 確定 |
+| `toast.promise` | {name}と約束した | Blue strip, knotted-cord icon; the second line is what was promised / 青い小さな帯、結び紐のアイコン。2 行目は約束の内容 | Fixed / 確定 |
+| `toast.aid` | {name}が、あなたのために動いた | Blue strip; the second line is what they did / 青い小さな帯。2 行目は何をしたか | Fixed / 確定 |
+| `toast.promiseKept` | 約束は果たされた | When you are present / あなたがその場にいるとき | Fixed / 確定 |
+| `toast.promiseBroken` | 約束は破られた | Ink color / 墨色 | Fixed / 確定 |
+| `toast.event` | 物語が動いた | Strip with a thin 緋色 line, with two lines of cause and effect below / 緋色の細い線の小さな帯。下に因果を 2 行 | Fixed / 確定 |
+| `toast.more` | ほか{n}件 | More than 2 in the same turn / 同じターンで 2 件を超えたとき | Fixed / 確定 |
+| `toast.toMemory` | 記憶帳で見る | Screen-reader action name for the blue strip / 青い帯のスクリーンリーダー用のアクション名 | Fixed (prototype) / 確定（プロトタイプ） |
+| `toast.toMap` | 地図で見る | Screen-reader action name for the 緋色 strip / 緋色の帯のスクリーンリーダー用のアクション名 | Fixed / 確定 |
+| `key.you` | あなた | Label at the start of the key-moment line / 重要な瞬間の線の起点のラベル | Fixed / 確定 |
+| `key.unknown` | ？ | Consequences further out / その先の結果 | Fixed / 確定 |
+| `key.continue` | つづける | Main button / メインボタン | Fixed / 確定 |
+| `key.map` | 地図で見る | Secondary button / サブボタン | Fixed / 確定 |
 
-## 6. 第一幕幕末（切片，`ux/slice/act1-end-and-gate.md` 第 2 节、ux-design 4.4）
+## 6. End of act 1 (slice; `ux/slice/act1-end-and-gate.md` section 2, ux-design 4.4) / 第一幕の幕末（スライス、`ux/slice/act1-end-and-gate.md` 第 2 節、ux-design 4.4）
 
-| 键 | 日语 | 状态 |
+| Key / キー | Japanese / 日本語 | Status / 状態 |
 |---|---|---|
-| `actEnd.title` | 第一幕　約束の日　おわり | 定 |
-| `actEnd.rumor` | 門の警吏たちが、ひそひそと話していた。<br>──あの男は友を人質に置き、三日目の日没までに戻ると誓ったそうだ。 | 定（切片） |
-| `actEnd.melosLeft` | メロスは、村へ走り去った。 | 定 |
-| `actEnd.prompt` | 三日のあいだ、あなたは── | 定（切片；完整版是「あなたは──」） |
-| `actEnd.when` | {place}・{day}の{band} | 定（去处副题的前半。**服务端拼好**，在 `act_ended.options[]` 的 `where` 里下发（数据契约 1.7、api-contract v1.0.4），前端不拼，这里写出来给评审对照。`{place}` 是落点 `ActExit.place` 的 `Place.name`，不用场景名，切片两条都是「刑場」，例「刑場・三日目の夕方」；`{day}` `{band}` 照 `clock.labels`，中间是「の」，不套 `clock.labels.format`。后半是 `options[]` 的 `sub`（数据 `ActExit.sub`），前端排在同一行，中间一个全角空格；没有 `sub` 就只有前半。一行放不下时在全角空格处折成两行，前半不拆开、不截断（ux-design 4.4）） |
-| `actEnd.other` | ほかの考えがある | 定 |
-| `actEnd.other.sub` | 声か文字で、どうしたいかを伝える | 定 |
-| `actEnd.propose.prompt` | どうしますか。 | 定 |
-| `actEnd.propose.placeholder` | 例：町の人に、メロスの約束を話して回る | 改：原型的例子「老爺の家に泊めてもらう」和已有的去处重复，换成切片里能成行、又不在选项里的一个 |
-| `actEnd.propose.send` | 伝える | 定（原型） |
-| `actEnd.propose.thinking` | 考えをめぐらせている…… | 定（3 秒后） |
-| `actEnd.propose.accepted` | あなたは、{plan}ことにした。 | 定 |
-| `actEnd.propose.notHeard` | 声が届かなかったようです。もう一度、聞かせてください。 | 新（用声音说打算、转写是空的：误按、没出声。不算一次，`triesLeft` 不变。服务端在 `act_plan_result.narration` 里下发这一句（api-contract v1.0.6）。前端把它显示在「どうしますか。」那一行的位置，输入区不收；玩家再按说话键或打字时换回「どうしますか。」。不用 `reconnect.lostTurn`「もう一度、話しかけてください。」：幕末页上没有人物可以「話しかける」） |
-| `actEnd.propose.alt.yes` | そうする | 定 |
-| `actEnd.propose.alt.no` | ほかの道を選ぶ | 定 |
-| `actEnd.propose.giveUp` | 夜が更けていく。どこへ行くか、決めねばならない。 | 定（第 3 次） |
-| `actEnd.propose.back` | 行き先の一覧に戻る | 定（原型） |
-| `actEnd.summary` | この幕であなたが動かしたこと（{n}） | 定（展开后每行是 `recapLines` 的一句，服务端已换成「あなた」、带「。」，例「あなたは、老爺を家まで送った。」，见第 0 节） |
-| `actEnd.summary.empty` | この幕では、まだ何も動かしていない | 定（原型） |
-| `actEnd.summary.map` | 連鎖反応マップで見る | 定（原型） |
+| `actEnd.title` | 第一幕　約束の日　おわり | Fixed / 確定 |
+| `actEnd.rumor` | 門の警吏たちが、ひそひそと話していた。<br>──あの男は友を人質に置き、三日目の日没までに戻ると誓ったそうだ。 | Fixed (slice) / 確定（スライス） |
+| `actEnd.melosLeft` | メロスは、村へ走り去った。 | Fixed / 確定 |
+| `actEnd.prompt` | 三日のあいだ、あなたは── | Fixed (slice; the full version is 「あなたは──」) / 確定（スライス。完全版は「あなたは──」） |
+| `actEnd.when` | {place}・{day}の{band} | Fixed (the first half of a destination's subtitle. **Assembled by the server** and sent in `where` of `act_ended.options[]` (data contract 1.7, api-contract v1.0.4); Frontend does not assemble it, and it is written out here for reviewers to compare. `{place}` is the `Place.name` of the landing place `ActExit.place`, not the scene name; in the slice both are 「刑場」, e.g. 「刑場・三日目の夕方」; `{day}` `{band}` follow `clock.labels`, joined by 「の」, without applying `clock.labels.format`. The second half is `sub` of `options[]` (Data's `ActExit.sub`), which Frontend puts on the same line with one full-width space between; without `sub` there is only the first half. If it doesn't fit on one line, it wraps into two lines at the full-width space; the first half is never split or truncated (ux-design 4.4)) / 確定（行き先の副題の前半。**サーバーが組み立て**、`act_ended.options[]` の `where` で送る（データ契約 1.7、api-contract v1.0.4）。フロントエンドは組み立てず、ここにはレビューで照らし合わせるために書いておく。`{place}` は着地点 `ActExit.place` の `Place.name` で、シーン名は使わない。スライスでは 2 つとも「刑場」。例「刑場・三日目の夕方」。`{day}` `{band}` は `clock.labels` に従い、間は「の」で、`clock.labels.format` は当てはめない。後半は `options[]` の `sub`（データの `ActExit.sub`）で、フロントエンドが同じ行に全角スペース 1 つを挟んで並べる。`sub` がなければ前半だけ。1 行に収まらないときは全角スペースのところで 2 行に折り返し、前半は分割も切り詰めもしない（ux-design 4.4）） |
+| `actEnd.other` | ほかの考えがある | Fixed / 確定 |
+| `actEnd.other.sub` | 声か文字で、どうしたいかを伝える | Fixed / 確定 |
+| `actEnd.propose.prompt` | どうしますか。 | Fixed / 確定 |
+| `actEnd.propose.placeholder` | 例：町の人に、メロスの約束を話して回る | Changed: the prototype's example 「老爺の家に泊めてもらう」 duplicated an existing destination; replaced with one that works in the slice but isn't among the options / 変更：プロトタイプの例「老爺の家に泊めてもらう」は既存の行き先と重なっていたので、スライスで実行でき、かつ選択肢にないものに替えた |
+| `actEnd.propose.send` | 伝える | Fixed (prototype) / 確定（プロトタイプ） |
+| `actEnd.propose.thinking` | 考えをめぐらせている…… | Fixed (after 3 seconds) / 確定（3 秒後） |
+| `actEnd.propose.accepted` | あなたは、{plan}ことにした。 | Fixed / 確定 |
+| `actEnd.propose.notHeard` | 声が届かなかったようです。もう一度、聞かせてください。 | New (the plan was spoken but the transcript is empty: an accidental press, no sound. It doesn't count as a try; `triesLeft` stays the same. The server sends this sentence in `act_plan_result.narration` (api-contract v1.0.6). Frontend shows it in place of the 「どうしますか。」 line, without collapsing the input area; when the player presses the talk button or types again, it switches back to 「どうしますか。」. Not `reconnect.lostTurn` 「もう一度、話しかけてください。」: on the end-of-act page there is no character to 「話しかける」) / 新規（声でプランを言ったが書き起こしが空：誤って押した、声が出ていない。1 回には数えず、`triesLeft` は変わらない。サーバーは `act_plan_result.narration` でこの文を送る（api-contract v1.0.6）。フロントエンドは「どうしますか。」の行の位置に表示し、入力欄はたたまない。プレイヤーがもう一度話すボタンを押すか文字を打つと「どうしますか。」に戻す。`reconnect.lostTurn`「もう一度、話しかけてください。」は使わない：幕末ページには「話しかける」相手の人物がいない） |
+| `actEnd.propose.alt.yes` | そうする | Fixed / 確定 |
+| `actEnd.propose.alt.no` | ほかの道を選ぶ | Fixed / 確定 |
+| `actEnd.propose.giveUp` | 夜が更けていく。どこへ行くか、決めねばならない。 | Fixed (3rd try) / 確定（3 回目） |
+| `actEnd.propose.back` | 行き先の一覧に戻る | Fixed (prototype) / 確定（プロトタイプ） |
+| `actEnd.summary` | この幕であなたが動かしたこと（{n}） | Fixed (when expanded, each line is one sentence of `recapLines`, already changed to 「あなた」 by the server and ending in 「。」, e.g. 「あなたは、老爺を家まで送った。」; see section 0) / 確定（開くと各行は `recapLines` の 1 文で、サーバーがすでに「あなた」に置き換え、「。」が付いている。例「あなたは、老爺を家まで送った。」。第 0 節参照） |
+| `actEnd.summary.empty` | この幕では、まだ何も動かしていない | Fixed (prototype) / 確定（プロトタイプ） |
+| `actEnd.summary.map` | 連鎖反応マップで見る | Fixed (prototype) / 確定（プロトタイプ） |
 
-对照（服务端下发，数据的切片配置 `ActExit.sub`，契约 1.7）：
+Reference (sent by the server; Data's slice configuration `ActExit.sub`, contract 1.7):
 
-| 去处 | `sub` | 整行（前端拼出来的样子） | 状态 |
+対照（サーバーが送る。データのスライス設定 `ActExit.sub`、契約 1.7）：
+
+| Destination / 行き先 | `sub` | Full line (as shown by Frontend) / 行全体（フロントエンドでの表示） | Status / 状態 |
 |---|---|---|---|
-| `exit.1.city`「市に残り、メロスの帰りを待つ」 | 西の門が見える所で | 刑場・三日目の夕方　西の門が見える所で | 改（切片；17:30 是「夕方」，原稿写「日没前」不对；地点跟数据的 `place` 用「刑場」） |
-| `exit.1.old-man`「老爺の家に身を寄せる」 | 老爺があなたを覚えている | 刑場・三日目の夕方　老爺があなたを覚えている | 定（切片；这个去处只在送过老爺以后出现，服务端按 `requires` 只下发该出现的） |
+| `exit.1.city`「市に残り、メロスの帰りを待つ」 | 西の門が見える所で | 刑場・三日目の夕方　西の門が見える所で | Changed (slice; 17:30 is 「夕方」, so the draft's 「日没前」 was wrong; the place follows Data's `place` and uses 「刑場」) / 変更（スライス。17:30 は「夕方」なので、原稿の「日没前」は誤り。地点はデータの `place` に合わせて「刑場」） |
+| `exit.1.old-man`「老爺の家に身を寄せる」 | 老爺があなたを覚えている | 刑場・三日目の夕方　老爺があなたを覚えている | Fixed (slice; this destination appears only after you have walked the 老爺 home, and the server sends only those that should appear, per `requires`) / 確定（スライス。この行き先は老爺を送った後にだけ現れる。サーバーは `requires` に従い、現れるべきものだけを送る） |
 
-`actEnd.rumor`、`actEnd.melosLeft` 和第 7 节的 `jump.*` 是切片专用的故事内容，写在前端；完整版（M3）每一幕不同、跟着这一局走，挪进世界模型由服务端下发（后端评审 #24 第 3 条），稿子在 6.1。
+`actEnd.rumor`, `actEnd.melosLeft` and section 7's `jump.*` are slice-only story content written in the frontend; in the full version (M3) they differ per act and follow the game, so they move into the world model and are sent by the server (Backend review #24, item 3); the drafts are in 6.1.
 
-走不通时的理由（叙事者生成，切片稿里的两个例子供后端参考）：「王城の門は、旅の者には開かない。」「メロスの姿は、もう夜の向こうに消えていた。」，后面接「市に残り、メロスの帰りを待つこともできる。」
+`actEnd.rumor`、`actEnd.melosLeft` と第 7 節の `jump.*` はスライス専用の物語の内容で、フロントエンドに書いてある。完全版（M3）では幕ごとに違い、その局の展開に従うので、世界モデルに移してサーバーが送る（バックエンドのレビュー #24 第 3 項）。原稿は 6.1 にある。
 
-### 6.1 完整版的幕末（M3）
+Reasons when a plan can't work (generated by the narrator; two examples from the slice draft for Backend's reference): 「王城の門は、旅の者には開かない。」 「メロスの姿は、もう夜の向こうに消えていた。」, followed by 「市に残り、メロスの帰りを待つこともできる。」
 
-第一〜三幕各有一次幕末，第四幕收幕直接进结局（ux-design 11.1）。页面的样子同上（ux-design 4.4）。
+実行できないときの理由（ナレーターが生成する。スライス稿の 2 つの例をバックエンドの参考に）：「王城の門は、旅の者には開かない。」「メロスの姿は、もう夜の向こうに消えていた。」、その後に「市に残り、メロスの帰りを待つこともできる。」を続ける。
 
-| 键 | 日语 | 什么时候 | 状态 |
+### 6.1 End of act in the full version (M3) / 完全版の幕末（M3）
+
+Acts 1〜3 each have one end of act; closing act 4 goes straight into the ending (ux-design 11.1). The page looks the same as above (ux-design 4.4).
+
+第一〜三幕にはそれぞれ幕末が 1 回あり、第四幕は幕を閉じるとそのままエンディングに入る（ux-design 11.1）。ページの見た目は上と同じ（ux-design 4.4）。
+
+| Key / キー | Japanese / 日本語 | When / 表示タイミング | Status / 状態 |
 |---|---|---|---|
-| `actEnd.title.1` | 第一幕　約束の日　おわり | 第一幕幕末，同 `actEnd.title` | 定 |
-| `actEnd.title.2` | 第二幕　その夜　おわり | 第二幕幕末 | 新 |
-| `actEnd.title.3` | 第三幕　村の二日　おわり | 第三幕幕末 | 新 |
-| `actEnd.prompt.full` | あなたは── | 完整版代替切片的 `actEnd.prompt` | 定（4.4） |
-| `actEnd.propose.placeholder.1` | 例：メロスの妹に会いに、先に村へ行く | 第一幕「ほかの考えがある」的例句 | 定（4.4） |
-| `actEnd.propose.placeholder.2` | 例：工房に戻って、親方の仕事を片づけておく | 第二幕 | 新 |
-| `actEnd.propose.placeholder.3` | 例：先に市へ走って、メロスが来ると知らせる | 第三幕 | 新 |
-| `actEnd.propose.giveUp.1` | 夜が更けていく。どこへ行くか、決めねばならない。 | 第一幕，第 3 次，同 `actEnd.propose.giveUp` | 定 |
-| `actEnd.propose.giveUp.2` | 日が高くなっていく。どこへ行くか、決めねばならない。 | 第二幕（幕末约一日目 10:00） | 新 |
-| `actEnd.propose.giveUp.3` | 夜が明けていく。どこへ行くか、決めねばならない。 | 第三幕（幕末约三日目 04:30） | 新 |
+| `actEnd.title.1` | 第一幕　約束の日　おわり | End of act 1, same as `actEnd.title` / 第一幕の幕末、`actEnd.title` と同じ | Fixed / 確定 |
+| `actEnd.title.2` | 第二幕　その夜　おわり | End of act 2 / 第二幕の幕末 | New / 新規 |
+| `actEnd.title.3` | 第三幕　村の二日　おわり | End of act 3 / 第三幕の幕末 | New / 新規 |
+| `actEnd.prompt.full` | あなたは── | Replaces the slice's `actEnd.prompt` in the full version / 完全版でスライスの `actEnd.prompt` の代わり | Fixed (4.4) / 確定（4.4） |
+| `actEnd.propose.placeholder.1` | 例：メロスの妹に会いに、先に村へ行く | Example sentence for 「ほかの考えがある」 in act 1 / 第一幕の「ほかの考えがある」の例文 | Fixed (4.4) / 確定（4.4） |
+| `actEnd.propose.placeholder.2` | 例：工房に戻って、親方の仕事を片づけておく | Act 2 / 第二幕 | New / 新規 |
+| `actEnd.propose.placeholder.3` | 例：先に市へ走って、メロスが来ると知らせる | Act 3 / 第三幕 | New / 新規 |
+| `actEnd.propose.giveUp.1` | 夜が更けていく。どこへ行くか、決めねばならない。 | Act 1, 3rd try, same as `actEnd.propose.giveUp` / 第一幕、3 回目、`actEnd.propose.giveUp` と同じ | Fixed / 確定 |
+| `actEnd.propose.giveUp.2` | 日が高くなっていく。どこへ行くか、決めねばならない。 | Act 2 (the act ends around 10:00 on day 1) / 第二幕（幕末は一日目の 10:00 ごろ） | New / 新規 |
+| `actEnd.propose.giveUp.3` | 夜が明けていく。どこへ行くか、決めねばならない。 | Act 3 (the act ends around 04:30 on day 3) / 第三幕（幕末は三日目の 04:30 ごろ） | New / 新規 |
 
-例句跟着幕走，因为每一幕「能成行、又不在选项里」的打算不一样。三句都是谁都可能想到的打算，不替某个身份写。
+The example sentences change per act, because the plans that “work but aren't among the options” differ in each act. All three are plans anyone might think of, not written for a particular role.
 
-对照：幕末页的第一行（完整版代替切片的 `actEnd.rumor`、`actEnd.melosLeft`）。服务端按这一局下发，写进 M3 世界模型（字段名数据定，后端评审 #24 第 3 条）。只写玩家此刻能知道的事（ux-design 4.5「不剧透」）。节拍被改写、和这里不符时（例：约定没成立），这一行由叙事者写，不用固定句。
+例文は幕ごとに変える。「実行でき、かつ選択肢にない」プランは幕によって違うからだ。3 つとも誰でも思いつきそうなプランで、特定の身分向けには書かない。
 
-| 幕 | 玩家在哪 | 第一行 | 状态 |
+Reference: the first line of the end-of-act page (replacing the slice's `actEnd.rumor` and `actEnd.melosLeft` in the full version). The server sends it per game, and it is written into the M3 world model (Data decides the field names; Backend review #24, item 3). It states only what the player can know at that point (ux-design 4.5 “no spoilers”). When the beats have been rewritten and don't match this (e.g. the promise was never made), the narrator writes this line instead of using the fixed sentence.
+
+対照：幕末ページの 1 行目（完全版でスライスの `actEnd.rumor`、`actEnd.melosLeft` の代わり）。サーバーが局に応じて送り、M3 の世界モデルに書き込む（フィールド名はデータが決める。バックエンドのレビュー #24 第 3 項）。プレイヤーがその時点で知りうることだけを書く（ux-design 4.5「ネタバレしない」）。節目が書き換えられてここと合わないとき（例：約束が成立しなかった）は、固定の文を使わず、この行をナレーターが書く。
+
+| Act / 幕 | Where the player is / プレイヤーの居場所 | First line / 1 行目 | Status / 状態 |
 |---|---|---|---|
-| 第一幕 | 在王城看着梅洛斯出发 | メロスは、すぐに出発した。初夏、満天の星である。 | 新（原文） |
-| 第一幕 | 不在王城 | その夜のうちに、メロスは村へ発ったという。 | 新 |
-| 第二幕 | 和梅洛斯在路上 | 村が見えてきた。メロスは、よろめきながら歩いていく。 | 新 |
-| 第二幕 | 在市里 | 夜が明けた。市は、何事もなかったように静まりかえっている。 | 新 |
-| 第三幕 | 在村里 | 薄明、メロスは跳ね起きた。雨は、まだ降っている。 | 新（原文「眼が覚めたのは翌る日の薄明の頃である。メロスは跳ね起き」） |
-| 第三幕 | 在市里 | 三日目の薄明。雨は、夜どおし屋根を打ちつづけた。 | 新 |
+| Act 1 / 第一幕 | At the castle, watching Melos set out / 王城でメロスの出発を見ている | メロスは、すぐに出発した。初夏、満天の星である。 | New (original text) / 新規（原文） |
+| Act 1 / 第一幕 | Not at the castle / 王城にいない | その夜のうちに、メロスは村へ発ったという。 | New / 新規 |
+| Act 2 / 第二幕 | On the road with Melos / メロスと道中にいる | 村が見えてきた。メロスは、よろめきながら歩いていく。 | New / 新規 |
+| Act 2 / 第二幕 | In the city / 市にいる | 夜が明けた。市は、何事もなかったように静まりかえっている。 | New / 新規 |
+| Act 3 / 第三幕 | In the village / 村にいる | 薄明、メロスは跳ね起きた。雨は、まだ降っている。 | New (original: 「眼が覚めたのは翌る日の薄明の頃である。メロスは跳ね起き」) / 新規（原文「眼が覚めたのは翌る日の薄明の頃である。メロスは跳ね起き」） |
+| Act 3 / 第三幕 | In the city / 市にいる | 三日目の薄明。雨は、夜どおし屋根を打ちつづけた。 | New / 新規 |
 
-对照：完整版的去处（世界模型 1.0.0-draft 的 `ActExit`）。`label` 和时刻是数据的，这里写副题的后半 `sub`（≤ 16 字）、落地的一行 `arrival.line`、先开口的人 `arrival.opener`，数据照着写进 M3 世界模型。整行的前半「{地点}・{日子}の{时段}」照旧服务端拼（`actEnd.when`）。
+Reference: destinations in the full version (`ActExit` in world model 1.0.0-draft). `label` and the times belong to Data; written here are the second half of the subtitle `sub` (≤ 16 characters), the arrival line `arrival.line` and who speaks first `arrival.opener`, which Data writes into the M3 world model as given. The first half of the full line, 「{place}・{day}の{band}」, is still assembled by the server (`actEnd.when`).
 
-| 去处 | 整行（前半　`sub`） | 落地的一行 | 先开口 | 状态 |
+対照：完全版の行き先（世界モデル 1.0.0-draft の `ActExit`）。`label` と時刻はデータのもの。ここには副題の後半 `sub`（≤ 16 字）、着地の 1 行 `arrival.line`、先に話す人 `arrival.opener` を書き、データがそのとおり M3 の世界モデルに書き込む。行全体の前半「{place}・{day}の{band}」は従来どおりサーバーが組み立てる（`actEnd.when`）。
+
+| Destination / 行き先 | Full line (first half　`sub`) / 行全体（前半　`sub`） | Arrival line / 着地の 1 行 | Speaks first / 先に話す人 | Status / 状態 |
 |---|---|---|---|---|
-| `exit.1.road`「メロスと夜の道を行く」 | 泉・一日目の深夜　メロスと並んで、村へ | 市の灯は、とうに見えなくなった。星の下、どこかで水の音がする。 | — | 新 |
-| `exit.1.vigil`「城に残り、セリヌンティウスのそばにいる」 | 王城・一日目の深夜　人質の夜を共に | 中庭の柱に、セリヌンティウスがつながれている。かがり火が、その横顔を照らしていた。 | — | 新（`sub` 照 4.4 的示意图） |
-| `exit.1.city`「市に残る」 | 広場・一日目の深夜　メロスの帰りを待つ | 広場は、しんと静まりかえっている。王城の高い窓に、灯がひとつともっていた。 | — | 新 |
-| `exit.2.village`「メロスと村に着く」 | メロスの村・一日目の午前　メロスの妹が待つ村 | 羊の番をしていた娘が、よろめいて歩くメロスに気づき、駆け寄ってきた。 | 妹 | 新（原文「よろめいて歩いて来る兄の、疲労困憊の姿を見つけて驚いた」） |
-| `exit.2.city`「市でその時を待つ」 | 広場・一日目の午前　人質の友と、王のいる市で | 日が高くなった。市は、何事もなかったように動きはじめている。 | — | 新 |
-| `exit.3.road`「雨の中、メロスと走り出る」 | 川・三日目の午前　メロスと市へ走る | 昼近く、ふたりは川の岸に着いた。ごうごうと、水の音が耳を打つ。 | — | 新（前面是 `enRoute` 的过场页，4.5） |
-| `exit.3.city`「市で日没を待つ」 | 広場・三日目の薄明　約束の日没を待つ | 三日目の薄明。雨は、まだ降りつづいている。 | — | 新 |
+| `exit.1.road`「メロスと夜の道を行く」 | 泉・一日目の深夜　メロスと並んで、村へ | 市の灯は、とうに見えなくなった。星の下、どこかで水の音がする。 | — | New / 新規 |
+| `exit.1.vigil`「城に残り、セリヌンティウスのそばにいる」 | 王城・一日目の深夜　人質の夜を共に | 中庭の柱に、セリヌンティウスがつながれている。かがり火が、その横顔を照らしていた。 | — | New (`sub` follows the mockup in 4.4) / 新規（`sub` は 4.4 の模式図に従う） |
+| `exit.1.city`「市に残る」 | 広場・一日目の深夜　メロスの帰りを待つ | 広場は、しんと静まりかえっている。王城の高い窓に、灯がひとつともっていた。 | — | New / 新規 |
+| `exit.2.village`「メロスと村に着く」 | メロスの村・一日目の午前　メロスの妹が待つ村 | 羊の番をしていた娘が、よろめいて歩くメロスに気づき、駆け寄ってきた。 | 妹 | New (original: 「よろめいて歩いて来る兄の、疲労困憊の姿を見つけて驚いた」) / 新規（原文「よろめいて歩いて来る兄の、疲労困憊の姿を見つけて驚いた」） |
+| `exit.2.city`「市でその時を待つ」 | 広場・一日目の午前　人質の友と、王のいる市で | 日が高くなった。市は、何事もなかったように動きはじめている。 | — | New / 新規 |
+| `exit.3.road`「雨の中、メロスと走り出る」 | 川・三日目の午前　メロスと市へ走る | 昼近く、ふたりは川の岸に着いた。ごうごうと、水の音が耳を打つ。 | — | New (preceded by the `enRoute` transition page, 4.5) / 新規（前に `enRoute` の場面転換ページがある、4.5） |
+| `exit.3.city`「市で日没を待つ」 | 広場・三日目の薄明　約束の日没を待つ | 三日目の薄明。雨は、まだ降りつづいている。 | — | New / 新規 |
 
-- **地点用短名**：上表前半的「泉」「広場」「川」是建议的短名。世界模型的地点名「峠下の草原と泉」「シラクスの広場と大路」「川と橋」太长，前半加 `sub` 常折成两行（ux-design 4.4 说数据倾向加短名）。建议：シラクスの広场と大路 → 広場、峠下の草原と泉 → 泉、川と橋 → 川、メロスの家と羊小屋 → メロスの家、セリヌンティウスの石工の仕事場 → 工房、市へ続く野の道 → 野の道；其余本来就短，不加。数据不加短名的话，前半照用全名。
-- `exit.2.city`、`exit.3.city` 的落点是广场；留在王城陪着人质的人也能选。〔建议〕落点用玩家当时所在的地点（王城就落在 `hostage-near`），落地的一行照用；数据定怎么写。
-- 「ほかの考えがある」成行以后落地的一行：完整版的打算各不相同，由叙事者按打算写。数据要一个固定的兜底句时用「{day}の{band}。あなたは、{place}に来ていた。」（切片那句的同一个写法）。
+- **Places use short names**: 「泉」, 「広場」 and 「川」 in the first half of the table above are suggested short names. The world model's place names 「峠下の草原と泉」, 「シラクスの広場と大路」 and 「川と橋」 are too long, and the first half plus `sub` often wraps onto two lines (ux-design 4.4 says Data leans toward adding short names). Suggested: シラクスの広場と大路 → 広場, 峠下の草原と泉 → 泉, 川と橋 → 川, メロスの家と羊小屋 → メロスの家, セリヌンティウスの石工の仕事場 → 工房, 市へ続く野の道 → 野の道; the rest are already short and get none. If Data doesn't add short names, the first half uses the full names.
+  **地点は短名を使う**：上の表の前半の「泉」「広場」「川」は提案する短名。世界モデルの地点名「峠下の草原と泉」「シラクスの広場と大路」「川と橋」は長すぎて、前半に `sub` を足すとよく 2 行に折り返す（ux-design 4.4 には、データは短名を加える方向だとある）。提案：シラクスの広場と大路 → 広場、峠下の草原と泉 → 泉、川と橋 → 川、メロスの家と羊小屋 → メロスの家、セリヌンティウスの石工の仕事場 → 工房、市へ続く野の道 → 野の道。ほかはもともと短いので加えない。データが短名を加えない場合、前半は正式名のまま使う。
+- `exit.2.city` and `exit.3.city` land in the plaza; players who stayed at the castle with the hostage can choose them too. 〔Suggestion〕 Land at the place where the player is at that time (at the castle, land at `hostage-near`), with the same arrival line; Data decides how to write it.
+  `exit.2.city`、`exit.3.city` の着地点は広場。王城に残って人質のそばにいる人も選べる。〔提案〕着地点はプレイヤーがそのときいる地点にし（王城なら `hostage-near` に着地）、着地の 1 行はそのまま使う。書き方はデータが決める。
+- The arrival line after a 「ほかの考えがある」 plan goes ahead: plans in the full version all differ, so the narrator writes it from the plan. If Data needs a fixed fallback sentence, use 「{day}の{band}。あなたは、{place}に来ていた。」 (the same pattern as the slice's line).
+  「ほかの考えがある」が実行できた後の着地の 1 行：完全版のプランはそれぞれ違うので、ナレーターがプランに沿って書く。データが固定の予備の文を必要とするときは「{day}の{band}。あなたは、{place}に来ていた。」を使う（スライスの文と同じ書き方）。
 
-对照：幕快结束时的预告（ux-design 4.3「幕的收束」，叙事一行，服务端下发）。4.3 原来只写了「日が傾いてきた。」，那是第四幕的；前三幕的幕末不在傍晚，按时刻换：
+Reference: the advance notice when an act is about to end (ux-design 4.3 “closing the act”; one line of narration sent by the server). 4.3 originally had only 「日が傾いてきた。」, which is act 4's; the first three acts don't end in the evening, so it changes by time of day:
 
-| 幕 | 预告 | 状态 |
+対照：幕がもうすぐ終わるときの予告（ux-design 4.3「幕の締めくくり」、語り 1 行、サーバーが送る）。4.3 にはもともと「日が傾いてきた。」しかなく、それは第四幕のもの。前の 3 幕の幕末は夕方ではないので、時刻に合わせて変える：
+
+| Act / 幕 | Notice / 予告 | Status / 状態 |
 |---|---|---|
-| 第一幕（约 23:45） | 夜が更けてきた。 | 新 |
-| 第二幕（约一日目 10:00） | 日が高くなってきた。 | 新 |
-| 第三幕（约三日目 04:30） | 東の空が白んできた。 | 新 |
-| 第四幕（日没） | 日が傾いてきた。 | 定（4.3） |
+| Act 1 (about 23:45) / 第一幕（23:45 ごろ） | 夜が更けてきた。 | New / 新規 |
+| Act 2 (about 10:00 on day 1) / 第二幕（一日目の 10:00 ごろ） | 日が高くなってきた。 | New / 新規 |
+| Act 3 (about 04:30 on day 3) / 第三幕（三日目の 04:30 ごろ） | 東の空が白んできた。 | New / 新規 |
+| Act 4 (sunset) / 第四幕（日没） | 日が傾いてきた。 | Fixed (4.3) / 確定（4.3） |
 
-## 7. 「その頃」和跳转页（ux-design 4.5、`ux/slice/jump-transition.md`）
+## 7. 「その頃」 and the jump page (ux-design 4.5, `ux/slice/jump-transition.md`) / 「その頃」とジャンプページ（ux-design 4.5、`ux/slice/jump-transition.md`）
 
-| 键 | 日语 | 状态 |
+| Key / キー | Japanese / 日本語 | Status / 状態 |
 |---|---|---|
-| `sonokoro.title` | その頃── | 定 |
-| `sonokoro.kept` | 果たされた | 定 |
-| `sonokoro.broken` | 破られた | 定 |
-| `sonokoro.map` | 地図で見る › | 定 |
-| `common.continue` | つづける | 定 |
-| `jump.act` | 第四幕　三日目 | 新（切片） |
-| `jump.day1.label` | 一日目 | 新（切片；左边一栏，两行正文缩在它右边） |
-| `jump.day1` | 市は、何事もなかったように静まりかえっていた。<br>王城の奥に、石工がひとり、つながれているという。 | 新（切片） |
-| `jump.day2.label` | 二日目 | 新（切片） |
-| `jump.day2` | 昼すぎから、黒い雲が空を覆った。<br>夜どおし、雨が屋根を打った。 | 新（切片） |
-| `jump.day3.label` | 三日目 | 新（切片） |
-| `jump.day3` | 雨は、朝のうちに上がった。<br>夕方になった。メロスは、まだ帰らない。 | 新（切片） |
-| `jump.trialNote` | 試遊版では、第二幕と第三幕を省いています。<br>完成版では、この三日間をどこで過ごすかも選べます。 | 新（只在切片版，界面黑体小字） |
+| `sonokoro.title` | その頃── | Fixed / 確定 |
+| `sonokoro.kept` | 果たされた | Fixed / 確定 |
+| `sonokoro.broken` | 破られた | Fixed / 確定 |
+| `sonokoro.map` | 地図で見る › | Fixed / 確定 |
+| `common.continue` | つづける | Fixed / 確定 |
+| `jump.act` | 第四幕　三日目 | New (slice) / 新規（スライス） |
+| `jump.day1.label` | 一日目 | New (slice; a left column, with the two lines of body text indented to its right) / 新規（スライス。左の欄で、本文 2 行はその右に字下げして置く） |
+| `jump.day1` | 市は、何事もなかったように静まりかえっていた。<br>王城の奥に、石工がひとり、つながれているという。 | New (slice) / 新規（スライス） |
+| `jump.day2.label` | 二日目 | New (slice) / 新規（スライス） |
+| `jump.day2` | 昼すぎから、黒い雲が空を覆った。<br>夜どおし、雨が屋根を打った。 | New (slice) / 新規（スライス） |
+| `jump.day3.label` | 三日目 | New (slice) / 新規（スライス） |
+| `jump.day3` | 雨は、朝のうちに上がった。<br>夕方になった。メロスは、まだ帰らない。 | New (slice) / 新規（スライス） |
+| `jump.trialNote` | 試遊版では、第二幕と第三幕を省いています。<br>完成版では、この三日間をどこで過ごすかも選べます。 | New (slice version only; small print in the UI's Gothic typeface) / 新規（スライス版だけ。UI のゴシック体の小さな文字） |
 
-对照（服务端下发，数据的切片配置，契约 1.7；完整版不带这三行）：
+Reference (sent by the server; Data's slice configuration, contract 1.7; the full version doesn't have these three lines):
 
-| 去处 | 落地的一行 | 字段 | 状态 |
+対照（サーバーが送る。データのスライス設定、契約 1.7。完全版にはこの 3 行はない）：
+
+| Destination / 行き先 | Arrival line / 着地の 1 行 | Field / フィールド | Status / 状態 |
 |---|---|---|---|
-| 市に残り、メロスの帰りを待つ | 刑場の西のはずれ。ここからなら、西の門をくぐる者が、だれより先に見える。 | `exit.1.city` 的 `arrival.line` | 定（切片） |
-| 老爺の家に身を寄せる | 三日のあいだ、老爺はあなたを家に置いてくれた。いまは二人で、刑場の前に立っている。 | `exit.1.old-man` 的 `arrival.line`（`arrival.opener` 是老爺） | 新（切片） |
-| ほかの考えがある（成行） | 三日目の夕方。あなたは、刑場の近くに来ていた。 | `Act.plan.arrival.line`（落在刑场 `stake-front`，没有先开口的人） | 新（切片） |
+| 市に残り、メロスの帰りを待つ | 刑場の西のはずれ。ここからなら、西の門をくぐる者が、だれより先に見える。 | `arrival.line` of `exit.1.city` / `exit.1.city` の `arrival.line` | Fixed (slice) / 確定（スライス） |
+| 老爺の家に身を寄せる | 三日のあいだ、老爺はあなたを家に置いてくれた。いまは二人で、刑場の前に立っている。 | `arrival.line` of `exit.1.old-man` (`arrival.opener` is the 老爺) / `exit.1.old-man` の `arrival.line`（`arrival.opener` は老爺） | New (slice) / 新規（スライス） |
+| ほかの考えがある (plan goes ahead) / ほかの考えがある（実行できた場合） | 三日目の夕方。あなたは、刑場の近くに来ていた。 | `Act.plan.arrival.line` (lands at the execution ground's `stake-front`; nobody speaks first) / `Act.plan.arrival.line`（刑場の `stake-front` に着地し、先に話す人はいない） | New (slice) / 新規（スライス） |
 
-### 7.1 完整版的幕间（M3）
+### 7.1 Between acts in the full version (M3) / 完全版の幕間（M3）
 
-完整版：幕末页 →（有可交代的事时）「その頃」→（有 `enRoute` 时）路上的过场页 → 下一幕的标题页 → 落地。切片的 `jump.*` 和 `jump.trialNote` 完整版不用。
+Full version: end-of-act page → (when there is something to report) 「その頃」 → (when there is an `enRoute`) the on-the-road transition page → the next act's title page → landing. The full version doesn't use the slice's `jump.*` and `jump.trialNote`.
 
-| 键 | 日语 | 什么时候 | 状态 |
+完全版：幕末ページ →（伝えることがあるとき）「その頃」→（`enRoute` があるとき）道中の場面転換ページ → 次の幕のタイトルページ → 着地。スライスの `jump.*` と `jump.trialNote` は完全版では使わない。
+
+| Key / キー | Japanese / 日本語 | When / 表示タイミング | Status / 状態 |
 |---|---|---|---|
-| `act.title.1` | 第一幕　約束の日 | 身份页之后、第一次落地之前（旅人、石屋の弟子） | 新 |
-| `act.title.2` | 第二幕　その夜 | 第一幕幕末之后 | 新 |
-| `act.title.3` | 第三幕　村の二日 | 第二幕幕末之后；牧童开局时也用这一页 | 新 |
-| `act.title.4` | 第四幕　三日目 | 第三幕幕末之后，同切片的 `jump.act` | 定 |
+| `act.title.1` | 第一幕　約束の日 | After the role page, before the first landing (旅人, 石屋の弟子) / 身分ページの後、最初の着地の前（旅人、石屋の弟子） | New / 新規 |
+| `act.title.2` | 第二幕　その夜 | After the end of act 1 / 第一幕の幕末の後 | New / 新規 |
+| `act.title.3` | 第三幕　村の二日 | After the end of act 2; also used when the shepherd boy's game starts / 第二幕の幕末の後。牧童の開始時にもこのページを使う | New / 新規 |
+| `act.title.4` | 第四幕　三日目 | After the end of act 3; same as the slice's `jump.act` / 第三幕の幕末の後。スライスの `jump.act` と同じ | Fixed / 確定 |
 
-- 标题页只有这一行，明朝体，太阳带上的太阳滑到落地的时刻，不出「+N分」（同切片的跳转页）。约 1.5 秒后自己过去，也可以点；减少动态效果打开时停在这一页，点了才走（WCAG 2.2.1）。
-- 路上的过场页（ux-design 4.5）：第一行和两个按钮来自数据的 `enRoute`（例「隣村で、メロスは歩をゆるめた。」〔急かす〕〔好きにさせる〕），按钮上的时间照 `cost.melos.*` 生成，例「急かす（40分早まる）」。选了以后多出的一句是 `enRoute.choices[].after`。这一页没有前端写的固定字。
+- The title page has only this line, in Mincho; the sun on the sun band slides to the landing time, without showing 「+N分」 (same as the slice's jump page). It moves on by itself after about 1.5 seconds, or on tap; with reduce motion on, it stays on this page until tapped (WCAG 2.2.1).
+  タイトルページはこの 1 行だけで、明朝体。太陽帯の太陽は着地の時刻まで滑っていき、「+N分」は出さない（スライスのジャンプページと同じ）。約 1.5 秒で自動的に進み、タップでも進める。動きを減らす設定がオンのときはこのページで止まり、タップしたら進む（WCAG 2.2.1）。
+- The on-the-road transition page (ux-design 4.5): the first line and the two buttons come from Data's `enRoute` (e.g. 「隣村で、メロスは歩をゆるめた。」 〔急かす〕 〔好きにさせる〕), and the time on the buttons is generated per `cost.melos.*`, e.g. 「急かす（40分早まる）」. The extra sentence after choosing is `enRoute.choices[].after`. This page has no fixed text written by Frontend.
+  道中の場面転換ページ（ux-design 4.5）：1 行目と 2 つのボタンはデータの `enRoute` から来る（例「隣村で、メロスは歩をゆるめた。」〔急かす〕〔好きにさせる〕）。ボタン上の時間は `cost.melos.*` に従って生成する。例「急かす（40分早まる）」。選んだ後に加わる 1 文は `enRoute.choices[].after`。このページにはフロントエンドが書く固定の文言はない。
 
-对照：第四幕的几句固定叙事（ux-design 4.3，服务端下发；预录的那句见第 14 节）
+Reference: the fixed narration lines of act 4 (ux-design 4.3, sent by the server; for the pre-recorded line see section 14)
 
-| 什么时候 | 句子 | 状态 |
+対照：第四幕の固定の語り（ux-design 4.3、サーバーが送る。事前収録のものは第 14 節を参照）
+
+| When / タイミング | Line / 文 | Status / 状態 |
 |---|---|---|
-| 第一次到「帮他快」的上限、梅洛斯不在身边（`cue: arrival_capped`） | この足なら、陽の沈む前に着く。 | 定 |
-| 第一次让梅洛斯损失时间 | あなたと立ち止まっているあいだにも、陽は傾いていく。 | 定 |
+| The first time the “help him go faster” cap is reached while Melos isn't beside you (`cue: arrival_capped`) / 「彼を速める」の上限に初めて達し、メロスがそばにいないとき（`cue: arrival_capped`） | この足なら、陽の沈む前に着く。 | Fixed / 確定 |
+| The first time you make Melos lose time / 初めてメロスに時間を失わせたとき | あなたと立ち止まっているあいだにも、陽は傾いていく。 | Fixed / 確定 |
 
-## 8. 連鎖反応マップ（ux-design 9）
+## 8. 連鎖反応マップ, the chain-reaction map (ux-design 9) / 連鎖反応マップ（ux-design 9）
 
-| 键 | 日语 | 状态 |
+| Key / キー | Japanese / 日本語 | Status / 状態 |
 |---|---|---|
-| `map.title` | 連鎖反応マップ | 定 |
-| `map.legend` | 墨の線は原作の筋。緋の線は、あなたが変えたところです。 | 定（原型） |
-| `map.filter.mine` | わたしの行動だけ | 定 |
-| `map.forYou` | {name}・あなたのために | 定 |
-| `map.beat.canon` | 原作どおり | 定 |
-| `map.beat.hastened` | 早まった | 定 |
-| `map.beat.delayed` | 遅れた | 定 |
-| `map.beat.prevented` | 起きなかった | 定 |
-| `map.beat.altered` | 変わった | 定 |
-| `map.future` | ？ | 定（还没到的节拍，只显示时刻） |
-| `map.now` | いまここ | 定（原型） |
-| `map.why` | なぜこうなった？ | 定 |
-| `map.corrected` | 修正 | 定（8.5） |
-| `map.kept` | 約束が果たされた | 新（兑现约定的事件旁的结绳图标，读屏用这一句，画面上只有图标。和「その頃」「記憶帳」的「果たされた」同一个说法） |
-| `map.detail.who` | 知っている人 | 新（节点详情「谁知道这件事」的小标题） |
-| `map.detail.where` | 場所 | 新（9.1 节点详情的小标题；地名取 manifest `places`，api-contract v1.0.14） |
-| `map.detail.source` | 原作のことば | 新（9.1 节点详情的小标题；原句每条一行，用「」括起，只给已经发生过的节拍，没有就整行不出） |
-| `map.collapsed` | ……ほか{n}件 | 新（「なぜこうなった？」的链超过 12 步时，中间折叠的那一行，`{n}` 是 `/why` 的 `collapsed`；关键时刻的链 `reveal.collapsed` 也用这一句。折叠的几步不能展开，所以不写「ひらく」） |
+| `map.title` | 連鎖反応マップ | Fixed / 確定 |
+| `map.legend` | 墨の線は原作の筋。緋の線は、あなたが変えたところです。 | Fixed (prototype) / 確定（プロトタイプ） |
+| `map.filter.mine` | わたしの行動だけ | Fixed / 確定 |
+| `map.forYou` | {name}・あなたのために | Fixed / 確定 |
+| `map.beat.canon` | 原作どおり | Fixed / 確定 |
+| `map.beat.hastened` | 早まった | Fixed / 確定 |
+| `map.beat.delayed` | 遅れた | Fixed / 確定 |
+| `map.beat.prevented` | 起きなかった | Fixed / 確定 |
+| `map.beat.altered` | 変わった | Fixed / 確定 |
+| `map.future` | ？ | Fixed (beats not yet reached; only the time is shown) / 確定（まだ来ていない節目。時刻だけを表示） |
+| `map.now` | いまここ | Fixed (prototype) / 確定（プロトタイプ） |
+| `map.why` | なぜこうなった？ | Fixed / 確定 |
+| `map.corrected` | 修正 | Fixed (8.5) / 確定（8.5） |
+| `map.kept` | 約束が果たされた | New (the knotted-cord icon next to an event where a promise was kept; screen readers use this sentence, and the screen shows only the icon. The same wording as 「果たされた」 in 「その頃」 and 「記憶帳」) / 新規（約束が果たされたイベントの横の結び紐のアイコン。スクリーンリーダーはこの文を使い、画面にはアイコンだけ。「その頃」「記憶帳」の「果たされた」と同じ言い方） |
+| `map.detail.who` | 知っている人 | New (subheading “who knows about this” in the node details) / 新規（ノード詳細の「誰がこのことを知っているか」の小見出し） |
+| `map.detail.where` | 場所 | New (subheading in the 9.1 node details; place names come from manifest `places`, api-contract v1.0.14) / 新規（9.1 のノード詳細の小見出し。地名は manifest の `places` から取る。api-contract v1.0.14） |
+| `map.detail.source` | 原作のことば | New (subheading in the 9.1 node details; one original sentence per line, in 「」, only for beats that have already happened; if there are none the whole row is hidden) / 新規（9.1 のノード詳細の小見出し。原文は 1 行に 1 つずつ「」で囲み、すでに起きた節目にだけ付ける。なければ行ごと出さない） |
+| `map.collapsed` | ……ほか{n}件 | New (the collapsed middle row when the 「なぜこうなった？」 chain has more than 12 steps; `{n}` is `collapsed` from `/why`; the key-moment chain's `reveal.collapsed` uses this sentence too. The collapsed steps can't be expanded, so it doesn't say 「ひらく」) / 新規（「なぜこうなった？」の連鎖が 12 段を超えたとき、途中を折りたたんだ 1 行。`{n}` は `/why` の `collapsed`。重要な瞬間の連鎖の `reveal.collapsed` もこの文を使う。折りたたんだ段は開けないので「ひらく」とは書かない） |
 
-地图顶部的期限一行用第 2 节的 `deadline.line` 和 `deadline.crisis`「このままでは、日没に間に合わない」，地图不另设键。
+The deadline line at the top of the map uses section 2's `deadline.line` and `deadline.crisis` 「このままでは、日没に間に合わない」; the map has no separate key.
 
-## 9. 記憶帳（ux-design 10）
+地図の上部の期限の行は第 2 節の `deadline.line` と `deadline.crisis`「このままでは、日没に間に合わない」を使い、地図用のキーは別に設けない。
 
-| 键 | 日语 | 状态 |
+## 9. 記憶帳, the memory book (ux-design 10) / 記憶帳（ux-design 10）
+
+| Key / キー | Japanese / 日本語 | Status / 状態 |
 |---|---|---|
-| `memory.title` | 記憶帳 | 定 |
-| `memory.lead` | この物語の人々が、あなたについて覚えていること。 | 定（原型） |
-| `memory.empty` | まだ誰も、あなたのことを覚えていません。人に話しかけてみてください。 | 改：原型写「広場の人に」，完整版不只在广场 |
-| `memory.char.empty` | {name}は、あなたについて何も覚えていません。 | 定（原型） |
-| `memory.sec.promise` | 約束 | 定 |
-| `memory.sec.forYou` | あなたにしてくれたこと | 定 |
-| `memory.sec.byYou` | あなたがしたこと | 定 |
-| `memory.sec.remembers` | 覚えていること | 定 |
-| `memory.promise.dir.mine` | あなた → {name} | 改：见第 0 节（你答应对方的） |
-| `memory.promise.dir.theirs` | {name} → あなた | 改：同上（对方答应你的） |
-| `memory.promise.state.open` | まだ | 定 |
-| `memory.promise.state.kept` | 果たされた | 定 |
-| `memory.promise.state.broken` | 破られた | 定 |
-| `memory.via.saw` | 見た | 定 |
-| `memory.via.heard` | 聞いた | 定 |
-| `memory.via.rumor` | 噂で | 定 |
-| `relation.4` | 信じている | 定（区间按数据契约第 4 节，下同） |
-| `relation.3` | 気を許している | 定 |
-| `relation.2` | 様子を見ている | 定 |
-| `relation.1` | 警戒している | 定 |
-| `relation.0` | 敵意を抱いている | 定 |
-| `memory.forget` | 忘れてもらう | 定 |
-| `memory.forget.q` | {name}に、このことを忘れてもらいますか。 | 定 |
-| `memory.forget.body` | {name}はこのことを二度と口にしません。このときあなたが話したことばも、記録から消えます。 | 定 |
-| `memory.forget.keeps` | ただし、すでに起きたことは元に戻りません。（例：{text}） | 定（`text` 是 `impact.keeps`；没有就不出这一行） |
-| `memory.forget.promise` | この約束も、なかったことになります。 | 定 |
-| `memory.forget.done` | {name}は、そのことを忘れた。 | 定 |
-| `memory.footer` | 声は保存していません。話したことばは文字にして、結末ができたら消します。<br>この物語の記録は、消すまで残ります。30日遊ばなかった途中の物語は、自動で消えます。 | 定 |
-| `memory.deleteAll` | この物語をすべて消す | 定 |
-| `memory.deleteAll.q` | この物語をすべて消しますか。人物の記憶も、地図も、結末も残りません。元には戻せません。 | 新 |
-| `memory.deleteAll.yes` | すべて消す | 新 |
+| `memory.title` | 記憶帳 | Fixed / 確定 |
+| `memory.lead` | この物語の人々が、あなたについて覚えていること。 | Fixed (prototype) / 確定（プロトタイプ） |
+| `memory.empty` | まだ誰も、あなたのことを覚えていません。人に話しかけてみてください。 | Changed: the prototype said 「広場の人に」, but the full version isn't only in the plaza / 変更：プロトタイプは「広場の人に」だったが、完全版の舞台は広場だけではない |
+| `memory.char.empty` | {name}は、あなたについて何も覚えていません。 | Fixed (prototype) / 確定（プロトタイプ） |
+| `memory.sec.promise` | 約束 | Fixed / 確定 |
+| `memory.sec.forYou` | あなたにしてくれたこと | Fixed / 確定 |
+| `memory.sec.byYou` | あなたがしたこと | Fixed / 確定 |
+| `memory.sec.remembers` | 覚えていること | Fixed / 確定 |
+| `memory.promise.dir.mine` | あなた → {name} | Changed: see section 0 (what you promised them) / 変更：第 0 節参照（あなたが相手に約束したこと） |
+| `memory.promise.dir.theirs` | {name} → あなた | Changed: same (what they promised you) / 変更：同上（相手があなたに約束したこと） |
+| `memory.promise.state.open` | まだ | Fixed / 確定 |
+| `memory.promise.state.kept` | 果たされた | Fixed / 確定 |
+| `memory.promise.state.broken` | 破られた | Fixed / 確定 |
+| `memory.via.saw` | 見た | Fixed / 確定 |
+| `memory.via.heard` | 聞いた | Fixed / 確定 |
+| `memory.via.rumor` | 噂で | Fixed / 確定 |
+| `relation.4` | 信じている | Fixed (ranges per data contract section 4; likewise below) / 確定（区間はデータ契約第 4 節に従う。以下同じ） |
+| `relation.3` | 気を許している | Fixed / 確定 |
+| `relation.2` | 様子を見ている | Fixed / 確定 |
+| `relation.1` | 警戒している | Fixed / 確定 |
+| `relation.0` | 敵意を抱いている | Fixed / 確定 |
+| `memory.forget` | 忘れてもらう | Fixed / 確定 |
+| `memory.forget.q` | {name}に、このことを忘れてもらいますか。 | Fixed / 確定 |
+| `memory.forget.body` | {name}はこのことを二度と口にしません。このときあなたが話したことばも、記録から消えます。 | Fixed / 確定 |
+| `memory.forget.keeps` | ただし、すでに起きたことは元に戻りません。（例：{text}） | Fixed (`text` is `impact.keeps`; if there is none, this line is not shown) / 確定（`text` は `impact.keeps`。なければこの行は出さない） |
+| `memory.forget.promise` | この約束も、なかったことになります。 | Fixed / 確定 |
+| `memory.forget.done` | {name}は、そのことを忘れた。 | Fixed / 確定 |
+| `memory.footer` | 声は保存していません。話したことばは文字にして、結末ができたら消します。<br>この物語の記録は、消すまで残ります。30日遊ばなかった途中の物語は、自動で消えます。 | Fixed / 確定 |
+| `memory.deleteAll` | この物語をすべて消す | Fixed / 確定 |
+| `memory.deleteAll.q` | この物語をすべて消しますか。人物の記憶も、地図も、結末も残りません。元には戻せません。 | New / 新規 |
+| `memory.deleteAll.yes` | すべて消す | New / 新規 |
 
-## 10. 结局（ux-design 11）
+## 10. Ending (ux-design 11) / エンディング（ux-design 11）
 
-| 键 | 日语 | 状态 |
+| Key / キー | Japanese / 日本語 | Status / 状態 |
 |---|---|---|
-| `ending.binding` | 物語を綴じています（{n}秒） | 定（演出结束还没生成好；`{n}` 是已经等了几秒，往上数；不做假进度条） |
-| `ending.binding.long` | 待つあいだに、連鎖反応マップを見られます。 | 新（超过 20 秒） |
-| `ending.world` | 世界の結末 | 定 |
-| `ending.canon` | 原作では | 定 |
-| `ending.yours` | あなたの世界では | 定 |
-| `ending.you` | あなたの結末 | 定 |
-| `ending.fate` | 行方：{text} | 定 |
-| `ending.forYou` | あなたにしてくれたこと | 定 |
-| `ending.byYou` | あなたがしたこと | 定 |
-| `ending.chars` | 登場人物の結末 | 定 |
-| `ending.others` | ほかの人々は、原作どおりに。 | 定 |
-| `ending.others.open` | ひらく › | 定 |
-| `ending.card` | 結末カード | 定 |
-| `ending.map` | 地図で見る | 定 |
-| `ending.again` | 別の身分で、もう一度 | 定（按钮回身份页，这一局的身份那张卡不放最上面，旅人照旧标「はじめての方に」。切片只有旅人一张卡） |
-| `ending.source` | 原作を読む（青空文庫） | 定（原型） |
-| `card.diff` | 原作との違い | 定 |
-| `card.footer` | 太宰治『走れメロス』より・{role}として | 定（产品名 Q-003 定后加在后面） |
-| `card.footer.noRole` | 太宰治『走れメロス』より | 新（取不到这一局的身份时，不出「・として」） |
-| `card.note` | あなたが話したことば、個人の情報、URL や QR コードは載りません。 | 定（原型，卡片预览下面） |
-| `card.save` | カードを保存・共有 | 定（原型） |
-| `card.saveFallback` | 画像を長押しすると、保存できます。 | 新（不支持系统分享时） |
+| `ending.binding` | 物語を綴じています（{n}秒） | Fixed (the set piece is over but generation isn't done; `{n}` is how many seconds you have waited, counting up; no fake progress bar) / 確定（演出が終わってもまだ生成できていないとき。`{n}` は待った秒数で、数え上げる。偽の進捗バーは作らない） |
+| `ending.binding.long` | 待つあいだに、連鎖反応マップを見られます。 | New (over 20 seconds) / 新規（20 秒を超えたとき） |
+| `ending.world` | 世界の結末 | Fixed / 確定 |
+| `ending.canon` | 原作では | Fixed / 確定 |
+| `ending.yours` | あなたの世界では | Fixed / 確定 |
+| `ending.you` | あなたの結末 | Fixed / 確定 |
+| `ending.fate` | 行方：{text} | Fixed / 確定 |
+| `ending.forYou` | あなたにしてくれたこと | Fixed / 確定 |
+| `ending.byYou` | あなたがしたこと | Fixed / 確定 |
+| `ending.chars` | 登場人物の結末 | Fixed / 確定 |
+| `ending.others` | ほかの人々は、原作どおりに。 | Fixed / 確定 |
+| `ending.others.open` | ひらく › | Fixed / 確定 |
+| `ending.card` | 結末カード | Fixed / 確定 |
+| `ending.map` | 地図で見る | Fixed / 確定 |
+| `ending.again` | 別の身分で、もう一度 | Fixed (the button returns to the role page; the card for this game's role is not put at the top, and the traveler keeps its 「はじめての方に」 badge. The slice has only the traveler's card) / 確定（ボタンで身分ページに戻る。この局の身分のカードはいちばん上に置かず、旅人には従来どおり「はじめての方に」を付ける。スライスは旅人のカード 1 枚だけ） |
+| `ending.source` | 原作を読む（青空文庫） | Fixed (prototype) / 確定（プロトタイプ） |
+| `card.diff` | 原作との違い | Fixed / 確定 |
+| `card.footer` | 太宰治『走れメロス』より・{role}として | Fixed (the product name is appended once Q-003 is decided) / 確定（製品名は Q-003 の決定後に末尾へ加える） |
+| `card.footer.noRole` | 太宰治『走れメロス』より | New (when this game's role can't be obtained; omits 「・として」) / 新規（この局の身分が取得できないとき。「・として」は出さない） |
+| `card.note` | あなたが話したことば、個人の情報、URL や QR コードは載りません。 | Fixed (prototype; below the card preview) / 確定（プロトタイプ。カードのプレビューの下） |
+| `card.save` | カードを保存・共有 | Fixed (prototype) / 確定（プロトタイプ） |
+| `card.saveFallback` | 画像を長押しすると、保存できます。 | New (when system sharing isn't supported) / 新規（OS の共有機能に対応していないとき） |
 
-## 11. 出错和等待（ux-design 12）
+## 11. Errors and waiting (ux-design 12) / エラーと待ち（ux-design 12）
 
-| 键 | 日语 | 按钮 | 状态 |
+| Key / キー | Japanese / 日本語 | Buttons / ボタン | Status / 状態 |
 |---|---|---|---|
-| `voice.lowTime` | 今日の声の時間は、あと5分です。そのあとは文字で続けられます。 | — | 定 |
-| `voice.degraded` | ここからは文字でお話しください。人物のことばは字幕で表示します。 | — | 定（灰色叙事一行） |
-| `mic.denied` | マイクが使えません。文字で話しても、物語は最後まで進みます。 | 〔文字で続ける〕〔設定のしかた〕 | 定 |
-| `mic.denied.ios` | iPhone：アドレスバーの「ぁあ」→「Webサイトの設定」→「マイク」を「許可」 | — | 核（iOS 26 实机核对） |
-| `mic.denied.android` | Android：鍵のアイコン →「権限」→「マイク」を「許可」 | — | 核 |
-| `mic.unavailable` | マイクがうまく動いていません。Safariを一度終了して開き直すと、直ることがあります。 | 〔文字で続ける〕 | 定 |
-| `mic.unavailable.android` | マイクがうまく動いていません。ブラウザを一度終了して開き直すと、直ることがあります。 | 〔文字で続ける〕 | 新（Android 上代替上一句） |
-| `mic.textContinue` | 文字で続ける | — | 定 |
-| `mic.howto` | 設定のしかた | — | 定 |
-| `net.reconnecting` | つながり直しています | — | 定（顶部小条） |
-| `net.lost` | 通信が切れました。ここまでの物語は保存されています。つながったら、同じ場面から続きます。 | 〔もう一度つなぐ〕 | 定（超过 15 秒） |
-| `net.retry` | もう一度つなぐ | — | 定 |
-| `net.failed` | 通信できませんでした。 | 〔もう一度つなぐ〕 | 新（封面、身份页读不到数据；进世界读不到快照用 `net.lost`） |
-| `tab.taken` | 別の画面でこの物語が開かれました | 〔この画面で続ける〕 | 定 |
-| `tab.takeBack` | この画面で続ける | — | 定 |
-| `resume.tap` | タップして続ける | — | 定（切后台回来，恢复音频要一次点击） |
+| `voice.lowTime` | 今日の声の時間は、あと5分です。そのあとは文字で続けられます。 | — | Fixed / 確定 |
+| `voice.degraded` | ここからは文字でお話しください。人物のことばは字幕で表示します。 | — | Fixed (one gray line of narration) / 確定（灰色の語り 1 行） |
+| `mic.denied` | マイクが使えません。文字で話しても、物語は最後まで進みます。 | 〔文字で続ける〕〔設定のしかた〕 | Fixed / 確定 |
+| `mic.denied.ios` | iPhone：アドレスバーの「ぁあ」→「Webサイトの設定」→「マイク」を「許可」 | — | Verify (check on a real iOS 26 device) / 要確認（iOS 26 の実機で確認） |
+| `mic.denied.android` | Android：鍵のアイコン →「権限」→「マイク」を「許可」 | — | Verify / 要確認 |
+| `mic.unavailable` | マイクがうまく動いていません。Safariを一度終了して開き直すと、直ることがあります。 | 〔文字で続ける〕 | Fixed / 確定 |
+| `mic.unavailable.android` | マイクがうまく動いていません。ブラウザを一度終了して開き直すと、直ることがあります。 | 〔文字で続ける〕 | New (replaces the previous sentence on Android) / 新規（Android では前の文の代わり） |
+| `mic.textContinue` | 文字で続ける | — | Fixed / 確定 |
+| `mic.howto` | 設定のしかた | — | Fixed / 確定 |
+| `net.reconnecting` | つながり直しています | — | Fixed (small strip at the top) / 確定（上部の小さな帯） |
+| `net.lost` | 通信が切れました。ここまでの物語は保存されています。つながったら、同じ場面から続きます。 | 〔もう一度つなぐ〕 | Fixed (over 15 seconds) / 確定（15 秒を超えたとき） |
+| `net.retry` | もう一度つなぐ | — | Fixed / 確定 |
+| `net.failed` | 通信できませんでした。 | 〔もう一度つなぐ〕 | New (the cover or role page can't load data; when entering the world can't load the snapshot, use `net.lost`) / 新規（カバーや身分ページでデータを読み込めないとき。世界に入るときにスナップショットを読み込めない場合は `net.lost` を使う） |
+| `tab.taken` | 別の画面でこの物語が開かれました | 〔この画面で続ける〕 | Fixed / 確定 |
+| `tab.takeBack` | この画面で続ける | — | Fixed / 確定 |
+| `resume.tap` | タップして続ける | — | Fixed (back from the background; resuming audio needs one tap) / 確定（バックグラウンドから戻ったとき。音声の再開には 1 回のタップが必要） |
 
-## 12. 设置（ux-design 7.1、13、14.2）
+## 12. Settings (ux-design 7.1, 13, 14.2) / 設定（ux-design 7.1、13、14.2）
 
-| 键 | 日语 | 状态 |
+| Key / キー | Japanese / 日本語 | Status / 状態 |
 |---|---|---|
-| `settings.title` | 設定 | 定 |
-| `settings.talk` | 話し方 | 定 |
-| `settings.talk.hold` | 押して話す | 定（原型） |
-| `settings.talk.hold.desc` | 押しているあいだ話す | 定（原型） |
-| `settings.talk.tap` | タップで話す | 定（原型） |
-| `settings.talk.tap.desc` | タップで開始、もう一度で終わる | 定（原型） |
-| `settings.mic` | マイクを使う | 新（开始时选了文字的人，之后在这里打开） |
-| `settings.subSize` | 字幕の大きさ | 定 |
-| `settings.subSize.small` | 小さい | 新（15 px） |
-| `settings.subSize.normal` | ふつう | 新（17 px） |
-| `settings.subSize.large` | 大きい | 新（21 px） |
-| `settings.subAlways` | 字幕を表示する（いつも表示） | 定（原型，不能关，显示为已选、不可改） |
-| `settings.endAuto` | 結末を自動で進める | 新（ux-design 11.1，S-089；默认开） |
-| `settings.endAuto.desc` | オフにすると、画面をタップするまで次の字幕に進みません。 | 新 |
-| `settings.furigana` | 難しい言葉にふりがな | 定（原型） |
-| `settings.reduceMotion` | 画面の動きを減らす | 定 |
-| `settings.paper` | 紙の色 | 新 |
-| `settings.paper.device` | 端末に合わせる | 新 |
-| `settings.paper.day` | 昼の紙 | 新 |
-| `settings.paper.night` | 夜の紙 | 新（13「夜の紙」） |
-| `settings.volume` | 音の大きさ | 新 |
-| `settings.volume.voice` | 人物の声 | 新（13 的三个音量） |
-| `settings.volume.ambient` | まわりの音 | 新 |
-| `settings.volume.music` | 音楽 | 新 |
-| `settings.quiet` | 声が小さいとき | 定 |
-| `settings.quiet.body` | 人物の声が小さいときや、受話口から聞こえるときは、イヤホンをお使いください。 | 新 |
-| `settings.help` | ヘルプ | 定（12：错误码的小字放这里） |
-| `settings.privacy` | 記録の扱い | 新（隐私说明的入口；账号 1 年不登录删除写在里面） |
-| `settings.deleteAll` | すべてのデータを消す | 定（10.3，L3） |
-| `settings.deleteAll.q` | すべてのデータを消しますか。これまでの物語と結末が、すべて消えます。元には戻せません。（保存した結末カードの画像は、端末に残ります） | 新 |
-| `settings.helpline` | 話を聞いてくれる窓口 | 定（最下面一行，14.2） |
+| `settings.title` | 設定 | Fixed / 確定 |
+| `settings.talk` | 話し方 | Fixed / 確定 |
+| `settings.talk.hold` | 押して話す | Fixed (prototype) / 確定（プロトタイプ） |
+| `settings.talk.hold.desc` | 押しているあいだ話す | Fixed (prototype) / 確定（プロトタイプ） |
+| `settings.talk.tap` | タップで話す | Fixed (prototype) / 確定（プロトタイプ） |
+| `settings.talk.tap.desc` | タップで開始、もう一度で終わる | Fixed (prototype) / 確定（プロトタイプ） |
+| `settings.mic` | マイクを使う | New (for people who chose text at the start, to turn it on here later) / 新規（最初に文字を選んだ人が、後からここでオンにする） |
+| `settings.subSize` | 字幕の大きさ | Fixed / 確定 |
+| `settings.subSize.small` | 小さい | New (15 px) / 新規（15 px） |
+| `settings.subSize.normal` | ふつう | New (17 px) / 新規（17 px） |
+| `settings.subSize.large` | 大きい | New (21 px) / 新規（21 px） |
+| `settings.subAlways` | 字幕を表示する（いつも表示） | Fixed (prototype; can't be turned off; shown as selected and not changeable) / 確定（プロトタイプ。オフにできず、選択済みで変更不可として表示） |
+| `settings.endAuto` | 結末を自動で進める | New (ux-design 11.1, S-089; on by default) / 新規（ux-design 11.1、S-089。既定でオン） |
+| `settings.endAuto.desc` | オフにすると、画面をタップするまで次の字幕に進みません。 | New / 新規 |
+| `settings.furigana` | 難しい言葉にふりがな | Fixed (prototype) / 確定（プロトタイプ） |
+| `settings.reduceMotion` | 画面の動きを減らす | Fixed / 確定 |
+| `settings.paper` | 紙の色 | New / 新規 |
+| `settings.paper.device` | 端末に合わせる | New / 新規 |
+| `settings.paper.day` | 昼の紙 | New / 新規 |
+| `settings.paper.night` | 夜の紙 | New (13 「夜の紙」) / 新規（13「夜の紙」） |
+| `settings.volume` | 音の大きさ | New / 新規 |
+| `settings.volume.voice` | 人物の声 | New (the three volumes in 13) / 新規（13 の 3 つの音量） |
+| `settings.volume.ambient` | まわりの音 | New / 新規 |
+| `settings.volume.music` | 音楽 | New / 新規 |
+| `settings.quiet` | 声が小さいとき | Fixed / 確定 |
+| `settings.quiet.body` | 人物の声が小さいときや、受話口から聞こえるときは、イヤホンをお使いください。 | New / 新規 |
+| `settings.help` | ヘルプ | Fixed (12: the small print for error codes goes here) / 確定（12：エラーコードの小さな文字はここに置く） |
+| `settings.privacy` | 記録の扱い | New (entry to the privacy explanation; deletion of accounts not logged into for 1 year is described there) / 新規（プライバシー説明の入口。1 年ログインのないアカウントの削除もここに書く） |
+| `settings.deleteAll` | すべてのデータを消す | Fixed (10.3, L3) / 確定（10.3、L3） |
+| `settings.deleteAll.q` | すべてのデータを消しますか。これまでの物語と結末が、すべて消えます。元には戻せません。（保存した結末カードの画像は、端末に残ります） | New / 新規 |
+| `settings.helpline` | 話を聞いてくれる窓口 | Fixed (the bottom line, 14.2) / 確定（最下部の 1 行、14.2） |
 
-## 13. 安全（ux-design 14）
+## 13. Safety (ux-design 14) / 安全（ux-design 14）
 
-| 键 | 日语 | 状态 |
+| Key / キー | Japanese / 日本語 | Status / 状態 |
 |---|---|---|
-| `safety.hint` | つらいときは、話を聞いてくれる窓口があります。 | 定（竖屏小提示） |
-| `safety.hint.landscape` | つらいときの相談窓口 | 定（横屏一行） |
-| `safety.hint.open` | 窓口を見る | 定 |
-| `safety.hint.close` | この知らせを閉じる | 定（✕ 的读屏名） |
-| `safety.panel.title` | 話を聞いてくれる窓口 | 定 |
-| `safety.panel.body` | 物語とは別に、いま誰かに話したいことがあれば、聞いてもらえます。 | 定 |
-| `safety.panel.why` | 物語の中の言葉でも、この知らせが出ることがあります。 | 定（只在从小提示打开时） |
-| `safety.back` | 物語に戻る | 定 |
-| `safety.pause.q` | いま、つらい気持ちを抱えていませんか。 | 定 |
-| `safety.pause.body` | 物語は、ここで少し止めておきます。話を聞いてくれる窓口があります。 | 定 |
-| `safety.pause.list` | 窓口の一覧 | 定 |
-| `safety.pause.why` | 物語の中の言葉でも、この画面が出ることがあります。 | 定 |
+| `safety.hint` | つらいときは、話を聞いてくれる窓口があります。 | Fixed (small hint in portrait) / 確定（縦画面の小さな案内） |
+| `safety.hint.landscape` | つらいときの相談窓口 | Fixed (one line in landscape) / 確定（横画面の 1 行） |
+| `safety.hint.open` | 窓口を見る | Fixed / 確定 |
+| `safety.hint.close` | この知らせを閉じる | Fixed (screen-reader name of ✕) / 確定（✕ のスクリーンリーダー名） |
+| `safety.panel.title` | 話を聞いてくれる窓口 | Fixed / 確定 |
+| `safety.panel.body` | 物語とは別に、いま誰かに話したいことがあれば、聞いてもらえます。 | Fixed / 確定 |
+| `safety.panel.why` | 物語の中の言葉でも、この知らせが出ることがあります。 | Fixed (only when opened from the small hint) / 確定（小さな案内から開いたときだけ） |
+| `safety.back` | 物語に戻る | Fixed / 確定 |
+| `safety.pause.q` | いま、つらい気持ちを抱えていませんか。 | Fixed / 確定 |
+| `safety.pause.body` | 物語は、ここで少し止めておきます。話を聞いてくれる窓口があります。 | Fixed / 確定 |
+| `safety.pause.list` | 窓口の一覧 | Fixed / 確定 |
+| `safety.pause.why` | 物語の中の言葉でも、この画面が出ることがあります。 | Fixed / 確定 |
 
-窗口列表（14.3）。**2026-10-10 UX 到运营方自己的页面核过**（S-070）；公开上线前再核一次，改了就更新这里的日期。
+The helpline list (14.3). **Checked by UX on each operator's own page on 2026-10-10** (S-070); check again before the public launch, and update the date here if anything changed.
 
-| 名称 | 方式和时间 | 按钮 | 链接 | 核实（2026-10-10） |
+窓口の一覧（14.3）。**2026-10-10 に UX が各運営者自身のページで確認済み**（S-070）。一般公開の前にもう一度確認し、変わっていればここの日付を更新する。
+
+| Name / 名称 | Method and hours / 方法と時間 | Button / ボタン | Link / リンク | Verified (2026-10-10) / 確認（2026-10-10） |
 |---|---|---|---|---|
-| あなたのいばしょ | チャット・24時間 | チャットで話す | https://talkme.jp/ | 页面写「24時間365日」「年齢や性別を問わず誰でも」「無料・匿名」。运营是特定非営利活動法人あなたのいばしょ（talkme.jp 页面上没写法人名，按该法人自己的新闻稿） |
-| #いのちSOS | 電話 0120-061-338・24時間・無料 | 電話する | `tel:0120061338`；号码同时作为文字显示、可复制 | ライフリンク的页面（lifelink.or.jp/inochisos/）写「毎日24時間」、无料。运营是 NPO 法人自殺対策支援センターライフリンク（厚生労働省補助事業）。另有聊天（每天到 22:30，受理到 22:00），第一版不单列 |
-| まもろうよ こころ | 厚生労働省・ほかの電話とSNSの窓口 | 一覧を見る | https://www.mhlw.go.jp/mamorouyokokoro/ | 厚生労働省的页面，有电话和 SNS・聊天两种一览。里面有面向儿童的窗口，我们的对象是 18 岁以上，不单列它们，用户自己从一览里找 |
+| あなたのいばしょ | チャット・24時間 | チャットで話す | https://talkme.jp/ | The page says 「24時間365日」, 「年齢や性別を問わず誰でも」, 「無料・匿名」. It is run by 特定非営利活動法人あなたのいばしょ (the talkme.jp page doesn't give the corporation's name; this follows the corporation's own press release) / ページに「24時間365日」「年齢や性別を問わず誰でも」「無料・匿名」とある。運営は特定非営利活動法人あなたのいばしょ（talkme.jp のページには法人名がないため、同法人自身のプレスリリースによる） |
+| #いのちSOS | 電話 0120-061-338・24時間・無料 | 電話する | `tel:0120061338`; the number is also shown as text and can be copied / `tel:0120061338`。番号は文字としても表示し、コピーできる | ライフリンク's page (lifelink.or.jp/inochisos/) says 「毎日24時間」, free of charge. It is run by NPO 法人自殺対策支援センターライフリンク (a 厚生労働省 subsidized project). There is also a chat (daily until 22:30, accepting until 22:00), not listed separately in the first version / ライフリンクのページ（lifelink.or.jp/inochisos/）に「毎日24時間」、無料とある。運営は NPO 法人自殺対策支援センターライフリンク（厚生労働省補助事業）。ほかにチャットもある（毎日 22:30 まで、受付は 22:00 まで）が、最初の版では別項目にしない |
+| まもろうよ こころ | 厚生労働省・ほかの電話とSNSの窓口 | 一覧を見る | https://www.mhlw.go.jp/mamorouyokokoro/ | A 厚生労働省 page with two lists, phone and SNS/chat. It includes helplines for children; our audience is 18 and over, so we don't list those separately, and users find them in the list themselves / 厚生労働省のページで、電話と SNS・チャットの 2 種類の一覧がある。子ども向けの窓口も含まれるが、私たちの対象は 18 歳以上なので別項目にはせず、利用者が一覧から自分で探す |
 
-- 外部链接在新标签页打开，不离开故事页（14.3）。
-- 「#いのちSOS」的运营名：ux-design 14.3 原来写「NPO 法人ライフリンク」，v1.0.1 已改成正式名称「NPO 法人自殺対策支援センターライフリンク」。
+- External links open in a new tab, without leaving the story page (14.3).
+  外部リンクは新しいタブで開き、物語のページから離れない（14.3）。
+- The operator name for 「#いのちSOS」: ux-design 14.3 originally wrote 「NPO 法人ライフリンク」; v1.0.1 changed it to the official name 「NPO 法人自殺対策支援センターライフリンク」.
+  「#いのちSOS」の運営者名：ux-design 14.3 はもともと「NPO 法人ライフリンク」と書いていたが、v1.0.1 で正式名称「NPO 法人自殺対策支援センターライフリンク」に改めた。
 
-## 14. 预录句（对照用，音频由后端生成）
+## 14. Pre-recorded lines (for reference; Backend generates the audio) / 事前収録セリフ（対照用、音声はバックエンドが生成）
 
-**完整版**：7 个对话人物各 6 句，照 ux-design 16.2 的表（メロス、王ディオニス、セリヌンティウス、妹、花婿、フィロストラトス、町の老爺），不在这里重抄；メロス另有 `arrival_capped` 的「……これなら、間に合う。」（4.3）。三拍以上的四句相槌已在真跑前改成两拍（王「うむ。」、セリヌンティウス「ああ。」、フィロストラトス「はあ。」「ええ。」，16.2）；セリヌンティウス「……そうか。」真跑超了，换成「うむ。」。王城、村子、路上的固定演出要预录的句子（群众、警吏等）跟着 M3 世界模型的 `setPieces` 走，到时再列。
+**Full version**: 6 lines for each of the 7 dialogue characters, per the table in ux-design 16.2 (メロス, 王ディオニス, セリヌンティウス, 妹, 花婿, フィロストラトス, 町の老爺), not copied again here; メロス also has 「……これなら、間に合う。」 for `arrival_capped` (4.3). The four aizuchi of three or more morae were shortened to two morae before the real run (王 「うむ。」, セリヌンティウス 「ああ。」, フィロストラトス 「はあ。」 「ええ。」, 16.2); セリヌンティウス's 「……そうか。」 ran over in the real run and was replaced with 「うむ。」. Lines to pre-record for set pieces in the castle, the village and on the road (the crowd, the guards, etc.) follow the `setPieces` of the M3 world model and will be listed then.
 
-下面是切片用到的：
+**完全版**：会話する人物 7 人に 6 文ずつ。ux-design 16.2 の表（メロス、王ディオニス、セリヌンティウス、妹、花婿、フィロストラトス、町の老爺）に従い、ここには写さない。メロスにはほかに `arrival_capped` の「……これなら、間に合う。」がある（4.3）。3 拍以上の相槌 4 つは本番の生成の前に 2 拍に改めた（王「うむ。」、セリヌンティウス「ああ。」、フィロストラトス「はあ。」「ええ。」、16.2）。セリヌンティウス「……そうか。」は本番の生成で長さを超えたので「うむ。」に替えた。王城、村、道中の固定演出で事前収録するセリフ（群衆、警吏など）は M3 の世界モデルの `setPieces` に従い、そのときに挙げる。
 
-| 谁（声音） | 句子 | 出处 |
+Below are the ones the slice uses:
+
+以下はスライスで使うもの：
+
+| Who (voice) / 誰（声） | Lines / セリフ | Source / 出典 |
 |---|---|---|
-| メロス（Fenrir） | 相槌「うむ。」「ああ。」「おう。」；听不清「すまない、風の音で聞こえなかった。」「……もう一度、頼む。」；等一下「待ってくれ。少し、考えさせてくれ。」 | ux-design 16.2 |
-| 市の老爺（Sadaltager） | 相槌「へえ。」「……ふむ。」「ああ。」；听不清「……すまぬ、耳が遠うてな。」「もう一度、言うてくだされ。」；等一下「ちと、待ってくだされ。」 | ux-design 16.2 |
-| 城の警吏（Charon） | 「下がれ、旅の者。ここから先は、通さぬ。」「二度は言わぬ。下がれ。」；约定以后（`piece.gate-promise`）「下がれ。メロスとかいう羊飼いなら、王と約束をした。」「三日目の日没までに戻らねば、身代わりの石工セリヌンティウスが磔だ。」（生成时「磔」读「はりつけ」，「身代わり」读「みがわり」） | 切片 act1-end-and-gate 1 |
-| 群众里的女人（Despina） | 「メロスだ！　メロスが帰って来た！」 | 同上 2 |
-| 工房里的人（Iapetus，セリヌンティウス） | 「もう遅い。用があるなら、明日にしてくれ。」 | 同上 4 |
+| メロス（Fenrir） | Aizuchi 「うむ。」「ああ。」「おう。」; didn't catch it 「すまない、風の音で聞こえなかった。」「……もう一度、頼む。」; one moment 「待ってくれ。少し、考えさせてくれ。」 / 相槌「うむ。」「ああ。」「おう。」。聞き取れない「すまない、風の音で聞こえなかった。」「……もう一度、頼む。」。少し待つ「待ってくれ。少し、考えさせてくれ。」 | ux-design 16.2 |
+| 市の老爺（Sadaltager） | Aizuchi 「へえ。」「……ふむ。」「ああ。」; didn't catch it 「……すまぬ、耳が遠うてな。」「もう一度、言うてくだされ。」; one moment 「ちと、待ってくだされ。」 / 相槌「へえ。」「……ふむ。」「ああ。」。聞き取れない「……すまぬ、耳が遠うてな。」「もう一度、言うてくだされ。」。少し待つ「ちと、待ってくだされ。」 | ux-design 16.2 |
+| 城の警吏（Charon） | 「下がれ、旅の者。ここから先は、通さぬ。」「二度は言わぬ。下がれ。」; after the promise (`piece.gate-promise`) 「下がれ。メロスとかいう羊飼いなら、王と約束をした。」「三日目の日没までに戻らねば、身代わりの石工セリヌンティウスが磔だ。」 (when generating, 「磔」 is read 「はりつけ」 and 「身代わり」 is read 「みがわり」) / 「下がれ、旅の者。ここから先は、通さぬ。」「二度は言わぬ。下がれ。」。約束の後（`piece.gate-promise`）「下がれ。メロスとかいう羊飼いなら、王と約束をした。」「三日目の日没までに戻らねば、身代わりの石工セリヌンティウスが磔だ。」（生成時、「磔」は「はりつけ」、「身代わり」は「みがわり」と読む） | Slice act1-end-and-gate 1 / スライス act1-end-and-gate 1 |
+| Woman in the crowd (Despina) / 群衆の中の女（Despina） | 「メロスだ！　メロスが帰って来た！」 | Same, 2 / 同上 2 |
+| Person in the workshop (Iapetus, セリヌンティウス) / 工房の中の人（Iapetus、セリヌンティウス） | 「もう遅い。用があるなら、明日にしてくれ。」 | Same, 4 / 同上 4 |
 
-警吏、群众里的女人、工房里的人这几句，和切片里的固定地の文（城门、工房、群众让路）一起写在切片世界模型的固定演出 `setPieces` 里（数据契约 1.7，2.11），由服务端在对的时机下发，前端不写死，也不判断条件。这里只列预录句，方便试听时对照声音；地の文以世界模型为准，不另做对照表。城门那几句的叫法统一成「警吏」（地の文「警吏が、あなたの前に槍を下ろした。」）。「谁」一栏里老爺和警吏写世界模型的人物名（`Character.name`），事件句里玩家看到的就是这个名字：警吏这一群叫「城の警吏」（`char.guards`，v0.3.3）。地の文和故事句里照旧只写「警吏」。
+The lines of the guards, the woman in the crowd and the person in the workshop, together with the slice's fixed 地の文 (the city gate, the workshop, the crowd making way), are written in the slice world model's set pieces `setPieces` (data contract 1.7, 2.11); the server sends them at the right moment, and Frontend neither hard-codes them nor checks conditions. Only the pre-recorded lines are listed here, for comparing voices when listening; for 地の文 the world model is the source of truth, and there is no separate reference table. The guards at the city gate are uniformly called 「警吏」 (地の文: 「警吏が、あなたの前に槍を下ろした。」). In the “Who” column, the 老爺 and the guards are written with their world-model character names (`Character.name`), which is the name the player sees in event sentences: this group of guards is called 「城の警吏」 (`char.guards`, v0.3.3). In 地の文 and story sentences they are still just 「警吏」.
 
-## 修订记录
+警吏、群衆の中の女、工房の中の人のセリフは、スライスの固定の地の文（城門、工房、群衆が道をあける）と一緒に、スライスの世界モデルの固定演出 `setPieces` に書いてある（データ契約 1.7、2.11）。サーバーが適切なタイミングで送り、フロントエンドは固定で書き込まず、条件の判定もしない。ここには試聴のときに声を照らし合わせられるよう事前収録セリフだけを挙げる。地の文は世界モデルを正とし、別に対照表は作らない。城門のセリフでの呼び方は「警吏」に統一する（地の文「警吏が、あなたの前に槍を下ろした。」）。「誰」の欄の老爺と警吏は世界モデルの人物名（`Character.name`）で書き、プレイヤーがイベントの文で目にするのはこの名前：この警吏の一団は「城の警吏」と呼ぶ（`char.guards`、v0.3.3）。地の文と物語の文では従来どおり「警吏」とだけ書く。
 
-- v1.0（2026-10-11）：完整版，第 24 步（U-2）。第 2 节加石屋の弟子、村の牧童的卡（起点、认识谁、能做什么，牧童一行「物語の途中、一日目から始まります。」）和两个推荐标；`role.title` 改成「この物語に入りますか」（牧童不进「町」）。第 3 节加各场景的「更远」、归途和梅洛斯身边的键（追、先走和路程、边走边说、跑的路段不能说话、跳过、闲置提示、时间卡）。新 6.1：第二、三幕的幕末标题、各幕的例句和第 3 次的收束句，和给数据的对照稿：幕末第一行、7 个去处的副题后半、落地的一行、先开口的人，建议地点短名，幕快结束的预告按时刻换。新 7.1：各幕的标题页、路上过场页的做法、第四幕的固定叙事。第 10 节 `ending.again` 写完整版的做法。第 14 节写完整版用 ux-design 16.2 的全表。
+## Revision history / 改訂履歴
 
-- v0.3.8（2026-10-11）：F-1 后续（#123）：`talk.preparing` 的说明按现在的做法改：会话没好时整段声音都收着（最多 15 秒），「準備しています」只说人物还在准备，不是「声音收不进去」。字不变。
-- v0.3.7（2026-10-11）：F-12（#113）评审带来的：第 8 节加 `map.collapsed`「……ほか{n}件」（因果链中间折叠的那一行）和 `map.kept`「約束が果たされた」（结绳图标的读屏文字），写明地图顶部的危机一行用 `deadline.crisis`，不另设键；删掉 `map.you`：地图上你的举动不再另标「あなた」，摘要里已经写着（ux-design v1.0.6 的 9.1）。第 3 节加 `menu.open.label`（书本按钮的读屏名，括号里只列菜单里实际有的项），第 10 节加 `card.footer.noRole`。
-- v0.3.6（2026-10-11）：F-1（#109）评审带来的：第 1 节补〔Safariで開く方法〕点开以后的说明：iPhone 和 Android 各一句步骤（菜单位置会随 LINE 版本变，标「核」），找不到时复制链接贴进 Safari / Chrome，开了以后再输一次邀请码；Android 的按钮写「Chromeで開く方法」；能用的话最前面放〔ブラウザで開く〕（`openExternalBrowser=1`）。另加 `talk.preparing`「準備しています」、`primer.ready.tap`（点按模式）、`mic.unavailable.android`（Android 不写 Safari）。
-- v0.3.5（2026-10-11）：设置加 `settings.endAuto`「結末を自動で進める」和说明（ux-design v1.0.5 的 11.1，S-089）：结局演出的字幕默认自动往下，关掉以后每句等点了再换。
-- v0.3.4（2026-10-11）：第 14 节两句相槌跟 ux-design v1.0.4 的 16.2 改字：メロス「……なるほど。」→「おう。」（中间试过「そうか。」，三拍太长），市の老爺「ああ、ああ。」→「ああ。」（B-6 第一次量测：四拍的相槌几乎压不进 0.5 秒）。F-0 评审（#100）加两个键：`cover.new`「新しく始める」（封面有进行中的局时的次要按钮）、`net.failed`「通信できませんでした。」（封面、身份页读不到数据）。
-- v0.3.3（2026-10-11）：第 6 节 `actEnd.propose.notHeard` 的说明改指 api-contract v1.0.6（这句是 #64 换上的，前端评审 #68 时指出）。第 14 节「谁」一栏的老爺和警吏、开头一句改用世界模型的人物名：「市の老爺」「城の警吏」（`char.guards` 原名「警吏（巡邏・刑吏）」的括号会原样给到玩家，数据改名，UX 10-11 定）。日语界面文字没有改。
-- v0.3.2（2026-10-10）：前端评审后端 B-3（#61）时问的两处。第 0 节加一条：服务端下发的事件句（幕末的 `recapLines`、「その頃」、交谈的灰色一行、地图）里玩家也是「あなた」，事件 `summary` 存第三人称，服务端下发前换；情境动作的事件句写做成了的事、带对象。第 6 节加 `actEnd.propose.notHeard`（幕末用声音说打算、没听到），`actEnd.summary` 补一句说明。
-- v0.3.1（2026-10-10）：`actEnd.when` 改成服务端拼好、在 `options[].where` 里下发（数据契约 1.7、api-contract v1.0.4），前端不再拼；写明一行放不下时在全角空格处折行（ux-design 4.4）。日语没有改。
-- v0.3（2026-10-10）：第 14 节加警吏在约定以后说的两句（PM 定，S-077 ⑪）和读音；固定地の文改为指向世界模型的 `setPieces`。`deadline.line` 的出现时机改成玩家知道约定以后（S-077 ⑫）。第 13 节 #いのちSOS 的说明、第 0 节「改」的同步说明跟 ux-design v1.0.1 对齐。日语界面文字没有改。
-- v0.2（2026-10-10）：按前端对 PR #24 的评审改。一个键只放一句，几种说法拆成几个键，每个键写全；「／」只在说明里用，换行写 `<br>`；`deadline.line` 两行；跳转页的「一日目」等拆成 `.label`。第 0 节补占位 `{place}`、`{from}`、`{to}`。幕末去处副题的后半（`ActExit.sub`）和落地的一行改成「对照」小表，服务端下发，前端不写死；副题的地点跟数据的 `place` 写「刑場」。`countdown.hours` 改成「剩 61 分以上」，和取整段落一致。`approach.slip` 的箭头由前端画。除了副题的地点，日语没有改。后端评审：`{place}` 用地点名（服务端下发），不用场景名；切片专用的故事句完整版挪进世界模型。
-- v0.1（2026-10-10）：切片版第一稿。从 ux-design v1.0 各节、原型 v8 和切片稿整理；新写邀请码页、设置的几项、删除确认、跳转页；改了 10 处（见各行「改」）。相谈窗口按 S-070 到运营方页面核过（第 13 节）。
+- v1.0 (2026-10-11): full version, step 24 (U-2). Section 2 adds the cards for 石屋の弟子 and 村の牧童 (starting point, whom they know, what they can do, and the shepherd's line 「物語の途中、一日目から始まります。」) and two recommendation badges; `role.title` changed to 「この物語に入りますか」 (the shepherd boy doesn't enter the 「町」). Section 3 adds a “farther” for each scene, and keys for the homeward road and beside Melos (follow, go ahead and the travel time, talk while walking, no talking on running stretches, skip, idle hint, time card). New 6.1: end-of-act titles for acts 2 and 3, example sentences for each act and the closing sentence for the 3rd try, plus reference drafts for Data: the first line of the end-of-act page, the second half of the subtitles for 7 destinations, the arrival lines, who speaks first, suggested short place names, and the advance notice before an act ends, varying by time of day. New 7.1: the title page of each act, how the on-the-road transition page works, act 4's fixed narration. Section 10's `ending.again` describes the full version's behavior. Section 14 says the full version uses the whole table in ux-design 16.2.
+  v1.0（2026-10-11）：完全版、第 24 ステップ（U-2）。第 2 節に石屋の弟子、村の牧童のカード（開始地点、知り合い、できること、牧童の 1 行「物語の途中、一日目から始まります。」）と 2 つのおすすめバッジを追加。`role.title` を「この物語に入りますか」に変更（牧童は「町」に入らない）。第 3 節に各シーンの「さらに遠い」と、帰り道とメロスのそばのキー（追う、先に行くと道のり、並んで話す、走る区間では話せない、スキップ、放置時の案内、タイムカード）を追加。新しい 6.1：第二、三幕の幕末のタイトル、各幕の例文と 3 回目の締めの文、そしてデータ向けの対照稿：幕末の 1 行目、7 つの行き先の副題の後半、着地の 1 行、先に話す人、地点の短名の提案、幕の終わり間際の予告を時刻に合わせて変えること。新しい 7.1：各幕のタイトルページ、道中の場面転換ページのやり方、第四幕の固定の語り。第 10 節の `ending.again` に完全版でのふるまいを記載。第 14 節に、完全版は ux-design 16.2 の表全体を使うと記載。
+
+- v0.3.8 (2026-10-11): F-1 follow-up (#123): the description of `talk.preparing` updated to the current behavior: while the session isn't ready, the whole utterance is captured (up to 15 seconds), and 「準備しています」 only says the character is still getting ready, not “your voice can't be captured”. Wording unchanged.
+  v0.3.8（2026-10-11）：F-1 の続き（#123）：`talk.preparing` の説明を現在のやり方に合わせて変更：セッションが準備できていない間も声はまとめて受け取り続け（最大 15 秒）、「準備しています」は人物がまだ準備中だと伝えるだけで、「声を受け取れない」という意味ではない。文言は変えていない。
+- v0.3.7 (2026-10-11): from the F-12 (#113) review: section 8 adds `map.collapsed` 「……ほか{n}件」 (the collapsed middle row of a causal chain) and `map.kept` 「約束が果たされた」 (screen-reader text for the knotted-cord icon), and states that the crisis line at the top of the map uses `deadline.crisis`, with no separate key; `map.you` removed: your actions on the map are no longer labeled 「あなた」 separately, since the summary already says so (9.1 of ux-design v1.0.6). Section 3 adds `menu.open.label` (screen-reader name of the book button; the parentheses list only the items the menu actually has), and section 10 adds `card.footer.noRole`.
+  v0.3.7（2026-10-11）：F-12（#113）のレビューから：第 8 節に `map.collapsed`「……ほか{n}件」（因果の連鎖の途中を折りたたんだ 1 行）と `map.kept`「約束が果たされた」（結び紐のアイコンのスクリーンリーダー用の文）を追加し、地図の上部の危機の 1 行は `deadline.crisis` を使い、別のキーは設けないと明記。`map.you` を削除：地図上のあなたの行動にはもう「あなた」を別に付けない。要約にすでに書いてあるため（ux-design v1.0.6 の 9.1）。第 3 節に `menu.open.label`（本のボタンのスクリーンリーダー名。括弧の中はメニューに実際にある項目だけを挙げる）、第 10 節に `card.footer.noRole` を追加。
+- v0.3.6 (2026-10-11): from the F-1 (#109) review: section 1 adds the explanation shown after tapping 〔Safariで開く方法〕: one sentence of steps each for iPhone and Android (menu positions change with the LINE version, so marked “Verify”); if it can't be found, copy the link and paste it into Safari / Chrome; enter the invite code again after opening; the Android button says 「Chromeで開く方法」; if it works, put 〔ブラウザで開く〕 (`openExternalBrowser=1`) first. Also adds `talk.preparing` 「準備しています」, `primer.ready.tap` (tap mode), `mic.unavailable.android` (no Safari on Android).
+  v0.3.6（2026-10-11）：F-1（#109）のレビューから：第 1 節に〔Safariで開く方法〕を押した後の説明を追加：iPhone と Android でそれぞれ 1 文の手順（メニューの位置は LINE のバージョンで変わるので「要確認」）。見つからないときはリンクをコピーして Safari / Chrome に貼り付ける。開き直したら招待コードをもう一度入れる。Android のボタンは「Chromeで開く方法」。使えるなら〔ブラウザで開く〕（`openExternalBrowser=1`）をいちばん前に置く。ほかに `talk.preparing`「準備しています」、`primer.ready.tap`（タップモード）、`mic.unavailable.android`（Android では Safari と書かない）を追加。
+- v0.3.5 (2026-10-11): settings add `settings.endAuto` 「結末を自動で進める」 and its description (11.1 of ux-design v1.0.5, S-089): the ending set piece's subtitles advance automatically by default; when turned off, each line waits for a tap.
+  v0.3.5（2026-10-11）：設定に `settings.endAuto`「結末を自動で進める」とその説明を追加（ux-design v1.0.5 の 11.1、S-089）：エンディング演出の字幕は既定で自動的に進み、オフにすると 1 文ずつタップを待つ。
+- v0.3.4 (2026-10-11): two aizuchi in section 14 reworded to follow 16.2 of ux-design v1.0.4: メロス 「……なるほど。」 → 「おう。」 (「そうか。」 was tried in between; three morae is too long), 市の老爺 「ああ、ああ。」 → 「ああ。」 (B-6's first measurement: a four-mora aizuchi barely fits in 0.5 seconds). The F-0 review (#100) adds two keys: `cover.new` 「新しく始める」 (the secondary button on the cover when a game is in progress), `net.failed` 「通信できませんでした。」 (the cover or role page can't load data).
+  v0.3.4（2026-10-11）：第 14 節の相槌 2 つを ux-design v1.0.4 の 16.2 に合わせて変更：メロス「……なるほど。」→「おう。」（途中で「そうか。」も試したが 3 拍は長すぎる）、市の老爺「ああ、ああ。」→「ああ。」（B-6 の最初の計測：4 拍の相槌は 0.5 秒にほとんど収まらない）。F-0 のレビュー（#100）で 2 つのキーを追加：`cover.new`「新しく始める」（進行中の局があるときのカバーのサブボタン）、`net.failed`「通信できませんでした。」（カバーや身分ページでデータを読み込めないとき）。
+- v0.3.3 (2026-10-11): the description of `actEnd.propose.notHeard` in section 6 now points to api-contract v1.0.6 (this sentence was swapped in by #64; Frontend pointed it out while reviewing #68). In section 14, the 老爺 and the guards in the “Who” column and the opening sentence now use the world-model character names 「市の老爺」 and 「城の警吏」 (the parentheses in `char.guards`'s original name 「警吏（巡邏・刑吏）」 would reach the player as is, so Data renamed it; decided by UX on 10-11). No Japanese UI text changed.
+  v0.3.3（2026-10-11）：第 6 節の `actEnd.propose.notHeard` の説明の参照先を api-contract v1.0.6 に変更（この文は #64 で差し替えたもので、フロントエンドが #68 のレビューで指摘）。第 14 節の「誰」の欄の老爺と警吏、冒頭の文を世界モデルの人物名「市の老爺」「城の警吏」に変更（`char.guards` の元の名前「警吏（巡邏・刑吏）」の括弧がそのままプレイヤーに見えてしまうので、データが名前を変えた。10-11 に UX が決定）。日本語の UI の文言は変えていない。
+- v0.3.2 (2026-10-10): two points Frontend asked about while reviewing Backend's B-3 (#61). Section 0 adds an item: in event sentences sent by the server (the end-of-act `recapLines`, 「その頃」, the gray talk line, the map) the player is also 「あなた」; the event `summary` is stored in the third person and the server replaces it before sending; event sentences for situational actions state what was done, with the object. Section 6 adds `actEnd.propose.notHeard` (a plan spoken by voice at the end of an act was not heard), and `actEnd.summary` gets an extra note.
+  v0.3.2（2026-10-10）：フロントエンドがバックエンドの B-3（#61）をレビューしたときに質問した 2 点。第 0 節に 1 項目追加：サーバーが送るイベントの文（幕末の `recapLines`、「その頃」、会話の灰色の 1 行、地図）でもプレイヤーは「あなた」。イベントの `summary` は三人称で保存し、サーバーが送る前に置き換える。状況アクションのイベントの文はやり終えたことを対象付きで書く。第 6 節に `actEnd.propose.notHeard`（幕末で声で伝えたプランが聞き取れなかった）を追加し、`actEnd.summary` に説明を 1 文補った。
+- v0.3.1 (2026-10-10): `actEnd.when` is now assembled by the server and sent in `options[].where` (data contract 1.7, api-contract v1.0.4), so Frontend no longer assembles it; states that when it doesn't fit on one line it wraps at the full-width space (ux-design 4.4). No Japanese changed.
+  v0.3.1（2026-10-10）：`actEnd.when` をサーバーが組み立てて `options[].where` で送る形に変更（データ契約 1.7、api-contract v1.0.4）。フロントエンドはもう組み立てない。1 行に収まらないときは全角スペースのところで折り返すと明記（ux-design 4.4）。日本語は変えていない。
+- v0.3 (2026-10-10): section 14 adds the guards' two lines after the promise (decided by PM, S-077 ⑪) and their readings; the fixed 地の文 now points to the world model's `setPieces`. `deadline.line` now appears once the player knows about the promise (S-077 ⑫). The #いのちSOS note in section 13 and the note in section 0 on syncing “Changed” rows aligned with ux-design v1.0.1. No Japanese UI text changed.
+  v0.3（2026-10-10）：第 14 節に約束の後に警吏が言う 2 文（PM 決定、S-077 ⑪）と読みを追加。固定の地の文は世界モデルの `setPieces` を参照するように変更。`deadline.line` の表示タイミングを、プレイヤーが約束を知った後に変更（S-077 ⑫）。第 13 節の #いのちSOS の説明と、第 0 節の「変更」の同期についての説明を ux-design v1.0.1 にそろえた。日本語の UI の文言は変えていない。
+- v0.2 (2026-10-10): revised per Frontend's review of PR #24. One key holds one sentence; several phrasings split into several keys, each written in full; 「／」 used only in descriptions, and line breaks written `<br>`; `deadline.line` in two lines; 「一日目」 etc. on the jump page split out into `.label`. Section 0 adds the placeholders `{place}`, `{from}`, `{to}`. The second half of end-of-act destination subtitles (`ActExit.sub`) and the arrival line became small “Reference” tables, sent by the server and not hard-coded by Frontend; the place in the subtitle follows Data's `place` and is written 「刑場」. `countdown.hours` changed to “61 minutes or more left”, consistent with the rounding paragraph. Frontend draws the arrow of `approach.slip`. Apart from the place in the subtitle, no Japanese changed. Backend review: `{place}` uses the place name (sent by the server), not the scene name; slice-only story sentences move into the world model in the full version.
+  v0.2（2026-10-10）：フロントエンドの PR #24 へのレビューに従って変更。1 つのキーには 1 文だけ。言い方が複数あれば複数のキーに分け、どのキーも完全な形で書く。「／」は説明にだけ使い、改行は `<br>` と書く。`deadline.line` は 2 行。ジャンプページの「一日目」などは `.label` に分けた。第 0 節にプレースホルダー `{place}`、`{from}`、`{to}` を追加。幕末の行き先の副題の後半（`ActExit.sub`）と着地の 1 行は「対照」の小さな表にし、サーバーが送り、フロントエンドは固定で書き込まない。副題の地点はデータの `place` に合わせて「刑場」と書く。`countdown.hours` を「残り 61 分以上」に変え、丸め方の段落と一致させた。`approach.slip` の矢印はフロントエンドが描く。副題の地点を除き、日本語は変えていない。バックエンドのレビュー：`{place}` はシーン名ではなく地点名を使う（サーバーが送る）。スライス専用の物語の文は、完全版では世界モデルに移す。
+- v0.1 (2026-10-10): first draft of the slice version. Compiled from the sections of ux-design v1.0, prototype v8 and the slice drafts; newly written: the invite code page, several settings, delete confirmations, the jump page; 10 changes (see the rows marked “Changed”). Helplines checked on the operators' pages per S-070 (section 13).
+  v0.1（2026-10-10）：スライス版の最初の稿。ux-design v1.0 の各節、プロトタイプ v8、スライス稿から整理した。新しく書いたもの：招待コードページ、設定のいくつかの項目、削除の確認、ジャンプページ。10 か所を変更（各行の「変更」を参照）。相談窓口は S-070 に従い運営者のページで確認済み（第 13 節）。

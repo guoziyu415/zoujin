@@ -1,4 +1,7 @@
-"""评测专用的调用终态观察；不改正式时限、重试或模型输入。"""
+"""Eval-only observation of how calls finally ended; does not change the production deadlines, retries or model input.
+
+評価専用の、呼び出しの最終状態の観測。本番のタイムアウト、再試行、モデル入力は変えない。
+"""
 
 from __future__ import annotations
 
@@ -15,7 +18,11 @@ from zoujin_backend.trace import Span, Tracer
 
 
 def ending_observations(tracer: Tracer) -> dict[str, Any]:
-    """保存结局校验的规则名和尝试状态，不保存文本、提示、模型 ID 或玩家输入。"""
+    """Keep the rule names and attempt status of the ending validation; never the text, prompts, model IDs or player
+    input.
+
+    エンディング検証のルール名と試行の状態を保存し、文章、プロンプト、モデル ID、プレイヤーの入力は保存しない。
+    """
     names = {"narrator.ending", "narrator.ending-check", "narrator.ending.done", "narrator.ending.unclassified"}
     keys = {"attempt", "status", "failed_rules", "calls", "template", "reason"}
     spans = [
@@ -30,7 +37,9 @@ class CallTracer(Tracer):
 
     @contextmanager
     def span(self, name: str, **attrs: Any) -> Iterator[Span]:
-        # 每次逻辑调用有自己的收集器；并发候选不会依靠相邻日志猜配对。
+        # Each logical call has its own collector; concurrent candidates do not rely on neighbouring logs to guess
+        # pairs.
+        # 論理的な呼び出しごとに専用のコレクターを持つ。並行する候補は、隣のログからペアを推測することに頼らない。
         with self.parent.span(name, **attrs) as span:
             try:
                 yield span

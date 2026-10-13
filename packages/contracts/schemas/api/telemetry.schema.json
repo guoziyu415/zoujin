@@ -2,10 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "api/telemetry.schema.json",
   "title": "api/telemetry",
-  "description": "前端遥测（data-design 9.3，数据工程定字段）",
+  "description": "Frontend telemetry (data-design 9.3; fields set by data engineering) / フロントエンドのテレメトリ（data-design 9.3。フィールドはデータエンジニアリングが決める）",
   "$defs": {
     "QualityLevel": {
-      "description": "画质级（D-019）",
+      "description": "Graphics quality level (D-019) / 画質レベル（D-019）",
       "type": "string",
       "enum": ["L0", "L1", "L2", "L3"],
       "title": "QualityLevel"
@@ -16,13 +16,13 @@
       "title": "InputMode"
     },
     "TelemetryCommon": {
-      "description": "公共属性（data-design 9.3），只有粗粒度的设备信息；每批带一次，服务端入库时抄到这一批的每条（C-1 评审定）",
+      "description": "Common properties (data-design 9.3), only coarse-grained device information; sent once per batch and copied to every entry of the batch when the server stores it (decided in the C-1 review) / 共通プロパティ（data-design 9.3）。粗い粒度の端末情報だけを含む。バッチごとに 1 回送り、サーバーが保存するときにそのバッチの各項目へコピーする（C-1 レビューで決定）",
       "type": "object",
       "additionalProperties": false,
       "required": ["deviceClass", "os", "browser", "appVersion"],
       "properties": {
         "deviceClass": {
-          "description": "屏幕尺寸类：逻辑像素加 DPR，如 ios-390x844@3",
+          "description": "Screen size class: logical pixels plus DPR, e.g. ios-390x844@3 / 画面サイズの区分：論理ピクセルと DPR。例：ios-390x844@3",
           "type": "string",
           "minLength": 1,
           "maxLength": 64
@@ -33,7 +33,7 @@
           "maxLength": 32
         },
         "browser": {
-          "description": "含 App 内浏览器名",
+          "description": "Includes the name of an in-app browser / アプリ内ブラウザの名前を含む",
           "type": "string",
           "minLength": 1,
           "maxLength": 64
@@ -55,15 +55,15 @@
           "const": "app_open"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -92,15 +92,15 @@
           "const": "mic_permission"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -134,15 +134,15 @@
           "const": "role_selected"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -167,15 +167,15 @@
           "const": "scene_ready"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -191,7 +191,7 @@
               "minimum": 0
             },
             "fromTap": {
-              "description": "点「はじめる」到能走（毫秒）",
+              "description": "From tapping 「はじめる」 to being able to walk (milliseconds) / 「はじめる」をタップしてから歩けるようになるまで（ミリ秒）",
               "type": "integer",
               "minimum": 0
             }
@@ -209,15 +209,15 @@
           "const": "web_vitals"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -260,15 +260,15 @@
           "const": "perf_sample"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -286,7 +286,7 @@
           ],
           "properties": {
             "frameTimeHistogram": {
-              "description": "10 秒的帧时间直方图，固定 9 格，每格是帧数（data-design 9.3）。第 i 格数「上一格上界 < 帧时间 ≤ 这一格上界」的帧，上界依次是 8.5、12、17、20、26、34、51、101 ms，最后一格是 > 101 ms。边界都放在刷新间隔整数倍稍上，同一种掉帧不会拆到两格。格子固定，不同版本前端发来的直方图才能相加；要换边界就另起一个字段",
+              "description": "A 10-second frame-time histogram with 9 fixed buckets, each a frame count (data-design 9.3). Bucket i counts frames with \"previous bucket's upper bound < frame time ≤ this bucket's upper bound\"; the upper bounds are 8.5, 12, 17, 20, 26, 34, 51, 101 ms in order, and the last bucket is > 101 ms. Every boundary sits slightly above an integer multiple of the refresh interval, so the same kind of dropped frame does not split across two buckets. The buckets are fixed so that histograms from different frontend versions can be added up; changing the boundaries requires a new field / 10 秒間のフレーム時間のヒストグラム。9 つの固定の区間で、各区間はフレーム数（data-design 9.3）。第 i 区間は「前の区間の上限 < フレーム時間 ≤ この区間の上限」のフレームを数える。上限は順に 8.5、12、17、20、26、34、51、101 ms で、最後の区間は > 101 ms。境界はすべてリフレッシュ間隔の整数倍の少し上に置くので、同じ種類のフレーム落ちが 2 つの区間に分かれることはない。区間を固定しているので、異なるバージョンのフロントエンドから送られたヒストグラムを足し合わせられる。境界を変えるときは別のフィールドを新設する",
               "type": "array",
               "items": {
                 "type": "integer",
@@ -339,15 +339,15 @@
           "const": "quality_changed"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -366,7 +366,7 @@
               "enum": ["start", "down", "up", "lowPower", "locked"]
             },
             "probeGpuMs": {
-              "description": "起始档自测的一帧 GPU 耗时（ms），reason = start 时带；取到 0.1 ms（防设备指纹，data-design 9.3）",
+              "description": "GPU time of one frame from the starting-tier self-test (ms), included when reason = start; rounded to 0.1 ms (to prevent device fingerprinting, data-design 9.3) / 開始時の段階の自己テストでの 1 フレームの GPU 所要時間（ms）。reason = start のときに含める。0.1 ms 単位に丸める（端末フィンガープリント防止、data-design 9.3）",
               "type": "number",
               "minimum": 0
             },
@@ -388,15 +388,15 @@
           "const": "gl_context_lost"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -421,15 +421,15 @@
           "const": "talk_turn"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -453,7 +453,7 @@
               "$ref": "#/$defs/InputMode"
             },
             "clientReleaseToAudibleMs": {
-              "description": "松手到听到声音（毫秒），和 turn_complete.metrics 按 turnId 对齐",
+              "description": "From releasing the button to hearing sound (milliseconds), matched with turn_complete.metrics by turnId / ボタンを離してから音声が聞こえるまで（ミリ秒）。turn_complete.metrics と turnId で対応付ける",
               "type": "integer",
               "minimum": 0
             },
@@ -477,15 +477,15 @@
           "const": "turn_retracted"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -518,15 +518,15 @@
           "const": "transcript_corrected"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -551,15 +551,15 @@
           "const": "confirm_answered"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -585,15 +585,15 @@
           "const": "approach_shown"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -618,15 +618,15 @@
           "const": "approach_ended"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -655,15 +655,15 @@
           "const": "act_plan_result"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -699,15 +699,15 @@
           "const": "sonokoro_viewed"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -737,15 +737,15 @@
           "const": "map_opened"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -771,15 +771,15 @@
           "const": "why_opened"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -788,7 +788,7 @@
           "required": ["target", "fromKeyMoment"],
           "properties": {
             "target": {
-              "description": "和 api-contract 2.6 /why 的 target 一一对应（data-design 9.3）：reveal = 关键时刻卡上的「なぜ」，forecast = 地图顶部「間に合わない」那一行的「なぜ」",
+              "description": "Maps one-to-one to the target of /why in api-contract 2.6 (data-design 9.3): reveal = the 「なぜ」 on a key-moment card, forecast = the 「なぜ」 on the 「間に合わない」 line at the top of the map / api-contract 2.6 の /why の target と 1 対 1 で対応する（data-design 9.3）：reveal = 重要な瞬間のカードの「なぜ」、forecast = 地図上部の「間に合わない」の行の「なぜ」",
               "type": "string",
               "enum": ["event", "beat", "reveal", "forecast"]
             },
@@ -809,15 +809,15 @@
           "const": "memory_book_opened"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -837,15 +837,15 @@
           "const": "memory_section_viewed"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -871,15 +871,15 @@
           "const": "memory_deleted"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -904,15 +904,15 @@
           "const": "app_resumed"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -948,15 +948,15 @@
           "const": "continue_started"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -982,15 +982,15 @@
           "const": "connection_lost"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -1017,15 +1017,15 @@
           "const": "connection_restored"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -1051,15 +1051,15 @@
           "const": "ending_performed"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -1080,27 +1080,27 @@
               "enum": ["deadline", "story-closed"]
             },
             "playMs": {
-              "description": "演出实际跑的毫秒，不含暂停（后台、全屏页面、「タップして続ける」等着的那段）",
+              "description": "Milliseconds the staging actually ran, excluding pauses (background, full-screen pages, waiting on 「タップして続ける」) / 演出が実際に動いたミリ秒。一時停止（バックグラウンド、全画面ページ、「タップして続ける」で待っている間）は含まない",
               "type": "integer",
               "minimum": 0
             },
             "pausedMs": {
-              "description": "暂停的毫秒合计",
+              "description": "Total milliseconds paused / 一時停止したミリ秒の合計",
               "type": "integer",
               "minimum": 0
             },
             "taps": {
-              "description": "起作用的点按：补全一句或换下一句；0.5 秒保护期里的、「タップして続ける」那一下不算",
+              "description": "Taps that had an effect: completing a line or moving to the next one; taps within the 0.5-second guard period and the 「タップして続ける」 tap do not count / 効果のあったタップ：一文を最後まで出す、または次の文に進む。0.5 秒の保護期間内のタップと「タップして続ける」のタップは数えない",
               "type": "integer",
               "minimum": 0
             },
             "lines": {
-              "description": "这次演出的句数",
+              "description": "Number of lines in this staging / この演出の文の数",
               "type": "integer",
               "minimum": 0
             },
             "autoAdvance": {
-              "description": "「結末を自動で進める」开着（开演时的值，开演以后改不了）",
+              "description": "「結末を自動で進める」 is on (the value when the staging starts; it cannot be changed after that) / 「結末を自動で進める」がオン（演出開始時の値。開始後は変更できない）",
               "type": "boolean"
             }
           }
@@ -1117,15 +1117,15 @@
           "const": "ending_viewed"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -1155,15 +1155,15 @@
           "const": "ending_closed"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -1192,15 +1192,15 @@
           "const": "ending_card_saved"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -1225,15 +1225,15 @@
           "const": "ending_shared"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -1261,15 +1261,15 @@
           "const": "replay_started"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -1297,15 +1297,15 @@
           "const": "degraded_shown"
         },
         "playthroughId": {
-          "description": "没有局时省略",
+          "description": "Omitted when there is no playthrough / プレイがないときは省略",
           "$ref": "../data/common.schema.json#/$defs/PlaythroughId"
         },
         "clientTs": {
-          "description": "真实时间：设备的钟，ISO 8601 UTC，以 Z 结尾（data-design 9.3）",
+          "description": "Real time: the device clock, ISO 8601 UTC, ending in Z (data-design 9.3) / 実時間：端末の時計。ISO 8601 UTC で末尾は Z（data-design 9.3）",
           "$ref": "../data/common.schema.json#/$defs/RecordedAt"
         },
         "t": {
-          "description": "故事时间，有的话",
+          "description": "Story time, if any / 物語時間（あれば）",
           "$ref": "../data/common.schema.json#/$defs/StoryTime"
         },
         "props": {
@@ -1323,7 +1323,7 @@
       "title": "TelemetryDegradedShown"
     },
     "TelemetryEvent": {
-      "description": "一条遥测事件，按 name 区分（data-design 9.3）",
+      "description": "One telemetry event, distinguished by name (data-design 9.3) / テレメトリのイベント 1 件。name で区別する（data-design 9.3）",
       "oneOf": [
         {
           "$ref": "#/$defs/TelemetryAppOpen"
@@ -1425,7 +1425,7 @@
       "title": "TelemetryEvent"
     },
     "TelemetryBatch": {
-      "description": "POST /v1/telemetry 的请求体：一批 ≤ 50 条。不含音频、原话、记忆文本",
+      "description": "Request body of POST /v1/telemetry: a batch of ≤ 50 entries. Contains no audio, verbatim utterances or memory text / POST /v1/telemetry のリクエストボディ：1 バッチ 50 件以内。音声、発言そのもの、記憶のテキストは含まない",
       "type": "object",
       "additionalProperties": false,
       "required": ["common", "events"],

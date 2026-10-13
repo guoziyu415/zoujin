@@ -1,25 +1,69 @@
-"""叙事者骨架（B-0 第 7 条）：按局取任务 → 事务外提取和检查 → 单事务提交 → NOTIFY。
+"""Narrator skeleton (B-0 item 7): take tasks per game → extraction and checks outside the transaction →
+single-transaction commit → NOTIFY.
 
-任务就是 turns 表的一行（backend-design 3.4）：
-- open：开局。W-1 的 initial_state，settle 到身份的 startT，开局前到点的节拍写成系统事件。
-- talk：一轮对话。流水线（`narrator/pipeline.py`：分流 → 提取 → 第 3 步规则 → 第 4 步模型检查 → 改写、降级或拒绝）→
-  提交候选事件（被否决的也写，effects 为空）、这一轮的时间（一条只推进时钟的 say 事件）和这段时间里到点的节拍。
-  提取或检查两次都超时：只提交时钟事件，候选丢弃，`playthrough_metrics` 记一次。
-- advance：快进（只给测试和评测）。
-- B-3：action（动作，`narrator/actions.py`）、choose（幕末选去处）、plan（幕末说出打算，`narrator/plans.py`）。
-  每次提交以后看这一幕收了没有（`Writer.closed`）：收了就把幕末的去处记在局上，推 `act_ended`。收幕以后、选定之前
-  才轮到的对话和动作 0 分、不写事件、不调模型。提交以后要推的消息（固定演出、turn_settled、action_result、
-  act_plan_result、act_transition、act_ended）按顺序记在 `turns.result`，网关推完 commit 以后照着推。
-- B-4：confirm（回答意图确认，`narrator/confirm.py`）；对话里要确认的候选存成草稿。对话和用声音说的打算有提交窗口
-  （`turns.commit_after`）：判完、没到时候就等（不占事务），这期间网关可以把这一轮作废（`status = retracted`），
-  提交时发现不是 leased 就丢掉结果、不推任何消息。取任务之前先给到期的草稿写超时的任务。
-- B-13：提交的事件里有要写记忆的（`narrator/memory.py`），提交的事务里先不 NOTIFY；事务之后并行调模型写记忆
-  （不占事务、不重发），第二个事务存记忆、记计数、把这次的记忆变化记进 `turns.result.memories`，再 NOTIFY。
-  写记忆出了任何错也照样 NOTIFY，这一轮的结果不受影响。
+A task is a row of the turns table (backend-design 3.4):
+- open: start a game. W-1's initial_state, settled to the role's startT, with beats due before the start written as
+  system events.
+- talk: one dialogue turn. The pipeline (`narrator/pipeline.py`: triage → extraction → step 3 rules → step 4 model
+  check → rewrite, downgrade or reject) → commit the candidate events (rejected ones too, with empty effects), the
+  turn's time (a say event that only advances the clock), and the beats that come due in that time. If extraction or
+  check times out twice: commit only the clock event, drop the candidates, and record one in `playthrough_metrics`.
+- advance: fast-forward (only for tests and evals).
+- B-3: action (`narrator/actions.py`), choose (choosing a destination at the end of an act), plan (stating a plan at
+  the end of an act, `narrator/plans.py`). After each commit, check whether the act has closed (`Writer.closed`): if
+  so, record the end-of-act destinations on the run and push `act_ended`. Dialogue and actions whose turn comes after
+  the act closes and before a choice is made take 0 minutes, write no events and call no models. Messages to push after
+  commit (set pieces, turn_settled, action_result, act_plan_result, act_transition, act_ended) are recorded in order in
+  `turns.result`, and the gateway pushes them in that order after pushing the commit.
+- B-4: confirm (answering an intent confirmation, `narrator/confirm.py`); candidates in dialogue needing confirmation
+  are stored as drafts. Dialogue and plans spoken by voice have a commit window (`turns.commit_after`): once judged,
+  wait if it isn't time yet (without holding a transaction); meanwhile the gateway may retract the turn
+  (`status = retracted`), and if commit finds it is no longer leased, the result is dropped and no message is pushed.
+  Before taking a task, write timeout tasks for drafts that have expired.
+- B-13: if the committed events call for memories (`narrator/memory.py`), the commit transaction doesn't NOTIFY yet;
+  after the transaction the model writes the memories in parallel (no transaction held, no resend), and a second
+  transaction stores them, records the counts, writes this commit's memory changes into `turns.result.memories`, and
+  then NOTIFYs. Whatever goes wrong while writing memories, NOTIFY still happens, and the turn's result is unaffected.
 
-同一局严格串行：取任务时锁住这一局的行，有没过期的租约就不取。提交时再锁一次、校验 lastSeq 没变；变了就丢弃，
-用新状态从第 3 步重来（不重新提取）。任何一步失败整轮回滚，任务放回队列，用同一个幂等键重试，三次都失败记 no_response。
-账本到上限（`BudgetStop`）、第一个 429（`RateLimited`）、回放缺失（`ReplayMissing`）不重试：任务放回队列，异常往上抛。
+Strictly serial per game: taking a task locks the game's row, and nothing is taken while an unexpired lease exists.
+Commit locks again and verifies lastSeq hasn't changed; if it has, the result is dropped and redone from step 3 with
+the new state (without re-extracting). Any failed step rolls back the whole turn, the task goes back on the queue and
+is retried with the same idempotency key; after three failures it is recorded as no_response. The ledger hitting its
+limit (`BudgetStop`), the first 429 (`RateLimited`) and a missing replay (`ReplayMissing`) aren't retried: the task
+goes back on the queue and the exception is raised.
+
+ナレーターの骨組み（B-0 第 7 項）：ゲームごとにタスクを取る → トランザクションの外で抽出と検査 →
+単一トランザクションでコミット → NOTIFY。
+
+タスクは turns テーブルの 1 行（backend-design 3.4）：
+- open：ゲーム開始。W-1 の initial_state から役柄の startT まで settle し、
+  開始前に時刻が来たビートはシステムイベントとして
+  書く。
+- talk：対話 1 ターン。パイプライン（`narrator/pipeline.py`：振り分け → 抽出 → 第 3 ステップの規則 → 第 4 ステップの
+  モデルの検査 → 書き換え、格下げ、または却下）→ 候補イベント（却下されたものも effects を空にして書く）、このターンの
+  時間（時計を進めるだけの say イベント 1 つ）、その間に時刻が来たビートをコミットする。抽出か検査が 2 回とも
+  タイムアウトしたら、時計のイベントだけをコミットし、候補は捨て、`playthrough_metrics` に 1 回記録する。
+- advance：早送り（テストと評価専用）。
+- B-3：action（アクション、`narrator/actions.py`）、choose（幕末の行き先の選択）、plan（幕末のプランの表明、
+  `narrator/plans.py`）。コミットのたびにこの幕が閉じたかを見る（`Writer.closed`）：
+  閉じたら幕末の行き先をゲームに記録し、
+  `act_ended` をプッシュする。幕を閉じたあと、選ぶ前に順番が来た対話とアクションは 0 分で、イベントを書かず、モデルも
+  呼ばない。コミット後にプッシュするメッセージ（演出、turn_settled、action_result、act_plan_result、act_transition、
+  act_ended）は順に `turns.result` に記録し、ゲートウェイは commit をプッシュしたあとその順にプッシュする。
+- B-4：confirm（意図の確認への返答、`narrator/confirm.py`）。対話で確認が要る候補は下書きとして保存する。対話と音声で
+  言ったプランにはコミットの猶予（`turns.commit_after`）がある：判定が済んでも時間前なら待ち（トランザクションは
+  保持しない）、その間ゲートウェイはこのターンを取り消せる（`status = retracted`）。コミット時に leased でなくなって
+  いれば結果を捨て、メッセージは何もプッシュしない。タスクを取る前に、期限の来た下書きにタイムアウトのタスクを書く。
+- B-13：コミットしたイベントに記憶を書くべきものがあれば（`narrator/memory.py`）、コミットのトランザクションではまだ
+  NOTIFY しない。トランザクションのあとモデルを並行に呼んで記憶を書き（トランザクションは保持せず、再送もしない）、
+  2 つ目のトランザクションで記憶を保存し、件数を記録し、今回の記憶の変化を `turns.result.memories` に書いてから
+  NOTIFY する。記憶の書き込みで何が起きても NOTIFY はし、このターンの結果には影響しない。
+
+同じゲームは厳密に直列：タスクを取るときにこのゲームの行をロックし、期限切れでないリースがあれば取らない。コミット時に
+もう一度ロックして lastSeq が変わっていないか確かめる。変わっていれば結果を捨て、新しい状態で第 3 ステップから
+やり直す（抽出はやり直さない）。どのステップで失敗してもターン全体をロールバックし、タスクをキューに戻して同じ冪等キーで
+再試行する。3 回とも失敗したら no_response を記録する。台帳が上限に達した（`BudgetStop`）、最初の 429
+（`RateLimited`）、リプレイがない（`ReplayMissing`）ときは再試行しない：タスクをキューに戻し、例外を上に投げる。
 """
 
 from __future__ import annotations
@@ -65,7 +109,7 @@ log = logging.getLogger("zoujin.narrator")
 
 Json = Any
 
-CHANNEL = "zoujin_commit"  # 提交后 NOTIFY，网关 LISTEN
+CHANNEL = "zoujin_commit"  # NOTIFY after commit; the gateway LISTENs / コミット後に NOTIFY し、ゲートウェイが LISTEN する
 LEASE = timedelta(seconds=30)
 MAX_ATTEMPTS = 3
 MAX_STALE = 5
@@ -74,11 +118,17 @@ PASSED = {"status": "passed", "attempts": 1, "failedRules": [], "checker": CHECK
 
 
 class Stale(Exception):
-    """读取后 lastSeq 变了（中间提交了别的东西）：这次结果作废，从第 3 步重来。"""
+    """lastSeq changed after reading (something else was committed in between): this result is void; redo from step 3.
+
+    読み込んだあと lastSeq が変わった（間に別のものがコミットされた）：今回の結果は無効にし、第 3 ステップからやり直す。
+    """
 
 
 class Gone(Exception):
-    """任务已经不归这次处理了（判完了、被作废了、局被删了）。"""
+    """The task no longer belongs to this run (already settled, retracted, or the game was deleted).
+
+    タスクはもう今回の処理の担当ではない（判定済み、取り消された、ゲームが削除された）。
+    """
 
 
 @dataclass(frozen=True)
@@ -91,38 +141,60 @@ class Task:
     minutes: int | None
     key: str
     attempts: int
-    client_msg_id: str | None = None  # B-3：动作、幕末的 clientMsgId
-    request: Json | None = None  # B-3：动作和幕末的请求（turns.request）
-    window_until: float | None = None  # B-4：提交窗口到什么时候（time.monotonic()）；None = 没有窗口
-    flags: frozenset[str] = frozenset()  # B-12：第 0 步安全筛查的标记（turns.flags）
-    # 这次处理已经花的钱（B-8 第 7 条）：从检查重来（Stale）的几遍合在一起；提交了就随提交写进 playthrough_metrics，
-    # 没提交（作废了、出错了、停下了）由 `Narrator.charge` 补记，每局的花费才和账本对得上
+    client_msg_id: str | None = None  # B-3: clientMsgId of actions and end of act / アクションと幕末の clientMsgId
+    request: Json | None = None  # B-3: action and end-of-act request (turns.request) / アクションと幕末のリクエスト
+    # B-4: when the commit window ends (time.monotonic()); None = no window.
+    # B-4：コミットの猶予がいつまでか（time.monotonic()）。None = 猶予なし。
+    window_until: float | None = None
+    flags: frozenset[str] = frozenset()  # B-12: step 0 safety screening flags (turns.flags) / 第 0 ステップの印
+    # Money already spent on this task (B-8 item 7): the passes redone from the check (Stale) added together; when
+    # committed it goes into playthrough_metrics with the commit, and when not (retracted, failed, stopped)
+    # `Narrator.charge` records it, so each game's spend matches the ledger.
+    # この処理ですでに使ったお金（B-8 第 7 項）：検査からやり直した（Stale）分をまとめたもの。コミットしたらコミットと
+    # 一緒に playthrough_metrics に書き、コミットしなかった（取り消し、エラー、停止）
+    # ら `Narrator.charge` が補って記録する。
+    # こうしてゲームごとの支出が台帳と一致する。
     spend: Spend = field(default_factory=Spend, compare=False)
 
 
-# 叙事者的事件带 turnId 的任务（契约 Event.turnId：这一轮、这个动作、这次幕末）
+# Tasks whose narrator events carry turnId (contract Event.turnId: this turn, this action, this end of act).
+# ナレーターのイベントに turnId を付けるタスク（契約 Event.turnId：このターン、このアクション、この幕末）。
 TURN_KINDS = ("talk", "action", "choose", "plan")
-# 失败时也要给前端一个结果的任务（网关按 turns 补推）
+# Tasks that must give the frontend a result even when they fail (the gateway catches up from turns).
+# 失敗してもフロントエンドに結果を返す必要のあるタスク（ゲートウェイが turns から補ってプッシュする）。
 ANSWERED = ("talk", "action", "choose", "plan")
 
 
 @dataclass
 class Planned:
-    """一种任务在提交的事务里写了什么之外的结论。"""
+    """The conclusions of a task beyond what it wrote in the commit transaction.
 
-    outcome: str | None = None  # talk：turn_settled.outcome
-    minutes: int = 0  # 这一轮花了几分钟
+    タスクがコミットのトランザクションで書いたもの以外の結論。
+    """
+
+    outcome: str | None = None  # talk: turn_settled.outcome
+    minutes: int = 0  # minutes this turn took / このターンにかかった分数
     checked: list[Checked] = field(default_factory=list)
-    push: list[Json] = field(default_factory=list)  # 提交以后按顺序推的消息（节拍时机的固定演出之后）
-    info: dict[str, Any] = field(default_factory=dict)  # 评测入口要的（status、narration、accepted…）
-    extra: dict[str, Any] = field(default_factory=dict)  # 记进 turns.result 的（playerSpot、reason）
-    snapshot: bool = False  # push 里的 act_transition 要补落地以后的快照
+    # Messages to push in order after commit (after beat-timed set pieces).
+    # コミット後に順にプッシュするメッセージ（ビートのタイミングの演出のあと）。
+    push: list[Json] = field(default_factory=list)
+    # What the eval entry point needs (status, narration, accepted...).
+    # 評価の入口が要るもの（status、narration、accepted…）。
+    info: dict[str, Any] = field(default_factory=dict)
+    # What goes into turns.result (playerSpot, reason) / turns.result に記録するもの（playerSpot、reason）
+    extra: dict[str, Any] = field(default_factory=dict)
+    # The act_transition in push needs the snapshot after landing filled in.
+    # push の act_transition に着地後のスナップショットを補う必要がある。
+    snapshot: bool = False
     actions: int = 0
     actions_ended: int = 0
     plans_accepted: int = 0
     plans_refused: int = 0
-    # B-4：这一轮要确认的候选（第一个存草稿，其余丢掉）、声音回答了开着的草稿（draftId, yes / no）、
-    # 这次关掉的草稿、确认的计数、丢掉的要确认的候选
+    # B-4: this turn's candidates needing confirmation (the first is stored as a draft, the rest dropped), a voice
+    # answer to the open draft (draftId, yes / no), the draft closed this time, confirmation counts, and dropped
+    # candidates that needed confirmation.
+    # B-4：このターンの確認が要る候補（最初のものを下書きに保存し、残りは捨てる）、開いている下書きへの音声の返答
+    # （draftId, yes / no）、今回閉じた下書き、確認の件数、捨てた確認が要る候補。
     proposals: list[confirm.Proposal] = field(default_factory=list)
     answer: tuple[str, str] | None = None
     close_draft: str | None = None
@@ -132,13 +204,18 @@ class Planned:
     confirms_timeout: int = 0
     confirms_rejected: int = 0
     dropped: int = 0
-    world_events: int = 0  # B-16：世界推进写的人物打算的事件、导演事件
+    # B-16: character plan events and director events written by world advancement.
+    # B-16：世界の進行が書いた登場人物のプランのイベントとディレクターのイベント。
+    world_events: int = 0
     director_events: int = 0
 
 
 @dataclass
 class Result:
-    """一次提交写了什么（评测的 StepResult、测试用）。"""
+    """What one commit wrote (for the eval's StepResult and tests).
+
+    1 回のコミットで書いたもの（評価の StepResult とテスト用）。
+    """
 
     task: Task
     events: list[Json]
@@ -146,14 +223,20 @@ class Result:
     outcome: str | None = None
     minutes: int = 0
     checked: list[Checked] = field(default_factory=list)
-    push: list[Json] = field(default_factory=list)  # 网关要推的（固定演出、结果、幕末、幕切换）
+    # What the gateway should push (set pieces, results, end of act, act transition).
+    # ゲートウェイがプッシュするもの（演出、結果、幕末、幕切り替え）。
+    push: list[Json] = field(default_factory=list)
     info: dict[str, Any] = field(default_factory=dict)
-    pieces: list[str] = field(default_factory=list)  # 这次演的固定演出 ID
-    memories: list[Json] = field(default_factory=list)  # B-13：这次写的记忆（memory_items 的行）
+    pieces: list[str] = field(default_factory=list)  # set piece IDs played this time / 今回演じた演出の ID
+    # B-13: memories written this time (memory_items rows) / B-13：今回書いた記憶（memory_items の行）
+    memories: list[Json] = field(default_factory=list)
 
 
 def talk_minutes(book: Book, state: SimState) -> int:
-    """一来一回的故事时间：第一〜三幕 10 分，第四幕 15 分（api-contract 3.7）。"""
+    """Story time for one exchange: 10 minutes in acts 1-3, 15 minutes in act 4 (api-contract 3.7).
+
+    1 往復の物語の時間：第一〜三幕は 10 分、第四幕は 15 分（api-contract 3.7）。
+    """
     act4 = max(book.world["acts"], key=lambda a: a["order"])["start"]["t"]
     key = "talkTurnMinutesAct4" if state["t"] >= act4 else "talkTurnMinutes"
     return int(book.world["pacing"][key])
@@ -166,15 +249,23 @@ class Narrator:
     text: TextModel
     schemas: SchemaBook
     ids: IdGen = field(default_factory=IdGen)
-    # 测试用：提交的每一步之前调用（步骤名），抛异常就是在这一步失败
+    # For tests: called before each commit step (with the step name); raising fails that step.
+    # テスト用：コミットの各ステップの前に呼ぶ（ステップ名を渡す）。例外を投げるとそのステップで失敗する。
     fault: Callable[[str], None] = field(default=lambda step: None)
-    # 测试用：检查完、提交前调用（模拟中间有别的提交）
+    # For tests: called after checking and before commit (simulates another commit in between).
+    # テスト用：検査のあと、コミットの前に呼ぶ（間に別のコミットがあった状況を再現する）。
     before_commit: Callable[[Task], Awaitable[None]] | None = None
     tracer: Tracer = field(default_factory=Tracer)
     deadlines: Mapping[str, float] = field(default_factory=lambda: dict(DEADLINES))
-    on_rate_limit: str = "stop"  # 服务玩家的叙事者（narrator/app.py）是 "degrade"，见 Pipeline
-    armor: Armor | None = None  # B-13：记忆一句的第二道过滤（None = 不过这一道，只给测试）
-    world_advance: bool = True  # B-16：世界推进（幕切换、关键时刻之后、每幕中段）；False = 不调模型、不排任务
+    # The player-facing narrator (narrator/app.py) uses "degrade"; see Pipeline.
+    # プレイヤー向けのナレーター（narrator/app.py）は "degrade"。Pipeline を参照。
+    on_rate_limit: str = "stop"
+    # B-13: the second filter for memory lines (None = skip it; tests only).
+    # B-13：記憶の一文に対する 2 段目のフィルター（None = このフィルターを通さない。テスト専用）。
+    armor: Armor | None = None
+    # B-16: world advancement (act transitions, after key moments, mid-act); False = no model calls, no tasks queued.
+    # B-16：世界の進行（幕切り替え、重要な瞬間のあと、各幕の中盤）。False = モデルを呼ばず、タスクも積まない。
+    world_advance: bool = True
 
     def __post_init__(self) -> None:
         self.pipeline = Pipeline(self.text, self.schemas, self.ids, self.tracer, self.deadlines, self.on_rate_limit)
@@ -187,10 +278,13 @@ class Narrator:
             raise_stops=self.on_rate_limit == "stop",
         )
 
-    # —— 取任务 ——
+    # —— Taking tasks / タスクを取る ——
 
     async def run(self, pid: str) -> list[Result]:
-        """把这一局排着的任务按顺序做完；别的进程正在做这一局时直接返回。"""
+        """Work through this game's queued tasks in order; return right away if another process is working on it.
+
+        このゲームに積まれたタスクを順に片づける。別のプロセスがこのゲームを処理中ならすぐ戻る。
+        """
         done: list[Result] = []
         while True:
             await self.expire(pid)
@@ -200,21 +294,28 @@ class Narrator:
             try:
                 done.append(await self.process(task))
             except Gone:
-                log.info("任务 %s 已经不用做了", task.turn_id)
+                log.info("Task %s no longer needs doing / タスクはもう不要", task.turn_id)
                 await self.charge(task)
-            except (Stop, ReplayMissing) as e:  # 不重试：放回队列，整次停下
-                log.warning("任务 %s 停下：%s", task.turn_id, type(e).__name__)
+            # Not retried: back on the queue, and the whole run stops / 再試行しない：キューに戻し、全体を止める
+            except (Stop, ReplayMissing) as e:
+                log.warning("Task %s stopped: %s / タスクを停止", task.turn_id, type(e).__name__)
                 await self.charge(task)
                 await self.release(task, failed=False)
                 raise
             except Exception:
-                log.exception("任务 %s 第 %d 次失败", task.turn_id, task.attempts)
+                log.exception("Task %s failed (attempt %d) / タスクが失敗", task.turn_id, task.attempts)
                 await self.charge(task)
                 await self.release(task, failed=task.attempts >= MAX_ATTEMPTS)
 
     async def charge(self, task: Task) -> None:
-        """这次处理没提交（这一轮被作废、局被删、出错重来、停下），已经花的钱照样记进这一局的 `playthrough_metrics`
-        （B-8 第 7 条：作废的一轮在窗口里花的、失败后重来的那几次）。局已经删了就没处记（0 行）。"""
+        """This run didn't commit (the turn was retracted, the game deleted, an error retried, or a stop), but the money
+        already spent still goes into the game's `playthrough_metrics` (B-8 item 7: what a retracted turn spent in its
+        window, and the retries after failures). If the game is already deleted there is nowhere to record it (0 rows).
+
+        今回の処理はコミットしなかった（ターンの取り消し、ゲームの削除、エラーでのやり直し、停止）が、すでに使ったお金は
+        このゲームの `playthrough_metrics` に記録する（B-8 第 7 項：取り消されたターンが猶予中に使った分、失敗後に
+        やり直した分）。ゲームがすでに削除されていれば記録先がない（0 行）。
+        """
         if not any(task.spend.usd.values()):
             return
         async with self.engine.begin() as c:
@@ -226,10 +327,15 @@ class Narrator:
         task.spend.usd.clear()
 
     async def expire(self, pid: str) -> None:
-        """到期的草稿写超时的任务（B-4：网关的 30 秒计时随连接断了也能关掉）。"""
+        """Write timeout tasks for expired drafts (B-4: so they close even if the gateway's 30-second timer went away
+        with its connection).
+
+        期限の来た下書きにタイムアウトのタスクを書く（B-4：
+        ゲートウェイの 30 秒のタイマーが接続とともに消えても閉じられる）。
+        """
         async with self.engine.begin() as c:
             for draft_id in await store.expire_drafts(c, self.ids, pid):
-                log.info("草稿 %s 到期，写超时的任务", draft_id)
+                log.info("Draft %s expired; writing a timeout task / 下書きの期限切れ、タイムアウトのタスクを書く", draft_id)
 
     async def claim(self, pid: str) -> Task | None:
         async with self.engine.begin() as c:
@@ -290,7 +396,12 @@ class Narrator:
             )
 
     async def wait_window(self, task: Task) -> None:
-        """提交窗口（B-4）：判完了、还没到 commit_after 就等，不占事务。这期间这一轮可能被作废，提交时会发现。"""
+        """The commit window (B-4): once judged, wait until commit_after without holding a transaction. The turn may be
+        retracted meanwhile; commit will notice.
+
+        コミットの猶予（B-4）：判定が済んでも commit_after 前なら待ち、トランザクションは保持しない。その間にターンが
+        取り消されることがあり、コミット時に分かる。
+        """
         if task.window_until is not None:
             await asyncio.sleep(max(0.0, task.window_until - time.monotonic()))
 
@@ -320,12 +431,14 @@ class Narrator:
                 last = await c.scalar(select(playthroughs.c.last_seq).where(playthroughs.c.playthrough_id == task.pid))
                 await self._notify(c, task, seq=int(last or 0), outcome="no_response")
 
-    # —— 处理 ——
+    # —— Processing / 処理 ——
 
     async def process(self, task: Task) -> Result:
         if task.kind == ending.KIND:
             return await ending.run_ending(self, task)
-        if await self._ended(task.pid):  # 进了结局以后才轮到的：不写事件、不调模型（B-9）
+        # Its turn came only after the ending started: no events, no model calls (B-9).
+        # エンディングに入ってから順番が来たもの：イベントを書かず、モデルも呼ばない（B-9）。
+        if await self._ended(task.pid):
             return await self._commit(task, None, lambda w, book: self._after_end(task))
         if task.kind == "open":
             return await self._commit(task, None, lambda w, book: self._open(w, book))
@@ -350,7 +463,7 @@ class Narrator:
             return await confirm.run_confirm(self, task)
         if task.kind == advance.KIND:
             return await advance.run_world(self, task)
-        raise ValueError(f"不认识的任务 {task.kind}")
+        raise ValueError(f"Unknown task {task.kind} / 不明なタスク {task.kind}")
 
     async def _ended(self, pid: str) -> bool:
         async with self.engine.connect() as c:
@@ -360,7 +473,12 @@ class Narrator:
         return bool(status != "active")
 
     def _after_end(self, task: Task) -> Planned:
-        """结局开始以后才轮到的任务：对话 no_response，动作 refused，幕末 invalid_request，别的什么都不推。"""
+        """Tasks whose turn comes only after the ending started: dialogue gets no_response, actions refused, end of act
+        invalid_request; nothing is pushed for the rest.
+
+        エンディング開始後に順番が来たタスク：対話は no_response、アクションは refused、幕末は invalid_request、
+        それ以外は何もプッシュしない。
+        """
         from zoujin_backend.narrator.actions import ended
         from zoujin_backend.narrator.plans import INVALID_REQUEST, invalid
 
@@ -382,7 +500,9 @@ class Narrator:
 
     async def _talk(self, task: Task) -> Result:
         pt, state = await self.read(task.pid)
-        if pt["act_end"] is not None:  # 收幕以后才轮到：no_response、0 分、不调模型
+        # Its turn came after the act closed: no_response, 0 minutes, no model calls.
+        # 幕を閉じたあとに順番が来た：no_response、0 分、モデルを呼ばない。
+        if pt["act_end"] is not None:
             await self.wait_window(task)
             return await self._commit(task, pt["last_seq"], lambda w, book: self._ended_talk(task))
         book = self.library.version(pt["world_model_version"])
@@ -394,11 +514,15 @@ class Narrator:
             mode=task.input_mode or "voice",
             flags=task.flags,
         )
-        spend = task.spend  # 跟着任务走：重来的、没提交的也算（B-8 第 7 条）
+        # Follows the task: retries and uncommitted attempts count too (B-8 item 7).
+        # タスクに付いて回る：やり直しやコミットしなかった分も数える（B-8 第 7 項）。
+        spend = task.spend
         span = {"playthrough_id": task.pid, "turn_id": task.turn_id}
         draft = await self._waiting(task)
         asking = {"prompt": draft["prompt"], "summary": draft["candidate"]["summary"]} if draft else None
-        if "ambiguous" in turn.flags and asking is None:  # S-069：似是而非的一句不提取事件，只记时间（B-12）
+        # S-069: an ambiguous line extracts no events, only records time (B-12).
+        # S-069：どちらとも取れる一言からはイベントを抽出せず、時間だけを記録する（B-12）。
+        if "ambiguous" in turn.flags and asking is None:
             extracted = Extracted([], Counts())
         else:
             extracted = await self.pipeline.extract(book, state, turn, spend, span, drafts=True, confirm=asking)
@@ -417,12 +541,18 @@ class Narrator:
                 counts = extracted.counts + verified.counts
                 return await self._commit(task, pt["last_seq"], plan, spend=spend, counts=counts)
             except Stale:
-                log.info("lastSeq 变了，%s 从检查重来", task.turn_id)
+                log.info("lastSeq changed; checking %s again / lastSeq が変わったので検査からやり直す", task.turn_id)
                 pt, state = await self.read(task.pid)
-        raise RuntimeError(f"{task.turn_id}：lastSeq 一直在变")
+        raise RuntimeError(f"{task.turn_id}: lastSeq keeps changing / {task.turn_id}：lastSeq が変わり続けている")
 
     async def _lines(self, turn_id: str) -> dict[str, str | None]:
-        """这一轮玩家和人物的原话。人物的取第一句：意图确认的反问（B-4）也挂在原来那一轮下面，排在回答之后。"""
+        """This turn's words from the player and the character. For the character take the first line: the intent
+        confirmation's counter-question (B-4) is also attached to the original turn, after the reply.
+
+        このターンのプレイヤーと登場人物の発話。登場人物は最初の一言を取る：意図の確認の聞き返し（B-4）
+        も元のターンの下に
+        ぶら下がり、返答のあとに並ぶ。
+        """
         async with self.engine.connect() as c:
             rows = (
                 await c.execute(
@@ -437,7 +567,12 @@ class Narrator:
         return out
 
     async def _waiting(self, task: Task) -> dict[str, Any] | None:
-        """这一轮是对着反问的人物说的、草稿还开着（没到期、还没有回答）：提取要判这句话是不是在回答（B-4）。"""
+        """This turn is addressed to the character who asked back, and the draft is still open (not expired, not yet
+        answered): extraction must judge whether the line is an answer (B-4).
+
+        このターンは聞き返した登場人物に向けたもので、下書きがまだ開いている（期限前で、まだ返答がない）：抽出は
+        その一言が返答かどうかを判定する（B-4）。
+        """
         async with self.engine.connect() as c:
             draft = await store.open_draft(c, task.pid)
             if draft is None or draft["character"] != task.character:
@@ -448,7 +583,8 @@ class Narrator:
                 return None
         return draft
 
-    # —— 每种任务写哪些事件（在提交的事务里、锁着这一局时调用）——
+    # —— Which events each task kind writes (called inside the commit transaction while the game is locked) ——
+    # —— タスクの種類ごとに書くイベント（コミットのトランザクションの中、このゲームをロックしている間に呼ぶ） ——
 
     def _open(self, w: Writer, book: Book) -> Planned:
         role = role_of(book.world, w.state["role"])
@@ -472,8 +608,13 @@ class Narrator:
         return Planned()
 
     def _advance(self, w: Writer, minutes: int) -> Planned:
-        """结算到 t0 + minutes，再写一个只推进时钟的事件（契约：时钟只由事件推出）。这一幕在这段时间里收了，就停在
-        收幕那一刻；收了幕、还没选定时不动。"""
+        """Settle to t0 + minutes, then write an event that only advances the clock (contract: the clock is only moved
+        by events). If the act closes during that time, stop at the moment it closes; after it has closed and before a
+        choice is made, don't move.
+
+        t0 + minutes まで精算し、時計を進めるだけのイベントを 1 つ書く（契約：時計はイベントだけで進める）。その間に
+        この幕が閉じたら閉じた時点で止める。幕を閉じたあと、まだ選んでいないときは動かさない。
+        """
         if w.run.act_end is not None:
             return Planned()
         t0 = w.state["t"]
@@ -527,7 +668,9 @@ class Narrator:
         for i, c in enumerate(checked):
             cand = c.candidate
             ask = asks[i] if asks is not None and i < len(asks) else None
-            if confirm.proposes(c, ask):  # 要确认：不写进日志，提交时存成草稿（B-4）
+            # Needs confirmation: not written to the log; stored as a draft at commit (B-4).
+            # 確認が要る：ログには書かず、コミット時に下書きとして保存する（B-4）。
+            if confirm.proposes(c, ask):
                 assert ask is not None
                 question = confirm.question_of(ask, said)
                 proposals.append(confirm.Proposal(c, bool(ask.get("asked")), question, cand.get("place", place)))
@@ -590,7 +733,7 @@ class Narrator:
         }
         return Planned(outcome="no_response", push=[settled])
 
-    # —— 单事务提交 ——
+    # —— Single-transaction commit / 単一トランザクションのコミット ——
 
     async def _commit(
         self,
@@ -627,7 +770,10 @@ class Narrator:
             ).first()
             state: SimState = cast(SimState, row[0]) if row else initial_state(book.world, pt["role_id"])
             if state["seq"] != pt["last_seq"]:
-                raise RuntimeError(f"{task.pid}：world_state 的 seq {state['seq']} 和 lastSeq {pt['last_seq']} 不一致")
+                raise RuntimeError(
+                    f"{task.pid}: world_state seq {state['seq']} doesn't match lastSeq {pt['last_seq']}"
+                    f" / {task.pid}：world_state の seq {state['seq']} と lastSeq {pt['last_seq']} が一致しない"
+                )
 
             self.fault("apply")
             w = Writer(
@@ -641,14 +787,19 @@ class Narrator:
             )
             w.run = Run.of(dict(pt))
             planned = plan(w, book)
-            if planned.close_draft is not None:  # 回答了的草稿关掉就删（B-4）
+            # An answered draft is deleted when closed (B-4) / 返答済みの下書きは閉じたら削除する（B-4）
+            if planned.close_draft is not None:
                 await c.execute(delete(drafts).where(drafts.c.draft_id == planned.close_draft))
             trigger = ending.due(book, w.state) if pt["status"] == "active" else None
-            if trigger is not None:  # 进结局（B-9）：结算到收幕、分类、站位
+            # Entering the ending (B-9): settle to the close, classify, and place people.
+            # エンディングに入る（B-9）：幕を閉じるところまで精算し、分類し、立ち位置を決める。
+            if trigger is not None:
                 w.ending = ending.enter(w, book, trigger)
             closing, asking = await confirm.in_commit(self, c, task, w, planned)
             push = list(w.pieces) + list(planned.push)
-            before: list[Json] = []  # 网关排在这次提交的 commit 前面推的（B-9：ending_started）
+            # What the gateway pushes before this commit's commit message (B-9: ending_started).
+            # ゲートウェイがこのコミットの commit より前にプッシュするもの（B-9：ending_started）。
+            before: list[Json] = []
             if w.ending is not None:
                 push.extend(closing)
                 if w.events:
@@ -656,7 +807,11 @@ class Narrator:
                 else:
                     push.insert(0, w.ending["message"])
                 await store.enqueue(c, self.ids, task.pid, kind=ending.KIND, request=w.ending["request"])
-            if w.closed:  # 这一幕在这次提交里收了：幕末的去处记在局上，推 act_ended（api-contract 3.11）
+            # The act closed in this commit: record the end-of-act destinations on the run and push act_ended
+            # (api-contract 3.11).
+            # この幕がこのコミットで閉じた：幕末の行き先をゲームに記録し、
+            # act_ended をプッシュする（api-contract 3.11）。
+            if w.closed:
                 start = await c.scalar(
                     select(func.max(events_t.c.seq)).where(
                         events_t.c.playthrough_id == task.pid,
@@ -668,7 +823,9 @@ class Narrator:
                 w.run.act_end = acts.act_end(book, w.state, 0, [*earlier, *w.events])
                 w.run.plan_tries = 0
                 w.run.plan_alternative = None
-                push.extend(closing)  # 开着的草稿按超时关掉，在 act_ended 之前（B-4）
+                # The open draft is closed as a timeout, before act_ended (B-4).
+                # 開いている下書きはタイムアウトとして閉じ、act_ended の前に置く（B-4）。
+                push.extend(closing)
                 push.append({"type": "act_ended", **w.run.act_end})
             if planned.snapshot:
                 for m in push:
@@ -677,7 +834,9 @@ class Narrator:
                             book, task.pid, pt["role_id"], pt["status"], w.state, w.state["seq"], w.run
                         )
             pieces = [m["pieceId"] for m in push if m["type"] == "set_piece"]
-            todo = memory.seeds(book, state, w.events, task.character)  # B-13：要写的记忆（文字在事务之后由模型写）
+            # B-13: memories to write (the model writes the text after the transaction).
+            # B-13：書く記憶（文章はトランザクションのあとモデルが書く）。
+            todo = memory.seeds(book, state, w.events, task.character)
             role_id = str(pt["role_id"])
             result = Result(
                 task,
@@ -686,14 +845,18 @@ class Narrator:
                 planned.outcome,
                 planned.minutes,
                 planned.checked,
-                [*before, *push],  # 评测和测试看到的顺序就是网关推的顺序（ending_started → commit 之后的）
+                # Evals and tests see the same order the gateway pushes in (ending_started → what follows commit).
+                # 評価とテストが見る順はゲートウェイがプッシュする順と同じ（ending_started → commit のあとのもの）。
+                [*before, *push],
                 planned.info,
                 pieces,
             )
 
             self.fault("validate")
             for ev in w.events:
-                self.schemas.event(ev)  # 不合数据契约就抛 SchemaError，整轮回滚
+                # Not matching the data contract raises SchemaError and rolls back the whole turn.
+                # データ契約に合わなければ SchemaError を投げ、ターン全体をロールバックする。
+                self.schemas.event(ev)
 
             self.fault("events")
             if w.events:
@@ -721,7 +884,9 @@ class Narrator:
             stored = {"push": push, "pieces": pieces, "seq": w.state["seq"], **planned.extra}
             if before:
                 stored["before"] = before
-            if asking is not None:  # 网关推完这一轮的结果以后让人物反问、推 confirm（B-4）
+            # After pushing this turn's result, the gateway has the character ask back and pushes confirm (B-4).
+            # このターンの結果をプッシュしたあと、ゲートウェイが登場人物に聞き返させ confirm をプッシュする（B-4）。
+            if asking is not None:
                 stored["confirm"] = asking
             await c.execute(
                 update(turns)
@@ -733,7 +898,11 @@ class Narrator:
                     lease_until=None,
                     settled_at=func.now(),
                     result=stored,
-                    flags=None,  # B-12：筛查标记只是交给叙事者的，提交的同一个事务里清掉（S-057、S-069 ③）
+                    # B-12: screening flags are only for the narrator; cleared in the same commit transaction
+                    # (S-057, S-069 ③).
+                    # B-12：スクリーニングの印はナレーターに渡すためだけのもので、同じコミットのトランザクションで
+                    # 消す（S-057、S-069 ③）。
+                    flags=None,
                 )
             )
             self.fault("metrics")
@@ -744,12 +913,16 @@ class Narrator:
             await c.execute(
                 update(playthrough_metrics).where(playthrough_metrics.c.playthrough_id == task.pid).values(values)
             )
-            self.fault("notify")  # 有记忆要写时 NOTIFY 在写完记忆以后（`_remember`），注入点照旧在提交的事务里
+            # When memories are to be written, NOTIFY comes after writing them (`_remember`); the fault-injection
+            # point stays in the commit transaction.
+            # 記憶を書くときは NOTIFY を書き終えたあとに行う（`_remember`）。障害注入の位置は従来どおりコミットの
+            # トランザクションの中。
+            self.fault("notify")
             if not todo:
                 await self._notify(c, task, seq=w.state["seq"], outcome=result.outcome)
             self.fault("commit")
         log.info(
-            "提交 %s %s：seq %d〜%d，%d 个事件",
+            "Committed %s %s: seq %d-%d, %d events / コミット",
             task.kind,
             task.turn_id,
             state["seq"] + 1,
@@ -761,8 +934,14 @@ class Narrator:
         return result
 
     async def _schedule_world(self, c: AsyncConnection, task: Task, pt: Mapping[str, Any], w: Writer) -> None:
-        """B-16：对话、动作、确认提交以后排世界推进（在这次的事件写进库以后、同一个事务里）：有 keyMoment 的事件 →
-        `key`；这一幕判完的对话轮次满 8 的倍数 → `mid`。这一幕收了、进了结局、局不在进行中的不排。"""
+        """B-16: queue world advancement after dialogue, action and confirmation commits (after this commit's events
+        are written, in the same transaction): an event with keyMoment → `key`; the act's judged dialogue turns reach a
+        multiple of 8 → `mid`. Nothing is queued if the act has closed, the ending has started, or the game isn't active.
+
+        B-16：対話、アクション、確認のコミットのあとに世界の進行を積む（今回のイベントを書き込んだあと、同じ
+        トランザクションの中で）：keyMoment のイベントがある → `key`。この幕で判定済みの対話ターンが 8 の倍数に達した →
+        `mid`。幕が閉じた、エンディングに入った、ゲームが進行中でないときは積まない。
+        """
         if not self.world_advance or task.kind not in ("talk", "action", "confirm"):
             return
         if pt["status"] != "active" or w.ending is not None or w.closed or w.run.act_end is not None:
@@ -791,7 +970,12 @@ class Narrator:
     async def _remember(
         self, task: Task, book: Book, role_id: str, todo: list[memory.Seed], result: Result
     ) -> list[Json]:
-        """B-13：提交以后写记忆，存好再 NOTIFY。出了任何错也 NOTIFY（这一轮的结果照推），`Stop` 推完再往上抛。"""
+        """B-13: write memories after commit, store them, then NOTIFY. Whatever goes wrong, NOTIFY anyway (the turn's
+        result is still pushed); `Stop` is raised after the push.
+
+        B-13：コミットのあとで記憶を書き、保存してから NOTIFY する。何が起きても NOTIFY はし（このターンの結果は
+        そのままプッシュする）、`Stop` はプッシュのあとで上に投げる。
+        """
         rows: list[Json] = []
         stop: Stop | None = None
         try:
@@ -805,7 +989,10 @@ class Narrator:
         except Stop as e:
             stop = e
         except Exception:
-            log.exception("写记忆失败（%s），这一轮照常推", task.turn_id)
+            log.exception(
+                "Writing memories failed (%s); pushing the turn as usual / 記憶の書き込みに失敗、ターンは通常どおりプッシュする",
+                task.turn_id,
+            )
         async with self.engine.begin() as c:
             await self._notify(c, task, seq=result.state["seq"], outcome=result.outcome)
         if stop is not None:
@@ -815,8 +1002,15 @@ class Narrator:
     async def _store_memories(
         self, c: AsyncConnection, task: Task, book: Book, role_id: str, got: memory.Written
     ) -> list[Json]:
-        """存记忆、记计数和花费；这次的记忆变化（不带文字）记进 turns.result.memories，网关拼 commit 时再取文字。
-        局在这期间被删了：一行也不写（外键），只是这一轮的计数没处记。"""
+        """Store the memories and record counts and cost; this commit's memory changes (without text) go into
+        turns.result.memories, and the gateway fetches the text when building the commit. If the game was deleted
+        meanwhile, not a single row is written (foreign key); only this turn's counts have nowhere to go.
+
+        記憶を保存し、件数と費用を記録する。今回の記憶の変化（文章なし）は turns.result.memories に書き、ゲートウェイが
+        commit を組み立てるときに文章を取る。その間にゲームが削除されていたら 1 行も書かず（外部キー）、
+        このターンの件数を
+        記録する先がないだけ。
+        """
         exists = await c.scalar(
             select(playthroughs.c.playthrough_id).where(playthroughs.c.playthrough_id == task.pid).with_for_update()
         )
@@ -862,7 +1056,10 @@ class Narrator:
         await c.execute(select(func.pg_notify(CHANNEL, json.dumps(payload))))
 
 
-# 一轮写进 playthrough_metrics 的：轮数、各类提示的花费（data-design 第 3 节：每局费用 = 所有 cost_*_usd 之和）、计数
+# What one turn writes into playthrough_metrics: turn count, cost per prompt kind (data-design section 3: cost per game
+# = the sum of all cost_*_usd), and counts.
+# 1 ターンで playthrough_metrics に書くもの：ターン数、プロンプトの種類ごとの費用（data-design 第 3 節：
+# ゲームごとの費用 = すべての cost_*_usd の合計）、件数。
 COST_COLUMNS = {
     "triage": "cost_triage_usd",
     "extract": "cost_extract_usd",
@@ -872,7 +1069,7 @@ COST_COLUMNS = {
     "narrate": "cost_narrate_usd",
     "plan": "cost_plan_usd",
     "ending": "cost_ending_usd",
-    "ending-check": "cost_ending_usd",  # B-17：结局的模型检查算进结局那一列
+    "ending-check": "cost_ending_usd",  # B-17: ending model check counts as ending / エンディングの検査はエンディングの列
     "world": "cost_world_usd",  # B-16
 }
 COUNT_COLUMNS = {
@@ -885,7 +1082,12 @@ COUNT_COLUMNS = {
 }
 
 
-PLANNED_COLUMNS = {  # B-3：动作的次数（收幕时队列里回 refused 的另数），打算成行、不成行的次数；B-4：意图确认
+# B-3: action counts (those refused from the queue at the close of an act counted separately), plans accepted and
+# refused; B-4: intent confirmation.
+# B-3：アクションの回数（幕を閉じたときキューで refused を返したものは別に数える）、
+# プランが実行された・されなかった回数。
+# B-4：意図の確認。
+PLANNED_COLUMNS = {
     "actions": "actions",
     "actions_ended": "actions_act_ended",
     "plans_accepted": "plans_accepted",
@@ -901,7 +1103,12 @@ PLANNED_COLUMNS = {  # B-3：动作的次数（收幕时队列里回 refused 的
 
 
 def cost_values(spend: Spend) -> dict[str, Any]:
-    """各类提示的花费加到这一局已有的数上（data-design 第 3 节：每局费用 = 所有 cost_*_usd 之和）。"""
+    """Add each prompt kind's cost to the game's existing totals (data-design section 3: cost per game = the sum of all
+    cost_*_usd).
+
+    プロンプトの種類ごとの費用をこのゲームの既存の数に足す（data-design 第 3 節：ゲームごとの費用 = すべての cost_*_usd
+    の合計）。
+    """
     m = playthrough_metrics.c
     by_col: dict[str, float] = {}
     for kind, usd in spend.usd.items():
