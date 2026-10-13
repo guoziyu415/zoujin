@@ -63,6 +63,11 @@ def source_hash(repo: Path = REPO) -> str:
             if path.is_file() and path.suffix in {".py", ".json", ".jsonl", ".txt"}:
                 h.update(str(path.relative_to(repo)).encode())
                 h.update(path.read_bytes())
+    # Persona text is model input, including the act-specific evaluation sets.
+    for path in [repo / "evals/personas.json", *sorted((repo / "evals/acts").glob("*/personas.json"))]:
+        if path.is_file():
+            h.update(str(path.relative_to(repo)).encode())
+            h.update(path.read_bytes())
     # Book.Scene.read uses this semantic projection for player movement/observations.
     # Render-only bytes, bake hashes and lighting do not enter text evaluations.
     for path in sorted((repo / "assets/scenes").glob("*/scene.json")):

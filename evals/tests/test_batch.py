@@ -165,3 +165,12 @@ def test_source_fingerprint_includes_scene_semantics_but_not_render_bytes(tmp_pa
     doc["defaultPlace"] = "place.b"
     batch.save(scene, doc)
     assert batch.source_hash(tmp_path) != original
+
+
+@pytest.mark.parametrize("relative", ["evals/personas.json", "evals/acts/act2/personas.json"])
+def test_source_fingerprint_includes_persona_text(tmp_path: Path, relative: str) -> None:
+    path = tmp_path / relative
+    batch.save(path, {"persona": "original"})
+    original = batch.source_hash(tmp_path)
+    batch.save(path, {"persona": "changed"})
+    assert batch.source_hash(tmp_path) != original

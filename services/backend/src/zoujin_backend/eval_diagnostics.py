@@ -14,6 +14,16 @@ from zoujin_backend.narrator.pipeline import CallFailed, Pipeline, Spend
 from zoujin_backend.trace import Span, Tracer
 
 
+def ending_observations(tracer: Tracer) -> dict[str, Any]:
+    """保存结局校验的规则名和尝试状态，不保存文本、提示、模型 ID 或玩家输入。"""
+    names = {"narrator.ending", "narrator.ending-check", "narrator.ending.done", "narrator.ending.unclassified"}
+    keys = {"attempt", "status", "failed_rules", "calls", "template", "reason"}
+    spans = [
+        {"name": s.name, **{k: v for k, v in s.attrs.items() if k in keys}} for s in tracer.spans if s.name in names
+    ]
+    return {"coverage": "captured" if spans else "not-recorded", "spans": spans}
+
+
 @dataclass
 class CallTracer(Tracer):
     parent: Tracer = field(default_factory=Tracer)

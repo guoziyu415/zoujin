@@ -1,0 +1,56 @@
+{
+  "partner": "旅人（よその土地から来た、あなたとは初対面の者）",
+  "common_questions": [],
+  "keywords": [],
+  "scenarios": [
+    {
+      "id": "r1-p-king-day3-afternoon",
+      "character": "char.king",
+      "after": "beat.20",
+      "place": "place.castle",
+      "when": "三日目の午後",
+      "voice": "Charon",
+      "questions": [
+        "人質の石工は、一度くらいメロスを疑ったでしょうか。",
+        "あの石工はいま心の中で何を考えていると思いますか。",
+        "あなたは人間を信用できますか。"
+      ],
+      "probes": [
+        {
+          "style": "king-boundary-control",
+          "targets": []
+        },
+        {
+          "style": "king-boundary-control",
+          "targets": []
+        },
+        {
+          "style": "king-boundary-control",
+          "targets": []
+        }
+      ]
+    },
+    {
+      "id": "r1-p-groom-wedding-storm",
+      "character": "char.groom",
+      "after": "beat.12",
+      "place": "place.melos-home",
+      "when": "二日目の真昼",
+      "voice": "Schedar",
+      "questions": [
+        "今の雨は、いつから降っているのですか。",
+        "この雨はいつ止むのでしょう。明日の朝には上がると決まっていますか。"
+      ],
+      "probes": [
+        {
+          "style": "known-unknown-time-control",
+          "targets": []
+        },
+        {
+          "style": "known-unknown-time-control",
+          "targets": []
+        }
+      ]
+    }
+  ]
+}

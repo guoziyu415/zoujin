@@ -70,7 +70,7 @@ from zoujin_backend.db.tables import (
 from zoujin_backend.db.tables import events as events_t
 from zoujin_backend.db.tables import turns as turns_t
 from zoujin_backend.db.tables import world_state as world_state_t
-from zoujin_backend.eval_diagnostics import ObservedPipeline
+from zoujin_backend.eval_diagnostics import ObservedPipeline, ending_observations
 from zoujin_backend.gateway.monitor import Monitor
 from zoujin_backend.gateway.safety import context_of
 from zoujin_backend.ids import IdGen
@@ -824,6 +824,7 @@ class Session:
             },
             "characterTextMissing": missing,
             "pipelineCalls": copy.deepcopy(self.call_observations),
+            "endingCalls": ending_observations(self.tracer),
             "scope": "text-eval; pipeline terminal states and persisted metrics; live transport not measured",
         }
 

@@ -4,13 +4,39 @@ import asyncio
 from typing import Any
 
 import pytest
-from zoujin_backend.eval_diagnostics import ObservedPipeline
+from zoujin_backend.eval_diagnostics import ObservedPipeline, ending_observations
 from zoujin_backend.ids import IdGen
 from zoujin_backend.models.text import FakeText, ModelCallFailed, TextResult
 from zoujin_backend.narrator.pipeline import CallFailed, Spend
+from zoujin_backend.trace import Tracer
 from zoujin_llm import RateLimited
 
 from .conftest import SCHEMAS
+
+
+def test_ending_rejections_and_retry_are_preserved_without_text_or_model_ids() -> None:
+    tracer = Tracer()
+    assert ending_observations(tracer) == {"coverage": "not-recorded", "spans": []}
+    with tracer.span("narrator.ending", attempt=1, status="rejected", failed_rules=["length"], model="private"):
+        pass
+    with tracer.span("narrator.ending", attempt=2, status="ok", failed_rules=[]):
+        pass
+    with tracer.span("narrator.ending-check", status="rejected"):
+        pass
+    with tracer.span("narrator.ending.done", calls=2, template=True, failed_rules=["coherence"]):
+        pass
+    observed = ending_observations(tracer)
+    assert observed["coverage"] == "captured"
+    assert observed["spans"][0] == {
+        "name": "narrator.ending",
+        "attempt": 1,
+        "status": "rejected",
+        "failed_rules": ["length"],
+    }
+    assert observed["spans"][-1]["failed_rules"] == ["coherence"]
+    assert observed["spans"][-1]["template"] is True
+    assert len(observed["spans"]) == 4
+    assert all("model" not in s for s in observed["spans"])
 
 
 class Failing(FakeText):
