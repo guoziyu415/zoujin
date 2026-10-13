@@ -13,6 +13,7 @@ import path from "node:path";
 import type { Connect, Plugin, Rollup } from "vite";
 import { defineConfig } from "vite";
 import { castDir, sceneDir } from "./scene-dir.ts";
+import { isWorldModule } from "./world-chunk.ts";
 
 // the plaza, the castle (F-14), the road (F-10, F-15: its packs, the shared roadside pack and each road scene's index
 // that picks a pack by act) and the village (F-11) with its sub-packs (pack.json, no scene.json): the room inside
@@ -232,17 +233,7 @@ export default defineConfig({
             {
               name: "world",
               includeDependenciesRecursively: false,
-              test: (id: string) =>
-                /[\\/]node_modules[\\/](three|@react-three[\\/][^\\/]+|suspend-react|its-fine|react-use-measure|zustand[\\/]esm[\\/]traditional|use-sync-external-store)/.test(
-                  id,
-                )
-                  ? !/libs\/basis|examples\/jsm\/(?:postprocessing\/GTAOPass|shaders\/(?:GTAOShader|PoissonDenoiseShader)|math\/SimplexNoise|environments\/RoomEnvironment|geometries\/RoundedBoxGeometry)/.test(
-                      id,
-                    )
-                  : /[\\/]src[\\/]three[\\/]/.test(id) &&
-                    !/scene[\\/](extra|land|clouds|prefetch)|quality[\\/]probe|[\\/](water|dev|castle|road|home)[\\/]|cast[\\/]CastBody|ending[\\/](?!Guard)|crowd[\\/](?!presence)/.test(
-                      id,
-                    ),
+              test: isWorldModule,
             },
           ],
         },
