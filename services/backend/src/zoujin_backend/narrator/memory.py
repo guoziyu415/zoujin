@@ -743,7 +743,7 @@ def item_json(row: Mapping[str, Any]) -> Json:
     return out
 
 
-# —— 記憶帳 ——
+# —— The 記憶帳 (memory book) / 記憶帳 ——
 
 
 async def keeps(

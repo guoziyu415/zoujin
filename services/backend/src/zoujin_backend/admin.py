@@ -17,8 +17,8 @@ cloud service.
   world_state テーブルのものと比べる。一致なら 0、不一致なら 1（不一致のフィールド名を表示し、値は表示しない）、
   そのプレイがなければ 2 で終了する。
 - `voice off|on|status`（B-14）：全体の音声スイッチ（backend-design 5.3 のサーキットブレーカー）。
-  オフにするとゲートウェイが 30 秒以内に読み取り、新しいセッションはすべてテキストモード
-  （`degraded { reason: "service" }`）になる。
+  オフにするとゲートウェイが 30 秒以内に読み取り、新しいセッションはすべて
+  テキストモード（`degraded { reason: "service" }`）になる。
 """
 
 from __future__ import annotations

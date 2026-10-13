@@ -8,11 +8,11 @@ development uses the values in `compose.yaml`.
 
 ゲートウェイとナレーターの設定。環境変数からのみ読む（B-0、B-2）。
 
-クラウドの認証情報・プロジェクト ID・キーの設定項目は一切ない：`ZJ_MODEL=real` のとき、本物のクライアントが
-Mac で明示的に設定されたプロジェクトとリージョン（`models/vertex.py`）、Claude のモデル ID とキー
-（`models/claude.py`）を自分で読み、ほかのモードでは読まない。プロンプトの種類ごとにどのプロバイダー・どのモデル
-（Claude はティア名とバージョンだけ）を使うか、どこまで思考させるか、タイムアウトをどれだけにするかはここにだけ書く
-（B-8）。ローカル開発では `compose.yaml` の値を使う。
+クラウドの認証情報・プロジェクト ID・キーの設定項目は一切ない：`ZJ_MODEL=real` のとき、
+本物のクライアントが Mac で明示的に設定されたプロジェクトとリージョン（`models/vertex.py`）、
+Claude のモデル ID とキー（`models/claude.py`）を自分で読み、ほかのモードでは読まない。
+プロンプトの種類ごとにどのプロバイダー・どのモデル（Claude はティア名とバージョンだけ）を使うか、どこまで思考させるか、
+タイムアウトをどれだけにするかはここにだけ書く（B-8）。ローカル開発では `compose.yaml` の値を使う。
 """
 
 from __future__ import annotations
@@ -38,29 +38,29 @@ class TextSpec:
     """How one prompt kind is called (the list in card B-8). fake and replay use only provider and model, to compute
     the replay key.
 
-    1 種類のプロンプトの呼び方（B-8 カードの一覧）。fake と replay は provider と model だけを使って
-    リプレイのキーを計算する。
+    1 種類のプロンプトの呼び方（B-8 カードの一覧）。fake と replay は provider と model
+    だけを使ってリプレイのキーを計算する。
     """
 
     provider: Provider
     # Google: model ID; Claude: tier name plus version (as written by `zoujin_llm.model_tag`). Used by the replay key,
     # the ledger and `check.checker`. Claude's model IDs are given only on the Mac through environment variables
     # (CLAUDE_TIERS); the call is made only if the recognised tier name plus version equals this one.
-    # Google：モデル ID。Claude：ティア名とバージョン（`zoujin_llm.model_tag` の書き方）。リプレイのキー、台帳、
-    # `check.checker` がこれを使う。Claude のモデル ID は Mac 上で環境変数（CLAUDE_TIERS）からだけ渡し、
+    # Google：モデル ID。Claude：ティア名とバージョン（`zoujin_llm.model_tag` の書き方）。リプレイのキー、
+    # 台帳、`check.checker` がこれを使う。Claude のモデル ID は Mac 上で環境変数（CLAUDE_TIERS）からだけ渡し、
     # 認識したティア名とバージョンがここと同じときだけ呼ぶ。
     model: str
     # Per-call deadline (seconds); on timeout cancel and immediately resend once (backend-design 2.4)
     # [provisional, decided by S-5]
-    # 1 回の呼び出しのタイムアウト（秒）。超えたらキャンセルしてすぐに 1 回だけ再送する（backend-design 2.4）
-    # 〔暫定、S-5 で決める〕
+    # 1 回の呼び出しのタイムアウト（秒）。超えたらキャンセルしてすぐに 1 回だけ再送する（backend-design 2.4）〔暫定、
+    # S-5 で決める〕
     deadline: float
     max_output: int  # Output limit, including thinking / 出力の上限（思考を含む）
     # Google: thinkingLevel (LOW, MEDIUM), None = not set;
     # Claude: disabled (Haiku can turn it off), between_tools (no upfront thinking; Sonnet's minimum),
     # adaptive (adaptive).
-    # Google：thinkingLevel（LOW、MEDIUM）、None = 設定しない。
-    # Claude：disabled（Haiku はオフにできる）、between_tools（先に思考しない。Sonnet の最低はこれ）、
+    # Google：thinkingLevel（LOW、MEDIUM）、None = 設定しない。Claude：disabled（Haiku はオフにできる）、
+    # between_tools（先に思考しない。Sonnet の最低はこれ）、
     # adaptive（適応的）。
     thinking: str | None = None
     effort: str | None = None  # Claude: output_config.effort (low, medium…), None = not sent / None = 送らない
@@ -72,9 +72,9 @@ class TextSpec:
 # Prompt kind → how it is called (B-8, D-028: everything that can use Claude uses Claude; `reply` only stands in for
 # Live as a character in evals, so it stays on Google, S-085 ①). Extraction and checking use Sonnet first; S-2 and the
 # first slice eval measure Haiku again, and S-085 ③ decides whether to switch.
-# プロンプトの種類 → 呼び方（B-8、D-028：Claude を使えるものはすべて Claude。`reply` は評価で Live の代わりに登場人物を
-# 演じるだけなので Google に残す、S-085 ①）。抽出とチェックはまず Sonnet を使い、S-2 と最初のスライス評価で Haiku を
-# もう一度測って、S-085 ③ に従って切り替えるかを決める。
+# プロンプトの種類 → 呼び方（B-8、D-028：Claude を使えるものはすべて Claude。`reply` は評価で Live
+# の代わりに登場人物を演じるだけなので Google に残す、S-085 ①）。抽出とチェックはまず Sonnet を使い、
+# S-2 と最初のスライス評価で Haiku をもう一度測って、S-085 ③ に従って切り替えるかを決める。
 TEXT: dict[str, TextSpec] = {
     "triage": TextSpec("claude", "haiku-5.5", 5.0, 256, thinking="disabled"),
     "extract": TextSpec("claude", "sonnet-5.5", 15.0, 4096, thinking="between_tools", effort="low"),
@@ -88,8 +88,8 @@ TEXT: dict[str, TextSpec] = {
     "safety": TextSpec("claude", "haiku-5.5", 3.0, 64, thinking="disabled"),
     # B-15 (S-072 ⑤): review of a first-pass signal (the stronger tier, no upfront thinking; 2.5 seconds; on timeout
     # or error the signal is kept, no resend)
-    # B-15（S-072 ⑤）：1 回目の signal の再確認（強い方のティア、先に思考しない。2.5 秒。タイムアウトでもエラーでも
-    # signal を残し、再送しない）
+    # B-15（S-072 ⑤）：1 回目の signal の再確認（強い方のティア、先に思考しない。2.5 秒。
+    # タイムアウトでもエラーでも signal を残し、再送しない）
     "safety_review": TextSpec("claude", "sonnet-5.5", 2.5, 64, thinking="between_tools", effort="low"),
     # B-9: the ending must be fast, no upfront thinking. Mac probe (10-11, 20 runs): first token p95 about 2 s, full
     # p95 about 10 s, longest about 11 s, output about 970 tokens on average; deadline 20 seconds
@@ -98,15 +98,15 @@ TEXT: dict[str, TextSpec] = {
     "ending": TextSpec("claude", "sonnet-5.5", 20.0, 4096, thinking="between_tools", effort="low"),
     # B-17: model check of the ending (backend-design 2.9 step 4: do the three layers make sense, MEDIUM). A check
     # timeout does not block the ending; deadline 15 seconds
-    # B-17：エンディングのモデルチェック（backend-design 2.9 第 4 段階、3 層の筋が通るか、MEDIUM）。チェックが
-    # タイムアウトしてもエンディングは止めない。タイムアウトは 15 秒
+    # B-17：エンディングのモデルチェック（backend-design 2.9 第 4 段階、3 層の筋が通るか、MEDIUM）。
+    # チェックがタイムアウトしてもエンディングは止めない。タイムアウトは 15 秒
     "ending-check": TextSpec("claude", "sonnet-5.5", 15.0, 2048, thinking="adaptive", effort="medium"),
     # B-13: one memory line, one "consequence that will not be undone" line (B-8's table: Haiku, thinking off; memory
     # 5 seconds, no resend on timeout, nothing written this turn; the consequence line 2 seconds (UX review: the
-    # frontend waits for it before enabling 〔忘れてもらう〕), on timeout return null, not cached)
-    # B-13：記憶の一文と「取り消されない結果」の一文（B-8 の表：Haiku・思考オフ。記憶は 5 秒、タイムアウトでも
-    # 再送せず、このターンは書かない。結果の一文は 2 秒（UX レビュー：フロントエンドはそれが返ってから
-    # 〔忘れてもらう〕を押せるようにする）、タイムアウトなら null を返し、キャッシュしない）
+    # frontend waits for it before enabling 〔忘れてもらう〕), on timeout return null, not cached) B-13：
+    # 記憶の一文と「取り消されない結果」の一文（B-8 の表：Haiku・思考オフ。記憶は 5 秒、タイムアウトでも再送せず、
+    # このターンは書かない。結果の一文は 2 秒（UX レビュー：フロントエンドはそれが返ってから〔忘れてもらう〕を
+    # 押せるようにする）、タイムアウトなら null を返し、キャッシュしない）
     "memory": TextSpec("claude", "haiku-5.5", 5.0, 256, thinking="disabled"),
     "keeps": TextSpec("claude", "haiku-5.5", 2.0, 128, thinking="disabled"),
     # B-21: suggested utterances (backend-design 3.6, section 8: Haiku, thinking off; must arrive within about 1 second
@@ -116,8 +116,8 @@ TEXT: dict[str, TextSpec] = {
     "suggest": TextSpec("claude", "haiku-5.5", 3.0, 256, thinking="disabled"),
     # B-16: world advance (act change, after a key moment, the middle of each act). Same tier as end-of-act plans; the
     # player does not wait for it (except at an act change), so the deadline is looser
-    # B-16：世界の進行（幕の切り替え、重要な瞬間の後、各幕の中盤）。幕末のプランと同じティア。プレイヤーは待たない
-    # （幕の切り替え時を除く）ので、タイムアウトを緩める
+    # B-16：世界の進行（幕の切り替え、重要な瞬間の後、各幕の中盤）。幕末のプランと同じティア。
+    # プレイヤーは待たない（幕の切り替え時を除く）ので、タイムアウトを緩める
     "world": TextSpec("claude", "sonnet-5.5", 20.0, 4096, thinking="adaptive", effort="low"),
 }
 TEXT_MODELS: dict[str, str] = {k: v.model for k, v in TEXT.items()}
@@ -129,9 +129,10 @@ CLAUDE_TIERS: dict[str, str] = {"haiku": "ZJ_CLAUDE_HAIKU", "sonnet": "ZJ_CLAUDE
 # Temporary tier switch (S-085 ③: S-2 and the slice eval measure again with Haiku):
 # `ZJ_TEXT_MODELS=check=haiku-5.5,extract=haiku-5.5`. Only the tier name plus version of the Claude kinds can change;
 # thinking and effort stay as they are; the replay key, the ledger and `check.checker` follow the change
-# 一時的なティア切り替え（S-085 ③：S-2 とスライス評価で Haiku でもう一度測る）：
-# `ZJ_TEXT_MODELS=check=haiku-5.5,extract=haiku-5.5`。変えられるのは Claude の種類のティア名とバージョンだけで、
-# 思考と effort はそのまま。リプレイのキー、台帳、`check.checker` はそれに合わせて変わる
+# 一時的なティア切り替え（S-085 ③：S-2 とスライス評価で Haiku
+# でもう一度測る）：`ZJ_TEXT_MODELS=check=haiku-5.5,extract=haiku-5.5`。
+# 変えられるのは Claude の種類のティア名とバージョンだけで、思考と effort はそのまま。リプレイのキー、
+# 台帳、`check.checker` はそれに合わせて変わる
 OVERRIDE_ENV = "ZJ_TEXT_MODELS"
 _TAG = re.compile(r"(haiku|sonnet)-\d+\.\d+")
 
@@ -162,10 +163,10 @@ def text_spec(kind: str, env: Mapping[str, str] | None = None) -> TextSpec:
 # unit prices are in claude-prices.json of the shared package `zoujin_llm`, the only copy. Recorded at the list price
 # on the bill: the 50% discount on 3.8 Flash until the end of 2026 is refunded afterwards, so the ledger does not
 # deduct it and stops at the cap earlier than actual spend, never later. Regional endpoints (non-global) cost 10% more
-# Google の単価：100 万トークンあたりの米ドル（docs/data/cost/pricing-2026-10-06.md、global エンドポイント）。Claude の
-# 単価は共有パッケージ `zoujin_llm` の claude-prices.json にあり、それが唯一のもの。請求書の定価で記録する：3.8 Flash の
-# 2026 年末までの半額は事後に返金されるので台帳では差し引かず、上限で止まるのは実際の支出より早くなり、遅くはならない。
-# リージョンエンドポイント（global 以外）は 10% 高い
+# Google の単価：100 万トークンあたりの米ドル（docs/data/cost/pricing-2026-10-06.md、global エンドポイント）。
+# Claude の単価は共有パッケージ `zoujin_llm` の claude-prices.json にあり、それが唯一のもの。請求書の定価で記録する：
+# 3.8 Flash の 2026 年末までの半額は事後に返金されるので台帳では差し引かず、上限で止まるのは実際の支出より早くなり、
+# 遅くはならない。リージョンエンドポイント（global 以外）は 10% 高い
 PRICES: dict[str, dict[str, float]] = {
     "gemini-3.8-flash": {"input": 1.50, "cachedInput": 0.15, "output": 7.50},
     "gemini-3.5-flash-lite": {"input": 0.30, "cachedInput": 0.03, "output": 2.50},
@@ -175,9 +176,10 @@ REGIONAL_MARKUP = 1.10
 # The world model used for new playthroughs. `ZJ_WORLD` (absolute path to world.json; E-0's runner sets it, to the
 # slice with `--slice`) replaces it. We do not pick the newest by sorting directory names: the slice (1.0.0-slice)
 # sorts after 1.0.0-draft, and sorting would silently put new playthroughs on the slice
-# 新しいプレイに使う世界モデル。`ZJ_WORLD`（world.json の絶対パス。E-0 のランナーがこう設定し、`--slice` のときは
-# スライス版）で置き換える。ディレクトリ名でソートして最新を選ぶことはしない：スライス（1.0.0-slice）は 1.0.0-draft の
-# 後ろに並ぶので、ソートすると新しいプレイが気づかないうちにスライスになってしまう
+# 新しいプレイに使う世界モデル。`ZJ_WORLD`（world.json の絶対パス。
+# E-0 のランナーがこう設定し、`--slice` のときはスライス版）で置き換える。
+# ディレクトリ名でソートして最新を選ぶことはしない：スライス（1.0.0-slice）は 1.0.0-draft の後ろに並ぶので、
+# ソートすると新しいプレイが気づかないうちにスライスになってしまう
 DEFAULT_WORLD = REPO / "worlds" / "hashire-merosu" / "1.0.0-draft" / "world.json"
 
 REPLAYS = REPO / "fixtures" / "model-replays"
@@ -302,8 +304,8 @@ def narrator_auth(env: Mapping[str, str]) -> Literal["none", "iam"]:
     """`ZJ_NARRATOR_AUTH`: none (default, local) / iam (Cloud Run: the narrator opens only an internal ingress and only
     the gateway's service account may call it, B-23).
 
-    `ZJ_NARRATOR_AUTH`：none（デフォルト、ローカル）/ iam（Cloud Run：ナレーターは内部の入口だけを開き、ゲートウェイの
-    サービスアカウントからの呼び出しだけを許す、B-23）。
+    `ZJ_NARRATOR_AUTH`：none（デフォルト、ローカル）/ iam（Cloud Run：ナレーターは内部の入口だけを開き、
+    ゲートウェイのサービスアカウントからの呼び出しだけを許す、B-23）。
     """
     value = env.get("ZJ_NARRATOR_AUTH", "") or "none"
     if value not in ("none", "iam"):
@@ -330,8 +332,8 @@ class Settings:
     database_url: str  # postgresql+psycopg://…
     model: ModelMode = "fake"
     # Dev switch: the session cookie has no Secure (local http), and the narrator does not check the caller's OIDC token
-    # 開発スイッチ：セッション Cookie に Secure を付けない（ローカルの http）、narrator は呼び出し元の
-    # OIDC トークンを確認しない
+    # 開発スイッチ：セッション Cookie に Secure を付けない（ローカルの http）、
+    # narrator は呼び出し元の OIDC トークンを確認しない
     dev: bool = False
     # Origins allowed besides the same origin (frontend dev server)
     # 同一オリジン以外に通す Origin（フロントエンドの開発サーバー）
@@ -384,9 +386,10 @@ class Settings:
     # Deployment (B-23): the gateway also serves the frontend build (`ZJ_WEB_DIST`, vite build's dist; not served if
     # unset); identity for service-to-service calls (`ZJ_NARRATOR_AUTH=iam`: Cloud Run's IAM has already verified the
     # gateway service account's OIDC token; the gateway attaches the token when calling the narrator)
-    # デプロイ（B-23）：ゲートウェイがフロントエンドのビルドも配信する（`ZJ_WEB_DIST`、vite build の dist。未設定なら
-    # 配信しない）。サービス間呼び出しの ID（`ZJ_NARRATOR_AUTH=iam`：Cloud Run の IAM がゲートウェイの
-    # サービスアカウントの OIDC トークンを検証済みで、ゲートウェイはナレーターを呼ぶときにトークンを付ける）
+    # デプロイ（B-23）：ゲートウェイがフロントエンドのビルドも配信する（`ZJ_WEB_DIST`、vite build の dist。
+    # 未設定なら配信しない）。サービス間呼び出しの ID（`ZJ_NARRATOR_AUTH=iam`：
+    # Cloud Run の IAM がゲートウェイのサービスアカウントの OIDC トークンを検証済みで、
+    # ゲートウェイはナレーターを呼ぶときにトークンを付ける）
     web_dist: Path | None = None
     narrator_auth: Literal["none", "iam"] = "none"
 

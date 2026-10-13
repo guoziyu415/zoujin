@@ -79,8 +79,8 @@ class SchemaBook:
         """Documents the server built itself: carries jsonschema's original messages (may include values); goes only
         into SchemaError and tests.
 
-        サーバー自身が構築した文書：jsonschema の元のメッセージ（値を含むことがある）を持ち、SchemaError
-        とテストにだけ入る。
+        サーバー自身が構築した文書：jsonschema の元のメッセージ（値を含むことがある）を持ち、
+        SchemaError とテストにだけ入る。
         """
         out = []
         for e in self.validator(base, ref).iter_errors(doc):
@@ -91,8 +91,8 @@ class SchemaBook:
         """Documents sent by the client: only the failing field paths and rule names, no values (they may be the
         player's original words), so they can go straight into logs.
 
-        クライアントから来た文書：エラーのフィールドパスとルール名だけを返し、値（プレイヤーの発話の原文かもしれない）は
-        含めないので、そのままログに書ける。
+        クライアントから来た文書：エラーのフィールドパスとルール名だけを返し、値（プレイヤーの発話の原文かもしれない）
+        は含めないので、そのままログに書ける。
         """
         return [s for e in self.validator(base, ref).iter_errors(doc) for s in _spots(e)]
 

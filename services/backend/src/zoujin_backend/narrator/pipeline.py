@@ -390,9 +390,7 @@ class Pipeline:
                     try:
                         jsonschema.validate(r.output, PROMPTS[kind].schema)
                     except jsonschema.ValidationError:
-                        raise BadOutput(
-                            f"{kind} output fails the Schema / {kind} の出力が Schema を通らない"
-                        ) from None
+                        raise BadOutput(f"{kind} output fails the Schema / {kind} の出力が Schema を通らない") from None
                     attrs = extra(r.output) if extra is not None else None
                 # A cancelled call may already be billed: the real client booked an estimate, and this turn's spend
                 # records the same amount.

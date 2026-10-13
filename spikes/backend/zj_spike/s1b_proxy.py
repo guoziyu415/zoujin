@@ -784,7 +784,7 @@ class SmokeResult:
 
     def add(self, name: str, ok: bool, detail: str = "") -> bool:
         self.checks.append(Check(name, ok, detail))
-        print(f"  [{'OK' if ok else 'NG'}] {name}{('：' + detail) if detail else ''}", flush=True)
+        print(f"  [{'OK' if ok else 'NG'}] {name}{(': ' + detail) if detail else ''}", flush=True)
         return ok
 
     @property
@@ -800,14 +800,14 @@ async def _anon_ws_refused(ws_url: str, origin: str, headers: dict) -> tuple[boo
         async with connect(ws_url, origin=origin, additional_headers=headers, open_timeout=15) as ws:
             try:
                 await asyncio.wait_for(ws.recv(), timeout=10)
-                return False, "连上后收到了消息"
+                return False, "got a message after connecting / 接続後にメッセージを受信"
             except ConnectionClosed as e:
                 code = e.rcvd.code if e.rcvd else None
-                return code == 4001, f"关闭码 {code}"
+                return code == 4001, f"close code / クローズコード {code}"
             except asyncio.TimeoutError:
-                return False, "连接没有被关闭"
+                return False, "the connection was not closed / 接続が閉じられなかった"
     except InvalidStatus as e:
-        return True, f"握手被拒（HTTP {e.response.status_code}）"
+        return True, f"handshake refused / ハンドシェイク拒否 (HTTP {e.response.status_code})"
 
 
 async def smoke(base: str, *, code: str | None, anon_only: bool, utterances: list[tuple[str, bytes]],
@@ -823,28 +823,31 @@ async def smoke(base: str, *, code: str | None, anon_only: bool, utterances: lis
     r = SmokeResult()
     async with httpx.AsyncClient(timeout=20, headers=gate) as http:
         resp = await http.get(f"{base}/v1/me")
-        r.add("没有 Cookie 时 REST 被拒", resp.status_code in (401, 403), f"HTTP {resp.status_code}")
+        r.add("REST refused without a cookie / Cookie なしの REST は拒否", resp.status_code in (401, 403), f"HTTP {resp.status_code}")
         ok, detail = await _anon_ws_refused(ws_url, base, gate)
-        r.add("没有 Cookie 时 WebSocket 被拒", ok, detail)
+        r.add("WebSocket refused without a cookie / Cookie なしの WebSocket は拒否", ok, detail)
         resp = await http.post(f"{base}/v1/auth/login", json={"inviteCode": "WRONG-CODE-0000"}, headers={"Origin": base})
-        r.add("错误的测试码被拒", resp.status_code in (401, 403), f"HTTP {resp.status_code}")
+        r.add("Wrong test code refused / 誤ったテストコードは拒否", resp.status_code in (401, 403), f"HTTP {resp.status_code}")
         if anon_only:
             return r
         if not code:
-            r.add("读取测试码", False, f"没有 {CODE_FILE}；先执行 newcode")
+            r.add("Read the test code / テストコードの読み込み", False,
+                  f"no / なし {CODE_FILE}; run newcode first / 先に newcode を実行")
             return r
         resp = await http.post(f"{base}/v1/auth/login", json={"inviteCode": code}, headers={"Origin": "https://evil.example"})
-        r.add("别的网站发来的登录被拒", resp.status_code == 403, f"HTTP {resp.status_code}")
+        r.add("Login from another site refused / 他サイトからのログインは拒否", resp.status_code == 403, f"HTTP {resp.status_code}")
         resp = await http.post(f"{base}/v1/auth/login", json={"inviteCode": code}, headers={"Origin": base})
         token = resp.cookies.get(COOKIE)
-        if not r.add("正确的测试码能登录", resp.status_code == 200 and bool(token), f"HTTP {resp.status_code}"):
+        if not r.add("Correct test code logs in / 正しいテストコードでログイン可", resp.status_code == 200 and bool(token), f"HTTP {resp.status_code}"):
             return r
         cookie = {**gate, "Cookie": f"{COOKIE}={token}"}
         try:
             async with connect(ws_url, origin="https://evil.example", additional_headers=cookie, open_timeout=15):
-                r.add("别的网站发起的 WebSocket 被拒", False, "连上了")
+                r.add("WebSocket from another site refused / 他サイトからの WebSocket は拒否", False,
+                      "it connected / 接続できてしまった")
         except InvalidStatus as e:
-            r.add("别的网站发起的 WebSocket 被拒", True, f"HTTP {e.response.status_code}")
+            r.add("WebSocket from another site refused / 他サイトからの WebSocket は拒否", True,
+                  f"HTTP {e.response.status_code}")
 
     async with connect(ws_url, origin=base, additional_headers=cookie, open_timeout=15, max_size=None) as ws:
         async def next_json(timeout=30.0) -> dict:
@@ -862,10 +865,10 @@ async def smoke(base: str, *, code: str | None, anon_only: bool, utterances: lis
         await ws.send(json.dumps({"type": "focus", "character": CHARACTER}))
         while (m := await next_json())["type"] != "session_ready":
             if m["type"] in ("error", "degraded"):
-                r.add("会话就绪", False, json.dumps(m, ensure_ascii=False))
+                r.add("Session ready / セッション準備完了", False, json.dumps(m, ensure_ascii=False))
                 return r
         r.focus_to_ready_ms = round((time.perf_counter() - t0) * 1000)
-        r.add("会话就绪", m.get("voiceAvailable") is True, f"{r.focus_to_ready_ms} ms")
+        r.add("Session ready / セッション準備完了", m.get("voiceAvailable") is True, f"{r.focus_to_ready_ms} ms")
 
         for seq, (label, pcm) in enumerate(utterances, 1):
             turn_id = f"smoke_{seq:02d}"
@@ -891,19 +894,20 @@ async def smoke(base: str, *, code: str | None, anon_only: bool, utterances: lis
                 elif m["type"] == "turn_complete" and m["turnId"] == turn_id:
                     done = m
                 elif m["type"] in ("error", "degraded"):
-                    r.add(f"第 {seq} 轮", False, json.dumps(m, ensure_ascii=False))
+                    r.add(f"Turn {seq} / 第 {seq} ターン", False, json.dumps(m, ensure_ascii=False))
                     return r
             row = {"turnSeq": seq, "label": label, "audio": done["audio"],
                    "serverReleaseToFirstAudioMs": done["metrics"]["serverReleaseToFirstAudioMs"],
                    "clientReleaseToFirstAudioMs": _ms(released, first_audio), "playerTranscript": said}
             r.turns.append(row)
-            r.add(f"第 {seq} 轮有声音回答", bool(done["audio"]),
-                  f"服务端 {row['serverReleaseToFirstAudioMs']} ms，本机 {row['clientReleaseToFirstAudioMs']} ms")
+            r.add(f"Turn {seq} has a voice reply / 第 {seq} ターンに音声の返答あり", bool(done["audio"]),
+                  f"server / サーバー {row['serverReleaseToFirstAudioMs']} ms, "
+                  f"this machine / 本機 {row['clientReleaseToFirstAudioMs']} ms")
         await ws.send(json.dumps({"type": "unfocus", "reason": "menu"}))
     return r
 
 
-VOICE_STEPS = ("会话就绪", "第 ")  # the only checks a not-yet-effective Gemini permission can fail
+VOICE_STEPS = ("Session ready", "Turn ")  # the only checks a not-yet-effective Gemini permission can fail
 
 
 def only_voice_failed(result: SmokeResult) -> bool:
@@ -917,8 +921,10 @@ async def smoke_retrying_voice(base: str, *, retry_s: float, **kw) -> SmokeResul
     result = await smoke(base, **kw)
     if result.ok or not retry_s or not only_voice_failed(result):
         return result
-    print(f"只有声音这一步没通过，访问保护的检查都过了。新服务账号调用 Gemini 的权限有时要几分钟才生效，"
-          f"{round(retry_s)} 秒后整套再跑一次。", flush=True)
+    print(f"Only the voice step failed; every access-protection check passed. A new service account's Gemini "
+          f"permission sometimes takes a few minutes to apply, so the whole suite runs again in {round(retry_s)} s. / "
+          f"音声のステップだけが失敗し、アクセス保護のチェックはすべて合格しました。新しいサービスアカウントの Gemini "
+          f"権限は反映に数分かかることがあるため、{round(retry_s)} 秒後に全体をもう一度実行します。", flush=True)
     await asyncio.sleep(retry_s)
     return await smoke(base, **kw)
 
@@ -929,8 +935,11 @@ SMOKE_LINES = ["メロスさん、王城に行くのですか。", "気をつけ
 def cmd_smoke(args) -> int:
     if args.url_file:
         if not URL_FILE.exists():
-            sys.exit(f"没有 {URL_FILE}（s1b_deploy.sh up 会写它）")
-        base, where = URL_FILE.read_text().strip(), "部署的服务（地址在 ~/.zoujin-spike/s1b-url，不显示）"
+            sys.exit(f"No {URL_FILE} (s1b_deploy.sh up writes it) / {URL_FILE} がありません（s1b_deploy.sh up が書き出す）")
+        base, where = URL_FILE.read_text().strip(), (
+            "the deployed service (address in ~/.zoujin-spike/s1b-url, not shown) / "
+            "デプロイ済みサービス（アドレスは ~/.zoujin-spike/s1b-url、表示しない）"
+        )
     else:
         base, where = args.base, args.base
     code = CODE_FILE.read_text().strip() if CODE_FILE.exists() else None
@@ -942,14 +951,15 @@ def cmd_smoke(args) -> int:
             utterances = load_wav_dir(Path(args.wav_dir))
         else:
             utterances = synth_utterances(SMOKE_LINES, common.settings().out_dir / "s1b" / "say")
-    print(f"冒烟测试：{where}", flush=True)
+    print(f"Smoke test / スモークテスト: {where}", flush=True)
     result = asyncio.run(smoke_retrying_voice(base, retry_s=args.voice_retry, code=code, anon_only=args.anon_only,
                                               utterances=utterances, id_token=os.environ.get("ZJ_S1B_ID_TOKEN") or None))
     out = common.settings().out_dir / "s1b" / f"smoke-{time.strftime('%Y%m%d-%H%M%S')}.json"
     common.write_json(out, {"target": "deployed" if args.url_file else "local", "anonOnly": args.anon_only, "ok": result.ok,
                             "checks": [c.__dict__ for c in result.checks], "focusToReadyMs": result.focus_to_ready_ms,
                             "turns": result.turns})
-    print(f"{'全部通过' if result.ok else '有没通过的项'}，结果写到 {out}", flush=True)
+    verdict = "all passed / すべて合格" if result.ok else "some checks failed / 不合格の項目あり"
+    print(f"{verdict}; results written to / 結果の保存先 {out}", flush=True)
     return 0 if result.ok else 1
 
 
@@ -958,12 +968,16 @@ def cmd_smoke(args) -> int:
 
 def cmd_newcode(args) -> None:
     if CODE_FILE.exists() and not args.force:
-        sys.exit(f"{CODE_FILE} 已经有测试码。要换新的，加 --force（旧的立即失效，要重新部署）。")
+        sys.exit(f"{CODE_FILE} already has a test code. For a new one, add --force (the old one stops working at once and "
+                 f"the service must be redeployed). / {CODE_FILE} にはすでにテストコードがあります。新しくするには --force を付けて"
+                 f"ください（古いコードは即座に無効になり、再デプロイが必要）。")
     code = new_code()
     _write_private(CODE_FILE, code + "\n")
     _write_private(ENV_FILE, f"ZJ_S1B_CODE_HASH={hash_code(code)}\n")
-    print(f"测试码已写到 {CODE_FILE}（只有你能读）。\n"
-          f"只给 zg 自己看：在终端执行 cat {CODE_FILE}。不要贴到聊天、文档或截图里。")
+    print(f"Test code written to {CODE_FILE} (readable only by you). / テストコードを {CODE_FILE} に書き出しました"
+          f"（読めるのはあなただけ）。\n"
+          f"For zg's eyes only: run cat {CODE_FILE} in a terminal. Do not paste it into chat, docs or screenshots. / "
+          f"zg だけが見ること：端末で cat {CODE_FILE} を実行。チャット・文書・スクリーンショットに貼らないでください。")
 
 
 def cmd_serve(args) -> None:
@@ -971,7 +985,8 @@ def cmd_serve(args) -> None:
 
     code_hash = code_hash_from_env()
     if not code_hash:
-        sys.exit("没有测试码。先执行：uv run python -m zj_spike.s1b_proxy newcode")
+        sys.exit("No test code. First run: uv run python -m zj_spike.s1b_proxy newcode / "
+                 "テストコードがありません。先に uv run python -m zj_spike.s1b_proxy newcode を実行してください")
     s = common.settings()
     on_cloud_run = bool(os.environ.get("K_SERVICE"))
     log_path = None if on_cloud_run else s.out_dir / "s1b" / f"serve-{time.strftime('%Y%m%d-%H%M%S')}.jsonl"
@@ -979,7 +994,8 @@ def cmd_serve(args) -> None:
     static = Path(os.environ["ZJ_S1B_STATIC"]) if os.environ.get("ZJ_S1B_STATIC") else None
     port = int(os.environ.get("PORT", args.port))
     if not on_cloud_run:
-        print(f"在 http://localhost:{port} 运行（只有这台 Mac 能访问）；Ctrl+C 停止。计时日志：{log_path}", flush=True)
+        print(f"Running at http://localhost:{port} (reachable only from this Mac); Ctrl+C to stop. Timing log: {log_path} / "
+              f"http://localhost:{port} で実行中（この Mac からのみアクセス可）。Ctrl+C で停止。計時ログ: {log_path}", flush=True)
     uvicorn.run(create_app(hub, static), host=args.host, port=port, log_level="warning", access_log=False,
                 server_header=False, proxy_headers=True, forwarded_allow_ips="*" if on_cloud_run else "127.0.0.1")
 
@@ -992,9 +1008,10 @@ def cmd_selfcheck(args) -> int:
     static = Path(os.environ["ZJ_S1B_STATIC"]) if os.environ.get("ZJ_S1B_STATIC") else None
     paths = [p for root in [Path(__file__).resolve().parent, static] if root for p in [root, *root.rglob("*")]]
     bad = [p for p in paths if not os.access(p, (os.R_OK | os.X_OK) if p.is_dir() else os.R_OK)]
-    print(f"用户 uid={os.getuid()}：查了 {len(paths)} 个文件和目录，读不了 {len(bad)} 个", flush=True)
+    print(f"user uid={os.getuid()}: checked {len(paths)} files and directories, {len(bad)} unreadable / "
+          f"ユーザー uid={os.getuid()}: {len(paths)} 個のファイルとディレクトリを確認、読めないもの {len(bad)} 個", flush=True)
     for p in bad[:20]:
-        print(f"  读不了：{p}", flush=True)
+        print(f"  unreadable / 読めない: {p}", flush=True)
     if bad:
         return 1
     has_page = bool(static and (static / "index.html").exists())
@@ -1006,8 +1023,9 @@ def cmd_selfcheck(args) -> int:
 
     health, page = asyncio.run(fetch())
     ok = health.status_code == 200 and page.status_code == 200
-    print(f"/health → {health.status_code}，/ → {page.status_code}（{'前端测试页' if has_page else '占位页面'}）", flush=True)
-    print("镜像检查通过" if ok else "镜像检查没通过", flush=True)
+    kind = "frontend test page / フロントエンドのテストページ" if has_page else "placeholder page / プレースホルダーページ"
+    print(f"/health → {health.status_code}, / → {page.status_code} ({kind})", flush=True)
+    print("Image check passed / イメージチェック合格" if ok else "Image check failed / イメージチェック不合格", flush=True)
     return 0 if ok else 1
 
 
@@ -1026,7 +1044,8 @@ def cmd_sacheck(args) -> int:
     (impersonated through zg's login, no key). A new account's permission can take minutes to apply, so retry until
     args.wait runs out; the first quota error stops at once. S-1b part 2's third attempt failed exactly here."""
     if not os.environ.get("ZJ_IMPERSONATE_SA"):
-        sys.exit("没有设 ZJ_IMPERSONATE_SA（./s1b_deploy.sh sacheck 会设）")
+        sys.exit("ZJ_IMPERSONATE_SA is not set (./s1b_deploy.sh sacheck sets it) / "
+                 "ZJ_IMPERSONATE_SA が設定されていません（./s1b_deploy.sh sacheck が設定する）")
     s = common.settings()
     deadline = time.monotonic() + args.wait
     attempt = 0
@@ -1034,38 +1053,52 @@ def cmd_sacheck(args) -> int:
         attempt += 1
         try:
             ms = asyncio.run(live_open_once(common.genai_client(s.live_location), s.live_model))
-            print(f"  [OK] 服务账号能连上 Live（{s.live_location}，第 {attempt} 次，建会话 {ms} ms）", flush=True)
+            print(f"  [OK] The service account can reach Live / サービスアカウントで Live に接続可 "
+                  f"({s.live_location}, attempt {attempt} / 第 {attempt} 回, session setup {ms} ms)", flush=True)
             return 0
         except Exception as exc:
             info, kind = common.upstream_error(exc), common.upstream_kind(exc)
-            print(f"  [NG] 第 {attempt} 次：{type(exc).__name__} / {kind} / code={info['upstreamCode']} "
-                  f"status={info['upstreamStatus']}：{info['upstreamMessage']}", flush=True)
+            print(f"  [NG] attempt {attempt} / 第 {attempt} 回: {type(exc).__name__} / {kind} / code={info['upstreamCode']} "
+                  f"status={info['upstreamStatus']}: {info['upstreamMessage']}", flush=True)
             if kind == "quota":
-                print("遇到配额限制，按规则马上停，不重试。", flush=True)
+                print("Hit a quota limit; stopping at once without retrying, as the rules say. / "
+                      "クォータ制限に達したため、ルールどおり再試行せず直ちに停止します。", flush=True)
                 return 1
             if time.monotonic() + args.interval > deadline:
-                print(f"等了约 {round(args.wait)} 秒还是连不上。不要 up；把上面几行转给后端（已去掉项目 ID、地址和账号）。", flush=True)
+                print(f"Still cannot connect after about {round(args.wait)} s. Do not run up; forward the lines above to the "
+                      f"backend (project ID, address and account already removed). / 約 {round(args.wait)} 秒待っても"
+                      f"接続できません。up は実行せず、上の数行をバックエンドに伝えてください（プロジェクト ID・アドレス・"
+                      f"アカウントは除去済み）。", flush=True)
                 return 1
             time.sleep(args.interval)
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="S-1b 语音代理（api-contract 第 3 节的子集）")
+    ap = argparse.ArgumentParser(description="S-1b voice proxy (a subset of api-contract §3) / S-1b 音声プロキシ（api-contract 第 3 節のサブセット）")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    p = sub.add_parser("newcode", help="生成一次性测试码（写到 ~/.zoujin-spike/，不显示）")
+    p = sub.add_parser("newcode", help="generate a one-time test code (written to ~/.zoujin-spike/, not shown) / "
+                                               "使い捨てテストコードを生成（~/.zoujin-spike/ に書き出し、表示しない）")
     p.add_argument("--force", action="store_true")
-    p = sub.add_parser("serve", help="启动代理")
+    p = sub.add_parser("serve", help="start the proxy / プロキシを起動")
     p.add_argument("--host", default="127.0.0.1")
     p.add_argument("--port", type=int, default=8080)
-    p = sub.add_parser("smoke", help="冒烟测试")
+    p = sub.add_parser("smoke", help="smoke test / スモークテスト")
     p.add_argument("--base", default="http://localhost:8080")
-    p.add_argument("--url-file", action="store_true", help="连 s1b_deploy.sh 保存的地址（不显示地址）")
-    p.add_argument("--anon-only", action="store_true", help="只查匿名访问被拒")
-    p.add_argument("--wav-dir", help="用自己录的 WAV 代替 say 合成的句子")
-    p.add_argument("--voice-retry", type=float, default=0, help="只有声音没通过、访问保护都通过时，等这么多秒整套再跑一次")
-    sub.add_parser("selfcheck", help="在镜像里检查：服务用户能读全部代码和页面（s1b_deploy.sh build 推送前自动执行）")
-    p = sub.add_parser("sacheck", help="部署前在本机以服务账号身份连一次 Live（./s1b_deploy.sh sacheck 调用）")
-    p.add_argument("--wait", type=float, default=420, help="最多等多少秒（新服务账号的权限生效要时间）")
+    p.add_argument("--url-file", action="store_true", help="connect to the address s1b_deploy.sh saved (not shown) / "
+                   "s1b_deploy.sh が保存したアドレスに接続（アドレスは表示しない）")
+    p.add_argument("--anon-only", action="store_true", help="only check that anonymous access is refused / 匿名アクセスが拒否されることだけを確認")
+    p.add_argument("--wav-dir", help="use your own recorded WAVs instead of lines synthesized by say / "
+                   "say で合成した文の代わりに自分で録音した WAV を使う")
+    p.add_argument("--voice-retry", type=float, default=0, help="when only voice failed and every access check passed, wait this many seconds and run the whole suite "
+                   "again / 音声だけが失敗しアクセス保護がすべて合格したとき、この秒数待ってから全体をもう一度実行")
+    sub.add_parser("selfcheck", help="check inside the image that the service user can read all code and pages (run automatically by "
+                   "s1b_deploy.sh build before pushing) / イメージ内で、サービスユーザーがすべてのコードとページを読めるか"
+                   "確認（s1b_deploy.sh build がプッシュ前に自動実行）")
+    p = sub.add_parser("sacheck", help="before deploying, connect to Live once from this machine as the service account (called by "
+                   "./s1b_deploy.sh sacheck) / デプロイ前に本機からサービスアカウントとして Live に一度接続"
+                   "（./s1b_deploy.sh sacheck が呼ぶ）")
+    p.add_argument("--wait", type=float, default=420, help="maximum seconds to wait (a new service account's permission takes time to apply) / "
+                   "最大待ち秒数（新しいサービスアカウントの権限反映には時間がかかる）")
     p.add_argument("--interval", type=float, default=20)
     args = ap.parse_args()
     if args.cmd == "newcode":

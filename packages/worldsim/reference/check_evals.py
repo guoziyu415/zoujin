@@ -1,18 +1,40 @@
 #!/usr/bin/env python3
-"""评测用例自检（格式见 data/evals/README.md）。
+"""Self-check of eval cases (format in data/evals/README.md).
 
-用法：
+Usage:
   python3 -I check_evals.py --world world.json --scenarios scenarios.json --cases evals/seeds --personas personas.json
 
-不调用任何模型，只检查用例本身写得对不对：
-1. 格式：每行一个 JSON；id 唯一、和文件名的套件一致；字段、步骤、检查类型和参数都认识。
-2. 引用：身份、人物、地点、事实、节拍、状态变量、世界结局、情景、画像都存在；取值符合类型。
-3. 起点：按情景推演到检查点（和 build_world.py 共用 worldsim.py）。检查点的节拍在该情景里确实发生；
-   身份那时已经开局；玩家所在的地方是身份能进的（或由 setup.events 安排）；说话对象那时就在玩家身边。
-4. 防剧透用例的前提：被问的角色在检查点确实还不知道那个事实；玩家的问题里没有直接说出剧透词。
-5. 只靠时间规则就能算出结果的用例（只有 setup.scenario，或检查点 + setup.events + advance），
-   现在就推演一遍，确认期望的结局、节拍、状态变量成立。
-只用标准库。
+Calls no model; only checks that the cases themselves are written correctly:
+1. Format: one JSON per line; ids are unique and match the suite of the file name; fields, steps, check types and
+   parameters are all known.
+2. References: roles, characters, places, facts, beats, state variables, world endings, scenarios and personas all
+   exist; values match their types.
+3. Starting point: simulate the scenario to the checkpoint (sharing worldsim.py with build_world.py). The checkpoint's
+   beat really happens in that scenario; the role has started by then; the player's location is one the role can
+   enter (or is arranged by setup.events); the character being talked to is next to the player at that moment.
+4. Preconditions of anti-spoiler cases: the character asked really does not know the fact yet at the checkpoint; the
+   player's question does not state the spoiler terms outright.
+5. Cases whose results can be computed from the time rules alone (only setup.scenario, or checkpoint + setup.events +
+   advance) are simulated right away to confirm that the expected ending, beats and state variables hold.
+Standard library only.
+
+評価ケースのセルフチェック（形式は data/evals/README.md）。
+
+使い方：
+  python3 -I check_evals.py --world world.json --scenarios scenarios.json --cases evals/seeds --personas personas.json
+
+モデルは一切呼ばず、ケース自体が正しく書かれているかだけを確認する：
+1. 形式：1 行に JSON 1 つ。id は一意で、ファイル名のスイートと一致する。フィールド、ステップ、チェックの種類と
+   パラメータがすべて既知のもの。
+2. 参照：ロール、登場人物、場所、事実、ビート、状態変数、世界の結末、シナリオ、ペルソナがすべて存在し、値が型に合う。
+3. 起点：シナリオをチェックポイントまでシミュレーションする（build_world.py と worldsim.py を共用）。チェックポイントの
+   ビートがそのシナリオで実際に起きる。その時点でロールがすでに開始している。プレイヤーのいる場所はロールが入れる
+   場所（または setup.events で配置）。話しかける相手はその時点でプレイヤーのそばにいる。
+4. ネタバレ防止ケースの前提：問われる登場人物はチェックポイントで本当にまだその事実を知らない。プレイヤーの問いに
+   ネタバレ語をそのまま含めない。
+5. 時間ルールだけで結果を計算できるケース（setup.scenario だけ、またはチェックポイント + setup.events + advance）は
+   その場でシミュレーションし、期待する結末、ビート、状態変数が成り立つことを確認する。
+標準ライブラリのみ。
 """
 import argparse
 import json
@@ -20,28 +42,29 @@ import re
 import sys
 from pathlib import Path
 
-from zoujin_worldsim import Sim  # 和 build_world.py 共用的推演规则（W-1 的包）
+from zoujin_worldsim import Sim  # Simulation rules shared with build_world.py (W-1 package) / build_world.py と共有
 
 CHECK_STATUS = {"passed", "rewritten", "downgraded", "rejected"}
 RULES = {"R1-anchor", "R2-precondition", "R3-time", "R4-knowledge", "R5-persona", "R6-safety", "R7-capability"}
 EVENT_TYPES = {"say", "action", "move", "beat", "learn", "act-transition", "correction", "ending", "forget"}
-EVENT_ORIGINS = {"turn", "action", "schedule", "plan", "director", "act", "memory"}      # contracts 3（1.1）
+EVENT_ORIGINS = {"turn", "action", "schedule", "plan", "director", "act", "memory"}      # contracts 3 (1.1)
 PROMISE_STATUS = {"open", "kept", "broken", "voided"}
 BEAT_STATUS = {"pending", "happened", "prevented", "delayed", "hastened", "altered"}
 MEMORY_KINDS = {"promise", "help", "harm", "shared-moment", "claim", "impression"}
-# 动作清单：UX v1.0 18.2（target 的种类），外加 api-contract 的 move（在地点之间走）
+# Action list: UX v1.0 18.2 (target kinds), plus api-contract's move (walking between places)
+# アクション一覧：UX v1.0 18.2（target の種類）、加えて api-contract の move（場所間の移動）
 ACT_KINDS = {"examine": "any", "give": "char", "follow": "char", "block": "char", "help": "char", "wait": "none",
              "go": "place", "shortcut": "place?", "run-together": "char", "hasten": "any?", "move": "place"}
 TABLES = {"playthroughs", "events", "utterances", "memory_items", "world_state", "endings",
           "playthrough_metrics", "turns", "briefs"}
-REPLY_CHECKS = {"not_mention_fact", "no_terms", "terms_any", "japanese"}       # 检查某一步角色的回答
+REPLY_CHECKS = {"not_mention_fact", "no_terms", "terms_any", "japanese"}       # Check a step's reply / ある段の返答を確認
 E7_CHECKS = {"replay_equal", "t_monotonic", "outcome_consistent", "epilogue_cites_valid"}
-SIM_CHECKS = {"outcome", "beat", "var"}                                         # 能用推演直接算出来的
+SIM_CHECKS = {"outcome", "beat", "var"}                                         # Computable by simulation / シミュレーションで計算可能
 ENDING_CHECKS = {"no_verbatim_quotes", "director_not_sole_cause"}               # S-046、S-045
 CHECK_TYPES = REPLY_CHECKS | E7_CHECKS | SIM_CHECKS | ENDING_CHECKS | {
     "world_unchanged", "event", "no_event", "clock_advanced", "memory", "trust", "utterance_cleared",
     "event_exists", "db_absent", "no_pii", "followup_questions", "schedule_shift", "safety_card", "promise",
-    "act_plan"}                                                                  # contracts 1.2：幕末说出的打算
+    "act_plan"}                                                                  # contracts 1.2: plan said at end of act / 幕末に話すプラン
 SETUP_KEYS = {"role", "checkpoint", "place", "events", "budgetTier", "scenario", "persona", "seed"}
 STEP_KEYS = {"to", "act", "deleteMemory", "retract", "deletePlaythrough", "newPlaythrough", "advance", "silence",
              "propose", "choose"}
@@ -54,16 +77,18 @@ class Checker:
         self.personas = {p["id"]: p for p in personas}
         self.chars = {c["id"]: c for c in world["characters"]}
         self.places = {p["id"] for p in world["places"]}
-        self.objects = {o["id"] for o in world.get("objects", [])}  # （1.7）可调查物，examine 的对象
+        self.objects = {o["id"] for o in world.get("objects", [])}  # (1.7) examinables, targets of examine / 調べられる物
         self.items = {x["id"]: x for x in world.get("items", [])}
         self.pacing = world.get("pacing", {})
         self.scene_of = {p["id"]: p.get("sceneRef") for p in world["places"]}
-        self.act4_t = max(world["acts"], key=lambda a: a["order"])["start"]["t"]        # 最后一幕从几点起（说话 15 分）
+        # When the last act starts (talking takes 15 minutes there) / 最後の幕の開始時刻（そこでは会話が 15 分）
+        self.act4_t = max(world["acts"], key=lambda a: a["order"])["start"]["t"]
         self.templates = {x["id"] for c in world["characters"] for x in c.get("promiseTemplates", [])}
         self.facts = {f["id"]: f for f in world["facts"]}
         self.roles = {r["id"]: r for r in world["roles"]}
         self.acts = {a["id"]: a for a in world["acts"]}
-        self.act_end = {b: a for a in world["acts"] if a["exits"] for b in a["end"]["onBeats"]}  # 收幕节拍 → 幕
+        # End-of-act beat → act / 幕を閉じるビート → 幕
+        self.act_end = {b: a for a in world["acts"] if a["exits"] for b in a["end"]["onBeats"]}
         self.endings = {e["id"] for e in self.sim.endings}
         self.errors, self.warnings = [], []
 
@@ -73,82 +98,91 @@ class Checker:
     def warn(self, msg):
         self.warnings.append(msg)
 
-    # ---------- 取值和效果 ----------
+    # ---------- Values and effects / 値と効果 ----------
     def check_value(self, var, value, where):
         v = self.sim.svars.get(var)
         if not v:
-            return self.err(f"{where}：状态变量不存在 {var}")
+            return self.err(f"{where}: state variable does not exist / 状態変数が存在しない: {var}")
         ty = v["type"]
         if ty == "bool" and not isinstance(value, bool):
-            self.err(f"{where}：{var} 是 bool，给了 {value!r}")
+            self.err(f"{where}: {var} is bool, got / {var} は bool だが次が与えられた: {value!r}")
         elif ty == "int" and (not isinstance(value, int) or isinstance(value, bool)):
-            self.err(f"{where}：{var} 是 int，给了 {value!r}")
+            self.err(f"{where}: {var} is int, got / {var} は int だが次が与えられた: {value!r}")
         elif ty == "enum" and value not in v["values"]:
-            self.err(f"{where}：{var} 没有取值 {value!r}（可选 {v['values']}）")
+            self.err(f"{where}: {var} has no value {value!r} (options {v['values']}) / {var} に値 {value!r} はない（選択肢 {v['values']}）")
         elif ty == "place" and value not in self.places:
-            self.err(f"{where}：{var} 的地点不存在 {value!r}")
+            self.err(f"{where}: {var}: place does not exist / 場所が存在しない: {value!r}")
 
     def check_effects(self, effs, where, partial=False):
-        """partial=True：用在 event / no_event 的 match 里，只写想匹配的字段。"""
+        """partial=True: used in the match of event / no_event, where only the fields to match are written.
+
+        partial=True：event / no_event の match で使い、照合したいフィールドだけを書く。
+        """
         if not isinstance(effs, list):
-            return self.err(f"{where}：effects 要是列表")
+            return self.err(f"{where}: effects must be a list / effects はリストでなければならない")
         for e in effs:
             op = e.get("op")
             if op == "set":
                 if "var" not in e:
                     if not partial:
-                        self.err(f"{where}：set 缺 var")
+                        self.err(f"{where}: set is missing var / set に var がない")
                 elif "value" in e:
                     self.check_value(e["var"], e["value"], where)
                 elif e["var"] not in self.sim.svars:
-                    self.err(f"{where}：状态变量不存在 {e['var']}")
+                    self.err(f"{where}: state variable does not exist / 状態変数が存在しない: {e['var']}")
                 elif not partial:
-                    self.err(f"{where}：set 缺 value")
+                    self.err(f"{where}: set is missing value / set に value がない")
             elif op == "inc":
                 v = self.sim.svars.get(e.get("var"))
                 if not v or v["type"] != "int":
-                    self.err(f"{where}：inc 的变量不是 int：{e.get('var')}")
+                    self.err(f"{where}: inc's variable is not int / inc の変数が int ではない: {e.get('var')}")
             elif op == "relocate":
                 if e.get("character") not in self.chars:
-                    self.err(f"{where}：relocate 的人物不存在 {e.get('character')}")
+                    self.err(f"{where}: relocate's character does not exist / relocate の登場人物が存在しない: {e.get('character')}")
                 if ("place" in e or not partial) and e.get("place") not in self.places:
-                    self.err(f"{where}：relocate 的地点不存在 {e.get('place')}")
+                    self.err(f"{where}: relocate's place does not exist / relocate の場所が存在しない: {e.get('place')}")
             elif op == "beat":
                 if e.get("beat") not in self.sim.beats:
-                    self.err(f"{where}：节拍不存在 {e.get('beat')}")
+                    self.err(f"{where}: beat does not exist / ビートが存在しない: {e.get('beat')}")
                 if "to" in e and e["to"] not in BEAT_STATUS - {"pending"}:
-                    self.err(f"{where}：beat.to 不认识 {e['to']}")
+                    self.err(f"{where}: unrecognized beat.to / 不明な beat.to: {e['to']}")
             elif op == "learn":
                 if (e.get("character") != "player" and e.get("character") not in self.chars) or e.get("fact") not in self.facts:
-                    self.err(f"{where}：learn 的人物或事实不存在")
+                    self.err(f"{where}: learn's character or fact does not exist / learn の登場人物か事実が存在しない")
             elif op == "promise":
                 if "change" in e and e["change"] not in ("made", "kept", "broken", "voided"):
-                    self.err(f"{where}：promise.change 不认识 {e['change']}")
+                    self.err(f"{where}: unrecognized promise.change / 不明な promise.change: {e['change']}")
                 if "template" in e and e["template"] not in self.templates:
-                    self.err(f"{where}：约定模板不存在 {e['template']}")
+                    self.err(f"{where}: promise template does not exist / 約束のテンプレートが存在しない: {e['template']}")
                 for k in ("from", "to"):
                     if k in e and e[k] != "player" and e[k] not in self.chars:
-                        self.err(f"{where}：promise.{k} 要是 player 或人物 ID")
+                        self.err(f"{where}: promise.{k} must be player or a character ID / promise.{k} は player か登場人物 ID")
                 if not partial and not (e.get("change") and e.get("from") and e.get("to") and e.get("text")):
-                    self.err(f"{where}：promise 要有 change / from / to / text")
+                    self.err(f"{where}: promise needs change / from / to / text / promise には change / from / to / text が必要")
             elif op == "hold":                                  # contracts 1.3
                 it = self.items.get(e.get("item"))
                 if not it or not it.get("portable"):
-                    self.err(f"{where}：hold 只能用于 portable 的物品 {e.get('item')}")
+                    self.err(f"{where}: hold only works on portable items / hold は portable なアイテム専用: {e.get('item')}")
                 for k in ("to", "from"):
                     if k in e and e[k] is not None and e[k] != "player" and e[k] not in self.chars:
-                        self.err(f"{where}：hold.{k} 要是 player、人物 ID 或 null")
+                        self.err(f"{where}: hold.{k} must be player, a character ID or null / hold.{k} は player、登場人物 ID、null のいずれか")
                 if not partial and "to" not in e:
-                    self.err(f"{where}：hold 要写 to")
+                    self.err(f"{where}: hold needs to / hold には to が必要")
             elif op == "improv":
                 if e.get("character") not in self.chars:
-                    self.err(f"{where}：improv 的人物不存在 {e.get('character')}")
+                    self.err(f"{where}: improv's character does not exist / improv の登場人物が存在しない: {e.get('character')}")
             else:
-                self.err(f"{where}：不认识的 effect op {op!r}")
+                self.err(f"{where}: unknown effect op / 不明な effect op: {op!r}")
 
     def knows(self, ch, fact, res):
-        """检查点时角色是否已经知道：knows 里有这条，且 since 是 pre 或那个节拍在本情景里已经发生；
-        （contracts 2.3，1.4 写清）事实的 trueFrom 节拍本局没发生，这条事实就不成立，谁都不算知道。"""
+        """Whether the character already knows it at the checkpoint: knows has the entry, and since is pre or that beat
+        has already happened in this scenario; (contracts 2.3, clarified in 1.4) if the fact's trueFrom beat has not
+        happened in this run, the fact is not true and nobody counts as knowing it.
+
+        チェックポイントの時点で登場人物がすでに知っているか：knows にその項目があり、since が pre か、そのビートが
+        このシナリオですでに起きている。（contracts 2.3、1.4 で明記）事実の trueFrom のビートがこのプレイで起きて
+        いなければ、その事実は成立せず、誰も知っていることにはならない。
+        """
         def occurred(b):
             return b == "pre" or res["status"].get(b) in ("happened", "altered")
         f = self.facts.get(fact)
@@ -157,7 +191,7 @@ class Checker:
 
     def beat_status(self, bid, res, end_t):
         st = res["status"].get(bid)
-        if st in ("happened", "altered"):                # 1.4：节拍的变体按 altered 记
+        if st in ("happened", "altered"):                # 1.4: beat variants count as altered / バリアントは altered
             return st
         if st is None:
             return "pending"
@@ -165,62 +199,65 @@ class Checker:
             return "prevented"
         return "pending"
 
-    # ---------- 一个用例 ----------
+    # ---------- One case / ケース 1 件 ----------
     def case(self, c, where, suite):
-        """返回 True = 这个用例的结果已经用推演验证过。"""
+        """Returns True = this case's results have been verified by simulation.
+
+        True を返す = このケースの結果はシミュレーションで検証済み。
+        """
         setup, steps, exp = c.get("setup", {}), c.get("steps", []), c.get("expect", {})
         det, judge = exp.get("deterministic", []), exp.get("judge")
         if not det and not judge:
-            self.err(f"{where}：expect 里没有任何检查")
+            self.err(f"{where}: expect has no checks at all / expect にチェックが 1 つもない")
         for k in set(setup) - SETUP_KEYS:
-            self.err(f"{where}：setup 不认识的字段 {k}")
+            self.err(f"{where}: unknown setup field / setup の不明なフィールド: {k}")
         role = self.roles.get(setup.get("role"))
         if not role:
-            self.err(f"{where}：身份不存在 {setup.get('role')}")
+            self.err(f"{where}: role does not exist / ロールが存在しない: {setup.get('role')}")
             return False
         if role["release"] != 1:
-            self.err(f"{where}：身份 {role['id']} 不在第一版")
+            self.err(f"{where}: role {role['id']} is not in release 1 / ロール {role['id']} は第 1 版にない")
         starts = [k for k in ("checkpoint", "scenario", "persona") if k in setup]
         if len(starts) != 1:
-            self.err(f"{where}：checkpoint / scenario / persona 必须且只能有一个（现在 {starts}）")
+            self.err(f"{where}: exactly one of checkpoint / scenario / persona is required (now {starts}) / checkpoint / scenario / persona はちょうど 1 つ必要（今は {starts}）")
             return False
         start = starts[0]
         if setup.get("budgetTier", "normal") not in ("normal", "saving"):
-            self.err(f"{where}：budgetTier 只能是 normal / saving")
+            self.err(f"{where}: budgetTier can only be normal / saving / budgetTier は normal / saving のみ")
 
         res, sc, place, companion, cp_beat, reach = None, None, None, None, None, None
         if start == "persona":
             p = self.personas.get(setup["persona"])
             if not p:
-                self.err(f"{where}：画像不存在 {setup['persona']}")
+                self.err(f"{where}: persona does not exist / ペルソナが存在しない: {setup['persona']}")
             elif p["role"] != role["id"]:
-                self.err(f"{where}：画像 {p['id']} 的身份是 {p['role']}，setup.role 却是 {role['id']}")
+                self.err(f"{where}: persona {p['id']} has role {p['role']} but setup.role is {role['id']} / ペルソナ {p['id']} のロールは {p['role']} だが、setup.role は {role['id']}")
             if not isinstance(setup.get("seed"), int):
-                self.err(f"{where}：模拟局要给整数 seed")
+                self.err(f"{where}: a simulated game needs an integer seed / シミュレーション局には整数の seed が必要")
             if steps:
-                self.err(f"{where}：模拟局不写 steps（由画像自己玩）")
+                self.err(f"{where}: a simulated game has no steps (the persona plays by itself) / シミュレーション局には steps を書かない（ペルソナが自分でプレイする）")
         elif start == "scenario":
             sc = self.scenarios.get(setup["scenario"])
             if not sc:
-                return self.err(f"{where}：情景不存在 {setup['scenario']}") or False
+                return self.err(f"{where}: scenario does not exist / シナリオが存在しない: {setup['scenario']}") or False
             if any(set(s) != {"advance"} for s in steps):
-                self.err(f"{where}：只推演情景的用例只能有 advance 步骤")
+                self.err(f"{where}: a case that only simulates a scenario can only have advance steps / シナリオをシミュレーションするだけのケースは advance ステップしか持てない")
         else:
             m = re.fullmatch(r"(sc\.[\w-]+)@(?:(beat\.[\w-]+)|t=(\d+))", setup["checkpoint"])
             if not m:
-                return self.err(f"{where}：检查点格式不对 {setup['checkpoint']!r}") or False
+                return self.err(f"{where}: bad checkpoint format / チェックポイントの形式が正しくない: {setup['checkpoint']!r}") or False
             sc = self.scenarios.get(m[1])
             if not sc:
-                return self.err(f"{where}：情景不存在 {m[1]}") or False
+                return self.err(f"{where}: scenario does not exist / シナリオが存在しない: {m[1]}") or False
             cp_beat = m[2]
             if m[2] and m[2] not in self.sim.beats:
-                return self.err(f"{where}：节拍不存在 {m[2]}") or False
+                return self.err(f"{where}: beat does not exist / ビートが存在しない: {m[2]}") or False
             res = self.sim.run(sc, ("beat", m[2]) if m[2] else ("t", int(m[3])),
                                role=role["id"], place=setup.get("place"))
             if not res["stopped"]:
-                return self.err(f"{where}：{m[2]} 在 {m[1]} 里没有发生（{res['status'].get(m[2])}），不能当检查点") or False
+                return self.err(f"{where}: {m[2]} does not happen in {m[1]} ({res['status'].get(m[2])}), so it cannot be a checkpoint / {m[2]} は {m[1]} で起きないので、チェックポイントにできない") or False
             if res["t"] < role["startT"]:
-                self.err(f"{where}：检查点 t={res['t']} 早于身份 {role['id']} 开局（{role['startT']}）")
+                self.err(f"{where}: checkpoint t={res['t']} is earlier than role {role['id']} starts ({role['startT']}) / チェックポイント t={res['t']} がロール {role['id']} の開始（{role['startT']}）より早い")
             granted = set()
             for i, ev in enumerate(setup.get("events", []), 1):
                 ew = f"{where} setup.events[{i}]"
@@ -231,37 +268,37 @@ class Checker:
                 mem = ev.get("memory")
                 if mem is not None:
                     if mem.get("character") not in self.chars or mem.get("kind") not in MEMORY_KINDS or not mem.get("text"):
-                        self.err(f"{ew}：memory 要有存在的 character、合法的 kind 和 text")
+                        self.err(f"{ew}: memory needs an existing character, a valid kind and text / memory には存在する character、正しい kind、text が必要")
                 self.sim.apply(ev.get("effects", []), res["state"], res["where"])
             place = res["state"]["var.player.location"]
             granted |= {ca["place"] for ca in role.get("conditionalAccess", []) if self.sim.holds(ca["when"], res["state"])}
             if "place" in setup and setup["place"] not in self.places:
-                self.err(f"{where}：地点不存在 {setup['place']}")
+                self.err(f"{where}: place does not exist / 場所が存在しない: {setup['place']}")
             if "place" in setup and granted and setup["place"] not in granted:
-                self.err(f"{where}：setup.place 和 setup.events 安排的地点不一致")
+                self.err(f"{where}: setup.place disagrees with the place arranged by setup.events / setup.place が setup.events で配置した場所と一致しない")
             reach = set(role["access"]) | granted
             if place not in reach:
-                self.err(f"{where}：{role['id']} 不能进 {place}（能进 {role['access']}，或满足 conditionalAccess；也可以用 setup.events 安排）")
+                self.err(f"{where}: {role['id']} cannot enter {place} (can enter {role['access']}, or meet conditionalAccess; setup.events can also arrange it) / {role['id']} は {place} に入れない（入れるのは {role['access']}、または conditionalAccess を満たす場合。setup.events で配置してもよい）")
             companion = res["state"]["var.player.companionOf"]
 
-        # ---------- 步骤 ----------
+        # ---------- Steps / ステップ ----------
         kinds, says, moved, gives, held = {}, {}, False, {}, {}
         for i, s in enumerate(steps, 1):
-            sw = f"{where} 第 {i} 步"
+            sw = f"{where} step / 第 {i} 段階"
             keys = set(s) & STEP_KEYS
             if len(keys) != 1 or (set(s) - STEP_KEYS - {"say"}):
-                self.err(f"{sw}：步骤要且只要一种（{sorted(STEP_KEYS)}）")
+                self.err(f"{sw}: a step needs exactly one kind / ステップはちょうど 1 種類が必要 ({sorted(STEP_KEYS)})")
                 continue
             k = keys.pop()
             kinds[i] = k
             if k == "to":
                 ch = s["to"]
                 if ch not in self.chars or not self.chars[ch]["talkable"]:
-                    self.err(f"{sw}：{ch} 不存在或不能对话")
+                    self.err(f"{sw}: {ch} does not exist or cannot be talked to / {ch} は存在しないか会話できない")
                 elif res and not moved and companion != ch and res["where"].get(ch) != place:
-                    self.err(f"{sw}：检查点时 {ch} 在 {res['where'].get(ch)}，玩家在 {place}，说不上话")
+                    self.err(f"{sw}: at the checkpoint {ch} is at {res['where'].get(ch)} and the player at {place}, so they cannot talk / チェックポイントで {ch} は {res['where'].get(ch)}、プレイヤーは {place} にいて話せない")
                 if not isinstance(s.get("say"), str) or not s["say"].strip():
-                    self.err(f"{sw}：say 要是非空字符串")
+                    self.err(f"{sw}: say must be a non-empty string / say は空でない文字列でなければならない")
                 says[i] = (ch, s.get("say", ""))
             elif k == "act":
                 act = s["act"]
@@ -269,14 +306,16 @@ class Checker:
                 tgt = act.get("target")
                 ok_t = {"place": self.places, "char": set(self.chars), "any": self.places | set(self.chars) | self.objects}
                 if not want:
-                    self.err(f"{sw}：动作 kind 不认识 {act.get('kind')}（UX 清单：{sorted(ACT_KINDS)}）")
+                    self.err(f"{sw}: unknown action kind {act.get('kind')} (UX list: {sorted(ACT_KINDS)}) / 不明なアクションの kind {act.get('kind')}（UX の一覧：{sorted(ACT_KINDS)}）")
                 elif want == "none" and tgt is not None:
-                    self.err(f"{sw}：{act['kind']} 不带 target")
+                    self.err(f"{sw}: {act['kind']} takes no target / {act['kind']} は target を取らない")
                 elif want != "none" and not (want.endswith("?") and tgt is None) and tgt not in ok_t[want.rstrip("?")]:
-                    self.err(f"{sw}：{act['kind']} 的 target 不对 {tgt}")
+                    self.err(f"{sw}: wrong target for {act['kind']} / {act['kind']} の target が正しくない: {tgt}")
                 if not isinstance(act.get("params", {}), dict):
-                    self.err(f"{sw}：params 要是对象")
-                if act.get("kind") == "give":           # contracts 2.10：拿得到 = 人在 Item.at 的地点，或（1.3）在玩家手上
+                    self.err(f"{sw}: params must be an object / params はオブジェクトでなければならない")
+                # contracts 2.10: obtainable = the player is at a place in Item.at, or (1.3) holds it
+                # contracts 2.10：入手できる = Item.at の場所にいる、または（1.3）プレイヤーの手にある
+                if act.get("kind") == "give":
                     iid = act.get("params", {}).get("item")
                     it = self.items.get(iid)
                     holder = held.get(iid, res["state"].get(iid) if res else None)
@@ -286,47 +325,51 @@ class Checker:
             elif k == "deleteMemory":
                 d = s["deleteMemory"]
                 if d.get("character") not in self.chars:
-                    self.err(f"{sw}：人物不存在 {d.get('character')}")
+                    self.err(f"{sw}: character does not exist / 登場人物が存在しない: {d.get('character')}")
                 if kinds.get(d.get("fromStep")) not in ("to", "act"):
-                    self.err(f"{sw}：fromStep 要指向前面的对话或动作步骤")
+                    self.err(f"{sw}: fromStep must point to an earlier talk or action step / fromStep は前の会話かアクションのステップを指す")
             elif k == "retract":
                 if kinds.get(s["retract"].get("step")) != "to":
-                    self.err(f"{sw}：retract.step 要指向前面的对话步骤")
+                    self.err(f"{sw}: retract.step must point to an earlier talk step / retract.step は前の会話のステップを指す")
             elif k in ("deletePlaythrough", "newPlaythrough"):
                 if s[k] is not True:
-                    self.err(f"{sw}：{k} 写 true")
+                    self.err(f"{sw}: write {k} as true / {k} は true と書く")
             elif k == "advance":
                 moved = True
                 if not isinstance(s["advance"], int) or s["advance"] <= 0:
-                    self.err(f"{sw}：advance 要是正整数（分钟）")
+                    self.err(f"{sw}: advance must be a positive integer (minutes) / advance は正の整数（分）")
             elif k == "silence":
                 if not isinstance(s["silence"], int) or s["silence"] <= 0:
-                    self.err(f"{sw}：silence 要是正整数（秒）")
-            elif k == "propose":                       # contracts 2.8.1 第 2 步（1.2）：幕末说出自己的打算
+                    self.err(f"{sw}: silence must be a positive integer (seconds) / silence は正の整数（秒）")
+            # contracts 2.8.1 step 2 (1.2): saying your own plan at the end of the act
+            # contracts 2.8.1 第 2 段階（1.2）：幕末に自分のプランを話す
+            elif k == "propose":
                 if not isinstance(s["propose"], str) or not s["propose"].strip():
-                    self.err(f"{sw}：propose 要是非空字符串")
+                    self.err(f"{sw}: propose must be a non-empty string / propose は空でない文字列でなければならない")
                 if cp_beat not in self.act_end:
-                    self.err(f"{sw}：propose 只能用在幕末（检查点要是某一幕的收幕节拍 {sorted(self.act_end)}）")
-            elif k == "choose":                        # contracts 2.8.1 第 2 步（1.5）：幕末选一个推荐去处
+                    self.err(f"{sw}: propose is only for the end of an act (the checkpoint must be an end-of-act beat {sorted(self.act_end)}) / propose は幕末にだけ使う（チェックポイントは幕を閉じるビート {sorted(self.act_end)} でなければならない）")
+            # contracts 2.8.1 step 2 (1.5): choosing a suggested exit at the end of the act
+            # contracts 2.8.1 第 2 段階（1.5）：幕末に推奨された行き先を 1 つ選ぶ
+            elif k == "choose":
                 ended = self.act_end.get(cp_beat)
                 ch = s["choose"] if isinstance(s["choose"], dict) else {}
                 ex = {e["id"]: e for e in ended["exits"]} if ended else {}
                 if not ended:
-                    self.err(f"{sw}：choose 只能用在幕末（检查点要是某一幕的收幕节拍 {sorted(self.act_end)}）")
+                    self.err(f"{sw}: choose is only for the end of an act (the checkpoint must be an end-of-act beat {sorted(self.act_end)}) / choose は幕末にだけ使う（チェックポイントは幕を閉じるビート {sorted(self.act_end)} でなければならない）")
                 elif ch.get("exit") not in ex:
-                    self.err(f"{sw}：{ended['id']} 没有去处 {ch.get('exit')}（有 {sorted(ex)}）")
+                    self.err(f"{sw}: {ended['id']} has no exit {ch.get('exit')} (has {sorted(ex)}) / {ended['id']} に行き先 {ch.get('exit')} はない（あるのは {sorted(ex)}）")
                 else:
                     e = ex[ch["exit"]]
                     if "enRoute" in ch and ch["enRoute"] not in range(len(e.get("enRoute", {}).get("choices", []))):
-                        self.err(f"{sw}：enRoute 要是 {e['id']} 过场二选一的序号")
+                        self.err(f"{sw}: enRoute must be an index into the interlude either-or of {e['id']} / enRoute は {e['id']} の幕間の二択の番号でなければならない")
                     moved, place = True, e["place"]
         if list(kinds.values()).count("propose") > 2:
-            self.err(f"{where}：同一次幕末最多说 2 次打算（S-031 ③）")
+            self.err(f"{where}: at most 2 plans can be said at one end of act (S-031 ③) / 1 回の幕末で話せるプランは 2 回まで")
         if list(kinds.values()).count("choose") > 1:
-            self.err(f"{where}：一次幕末只选一个去处")
+            self.err(f"{where}: only one exit can be chosen at one end of act / 1 回の幕末で選べる行き先は 1 つだけ")
         last_to = max((i for i, k in kinds.items() if k == "to"), default=None)
 
-        # ---------- 检查 ----------
+        # ---------- Checks / チェック ----------
         types = set()
         for j, d in enumerate(det, 1):
             dw = f"{where} 检查 {j}"

@@ -17,21 +17,21 @@ tokens.
   tokens, cost), `summary.json` each kind's p50, p95 and mean. Requests, answer text, model IDs and the key are never
   written.
 
-`zoujin-probe`：Mac 上で Claude のレイテンシーとトークンを 1 回測る（B-8 第 8 項）。スレッドと CI では `--confirm`
-なしの表示だけを実行する。
+`zoujin-probe`：Mac 上で Claude のレイテンシーとトークンを 1 回測る（B-8 第 8 項）。
+スレッドと CI では `--confirm` なしの表示だけを実行する。
 
-リクエストは偽モデルで録ったリプレイ（`ZJ_RECORD_REPLAYS`、例：E-0 のスライスのケースを偽モデルで 1 回実行したもの）から
-取り、**ホールドアウトサンプルには触れない**：ディレクトリ名に holdout を含むものは読まない。Claude を使うプロンプトの
-種類ごとに `--per-kind` 件を取り（同じリクエストは 1 件と数え、足りなければ先頭から繰り返す）、本物のモデルを
-直列に呼ぶ：ストリーミングで最初の文字（最初のテキストブロックの最初のトークン。思考がオンのときは思考の時間を含む）
-までの時間と全体の時間を測り、入力・キャッシュ・出力・思考のトークンを記録する。
+リクエストは偽モデルで録ったリプレイ（`ZJ_RECORD_REPLAYS`、例：E-0 のスライスのケースを偽モデルで 1 回実行したもの）
+から取り、**ホールドアウトサンプルには触れない**：ディレクトリ名に holdout を含むものは読まない。
+Claude を使うプロンプトの種類ごとに `--per-kind` 件を取り（同じリクエストは 1 件と数え、足りなければ先頭から繰り返す）、
+本物のモデルを直列に呼ぶ：ストリーミングで最初の文字（最初のテキストブロックの最初のトークン。
+思考がオンのときは思考の時間を含む）までの時間と全体の時間を測り、入力・キャッシュ・出力・思考のトークンを記録する。
 
 - `--confirm` なし：呼び出し回数、予想費用（推算と、台帳が判定に使う上限）と完全なコマンドを表示し、呼び出さない。
-- `--confirm` あり：キー、2 つのティアのモデル ID、台帳、Claude の総上限、項目の上限がすべて必要で、1 つでも欠ければ
-  表示だけにする。Claude の台帳に記録し、`item` は b8-probe（項目の上限はこれで判定する）。最初の 429・529 で止まり、
-  上限に達しても止まる。ほかの HTTP エラーはそのプロンプトの種類の残りをスキップする。
-- 結果は数字だけ：`probe.jsonl` は呼び出しごとに 1 行（種類、ティア名とバージョン、状態、ミリ秒、トークン、費用）、
-  `summary.json` は種類ごとの p50・p95・平均。リクエスト、回答の文章、モデル ID、キーは書かない。
+- `--confirm` あり：キー、2 つのティアのモデル ID、台帳、Claude の総上限、項目の上限がすべて必要で、
+  1 つでも欠ければ表示だけにする。Claude の台帳に記録し、`item` は b8-probe（項目の上限はこれで判定する）。最初の 429・
+  529 で止まり、上限に達しても止まる。ほかの HTTP エラーはそのプロンプトの種類の残りをスキップする。
+- 結果は数字だけ：`probe.jsonl` は呼び出しごとに 1 行（種類、ティア名とバージョン、状態、ミリ秒、トークン、
+  費用）、`summary.json` は種類ごとの p50・p95・平均。リクエスト、回答の文章、モデル ID、キーは書かない。
 
 On the Mac (the key lives only in this one terminal) / Mac 上で（キーはこの 1 つのターミナルにだけ置く）:
 
@@ -70,8 +70,8 @@ Json = Any
 ITEM = "b8-probe"
 # Output tokens per call (including thinking) [estimated, from card B-8's per-playthrough cost table]: used only for
 # the "estimated" figure; the ledger checks against the output limit
-# 1 回の呼び出しの出力トークン（思考を含む）〔推算、B-8 カードの 1 プレイあたりコスト表〕：
-# 「推算」の数字を出すためだけに使い、台帳は出力の上限で判定する
+# 1 回の呼び出しの出力トークン（思考を含む）〔推算、B-8 カードの 1 プレイあたりコスト表〕：「推算」
+# の数字を出すためだけに使い、台帳は出力の上限で判定する
 TYPICAL_OUTPUT = {
     "triage": 30,
     "extract": 300,
@@ -143,8 +143,8 @@ def estimates(prices: ClaudePrices, kind: str, request: Json, prefix: str) -> tu
     """(estimate, the cap the ledger uses). Estimate: the prefix and instructions hit the cache, output per
     TYPICAL_OUTPUT; cap: no cache, output at the limit.
 
-    （推算、台帳が使う上限）。推算：プレフィックスと説明はキャッシュを使い、出力は TYPICAL_OUTPUT。上限：キャッシュを
-    数えず、出力は上限で計算。
+    （推算、台帳が使う上限）。推算：プレフィックスと説明はキャッシュを使い、出力は TYPICAL_OUTPUT。上限：
+    キャッシュを数えず、出力は上限で計算。
     """
     p = params(kind, request, prefix, "-")
     upper = estimate_usd(prices, kind, p)
@@ -167,8 +167,8 @@ class Timed:
     """Swaps the narrator's transport for streaming: measures time to first text and total time; the answer still goes
     to `ClaudeText` for the ledger and Schema validation.
 
-    ナレーターのトランスポートをストリーミングに替える：最初の文字までの時間と全体の時間を測り、回答はこれまでどおり
-    `ClaudeText` に渡して台帳への記録と Schema の検証を行う。
+    ナレーターのトランスポートをストリーミングに替える：最初の文字までの時間と全体の時間を測り、
+    回答はこれまでどおり `ClaudeText` に渡して台帳への記録と Schema の検証を行う。
     """
 
     def __init__(self, sdk: Any | None = None) -> None:

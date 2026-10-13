@@ -1,4 +1,4 @@
-# Handoff to "Check the computer's dev environment": S-1b voice proxy (one part locally on the Mac + one part on iPhone 4G) / 「パソコンの開発環境チェック」への引き継ぎ：S-1b 音声プロキシ（Mac ローカルで 1 段 + iPhone 4G で 1 段）
+# Handoff to the "check computer development environment" thread: S-1b voice proxy (one part locally on the Mac + one part on iPhone 4G) / 「コンピューターの開発環境を確認する」スレッドへの引き継ぎ：S-1b 音声プロキシ（Mac ローカルで 1 段 + iPhone 4G で 1 段）
 
 From: backend · 2026-10-06 · Basis: zg chose a temporary deployment (`pm/decisions.md` D-017, with three conditions: a random URL, no product name and no zg name on the URL or the page, and a one-time test code to enter); plan: `backend/spikes/s1b-plan.md`.
 

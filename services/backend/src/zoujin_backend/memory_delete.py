@@ -22,17 +22,18 @@ REST と評価の入口で共有する。
 記憶 1 件の削除（L1）。同じトランザクションの中で：
 1. この記憶の `text`・`keeps` を null にし、`deleted_at` を書く（行は監査用に残す）。
 2. `from_events → events.turn_id → utterances.turn_id` をたどってそのターン全体の発話の原文（プレイヤーと登場人物の
-   両方）を消し、そのターンの幕末のプランの言い換えを B-3 のやり方で消し（`store.clear_plan_texts`）、そのターンで
-   開いている意図確認の草稿を捨てる。
-3. `promise_id` が開いている約束を指していれば → `forget` イベントを 1 件追加し（`origin: "memory"`、
-   `actor: "player"`、`dt: 0`、約束は `voided`）、`kind = forget` のタスク行にぶら下げ、通常どおり NOTIFY して、
-   ゲートウェイが `commit`（`memories[]` に `deleted`）を送る。すでに `kept` / `broken` の約束には触れない。
+   両方）を消し、そのターンの幕末のプランの言い換えを B-3 のやり方で消し（`store.clear_plan_texts`）、
+   そのターンで開いている意図確認の草稿を捨てる。
+3. `promise_id` が開いている約束を指していれば → `forget` イベントを 1 件追加し
+   （`origin: "memory"`、`actor: "player"`、`dt: 0`、約束は `voided`）、`kind = forget` のタスク行にぶら下げ、
+   通常どおり NOTIFY して、ゲートウェイが `commit`（`memories[]` に `deleted`）を送る。
+   すでに `kept` / `broken` の約束には触れない。
 4. 残った記憶から関係を計算し直す。
-トランザクションの後、ゲートウェイはそのターンのメモリ上の最近の会話を捨て、この登場人物の開いているセッションを
-作り直す（`gateway/rest.py`）。世界での結果は取り消さない。
+トランザクションの後、ゲートウェイはそのターンのメモリ上の最近の会話を捨て、
+この登場人物の開いているセッションを作り直す（`gateway/rest.py`）。世界での結果は取り消さない。
 
-プレイ全体の削除（L2）：このプレイの行を外部キーのカスケードで削除する（`playthroughs` の 1 行。ほかのテーブルは
-すべてそれにぶら下がっている）。
+プレイ全体の削除（L2）：このプレイの行を外部キーのカスケードで削除する（`playthroughs` の 1 行。
+ほかのテーブルはすべてそれにぶら下がっている）。
 """
 
 from __future__ import annotations

@@ -1,535 +1,698 @@
-# 归途：怎么走、四个停留点和跑的路段 v1.0
+# Homeward road: how it works, the four stops and the running stretches v1.0 / 帰り道：進み方、4 つの停留地点と走る区間 v1.0
 
-| 项 | 内容 |
+| Item / 項目 | Content / 内容 |
 |---|---|
-| 用途 | 第二个前端线程做归途时照着搭：先做 4 个停留点（先川），再把点和点之间的时间卡换成跑的路段。和广场一样：UX 定要求和位置，前端写 `layout.json`、按实时太阳核对，改了告诉 UX |
-| 依据 | PM 10-10 定「先做设计」（D-026）、归途按停留点加跑的路段做（S-081）；前端的代价估算和答复（项目文件夹 `frontend/estimates/homeward-road.md`、`homeward-road-stops-answers.md`）；数据、后端对 M3 契约的答复（第 10 节）；数据世界模型 1.0.0-draft 的 `place.river`、`place.mountain-pass`、`place.spring`、`place.road-to-city`、beat.15〜23、路上的 affordance；art-direction v1.4（3.1 太阳公式、3.5、4.2、4.3、5.7）；ux-design 4.3、6.2、6.3；原作第 38〜58 段（`worlds/hashire-merosu/sources/melos_plain.txt`） |
-| 平面图 | [homeward-road/plans.svg](homeward-road/plans.svg)（川、峠、泉三个停留点，第四幕的时间线和第二幕的夜路；`make_plans.py` 用本文的坐标画，改坐标两边一起改） |
-| 状态 | v1.0（2026-10-10）。前端、数据看过 v0.1，答复已改进各节 |
+| Purpose / 用途 | For the second frontend thread to follow when building the homeward road: first build the 4 stops (the river first), then replace the time cards between stops with running stretches. Same as the plaza: UX sets the requirements and positions, Frontend writes `layout.json`, checks against the real-time sun, and tells UX about any changes / 2 つ目のフロントエンドスレッドが帰り道を作るときに、これに沿って組む：まず 4 つの停留地点を作り（川から）、次に地点と地点の間の時間カードを走る区間に置き換える。広場と同じ：UX が要件と位置を決め、フロントエンドが `layout.json` を書き、リアルタイムの太陽で確認し、変えたら UX に伝える |
+| Basis / 根拠 | PM's decision on 10-10 to "design first" (D-026), and to build the homeward road as stops plus running stretches (S-081); Frontend's cost estimates and answers (project folder `frontend/estimates/homeward-road.md`, `homeward-road-stops-answers.md`); Data's and Backend's answers on the M3 contract (section 10); Data's world model 1.0.0-draft: `place.river`, `place.mountain-pass`, `place.spring`, `place.road-to-city`, beat.15〜23, the affordances along the road; art-direction v1.4 (3.1 sun formula, 3.5, 4.2, 4.3, 5.7); ux-design 4.3, 6.2, 6.3; paragraphs 38〜58 of the original (`worlds/hashire-merosu/sources/melos_plain.txt`) / PM が 10-10 に決めた「まず設計」（D-026）、帰り道は停留地点と走る区間で作ること（S-081）。フロントエンドのコスト見積もりと回答（プロジェクトフォルダの `frontend/estimates/homeward-road.md`、`homeward-road-stops-answers.md`）。M3 の契約に対するデータとバックエンドの回答（10 節）。データの世界モデル 1.0.0-draft の `place.river`、`place.mountain-pass`、`place.spring`、`place.road-to-city`、beat.15〜23、道中の affordance。art-direction v1.4（3.1 太陽の式、3.5、4.2、4.3、5.7）。ux-design 4.3、6.2、6.3。原作の第 38〜58 段落（`worlds/hashire-merosu/sources/melos_plain.txt`） |
+| Plans / 平面図 | [homeward-road/plans.svg](homeward-road/plans.svg) (the three stops river, pass and spring, the act 4 timeline and the act 2 night road; `make_plans.py` draws it from the coordinates in this document, so change coordinates in both places together) / [homeward-road/plans.svg](homeward-road/plans.svg)（川、峠、泉の 3 つの停留地点、第四幕のタイムラインと第二幕の夜道。`make_plans.py` はこの文書の座標で描くので、座標を変えるときは両方を一緒に変える） |
+| Status / 状態 | v1.0 (2026-10-10). Frontend and Data reviewed v0.1, and their answers have been folded into each section / v1.0（2026-10-10）。フロントエンドとデータが v0.1 を確認し、回答は各節に反映済み |
 
-时刻都写排定时间（`window.canonical`，三日目 = 第 4320 分起）。推迟、提前时整段跟着移，画面上的事按时钟到点出现。
+All times are scheduled times (`window.canonical`; 三日目 = from minute 4320). When the schedule is delayed or brought forward, the whole stretch shifts with it, and things on screen appear when the clock reaches them.
 
-只有跟梅洛斯走的人来这里：第二幕的夜路（城 → 村），第四幕的白天（村 → 城）。留在城里的人看不到归途。
+時刻はすべて予定時刻で書く（`window.canonical`、三日目 = 4320 分目から）。遅れたり早まったりすると全体がそれに合わせてずれ、画面上の出来事は時計がその時刻になると現れる。
+
+Only those who go with Melos come here: the night road of act 2 (city → village) and the daytime of act 4 (village → city). Those who stay in the city never see the homeward road.
+
+ここに来るのはメロスと行く人だけ：第二幕の夜道（町 → 村）と、第四幕の昼（村 → 町）。町に残った人は帰り道を見ない。
 
 ---
 
-## 怎么走（S-081）
+## How the road works (S-081) / 帰り道の進み方（S-081）
 
-### 在路上，你在哪里由时钟决定
+### On the road, the clock decides where you are / 道の上では、どこにいるかは時計が決める
 
-- 十里约 40 km。路上的四个地点之间是 45〜120 分钟的路（`Place.adjacent`），而在场景里走路不花时间（`sceneWalkMinutes` 0），说一句话花 15 分钟（第四幕）。玩家用脚走过的距离和故事里走过的路对不上。
-- 第四幕跟着梅洛斯时，边跑边说只花你的时间，不花他的（ux-design 4.3，S-038）：你说话的时候两个人在往前跑。时钟走到哪里，梅洛斯就跑到哪里，你也在那里。
-- **所以跟着梅洛斯时，你所在的地点由时钟和梅洛斯的排程决定，不由你走到哪里决定。** 不跟着他时（中途留下、一个人先走），才按 `Place.adjacent` 的路程花时间走。
+- 十里 is about 40 km. The four places on the road are 45〜120 minutes apart (`Place.adjacent`), while walking within a scene costs no time (`sceneWalkMinutes` 0) and one line of speech costs 15 minutes (act 4). The distance the player covers on foot doesn't match the distance traveled in the story.
+  十里は約 40 km。道中の 4 つの場所の間は 45〜120 分の道のり（`Place.adjacent`）だが、シーンの中を歩いても時間はかからず（`sceneWalkMinutes` 0）、1 回話すと 15 分かかる（第四幕）。プレイヤーが足で歩く距離と、物語の中で進む道のりは一致しない。
+- When following Melos in act 4, talking while running costs your time, not his (ux-design 4.3, S-038): while you talk, the two of you keep running. Wherever the clock has got to, that's where Melos has run to, and you're there too.
+  第四幕でメロスについて行くとき、走りながら話すと時間を使うのはあなたで、彼ではない（ux-design 4.3、S-038）：話している間も二人は前へ走っている。時計が進んだところまでメロスは走っていて、あなたもそこにいる。
+- **So when following Melos, your place is decided by the clock and Melos's schedule, not by where you walk.** Only when you aren't following him (staying behind partway, going ahead alone) do you spend time walking the distances in `Place.adjacent`.
+  **したがってメロスについて行くとき、あなたのいる場所は時計とメロスの予定で決まり、あなたがどこへ歩いたかでは決まらない。** 彼について行かないとき（途中で残る、一人で先に行く）だけ、`Place.adjacent` の道のりに従って時間をかけて歩く。
 
-### 这条路上要演什么
+### What plays out on this road / この道で演じること
 
-| 地点 | 第二幕（一日目，夜，桥还在） | 第四幕（三日目） | 第四幕的节拍和动作 | 第四幕能说几句〔推算，每句 15 分〕 |
+| Place / 場所 | Act 2 (一日目, night, bridge still standing) / 第二幕（一日目、夜、橋はまだある） | Act 4 (三日目) / 第四幕（三日目） | Act 4 beats and actions / 第四幕のビートとアクション | Lines possible in act 4 〔estimate, 15 min per line〕 / 第四幕で話せる回数〔推算、1 回 15 分〕 |
 |---|---|---|---|---|
-| 泉（峠下の草原） | 02:45，**跟梅洛斯走的人第二幕从这里开始**（`exit.1.road`）。满天星，黑暗里听得见泉水 | 约 14:55 到 | beat.20 15:00 他倒下；beat.21 16:30 喝泉水站起来。「休ませる」「水を汲んで渡す」 | 约 6 句。倒下的梅洛斯想放弃，这是归途最重的一段对话 |
-| 峠 | 约 03:30，摸黑翻过 | 约 13:40 到（坡顶前） | beat.19 14:00 山贼。「先に登って様子を見る」「峠を避けて、脇道を行く」「引き止める」 | 约 1〜2 句，山贼来得快 |
-| 川と橋 | 约 05:10，薄明，过桥。水还平，桥还在，为第四幕埋下 | 11:20 到（过场里「急かす」就是 10:40）。**第四幕跟梅洛斯走的人从这里开始**（`exit.3.road`） | beat.18 12:00 他向宙斯祈祷后跳进濁流。「流れの緩い浅瀬を探す」「引き止める」 | 约 2〜3 句 |
-| 市へ続く野の道 | 不经过 | 约 17:20 进 | beat.22 17:30 冲过野地的酒宴、听到旅人说「磔にかかっている」；beat.23 18:30 フィロストラトス追上来。远处城楼在夕阳里发亮。「近道を教える」「先に走って知らせる」「引き止める」 | 约 6 句，后 2 句可以和フィロストラトス说 |
-| （隣村） | 不停，旁白交代 | 第三幕到第四幕的过场页，「急かす / 好きにさせる」 | beat.15、beat.16 | — |
+| Spring (泉, 峠下の草原) / 泉（峠下の草原） | 02:45, **those who go with Melos start act 2 here** (`exit.1.road`). A sky full of stars; in the dark you can hear the spring / 02:45、**メロスと行く人の第二幕はここから始まる**（`exit.1.road`）。満天の星、暗闇の中で泉の水音が聞こえる | Arrive about 14:55 / 約 14:55 に着く | beat.20 15:00 he collapses; beat.21 16:30 he drinks from the spring and gets up. 「休ませる」「水を汲んで渡す」 / beat.20 15:00 彼が倒れる。beat.21 16:30 泉の水を飲んで立ち上がる。「休ませる」「水を汲んで渡す」 | About 6. The collapsed Melos wants to give up; this is the weightiest conversation on the homeward road / 約 6 回。倒れたメロスはあきらめかけている。帰り道で最も重い会話 |
+| Pass / 峠 | About 03:30, crossed in the dark / 約 03:30、暗闇の中で越える | Arrive about 13:40 (before the top) / 約 13:40 に着く（頂上の手前） | beat.19 14:00 bandits. 「先に登って様子を見る」「峠を避けて、脇道を行く」「引き止める」 / beat.19 14:00 山賊。「先に登って様子を見る」「峠を避けて、脇道を行く」「引き止める」 | About 1〜2; the bandits come quickly / 約 1〜2 回、山賊はすぐに来る |
+| River and bridge / 川と橋 | About 05:10, twilight, crossing the bridge. The water is still calm and the bridge still stands, setting up act 4 / 約 05:10、薄明、橋を渡る。水はまだ穏やかで橋もある。第四幕への伏線 | Arrive 11:20 (10:40 if 「急かす」 was chosen in the transition). **Those who go with Melos start act 4 here** (`exit.3.road`) / 11:20 に着く（幕間で「急かす」を選ぶと 10:40）。**メロスと行く人の第四幕はここから始まる**（`exit.3.road`） | beat.18 12:00 he prays to Zeus and leaps into the 濁流. 「流れの緩い浅瀬を探す」「引き止める」 / beat.18 12:00 ゼウスに祈ったあと濁流に飛び込む。「流れの緩い浅瀬を探す」「引き止める」 | About 2〜3 / 約 2〜3 回 |
+| The field road to the city / 市へ続く野の道 | Not passed / 通らない | Enter about 17:20 / 約 17:20 に入る | beat.22 17:30 he dashes through a drinking party in the fields and hears travelers say 「磔にかかっている」; beat.23 18:30 フィロストラトス catches up. The distant city towers shine in the setting sun. 「近道を教える」「先に走って知らせる」「引き止める」 / beat.22 17:30 野の酒宴を突っ切り、旅人が「磔にかかっている」と言うのを聞く。beat.23 18:30 フィロストラトスが追いつく。遠くの塔楼が夕日に光る。「近道を教える」「先に走って知らせる」「引き止める」 | About 6; the last 2 can be with フィロストラトス / 約 6 回、最後の 2 回はフィロストラトスと話せる |
+| (Neighboring village) / （隣村） | No stop; the narration covers it / 止まらない、ナレーションで伝える | The act 3 → act 4 transition page, 「急かす / 好きにさせる」 / 第三幕から第四幕への幕間のページ、「急かす / 好きにさせる」 | beat.15, beat.16 / beat.15、beat.16 | — |
 
-第四幕在路上合计约 15 句加几个动作，19:00 回到广场（beat.24）。路上的时刻带依次是 午前 → 真昼 → 午後 → 夕方 → 日没前，正好是 art-direction 3.5 说的「雨后的昼前 → 午後的烈日 → 斜陽」。
+In act 4 the road holds about 15 lines plus a few actions in total, and returns to the plaza at 19:00 (beat.24). The times of day along the road run 午前 → 真昼 → 午後 → 夕方 → 日没前, exactly what art-direction 3.5 describes as "late morning after the rain → the blazing afternoon sun → 斜陽".
 
-每个停留点都是同一个形状：**和梅洛斯一起到 → 他因为故事停下（祈祷、被拦、倒下）→ 你能说话、能帮他或拖他 → 节拍演出 → 他跑起来 → 你跟上去（或留下）**。
+第四幕の道中では合計約 15 回の発話といくつかのアクションがあり、19:00 に広場へ戻る（beat.24）。道中の時間帯は 午前 → 真昼 → 午後 → 夕方 → 日没前 の順で、ちょうど art-direction 3.5 の言う「雨上がりの昼前 → 午後の烈日 → 斜陽」になる。
 
-### 为什么是停留点加跑的路段
+Every stop has the same shape: **arrive together with Melos → he stops because of the story (praying, being blocked, collapsing) → you can talk, help him or hold him back → the beat plays → he starts running → you follow (or stay)**.
 
-- 不做一整片连续地形：和时间规则合不上（要么跨过看不见的边界时太阳在脚下跳几小时，要么 3 分钟走完 4 小时的路，梅洛斯还得瞬移或等人）；节拍之间的路是空的，没有任务标记和小地图（ux-design 6.2），容易迷路、走得无聊；10 MB 摊在大面积上，贴图密度变低。
-- 停留点之间放并肩跑的路段，而不只是时间卡：「并肩跑、太阳往下沉、城楼越来越近」是原作最核心的画面，野の道的两个节拍都发生在跑的时候。ux-design 4.3「並んで走りながら話す」有了真正的画面。
-- 做的顺序：先做 4 个点、点和点之间用时间卡，再把时间卡换成跑，不返工。减少动态效果打开时照样出时间卡。前端估：比只做时间卡约多四成工作量、多 1〜1.5 MB，归途合计约 10〜11.5 MB〔推算〕；跑的路段是人原地跑、路往后卷（跑道的做法），正好盖住下一个点的加载。
+どの停留地点も同じ形：**メロスと一緒に着く → 物語の都合で彼が止まる（祈る、阻まれる、倒れる）→ あなたは話し、彼を助け、あるいは引き止められる → ビートが演じられる → 彼が走り出す → あなたはついて行く（または残る）**。
 
-### 走的规则
+### Why stops plus running stretches / なぜ停留地点と走る区間なのか
 
-1. **停留点**：泉、峠、川三处是站着的小场地，软边界（ux-design 6.2）：路从两头延伸出去，往回走路会弯回来。走到梅洛斯要去的方向的出口时：
-   - **他已经跑起来以后**：走出去就等于「メロスを追う」，不用另找按钮。按钮也有，在「近くの人」和他离开后的提示里。
-   - **他还没动身时**（节拍之前：在河边祈祷、在泉边倒着）：路也弯回来，不算你走了。一个人先走是一个明确的选择，不能因为点地面点到了边上就发生：用语音说（「先に行く」），或点「近くの人」里的「ひとりで先へ行く」，按钮上写路程（如「（峠まで1時間40分ほど）」）。选了以后就不再跟着他，照第 4 条。不弹确认，和别的动作一样「花之前就知道」（ux-design 4.3）。
-   - 为什么不让走出去就算先走：手机上点地面很容易点到场地边上，一步就把梅洛斯丢下，玩家会觉得被坑。他跑走以后，往前走只可能是想跟上，所以那时走出去就算跟上。
-   - 川的出口在对岸：第四幕他游过去之前，水面不在能走的范围里（导航网格不含水面），过河要用河边的动作。水边「調べる」出一行「とても渡れそうにない」：这一行由服务端下发，前端不自己出故事里的字（第 10 节「其他」）。
-2. **短的跑的路段**（第四幕的 川 → 峠、峠 → 泉、泉 → 野の道，第 5 节）：
-   - 15〜25 秒，镜头在两人侧后方平行跟随（ux-design 6.3）。路边布置按这一段换。
-   - 时钟从离开的时刻走到到达的时刻（梅洛斯的排程），太阳跟着走，画面上方的时刻标签跟着变。
-   - **第一版这段不能说话**：太短，一来一回的语音不够时间，还要处理「说到一半到站了」。要说话就在停留点、野の道和第二幕的夜路说。
-   - 点一下画面跳过。跳过时下一个点还没载完，先出时间卡，载完再进（前端估算第 5 条；15〜25 秒的路段本来盖得住加载，只有一开始就跳过才会碰到）。减少动态时直接出时间卡。
-3. **长的跑的路段：野の道整段是跑的**（第 4 节）：从约 17:20 跑到城门，路上的事按时钟到点出现。
-   - 在这里说话和在停留点一样，每句 15 分钟，梅洛斯的排程不变（ux-design 4.3）。
-   - 不说话的时候两个人一直在跑，画面不停；闲置时照常出「時を進める」的提示（这里写「走り続ける」），点了跳到下一件事。时钟不会自己走。
-   - 「先に走って知らせる」点了以后，你先跑进城（演出用同一条路段，你一个人），落在刑场（`place.execution-ground`）。
-   - 跑到城门 → 换到广场（场景切换 ≤ 4 秒，整段野の道都可以用来预载广场）。
-4. **中途不跟了**：梅洛斯跑走以后你留下（比如说「ここで待つ」），或者他动身前你一个人先走（第 1 条），就不再跟着他的排程；之后去下一个点按 `Place.adjacent` 的路程花时间，过场是时间卡。
-5. **第二幕只停川**：
-   - 第二幕路上没有节拍，梅洛斯一夜没停（原作「一睡もせず十里の路を急ぎに急いで」）。所以夜路是一整段长的路段：两人并肩快步走，**可以说话**（第二幕每句 10 分钟），路上的东西按时钟出现（5.1）。不说话时闲置提示「歩き続ける」，点了跳到下一件事。
-   - 第二幕是认识梅洛斯的一幕，说话是这一幕的全部内容，所以夜路必须能说话，不能用短路段带过。
-   - 唯一的停留点是川（约 05:10，薄明）：桥还在、水还平，为第四幕的断桥埋一笔。过桥后「メロスを追う」进幕末。
-6. **光**：每个点只在这些时刻出现，所以只要 5 套（第 8 节）。实时太阳为底，关键时段各烘一套天空光；跑的路段都是实时光。
+- No single continuous terrain: it doesn't fit the time rules (either the sun jumps several hours when you cross an invisible boundary, or you walk 4 hours of road in 3 minutes and Melos has to teleport or wait for people); the road between beats is empty, with no quest markers or minimap (ux-design 6.2), so it's easy to get lost and boring to walk; and 10 MB spread over a large area means lower texture density.
+  ひと続きの地形は作らない：時間のルールと合わない（見えない境界をまたぐと太陽が足もとで数時間跳ぶか、4 時間の道を 3 分で歩き終えてメロスが瞬間移動するか人を待つことになる）。ビートとビートの間の道は空っぽで、クエストマーカーもミニマップもない（ux-design 6.2）ので、迷いやすく退屈。10 MB を広い面積に広げるとテクスチャの密度も下がる。
+- Between stops, put running stretches side by side rather than only time cards: "running side by side, the sun sinking, the city towers getting closer" is the core image of the original, and both beats on the field road happen while running. ux-design 4.3's 「並んで走りながら話す」 gets a real picture.
+  停留地点の間は時間カードだけでなく、並んで走る区間を置く：「並んで走り、太陽が沈んでいき、塔楼が近づいてくる」は原作の最も核心的な画面で、野の道の 2 つのビートはどちらも走っている最中に起きる。ux-design 4.3 の「並んで走りながら話す」が本当の画面になる。
+- Build order: first the 4 stops with time cards between them, then swap the time cards for running, with no rework. With reduced motion on, time cards are shown as before. Frontend's estimate: about 40% more work than time cards alone, and 1〜1.5 MB more, for about 10〜11.5 MB in total on the homeward road 〔estimate〕; the running stretches have the characters running in place while the road scrolls backward (the treadmill technique), which neatly covers loading the next stop.
+  作る順番：まず 4 つの地点を作り、地点の間は時間カードにしておき、そのあと時間カードを走る区間に置き換える。作り直しは出ない。動きを減らす設定がオンのときは従来どおり時間カードを出す。フロントエンドの見積もり：時間カードだけの場合より作業量は約 4 割増え、1〜1.5 MB 増え、帰り道の合計は約 10〜11.5 MB〔推算〕。走る区間は人がその場で走り、道が後ろへ巻き取られていく（ランニングマシン方式）ので、次の地点の読み込みをちょうど隠せる。
+
+### Movement rules / 移動のルール
+
+1. **Stops**: the spring, the pass and the river are small standing areas with soft boundaries (ux-design 6.2): the road extends out at both ends, and walking back along it curves you round again. When you reach the exit in the direction Melos is heading:
+   **停留地点**：泉、峠、川の 3 か所は立ち止まる小さな場所で、境界は柔らかい（ux-design 6.2）：道は両端から外へ延び、戻る方向へ歩くと道は折り返してくる。メロスが向かう方向の出口まで歩いたとき：
+   - **Once he has started running**: walking out counts as 「メロスを追う」, with no need to find a button. There is a button too, in 「近くの人」 and in the prompt after he leaves.
+     **彼がもう走り出したあとなら**：外へ歩き出すことが「メロスを追う」になり、別にボタンを探す必要はない。ボタンもあり、「近くの人」と彼が去ったあとの案内の中にある。
+   - **While he hasn't set off yet** (before the beat: praying by the river, lying by the spring): the road curves back too, and it doesn't count as you leaving. Going ahead alone is an explicit choice and must not happen just because a tap on the ground landed near the edge: say it by voice (「先に行く」), or tap 「ひとりで先へ行く」 in 「近くの人」; the button shows the distance (e.g. 「（峠まで1時間40分ほど）」). Once chosen, you no longer follow him; see item 4. No confirmation dialog: like other actions, "you know the cost before you spend it" (ux-design 4.3).
+     **彼がまだ動き出していないとき**（ビートの前：川辺で祈っている、泉のそばで倒れている）：道はやはり折り返し、あなたが行ったことにはならない。一人で先に行くのははっきりした選択であり、地面をタップした位置がたまたま端だったせいで起きてはならない：音声で言う（「先に行く」）か、「近くの人」の「ひとりで先へ行く」をタップする。ボタンには道のりを書く（例：「（峠まで1時間40分ほど）」）。選んだあとは彼について行かなくなり、第 4 項に従う。確認ダイアログは出さない。ほかのアクションと同じく「使う前にわかっている」（ux-design 4.3）。
+   - Why walking out doesn't count as going ahead: on a phone it's easy to tap near the edge of the area, and leaving Melos behind in one step would make players feel cheated. Once he has run off, walking forward can only mean wanting to catch up, so at that point walking out counts as following.
+     なぜ外へ歩き出しただけで先に行ったことにしないのか：スマホでは地面をタップすると場所の端に当たりやすく、一歩でメロスを置き去りにすると、プレイヤーはだまされたと感じる。彼が走り去ったあとなら、前へ歩くのは追いつきたいからでしかないので、そのときは外へ出ればついて行ったことにする。
+   - The river's exit is on the far bank: in act 4, before he swims across, the water surface isn't in the walkable area (the navmesh doesn't include water), so crossing the river takes a riverside action. 「調べる」 at the water's edge gives one line, 「とても渡れそうにない」: this line is sent down by the server; the frontend doesn't produce story text on its own (section 10, "Other").
+     川の出口は対岸にある：第四幕で彼が泳いで渡る前は、水面は歩ける範囲に入っていない（ナビメッシュは水面を含まない）ので、川を渡るには川辺のアクションを使う。水辺で「調べる」と「とても渡れそうにない」の 1 行が出る：この 1 行はサーバーが送る。フロントエンドは物語の文字を自分で出さない（10 節「その他」）。
+2. **Short running stretches** (act 4's river → pass, pass → spring, spring → field road, section 5):
+   **短い走る区間**（第四幕の 川 → 峠、峠 → 泉、泉 → 野の道、5 節）：
+   - 15〜25 seconds, with the camera tracking alongside from behind and to the side of the two (ux-design 6.3). Roadside dressing changes per stretch.
+     15〜25 秒で、カメラは二人の斜め後ろから並行して追う（ux-design 6.3）。道端の配置は区間ごとに変える。
+   - The clock runs from the departure time to the arrival time (Melos's schedule), the sun moves with it, and the time label at the top of the screen changes along with it.
+     時計は出発の時刻から到着の時刻まで進み（メロスの予定）、太陽もそれに合わせて動き、画面上部の時刻ラベルも変わる。
+   - **No talking on these stretches in the first release**: they're too short for a voice exchange, and we'd also have to handle "arrived halfway through a sentence". Talking happens at the stops, on the field road and on the act 2 night road.
+     **第 1 版ではこの区間では話せない**：短すぎて音声のやりとりに時間が足りず、「話している途中で着いた」にも対処しなければならない。話すのは停留地点、野の道、第二幕の夜道で。
+   - Tap the screen to skip. If the next stop hasn't finished loading when skipped, show a time card first and enter once it has loaded (Frontend estimate item 5; a 15〜25-second stretch normally covers the loading, so this only happens when skipping right at the start). With reduced motion, show the time card directly.
+     画面をタップするとスキップする。スキップしたときに次の地点がまだ読み込み終わっていなければ、まず時間カードを出し、読み込みが終わってから入る（フロントエンドの見積もり第 5 項。15〜25 秒の区間なら本来読み込みを隠せるので、最初にすぐスキップしたときだけ起きる）。動きを減らす設定のときは直接時間カードを出す。
+3. **The long running stretch: the whole field road is running** (section 4): from about 17:20 to the city gate, with things along the road appearing when the clock reaches them.
+   **長い走る区間：野の道は全区間を走る**（4 節）：約 17:20 から城門まで走り、道中の出来事は時計がその時刻になると現れる。
+   - Talking here works like at the stops: 15 minutes per line, and Melos's schedule doesn't change (ux-design 4.3).
+     ここで話すのは停留地点と同じで、1 回 15 分、メロスの予定は変わらない（ux-design 4.3）。
+   - When not talking the two keep running and the picture never stops; when idle, the usual 「時を進める」 prompt appears (here labeled 「走り続ける」), and tapping it jumps to the next event. The clock doesn't advance on its own.
+     話していないときも二人は走り続け、画面は止まらない。放置しているときは通常どおり「時を進める」の案内が出て（ここでは「走り続ける」と書く）、タップすると次の出来事まで飛ぶ。時計がひとりでに進むことはない。
+   - After tapping 「先に走って知らせる」, you run into the city ahead (staged on the same stretch, you alone), landing at the execution ground (`place.execution-ground`).
+     「先に走って知らせる」をタップすると、あなたが先に町へ走り込み（演出は同じ区間を使い、あなた一人）、刑場（`place.execution-ground`）に着地する。
+   - Reaching the city gate → switch to the plaza (scene switch ≤ 4 seconds; the whole field road can be used to preload the plaza).
+     城門まで走ったら → 広場に切り替える（シーンの切り替えは 4 秒以内。野の道の全区間を広場の先読みに使える）。
+4. **No longer following partway**: if you stay behind after Melos runs off (e.g. by saying 「ここで待つ」), or go ahead alone before he sets off (item 1), you no longer follow his schedule; after that, getting to the next stop costs the walking time in `Place.adjacent`, and the transition is a time card.
+   **途中でついて行かなくなる**：メロスが走り去ったあとに残る（たとえば「ここで待つ」と言う）、あるいは彼が動き出す前に一人で先に行く（第 1 項）と、もう彼の予定には従わない。そのあと次の地点へ行くには `Place.adjacent` の道のりに従って時間をかけ、移動は時間カードになる。
+5. **Act 2 only stops at the river**:
+   **第二幕は川にだけ止まる**：
+   - Act 2 has no beats on the road, and Melos never stops all night (the original: 「一睡もせず十里の路を急ぎに急いで」). So the night road is one long stretch: the two walk briskly side by side, **and can talk** (10 minutes per line in act 2), with things on the road appearing by the clock (5.1). When not talking, the idle prompt is 「歩き続ける」, and tapping it jumps to the next event.
+     第二幕は道中にビートがなく、メロスは一晩中止まらない（原作「一睡もせず十里の路を急ぎに急いで」）。だから夜道はひと続きの長い区間：二人は並んで早足で歩き、**話せる**（第二幕は 1 回 10 分）。道中のものは時計に合わせて現れる（5.1）。話していないときの放置の案内は「歩き続ける」で、タップすると次の出来事まで飛ぶ。
+   - Act 2 is the act where you get to know Melos, and talking is all there is to it, so the night road must allow talking; it can't be skipped over with a short stretch.
+     第二幕はメロスを知る幕で、話すことがこの幕のすべてなので、夜道は話せなければならず、短い区間で済ませてはいけない。
+   - The only stop is the river (about 05:10, twilight): the bridge still stands and the water is calm, foreshadowing the broken bridge of act 4. After crossing the bridge, 「メロスを追う」 goes to the end of the act.
+     唯一の停留地点は川（約 05:10、薄明）：橋はまだあり、水も穏やかで、第四幕の落ちた橋への伏線になる。橋を渡ったあと「メロスを追う」で幕末に入る。
+6. **Light**: each stop only appears at these times, so only 5 sets are needed (section 8). The real-time sun is the base, with one baked skylight set per key time; running stretches all use real-time light.
+   **光**：各地点はこれらの時刻にしか現れないので、5 セットで足りる（8 節）。リアルタイムの太陽を土台にし、重要な時間帯ごとに天空光を 1 セットずつベイクする。走る区間はすべてリアルタイムの光。
 
 ---
 
-## 0. 几条共同的
+## 0. Shared rules / 共通事項
 
-### 0.1 坐标和方向
+### 0.1 Coordinates and orientation / 座標と方角
 
-- 每个点一张平面，单位米。**+x 永远是往锡拉库萨去的方向**（第四幕梅洛斯跑的方向），+y 是它的左手边，z 朝上，**落地点的地面 z = 0**。
-- 每个点写出 +x 的罗盘方位（正北 0°，顺时针），前端照广场的做法设 `rotationDeg`。
-- 真实地理：锡拉库萨在东海岸，村子在西边内陆十里（art-direction 1）。所以路大体东西走向，第二幕往西走，第四幕往东跑。从西到东的顺序是：村 → 隣村 → **川** → **峠** → **泉** → **野の道** → 城门。
-- 太阳用 art-direction 3.1 的公式（和 `assets/pipeline/plaza/sunpos.py` 同一个），每个点只换 +x 的方位。
+- One plan per stop, in meters. **+x is always the direction toward Syracuse** (the direction Melos runs in act 4), +y is to its left, z is up, and **the ground at the landing spot is z = 0**.
+  地点ごとに平面図を 1 枚、単位はメートル。**+x は常にシラクスへ向かう方向**（第四幕でメロスが走る方向）、+y はその左手、z は上、**着地点の地面は z = 0**。
+- For each stop, the compass bearing of +x is given (north 0°, clockwise), and Frontend sets `rotationDeg` the same way as for the plaza.
+  地点ごとに +x の方位（北 0°、時計回り）を書き、フロントエンドは広場と同じやり方で `rotationDeg` を設定する。
+- Real geography: Syracuse is on the east coast, and the village is 十里 inland to the west (art-direction 1). So the road runs roughly east–west: act 2 heads west, act 4 runs east. From west to east the order is: village → 隣村 → **river** → **pass** → **spring** → **field road** → city gate.
+  実際の地理：シラクスは東海岸にあり、村は西の内陸十里のところ（art-direction 1）。だから道はおおむね東西に走り、第二幕は西へ、第四幕は東へ走る。西から東への順は：村 → 隣村 → **川** → **峠** → **泉** → **野の道** → 城門。
+- The sun uses the formula in art-direction 3.1 (the same one as `assets/pipeline/plaza/sunpos.py`); each stop only changes the bearing of +x.
+  太陽は art-direction 3.1 の式を使い（`assets/pipeline/plaza/sunpos.py` と同じ）、地点ごとに +x の方位だけを変える。
 
-### 0.2 太阳在每个点的位置（按公式算的）
+### 0.2 Where the sun is at each stop (computed from the formula) / 各地点での太陽の位置（式で計算）
 
-| 点 | +x 方位 | 时刻 | 高度角 | 方位 | 影长 / 物高 | 太阳在跑的人的哪边 |
+| Stop / 地点 | +x bearing / +x の方位 | Time / 時刻 | Altitude / 高度角 | Azimuth / 方位 | Shadow length / object height / 影の長さ / 物の高さ | Which side of the runners the sun is on / 走る人のどちら側に太陽があるか |
 |---|---|---|---|---|---|---|
-| 川（第二幕） | 90° | 05:10 | 1.9° | 67°（东北偏东） | — | 往西走，太阳在背后偏右，还被东边的山脊挡着（1.5） |
-| 川（第四幕） | 90° | 11:20〜12:00 | 70°→72° | 151°→180° | 0.3〜0.4 | 右手边（南），几乎在头顶 |
-| 峠 | 80° | 13:40〜14:00 | 62°→58° | 237°→244° | 0.5〜0.6 | 右后方 |
-| 泉 | 100° | 15:00〜16:30 | 47°→29° | 258°→273° | 0.9→1.8 | 右后方 → 正后方 |
-| 野の道 | 114° | 17:20〜19:00 | 19°→0° | 280°→294° | 2.9→（19:00 无） | 正后方。19:00 正好在背后（114° + 180° = 294°，和广场的城门大街同一条轴） |
+| River (act 2) / 川（第二幕） | 90° | 05:10 | 1.9° | 67° (east-northeast) / 67°（東北東） | — | Walking west, the sun is behind and to the right, still blocked by the ridge to the east (1.5) / 西へ歩くので太陽は背後のやや右、まだ東の稜線に隠れている（1.5） |
+| River (act 4) / 川（第四幕） | 90° | 11:20〜12:00 | 70°→72° | 151°→180° | 0.3〜0.4 | On the right (south), almost overhead / 右手（南）、ほぼ頭上 |
+| Pass / 峠 | 80° | 13:40〜14:00 | 62°→58° | 237°→244° | 0.5〜0.6 | Behind on the right / 右後方 |
+| Spring / 泉 | 100° | 15:00〜16:30 | 47°→29° | 258°→273° | 0.9→1.8 | Behind on the right → directly behind / 右後方 → 真後ろ |
+| Field road / 野の道 | 114° | 17:20〜19:00 | 19°→0° | 280°→294° | 2.9→(none at 19:00) / 2.9→（19:00 はなし） | Directly behind. At 19:00 it's exactly behind (114° + 180° = 294°, the same axis as the plaza's gate avenue) / 真後ろ。19:00 にちょうど背後（114° + 180° = 294°、広場の城門通りと同じ軸） |
 
-### 0.3 每个点都有的东西
+### 0.3 What every stop has / どの地点にもあるもの
 
-- **落地点**（玩家出现的地方）：朝 +x（第二幕的川朝 −x），背后 9 m、高 3.5 m 是默认跟随镜头的位置（ux-design 6.3），**这一段必须空着**：只有路和矮草，没有树、石头、房子。
-- **梅洛斯的位置点**：到了先站在哪、因为故事停在哪（祈祷、喘气、倒下）、节拍演出在哪。演出专用的点照广场的写法 `auto: false`。
-- **往前的路和往回的路**：两头都是软边界（ux-design 6.2）。往前的那头，梅洛斯动身以前走出去路会弯回来，他跑起来以后走出去就是「メロスを追う」（「走的规则」第 1 条）。往回的那头一直弯回来：第一版不提供往回走（回去没有能做的事）。出口的位置点照广场叫 `way.<方向>`。
-- **能走的核心区约 30〜40 m**。路在两头再往外延伸 10 m 左右，只给镜头和远景用。
-- **远景**：天空着色器加几层剪影（art-direction 3.5 第 4 条）。每个点都能看见上一个点或下一个点的方向，玩家知道自己在路上的哪里（1.4 看得见峠的豁口，2.4 回头看得见河谷，3.1 身后是峠，4.2 的城楼）。
+- **Landing spot** (where the player appears): facing +x (−x for the act 2 river); 9 m behind and 3.5 m up is the default follow camera position (ux-design 6.3), and **that stretch must be kept clear**: only road and low grass, no trees, rocks or buildings.
+  **着地点**（プレイヤーが現れる場所）：+x 向き（第二幕の川は −x 向き）。背後 9 m、高さ 3.5 m がデフォルトの追従カメラの位置（ux-design 6.3）で、**この範囲は空けておく**：道と低い草だけで、木、岩、建物は置かない。
+- **Melos's spots**: where he first stands on arrival, where he stops because of the story (praying, catching his breath, collapsing), and where the beat is staged. Staging-only spots are marked `auto: false`, as on the plaza.
+  **メロスのスポット**：着いて最初に立つ場所、物語の都合で止まる場所（祈る、息を整える、倒れる）、ビートを演じる場所。演出専用のスポットは広場と同じく `auto: false` にする。
+- **The road ahead and the road back**: both ends are soft boundaries (ux-design 6.2). At the forward end, before Melos sets off, walking out curves you back; once he's running, walking out is 「メロスを追う」 ("Movement rules" item 1). The back end always curves you back: the first release doesn't offer walking back (there's nothing to do back there). Exit spots are named `way.<direction>`, as on the plaza.
+  **前へ続く道と戻る道**：両端とも柔らかい境界（ux-design 6.2）。前の端では、メロスが動き出す前に外へ出ようとすると道は折り返し、彼が走り出したあとに外へ出れば「メロスを追う」になる（「移動のルール」第 1 項）。戻る側の端は常に折り返す：第 1 版では戻る道は用意しない（戻ってもできることがない）。出口のスポットは広場と同じく `way.<方向>` と呼ぶ。
+- **The walkable core is about 30〜40 m**. The road extends about 10 m further at each end, only for the camera and the distance.
+  **歩ける中心部は約 30〜40 m**。道は両端からさらに 10 m ほど延びるが、カメラと遠景のためだけ。
+- **Distance**: a sky shader plus a few layers of silhouettes (art-direction 3.5 item 4). Every stop shows the direction of the previous or next stop, so the player knows where on the road they are (1.4 shows the notch of the pass, 2.4 looking back shows the river valley, 3.1 has the pass behind, 4.2 the city towers).
+  **遠景**：空のシェーダーと数層のシルエット（art-direction 3.5 第 4 項）。どの地点からも前の地点か次の地点の方向が見え、プレイヤーは道のどこにいるかがわかる（1.4 では峠の切れ込みが見え、2.4 で振り返ると川の谷が見え、3.1 は背後に峠、4.2 は塔楼）。
 
-### 0.4 共用的路边材质包（只下一次，前端估约 2 MB）
+### 0.4 Shared roadside material pack (downloaded once, Frontend estimates about 2 MB) / 共用の道端の素材パック（ダウンロードは 1 回、フロントエンドの見積もりで約 2 MB）
 
-| 材质 | 用在哪 | 远近 | 要点 |
+| Material / 素材 | Where used / 使う場所 | Distance / 距離 | Key points / 要点 |
 |---|---|---|---|
-| 石灰岩的土路 | 所有点和跑的路段 | **近景，最重要** | 发白带一点赭色的土，细碎石，驴蹄印、车辙。第四幕的川和 R1：雨后湿、颜色深一档，坑里有积水反着天（同一张图，湿用材质参数） |
-| 干草地 | 泉、野の道、跑的路段 | 近景 | 初夏，大半已经黄了，有穗。靠水的地方（泉的细流、河岸）是绿的。野花只用黄、白、紫（茼蒿、野胡萝卜、蓟），**不放红色的虞美人**：西西里五月到处都是，但会和緋色抢（art-direction 6） |
-| 石灰岩的露头 | 峠的岩门、泉的岩石、河岸 | 近景 / 中景 | 灰白、圆钝的喀斯特岩，黑色和橙色的地衣。湿了颜色深一档 |
-| 碎石 | 峠、R2 | 近景 | 有棱角的碎石坡。河里的卵石是圆的，归川的包 |
-| 干砌石墙 | 泉、R1、野の道 | 中景 | 不用灰浆，和村子共用（art-direction 4.2） |
-| 树和灌木 | 各处 | 中景 / 远景 | 橄榄（和广场共用）、圣栎（holm oak，深绿小叶）、悬铃木（泉）、白杨和柳（川）、柏树（远处的竖条剪影）、矮棕榈（*Chamaerops humilis*，西西里本地的，扇形叶，峠和 R2 最有地方感）、乳香黄连木（灌木） |
-| 麦 | 野の道、R3 | 中景 | 金黄，一部分已经割了，捆成束立在地里（初夏收麦的季节，art-direction 4.2 村子同一种） |
-| 芦苇 | 川 | 中景 | 本地的芦苇（*Phragmites*） |
+| Limestone dirt road / 石灰岩の土の道 | All stops and running stretches / すべての地点と走る区間 | **Close-up, most important / 近景、最重要** | Whitish earth with a touch of ochre, fine gravel, donkey hoofprints and cart ruts. Act 4 river and R1: wet after the rain, one shade darker, puddles in the hollows reflecting the sky (same texture; wetness is a material parameter) / 白っぽく少し赭色を帯びた土、細かい砂利、ロバの蹄の跡、轍。第四幕の川と R1：雨上がりで濡れて一段濃く、くぼみの水たまりが空を映す（同じテクスチャで、濡れは素材のパラメータ） |
+| Dry grassland / 乾いた草地 | Spring, field road, running stretches / 泉、野の道、走る区間 | Close-up / 近景 | Early summer, mostly already yellow, with seed heads. Green near water (the spring's trickle, riverbanks). Wildflowers only in yellow, white and purple (crown daisy, wild carrot, thistle); **no red poppies**: they're everywhere in Sicily in May, but they'd compete with 緋色 (art-direction 6) / 初夏で、大半はもう黄色く、穂がある。水の近く（泉の細い流れ、川岸）は緑。野の花は黄、白、紫だけ（シュンギク、ノラニンジン、アザミ）。**赤いヒナゲシは置かない**：シチリアの 5 月にはどこにでもあるが、緋色と競合する（art-direction 6） |
+| Limestone outcrops / 石灰岩の露頭 | The pass's rock gate, the spring's rock, riverbanks / 峠の岩門、泉の岩、川岸 | Close-up / medium / 近景 / 中景 | Grey-white, rounded karst rock, with black and orange lichen. One shade darker when wet / 灰白色で角の丸いカルストの岩、黒と橙の地衣類。濡れると一段濃くなる |
+| Scree / 砕石 | Pass, R2 / 峠、R2 | Close-up / 近景 | Angular scree slopes. River pebbles are round and belong to the river pack / 角ばった砕石の斜面。川の小石は丸く、川のパックに入れる |
+| Dry-stone wall / 空積みの石垣 | Spring, R1, field road / 泉、R1、野の道 | Medium / 中景 | No mortar, shared with the village (art-direction 4.2) / 漆喰を使わず、村と共用（art-direction 4.2） |
+| Trees and shrubs / 木と低木 | Everywhere / 各所 | Medium / far / 中景 / 遠景 | Olive (shared with the plaza), holm oak (dark green small leaves), plane tree (spring), poplar and willow (river), cypress (vertical silhouettes in the distance), dwarf fan palm (*Chamaerops humilis*, native to Sicily, fan-shaped leaves, the most place-defining plant at the pass and R2), mastic (shrub) / オリーブ（広場と共用）、セイヨウヒイラギガシ（holm oak、濃い緑の小さな葉）、プラタナス（泉）、ポプラと柳（川）、イトスギ（遠くの縦長のシルエット）、チャボトウジュロ（*Chamaerops humilis*、シチリア在来、扇形の葉、峠と R2 で最も土地らしさを出す）、マスティックの木（低木） |
+| Wheat / 麦 | Field road, R3 / 野の道、R3 | Medium / 中景 | Golden, partly cut already, bound into sheaves standing in the field (early summer is harvest time, the same as the village in art-direction 4.2) / 金色で、一部はもう刈られ、束にして畑に立ててある（初夏は麦の収穫期、art-direction 4.2 の村と同じもの） |
+| Reeds / 葦 | River / 川 | Medium / 中景 | Local reeds (*Phragmites*) / 在来の葦（*Phragmites*） |
 
-**时代考证**（art-direction 4.3 那张表照旧，路上最容易混进来的）：梨果仙人掌和龙舌兰（今天西西里路边到处都是，扫描素材里最常见）、桉树、柑橘园、玉米。加一条：路边不要现代的铁丝网、混凝土排水沟。
+**Period accuracy** (the art-direction 4.3 table still applies; these are the things most likely to creep in along the road): prickly pear cactus and agave (everywhere along Sicilian roads today, and the most common in scanned assets), eucalyptus, citrus groves, maize. One addition: no modern barbed wire or concrete drainage ditches along the road.
+
+**時代考証**（art-direction 4.3 の表はそのまま有効。道中で最も紛れ込みやすいもの）：ウチワサボテンとリュウゼツラン（今日のシチリアの道端にはどこにでもあり、スキャン素材で最もよく見る）、ユーカリ、柑橘の果樹園、トウモロコシ。1 つ追加：道端に現代の有刺鉄線やコンクリートの排水溝を置かない。
 
 ---
 
-## 1. 川と橋
+## 1. River and bridge / 川と橋
 
-两个包，几何不同，共用河岸（前端估算第 2 条）：
+Two packages with different geometry, sharing the riverbanks (Frontend estimate item 2):
 
-| | 第二幕 `scene.road-river-calm` | 第四幕 `scene.road-river-flood` |
+ジオメトリの異なる 2 つのパッケージで、川岸は共用する（フロントエンドの見積もり第 2 項）：
+
+| | Act 2 `scene.road-river-calm` / 第二幕 `scene.road-river-calm` | Act 4 `scene.road-river-flood` / 第四幕 `scene.road-river-flood` |
 |---|---|---|
-| 时刻 | 约 05:10 到（从峠那边来），过桥 10 分 | 11:20 到（`exit.3.road`，跟梅洛斯走的人第四幕从这里开始）；beat.18 12:00 游过去 |
-| 谁在 | 梅洛斯（第一幕的衣服，带包袱），你 | 梅洛斯，你 |
-| 方向 | 往西走：落地点在**东岸**，朝 −x | 往东跑：落地点在**西岸**，朝 +x |
-| 水 | 河道中间约 8 m 宽，平，暗，像镜子，水面上贴着一层雾 | 两岸之间 16 m 全是水，浑黄不透明，翻滚，有泡沫和冲下来的树枝；水面高出第二幕约 1.5 m，只比岸顶低 20 cm。西岸路的最后 3 m 没在水里：**路直接走进水里** |
-| 桥 | 木桥完整：桥面 16 m 长、2.2 m 宽，三对木桩，离水面约 2.2 m | 桥面没了。三对木桩：x = −1 那对往下游歪，x = 3 那对齐水面断了，x = 7 那对断在水面上 30 cm，挂着一团树枝和一块桥板。断口是新的：露出里面浅色的木头，和外面晒灰的表面对比（这是「刚被冲走」读得出来的地方） |
-| 渡口 | 下游西岸有一个小木栈桥，两条平底小船拴在桩上；船夫的芦苇顶小屋 | 栈桥只剩桩子，桩上是被扯断的绳头，没有船（「繋舟は残らず浪に浚われて」）；小屋空着，门开着（「渡守りの姿も見えない」） |
-| 上游的浅滩 | 河道变宽，中间露出一片干的卵石滩 | 卵石滩没在水下，但这里水面比别处平，有三四块石头冒出水面：「流れの緩い浅瀬を探す」的地方，看得出来但不显眼 |
-| 天 | 薄明，东边在背后发白；西边是地影和粉色的带（1.5） | 雨后，碎积云在散；**北边（上游）的山上还压着黑的雨云**，看得出水是从哪里来的 |
+| Time / 時刻 | Arrive about 05:10 (coming from the pass), 10 minutes to cross the bridge / 約 05:10 に着く（峠の方から来る）、橋を渡るのに 10 分 | Arrive 11:20 (`exit.3.road`; those who go with Melos start act 4 here); beat.18 12:00 he swims across / 11:20 に着く（`exit.3.road`、メロスと行く人の第四幕はここから始まる）。beat.18 12:00 に泳いで渡る |
+| Who is there / 誰がいるか | Melos (act 1 clothes, carrying his bundle), you / メロス（第一幕の衣服、荷物を持つ）、あなた | Melos, you / メロス、あなた |
+| Direction / 方向 | Walking west: the landing spot is on the **east bank**, facing −x / 西へ歩く：着地点は**東岸**で、−x 向き | Running east: the landing spot is on the **west bank**, facing +x / 東へ走る：着地点は**西岸**で、+x 向き |
+| Water / 水 | About 8 m wide in the middle of the channel, calm, dark, mirror-like, with a layer of mist lying on the surface / 川筋の中央に幅約 8 m、穏やかで暗く、鏡のよう。水面に霧が一層張りついている | All 16 m between the banks is water, muddy yellow and opaque, churning, with foam and branches swept down; the surface is about 1.5 m higher than in act 2, only 20 cm below the top of the banks. The last 3 m of the road on the west bank is under water: **the road walks straight into the water** / 両岸の間 16 m がすべて水で、濁った黄色で不透明、渦を巻き、泡と流されてきた枝がある。水面は第二幕より約 1.5 m 高く、岸の上端より 20 cm 低いだけ。西岸の道の最後の 3 m は水に沈んでいる：**道がそのまま水の中へ入っていく** |
+| Bridge / 橋 | The wooden bridge is intact: deck 16 m long, 2.2 m wide, three pairs of wooden piles, about 2.2 m above the water / 木の橋は無事：橋面は長さ 16 m、幅 2.2 m、木の杭が 3 組、水面から約 2.2 m | The deck is gone. Three pairs of piles: the pair at x = −1 leans downstream, the pair at x = 3 is snapped off at the waterline, the pair at x = 7 is broken 30 cm above the water with a tangle of branches and one deck plank caught on it. The breaks are fresh: pale wood shows inside against the sun-greyed surface (this is where "just swept away" reads) / 橋面はなくなっている。3 組の杭：x = −1 の組は下流へ傾き、x = 3 の組は水面の高さで折れ、x = 7 の組は水面から 30 cm 上で折れて、枝の塊と橋板 1 枚が引っかかっている。折れ口は新しい：中の明るい色の木がのぞき、日に焼けて灰色になった表面と対比になる（「流されたばかり」と読み取れるところ） |
+| Ferry landing / 渡し場 | A small wooden jetty on the downstream west bank, two flat-bottomed boats tied to posts; the ferryman's reed-roofed hut / 下流の西岸に小さな木の桟橋があり、平底の小舟 2 艘が杭につながれている。渡し守の葦葺きの小屋 | Only the jetty's posts remain, with torn rope ends on them, and no boats (「繋舟は残らず浪に浚われて」); the hut is empty with its door open (「渡守りの姿も見えない」) / 桟橋は杭だけが残り、杭には引きちぎられた縄の端があり、舟はない（「繋舟は残らず浪に浚われて」）。小屋は空で、扉が開いている（「渡守りの姿も見えない」） |
+| Upstream shallows / 上流の浅瀬 | The channel widens and a dry pebble bar shows in the middle / 川筋が広がり、中央に乾いた小石の河原が出ている | The pebble bar is under water, but here the surface is flatter than elsewhere, with three or four stones breaking the surface: the place for 「流れの緩い浅瀬を探す」, readable but not conspicuous / 小石の河原は水の下だが、ここは水面がほかより平らで、石が 3、4 個水面から出ている：「流れの緩い浅瀬を探す」の場所で、見ればわかるが目立ちはしない |
+| Sky / 空 | Twilight, the east whitening behind you; in the west, the Earth's shadow and a pink band (1.5) / 薄明、背後の東が白んでいる。西は地球影とピンクの帯（1.5） | After the rain, broken cumulus clearing; **dark rain clouds still sit on the hills to the north (upstream)**, showing where the water came from / 雨上がり、ちぎれた積雲が消えていく。**北（上流）の山にはまだ黒い雨雲がかかっていて**、水がどこから来たのかがわかる |
 
-### 1.1 平面（+x = 90°，正东）
+### 1.1 Plan (+x = 90°, due east) / 平面（+x = 90°、真東）
 
 ```
-          北（上游）  雨云压在山上（第四幕）
-   −x 西岸 ← 往村子                     往峠 → +x 东岸
-                 白杨         浅滩（y 9〜16）     白杨
-  way.west ═══ 落地点(第四幕) ═ 桥头 ┃┃ 木桥 ┃┃ 桥头 ═ 落地点(第二幕) ═ way.east
-                 小屋  栈桥        河（x −5〜11）     柳（梅洛斯抓住的树）
-          南（下游）  太阳在这边（第四幕的正午）
+          North (upstream)  rain clouds on the hills (act 4)
+   −x west bank ← to the village                       to the pass → +x east bank
+                 Poplars      Shallows (y 9〜16)          Poplars
+  way.west ═══ Landing (act 4) ═ Bridgehead ┃┃ Wooden bridge ┃┃ Bridgehead ═ Landing (act 2) ═ way.east
+                 Hut  Jetty        River (x −5〜11)       Willow (the tree Melos grabs)
+          South (downstream)  the sun is on this side (act 4 noon)
+
+          北（上流）  雨雲が山にかかる（第四幕）
+   −x 西岸 ← 村へ                     峠へ → +x 東岸
+                 ポプラ         浅瀬（y 9〜16）     ポプラ
+  way.west ═══ 着地点(第四幕) ═ 橋のたもと ┃┃ 木の橋 ┃┃ 橋のたもと ═ 着地点(第二幕) ═ way.east
+                 小屋  桟橋        川（x −5〜11）     柳（メロスがつかまる木）
+          南（下流）  太陽はこちら側（第四幕の正午）
 ```
 
-| 东西 | 位置（x, y） | 说明 |
+| Thing / もの | Position (x, y) / 位置（x, y） | Notes / 説明 |
 |---|---|---|
-| 西岸的路 | (−30, 0) → (−5, 0)，宽 3 m | 往桥头微微下坡。第四幕 x −8〜−5 没在水里 |
-| 西岸岸顶 | x = −5 | 第二幕岸下还有一条 4 m 宽的低滩（芦苇），水边在 x ≈ −1 |
-| 东岸岸顶 | x = 11 | 第二幕水边在 x ≈ 7 |
-| 东岸的路 | (11, 0) → (30, 0) | 往东上坡，去峠（R1 从这里接） |
-| 桥 | x −5 → 11，y ±1.1 | 木桩在 x = −1、3、7 |
-| 渡口 | 栈桥 (−5, −10) → (−1, −10)，宽 1.2 m；系船桩 (−5.5, −9)、(−5.5, −11.5) | |
-| 船夫的小屋 | 中心 (−11, −12)，3 × 3 m，门朝东 | |
-| 上游浅滩 | y 9〜16，河道变宽到 x −3〜13；卵石滩 x 3〜7、y 10〜15 | |
-| 梅洛斯抓住的树 | 东岸 (11.5, −12) 的柳树，约 10 m，往河上斜，根露在外面 | 「対岸の樹木の幹に、すがりつく」 |
-| 白杨 | 西岸 (−8, 7)、(−9, 13)、(−7, −17)；东岸 (13, 5)、(14, 11)、(13, −17) | 风吹时叶子翻出银白的背面 |
+| West bank road / 西岸の道 | (−30, 0) → (−5, 0), 3 m wide / (−30, 0) → (−5, 0)、幅 3 m | Slopes gently down to the bridgehead. In act 4, x −8〜−5 is under water / 橋のたもとへ向かってゆるく下る。第四幕では x −8〜−5 が水に沈む |
+| West bank top / 西岸の岸の上端 | x = −5 | In act 2 there is also a 4 m wide low flat below the bank (reeds), with the water's edge at x ≈ −1 / 第二幕では岸の下に幅 4 m の低い河原（葦）もあり、水際は x ≈ −1 |
+| East bank top / 東岸の岸の上端 | x = 11 | In act 2 the water's edge is at x ≈ 7 / 第二幕の水際は x ≈ 7 |
+| East bank road / 東岸の道 | (11, 0) → (30, 0) | Climbs east toward the pass (R1 connects here) / 東へ上り、峠へ向かう（R1 はここからつながる） |
+| Bridge / 橋 | x −5 → 11, y ±1.1 / x −5 → 11、y ±1.1 | Piles at x = −1, 3, 7 / 杭は x = −1、3、7 |
+| Ferry landing / 渡し場 | Jetty (−5, −10) → (−1, −10), 1.2 m wide; mooring posts (−5.5, −9), (−5.5, −11.5) / 桟橋 (−5, −10) → (−1, −10)、幅 1.2 m。舟をつなぐ杭 (−5.5, −9)、(−5.5, −11.5) | |
+| Ferryman's hut / 渡し守の小屋 | Center (−11, −12), 3 × 3 m, door facing east / 中心 (−11, −12)、3 × 3 m、扉は東向き | |
+| Upstream shallows / 上流の浅瀬 | y 9〜16, the channel widens to x −3〜13; pebble bar x 3〜7, y 10〜15 / y 9〜16、川筋は x −3〜13 まで広がる。小石の河原 x 3〜7、y 10〜15 | |
+| The tree Melos grabs / メロスがつかまる木 | A willow on the east bank at (11.5, −12), about 10 m, leaning over the river with exposed roots / 東岸の (11.5, −12) の柳、約 10 m、川の上へ傾き、根がむき出し | 「対岸の樹木の幹に、すがりつく」 |
+| Poplars / ポプラ | West bank (−8, 7), (−9, 13), (−7, −17); east bank (13, 5), (14, 11), (13, −17) / 西岸 (−8, 7)、(−9, 13)、(−7, −17)。東岸 (13, 5)、(14, 11)、(13, −17) | In the wind the leaves flip to show their silver-white undersides / 風が吹くと葉が裏返り、銀白色の裏が見える |
 
-### 1.2 位置点
+### 1.2 Spots / スポット
 
-| 名字 | 位置 | 朝向 | 用途 |
+| Name / 名前 | Position / 位置 | Facing / 向き | Use / 用途 |
 |---|---|---|---|
-| `road-west` | (−16, −1) | +x | **第四幕落地点**。背后 (−25, −1) 是默认镜头，只有路 |
-| `melos-bridgehead` | (−6, 0.8) | +x | 第四幕梅洛斯到了先站在这里（「はたと、とまった」「茫然と、立ちすくんだ」），之后沿岸走来走去、朝下游喊（「声を限りに呼びたててみた」） |
-| `melos-pray` `auto: false` | (−5.6, −2.5) | +x（朝河） | 「川岸にうずくまり、男泣きに泣きながらゼウスに手を挙げて哀願した」，12:00 之前跪在这里 |
-| `swim-in` `auto: false` | (−5, −1) | +x | beat.18 跳进去的地方 |
-| `swim-out` `auto: false` | (11, −12) | — | 被冲到下游，抓住柳树 |
-| `shallows-in` / `shallows-out` `auto: false` | (−5.5, 12) / (12.5, 13) | +x | 选了「流れの緩い浅瀬を探す」时改从这里过 |
-| `far-bank` | (15, −4) | +x | 过河以后两人都在这里（梅洛斯「馬のように大きな胴震いを一つして」），R1 从这里开始 |
-| `road-east` | (17, 1) | −x | **第二幕落地点**（从夜路接过来）。背后 (26, 1) 是默认镜头 |
-| `melos-wash` `auto: false` | (6.6, −2.5) | −x（朝水） | 第二幕梅洛斯跪在东岸水边捧水洗脸、喝一口，然后过桥。不是节拍，是一夜没睡赶路的人会做的事〔推断〕。第四幕这个地方在洪水底下 |
-| `way.west` / `way.east` | (−24, 0) / (24, 0) | | 第四幕往前是东（但要过河，见 1.3），第二幕往前是西 |
+| `road-west` | (−16, −1) | +x | **Act 4 landing spot**. Behind it, (−25, −1) is the default camera, with only road there / **第四幕の着地点**。背後の (−25, −1) がデフォルトのカメラで、道だけがある |
+| `melos-bridgehead` | (−6, 0.8) | +x | In act 4 Melos first stands here on arrival (「はたと、とまった」「茫然と、立ちすくんだ」), then paces along the bank and shouts downstream (「声を限りに呼びたててみた」) / 第四幕でメロスは着いてまずここに立ち（「はたと、とまった」「茫然と、立ちすくんだ」）、それから岸に沿って行き来し、下流へ叫ぶ（「声を限りに呼びたててみた」） |
+| `melos-pray` `auto: false` | (−5.6, −2.5) | +x (toward the river) / +x（川のほう） | 「川岸にうずくまり、男泣きに泣きながらゼウスに手を挙げて哀願した」; he kneels here before 12:00 / 「川岸にうずくまり、男泣きに泣きながらゼウスに手を挙げて哀願した」。12:00 まではここにひざまずく |
+| `swim-in` `auto: false` | (−5, −1) | +x | Where he leaps in at beat.18 / beat.18 で飛び込む場所 |
+| `swim-out` `auto: false` | (11, −12) | — | Swept downstream, he grabs the willow / 下流へ流され、柳にしがみつく |
+| `shallows-in` / `shallows-out` `auto: false` | (−5.5, 12) / (12.5, 13) | +x | Where they cross instead if 「流れの緩い浅瀬を探す」 was chosen / 「流れの緩い浅瀬を探す」を選んだときは代わりにここから渡る |
+| `far-bank` | (15, −4) | +x | Where both are after crossing (Melos 「馬のように大きな胴震いを一つして」); R1 starts here / 渡ったあと二人がいる場所（メロスは「馬のように大きな胴震いを一つして」）。R1 はここから始まる |
+| `road-east` | (17, 1) | −x | **Act 2 landing spot** (continuing from the night road). Behind it, (26, 1) is the default camera / **第二幕の着地点**（夜道から続く）。背後の (26, 1) がデフォルトのカメラ |
+| `melos-wash` `auto: false` | (6.6, −2.5) | −x (toward the water) / −x（水のほう） | In act 2 Melos kneels at the east bank's edge, scoops water to wash his face and takes a sip, then crosses the bridge. Not a beat; just what someone who has walked all night without sleep would do 〔inference〕. In act 4 this spot is under the flood / 第二幕でメロスは東岸の水際にひざまずき、水をすくって顔を洗い、一口飲んでから橋を渡る。ビートではなく、一晩眠らずに急いだ人がすること〔推測〕。第四幕ではこの場所は洪水の下 |
+| `way.west` / `way.east` | (−24, 0) / (24, 0) | | In act 4 forward is east (but you have to cross the river, see 1.3); in act 2 forward is west / 第四幕では前は東（ただし川を渡る必要がある、1.3 参照）、第二幕では前は西 |
 
-### 1.3 能走的地方
+### 1.3 Where you can walk / 歩ける場所
 
-- **第二幕**：两岸、桥面、栈桥都能走。过了桥往西走出 `way.west`，或点「メロスを追う」，进第二幕的幕末（第 10 节：时钟跳到 beat.08）。
-- **第四幕**：只有西岸（x < −5.3），水面走不进去；水边「調べる」出一行「とても渡れそうにない」（「走的规则」第 1 条）。东岸只在 beat.18 的演出以后到：演出交代你怎么过的（跟着他游过去，或在浅滩上蹚过去），画面停在 `far-bank`，R1 接着开始。
-- 中途不跟了、留在西岸的人：之后要过河，按数据 `place.river.crossing` 的游泳 30 分〔数据定〕，过场是时间卡。
+- **Act 2**: both banks, the bridge deck and the jetty are all walkable. After crossing the bridge, walking west out of `way.west`, or tapping 「メロスを追う」, goes to the end of act 2 (section 10: the clock jumps to beat.08).
+  **第二幕**：両岸、橋面、桟橋はすべて歩ける。橋を渡って西へ `way.west` から出るか、「メロスを追う」をタップすると、第二幕の幕末に入る（10 節：時計は beat.08 へ飛ぶ）。
+- **Act 4**: only the west bank (x < −5.3); you can't walk into the water; 「調べる」 at the water's edge gives the line 「とても渡れそうにない」 ("Movement rules" item 1). You only reach the east bank after the beat.18 staging: the staging shows how you got across (swimming after him, or wading across the shallows), the picture settles at `far-bank`, and R1 begins.
+  **第四幕**：歩けるのは西岸（x < −5.3）だけで、水には入れない。水辺で「調べる」と「とても渡れそうにない」の 1 行が出る（「移動のルール」第 1 項）。東岸へは beat.18 の演出のあとでしか行けない：演出であなたがどう渡ったか（彼について泳いで渡る、あるいは浅瀬を歩いて渡る）を見せ、画面は `far-bank` で止まり、続いて R1 が始まる。
+- Those who stop following and stay on the west bank: crossing later takes 30 minutes of swimming per Data's `place.river.crossing` 〔set by Data〕, with a time card as the transition.
+  途中でついて行かず西岸に残った人：あとで川を渡るには、データの `place.river.crossing` に従って泳いで 30 分かかり〔データが決める〕、移動は時間カードになる。
 
-### 1.4 镜头
+### 1.4 Camera / カメラ
 
-- 第四幕落地：从背后朝东，看得见前面 10 m 站在桥头的梅洛斯、断桩和濁流、对岸的柳和白杨、往东上坡的路，远处山脊上峠的豁口（约 2 km，仰角约 5°〔推断，远景只要方向和高低大致对〕）。下一个点在哪，第一眼就看得见。
-- 第二幕落地：从背后朝西，看得见梅洛斯在水边、木桥、贴着雾的水、对岸的白杨和路，远处西边的山。
-- 下游在南边：第四幕正午朝下游看是逆光，濁流的浪尖一片闪光。演出 beat.18 的镜头建议从 `road-west` 那侧朝南拍他被冲下去，浪尖逆光（前端定）。
+- Act 4 landing: from behind facing east, you see Melos 10 m ahead standing at the bridgehead, the broken piles and the 濁流, the willow and poplars on the far bank, the road climbing east, and in the distance the notch of the pass on the ridge (about 2 km, elevation angle about 5° 〔inference; the distance only needs roughly the right direction and height〕). Where the next stop is, you can see at first glance.
+  第四幕の着地：背後から東を向くと、10 m 先の橋のたもとに立つメロス、折れた杭と濁流、対岸の柳とポプラ、東へ上る道、遠くの稜線に峠の切れ込みが見える（約 2 km、仰角約 5°〔推測。遠景は方向と高さがおおよそ合っていればよい〕）。次の地点がどこか、ひと目でわかる。
+- Act 2 landing: from behind facing west, you see Melos at the water's edge, the wooden bridge, the water with mist lying on it, the poplars and the road on the far bank, and the hills far to the west.
+  第二幕の着地：背後から西を向くと、水際のメロス、木の橋、霧の張りついた水面、対岸のポプラと道、遠く西の山が見える。
+- Downstream is to the south: looking downstream at noon in act 4 is backlit, with the crests of the 濁流 glittering all over. For the beat.18 staging, the suggested camera shoots south from the `road-west` side as he is swept away, with the wave crests backlit (Frontend decides).
+  下流は南側：第四幕の正午に下流を見ると逆光で、濁流の波頭が一面にきらめく。beat.18 の演出のカメラは、`road-west` の側から南へ向けて彼が流されていくところを撮り、波頭が逆光になる案を勧める（フロントエンドが決める）。
 
-### 1.5 光（两套）
+### 1.5 Light (two sets) / 光（2 セット）
 
-| | 第二幕 | 第四幕 |
+| | Act 2 / 第二幕 | Act 4 / 第四幕 |
 |---|---|---|
-| 烘的时刻 | 05:15 | 11:45 |
-| 直射光 | 没有：太阳虽然 05:00 已经出来，但被东边的山脊（峠那道）挡住，河谷要到约 05:40 才照到〔推断，按山脊仰角约 7° 算〕。做法（前端）：每个包记一条东边山脊的仰角，太阳低于它时直射光为 0；越过以后实时光从山脊上斜着进来，不另烘 | 高、硬，从南边来，影子短，缩在脚下和树下 |
-| 天 | 头顶灰蓝。**往西看（第二幕前进的方向）是地影：地平线上一条暗蓝的带，上面一条粉色的带**。这是第一幕广场日没后东边海上那条粉色带的反面：第一幕结束在东边的粉色，第二幕结束在西边的粉色。西边远山的山顶先被照到，一点淡金。**天按太阳在 −1.5° 左右生成**（只换天，太阳方向不变）：05:10 太阳已在地平线上 1.9°，照物理算，地影已经沉下去、粉色带很淡（前端 15:54Z）。不改落地时刻（那要动世界模型的到达时刻）；河谷本来就在山影里没有直射光，天还像日出前，看着是对的。前端做川时出两张（−1.5° 的天 / 落地提前到 04:55）给 UX 对着挑 | 碎积云在散，云的边被照亮；北边上游山上压着暗的雨云 |
-| 空气 | 河面上一层雾，人走过桥时腿在雾里 | 湿、清，远处比平时清楚（雨洗过） |
-| 地面 | 干，露水 | 湿，深一档，有积水 |
+| Bake time / ベイクの時刻 | 05:15 | 11:45 |
+| Direct light / 直射光 | None: although the sun is up at 05:00, it's blocked by the ridge to the east (the one with the pass), and doesn't reach the valley until about 05:40 〔inference, assuming a ridge elevation of about 7°〕. Approach (Frontend): each package records the elevation angle of the eastern ridge, and while the sun is below it direct light is 0; once it clears the ridge, real-time light slants in over the ridge, with no extra bake / なし：太陽は 05:00 にはもう昇っているが、東の稜線（峠のある尾根）に遮られ、谷に日が差すのは約 05:40〔推測、稜線の仰角を約 7° として計算〕。やり方（フロントエンド）：パッケージごとに東の稜線の仰角を 1 つ記録し、太陽がそれより低いあいだは直射光を 0 にする。越えたらリアルタイムの光が稜線から斜めに差し込み、別にベイクしない | High and hard, from the south, with short shadows huddled under feet and trees / 高く硬く、南から来る。影は短く、足もとと木の下に縮こまる |
+| Sky / 空 | Grey-blue overhead. **Looking west (act 2's direction of travel) you see the Earth's shadow: a dark blue band on the horizon, with a pink band above it**. This is the reverse of the pink band over the sea to the east after sunset on the act 1 plaza: act 1 ends with pink in the east, act 2 ends with pink in the west. The peaks of the distant western hills catch the light first, a touch of pale gold. **The sky is generated as if the sun were at about −1.5°** (only the sky changes, not the sun direction): at 05:10 the sun is already 1.9° above the horizon, and physically the Earth's shadow would have sunk and the pink band would be faint (Frontend 15:54Z). The landing time isn't changed (that would mean moving the arrival time in the world model); the valley is in the hills' shadow with no direct light anyway, so a sky that still looks pre-sunrise reads as right. When building the river, Frontend makes two versions (a −1.5° sky / landing brought forward to 04:55) for UX to compare and choose / 頭上は灰青色。**西（第二幕の進む方向）を見ると地球影：地平線に暗い青の帯、その上にピンクの帯**。これは第一幕の広場で日没後に東の海の上に見えたピンクの帯の裏返し：第一幕は東のピンクで終わり、第二幕は西のピンクで終わる。西の遠い山の頂が先に照らされ、淡い金色を帯びる。**空は太陽が −1.5° 前後にあるものとして生成する**（空だけを替え、太陽の方向は変えない）：05:10 には太陽はすでに地平線から 1.9° 上にあり、物理どおりなら地球影は沈んでピンクの帯も薄い（フロントエンド 15:54Z）。着地の時刻は変えない（それには世界モデルの到着時刻を動かす必要がある）。谷はもともと山の影の中で直射光がないので、空がまだ日の出前のように見えても正しく見える。フロントエンドは川を作るときに 2 枚（−1.5° の空 / 着地を 04:55 に早める）を出し、UX が見比べて選ぶ | Broken cumulus clearing, their edges lit; dark rain clouds still on the hills upstream to the north / ちぎれた積雲が消えていき、雲の縁が照らされる。北の上流の山には暗い雨雲がかかっている |
+| Air / 空気 | A layer of mist over the river; people crossing the bridge walk with their legs in the mist / 川面に霧が一層あり、橋を渡る人の脚は霧の中 | Damp and clear; the distance is sharper than usual (washed by the rain) / 湿って澄んでいて、遠くがいつもよりくっきり見える（雨に洗われた） |
+| Ground / 地面 | Dry, dew / 乾いていて、露がある | Wet, one shade darker, with puddles / 濡れて一段濃く、水たまりがある |
 
-### 1.6 材质（川专用，加上 0.4 的共用包）
+### 1.6 Materials (river only, plus the shared pack from 0.4) / 素材（川専用、0.4 の共用パックに加えて）
 
-| 材质 | 要点 |
+| Material / 素材 | Key points / 要点 |
 |---|---|
-| 平静的水（第二幕） | 暗，反着天，有雾。前端估算第 4 条：一张水面 + 滚动法线 + 环境反射 + 雾 |
-| 濁流（第四幕） | 浑黄、不透明，顺流的法线和泡沫，水面加密做小浪，木桩处溅起的水花用实例化面片（前端估算第 4 条）。颜色是泥的黄褐，**不是红褐**，和緋色分开 |
-| 新淤的泥（第四幕） | 岸上的草和石头上糊一层薄的黄褐泥，岸边一道深色的水位线 |
-| 木桥、木桩 | 晒成灰的旧木，麻绳捆扎。第四幕断口露出浅色的新木头 |
-| 小船、栈桥、小屋 | 第二幕才有的船；小屋芦苇顶 |
-| 河岸的卵石和湿岩 | 圆的卵石；湿的石灰岩深一档 |
+| Calm water (act 2) / 穏やかな水（第二幕） | Dark, reflecting the sky, with mist. Frontend estimate item 4: one water surface + scrolling normals + environment reflection + mist / 暗く、空を映し、霧がある。フロントエンドの見積もり第 4 項：水面 1 枚＋スクロールする法線＋環境反射＋霧 |
+| 濁流 (act 4) / 濁流（第四幕） | Muddy yellow, opaque, with downstream-flowing normals and foam; the surface is subdivided for small waves, and the spray where it hits the piles is instanced quads (Frontend estimate item 4). The color is the yellow-brown of mud, **not red-brown**, kept separate from 緋色 / 濁った黄色で不透明、流れに沿った法線と泡。水面は細かく分割して小さな波を作り、杭に当たってはねる水しぶきはインスタンス化した板ポリゴン（フロントエンドの見積もり第 4 項）。色は泥の黄褐色で、**赤褐色ではない**。緋色と区別する |
+| Fresh silt (act 4) / 新しい泥（第四幕） | A thin coat of yellow-brown mud over the grass and stones on the banks, with a dark high-water line along the bank / 岸の草と石に黄褐色の泥が薄く付き、岸に沿って暗い色の水位線が 1 本ある |
+| Wooden bridge, piles / 木の橋、杭 | Old wood weathered grey, lashed with hemp rope. In act 4 the breaks show pale new wood / 日に焼けて灰色になった古い木で、麻縄で縛ってある。第四幕では折れ口に明るい色の新しい木がのぞく |
+| Boats, jetty, hut / 小舟、桟橋、小屋 | The boats exist only in act 2; the hut has a reed roof / 小舟は第二幕にだけある。小屋は葦葺き |
+| Riverbank pebbles and wet rock / 川岸の小石と濡れた岩 | Round pebbles; wet limestone one shade darker / 丸い小石。濡れた石灰岩は一段濃い |
 
 ---
 
-## 2. 峠
+## 2. The pass / 峠
 
-`scene.road-pass`。只在第四幕停（第二幕夜里走过，是夜路的一段，见 5.4）。
+`scene.road-pass`. Only a stop in act 4 (in act 2 it's crossed at night as part of the night road, see 5.4).
 
-| 项 | 内容 |
+`scene.road-pass`。第四幕でだけ止まる（第二幕は夜に通り過ぎ、夜道の一部になる、5.4 参照）。
+
+| Item / 項目 | Content / 内容 |
 |---|---|
-| 时刻 | 约 13:40 到（数据：beat.19 前 20 分）；beat.19 14:00 山贼 |
-| 谁在 | 梅洛斯（衣服第 2 级，刚游过河，半干），你；山贼 5 人（3 个扑上来，2 个退缩：「残る者のひるむ隙に」） |
-| 原作 | 「ぜいぜい荒い呼吸をしながら峠をのぼり、のぼり切って、ほっとした時、突然、目の前に一隊の山賊が躍り出た。」 |
-| 能做的 | 「先に登って様子を見る」「峠を避けて、脇道を行く」（牧童，或听花婿说过）「引き止める」；说 1〜2 句 |
+| Time / 時刻 | Arrive about 13:40 (Data: 20 minutes before beat.19); beat.19 14:00 bandits / 約 13:40 に着く（データ：beat.19 の 20 分前）。beat.19 14:00 山賊 |
+| Who is there / 誰がいるか | Melos (clothing stage 2, just swum the river, half dry), you; 5 bandits (3 charge, 2 hang back: 「残る者のひるむ隙に」) / メロス（衣服は第 2 段階、川を泳いだばかりで半乾き）、あなた。山賊 5 人（3 人が襲いかかり、2 人はひるむ：「残る者のひるむ隙に」） |
+| Original / 原作 | 「ぜいぜい荒い呼吸をしながら峠をのぼり、のぼり切って、ほっとした時、突然、目の前に一隊の山賊が躍り出た。」 |
+| What you can do / できること | 「先に登って様子を見る」「峠を避けて、脇道を行く」 (the shepherd boy, or someone who heard about it from the groom) 「引き止める」; 1〜2 lines / 「先に登って様子を見る」「峠を避けて、脇道を行く」（牧童、または花婿から聞いた人）「引き止める」。1〜2 回話せる |
 
-### 2.1 平面（+x = 80°，东偏北）
+### 2.1 Plan (+x = 80°, east by north) / 平面（+x = 80°、東やや北）
 
 ```
-                       北：岩壁、圣栎灌木
-              羊肠小道（脇道）────────────╮ 绕到山肩后面看不见
-   石堆 ◇ ╱
-way.west ═ 落地点 ═ 平台［小圣栎 · 梅洛斯喘气］═ 岔口 ╲ 之字路往上 ╲ ▲岩门▲ 鞍部 ═ way.east（往下是平原）
-                       南：陡的碎石坡                            ↑ 山贼藏在岩石背后的阴影里
+                       North: rock face, holm oak scrub
+              Goat track (side path) ────────────╮ rounds the shoulder of the hill, out of sight
+   Cairn ◇ ╱
+way.west ═ Landing ═ Shelf [small holm oak · Melos catching his breath] ═ Fork ╲ Switchbacks up ╲ ▲Rock gate▲ Saddle ═ way.east (down to the plain)
+                       South: steep scree slope                            ↑ bandits hide in the shadow behind the rocks
+
+                       北：岩壁、セイヨウヒイラギガシの茂み
+              羊の通る細道（脇道）────────────╮ 山の肩を回り込んで見えなくなる
+   ケルン ◇ ╱
+way.west ═ 着地点 ═ 平らな段［小さなヒイラギガシ · 息を整えるメロス］═ 分かれ道 ╲ つづら折りを上る ╲ ▲岩門▲ 鞍部 ═ way.east（下は平野）
+                       南：急な砕石の斜面                            ↑ 山賊は岩の裏の影に隠れている
 ```
 
-| 东西 | 位置（x, y） | 高（z） | 说明 |
+| Thing / もの | Position (x, y) / 位置（x, y） | Height (z) / 高さ（z） | Notes / 説明 |
 |---|---|---|---|
-| 上山的路 | (−30, −1) → (−16, −1) | −0.8 → 0.4 | 从河谷那边上来，宽 2.5 m |
-| 平台 | x −16〜−4，y −5〜5 | 约 1.2，平 | 这一段最平的地方，可以走动、说话 |
-| 小圣栎 | (−11, 4.5)，高约 5 m，树冠半径 2.5 m | | 整个峠上唯一的树荫。13:40 的树荫落在树的东北边 |
-| 岔口和石堆 | 岔口 (−5, 1.5)，石堆 (−5.5, 3) | | 石堆是牧人认路的记号：牧童一眼认得，别人只当是一堆石头 |
-| 之字路 | (−4, 0) → (3, −4) → (7, 1) → (11, 0) | 1.2 → 7 | 宽 2 m，有石阶 |
-| 岩门 | 北岩 x 8〜14、y 2〜6，高出鞍部 5 m；南岩 x 8.5〜13.5、y −5.8〜−2.2，高 4 m | 鞍部 7 | 两块石灰岩中间 4 m 宽的口子，衬着天空：从平台往上看，这是下一步要去的地方 |
-| 鞍部 | x 11〜13 | 7 | 能走到这里。再往前（x > 13）梅洛斯动身前路弯回来 |
-| 羊肠小道（脇道） | (−5, 2) → (−1, 8) → (4, 13) → (8, 16) | 1.2 → 3 | 宽不到 1 m，绕着山肩，在 (8, 16) 拐进圣栎灌木后面看不见了。能走到 (6, 15) |
-| 南边 | y < −6 | | 陡的碎石坡，软边界（旁白「足を滑らせそうだ」之类，文案以后定） |
-| 北边 | y > 8（小道除外） | | 岩壁和灌木 |
+| Uphill road / 上り道 | (−30, −1) → (−16, −1) | −0.8 → 0.4 | Coming up from the river valley, 2.5 m wide / 川の谷から上ってくる、幅 2.5 m |
+| Shelf / 平らな段 | x −16〜−4, y −5〜5 / x −16〜−4、y −5〜5 | About 1.2, flat / 約 1.2、平ら | The flattest part of this stretch, where you can walk around and talk / この区間で最も平らな場所で、歩き回ったり話したりできる |
+| Small holm oak / 小さなヒイラギガシ | (−11, 4.5), about 5 m tall, crown radius 2.5 m / (−11, 4.5)、高さ約 5 m、樹冠の半径 2.5 m | | The only shade on the whole pass. At 13:40 its shade falls on the northeast side of the tree / 峠全体で唯一の木陰。13:40 の木陰は木の北東側に落ちる |
+| Fork and cairn / 分かれ道とケルン | Fork (−5, 1.5), cairn (−5.5, 3) / 分かれ道 (−5, 1.5)、ケルン (−5.5, 3) | | The cairn is a herders' waymark: the shepherd boy recognizes it at once; others just see a pile of stones / ケルンは牧人の道しるべ：牧童はひと目でわかるが、ほかの人にはただの石の山にしか見えない |
+| Switchbacks / つづら折り | (−4, 0) → (3, −4) → (7, 1) → (11, 0) | 1.2 → 7 | 2 m wide, with stone steps / 幅 2 m、石段がある |
+| Rock gate / 岩門 | North rock x 8〜14, y 2〜6, 5 m above the saddle; south rock x 8.5〜13.5, y −5.8〜−2.2, 4 m high / 北の岩 x 8〜14、y 2〜6、鞍部より 5 m 高い。南の岩 x 8.5〜13.5、y −5.8〜−2.2、高さ 4 m | Saddle 7 / 鞍部 7 | A 4 m wide gap between two limestone rocks, set against the sky: looking up from the shelf, this is where you're going next / 2 つの石灰岩の間の幅 4 m の切れ目で、空を背にしている：平らな段から見上げると、次に向かう場所だとわかる |
+| Saddle / 鞍部 | x 11〜13 | 7 | You can walk up to here. Further on (x > 13), before Melos sets off, the road curves back / ここまで歩ける。その先（x > 13）は、メロスが動き出す前なら道が折り返す |
+| Goat track (side path) / 羊の通る細道（脇道） | (−5, 2) → (−1, 8) → (4, 13) → (8, 16) | 1.2 → 3 | Less than 1 m wide, rounding the shoulder of the hill, turning out of sight behind the holm oak scrub at (8, 16). Walkable up to (6, 15) / 幅 1 m 足らずで、山の肩を回り、(8, 16) でヒイラギガシの茂みの裏へ曲がって見えなくなる。(6, 15) まで歩ける |
+| South side / 南側 | y < −6 | | Steep scree slope, soft boundary (narration like 「足を滑らせそうだ」; copy to be decided later) / 急な砕石の斜面で、柔らかい境界（「足を滑らせそうだ」のようなナレーション、文言はのちに決める） |
+| North side / 北側 | y > 8 (except the track) / y > 8（細道を除く） | | Rock face and scrub / 岩壁と茂み |
 
-### 2.2 山贼藏在哪
+### 2.2 Where the bandits hide / 山賊が隠れる場所
 
-- 5 人藏在岩门东侧（鞍部另一边）的岩石阴影里：`bandit-1〜3` 在北岩背后 (15〜18, 5〜8)，`bandit-4、5` 在南岩背后 (15〜17, −5〜−7)，都 `auto: false`，在能走的地方以外。
-- 14:00 太阳在 244°，岩石的影子朝 64°（东北），正好落在岩门背后：**从下面爬上来的人看岩石是亮的，背后是黑的，人藏在黑里**。烘光时这一块阴影要压得很深，和晒白的岩面对比要大。
-- 节拍以前，玩家走到鞍部也看不见他们。北岩朝西的一面 (8, 3.2) 有一道岩缝，站在缝前能瞥见后面一点动静（一片衣角，一颗碎石滚下来），是给愿意找的人的暗示，不是必须的〔可选〕。选「先に登って様子を見る」时，演出里你绕过岩门看见他们，回头示警。
-- beat.19 的演出在鞍部：山贼从岩门两侧跳出来，梅洛斯夺棍、打倒三人，从鞍部东侧冲下去（R2 从这里接）。
-- **山贼的脸用头巾蒙住下半张**（「ものも言わず」），只有走动版，脸 ≤ 屏幕高 6%（ending-shots 规则 1）。粗毛料，褐和灰，没有盔甲，拿木棍。打斗照 art-direction 5.7：没有血花。
+- The 5 hide in the rock shadow on the east side of the rock gate (the far side of the saddle): `bandit-1〜3` behind the north rock (15〜18, 5〜8), `bandit-4, 5` behind the south rock (15〜17, −5〜−7), all `auto: false`, outside the walkable area.
+  5 人は岩門の東側（鞍部の向こう）の岩の影に隠れている：`bandit-1〜3` は北の岩の裏 (15〜18, 5〜8)、`bandit-4、5` は南の岩の裏 (15〜17, −5〜−7)。すべて `auto: false` で、歩ける範囲の外。
+- At 14:00 the sun is at 244° and the rocks' shadows point to 64° (northeast), falling right behind the rock gate: **to someone climbing up from below, the rocks are bright, behind them is black, and the men hide in the black**. When baking, this patch of shadow must be pushed very deep, with strong contrast against the sun-bleached rock faces.
+  14:00 の太陽は 244° で、岩の影は 64°（北東）を向き、ちょうど岩門の裏に落ちる：**下から登ってくる人には岩は明るく、その裏は黒く、人は黒の中に隠れている**。ベイクするとき、この影は非常に深く沈め、日に白く焼けた岩肌との対比を大きくする。
+- Before the beat, players who walk up to the saddle can't see them either. On the west-facing side of the north rock (8, 3.2) there's a crack; standing in front of it you can glimpse a little movement behind (a corner of cloth, a pebble rolling down), a hint for those willing to look, not required 〔optional〕. When 「先に登って様子を見る」 is chosen, the staging has you go round the rock gate, see them, and turn back to warn him.
+  ビートの前は、プレイヤーが鞍部まで歩いても彼らは見えない。北の岩の西向きの面 (8, 3.2) に岩の割れ目があり、その前に立つと裏の動きが少しだけ見える（布の端、転がり落ちる小石）。探す気のある人へのヒントで、必須ではない〔任意〕。「先に登って様子を見る」を選んだときは、演出であなたが岩門を回り込んで彼らを見つけ、振り返って危険を知らせる。
+- The beat.19 staging is at the saddle: the bandits leap out from both sides of the rock gate, Melos wrests away a club, knocks down three, and charges down the east side of the saddle (R2 continues from here).
+  beat.19 の演出は鞍部で行う：山賊が岩門の両側から躍り出て、メロスは棍棒を奪い、3 人を打ち倒し、鞍部の東側を駆け下りる（R2 はここからつながる）。
+- **The bandits cover the lower half of their faces with cloths** (「ものも言わず」), walk-around grade only, faces ≤ 6% of screen height (ending-shots rule 1). Coarse wool, brown and grey, no armor, carrying wooden clubs. The fight follows art-direction 5.7: no blood spatter.
+  **山賊は布で顔の下半分を覆う**（「ものも言わず」）。歩行用だけで、顔は画面の高さの 6% 以下（ending-shots ルール 1）。粗い毛織物で、褐色と灰色、鎧はなく、木の棍棒を持つ。格闘は art-direction 5.7 に従う：血しぶきはない。
 
-### 2.3 位置点
+### 2.3 Spots / スポット
 
-| 名字 | 位置 | 朝向 | 用途 |
+| Name / 名前 | Position / 位置 | Facing / 向き | Use / 用途 |
 |---|---|---|---|
-| `shelf-west` | (−20, −1) | +x | **落地点**。背后 (−29, −1) 是默认镜头，是上山的路 |
-| `melos-breath` | (−9.2, 5.2) | +x | 梅洛斯在小圣栎的树荫里，双手撑着膝盖喘气，再靠到树干上。20 分钟里他站在这里（ぜいぜい荒い呼吸）〔推断：原作没写他停，给玩家说话和做一件事的时间，数据把到达定在 beat.19 前 20 分〕 |
-| `saddle` `auto: false` | (12, 0) | +x | 节拍演出 |
-| `side-path` | (−1, 8) | 沿小道 | 选「峠を避けて、脇道を行く」后两人从这里拐进小道，R2 换成「山腹の脇道」（第 5 节 R2'） |
+| `shelf-west` | (−20, −1) | +x | **Landing spot**. Behind it, (−29, −1) is the default camera, on the uphill road / **着地点**。背後の (−29, −1) がデフォルトのカメラで、上り道の上 |
+| `melos-breath` | (−9.2, 5.2) | +x | Melos in the shade of the small holm oak, hands on his knees catching his breath, then leaning against the trunk. He stands here for the 20 minutes (ぜいぜい荒い呼吸) 〔inference: the original doesn't say he stops; this gives the player time to talk and do one thing, and Data sets the arrival 20 minutes before beat.19〕 / メロスは小さなヒイラギガシの木陰で両手を膝について息を整え、それから幹にもたれる。20 分間ここに立っている（ぜいぜい荒い呼吸）〔推測：原作は彼が止まったとは書いていない。プレイヤーが話して 1 つ行動する時間を作るため、データは到着を beat.19 の 20 分前にした〕 |
+| `saddle` `auto: false` | (12, 0) | +x | Beat staging / ビートの演出 |
+| `side-path` | (−1, 8) | Along the track / 細道に沿って | After 「峠を避けて、脇道を行く」 is chosen, the two turn onto the track here, and R2 becomes 「山腹の脇道」 (section 5, R2') / 「峠を避けて、脇道を行く」を選ぶと二人はここで細道へ曲がり、R2 は「山腹の脇道」になる（5 節 R2'） |
 | `way.west` / `way.east` / `way.side` | (−28, −1) / (16, 0) / (8, 16) | | |
 
-### 2.4 镜头
+### 2.4 Camera / カメラ
 
-- 落地：从背后朝东往上看，梅洛斯在左前方的树荫里，之字路往上，岩门在画面上方衬着天（按默认镜头 12.5° 俯角算，岩门大约在画面上面 1/4 处〔推算〕）。
-- 回头（朝西）：脚下是河谷，一条浑黄的濁流，北边山上的雨云。走过来的路一眼看得见。
-- 站在鞍部朝东：下面是热浪里发白的平原，远处一条海上的雾线。**看不见城楼**，留到野の道（4）。
+- Landing: from behind looking up toward the east, Melos is in the shade ahead on the left, the switchbacks climb, and the rock gate is at the top of the frame against the sky (at the default camera's 12.5° downward angle, the rock gate sits roughly a quarter of the way down from the top of the frame 〔estimate〕).
+  着地：背後から東を見上げると、メロスは左前方の木陰にいて、つづら折りが上り、岩門は画面の上部で空を背にしている（デフォルトのカメラの俯角 12.5° で計算すると、岩門は画面の上から約 1/4 のところ〔推算〕）。
+- Looking back (west): below your feet the river valley, a muddy yellow 濁流, and the rain clouds on the hills to the north. The road you came along is visible at a glance.
+  振り返る（西）：足もとは川の谷で、濁った黄色の濁流があり、北の山には雨雲。歩いてきた道がひと目で見える。
+- Standing on the saddle looking east: below is the plain, bleached in the heat haze, with a line of sea mist in the distance. **The city towers are not visible**; save them for the field road (4).
+  鞍部に立って東を見る：下は陽炎の中で白っぽい平野、遠くに海の霧の線。**塔楼は見えない**。野の道（4）まで取っておく。
 
-### 2.5 光（一套）
+### 2.5 Light (one set) / 光（1 セット）
 
-- 烘的时刻 14:00。午後的烈日：高光发白、影子短而硬、远处有热浪（art-direction 3.2 真昼・午後）。
-- 天：头顶深蓝，地平线发白；北边的雨云已经退到远山后面。
-- 衣服第 2 级是湿的：这里开始在干（1 小时内干透，材质参数，见 6）。
+- Bake time 14:00. The blazing afternoon sun: highlights bleached white, short hard shadows, heat haze in the distance (art-direction 3.2 真昼・午後).
+  ベイクの時刻は 14:00。午後の烈日：ハイライトは白く飛び、影は短く硬く、遠くに陽炎（art-direction 3.2 真昼・午後）。
+- Sky: deep blue overhead, whitish at the horizon; the rain clouds to the north have withdrawn behind the far hills.
+  空：頭上は深い青、地平線は白っぽい。北の雨雲は遠い山の向こうへ退いている。
+- Clothing stage 2 is wet: it starts drying here (dry within 1 hour, a material parameter; see section 6).
+  第 2 段階の衣服は濡れている：ここから乾き始める（1 時間以内に乾ききる、素材のパラメータ、6 節参照）。
 
-### 2.6 材质
+### 2.6 Materials / 素材
 
-| 材质 | 要点 |
+| Material / 素材 | Key points / 要点 |
 |---|---|
-| 石灰岩露头（岩门、岩壁） | **这个点最重要的近景**。晒白的面、风化的圆棱、地衣；阴影里冷灰 |
-| 碎石和石阶 | 有棱角，被走得发亮的一条线 |
-| 灌木 | 矮棕榈、乳香黄连木、百里香一类的矮丛，干草 |
-| 小圣栎 | 深绿小叶，树干灰黑 |
+| Limestone outcrops (rock gate, rock face) / 石灰岩の露頭（岩門、岩壁） | **The most important close-up at this stop**. Sun-bleached faces, weathered rounded edges, lichen; cold grey in shadow / **この地点で最も重要な近景**。日に白く焼けた面、風化して丸くなった角、地衣類。影の中は冷たい灰色 |
+| Scree and stone steps / 砕石と石段 | Angular, with a line worn shiny by feet / 角ばっていて、人が歩いて光るようになった筋が 1 本ある |
+| Shrubs / 低木 | Dwarf fan palm, mastic, thyme-like low clumps, dry grass / チャボトウジュロ、マスティックの木、タイムのような低い茂み、枯れ草 |
+| Small holm oak / 小さなヒイラギガシ | Small dark green leaves, grey-black trunk / 濃い緑の小さな葉、灰黒色の幹 |
 
 ---
 
-## 3. 泉
+## 3. The spring / 泉
 
-`scene.road-spring`。只在第四幕停，选了脇道的局也停（第二幕夜路的起点，从这里出发，见 5.4）。
+`scene.road-spring`. Only a stop in act 4, and also in runs that took the side path (the act 2 night road starts out from here, see 5.4).
 
-| 项 | 内容 |
+`scene.road-spring`。第四幕でだけ止まり、脇道を選んだ回でも止まる（第二幕の夜道の起点で、ここから出発する、5.4 参照）。
+
+| Item / 項目 | Content / 内容 |
 |---|---|
-| 时刻 | 约 14:55 到（beat.20 前 5 分）；beat.20 15:00 倒下；beat.21 16:30 喝了泉水站起来。**选了脇道的局**：beat.20 不发生，beat.21 在 15:30（比原作早 60 分，数据用 worldsim 跑过）：只喝水，没有倒下那段，梅洛斯也没起疑（`var.melos.doubted` 是 false） |
-| 谁在 | 梅洛斯（第 3 级：打完山贼），你 |
-| 原作 | 「午後の灼熱の太陽がまともに、かっと照って来て…ついに、がくりと膝を折った」「路傍の草原にごろりと寝ころがった」「すぐ足もとで、水が流れているらしい…岩の裂目から滾々と、何か小さく囁きながら清水が湧き出ている」「斜陽は赤い光を、樹々の葉に投じ、葉も枝も燃えるばかりに輝いている」 |
-| 能做的 | 「水を汲んで渡す」（他倒下以前）「休ませる」；**归途最重的一段对话，约 6 句**：倒在草里想放弃的梅洛斯 |
+| Time / 時刻 | Arrive about 14:55 (5 minutes before beat.20); beat.20 15:00 he collapses; beat.21 16:30 he drinks from the spring and gets up. **In runs that took the side path**: beat.20 doesn't happen, and beat.21 is at 15:30 (60 minutes earlier than the original; Data ran it through worldsim): he only drinks, without the collapse, and Melos never doubts (`var.melos.doubted` is false) / 約 14:55 に着く（beat.20 の 5 分前）。beat.20 15:00 倒れる。beat.21 16:30 泉の水を飲んで立ち上がる。**脇道を選んだ回**：beat.20 は起きず、beat.21 は 15:30（原作より 60 分早い、データが worldsim で試した）：水を飲むだけで倒れる場面はなく、メロスは疑いを抱かない（`var.melos.doubted` は false） |
+| Who is there / 誰がいるか | Melos (stage 3: after fighting the bandits), you / メロス（第 3 段階：山賊と戦ったあと）、あなた |
+| Original / 原作 | 「午後の灼熱の太陽がまともに、かっと照って来て…ついに、がくりと膝を折った」「路傍の草原にごろりと寝ころがった」「すぐ足もとで、水が流れているらしい…岩の裂目から滾々と、何か小さく囁きながら清水が湧き出ている」「斜陽は赤い光を、樹々の葉に投じ、葉も枝も燃えるばかりに輝いている」 |
+| What you can do / できること | 「水を汲んで渡す」 (before he collapses) 「休ませる」; **the weightiest conversation on the homeward road, about 6 lines**: Melos lying in the grass, wanting to give up / 「水を汲んで渡す」（彼が倒れる前）「休ませる」。**帰り道で最も重い会話、約 6 回**：草の中に倒れてあきらめかけているメロス |
 
-### 3.1 平面（+x = 100°，东偏南）
+### 3.1 Plan (+x = 100°, east by south) / 平面（+x = 100°、東やや南）
 
 ```
-                   北：山坡上的橄榄梯田
-      悬铃木（三棵，西边）     岩石·泉
-                               ↘ 细流
-way.west ═ 落地点 ════ 路 ════════ ╪（踏石）════ way.east
-  ↑ 身后是峠                      干砌石墙
-                   南：墙外是麦田
+                   North: olive terraces on the hillside
+      Plane trees (three, to the west)     Rock · spring
+                               ↘ trickle
+way.west ═ Landing ════ Road ════════ ╪ (stepping stones) ════ way.east
+  ↑ the pass is behind you                      Dry-stone wall
+                   South: wheat fields beyond the wall
+
+                   北：山腹のオリーブの段々畑
+      プラタナス（3 本、西側）     岩·泉
+                               ↘ 細い流れ
+way.west ═ 着地点 ════ 道 ════════ ╪（飛び石）════ way.east
+  ↑ 背後は峠                      空積みの石垣
+                   南：石垣の外は麦畑
 ```
 
-| 东西 | 位置（x, y） | 说明 |
+| Thing / もの | Position (x, y) / 位置（x, y） | Notes / 説明 |
 |---|---|---|
-| 路 | (−28, −4) → (24, −4)，宽 3 m | 从峠下来，到这里变平。z：西头 +2，落地点 0，东头 −0.6 |
-| 干砌石墙 | 路南 y = −6.5，x −18〜16，高 0.8 m | 给尺度 |
-| 草地 | x −16〜16，y −2.5〜16 | 往北缓缓升高，y = 16 处 z +1.2 |
-| 泉的岩石 | 低的石灰岩坎，x −3.5〜1.5、y 6.2〜8.4，高 1.3 m | 朝南的一面底下有一道岩缝 |
-| 岩缝和小水潭 | 缝 (−0.4, 6.1)；水潭中心 (0, 5.3)，直径 1.2 m | 水从缝里涌出来，潭底的小石头看得见 |
-| 细流 | (0.3, 4.8) → (2.5, 2.5) → (5, 0) → (6.5, −2.5)，从路上的几块踏石下面过去，流进墙外的沟 | 细流两边的草是绿的 |
-| 悬铃木 | (−13, 6) 高 16 m、(−16, 10.5) 高 18 m、(−11, 12) 高 14 m | 东方悬铃木：大叶子，树皮一块块剥落成灰、乳白、灰绿。在泉的**西边** |
-| 东边的缓坡 | x ≈ 20 | 地面略升起来，挡住东边的平原：这里还看不见城楼 |
+| Road / 道 | (−28, −4) → (24, −4), 3 m wide / (−28, −4) → (24, −4)、幅 3 m | Comes down from the pass and levels out here. z: west end +2, landing spot 0, east end −0.6 / 峠から下ってきて、ここで平らになる。z：西端 +2、着地点 0、東端 −0.6 |
+| Dry-stone wall / 空積みの石垣 | South of the road at y = −6.5, x −18〜16, 0.8 m high / 道の南 y = −6.5、x −18〜16、高さ 0.8 m | Gives scale / 尺度を与える |
+| Grassland / 草地 | x −16〜16, y −2.5〜16 / x −16〜16、y −2.5〜16 | Rises gently to the north, z +1.2 at y = 16 / 北へゆるやかに上がり、y = 16 で z +1.2 |
+| The spring's rock / 泉の岩 | A low limestone ledge, x −3.5〜1.5, y 6.2〜8.4, 1.3 m high / 低い石灰岩の段差、x −3.5〜1.5、y 6.2〜8.4、高さ 1.3 m | A crack at the bottom of its south face / 南向きの面の下に岩の割れ目がある |
+| Crack and small pool / 割れ目と小さな水たまり | Crack (−0.4, 6.1); pool center (0, 5.3), 1.2 m across / 割れ目 (−0.4, 6.1)。水たまりの中心 (0, 5.3)、直径 1.2 m | Water wells up from the crack; the pebbles on the bottom of the pool are visible / 水が割れ目から湧き出し、水たまりの底の小石が見える |
+| Trickle / 細い流れ | (0.3, 4.8) → (2.5, 2.5) → (5, 0) → (6.5, −2.5), passing under a few stepping stones on the road and into the ditch beyond the wall / (0.3, 4.8) → (2.5, 2.5) → (5, 0) → (6.5, −2.5)、道の飛び石の下をくぐり、石垣の外の溝へ流れ込む | The grass on both sides of the trickle is green / 細い流れの両側の草は緑 |
+| Plane trees / プラタナス | (−13, 6) 16 m tall, (−16, 10.5) 18 m tall, (−11, 12) 14 m tall / (−13, 6) 高さ 16 m、(−16, 10.5) 高さ 18 m、(−11, 12) 高さ 14 m | Oriental plane: big leaves, bark flaking off in patches of grey, cream and grey-green. On the **west side** of the spring / スズカケノキ：大きな葉、樹皮はまだらに剥がれて灰色、乳白色、灰緑色。泉の**西側**にある |
+| Gentle rise to the east / 東のゆるい上り | x ≈ 20 | The ground rises a little and hides the plain to the east: the city towers still can't be seen from here / 地面が少し盛り上がり、東の平野を隠す：ここからはまだ塔楼は見えない |
 
-**为什么悬铃木在西边**（核对过太阳）：
+**Why the plane trees are to the west** (checked against the sun):
 
-- 15:00 太阳在 258°、高 47°，树影朝 78°（东北偏东），落在泉的北边，**梅洛斯倒下的地方是全晒的**（「まともに、かっと照って来て」）。
-- 16:30 太阳在 273°、高 29°，从泉朝悬铃木看是 293°，和太阳只差约 20°，太阳正好在树冠中下部的后面：**叶子被从背后照透，「葉も枝も燃えるばかりに」**。这时泉也进了树荫，梅洛斯喝水时身上是斑驳的光。
+- At 15:00 the sun is at 258° and 47° high; tree shadows point to 78° (east-northeast) and fall north of the spring, **so the place where Melos collapses is in full sun** (「まともに、かっと照って来て」).
+- At 16:30 the sun is at 273° and 29° high; from the spring the plane trees are at 293°, only about 20° from the sun, so the sun sits right behind the lower-middle part of the crowns: **the leaves are lit through from behind, 「葉も枝も燃えるばかりに」**. By then the spring is also in the trees' shade, and Melos drinks in dappled light.
 
-### 3.2 位置点
+**なぜプラタナスが西側にあるのか**（太陽で確かめた）：
 
-| 名字 | 位置 | 朝向 | 用途 |
+- 15:00 の太陽は 258°、高度 47° で、木の影は 78°（東北東）を向いて泉の北側に落ちる。**メロスが倒れる場所は日差しをまともに受ける**（「まともに、かっと照って来て」）。
+- 16:30 の太陽は 273°、高度 29°。泉からプラタナスを見ると 293° で、太陽との差は約 20° しかなく、太陽はちょうど樹冠の中ほどから下の裏にある：**葉が背後から透けて照らされ、「葉も枝も燃えるばかりに」**。このとき泉も木陰に入り、メロスが水を飲むとき体にはまだらな光が落ちる。
+
+### 3.2 Spots / スポット
+
+| Name / 名前 | Position / 位置 | Facing / 向き | Use / 用途 |
 |---|---|---|---|
-| `road-spring` | (−12, −4) | +x | **落地点**。背后 (−21, −4) 是默认镜头，只有路（悬铃木在左后方，竖屏视角外） |
-| `melos-stagger` | (−5, −3.5) | +x | 到了先在路上踉跄（「よろよろ二、三歩あるいて」） |
-| `melos-down` `auto: false` | (2.5, 3.8) | — | 15:00 倒在这里：仰面，四肢摊开，**头朝东南、脚朝西北**，脚边 0.5 m 就是从泉流出来的细水（「すぐ足もとで」）。他看不见泉，泉在他头顶的方向以外 |
-| `melos-drink` `auto: false` | (−0.2, 4.7) | +y（朝岩缝） | 16:30 跪在潭边捧水喝 |
-| `player-crouch` `auto: false` | (3.3, 2.6) | 朝北（朝他的头） | 你蹲在他头的南边（路这一侧）说话。低机位的镜头在你肩后 (3.45, 1.7)、高约 0.95 m（3.3） |
+| `road-spring` | (−12, −4) | +x | **Landing spot**. Behind it, (−21, −4) is the default camera, with only road (the plane trees are behind on the left, outside the portrait field of view) / **着地点**。背後の (−21, −4) がデフォルトのカメラで、道だけがある（プラタナスは左後方で、縦画面の画角の外） |
+| `melos-stagger` | (−5, −3.5) | +x | On arrival he first staggers on the road (「よろよろ二、三歩あるいて」) / 着いてまず道の上でよろめく（「よろよろ二、三歩あるいて」） |
+| `melos-down` `auto: false` | (2.5, 3.8) | — | Where he collapses at 15:00: on his back, limbs sprawled, **head to the southeast, feet to the northwest**, with the thin stream from the spring 0.5 m from his feet (「すぐ足もとで」). He can't see the spring; it's beyond his head, out of his view / 15:00 にここで倒れる：仰向けで手足を投げ出し、**頭は南東、足は北西**、足もとから 0.5 m のところに泉から流れ出る細い水がある（「すぐ足もとで」）。彼には泉が見えない。泉は彼の頭の向こうで、視界の外 |
+| `melos-drink` `auto: false` | (−0.2, 4.7) | +y (toward the crack) / +y（割れ目のほう） | At 16:30 he kneels by the pool and drinks from cupped hands / 16:30 に水たまりのそばにひざまずき、両手ですくって飲む |
+| `player-crouch` `auto: false` | (3.3, 2.6) | North (toward his head) / 北（彼の頭のほう） | You crouch south of his head (the road side) to talk. The low camera is behind your shoulder at (3.45, 1.7), about 0.95 m high (3.3) / あなたは彼の頭の南側（道の側）にしゃがんで話す。低いカメラはあなたの肩の後ろ (3.45, 1.7)、高さ約 0.95 m（3.3） |
 | `way.west` / `way.east` | (−26, −4) / (22, −4) | | |
 
-- **泉的水声**：声源在岩缝，从落地点（约 16 m）就听得见，很轻，越近越清楚。梅洛斯累得听不见，玩家听得见：这是「水を汲んで渡す」的提示，不加任何标记。他倒下以前只有 5 分钟，所以按钮一到就在（第 10 节：到泉是 beat.20 前 5 分）。事件按开始时刻结算：14:55 点「水を汲んで渡す」能挡住 15:00 的 beat.20，15:00 整点再点就晚了（数据 worldsim 验过，M3 写成测试）。
+- **The sound of the spring**: the source is in the crack, audible from the landing spot (about 16 m), very faint, getting clearer as you get closer. Melos is too exhausted to hear it, but the player can: this is the hint for 「水を汲んで渡す」, with no markers added. He has only 5 minutes before he collapses, so the button is there from the moment you arrive (section 10: arriving at the spring is 5 minutes before beat.20). Events are resolved by start time: tapping 「水を汲んで渡す」 at 14:55 can prevent beat.20 at 15:00; tapping at exactly 15:00 is too late (Data verified with worldsim; to be written as a test in M3).
+  **泉の水音**：音源は割れ目で、着地点（約 16 m）から聞こえる。ごくかすかで、近づくほどはっきりする。メロスは疲れきって聞こえないが、プレイヤーには聞こえる：これが「水を汲んで渡す」のヒントで、マークは一切付けない。彼が倒れるまで 5 分しかないので、ボタンは着いた瞬間からある（10 節：泉に着くのは beat.20 の 5 分前）。イベントは開始時刻で清算する：14:55 に「水を汲んで渡す」をタップすれば 15:00 の beat.20 を防げるが、15:00 ちょうどにタップしたのでは遅い（データが worldsim で確認、M3 でテストにする）。
 
-### 3.3 镜头
+### 3.3 Camera / カメラ
 
-- 落地：朝东，梅洛斯在前面的路上踉跄，右边是草地和岩石，泉被草挡着看不太见，水声在左前方。
-- **对话要一个低机位**：梅洛斯躺在草里或撑着手肘半坐着，你蹲在他旁边。越肩镜头改成从你的肩后往下看他的脸，脸仍占 12〜15%（art-direction 5.2）。前端 15:54Z：做成越肩镜头的一个变体，镜头在你蹲下后的肩后、高约 0.9〜1.0 m，往下 25〜35° 看他的脸，视角按脸占屏高自动算。
-  - **你蹲在他头的南边**（`player-crouch`），镜头朝北：15:00 太阳在 258°，在镜头左后方，他的脸是 3/4 侧光；你的影子朝东落，盖不到他的脸（蹲在西边或西南边，影子正好落在他脸上）。16:30 太阳 273°，同样不挡。泉和悬铃木在画面上方深处。
-  - 你蹲用 UAL 的 `Crouch_Idle_Loop`（CC0，已有）；他躺着、撑肘半坐、说话的小动作是专属动作，和结局的一起排。
-  - 镜头在那道细水上方，不碍事（水面不挡镜头的碰撞检测）；镜头 0.5 m 以内的草卡片要剔掉，不然会糊在镜头前（前端 16:09Z）。
-- beat.21 的演出：镜头低，朝西北，梅洛斯跪在潭边、站起来，背后是被太阳照透的悬铃木。他是逆光的轮廓，边上一圈亮。然后他转身朝东跑（R3），把发光的树留在身后。
-- 选了脇道的局（15:30）：他没倒下，到了直接跪到潭边喝，喝完就走，没有躺着的那段对话。数据说 M3 时可以给 beat.21 加一个按 `doubted` 分的变体，演出跟着分两种。
+- Landing: facing east, Melos staggering on the road ahead, the grassland and rock to the right, the spring hidden by grass and barely visible, the sound of water ahead on the left.
+  着地：東向きで、前方の道でメロスがよろめき、右側に草地と岩、泉は草に隠れてほとんど見えず、水音は左前方から聞こえる。
+- **Dialogue needs a low camera**: Melos lies in the grass or half sits propped on an elbow, and you crouch beside him. The over-the-shoulder shot becomes one looking down at his face from behind your shoulder, with the face still taking up 12〜15% (art-direction 5.2). Frontend 15:54Z: made as a variant of the over-the-shoulder shot, with the camera behind your shoulder once you've crouched, about 0.9〜1.0 m high, looking down 25〜35° at his face, with the field of view computed automatically from the face's share of screen height.
+  **会話には低いカメラが必要**：メロスは草の中に横たわるか、肘をついて半ば起き上がり、あなたはそのそばにしゃがむ。肩越しのショットは、あなたの肩の後ろから彼の顔を見下ろすものに変え、顔は引き続き画面の 12〜15% を占める（art-direction 5.2）。フロントエンド 15:54Z：肩越しのショットの変種として作り、カメラはしゃがんだあなたの肩の後ろ、高さ約 0.9〜1.0 m で、25〜35° 下に彼の顔を見る。画角は顔が画面の高さに占める割合から自動で計算する。
+  - **You crouch south of his head** (`player-crouch`), with the camera facing north: at 15:00 the sun is at 258°, behind the camera on the left, and his face is in 3/4 side light; your shadow falls east and doesn't cover his face (crouching west or southwest of him would put your shadow right on his face). At 16:30 the sun is at 273°, and it doesn't block either. The spring and the plane trees are deep in the upper part of the frame.
+    **あなたは彼の頭の南側にしゃがみ**（`player-crouch`）、カメラは北向き：15:00 の太陽は 258° でカメラの左後方にあり、彼の顔は 3/4 の側光になる。あなたの影は東へ落ち、彼の顔にはかからない（西や南西にしゃがむと、影がちょうど彼の顔に落ちる）。16:30 の太陽は 273° で、同じく遮らない。泉とプラタナスは画面の上部の奥にある。
+  - Your crouch uses UAL's `Crouch_Idle_Loop` (CC0, already available); his lying down, half sitting on an elbow and small talking movements are dedicated animations, scheduled together with the ending ones.
+    あなたのしゃがみは UAL の `Crouch_Idle_Loop`（CC0、既存）を使う。彼が横たわる、肘をついて半ば起きる、話すときの小さな動きは専用モーションで、エンディングのものと一緒に予定を組む。
+  - The camera is above the thin stream, which doesn't get in the way (the water surface doesn't block the camera's collision checks); grass cards within 0.5 m of the camera must be culled, or they'll smear across the lens (Frontend 16:09Z).
+    カメラは細い流れの上にあるが、邪魔にはならない（水面はカメラの衝突判定を遮らない）。カメラから 0.5 m 以内の草のカードは消す。そうしないとレンズの前にべったり映る（フロントエンド 16:09Z）。
+- The beat.21 staging: camera low, facing northwest, Melos kneeling by the pool and standing up, with the sun-lit plane trees behind him. He is a backlit silhouette with a bright rim. Then he turns and runs east (R3), leaving the glowing trees behind.
+  beat.21 の演出：カメラは低く北西向きで、メロスが水たまりのそばにひざまずき、立ち上がる。背後には日に透けるプラタナス。彼は逆光のシルエットで、縁に明るい光の輪がある。それから彼は向きを変えて東へ走り（R3）、光る木を背後に残す。
+- In runs that took the side path (15:30): he doesn't collapse; on arrival he kneels straight down by the pool to drink and leaves when done, with no conversation lying in the grass. Data says that in M3 beat.21 can get a variant split on `doubted`, and the staging would split into two accordingly.
+  脇道を選んだ回（15:30）：彼は倒れず、着くとすぐ水たまりのそばにひざまずいて飲み、飲み終えたら去る。横たわっての会話はない。データによれば、M3 で beat.21 に `doubted` で分かれる変種を加えられ、演出もそれに合わせて 2 通りに分かれる。
 
-### 3.4 光（一套）
+### 3.4 Light (one set) / 光（1 セット）
 
-- 烘的时刻 15:45（人在这里的 15:00〜16:30 太阳一直在动，实时太阳为主，烘的只是天光和遮蔽）。
-- 15:00：午後的灼热，比峠略低、略黄；草地发白。
-- 16:30：夕方的开始，暖（art-direction 3.2 约 4000K 往下走）。
-- 脇道的局 15:30：太阳还高（约 41°），没有「斜陽」，用实时太阳，不另烘。原作写「斜陽は赤い光」：可以把这一刻调得比物理值更暖一点，但别真红，真红留给 18:30 以后的野の道。
+- Bake time 15:45 (the sun keeps moving during the 15:00〜16:30 that people are here, so the real-time sun is primary, and only skylight and occlusion are baked).
+  ベイクの時刻は 15:45（人がここにいる 15:00〜16:30 の間、太陽は動き続けるので、リアルタイムの太陽を主にし、ベイクするのは天空光と遮蔽だけ）。
+- 15:00: the blazing afternoon heat, slightly lower and yellower than at the pass; the grassland looks bleached.
+  15:00：午後の灼熱で、峠より少し低く、少し黄色い。草地は白っぽい。
+- 16:30: the start of evening, warm (art-direction 3.2, heading down from about 4000K).
+  16:30：夕方の始まりで暖かい（art-direction 3.2、約 4000K から下がっていく）。
+- Side-path runs at 15:30: the sun is still high (about 41°), with no 「斜陽」; use the real-time sun, no extra bake. The original says 「斜陽は赤い光」: this moment can be graded a little warmer than physical, but not truly red; true red is saved for the field road after 18:30.
+  脇道の回の 15:30：太陽はまだ高く（約 41°）、「斜陽」はない。リアルタイムの太陽を使い、別にベイクしない。原作は「斜陽は赤い光」と書く：この瞬間は物理的な値より少し暖かく調整してよいが、本当の赤にはしない。本当の赤は 18:30 以降の野の道に取っておく。
 
-### 3.5 材质
+### 3.5 Materials / 素材
 
-| 材质 | 要点 |
+| Material / 素材 | Key points / 要点 |
 |---|---|
-| 草地 | **这个点面积最大的近景**：干黄的草、穗、黄白紫的野花；细流两边是绿的 |
-| 湿的岩石、苔藓、铁线蕨 | 岩缝周围湿、深一档，长着苔藓和铁线蕨（*Adiantum capillus-veneris*，西西里滴水的石灰岩上最常见的蕨，这个泉一眼就真） |
-| 清水 | 透明，看得见潭底的石头，缝口有一圈细小的涌动。和川的水是两种做法 |
-| 悬铃木 | 斑驳的树皮；叶子要能透光（逆光时发亮），档 B 也要 |
+| Grassland / 草地 | **The largest close-up area at this stop**: dry yellow grass, seed heads, yellow, white and purple wildflowers; green on both sides of the trickle / **この地点で面積が最も大きい近景**：乾いた黄色の草、穂、黄・白・紫の野の花。細い流れの両側は緑 |
+| Wet rock, moss, maidenhair fern / 濡れた岩、苔、ホウライシダ | Around the crack the rock is wet and one shade darker, with moss and maidenhair fern (*Adiantum capillus-veneris*, the most common fern on dripping limestone in Sicily; it makes this spring look real at a glance) / 割れ目のまわりは濡れて一段濃く、苔とホウライシダ（*Adiantum capillus-veneris*、シチリアの水の滴る石灰岩で最もよく見るシダで、この泉をひと目で本物らしくする）が生えている |
+| Clear water / 清水 | Transparent, with the stones on the bottom of the pool visible, and a ring of small upwelling at the mouth of the crack. Built differently from the river water / 透明で、水たまりの底の石が見え、割れ目の口に小さな湧き上がりの輪がある。川の水とは別のやり方で作る |
+| Plane trees / プラタナス | Mottled bark; the leaves must let light through (glowing when backlit), on tier B too / まだらな樹皮。葉は光を透す必要がある（逆光で光る）。ティア B でも |
 
 ---
 
-## 4. 市へ続く野の道（整段是跑的）
+## 4. The field road to the city (all running) / 市へ続く野の道（全区間を走る）
 
-`scene.road-field`。前端的「跑道」做法：人原地跑，路面一块块往后卷（前端估算第 3 条）。
+`scene.road-field`. Frontend's "treadmill" technique: the characters run in place and the road surface scrolls backward tile by tile (Frontend estimate item 3).
 
-| 项 | 内容 |
+`scene.road-field`。フロントエンドの「ランニングマシン」方式：人はその場で走り、路面が 1 枚ずつ後ろへ巻き取られていく（フロントエンドの見積もり第 3 項）。
+
+| Item / 項目 | Content / 内容 |
 |---|---|
-| 时刻 | 约 17:20 从 R3 接进来；一直跑到城门（约 18:55），换到广场（beat.24 19:00） |
-| 谁在 | 梅洛斯（17:30 以后第 4 级 = 结局版），你；17:30 路上的行人、野地里酒宴的人和狗；约 17:45 一伙旅人；18:30 起フィロストラトス |
-| 方向 | +x = 114°，就是广场城门大街的方向（art-direction 4.1）。太阳在正后方，**两人的影子一直跑在他们前面**，越来越长：18:00 是身高的 5 倍，18:30 是 10 倍，18:45 是 20 倍。这和结局镜头 2「影子先他一步」是同一个画面，一路接进城门 |
-| 能说 | 约 6 句（每句 15 分），后 2 句可以和フィロストラトス说。闲置时「走り続ける」，点了跳到下一件事 |
+| Time / 時刻 | Continues from R3 at about 17:20; running all the way to the city gate (about 18:55), then switching to the plaza (beat.24 19:00) / 約 17:20 に R3 から続く。城門まで走り続け（約 18:55）、広場に切り替わる（beat.24 19:00） |
+| Who is there / 誰がいるか | Melos (stage 4 = the ending version after 17:30), you; at 17:30 passers-by on the road, the drinking party in the field and a dog; about 17:45 a group of travelers; from 18:30 フィロストラトス / メロス（17:30 以降は第 4 段階 = エンディング版）、あなた。17:30 に道行く人、野の酒宴の人々と犬。約 17:45 に旅人の一団。18:30 からフィロストラトス |
+| Direction / 方向 | +x = 114°, the same direction as the plaza's gate avenue (art-direction 4.1). The sun is directly behind, **so the two runners' shadows keep running ahead of them**, getting longer and longer: 5 times body height at 18:00, 10 times at 18:30, 20 times at 18:45. This is the same image as ending shot 2, "his shadow a step ahead of him", carried all the way into the city gate / +x = 114° で、広場の城門通りの方向（art-direction 4.1）。太陽は真後ろにあり、**二人の影はずっと二人の前を走り**、どんどん長くなる：18:00 に身長の 5 倍、18:30 に 10 倍、18:45 に 20 倍。これはエンディングのショット 2「影が彼より一歩先に」と同じ画面で、そのまま城門までつながる |
+| Talking / 話せること | About 6 lines (15 minutes each); the last 2 can be with フィロストラトス. When idle, 「走り続ける」, and tapping it jumps to the next event / 約 6 回（1 回 15 分）、最後の 2 回はフィロストラトスと話せる。放置時は「走り続ける」で、タップすると次の出来事まで飛ぶ |
 
-### 4.1 路面（每块 30〜40 m，轮着接）
+### 4.1 Road tiles (30〜40 m each, chained in rotation) / 路面（1 枚 30〜40 m、順につないでいく）
 
-| 路面 | 什么样 | 用在 |
+| Tile / 路面 | What it looks like / 見た目 | Used for / 使う場面 |
 |---|---|---|
-| F1 麦田里的路 | 土路两边是金黄的麦田，一部分割了，麦捆立在地里；低的干砌石墙；零星的橄榄 | 大部分时间 |
-| F2 酒宴的野地 | 路边一片草地，收麦的人在吃喝：地上铺着布，双耳壶、面包筐、杯子，草帽和镰刀放在一边；8〜12 人坐着躺着，一条狗。**酒宴摊到了路上**，梅洛斯从正中间穿过去 | 17:30 |
-| F3 小川 | 一条 1.5〜2 m 宽的小溪横过路，几块踏石 | 17:30 酒宴之后，梅洛斯一步跳过去 |
-| F4 坡顶 | 一段缓坡，到顶时前方一下子开阔 | 约 17:50，城楼第一次出现 |
-| F5 城外的墓道 | 路两边是石灰岩凿的墓、柏树（希腊城市的墓地在城外的路边〔推断，锡拉库萨城外确有古墓区〕） | 约 18:45 以后 |
-| F6 城门 | 城墙和西门（用广场的远景几何，前端估算第 1 条），门洞朝 294°，低低的太阳正好照进门洞，门洞里一片亮 | 约 18:55，换到广场 |
-| F1' 麦田里的小道 | 一条不到 1 m 的小道穿过麦田 | 选了「近道を教える」时代替一段 F1 |
+| F1 Road through the wheat / F1 麦畑の中の道 | A dirt road with golden wheat fields on both sides, partly cut, sheaves standing in the field; low dry-stone walls; scattered olives / 土の道の両側に金色の麦畑、一部は刈られて麦束が畑に立っている。低い空積みの石垣。ぽつぽつとオリーブ | Most of the time / ほとんどの時間 |
+| F2 Field with a drinking party / F2 酒宴の野原 | A patch of grass by the road where harvesters are eating and drinking: cloths spread on the ground, amphorae, bread baskets, cups, straw hats and sickles set aside; 8〜12 people sitting and lying, one dog. **The party has spilled onto the road**, and Melos runs straight through the middle of it / 道端の草地で、麦を刈る人々が飲み食いしている：地面に布を広げ、アンフォラ、パンの籠、杯、麦わら帽子と鎌は脇に置いてある。8〜12 人が座ったり寝そべったりし、犬が 1 匹。**酒宴は道の上まで広がっていて**、メロスはその真ん中を突っ切る | 17:30 |
+| F3 Brook / F3 小川 | A brook 1.5〜2 m wide crossing the road, with a few stepping stones / 幅 1.5〜2 m の小川が道を横切り、飛び石がいくつかある | After the 17:30 party; Melos clears it in one leap / 17:30 の酒宴のあと、メロスがひと跳びで越える |
+| F4 Crest / F4 坂の頂 | A gentle rise; at the top the view suddenly opens up ahead / ゆるやかな上り坂で、頂に着くと前方が急に開ける | About 17:50, the city towers appear for the first time / 約 17:50、塔楼が初めて現れる |
+| F5 Tomb road outside the city / F5 城外の墓の道 | Tombs cut into limestone on both sides of the road, cypresses (Greek cities had their cemeteries along the roads outside the walls 〔inference; there really are ancient necropolises outside Syracuse〕) / 道の両側に石灰岩を掘った墓、イトスギ（ギリシアの都市の墓地は城外の道端にあった〔推測、シラクスの城外には実際に古代の墓地がある〕） | After about 18:45 / 約 18:45 以降 |
+| F6 City gate / F6 城門 | The city wall and the west gate (using the plaza's distant geometry, Frontend estimate item 1); the gateway faces 294°, the low sun shines straight into it, and the gateway is filled with light / 城壁と西門（広場の遠景のジオメトリを使う、フロントエンドの見積もり第 1 項）。門の通路は 294° を向き、低い太陽がちょうど通路に差し込み、通路の中は一面に明るい | About 18:55, switching to the plaza / 約 18:55、広場に切り替わる |
+| F1' Path through the wheat / F1' 麦畑の小径 | A path less than 1 m wide through the wheat / 幅 1 m 足らずの小径が麦畑を抜ける | Replaces a stretch of F1 when 「近道を教える」 is chosen / 「近道を教える」を選んだときに F1 の 1 区間の代わりに使う |
 
-### 4.2 按时钟出现的事
+### 4.2 Events that appear by the clock / 時計に合わせて現れる出来事
 
-| 排定 | 事 | 画面 | 原作 |
+| Scheduled / 予定 | Event / 出来事 | Picture / 画面 | Original / 原作 |
 |---|---|---|---|
-| 17:20 | 从 R3 接进来 | 草原变成麦田 | — |
-| 17:30（beat.22） | 推开路上的行人（两三个人牵着驴），穿过酒宴（人们跳开、杯子翻倒），狗扑上来被他踢开（狗打个滚跑掉，不演受伤），跳过小川 | F1 → F2 → F3。**梅洛斯的衣服在这里换成第 4 级**：在酒宴扬起的尘土里换，不让人看见换的那一下 | 「路行く人を押しのけ、跳ねとばし…酒宴の人たちを仰天させ、犬を蹴とばし、小川を飛び越え」 |
-| 约 17:45 | 一伙旅人（3〜4 人，从城里来）迎面擦肩而过，听见一句「いまごろは、あの男も、磔にかかっているよ。」 | 声音从他们身上出来（空间音效），字幕照常 | 「一団の旅人と颯っとすれちがった瞬間、不吉な会話を小耳にはさんだ」 |
-| 约 17:50 | 坡顶：前方远远地，城墙和城楼，城楼迎着夕阳发亮 | F4。城楼很小（约 6 km〔推断〕），要加一点高光闪烁才读得出「きらきら」 | 「見える。はるか向うに小さく、シラクスの市の塔楼が見える。塔楼は、夕陽を受けてきらきら光っている。」 |
-| 18:30（beat.23） | 前方路上一个人迎面跑来，喊「ああ、メロス様。」，掉头和他们一起跑。三个人并肩 | 一个反打镜头：从前面往回拍，三个人迎着镜头跑，**背后是又红又大的落日**，三个人是逆光的轮廓 | 「メロスは胸の張り裂ける思いで、赤く大きい夕陽ばかりを見つめていた。」 |
-| 约 18:45 | 墓和柏树，城墙越来越高 | F5 | — |
-| 约 18:55 | 城门，门洞被光照透，三个人的影子先伸进门洞 | F6 → 换到广场（≤ 4 秒，整段野の道都能用来预载广场，前端估算第 5 条） | 「メロスは疾風の如く刑場に突入した」 |
+| 17:20 | Continues from R3 / R3 から続く | The grassland turns into wheat fields / 草原が麦畑に変わる | — |
+| 17:30 (beat.22) / 17:30（beat.22） | He pushes past people on the road (two or three leading a donkey), runs through the drinking party (people jump aside, cups tip over), a dog lunges and he kicks it away (the dog rolls over and runs off; no injury shown), and he leaps the brook / 道行く人々（ロバを引く 2、3 人）を押しのけ、酒宴を突っ切り（人々は飛びのき、杯がひっくり返る）、飛びかかってきた犬を蹴とばし（犬はひと転がりして逃げ、けがは見せない）、小川を跳び越える | F1 → F2 → F3. **Melos's clothes switch to stage 4 here**: the switch happens in the dust kicked up at the party, so nobody sees the moment it changes / F1 → F2 → F3。**メロスの衣服はここで第 4 段階に替わる**：酒宴で舞い上がる土ぼこりの中で替え、替わる瞬間を見せない | 「路行く人を押しのけ、跳ねとばし…酒宴の人たちを仰天させ、犬を蹴とばし、小川を飛び越え」 |
+| About 17:45 / 約 17:45 | A group of travelers (3〜4 people, coming from the city) brushes past going the other way, and he overhears 「いまごろは、あの男も、磔にかかっているよ。」 / 旅人の一団（3〜4 人、町から来る）とすれ違いざまに、「いまごろは、あの男も、磔にかかっているよ。」と聞こえる | The voice comes from them (spatial audio), with subtitles as usual / 声は彼らのほうから聞こえ（空間オーディオ）、字幕は通常どおり | 「一団の旅人と颯っとすれちがった瞬間、不吉な会話を小耳にはさんだ」 |
+| About 17:50 / 約 17:50 | The crest: far ahead, the city wall and towers, the towers shining in the setting sun / 坂の頂：はるか前方に城壁と塔楼、塔楼が夕日を受けて光る | F4. The towers are tiny (about 6 km 〔inference〕) and need a little flickering highlight to read as 「きらきら」 / F4。塔楼はとても小さい（約 6 km〔推測〕）ので、少しハイライトのきらめきを加えないと「きらきら」に見えない | 「見える。はるか向うに小さく、シラクスの市の塔楼が見える。塔楼は、夕陽を受けてきらきら光っている。」 |
+| 18:30 (beat.23) / 18:30（beat.23） | A man runs toward them along the road ahead, shouting 「ああ、メロス様。」, and turns to run with them. Three abreast / 前方の道を男が駆けてきて「ああ、メロス様。」と叫び、向きを変えて一緒に走る。3 人が並ぶ | A reverse shot: shooting back from in front, the three run toward the camera, **with a huge red setting sun behind them**, the three as backlit silhouettes / 切り返しのショット：前から後ろへ向けて撮り、3 人がカメラに向かって走ってくる。**背後には赤く大きい夕日**、3 人は逆光のシルエット | 「メロスは胸の張り裂ける思いで、赤く大きい夕陽ばかりを見つめていた。」 |
+| About 18:45 / 約 18:45 | Tombs and cypresses, the city wall getting taller and taller / 墓とイトスギ、城壁がどんどん高くなる | F5 | — |
+| About 18:55 / 約 18:55 | The city gate, its gateway filled with light, the three runners' shadows stretching into the gateway first / 城門、通路は光に満たされ、3 人の影が先に通路へ伸びる | F6 → switch to the plaza (≤ 4 seconds; the whole field road can be used to preload the plaza, Frontend estimate item 5) / F6 → 広場に切り替える（4 秒以内。野の道の全区間を広場の先読みに使える、フロントエンドの見積もり第 5 項） | 「メロスは疾風の如く刑場に突入した」 |
 
-- 城的远景按剩下的距离缩放：约 17:50 6 km、18:30 2 km、18:50 300 m〔推断，只为大小对得上原作「はるか向うに小さく」和「市の近く」〕。竖屏上 20 m 的城楼在 6 km 物理上只有约 3 px，画成约 3 倍（8 px 左右），2 km 起回到物理大小（约 8 px，300 m 约 50 px）。城楼小于约 15 px 时，朝西的面上加一个 2〜4 px 的高光小精灵慢慢闪，就是「きらきら」（前端 15:54Z）。
-- 选「先に走って知らせる」：你一个人跑同一条路（没有梅洛斯，你的衣服不变），落在刑场（数据 `place.execution-ground`）。
-- 梅洛斯第 4 级的咳嗽：原作「口から血が噴き出た」，按 art-direction 5.7 演成咳嗽、手捂嘴，**不出血**。
+- The distant city is scaled by the remaining distance: about 6 km at 17:50, 2 km at 18:30, 300 m at 18:50 〔inference, just so the size matches the original's 「はるか向うに小さく」 and 「市の近く」〕. On a portrait screen a 20 m tower at 6 km is physically only about 3 px, so draw it about 3 times larger (around 8 px), returning to physical size from 2 km on (about 8 px; about 50 px at 300 m). While the tower is smaller than about 15 px, add a 2〜4 px highlight sprite on its west face that twinkles slowly: that's the 「きらきら」 (Frontend 15:54Z).
+  町の遠景は残りの距離に合わせて大きさを変える：約 17:50 に 6 km、18:30 に 2 km、18:50 に 300 m〔推測。原作の「はるか向うに小さく」と「市の近く」に大きさを合わせるためだけ〕。縦画面では 6 km 先の 20 m の塔楼は物理的には約 3 px しかないので、約 3 倍（8 px 前後）に描き、2 km からは物理的な大きさに戻す（約 8 px、300 m で約 50 px）。塔楼が約 15 px より小さいあいだは、西向きの面に 2〜4 px のハイライトのスプライトを置いてゆっくりきらめかせる。これが「きらきら」（フロントエンド 15:54Z）。
+- If 「先に走って知らせる」 is chosen: you run the same road alone (no Melos, your clothes unchanged), landing at the execution ground (Data `place.execution-ground`).
+  「先に走って知らせる」を選んだ場合：あなたは一人で同じ道を走り（メロスはおらず、あなたの衣服は変わらない）、刑場に着地する（データの `place.execution-ground`）。
+- Melos's coughing at stage 4: the original has 「口から血が噴き出た」; per art-direction 5.7 it's played as coughing with a hand over his mouth, **no blood**.
+  第 4 段階のメロスの咳：原作は「口から血が噴き出た」。art-direction 5.7 に従って、咳をして手で口を押さえる演技にし、**血は出さない**。
 
-### 4.3 光（一套，烘焙优先级最高）
+### 4.3 Light (one set, highest bake priority) / 光（1 セット、ベイクの優先度は最高）
 
-- 烘的时刻 18:30（路面是重复用的，烘的是路面的天光和遮蔽）。实时太阳从 280° 走到 294°。
-- 朝前（默认的侧后方镜头）：前方顺光，麦田和城楼是金色的，两人的长影子在前面。
-- 朝后（18:30 的反打）：逆光，空气里的尘土和麦芒发亮（art-direction 3.2 夕方「尘土在逆光里发亮」），太阳又红又大，压在西边山上。
-- 18:45 以后太阳很红，影子拉到最长。
+- Bake time 18:30 (the road tiles are reused; what's baked is the tiles' skylight and occlusion). The real-time sun moves from 280° to 294°.
+  ベイクの時刻は 18:30（路面は繰り返し使うので、ベイクするのは路面の天空光と遮蔽）。リアルタイムの太陽は 280° から 294° へ動く。
+- Facing forward (the default camera from behind and to the side): front-lit ahead, the wheat fields and towers golden, the two long shadows out in front.
+  前向き（デフォルトの斜め後ろからのカメラ）：前方は順光で、麦畑と塔楼は金色、二人の長い影が前にある。
+- Facing back (the 18:30 reverse shot): backlit, with dust and wheat awns glowing in the air (art-direction 3.2 evening, "dust glowing in the backlight"), the sun huge and red, pressing on the western hills.
+  後ろ向き（18:30 の切り返し）：逆光で、空気中の土ぼこりと麦の芒が光る（art-direction 3.2 夕方「逆光の中で土埃が光る」）。太陽は赤く大きく、西の山にのしかかる。
+- After 18:45 the sun is very red and the shadows are at their longest.
+  18:45 以降、太陽はとても赤く、影は最も長く伸びる。
 
-### 4.4 材质
+### 4.4 Materials / 素材
 
-| 材质 | 要点 |
+| Material / 素材 | Key points / 要点 |
 |---|---|
-| 土路 | 共用包。这里是干的，发白，被夕阳照成金色 |
-| 麦 | 中景最重要：金黄，逆光时麦芒亮成一片 |
-| 酒宴的布和陶器 | 布是本色亚麻，赭色或靛蓝的条纹，**不用红**；陶器和广场共用 |
-| 墓和城墙 | 城墙用广场的远景几何；墓是简单的石灰岩凿面 |
+| Dirt road / 土の道 | From the shared pack. Dry here, whitish, turned gold by the setting sun / 共用パックのもの。ここでは乾いていて白っぽく、夕日で金色に染まる |
+| Wheat / 麦 | The most important mid-ground: golden, the awns lighting up together when backlit / 中景で最も重要：金色で、逆光では芒が一面に光る |
+| Party cloths and pottery / 酒宴の布と陶器 | Cloth in natural linen with ochre or indigo stripes, **no red**; pottery shared with the plaza / 布は生成りの亜麻で、赭色か藍色の縞。**赤は使わない**。陶器は広場と共用 |
+| Tombs and city wall / 墓と城壁 | The city wall uses the plaza's distant geometry; the tombs are simple faces cut into limestone / 城壁は広場の遠景のジオメトリを使う。墓は石灰岩を彫った簡単な面 |
 
 ---
 
-## 5. 短的跑的路段和第二幕的夜路
+## 5. Short running stretches and the act 2 night road / 短い走る区間と第二幕の夜道
 
-都用跑道的做法。短的 3 段 15〜25 秒、第一版不能说话、点一下跳过、减少动态时出时间卡（「走的规则」第 2 条）。镜头在两人侧后方平行跟随（ux-design 6.3）。
+All use the treadmill technique. The 3 short stretches are 15〜25 seconds, no talking in the first release, tap to skip, time cards with reduced motion ("Movement rules" item 2). The camera tracks alongside from behind and to the side of the two (ux-design 6.3).
 
-| 段 | 幕 | 排定时刻 | 路边 | 光 | 梅洛斯 |
+どれもランニングマシン方式を使う。短い 3 区間は 15〜25 秒で、第 1 版では話せず、タップでスキップでき、動きを減らす設定のときは時間カードを出す（「移動のルール」第 2 項）。カメラは二人の斜め後ろから並行して追う（ux-design 6.3）。
+
+| Stretch / 区間 | Act / 幕 | Scheduled time / 予定時刻 | Roadside / 道端 | Light / 光 | Melos / メロス |
 |---|---|---|---|---|---|
-| **R1 川 → 峠** | 4 | 约 12:10 → 13:40 | 「湿的坡」：从河谷往上爬的土路，雨后湿、积水在干；橄榄梯田、干砌石墙、圣栎；越往上石头越多。回头是河谷，前面是峠的山脊 | 太阳 72°→62°，从头顶移到右后方，影子极短 | 第 2 级，湿透。跑得很猛（「すぐにまた先きを急いだ」） |
-| **R2 峠 → 泉** | 4 | 约 14:05 → 14:55 | 「石的下坡」：碎石、露头、矮棕榈、乳香黄连木，热浪 | 太阳 58°→48°，右后方，刺眼，地面发白 | 第 3 级（打完山贼）。**步子一路变差**：跑 → 拖着步子小跑 → 最后踉跄着走（「幾度となく眩暈を感じ」）。这段要演出他快撑不住了，接上泉边倒下 |
-| R2' 山腹の脇道 | 4 | 选了「峠を避けて、脇道を行く」，到泉约 15:30 | 绕着山腰的羊肠小道，穿过圣栎灌木，没有岩门 | 同 R2 | 第 2 级，衣服已干，步子不变差（数据：不打架，体力剩 45）。**接泉，不直接接 R3**：这一局 beat.21 照常发生（3 节） |
-| **R3 泉 → 野の道** | 4 | 16:30 → 17:20 | 「草原」：草地、橄榄林、远处的柏树，麦田开始出现 | 太阳 29°→19°，在正后方，影子开始往前拉长，暖 | 第 3 级，重新跑得很稳（「走れ！メロス」） |
-| **N 夜路** | 2 | 02:45 → 05:10 | 用 R3、R2、R1 的路面，**倒着用**（往西走），R1 换干的材质参数（第二幕还没下雨） | 见下 | 第一幕的衣服，带包袱。两人快步走（前端估算第 3 条：从走路改，约半天） |
+| **R1 river → pass / R1 川 → 峠** | 4 | About 12:10 → 13:40 / 約 12:10 → 13:40 | "Wet slope": a dirt road climbing out of the river valley, wet after the rain, puddles drying; olive terraces, dry-stone walls, holm oaks; more and more stone the higher you go. Behind is the river valley, ahead the ridge of the pass / 「濡れた坂」：川の谷から上る土の道で、雨上がりで濡れ、水たまりが乾きかけている。オリーブの段々畑、空積みの石垣、ヒイラギガシ。上るほど石が増える。振り返ると川の谷、前には峠の稜線 | Sun 72°→62°, moving from overhead to behind on the right, extremely short shadows / 太陽 72°→62°、頭上から右後方へ移り、影はごく短い | Stage 2, soaked. Running hard (「すぐにまた先きを急いだ」) / 第 2 段階、ずぶ濡れ。猛然と走る（「すぐにまた先きを急いだ」） |
+| **R2 pass → spring / R2 峠 → 泉** | 4 | About 14:05 → 14:55 / 約 14:05 → 14:55 | "Stony descent": scree, outcrops, dwarf fan palms, mastic, heat haze / 「石の下り坂」：砕石、露頭、チャボトウジュロ、マスティックの木、陽炎 | Sun 58°→48°, behind on the right, glaring, the ground bleached / 太陽 58°→48°、右後方、まぶしく、地面は白っぽい | Stage 3 (after the bandits). **His stride gets steadily worse**: running → a dragging jog → finally staggering at a walk (「幾度となく眩暈を感じ」). This stretch has to show he's about to give out, leading into the collapse at the spring / 第 3 段階（山賊と戦ったあと）。**足取りがどんどん悪くなる**：走る → 足を引きずる小走り → 最後はよろめいて歩く（「幾度となく眩暈を感じ」）。この区間で彼がもう限界だと見せ、泉で倒れる場面につなげる |
+| R2' 山腹の脇道 (hillside side path) / R2' 山腹の脇道 | 4 | When 「峠を避けて、脇道を行く」 is chosen, reaching the spring about 15:30 / 「峠を避けて、脇道を行く」を選んだとき、泉に約 15:30 に着く | A goat track around the hillside, through holm oak scrub, no rock gate / 山腹を巻く羊の通る細道で、ヒイラギガシの茂みを抜け、岩門はない | Same as R2 / R2 と同じ | Stage 2, clothes already dry, stride doesn't deteriorate (Data: no fight, 45 stamina left). **Leads to the spring, not straight to R3**: beat.21 still happens in this run (section 3) / 第 2 段階、衣服はもう乾いていて、足取りは悪くならない（データ：戦わないので体力は 45 残る）。**泉につながり、直接 R3 にはつながらない**：この回でも beat.21 は通常どおり起きる（3 節） |
+| **R3 spring → field road / R3 泉 → 野の道** | 4 | 16:30 → 17:20 | "Grassland": grass, olive groves, cypresses in the distance, wheat fields starting to appear / 「草原」：草地、オリーブの林、遠くのイトスギ、麦畑が見え始める | Sun 29°→19°, directly behind, shadows starting to stretch forward, warm / 太陽 29°→19°、真後ろ、影が前へ伸び始め、暖かい | Stage 3, running steadily again (「走れ！メロス」) / 第 3 段階、また力強く走る（「走れ！メロス」） |
+| **N night road / N 夜道** | 2 | 02:45 → 05:10 | Uses the R3, R2 and R1 tiles **in reverse** (heading west), with R1 switched to the dry material parameters (it hasn't rained yet in act 2) / R3、R2、R1 の路面を**逆向きに**使い（西へ向かう）、R1 は乾いた素材パラメータに替える（第二幕ではまだ雨が降っていない） | See below / 下記参照 | Act 1 clothes, carrying his bundle. The two walk briskly (Frontend estimate item 3: adapted from walking, about half a day) / 第一幕の衣服、荷物を持つ。二人は早足で歩く（フロントエンドの見積もり第 3 項：歩きを改造、約半日） |
 
-### 5.1 第二幕的夜路（能说话，每句 10 分）
+### 5.1 The act 2 night road (talking allowed, 10 minutes per line) / 第二幕の夜道（話せる、1 回 10 分）
 
-| 排定 | 路面 | 画面 |
+| Scheduled / 予定 | Tile / 路面 | Picture / 画面 |
 |---|---|---|
-| 02:45 起 | 草原 + 第一块带泉的路面 | 第二幕一开场就是黑的，先听见泉水声，然后看见星空下三棵悬铃木的剪影和一块岩石。这块路面用共用包里的树和岩石，**不下载泉的包** |
-| 约 03:30 | 石路（倒着：往西爬上去，再下来） | 爬到顶时，岩门的两块石头衬着星空。银河低低地横在左手边（南），夏季大三角在头顶。和第四幕的峠是同一个地方：这一夜没有人藏在那里。岩门在峠的包里，不在 R2 的路面里，所以补一块夜里专用的「峠顶」路面：两块岩石的低模剪影加碎石路，不下载峠的包（前端 15:54Z，和第一块带泉的路面同样的做法） |
-| 约 04:30 | 石路 → 湿坡（干的） | 背后（东边）的天开始发白，前面的路先能看清颜色 |
-| 约 04:50〜05:10 | 下到河谷 | 前方西边的天：地平线上暗蓝的地影，上面一条粉色的带（1.5）。接到川的 `road-east` |
+| From 02:45 / 02:45 から | Grassland + the first tile, which has the spring / 草原＋泉のある最初の路面 | Act 2 opens in darkness: first you hear the spring, then see the silhouettes of three plane trees and a rock under the stars. This tile uses trees and rocks from the shared pack and **doesn't download the spring package** / 第二幕は始まると真っ暗で、まず泉の水音が聞こえ、それから星空の下にプラタナス 3 本と岩のシルエットが見える。この路面は共用パックの木と岩を使い、**泉のパッケージはダウンロードしない** |
+| About 03:30 / 約 03:30 | Stony road (in reverse: climbing west, then down) / 石の道（逆向き：西へ上り、また下る） | At the top, the two stones of the rock gate stand against the stars. The Milky Way lies low on the left (south), the Summer Triangle overhead. It's the same place as the act 4 pass: tonight nobody is hiding there. The rock gate is in the pass package, not in the R2 tiles, so add a night-only "pass summit" tile: low-poly silhouettes of the two rocks plus a scree road, without downloading the pass package (Frontend 15:54Z, same approach as the first tile with the spring) / 頂上に着くと、岩門の 2 つの岩が星空を背にしている。天の川は左手（南）に低くかかり、夏の大三角は頭上。第四幕の峠と同じ場所だが、この夜はそこに誰も隠れていない。岩門は峠のパッケージにあって R2 の路面にはないので、夜専用の「峠の頂」の路面を 1 枚足す：2 つの岩のローポリのシルエットと砕石の道で、峠のパッケージはダウンロードしない（フロントエンド 15:54Z、泉のある最初の路面と同じやり方） |
+| About 04:30 / 約 04:30 | Stony road → wet slope (dry) / 石の道 → 濡れた坂（乾いている） | The sky behind (to the east) starts to whiten, and the road ahead is the first to show its color / 背後（東）の空が白み始め、前方の道から先に色が見えてくる |
+| About 04:50〜05:10 / 約 04:50〜05:10 | Down into the river valley / 川の谷へ下る | The sky ahead in the west: the dark blue Earth's shadow on the horizon with a pink band above it (1.5). Connects to the river's `road-east` / 前方の西の空：地平線に暗い青の地球影、その上にピンクの帯（1.5）。川の `road-east` につながる |
 
-- 夜里的光照 art-direction 3.2「白天拍夜景」：偏蓝、降饱和，曝光不压太低，脸和路看得清。**没有月亮，也没有灯**（第一幕到第二幕他们手里没有灯；花婿借的灯是第三幕以后的事）。
-- 闲置时「歩き続ける」，点了跳到下一件事（「走的规则」第 5 条）。
+- Night lighting follows art-direction 3.2's day-for-night: bluish, desaturated, exposure not pushed too low, faces and road clearly visible. **No moon and no lamps** (they carry no lamp from act 1 to act 2; the lamp lent by the groom comes after act 3).
+  夜の光は art-direction 3.2 のデイ・フォー・ナイト：青寄りで彩度を下げ、露出は下げすぎず、顔と道がはっきり見える。**月もランプもない**（第一幕から第二幕の間、彼らはランプを持っていない。花婿が貸すランプは第三幕以降のこと）。
+- When idle, 「歩き続ける」, and tapping it jumps to the next event ("Movement rules" item 5).
+  放置時は「歩き続ける」で、タップすると次の出来事まで飛ぶ（「移動のルール」第 5 項）。
 
 ---
 
-## 6. 梅洛斯在路上的样子
+## 6. How Melos looks on the road / 道中のメロスの姿
 
-风格指南 `docs/ux/style-guide/characters/melos.md` 说「第四幕路上衣服一步步变破，分几级由归途的场景设计定」。定成四级：
+The style guide `docs/ux/style-guide/characters/melos.md` says "in act 4 his clothes get more ragged step by step along the road, and the homeward road's scene design decides how many stages". Set at four stages:
 
-| 级 | 从哪到哪 | 和第一幕比 |
+スタイルガイド `docs/ux/style-guide/characters/melos.md` は「第四幕の道中で衣服は少しずつ破れていき、何段階に分けるかは帰り道のシーン設計が決める」としている。4 段階に決める：
+
+| Stage / 段階 | From where to where / どこからどこまで | Compared with act 1 / 第一幕との比較 |
 |---|---|---|
-| 1 | 第二幕全程；第四幕到川、过河以前 | 第一幕的样子。第二幕带包袱，第四幕没有（包袱留在村里） |
-| 2 | 游过濁流以后（beat.18）：R1、峠 | 湿：颜色深、贴身，约一小时干透（材质参数，不换图）。下摆撕开一道口子。**小腿上有河泥**（和结局版同一处） |
-| 3 | 打完山贼以后（beat.19）：R2、泉、R3 | 在第 2 级上：左肩的带子断了，前襟垂下来，露出半边胸口；右前臂、两膝擦伤（和结局版同样的位置，红褐色块，不画血）；全身尘土 |
-| 4 | beat.22（17:30）以后：野の道、刑场 | 结局版（风格指南「结局：日没冲进刑场」） |
+| 1 | All of act 2; act 4 up to the river, before the crossing / 第二幕の全体。第四幕の川まで、渡る前 | The act 1 look. With the bundle in act 2, without it in act 4 (the bundle stays in the village) / 第一幕の姿。第二幕は荷物を持ち、第四幕は持たない（荷物は村に置いてくる） |
+| 2 | After swimming the 濁流 (beat.18): R1, the pass / 濁流を泳いだあと（beat.18）：R1、峠 | Wet: darker, clinging, dry in about an hour (material parameter, no texture swap). A tear in the hem. **River mud on his calves** (the same place as in the ending version) / 濡れている：色が濃く、体に張りつき、約 1 時間で乾ききる（素材のパラメータで、テクスチャは替えない）。裾に裂け目が 1 つ。**ふくらはぎに川の泥**（エンディング版と同じ位置） |
+| 3 | After the bandits (beat.19): R2, the spring, R3 / 山賊と戦ったあと（beat.19）：R2、泉、R3 | On top of stage 2: the left shoulder strap has snapped and the front of the garment hangs down, exposing half his chest; grazes on the right forearm and both knees (same places as the ending version, red-brown patches, no blood drawn); dust all over / 第 2 段階に加えて：左肩の紐が切れ、前身ごろが垂れ下がって胸の半分があらわになる。右の前腕と両膝にすり傷（エンディング版と同じ位置、赤褐色の斑で、血は描かない）。全身に土ぼこり |
+| 4 | After beat.22 (17:30): the field road, the execution ground / beat.22（17:30）以降：野の道、刑場 | The ending version (style guide, "Ending: bursting into the execution ground at sunset") / エンディング版（スタイルガイド「エンディング：日没に刑場へ駆け込む」） |
 
-- 第 1〜3 级是同一个模型（前端 15:54Z，多约 0.2〜0.3 MB）：湿是材质参数加一个贴身的形变；口子、河泥、尘土、擦伤是一张 512 的遮罩图的四个通道，按级开；断掉的左肩带子放完好和垂下来两份，按级显示一份，前襟垂下来用第二个形变；第二幕的包袱按部位藏，不加 draw call。第 4 级（结局版）破得多到要改形状的话另做一个模型。
-- 选了脇道（R2'）的局，第 3 级换成「第 2 级干透」：没打架，没有擦伤。但 17:30 照样变第 4 级（原作里衣服是跑破的〔推断〕）。
-- 路上的专属动作（前端估算第 3 条）：在川边跪着祈祷、跳水和游、抓住树、胴震い；在峠夺棍打人；R2 步子变差；在泉倒下、躺着、撑肘半坐着说话、捧水喝、站起来；野の道踢开狗、跳小溪、咳嗽。和结局的专属动作一起排。
+- Stages 1〜3 are one model (Frontend 15:54Z, about 0.2〜0.3 MB more): wetness is a material parameter plus a clinging blendshape; the tear, river mud, dust and grazes are four channels of one 512 mask texture, switched on per stage; the snapped left shoulder strap exists in two copies, intact and hanging, with one shown per stage, and the hanging front uses a second blendshape; the act 2 bundle is hidden per part, with no extra draw calls. If stage 4 (the ending version) is ragged enough to need a different shape, it gets a separate model.
+  第 1〜3 段階は同じモデル（フロントエンド 15:54Z、約 0.2〜0.3 MB 増）：濡れは素材のパラメータと体に張りつくブレンドシェイプ 1 つ。裂け目、川の泥、土ぼこり、すり傷は 512 のマスク画像 1 枚の 4 チャンネルで、段階に応じてオンにする。切れた左肩の紐は無事なものと垂れたものの 2 つを用意し、段階に応じてどちらか 1 つを表示する。前身ごろが垂れるのは 2 つ目のブレンドシェイプで作る。第二幕の荷物は部位ごとに隠し、draw call は増やさない。第 4 段階（エンディング版）が形を変えるほど破れているなら、別のモデルを作る。
+- In runs that took the side path (R2'), stage 3 becomes "stage 2, fully dry": no fight, no grazes. But at 17:30 he still turns into stage 4 (in the original his clothes are torn by the running 〔inference〕).
+  脇道（R2'）を選んだ回では、第 3 段階は「乾ききった第 2 段階」に替わる：戦っていないのですり傷はない。ただし 17:30 にはやはり第 4 段階になる（原作では衣服は走ったせいで破れる〔推測〕）。
+- Dedicated animations on the road (Frontend estimate item 3): kneeling in prayer by the river, leaping in and swimming, grabbing the tree, 胴震い; at the pass, wresting a club and fighting; R2's deteriorating stride; at the spring, collapsing, lying down, talking while half sitting on an elbow, drinking from cupped hands, standing up; on the field road, kicking the dog away, leaping the brook, coughing. Scheduled together with the dedicated ending animations.
+  道中の専用モーション（フロントエンドの見積もり第 3 項）：川辺でひざまずいて祈る、飛び込んで泳ぐ、木にしがみつく、胴震い。峠で棍棒を奪って打つ。R2 で足取りが悪くなる。泉で倒れる、横たわる、肘をついて半ば起きて話す、両手ですくって飲む、立ち上がる。野の道で犬を蹴とばす、小川を跳ぶ、咳をする。エンディングの専用モーションと一緒に予定を組む。
 
-## 7. 路上的其他人
+## 7. Other people on the road / 道中のほかの人々
 
-| 谁 | 在哪 | 精度 |
+| Who / 誰 | Where / 場所 | Detail level / 精度 |
 |---|---|---|
-| 山贼 5 人 | 峠 | 走动版，头巾蒙脸（2.2） |
-| 路上的行人 2〜3 人和一头驴 | 野の道 17:30 | 群众变体（和广场共用） |
-| 酒宴的人 8〜12 人、狗 | 野の道 17:30 | 群众变体，加草帽、镰刀；狗另做 |
-| 旅人 3〜4 人 | 野の道约 17:45 | 群众变体。说那一句的人只要声音，不对口型（擦肩而过，脸看不清） |
-| フィロストラトス | 野の道 18:30 起 | **要对话版**（玩家可以和他说话）。年轻的石匠徒弟，风格指南以后写；声音 D-025 定的 Rasalgethi（和梅洛斯只差约 1 个半音，要不要换 Enceladus 见 ux-design 16.1 的盲听结果） |
+| 5 bandits / 山賊 5 人 | Pass / 峠 | Walk-around grade, faces covered with cloths (2.2) / 歩行用、布で顔を覆う（2.2） |
+| 2〜3 passers-by and a donkey / 道行く人 2〜3 人とロバ 1 頭 | Field road 17:30 / 野の道 17:30 | Crowd variants (shared with the plaza) / 群衆のバリエーション（広場と共用） |
+| 8〜12 people at the party, a dog / 酒宴の人 8〜12 人、犬 | Field road 17:30 / 野の道 17:30 | Crowd variants with straw hats and sickles added; the dog made separately / 群衆のバリエーションに麦わら帽子と鎌を加える。犬は別に作る |
+| 3〜4 travelers / 旅人 3〜4 人 | Field road, about 17:45 / 野の道、約 17:45 | Crowd variants. The one who speaks the line only needs a voice, no lip sync (they brush past; the face can't be made out) / 群衆のバリエーション。あの一言を言う人は声だけでよく、口の動きは合わせない（すれ違うだけで、顔はよく見えない） |
+| フィロストラトス | Field road from 18:30 / 野の道 18:30 から | **Needs the dialogue grade** (players can talk to him). A young stonemason's apprentice; style guide to be written later; voice Rasalgethi as set in D-025 (only about 1.5 semitones from Melos; whether to switch to Enceladus depends on the blind listening results in ux-design 16.1) / **会話用が必要**（プレイヤーが彼と話せる）。若い石工の弟子で、スタイルガイドはのちに書く。声は D-025 で決めた Rasalgethi（メロスとの差は約 1 半音しかない。Enceladus に替えるかどうかは ux-design 16.1 のブラインド試聴の結果を見る） |
 
-## 8. 五套光
+## 8. Five lighting sets / 5 つの光のセット
 
-按 art-direction 3.5 第 2 条的优先级（日没 > 残照和夜 > 真昼 > 朝和薄明）排做的顺序和精度：
+Build order and quality follow the priorities in art-direction 3.5 item 2 (sunset > afterglow and night > high noon > morning and twilight):
 
-| 优先级 | 包 | 烘的时刻 | 一句话 |
+作る順番と精度は art-direction 3.5 第 2 項の優先順位（日没 > 残照と夜 > 真昼 > 朝と薄明）に従う：
+
+| Priority / 優先度 | Package / パッケージ | Bake time / ベイクの時刻 | In one line / ひとことで |
 |---|---|---|---|
-| 1 | 野の道 | 18:30 | 太阳在正后方，影子跑在前面，城楼发亮；反打时逆光的尘土 |
-| 2 | 泉 | 15:45 | 15:00 全晒的草地；16:30 被照透的悬铃木 |
-| 3 | 峠 | 14:00 | 晒白的岩门，背后很深的阴影 |
-| 3 | 川・第四幕 | 11:45 | 正午、雨后、湿、逆光的濁流，北边的雨云 |
-| 4 | 川・第二幕 | 05:15 | 薄明、雾，西边的粉色带 |
+| 1 | Field road / 野の道 | 18:30 | The sun directly behind, shadows running ahead, the towers shining; backlit dust in the reverse shot / 太陽は真後ろ、影が前を走り、塔楼が光る。切り返しでは逆光の土ぼこり |
+| 2 | Spring / 泉 | 15:45 | The fully sunlit grassland at 15:00; the backlit plane trees at 16:30 / 15:00 の日差しをまともに受ける草地。16:30 の日に透けるプラタナス |
+| 3 | Pass / 峠 | 14:00 | The sun-bleached rock gate with deep shadow behind it / 日に白く焼けた岩門と、その裏の深い影 |
+| 3 | River · act 4 / 川・第四幕 | 11:45 | Noon, after the rain, wet, the backlit 濁流, rain clouds to the north / 正午、雨上がり、濡れた地面、逆光の濁流、北の雨雲 |
+| 4 | River · act 2 / 川・第二幕 | 05:15 | Twilight, mist, the pink band in the west / 薄明、霧、西のピンクの帯 |
 
-跑的路段都是实时光（前端估算第 1 条）。广场是实时太阳加烘焙的天光和遮蔽，这里一样。
+Running stretches all use real-time light (Frontend estimate item 1). The plaza uses the real-time sun plus baked skylight and occlusion, and so does this.
 
-## 9. 强机换 2048 的材质（art-direction 9.3，每个包 2〜4 种）
+走る区間はすべてリアルタイムの光（フロントエンドの見積もり第 1 項）。広場はリアルタイムの太陽とベイクした天空光・遮蔽で、ここも同じ。
 
-| 包 | 换 2048 |
+## 9. Materials swapped to 2048 on high-end devices (art-direction 9.3, 2〜4 per package) / ハイエンド機で 2048 に差し替える素材（art-direction 9.3、パッケージごとに 2〜4 種）
+
+| Package / パッケージ | Swap to 2048 / 2048 に差し替え |
 |---|---|
-| 共用包 | 石灰岩的土路、干草地、石灰岩的露头 |
-| 川（两个包共用） | 河岸的湿岩和泥；断桥的木桩（第四幕，近景） |
-| 峠 | （露头和土路在共用包里）碎石和石阶 |
-| 泉 | 湿岩、苔藓和铁线蕨（对话时一直在画面里）；悬铃木的树皮 |
-| 野の道 | 麦（中景卡片）；酒宴的布 |
+| Shared pack / 共用パック | Limestone dirt road, dry grassland, limestone outcrops / 石灰岩の土の道、乾いた草地、石灰岩の露頭 |
+| River (shared by both packages) / 川（2 つのパッケージで共用） | Wet riverbank rock and mud; the piles of the broken bridge (act 4, close-up) / 川岸の濡れた岩と泥。落ちた橋の杭（第四幕、近景） |
+| Pass / 峠 | (outcrops and dirt road are in the shared pack) Scree and stone steps / （露頭と土の道は共用パック）砕石と石段 |
+| Spring / 泉 | Wet rock, moss and maidenhair fern (always in frame during dialogue); plane tree bark / 濡れた岩、苔とホウライシダ（会話中ずっと画面にある）。プラタナスの樹皮 |
+| Field road / 野の道 | Wheat (mid-ground cards); the party cloths / 麦（中景のカード）。酒宴の布 |
 
-〔UX 初定，搭出来以后按画面占比调，和广场一样〕
+〔UX's initial plan; once built, adjust by share of screen, same as the plaza〕
 
----
-
-## 10. 和前端、数据、后端定下的
-
-都是 M3 的契约和做法，不进切片。
-
-**前端**（10-10 15:54Z 答 v0.1 的 6 条，已改进各节）：泉边低机位见 3.2、3.3（`player-crouch`）；城楼按距离缩放见 4.2；第二幕川的天见 1.5；梅洛斯第 1〜3 级一个模型见第 6 节；夜路补一块「峠顶」路面见 5.1；落地点背后 9 m 留空够（竖屏 9 m 后、3.5 m 高、视角 62°，横屏 7.5 m 后、50°），F-2c 后镜头值变了前端会说。
-
-**到达时刻**（数据 10-10 12:01Z）：数据在世界模型里给数，worldsim 算。
-
-- 第四幕：路上的每个节拍加一个可选字段「梅洛斯提前几分钟到」：峠 20、泉 5、野の道 10。川已有：`exit.3.road` 落在 11:20，beat.18 前 40 分钟。worldsim 用这一局的排定时间减去这个数，推迟、提前时一起动。第四幕不按 `adjacent` 推（那是步行分钟，他在跑）。
-- 第二幕按 `adjacent` 从 02:45 推：峠 03:30、川 05:10。
-- 现在世界模型里梅洛斯要到 beat.20（15:00）才移到泉，14:55 他不在泉，「水を汲んで渡す」出不来；加了「泉比 beat.20 早 5 分到」就来得及。事件按开始时刻结算：14:55 点能挡住 15:00 的 beat.20，15:00 整点再点就晚了（数据 worldsim 验过，M3 写成测试）。
-
-**离开一个停留点**（后端 10-10 15:18Z）：四个点之间地面不连通，离开只走「先判后演」的动作，不用 `move`，现有的 kind 就够。
-
-- 「メロスを追う」= `follow`，target `char.melos`。服务端判定后一次提交：时钟跳到他下一个点的到达时刻，玩家和梅洛斯一起换到那个点，中间到点的系统事件照常结算；`action_result.minutes` 是跳过的分钟。服务端照 api-contract 3.8 先推 `commit`、紧跟着推 `action_result`，两条几乎同时到。前端收到 `action_result` 以后演跑的路段，太阳从旧时刻走到新时刻；那条 `commit` 先压住，路段演完或点了跳过再应用，换到下一个点（前端评审 #43）。
-- 「ひとりで先へ行く」= `go`，target 下一个点（或那个出口的 interactable），分钟按 `Place.adjacent` 步行，按钮上的路程就是 `estimatedMinutes`。之后不再是同伴。
-- 野の道里的「走り続ける」= `wait`，跳到这个地点下一个到点的事。
-- 跑的路段在服务端已经是到站以后的世界，路段只是前端的演出，演的时候不开说话键，服务端不另做规则。
-
-**梅洛斯动身时带不带玩家走**（UX、数据、后端 10-10 定）：
-
-- 两人一起在走或跑的时候（第二幕的夜路、第四幕的野の道），说话推着时钟，梅洛斯 relocate 时玩家在同一个系统事件里一起移。
-- 在停留点上，他按排程动身不带走玩家，只由服务端把「メロスを追う」放进 actions（不写成世界模型的 Affordance）。点它，或朝他的方向走出停留点，都算跟上：玩家移到他所在的地点，时间就是他到那里的时间，不另算路程。
-- 停留点写成数据，按幕给：`Act.stops?: string[]`（地点 ID；数据 10-10 16:06Z）。act.2 是 [`place.river`]，act.4 是 [`place.river`, `place.mountain-pass`, `place.spring`]，没写的幕没有停留点。泉和峠在第二幕是夜路走过的地方，所以不能挂在 Place 上。校验工具查 stops 里的地点存在、这一幕到得了。
-- 他动身以后玩家先做了别的花时间的事（说话、动作、等），就算没跟上：同一次提交里 `set var.player.companionOf = none`，之后按 `adjacent` 和 `travelMinutes` 自己走，到了那里他可能已经走了。不清的话他下一次 relocate 会把玩家从停留点拖走。
-
-**其他**（数据 10-10 12:01Z、15:41Z）：
-
-- 「峠を避けて、脇道を行く」留在峠：到峠时离 beat.19 还有 20 分钟，够一个 15 分钟的动作或一句话。
-- 选了脇道的局，beat.19、beat.20 不发生，beat.21 在 15:30 照常发生：梅洛斯在泉停，只喝水，不倒下，也没起疑（3 节，第 5 节 R2'）。泉的演出要分两种的话，数据给 beat.21 加一个按 `var.melos.doubted` 分的变体。
-- 第二幕的结束：过了川的桥点「メロスを追う」= 时钟跳到 beat.08（约 10:00），第二幕结束，只有 `exit.2.village` 成立。隣村那句旁白放在跳转里。
-- 第二幕夜路上说话只让时钟走，梅洛斯的位置跟着时钟；`pacingNote` 扩到第二幕。
-- 浅滩、脇道、泉都是 affordance（`aff.river-shallows`、`aff.pass-detour` / `aff.pass-detour-told`、`aff.spring-water`，各 15 分），不用 `objects`（那只给 0 分的「調べる」）。按钮要挂在具体位置时，数据给 Affordance 加一个可选的位置点字段；做完以后玩家站哪用 `playerSpot`。
-- 第二幕梅洛斯在川边洗脸是 `melos-wash` 点上的演出，不是节拍，也不是 activity（契约的 activity 只有 idle、walk、run、talk、work、sleep、absent）。
-- 野の道的行人用已有的 `char.travelers`（不能说话），酒宴的人和狗只在演出里。旅人那句「いまごろは、あの男も、磔にかかっているよ」写成 beat.22 上的固定演出（契约 2.11，说话的人是 `char.travelers`）。
-- 第四幕过河只能游（`swimMinutes` 30），数据把「`var.bridge = destroyed` 以后不能坐船」写成数据。
-- 川边「とても渡れそうにない」（前端评审 #43）：导航网格不含水面，玩家走不进水里，这一行前端不自己出。M3 和数据定：UX 倾向水边放一个可调查物（契约 2.12 的 `objects`，「調べる」0 分），挂一条固定演出（2.11）说这一行，字是定的，不交给叙事者。
+〔UX の当初案。組み上がったら画面に占める割合で調整する。広場と同じ〕
 
 ---
 
-## 修订记录
+## 10. Agreed with Frontend, Data and Backend / フロントエンド、データ、バックエンドと決めたこと
 
-- v1.0（2026-10-10）：第一版。由项目文件夹里的两份 UX 稿合成：「归途怎么走」v1.0（PM 定按停留点加跑的路段做，S-081）和「四个停留点和跑的路段」v0.1（前端、数据看过，答复已改进）。按前端对 #43 的评审补三处：跑的路段收到 `action_result` 后演、压住 `commit`（第 10 节）；跳过时没载完先出时间卡（「走的规则」第 2 条）；川边那一行由服务端下发（「走的规则」第 1 条、1.3、第 10 节）。
+All of these are M3 contracts and approaches, not part of the slice.
+
+どれも M3 の契約とやり方で、スライスには入らない。
+
+**Frontend** (10-10 15:54Z, answering the 6 points of v0.1, folded into each section): the low camera at the spring, see 3.2 and 3.3 (`player-crouch`); scaling the city towers by distance, see 4.2; the sky at the act 2 river, see 1.5; one model for Melos's stages 1〜3, see section 6; an extra "pass summit" tile on the night road, see 5.1; 9 m of clear space behind landing spots is enough (portrait: 9 m behind, 3.5 m high, 62° field of view; landscape: 7.5 m behind, 50°), and Frontend will say if the camera values change after F-2c.
+
+**フロントエンド**（10-10 15:54Z、v0.1 の 6 点への回答、各節に反映済み）：泉の低いカメラは 3.2、3.3（`player-crouch`）。塔楼を距離に応じて拡大縮小するのは 4.2。第二幕の川の空は 1.5。メロスの第 1〜3 段階を 1 つのモデルにするのは 6 節。夜道に「峠の頂」の路面を足すのは 5.1。着地点の背後に 9 m 空ければ足りる（縦画面は背後 9 m、高さ 3.5 m、画角 62°、横画面は背後 7.5 m、50°）。F-2c のあとでカメラの値が変わったらフロントエンドが知らせる。
+
+**Arrival times** (Data 10-10 12:01Z): Data puts the numbers in the world model, and worldsim computes them.
+
+**到着時刻**（データ 10-10 12:01Z）：データが世界モデルに数値を入れ、worldsim が計算する。
+
+- Act 4: each beat on the road gets an optional field "how many minutes early Melos arrives": pass 20, spring 5, field road 10. The river already has it: `exit.3.road` lands at 11:20, 40 minutes before beat.18. worldsim subtracts this from the run's scheduled time, so delays and advances move it too. Act 4 isn't derived from `adjacent` (those are walking minutes, and he's running).
+  第四幕：道中の各ビートに任意のフィールド「メロスが何分早く着くか」を加える：峠 20、泉 5、野の道 10。川はすでにある：`exit.3.road` は 11:20 に着地し、beat.18 の 40 分前。worldsim はその回の予定時刻からこの数を引くので、遅れや早まりにも一緒に動く。第四幕は `adjacent` から逆算しない（それは歩く分数で、彼は走っている）。
+- Act 2 is derived from `adjacent` starting at 02:45: pass 03:30, river 05:10.
+  第二幕は 02:45 から `adjacent` で順に計算する：峠 03:30、川 05:10。
+- At present the world model only moves Melos to the spring at beat.20 (15:00), so at 14:55 he isn't at the spring and 「水を汲んで渡す」 can't appear; adding "arrives at the spring 5 minutes before beat.20" leaves enough time. Events are resolved by start time: tapping at 14:55 can prevent beat.20 at 15:00, and tapping at exactly 15:00 is too late (Data verified with worldsim; to be written as a test in M3).
+  現状の世界モデルではメロスは beat.20（15:00）になってから泉に移るので、14:55 には泉におらず、「水を汲んで渡す」が出ない。「泉に beat.20 の 5 分前に着く」を加えれば間に合う。イベントは開始時刻で清算する：14:55 にタップすれば 15:00 の beat.20 を防げるが、15:00 ちょうどにタップしたのでは遅い（データが worldsim で確認、M3 でテストにする）。
+
+**Leaving a stop** (Backend 10-10 15:18Z): the four stops aren't connected on the ground, so leaving only goes through "decide first, then stage" actions, not `move`; the existing kinds are enough.
+
+**停留地点を離れる**（バックエンド 10-10 15:18Z）：4 つの地点の間は地面でつながっていないので、離れるときは「先に判定してから演じる」アクションだけを使い、`move` は使わない。既存の kind で足りる。
+
+- 「メロスを追う」 = `follow`, target `char.melos`. The server decides and commits once: the clock jumps to his arrival time at the next stop, the player and Melos move to that stop together, and system events due in between resolve as usual; `action_result.minutes` is the minutes skipped. Per api-contract 3.8 the server pushes `commit` first and `action_result` right after, so the two arrive almost together. After receiving `action_result`, the frontend plays the running stretch with the sun moving from the old time to the new one; it holds the `commit` back and applies it, switching to the next stop, once the stretch has played or been skipped (Frontend review #43).
+  「メロスを追う」= `follow`、target は `char.melos`。サーバーが判定して 1 回でコミットする：時計は彼の次の地点への到着時刻へ飛び、プレイヤーとメロスは一緒にその地点へ移り、途中で時刻になったシステムイベントは通常どおり清算する。`action_result.minutes` は飛ばした分数。サーバーは api-contract 3.8 に従ってまず `commit` を送り、すぐ続けて `action_result` を送るので、2 つはほぼ同時に届く。フロントエンドは `action_result` を受け取ったら走る区間を演じ、太陽は古い時刻から新しい時刻へ動く。その `commit` はいったん保留し、区間を演じ終えるかスキップされたら適用して、次の地点に切り替える（フロントエンドのレビュー #43）。
+- 「ひとりで先へ行く」 = `go`, target the next stop (or that exit's interactable); minutes are walking time per `Place.adjacent`, and the distance on the button is `estimatedMinutes`. After that you're no longer a companion.
+  「ひとりで先へ行く」= `go`、target は次の地点（またはその出口の interactable）。分数は `Place.adjacent` による歩きの時間で、ボタンの道のりは `estimatedMinutes`。そのあとは同行者ではなくなる。
+- 「走り続ける」 on the field road = `wait`, jumping to the next event due in this place.
+  野の道の「走り続ける」= `wait`、この場所で次に時刻になる出来事まで飛ぶ。
+- On the server, a running stretch is already the world after arrival; the stretch is only frontend staging, the talk key is off while it plays, and the server has no special rules for it.
+  サーバーでは、走る区間はすでに到着後の世界であり、区間はフロントエンドの演出にすぎない。演じている間は話すキーを無効にし、サーバーは特別なルールを作らない。
+
+**Whether Melos takes the player along when he sets off** (UX, Data and Backend agreed on 10-10):
+
+**メロスが動き出すときにプレイヤーを連れて行くか**（UX、データ、バックエンドが 10-10 に決定）：
+
+- While the two are walking or running together (the act 2 night road, the act 4 field road), talking pushes the clock, and when Melos relocates the player moves with him in the same system event.
+  二人が一緒に歩いたり走ったりしているとき（第二幕の夜道、第四幕の野の道）、話すと時計が進み、メロスが relocate するとプレイヤーも同じシステムイベントで一緒に移る。
+- At a stop, when he sets off on schedule he doesn't take the player; the server just puts 「メロスを追う」 into the actions (not written as a world-model Affordance). Tapping it, or walking out of the stop in his direction, both count as following: the player moves to wherever he is, at the time he got there, with no separate travel time.
+  停留地点では、彼は予定どおり動き出してもプレイヤーを連れて行かない。サーバーが「メロスを追う」を actions に入れるだけ（世界モデルの Affordance としては書かない）。それをタップしても、彼の方向へ停留地点の外に歩き出しても、ついて行ったことになる：プレイヤーは彼のいる場所へ移り、時刻は彼がそこに着いた時刻で、道のりは別に計算しない。
+- Stops are written as data, per act: `Act.stops?: string[]` (place IDs; Data 10-10 16:06Z). act.2 is [`place.river`], act.4 is [`place.river`, `place.mountain-pass`, `place.spring`]; acts without it have no stops. The spring and the pass are places passed through on the act 2 night road, so this can't hang on Place. The validation tool checks that the places in stops exist and are reachable in that act.
+  停留地点はデータとして幕ごとに書く：`Act.stops?: string[]`（場所 ID。データ 10-10 16:06Z）。act.2 は [`place.river`]、act.4 は [`place.river`, `place.mountain-pass`, `place.spring`]、書いていない幕には停留地点がない。泉と峠は第二幕では夜道で通り過ぎる場所なので、Place に付けることはできない。検証ツールは stops の場所が存在し、その幕で到達できるかを確認する。
+- If, after he has set off, the player first does something else that takes time (talking, an action, waiting), they haven't followed: in the same commit, `set var.player.companionOf = none`, and from then on they travel on their own by `adjacent` and `travelMinutes`, and he may already have left by the time they get there. If it isn't cleared, his next relocate would drag the player away from the stop.
+  彼が動き出したあと、プレイヤーが先に時間のかかる別のこと（話す、アクション、待つ）をしたら、ついて行かなかったことになる：同じコミットで `set var.player.companionOf = none` とし、以後は `adjacent` と `travelMinutes` で自分で移動する。着いたときには彼はもう去っているかもしれない。これを消しておかないと、彼の次の relocate でプレイヤーが停留地点から引きずられてしまう。
+
+**Other** (Data 10-10 12:01Z, 15:41Z):
+
+**その他**（データ 10-10 12:01Z、15:41Z）：
+
+- 「峠を避けて、脇道を行く」 stays at the pass: arriving at the pass there are still 20 minutes before beat.19, enough for one 15-minute action or one line.
+  「峠を避けて、脇道を行く」は峠に置く：峠に着いた時点で beat.19 までまだ 20 分あり、15 分のアクション 1 つか 1 回の発話に足りる。
+- In runs that took the side path, beat.19 and beat.20 don't happen, and beat.21 happens as usual at 15:30: Melos stops at the spring, only drinks, doesn't collapse, and doesn't doubt (section 3, section 5 R2'). If the spring staging needs to split in two, Data adds a variant of beat.21 split on `var.melos.doubted`.
+  脇道を選んだ回では beat.19、beat.20 は起きず、beat.21 は 15:30 に通常どおり起きる：メロスは泉で止まり、水を飲むだけで倒れず、疑いも抱かない（3 節、5 節 R2'）。泉の演出を 2 通りに分ける必要があれば、データが beat.21 に `var.melos.doubted` で分かれる変種を加える。
+- The end of act 2: tapping 「メロスを追う」 after crossing the river bridge = the clock jumps to beat.08 (about 10:00), act 2 ends, and only `exit.2.village` holds. The narration line about 隣村 goes into the jump.
+  第二幕の終わり：川の橋を渡ってから「メロスを追う」をタップする = 時計は beat.08（約 10:00）へ飛び、第二幕は終わり、`exit.2.village` だけが成立する。隣村についてのナレーションはこの移動の中に入れる。
+- Talking on the act 2 night road only moves the clock, and Melos's position follows the clock; `pacingNote` is extended to act 2.
+  第二幕の夜道で話しても時計が進むだけで、メロスの位置は時計に従う。`pacingNote` を第二幕にも広げる。
+- The shallows, the side path and the spring are all affordances (`aff.river-shallows`, `aff.pass-detour` / `aff.pass-detour-told`, `aff.spring-water`, 15 minutes each), not `objects` (which are only for 0-minute 「調べる」). When a button needs to be anchored to a specific position, Data adds an optional spot field to Affordance; where the player stands afterwards uses `playerSpot`.
+  浅瀬、脇道、泉はどれも affordance（`aff.river-shallows`、`aff.pass-detour` / `aff.pass-detour-told`、`aff.spring-water`、各 15 分）で、`objects`（0 分の「調べる」専用）は使わない。ボタンを特定の位置に付ける必要があるときは、データが Affordance に任意のスポットのフィールドを加える。終わったあとプレイヤーがどこに立つかは `playerSpot` を使う。
+- Melos washing his face at the river in act 2 is staging at the `melos-wash` spot, not a beat and not an activity (the contract's activities are only idle, walk, run, talk, work, sleep, absent).
+  第二幕でメロスが川辺で顔を洗うのは `melos-wash` のスポットでの演出で、ビートでも activity でもない（契約の activity は idle、walk、run、talk、work、sleep、absent だけ）。
+- The passers-by on the field road use the existing `char.travelers` (who can't talk); the party-goers and the dog exist only in the staging. The travelers' line 「いまごろは、あの男も、磔にかかっているよ」 is written as a set piece on beat.22 (contract 2.11, spoken by `char.travelers`).
+  野の道の道行く人は既存の `char.travelers`（話せない）を使い、酒宴の人々と犬は演出の中にだけいる。旅人のあの一言「いまごろは、あの男も、磔にかかっているよ」は beat.22 の固定演出として書く（契約 2.11、話すのは `char.travelers`）。
+- In act 4 the river can only be crossed by swimming (`swimMinutes` 30), and Data writes "no boats after `var.bridge = destroyed`" as data.
+  第四幕では川は泳いでしか渡れない（`swimMinutes` 30）。データは「`var.bridge = destroyed` 以降は舟に乗れない」をデータとして書く。
+- The 「とても渡れそうにない」 line at the river (Frontend review #43): the navmesh doesn't include water, the player can't walk into it, and the frontend doesn't produce this line on its own. To be settled in M3 with Data: UX leans toward placing an inspectable object at the water's edge (contract 2.12 `objects`, 「調べる」 0 minutes) with a set piece (2.11) that says this line; the text is fixed and not left to the narrator.
+  川辺の「とても渡れそうにない」（フロントエンドのレビュー #43）：ナビメッシュは水面を含まず、プレイヤーは水に入れないが、この 1 行をフロントエンドが自分で出すことはしない。M3 でデータと決める：UX は水辺に調べられるもの（契約 2.12 の `objects`、「調べる」0 分）を置き、この 1 行を言う固定演出（2.11）を付ける案に傾いている。文言は固定で、ナレーターには任せない。
+
+---
+
+## Revision history / 改訂履歴
+
+- v1.0 (2026-10-10): first version. Merged from two UX drafts in the project folder: "How the homeward road works" v1.0 (PM decided to build it as stops plus running stretches, S-081) and "The four stops and the running stretches" v0.1 (reviewed by Frontend and Data, answers folded in). Three additions per Frontend's review of #43: the running stretch plays after `action_result` arrives, holding back `commit` (section 10); when skipping before loading has finished, show a time card first ("Movement rules" item 2); the riverside line is sent by the server ("Movement rules" item 1, 1.3, section 10).
+  v1.0（2026-10-10）：最初の版。プロジェクトフォルダにある UX の 2 つの原稿を合わせた：「帰り道の進み方」v1.0（PM が停留地点と走る区間で作ると決定、S-081）と「4 つの停留地点と走る区間」v0.1（フロントエンドとデータが確認し、回答を反映済み）。フロントエンドの #43 へのレビューに沿って 3 か所を補足：走る区間は `action_result` を受け取ってから演じ、`commit` を保留する（10 節）。スキップしたときに読み込みが終わっていなければまず時間カードを出す（「移動のルール」第 2 項）。川辺の 1 行はサーバーが送る（「移動のルール」第 1 項、1.3、10 節）。

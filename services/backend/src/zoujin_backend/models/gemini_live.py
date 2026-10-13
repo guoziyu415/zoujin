@@ -325,15 +325,15 @@ class GeminiLiveSession:
 
     async def _next(self, t: _Turn, left: float, what: str) -> Json:
         if left <= 0:
-            self._lost(f"{TURN_TIMEOUT_S:.0f} 秒内没有 {what}")
-            raise LiveLost("Live 这一轮超时")
+            self._lost(f"no {what} within {TURN_TIMEOUT_S:.0f} s / {TURN_TIMEOUT_S:.0f} 秒以内に {what} がない")
+            raise LiveLost("Live turn timed out / Live のこのターンがタイムアウト")
         try:
             sc = await asyncio.wait_for(t.q.get(), timeout=left)
         except TimeoutError:
-            self._lost(f"{TURN_TIMEOUT_S:.0f} 秒内没有 {what}")
-            raise LiveLost("Live 这一轮超时") from None
+            self._lost(f"no {what} within {TURN_TIMEOUT_S:.0f} s / {TURN_TIMEOUT_S:.0f} 秒以内に {what} がない")
+            raise LiveLost("Live turn timed out / Live のこのターンがタイムアウト") from None
         if sc is None:
-            raise (LiveLostQuota if self._quota else LiveLost)("Live 的连接断了")
+            raise (LiveLostQuota if self._quota else LiveLost)("Live connection lost / Live の接続が切れた")
         return sc
 
     async def close(self) -> None:

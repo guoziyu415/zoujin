@@ -2,8 +2,9 @@
 calculation; reply and use: "eval" are not counted; old rows without ms are written as "no data"; mismatches between
 the ledger and playthrough_metrics are flagged.
 
-zoujin-s5（B-5 受け入れ確認 第 7 組）：作った台帳とテスト DB で実行し、数字が手計算と一致する。reply と use: "eval"
-は数えない。ms のない古い行は「データなし」と書く。台帳と playthrough_metrics が合わないときは示す。
+zoujin-s5（B-5 受け入れ確認 第 7 組）：作った台帳とテスト DB で実行し、数字が手計算と一致する。
+reply と use: "eval" は数えない。ms のない古い行は「データなし」と書く。
+台帳と playthrough_metrics が合わないときは示す。
 """
 
 from __future__ import annotations
@@ -99,8 +100,8 @@ def test_hand_computed_report() -> None:
     assert t["rising"] and t["slope"] == pytest.approx(0.07)
     # Scaling: the narrator is extrapolated along the trend and split by the measured shares of kinds; world advance is
     # listed separately; if the slice has an ending, the measured one is used (0.12 per playthrough)
-    # 換算：ナレーターは傾向に沿って外挿し、種類は実測の割合で分ける。世界の進行は別に挙げる。スライスにエンディングが
-    # あれば実測のものを使う（1 プレイ 0.12）
+    # 換算：ナレーターは傾向に沿って外挿し、種類は実測の割合で分ける。世界の進行は別に挙げる。
+    # スライスにエンディングがあれば実測のものを使う（1 プレイ 0.12）
     forty = r["scaled"]["40"]
     narr = s5.narrator_cost(t, 40)
     assert sum(forty["narrator"].values()) == pytest.approx(narr, rel=1e-4)
@@ -114,8 +115,8 @@ def test_hand_computed_report() -> None:
     sixty = r["scaled"]["60"]
     # Measured: 2 checks in 3 turns; stress tier: 2 per turn, so the check share is multiplied by 2 ÷ (2/3) = 3, the
     # rest is the same as 60 turns
-    # 実測は 3 ターンでチェック 2 回。負荷段階は毎ターン 2 回なので、チェックの分に 2 ÷ (2/3) = 3 を掛け、ほかは
-    # 60 ターンと同じ
+    # 実測は 3 ターンでチェック 2 回。負荷段階は毎ターン 2 回なので、チェックの分に 2 ÷ (2/3) = 3 を掛け、
+    # ほかは 60 ターンと同じ
     assert stress["narrator"]["check"] == pytest.approx(sixty["narrator"]["check"] * 3, rel=1e-4)
     assert stress["narrator"]["extract"] == sixty["narrator"]["extract"] and stress["totalUsd"] > sixty["totalUsd"]
     assert r["cacheRead"]["claude"] == pytest.approx(34000 / 38500, abs=1e-4) and r["cacheRead"]["google"] == s5.NO_DATA

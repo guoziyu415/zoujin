@@ -6,8 +6,8 @@
     # cost; add --confirm once zg agrees. The check goes to Claude (B-8): the key is read from the keychain into this
     # terminal, and model IDs are given via env vars (kept out of the repo)
     # 本物のモデル：zg の Mac 上だけ、PM の連絡の後で。まず --confirm なしで 1 回実行して予想費用を確認し、
-    # zg が同意したら --confirm を付ける。チェックは Claude を使う（B-8）：キーはキーチェーンからこのターミナルに
-    # 読み込み、モデル ID は環境変数で渡す（リポジトリには入れない）
+    # zg が同意したら --confirm を付ける。チェックは Claude を使う（B-8）：
+    # キーはキーチェーンからこのターミナルに読み込み、モデル ID は環境変数で渡す（リポジトリには入れない）
     export ANTHROPIC_API_KEY="$(security find-generic-password -s zoujin-claude -w)"
     ZJ_MODEL=real ZJ_EVAL_LIVE=1 ZJ_LEDGER=<ledger> ZJ_CLAUDE_HAIKU=… ZJ_CLAUDE_SONNET=… DATABASE_URL=… \\
         uv run --all-packages --extra real zoujin-s2 <labelled-set.jsonl> --out <dir> \\
@@ -44,18 +44,18 @@ S-2 の実行スクリプト（B-2 カード第 5 項。形式と採点は `eval
   実行済みのものには二度と費用をかけない。ラベル付きセットかチェックプロンプトのバージョンが変わっていれば続行させない。
   終わったら（または止まったら）`report.json` と `report.md` を書く。
 - 本物のモデルのスイッチと上限：`ZJ_EVAL_LIVE=1`（E-0 live と同じ）、`--max-item-usd`、`--max-claude-usd`（チェックは
-  Claude を使う。デフォルトはない。D-029 の 100 ドルはすべての実行の累計なので、台帳にすでにある分と今回を足しても
-  超えない数を入れる）、`ZJ_LEDGER`（2 つの勘定は同じファイルで E-0 と同じ。総上限は台帳の累計と比べる）。
-  1 つでも欠けるか `--confirm` がなければ、表示だけで呼び出さない。各項目の費用は `s2/<今回のタグ>/<項目 ID>` に記録し、
-  項目の上限はこれで計算する（同じ項目の各回の合計）。
-- 台帳が上限に達した（`BudgetStop`）、最初の 429 か 529（`RateLimited`）：止まり、実行済みの分のレポートはそのまま
-  出力し、終了コード 3。リプレイがない、設定が正しくない：終了コード 2。
-- チェックプロンプトが確定版になった後（`CHECK_FINAL`）、公開の 10 件以外のラベル付きセット（ホールドアウトセット）は
-  確定版のプロンプトでのみ本物のモデルを実行し、確定版でなければ終了コード 2。
-- ラベル付きセットのデフォルトのパスはなく、ホールドアウトセットの場所も知らない：パスは実行する人が渡す。レポートには
-  項目 ID、ラベルの判定とルール、自己チェックの判定・ルール・理由、trace ID だけを書き、項目の発話の原文や要約は
-  写さない。ホールドアウトセットで出たレポートとリプレイはまずデータ担当に渡す
-  （B-2 カード「ホールドアウトサンプルの決まり」）。
+  Claude を使う。デフォルトはない。D-029 の 100 ドルはすべての実行の累計なので、
+  台帳にすでにある分と今回を足しても超えない数を入れる）、`ZJ_LEDGER`（2 つの勘定は同じファイルで E-0 と同じ。
+  総上限は台帳の累計と比べる）。1 つでも欠けるか `--confirm` がなければ、表示だけで呼び出さない。
+  各項目の費用は `s2/<今回のタグ>/<項目 ID>` に記録し、項目の上限はこれで計算する（同じ項目の各回の合計）。
+- 台帳が上限に達した（`BudgetStop`）、最初の 429 か 529（`RateLimited`）：止まり、
+  実行済みの分のレポートはそのまま出力し、終了コード 3。リプレイがない、設定が正しくない：終了コード 2。
+- チェックプロンプトが確定版になった後（`CHECK_FINAL`）、公開の 10 件以外のラベル付きセット（ホールドアウトセット）
+  は確定版のプロンプトでのみ本物のモデルを実行し、確定版でなければ終了コード 2。
+- ラベル付きセットのデフォルトのパスはなく、ホールドアウトセットの場所も知らない：パスは実行する人が渡す。
+  レポートには項目 ID、ラベルの判定とルール、自己チェックの判定・ルール・理由、trace ID だけを書き、
+  項目の発話の原文や要約は写さない。ホールドアウトセットで出たレポートとリプレイはまずデータ担当に渡す（B-2
+  カード「ホールドアウトサンプルの決まり」）。
 """
 
 from __future__ import annotations
@@ -90,10 +90,10 @@ META = "meta.json"
 # scored 100% all three times and Haiku 90% in its worst run, no anchors were missed, and both tiers passed the gates.
 # If the check text or Schema changes after this, this S-2 run no longer represents the new prompt: data must produce
 # a new measurement set (`evals/s2/README.md`) before this is changed.
-# チェックプロンプトの確定版（B-2 カード「確定」）：2026-10-11 に Mac で公開の 10 件 × 3 回を実行し、Sonnet は 3 回とも
-# 100%、Haiku は最も低い回で 90%、アンカーの見逃しはなく、どちらのティアもゲートを通った。確定後に check のテキストか
-# Schema を変えると、今回の S-2 は新しいプロンプトを表さなくなる：データ担当が新しい測定セットを作ってから
-# （`evals/s2/README.md`）ここを変える。
+# チェックプロンプトの確定版（B-2 カード「確定」）：2026-10-11 に Mac で公開の 10 件 × 3 回を実行し、
+# Sonnet は 3 回とも 100%、Haiku は最も低い回で 90%、アンカーの見逃しはなく、どちらのティアもゲートを通った。
+# 確定後に check のテキストか Schema を変えると、今回の S-2 は新しいプロンプトを表さなくなる：
+# データ担当が新しい測定セットを作ってから（`evals/s2/README.md`）ここを変える。
 CHECK_FINAL = "p48aa3f14c44b"
 # The public 10 items: for tuning the prompt, whether final or not
 # 公開の 10 件：プロンプトの調整用。確定版かどうかに関係なく使える
@@ -164,8 +164,9 @@ def per_check_usd(settings: Settings) -> tuple[float, float]:
     card B-8's assumptions, a 17,000-token prefix from the cache, 2,000 new input tokens, 1,200 output tokens including
     thinking).
 
-    チェック 1 回の呼び出しの費用：（上限：キャッシュを数えず出力は上限で、台帳はこれで判定する。推算：B-8 カードの
-    仮定に従い、プレフィックス 1.7 万トークンはキャッシュ、新しい入力 2,000、思考を含む出力 1,200 トークン）。
+    チェック 1 回の呼び出しの費用：（上限：キャッシュを数えず出力は上限で、台帳はこれで判定する。推算：
+    B-8 カードの仮定に従い、プレフィックス 1.7 万トークンはキャッシュ、新しい入力 2,000、
+    思考を含む出力 1,200 トークン）。
     """
     from zoujin_llm import canonical, claude_prices
 
@@ -189,8 +190,8 @@ def gate(args: argparse.Namespace, settings: Settings, env: Mapping[str, str], n
     """Real model: print the estimated cost and the full command; return True only if the switch, caps, ledger and
     project are all present and --confirm was given.
 
-    本物のモデル：予想費用と完全なコマンドを表示する。スイッチ、上限、台帳、プロジェクトがすべて揃っていて --confirm が
-    あるときだけ True を返す。
+    本物のモデル：予想費用と完全なコマンドを表示する。スイッチ、上限、台帳、
+    プロジェクトがすべて揃っていて --confirm があるときだけ True を返す。
     """
     from zoujin_backend.models.text import spec
 

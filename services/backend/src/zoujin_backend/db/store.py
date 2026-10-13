@@ -82,16 +82,16 @@ async def enqueue(
     created_at: the time it is queued (a timeout task for an expired draft is queued at the moment it expired, B-4).
     flags: the step-0 safety screening flags (B-12); the narrator judges by them.
 
-    ナレーターのタスクを 1 件キューに入れる。冪等キーは turnId そのもの：再試行では同じものを使い、このターンが書く
-    イベントのキーはすべてそれで始まる。
-    created_at には clock_timestamp() を使うので、同じトランザクションで入れた複数件でも前後が区別できる。
-    status="lost"：接続が切れたとき登場人物がまだ話し終えていなかったターン。記録だけ残し（welcome の lastTurn）、
-    ナレーターは処理しない。
-    request：アクションと幕末のリクエスト（B-3）。発話の原文は入れない（原文は utterances にある）。
-    commit_after：ナレーターが最短で何秒後にコミットするか（B-4 の取り消し可能な時間、DB の時計で数える）。
-    None = 判定が終わったらすぐコミット。
-    created_at：キューに入れた時刻（草稿が期限切れになったときのタイムアウトタスクは期限の時刻に入れる、B-4）。
-    flags：第 0 段階の安全スクリーニングのフラグ（B-12）。ナレーターはそれに従って判定する。
+    ナレーターのタスクを 1 件キューに入れる。冪等キーは turnId そのもの：再試行では同じものを使い、
+    このターンが書くイベントのキーはすべてそれで始まる。created_at には clock_timestamp() を使うので、
+    同じトランザクションで入れた複数件でも前後が区別できる。status="lost"：
+    接続が切れたとき登場人物がまだ話し終えていなかったターン。記録だけ残し（welcome の lastTurn）、
+    ナレーターは処理しない。request：アクションと幕末のリクエスト（B-3）。
+    発話の原文は入れない（原文は utterances にある）。commit_after：
+    ナレーターが最短で何秒後にコミットするか（B-4 の取り消し可能な時間、DB の時計で数える）。
+    None = 判定が終わったらすぐコミット。created_at：キューに入れた時刻（草稿が期限切れになったときの
+    タイムアウトタスクは期限の時刻に入れる、B-4）。flags：第 0 段階の安全スクリーニングのフラグ（B-12）。
+    ナレーターはそれに従って判定する。
     """
     turn_id = turn_id or ids.new("turn")
     await c.execute(
@@ -126,10 +126,10 @@ async def retract_queued(c: AsyncConnection, pid: str, turn_id: str) -> str | No
     commit gets the turn's row lock first wins (the narrator only accepts leased). Returns the turn's kind; returns
     None (too_late) if it is already committed, unknown or cannot be retracted.
 
-    ナレーターに渡したがまだコミットしていないターン（pending / leased）を retracted にし、発話の原文を消して
-    deleted_at を記録し（行は残す）、turns_retracted に 1 を足す。ナレーターのコミットと、このターンの行ロックを
-    先に取った方が有効（ナレーターは leased だけを受け付ける）。このターンの kind を返す。すでにコミット済み、
-    不明、取り消せないものは None（too_late）を返す。
+    ナレーターに渡したがまだコミットしていないターン（pending / leased）を retracted にし、
+    発話の原文を消して deleted_at を記録し（行は残す）、turns_retracted に 1 を足す。ナレーターのコミットと、
+    このターンの行ロックを先に取った方が有効（ナレーターは leased だけを受け付ける）。このターンの kind を返す。
+    すでにコミット済み、不明、取り消せないものは None（too_late）を返す。
     """
     row = (
         await c.execute(
@@ -211,8 +211,8 @@ async def answered(c: AsyncConnection, pid: str, draft_id: str) -> bool:
     """This draft already has an answer task row (button, voice or timeout; whichever is written first counts). Failed
     ones do not count: the draft is still open and the timeout can still close it.
 
-    この草稿にはすでに回答のタスクの行がある（ボタン、音声、タイムアウトのうち先に書いた方が有効）。失敗したものは
-    数えない：草稿はまだ開いていて、タイムアウトで閉じることができる。
+    この草稿にはすでに回答のタスクの行がある（ボタン、音声、タイムアウトのうち先に書いた方が有効）。
+    失敗したものは数えない：草稿はまだ開いていて、タイムアウトで閉じることができる。
     """
     found = await c.scalar(
         select(turns.c.turn_id).where(
@@ -233,8 +233,8 @@ async def answer_draft(
     when a button, voice and timeout arrive at the same time only one row is written.
 
     開いている草稿に `kind: "confirm"` のタスクを 1 行書く（ナレーターはプレイごとにキューで処理する）。草稿がもうない、
-    またはすでに回答があれば何も書かず None を返す。草稿の行をロックしてから確認するので、ボタン・音声・タイムアウトが
-    同時に来ても 1 行しか書かない。
+    またはすでに回答があれば何も書かず None を返す。草稿の行をロックしてから確認するので、ボタン・音声・
+    タイムアウトが同時に来ても 1 行しか書かない。
     """
     row = await c.scalar(
         select(drafts.c.draft_id).where(drafts.c.draft_id == draft_id, drafts.c.playthrough_id == pid).with_for_update()
@@ -272,8 +272,8 @@ class Run:
     """The bits of a playthrough that are not events and do not go into WorldState (B-3, migration 0003): the narrator
     reads, changes and writes them back in the commit transaction; the gateway only reads them.
 
-    プレイのうちイベントではなく WorldState にも入らないもの（B-3、マイグレーション 0003）：ナレーターがコミットの
-    トランザクション内で読み、変更し、書き戻す。ゲートウェイは読むだけ。
+    プレイのうちイベントではなく WorldState にも入らないもの（B-3、マイグレーション 0003）：
+    ナレーターがコミットのトランザクション内で読み、変更し、書き戻す。ゲートウェイは読むだけ。
     """
 
     player_spot: str | None = None
@@ -315,8 +315,8 @@ async def clear_plan_texts(c: AsyncConnection, pid: str, turn_ids: list[str] | N
     filtered before writing). Returns how many turns were cleared.
 
     幕末のプランの言い換え（label、narration、代わりの行き先の label）を turns.result から消す（B-3 第 4 項、
-    data-design 5.2・5.3）：記憶帳のターンごとの削除（L1）ではそのターンを渡し、エンディングの後は
-    None（このプレイ全部）を渡す。イベント内の plan.label には触れない（イベントは削除せず、
+    data-design 5.2・5.3）：記憶帳のターンごとの削除（L1）ではそのターンを渡し、
+    エンディングの後は None（このプレイ全部）を渡す。イベント内の plan.label には触れない（イベントは削除せず、
     書き込む前にフィルター済み）。消したターン数を返す。
     """
     q = select(turns.c.turn_id, turns.c.result).where(turns.c.playthrough_id == pid, turns.c.kind == "plan")

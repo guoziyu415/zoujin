@@ -514,11 +514,25 @@ PERSONAS = [
     },
 ]
 
+# E7 titles: what each persona does (English, Japanese) / E7 のタイトル：各ペルソナが何をするか（英語、日本語）
+E7_TITLES = {
+    "persona.a2-night-walker": (
+        "walks the night road with Melos, talking slowly",
+        "メロスと夜道を行き、ゆっくり語り合う",
+    ),
+    "persona.a2-hurry": ("keeps urging Melos to turn back to the city", "夜道でメロスに市へ引き返そうと説得し続ける"),
+    "persona.a2-vigil": ("the apprentice cheers his master on all night", "弟子が一晩じゅう親方のそばで励ます"),
+    "persona.a2-rescuer": ("the apprentice tries to free his master at night", "弟子が夜の城で親方を逃がそうとする"),
+    "persona.a2-king-pleader": ("urges the sleepless king to trust people", "眠れない王に人を信じてみてはと語りかける"),
+    "persona.a2-night-city": ("asks around the city about what happened tonight", "深夜の市で今夜の出来事を聞いて回る"),
+}
+
 for i, p in enumerate(PERSONAS, start=1):
+    en, ja = E7_TITLES[p["id"]]
     CASES.append(
         case(
             f"E7-2{i:02d}",
-            f"Simulated session / シミュレーションセッション：{p['goal'][7:31]}…",
+            f"Simulated session (Act 2): {en} / シミュレーションセッション（第二幕）：{ja}",
             {"role": p["role"], "persona": p["id"], "seed": i},
             [],
             SIM,

@@ -3,8 +3,8 @@
 - **When to enter** (`due`): only in the last act (the act without exits). Enter once the beat the deadline watches
   (`clock.deadline.watchBeat`) has a result, or the deadline has been settled. In the triggering commit (`enter`):
   settle this act up to its close (set pieces on the closing beat ignore where the player is and count as the ending
-  set piece) → `classify` → set-piece positions `staging` → the game becomes `ended` → insert a task with `kind: "ending"` → the
-  push starts with `ending_started`.
+  set piece) → `classify` → set-piece positions `staging` → the game becomes `ended` → insert a task with
+  `kind: "ending"` → the push starts with `ending_started`.
 - **Staging, ranking by impact, attribution, templates, validation**: all deterministic, all here, never left to the
   model. B-17: ranking adds promises, mutual aid, memories and relationship changes; `player.relationships` is computed
   by code from the undeleted memories; the world ending may be generated for this game (`world.variant`), and both its
@@ -40,9 +40,9 @@
   数える。検査そのものがタイムアウト、エラー、Schema 不合格のときは止めず、このエンディングをそのまま使う。
 - **生成**（`run_ending`）：Claude がエピローグ、あなたのエンディング、登場人物のエンディングを書き
   （プロンプト `ending`、構造化出力）、各文はこのゲームのイベントを引用する。イベント ID はリクエストでは `e<seq>` と
-  書き（同じ局面なら同じリクエストになり、リプレイのキーが一致する）、受け取ったら本当の ID に戻す。呼び出しは最大 2 回（タイムアウト、
-  エラー、Schema 不合格、検証不合格はどれも 1 回と数える。2 回目は不合格の規則名とフィールドを付ける）、その後は
-  テンプレートを使う（S-065、ux-design 11.4）。
+  書き（同じ局面なら同じリクエストになり、リプレイのキーが一致する）、受け取ったら本当の ID に戻す。
+  呼び出しは最大 2 回（タイムアウト、エラー、Schema 不合格、検証不合格はどれも 1 回と数える。2 回目は不合格の
+  規則名とフィールドを付ける）、その後はテンプレートを使う（S-065、ux-design 11.4）。
 - **保存**：同じトランザクションでエンディングを保存し、このゲームの発話とプランの文章を消し（S-035）、
   `playthrough_metrics` を補い、タスクを done にして `ending_ready` をプッシュし、NOTIFY する。
 - ログと Trace には ID、規則名、回数、所要時間、費用だけを入れ、

@@ -8,9 +8,9 @@ correctly. The numbers below are worked out by hand from this.
 S-2 の実行スクリプト（B-2 受け入れ確認 第 6 組のリプレイ、第 7 組）：偽モデルで公開の 10 件、続きからの実行、
 本物のモデルのスイッチ、リプレイ。
 
-偽モデルのチェックはすべて合格なので、不合格になるのは第 3 段階で止めたものだけ：`rules` とラベルした 4 件は正しく
-判定し、`model` とラベルした 2 件（s2d-02 の R1、s2d-05 の R5）は見逃し、適合の 4 件は正しく判定する。下の数字は
-これをもとに手で計算した。
+偽モデルのチェックはすべて合格なので、不合格になるのは第 3 段階で止めたものだけ：`rules`
+とラベルした 4 件は正しく判定し、`model` とラベルした 2 件（s2d-02 の R1、s2d-05 の R5）は見逃し、
+適合の 4 件は正しく判定する。下の数字はこれをもとに手で計算した。
 """
 
 from __future__ import annotations
@@ -192,8 +192,8 @@ def test_live_gate_only_prints(
 def test_check_prompt_is_the_final_one() -> None:
     # If the check text or Schema changes after it is final, the S-2 results no longer represent the new prompt: data
     # must produce a new measurement set before s2.CHECK_FINAL is changed (card B-2)
-    # 確定後に check のテキストか Schema を変えると、S-2 の結果は新しいプロンプトを表さなくなる：データ担当が新しい
-    # 測定セットを作ってから s2.CHECK_FINAL を変える（B-2 カード）
+    # 確定後に check のテキストか Schema を変えると、S-2 の結果は新しいプロンプトを表さなくなる：
+    # データ担当が新しい測定セットを作ってから s2.CHECK_FINAL を変える（B-2 カード）
     assert PROMPTS["check"].version == s2.CHECK_FINAL
 
 

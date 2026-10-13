@@ -24,17 +24,17 @@ S-5 のレポート（B-5 第 6 項）：シミュレーションのプレイの
 
 - 3 つを読む：
   - 台帳（`ZJ_LEDGER` のファイル）：`item`（デフォルト `s5`）の行を `playthroughId` でプレイごとに分ける。
-  - シミュレーションのプレイを実行した DB（`DATABASE_URL`）：各プレイの `playthrough_metrics` と会話ターンの時刻
-    （台帳の行を時刻で何ターン目かに振り分ける）。
-  - ランナーの `report.json`：`cases[].results[]` にある各実行の `playthroughId`、`persona`、`seed` と `steps[]`
-    （各ステップの `kind`、`elapsedMs`）。
-- `report.json` と `report.md` を書く。発話の原文、AI プレイヤーの発言、登場人物の回答、エンディングの文章は読みも
-  書きもしない。
-- 1 プレイの製品費用は `use: "product"` の行だけを足し、`reply` は数えない（テキストモードでは Live の代わりに
-  登場人物を演じる、S-085 ①）。Live は results-s1 8.5 の式で別に計算する（`LIVE`、〔推算〕）。`use: "eval"`
-  （審査員、AI プレイヤー）は別に挙げ、1 プレイの費用には入れない。
-- 換算：スライスにある種類は実測を使い、ない種類（世界の進行、安全分類、記憶、発話候補）は B-8「1 プレイのコスト」の
-  推算に従う（`MISSING`、〔推算〕）。ターンあたりの費用がターン数とともに上がるときは傾向に沿って外挿する（PM #99）。
+  - シミュレーションのプレイを実行した DB（`DATABASE_URL`）：各プレイの `playthrough_metrics`
+    と会話ターンの時刻（台帳の行を時刻で何ターン目かに振り分ける）。
+  - ランナーの `report.json`：`cases[].results[]` にある各実行の `playthroughId`、`persona`、`seed` と
+    `steps[]`（各ステップの `kind`、`elapsedMs`）。
+- `report.json` と `report.md` を書く。発話の原文、AI プレイヤーの発言、登場人物の回答、
+  エンディングの文章は読みも書きもしない。
+- 1 プレイの製品費用は `use: "product"` の行だけを足し、`reply` は数えない（テキストモードでは Live
+  の代わりに登場人物を演じる、S-085 ①）。Live は results-s1 8.5 の式で別に計算する（`LIVE`、
+  〔推算〕）。`use: "eval"`（審査員、AI プレイヤー）は別に挙げ、1 プレイの費用には入れない。
+- 換算：スライスにある種類は実測を使い、ない種類（世界の進行、安全分類、記憶、発話候補）は B-8「1 プレイのコスト」
+  の推算に従う（`MISSING`、〔推算〕）。ターンあたりの費用がターン数とともに上がるときは傾向に沿って外挿する（PM #99）。
   1 ドル = 150 円で、PRD 7.4 の 300 円、節約段階の 240 円と比べる。
 """
 
@@ -127,10 +127,11 @@ class Live:
     character's audio and the transcripts of both sides). The session is rebuilt every rebuild_every turns
     (backend-design section 8); seconds per turn are the pre-R1 assumptions (the data cost model's player_s, char_s).
 
-    Live 音声のターンあたりの費用〔推算〕：入力は results-s1 8.5 の実測へのあてはめ（ターンごとの base + セッションに
-    すでにある音声 1 秒あたりの per_audio_s）、出力はデータのコストモデルの価格表（登場人物の音声と双方の書き起こし）。
-    セッションは rebuild_every ターンごとに作り直す（backend-design 第 8 節）。ターンあたりの秒数は R1 以前の仮定
-    （データのコストモデルの player_s、char_s）。
+    Live 音声のターンあたりの費用〔推算〕：入力は results-s1 8.5 の実測へのあてはめ（ターンごとの
+    base + セッションにすでにある音声 1 秒あたりの per_audio_s）、
+    出力はデータのコストモデルの価格表（登場人物の音声と双方の書き起こし）。
+    セッションは rebuild_every ターンごとに作り直す（backend-design 第 8 節）。
+    ターンあたりの秒数は R1 以前の仮定（データのコストモデルの player_s、char_s）。
     """
 
     base: float = 0.00086
@@ -357,9 +358,9 @@ def scaled(
     Stress tier: the check share is multiplied by check_factor (every turn checked, 2 attempts ÷ the measured checks
     per turn).
 
-    turns ターンに換算する：実測のナレーターの費用（傾向に沿って）を種類ごとに分け、世界の進行は別に挙げ、スライスに
-    ない種類〔推算〕、Live〔推算〕、エンディングを加える。
-    負荷段階：チェックの分に check_factor を掛ける（毎ターンチェック、2 回 ÷ 実測のターンあたりのチェック回数）。
+    turns ターンに換算する：実測のナレーターの費用（傾向に沿って）を種類ごとに分け、世界の進行は別に挙げ、
+    スライスにない種類〔推算〕、Live〔推算〕、エンディングを加える。負荷段階：
+    チェックの分に check_factor を掛ける（毎ターンチェック、2 回 ÷ 実測のターンあたりのチェック回数）。
     """
     narr = narrator_cost(t, turns)
     kinds = {k: narr * share for k, share in shares.items()}
@@ -473,8 +474,8 @@ def report(
     """All pure computation (tests call it directly). talks: each playthrough's conversation turns (created_at
     ascending); endings: each playthrough's ending tasks (with settled_at).
 
-    すべて純粋な計算（テストが直接呼ぶ）。talks：各プレイの会話ターン（created_at の昇順）。endings：各プレイの
-    エンディングのタスク（settled_at あり）。
+    すべて純粋な計算（テストが直接呼ぶ）。talks：各プレイの会話ターン（created_at の昇順）。endings：
+    各プレイのエンディングのタスク（settled_at あり）。
     """
     plays = []
     series = []
