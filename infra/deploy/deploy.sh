@@ -464,7 +464,7 @@ cmd_invite() {
   DATABASE_URL="$(owner_url "$DB")" in_wt zoujin-admin invite create --count "$n" >"$out" || die "邀请码没建成"
   proxy_down
   trap - EXIT
-  say "$(wc -l <"$out" | tr -d ' ') 个邀请码写在 $out（一人一个，只给 18 岁以上的人）"
+  say "$(wc -l <"$out" | tr -d ' ') 个邀请码写在 ${out}（一人一个，只给 18 岁以上的人）"
 }
 
 cmd_rollback() {
