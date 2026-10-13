@@ -46,8 +46,9 @@ goes back on the queue and the exception is raised.
 - B-3：action（アクション、`narrator/actions.py`）、choose（幕末の行き先の選択）、plan（幕末のプランの表明、
   `narrator/plans.py`）。コミットのたびにこの幕が閉じたかを見る（`Writer.closed`）：閉じたら幕末の行き先を
   ゲームに記録し、`act_ended` をプッシュする。幕を閉じたあと、選ぶ前に順番が来た対話とアクションは 0 分で、
-  イベントを書かず、モデルも呼ばない。コミット後にプッシュするメッセージ（演出、turn_settled、action_result、act_plan_result、act_transition、
-  act_ended）は順に `turns.result` に記録し、ゲートウェイは commit をプッシュしたあとその順にプッシュする。
+  イベントを書かず、モデルも呼ばない。コミット後にプッシュするメッセージ（演出、turn_settled、action_result、
+  act_plan_result、act_transition、act_ended）は順に `turns.result` に記録し、ゲートウェイは commit を
+  プッシュしたあとその順にプッシュする。
 - B-4：confirm（意図の確認への返答、`narrator/confirm.py`）。対話で確認が要る候補は下書きとして保存する。対話と音声で
   言ったプランにはコミットの猶予（`turns.commit_after`）がある：判定が済んでも時間前なら待ち（トランザクションは
   保持しない）、その間ゲートウェイはこのターンを取り消せる（`status = retracted`）。コミット時に leased でなくなって

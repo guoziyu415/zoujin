@@ -237,7 +237,7 @@ Rounding: 61〜74 minutes left is written 「あと1時間ほど」, 75〜104 mi
 |---|---|---|
 | `primer.title` | 声で話しかけますか | Fixed / 確定 |
 | `primer.body1` | ボタンを押しているあいだだけ、声を聞き取ります。 | Fixed / 確定 |
-| `primer.body2` | 声そのものは保存しません。話したことばは文字にして、この物語のなかだけで使い、結末ができたら消します。学習には使いません。 | Fixed (holds only with the production models, S-059) / 確定（本番版のモデルのときだけ成り立つ。S-059） |
+| `primer.body2` | 声そのものは保存しません。話したことばは文字にして、この物語のなかだけで使い、結末ができたら消します。学習には使いません。 | Fixed (holds only with the production models, S-059) / 確定（本番用のモデルのときだけ成り立つ。S-059） |
 | `primer.use` | マイクを使う | Fixed / 確定 |
 | `primer.text` | 文字で話す | Fixed / 確定 |
 | `primer.ready` | 準備ができました。ボタンを押しながら、話してください。 | Fixed (prototype; once, after permission is granted) / 確定（プロトタイプ。許可が得られた後に 1 回） |
