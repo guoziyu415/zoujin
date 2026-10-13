@@ -1,6 +1,8 @@
-"""B-19：两个新身份（石屋の弟子、村の牧童）的开局：先开口的人、称呼、开局互助进局势说明。
+"""B-19：2 つの新しい役柄（石屋の弟子、村の牧童）の始まり：最初に話しかける人物、呼び方、開始時の助け合いを
+状況説明に入れる。
 
-只读完整世界模型（`1.0.0-draft`），不连库；落地先开口在 WebSocket 上的那一条在 `test_gateway_b19.py`。
+完全版の世界モデル（`1.0.0-draft`）を読むだけで、データベースにはつながない。着地して先に話しかける WebSocket 上の
+確認は `test_gateway_b19.py` にある。
 """
 
 from __future__ import annotations
@@ -33,7 +35,7 @@ def test_each_role_has_an_opener_at_its_start(role: str, who: str, act: str) -> 
 
 
 def test_a_role_without_an_opening_aid_has_no_opener() -> None:
-    assert roles.start_arrival(BOOK, "role.guard") is None  # 第二版的身份，世界模型里还没有开局互助
+    assert roles.start_arrival(BOOK, "role.guard") is None  # 第 2 版の役柄で、世界モデルにはまだ開始時の助け合いがない
     assert roles.start_arrival(BOOK, "role.nobody") is None
 
 
@@ -43,7 +45,7 @@ def test_the_apprentice_brief_names_the_address_and_the_opening_aid() -> None:
     assert "石屋の弟子（顔見知り）" in text
     assert "呼び方：おまえ／弟子よ" in text
     assert "相手があなたにしてくれそうなこと：親方の留守、工房を守ると約束する" in text
-    assert "託す" not in text  # 他为你的那条是之后的事：不给人物（剧透）
+    assert "託す" not in text  # 「相手があなたに」の項目はあとのこと：登場人物に渡さない（ネタバレ）
 
 
 def test_the_shepherd_boy_brief_for_melos() -> None:

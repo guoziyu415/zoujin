@@ -26,7 +26,8 @@ When anything is missing or stale, print which ones and the commands to run: exi
 シーンパックと登場人物のモデルは git に入れず（S-075）、それぞれのパイプラインが Mac のリポジトリ内で生成する：
 シーンは `assets/scenes/<ディレクトリ>/build/`、登場人物は `assets/cast/build/<名前>/`。
 ここでは <出力ディレクトリ> の下に `scenes/<ディレクトリ>` → その build へのシンボリックリンク（vite build の
-ZOUJIN_SCENE_ROOT とゲートウェイの ZJ_SCENE_PACKS が読む）と、`cast` → `assets/cast/build`（ZOUJIN_CAST_ROOT）を作り、次を確認する：
+ZOUJIN_SCENE_ROOT とゲートウェイの ZJ_SCENE_PACKS が読む）と、`cast` → `assets/cast/build`（ZOUJIN_CAST_ROOT）を
+作り、次を確認する：
 
 - 欠落：リポジトリにマニフェスト（scene.json、index.json、pack.json）があるシーンのディレクトリに build/ がない、
   または cast.json に載っている登場人物のファイルがない。

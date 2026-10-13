@@ -1,4 +1,6 @@
-"""评测入口（B-0 验收第 9、10 组）：S-2 的 10 条起点、和 E-0 替身逐事件比对、没做的抛 EvalNotImplemented、回放。"""
+"""評価の入口（B-0 受け入れ確認 第 9・10 組）：S-2 の 10 件の開始時点、E-0 の代役とのイベントごとの比較、
+未実装のものは EvalNotImplemented を投げること、リプレイ。
+"""
 
 from __future__ import annotations
 
@@ -32,14 +34,16 @@ MINIMAL = {"role": "role.traveler", "checkpoint": "sc.canon@t=1080", "place": "p
 
 
 def stand_in() -> ModuleType:
-    """E-0 的替身（evals/tests/conftest.py 的 SimApi：只用 W-1 推演）。B-0 的起点要和它逐事件一样。"""
+    """E-0 の代役（evals/tests/conftest.py の SimApi：W-1 のシミュレーションだけを使う）。B-0 の開始時点はこれと
+    イベントごとに一致しなければならない。
+    """
     name = "e0_stand_in"
     if name in sys.modules:
         return sys.modules[name]
     spec = importlib.util.spec_from_file_location(name, REPO / "evals" / "tests" / "conftest.py")
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module  # dataclass 要在 sys.modules 里找到自己的模块
+    sys.modules[name] = module  # dataclass は sys.modules から自分のモジュールを見つける必要がある
     spec.loader.exec_module(module)
     return module
 
@@ -53,8 +57,10 @@ def without_pid(state: Json) -> Json:
 
 
 def test_s2_dev_setups_start_and_check(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
-    """10 条起点都能起，候选事件经 check 返回过 Schema 的 CheckResult，checker 带规则和检查提示的版本；
-    `scoped` 下第 3 步没过的不跑第 4 步（R5 记 skipped），`all` 下都跑。"""
+    """10 件の開始時点はどれも開始でき、候補イベントは check を経て Schema を通る CheckResult を返し、checker には
+    ルールとチェックプロンプトのバージョンが付く。`scoped` では第 3 段階を通らなかったものは第 4 段階を実行せず
+    （R5 は skipped と記録）、`all` ではすべて実行する。
+    """
     monkeypatch.setenv("DATABASE_URL", env.url)
     monkeypatch.delenv("ZJ_MODEL", raising=False)
     version = prompts.PROMPTS["check"].version
@@ -94,13 +100,15 @@ def test_starts_match_the_e0_stand_in_event_by_event(env: Env, monkeypatch: pyte
 
 
 def test_checkpoint_say_and_advance_follow_worldsim(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
-    """setup(checkpoint) + say + advance，state() 和同一起点的 W-1 推演一致（say 用不出候选事件的一句）。"""
+    """setup(checkpoint) + say + advance で、state() が同じ開始時点からの W-1 のシミュレーションと一致する（say には
+    候補イベントが出ない一言を使う）。
+    """
     monkeypatch.setenv("DATABASE_URL", env.url)
     monkeypatch.delenv("ZJ_MODEL", raising=False)
     setup = {"role": "role.traveler", "checkpoint": "sc.canon@beat.03", "place": "place.syracuse-square"}
     mine = eval_api.setup(setup, mode="text")
     theirs = stand_in().SimApi().setup(setup, mode="text")
-    steps: list[str | int] = ["こんばんは。", 120, "この市は、ずいぶん静かですね。"]  # 字符串 = say，数 = advance
+    steps: list[str | int] = ["こんばんは。", 120, "この市は、ずいぶん静かですね。"]  # 文字列 = say、数 = advance
     for step in steps:
         if isinstance(step, str):
             got, want = mine.say(OLD, step), theirs.say(OLD, step)
@@ -122,14 +130,16 @@ def test_say_returns_rejected_candidates_with_their_effects(env: Env, monkeypatc
     step = s.say(OLD, PLAYER_LINE)
     rejected = [e for e in step["events"] if e["check"]["status"] == "rejected"]
     assert len(rejected) == 1 and rejected[0]["check"]["failedRules"] == ["R2-precondition"]
-    assert rejected[0]["effects"] == [{"op": "beat", "beat": "beat.03", "to": "happened"}]  # 候选原本的
+    assert rejected[0]["effects"] == [{"op": "beat", "beat": "beat.03", "to": "happened"}]  # 候補の元の effects
     (logged,) = [e for e in s.events() if e["eventId"] == rejected[0]["eventId"]]
-    assert logged["effects"] == []  # 日志里那条是空的（契约第 3 节）
+    assert logged["effects"] == []  # ログ上のものは空（契約第 3 節）
     assert step["clockMinutes"] == 10 and step["traceId"].startswith("turn_")
 
 
 def test_setup_reads_zj_world_on_every_call(env: Env, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    """E-0 的运行器在 setup() 之前设 ZJ_WORLD（--slice 时是切片版）；没设就用草稿，不按目录排序挑。"""
+    """E-0 のランナーは setup() の前に ZJ_WORLD を設定する（--slice のときはスライス版）。未設定なら草稿を使い、
+    ディレクトリのソートでは選ばない。
+    """
     monkeypatch.setenv("DATABASE_URL", env.url)
     monkeypatch.delenv("ZJ_MODEL", raising=False)
     w = json.loads(DEFAULT_WORLD.read_text(encoding="utf-8"))
@@ -149,7 +159,7 @@ def test_setup_reads_zj_world_on_every_call(env: Env, monkeypatch: pytest.Monkey
 
 @pytest.mark.parametrize(
     ("method", "args"),
-    [("silence", (20,))],  # B-13 做了记忆和删除的那几个（test_b13）
+    [("silence", (20,))],  # 記憶と削除のステップは B-13 で実装済み（test_b13）
 )
 def test_steps_b0_does_not_do_raise(
     env: Env, monkeypatch: pytest.MonkeyPatch, method: str, args: tuple[Any, ...]
@@ -163,11 +173,14 @@ def test_steps_b0_does_not_do_raise(
 
 def test_ending_is_none_before_the_story_ends(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", env.url)
-    assert eval_api.setup(MINIMAL, mode="text").ending() is None  # B-9：还没进结局（走到结局的在 test_b9）
+    # B-9：まだエンディングに入っていない（エンディングまで進むものは test_b9）
+    assert eval_api.setup(MINIMAL, mode="text").ending() is None
 
 
 def test_scenario_run_to_the_close_enters_the_ending_at_setup(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
-    """情景模式一口气推到收幕（E5 的 outcome 检查）：玩家没跟着换幕，起点就进结局，结局任务在 setup 里跑完。"""
+    """シナリオで一気に幕を閉じるところまで進む（E5 の outcome チェック）：プレイヤーは幕の切り替えについていって
+    いないが、開始時点でエンディングに入り、エンディングのタスクは setup の中で最後まで実行する。
+    """
     monkeypatch.setenv("DATABASE_URL", env.url)
     s = eval_api.setup({"role": "role.traveler", "scenario": "sc.river-delay"}, mode="text")
     got = s.ending()
@@ -175,13 +188,16 @@ def test_scenario_run_to_the_close_enters_the_ending_at_setup(env: Env, monkeypa
 
 
 def test_checkpoint_past_beat_24_does_not_enter_the_ending(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
-    """检查点停在 beat.24 以后、玩家还没换幕：beat.27 没结果，不进结局，照旧可以对话（数据评审 #124）。"""
+    """チェックポイントが beat.24 より後で止まり、プレイヤーはまだ幕を切り替えていない：beat.27 には結果がなく、
+    エンディングには入らず、これまでどおり会話できる（データレビュー #124）。
+    """
     monkeypatch.setenv("DATABASE_URL", env.url)
     assert eval_api.setup({"role": "role.traveler", "checkpoint": "sc.canon@beat.26"}, mode="text").ending() is None
 
 
 def test_replay_fixture_is_the_fake_model_recorded(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
-    """b0-minimal.jsonl = 最小剧本那一轮的各次调用，输出取假模型的。提示、请求或假模型的输出改了，这条不过；重写：
+    """b0-minimal.jsonl = 最小シナリオのそのターンでの各呼び出しで、出力は偽モデルのもの。プロンプト、リクエスト、
+    偽モデルの出力のどれかを変えるとこのテストは通らない。書き直すには：
     ZJ_UPDATE_REPLAYS=1 DATABASE_URL=… uv run pytest services/backend/tests/test_eval_api.py -k fixture
     """
     monkeypatch.setenv("DATABASE_URL", env.url)
@@ -200,7 +216,8 @@ def test_replay_fixture_is_the_fake_model_recorded(env: Env, monkeypatch: pytest
     text = "".join(json.dumps(c, ensure_ascii=False, sort_keys=True) + "\n" for c in calls)
     if os.environ.get("ZJ_UPDATE_REPLAYS") == "1":
         REPLAYS.write_text(text, encoding="utf-8")
-    # 被否决的那个：改写两次（假模型原样改回）、降级一次（做不到）；提交以后给说话的对象写一条印象（B-13）
+    # 却下されるもの：書き換え 2 回（偽モデルはそのまま戻す）、降格 1 回（できない）。コミット後に話し相手について
+    # 印象を 1 件書く（B-13）
     assert [c["kind"] for c in calls] == [
         "safety",
         "reply",
@@ -212,11 +229,13 @@ def test_replay_fixture_is_the_fake_model_recorded(env: Env, monkeypatch: pytest
         "rewrite",
         "memory",
     ]
-    assert REPLAYS.read_text(encoding="utf-8") == text, "回放过期：ZJ_UPDATE_REPLAYS=1 重跑这条测试"
+    assert REPLAYS.read_text(encoding="utf-8") == text, "リプレイが古い：ZJ_UPDATE_REPLAYS=1 でこのテストを再実行する"
 
 
 def test_replay_mode(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
-    """ZJ_MODEL=replay：fixture 里有的请求原样返回；改了请求或提示版本，抛「回放缺失或过期」。"""
+    """ZJ_MODEL=replay：fixture にあるリクエストはそのまま返す。リクエストかプロンプトのバージョンを変えると
+    「リプレイがない、または古い」を投げる。
+    """
     monkeypatch.setenv("DATABASE_URL", env.url)
     monkeypatch.setenv("ZJ_MODEL", "replay")
     records = [json.loads(line) for line in REPLAYS.read_text(encoding="utf-8").splitlines()]
@@ -229,13 +248,13 @@ def test_replay_mode(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
     assert [c["summary"] for c in recorded["extract"]["response"]["candidates"]] == summaries[:2]
 
     with pytest.raises(eval_api.ReplayMissing):
-        eval_api.setup(MINIMAL, mode="text").say(OLD, "知らない一言。")  # 请求变了
+        eval_api.setup(MINIMAL, mode="text").say(OLD, "知らない一言。")  # リクエストが変わった
     assert eval_api.ReplayMissing.__name__ == "ReplayMissing"
 
     changed = prompts.Prompt("reply", prompts.PROMPTS["reply"].text + "\n")
     monkeypatch.setitem(prompts.PROMPTS, "reply", changed)
     with pytest.raises(eval_api.ReplayMissing):
-        eval_api.setup(MINIMAL, mode="text").say(OLD, PLAYER_LINE)  # 提示版本变了
+        eval_api.setup(MINIMAL, mode="text").say(OLD, PLAYER_LINE)  # プロンプトのバージョンが変わった
 
 
 def test_missing_reply_is_persisted_and_terminal_failure_is_observed(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:

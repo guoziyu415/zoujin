@@ -1,4 +1,5 @@
-"""B-23：部署时网关同源发前端和场景包、叙事者的服务间身份（`ZJ_NARRATOR_AUTH=iam`）。不联网。"""
+"""B-23：デプロイ時にゲートウェイが同一オリジンでフロントエンドと場面パックを配信すること、ナレーターのサービス間の
+認証（`ZJ_NARRATOR_AUTH=iam`）。ネットワークにはつながない。"""
 
 from __future__ import annotations
 
@@ -50,18 +51,18 @@ def test_gateway_serves_the_web_build_and_scene_packs(env: Env, tmp_path: Path) 
         r = c.get("/")
         assert r.status_code == 200 and r.text.startswith("<!doctype html>")
         assert r.headers["cache-control"] == NO_CACHE and r.headers["x-robots-tag"] == "noindex, nofollow"
-        assert c.get("/play/some/route").text == r.text  # 前端自己的路由
+        assert c.get("/play/some/route").text == r.text  # フロントエンド自身のルート
         a = c.get("/assets/index-abc123.js")
         assert a.status_code == 200 and a.headers["cache-control"] == IMMUTABLE
         assert a.headers["content-type"].startswith("text/javascript")
         assert c.get("/robots.txt").headers["cache-control"] == NO_CACHE
         for missing in ("/assets/nope.js", "/favicon.ico", "/../secret.txt", "/%2e%2e/secret.txt"):
             assert c.get(missing).status_code == 404, missing
-        # API 的 404 照旧是第 5 节的形状，不回页面；接口照旧
+        # API の 404 は従来どおり第 5 節の形で、ページは返さない。API は従来どおり
         n = c.get("/v1/nothing-here")
         assert n.status_code == 404 and n.json()["error"]["code"] == "not_found"
         assert c.get("/v1/me").status_code == 401
-        # 场景包：只发 manifest 引用的版本和目录
+        # 場面パック：manifest が参照するバージョンとディレクトリだけを配信する
         url = app.state.gw.manifest.doc["scenes"][0]["assetUrl"]
         s = c.get(url)
         assert s.status_code == 200 and s.headers["cache-control"] == IMMUTABLE
@@ -110,7 +111,7 @@ def test_http_narrator_sends_the_id_token() -> None:
         n = HttpNarrator("https://narrator.internal", transport=httpx.MockTransport(handler), token=token)
         assert await n.run("pt_1") == 2
         assert await n.run("pt_1") == 2
-        token._at -= IdToken.REFRESH_S + 1  # 过了 50 分钟：换新
+        token._at -= IdToken.REFRESH_S + 1  # 50 分経った：新しくする
         await n.run("pt_1")
         await n.close()
         plain = HttpNarrator("http://127.0.0.1:8002", transport=httpx.MockTransport(handler))
@@ -159,7 +160,7 @@ def test_real_gateway_password_gate_covers_pages_resources_api_and_socket(env: E
             pass
         origin = {"Origin": "https://testserver"}
         assert c.post(PATH, data={"password": password}, headers=origin).status_code == 200
-        # 站点密码不等于邀请码账号；内层 API 仍然拒绝。
+        # サイトのパスワードは招待コードのアカウントとは別。内側の API は引き続き拒否する。
         assert c.get("/v1/books").status_code == 401
         for target in paths[:-1]:
             allowed = c.get(target)
