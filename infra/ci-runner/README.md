@@ -1,64 +1,75 @@
-# CI 的自建机器（zg 的 Mac）
+# Self-hosted CI machine (zg's Mac) / CI 用セルフホストマシン（zg の Mac）
 
-从 2026-10-11 起，仓库的 GitHub Actions 不在 GitHub 自带的机器上跑：免费分钟用完，花费上限是 $0。所有 job 改在
-zg 的 Mac 上跑，自建机器不花钱、不占分钟。工作流里写的是
-`runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '["self-hosted","zoujin-mac"]') }}`。
+From 2026-10-11, the repository's GitHub Actions no longer run on GitHub's own machines: the free minutes are used up and the spending limit is $0. All jobs run on zg's Mac instead; self-hosted machines cost nothing and use no minutes. The workflows say
+`runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '["self-hosted","zoujin-mac"]') }}`.
 
-## 怎么隔离
+2026-10-11 から、リポジトリの GitHub Actions は GitHub 標準のマシンでは実行しない。無料枠の分数を使い切り、支出上限が $0 のため。すべての job を zg の Mac で実行する。セルフホストのマシンは無料で、分数も消費しない。ワークフローには
+`runs-on: ${{ fromJSON(vars.CI_RUNS_ON || '["self-hosted","zoujin-mac"]') }}` と書かれている。
 
-runner 不直接装在 Mac 上，而是跑在 Docker 里的一个 Linux 容器里（`Dockerfile`，x86_64，Apple 芯片上走 Rosetta）。
-每个 PR 分支的代码都会在这里跑，所以：
+## How it is isolated / 分離の方法
 
-- 容器不挂 Mac 的任何文件夹，不给 Docker 的 socket，不加 `--privileged`（只加 `NET_ADMIN`，见下）：钥匙串、gcloud 配置、`~/.zoujin`
-  账本、`~/Developer` 下的检出它都碰不到。
-- 不给任何 Key 的环境变量；CI 照旧只用假模型和回放。
-- 只注册在这个仓库，标签 `zoujin-mac`，只有这个仓库的工作流能用它。
-- 每个 job 跑完清掉工作目录和临时目录（`job-done.sh`）。
-- 只出公网：容器以 root 起，入口（`entrypoint.sh`）用 iptables 拒绝到 Mac 本机（`host.docker.internal`）、
-  Docker 的虚拟机和局域网的一切连接，只留 Docker 的 DNS。所以 Mac 上开着的本地服务（5432 的开发库、8001/8787、
-  Blender MCP 这类能执行代码的端口）job 都连不到。规则没装上就不起 runner。
-- job 没有任何特权：入口装完规则后换成 runner 用户，丢掉全部能力（包括改规则要的 NET_ADMIN），并禁止再提权；
-  镜像里没有 sudo。工作流要的系统包预装在 `Dockerfile` 里（环境变量 `ZOUJIN_CI_PREINSTALLED=1`，工作流见到它
-  就跳过 `apt-get`）。新加系统包：改 `Dockerfile`，合并后在 Mac 上重跑 `setup.sh`。
-- 容器里没有 Docker，所以工作流不能用 `services:`；db job 用 `.github/scripts/start_postgres.sh` 在 job 里起
-  PostgreSQL 17，只监听容器自己的 127.0.0.1，和 Mac 上 5432 端口的开发库互不相干。
+The runner is not installed directly on the Mac; it runs in a Linux container inside Docker (`Dockerfile`, x86_64, via Rosetta on Apple silicon). Code from every PR branch runs here, so:
 
-## 装和更新
+runner は Mac に直接インストールせず、Docker 内の Linux コンテナで動かす（`Dockerfile`、x86_64、Apple シリコンでは Rosetta 経由）。すべての PR ブランチのコードがここで実行されるため：
 
-在 Mac 上，Docker Desktop 开着、gh 已登录（仓库管理员）：
+- The container mounts no folder from the Mac, is given no Docker socket, and gets no `--privileged` (only `NET_ADMIN` is added, see below): it cannot reach the keychain, gcloud config, the `~/.zoujin` ledger, or the checkouts under `~/Developer`.
+  コンテナは Mac のフォルダを一切マウントせず、Docker のソケットも渡さず、`--privileged` も付けない（`NET_ADMIN` だけ追加。下記参照）。キーチェーン、gcloud の設定、`~/.zoujin` の台帳、`~/Developer` 以下のチェックアウトには触れられない。
+- No environment variable holding a key is given; CI still uses only fake models and replays.
+  鍵を含む環境変数は一切渡さない。CI はこれまでどおり偽モデルとリプレイだけを使う。
+- It is registered only on this repository, with the label `zoujin-mac`, and only this repository's workflows can use it.
+  このリポジトリにだけ登録し、ラベルは `zoujin-mac`。このリポジトリのワークフローだけが使える。
+- After each job, the working directory and temp directories are cleaned (`job-done.sh`).
+  各 job の終了後に作業ディレクトリと一時ディレクトリを削除する（`job-done.sh`）。
+- Public internet only: the container starts as root, and the entrypoint (`entrypoint.sh`) uses iptables to reject all connections to the Mac itself (`host.docker.internal`), Docker's virtual machine and the LAN, leaving only Docker's DNS. So local services running on the Mac (the development database on 5432, 8001/8787, and ports that can execute code such as Blender MCP) are unreachable from jobs. If the rules are not installed, the runner does not start.
+  外向きは公衆インターネットのみ：コンテナは root で起動し、エントリポイント（`entrypoint.sh`）が iptables で Mac 本体（`host.docker.internal`）、Docker の仮想マシン、LAN へのあらゆる接続を拒否し、Docker の DNS だけを残す。そのため Mac で動いているローカルサービス（5432 の開発用データベース、8001/8787、Blender MCP のようなコードを実行できるポート）には job から接続できない。ルールが入らなかった場合は runner を起動しない。
+- Jobs have no privileges: after installing the rules, the entrypoint switches to the runner user, drops all capabilities (including the NET_ADMIN needed to change the rules) and forbids further privilege escalation; there is no sudo in the image. System packages the workflows need are preinstalled in the `Dockerfile` (environment variable `ZOUJIN_CI_PREINSTALLED=1`; the workflows skip `apt-get` when they see it). To add a system package: change the `Dockerfile`, and after merging rerun `setup.sh` on the Mac.
+  job には特権がない：エントリポイントはルールを入れた後 runner ユーザーに切り替え、すべての capability（ルールを変更するのに必要な NET_ADMIN を含む）を捨て、再度の権限昇格を禁止する。イメージに sudo はない。ワークフローが必要とするシステムパッケージは `Dockerfile` に事前インストールしてある（環境変数 `ZOUJIN_CI_PREINSTALLED=1`。ワークフローはこれを見たら `apt-get` を省略する）。システムパッケージを追加するには `Dockerfile` を変更し、マージ後に Mac で `setup.sh` を再実行する。
+- There is no Docker inside the container, so workflows cannot use `services:`; the db job starts PostgreSQL 17 inside the job with `.github/scripts/start_postgres.sh`, listening only on the container's own 127.0.0.1, unrelated to the development database on port 5432 of the Mac.
+  コンテナ内には Docker がないので、ワークフローは `services:` を使えない。db job は `.github/scripts/start_postgres.sh` で job 内に PostgreSQL 17 を起動し、コンテナ自身の 127.0.0.1 だけで待ち受ける。Mac の 5432 番ポートの開発用データベースとは無関係。
+
+## Install and update / インストールと更新
+
+On the Mac, with Docker Desktop open and gh logged in (as a repository admin):
+
+Mac で、Docker Desktop を起動し、gh にログインした状態（リポジトリ管理者）で：
 
 ```bash
 bash infra/ci-runner/setup.sh
 ```
 
-它读 actions/runner 最新版本和校验和、构建镜像、第一次时用现取的注册令牌注册（令牌不打印、不落盘）、启动容器
-`zoujin-ci-runner`（`--restart unless-stopped`，Docker Desktop 开机自启时它也起来）。重复跑会重建镜像、换掉容器，
-不重复注册。runner 自己会自动更新，更新留在命名卷 `zoujin-ci-runner` 里。
+It reads the latest actions/runner version and checksum, builds the image, on the first run registers using a freshly fetched registration token (the token is neither printed nor written to disk), and starts the container `zoujin-ci-runner` (`--restart unless-stopped`, so it also starts when Docker Desktop starts at boot). Running it again rebuilds the image and replaces the container without registering again. The runner updates itself automatically, and updates stay in the named volume `zoujin-ci-runner`.
 
-Mac 合盖、睡眠或 Docker 没开时 job 排队，机器回来接着跑。
+最新の actions/runner のバージョンとチェックサムを読み、イメージをビルドし、初回はその場で取得した登録トークンで登録し（トークンは表示もディスクへの書き込みもしない）、コンテナ `zoujin-ci-runner` を起動する（`--restart unless-stopped`。Docker Desktop が起動時に自動起動すれば、このコンテナも起動する）。再実行するとイメージを再ビルドしてコンテナを入れ替えるが、再登録はしない。runner は自動で更新され、更新は名前付きボリューム `zoujin-ci-runner` に残る。
 
-## 私有美术输入
+When the Mac's lid is closed, it is asleep, or Docker is not running, jobs queue and resume when the machine is back.
 
-Web 浏览器验收需要实际人物文件和群众动作。模型源与生成物不进 Git；每台隔离 runner 的容器内另外放
-`/home/runner/ci-assets/cast/<人物>/{walk,talk_std,talk_high,anims}.glb` 及
-`/home/runner/ci-assets/UAL1_Standard.glb`。这是只含美术资源的目录，不复制凭证、账本或主机工作目录，
-也不添加主机挂载。其他 runner 可通过仓库变量 `CI_ASSET_SOURCE_ROOT` 指定等价的私有资源目录。
+Mac の蓋を閉じている、スリープ中、または Docker が起動していないときは job が待機し、マシンが戻ると再開する。
 
-首次配置或人物资产更新后，从本机已经审核的 `assets/cast/build` 复制人物资源，并复制
-`assets/pipeline/crowd/build.sh` 钉住 SHA-256 的 UAL 文件到上述目录。`web.yml` 每次先用
-`.github/scripts/stage_web_assets.mjs` 校验全部人物四档文件的字节数与提交清单 SHA-256，以及 UAL 的源哈希，
-再写入干净的 job 临时目录。任一缺失或不匹配就失败，不能用占位模型或过滤 404 通过验收。
-角色质量与重建仍由 cast 流水线负责；这一步验证浏览器使用的就是已审核产物，不冒称在 CI 重建了人物源文件。
-群众包使用这个 UAL 源在 CI 生成动作，缓存键与原先没有动作的包分开。
+## Private art inputs / 非公開のアート入力
 
-容器重启会保留这个目录，但 `setup.sh` 重建容器后必须重新配置；它不在保存注册信息的命名卷中。
-新增 runner 时也需要配置。切换到 GitHub 托管 runner 时，须先提供同等的
-私有输入，不能仅更改 `CI_RUNS_ON` 就跳过这项条件。
+Web browser acceptance needs the actual character files and crowd animations. Model sources and generated outputs do not go into Git; inside each isolated runner's container, place separately
+`/home/runner/ci-assets/cast/<character>/{walk,talk_std,talk_high,anims}.glb` and
+`/home/runner/ci-assets/UAL1_Standard.glb`. This is a directory containing only art resources; it does not copy credentials, ledgers or the host working directory, and adds no host mounts. Other runners can point to an equivalent private resource directory through the repository variable `CI_ASSET_SOURCE_ROOT`.
 
-## 常用
+Web ブラウザでの受け入れには、実際の人物ファイルと群衆のアニメーションが必要。モデルのソースと生成物は Git に入れない。隔離された各 runner のコンテナ内に、別途
+`/home/runner/ci-assets/cast/<人物>/{walk,talk_std,talk_high,anims}.glb` と
+`/home/runner/ci-assets/UAL1_Standard.glb` を置く。これはアート資源だけを含むディレクトリで、認証情報、台帳、ホストの作業ディレクトリはコピーせず、ホストのマウントも追加しない。他の runner はリポジトリ変数 `CI_ASSET_SOURCE_ROOT` で同等の非公開リソースディレクトリを指定できる。
 
-- 看状态：`docker logs --tail 20 zoujin-ci-runner`；GitHub 上：仓库 Settings → Actions → Runners。
-- 停：`docker stop zoujin-ci-runner`；再开：`docker start zoujin-ci-runner`。
-- 彻底拆掉：GitHub 上删掉这台 runner，再 `docker rm -f zoujin-ci-runner && docker volume rm zoujin-ci-runner`。
-- 换回 GitHub 自带的机器（比如分钟恢复以后）：仓库的 Actions 变量 `CI_RUNS_ON` 设成 `"ubuntu-24.04"`
-  （带引号，是 JSON）。工作流不用改；db job 会在那边从 PostgreSQL 官方源装 17。
+After the first setup or after character assets are updated, copy the character resources from the locally reviewed `assets/cast/build`, and copy the UAL file whose SHA-256 is pinned by `assets/pipeline/crowd/build.sh` into the directories above. Each time, `web.yml` first uses `.github/scripts/stage_web_assets.mjs` to verify the byte sizes and the committed-manifest SHA-256 of all four tiers of every character's files, and the source hash of the UAL, and then writes them into a clean job temp directory. If any is missing or mismatched it fails; acceptance cannot pass with placeholder models or by filtering out 404s. Character quality and rebuilding remain the responsibility of the cast pipeline; this step verifies that the browser uses the reviewed artifacts, and does not claim that CI rebuilt the character sources. The crowd pack uses this UAL source to generate animations in CI, and its cache key is kept separate from that of the earlier pack without animations.
+
+初回設定後、または人物アセットの更新後に、ローカルで審査済みの `assets/cast/build` から人物リソースをコピーし、`assets/pipeline/crowd/build.sh` が SHA-256 を固定している UAL ファイルを上記のディレクトリにコピーする。`web.yml` は毎回まず `.github/scripts/stage_web_assets.mjs` で、全人物の 4 段階のファイルのバイト数とコミット済みマニフェストの SHA-256、および UAL のソースハッシュを検証し、それからクリーンな job 一時ディレクトリに書き込む。一つでも欠けているか不一致なら失敗し、プレースホルダーモデルや 404 のフィルタリングで受け入れを通すことはできない。キャラクターの品質と再構築は引き続き cast パイプラインの責任であり、この手順は、ブラウザが使うのが審査済みの成果物であることを検証するもので、CI で人物のソースファイルを再構築したとは主張しない。群衆パックはこの UAL ソースを使って CI でアニメーションを生成し、キャッシュキーはアニメーションのなかった以前のパックとは分けてある。
+
+The container keeps this directory across restarts, but it must be reconfigured after `setup.sh` rebuilds the container; it is not in the named volume that stores the registration information. It is also needed when a new runner is added. When switching to a GitHub-hosted runner, equivalent private inputs must be provided first; changing only `CI_RUNS_ON` does not skip this condition.
+
+コンテナを再起動してもこのディレクトリは保持されるが、`setup.sh` がコンテナを再構築した後は再設定が必要。登録情報を保存する名前付きボリュームには入っていないため。新しい runner を追加するときも設定が必要。GitHub ホストの runner に切り替える場合は、先に同等の非公開入力を用意する必要があり、`CI_RUNS_ON` を変えるだけでこの条件を飛ばすことはできない。
+
+## Common tasks / よく使う操作
+
+- Check status: `docker logs --tail 20 zoujin-ci-runner`; on GitHub: repository Settings → Actions → Runners.
+  状態の確認：`docker logs --tail 20 zoujin-ci-runner`。GitHub 上では：リポジトリの Settings → Actions → Runners。
+- Stop: `docker stop zoujin-ci-runner`; start again: `docker start zoujin-ci-runner`.
+  停止：`docker stop zoujin-ci-runner`。再開：`docker start zoujin-ci-runner`。
+- Remove completely: delete this runner on GitHub, then `docker rm -f zoujin-ci-runner && docker volume rm zoujin-ci-runner`.
+  完全に撤去：GitHub 上でこの runner を削除し、その後 `docker rm -f zoujin-ci-runner && docker volume rm zoujin-ci-runner`。
+- Switch back to GitHub's own machines (e.g. once the minutes are restored): set the repository's Actions variable `CI_RUNS_ON` to `"ubuntu-24.04"` (with quotes; it is JSON). The workflows need no change; the db job installs 17 there from the official PostgreSQL source.
+  GitHub 標準のマシンに戻す（例：分数が回復した後）：リポジトリの Actions 変数 `CI_RUNS_ON` を `"ubuntu-24.04"` に設定する（引用符付き。JSON である）。ワークフローは変更不要。db job は向こうでは PostgreSQL 公式のソースから 17 をインストールする。

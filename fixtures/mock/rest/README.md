@@ -1,30 +1,38 @@
-# fixtures/mock/rest：mock 的 REST 固定数据（B-1）
+# fixtures/mock/rest: mock REST fixtures (B-1) / mock の REST 固定データ（B-1）
 
-mock 的 REST（`services/backend/src/zoujin_backend/mock/rest.py`）回这里的数据，发出前按 `packages/contracts/schemas/api/rest/` 校验，不过就回 500 并在终端报错。内容和 `fixtures/sessions/` 的导览是同一局：旅人告诉メロス王的事、帮老爺推车、答应做メロス的帮手、留在市里等到第三天的日落。
+The mock REST (`services/backend/src/zoujin_backend/mock/rest.py`) replies with the data here, validated against `packages/contracts/schemas/api/rest/` before sending; if it fails, it returns 500 and reports the error in the terminal. The content is the same playthrough as the walkthrough in `fixtures/sessions/`: what the traveler tells King メロス, helping 老爺 push the cart, promising to be メロス's helper, and staying in the city until sunset on the third day.
 
-| 文件 | 接口（api-contract） | mock 另外做的 |
+mock の REST（`services/backend/src/zoujin_backend/mock/rest.py`）はここのデータを返す。送出前に `packages/contracts/schemas/api/rest/` で検証し、通らなければ 500 を返してターミナルにエラーを出す。内容は `fixtures/sessions/` のウォークスルーと同じ一局：旅人がメロス王に告げたこと、老爺の荷車を押す手伝い、メロスの助っ人になる約束、三日目の日没まで市に残ること。
+
+| File / ファイル | Endpoint (api-contract) / エンドポイント（api-contract） | What the mock additionally does / mock が別途行うこと |
 |---|---|---|
-| `me.json` | `GET /v1/me`、登录的响应（1、2.0） | `activePlaythrough` 和剩余语音分钟按这个 Cookie 的局现填 |
-| `snapshot.json` | 开局的快照（2.2、2.3） | 之后的快照 = 它加上推过的 `commit.patch` 和 `act_transition`；`lastSeq`、`pending`、`voice` 现填 |
-| `timeline.json` | `GET …/timeline`（2.5） | `lastSeq` 现填 |
-| `why.json` | `GET …/why`（2.6） | `target` 照 query；这一局推过的事件，`seq` 换成真的 |
-| `memories.json` | `GET …/memories`（2.7） | 删过的记忆去掉；删了约定的记忆，那个约定变 `voided`，关系照删除时的响应 |
-| `memory-impact.json` | `GET …/memories/{memoryId}/impact`（2.7） | 以记忆的名字为键；不认识的记忆回 404 |
-| `memory-delete.json` | `DELETE …/memories/{memoryId}`（2.7） | 同上；删过的再删回 404；重建那个人物的会话（`session_preparing reason: rebuild`） |
-| `ending.json` | `GET …/ending`（2.8） | 结局演出开始前 404，`ending_ready` 之前 202，之后 200 |
+| `me.json` | `GET /v1/me`, login response (1, 2.0) / `GET /v1/me`、ログインのレスポンス（1、2.0） | `activePlaythrough` and remaining voice minutes are filled in from the playthrough of this Cookie / `activePlaythrough` と残り音声分数はこの Cookie の局から実行時に埋める |
+| `snapshot.json` | Snapshot at playthrough start (2.2, 2.3) / 開局時のスナップショット（2.2、2.3） | Later snapshots = this plus the `commit.patch` and `act_transition` pushed so far; `lastSeq`, `pending`, `voice` are filled in live / 以降のスナップショット = これに送出済みの `commit.patch` と `act_transition` を加えたもの。`lastSeq`、`pending`、`voice` は実行時に埋める |
+| `timeline.json` | `GET …/timeline` (2.5) | `lastSeq` is filled in live / `lastSeq` は実行時に埋める |
+| `why.json` | `GET …/why` (2.6) | `target` follows the query; events pushed in this playthrough, with `seq` replaced by the real value / `target` は query に従う。この局で送出済みのイベント、`seq` は実際の値に置換 |
+| `memories.json` | `GET …/memories` (2.7) | Deleted memories are removed; if a memory of a promise is deleted, that promise becomes `voided`, and the relationship follows the response at deletion time / 削除済みの記憶は除く。約束の記憶を削除すると、その約束は `voided` になり、関係は削除時のレスポンスに従う |
+| `memory-impact.json` | `GET …/memories/{memoryId}/impact` (2.7) | Keyed by memory name; unknown memories return 404 / 記憶の名前をキーとする。未知の記憶は 404 |
+| `memory-delete.json` | `DELETE …/memories/{memoryId}` (2.7) | Same as above; deleting an already-deleted one returns 404; rebuilds that character's session (`session_preparing reason: rebuild`) / 同上。削除済みを再削除すると 404。その人物のセッションを再構築する（`session_preparing reason: rebuild`） |
+| `ending.json` | `GET …/ending` (2.8) | 404 before the ending sequence starts, 202 before `ending_ready`, 200 after / 結末演出の開始前は 404、`ending_ready` 前は 202、その後は 200 |
 
-manifest（2.1）也不靠固定数据：和正式网关用同一个生成器（`services/backend/src/zoujin_backend/manifest.py`，B-7），按切片的世界模型、`assets/voice` 的声音清单（没有就不带预录句）和 `assets/scenes` 的场景包现生成，响应头一样（`ETag`、304）。
+The manifest (2.1) also does not rely on fixtures: it uses the same generator as the production gateway (`services/backend/src/zoujin_backend/manifest.py`, B-7), generated live from the slice's world model, the voice manifest in `assets/voice` (without it, no pre-recorded lines are included) and the scene packages in `assets/scenes`, with the same response headers (`ETag`, 304).
 
-不靠固定数据的：`POST /v1/auth/login`（只认邀请码 `mock`，连错 5 次以后回 429）、`logout`、`POST /v1/playthroughs`（一个 Cookie 一局进行中的局，再开回 409）、`events`（推过的 `commit` 里的事件）、`DELETE /v1/playthroughs/{id}`（开着的连接以 4004 关闭）、`telemetry`（校验后丢掉）、`POST /v1/test/playthroughs/{id}/advance`（推一条只带时钟的 `commit`）。
+manifest（2.1）も固定データに頼らない。正式ゲートウェイと同じジェネレーター（`services/backend/src/zoujin_backend/manifest.py`、B-7）で、スライスの世界モデル、`assets/voice` の音声マニフェスト（なければ収録済みの台詞は含めない）、`assets/scenes` のシーンパッケージから実行時に生成し、レスポンスヘッダー（`ETag`、304）も同じ。
 
-占位符和剧本一样：`{{id:<前缀>:<名字>}}` 是这一局里这个名字的运行时 ID，和剧本共用，所以 `/memories`、`/ending` 引用的事件 ID 就是推过的那些。`{{playthroughId}}`、`{{userRef}}`、`{{memoryId}}` 由 mock 填。
+Not fixture-based: `POST /v1/auth/login` (accepts only the invite code `mock`; returns 429 after 5 consecutive failures), `logout`, `POST /v1/playthroughs` (one in-progress playthrough per Cookie; starting another returns 409), `events` (events from the `commit`s pushed so far), `DELETE /v1/playthroughs/{id}` (open connections are closed with 4004), `telemetry` (validated then discarded), `POST /v1/test/playthroughs/{id}/advance` (pushes a `commit` carrying only the clock).
 
-## 控制接口（mock 专用，不进契约）
+固定データに頼らないもの：`POST /v1/auth/login`（招待コード `mock` のみ受け付け、5 回連続で間違えると 429）、`logout`、`POST /v1/playthroughs`（Cookie ごとに進行中の局は一つ、再度開くと 409）、`events`（送出済みの `commit` 内のイベント）、`DELETE /v1/playthroughs/{id}`（開いている接続は 4004 で閉じる）、`telemetry`（検証後に破棄）、`POST /v1/test/playthroughs/{id}/advance`（時計だけを載せた `commit` を送出）。
 
-| 接口 | 做什么 |
+Placeholders are the same as in the scenarios: `{{id:<prefix>:<name>}}` is the runtime ID for that name in this playthrough, shared with the scenarios, so the event IDs referenced by `/memories` and `/ending` are the ones pushed. `{{playthroughId}}`, `{{userRef}}`, `{{memoryId}}` are filled in by the mock.
+
+プレースホルダーはシナリオと同じ：`{{id:<prefix>:<name>}}` はこの局におけるその名前の実行時 ID で、シナリオと共用する。そのため `/memories`、`/ending` が参照するイベント ID は送出済みのものになる。`{{playthroughId}}`、`{{userRef}}`、`{{memoryId}}` は mock が埋める。
+
+## Control endpoints (mock only, not in the contract) / 制御インターフェース（mock 専用、契約には含めない）
+
+| Endpoint / エンドポイント | What it does / 内容 |
 |---|---|
-| `GET /__mock/scenarios` | 现在的剧本和全部剧本名 |
-| `POST /__mock/scenario {"name": …}` | 换剧本（见 `fixtures/sessions/README.md`） |
-| `POST /__mock/expire-session` | 当前 Cookie 失效：之后 REST 回 401，WebSocket 以 4001 关闭（开着的也关） |
-| `POST /__mock/drop` | 断开当前 Cookie 的连接，不发 `goaway`、没有关闭帧（客户端看到 1006），模拟断网 |
-| `POST /__mock/reset` | 清空全部会话和局（端到端测试每个用例开头用） |
+| `GET /__mock/scenarios` | The current scenario and all scenario names / 現在のシナリオと全シナリオ名 |
+| `POST /__mock/scenario {"name": …}` | Switch scenario (see `fixtures/sessions/README.md`) / シナリオを切り替える（`fixtures/sessions/README.md` を参照） |
+| `POST /__mock/expire-session` | Invalidate the current Cookie: afterwards REST returns 401 and WebSocket closes with 4001 (open ones are closed too) / 現在の Cookie を失効させる：以降 REST は 401、WebSocket は 4001 で閉じる（開いているものも閉じる） |
+| `POST /__mock/drop` | Disconnect the current Cookie's connection without sending `goaway` or a close frame (the client sees 1006), simulating a network drop / 現在の Cookie の接続を `goaway` も close フレームもなしで切断する（クライアントには 1006 と見える）。ネットワーク切断の模擬 |
+| `POST /__mock/reset` | Clear all sessions and playthroughs (used at the start of each end-to-end test case) / 全セッションと局をクリアする（エンドツーエンドテストの各ケース冒頭で使う） |

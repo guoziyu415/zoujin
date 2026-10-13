@@ -1,41 +1,60 @@
-# zoujin 提交材料
+# 物語 (Monogatari) Submission Materials / 提出資料
 
-本目录提供第5回 Agentic AI Hackathon 的项目文字和架构图片。产品概念、说明、图和视频允许公开，实际应用继续带密码，仓库保持私有。视频录制和 YouTube 上传由用户完成。
+This directory provides the project text and architecture image for the 5th Agentic AI Hackathon. The product concept, descriptions, images and video may be made public, the actual app stays password-protected, and the repository stays private. Recording the video and uploading it to YouTube is done by the user.
 
-## 表单对应
+このディレクトリは第5回 Agentic AI Hackathon のプロジェクト文章とアーキテクチャ画像を提供する。プロダクトコンセプト、説明、画像、動画は公開してよく、実際のアプリはパスワード付きのまま、リポジトリは非公開のままとする。動画の録画と YouTube へのアップロードはユーザーが行う。
 
-| 提交字段 | 使用材料 |
+## Form mapping / フォーム対応
+
+| Submission field / 提出項目 | Material to use / 使用する資料 |
 | --- | --- |
-| 项目名 | [project-title-ja.txt](project-title-ja.txt) |
-| 简介（如果表单有此字段） | [short-description-ja.txt](short-description-ja.txt) |
-| 用户、问题、解决方案与特点 | [project-description-ja.txt](project-description-ja.txt) 可直接复制；[Markdown版](project-description-ja.md) 用于阅读和修改 |
-| 系统架构图 | [architecture.png](architecture.png)，1920×1080；[architecture.svg](architecture.svg) 为可编辑源稿 |
-| 演示视频 | 用户录制并公开上传 YouTube，填实际视频链接 |
-| 视频标题与说明 | [youtube-metadata-ja.txt](youtube-metadata-ja.txt) |
-| 私有 GitHub 仓库 | 在赛事后台用 GitHub App 连接现有私有仓库，只授予该仓库所需权限 |
-| 部署 URL、動作確認の方法 | 使用本机私有的评审说明；本目录不含 URL、密码或邀请码 |
+| Project name / プロジェクト名 | [project-title-ja.txt](project-title-ja.txt) |
+| Summary (if the form has this field) / 概要（フォームにある場合） | [short-description-ja.txt](short-description-ja.txt) |
+| Users, problem, solution and features / ユーザー、課題、解決策と特徴 | [project-description-ja.txt](project-description-ja.txt) can be copied directly; the [Markdown version](project-description-ja.md) is for reading and editing / [project-description-ja.txt](project-description-ja.txt) はそのままコピーできる。[Markdown 版](project-description-ja.md) は閲覧と編集用 |
+| System architecture diagram / システム構成図 | [architecture.png](architecture.png), 1920×1080; [architecture.svg](architecture.svg) is the editable source / [architecture.png](architecture.png)（1920×1080）。[architecture.svg](architecture.svg) は編集可能なソース |
+| Demo video / デモ動画 | Recorded by the user and uploaded publicly to YouTube; enter the actual video link / ユーザーが録画して YouTube に公開アップロードし、実際の動画リンクを入力する |
+| Video title and description / 動画のタイトルと説明 | [youtube-metadata-ja.txt](youtube-metadata-ja.txt) |
+| Private GitHub repository / 非公開 GitHub リポジトリ | Connect the existing private repository with the GitHub App in the event dashboard, granting only the permissions that repository needs / 大会の管理画面で GitHub App により既存の非公開リポジトリを接続し、そのリポジトリに必要な権限だけを付与する |
+| Deployment URL, 動作確認の方法 | Use the review instructions kept privately on this machine; this directory contains no URL, password or invite code / この端末に非公開で保管した審査用の説明を使う。このディレクトリには URL、パスワード、招待コードを含めない |
 
-[官方条件](https://zenn.dev/hackathons/google-cloud-japan-ai-hackathon-vol5)允许私有仓库及需认证的部署，但要给评审提供不用社交登录或收邮件的账号和样例。正式提交后，默认分支与可用部署保留至12月1日；后续开发用其他分支。
+The [official conditions](https://zenn.dev/hackathons/google-cloud-japan-ai-hackathon-vol5) allow private repositories and deployments that require authentication, but reviewers must be given an account and samples that need no social login or email receipt. After the official submission, the default branch and a working deployment are kept until December 1; further development goes on other branches.
 
-## 录制与评审依据
+[公式の条件](https://zenn.dev/hackathons/google-cloud-japan-ai-hackathon-vol5)は非公開リポジトリと認証が必要なデプロイを認めているが、審査員にはソーシャルログインやメール受信が不要なアカウントとサンプルを提供する必要がある。正式提出後、デフォルトブランチと利用可能なデプロイは 12 月 1 日まで維持し、以降の開発は別ブランチで行う。
 
-- [demo-script-ja.md](demo-script-ja.md)：约3分钟的镜头、字幕和日语讲解，可按实际结果调整。
-- [recording-checklist-zh.md](recording-checklist-zh.md)：直接开录的操作要点。
-- [evidence-and-judging-ja.md](evidence-and-judging-ja.md)：文化厅统计、UNESCO政策背景、三项评分对应及验证边界。
+## Recording and judging basis / 録画と審査の根拠
 
-项目主张是成人进入文学世界，与记得自己的角色相互影响，最后形成世界、人物和玩家三层结局。官方资料支持问题背景与文化学习方向；它们不证明本项目已经提升读书量、共情或学习成绩。当前实际收录一本书，不宣传其他作品已经可玩。
+- [demo-script-ja.md](demo-script-ja.md): about 3 minutes of shots, captions and Japanese narration; adjustable to actual results.
+  [demo-script-ja.md](demo-script-ja.md)：約 3 分のカット、字幕、日本語ナレーション。実際の結果に合わせて調整できる。
+- [recording-checklist-zh.md](recording-checklist-zh.md): operating points for starting to record right away.
+  [recording-checklist-zh.md](recording-checklist-zh.md)：すぐに録画を始めるための操作要点。
+- [evidence-and-judging-ja.md](evidence-and-judging-ja.md): Agency for Cultural Affairs statistics, UNESCO policy background, the mapping to the three scoring criteria, and the limits of verification.
+  [evidence-and-judging-ja.md](evidence-and-judging-ja.md)：文化庁の統計、UNESCO の政策的背景、3 つの評価項目との対応、検証の限界。
 
-## 提交前最后核对
+The project's claim is that adults enter a literary world and interact with characters who remember them, finally forming three layers of endings: world, characters and player. Official materials support the problem background and the direction of cultural learning; they do not prove that this project has increased reading volume, empathy or academic performance. Currently only one book is actually included, and we do not advertise that other works are playable.
 
-1. 赛事注册状态、成员条件、GitHub App连接均在本人赛事后台核对；材料完成不等于正式提交完成。
-2. 视频为本人的实际操作，角色回复、事件和结局没有伪造；不同存档与省略等待需标明。
-3. 公开说明、图片、视频和 YouTube描述均不含部署地址、邀请码、密码、个人云项目ID或真实用户资料。
-4. 评审用部署URL、密码、主邀请码和备用邀请码只放在私有的「動作確認の方法」，不贴到公开说明。
-5. 架构图和日语说明使用当前实现：Gemini负责人物语音和文字回复，Claude负责叙事等处理；不复制旧Firestore、ADK或Veo方案。
-6. 填入真正上传成功的视频URL，保存并检查最终提交确认；不要把草稿保存或文件选择当成已提交。
+プロジェクトの主張は、大人が文学の世界に入り、自分を覚えている人物と影響し合い、最終的に世界、人物、プレイヤーの三層の結末が形づくられること。公式資料は課題の背景と文化学習の方向性を裏付けるが、本プロジェクトが読書量、共感、学業成績を向上させたことを証明するものではない。現在実際に収録しているのは 1 冊だけで、他の作品が遊べるとは宣伝しない。
 
-架构图经两个角色核对并进行了视觉检查。最新代码仍保留已观察到的缺答与模板结局风险；200局和剩余CI按用户决定跳过。本次仅补提交材料，没有改变线上程序或移除密码。
+## Final checks before submission / 提出前の最終確認
 
-## 重新生成架构图
+1. Event registration status, member conditions and the GitHub App connection are all checked in your own event dashboard; finished materials do not mean the official submission is complete.
+   大会の登録状態、メンバー条件、GitHub App の接続はすべてご自身の大会管理画面で確認する。資料が完成していても正式提出が完了したことにはならない。
+2. The video shows your own actual operation, and character replies, events and endings are not faked; different save data and skipped waiting must be stated.
+   動画はご自身の実際の操作で、人物の返答、イベント、結末を偽造しない。セーブデータが異なる場合や待ち時間を省略した場合は明記する。
+3. The public description, images, video and YouTube description contain no deployment address, invite code, password, personal cloud project ID or real user data.
+   公開する説明、画像、動画、YouTube の説明に、デプロイ先アドレス、招待コード、パスワード、個人のクラウドプロジェクト ID、実在ユーザーのデータを含めない。
+4. The review deployment URL, password, main invite code and backup invite code are placed only in the private 「動作確認の方法」 and are not pasted into the public description.
+   審査用のデプロイ URL、パスワード、メイン招待コード、予備の招待コードは非公開の「動作確認の方法」にのみ置き、公開の説明には貼らない。
+5. The architecture diagram and the Japanese description use the current implementation: Gemini handles character voice and text replies, and Claude handles narration and other processing; the old Firestore, ADK or Veo plans are not carried over.
+   アーキテクチャ図と日本語の説明は現在の実装に従う：Gemini が人物の音声とテキスト返答を担当し、Claude がナレーションなどの処理を担当する。古い Firestore、ADK、Veo の案は持ち込まない。
+6. Enter the URL of the video that actually uploaded successfully, save, and check the final submission confirmation; do not treat a saved draft or a file selection as submitted.
+   実際にアップロードに成功した動画の URL を入力し、保存して最終提出の確認を確かめる。下書き保存やファイル選択を提出済みとみなさない。
 
-使用具备 Pillow 的 Python 环境，运行 `build_visuals.py --font <日文字体文件>`。PNG和SVG由相同坐标、文字和连线生成，图只展示主要调用路径；网关也会调用Claude做安全和候选生成。
+The architecture diagram was checked by two roles and visually inspected. The latest code still has the observed risks of missing answers and templated endings; the 200 runs and the remaining CI were skipped by the user's decision. This change only adds submission materials and does not change the live program or remove the password.
+
+アーキテクチャ図は 2 つのロールで確認し、目視でも検査した。最新のコードには、観測済みの回答の欠落とテンプレート的な結末のリスクが残っている。200 プレイと残りの CI はユーザーの判断で省略した。今回は提出資料を補っただけで、オンラインのプログラムは変更せず、パスワードも外していない。
+
+## Regenerating the architecture diagram / アーキテクチャ図の再生成
+
+Use a Python environment with Pillow and run `build_visuals.py --font <Japanese font file>`. The PNG and SVG are generated from the same coordinates, text and connections; the diagram shows only the main call paths, and the gateway also calls Claude for safety checks and candidate generation.
+
+Pillow のある Python 環境で `build_visuals.py --font <日本語フォントファイル>` を実行する。PNG と SVG は同じ座標、文字、接続線から生成する。図は主な呼び出し経路だけを示し、ゲートウェイは安全性チェックと候補生成のためにも Claude を呼び出す。

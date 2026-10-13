@@ -1,53 +1,83 @@
-# 契约的例子
+# Contract examples / 契約の例
 
 ```
 examples/
-  valid/data/<类型>/*.json     合法例子，必须过
-  invalid/data/<类型>/*.json   反例，必须不过
-  valid/api/…                  接口的合法例子（C-1），目录规则见下面「接口」
-  invalid/api/…                接口的反例（C-1）
+  valid/data/<type>/*.json     valid examples, must pass / 正しい例。必ず通ること
+  invalid/data/<type>/*.json   invalid examples, must fail / 誤った例。必ず通らないこと
+  valid/api/…                  valid API examples (C-1); directory rules in "API" below / API の正しい例（C-1）。ディレクトリ規則は下の「API」を参照
+  invalid/api/…                invalid API examples (C-1) / API の誤った例（C-1）
 ```
 
-`<类型>` 是 Schema 里 `$defs` 的名字（`Event`、`Effect`、`Ending`…），测试按它找到对应的定义来校验。
+`<type>` is the name in the schema's `$defs` (`Event`, `Effect`, `Ending`…); tests use it to find the matching definition to validate against.
 
-全部合法例子（数据和接口）还要经生成的 pydantic 模型解析再导出，和原文件相同（C-1，`tests/test_examples.py`）。
+`<type>` はスキーマの `$defs` の名前（`Event`、`Effect`、`Ending`…）。テストはこれで対応する定義を見つけて検証する。
 
-## 数据契约（C-2）
+All valid examples (data and API) must also be parsed by the generated pydantic models and exported back identical to the original file (C-1, `tests/test_examples.py`).
 
-**合法例子**：每个主类型至少 1 个，`Effect` 的 8 种各 1 个，另有 `Promise`、`RunFact`、`Relationship`、`CharacterEnding`。`WorldModel` 不另写例子，测试直接校验 `worlds/*/*/world.json`。
+すべての正しい例（データと API）は、生成された pydantic モデルでパースしてから書き出しても、元のファイルと同一でなければならない（C-1、`tests/test_examples.py`）。
 
-contracts.md 第 6 节的 JSON 原样抄进来了：`Fact/fact-promise.json`、`Beat/beat-11-wedding.json`、`CausalEdge/edge-10-11.json`、`Event/say-mock-king.json`、`Event/promise-made.json`。补了这些：
+## Data contracts (C-2) / データ契約（C-2）
 
-- 省略号的 ID（`ev_01J…`、`pt_01J…`、`turn_01J…`、`utt_01J…`、`prm_01J…`）补成完整的 26 位 ULID；`idempotencyKey` 跟着补。
-- `say-mock-king.json` 去掉了 `"reason": null`：类型是 `reason?: string`，不允许 `null`。contracts.md 第 6 节同一个 PR 里也去掉了。
-- 第二个事件在文档里只是片段，补成完整的 Event：`schemaVersion: "1.1"`、`eventId`、`playthroughId`、`turnId`、`idempotencyKey`、`worldModelVersion`、`recordedAt`；`checker` 的 `rules@1.1+…` 补成 `rules@1.1+gemini-3.8-flash`。
+**Valid examples**: at least 1 for each main type, 1 for each of the 8 kinds of `Effect`, plus `Promise`, `RunFact`, `Relationship` and `CharacterEnding`. `WorldModel` has no separate example; tests validate `worlds/*/*/world.json` directly.
 
-例子里的日语用 contracts.md、`world.json` 里已有的句子，或中性的自写句子；没有真实的人名和个人信息。
+**正しい例**：主要な型ごとに少なくとも 1 つ、`Effect` の 8 種類にそれぞれ 1 つ、さらに `Promise`、`RunFact`、`Relationship`、`CharacterEnding`。`WorldModel` には別途例を書かず、テストが `worlds/*/*/world.json` を直接検証する。
 
-**反例**：每个都是某个合法例子只改一处。`tests/test_data_schemas.py` 的 `INVALID_BECAUSE` 写明每个反例该在哪个位置、因为哪个关键字被拒，新加反例要在那里加一行，免得它因为别的原因被拒、测不到想测的东西。
+The JSON in section 6 of contracts.md was copied in as is: `Fact/fact-promise.json`, `Beat/beat-11-wedding.json`, `CausalEdge/edge-10-11.json`, `Event/say-mock-king.json`, `Event/promise-made.json`. These were filled in:
 
-## 接口（C-1）
+contracts.md 第 6 節の JSON はそのまま写した：`Fact/fact-promise.json`、`Beat/beat-11-wedding.json`、`CausalEdge/edge-10-11.json`、`Event/say-mock-king.json`、`Event/promise-made.json`。次の点を補った：
 
-下面的路径都在 `valid/api/`、`invalid/api/` 下面。目录决定对哪个 Schema 校验：
+- IDs with ellipses (`ev_01J…`, `pt_01J…`, `turn_01J…`, `utt_01J…`, `prm_01J…`) were completed to full 26-character ULIDs; `idempotencyKey` follows.
+  省略記号付きの ID（`ev_01J…`、`pt_01J…`、`turn_01J…`、`utt_01J…`、`prm_01J…`）を完全な 26 桁の ULID に補った。`idempotencyKey` もそれに合わせた。
+- `"reason": null` was removed from `say-mock-king.json`: the type is `reason?: string`, which does not allow `null`. Section 6 of contracts.md dropped it in the same PR.
+  `say-mock-king.json` から `"reason": null` を削除した：型は `reason?: string` で、`null` は許されない。contracts.md 第 6 節も同じ PR で削除した。
+- The second event is only a fragment in the document; it was completed into a full Event: `schemaVersion: "1.1"`, `eventId`, `playthroughId`, `turnId`, `idempotencyKey`, `worldModelVersion`, `recordedAt`; the `checker` value `rules@1.1+…` became `rules@1.1+gemini-3.8-flash`.
+  二つ目のイベントは文書では断片にすぎないため、完全な Event に補った：`schemaVersion: "1.1"`、`eventId`、`playthroughId`、`turnId`、`idempotencyKey`、`worldModelVersion`、`recordedAt`。`checker` の `rules@1.1+…` は `rules@1.1+gemini-3.8-flash` にした。
 
-| 路径                                                              | 对谁校验                                                                       |
+The Japanese in the examples uses sentences already in contracts.md and `world.json`, or neutral sentences written for the purpose; there are no real names or personal information.
+
+例の中の日本語は、contracts.md や `world.json` にすでにある文、または中立的に自作した文を使っており、実在の人名や個人情報は含まない。
+
+**Invalid examples**: each one changes exactly one thing in some valid example. `INVALID_BECAUSE` in `tests/test_data_schemas.py` states where each invalid example should be rejected and by which keyword; when adding one, add a line there, so it is not rejected for another reason and fails to test what was intended.
+
+**誤った例**：それぞれ、ある正しい例の一か所だけを変えたもの。`tests/test_data_schemas.py` の `INVALID_BECAUSE` に、各誤り例がどの位置でどのキーワードにより拒否されるべきかを書いてある。新しく追加するときはそこに 1 行足すこと。別の理由で拒否されて、意図した検証ができなくなるのを防ぐ。
+
+## API (C-1) / API（C-1）
+
+The paths below are all under `valid/api/` and `invalid/api/`. The directory decides which schema is validated against:
+
+以下のパスはすべて `valid/api/`、`invalid/api/` の下にある。ディレクトリによって、どのスキーマで検証するかが決まる：
+
+| Path / パス | Validated against / 検証対象 |
 | ----------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `ws/client/<type>/*.json`、`ws/server/<type>/*.json`              | 那一种消息，以及整个 `ClientMessage` / `ServerMessage` 联合；目录名就是 `type` |
-| `rest/<接口文件名>/<request \| query \| params \| 状态码>/*.json` | `schemas/api/rest/<接口文件名>.schema.json` 的 `x-endpoint` 里写的那个 Schema  |
-| `<文件>/<$defs 名>/*.json`（例 `error/ErrorResponse/`）           | `schemas/api/<文件>.schema.json` 的那个 `$defs` 条目                           |
+| `ws/client/<type>/*.json`, `ws/server/<type>/*.json` | That one message kind, and the whole `ClientMessage` / `ServerMessage` union; the directory name is the `type` / そのメッセージ 1 種類と、`ClientMessage` / `ServerMessage` ユニオン全体。ディレクトリ名がそのまま `type` |
+| `rest/<endpoint file name>/<request \| query \| params \| status code>/*.json` / `rest/<エンドポイントのファイル名>/<request \| query \| params \| ステータスコード>/*.json` | The schema named in `x-endpoint` of `schemas/api/rest/<endpoint file name>.schema.json` / `schemas/api/rest/<エンドポイントのファイル名>.schema.json` の `x-endpoint` に書かれたスキーマ |
+| `<file>/<$defs name>/*.json` (e.g. `error/ErrorResponse/`) / `<ファイル>/<$defs 名>/*.json`（例 `error/ErrorResponse/`） | That `$defs` entry in `schemas/api/<file>.schema.json` / `schemas/api/<ファイル>.schema.json` のその `$defs` 項目 |
 
-每种 WebSocket 消息、每个有响应体的 REST 状态码和每个请求体，都至少有一个合法例子（测试会查）。反例每个只错一处，`tests/test_examples.py` 的 `INVALID_BECAUSE` 写明每个反例该在哪个位置、因为哪个关键字被拒，新加反例要在那里加一行。
+Every WebSocket message kind, every REST status code that has a response body, and every request body has at least one valid example (tests check this). Each invalid example is wrong in exactly one place; `INVALID_BECAUSE` in `tests/test_examples.py` states where each should be rejected and by which keyword; when adding one, add a line there.
 
-### 从 api-contract 抄来的例子和补上的地方
+すべての WebSocket メッセージ種別、レスポンスボディを持つすべての REST ステータスコード、すべてのリクエストボディに、少なくとも 1 つの正しい例がある（テストが確認する）。誤った例は、それぞれ一か所だけ誤っている。`tests/test_examples.py` の `INVALID_BECAUSE` に、各誤り例がどの位置でどのキーワードにより拒否されるべきかを書いてある。新しく追加するときはそこに 1 行足すこと。
 
-文件名带 `doc-<节号>` 的是 `docs/backend/api-contract.md` 里的 JSON 例子原样抄来的。文档里的 `…` 按下面补成合法值，其他字段没动。
+### Examples copied from api-contract and what was filled in / api-contract から写した例と補った点
 
-- **ID**：`pt_01J…`、`turn_…`、`ev_…`、`ev_A`、`ev_B`、`mem_…`、`prm_…`、`rev_…`、`end_…`、`draft_…`、`plan_…`、`u_01J…` 都补成「前缀 + `01K7AZ` + 20 位数字」的 ULID（例 `ev_01K7AZ00000000000000000041`）。`clientMsgId` 的 `…` 补成 UUID。
-- **2.1 manifest**：`roles[].summary` 补「シラクスの市に着いたばかりの旅の者。」；`prerecorded` 的 `"…"` 补成完整的 3 句相槌（うむ。／ああ。／なるほど。）、2 句听不清、1 句等一下，每句带 `url`、`text`、`durationMs`。
-- **2.2 开局**：201 的 `snapshot` 用 2.3 的例子。
-- **2.8 结局**：`world.epilogue[].sentence` 补「メロスは日没の直前に刑場へ駆け込んだ。」；`characters[0].yours[].sentence` 补「工房の火を落とさずに、メロスを待ち続けた。」；`card.characterLines` 的 `"…"` 补成两句（数据契约 5 节要 2〜3 句，文档的例子只有一句）。
-- **3.4 commit**：`events` 用 2.4 的事件（序号改成 44）；`patch.actions.add` 补一个「様子を見る」的动作；`reveal.chain` 用 2.6 的链。
-- **3.11 幕末**：`act_ended.recapLines` 补到两行（正文写 2〜4 行，例子只有一行）。带 `enRoute` 的去处单独放在 `doc-3.11-en-route.json`，幕号和 `recapLines` 是补的。`act_transition.snapshot` 用 2.3 的快照改成第二幕开头。
-- **第 4 节 welcome**、**3.13 结局演出**、**第 5 节错误**、**2.3〜2.7 的其余例子**：只补了 ID。
+File names with `doc-<section number>` are JSON examples copied as is from `docs/backend/api-contract.md`. The `…` in the document was filled with valid values as below; no other fields were changed.
 
-不是 `doc-` 开头的例子是自己写的，日语只用文档里已有的句子或中性的句子，不含真实的人名和个人信息。
+ファイル名に `doc-<節番号>` が付いているものは、`docs/backend/api-contract.md` の JSON 例をそのまま写したもの。文書中の `…` は下記のとおり正しい値で補い、他のフィールドは変えていない。
+
+- **IDs**: `pt_01J…`, `turn_…`, `ev_…`, `ev_A`, `ev_B`, `mem_…`, `prm_…`, `rev_…`, `end_…`, `draft_…`, `plan_…`, `u_01J…` were all completed to ULIDs of the form "prefix + `01K7AZ` + 20 digits" (e.g. `ev_01K7AZ00000000000000000041`). The `…` in `clientMsgId` became a UUID.
+  **ID**：`pt_01J…`、`turn_…`、`ev_…`、`ev_A`、`ev_B`、`mem_…`、`prm_…`、`rev_…`、`end_…`、`draft_…`、`plan_…`、`u_01J…` はすべて「プレフィックス + `01K7AZ` + 20 桁の数字」の ULID に補った（例：`ev_01K7AZ00000000000000000041`）。`clientMsgId` の `…` は UUID にした。
+- **2.1 manifest**: `roles[].summary` was filled with 「シラクスの市に着いたばかりの旅の者。」; the `"…"` in `prerecorded` became a full set of 3 backchannel lines (うむ。／ああ。／なるほど。), 2 "couldn't hear" lines and 1 "wait a moment" line, each with `url`, `text` and `durationMs`.
+  **2.1 manifest**：`roles[].summary` に「シラクスの市に着いたばかりの旅の者。」を補った。`prerecorded` の `"…"` は、相づち 3 文（うむ。／ああ。／なるほど。）、聞き取れなかった場合 2 文、少し待ってほしい場合 1 文に補い、各文に `url`、`text`、`durationMs` を付けた。
+- **2.2 start**: the `snapshot` of the 201 uses the example from 2.3.
+  **2.2 開始**：201 の `snapshot` には 2.3 の例を使った。
+- **2.8 ending**: `world.epilogue[].sentence` was filled with 「メロスは日没の直前に刑場へ駆け込んだ。」; `characters[0].yours[].sentence` with 「工房の火を落とさずに、メロスを待ち続けた。」; the `"…"` in `card.characterLines` became two lines (section 5 of the data contract requires 2–3 lines; the document's example has only one).
+  **2.8 エンディング**：`world.epilogue[].sentence` に「メロスは日没の直前に刑場へ駆け込んだ。」、`characters[0].yours[].sentence` に「工房の火を落とさずに、メロスを待ち続けた。」を補った。`card.characterLines` の `"…"` は 2 文にした（データ契約の第 5 節は 2〜3 文を要求するが、文書の例は 1 文だけ）。
+- **3.4 commit**: `events` uses the event from 2.4 (sequence number changed to 44); `patch.actions.add` was filled with one action, 「様子を見る」; `reveal.chain` uses the chain from 2.6.
+  **3.4 commit**：`events` には 2.4 のイベントを使った（通し番号は 44 に変更）。`patch.actions.add` には「様子を見る」という行動を一つ補った。`reveal.chain` には 2.6 のチェーンを使った。
+- **3.11 end of the act**: `act_ended.recapLines` was filled out to two lines (the text says 2–4 lines; the example has only one). The destination with `enRoute` is placed separately in `doc-3.11-en-route.json`, with the act number and `recapLines` filled in. `act_transition.snapshot` uses the snapshot from 2.3, changed to the start of the second act.
+  **3.11 幕末**：`act_ended.recapLines` を 2 行に補った（本文は 2〜4 行とあるが、例は 1 行だけ）。`enRoute` を持つ行き先は `doc-3.11-en-route.json` に分けて置き、幕番号と `recapLines` は補ったもの。`act_transition.snapshot` には 2.3 のスナップショットを使い、第二幕の冒頭に変更した。
+- **Section 4 welcome**, **3.13 ending presentation**, **section 5 errors**, **the remaining examples of 2.3–2.7**: only IDs were filled in.
+  **第 4 節 welcome**、**3.13 エンディング演出**、**第 5 節 エラー**、**2.3〜2.7 のその他の例**：ID だけを補った。
+
+Examples not starting with `doc-` were written by hand; their Japanese uses only sentences already in the document or neutral sentences, with no real names or personal information.
+
+`doc-` で始まらない例は自作したもの。日本語は文書にすでにある文か中立的な文だけを使い、実在の人名や個人情報は含まない。

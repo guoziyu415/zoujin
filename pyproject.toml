@@ -1,4 +1,5 @@
-# uv workspace 根（R-0）。成员见 [tool.uv.workspace]；spikes/backend 有自己的 pyproject 和 uv.lock，不进 workspace。
+# uv workspace root (R-0). Members: see [tool.uv.workspace]; spikes/backend has its own pyproject and uv.lock and is not in the workspace.
+# uv workspace のルート（R-0）。メンバーは [tool.uv.workspace] を参照。spikes/backend は独自の pyproject と uv.lock を持ち、workspace には入らない。
 [project]
 name = "zoujin"
 version = "0.0.0"
@@ -22,8 +23,10 @@ exclude = ["spikes/*"]
 [tool.ruff]
 target-version = "py313"
 line-length = 120
-# evals/ 下的 gen_*.py、s2_check.py 是数据的生成器和自检脚本（规则由数据定；运行器 evals/src 照常查），
-# assets/pipeline/ 是前端原样搬来的 Blender 脚本（前端整理时纳入）。
+# gen_*.py and s2_check.py under evals/ are data generators and self-check scripts (rules set by the data side; the runner evals/src is still checked);
+# assets/pipeline/ holds Blender scripts moved over verbatim from the frontend (brought in when the frontend is tidied up).
+# evals/ 下の gen_*.py と s2_check.py はデータの生成器とセルフチェック用スクリプト（規則はデータ側が決める。ランナーの evals/src は通常どおり検査）。
+# assets/pipeline/ はフロントエンドからそのまま移した Blender スクリプト（フロントエンド整理時に取り込む）。
 extend-exclude = [
     "spikes",
     "packages/worldsim/reference",
@@ -38,8 +41,10 @@ extend-exclude = [
 select = ["E", "F", "W", "I", "B", "UP"]
 
 [tool.ruff.lint.per-file-ignores]
-# 生成的 pydantic 模型（C-1）：Schema 里的说明和长联合类型写在一行里；
-# 只有值类型的字典（additionalProperties）生成器写成 TypeAliasType(...)，和 `type` 语句等价。
+# Generated pydantic models (C-1): descriptions and long union types from the Schema are written on one line;
+# for value-typed dicts (additionalProperties) the generator emits TypeAliasType(...), equivalent to the `type` statement.
+# 生成された pydantic モデル（C-1）：Schema の説明や長いユニオン型は 1 行に書かれる。
+# 値型のみの辞書（additionalProperties）は生成器が TypeAliasType(...) として出力し、`type` 文と等価。
 "packages/contracts/src/zoujin_contracts/generated/*" = ["E501", "UP040"]
 
 [tool.mypy]
@@ -60,7 +65,9 @@ exclude = ["^spikes/", "^packages/worldsim/reference/"]
 [tool.pytest.ini_options]
 testpaths = ["services", "packages", "evals"]
 norecursedirs = ["reference", ".venv", "node_modules"]
-# 测试禁网（dev-plan 2.4）：只放行本机，PostgreSQL 服务容器连得上，真模型连不上。
+# Tests have no network (dev-plan 2.4): only localhost is allowed, so the PostgreSQL service container is reachable but real models are not.
+# テストはネットワーク禁止（dev-plan 2.4）：ローカルホストのみ許可。PostgreSQL サービスコンテナには接続できるが、実モデルには接続できない。
 addopts = "--import-mode=importlib --disable-socket --allow-unix-socket --allow-hosts=127.0.0.1,::1,localhost"
-# db：要真的 PostgreSQL（DATABASE_URL）；没设时根目录的 conftest.py 让它们跳过，CI 的 db 任务专跑这些
-markers = ["db: 要真的 PostgreSQL（DATABASE_URL），CI 的 db 任务里跑"]
+# db: needs a real PostgreSQL (DATABASE_URL); when unset, the root conftest.py skips them, and the CI db job runs exactly these
+# db：実際の PostgreSQL（DATABASE_URL）が必要。未設定の場合はルートの conftest.py がスキップし、CI の db ジョブがこれらを専用に実行する
+markers = ["db: needs a real PostgreSQL (DATABASE_URL), run in the CI db job / 実際の PostgreSQL（DATABASE_URL）が必要、CI の db ジョブで実行"]

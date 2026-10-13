@@ -1,4 +1,4 @@
-# 依赖和缓存
+# Dependencies and caches / 依存関係とキャッシュ
 node_modules
 .venv/
 __pycache__/
@@ -9,11 +9,11 @@ __pycache__/
 .pnpm-store/
 dist/
 out/
-# Playwright（apps/web 的 e2e 截图和报告）
+# Playwright (e2e screenshots and reports for apps/web) / Playwright（apps/web の e2e スクリーンショットとレポート）
 test-results/
 playwright-report/
 
-# 本机设置和凭证（不要写 *.json：Schema 和 world.json 都是 .json）
+# Local settings and credentials (do not add *.json: schemas and world.json are .json) / ローカル設定と認証情報（*.json は書かない：Schema と world.json も .json）
 .env*
 *.key
 *.pem
@@ -23,13 +23,14 @@ application_default_credentials.json
 service-account*.json
 client_secret*.json
 
-# 还没用过的留出样本只放项目文件夹（CONTRIBUTING「不进仓库的」），整个拷 evals/ 时挡住
+# Unused holdout samples live only in the project folder (CONTRIBUTING, "not in the repo"); blocked when copying all of evals/
+# 未使用のホールドアウトサンプルはプロジェクトフォルダにのみ置く（CONTRIBUTING「リポジトリに入れないもの」）。evals/ 全体をコピーするときに除外する
 evals/holdout/
 
-# 系统文件
+# System files / システムファイル
 .DS_Store
 
-# 场景生成物（F-2）：项目容器推不了 Git LFS（lfs.github.com 被网络策略挡），能推之前不进仓库，
-# 用 assets/pipeline/plaza/build.sh 重新生成；清单 scene.json 进仓库
+# Generated scene output (F-2): the project container cannot push to Git LFS (lfs.github.com is blocked by network policy), so it stays out of the repo until it can; regenerate with assets/pipeline/plaza/build.sh; the manifest scene.json is in the repo
+# シーン生成物 (F-2)：プロジェクトコンテナは Git LFS にプッシュできない（lfs.github.com がネットワークポリシーでブロックされている）ため、プッシュできるようになるまでリポジトリに入れない。assets/pipeline/plaza/build.sh で再生成する。マニフェスト scene.json はリポジトリに入れる
 assets/scenes/*/build/
 assets/cast/build/

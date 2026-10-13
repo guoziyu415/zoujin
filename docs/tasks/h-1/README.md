@@ -1,55 +1,87 @@
-# H-1：读者的家、多书平台和私密访问
+# H-1: The reader's home, the multi-book platform and private access / H-1：読者の家、マルチブックプラットフォーム、非公開アクセス
 
-## 用户要求
+## User requirements / ユーザー要件
 
-保持现有模型、人物与场景的质量；当前只有一本可玩的书，但产品支持多本书。从原创欧式书房选择书籍、继续真实进度、回看亲自经历的结局。内容不能公开，页面必须有密码。开发与交叉审核并行进行。
+Keep the quality of the existing models, characters and scenes. Currently only one book is playable, but the product supports multiple books. From an original European-style study, the reader picks a book, continues real progress, and looks back at endings they experienced themselves. The content must not be public, and the pages must have a password. Development and cross-review run in parallel.
 
-## 实现分工
+既存のモデル、人物、シーンの品質を保つ。現在遊べる本は 1 冊だけだが、プロダクトは複数の本に対応する。読者はオリジナルのヨーロッパ風書斎から本を選び、実際の進行を続け、自分で体験したエンディングを振り返る。コンテンツは公開してはならず、ページにはパスワードが必要。開発と相互レビューは並行して進める。
 
-1. 后端 / 数据：显式发布目录、按书与世界版本恢复存档、账号隔离的真实结局投影、最外层站点密码。
-2. 前端 / UX：书房入口、书架与回想录、回家与同局继续、错误恢复、键盘与手机布局。
-3. 人物：补全缺失角色和群体代表模型，检查旧模型的表情初值、服装与动作，接入场景。
-4. 场景 / 集成：原创书房建模、材质、光照、手机绘制预算，以及实际浏览器流程与独立复核。
+## Division of work / 実装の分担
 
-各领域直接互审接口、权限、人物站位与视觉结果。详见 [后端记录](backend.md)、[UX 记录](ux.md)、[人物记录](characters.md)。
+1. Backend / data: an explicit publication catalog, restoring saves by book and world version, per-account real-ending projection, and an outermost site password.
+   バックエンド / データ：明示的な公開カタログ、本と世界バージョンごとのセーブ復元、アカウントごとに分離した実エンディングの射影、最外層のサイト・パスワード。
+2. Frontend / UX: the study entrance, bookshelf and memory book, returning home and continuing the same playthrough, error recovery, keyboard and phone layout.
+   フロントエンド / UX：書斎の入口、本棚と回想録、帰宅と同じプレイの再開、エラーからの復帰、キーボードと手機のレイアウト。
+3. Characters: fill in missing characters and representative crowd models, check the old models' default expressions, costumes and motions, and wire them into the scenes.
+   人物：欠けている人物と群衆の代表モデルを補い、旧モデルの表情の初期値、衣装、動作を点検してシーンに接続する。
+4. Scene / integration: modeling the original study, materials, lighting, the phone draw budget, plus real browser flows and independent review.
+   シーン / 統合：オリジナル書斎のモデリング、マテリアル、照明、手機の描画予算、そして実際のブラウザフローと独立した確認。
 
-## 家的设计
+Each area reviews the others' interfaces, permissions, character placement and visual results directly. See the [backend record](backend.md), [UX record](ux.md) and [characters record](characters.md) for details.
 
-家属于读者，与书内时代和剧情时钟独立。房间采用欧式灰泥墙、深绿色护墙、拱形高窗、木地板、书柜、书桌、阅读椅、壁炉与实体回忆册；几何、表面纹理和挂画均为本次原创程序化资产。只参考既有场景的质量标准，不复用其布局。
+各分野は、互いのインターフェース、権限、人物の立ち位置、見た目の結果を直接レビューする。詳細は [バックエンド記録](backend.md)、[UX 記録](ux.md)、[人物記録](characters.md) を参照。
 
-窗光与家具阴影由真实光源生成，接触阴影使用半分辨率 AO。书脊与地板的颜色差异保留为顶点数据，分别共享材质合批。书房独立延迟加载；静止后不重复绘制 GPU 帧，镜头移动才恢复绘制，减少动态偏好直接切换镜头。
+## Design of the home / 家の設計
 
-本棚和回想录均可从空间物体或等效 DOM 按钮操作；即使 WebGL 不可用，也能选择书、恢复进度和阅读结局。书房本身不建立剧情连接、不索取麦克风权限、不推进故事、不创建存档。
+The home belongs to the reader and is independent of the in-book era and the story clock. The room has European plaster walls, dark green wainscoting, arched tall windows, a wooden floor, bookcases, a desk, a reading chair, a fireplace and a physical memory book; the geometry, surface textures and wall paintings are all original procedural assets made for this task. Only the quality standard of existing scenes is referenced; their layout is not reused.
 
-## 本机检查入口
+家は読者のものであり、本の中の時代や物語の時計とは独立している。部屋はヨーロッパ風の漆喰の壁、深緑の腰壁、アーチ型の高窓、木の床、本棚、机、読書用の椅子、暖炉、実体のある回想録でできている。形状、表面テクスチャ、壁の絵はすべて今回オリジナルにプロシージャルで作ったアセットである。既存シーンの品質基準だけを参考にし、そのレイアウトは流用しない。
+
+Window light and furniture shadows come from real light sources, and contact shadows use half-resolution AO. The color difference between book spines and the floor is kept as vertex data, and each shares a material to be batched. The study is lazy-loaded separately; after it comes to rest, GPU frames are not redrawn repeatedly, and drawing resumes only when the camera moves, which reduces cutting the camera directly under the reduced-motion preference.
+
+窓の光と家具の影は実際の光源で生成し、接触影には半解像度の AO を使う。本の背とフロアの色の違いは頂点データとして保持し、それぞれマテリアルを共有してバッチ化する。書斎は独立して遅延読み込みされる。静止した後は GPU フレームを繰り返し描画せず、カメラが動いたときだけ描画を再開する。動きを減らす設定のとき、カメラを直接切り替える場面を減らす。
+
+The bookshelf and memory book can both be operated from objects in the space or from equivalent DOM buttons; even if WebGL is unavailable, you can choose a book, resume progress and read endings. The study itself does not open a story connection, does not ask for microphone permission, does not advance the story and does not create a save.
+
+本棚と回想録は、空間内のオブジェクトからも同等の DOM ボタンからも操作できる。WebGL が使えなくても、本の選択、進行の再開、エンディングの閲覧ができる。書斎自体は物語の接続を作らず、マイクの権限を求めず、物語を進めず、セーブも作らない。
+
+## Local check entry point / ローカル確認の入口
 
 ```sh
 pnpm --filter @zoujin/web build
 uv run python infra/deploy/local-preview.py
 ```
 
-脚本启动受密码保护的真实网关与假模型叙事服务，仅监听 `127.0.0.1`。使用独立本机数据库；密码和本地邀请码写入 `~/.zoujin/local-previews/h-1/credentials.json`（0600），不进入源码、日志或 URL。不会种入虚构用户结局。停止后真实本机试玩进度仍保留。
+The script starts a password-protected real gateway and a fake-model narrative service, listening only on `127.0.0.1`. It uses a separate local database; the password and local invitation code are written to `~/.zoujin/local-previews/h-1/credentials.json` (0600) and never enter source code, logs or URLs. No fictional user endings are seeded. After stopping, real local playthrough progress is kept.
 
-## 保密与上线边界
+スクリプトは、パスワードで保護された本物のゲートウェイと偽モデルの物語サービスを起動し、`127.0.0.1` のみで待ち受ける。独立したローカルデータベースを使う。パスワードとローカル招待コードは `~/.zoujin/local-previews/h-1/credentials.json`（0600）に書かれ、ソースコード、ログ、URL には入らない。架空のユーザーのエンディングは投入しない。停止後も、実際のローカルプレイの進行は残る。
 
-- 站点密码覆盖 HTML、脚本、场景、角色、音频、REST 与 WebSocket，账号邀请码仍负责内层存档权限。
-- 生产缺少密码时关闭访问；密码失效时返回门禁；旧离线缓存和 Service Worker 退役。
-- 已按用户要求撤销旧线上网关的匿名调用权限，复查匿名页面、目录和角色清单均返回 403。没有部署本次新版，也没有重新开放匿名 IAM 权限。
-- 部署脚本不再自动公开服务；每次部署仍按仓库约定单独获得用户授权。
-- 截图、Blender 中间文件、模型生成物和测试凭证留在本地；不上传外部素材或公开预览。
+## Confidentiality and release boundary / 機密保持と公開の境界
 
-## 验收边界
+- The site password covers HTML, scripts, scenes, characters, audio, REST and WebSocket; the account invitation code still governs inner save permissions.
+  サイト・パスワードは HTML、スクリプト、シーン、人物、音声、REST、WebSocket を覆う。アカウントの招待コードは引き続き内側のセーブ権限を担う。
+- In production, access is closed when the password is missing; when the password is invalid, the gate is returned; old offline caches and the Service Worker are retired.
+  本番ではパスワードがない場合にアクセスを閉じる。パスワードが無効な場合はゲートを返す。古いオフラインキャッシュと Service Worker は廃止する。
+- At the user's request, anonymous invocation permission on the old live gateway was revoked; a re-check shows anonymous pages, the catalog and the character manifest all return 403. This new version was not deployed, and anonymous IAM permission was not reopened.
+  ユーザーの要望により、旧オンラインゲートウェイの匿名呼び出し権限を取り消した。再確認で、匿名のページ、カタログ、人物一覧がいずれも 403 を返すことを確認した。今回の新バージョンはデプロイしておらず、匿名 IAM 権限も再度開放していない。
+- The deployment script no longer makes the service public automatically; each deployment still requires the user's separate authorization per repository convention.
+  デプロイスクリプトはサービスを自動的に公開しなくなった。各デプロイは引き続きリポジトリの規約に従い、ユーザーから個別に許可を得る。
+- Screenshots, Blender intermediate files, model outputs and test credentials stay local; no external assets are uploaded and no public previews are made.
+  スクリーンショット、Blender の中間ファイル、モデルの生成物、テスト用の認証情報はローカルに残す。外部アセットのアップロードも公開プレビューも行わない。
 
-浏览器截图、自动化流程、资源检查与编译结果分别记录，不能替代 iPhone 12 真机帧率、实际语音模型体验或用户最终美术验收。当前只开放真实制作完成的《走れメロス》，不编造第二本书或未经历的结局。
+## Acceptance boundary / 検収の境界
 
-## 集成验证记录
+Browser screenshots, automated flows, resource checks and build results are recorded separately; none can replace iPhone 12 real-device frame rates, the actual voice model experience, or the user's final art acceptance. Currently only 『走れメロス』, which has been truly completed, is open; no second book or unexperienced endings are invented.
 
-- 真实本地 gateway + PostgreSQL：密码 → 邀请码 → 书房 → 空回想录 → 书架 → 角色 → 第一幕 → 回书房 → 继续，恢复原 `playthroughId`。人物和场景资源从正式静态路由加载，修复过本地场景包配置遗漏；预览使用假模型，不冒充真实模型评测。
-- 最终人物更新后重启受保护网关，再次从书房继续原局、加载实际广场和旅人模型、返回书房，浏览器无新增错误。匿名请求页面、角色模型和接口被门禁拒绝；密码后模型可读且 no-store，账号接口仍须邀请码。
-- 桌面与手机画面独立复核：窗格斜影、家具接触阴影、木纹、画布尺寸与按钮可见性通过。最终集成截图在本机 QA 目录，不进入仓库。
-- Chrome 全帧（含阴影、AO、后期）手机 94 calls / 235382 triangles，桌面 96 / 235510；主场景单独 20 calls / 62776 triangles。静止后的 500–1000ms 内实测无额外 GL draw。符合既有每帧 120 calls / 300k triangles 预算，不代表底线手机实际帧率。
-- 房间纹理共 5 张，几何 attribute 约 6.36 MiB；书房与书内世界分块。关闭房间显式释放 GL 上下文，初始化失败或 context loss 仍可用 DOM 操作。
-- `check_world.sh`：完整版 / 切片各 24 次推演及评测生成物一致，错误 0、警告 0。
-- 后端最终完整回归 635 项通过；部署隐私控制流另 15 项通过；前端 317 项单测和 12 项浏览器流程通过；契约 507 项通过、6 项既有条件跳过。全仓 mypy 193 个文件通过。
-- 最终生产构建通过，首页 JS 107.6 KB brotli / 120 KB，3D 主块 235.4 KB / 250 KB。17 套人物、68 个 GLB、119 张最终截图，实际文件哈希、三角形计数与 dist 均一致；全场景与人物部署打包预检通过。详见人物记录。
-- 全仓 Node 检查发现本次之前已有的两处村庄脚本 unused-variable 与旧资产排版问题；全仓 Ruff 另有既有 evals/acts 与 worldsim 测试的 65 项风格告警。Blender 管线按既有配置未纳入全仓 Ruff，显式检查它还会报告旧风格问题。未为清理无关告警改动既有管线输入 hash，不能将此交付称为全仓 CI 全绿。改动的前端文件单独通过 lint / format / typecheck，后端 154 个文件通过 Ruff 检查与格式验证。
+ブラウザのスクリーンショット、自動化フロー、リソース確認、ビルド結果はそれぞれ別に記録し、iPhone 12 実機のフレームレート、実際の音声モデルでの体験、ユーザーによる最終的なアート検収の代わりにはならない。現在公開しているのは、実際に制作を終えた『走れメロス』だけで、2 冊目の本や未体験のエンディングを捏造しない。
+
+## Integration verification record / 統合検証の記録
+
+- Real local gateway + PostgreSQL: password → invitation code → study → empty memory book → bookshelf → characters → act 1 → back to the study → continue, restoring the original `playthroughId`. Character and scene resources load from the official static routes, and a missing local scene pack configuration that was found was fixed; the preview uses a fake model and does not pose as a real-model evaluation.
+  本物のローカルゲートウェイ + PostgreSQL：パスワード → 招待コード → 書斎 → 空の回想録 → 本棚 → 人物 → 第一幕 → 書斎に戻る → 続きから、で元の `playthroughId` が復元される。人物とシーンのリソースは正式な静的ルートから読み込まれ、見つかったローカルのシーンパック設定の漏れは修正した。プレビューは偽モデルを使っており、本物のモデルでの評価を装うものではない。
+- After the final character update, the protected gateway was restarted and the original playthrough was again continued from the study, the actual square and traveler model were loaded and the study was returned to, with no new browser errors. Anonymous requests for pages, character models and APIs are rejected by the gate; after the password, models are readable and no-store, and the account API still requires an invitation code.
+  最終的な人物の更新後に保護されたゲートウェイを再起動し、再び書斎から元のプレイを続け、実際の広場と旅人のモデルを読み込み、書斎に戻った。ブラウザに新たなエラーはなかった。匿名のリクエストによるページ、人物モデル、API はゲートに拒否される。パスワードを通過するとモデルは読め、no-store になっており、アカウント API には引き続き招待コードが必要。
+- Desktop and phone images were independently reviewed: slanted window-pane shadows, furniture contact shadows, wood grain, canvas size and button visibility passed. The final integration screenshots are in the local QA directory and do not enter the repository.
+  デスクトップと手機の画面を独立して確認した。窓枠の斜めの影、家具の接触影、木目、キャンバスのサイズ、ボタンの見え方は合格。最終的な統合スクリーンショットはローカルの QA ディレクトリにあり、リポジトリには入れない。
+- Chrome full frame (with shadows, AO, post-processing): phone 94 calls / 235382 triangles, desktop 96 / 235510; the main scene alone 20 calls / 62776 triangles. Within 500–1000ms after coming to rest, no extra GL draws were measured. This meets the existing per-frame budget of 120 calls / 300k triangles and does not represent the actual frame rate of a baseline phone.
+  Chrome のフルフレーム（影、AO、ポストプロセス込み）：手機 94 calls / 235382 triangles、デスクトップ 96 / 235510。メインシーン単独では 20 calls / 62776 triangles。静止後の 500〜1000ms の間に、余分な GL 描画は計測されなかった。既存のフレームあたり 120 calls / 300k triangles の予算を満たすが、最低ラインの手機での実際のフレームレートを示すものではない。
+- The room textures total 5, and geometry attributes are about 6.36 MiB; the study and the in-book world are split into chunks. Closing the room explicitly releases the GL context, and DOM operation still works if initialization fails or the context is lost.
+  部屋のテクスチャは計 5 枚、ジオメトリ attribute は約 6.36 MiB。書斎と本の中の世界はチャンクを分けている。部屋を閉じると GL コンテキストを明示的に解放し、初期化に失敗した場合やコンテキストが失われた場合でも DOM 操作は使える。
+- `check_world.sh`: 24 playthroughs each for the full version / slice, and the evaluation outputs consistent, with 0 errors and 0 warnings.
+  `check_world.sh`：完全版 / スライスそれぞれ 24 回の推演と評価生成物が一致し、エラー 0、警告 0。
+- Backend final full regression: 635 passed; the deployment privacy control flow: another 15 passed; frontend 317 unit tests and 12 browser flows passed; contracts 507 passed, 6 skipped under existing conditions. Whole-repo mypy passed on 193 files.
+  バックエンドの最終的な完全回帰テスト 635 件が成功。デプロイのプライバシー制御フローは別に 15 件が成功。フロントエンドの単体テスト 317 件とブラウザフロー 12 件が成功。契約テスト 507 件が成功、6 件は既存の条件でスキップ。リポジトリ全体の mypy は 193 ファイルが成功。
+- The final production build passed: home page JS 107.6 KB brotli / 120 KB, 3D main chunk 235.4 KB / 250 KB. 17 character sets, 68 GLBs and 119 final screenshots; actual file hashes, triangle counts and dist all match; the packaging preflight for all scenes and characters passed. See the characters record for details.
+  最終的な本番ビルドは成功。トップページの JS は 107.6 KB brotli / 120 KB、3D メインチャンクは 235.4 KB / 250 KB。人物 17 セット、GLB 68 個、最終スクリーンショット 119 枚で、実際のファイルハッシュ、三角形数、dist はすべて一致する。全シーンと人物のデプロイ用パッケージの事前確認も成功。詳細は人物記録を参照。
+- The whole-repo Node check found two pre-existing issues from before this work: unused variables in two village scripts and old asset formatting. The whole-repo Ruff also reports 65 pre-existing style warnings in evals/acts and worldsim tests. The Blender pipeline is not included in whole-repo Ruff under the existing configuration, and checking it explicitly would also report old style issues. Existing pipeline input hashes were not changed just to clear unrelated warnings, so this delivery cannot be called whole-repo CI green. The changed frontend files individually passed lint / format / typecheck, and 154 backend files passed Ruff checks and format verification.
+  リポジトリ全体の Node チェックで、今回より前からある二つの問題が見つかった：二つの村スクリプトの unused-variable と、古いアセットの整形。リポジトリ全体の Ruff でも、evals/acts と worldsim テストに既存のスタイル警告が 65 件ある。Blender パイプラインは既存の設定ではリポジトリ全体の Ruff の対象外で、明示的に検査すると古いスタイルの問題が報告される。無関係な警告を片付けるためだけに既存のパイプライン入力ハッシュは変更しておらず、この納品を「リポジトリ全体の CI がすべて成功」とは言えない。変更したフロントエンドのファイルは単体で lint / format / typecheck に成功し、バックエンド 154 ファイルは Ruff の検査とフォーマット検証に成功した。

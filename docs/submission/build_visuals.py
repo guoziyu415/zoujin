@@ -38,7 +38,7 @@ def render(output: Path, font_path: str) -> None:
         if both:
             head(points[1], points[0])
 
-    text(70, 40, "zoujin", 56)
+    text(70, 40, "物語", 56)
     text(70, 115, "会話と選択を、記憶と結末につなぐシステム", 34)
     text(1320, 70, "システムアーキテクチャ", 30)
     text(1320, 115, "現在の実装の主要経路  /  Google Cloud", 23, "#6d7569")

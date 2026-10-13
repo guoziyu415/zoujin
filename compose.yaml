@@ -1,16 +1,23 @@
-# 本地服务。不需要任何凭证，端口只开在本机。
+# Local services. No credentials needed; ports are bound to localhost only. / ローカルサービス。認証情報は不要で、ポートはローカルホストにのみ公開。
 #
-# mock（B-1）：`docker compose up mock`，然后打开 http://localhost:8787。
-# mock 和 `uv run zoujin-mock` 是同一个程序：仓库只读挂进去，虚拟环境和 uv 的缓存放在命名卷里，第一次启动要从 PyPI 装依赖。
-# 选项照 `uv run zoujin-mock --help` 改 command，例：慢一倍加 "--speed", "2"；前端开发服务器不走同源代理时加
-# "--allow-origin", "http://localhost:5173"。
+# mock (B-1): `docker compose up mock`, then open http://localhost:8787.
+# モック (B-1)：`docker compose up mock` のあと http://localhost:8787 を開く。
+# mock is the same program as `uv run zoujin-mock`: the repo is mounted read-only, the virtualenv and uv cache live in named volumes, and the first start installs dependencies from PyPI.
+# mock は `uv run zoujin-mock` と同じプログラム。リポジトリは読み取り専用でマウントし、仮想環境と uv のキャッシュは名前付きボリュームに置く。初回起動時に PyPI から依存関係をインストールする。
+# Change the command per `uv run zoujin-mock --help`; e.g. add "--speed", "2" to run twice as slow; add
+# "--allow-origin", "http://localhost:5173" when the frontend dev server does not use the same-origin proxy.
+# オプションは `uv run zoujin-mock --help` に従って command を変更する。例：2 倍遅くするなら "--speed", "2" を追加。フロントエンドの開発サーバーが同一オリジンプロキシを使わない場合は "--allow-origin", "http://localhost:5173" を追加。
 #
-# 后端（B-0）：`docker compose up gateway`，连带起 db、迁移和 narrator；网关在 http://localhost:8001。
-# 模型一律是假的（ZJ_MODEL=fake，改成 replay 用 fixtures/model-replays）。前端开发服务器不走同源代理时，在
-# backend-env 里加 ZJ_ALLOW_ORIGINS: http://localhost:5173（逗号分隔）。邀请码：
+# Backend (B-0): `docker compose up gateway` also starts db, migrations and narrator; the gateway is at http://localhost:8001.
+# バックエンド (B-0)：`docker compose up gateway` で db、マイグレーション、narrator も起動する。ゲートウェイは http://localhost:8001。
+# Models are always fake (ZJ_MODEL=fake; switch to replay to use fixtures/model-replays). When the frontend dev server does not use the same-origin proxy, add
+# ZJ_ALLOW_ORIGINS: http://localhost:5173 (comma-separated) to backend-env. Invite code:
+# モデルは常に偽物（ZJ_MODEL=fake。replay にすると fixtures/model-replays を使う）。フロントエンドの開発サーバーが同一オリジンプロキシを使わない場合は、backend-env に ZJ_ALLOW_ORIGINS: http://localhost:5173（カンマ区切り）を追加。招待コード：
 #   docker compose run --rm migrate uv run --frozen --no-dev --package zoujin-backend zoujin-admin invite create
-# 只有 db：`docker compose up db`，库 zoujin（开发）和 zoujin_test（测试，每个测试清空），见 services/backend/README.md。
-# 用户名和密码都是 zoujin，只给本机的开发库用。
+# db only: `docker compose up db`; databases zoujin (development) and zoujin_test (tests, cleared for every test), see services/backend/README.md.
+# db のみ：`docker compose up db`。データベースは zoujin（開発用）と zoujin_test（テスト用、テストごとに初期化）。services/backend/README.md を参照。
+# Username and password are both zoujin, for the local development database only.
+# ユーザー名とパスワードはどちらも zoujin。ローカルの開発用データベース専用。
 services:
   mock:
     image: ghcr.io/astral-sh/uv:0.11.32-python3.13-bookworm-slim
@@ -56,7 +63,8 @@ services:
       timeout: 5s
       retries: 30
 
-  # 建表（alembic upgrade head）后退出；narrator 和 gateway 等它成功再起。也顺带装好三者共用的虚拟环境。
+  # Creates tables (alembic upgrade head) then exits; narrator and gateway start only after it succeeds. It also sets up the virtualenv shared by all three.
+  # テーブルを作成（alembic upgrade head）して終了。narrator と gateway は成功後に起動する。3 者共用の仮想環境もここで用意する。
   migrate:
     image: ghcr.io/astral-sh/uv:0.11.32-python3.13-bookworm-slim
     working_dir: /repo

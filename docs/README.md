@@ -1,11 +1,19 @@
 # docs
 
-设计文档、决定和任务卡。R-0 从项目文件夹原样搬来，以后只在这里改，走 PR。
+Design documents, decisions, and task cards. Moved verbatim from the project folder in R-0; from now on edit them only here, via PR.
+設計ドキュメント、決定事項、タスクカード。R-0 でプロジェクトフォルダからそのまま移した。以後はここだけで、PR 経由で編集する。
 
-- `pm/`：PRD、决定记录、待 zg 定的问题、开发计划（PM）。
-- `brief/`：交接文档快照。
-- `backend/`、`data/`、`frontend/`、`ux/`、`market-research/`：各角色的设计文档。
-- `consistency/`：文档之间的一致性核对。
-- `tasks/`：任务卡，按阶段分目录（`m2-0/` 是第一批）。
+- `pm/`: PRD, decision log, questions awaiting zg's decision, development plan (PM).
+  PRD、決定記録、zg の判断待ちの課題、開発計画（PM）。
+- `brief/`: snapshots of handoff documents.
+  引き継ぎドキュメントのスナップショット。
+- `backend/`, `data/`, `frontend/`, `ux/`, `market-research/`: design documents of each role.
+  `backend/`、`data/`、`frontend/`、`ux/`、`market-research/`：各役割の設計ドキュメント。
+- `consistency/`: consistency checks between documents.
+  ドキュメント間の整合性チェック。
+- `tasks/`: task cards, in directories by phase (`m2-0/` is the first batch).
+  タスクカード。フェーズごとのディレクトリに分ける（`m2-0/` が最初のバッチ）。
 
-搬来时文档里的路径还是项目文件夹的写法（比如 `data/worlds/…`、`backend/spikes/…`），各卡顺手改。
+When moved, paths inside the documents were still written as in the project folder (e.g. `data/worlds/…`, `backend/spikes/…`); fix them in passing on each card.
+
+移した時点では、ドキュメント内のパスはプロジェクトフォルダ時代の書き方のまま（例：`data/worlds/…`、`backend/spikes/…`）。各カードのついでに直す。
