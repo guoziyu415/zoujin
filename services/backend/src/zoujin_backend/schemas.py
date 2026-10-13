@@ -91,8 +91,8 @@ class SchemaBook:
         """Documents sent by the client: only the failing field paths and rule names, no values (they may be the
         player's original words), so they can go straight into logs.
 
-        クライアントから来た文書：エラーのフィールドパスとルール名だけを返し、値（プレイヤーの発話の原文かもしれない）
-        は含めないので、そのままログに書ける。
+        クライアントから来た文書：エラーのフィールドパスとルール名だけを返し、
+        値（プレイヤーの発話の原文かもしれない）は含めないので、そのままログに書ける。
         """
         return [s for e in self.validator(base, ref).iter_errors(doc) for s in _spots(e)]
 

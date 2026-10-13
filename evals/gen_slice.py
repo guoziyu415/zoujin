@@ -174,6 +174,8 @@ SLICE = [
                                       "effects": [{"op": "relocate", "character": "char.old-man", "place": GROUND,
                                                    "spot": "ground-west"}]},
            "statusIn": ["passed", "rewritten"]}],
+         # Rubric pinned by evals/judge/calibration.jsonl and the recorded judge replays: keep it word for word
+         # ルーブリックは evals/judge/calibration.jsonl と記録済みの審査員リプレイに固定されている：一字一句変えない
          J("叙事者は「あなたは、〜ことにした。」と一文で言い換える（例：「あなたは、町の人々にメロスの約束を話して回ることにした。」）。"
            "プレイヤーの文をそのまま写さない。丸写しとは、プレイヤーの文に「あなたは、」を付けただけで語尾（「〜します」など）も残すこと。「〜ことにした。」の形に直してあれば、言葉がプレイヤーと近くても丸写しではない。"
            "5=自然な一文の言い換え／1=原文の丸写し・別の打算にすり替える"),
@@ -185,6 +187,8 @@ SLICE = [
          END1,
          [{"propose": "メロスを追いかけて、村まで一緒に行きます。"}],
          [{"type": "act_plan", "accepted": False}, {"type": "world_unchanged"}],
+         # Rubric pinned by evals/judge/calibration.jsonl and the recorded judge replays: keep it word for word
+         # ルーブリックは evals/judge/calibration.jsonl と記録済みの審査員リプレイに固定されている：一字一句変えない
          J("物語の中の理由で行けないと伝え（例：「メロスの姿は、もう夜の向こうに消えていた。」）、"
            "「市に残り、メロスの帰りを待つ」を代わりに示す。5=自然で次に進める／1=成行したことになる・理由がない・説教・システムの口調"),
          note="スライスは村を開けない（S-077 ①④）。文言は ux/slice/act1-end-and-gate.md 第 2 節"),
@@ -239,7 +243,7 @@ SIMS = [("persona.canon-follower", "follows the original", "原作どおりに�
         ("persona.idle", "does nothing", "何もしない"),
         ("persona.king-persuader", "keeps trying to persuade the king", "王を何度も説得する"),
         ("persona.troublemaker", "makes trouble", "邪魔をする"),
-        ("persona.jailbreaker", "jailbreak", "脱獄"),
+        ("persona.jailbreaker", "tries a jailbreak", "脱獄を試みる"),
         ("persona.retractor", "often retracts what they said", "頻繁に言い直す"),
         ("persona.melos-helper", "single-mindedly helps Melos make it in time", "ひたすらメロスが間に合うよう手助けする"),
         ("persona.canon-follower", "follows the original (another seed)", "原作どおりに進む（seed を変える）"),

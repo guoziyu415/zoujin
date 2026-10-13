@@ -1,23 +1,65 @@
-"""真的 Gemini Live（B-10）：网关里一个人物一条会话，实现 `models/live.py` 的 `LiveSession`，网关不分真假。
+"""The real Gemini Live (B-10): one session per character in the gateway, implementing `LiveSession` from
+`models/live.py`; the gateway does not distinguish real from fake.
 
-- 直接用 `websockets` 连 Vertex AI 的 `BidiGenerateContent`（握手、`Auth` 和 B-6 的 `voice/models.py` 一样），不加 SDK。
-  消息的形状照 google-genai SDK 对 Vertex 发的（`spikes/backend/zj_spike` 用 SDK 在 Mac 上跑通过），字段用 camelCase。
-- setup：只出音频、这个人物的声音、系统指令（`gateway/brief.py`）、两边的转写（玩家一侧带 ja-JP 和专有名词偏置，S-025；
-  被拒时 `ZJ_LIVE_TRANSCRIBE_HINTS=0` 去掉）、关自动语音检测（按住说话）、新活动打断旧回答、
-  默认不设思考等级：S-090 在 Mac 上 `probe` 实测，设了 `thinkingConfig`（MINIMAL、LOW 都一样）Vertex 以 1007「项目不在
-  允许名单」关连接；`ZJ_LIVE_THINKING=minimal` 留给拿到名单以后（S-1：minimal 首音中位 628 ms，不设 868 ms）。
-  **不开会话恢复**（backend-design 5.4：开了 Google 会在服务端存这条会话最长 24 小时）。
-- 一个读任务持有连接，按顺序把消息交给当前这一轮；一个写任务按顺序发。`audio_in` 保持同步：音频进发送队列，
-  读任务收到的玩家转写在下一帧时作为半句吐出（40 ms 一帧）。
-- 一轮的收尾（backend-design 3.1）：`turnComplete` 之后继续收转写，两边的文字都到、静默 0.6 秒，或最多 3 秒，再吐
-  `output_final`（一个字都没有就是 None，网关补转写）。用量取这一轮最大的那条，`turnComplete` 后 1.5 秒内没到按 0.01
-  美元记（同 S-1、B-6：不让它看起来是免费的）。
-- 打断：上一轮的回答还在出、新的一轮开始了，旧回答剩下的消息丢掉，直到它的 `interrupted` 或 `turnComplete`（最多 2 秒，
-  同 S-1b 的 `DRAIN_MAX_S`）。丢掉的那段的用量记到下一轮上。
-- 连接断了：`alive = False`、叫 `on_change`，正在进行的一轮抛 `LiveLost`。配额、429 的抛 `LiveLost(quota=True)`。
-- 日志和异常里不写原话、系统指令、项目和地址。建会话时服务端关了连接，异常里带关闭码和 Google 给的原因（`close_note`：
-  去掉项目路径、模型名、邮箱和长数字，最多 160 字），一眼看出 setup 哪个字段不收。
-- `probe`：只发 setup、收到 `setupComplete` 就关，不说话、不花钱，几种 setup 各试一次（`zoujin-live probe`，S-090）。
+- Connects directly to Vertex AI's `BidiGenerateContent` with `websockets` (handshake and `Auth` the same as B-6's
+  `voice/models.py`), without an SDK. The message shapes follow what the google-genai SDK sends to Vertex
+  (`spikes/backend/zj_spike` ran it on the Mac with the SDK), with camelCase fields.
+- setup: audio output only, this character's voice, the system instruction (`gateway/brief.py`), transcription on both
+  sides (the player side with ja-JP and proper-noun bias, S-025; removed with `ZJ_LIVE_TRANSCRIBE_HINTS=0` if
+  rejected), automatic voice activity detection off (push to talk), a new activity interrupts the old answer, and by
+  default no thinking level: S-090 measured with `probe` on the Mac that with `thinkingConfig` set (MINIMAL and LOW
+  alike) Vertex closes the connection with 1007 "project not on the allowlist"; `ZJ_LIVE_THINKING=minimal` is kept
+  for after getting on the list (S-1: minimal first-audio median 628 ms, unset 868 ms).
+  **No session resumption** (backend-design 5.4: if on, Google stores the session server-side for up to 24 hours).
+- One reader task owns the connection and hands messages to the current turn in order; one writer task sends in order.
+  `audio_in` stays synchronous: audio goes into the send queue, and the player transcription received by the reader
+  is emitted as a partial line on the next frame (one frame every 40 ms).
+- Closing a turn (backend-design 3.1): after `turnComplete`, keep collecting transcriptions until the text of both
+  sides has arrived and 0.6 s of silence has passed, or at most 3 s, then emit `output_final` (None if there is not a
+  single character, and the gateway fills in a transcription). Usage takes the largest record of the turn; if none
+  arrives within 1.5 s after `turnComplete`, 0.01 dollars is recorded (as in S-1, B-6: so it does not look free).
+- Interruption: if the previous answer is still coming out when a new turn starts, the rest of the old answer's
+  messages are dropped until its `interrupted` or `turnComplete` (at most 2 s, same as S-1b's `DRAIN_MAX_S`). The usage
+  of the dropped part is charged to the next turn.
+- Connection lost: `alive = False`, call `on_change`, and the turn in progress raises `LiveLost`. Quota and 429 raise
+  `LiveLost(quota=True)`.
+- Logs and exceptions never contain original words, the system instruction, the project or the address. If the server
+  closes the connection while a session is being opened, the exception carries the close code and Google's reason
+  (`close_note`: with project paths, model names, email addresses and long numbers removed, at most 160 characters),
+  so it is clear at a glance which setup field was rejected.
+- `probe`: sends only setup and closes on `setupComplete`, without speaking or spending money, trying each of several
+  setups once (`zoujin-live probe`, S-090).
+
+本物の Gemini Live（B-10）：ゲートウェイ内で登場人物ごとに 1 セッション。`models/live.py` の `LiveSession` を実装し、
+ゲートウェイは本物と偽物を区別しない。
+
+- `websockets` で Vertex AI の `BidiGenerateContent` に直接接続し（ハンドシェイクと `Auth` は B-6 の `voice/models.py`
+  と同じ）、SDK は使わない。メッセージの形は google-genai SDK が Vertex に送るものに合わせ（`spikes/backend/zj_spike`
+  で SDK を使って Mac 上で動作確認済み）、フィールドは camelCase。
+- setup：音声出力のみ、この登場人物の声、システム指示（`gateway/brief.py`）、両側の書き起こし（プレイヤー側は ja-JP と
+  固有名詞のバイアス付き、S-025。拒否されたら `ZJ_LIVE_TRANSCRIBE_HINTS=0` で外す）、自動音声検出オフ（プッシュ
+  トゥトーク）、新しいアクティビティが古い返答を中断する。デフォルトでは思考レベルを設定しない：S-090 で Mac 上の
+  `probe` で実測したところ、`thinkingConfig` を設定すると（MINIMAL も LOW も同じ）Vertex は 1007「プロジェクトが
+  許可リストにない」で接続を閉じた。`ZJ_LIVE_THINKING=minimal` はリストに載った後のために残す（S-1：minimal の最初の
+  音声の中央値 628 ms、設定なし 868 ms）。
+  **セッション再開は使わない**（backend-design 5.4：使うと Google がサーバー側でこのセッションを最長 24 時間保存する）。
+- 読み取りタスク 1 つが接続を持ち、メッセージを順に現在のターンへ渡す。書き込みタスク 1 つが順に送る。`audio_in` は
+  同期のまま：音声は送信キューに入り、読み取りタスクが受け取ったプレイヤーの書き起こしは次のフレームで途中経過として
+  出す（40 ms で 1 フレーム）。
+- ターンの締めくくり（backend-design 3.1）：`turnComplete` の後も書き起こしを受け続け、両側のテキストがそろって
+  0.6 秒静かになるか、最大 3 秒で `output_final` を出す（1 文字もなければ None で、ゲートウェイが書き起こしで補う）。
+  使用量はこのターンで最大のものを取り、`turnComplete` から 1.5 秒以内に来なければ 0.01 ドルとして記録する（S-1、B-6
+  と同じ：無料に見えないようにする）。
+- 割り込み：前のターンの返答がまだ出ている間に新しいターンが始まったら、古い返答の残りのメッセージは、その
+  `interrupted` か `turnComplete` まで捨てる（最大 2 秒、S-1b の `DRAIN_MAX_S` と同じ）。捨てた部分の使用量は次の
+  ターンに付ける。
+- 接続が切れた：`alive = False`、`on_change` を呼び、進行中のターンは `LiveLost` を投げる。利用枠、429 は
+  `LiveLost(quota=True)` を投げる。
+- ログと例外には元の発言、システム指示、プロジェクト、アドレスを書かない。セッション開始時にサーバーが接続を閉じたら、
+  例外にはクローズコードと Google が示した理由を入れる（`close_note`：プロジェクトのパス、モデル名、メールアドレス、
+  長い数字を除き、最大 160 文字）。setup のどのフィールドが拒否されたかがひと目で分かる。
+- `probe`：setup だけを送り、`setupComplete` を受け取ったら閉じる。話さず、費用もかからない。いくつかの setup を
+  1 回ずつ試す（`zoujin-live probe`、S-090）。
 """
 
 from __future__ import annotations
@@ -39,10 +81,14 @@ from zoujin_backend.voice.models import LIVE_LOCATION, LIVE_MODEL, NO_USAGE_USD,
 Json = Any
 log = logging.getLogger("zoujin.live")
 
-IN_RATE = 16_000  # 上行 PCM16（api-contract 3.1）
-OUT_RATE = 24_000  # 下行
-SETUP_TIMEOUT_S = 5.0  # 玩家在等（focus、重建）：契约第 6 节重建 ≤ 1 s，S-1 实测 0.4〜1.1 s（#111 前端评审）
-TURN_TIMEOUT_S = 30.0  # 松开到 turnComplete
+IN_RATE = 16_000  # upstream PCM16 (api-contract 3.1) / 上り PCM16（api-contract 3.1）
+OUT_RATE = 24_000  # downstream / 下り
+# The player is waiting (focus, rebuild): contract section 6 says rebuild ≤ 1 s, S-1 measured 0.4〜1.1 s (#111 frontend
+# review)
+# プレイヤーが待っている（focus、再構築）：契約第 6 節では再構築 ≤ 1 s、S-1 の実測は 0.4〜1.1 s（#111 フロントエンドの
+# レビュー）
+SETUP_TIMEOUT_S = 5.0
+TURN_TIMEOUT_S = 30.0  # from release to turnComplete / 離してから turnComplete まで
 TAIL_QUIET_S = 0.6
 TAIL_CAP_S = 3.0
 USAGE_WAIT_S = 1.5
@@ -52,13 +98,20 @@ THINKING_ENV = "ZJ_LIVE_THINKING"
 HINTS_ENV = "ZJ_LIVE_TRANSCRIBE_HINTS"
 QUOTA_MARKS = ("RESOURCE_EXHAUSTED", "429", "QUOTA", "529")
 
-# 人物先开口（落地、意图确认的反问）时送进去的提示：不让 Live 照读台词（S-071），让人物用自己的话说
+# The cue sent in when a character speaks first (landing, the clarifying question of intent confirmation): so Live does
+# not read the line out verbatim (S-071), and the character says it in their own words
+# 登場人物が先に話すとき（着地、意図確認の聞き返し）に送る合図：Live にセリフをそのまま読ませず（S-071）、登場人物
+# 自身の言葉で話させる
 ARRIVAL_CUE = "（旅人がすぐ近くに来た。あなたから一言、短く声をかけてください。）"
 ASK_CUE = "（次のことを、あなたの言葉で短く尋ねてください：{line}）"
 
 
 class LiveLostQuota(LiveLost):
-    """配额、限流：不是这条连接的问题，换会话也没用（网关降级）。"""
+    """Quota, rate limit: not a problem with this connection, and switching sessions does not help (the gateway
+    degrades).
+
+    利用枠、レート制限：この接続の問題ではなく、セッションを替えても役に立たない（ゲートウェイは劣化動作に入る）。
+    """
 
 
 def setup_message(
@@ -69,7 +122,10 @@ def setup_message(
     thinking: str | None = None,
     hints: bool = True,
 ) -> Json:
-    """setup 的整条消息（测试查：声音、ja-JP、偏置词、关自动检测、没有会话恢复）。"""
+    """The whole setup message (tests check: voice, ja-JP, bias words, automatic detection off, no session resumption).
+
+    setup のメッセージ全体（テストが確認する：声、ja-JP、バイアス語、自動検出オフ、セッション再開なし）。
+    """
     gen: Json = {
         "responseModalities": ["AUDIO"],
         "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice}}},
@@ -116,9 +172,12 @@ class GeminiLiveSession:
         self.on_change: Callable[[], None] | None = None
         self._out: asyncio.Queue[Json | None] = asyncio.Queue()
         self._turn: _Turn | None = None
-        self._busy = False  # 模型在出上一轮的回答（松开以后、turnComplete / interrupted 之前）
+        # The model is producing the previous turn's answer (after release, before turnComplete / interrupted)
+        # モデルが前のターンの返答を出している（離した後、turnComplete / interrupted の前）
+        self._busy = False
         self._drain_until = 0.0
-        self._orphan: Json | None = None  # 丢掉的那段回答的用量：记到下一轮
+        # Usage of the dropped part of an answer: charged to the next turn / 捨てた返答の使用量：次のターンに付ける
+        self._orphan: Json | None = None
         self._quota = False
         self._reader: asyncio.Task[None] | None = None
         self._writer: asyncio.Task[None] | None = None
@@ -127,13 +186,13 @@ class GeminiLiveSession:
         self._reader = asyncio.ensure_future(self._read())
         self._writer = asyncio.ensure_future(self._write())
 
-    # —— 连接 ——
+    # —— Connection / 接続 ——
 
     def _lost(self, why: str) -> None:
         if not self.alive:
             return
         self.alive = False
-        log.info("Live 会话断了（%s）", why)
+        log.info("Live session lost / Live セッションが切れた (%s)", why)
         if self._turn is not None:
             self._turn.q.put_nowait(None)
         self._out.put_nowait(None)
@@ -147,7 +206,7 @@ class GeminiLiveSession:
                 return
             try:
                 await self._ws.send(json.dumps(msg, ensure_ascii=False))
-            except Exception as e:  # noqa: BLE001 - 发不出去就是断了
+            except Exception as e:  # noqa: BLE001 - failing to send means lost / 送れなければ切れている
                 self._lost(type(e).__name__)
                 return
 
@@ -159,7 +218,9 @@ class GeminiLiveSession:
                 self._dispatch(msg)
         except asyncio.CancelledError:
             raise
-        except Exception as e:  # noqa: BLE001 - 关闭码、网络错误、坏消息都当断了
+        # Close codes, network errors and bad messages all count as lost
+        # クローズコード、ネットワークエラー、壊れたメッセージはすべて切断とみなす
+        except Exception as e:  # noqa: BLE001
             reason = ""
             rcvd = getattr(e, "rcvd", None)
             if rcvd is not None:
@@ -172,7 +233,7 @@ class GeminiLiveSession:
         if "goAway" in msg:
             self.going_away = True
             self.going_away_left = str((msg.get("goAway") or {}).get("timeLeft", ""))
-            log.info("Live 发了 GoAway（剩 %s）", self.going_away_left)
+            log.info("Live sent GoAway (time left / 残り %s) / Live が GoAway を送った", self.going_away_left)
             if self.on_change is not None:
                 self.on_change()
         meta = msg.get("usageMetadata")
@@ -204,10 +265,12 @@ class GeminiLiveSession:
             t.in_text += heard
         t.q.put_nowait(sc)
 
-    # —— 一轮 ——
+    # —— One turn / 1 ターン ——
 
     def _begin(self, mode: str) -> _Turn:
-        if self._busy:  # 上一轮的回答还在出：剩下的丢掉，直到它的 interrupted / turnComplete（最多 2 秒）
+        # The previous answer is still coming out: drop the rest until its interrupted / turnComplete (at most 2 s)
+        # 前のターンの返答がまだ出ている：残りは、その interrupted / turnComplete まで捨てる（最大 2 秒）
+        if self._busy:
             self._drain_until = time.monotonic() + DRAIN_MAX_S
         self._turn = _Turn(mode)
         if mode == "voice":
@@ -247,7 +310,11 @@ class GeminiLiveSession:
         self._out.put_nowait({"clientContent": content})
 
     async def note(self, text: str) -> None:
-        """中途更新局势（S-1 midsession：role=system、turnComplete=false，不触发回答，3/3）。"""
+        """Update the situation mid-session (S-1 midsession: role=system, turnComplete=false,
+        does not trigger an answer, 3/3).
+
+        途中で状況を更新する（S-1 midsession：role=system、turnComplete=false。返答を起こさない、3/3）。
+        """
         if self.alive:
             self._send_text(text, "system", complete=False)
 
@@ -274,7 +341,8 @@ class GeminiLiveSession:
                     done = True
             self._busy = False
             yield LiveEvent("turn_complete")
-            # 收尾：两边的文字都到、静默 0.6 秒，或最多 3 秒
+            # Closing: text from both sides has arrived and 0.6 s of silence, or at most 3 s
+            # 締めくくり：両側のテキストがそろって 0.6 秒静か、または最大 3 秒
             cap = time.monotonic() + TAIL_CAP_S
             while True:
                 have = bool(out_text) and (t.mode != "voice" or bool(t.in_text))
@@ -355,9 +423,16 @@ def _max_usage(old: Json | None, new: Json) -> Json:
 
 
 class GeminiLive:
-    """`LiveModel` 的真实现。voices：人物 → 声音（`voice/hashire-merosu.json`，D-025）。
+    """The real implementation of `LiveModel`. voices: character → voice (`voice/hashire-merosu.json`, D-025).
 
-    `connect` 给测试接本机的假 Vertex Live 服务；真的时候按地区连 Vertex，带 ADC 的令牌。"""
+    `connect` lets tests attach to a local fake Vertex Live service; for real, it connects to Vertex by region with an
+    ADC token.
+
+    `LiveModel` の本物の実装。voices：登場人物 → 声（`voice/hashire-merosu.json`、D-025）。
+
+    `connect` はテストではローカルの偽 Vertex Live サービスにつなぐ。本物ではリージョンに応じて Vertex に ADC の
+    トークン付きで接続する。
+    """
 
     def __init__(
         self,
@@ -375,12 +450,16 @@ class GeminiLive:
         self._thinking = thinking
         self._hints = hints
         self._transcriber_factory = transcriber_factory
-        self.setup_ms: list[int] = []  # 最近几次建会话的毫秒（Trace 也记）
+        # Milliseconds of the last few session setups (also recorded in the Trace)
+        # 直近数回のセッション開始にかかったミリ秒（Trace にも記録）
+        self.setup_ms: list[int] = []
 
     def voice(self, character: str) -> str:
         v = self._voices.get(character)
         if not v:
-            raise LiveLost(f"{character} 没有定声音（voice/hashire-merosu.json）")
+            raise LiveLost(
+                f"{character} has no voice assigned / {character} の声が決まっていない (voice/hashire-merosu.json)"
+            )
         return v
 
     async def open(self, character: str, recent: Sequence[Recent] = (), system: str = "") -> GeminiLiveSession:
@@ -388,11 +467,14 @@ class GeminiLive:
         t0 = time.monotonic()
         try:
             ws = await asyncio.wait_for(self._connect(), timeout=SETUP_TIMEOUT_S)
-        except Exception as e:  # noqa: BLE001 - 握手失败：不记地址
+        # Handshake failed: the address is not logged / ハンドシェイク失敗：アドレスは記録しない
+        except Exception as e:  # noqa: BLE001
             status = getattr(getattr(e, "response", None), "status_code", None)
             if status == 429:
-                raise LiveLostQuota("Live 握手回 429") from None
-            raise LiveLost(f"Live 连不上（{type(e).__name__}{f' HTTP {status}' if status else ''}）") from None
+                raise LiveLostQuota("Live handshake returned 429 / Live のハンドシェイクが 429 を返した") from None
+            raise LiveLost(
+                f"Live unreachable / Live に接続できない ({type(e).__name__}{f' HTTP {status}' if status else ''})"
+            ) from None
         msg = setup_message(
             model_path=self._model_path, voice=voice, system=system, thinking=self._thinking, hints=self._hints
         )
@@ -404,22 +486,35 @@ class GeminiLive:
                 await ws.close()
             text = str(getattr(getattr(e, "rcvd", None), "reason", "")).upper()
             if any(m in text for m in QUOTA_MARKS):
-                raise LiveLostQuota("Live 回配额或限流错误") from None
+                raise LiveLostQuota(
+                    "Live returned a quota or rate-limit error / Live が利用枠またはレート制限のエラーを返した"
+                ) from None
             note = close_note(e, self._model_path)
-            raise LiveLost(f"Live 会话没建起来（{type(e).__name__}{'，' + note if note else ''}）") from None
+            raise LiveLost(
+                f"Live session could not be opened / Live セッションを開けなかった "
+                f"({type(e).__name__}{', ' + note if note else ''})"
+            ) from None
         if "setupComplete" not in first:
             with contextlib.suppress(Exception):
                 await ws.close()
-            raise LiveLost("Live 会话没建起来：第一条消息不是 setupComplete")
+            raise LiveLost(
+                "Live session could not be opened: the first message is not setupComplete / "
+                "Live セッションを開けなかった：最初のメッセージが setupComplete ではない"
+            )
         self.setup_ms = [*self.setup_ms[-19:], round((time.monotonic() - t0) * 1000)]
         session = GeminiLiveSession(ws, character)
         session.start()
         return session
 
     def transcriber(self) -> Any:
-        """幕末用声音说打算：只转写（3.11）。真的时候攒下音频、松开以后补转写一次（没有半句字幕）。"""
+        """Speaking a plan by voice at the end of an act: transcription only (3.11). For real, the audio is buffered and
+        transcribed once after release (no partial subtitles).
+
+        幕末にプランを声で話す：書き起こしだけ（3.11）。本物では音声をためておき、
+        離した後に 1 回だけ書き起こす（途中経過の字幕はない）。
+        """
         if self._transcriber_factory is None:
-            raise LiveLost("没有配补转写")
+            raise LiveLost("No fallback transcriber configured / 補完の書き起こしが設定されていない")
         return self._transcriber_factory()
 
 
@@ -433,8 +528,15 @@ _SCRUB = (
 
 
 def close_note(e: BaseException, model_path: str = "") -> str:
-    """服务端关连接时的关闭码和原因（原因是 Google 写的，不含玩家的话）。去掉项目、模型、邮箱、会话 ID、长数字；
-    `model_path` 里的项目、地区、模型名按字面也换掉（原因里可能直接写裸名字，#140 数据评审）。"""
+    """The close code and reason when the server closes the connection (the reason is written by Google and contains
+    no player words). Projects, models, email addresses, session IDs and long numbers are removed; the project, region
+    and model name in `model_path` are also replaced literally (the reason may contain the bare names, #140 data
+    review).
+
+    サーバーが接続を閉じたときのクローズコードと理由（理由は Google が書いたもので、プレイヤーの発言は含まない）。
+    プロジェクト、モデル、メールアドレス、セッション ID、長い数字を除く。`model_path` にあるプロジェクト、リージョン、
+    モデル名も文字どおりに置き換える（理由に名前がそのまま書かれていることがある、#140 データ担当のレビュー）。
+    """
     rcvd = getattr(e, "rcvd", None)
     if rcvd is None:
         return ""
@@ -444,18 +546,28 @@ def close_note(e: BaseException, model_path: str = "") -> str:
     for pattern, repl in _SCRUB:
         reason = pattern.sub(repl, reason)
     reason = reason[:160]
-    return f"关闭码 {getattr(rcvd, 'code', '?')}" + (f"：{reason}" if reason else "")
+    return f"close code / クローズコード {getattr(rcvd, 'code', '?')}" + (f": {reason}" if reason else "")
 
 
 def _literals(model_path: str) -> list[str]:
-    """`projects/<项目>/locations/<地区>/publishers/google/models/<模型>` 里的三个值（太短的不换，免得把原因换花）。"""
+    """The three values in `projects/<project>/locations/<region>/publishers/google/models/<model>` (too-short ones are
+    not replaced, so the reason does not get mangled).
+
+    `projects/<プロジェクト>/locations/<リージョン>/publishers/google/models/<モデル>` の 3 つの値（短すぎるものは
+    置き換えない。理由が崩れないようにするため）。
+    """
     parts = model_path.split("/")
     keys = {"projects", "locations", "models"}
     return [parts[i + 1] for i, k in enumerate(parts[:-1]) if k in keys and len(parts[i + 1]) >= 4]
 
 
 def setup_variants(*, model_path: str, voice: str, system: str) -> list[tuple[str, Json]]:
-    """`probe` 试的几种 setup：现在的配置，各去掉一样，最后是 B-6 预录那样的最简（它在 Mac 上跑通过）。"""
+    """The setups `probe` tries: the current configuration, each with one thing removed, and finally the minimal one
+    like B-6's pre-recording (which ran on the Mac).
+
+    `probe` が試す setup：現在の設定、1 つずつ外したもの、最後に B-6 の事前収録のような最小構成（Mac
+    上で動作確認済み）。
+    """
 
     def make(edit: Callable[[Json], None]) -> Json:
         msg = setup_message(model_path=model_path, voice=voice, system=system)
@@ -483,30 +595,37 @@ def setup_variants(*, model_path: str, voice: str, system: str) -> list[tuple[st
         s.pop("inputAudioTranscription", None)
 
     return [
-        ("现在的配置（不设思考）", make(lambda s: None)),
-        ("思考 MINIMAL（ZJ_LIVE_THINKING=minimal）", make(level("MINIMAL"))),
-        ("思考 LOW（ZJ_LIVE_THINKING=low）", make(level("LOW"))),
-        ("不带偏置词（ZJ_LIVE_TRANSCRIBE_HINTS=0）", make(no_hints)),
-        ("不带按住说话（realtimeInputConfig）", make(no_ptt)),
-        ("最简（同 B-6 预录）", make(bare)),
+        ("current configuration (no thinking) / 現在の設定（思考なし）", make(lambda s: None)),
+        ("thinking MINIMAL (ZJ_LIVE_THINKING=minimal) / 思考 MINIMAL", make(level("MINIMAL"))),
+        ("thinking LOW (ZJ_LIVE_THINKING=low) / 思考 LOW", make(level("LOW"))),
+        ("no bias words (ZJ_LIVE_TRANSCRIBE_HINTS=0) / バイアス語なし", make(no_hints)),
+        ("no push-to-talk (realtimeInputConfig) / プッシュトゥトークなし", make(no_ptt)),
+        ("minimal (same as B-6 pre-recording) / 最小構成（B-6 の事前収録と同じ）", make(bare)),
     ]
 
 
 async def probe(connect: Callable[[], Awaitable[Any]], msg: Json) -> str:
-    """只建会话：收到 `setupComplete` 就关。回 "ok"，或去敏的失败原因。"""
+    """Only open a session: close on `setupComplete`. Returns "ok", or the scrubbed failure reason.
+
+    セッションを開くだけ：`setupComplete` を受け取ったら閉じる。"ok"、またはマスキングした失敗理由を返す。
+    """
     path = str(msg.get("setup", {}).get("model", ""))
     try:
         ws = await asyncio.wait_for(connect(), timeout=SETUP_TIMEOUT_S)
     except Exception as e:  # noqa: BLE001
         status = getattr(getattr(e, "response", None), "status_code", None)
-        return f"连不上（{type(e).__name__}{f' HTTP {status}' if status else ''}）"
+        return f"unreachable / 接続できない ({type(e).__name__}{f' HTTP {status}' if status else ''})"
     try:
         await ws.send(json.dumps(msg, ensure_ascii=False))
         first = json.loads(await asyncio.wait_for(ws.recv(), timeout=SETUP_TIMEOUT_S))
-        return "ok" if "setupComplete" in first else "第一条消息不是 setupComplete"
+        return (
+            "ok"
+            if "setupComplete" in first
+            else "first message is not setupComplete / 最初のメッセージが setupComplete ではない"
+        )
     except Exception as e:  # noqa: BLE001
         note = close_note(e, path)
-        return f"{type(e).__name__}{'，' + note if note else ''}"
+        return f"{type(e).__name__}{', ' + note if note else ''}"
     finally:
         with contextlib.suppress(Exception):
             await ws.close()
@@ -522,7 +641,12 @@ def vertex_url(location: str) -> str:
 
 
 def real_connect(env: Mapping[str, str]) -> tuple[Callable[[], Awaitable[Any]], str]:  # pragma: no cover
-    """只在 Mac 上：连 Vertex Live 的函数和模型路径。项目和地区只从显式设的环境变量读（同 B-6 的 `real_models`）。"""
+    """Only on the Mac: the function that connects to Vertex Live, and the model path. The project and region are read
+    only from explicitly set environment variables (same as B-6's `real_models`).
+
+    Mac 上のみ：Vertex Live に接続する関数とモデルのパス。プロジェクトとリージョンは明示的に設定した環境変数からだけ読む
+    （B-6 の `real_models` と同じ）。
+    """
     import websockets
 
     from zoujin_backend.models.vertex import AdcAuth, vertex_env
@@ -542,7 +666,10 @@ def real_connect(env: Mapping[str, str]) -> tuple[Callable[[], Awaitable[Any]], 
 
 
 def real_live(env: Mapping[str, str], voices: Mapping[str, str], transcriber: Any) -> GeminiLive:  # pragma: no cover
-    """只在 Mac 上（`ZJ_LIVE=real`）。"""
+    """Only on the Mac (`ZJ_LIVE=real`).
+
+    Mac 上のみ（`ZJ_LIVE=real`）。
+    """
     from zoujin_backend.gateway.fallback import BufferedTranscriber
 
     connect, path = real_connect(env)

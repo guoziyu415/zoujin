@@ -42,37 +42,36 @@ engineering's runner, no HTTP, absent in production.
 評価の入口（api-contract 第 7 節、B-0 第 9 項の最小版）：データエンジニアリングのランナーが Python
 パッケージ内で呼ぶもので、HTTP は開かず、本番環境にはない。
 
-- `setup` は毎回 `DATABASE_URL` と `ZJ_MODEL` を読む（fake / replay / real。real は Mac 上だけで、
-  台帳と上限は `models/vertex.py` を参照）。1 プレイはテスト DB の本物のプレイ：新しいアカウント、プレイ、
+- `setup` は毎回 `DATABASE_URL` と `ZJ_MODEL` を読む（fake / replay / real。real は Mac 上だけで、台帳と上限は
+  `models/vertex.py` を参照）。1 プレイはテスト DB の本物のプレイ：新しいアカウント、プレイ、
   開始時点のイベントと world_state を作り、以後のステップはゲートウェイと同じナレーター（`Narrator.run`）を通る。
-- 実装済み：setup の `role`、`place`、`budgetTier`（記録だけ）、`scenario`、`checkpoint`、`events`。
-  ステップ `say`（登場人物がテキストで答え、ナレーターのパイプライン全体を通す、
-  B-2）、`advance`。`act`、`propose`、`choose`（B-3：WebSocket と同じ経路で、
-  タスクを書いてナレーターを呼ぶ）。`check`（第 3 段階 + `model_checks` に従って第 4 段階、
+- 実装済み：setup の `role`、`place`、`budgetTier`（記録だけ）、`scenario`、`checkpoint`、`events`。ステップ `say`
+  （登場人物がテキストで答え、ナレーターのパイプライン全体を通す、B-2）、`advance`。`act`、`propose`、`choose`（B-3：
+  WebSocket と同じ経路で、タスクを書いてナレーターを呼ぶ）。`check`（第 3 段階 + `model_checks` に従って第 4 段階、
   書き換えもコミットもしない）。クエリ `state()`、`events()`。B-9：`ending()`（エンディングに入っていなければ None）。
   シナリオで幕を閉じるところまで進む setup では開始時点でエンディングに入り、
   エンディングのタスクは setup の中で同期的に最後まで実行する。
   チェックポイントがこの幕の閉幕のビート（例 `sc.canon@beat.07`）で止まっているときは、
   setup の後は幕末の選択待ちになる。
 - B-4：`say(hold=True)` はこのターンを書いて登場人物の回答を得るだけで、`held: true` を返し、
-  イベントはない（取り消し可能な時間はまだ開いている）。次の呼び出し（どのステップやクエリでも）
-  の最初にナレーターがそれをコミットし、イベントはその呼び出しに数える。`retract(n)` はまだ hold
+  イベントはない（取り消し可能な時間はまだ開いている）。次の呼び出し（どのステップやクエリでも）の最初に
+  ナレーターがそれをコミットし、イベントはその呼び出しに数える。`retract(n)` はまだ hold
   中の n ステップ目を取り消し（`retracted`）、コミット済みなら `too_late`。`utterance_cleared(n)`。
   このステップが意図確認の草稿を残したときは `StepResult.confirm` に値があり、草稿は最大 1 ステップ待つ：
   次のステップの `confirm(answer)` がそれに答え、`say` なら回答かどうかをナレーターが判定し、
   ほかのステップ（または回答ではない `say`）ではタイムアウトとして閉じる。評価のコミット待ち時間は 0。
-- B-5 のシミュレーションのプレイ：`setup({"role": …, "persona": …, "seed": …})`
-  は本番どおりにプレイを開始し（ゲートウェイの `POST /v1/playthroughs` と同じ経路：プレイと `open` タスクを書き、
-  ナレーターが処理する）、`opening()` のシミュレーションは使わない。`persona`、`seed` は Trace（`eval.setup`）
-  に記録するだけで、`seed` は偽モデルに渡す。AI プレイヤーが見るのは `view()`（2.3
-  のスナップショットと 2.4 のプレイヤーに見えるイベント。ゲートウェイと同じ射影）、`manifest()`（B-7
-  のジェネレーター）、各ステップの結果のうちプレイヤーが聞こえる・見えるフィールドだけ。
-  各ステップの結果には `elapsedMs`（入ってから返るまで）が付く。
+- B-5 のシミュレーションのプレイ：`setup({"role": …, "persona": …, "seed": …})` は本番どおりにプレイを
+  開始し（ゲートウェイの `POST /v1/playthroughs` と同じ経路：プレイと `open` タスクを書き、
+  ナレーターが処理する）、`opening()` のシミュレーションは使わない。`persona`、`seed` は
+  Trace（`eval.setup`）に記録するだけで、`seed` は偽モデルに渡す。
+  AI プレイヤーが見るのは `view()`（2.3 のスナップショットと 2.4 のプレイヤーに見えるイベント。
+  ゲートウェイと同じ射影）、`manifest()`（B-7 のジェネレーター）、各ステップの結果のうちプレイヤーが聞こえる・
+  見えるフィールドだけ。各ステップの結果には `elapsedMs`（入ってから返るまで）が付く。
   このプレイで記録した台帳には `playthroughId`（`zoujin_llm.playthrough`）が付く。
 - 未実装のステップとクエリ、`memory` 付きの配置イベント、レイアウトのないシーンでの `move` は
-  `EvalNotImplemented("<name>")` を投げる。リプレイが見つからなければ `ReplayMissing`。
-  台帳が上限に達したら `BudgetStop`、モデルが 429 を返したら `RateLimited`：この 2 つは実行全体を止めるもので、
-  このケースをスキップするのではない。ランナーはクラス名で判別する。
+  `EvalNotImplemented("<name>")` を投げる。
+  リプレイが見つからなければ `ReplayMissing`。台帳が上限に達したら `BudgetStop`、モデルが 429 を返したら
+  `RateLimited`：この 2 つは実行全体を止めるもので、このケースをスキップするのではない。ランナーはクラス名で判別する。
 - 1 プレイで 1 つのイベントループを共有し、DB はコネクションプールに入らない接続を使う。
   ランナーのタイムアウト（SIGALRM）で途中で中断されたとき、残されたプレイはテスト DB に残るだけ。
 """
@@ -207,8 +206,8 @@ def setup(setup: Mapping[str, Json], *, mode: str = "text") -> Session:
     """Start a playthrough. setup is the case's setup as is; mode is text / voice (in B-0 both go through the text
     narrator flow).
 
-    プレイを開始する。setup はケースの setup そのまま、mode は text / voice（B-0
-    ではどちらもテキストのナレーターの流れを通る）。
+    プレイを開始する。setup はケースの setup そのまま、mode は
+    text / voice（B-0 ではどちらもテキストのナレーターの流れを通る）。
     """
     if "persona" in setup:
         mixed = [k for k in NOT_WITH_PERSONA if k in setup]
@@ -427,9 +426,9 @@ class Session:
         `POST /v1/playthroughs` (`store.create_playthrough` writes the playthrough, the metrics row and the `open` task,
         and the narrator does it: startT, startAct, the beats that are due).
 
-        シミュレーションのプレイ（B-5）：本番どおりに開始し、ゲートウェイの `POST /v1/playthroughs`
-        と同じ経路を通る（`store.create_playthrough` がプレイ、指標の行、`open` タスクを書き、ナレーターが処理する：
-        startT、startAct、時刻が来たビート）。
+        シミュレーションのプレイ（B-5）：本番どおりに開始し、ゲートウェイの
+        `POST /v1/playthroughs` と同じ経路を通る（`store.create_playthrough` がプレイ、指標の行、`open` タスクを書き、
+        ナレーターが処理する：startT、startAct、時刻が来たビート）。
         """
         engine = self._engine()
         try:
@@ -487,8 +486,8 @@ class Session:
         """The scenarios file `scenarios.json` is in the same directory as the world.json used for new playthroughs
         (setup only uses `Library.current`).
 
-        シナリオの `scenarios.json` は開始に使う world.json と同じディレクトリにある（setup は `Library.current`
-        だけを使う）。
+        シナリオの `scenarios.json` は開始に使う world.json と同じディレクトリにある（setup は
+        `Library.current` だけを使う）。
         """
         return self.settings.world.parent
 
@@ -748,8 +747,8 @@ class Session:
         client never sends it; when it is impossible, a vetoed move is recorded (R2-precondition).
 
         アクション（api-contract 3.8）：`action` メッセージと同じくタスクの行を書き、ナレーターが判定する。
-        まだ 3D レイアウトのないシーン（帰り道、村：道のりと川渡りは S-081 の停留地点と一緒に作る、M3）
-        での `move` は `EvalNotImplemented` を投げ、ケースはスキップとして記録される。`move` の
+        まだ 3D レイアウトのないシーン（帰り道、村：道のりと川渡りは S-081 の停留地点と一緒に作る、
+        M3）での `move` は `EvalNotImplemented` を投げ、ケースはスキップとして記録される。`move` の
         `params.crossing`（川の渡り方、E5-008）は評価専用のパラメーター：契約 3.8 の `move` には params がなく、
         本番のクライアントは送らない。通れないときは却下された move を 1 件記録する（R2-precondition）。
         """
@@ -922,8 +921,8 @@ class Session:
         """Merge the events committed before this step (the held turn, drafts closed as a timeout) into this step's
         result.
 
-        このステップの前にコミットしたもの（hold 中のターン、タイムアウトで閉じた草稿）
-        のイベントをこのステップの結果にまとめる。
+        このステップの前にコミットしたもの（hold 中のターン、タイムアウトで閉じた草稿）のイベントをこのステップの
+        結果にまとめる。
         """
         if not pre:
             return r
@@ -1088,8 +1087,8 @@ class Session:
         the same projection as the gateway's `GET …/snapshot` and `GET …/events`. No variables, beat results or
         invisible events.
 
-        AI プレイヤーが見るもの（B-5）：2.3 のスナップショットと 2.4 のプレイヤーに見えるイベント（seq が after_seq
-        より大きいもの）。ゲートウェイの `GET …/snapshot`、`GET …/events` と同じ射影。変数、ビートの結果、
+        AI プレイヤーが見るもの（B-5）：2.3 のスナップショットと 2.4 のプレイヤーに見えるイベント（seq が
+        after_seq より大きいもの）。ゲートウェイの `GET …/snapshot`、`GET …/events` と同じ射影。変数、ビートの結果、
         見えないイベントは含まない。
         """
         self._run(self._flush())
@@ -1447,8 +1446,9 @@ def play_setup(w: Writer, scenarios: Mapping[str, Json], setup: Mapping[str, Jso
     結果をこのプレイの初期イベントとして書く（B-0 第 9 項）。
 
     `place`、シナリオによるビートの変更、シナリオのイベント、時刻が来たビートと期限、
-    時計を進めるだけのイベントはすべて `opening()` が出す。ここでは完全なイベント（eventId、summary、check）
-    に補って seq 順に適用するだけ。その後、開始時刻に `events` を追加する（評価による配置、api-contract 第 7 節）。
+    時計を進めるだけのイベントはすべて `opening()` が出す。ここでは完全なイベント（eventId、summary、
+    check）に補って seq 順に適用するだけ。その後、開始時刻に `events` を追加する（評価による配置、
+    api-contract 第 7 節）。
     """
     if "scenario" in setup:
         sc_id, until = str(setup["scenario"]), None

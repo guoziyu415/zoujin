@@ -1,4 +1,7 @@
-"""真实评测的连接池不能在第二步落到已关闭的事件循环。"""
+"""In a real eval the connection pool must not land on an already closed event loop at the second step.
+
+本物の評価では、コネクションプールが 2 ステップ目で閉じたイベントループに乗ってはならない。
+"""
 
 import asyncio
 import contextvars

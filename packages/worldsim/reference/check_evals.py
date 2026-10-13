@@ -372,182 +372,186 @@ class Checker:
         # ---------- Checks / チェック ----------
         types = set()
         for j, d in enumerate(det, 1):
-            dw = f"{where} 检查 {j}"
+            dw = f"{where} check / チェック {j}"
             ty = d.get("type")
             types.add(ty)
             if ty not in CHECK_TYPES:
-                self.err(f"{dw}：不认识的检查 {ty}")
+                self.err(f"{dw}: unknown check / 不明なチェック: {ty}")
                 continue
             if ty in REPLY_CHECKS:
                 st = d.get("step", last_to)
                 if kinds.get(st) != "to":
-                    self.err(f"{dw}：{ty} 的 step 要指向一个对话步骤")
+                    self.err(f"{dw}: the step of {ty} must point to a talk step / {ty} の step は会話のステップを指す")
                     continue
                 ch, say = says[st]
             if ty == "not_mention_fact":
                 f = self.facts.get(d.get("fact"))
                 if not f:
-                    self.err(f"{dw}：事实不存在 {d.get('fact')}")
+                    self.err(f"{dw}: fact does not exist / 事実が存在しない: {d.get('fact')}")
                     continue
                 if not f.get("spoilerTerms"):
-                    self.err(f"{dw}：{f['id']} 没有 spoilerTerms，确定性检查判不了")
+                    self.err(f"{dw}: {f['id']} has no spoilerTerms, so the deterministic check cannot judge it / {f['id']} に spoilerTerms がなく、決定的チェックで判定できない")
                 if res and ch in self.chars and self.knows(ch, f["id"], res):
-                    self.err(f"{dw}：{ch} 在检查点已经知道 {f['id']}，这不是剧透")
+                    self.err(f"{dw}: {ch} already knows {f['id']} at the checkpoint, so this is not a spoiler / {ch} はチェックポイントですでに {f['id']} を知っており、ネタバレではない")
                 hit = [t for t in f.get("spoilerTerms", []) if t in say]
                 if hit:
-                    self.err(f"{dw}：玩家的问题里已经说了剧透词 {hit}")
+                    self.err(f"{dw}: the player's question already says the spoiler terms / プレイヤーの問いがすでにネタバレ語を言っている: {hit}")
             elif ty in ("no_terms", "terms_any"):
                 terms = d.get("terms")
                 if not terms or not all(isinstance(t, str) and t for t in terms):
-                    self.err(f"{dw}：terms 要是非空字符串列表")
+                    self.err(f"{dw}: terms must be a list of non-empty strings / terms は空でない文字列のリストでなければならない")
                 elif ty == "no_terms" and not d.get("forbidEcho") and [t for t in terms if t in say]:
-                    self.warn(f"{dw}：玩家自己说了 {[t for t in terms if t in say]}，角色复述也会判失败；有意的话加 forbidEcho: true")
+                    self.warn(f"{dw}: the player said {[t for t in terms if t in say]} themselves, so a character repeating it also fails; add forbidEcho: true if intended / プレイヤー自身が {[t for t in terms if t in say]} を言っているので、登場人物が繰り返しても失敗になる。意図的なら forbidEcho: true を加える")
             elif ty in ("event", "no_event"):
                 mt = d.get("match", {})
                 for kk in set(mt) - {"type", "actor", "effects", "origin", "beneficiary"}:
-                    self.err(f"{dw}：match 只能有 type / actor / effects / origin / beneficiary，多了 {kk}")
+                    self.err(f"{dw}: match can only have type / actor / effects / origin / beneficiary; extra / match に書けるのは type / actor / effects / origin / beneficiary だけ。余分: {kk}")
                 if "origin" in mt and mt["origin"] not in EVENT_ORIGINS:
-                    self.err(f"{dw}：origin 不认识 {mt['origin']}")
+                    self.err(f"{dw}: unknown origin / 不明な origin: {mt['origin']}")
                 if "beneficiary" in mt and mt["beneficiary"] != "player" and mt["beneficiary"] not in self.chars:
-                    self.err(f"{dw}：beneficiary 要是 player 或人物 ID")
+                    self.err(f"{dw}: beneficiary must be player or a character ID / beneficiary は player か登場人物 ID")
                 if "type" in mt and mt["type"] not in EVENT_TYPES:
-                    self.err(f"{dw}：事件 type 不认识 {mt['type']}")
+                    self.err(f"{dw}: unknown event type / 不明なイベントの type: {mt['type']}")
                 if "actor" in mt and mt["actor"] not in {"player", "system", "narrator"} | set(self.chars):
-                    self.err(f"{dw}：actor 不认识 {mt['actor']}")
+                    self.err(f"{dw}: unknown actor / 不明な actor: {mt['actor']}")
                 self.check_effects(mt.get("effects", []), dw, partial=True)
                 if ty == "event":
                     if not set(d.get("statusIn", [])) or set(d["statusIn"]) - CHECK_STATUS:
-                        self.err(f"{dw}：statusIn 要是 {sorted(CHECK_STATUS)} 的非空子集")
+                        self.err(f"{dw}: statusIn must be a non-empty subset of / statusIn は次の空でない部分集合: {sorted(CHECK_STATUS)}")
                     if set(d.get("failedRulesAny", [])) - RULES:
-                        self.err(f"{dw}：failedRulesAny 不认识 {set(d['failedRulesAny']) - RULES}")
+                        self.err(f"{dw}: unknown failedRulesAny / 不明な failedRulesAny: {set(d['failedRulesAny']) - RULES}")
                     if "step" in d and kinds.get(d["step"]) not in ("to", "act"):
-                        self.err(f"{dw}：step 要指向对话或动作步骤")
+                        self.err(f"{dw}: step must point to a talk or action step / step は会話かアクションのステップを指す")
                     if d.get("step") in gives:
                         r7 = set(d.get("statusIn", [])) == {"rejected"} and "R7-capability" in d.get("failedRulesAny", [])
                         if gives[d["step"]] and r7:
-                            self.err(f"{dw}：这一步给的物品此刻拿得到（在 {place} 的 at，或在玩家手上），不该期待 R7 否决")
+                            self.err(f"{dw}: the item given in this step is obtainable right now (at of {place}, or in the player's hands), so an R7 rejection should not be expected / このステップで渡すアイテムは今入手できる（{place} の at、またはプレイヤーの手にある）ので、R7 による却下を期待すべきではない")
                         if not gives[d["step"]] and not set(d.get("statusIn", [])) & {"rejected", "downgraded"}:
-                            self.err(f"{dw}：这一步给的东西不在 items 里、在 {place} 拿不到、也不在玩家手上，只能被否决")
+                            self.err(f"{dw}: what this step gives is not in items, cannot be had at {place} and is not in the player's hands, so it can only be rejected / このステップで渡すものは items になく、{place} では入手できず、プレイヤーの手にもないので、却下されるしかない")
             elif ty == "var":
                 self.check_value(d.get("var"), d.get("equals"), dw)
             elif ty == "beat":
                 if d.get("beat") not in self.sim.beats or d.get("status") not in BEAT_STATUS:
-                    self.err(f"{dw}：节拍或状态不对 {d.get('beat')} {d.get('status')}")
+                    self.err(f"{dw}: wrong beat or status / ビートか状態が正しくない: {d.get('beat')} {d.get('status')}")
             elif ty == "outcome":
                 if d.get("world") not in self.endings:
-                    self.err(f"{dw}：世界结局不存在 {d.get('world')}")
+                    self.err(f"{dw}: world ending does not exist / 世界の結末が存在しない: {d.get('world')}")
             elif ty == "clock_advanced":
                 lo, hi = d.get("min"), d.get("max")
                 if not (isinstance(lo, int) and isinstance(hi, int) and 0 <= lo <= hi):
-                    self.err(f"{dw}：min / max 要是 0 ≤ min ≤ max 的整数")
+                    self.err(f"{dw}: min / max must be integers with 0 ≤ min ≤ max / min / max は 0 ≤ min ≤ max の整数")
                 st = d.get("step", last_to)
                 if st not in kinds:
-                    self.err(f"{dw}：step 不存在")
-                elif lo is not None and hi is not None:       # S-038、UX 4.3：耗时是几个固定值，不是 1〜120 的任意数
+                    self.err(f"{dw}: step does not exist / step が存在しない")
+                # S-038, UX 4.3: durations are a few fixed values, not any number from 1〜120
+                # S-038、UX 4.3：所要時間はいくつかの固定値で、1〜120 の任意の数ではない
+                elif lo is not None and hi is not None:
                     pc, k = self.pacing, kinds[st]
                     zero = {pc.get("failedTurnMinutes", 0), pc.get("sceneWalkMinutes", 0), pc.get("examineMinutes", 0)}
                     if k == "to":
                         talk = pc.get("talkTurnMinutesAct4") if res and res["t"] is not None and res["t"] >= self.act4_t \
                             else pc.get("talkTurnMinutes")
                         if (lo, hi) != (talk, talk):
-                            self.err(f"{dw}：此刻说话一来一回是 {talk} 分（pacing），写 min = max = {talk}")
+                            self.err(f"{dw}: one exchange of talk takes {talk} minutes right now (pacing); write min = max = {talk} / 今は会話 1 往復が {talk} 分（pacing）。min = max = {talk} と書く")
                     elif k == "retract":
                         if (lo, hi) != (0, 0):
-                            self.err(f"{dw}：作废的一轮不花时间，写 0")
+                            self.err(f"{dw}: a voided turn takes no time; write 0 / 取り消したターンは時間を使わないので 0 と書く")
                     elif k == "act":
                         a = steps[st - 1]["act"]
                         same = a.get("kind") == "move" and self.scene_of.get(a.get("target")) == self.scene_of.get(place)
                         if a.get("kind") == "examine" or same:
                             if (lo, hi) != (0, 0) or 0 not in zero:
-                                self.err(f"{dw}：调查和同一场景里走动不花时间，写 0")
+                                self.err(f"{dw}: examining and walking within one scene take no time; write 0 / 調べることと同じシーン内の移動は時間を使わないので 0 と書く")
                         elif a.get("kind") not in ("move", "go", "wait", "run-together") and \
                                 not pc.get("situationalMinMinutes", 0) <= lo <= hi <= pc.get("situationalMaxMinutes", 10**9):
-                            self.err(f"{dw}：情境动作的耗时要在 pacing 的 15〜120 分之间")
+                            self.err(f"{dw}: a situational action must take between pacing's 15〜120 minutes / 状況アクションの所要時間は pacing の 15〜120 分の範囲内")
             elif ty == "memory":
                 if d.get("character") not in self.chars or not isinstance(d.get("exists"), bool):
-                    self.err(f"{dw}：memory 要有存在的 character 和 bool 的 exists")
+                    self.err(f"{dw}: memory needs an existing character and a bool exists / memory には存在する character と bool の exists が必要")
                 if "fromStep" in d and kinds.get(d["fromStep"]) not in ("to", "act"):
-                    self.err(f"{dw}：fromStep 要指向对话或动作步骤")
+                    self.err(f"{dw}: fromStep must point to a talk or action step / fromStep は会話かアクションのステップを指す")
                 if "kind" in d and d["kind"] not in MEMORY_KINDS:
-                    self.err(f"{dw}：记忆 kind 不认识 {d['kind']}")
+                    self.err(f"{dw}: unknown memory kind / 不明な記憶の kind: {d['kind']}")
             elif ty == "trust":
                 if d.get("character") not in self.chars or not isinstance(d.get("equals"), int) or not -100 <= d["equals"] <= 100:
-                    self.err(f"{dw}：trust 要有存在的 character 和 -100..100 的 equals")
+                    self.err(f"{dw}: trust needs an existing character and equals in -100..100 / trust には存在する character と -100..100 の equals が必要")
             elif ty == "utterance_cleared":
                 if kinds.get(d.get("step")) != "to":
-                    self.err(f"{dw}：step 要指向对话步骤")
+                    self.err(f"{dw}: step must point to a talk step / step は会話のステップを指す")
             elif ty == "event_exists":
                 if kinds.get(d.get("fromStep")) not in ("to", "act"):
-                    self.err(f"{dw}：fromStep 要指向对话或动作步骤")
+                    self.err(f"{dw}: fromStep must point to a talk or action step / fromStep は会話かアクションのステップを指す")
             elif ty == "db_absent":
                 if not d.get("tables") or set(d["tables"]) - TABLES:
-                    self.err(f"{dw}：tables 要是 {sorted(TABLES)} 的非空子集")
+                    self.err(f"{dw}: tables must be a non-empty subset of / tables は次の空でない部分集合: {sorted(TABLES)}")
                 if "deletePlaythrough" not in kinds.values():
-                    self.err(f"{dw}：db_absent 需要前面有 deletePlaythrough 步骤")
+                    self.err(f"{dw}: db_absent needs an earlier deletePlaythrough step / db_absent には前に deletePlaythrough ステップが必要")
             elif ty == "no_pii":
                 strs = d.get("strings") or []
                 if not strs or d.get("scope") not in ("memory", "summary", "ending", "all"):
-                    self.err(f"{dw}：no_pii 要有 strings 和 scope（memory / summary / ending / all）")
+                    self.err(f"{dw}: no_pii needs strings and scope (memory / summary / ending / all) / no_pii には strings と scope が必要")
                 said = " ".join(x for _, x in says.values())
                 for s_ in strs:
                     if s_ not in said:
-                        self.err(f"{dw}：{s_!r} 玩家没说过，这条检查测不到东西")
+                        self.err(f"{dw}: the player never said {s_!r}, so this check measures nothing / プレイヤーは {s_!r} を言っていないので、このチェックは何も測れない")
             elif ty == "followup_questions":
                 if kinds.get(d.get("after")) != "silence" or not isinstance(d.get("max"), int) or d["max"] < 0:
-                    self.err(f"{dw}：after 要指向 silence 步骤，max 是非负整数")
+                    self.err(f"{dw}: after must point to a silence step and max must be a non-negative integer / after は silence ステップを指し、max は 0 以上の整数")
             elif ty == "schedule_shift":
                 if d.get("beat") not in self.sim.beats or not isinstance(d.get("equals"), int):
-                    self.err(f"{dw}：schedule_shift 要有存在的 beat 和整数 equals")
+                    self.err(f"{dw}: schedule_shift needs an existing beat and an integer equals / schedule_shift には存在する beat と整数の equals が必要")
             elif ty == "promise":
                 if d.get("status") not in PROMISE_STATUS:
-                    self.err(f"{dw}：promise.status 要是 {sorted(PROMISE_STATUS)}")
+                    self.err(f"{dw}: promise.status must be one of / promise.status は次のいずれか: {sorted(PROMISE_STATUS)}")
                 if "template" in d and d["template"] not in self.templates:
-                    self.err(f"{dw}：约定模板不存在 {d['template']}")
+                    self.err(f"{dw}: promise template does not exist / 約束のテンプレートが存在しない: {d['template']}")
                 if "template" not in d and not ("from" in d and "to" in d):
-                    self.err(f"{dw}：promise 要用 template，或 from + to 指明是哪一个约定")
+                    self.err(f"{dw}: promise must name which promise with template, or from + to / promise は template か from + to でどの約束かを示す")
             elif ty == "act_plan":
                 if "propose" not in kinds.values():
-                    self.err(f"{dw}：act_plan 要有前面的 propose 步骤")
+                    self.err(f"{dw}: act_plan needs an earlier propose step / act_plan には前に propose ステップが必要")
                 elif not isinstance(d.get("accepted"), bool):
-                    self.err(f"{dw}：act_plan 要写 accepted: true / false")
+                    self.err(f"{dw}: act_plan needs accepted: true / false / act_plan には accepted: true / false が必要")
                 elif d["accepted"]:
                     ended = self.act_end.get(cp_beat)
-                    # 下一幕 = 这一幕的去处去的那一幕（切片版第一幕直接跳到 act.4，S-077 ⑤）；
-                    # （1.7，C-19）幕上有 plan 时成行就落在它写的下一幕和地点
+                    # Next act = the act this act's exits go to (in the slice, act 1 jumps straight to act.4, S-077 ⑤);
+                    # (1.7, C-19) when the act has a plan, a plan that works out lands on the next act and place it names
+                    # 次の幕 = この幕の行き先が向かう幕（スライス版では第一幕から act.4 へ直接飛ぶ、S-077 ⑤）。
+                    # （1.7、C-19）幕に plan があれば、成立したプランはそこに書かれた次の幕と場所に着地する
                     plan = ended.get("plan") if ended else None
                     nxt = [plan["toAct"]] if plan else sorted({e["toAct"] for e in ended["exits"]}) if ended else []
                     if d.get("toAct") not in nxt:
-                        self.err(f"{dw}：成行的打算 toAct 要是下一幕 {nxt}")
+                        self.err(f"{dw}: toAct of an accepted plan must be the next act / 成立したプランの toAct は次の幕でなければならない: {nxt}")
                     if plan and d.get("place") != plan["place"]:
-                        self.err(f"{dw}：这一幕有 plan，成行的打算落在 {plan['place']}")
+                        self.err(f"{dw}: this act has a plan, so an accepted plan lands on {plan['place']} / この幕には plan があるので、成立したプランは {plan['place']} に着地する")
                     elif d.get("place") not in self.places:
-                        self.err(f"{dw}：地点不存在 {d.get('place')}")
+                        self.err(f"{dw}: place does not exist / 場所が存在しない: {d.get('place')}")
                     elif reach is not None and d["place"] not in reach:
-                        self.err(f"{dw}：{role['id']} 进不了 {d['place']}，期待成行和 R7 矛盾")
+                        self.err(f"{dw}: {role['id']} cannot enter {d['place']}, so expecting acceptance contradicts R7 / {role['id']} は {d['place']} に入れないので、成立を期待すると R7 と矛盾する")
                 elif set(d) - {"type", "accepted"}:
-                    self.err(f"{dw}：不成行时只写 accepted: false")
+                    self.err(f"{dw}: when not accepted, write only accepted: false / 成立しないときは accepted: false だけを書く")
             elif ty == "safety_card":
                 if not isinstance(d.get("shown"), bool):
-                    self.err(f"{dw}：safety_card 要写 shown: true / false")
+                    self.err(f"{dw}: safety_card needs shown: true / false / safety_card には shown: true / false が必要")
             elif ty in ENDING_CHECKS and start != "persona" and "advance" not in kinds.values():
-                self.err(f"{dw}：{ty} 要走到结局（模拟局，或有 advance）")
+                self.err(f"{dw}: {ty} must reach the ending (a simulated game, or with advance) / {ty} は結末まで進む必要がある（シミュレーション局、または advance あり）")
             elif ty in E7_CHECKS and start != "persona":
-                self.err(f"{dw}：{ty} 只用于模拟局（setup.persona）")
+                self.err(f"{dw}: {ty} is only for simulated games (setup.persona) / {ty} はシミュレーション局（setup.persona）専用")
         if judge is not None:
             if not isinstance(judge.get("rubric"), str) or not judge["rubric"].strip():
-                self.err(f"{where}：judge.rubric 要写评分细则")
+                self.err(f"{where}: judge.rubric needs a scoring rubric / judge.rubric には採点基準が必要")
             if not re.fullmatch(r">=[1-5]/5", str(judge.get("pass", ""))):
-                self.err(f"{where}：judge.pass 写成 \">=N/5\"")
+                self.err(f"{where}: write judge.pass as \">=N/5\" / judge.pass は \">=N/5\" と書く")
 
-        # ---------- 套件约定 ----------
+        # ---------- Suite conventions / スイートの約束事 ----------
         if suite == "E1" and not (types & {"world_unchanged", "no_event"} and "no_terms" in types):
-            self.warn(f"{where}：E1 一般要有 world_unchanged / no_event 和 no_terms")
+            self.warn(f"{where}: E1 normally needs world_unchanged / no_event and no_terms / E1 には通常 world_unchanged / no_event と no_terms が必要")
         if suite == "E2" and not types & {"not_mention_fact", "no_terms"}:
-            self.err(f"{where}：E2 要有 not_mention_fact 或 no_terms")
+            self.err(f"{where}: E2 needs not_mention_fact or no_terms / E2 には not_mention_fact か no_terms が必要")
         if suite == "E7" and (start != "persona" or E7_CHECKS - types):
-            self.err(f"{where}：E7 用模拟局，四项检查都要有")
+            self.err(f"{where}: E7 uses simulated games and needs all four checks / E7 はシミュレーション局を使い、4 つのチェックがすべて必要")
 
-        # ---------- 能用推演算出来的，现在就算 ----------
+        # ---------- What simulation can compute is computed now / シミュレーションで計算できるものは今計算する ----------
         sim_checks = [d for d in det if d.get("type") in SIM_CHECKS]
         if not sim_checks or any(k != "advance" for k in kinds.values()) or start == "persona":
             return False
@@ -563,15 +567,15 @@ class Checker:
         for d in sim_checks:
             if d["type"] == "outcome" and res["outcome"] != d["world"]:
                 ok = False
-                self.err(f"{where}：推演出的世界结局是 {res['outcome']}，期望 {d['world']}")
+                self.err(f"{where}: the simulated world ending is {res['outcome']}, expected {d['world']} / シミュレーションの世界の結末は {res['outcome']}、期待は {d['world']}")
             elif d["type"] == "var" and res["state"].get(d["var"]) != d["equals"]:
                 ok = False
-                self.err(f"{where}：推演出 {d['var']} = {res['state'].get(d['var'])!r}，期望 {d['equals']!r}")
+                self.err(f"{where}: simulated {d['var']} = {res['state'].get(d['var'])!r}, expected {d['equals']!r} / シミュレーションでは {d['var']} = {res['state'].get(d['var'])!r}、期待は {d['equals']!r}")
             elif d["type"] == "beat":
                 got = self.beat_status(d["beat"], res, end_t)
                 if got != d["status"] or ("t" in d and res["times"].get(d["beat"]) != d["t"]):
                     ok = False
-                    self.err(f"{where}：推演出 {d['beat']} {got} t={res['times'].get(d['beat'])}，期望 {d['status']} t={d.get('t')}")
+                    self.err(f"{where}: simulated {d['beat']} {got} t={res['times'].get(d['beat'])}, expected {d['status']} t={d.get('t')} / シミュレーションでは {d['beat']} {got} t={res['times'].get(d['beat'])}、期待は {d['status']} t={d.get('t')}")
         return ok
 
 
@@ -581,25 +585,30 @@ def main():
     ap.add_argument("--scenarios", required=True)
     ap.add_argument("--cases", required=True)
     ap.add_argument("--personas", nargs="+", default=[],
-                    help="模拟局的画像，可以给几个文件（第一幕的 + evals/acts/actN 的）；不给 = 用例里不能有模拟局")
+                    help="Personas for simulated games; several files may be given (act 1's + evals/acts/actN's); none = the cases"
+                         " cannot contain simulated games / シミュレーション局のペルソナ。複数のファイルを指定できる（第一幕のもの +"
+                         " evals/acts/actN のもの）。指定しない = ケースにシミュレーション局を入れられない")
     a = ap.parse_args()
     load = lambda p: json.loads(Path(p).read_text(encoding="utf-8"))  # noqa: E731
     ck = Checker(load(a.world), load(a.scenarios), [p for f in a.personas for p in load(f)])
     ids = [p["id"] for f in a.personas for p in load(f)]
     for pid in sorted({i for i in ids if ids.count(i) > 1}):
-        ck.err(f"画像 {pid} 在几个文件里重复")
+        ck.err(f"Persona {pid} is duplicated across files / ペルソナ {pid} が複数のファイルで重複")
 
-    # 画像文件四幕共用：切片只有旅人，别的身份的画像切片用例用不到，只查用例里用到的（W-2）
+    # The persona files are shared by all four acts: the slice only has the traveler, so other roles' personas are not
+    # used by slice cases; only check the ones the cases use (W-2)
+    # ペルソナのファイルは 4 幕で共用：スライスには旅人しかおらず、ほかのロールのペルソナはスライスのケースで使わない
+    # ので、ケースで使うものだけを確認する（W-2）
     used = set(re.findall(r'"persona": "([^"]+)"', "".join(
         f.read_text(encoding="utf-8") for f in Path(a.cases).glob("E*.jsonl"))))
     for pid, p in ck.personas.items():
         r = ck.roles.get(p.get("role"))
         if pid in used and (not r or r["release"] != 1):
-            ck.err(f"画像 {pid}：身份 {p.get('role')} 不存在或不在第一版")
+            ck.err(f"Persona {pid}: role {p.get('role')} does not exist or is not in release 1 / ペルソナ {pid}：ロール {p.get('role')} が存在しないか第 1 版にない")
 
     files = sorted(Path(a.cases).glob("E*.jsonl"))
     if not files:
-        ck.err(f"{a.cases} 下没有 E*.jsonl")
+        ck.err(f"No E*.jsonl under {a.cases} / {a.cases} に E*.jsonl がない")
     seen, rows = set(), []
     for f in files:
         suite, n, verified, modes = f.stem, 0, 0, {"text": 0, "voice": 0}
@@ -609,34 +618,34 @@ def main():
             try:
                 c = json.loads(line)
             except json.JSONDecodeError as e:
-                ck.err(f"{f.name}:{ln}：不是合法 JSON（{e}）")
+                ck.err(f"{f.name}:{ln}: invalid JSON / 正しい JSON ではない ({e})")
                 continue
             cid = c.get("id", "?")
             where = f"{f.name}:{ln} {cid}"
             n += 1
             if cid in seen:
-                ck.err(f"{where}：id 重复")
+                ck.err(f"{where}: duplicate id / id の重複")
             seen.add(cid)
             if not re.fullmatch(rf"{suite}-\d{{3}}", cid) or c.get("suite") != suite:
-                ck.err(f"{where}：id / suite 应该是 {suite}-NNN / {suite}")
+                ck.err(f"{where}: id / suite should be {suite}-NNN / {suite} (id / suite は {suite}-NNN / {suite} であるべき)")
             if not c.get("title"):
-                ck.err(f"{where}：缺 title")
+                ck.err(f"{where}: missing title / title がない")
             mode = c.get("mode", "text")
             if mode not in modes:
-                ck.err(f"{where}：mode 只能是 text / voice")
+                ck.err(f"{where}: mode can only be text / voice (mode は text / voice のみ)")
             else:
                 modes[mode] += 1
             runs = c.get("runs", 5)
             if not isinstance(runs, int) or runs < 1:
-                ck.err(f"{where}：runs 要是正整数")
+                ck.err(f"{where}: runs must be a positive integer / runs は正の整数でなければならない")
             verified += bool(ck.case(c, where, suite))
         rows.append((suite, n, modes["text"], modes["voice"], verified))
 
-    print("| 套件 | 用例 | 文字 | 语音 | 已用推演验证结果 |")
+    print("| Suite / スイート | Cases / ケース | Text / テキスト | Voice / 音声 | Results verified by simulation / シミュレーションで検証済み |")
     print("|---|---|---|---|---|")
     for r in rows:
         print("| " + " | ".join(map(str, r)) + " |")
-    print(f"\n错误 {len(ck.errors)}，警告 {len(ck.warnings)}")
+    print(f"\nErrors / エラー {len(ck.errors)}, warnings / 警告 {len(ck.warnings)}")
     for e in ck.errors:
         print("ERROR", e)
     for x in ck.warnings:

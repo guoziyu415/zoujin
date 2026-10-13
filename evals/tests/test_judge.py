@@ -1,4 +1,9 @@
-"""评审员（data-design 7.3）：校准样本、请求、回放、账本、Batch 和 zoujin-judge 命令。全部用假客户端，不联网。"""
+"""Judge (data-design 7.3): calibration samples, requests, replays, the ledger, Batch and the zoujin-judge command. All
+with a fake client, no network.
+
+審査員（data-design 7.3）：キャリブレーションサンプル、リクエスト、リプレイ、台帳、Batch、zoujin-judge コマンド。
+すべて偽クライアントを使い、ネットワークには接続しない。
+"""
 
 from __future__ import annotations
 
@@ -32,8 +37,10 @@ from zoujin_llm import claude_prices
 
 REPO = Path(__file__).resolve().parents[2]
 ITEMS: list[dict[str, Any]] = calibrate.load_items(REPO / "evals" / "judge" / "calibration.jsonl")
-PRICES = claude_prices()  # 共用包 zoujin_llm 里的那一份（B-8）
-MODEL = "test-opus-9-9"  # 假的模型 ID：认得出档名和版本就行
+PRICES = claude_prices()  # the one in the shared package zoujin_llm (B-8) / 共有パッケージ zoujin_llm にあるもの（B-8）
+# a fake model ID: it only needs a recognisable tier name and version
+# 偽のモデル ID：ティア名とバージョンが分かればよい
+MODEL = "test-opus-9-9"
 TAG = "opus-9.9"
 USAGE = {"inputTokens": 1000, "outputTokens": 300, "cacheReadTokens": 0, "cacheWriteTokens": 0}
 
@@ -53,12 +60,15 @@ def slice_judge_cases() -> dict[str, dict[str, Any]]:
     return out
 
 
-# —— 校准样本 ——
+# —— Calibration samples / キャリブレーションサンプル ——
 
 
 def test_calibration_items_cover_every_slice_judge_case_twice() -> None:
     cases = slice_judge_cases()
-    # J43、J44（E8-004）去掉了：出卡的那一轮人物不回答，这一例不再判分（api-contract 3.12）；编号不重排
+    # J43 and J44 (E8-004) were removed: the character does not answer in the turn that shows the card, so that case
+    # is no longer judged (api-contract 3.12); the numbering is not reshuffled.
+    # J43、J44（E8-004）は削除した：カードを出すターンでは人物が返答しないので、このケースはもう採点しない
+    # （api-contract 3.12）。番号は振り直さない。
     assert [x["id"] for x in ITEMS] == [f"J{n:02d}" for n in range(1, 51) if n not in (43, 44)]
     assert Counter(x["case"] for x in ITEMS) == {c: 2 for c in cases}
     for x in ITEMS:
@@ -72,7 +82,7 @@ def test_calibration_items_cover_every_slice_judge_case_twice() -> None:
         assert x["transcript"] and all(set(t) == {"speaker", "text"} and t["text"] for t in x["transcript"])
         assert x["transcript"][0]["speaker"] == "プレイヤー" and x["context"]
     ok = sum(calibrate.passed(x, x["label"]["score"]) for x in ITEMS)
-    assert 20 <= ok <= 30  # 过和不过大致各半
+    assert 20 <= ok <= 30  # roughly half pass, half fail / 合格と不合格がおおよそ半々
 
 
 def test_zg_sample_is_20_items_half_pass_one_per_case_without_selfharm() -> None:
@@ -80,16 +90,27 @@ def test_zg_sample_is_20_items_half_pass_one_per_case_without_selfharm() -> None
     assert len(zg) == calibrate.ZG_N
     assert sum(calibrate.passed(x, x["label"]["score"]) for x in zg) == 10
     assert len({x["case"] for x in zg}) == 20
-    assert "E8-004" not in {x["case"] for x in zg}  # 现实危机的两条不给 zg 盲标
+    # the two real-crisis items are not given to zg for blind labelling
+    # 現実の危機の 2 件は zg のブラインドラベルに出さない
+    assert "E8-004" not in {x["case"] for x in zg}
 
 
-# 采用的评审员：opus-5.5、effort low、输出上限 2048（README「10-11 第一次校准」）。模型 ID 只用来算档名，写假的
+# The adopted judge: opus-5.5, effort low, output cap 2048 (README "first calibration on 10-11"). The model ID is used
+# only to derive the tier name, so a fake one is written.
+# 採用した審査員：opus-5.5、effort low、出力上限 2048（README「10-11 の初回キャリブレーション」）。モデル ID は
+# ティア名の算出にしか使わないので、偽のものを書く。
 CALIBRATED_TAG, CALIBRATED_EFFORT, CALIBRATED_MAX_TOKENS = "opus-5.5", "low", 2048
 
 
 def test_committed_replays_are_the_current_calibration_and_pass_the_bar() -> None:
-    """提交的回放正好是现在的 48 条 × 3 次，一致率过线。改了样本、细则或评审员的提示，这里就会少回放：
-    在 Mac 上再跑一遍 calibrate（只判少的），新回放一起提交，旧的删掉。"""
+    """The committed replays are exactly the current 48 items × 3 runs, and the agreement rate meets the bar. If the
+    samples, the rubrics or the judge's prompt change, replays go missing here: run calibrate again on the Mac (it
+    judges only the missing ones), commit the new replays together and delete the old ones.
+
+    コミットしたリプレイはちょうど現在の 48 件 × 3 回で、一致率は基準を満たす。サンプル、評価基準、審査員のプロンプトを
+    変えるとここでリプレイが不足する：Mac で calibrate を再実行し（不足分だけを採点する）、新しいリプレイを一緒に
+    コミットし、古いものは削除する。
+    """
     store = ReplayStore(REPO / "evals" / "judge" / "replays")
     todo = [(item(n), s) for s in (1, 2, 3) for n in range(1, len(ITEMS) + 1)]
     keys = {
@@ -105,7 +126,7 @@ def test_committed_replays_are_the_current_calibration_and_pass_the_bar() -> Non
     assert s["ok"] and s["rate"] >= calibrate.BAR
 
 
-# —— 请求 ——
+# —— Requests / リクエスト ——
 
 
 def test_request_has_rubric_context_transcript_and_sample_only_in_the_key() -> None:
@@ -118,7 +139,8 @@ def test_request_has_rubric_context_transcript_and_sample_only_in_the_key() -> N
     assert replay_key(TAG, r1) != replay_key(TAG, r2) != replay_key("opus-9.8", r2)
     assert replay_key(TAG, r1).startswith("claude|opus-9.9|judge-1|")
     p = api_params(MODEL, r1)
-    assert "sample" not in json.dumps(p) and "thinking" not in p  # 思考关不掉，不写 thinking
+    # thinking cannot be turned off, so no thinking field / 思考はオフにできないので thinking は書かない
+    assert "sample" not in json.dumps(p) and "thinking" not in p
     assert p["output_config"]["effort"] == "low" and p["output_config"]["format"]["type"] == "json_schema"
     assert p["messages"] == [{"role": "user", "content": text}]
 
@@ -152,10 +174,11 @@ def test_prices_by_tier_batch_and_cache() -> None:
         with pytest.raises(ValueError):
             PRICES.price(bad)
     req = keyed_request(item(1), effort="low", max_tokens=2048, sample=1)
-    assert PRICES.estimate(MODEL, req, batch=False) > 2048 * 20 / 1e6  # 输出按上限估
+    # output is estimated at the cap / 出力は上限で見積もる
+    assert PRICES.estimate(MODEL, req, batch=False) > 2048 * 20 / 1e6
 
 
-# —— 账本 ——
+# —— Ledger / 台帳 ——
 
 
 def test_ledger_caps_claude_total_and_item_across_both_books(tmp_path: Path) -> None:
@@ -166,11 +189,15 @@ def test_ledger_caps_claude_total_and_item_across_both_books(tmp_path: Path) -> 
     ]
     path.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
     led = ClaudeLedger(path, max_total_usd=1.0, max_item_usd=6.0, item="judge-calibration")
-    assert led.spent() == (0.5, 5.0)  # 总上限只算 claude 的行；单项两本账合起来
+    # the total cap counts only claude rows; the per-item cap combines both ledgers
+    # 総上限は claude の行だけを数え、項目ごとの上限は 2 つの台帳を合算する
+    assert led.spent() == (0.5, 5.0)
     led.before(0.4)
-    with pytest.raises(BudgetStop, match="总上限"):
+    # the message names the cap that was hit: the total cap $1.00 / メッセージは超えた上限を示す：総上限 $1.00
+    with pytest.raises(BudgetStop, match=r"\$1\.00"):
         led.before(0.6)
-    with pytest.raises(BudgetStop, match="单项上限"):
+    # the per-item cap $5.50 / 項目ごとの上限 $5.50
+    with pytest.raises(BudgetStop, match=r"\$5\.50"):
         ClaudeLedger(path, 10.0, 5.5, "judge-calibration").before(0.6)
     led.add(model=MODEL, usage=USAGE, cost=0.01)
     last = json.loads(path.read_text(encoding="utf-8").splitlines()[-1])
@@ -181,14 +208,19 @@ def test_ledger_caps_claude_total_and_item_across_both_books(tmp_path: Path) -> 
         "item": "judge-calibration",
         "costUsd": 0.01,
     }
-    assert "request" not in last and "response" not in last  # 账本不写内容
+    # the ledger records no content / 台帳には内容を書かない
+    assert "request" not in last and "response" not in last
 
 
-# —— 假客户端 ——
+# —— Fake client / 偽クライアント ——
 
 
 class FakeClaude:
-    """按请求里的对话记录认出是哪一条，回 scores 里给的分（默认数据标的分）。"""
+    """Recognises the item by the transcript in the request and returns the score given in scores (by default the
+    data's label).
+
+    リクエスト内の会話記録でどの項目かを判別し、scores で与えた点数（デフォルトはデータのラベルの点数）を返す。
+    """
 
     def __init__(
         self, scores: Mapping[str, int] | None = None, *, stop: str = "end_turn", text: str | None = None
@@ -221,7 +253,7 @@ class FakeClaude:
         return self.polls > 1
 
     def results(self, batch_id: str) -> Iterator[tuple[str, Reply | Failed]]:
-        for cid, params in reversed(self.batches[batch_id]):  # 顺序不定
+        for cid, params in reversed(self.batches[batch_id]):  # in no particular order / 順序は不定
             yield cid, self.fail.get(cid) or self._reply(params)
 
 
@@ -255,10 +287,12 @@ def test_one_calls_once_then_replays(tmp_path: Path) -> None:
     assert {(r["provider"], r["kind"], r["use"], r["item"]) for r in ledger_rows(tmp_path)} == {
         ("claude", "judge", "eval", "judge-calibration")
     }
-    # 回放和账本里只有档名加版本，没有模型 ID
+    # replays and the ledger hold only the tier name plus version, never the model ID
+    # リプレイと台帳にはティア名とバージョンだけがあり、モデル ID はない
     written = (tmp_path / "replays" / "judge.jsonl").read_text("utf-8") + (tmp_path / "ledger.jsonl").read_text("utf-8")
     assert MODEL not in written and '"model": "opus-9.9"' in written
-    # 换一个进程读同一个回放目录：不用客户端也判得出来
+    # another process reading the same replay directory can judge without a client
+    # 別のプロセスが同じリプレイのディレクトリを読めば、クライアントなしで採点できる
     offline = Judge(MODEL, "low", 2048, ReplayStore(tmp_path / "replays"), PRICES)
     assert offline.one(item(1)).score == 4
     assert offline.one(item(1), sample=3).error == "replay-missing"
@@ -279,21 +313,24 @@ def test_failed_verdicts_are_charged_but_not_replayed(tmp_path: Path, stop: str,
     assert v.score is None and v.error is not None and v.error.startswith(error) and v.cost_usd > 0
     assert len(ledger_rows(tmp_path)) == 1 and not (tmp_path / "replays").exists()
     j.one(item(2))
-    assert len(fake.calls) == 2  # 下次重判
+    assert len(fake.calls) == 2  # judged again next time / 次回また採点する
 
 
 def test_budget_stop_before_the_call(tmp_path: Path) -> None:
     fake = FakeClaude()
-    j = live_judge(tmp_path, fake, cap=0.01)  # 一次最多约 $0.045（输出到上限）
+    # at most about $0.045 per call (output up to the cap) / 1 回あたり最大約 $0.045（出力が上限まで）
+    j = live_judge(tmp_path, fake, cap=0.01)
     with pytest.raises(BudgetStop):
         j.one(item(1))
     assert fake.calls == [] and ledger_rows(tmp_path) == []
 
 
 def test_live_needs_both_ledger_and_client_and_a_known_price() -> None:
-    with pytest.raises(ValueError, match="账本"):
+    with pytest.raises(ValueError, match="ledger"):
         Judge(MODEL, "low", 2048, ReplayStore(Path("/nonexistent")), PRICES, transport=FakeClaude())
-    with pytest.raises(ValueError, match="认不出模型"):
+    # zoujin_llm refuses a model whose price tier it cannot recognise
+    # zoujin_llm は価格ティアの分からないモデルを拒否する
+    with pytest.raises(ValueError, match="'unknown'"):
         Judge("unknown", "low", 2048, ReplayStore(Path("/nonexistent")), PRICES)
     with pytest.raises(ValueError, match="effort"):
         Judge(MODEL, "none", 2048, ReplayStore(Path("/nonexistent")), PRICES)
@@ -306,7 +343,7 @@ def test_replay_store_rejects_a_tampered_record(tmp_path: Path) -> None:
     rec = json.loads(p.read_text(encoding="utf-8"))
     rec["request"]["user"] += "x"
     p.write_text(json.dumps(rec, ensure_ascii=False) + "\n", encoding="utf-8")
-    with pytest.raises(ValueError, match="对不上"):
+    with pytest.raises(ValueError, match="does not match"):
         ReplayStore(tmp_path / "replays")
 
 
@@ -316,7 +353,7 @@ def test_replay_store_rejects_a_tampered_record(tmp_path: Path) -> None:
 def test_batch_skips_replays_maps_results_by_custom_id_and_halves_the_price(tmp_path: Path) -> None:
     fake = FakeClaude({"J03": 2})
     j = live_judge(tmp_path, fake)
-    j.one(item(1))  # 已有回放的不交
+    j.one(item(1))  # items that already have a replay are not submitted / リプレイがあるものは提出しない
     fake.fail["J04-s1"] = Failed("expired")
     todo = [(item(n), 1) for n in (1, 2, 3, 4)]
     pending = tmp_path / "out" / "pending-batch.json"
@@ -326,7 +363,8 @@ def test_batch_skips_replays_maps_results_by_custom_id_and_halves_the_price(tmp_
     assert vs[0].replayed and vs[3].error == "expired"
     assert [cid for cid, _ in fake.batches["batch-1"]] == ["J02-s1", "J03-s1", "J04-s1"]
     assert vs[1].cost_usd == pytest.approx((1000 * 4 + 300 * 20) / 1e6 / 2)
-    assert not pending.exists() and len(ledger_rows(tmp_path)) == 3  # 一次 + 批里成了的两条
+    # one call + the two that succeeded in the batch / 1 回 + バッチで成功した 2 件
+    assert not pending.exists() and len(ledger_rows(tmp_path)) == 3
 
 
 def test_batch_resumes_a_pending_batch_instead_of_resubmitting(tmp_path: Path) -> None:
@@ -341,7 +379,7 @@ def test_batch_resumes_a_pending_batch_instead_of_resubmitting(tmp_path: Path) -
     assert [v.score for v in vs] == [ITEMS[4]["label"]["score"], ITEMS[5]["label"]["score"]]
     assert list(fake.batches) == ["batch-9"] and not pending.exists()
     pending.write_text(json.dumps({"batchId": "batch-9", "customIds": ["J05-s1"]}), encoding="utf-8")
-    with pytest.raises(ValueError, match="不一样"):
+    with pytest.raises(ValueError, match="differs"):
         j.batch([(item(7), 1)], pending)
 
 
@@ -379,14 +417,17 @@ def test_live_gate(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pyte
     fake = FakeClaude()
     assert run_cli(tmp_path, monkeypatch, "calibrate", "--mode", "live", *caps, fake=fake) == 0
     out = capsys.readouterr().out
-    assert "要调 144 次" in out and "约 $1.44" in out and f"{LIVE_SWITCH}=1 uv run zoujin-judge calibrate" in out
-    assert out.rstrip().endswith("--confirm") and fake.calls == []  # 不带 --confirm 不调
+    assert "needs 144 calls" in out and "about $1.44" in out
+    assert f"{LIVE_SWITCH}=1 uv run zoujin-judge calibrate" in out
+    # no call without --confirm / --confirm なしでは呼ばない
+    assert out.rstrip().endswith("--confirm") and fake.calls == []
 
 
 def test_live_confirm_runs_and_measures_agreement(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv(LIVE_SWITCH, "1")
     monkeypatch.setenv("ZJ_LEDGER", str(tmp_path / "ledger.jsonl"))
-    wrong = {"J01": 2, "J02": 2, "J04": 5}  # J01 判成不过、J04 判成过；J02 分数一样
+    # J01 judged as fail, J04 as pass; J02 has the same score / J01 は不合格、J04 は合格と判定。J02 は同じ点数
+    wrong = {"J01": 2, "J02": 2, "J04": 5}
     fake = FakeClaude(wrong)
     args = (
         "calibrate",
@@ -405,9 +446,10 @@ def test_live_confirm_runs_and_measures_agreement(tmp_path: Path, monkeypatch: p
     assert (r["judged"], r["agree"], r["rate"], r["ok"]) == (96, 92, 0.9583, True)
     assert r["exact"] == 92 and r["meanOutputTokens"] == 300 and r["unstable"] == []
     md = (tmp_path / "out" / "calibration.md").read_text(encoding="utf-8")
-    assert "# 评审员校准：过" in md and "| J01 | E1-001 | 5 | 2, 2 |" in md and "| J04 |" in md
+    assert "# Judge calibration: passed / 審査員のキャリブレーション：合格" in md
+    assert "| J01 | E1-001 | 5 | 2, 2 |" in md and "| J04 |" in md
     assert len(fake.calls) == 96 and len(ledger_rows(tmp_path)) == 96
-    # 再跑一遍全是回放，不再调
+    # a rerun is all replays and calls nothing again / 再実行はすべてリプレイで、もう呼ばない
     assert run_cli(tmp_path, monkeypatch, *args, fake=fake) == 0 and len(fake.calls) == 96
 
 
@@ -423,14 +465,17 @@ def test_rate_limit_stops_and_keeps_what_was_judged(tmp_path: Path, monkeypatch:
 def test_agree_with_zg(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     zg = {x["id"]: {"score": x["label"]["score"]} for x in ITEMS if x["zgSample"]}
     first, second, third = sorted(zg)[:3]
-    zg[first] = {"score": 1 if zg[first]["score"] >= 4 else 5, "note": "不自然"}  # 过不过不一样
-    zg[second] = {"score": max(1, zg[second]["score"] - 1) if zg[second]["score"] != 4 else 5}  # 只差 1 分
+    # pass / fail differs / 合格 / 不合格が異なる
+    zg[first] = {"score": 1 if zg[first]["score"] >= 4 else 5, "note": "不自然"}
+    # off by only 1 point / 1 点だけ違う
+    zg[second] = {"score": max(1, zg[second]["score"] - 1) if zg[second]["score"] != 4 else 5}
     path = tmp_path / "labels-zg.json"
     path.write_text(json.dumps({"labels": zg}), encoding="utf-8")
     a = calibrate.parse(["agree", "--zg", str(path), "--out", str(tmp_path / "out")])
     assert calibrate.agree(a) == 0
     out = capsys.readouterr().out
-    assert "# zg 盲标和数据的标注：过" in out and "过 / 不过一样：19/20" in out and "不自然" in out
+    assert "# zg's blind labels vs the data's labels: passed" in out
+    assert "Same pass / fail: 19/20" in out and "不自然" in out
     del zg[third]
     path.write_text(json.dumps({"labels": zg}), encoding="utf-8")
     assert calibrate.agree(a) == 2

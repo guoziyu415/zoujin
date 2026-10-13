@@ -20,10 +20,11 @@ tokens.
 `zoujin-probe`：Mac 上で Claude のレイテンシーとトークンを 1 回測る（B-8 第 8 項）。
 スレッドと CI では `--confirm` なしの表示だけを実行する。
 
-リクエストは偽モデルで録ったリプレイ（`ZJ_RECORD_REPLAYS`、例：E-0 のスライスのケースを偽モデルで 1 回実行したもの）
-から取り、**ホールドアウトサンプルには触れない**：ディレクトリ名に holdout を含むものは読まない。
-Claude を使うプロンプトの種類ごとに `--per-kind` 件を取り（同じリクエストは 1 件と数え、足りなければ先頭から繰り返す）、
-本物のモデルを直列に呼ぶ：ストリーミングで最初の文字（最初のテキストブロックの最初のトークン。
+リクエストは偽モデルで録ったリプレイ（`ZJ_RECORD_REPLAYS`、例：
+E-0 のスライスのケースを偽モデルで 1 回実行したもの）から取り、**ホールドアウトサンプルには触れない**：
+ディレクトリ名に holdout を含むものは読まない。Claude を使うプロンプトの種類ごとに `--per-kind`
+件を取り（同じリクエストは 1 件と数え、足りなければ先頭から繰り返す）、本物のモデルを直列に呼ぶ：
+ストリーミングで最初の文字（最初のテキストブロックの最初のトークン。
 思考がオンのときは思考の時間を含む）までの時間と全体の時間を測り、入力・キャッシュ・出力・思考のトークンを記録する。
 
 - `--confirm` なし：呼び出し回数、予想費用（推算と、台帳が判定に使う上限）と完全なコマンドを表示し、呼び出さない。
@@ -70,8 +71,8 @@ Json = Any
 ITEM = "b8-probe"
 # Output tokens per call (including thinking) [estimated, from card B-8's per-playthrough cost table]: used only for
 # the "estimated" figure; the ledger checks against the output limit
-# 1 回の呼び出しの出力トークン（思考を含む）〔推算、B-8 カードの 1 プレイあたりコスト表〕：「推算」
-# の数字を出すためだけに使い、台帳は出力の上限で判定する
+# 1 回の呼び出しの出力トークン（思考を含む）〔推算、B-8 カードの 1 プレイあたりコスト表〕：
+# 「推算」の数字を出すためだけに使い、台帳は出力の上限で判定する
 TYPICAL_OUTPUT = {
     "triage": 30,
     "extract": 300,
@@ -372,7 +373,7 @@ async def run(args: argparse.Namespace, picked: Sequence[tuple[str, Json]], env:
             f" p95 {s['firstTextMs']['p95']}  total / 全体 p50 {s['totalMs']['p50']} p95 {s['totalMs']['p95']} ms"
             f"  {s['statuses']}"
         )
-    print(f"Total spent / 合計費用 ${summary['costUsd']:.4f}; results / 結果: {out / ROWS}, {out / SUMMARY}")
+    print(f"Total spent / 費用の合計 ${summary['costUsd']:.4f}; results / 結果: {out / ROWS}, {out / SUMMARY}")
     return 3 if stopped else 0
 
 

@@ -36,14 +36,14 @@ S-072 に従って合格ラインを表示する。
 - ID、ラベル、判定だけを表示し、発話の原文は表示しない（結果ファイルにも原文は書かない）。
 - ホールドアウトセットはバックエンドでは開かない：`--set` は同じ形式の任意のファイルを読めるので、
   データ担当が Mac で自分で実行する（B-8 カード）。
-- `--context`（B-15）：サンプルに `context { character, place, previous }` があれば分類器に渡す（ないものは B-12
-  のまま）。
+- `--context`（B-15）：サンプルに `context { character, place, previous }` があれば分類器に渡す
+  （ないものは B-12 のまま）。
 - `--review`（B-15）：1 回目で signal になったものをガードレール語に通し、該当しなかったものを再確認に回す。
   ガードレール該当、ambiguous への引き下げ、再確認の失敗の件数を報告する。
 - `--armor`：同じバッチをもう一度 Model Armor の `sanitizeUserPrompt` に通し、PI・RAI・
   SDP に該当した件数とレイテンシーを報告する（合格ラインには入れない）。
-- `zoujin-safety armor-template --confirm`：zg の GCP プロジェクトに本番用の Model Armor
-  テンプレートを作る（ログはオフ）。zg の了承が必要。
+- `zoujin-safety armor-template --confirm`：zg の GCP プロジェクトに本番用の Model Armor テンプレートを作る
+  （ログはオフ）。zg の了承が必要。
 """
 
 from __future__ import annotations
@@ -356,8 +356,8 @@ def report(samples: Sequence[Json], rows: Sequence[Json]) -> Json:
     """S-072's pass lines. False signals are counted per sample: a sample counts once if any run judged it signal
     (pauses happen per occurrence, so err on the strict side).
 
-    S-072 の合格ライン。誤判定は「件」で数える：同じサンプルが 1 回でも signal
-    と判定されれば 1 件と数える（一時停止は回ごとに出るので、厳しめに数える）。
+    S-072 の合格ライン。誤判定は「件」で数える：同じサンプルが 1 回でも
+    signal と判定されれば 1 件と数える（一時停止は回ごとに出るので、厳しめに数える）。
     """
     by: dict[str, list[Json]] = {}
     for row in rows:
@@ -413,8 +413,8 @@ def combined(rep: Json, other: Json) -> Json:
     """False signals and story-group ambiguous summed over both batches (main set plus holdout set) (S-072 ②'s line is
     computed on the total, data review #112).
 
-    2 バッチ（メインセットとホールドアウトセット）合計の誤判定と物語グループの ambiguous（S-072 ②
-    のラインは合計で計算する、データレビュー #112）。
+    2 バッチ（メインセットとホールドアウトセット）合計の誤判定と物語グループの ambiguous（S-072
+    ② のラインは合計で計算する、データレビュー #112）。
     """
     false = _n(rep["falseSignals"]) + _n(other["falseSignals"])
     benign = rep["benign"] + other["benign"]

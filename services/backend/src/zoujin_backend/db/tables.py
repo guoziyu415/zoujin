@@ -7,12 +7,13 @@ Tables are created by Alembic (`migrations/versions/`); the definitions here are
 use them; memory_items is B-13 (0007).
 
 ランタイムのテーブル（B-0 が使うもの）。列は data-design 第 3 節とデータ契約（Playthrough、Event、Utterance、
-WorldState）に従い、バックエンド独自のテーブル（turns、sessions、invite_codes、idempotency_keys）は backend-design 3.4・
-3.5・5.2 に従う。
+WorldState）に従い、バックエンド独自のテーブル（turns、sessions、invite_codes、idempotency_keys）は backend-design
+3.4・3.5・5.2 に従う。
 
 テーブルの作成は Alembic（`migrations/versions/`）で行い、ここの定義はクエリ用。
-両者は一致していなければならない（テストで比較する）。ほかのテーブル（promises、run_facts、briefs、approach_log）
-はそれを使う M2 のカードが作る。memory_items は B-13（0007）。
+両者は一致していなければならない（テストで比較する）。ほかのテーブル（promises、run_facts、briefs、
+approach_log）はそれを使う M2 のカードが作る。
+memory_items は B-13（0007）。
 """
 
 from __future__ import annotations
@@ -139,11 +140,11 @@ playthroughs = Table(
 # act), arrival (a character speaks first after landing; kept only as a record, the narrator does not process it);
 # B-4: confirm (answer an intent confirmation, request carries draftId, optionId, by); B-16: world (world advance,
 # request carries reason: key / mid)
-# ナレーターのタスクテーブル（backend-design 3.4）：ID、状態、リースだけを保存し、発話の原文は保存しない。kind：
-# open（プレイ開始）、talk（会話 1 ターン、音声またはテキスト）、advance（早送り、テストと評価専用）。B-3：
+# ナレーターのタスクテーブル（backend-design 3.4）：ID、状態、リースだけを保存し、発話の原文は保存しない。
+# kind：open（プレイ開始）、talk（会話 1 ターン、音声またはテキスト）、advance（早送り、テストと評価専用）。B-3：
 # action（アクション）、choose（幕末に行き先を選ぶ）、plan（幕末にプランを話す）、arrival（着地後に登場人物が先に話す。
-# 記録だけ残し、ナレーターは処理しない）。B-4：confirm（意図確認への回答、request に draftId・optionId・by）。B-16：
-# world（世界の進行、request に reason：key / mid）
+# 記録だけ残し、ナレーターは処理しない）。B-4：confirm（意図確認への回答、request に draftId・optionId・by）。
+# B-16：world（世界の進行、request に reason：key / mid）
 turns = Table(
     "turns",
     metadata,
@@ -299,8 +300,8 @@ playthrough_metrics = Table(
     Column("candidates_confirm_dropped", Integer, nullable=False, server_default="0"),
     # B-3 (0003): spend on one-line 地の文 (narration) and end-of-act plans; action counts (those answered refused from
     # the queue when the act closed are counted separately), counts of feasible and infeasible plans
-    # B-3（0003）：一行の地の文と幕末のプランの費用。アクションの回数（幕を閉じたときにキューで refused
-    # を返したものは別に数える）、プランが成り立った回数と成り立たなかった回数
+    # B-3（0003）：一行の地の文と幕末のプランの費用。アクションの回数（幕を閉じたときにキューで
+    # refused を返したものは別に数える）、プランが成り立った回数と成り立たなかった回数
     Column("cost_narrate_usd", Numeric(12, 6), nullable=False, server_default="0"),
     Column("cost_plan_usd", Numeric(12, 6), nullable=False, server_default="0"),
     Column("actions", Integer, nullable=False, server_default="0"),
@@ -309,8 +310,8 @@ playthrough_metrics = Table(
     Column("plans_refused", Integer, nullable=False, server_default="0"),
     # B-4 (0004): intent confirmations pushed (= yes + no + timeout, at most 1 still open when the playthrough ends),
     # those that failed the re-check after a "yes"
-    # B-4（0004）：出した意図確認（= yes + no + timeout、プレイ終了時に開いたままなのは多くても 1 つ）、「はい」
-    # の後の再チェックを通らなかったもの
+    # B-4（0004）：出した意図確認（= yes + no + timeout、プレイ終了時に開いたままなのは多くても 1 つ）、
+    # 「はい」の後の再チェックを通らなかったもの
     Column("confirms_asked", Integer, nullable=False, server_default="0"),
     Column("confirms_yes", Integer, nullable=False, server_default="0"),
     Column("confirms_no", Integer, nullable=False, server_default="0"),
@@ -334,8 +335,8 @@ playthrough_metrics = Table(
     # output side: finalised character lines that passed monitoring (the denominator), lines that hit a spoiler, lines
     # judged harmful, sessions rebuilt for spoilers, lines ending in a question, the same character repeating the same
     # question, the too-many-questions note switched on
-    # B-12（0006）：回数だけを記録する（S-057、S-069 ③）。列名はデータレビュー #112 の表に従う。安全分類器（再送を含む）
-    # と Model Armor の費用。物語の外に出るカード（signal と 2 回目の ambiguous）、
+    # B-12（0006）：回数だけを記録する（S-057、S-069 ③）。列名はデータレビュー #112 の表に従う。
+    # 安全分類器（再送を含む）と Model Armor の費用。物語の外に出るカード（signal と 2 回目の ambiguous）、
     # ambiguous の回数（小さなヒントを出した回を含む）、小さなヒント、判定なし、分類器の回答拒否、
     # インジェクション / 個人情報 / 有害のフラグ付きでナレーターに渡したターン数、Model Armor のエラー（入力・
     # 出力の両側）。出力側：監視を通った登場人物の確定セリフ数（分母）、ネタバレに当たったセリフ数、
@@ -431,8 +432,8 @@ endings = Table(
 # keeps: cache of the "consequence that will not be undone" line in the delete confirmation; keeps_done = already
 # computed (a null result is cached too)
 # 登場人物のプレイヤーについての記憶（B-13、契約第 4 節）：削除すると text を null にして deleted_at を書き、
-# 行は残す（監査用）。プレイごと削除する。keeps：削除確認の「取り消されない結果」の一文のキャッシュ。
-# keeps_done = 計算済み（null になってもキャッシュする）
+# 行は残す（監査用）。プレイごと削除する。
+# keeps：削除確認の「取り消されない結果」の一文のキャッシュ。keeps_done = 計算済み（null になってもキャッシュする）
 memory_items = Table(
     "memory_items",
     metadata,

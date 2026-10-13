@@ -1,4 +1,9 @@
-"""B-16（世界推进和导演）的单元测试，不要库：导演规则 D1〜D5、候选的筛选、写入时和节拍合并、第 3 步的世界推进口径。"""
+"""Unit tests for B-16 (world advancement and the director), no database: director rules D1-D5, candidate filtering,
+merging with beats when writing, and step 3's world advancement scope.
+
+B-16（世界の進行とディレクター）のユニットテスト。データベース不要：ディレクターの規則 D1〜D5、候補の絞り込み、
+書き込み時のビートとの統合、第 3 ステップでの世界の進行の範囲。
+"""
 
 from __future__ import annotations
 
@@ -22,7 +27,10 @@ PASSED = {"status": "passed", "attempts": 1, "failedRules": [], "checker": "test
 
 
 def at(checkpoint: str, **setup: Any) -> Writer:
-    """草稿世界模型（默认）在这个检查点的一局，返回能接着写的 Writer。"""
+    """A game on the draft world model (the default) at this checkpoint; returns a Writer to keep writing with.
+
+    草稿の世界モデル（既定）でこのチェックポイントにあるゲーム。続けて書ける Writer を返す。
+    """
     book = LIBRARY.book("hashire-merosu")
     assert book is not None
     doc = {"role": "role.traveler", "checkpoint": checkpoint, **setup}
@@ -32,7 +40,10 @@ def at(checkpoint: str, **setup: Any) -> Writer:
 
 
 def player_event(w: Writer) -> Json:
-    """日志里一件玩家做的事（D5 的原因）。"""
+    """Something the player did in the log (a cause for D5).
+
+    ログにあるプレイヤーがしたこと 1 件（D5 の原因）。
+    """
     return w.add(
         w.full(
             t=w.state["t"],
@@ -54,14 +65,20 @@ def cand(**kw: Any) -> Json:
 
 
 def test_world_mode_lets_characters_act_away_from_the_player() -> None:
-    """对话里行为者不在玩家身边是 R7 actor-away；世界推进里不在场以外都碰得到，对象要和他同一个地点。"""
+    """In dialogue an actor away from the player is R7 actor-away; in world advancement anyone not absent can act, and
+    targets must be at the actor's place.
+
+    対話では行為者がプレイヤーのそばにいなければ R7 actor-away。世界の進行では absent 以外は届き、対象は行為者と同じ
+    場所にいる必要がある。
+    """
     w = at("sc.canon@beat.02")
     st = w.state
     assert st["vars"]["var.player.location"] == PLAZA and st["locations"]["char.groom"] == "place.groom-house"
     c = cand(t=st["t"], dt=0, effects=[])
     assert [h.code for h in judge(w.book.world, st, c, [], Turn())] == ["actor-away"]
     assert judge(w.book.world, st, c, [], WORLD) == []
-    far = {"op": "learn", "character": "char.old-man", "fact": "fact.six-killed-today"}  # 老爺在广场，不在花婿家
+    # 老爺 is in the square, not at the groom's house / 老爺は広場にいて、花婿の家にはいない
+    far = {"op": "learn", "character": "char.old-man", "fact": "fact.six-killed-today"}
     assert "target-away" in [h.code for h in judge(w.book.world, st, c, [far], WORLD)]
 
 
@@ -74,7 +91,8 @@ def test_candidates_outside_the_window_or_without_effects_are_dropped() -> None:
     assert advance.candidate(ok, book, st, set(), win) is not None
     assert advance.candidate({**ok, "t": st["t"] + 601}, book, st, set(), win) is None
     assert advance.candidate({**ok, "effects": []}, book, st, set(), win) is None
-    assert advance.candidate({**ok, "actor": "system"}, book, st, set(), win) is None  # 环境只能是导演
+    # The environment can only be the director / 環境はディレクターだけ
+    assert advance.candidate({**ok, "actor": "system"}, book, st, set(), win) is None
     assert advance.candidate({**ok, "actor": "system", "origin": "director"}, book, st, set(), win) is not None
     got = advance.candidate({**ok, "causes": ["ev_x", "beat.02", "ev_known"]}, book, st, {"ev_known"}, win)
     assert got is not None and got["causes"] == ["beat.02", "ev_known"]
@@ -94,10 +112,14 @@ def test_director_rules() -> None:
         return advance.fairness(book, st, c, effects, by_id, quota, taken or {"present": 0, "absent": 0}, **kw)[0]
 
     assert rule(away, move) is None
-    assert rule({**away, "causes": []}, move) == "D5"  # 追不到玩家或人物的举动
+    # Can't be traced to an action of the player or a character / プレイヤーか登場人物の行動にたどれない
+    assert rule({**away, "causes": []}, move) == "D5"
     assert rule(away, move, taken={"present": 0, "absent": 3}) == "D4"
     assert rule(away, move, quota={"present": True, "absent": 0}) == "D4"
-    # 在玩家面前：环境（system）可以；人物要从别处走来，原地出现不行；名额用完、有排着的轮次（present false）不行
+    # In front of the player: the environment (system) is fine; a character must walk in from elsewhere, not appear
+    # in place; not when the quota is used up or a turn is queued (present false).
+    # プレイヤーの目の前：環境（system）はよい。登場人物はよそから歩いてくる必要があり、その場に現れるのはだめ。
+    # 枠を使い切った、またはターンが積まれている（present false）ときはだめ。
     bell = {**away, "actor": "system", "place": PLAZA}
     learn = [{"op": "learn", "character": "char.young-man", "fact": "fact.six-killed-today"}]
     assert rule(bell, learn) is None
@@ -105,13 +127,20 @@ def test_director_rules() -> None:
     assert rule(young, learn) == "D3"
     assert rule(bell, learn, taken={"present": 1, "absent": 0}) == "D3"
     assert rule(bell, learn, quota={"present": False, "absent": 3}) == "D3"
-    assert rule(bell, learn, away=True) is None  # 幕切换时玩家不在场，算不在场的名额
-    # 人物的打算不在玩家面前写
+    # At an act transition the player isn't present, so it uses the away quota.
+    # 幕切り替えではプレイヤーはその場にいないので、その場にいない分の枠に数える。
+    assert rule(bell, learn, away=True) is None
+    # Character plans aren't written in front of the player / 登場人物のプランはプレイヤーの目の前では書かない
     assert rule({**young, "origin": "plan"}, learn) == "plan-in-sight"
 
 
 def test_world_advance_never_makes_melos_late() -> None:
-    """D1、D2：提交后到不了日没、而且比提交前晚 → 丢（人物的打算也一样）；让他早到不管。"""
+    """D1, D2: missing sunset after commit and later than before commit → dropped (character plans too); making him
+    earlier is fine.
+
+    D1、D2：コミット後に日没に間に合わず、しかもコミット前より遅い → 捨てる（登場人物のプランも同じ）。
+    早めるのは構わない。
+    """
     w = at("sc.canon@beat.14")
     book, st = w.book, w.state
     deadline = int(book.world["clock"]["deadline"]["t"])
@@ -127,15 +156,22 @@ def test_world_advance_never_makes_melos_late() -> None:
 
 
 def test_write_merges_with_the_beats_and_rechecks() -> None:
-    """幕切换的第 3 步：先结算到这一件的时刻，再按当时的状态重判；超过目标时刻的、写之前不过的丢掉。"""
+    """Step 3 of an act transition: first settle to this item's time, then judge again against the state at that time;
+    items past the target time and those failing before writing are dropped.
+
+    幕切り替えの第 3 ステップ：まずこの件の時刻まで精算し、その時点の状態でもう一度判定する。目標時刻を過ぎたもの、
+    書く前に通らなかったものは捨てる。
+    """
     w = at("sc.canon@beat.07")
     t0 = int(w.state["t"])
     beat08 = int(w.book.beats["beat.08"]["window"]["canonical"])
     eff = [{"op": "relocate", "character": "char.groom", "place": "place.village"}]
     items = [
         advance.Item(cand(t=beat08 + 30, effects=eff), eff, PASSED),
-        advance.Item(cand(t=beat08 + 3000, effects=eff), eff, PASSED),  # 超过目标时刻
-        advance.Item(  # 按写的那一刻判：beat.08 之前，婚礼是明天这件事还不是事实（R4）
+        advance.Item(cand(t=beat08 + 3000, effects=eff), eff, PASSED),  # past the target time / 目標時刻を過ぎている
+        # Judged at the moment of writing: before beat.08, "the wedding is tomorrow" isn't a fact yet (R4).
+        # 書く時点で判定する：beat.08 より前は、婚礼が明日だということはまだ事実ではない（R4）。
+        advance.Item(
             cand(t=t0 + 5),
             [{"op": "learn", "character": "char.groom", "fact": "fact.wedding-tomorrow"}],
             PASSED,

@@ -38,8 +38,8 @@ class TextSpec:
     """How one prompt kind is called (the list in card B-8). fake and replay use only provider and model, to compute
     the replay key.
 
-    1 種類のプロンプトの呼び方（B-8 カードの一覧）。fake と replay は provider と model
-    だけを使ってリプレイのキーを計算する。
+    1 種類のプロンプトの呼び方（B-8 カードの一覧）。fake と replay は provider と
+    model だけを使ってリプレイのキーを計算する。
     """
 
     provider: Provider
@@ -59,8 +59,8 @@ class TextSpec:
     # Google: thinkingLevel (LOW, MEDIUM), None = not set;
     # Claude: disabled (Haiku can turn it off), between_tools (no upfront thinking; Sonnet's minimum),
     # adaptive (adaptive).
-    # Google：thinkingLevel（LOW、MEDIUM）、None = 設定しない。Claude：disabled（Haiku はオフにできる）、
-    # between_tools（先に思考しない。Sonnet の最低はこれ）、
+    # Google：thinkingLevel（LOW、MEDIUM）、None = 設定しない。
+    # Claude：disabled（Haiku はオフにできる）、between_tools（先に思考しない。Sonnet の最低はこれ）、
     # adaptive（適応的）。
     thinking: str | None = None
     effort: str | None = None  # Claude: output_config.effort (low, medium…), None = not sent / None = 送らない
@@ -72,8 +72,8 @@ class TextSpec:
 # Prompt kind → how it is called (B-8, D-028: everything that can use Claude uses Claude; `reply` only stands in for
 # Live as a character in evals, so it stays on Google, S-085 ①). Extraction and checking use Sonnet first; S-2 and the
 # first slice eval measure Haiku again, and S-085 ③ decides whether to switch.
-# プロンプトの種類 → 呼び方（B-8、D-028：Claude を使えるものはすべて Claude。`reply` は評価で Live
-# の代わりに登場人物を演じるだけなので Google に残す、S-085 ①）。抽出とチェックはまず Sonnet を使い、
+# プロンプトの種類 → 呼び方（B-8、D-028：Claude を使えるものはすべて Claude。`reply` は評価で
+# Live の代わりに登場人物を演じるだけなので Google に残す、S-085 ①）。抽出とチェックはまず Sonnet を使い、
 # S-2 と最初のスライス評価で Haiku をもう一度測って、S-085 ③ に従って切り替えるかを決める。
 TEXT: dict[str, TextSpec] = {
     "triage": TextSpec("claude", "haiku-5.5", 5.0, 256, thinking="disabled"),
@@ -103,8 +103,8 @@ TEXT: dict[str, TextSpec] = {
     "ending-check": TextSpec("claude", "sonnet-5.5", 15.0, 2048, thinking="adaptive", effort="medium"),
     # B-13: one memory line, one "consequence that will not be undone" line (B-8's table: Haiku, thinking off; memory
     # 5 seconds, no resend on timeout, nothing written this turn; the consequence line 2 seconds (UX review: the
-    # frontend waits for it before enabling 〔忘れてもらう〕), on timeout return null, not cached) B-13：
-    # 記憶の一文と「取り消されない結果」の一文（B-8 の表：Haiku・思考オフ。記憶は 5 秒、タイムアウトでも再送せず、
+    # frontend waits for it before enabling 〔忘れてもらう〕), on timeout return null, not cached)
+    # B-13：記憶の一文と「取り消されない結果」の一文（B-8 の表：Haiku・思考オフ。記憶は 5 秒、タイムアウトでも再送せず、
     # このターンは書かない。結果の一文は 2 秒（UX レビュー：フロントエンドはそれが返ってから〔忘れてもらう〕を
     # 押せるようにする）、タイムアウトなら null を返し、キャッシュしない）
     "memory": TextSpec("claude", "haiku-5.5", 5.0, 256, thinking="disabled"),
@@ -129,10 +129,9 @@ CLAUDE_TIERS: dict[str, str] = {"haiku": "ZJ_CLAUDE_HAIKU", "sonnet": "ZJ_CLAUDE
 # Temporary tier switch (S-085 ③: S-2 and the slice eval measure again with Haiku):
 # `ZJ_TEXT_MODELS=check=haiku-5.5,extract=haiku-5.5`. Only the tier name plus version of the Claude kinds can change;
 # thinking and effort stay as they are; the replay key, the ledger and `check.checker` follow the change
-# 一時的なティア切り替え（S-085 ③：S-2 とスライス評価で Haiku
-# でもう一度測る）：`ZJ_TEXT_MODELS=check=haiku-5.5,extract=haiku-5.5`。
-# 変えられるのは Claude の種類のティア名とバージョンだけで、思考と effort はそのまま。リプレイのキー、
-# 台帳、`check.checker` はそれに合わせて変わる
+# 一時的なティア切り替え（S-085 ③：S-2 とスライス評価で Haiku でもう一度測る）：
+# `ZJ_TEXT_MODELS=check=haiku-5.5,extract=haiku-5.5`。変えられるのは Claude の種類のティア名とバージョンだけで、
+# 思考と effort はそのまま。リプレイのキー、台帳、`check.checker` はそれに合わせて変わる
 OVERRIDE_ENV = "ZJ_TEXT_MODELS"
 _TAG = re.compile(r"(haiku|sonnet)-\d+\.\d+")
 

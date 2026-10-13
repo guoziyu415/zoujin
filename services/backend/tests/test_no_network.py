@@ -1,4 +1,9 @@
-"""测试禁网（dev-plan 2.4）：CI 和项目线程里的测试碰不到真模型，本机的 PostgreSQL 照样连得上。"""
+"""No network in tests (dev-plan 2.4): tests in CI and project threads cannot reach real models, while the local
+PostgreSQL is still reachable.
+
+テストではネットワーク禁止（dev-plan 2.4）：CI とプロジェクトのスレッドのテストは本物のモデルに届かず、
+ローカルの PostgreSQL にはこれまでどおり接続できる。
+"""
 
 import socket
 import threading

@@ -1,8 +1,15 @@
-"""要 PostgreSQL 的测试共用的东西（`db` 标记；没有 DATABASE_URL 时根目录的 conftest.py 让它们跳过）。
+"""Shared pieces for tests that need PostgreSQL (`db` marker; without DATABASE_URL the root conftest.py skips them).
 
-- 整个会话开始时 `alembic upgrade head` 一次；每个测试开头清空全部表。
-- `Env`：测试用的配置（假模型、开发开关、假 Live 不等）和几个写库的简写。每个 `asyncio.run` 里用自己的
-  连接（NullPool），不跨事件循环复用。
+- `alembic upgrade head` runs once at the start of the session; every test starts by emptying all tables.
+- `Env`: test configuration (fake model, dev switch, fake Live without waiting) and a few DB-writing shorthands. Each
+  `asyncio.run` uses its own connection (NullPool), never reused across event loops.
+
+PostgreSQL が必要なテストの共有部品（`db` マーク。DATABASE_URL がなければルートの conftest.py がスキップさせる）。
+
+- セッションの最初に `alembic upgrade head` を 1 回実行し、各テストの最初に全テーブルを空にする。
+- `Env`：テスト用の設定（偽モデル、開発スイッチ、待たない偽 Live）と、
+  DB に書くためのいくつかの省略形。`asyncio.run` ごとに専用の接続（NullPool）を使い、
+  イベントループをまたいで再利用しない。
 """
 
 from __future__ import annotations
@@ -33,20 +40,21 @@ SCHEMAS = SchemaBook(REPO / "packages" / "contracts" / "schemas")
 LIBRARY = Library(REPO / "worlds", REPO / "assets" / "scenes", DEFAULT_WORLD)
 BOOK: Book = LIBRARY.book("hashire-merosu")  # type: ignore[assignment]
 OLD = "char.old-man"
-PLAYER_LINE = "さっき、村の牧人だという若い男とすれ違いました。"  # fixtures/fake-text/b0-minimal.json 认「牧人」
+# fixtures/fake-text/b0-minimal.json recognises 「牧人」 / fixtures/fake-text/b0-minimal.json は「牧人」に反応する
+PLAYER_LINE = "さっき、村の牧人だという若い男とすれ違いました。"
 
 
 def plain_url() -> str:
     url = os.environ.get("DATABASE_URL")
     if not url:
-        pytest.skip("没有 DATABASE_URL")
+        pytest.skip("No DATABASE_URL / DATABASE_URL がない")
     return url
 
 
 def alembic_config(url: str) -> Config:
     cfg = Config(str(ALEMBIC_INI))
     cfg.attributes["url"] = url
-    cfg.attributes["configure_logger"] = False  # 不动 pytest 的日志设置
+    cfg.attributes["configure_logger"] = False  # Leave pytest's logging setup alone / pytest のログ設定に触れない
     return cfg
 
 
@@ -86,7 +94,10 @@ class Env:
         return user_id
 
     async def opened(self, engine: AsyncEngine, role: str = "role.traveler") -> str:
-        """新账号开一局，叙事者做完开局。"""
+        """Start a playthrough with a new account; the narrator finishes the opening.
+
+        新しいアカウントでプレイを開始し、ナレーターが開始処理を終える。
+        """
         user_id = await self.user(engine)
         async with engine.begin() as c:
             pid = await store.create_playthrough(c, self.ids, user_id=user_id, book=BOOK, role_id=role)
@@ -96,7 +107,10 @@ class Env:
     async def talk(
         self, engine: AsyncEngine, pid: str, text: str = PLAYER_LINE, character: str = OLD, reply: str = "……そうか。"
     ) -> str:
-        """排一轮文字对话（原话 + 任务），不叫叙事者。"""
+        """Queue one text conversation turn (original words + task) without calling the narrator.
+
+        テキストの会話を 1 ターン（発話の原文 + タスク）キューに入れ、ナレーターは呼ばない。
+        """
         async with engine.begin() as c:
             st = await store.sim_state(c, pid)
             t = st["t"] if st is not None else 0

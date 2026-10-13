@@ -1,4 +1,9 @@
-"""真实 Bash 控制流、假的 gcloud：访问状态未知时关闭，匿名门禁未通过时不能标记部署完成。"""
+"""Real Bash control flow, fake gcloud: close when the access state is unknown, and never mark the deployment done
+while the anonymous gate has not passed.
+
+本物の Bash の制御フロー、偽の gcloud：アクセス状態が不明なら閉じ、
+匿名アクセスのゲートを通っていなければデプロイ完了とは記録できない。
+"""
 
 from __future__ import annotations
 
