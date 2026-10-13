@@ -52,6 +52,7 @@ def create_app(settings: Settings, narrator: Narrator | None = None) -> FastAPI:
     app = FastAPI(title="zoujin narrator", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
     app.state.narrator = n
 
+    @app.get("/health")
     @app.get("/healthz")
     async def healthz() -> Response:
         return Response(status_code=204)

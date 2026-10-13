@@ -123,7 +123,8 @@ class SiteAccess:
             await self.app(scope, receive, send)
             return
         is_http = scope["type"] == "http"
-        if is_http and scope["path"] == "/healthz" and scope["method"] in ("GET", "HEAD"):
+        # Cloud Run reserves some paths ending in z; /health is the cloud probe.
+        if is_http and scope["path"] in ("/health", "/healthz") and scope["method"] in ("GET", "HEAD"):
             await Response(status_code=204, headers=NO_STORE)(scope, receive, send)
             return
         headers = Headers(scope=scope)

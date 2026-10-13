@@ -61,7 +61,7 @@ infra/deploy/deploy.sh invite 5         # 5 个邀请码，写进 ~/.zoujin/depl
 
 站点密码 Secret 名称为 `zj-site-password`，只授予网关服务账号读取。`setup` 在没有该 Secret 时生成随机值并通过标准输入写入，不打印密码；`up` 缺少 Secret 时停止。网关通过 `ZJ_SITE_PASSWORD` Secret 引用读取，冒烟通过 `ZJ_SMOKE_PASSWORD` 环境传入，不放命令行或日志；门禁通行之后仍须邀请码。
 
-生产缺密码时所有内容返回 503；`/healthz` 仅回空 204。冒烟先验证匿名页面、脚本、人物、场景、音频和 API 均被密码拦住，再验证密码+邀请码后的完整会话。密码轮换会使旧签名票立即失效。所有站点内容 `private, no-store`。
+生产缺密码时所有内容返回 503；`/health` 仅回空 204。旧 `/healthz` 兼容本机使用，但 Cloud Run 保留部分以 `z` 结尾的路径，云端冒烟必须使用 `/health`（[官方已知问题](https://docs.cloud.google.com/run/docs/known-issues#reserved_url_paths)）。冒烟先验证匿名页面、脚本、人物、场景、音频和 API 均被密码拦住，再验证密码+邀请码后的完整会话。密码轮换会使旧签名票立即失效。所有站点内容 `private, no-store`。
 
 本地修改或通过测试不代表线上已经加密闭门。部署须再次获得用户明确批准；上线时要禁用/撤销旧 Service Worker、清理已有公开缓存并检查旧版本和带标签候选 URL。浏览器已经保存的离线文件无法由新版本撤回。以后任何环境的额外静态服务器/CDN也必须有相同门禁，不能直接公开场景包。
 

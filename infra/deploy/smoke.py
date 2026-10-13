@@ -97,7 +97,7 @@ async def smoke(base: str, bearer: dict[str, str], code: str) -> None:
         unlocked = await c.post("/site-access", data={"password": password}, headers=origin)
         expect(unlocked.status_code == 303, "站点密码通过")
         expect("HttpOnly" in unlocked.headers.get("set-cookie", ""), "通行 Cookie 不对脚本开放")
-        health = await c.get("/healthz")
+        health = await c.get("/health")
         expect(health.status_code == 204, "健康探测返回空 204")
         page = await c.get("/")
         expect(page.status_code == 200 and "<html" in page.text.lower()[:500], "首页是前端的页面")

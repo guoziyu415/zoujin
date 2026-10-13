@@ -38,7 +38,12 @@ def test_pages_assets_api_and_websockets_are_blocked_before_password() -> None:
         r = c.get("/", headers={"Accept": "text/html"})
         assert r.url.path == gate.PATH and "アクセスパスワード" in r.text
         assert "/assets/" not in r.text and "src=" not in r.text
-        assert c.get("/healthz").status_code == 204
+        for path in ("/health", "/healthz"):
+            for method in ("GET", "HEAD"):
+                probe = c.request(method, path)
+                assert probe.status_code == 204 and not probe.content
+                assert "no-store" in probe.headers["cache-control"]
+            assert c.post(path).status_code == 401
         with pytest.raises(WebSocketDisconnect) as e, c.websocket_connect("/v1/playthroughs/id/live"):
             pass
         assert e.value.code == 4401
