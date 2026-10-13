@@ -4,7 +4,7 @@ import { isWorldModule } from "../world-chunk";
 describe("world chunk placement is independent of the checkout directory", () => {
   it.each([
     "/home/runner/actions-runner/_work/app/app",
-    "/Users/developer/home/app",
+    "/Users/example/home/app",
     "C:\\home\\runner\\app",
   ])("keeps post-processing with its base classes under %s", (root) => {
     expect(isWorldModule(`${root}/apps/web/src/three/post.ts`)).toBe(true);
