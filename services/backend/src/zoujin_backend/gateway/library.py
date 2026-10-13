@@ -1,4 +1,9 @@
-"""书房的只读投影：目录来自明确开放的版本；进度和结局只来自当前账号的持久化记录。"""
+"""Read-only projection for the study: the catalog comes from explicitly opened versions; progress and endings come
+only from the current account's persisted records.
+
+書斎の読み取り専用の投影：目録は明示的に公開されたバージョンから、進行状況とエンディングは現在のアカウントの
+永続化された記録だけから作る。
+"""
 
 from __future__ import annotations
 
@@ -39,7 +44,10 @@ def catalog(gw: Gateway) -> Json:
 
 
 async def history(gw: Gateway, c: AsyncConnection, user_id: str) -> Json:
-    # 同一个查询固定 owner + status，再左连该局唯一的结局。不接受客户端传 owner，也不从 localStorage 补历史。
+    # One query pins owner + status, then left-joins the game's single ending. The client never passes the owner, and
+    # history is never filled in from localStorage.
+    # 1 つのクエリで owner と status を固定し、そのゲーム唯一のエンディングを左結合する。owner をクライアントから
+    # 受け取ることはなく、localStorage から履歴を補うこともない。
     rows = (
         await c.execute(
             select(playthroughs, endings.c.ending_id, endings.c.body)
@@ -58,12 +66,15 @@ async def history(gw: Gateway, c: AsyncConnection, user_id: str) -> Json:
             if pt is not None:
                 active = {**await gw.active_ref(c, pt), "bookId": bid, "worldModelVersion": version}
             continue
-        # 未完成、放弃或缺结束时间的记录不能伪装成完成结局。
+        # Unfinished or abandoned records, or ones missing an end time, must not pose as finished endings.
+        # 未完了・放棄、または終了時刻のない記録を完了したエンディングに見せかけてはならない。
         if row["ended_at"] is None:
             continue
         book = gw.library.by_version.get(version)
         if book is not None and book.book_id != bid:
-            continue  # 损坏的跨书版本映射不能投影成另一本书
+            # A broken cross-book version mapping must not project as another book.
+            # 本をまたいだ壊れたバージョン対応を別の本として投影してはならない。
+            continue
         item = {
             "playthroughId": row["playthrough_id"],
             "bookId": bid,

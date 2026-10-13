@@ -1,2 +1,2 @@
-{"note": "4009：同一局再开一条连接（另一个标签页），旧连接以 4009 关闭，新连接照常收消息。剧本本身是一轮闲聊。"}
+{"note": "4009: open another connection to the same game (another tab); the old connection is closed with 4009 and the new one receives messages as usual. The script itself is one turn of small talk. / 4009：同じゲームにもう 1 本接続を開く（別のタブ）。古い接続は 4009 で閉じられ、新しい接続はいつもどおりメッセージを受け取る。スクリプト自体は雑談 1 ターン。"}
 {"include": "small-talk"}

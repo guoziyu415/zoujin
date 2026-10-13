@@ -1,4 +1,4 @@
-{"note": "出戏卡（3.12）：先 focus 市の老爺。第 1 轮是似是而非的一句：safety_hint，人物照常回答；第 2 轮再来一次：停下人物，turn_settled paused + safety_pause；前端发 safety_resume → safety_resumed。"}
+{"note": "Out-of-story card (3.12): focus 市の老爺 first. Turn 1 is an ambiguous line: safety_hint, and the character answers as usual; turn 2 once more: the character is stopped, turn_settled paused + safety_pause; the frontend sends safety_resume → safety_resumed. / 物語の外のカード（3.12）：先に 市の老爺 に focus する。1 ターン目はどちらとも取れるひとこと：safety_hint、登場人物はいつもどおり答える。2 ターン目でもう一度：登場人物を止め、turn_settled paused + safety_pause。フロントエンドが safety_resume を送る → safety_resumed。"}
 {"on": ["activity_start", "text"]}
 {"when": "voice", "delayMs": 700, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "……もう、", "final": false}}
 {"on": "activity_end", "if": {"trigger.type": "activity_start"}}
@@ -16,7 +16,7 @@
 {"on": "activity_end", "if": {"trigger.type": "activity_start"}}
 {"when": "voice", "delayMs": 150, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "本当に、もう終わりにしたいんです。", "final": true}}
 {"delayMs": 850, "audio": {"seconds": 0.3}}
-{"note": "筛查约在人物开口后判出：停发人物的回答，这一轮不判、不花时间"}
+{"note": "The screening decides roughly after the character starts speaking: stop sending the character's answer; this turn is not judged and takes no time / 判定は登場人物が話し始めたあたりで出る：登場人物の答えの送信を止め、このターンは判定せず、時間も使わない"}
 {"delayMs": 200, "send": {"type": "turn_settled", "turnId": "{{playerTurnId}}", "outcome": "paused", "eventIds": [], "minutes": 0}}
 {"send": {"type": "safety_pause"}}
 {"on": "safety_resume"}

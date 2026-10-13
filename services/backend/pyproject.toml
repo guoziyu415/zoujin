@@ -1,7 +1,7 @@
 [project]
 name = "zoujin-backend"
 version = "0.0.0"
-description = "网关、叙事者和 mock 服务（一个包，部署成两个 Cloud Run 服务；B-0、B-1 往里写）"
+description = "Gateway, narrator and mock services (one package, deployed as two Cloud Run services; B-0 and B-1 add to it) / ゲートウェイ、ナレーター、mock サービス（1 パッケージで 2 つの Cloud Run サービスとしてデプロイ。B-0・B-1 で追加していく）"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "alembic>=1.16",

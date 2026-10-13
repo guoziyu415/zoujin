@@ -1,7 +1,16 @@
-"""邀请码和会话（B-0 第 3 条、backend-design 5.2）。库里只存邀请码和会话令牌的 sha256。
+"""Invite codes and sessions (B-0 item 3, backend-design 5.2). The database stores only the sha256 of invite codes and
+session tokens.
 
-邀请码：`inv-` 加 4 组、每组 4 个 Crockford base32 字符（80 位随机）。登录时不分大小写，忽略空格和多余的短横线，
-I、L 当 1，O 当 0；`inv` 前缀可写可不写。规范化以后再算哈希，所以写法不同的同一个码查得到同一行。
+Invite code: `inv-` plus 4 groups of 4 Crockford base32 characters (80 random bits). Login is case-insensitive,
+ignores spaces and extra hyphens, reads I and L as 1 and O as 0; the `inv` prefix is optional. The hash is computed
+after normalizing, so the same code written differently finds the same row.
+
+招待コードとセッション（B-0 第 3 項、backend-design 5.2）。データベースには招待コードとセッショントークンの
+sha256 だけを保存する。
+
+招待コード：`inv-` に 4 文字ずつ 4 組の Crockford base32 文字（80 ビットの乱数）。ログイン時は大文字小文字を区別せず、
+空白や余分なハイフンを無視し、I と L は 1、O は 0 とみなす。`inv` 接頭辞はあってもなくてもよい。正規化してから
+ハッシュを計算するので、書き方が違っても同じコードなら同じ行が見つかる。
 """
 
 from __future__ import annotations
@@ -19,7 +28,7 @@ from zoujin_backend.db.tables import invite_codes, sessions, users
 from zoujin_backend.ids import CROCKFORD, IdGen
 
 SESSION_TTL = timedelta(days=SESSION_DAYS)
-SLIDE_AFTER = timedelta(days=1)  # 续期最多一天写一次库
+SLIDE_AFTER = timedelta(days=1)  # renewal writes to the DB at most once a day / 延長の DB 書き込みは 1 日 1 回まで
 _ALIASES = str.maketrans({"I": "1", "L": "1", "O": "0"})
 _SEPARATORS = re.compile(r"[\s\-_]+")
 
@@ -31,7 +40,10 @@ def new_invite_code() -> str:
 
 
 def normalize_invite(code: str) -> str | None:
-    """规范写法 `inv-XXXX-XXXX-XXXX-XXXX`；不像邀请码的返回 None。"""
+    """The canonical form `inv-XXXX-XXXX-XXXX-XXXX`; None for anything that doesn't look like an invite code.
+
+    正規形 `inv-XXXX-XXXX-XXXX-XXXX`。招待コードらしくないものは None を返す。
+    """
     s = _SEPARATORS.sub("", code).upper()
     s = s.removeprefix("INV")
     s = s.translate(_ALIASES)
@@ -50,14 +62,22 @@ def invite_hash(code: str) -> str | None:
 
 
 async def add_invite(c: AsyncConnection) -> str:
-    """生成一个邀请码，存它的哈希，返回明文（只给调用方打印一次）。"""
+    """Generate an invite code, store its hash and return the plaintext (for the caller to print once).
+
+    招待コードを 1 つ生成し、そのハッシュを保存して平文を返す（呼び出し側が 1 回だけ表示する）。
+    """
     code = new_invite_code()
     await c.execute(insert(invite_codes).values(code_hash=sha256(code)))
     return code
 
 
 async def redeem(c: AsyncConnection, ids: IdGen, code: str) -> str | None:
-    """邀请码换账号：第一次用时建账号，之后同一个码回到同一个账号。码不对或已作废返回 None。"""
+    """Exchange an invite code for an account: the account is created on first use, and later the same code returns to
+    the same account. None if the code is wrong or revoked.
+
+    招待コードをアカウントに引き換える：初回使用時にアカウントを作り、以後同じコードは同じアカウントに戻る。
+    コードが違うか無効化済みなら None を返す。
+    """
     h = invite_hash(code)
     if h is None:
         return None
@@ -90,7 +110,12 @@ async def new_session(c: AsyncConnection, user_id: str) -> str:
 
 
 async def session_user(c: AsyncConnection, token: str | None) -> tuple[str, bool] | None:
-    """有效会话的 (userId, 这次续期了没有)。续期：离上次续期超过一天时把过期时间推到 30 天后（滑动）。"""
+    """(userId, whether it was renewed this time) for a valid session. Renewal: when more than a day has passed since
+    the last renewal, push the expiry to 30 days from now (sliding).
+
+    有効なセッションの (userId, 今回延長したかどうか)。延長：前回の延長から 1 日以上経っていれば、有効期限を
+    今から 30 日後に延ばす（スライディング）。
+    """
     if not token:
         return None
     h = sha256(token)

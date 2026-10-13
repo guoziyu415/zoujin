@@ -1,4 +1,4 @@
-{"note": "补转写也失败：turn_complete 后约 3 秒，定稿 {final: true, text: null, source: fallback}。先 focus 市の老爺。"}
+{"note": "The fallback transcription fails too: about 3 seconds after turn_complete, the final is {final: true, text: null, source: fallback}. Focus 市の老爺 first. / 補完の文字起こしも失敗：turn_complete の約 3 秒後、確定文は {final: true, text: null, source: fallback}。先に 市の老爺 に focus する。"}
 {"on": ["activity_start", "text"]}
 {"when": "voice", "delayMs": 700, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "この噴水は、", "final": false}}
 {"on": "activity_end", "if": {"trigger.type": "activity_start"}}

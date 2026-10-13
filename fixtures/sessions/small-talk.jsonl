@@ -1,4 +1,4 @@
-{"note": "闲聊的一轮：先 focus 市の老爺。commit 只带时钟（events 为空），turn_settled 是 no_change、10 分钟。"}
+{"note": "One turn of small talk: focus 市の老爺 first. The commit only carries the clock (events is empty), turn_settled is no_change, 10 minutes. / 雑談の 1 ターン：先に 市の老爺 に focus する。commit は時計だけ（events は空）、turn_settled は no_change、10 分。"}
 {"on": ["activity_start", "text"]}
 {"when": "voice", "delayMs": 700, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "もうすぐ、", "final": false}}
 {"on": "activity_end", "if": {"trigger.type": "activity_start"}}

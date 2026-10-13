@@ -1,4 +1,4 @@
-{"note": "导览：把全部情形串成一局，按这个顺序走（每一段要做什么见各剧本第一行的 note 和 README）。"}
+{"note": "Tour: strings every situation into one game, played in this order (what to do in each part is in the note on the first line of each script and in the README). / ツアー：すべての状況を 1 つのゲームにつなげ、この順で進む（各パートですることは各スクリプト 1 行目の note と README を参照）。"}
 {"include": "full-turn"}
 {"include": "small-talk"}
 {"include": "approach"}

@@ -1,16 +1,34 @@
 #!/usr/bin/env python3
-"""单次体验（一局）成本模型。所有数字是估算：时长、轮数、token 量是假设，等后端 spike S-5（模拟局）实测后替换。只用标准库。
+"""Cost model for a single experience (one playthrough). Every number is an estimate: duration, turn count and token
+amounts are assumptions, to be replaced once backend spike S-5 (simulated playthroughs) has measured them. Standard
+library only.
 
-D-028（2026-10-11）以后：Live 的语音留在 Google，叙事者用模型的几步都走 Claude，型号、思考、每步的 token 和次数照 B-8 卡
-（docs/tasks/m2/B-8.md「单局成本」那张表）。Google 的单价见 pricing-2026-10-06.md；Claude 的单价读仓库里唯一那份
-claude-prices.json（B-8 搬进 packages/llm 以前在 evals/config），这里不另抄一份。汇率 1 美元 = 150 日元。
+Since D-028 (2026-10-11): Live voice stays on Google, and every model step of the narrator goes to Claude; tiers,
+thinking, tokens per step and call counts follow the B-8 card (the "per-playthrough cost" table in docs/tasks/m2/B-8.md).
+Google unit prices are in pricing-2026-10-06.md; Claude unit prices are read from the repo's single claude-prices.json
+(in evals/config until B-8 moves it into packages/llm), not copied here. Exchange rate: 1 USD = 150 JPY.
 
-D-028 以前全用 Gemini 的那一版（PRICE、BASE、session_cost、SCENARIOS）原样留着：后端的 backend/cost/cost_addons.py 引用它，
-backend-design 第 8 节按 B-8 改完以后再删。
+The pre-D-028 all-Gemini version (PRICE, BASE, session_cost, SCENARIOS) is kept as is: the backend's
+backend/cost/cost_addons.py uses it. Delete it once backend-design section 8 has been updated for B-8.
 
-用法：
-  python3 -I cost_model.py           → D-028 以后的一局（Markdown）：各场景、换 Haiku 的几种
-  python3 -I cost_model.py --gemini  → D-028 以前全用 Gemini 的旧表"""
+Usage:
+  python3 -I cost_model.py           → one playthrough after D-028 (Markdown): each scenario, and the Haiku variants
+  python3 -I cost_model.py --gemini  → the old pre-D-028 all-Gemini table
+
+1 プレイ（一回の体験）のコストモデル。数字はすべて見積もり：時間、ターン数、トークン量は仮定で、バックエンドの
+spike S-5（模擬プレイ）で実測したら置き換える。標準ライブラリのみ。
+
+D-028（2026-10-11）以降：Live の音声は Google に残し、ナレーターがモデルを使うステップはすべて Claude にする。
+ティア、思考、ステップごとのトークン数と回数は B-8 カード（docs/tasks/m2/B-8.md の「1 プレイのコスト」の表）に従う。
+Google の単価は pricing-2026-10-06.md を参照。Claude の単価はリポジトリに 1 部だけある claude-prices.json を読み
+（B-8 で packages/llm に移すまでは evals/config）、ここには写さない。為替レート：1 ドル = 150 円。
+
+D-028 以前のすべて Gemini の版（PRICE、BASE、session_cost、SCENARIOS）はそのまま残す：バックエンドの
+backend/cost/cost_addons.py が参照している。backend-design 第 8 節を B-8 に合わせて直したら一緒に削除する。
+
+使い方：
+  python3 -I cost_model.py           → D-028 以降の 1 プレイ（Markdown）：各シナリオと Haiku に替えた場合
+  python3 -I cost_model.py --gemini  → D-028 以前のすべて Gemini の旧表"""
 
 import json
 import sys
@@ -19,7 +37,8 @@ from pathlib import Path
 M = 1_000_000
 JPY = 150
 REPO = Path(__file__).resolve().parents[3]
-# ---- 单价（USD）。intro = 2026-12-31 前的优惠价；list = 2027-01-01 起的标价 ----
+# ---- Unit prices (USD). intro = discounted price before 2026-12-31; list = list price from 2027-01-01 ----
+# ---- 単価（USD）。intro = 2026-12-31 までの優待価格、list = 2027-01-01 からの定価 ----
 PRICE = {
     "live": {"in_text": 0.75 / M, "in_audio": 3.00 / M, "out_text": 4.50 / M, "out_audio": 12.00 / M},
     "flash_intro": {"in": 0.75 / M, "cached": 0.075 / M, "out": 3.75 / M},
@@ -27,29 +46,49 @@ PRICE = {
     "flash_lite": {"in": 0.30 / M, "cached": 0.03 / M, "out": 2.50 / M},
     "image": {"nb2_1k": 0.067, "nb2_lite_1k": 0.034},
     "veo_per_s": {"none": 0.0, "lite_720p_audio": 0.05, "fast_720p_audio": 0.10},
-    "run_instance_hour": 0.0684,  # 1 vCPU + 0.5 GiB，实例计费（有 WebSocket 时按实例计费）
+    # 1 vCPU + 0.5 GiB, instance billing (instance-based billing while WebSockets are open)
+    # 1 vCPU + 0.5 GiB、インスタンス課金（WebSocket があるときはインスタンス単位の課金）
+    "run_instance_hour": 0.0684,
 }
 AUDIO_TOK_PER_S = 25  # Live API
 
 BASE = dict(
-    minutes=20, turns=40, turns_per_conv=7,   # PM：20 分钟 40 轮；后端：平均每条角色会话 7 轮
-    player_s=9, char_s=9,                     # 后端：玩家、角色各说约 6 分钟 → 每轮约 9 秒
-    live_setup_text=2500,                     # 每条会话的系统指令：规则 + 人设 + 局势 + 记忆（文字 token）
-    transcript_tok_per_s=6,                   # 日语转写约每秒 6 token（输入、输出都开转写）
+    # PM: 20 minutes, 40 turns; backend: on average 7 turns per character conversation
+    # PM：20 分 40 ターン。バックエンド：登場人物との会話 1 本あたり平均 7 ターン
+    minutes=20, turns=40, turns_per_conv=7,
+    # Backend: player and character each speak about 6 minutes → about 9 seconds per turn
+    # バックエンド：プレイヤーと登場人物がそれぞれ約 6 分話す → 1 ターン約 9 秒
+    player_s=9, char_s=9,
+    # System instruction per conversation: rules + persona + situation + memories (text tokens)
+    # 会話ごとのシステム指示：ルール + 人物設定 + 状況 + 記憶（テキストトークン）
+    live_setup_text=2500,
+    # Japanese transcription is about 6 tokens per second (transcription on for both input and output)
+    # 日本語の書き起こしは毎秒約 6 トークン（入力・出力とも書き起こしを有効にする）
+    transcript_tok_per_s=6,
     flash="flash_list",
-    extract_in=3000, extract_out=300, extract_think=200, cached_share=0.6,   # 每轮一次提取（LOW 思考）
-    check_share=0.5, check_attempts=1.3,      # 一半的轮次有候选事件要模型检查；平均 1.3 次尝试
-    check_in=4000, check_out=200, check_think=600,                          # MEDIUM 思考
-    memory_share=0.5, memory_in=800, memory_out=80,                         # 3.5 Flash-Lite 写记忆
-    brief_share=0.5, brief_in=2500, brief_out=400,                          # 3.5 Flash-Lite 写局势说明
-    ending_in=20000, ending_out=5000, verify_in=6000, verify_out=500,       # 3.8 Flash 高思考 + 一次校验
+    # One extraction per turn (LOW thinking) / 毎ターン 1 回の抽出（LOW 思考）
+    extract_in=3000, extract_out=300, extract_think=200, cached_share=0.6,
+    # Half the turns have candidate events for the model to check; 1.3 attempts on average
+    # 半分のターンでモデルがチェックする候補イベントがある。平均 1.3 回試行
+    check_share=0.5, check_attempts=1.3,
+    check_in=4000, check_out=200, check_think=600,  # MEDIUM thinking / MEDIUM 思考
+    # 3.5 Flash-Lite writes memories / 3.5 Flash-Lite が記憶を書く
+    memory_share=0.5, memory_in=800, memory_out=80,
+    # 3.5 Flash-Lite writes situation briefs / 3.5 Flash-Lite が状況説明を書く
+    brief_share=0.5, brief_in=2500, brief_out=400,
+    # 3.8 Flash with high thinking + one verification / 3.8 Flash の高思考 + 検証 1 回
+    ending_in=20000, ending_out=5000, verify_in=6000, verify_out=500,
     images=1, image_kind="nb2_1k", video_s=0, video_kind="none",
     sessions_per_instance=20,
 )
 
+TOTAL = "Total / 合計"
+
 
 def live_cost(p, single_session=False):
-    """Live 每一轮都按整段会话上下文重新计费：之前各轮的音频都算进输入。"""
+    """Live re-bills the whole conversation context on every turn: all earlier turns' audio counts as input.
+
+    Live は毎ターン、会話全体のコンテキストで課金し直す：それまでの各ターンの音声がすべて入力に入る。"""
     pr = PRICE["live"]
     a_in, a_out = p["player_s"] * AUDIO_TOK_PER_S, p["char_s"] * AUDIO_TOK_PER_S
     per_turn_out = a_out * pr["out_audio"] + (p["player_s"] + p["char_s"]) * p["transcript_tok_per_s"] * pr["out_text"]
@@ -69,100 +108,165 @@ def text_call(model, tin, tout, cached_share=0.0):
 
 
 def session_cost(p, single_session=False):
-    """D-028 以前：叙事者全用 Gemini。"""
+    """Before D-028: the whole narrator on Gemini.
+
+    D-028 以前：ナレーターはすべて Gemini。"""
     n, f = p["turns"], p["flash"]
     r = {}
-    r["语音对话（Live）"] = live_cost(p, single_session)
-    r["叙事者提取"] = n * text_call(f, p["extract_in"], p["extract_out"] + p["extract_think"], p["cached_share"])
-    r["模型检查"] = n * p["check_share"] * p["check_attempts"] * text_call(f, p["check_in"], p["check_out"] + p["check_think"], p["cached_share"])
-    r["记忆与局势说明"] = n * (p["memory_share"] * text_call("flash_lite", p["memory_in"], p["memory_out"])
-                         + p["brief_share"] * text_call("flash_lite", p["brief_in"], p["brief_out"]))
-    r["结局结算"] = text_call(f, p["ending_in"], p["ending_out"]) + text_call(f, p["verify_in"], p["verify_out"])
-    r["结局插画"] = p["images"] * PRICE["image"][p["image_kind"]]
-    r["结局短片"] = p["video_s"] * PRICE["veo_per_s"][p["video_kind"]]
-    r["Cloud Run 分摊"] = PRICE["run_instance_hour"] * p["minutes"] / 60 / p["sessions_per_instance"]
-    r["合计"] = sum(r.values())
+    r["Voice conversation (Live) / 音声会話（Live）"] = live_cost(p, single_session)
+    r["Narrator extraction / ナレーターの抽出"] = n * text_call(
+        f, p["extract_in"], p["extract_out"] + p["extract_think"], p["cached_share"])
+    r["Model check / モデルチェック"] = n * p["check_share"] * p["check_attempts"] * text_call(
+        f, p["check_in"], p["check_out"] + p["check_think"], p["cached_share"])
+    r["Memory and situation brief / 記憶と状況説明"] = n * (
+        p["memory_share"] * text_call("flash_lite", p["memory_in"], p["memory_out"])
+        + p["brief_share"] * text_call("flash_lite", p["brief_in"], p["brief_out"]))
+    r["Ending settlement / エンディングの確定"] = (text_call(f, p["ending_in"], p["ending_out"])
+                                                 + text_call(f, p["verify_in"], p["verify_out"]))
+    r["Ending illustration / エンディングの挿絵"] = p["images"] * PRICE["image"][p["image_kind"]]
+    r["Ending video / エンディングの短編動画"] = p["video_s"] * PRICE["veo_per_s"][p["video_kind"]]
+    r["Cloud Run share / Cloud Run の按分"] = PRICE["run_instance_hour"] * p["minutes"] / 60 / p["sessions_per_instance"]
+    r[TOTAL] = sum(r.values())
     return r
 
 
 SCENARIOS = {
-    "基准（20 分钟 40 轮）": {},
-    "基准 · 2026 年内优惠价": dict(flash="flash_intro"),
-    "玩得久（30 分钟 60 轮）": dict(minutes=30, turns=60),
-    "压力（30 分钟 60 轮、每轮都检查、2 次尝试、会话 10 轮）": dict(minutes=30, turns=60, turns_per_conv=10, check_share=1.0, check_attempts=2.0),
-    "基准 + 8 秒短片（Veo 3.1 Lite）": dict(video_s=8, video_kind="lite_720p_audio"),
+    "Baseline (20 min, 40 turns) / 基準（20 分 40 ターン）": {},
+    "Baseline · 2026 intro price / 基準・2026 年内の優待価格": dict(flash="flash_intro"),
+    "Long play (30 min, 60 turns) / 長めのプレイ（30 分 60 ターン）": dict(minutes=30, turns=60),
+    "Stress (30 min, 60 turns, check every turn, 2 attempts, 10-turn sessions)"
+    " / 負荷（30 分 60 ターン、毎ターンチェック、2 回試行、会話 10 ターン）":
+        dict(minutes=30, turns=60, turns_per_conv=10, check_share=1.0, check_attempts=2.0),
+    "Baseline + 8 s video (Veo 3.1 Lite) / 基準 + 8 秒の短編動画（Veo 3.1 Lite）":
+        dict(video_s=8, video_kind="lite_720p_audio"),
 }
 
 
-# ---- D-028 以后：文字模型走 Claude（B-8） ----
+# ---- After D-028: text models go to Claude (B-8) ----
+# ---- D-028 以降：テキストモデルは Claude（B-8） ----
 
-HAIKU_TOKENS = 1.3  # Haiku 5.5 的分词器，同样的文字多算约 30% 的 token（B-8）
+# Haiku 5.5's tokenizer counts about 30% more tokens for the same text (B-8)
+# Haiku 5.5 のトークナイザーは同じ文章を約 30% 多くトークンとして数える（B-8）
+HAIKU_TOKENS = 1.3
 
 
 def claude_prices():
-    """读 claude-prices.json：B-8 以后在 packages/llm 里，之前在 evals/config。仓库里只有一份。"""
+    """Read claude-prices.json: in packages/llm after B-8, in evals/config before. The repo holds only one copy.
+
+    claude-prices.json を読む：B-8 以降は packages/llm、それ以前は evals/config。リポジトリに 1 部だけ。"""
     found = sorted(REPO.glob("packages/llm/**/claude-prices.json")) + [REPO / "evals" / "config" / "claude-prices.json"]
     path = next(x for x in found if x.exists())
     d = json.loads(path.read_text(encoding="utf-8"))
-    tiers = {k: {"in": v["input"] / M, "cached": v["cacheRead"] / M, "out": v["output"] / M} for k, v in d["perMTok"].items()}
+    tiers = {k: {"in": v["input"] / M, "cached": v["cacheRead"] / M, "out": v["output"] / M}
+             for k, v in d["perMTok"].items()}
     return tiers, d["cacheWriteMultiplier"], d["batchDiscount"]
 
 
-# B-8「单局成本」那张表，一行一步。tok：表里的 token 是按哪一档的分词数的（Haiku 那几行 B-8 已经乘过 1.3）。
-# cached = 世界模型前缀加这种提示的说明，走缓存；fresh = 状态、这一轮、请求字段；out 含思考。calls(p)：一局几次。
+# B-8's "per-playthrough cost" table, one row per step. tok: which tier's tokenizer the table's token counts use
+# (B-8 already multiplied the Haiku rows by 1.3).
+# cached = world-model prefix plus this prompt's instructions, served from cache; fresh = state, this turn, request
+# fields; out includes thinking. calls(p): calls per playthrough. The keys match the backend's prompt names where
+# there is one; LABELS gives the row names printed in the tables.
+# B-8 の「1 プレイのコスト」の表、1 行 1 ステップ。tok：表のトークン数がどのティアのトークナイザーで数えたものか
+# （Haiku の行は B-8 で 1.3 倍済み）。
+# cached = 世界モデルのプレフィックスとこのプロンプトの説明、キャッシュ経由。fresh = 状態、このターン、リクエストの
+# フィールド。out は思考を含む。calls(p)：1 プレイの回数。キーはバックエンドのプロンプト名があればそれに合わせ、
+# 表に出す行名は LABELS にある。
 STEPS = {
-    "分流":       dict(tier="haiku",  tok="haiku",  cached=0,     fresh=1200,  out=30,   calls=lambda p: p["turns"]),
-    "提取":       dict(tier="sonnet", tok="sonnet", cached=17000, fresh=1500,  out=300,  calls=lambda p: p["turns"] * (p["extract_share"] + p["action_share"])),
-    "模型检查":   dict(tier="sonnet", tok="sonnet", cached=17000, fresh=2000,  out=1200, calls=lambda p: p["turns"] * p["check_share"] * p["check_attempts"]),
-    "改写或降级": dict(tier="sonnet", tok="sonnet", cached=17000, fresh=2000,  out=400,  calls=lambda p: p["turns"] * p["rewrite_share"]),
-    "地の文":     dict(tier="sonnet", tok="sonnet", cached=17000, fresh=1200,  out=120,  calls=lambda p: p["turns"] * p["action_share"]),
-    "幕末打算":   dict(tier="sonnet", tok="sonnet", cached=17000, fresh=2000,  out=600,  calls=lambda p: p["acts"]),
-    "安全分类":   dict(tier="haiku",  tok="haiku",  cached=0,     fresh=1600,  out=30,   calls=lambda p: p["turns"] * p["safety_per_turn"]),
-    "记忆一句":   dict(tier="haiku",  tok="haiku",  cached=0,     fresh=1000,  out=100,  calls=lambda p: p["turns"] * p["memory_share"]),
-    "候选话语":   dict(tier="haiku",  tok="haiku",  cached=0,     fresh=2000,  out=200,  calls=lambda p: p["turns"] * p["suggest_share"]),
-    "删除那一句": dict(tier="haiku",  tok="haiku",  cached=0,     fresh=800,   out=80,   calls=lambda p: p["deletes"]),
-    "世界推进":   dict(tier="sonnet", tok="sonnet", cached=17000, fresh=3000,  out=1500, calls=lambda p: p["ticks_fixed"] + p["turns"] * p["ticks_per_turn"]),
-    "结局生成":   dict(tier="sonnet", tok="sonnet", cached=17000, fresh=20000, out=3000, calls=lambda p: 1),
-    "结局检查":   dict(tier="sonnet", tok="sonnet", cached=17000, fresh=6000,  out=800,  calls=lambda p: 1),
+    "triage":        dict(tier="haiku",  tok="haiku",  cached=0,     fresh=1200,  out=30,
+                          calls=lambda p: p["turns"]),
+    "extract":       dict(tier="sonnet", tok="sonnet", cached=17000, fresh=1500,  out=300,
+                          calls=lambda p: p["turns"] * (p["extract_share"] + p["action_share"])),
+    "check":         dict(tier="sonnet", tok="sonnet", cached=17000, fresh=2000,  out=1200,
+                          calls=lambda p: p["turns"] * p["check_share"] * p["check_attempts"]),
+    "rewrite":       dict(tier="sonnet", tok="sonnet", cached=17000, fresh=2000,  out=400,
+                          calls=lambda p: p["turns"] * p["rewrite_share"]),
+    "narrate":       dict(tier="sonnet", tok="sonnet", cached=17000, fresh=1200,  out=120,
+                          calls=lambda p: p["turns"] * p["action_share"]),
+    "plan":          dict(tier="sonnet", tok="sonnet", cached=17000, fresh=2000,  out=600,
+                          calls=lambda p: p["acts"]),
+    "safety":        dict(tier="haiku",  tok="haiku",  cached=0,     fresh=1600,  out=30,
+                          calls=lambda p: p["turns"] * p["safety_per_turn"]),
+    "memory":        dict(tier="haiku",  tok="haiku",  cached=0,     fresh=1000,  out=100,
+                          calls=lambda p: p["turns"] * p["memory_share"]),
+    "suggest":       dict(tier="haiku",  tok="haiku",  cached=0,     fresh=2000,  out=200,
+                          calls=lambda p: p["turns"] * p["suggest_share"]),
+    "delete_memory": dict(tier="haiku",  tok="haiku",  cached=0,     fresh=800,   out=80,
+                          calls=lambda p: p["deletes"]),
+    "world_tick":    dict(tier="sonnet", tok="sonnet", cached=17000, fresh=3000,  out=1500,
+                          calls=lambda p: p["ticks_fixed"] + p["turns"] * p["ticks_per_turn"]),
+    "ending":        dict(tier="sonnet", tok="sonnet", cached=17000, fresh=20000, out=3000,
+                          calls=lambda p: 1),
+    "ending_check":  dict(tier="sonnet", tok="sonnet", cached=17000, fresh=6000,  out=800,
+                          calls=lambda p: 1),
 }
+LABELS = {
+    "triage": "Triage / 振り分け",
+    "extract": "Extraction / 抽出",
+    "check": "Model check / モデルチェック",
+    "rewrite": "Rewrite or downgrade / 書き換えまたは格下げ",
+    "narrate": "Narration line (地の文) / 地の文",
+    "plan": "End-of-act plan / 幕末のプラン",
+    "safety": "Safety classification / 安全分類",
+    "memory": "One-line memory / 記憶の一文",
+    "suggest": "Suggested lines / 発話の候補",
+    "delete_memory": "Delete that line / その一文の削除",
+    "world_tick": "World tick / 世界の進行",
+    "ending": "Ending generation / エンディング生成",
+    "ending_check": "Ending check / エンディングのチェック",
+}
+CLAUDE_SUBTOTAL = "Claude subtotal / Claude 小計"
+LIVE_GOOGLE = "Voice conversation (Live, Google) / 音声会話（Live、Google）"
+CLOUD_RUN = "Cloud Run share / Cloud Run の按分"
 
 CLAUDE_BASE = dict(
     BASE,
-    extract_share=0.6,    # 约四成闲聊在分流就停
-    action_share=0.2,     # 动作约 8 次（40 轮）：每次提取一次、写一句地の文
+    extract_share=0.6,    # about 40% small talk stops at triage / 約 4 割の雑談は振り分けで止まる
+    # About 8 actions (in 40 turns): one extraction and one 地の文 line each
+    # アクションは約 8 回（40 ターン）：毎回抽出 1 回と地の文 1 文
+    action_share=0.2,
     check_share=0.6, check_attempts=1.3,
-    rewrite_share=0.15,   # 改写或降级约 6 次
-    acts=3,               # 幕末打算：切片三幕
-    safety_per_turn=1.1,  # 玩家说的每句话，加上打字的
+    rewrite_share=0.15,   # about 6 rewrites or downgrades / 書き換えまたは格下げ約 6 回
+    acts=3,               # end-of-act plan: three acts in the slice / 幕末のプラン：スライスは 3 幕
+    # Every line the player says, plus typed ones / プレイヤーが話す毎文と、入力した文
+    safety_per_turn=1.1,
     memory_share=0.5, suggest_share=0.6, deletes=1,
-    ticks_fixed=8, ticks_per_turn=0.1,  # 世界推进：换幕和关键时刻 8 次，加上每 10 轮一次
-    images=0,             # 结局卡的画面用 3D 结局的一帧，不调图像模型（ux-design 11.3）
+    # World tick: 8 for act changes and key moments, plus one every 10 turns
+    # 世界の進行：幕の切り替えとキーモーメントで 8 回、加えて 10 ターンごとに 1 回
+    ticks_fixed=8, ticks_per_turn=0.1,
+    # The ending card's picture is a frame of the 3D ending; no image model is called (ux-design 11.3)
+    # エンディングカードの画像は 3D エンディングの 1 フレームで、画像モデルは呼ばない（ux-design 11.3）
+    images=0,
 )
 
 CLAUDE_SCENARIOS = {
-    "20 分钟 40 轮": {},
-    "30 分钟 60 轮": dict(minutes=30, turns=60),
-    "压力（60 轮，每轮都检查、2 次尝试）": dict(minutes=30, turns=60, extract_share=0.8, check_share=1.0, check_attempts=2.0,
-                                          rewrite_share=1.0),
+    "20 min, 40 turns / 20 分 40 ターン": {},
+    "30 min, 60 turns / 30 分 60 ターン": dict(minutes=30, turns=60),
+    "Stress (60 turns, check every turn, 2 attempts) / 負荷（60 ターン、毎ターンチェック、2 回試行）":
+        dict(minutes=30, turns=60, extract_share=0.8, check_share=1.0, check_attempts=2.0, rewrite_share=1.0),
 }
 
 SONNET_STEPS = [k for k, v in STEPS.items() if v["tier"] == "sonnet"]
 TIER_PLANS = {
-    "按 B-8（提取、检查用 Sonnet）": {},
-    "提取换 Haiku": {"提取": "haiku"},
-    "提取、检查都换 Haiku": {"提取": "haiku", "模型检查": "haiku"},
-    "叙事者全用 Haiku": {k: "haiku" for k in SONNET_STEPS},
+    "Per B-8 (Sonnet for extraction and check) / B-8 どおり（抽出・チェックは Sonnet）": {},
+    "Extraction on Haiku / 抽出を Haiku に": {"extract": "haiku"},
+    "Extraction and check both on Haiku / 抽出・チェックとも Haiku に": {"extract": "haiku", "check": "haiku"},
+    "Whole narrator on Haiku / ナレーターをすべて Haiku に": {k: "haiku" for k in SONNET_STEPS},
 }
 
 
 def tokens(step, tier):
-    """表里的 token 换成 tier 那一档的分词数。"""
+    """Convert the table's tokens to the token count of the given tier's tokenizer.
+
+    表のトークン数を tier のトークナイザーでの数に換算する。"""
     f = (HAIKU_TOKENS if tier == "haiku" else 1.0) / (HAIKU_TOKENS if step["tok"] == "haiku" else 1.0)
     return step["cached"] * f, step["fresh"] * f, step["out"] * f
 
 
 def claude_call(name, tier=None, prices=None, batch=False):
-    """一次调用（缓存已经写好）的花费。"""
+    """Cost of one call (with the cache already written).
+
+    1 回の呼び出し（キャッシュは書き込み済み）の費用。"""
     tiers, _, discount = prices or claude_prices()
     step = STEPS[name]
     pr = tiers[tier or step["tier"]]
@@ -172,7 +276,11 @@ def claude_call(name, tier=None, prices=None, batch=False):
 
 
 def cache_write(name, tier=None, prices=None):
-    """写一次缓存比读多出的钱：前缀按 5 分钟写入的 1.25 倍计，减去这次本来要付的读取。"""
+    """Extra cost of writing the cache once over reading it: the prefix at 1.25x for a 5-minute write, minus the read
+    this call would have paid anyway.
+
+    キャッシュを 1 回書くときに読み取りより余分にかかる費用：プレフィックスを 5 分書き込みの 1.25 倍で計算し、
+    この呼び出しで本来払う読み取り分を差し引く。"""
     tiers, write_mult, _ = prices or claude_prices()
     step = STEPS[name]
     pr = tiers[tier or step["tier"]]
@@ -181,8 +289,13 @@ def cache_write(name, tier=None, prices=None):
 
 
 def claude_session(p, plan=None, prices=None, warm=()):
-    """一局。前缀每种提示每局写一次缓存（B-8 的假设：同时玩的人多时局和局之间共用，更便宜）；
-    warm 里的几种不写（模拟局一局接一局地跑，常调的提示缓存一直热着）。"""
+    """One playthrough. The prefix cache is written once per prompt per playthrough (B-8's assumption: with many
+    concurrent players it is shared across playthroughs, which is cheaper); prompts in warm are not written
+    (simulated playthroughs run back to back, so frequently called prompts keep a warm cache).
+
+    1 プレイ。プレフィックスのキャッシュはプロンプトごとに 1 プレイ 1 回書く（B-8 の仮定：同時に遊ぶ人が多いと
+    プレイ間で共有され、もっと安くなる）。warm に入っているものは書かない（模擬プレイは 1 プレイずつ続けて実行するので、
+    よく呼ぶプロンプトのキャッシュは温まったまま）。"""
     prices = prices or claude_prices()
     plan = plan or {}
     r = {}
@@ -190,17 +303,17 @@ def claude_session(p, plan=None, prices=None, warm=()):
         tier = plan.get(name, step["tier"])
         n = step["calls"](p)
         write = step["cached"] and n and name not in warm
-        r[name] = n * claude_call(name, tier, prices) + (cache_write(name, tier, prices) if write else 0.0)
-    r["Claude 小计"] = sum(r.values())
-    r["语音对话（Live，Google）"] = live_cost(p)
-    r["Cloud Run 分摊"] = PRICE["run_instance_hour"] * p["minutes"] / 60 / p["sessions_per_instance"]
-    r["合计"] = r["Claude 小计"] + r["语音对话（Live，Google）"] + r["Cloud Run 分摊"]
+        r[LABELS[name]] = n * claude_call(name, tier, prices) + (cache_write(name, tier, prices) if write else 0.0)
+    r[CLAUDE_SUBTOTAL] = sum(r.values())
+    r[LIVE_GOOGLE] = live_cost(p)
+    r[CLOUD_RUN] = PRICE["run_instance_hour"] * p["minutes"] / 60 / p["sessions_per_instance"]
+    r[TOTAL] = r[CLAUDE_SUBTOTAL] + r[LIVE_GOOGLE] + r[CLOUD_RUN]
     return r
 
 
-def table(rows, money_rows=("合计",)):
+def table(rows, money_rows=(TOTAL,)):
     keys = list(next(iter(rows.values())).keys())
-    out = ["| 项目 | " + " | ".join(rows) + " |", "|---|" + "---:|" * len(rows)]
+    out = ["| Item / 項目 | " + " | ".join(rows) + " |", "|---|" + "---:|" * len(rows)]
     for k in keys:
         cells = [f"${rows[n][k]:.3f}" for n in rows]
         if k in money_rows:
@@ -214,12 +327,12 @@ def main_claude():
     rows = {name: claude_session({**CLAUDE_BASE, **over}, prices=prices) for name, over in CLAUDE_SCENARIOS.items()}
     print(table(rows))
     print()
-    print("换 Haiku（合计，含 Live）：")
+    print("Switching to Haiku (total, including Live) / Haiku に替えた場合（合計、Live 込み）:")
     print()
-    print("| 叙事者的型号 | " + " | ".join(CLAUDE_SCENARIOS) + " |")
+    print("| Narrator tier / ナレーターのティア | " + " | ".join(CLAUDE_SCENARIOS) + " |")
     print("|---|" + "---:|" * len(CLAUDE_SCENARIOS))
     for name, plan in TIER_PLANS.items():
-        cells = [claude_session({**CLAUDE_BASE, **over}, plan, prices)["合计"] for over in CLAUDE_SCENARIOS.values()]
+        cells = [claude_session({**CLAUDE_BASE, **over}, plan, prices)[TOTAL] for over in CLAUDE_SCENARIOS.values()]
         print(f"| {name} | " + " | ".join(f"${x:.2f}（{x * JPY:.0f} 円）" for x in cells) + " |")
 
 
@@ -229,10 +342,15 @@ def main_gemini():
     one = live_cost(BASE, single_session=True)
     split = live_cost(BASE)
     print()
-    print(f"对照：同样 {BASE['turns']} 轮，整局只开一个 Live 会话（不压缩）语音约 ${one:.2f}；"
-          f"每 {BASE['turns_per_conv']} 轮重开一条会话约 ${split:.2f}（约 {one / split:.1f} 倍）。")
-    base = rows[list(rows)[0]]["合计"]
-    print(f"基准 1,000 局约 ${base * 1000:,.0f}（约 {base * 1000 * JPY / 10000:,.1f} 万円）。")
+    print(f"For comparison: over the same {BASE['turns']} turns, one Live session for the whole playthrough"
+          f" (no compression) costs about ${one:.2f} in voice; reopening a session every {BASE['turns_per_conv']}"
+          f" turns costs about ${split:.2f} (about {one / split:.1f}x)."
+          f" / 比較：同じ {BASE['turns']} ターンで、1 プレイ全体を Live の会話 1 本で通す（圧縮なし）と音声は約 ${one:.2f}、"
+          f"{BASE['turns_per_conv']} ターンごとに会話を開き直すと約 ${split:.2f}（約 {one / split:.1f} 倍）。")
+    base = rows[list(rows)[0]][TOTAL]
+    print(f"Baseline: 1,000 playthroughs cost about ${base * 1000:,.0f}"
+          f" (about {base * 1000 * JPY / 10000:,.1f} 万円)."
+          f" / 基準で 1,000 プレイ約 ${base * 1000:,.0f}（約 {base * 1000 * JPY / 10000:,.1f} 万円）。")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-{"note": "goaway（第 4 节）：先 focus 市の老爺，说一句。人物说完后 mock 推 goaway 并以 1012 关闭；断线期间这一轮判完（commit 记下来）；重连发 hello { lastSeq } 后补发，welcome.lastTurn 是 settled。"}
+{"note": "goaway (section 4): focus 市の老爺 first and say a line. After the character finishes, the mock pushes goaway and closes with 1012; while disconnected the turn is judged (the commit is recorded); after reconnecting with hello { lastSeq } it is resent, and welcome.lastTurn is settled. / goaway（第 4 節）：先に 市の老爺 に focus し、ひとこと話す。登場人物が話し終えたら mock は goaway を送って 1012 で閉じる。切断中にこのターンの判定が済み（commit は記録される）、hello { lastSeq } で再接続すると再送され、welcome.lastTurn は settled。"}
 {"on": ["activity_start", "text"]}
 {"when": "voice", "delayMs": 700, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "市場は、", "final": false}}
 {"on": "activity_end", "if": {"trigger.type": "activity_start"}}

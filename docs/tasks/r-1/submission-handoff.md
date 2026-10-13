@@ -1,30 +1,51 @@
-# 今天提交的交接（2026-10-13）
+# Handoff for today's submission (2026-10-13) / 本日の提出の引き継ぎ（2026-10-13）
 
-本文件是内部准备清单，不是已提交、已部署或全量验收通过的证明。用户最新决定跳过剩余真实对局及 CI，自行试玩。实际完成、用户中断及未执行项分别保留在 [R-1](README.md)、[评估记录](eval-review.md) 和 [防剧透记录](spoiler.md)。
+This file is an internal preparation checklist, not proof that anything has been submitted, deployed, or passed full acceptance. The user's latest decision is to skip the remaining real games and CI and playtest on their own. What was actually completed, what the user interrupted, and what was not run are kept separately in [R-1](README.md), the [eval record / 評価記録](eval-review.md) and the [anti-spoiler record / ネタバレ防止記録](spoiler.md).
 
-## 官方要求与保密边界
+このファイルは内部の準備チェックリストであり、提出済み・デプロイ済み・全量の受け入れ確認合格を証明するものではない。ユーザーの最新の決定は、残りの実対局と CI をスキップし、自分で試遊すること。実際に完了したもの、ユーザーが中断したもの、未実行のものは、それぞれ [R-1](README.md)、[評価記録](eval-review.md)、[ネタバレ防止記録](spoiler.md) に残している。
 
-已于 2026-10-13 核对 [第 5 回 Agentic AI Hackathon with Google Cloud 官方页面](https://zenn.dev/hackathons/google-cloud-japan-ai-hackathon-vol5)。截止日为 2026-10-15；私有 GitHub 仓库允许，评审使用默认分支。需提交部署 URL、项目说明、架构图图片及约三分钟的 YouTube 演示视频。需认证时应提供无需社交登录或接收邮件的测试账号，并准备可见样例数据。
+## Official requirements and confidentiality boundary / 公式要件と秘密保持の境界
 
-官方说明：截止后项目说明、架构图、演示视频等项目页内容会公开；仓库与部署 URL 只供评审。用户已明确允许产品概念、项目说明、架构图和演示视频公开；实际应用仍需密码，凭证仍不公开。默认分支状态和可访问部署需保持至 12 月 1 日。最新 [提交材料](../../submission/README.md) 替代下文最初的说明/架构待准备状态；视频录制和上传由用户负责。
+On 2026-10-13 we checked the [official page of the 5th Agentic AI Hackathon with Google Cloud / 第 5 回 Agentic AI Hackathon with Google Cloud 公式ページ](https://zenn.dev/hackathons/google-cloud-japan-ai-hackathon-vol5). The deadline is 2026-10-15; a private GitHub repository is allowed, and judging uses the default branch. Required: a deployment URL, a project description, an architecture diagram image, and a YouTube demo video of about three minutes. If authentication is needed, a test account must be provided that needs no social login or email receipt, and visible sample data must be prepared.
 
-## 当前可以交接的内容
+2026-10-13 に [第 5 回 Agentic AI Hackathon with Google Cloud 公式ページ](https://zenn.dev/hackathons/google-cloud-japan-ai-hackathon-vol5) を確認した。締め切りは 2026-10-15。非公開の GitHub リポジトリも可で、審査はデフォルトブランチを使う。提出が必要なのは、デプロイ URL、プロジェクト説明、アーキテクチャ図の画像、約 3 分の YouTube デモ動画。認証が必要な場合は、ソーシャルログインやメール受信が不要なテストアカウントを用意し、見られるサンプルデータを準備する必要がある。
 
-- 修复代码同步到私有默认分支 `main`，工作分支 `r-1-deferred-validation` 保留。2026-10-14 已部署行动入口版本 `182c8b0` 到既有两个 Cloud Run 服务，正式流量为 100%。候选与正式冒烟、密码门禁、评审登录、原有进度和 WebSocket 启动通过；线上界面已确认「行動・移動」、目的地与「時間を進めて待つ」。29 项会话单测、类型检查、定向 lint、构建及包体检查通过；未重新运行完整 CI 或真实对局。
-- 新入口直接使用服务端当前可用行动和地点出口，执行前提示消耗的故事时间；结果显示实际完成、拒绝或部分完成。等待推进故事时间，同场景走路或现实等待不会推进。断线后的未确认行动不自动重试，不强制改写剧情或存档。
-- 已有原创书房、多书目录、同局继续、真实结局回想、17 套人物及站点密码门禁。当前只有一本实际开放的书，不应宣传第二本已完成。
-- 场景和人物的本机部署打包预检通过。构建输入与本机生成物保留，用户取消的 CI 不算通过。
-- [本机预览](../../../infra/deploy/README.md) 的启动脚本为 `uv run python infra/deploy/local-preview.py`，仅监听本机，含站点密码和独立数据库。**此脚本使用假模型，只适合界面/流程检查，不能当真实 AI 对局。** 凭证由脚本写入本机私有文件，不在本文列出。
-- 用户随后明确授权外部评审入口。当前网关允许 HTTPS 到达密码页，实际内容仍受整站密码保护，进度/API 另须邀请码；叙事者 IAM 私有。评审无需 Google 登录，主账号有真实开局进度，另有两个备用账号。部署 URL 与日语「動作確認の方法」仅在本机私有文件，不进公开说明。
+Official notes: after the deadline, project-page content such as the project description, architecture diagram and demo video becomes public; the repository and deployment URL are for judges only. The user has explicitly allowed the product concept, project description, architecture diagram and demo video to be public; the actual app still requires a password, and credentials remain private. The default branch state and an accessible deployment must be kept until December 1. The latest [submission materials / 提出資料](../../submission/README.md) supersede the original "description/architecture still to be prepared" state below; video recording and upload are the user's responsibility.
 
-## 正式提交前的具体缺口
+公式の説明：締め切り後、プロジェクト説明、アーキテクチャ図、デモ動画などのプロジェクトページの内容は公開される。リポジトリとデプロイ URL は審査用のみ。ユーザーは、製品コンセプト、プロジェクト説明、アーキテクチャ図、デモ動画の公開を明示的に許可した。実際のアプリには引き続きパスワードが必要で、認証情報は公開しない。デフォルトブランチの状態とアクセス可能なデプロイは 12 月 1 日まで維持する必要がある。最新の [提出資料](../../submission/README.md) が、下記の当初の「説明・アーキテクチャは準備中」という状態に取って代わる。動画の録画とアップロードはユーザーが担当する。
 
-1. 已完成：最终日语说明、简短简介、架构 PNG/SVG、文化厅与 UNESCO 资料、评分对应及录制脚本。现有 `docs/brief/handoff.md` 的 Firestore、Memory Bank、ADK、Veo 旧方案不能提交；本次架构按实际路由核对，人物语音与文字回复由 Google Gemini 提供，叙事等处理由 Claude 提供。
-2. 由用户完成：约三分钟的实际演示成片及公开 YouTube 链接。用户明确接管视频录制上传后，主线程已停止录制。此前独立账号只录到一次真实文字提议与老爺拒绝，不把它说成已送回家或约定成立。不能把假模型画面当实际 AI 回复，也不宣称 200 局已验证。
-3. 已完成：评审密码、主邀请码、两个备用邀请码、真实开局状态与日语操作说明。回想录只显示真实到达的结局，当前不伪造示例结局。
-4. 已完成：外部入口，无 Google 身份情况下的密码页、17 条实际资源/API 密码拒绝、邀请码登录、实际进度和 WebSocket 启动均通过；历史临时地址已清除，叙事服务保持私有。
-5. 已完成：默认分支 main 对齐交付代码。提交后应按赛事要求保持状态至 12 月 1 日；继续开发需用其他分支，不能覆盖评审基线。
+## What can be handed over now / 現時点で引き継げる内容
 
-评审员校准、预录语音试听、200 局和四幕 980 次测试仍按用户决定暂缓，不是今天继续开发的前置条件。
+- The fix code is synced to the private default branch `main`, and the working branch `r-1-deferred-validation` is kept. On 2026-10-14 the action-entry version `182c8b0` was deployed to the two existing Cloud Run services, with 100% production traffic. Candidate and production smoke tests, the password gate, reviewer login, existing progress and WebSocket startup passed; the live UI was confirmed to show 「行動・移動」, destinations and 「時間を進めて待つ」. 29 session unit tests, type checks, targeted lint, build and bundle checks passed; the full CI and real games were not rerun.
+  修正コードは非公開のデフォルトブランチ `main` に同期し、作業ブランチ `r-1-deferred-validation` は残している。2026-10-14 にアクション入口のバージョン `182c8b0` を既存の 2 つの Cloud Run サービスにデプロイし、本番トラフィックは 100%。候補と本番のスモークテスト、パスワードゲート、レビュアーのログイン、既存の進捗、WebSocket の起動に合格した。本番 UI で「行動・移動」、行き先、「時間を進めて待つ」を確認した。セッションの単体テスト 29 件、型チェック、対象を絞った lint、ビルド、バンドルチェックに合格。完全な CI と実対局は再実行していない。
+- The new entry uses the server's currently available actions and location exits directly, and before running an action it shows how much story time will be spent; the result shows whether it was actually completed, refused or partly completed. Waiting advances story time; walking within the same scene or waiting in real time does not. After a disconnect, unconfirmed actions are not retried automatically, and the story or save is not forcibly rewritten.
+  新しい入口はサーバーの現在利用可能なアクションと場所の出口をそのまま使い、実行前に消費する物語時間を表示する。結果には、実際に完了・拒否・一部完了のどれだったかを表示する。待つと物語時間が進むが、同じシーン内を歩いたり現実で待ったりしても進まない。切断後の未確認アクションは自動で再試行せず、ストーリーやセーブを強制的に書き換えない。
+- Already in place: an original study, a multi-book catalog, continuing the same game, recollection of endings actually reached, 17 character sets, and a site-wide password gate. Only one book is actually open right now; do not advertise a second book as finished.
+  すでにあるもの：オリジナルの書斎、複数の本のカタログ、同じゲームの続き、実際に到達したエンディングの回想、登場人物 17 セット、サイト全体のパスワードゲート。現在実際に公開している本は 1 冊だけで、2 冊目が完成したと宣伝してはならない。
+- The local deployment packaging preflight for scenes and characters passed. Build inputs and local generated files are kept; CI cancelled by the user does not count as passing.
+  シーンと登場人物のローカルでのデプロイ用パッケージングのプリフライトに合格した。ビルド入力とローカルの生成物は残している。ユーザーがキャンセルした CI は合格とみなさない。
+- The startup script for the [local preview / ローカルプレビュー](../../../infra/deploy/README.md) is `uv run python infra/deploy/local-preview.py`; it listens only locally and includes the site password and a separate database. **This script uses a fake model and is only suitable for UI/flow checks; it cannot be treated as a real AI game.** The script writes credentials to a local private file; they are not listed here.
+  [ローカルプレビュー](../../../infra/deploy/README.md) の起動スクリプトは `uv run python infra/deploy/local-preview.py` で、ローカルのみをリッスンし、サイトのパスワードと独立したデータベースを含む。**このスクリプトは偽モデルを使うので、UI やフローの確認にしか向かず、実際の AI 対局とはみなせない。** 認証情報はスクリプトがローカルの非公開ファイルに書き込み、ここには載せない。
+- The user then explicitly authorized the external review entry. The gateway currently allows HTTPS to reach the password page; the actual content is still protected by the site-wide password, and progress/API additionally require an invite code; the narrator is IAM-private. Reviewers need no Google login; the main account has real opening progress, and there are two spare accounts. The deployment URL and the Japanese 「動作確認の方法」 are only in a local private file and do not go into the public description.
+  ユーザーはその後、外部レビュー用の入口を明示的に承認した。現在ゲートウェイは HTTPS でパスワードページまで到達できるが、実際のコンテンツは引き続きサイト全体のパスワードで保護され、進捗と API にはさらに招待コードが必要。ナレーターは IAM で非公開。レビュアーは Google ログイン不要で、メインアカウントには実際の開幕の進捗があり、予備アカウントが 2 つある。デプロイ URL と日本語の「動作確認の方法」はローカルの非公開ファイルにのみあり、公開の説明には入れない。
 
-公开材料已逐项扫描现有 URL、密码、主/备用邀请码及本机身份路径；未包含秘密。最终是否完成注册、仓库连接与正式表单提交仍需在赛事后台核对，材料完成不等于已经提交。
+## Specific gaps before the formal submission / 正式提出前の具体的な不足
+
+1. Done: the final Japanese description, short summary, architecture PNG/SVG, Agency for Cultural Affairs and UNESCO materials, scoring correspondence, and recording script. The old Firestore, Memory Bank, ADK and Veo plan in the existing `docs/brief/handoff.md` must not be submitted; this architecture was checked against the actual routing: character voice and text replies are provided by Google Gemini, and narration and other processing by Claude.
+   完了：最終的な日本語の説明、短い概要、アーキテクチャの PNG/SVG、文化庁と UNESCO の資料、採点との対応、録画スクリプト。既存の `docs/brief/handoff.md` にある Firestore、Memory Bank、ADK、Veo の旧案は提出してはならない。今回のアーキテクチャは実際のルーティングと照合済みで、登場人物の音声とテキストの返答は Google Gemini が、語りなどの処理は Claude が提供する。
+2. For the user to complete: the actual demo cut of about three minutes and a public YouTube link. After the user explicitly took over video recording and upload, the main thread stopped recording. The separate account had earlier recorded only one real text proposal and the 老爺 refusing it; do not describe that as him being sent home or an agreement being made. Fake-model footage must not be presented as actual AI replies, and do not claim that 200 games were verified.
+   ユーザーが行う：約 3 分の実際のデモ完成版と公開 YouTube リンク。ユーザーが動画の録画とアップロードを明示的に引き取った後、メインスレッドは録画を止めた。以前、別アカウントで録れたのは実際のテキストでの提案と老爺の拒否の 1 回だけで、それを家まで送り届けたとか約束が成立したとか言ってはならない。偽モデルの画面を実際の AI の返答として扱ってはならず、200 局が検証済みとも主張しない。
+3. Done: reviewer password, main invite code, two spare invite codes, a real opening state, and Japanese operating instructions. The recollection log shows only endings actually reached; no sample ending is faked at present.
+   完了：レビュアー用パスワード、メインの招待コード、予備の招待コード 2 つ、実際の開幕状態、日本語の操作説明。回想録には実際に到達したエンディングだけを表示し、現時点で例示用のエンディングは偽造していない。
+4. Done: the external entry. Without a Google identity, the password page, password refusal on 17 actual resource/API paths, invite-code login, actual progress and WebSocket startup all passed; historical temporary addresses were cleared, and the narrator service stays private.
+   完了：外部の入口。Google アカウントなしの状態で、パスワードページ、実際のリソース/API の 17 パスでのパスワード拒否、招待コードでのログイン、実際の進捗、WebSocket の起動にすべて合格した。過去の一時アドレスは削除し、ナレーターサービスは非公開のまま。
+5. Done: the default branch main is aligned with the delivered code. After submission, its state must be kept until December 1 as the contest requires; further development must use other branches and must not overwrite the judging baseline.
+   完了：デフォルトブランチ main を納品コードに揃えた。提出後はコンテストの要件どおり 12 月 1 日まで状態を維持する必要がある。開発を続ける場合は別ブランチを使い、審査のベースラインを上書きしてはならない。
+
+Judge calibration, pre-recorded voice listening, the 200 games and the four-act 980-call test remain on hold by the user's decision; they are not prerequisites for continuing development today.
+
+審査員のキャリブレーション、事前収録音声の試聴、200 局、四幕 980 回のテストは、ユーザーの決定により引き続き保留。本日開発を続けるための前提条件ではない。
+
+The public materials were scanned item by item for the existing URLs, passwords, main/spare invite codes and local identity paths; they contain no secrets. Whether registration, repository connection and the formal form submission are finally done still has to be checked in the contest dashboard; finished materials do not mean the submission has been made.
+
+公開資料は、既存の URL、パスワード、メイン・予備の招待コード、ローカルの ID パスを 1 項目ずつスキャンし、秘密が含まれていないことを確認した。登録、リポジトリの接続、正式なフォームの提出が最終的に済んだかどうかは、引き続きコンテストの管理画面で確認する必要がある。資料が完成しても、提出済みということにはならない。

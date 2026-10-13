@@ -1,3 +1,3 @@
-{"note": "未来的消息：发一条 Schema 里没有的 type，前端应该忽略；之后照常推一行叙事，确认连接还活着。这是唯一跳过自检的一步。"}
+{"note": "A message from the future: send a type that isn't in the Schema, which the frontend should ignore; then push a line of narration as usual to confirm the connection is still alive. This is the only step that skips the self-check. / 未来のメッセージ：Schema にない type を送る。フロントエンドは無視すべき。そのあといつもどおりナレーションを 1 行送り、接続がまだ生きていることを確かめる。自己チェックを飛ばすのはこのステップだけ。"}
 {"delayMs": 500, "unchecked": true, "send": {"type": "future_feature", "detail": "新しい種類のメッセージ"}}
 {"delayMs": 500, "send": {"type": "narration", "line": "広場に、夕暮れの風が吹いた。"}}

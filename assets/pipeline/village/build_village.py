@@ -101,7 +101,7 @@ YS = lines((-34, -18, 2.0), (-18, 6, 1.0), (6, 34, 2.0), extra=(0.5, 3.5, -0.5, 
 heightfield('ground', XS, YS, terrain, ground_mat, GMATS, 'ground', tile=3.0)
 
 
-# ---------------------------------------------------------------- the far land (village.md 2, 远景)
+# ---------------------------------------------------------------- the far land (village.md 2, the far view / 遠景)
 def far_height(x, y):
     """west: the Hyblaean ridge the sun sets behind (the skyline 4〜6° from the threshing floor); north and south: long
     slopes with olive terraces; east: the road runs into low hills towards the next village"""

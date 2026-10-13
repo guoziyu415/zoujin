@@ -1,4 +1,7 @@
-"""Alembic 的入口：连接串只从 DATABASE_URL 读（同步驱动，迁移不需要异步）。"""
+"""Alembic entry point: the connection string is read only from DATABASE_URL (sync driver; migrations need no async).
+
+Alembic のエントリーポイント：接続文字列は DATABASE_URL からのみ読む（同期ドライバー。マイグレーションに非同期は不要）。
+"""
 
 from __future__ import annotations
 
@@ -18,7 +21,7 @@ if config.config_file_name is not None and config.attributes.get("configure_logg
 def url() -> str:
     given = config.attributes.get("url") or os.environ.get("DATABASE_URL")
     if not given:
-        raise RuntimeError("没有 DATABASE_URL")
+        raise RuntimeError("No DATABASE_URL / DATABASE_URL がない")
     return async_url(str(given))
 
 

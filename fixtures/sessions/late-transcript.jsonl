@@ -1,4 +1,4 @@
-{"note": "人物的定稿晚于 turn_complete：Live 这一轮没给文字（没有中途字幕），turn_complete 后约 1.8 秒补转写的定稿到（source fallback）。先 focus 市の老爺。"}
+{"note": "The character's final transcript arrives after turn_complete: Live gave no text this turn (no interim subtitles), and the final from the fallback transcription arrives about 1.8 seconds after turn_complete (source fallback). Focus 市の老爺 first. / 登場人物の確定文が turn_complete より遅れる：Live はこのターンで文字を出さず（途中字幕なし）、turn_complete の約 1.8 秒後に補完の文字起こしの確定文が届く（source fallback）。先に 市の老爺 に focus する。"}
 {"on": ["activity_start", "text"]}
 {"when": "voice", "delayMs": 700, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "お名前を、", "final": false}}
 {"on": "activity_end", "if": {"trigger.type": "activity_start"}}

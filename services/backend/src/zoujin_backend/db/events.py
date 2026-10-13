@@ -1,4 +1,7 @@
-"""契约 Event ↔ events 表的一行。"""
+"""Contract Event ↔ one row of the events table.
+
+契約の Event ↔ events テーブルの 1 行。
+"""
 
 from __future__ import annotations
 
@@ -8,11 +11,16 @@ from typing import Any
 
 Json = Any
 
-EXTRA = ("beneficiary", "confirmed", "utteranceRefs", "plan")  # 不常查的可选字段放 extra 列
+# Optional fields that are rarely queried go in the extra column.
+# あまり検索しない任意フィールドは extra 列に入れる。
+EXTRA = ("beneficiary", "confirmed", "utteranceRefs", "plan")
 
 
 def recorded_at(now: datetime | None = None) -> str:
-    """RecordedAt：UTC、以 Z 结尾（isoformat 给的是 +00:00，自己写）。"""
+    """RecordedAt: UTC, ending in Z (isoformat gives +00:00, so we format it ourselves).
+
+    RecordedAt：UTC で Z で終わる（isoformat は +00:00 を返すので自前で書く）。
+    """
     now = now or datetime.now(UTC)
     return now.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z"
 
@@ -75,5 +83,9 @@ def from_row(row: Mapping[str, Any], world_model_version: str) -> Json:
 
 
 def commit_key(idempotency_key: str) -> str:
-    """同一次提交写的事件，幂等键都是「任务的键/序号」；前一段相同的属于同一条 commit。"""
+    """Events written by the same submission all have idempotency key "<task key>/<index>"; those sharing the first
+    part belong to the same commit.
+
+    同じ送信で書いたイベントの冪等キーはどれも「タスクのキー/連番」。前半が同じものは同じ commit に属する。
+    """
     return idempotency_key.rsplit("/", 1)[0]

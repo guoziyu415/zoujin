@@ -1,10 +1,24 @@
-"""時間線（api-contract 2.5）和「なぜこうなった？」（2.6）：每次从这一局的事件日志现算，不另存。
+"""Timeline (api-contract 2.5) and 「なぜこうなった？」 (2.6): computed fresh from this game's event log every time,
+never stored separately.
 
-和 2.4 同一个口径：玩家看得到的事件（`projection.is_visible`，在不在场按这一条之前的状态算，幕切换第 3 步的不算），
-再加上玩家自己做成的、带效果的事（2.4 不推只改了不可见变量的，比如「渡した」，地图上要有玩家的举动；只花时间的不算）；
-节拍走向的事件是玩家看到的，这个节拍他就知道；没看到的，知道这个节拍成立的事实（`knows`，听说）也算知道。
-不知道的节拍只给时刻（ux-design 9.1）。「なぜ」只走发生了的事（被否决的不进，数据评审第 7 条），玩家看不到的事件
-不上链，但它的前因照样往回找。
+Same scope as 2.4: the events the player can see (`projection.is_visible`; presence is judged by the state before the
+event, and step 3 of an act transition doesn't count), plus things the player themself got done that had effects (2.4
+doesn't push events that only change invisible variables, e.g. 「渡した」, but the map should show the player's moves;
+events that only spend time don't count). If the player saw the event that moved a beat, they know that beat; if they
+didn't, knowing the fact the beat established (`knows`, by hearsay) also counts. Beats the player doesn't know get only
+a time (ux-design 9.1). 「なぜ」 only follows things that happened (rejected ones don't enter, data review item 7);
+events the player can't see are left out of the chain, but their causes are still traced back.
+
+時間線（api-contract 2.5）と「なぜこうなった？」（2.6）：毎回このゲームのイベントログからその場で計算し、
+別に保存しない。
+
+2.4 と同じ範囲：プレイヤーに見えるイベント（`projection.is_visible`。その場にいたかはそのイベントの直前の状態で判断し、
+幕切り替えの第 3 ステップのものは数えない）に、プレイヤー自身がやり遂げた効果のあることを加える
+（2.4 は見えない変数だけを変えたもの、たとえば「渡した」をプッシュしないが、地図にはプレイヤーの行動が要る。
+時間を使っただけのものは数えない）。ビートを動かしたイベントをプレイヤーが見ていれば、そのビートを知っている。
+見ていなくても、そのビートが成立させた事実を知っていれば（`knows`、伝聞）知っているとみなす。
+知らないビートは時刻だけを出す（ux-design 9.1）。「なぜ」は起きたことだけをたどり（却下されたものは入らない、
+データレビュー第 7 項）、プレイヤーに見えないイベントはチェーンに載せないが、その原因は同じように遡って探す。
 """
 
 from __future__ import annotations
@@ -20,21 +34,29 @@ from zoujin_backend.world import Book
 
 Json = Any
 
-MAX_CHAIN = 12  # 2.6：最长 12 步，超过时中间折叠
-STATUS = {"happened": "canon"}  # 2.5：契约 WorldState.beats 的 happened 在时间线上叫 canon，其余同名
-SLOW = ("delayed", "prevented")  # forecast：让节拍晚了、没了的那一步
+MAX_CHAIN = 12  # 2.6: at most 12 steps, the middle collapsed beyond that / 最大 12 ステップ、超えたら中間を折りたたむ
+# 2.5: the contract's WorldState.beats `happened` is called canon on the timeline; the rest keep their names.
+# 2.5：契約の WorldState.beats の happened は時間線では canon と呼ぶ。それ以外は同じ名前。
+STATUS = {"happened": "canon"}
+SLOW = ("delayed", "prevented")  # forecast: the step that made a beat late or gone / ビートを遅らせた・消したステップ
 
 
 @dataclass
 class Replay:
-    """把事件日志从头放一遍：最后的状态、每条事件、玩家看得到的事件、看到的节拍、见过的人物。"""
+    """Replay the event log from the start: the final state, every event, the events the player can see, the beats they
+    saw, the characters they met.
+
+    イベントログを最初から再生した結果：最後の状態、各イベント、プレイヤーに見えるイベント、見たビート、会った登場人物。
+    """
 
     state: SimState
     events: dict[str, Mapping[str, Any]] = field(default_factory=dict)
     visible: list[Mapping[str, Any]] = field(default_factory=list)
     seen_beats: set[str] = field(default_factory=set)
     met: set[str] = field(default_factory=set)
-    witnesses: dict[str, list[str]] = field(default_factory=dict)  # 事件 ID → 当时在那个场景的人物（含行为者）
+    # Event ID → the characters in that scene at the time (including the actor).
+    # イベント ID → そのときその場面にいた登場人物（行為者を含む）。
+    witnesses: dict[str, list[str]] = field(default_factory=dict)
 
 
 def replay(book: Book, role_id: str, log: Sequence[Mapping[str, Any]]) -> Replay:
@@ -52,7 +74,8 @@ def replay(book: Book, role_id: str, log: Sequence[Mapping[str, Any]]) -> Replay
             if ev["actor"] in book.characters and ev["actor"] not in here:
                 here.append(ev["actor"])
             r.witnesses[ev["eventId"]] = here
-        mine = ev["actor"] == "player" and committed(ev) and bool(ev["effects"])  # 玩家自己做成的事都上地图
+        # Everything the player got done goes on the map / プレイヤー自身がやり遂げたことはすべて地図に載せる
+        mine = ev["actor"] == "player" and committed(ev) and bool(ev["effects"])
         if not skipped and (mine or is_visible(book, ev, where)):
             r.visible.append(ev)
             r.seen_beats.update(e["beat"] for e in ev["effects"] if e.get("op") == "beat")
@@ -74,7 +97,10 @@ def _beat_known(book: Book, r: Replay, beat: str) -> bool:
 
 
 def cites(book: Book, state: SimState, beat: str) -> list[Json]:
-    """2.5：原句带玩家此刻不知道的事实的剧透词的那条不出。"""
+    """2.5: leave out quotes that contain spoiler words for facts the player doesn't know yet.
+
+    2.5：プレイヤーがまだ知らない事実のネタバレ語を含む原文の引用は出さない。
+    """
     return [c for c in book.beats[beat].get("cite", []) if not spoilers(book.world, state, "player", c["quote"])]
 
 
@@ -140,7 +166,12 @@ def timeline(book: Book, role_id: str, log: Sequence[Mapping[str, Any]], last_se
 
 
 class NotFound(Exception):
-    """「なぜ」的目标不是玩家看得到的事件、知道的节拍（或关键时刻，切片还没有）。"""
+    """The 「なぜ」 target is not an event the player can see or a beat they know (or a key moment, which the slice
+    doesn't have yet).
+
+    「なぜ」の対象が、プレイヤーに見えるイベントでも知っているビートでもない
+    （あるいは重要な瞬間だが、スライスにはまだない）。
+    """
 
 
 def why(book: Book, role_id: str, log: Sequence[Mapping[str, Any]], target: str) -> Json:
@@ -185,7 +216,10 @@ def _beats(ev: Mapping[str, Any]) -> list[Mapping[str, Any]]:
 
 
 def _ancestors(r: Replay, start: Mapping[str, Any]) -> list[Mapping[str, Any]]:
-    """start 和它沿 `causes` 往回的全部前因（发生了的），按 seq 正序。"""
+    """`start` and all its causes found by following `causes` back (the ones that happened), in ascending seq order.
+
+    start と、`causes` を遡ってたどれるすべての原因（起きたもの）を seq の昇順で返す。
+    """
     todo, got = [start], {start["eventId"]: start}
     while todo:
         x = todo.pop()

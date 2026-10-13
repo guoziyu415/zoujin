@@ -1,12 +1,27 @@
-"""补转写（S-071，backend-design 3.1）和幕末打算的真转写（B-10）。
+"""Fallback transcription (S-071, backend-design 3.1) and the real transcription of end-of-act plans (B-10).
 
-- 人物这一轮有声音、到收尾时一个字的文字都没有（真 Live 偶尔这样）：网关立即用这一轮的声音调轻量模型转写，3 秒截止、
-  不重试。结果标 `source: "fallback"`；失败也发 `text: null` 的定稿。古语常听错，所以叙事者把它当作可能有误。
-- 幕末用声音说打算（3.11）只转写、没有人物回答：真 Live 下攒下这一轮的上行音频，松开以后转写一次
-  （`BufferedTranscriber`）。
-  假 Live 照旧用 `FakeTranscriber`（有半句）。
-- 真的转写在 Mac 上用 Vertex 的 `generateContent`（B-6 的 `RestTranscriber` 的同一个请求，音频按自己的采样率包成 WAV）；
-  假的按设好的文字回，可以设成慢、失败。
+- The character's turn has audio but not a single character of text by the wrap-up (real Live does this now and
+  then): the gateway immediately has a lightweight model transcribe the turn's audio, with a 3-second deadline and no
+  retry. The result is marked `source: "fallback"`; on failure a final with `text: null` is still sent. Archaic
+  speech is often misheard, so the narrator treats it as possibly wrong.
+- Saying a plan by voice at the end of an act (3.11) is transcribed only, with no character answer: with real Live
+  the turn's upstream audio is buffered and transcribed once after release (`BufferedTranscriber`).
+  The fake Live keeps using `FakeTranscriber` (with partial lines).
+- Real transcription runs on the Mac with Vertex `generateContent` (the same request as B-6's `RestTranscriber`, with
+  the audio wrapped as WAV at its own sample rate); the fake one answers with preset text and can be set to be slow
+  or fail.
+
+補完の文字起こし（S-071、backend-design 3.1）と、幕末のプランの本物の文字起こし（B-10）。
+
+- 登場人物のターンに音声はあるのに、締めくくりまでに文字が 1 文字もない（本物の Live でときどき起こる）：
+  ゲートウェイはすぐにそのターンの音声を軽量モデルで文字起こしする。締め切り 3 秒、再試行なし。結果には
+  `source: "fallback"` を付け、失敗しても `text: null` の確定文を送る。古い言葉はよく聞き違えるので、
+  ナレーターはこれを誤りがありうるものとして扱う。
+- 幕末に声でプランを言う（3.11）ときは文字起こしだけで、登場人物は答えない：本物の Live ではそのターンの上り音声を
+  ためておき、離したあとに 1 回だけ文字起こしする（`BufferedTranscriber`）。
+  偽 Live は従来どおり `FakeTranscriber`（途中の文あり）を使う。
+- 本物の文字起こしは Mac 上で Vertex の `generateContent` を使う（B-6 の `RestTranscriber` と同じリクエストで、
+  音声は自分のサンプルレートで WAV に包む）。偽物は設定した文字を返し、遅くしたり失敗させたりできる。
 """
 
 from __future__ import annotations
@@ -24,8 +39,14 @@ from zoujin_backend.voice.models import TRANSCRIBE_MODEL, TRANSCRIBE_PROMPT, Hea
 
 log = logging.getLogger("zoujin.gateway")
 
-FALLBACK_CAP_S = 2.5  # 补转写的截止：收尾最多 3 秒 + 2.5 秒，定稿在 turn_complete 后 6 秒内（#111 前端评审）
-PLAN_CAP_S = 10.0  # 打算的转写：玩家在等结果，但不是 3 秒的字幕
+# Fallback transcription deadline: wrap-up at most 3 s + 2.5 s, so the final lands within 6 s of turn_complete
+# (#111 frontend review).
+# 補完の文字起こしの締め切り：締めくくり最大 3 秒 + 2.5 秒で、確定文は turn_complete から 6 秒以内
+# （#111 フロントエンドのレビュー）。
+FALLBACK_CAP_S = 2.5
+# Plan transcription: the player is waiting for the result, but it isn't a 3-second subtitle.
+# プランの文字起こし：プレイヤーは結果を待っているが、3 秒の字幕ではない。
+PLAN_CAP_S = 10.0
 UP_RATE = 16_000
 DOWN_RATE = 24_000
 
@@ -35,7 +56,7 @@ class AudioTranscriber(Protocol):
 
 
 @dataclass
-class VertexTranscriber:  # pragma: no cover - 只在 Mac 上
+class VertexTranscriber:  # pragma: no cover - Mac only / Mac 上のみ
     inner: RestTranscriber
 
     async def transcribe(self, pcm: bytes, rate: int) -> Heard:
@@ -55,37 +76,48 @@ class VertexTranscriber:  # pragma: no cover - 只在 Mac 上
 
 @dataclass
 class FakeAudioTranscriber:
-    """测试用：回 `text`；`delay` 秒以后才回（超时的测试），`fail` 抛错。"""
+    """For tests: answers `text`; only after `delay` seconds (timeout tests); `fail` raises.
+
+    テスト用：`text` を返す。`delay` 秒後にだけ返し（タイムアウトのテスト）、`fail` なら例外を投げる。
+    """
 
     text: str = "……ああ。"
     delay: float = 0.0
     fail: bool = False
-    calls: list[tuple[int, int]] = field(default_factory=list)  # (字节数, 采样率)
+    calls: list[tuple[int, int]] = field(default_factory=list)  # (bytes, sample rate) / (バイト数, サンプルレート)
 
     async def transcribe(self, pcm: bytes, rate: int) -> Heard:
         self.calls.append((len(pcm), rate))
         if self.delay:
             await asyncio.sleep(self.delay)
         if self.fail:
-            raise RuntimeError("假的补转写失败")
+            raise RuntimeError("Fake fallback transcription failed / 偽の補完文字起こしが失敗")
         return Heard(self.text, {"inputTokens": 50, "outputTokens": 10}, 0.0002)
 
 
 async def fallback_text(tr: AudioTranscriber, pcm: bytes, cap_s: float = FALLBACK_CAP_S) -> Heard | None:
-    """人物的声音 → 文字；超时、出错、空的都回 None（定稿发 `text: null`）。"""
+    """The character's voice → text; None on timeout, error or empty (the final is sent with `text: null`).
+
+    登場人物の声 → 文字。タイムアウト、エラー、空ならどれも None（確定文は `text: null` で送る）。
+    """
     try:
         heard = await asyncio.wait_for(tr.transcribe(pcm, DOWN_RATE), timeout=cap_s)
     except TimeoutError:
-        log.info("补转写 %.0f 秒没回来", cap_s)
+        log.info("Fallback transcription didn't return within %.0f s / 補完の文字起こしが時間内に戻らない", cap_s)
         return None
-    except Exception as e:  # noqa: BLE001 - 补转写只是后备，失败不影响这一轮
-        log.info("补转写失败（%s）", type(e).__name__)
+    # It's only a fallback; failing doesn't affect the turn. / 補完は予備にすぎず、失敗してもターンには影響しない。
+    except Exception as e:  # noqa: BLE001
+        log.info("Fallback transcription failed (%s) / 補完の文字起こしが失敗", type(e).__name__)
         return None
     return heard if heard.text else None
 
 
 class BufferedTranscriber:
-    """幕末用声音说打算（真 Live 时）：攒下音频，松开转写一次。没有半句字幕。"""
+    """Saying a plan by voice at the end of an act (with real Live): buffer the audio and transcribe once on release.
+    No partial subtitles.
+
+    幕末に声でプランを言う（本物の Live のとき）：音声をためて、離したら 1 回だけ文字起こしする。途中の字幕はない。
+    """
 
     def __init__(self, tr: AudioTranscriber) -> None:
         self.tr = tr
@@ -102,7 +134,7 @@ class BufferedTranscriber:
         try:
             heard = await asyncio.wait_for(self.tr.transcribe(bytes(self.pcm), UP_RATE), timeout=PLAN_CAP_S)
         except Exception as e:  # noqa: BLE001
-            log.info("打算的转写失败（%s）", type(e).__name__)
+            log.info("Plan transcription failed (%s) / プランの文字起こしが失敗", type(e).__name__)
             return None
         self.usd = heard.cost
         return heard.text

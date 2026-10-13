@@ -1,8 +1,17 @@
-"""网关和叙事者的日志设置。日志只写 ID 和计数，不写原话（data-design 第 8 节）。
+"""Logging setup for the gateway and narrator. Logs carry only IDs and counts, never the original words (data-design
+section 8).
 
-异常只记类型和调用栈，不记异常消息：校验错误的消息里带着出错的那段数据（可能是玩家的话或人物的台词）。
-uvicorn 自己的日志也走这里（`log_config=None`），ASGI 里没接住的异常同样不带消息。
-开发开关（`ZJ_DEV=1`）下照常记全文，方便本地看。
+Exceptions log only their type and stack trace, never the exception message: a validation error message contains the
+offending piece of data (possibly the player's words or a character's line). uvicorn's own logging goes through here
+too (`log_config=None`), so exceptions not caught inside ASGI also carry no message. With the dev switch (`ZJ_DEV=1`)
+full text is logged as usual, for convenience when looking locally.
+
+ゲートウェイとナレーターのログ設定。ログには ID と件数だけを書き、発話の原文は書かない（data-design 第 8 節）。
+
+例外は型とスタックトレースだけを記録し、例外メッセージは記録しない：検証エラーのメッセージには問題のデータ
+（プレイヤーの発話や登場人物のセリフかもしれない）が含まれるため。uvicorn 自身のログもここを通す
+（`log_config=None`）ので、ASGI 内で捕まえきれなかった例外もメッセージを持たない。
+開発スイッチ（`ZJ_DEV=1`）では、ローカルで見やすいよう全文を通常どおり記録する。
 """
 
 from __future__ import annotations
@@ -17,10 +26,14 @@ type ExcInfo = tuple[type[BaseException], BaseException, TracebackType | None] |
 
 
 class NoMessage(logging.Formatter):
-    def formatException(self, ei: ExcInfo) -> str:  # noqa: N802（logging 的方法名）
+    def formatException(self, ei: ExcInfo) -> str:  # noqa: N802 (logging method name / logging のメソッド名)
         etype, _, tb = ei
         name = f"{etype.__module__}.{etype.__qualname__}" if etype is not None else "?"
-        return "Traceback (most recent call last):\n" + "".join(traceback.format_tb(tb)) + f"{name}（消息不记）"
+        return (
+            "Traceback (most recent call last):\n"
+            + "".join(traceback.format_tb(tb))
+            + f"{name} (message not logged / メッセージは記録しない)"
+        )
 
 
 def setup(level: str, *, dev: bool) -> None:

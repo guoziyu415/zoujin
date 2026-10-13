@@ -1,11 +1,28 @@
-"""玩家看不看得到一个事件（契约 1.12，第 3 节「玩家看得到哪些变化」、2.1 ②、2.11）。
+"""Whether the player can see an event (contract 1.12, section 3 "which changes the player can see", 2.1 ②, 2.11).
 
-规则只写这一份，三处都用它：settle 给玩家写 learn（_occur_draft）、后端推不推这个事件（projection.is_visible）、
-节拍上的固定演出算不算玩家在场。三处各写各的，就会出现推了雨却没告诉玩家、或者告诉了玩家却没推雨。
+The rule is written only here and all three places use it: settle writing learn for the player (_occur_draft), whether
+the backend pushes the event (projection.is_visible), and whether the player counts as present at a set piece on a
+beat. If the three each wrote their own, you would get rain pushed without telling the player, or the player told
+without the rain being pushed.
 
-按顺序看：① 事件是玩家做的 ② 玩家在事件的地点 ③ 事件是没有参与人物的节拍（天气、天灾，『走れメロス』的
-beat.12 大雨、beat.15 雨が上がる、beat.17 濁流），落在和玩家同一个场景：两个地点的 sceneRef 都不是空、而且相同。
-幕切换第 3 步（settle 的 player_present=False）玩家一律算不在场，调用方不问这里。
+Checked in order: ① the player did the event ② the player is at the event's place ③ the event is a beat with no
+participants (weather, natural disasters: in 『走れメロス』 beat.12 大雨, beat.15 雨が上がる, beat.17 濁流) that falls
+in the same scene as the player: both places have a sceneRef that is non-empty and the same.
+In step 3 of an act switch (settle with player_present=False) the player always counts as absent; callers do not ask
+here.
+
+プレイヤーがあるイベントを見られるか（契約 1.12、第 3 節「プレイヤーに見える変化」、2.1 ②、2.11）。
+
+ルールはここに 1 つだけ書き、3 か所すべてがこれを使う：settle がプレイヤーに learn を書く（_occur_draft）、
+バックエンドがそのイベントをプッシュするか（projection.is_visible）、ビート上の固定演出でプレイヤーが在場と
+みなされるか。3 か所がそれぞれ別に書くと、雨をプッシュしたのにプレイヤーに知らせない、あるいはプレイヤーに
+知らせたのに雨をプッシュしない、ということが起きる。
+
+順に見る：① イベントはプレイヤーが起こした ② プレイヤーがイベントの場所にいる ③ イベントが参加人物のない
+ビート（天候、天災。『走れメロス』の beat.12 大雨、beat.15 雨が上がる、beat.17 濁流）で、プレイヤーと同じ
+シーンに落ちる：2 つの場所の sceneRef がどちらも空でなく、かつ同じ。
+幕切り替えの第 3 段階（settle の player_present=False）ではプレイヤーは常に不在とみなし、呼び出し側はここに
+問い合わせない。
 """
 
 from __future__ import annotations
@@ -17,19 +34,32 @@ from .sim import World
 
 
 def same_scene(world: World, a: str, b: str) -> bool:
-    """两个地点在同一个场景：两边的 sceneRef 都不是空、而且相同（没有场景的地点不和谁算同一场景，连自己也不算）。"""
+    """Two places are in the same scene: both sceneRefs are non-empty and equal (a place with no scene is not in the
+    same scene as anything, not even itself).
+
+    2 つの場所が同じシーンにある：両方の sceneRef が空でなく、かつ同じ（シーンのない場所はどこと同じシーンにも
+    ならず、自分自身とも同じにならない）。
+    """
     scenes = {p["id"]: p.get("sceneRef") for p in world["places"]}
     sa, sb = scenes.get(a), scenes.get(b)
     return sa is not None and sa == sb
 
 
 def open_air(world: World, beat: str) -> bool:
-    """没有参与人物的节拍（天气、天灾）：同一个场景里的人都看得到。"""
+    """A beat with no participants (weather, natural disasters): everyone in the same scene can see it.
+
+    参加人物のないビート（天候、天災）：同じシーンにいる人には皆見える。
+    """
     return any(b["id"] == beat and not b["participants"] for b in world["beats"])
 
 
 def sees(world: World, player_place: str | None, event: Mapping[str, Any]) -> bool:
-    """玩家在 player_place（事件之前的 var.player.location）时，看不看得到 event（要 actor、place、effects）。"""
+    """Whether the player at player_place (var.player.location before the event) can see event (needs actor, place,
+    effects).
+
+    プレイヤーが player_place（イベント前の var.player.location）にいるとき、event（actor、place、effects が必要）を
+    見られるか。
+    """
     if event.get("actor") == "player":
         return True
     place = event.get("place")

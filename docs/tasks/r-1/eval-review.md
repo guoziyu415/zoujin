@@ -1,91 +1,143 @@
-# R-1 评估口径与交叉审查
+# R-1 eval criteria and cross-review / R-1 評価の基準とクロスレビュー
 
-## 实际覆盖边界
+## Actual coverage boundary / 実際のカバー範囲
 
-- 现有四幕题集为 seeds 100 例 / 388 次、第二幕 37 / 141、第三幕 58 / 238、第四幕 53 / 213，共 248 例 / 980 次，其中 31 例使用整局画像。按每例 `runs` 计数，不能只数 JSONL 行数。
-- `check_world.sh` 的情景推演是确定性世界规则检查，不是实际模型模拟局。
-- `eval_api` 复用正式叙事者、存储及投影；人物对白走 Google 文字替身。用例的 `voice` 标签不会把该入口变成 Live 语音验收。防剧透另由 `s3_runtime` 调用正式 Live transport 和 brief。
-- `silence` 入口尚未实现，相关用例必须记录跳过。评审员校准继续暂缓；确定性检查通过率不能充当完整 E1–E8 模型评分门槛。
+- The existing four-act question sets are seeds 100 cases / 388 runs, act 2 37 / 141, act 3 58 / 238 and act 4 53 / 213, for a total of 248 cases / 980 runs, of which 31 cases use whole-game personas. Count by each case's `runs`, not just the number of JSONL lines.
+  既存の四幕の問題セットは seeds 100 ケース / 388 回、第 2 幕 37 / 141、第 3 幕 58 / 238、第 4 幕 53 / 213 で、計 248 ケース / 980 回。そのうち 31 ケースは 1 局全体のペルソナを使う。各ケースの `runs` で数え、JSONL の行数だけを数えてはならない。
+- The scenario simulation in `check_world.sh` is a deterministic world-rule check, not a game simulated with actual models.
+  `check_world.sh` のシナリオシミュレーションは決定論的な世界ルールのチェックであり、実際のモデルによるシミュレーション対局ではない。
+- `eval_api` reuses the production narrator, storage and projection; character dialogue goes through the Google text stand-in. A case's `voice` tag does not turn that entry point into a Live voice acceptance check. Anti-spoiler is handled separately by `s3_runtime`, which calls the production Live transport and brief.
+  `eval_api` は本番のナレーター、ストレージ、投影を再利用する。登場人物のセリフは Google テキストの代用品を通る。ケースの `voice` タグがあっても、この入口が Live 音声の受け入れ確認になるわけではない。ネタバレ防止は別途 `s3_runtime` が本番の Live transport と brief を呼び出す。
+- The `silence` entry point is not implemented yet, so the related cases must be recorded as skipped. Judge calibration remains on hold; the pass rate of deterministic checks cannot stand in for the full E1–E8 model scoring threshold.
+  `silence` の入口はまだ実装していないので、関連するケースはスキップとして記録しなければならない。審査員のキャリブレーションは引き続き保留。決定論的チェックの合格率を完全な E1–E8 のモデル採点の閾値の代わりにすることはできない。
 
-## 已修复的评估问题
+## Eval problems already fixed / 修正済みの評価の問題
 
-- 报告保留已判结果的通过率，但确定性模式、跳过、缺失或重复运行、部分选例、缺少所需判分时，门槛不得显示通过。每例显式声明预期判分次数，原本不需要 judge 的用例可声明 0；没有为所有用例强加评分要求。任何确定性检查失败仍直接阻止门槛通过。
-- live AI 玩家每步发起新调用，只有 replay 模式读取回放；分别记录 `freshCalls`、`replayHits`、`bad`，防止旧选择或坏输出降级被计作新的有效样本。
-- 玩家能回答意图确认，也能读取正式记忆簿公开投影、按公开 ID 删除记忆；不使用检查接口中的隐藏状态或事件来源。删除仍调用正式事务，并检查本局归属。
-- 玩家只听取本轮实际推送的固定演出台词，不用未来演出清单补内容。统计保留实际动作计数及完整结局署名，供有限批次检查分布和画像行为。
-- 情境按钮的公开 `actionId` 从快照一直传到正式叙事者。此前仅传 kind / target 会丢掉按钮自带的物品语义，导致递水等合法操作被错误拒绝；现在不需要玩家猜测内部 `params.item`。
-- 批次实现线程已收到并修复续跑混入模型配置、源码变化、署名对象键序等审查意见；防剧透线程已收到同状态构造 judge 上下文、执行指纹和缺 usage 成本标记的审查意见。
+- The report keeps the pass rate of results already judged, but the threshold must not show as passed in deterministic mode, or when there are skips, missing or duplicate runs, a partial case selection, or missing required scores. Each case explicitly declares its expected number of scorings; cases that never needed a judge may declare 0; a scoring requirement was not imposed on every case. Any deterministic check failure still blocks the threshold from passing outright.
+  レポートは判定済みの結果の合格率を残すが、決定論モード、スキップ、欠落や重複した実行、ケースの一部選択、必要な採点の欠落があるときは、閾値を合格と表示してはならない。各ケースは期待する採点回数を明示的に宣言し、もともと judge が不要なケースは 0 と宣言できる。すべてのケースに採点要件を課したわけではない。決定論的チェックの失敗は、いずれも引き続き直ちに閾値の合格を阻む。
+- The live AI player makes a new call at every step, and only replay mode reads replays; `freshCalls`, `replayHits` and `bad` are recorded separately, so that old choices or degraded bad output are not counted as new valid samples.
+  live の AI プレイヤーはステップごとに新しい呼び出しを行い、replay モードだけがリプレイを読む。`freshCalls`、`replayHits`、`bad` を別々に記録し、古い選択や悪い出力の劣化を新しい有効なサンプルとして数えないようにする。
+- The player can answer intent confirmations, read the public projection of the production memory book, and delete memories by public ID; it does not use hidden state or event sources from the inspection API. Deletion still calls the production transaction and checks that the memory belongs to this game.
+  プレイヤーは意図の確認に答えられ、本番の記憶帳の公開投影を読み、公開 ID で記憶を削除できる。検査用インターフェースの隠れた状態やイベントのソースは使わない。削除は引き続き本番のトランザクションを呼び出し、このゲームに属することをチェックする。
+- The player only hears the set-piece lines actually pushed in this turn, and does not fill in content from the list of future set pieces. The statistics keep the actual action counts and the full ending signatures, so that limited batches can check distribution and persona behavior.
+  プレイヤーが聞くのはこのターンで実際にプッシュされた固定演出のセリフだけで、未来の演出リストで内容を補わない。統計には実際のアクション数とエンディングの完全な署名を残し、限られたバッチで分布とペルソナの振る舞いを確認できるようにする。
+- The public `actionId` of a context button is now passed all the way from the snapshot to the production narrator. Previously only kind / target were passed, which lost the item semantics carried by the button, so legitimate actions such as handing over water were wrongly rejected; now the player does not have to guess the internal `params.item`.
+  状況ボタンの公開 `actionId` を、スナップショットから本番のナレーターまでそのまま渡すようにした。以前は kind / target だけを渡していたので、ボタンが持つアイテムの意味が失われ、水を渡すなどの正当な操作が誤って拒否されていた。今はプレイヤーが内部の `params.item` を推測する必要はない。
+- The batch-implementation thread received and fixed review comments about resumes mixing in model configuration, source changes and the key order of signature objects; the anti-spoiler thread received review comments about building the judge context from the same state, execution fingerprints, and flagging costs when usage is missing.
+  バッチ実装のスレッドは、再開時にモデル設定やソースの変更が混入する点、署名オブジェクトのキーの順序などについてのレビュー意見を受け取り、修正した。ネタバレ防止のスレッドは、同じ状態から judge のコンテキストを組み立てる点、実行のフィンガープリント、usage が欠けたときの費用のマークについてのレビュー意見を受け取った。
 
-## 请求失败、产品降级与多样性的分层口径
+## Layered criteria for request failures, product degradation and diversity / リクエストの失敗、製品の劣化、多様性の階層的な基準
 
-本节先复核现有规范，停点后按以下口径实现；不追溯改写原始账本。原 20 局样本及后续固定 200 局计划都保留全部记录；不得排除坏局、替换失败局或挑选有利结果后重新凑足分母。
+This section first re-checks the existing specifications, and after the stop point the following criteria are implemented; the original ledger is not retroactively rewritten. The original 20-game sample and the later fixed 200-game plan both keep all records; bad games must not be excluded, failed games must not be replaced, and favorable results must not be cherry-picked to refill the denominator.
 
-- [S-061](../../pm/decisions.md) 的结局多样性要求是固定 10 种画像各 20 局，共 200 局；最常见底线类占比 ≤ 60%、署名 ≥ 8 种、5 类底线全部到达。它没有要求每次供应商请求零错误。生成结局占比也按 [data-design 9.1](../../data/data-design.md) 单列。
-- S-065 明确允许调用失败后重试一次，再失败才走产品退路。S-019 与 data-design 9.1 另外要求降级局占比目标 < 2%，模板结局单独计数。200 局全部开始并测量完整时，严格小于 2% 意味着最多 3 局；未测量完整时不能把未知按零处理。
-- data-design 7.3 的「超时占比超过 5% 不出分数」针对评测整例／整局时限，不是某一次 15 秒模型请求。整局重试若另行执行，必须保留每次尝试与原计划样本的对应关系，不删首次超时；冻结中的批次不临时增加自动重跑。
-- 同节的 `characterTextMissing` 单列缺答率；该轮不做人设、剧透、语气等依赖原话的判分，世界、事件、记忆的确定性检查仍执行。缺答超过 5% 报基础设施问题。说话尝试数和本应回答的轮数都应保留；安全卡按设计暂停人物回答的轮次另列，不冒充缺答或成功模型回答。
+この節ではまず既存の仕様を再確認し、停止点の後に以下の基準で実装する。元の台帳を遡って書き換えることはしない。元の 20 局のサンプルとその後の固定 200 局の計画は、どちらもすべての記録を残す。悪い局を除外したり、失敗した局を差し替えたり、有利な結果を選んで分母を埋め直したりしてはならない。
 
-| 实际情况 | 样本与指标处理 |
+- The ending-diversity requirement of [S-061](../../pm/decisions.md) is 20 games for each of 10 fixed personas, 200 games in total; the most common baseline category ≤ 60%, ≥ 8 signatures, and all 5 baseline categories reached. It does not require zero errors on every vendor request. The share of generated endings is also listed separately per [data-design 9.1](../../data/data-design.md).
+  [S-061](../../pm/decisions.md) のエンディングの多様性の要件は、固定の 10 ペルソナ各 20 局、計 200 局。最も多いベースライン分類の割合 ≤ 60%、署名 ≥ 8 種類、ベースラインの 5 分類すべてに到達。ベンダーへの各リクエストでエラーがゼロであることは求めていない。生成エンディングの割合も [data-design 9.1](../../data/data-design.md) に従って別に示す。
+- S-065 explicitly allows one retry after a call fails, and only takes the product fallback if it fails again. S-019 and data-design 9.1 additionally set a target of < 2% degraded games, with template endings counted separately. When all 200 games have started and are fully measured, strictly less than 2% means at most 3 games; when measurement is incomplete, unknowns cannot be treated as zero.
+  S-065 は呼び出しの失敗後に 1 回のリトライを明示的に認め、再び失敗した場合にだけ製品のフォールバックに進む。S-019 と data-design 9.1 はさらに、劣化した局の割合の目標を < 2% とし、テンプレートのエンディングは別に数える。200 局がすべて開始し完全に計測された場合、2% 未満とは最大 3 局を意味する。計測が完全でない場合、不明をゼロとして扱ってはならない。
+- data-design 7.3's "no score if more than 5% time out" refers to the time limit for a whole eval case or whole game, not to a single 15-second model request. If whole-game retries are run separately, each attempt must keep its mapping to the original planned sample, and the first timeout must not be deleted; batches under freeze do not get extra automatic reruns added on the fly.
+  data-design 7.3 の「タイムアウトの割合が 5% を超えたらスコアを出さない」は、評価のケース全体・1 局全体の制限時間を対象とするもので、1 回の 15 秒のモデルリクエストのことではない。1 局全体のリトライを別途行う場合は、各試行と元の計画サンプルとの対応を残し、最初のタイムアウトを削除してはならない。凍結中のバッチに自動再実行を臨時に追加しない。
+- `characterTextMissing` in the same section lists the missing-answer rate separately; for that turn no scoring that depends on the original words is done (persona, spoilers, tone and so on), while the deterministic checks of world, events and memory are still run. More than 5% missing answers is reported as an infrastructure problem. Both the number of speaking attempts and the number of turns that should have been answered must be kept; turns in which a safety card pauses character answers by design are listed separately and do not masquerade as missing answers or successful model answers.
+  同じ節の `characterTextMissing` は無回答率を別に示す。そのターンでは、人物設定、ネタバレ、口調など原文に依存する採点は行わず、世界、イベント、記憶の決定論的チェックは引き続き実行する。無回答が 5% を超えたらインフラの問題として報告する。発話の試行回数と本来回答すべきターン数の両方を残す。安全カードが設計どおり登場人物の回答を一時停止したターンは別に示し、無回答やモデルの回答成功を装わせない。
+
+| Actual situation / 実際の状況 | Handling of samples and metrics / サンプルと指標の扱い |
 |---|---|
-| 供应商原始请求失败，第二次获得合格回答 | 保留失败请求、延迟、重试成本；属于恢复成功，不能仅因首次失败认定产品已降级 |
-| 两次失败后缺答、只推进时钟、固定退路或模板结局 | 属于真实产品退路，计入对应降级／缺答指标；如果真实完成并有署名，仍保留在固定计划的结局统计中 |
-| 正常固定演出、剧本台词 | 属于设计内容，不算基础设施降级；也不能作为生成模型回答通过内容判分 |
-| 规则把不成立的行动改写、降级为小影响或拒绝 | 属于故事规则判定；`candidates_downgraded` 不等于供应商失败后的服务降级 |
-| AI 玩家坏输出后自动等待、其他替代选择或读取旧回放 | 实验画像被改变，保留原记录并标无效；不能认证为完整的 200 局新鲜画像样本 |
-| 未完成、超过步骤上限、整局超时、缺署名或来源不一致 | 保留完成率与失败分类；多样性完整性门槛不得显示通过，不能用缺失样本拉低最大类占比 |
+| The vendor's original request fails and the second attempt gets a valid answer / ベンダーへの元のリクエストが失敗し、2 回目で適格な回答を得た | Keep the failed request, latency and retry cost; this is a successful recovery, and the product cannot be deemed degraded just because the first attempt failed / 失敗したリクエスト、遅延、リトライの費用を残す。回復の成功であり、初回の失敗だけで製品が劣化したとは認定できない |
+| After two failures: missing answer, only the clock advancing, a fixed fallback, or a template ending / 2 回失敗した後の無回答、時計だけを進める、固定のフォールバック、テンプレートのエンディング | A real product fallback, counted in the corresponding degradation / missing-answer metrics; if the game really completes with a signature, it stays in the fixed plan's ending statistics / 実際の製品のフォールバックであり、対応する劣化・無回答の指標に数える。実際に完了して署名がある場合は、固定計画のエンディング統計に引き続き残す |
+| Normal set pieces and scripted lines / 通常の固定演出、台本のセリフ | Designed content, not infrastructure degradation; it also cannot pass content scoring as a generative-model answer / 設計上の内容であり、インフラの劣化には数えない。生成モデルの回答として内容の採点を通すこともできない |
+| The rules rewrite an action that does not hold, downgrade it to a small effect, or refuse it / ルールが成立しないアクションを書き換える、小さな影響に格下げする、拒否する | A story-rule decision; `candidates_downgraded` is not the same as service degradation after a vendor failure / 物語のルールによる判定。`candidates_downgraded` はベンダーの失敗後のサービスの劣化とは別物 |
+| After bad AI-player output: automatic waiting, other substitute choices, or reading old replays / AI プレイヤーの悪い出力の後の自動的な待機、別の代替選択、古いリプレイの読み込み | The experimental persona was altered; keep the original record and mark it invalid; it cannot be certified as a complete fresh persona sample for the 200 games / 実験のペルソナが変わってしまったので、元の記録を残して無効とマークする。200 局の完全な新鮮なペルソナのサンプルとは認定できない |
+| Unfinished, over the step limit, whole-game timeout, missing signature, or inconsistent sources / 未完了、ステップ上限超過、1 局全体のタイムアウト、署名の欠落、ソースの不一致 | Keep the completion rate and failure classification; the diversity-completeness threshold must not show as passed, and missing samples cannot be used to pull down the share of the largest category / 完了率と失敗の分類を残す。多様性の完全性の閾値を合格と表示してはならず、欠落したサンプルで最大分類の割合を下げてはならない |
 
-批次第一版把任何请求 `error / timeout / bad-output` 都记为 `provider-degradation`，又以 200 局全部 `clean` 作为多样性前提，混合了请求可靠性、产品降级和样本有效性。原诊断保留；后续解释应拆成 `measurementCompleteness`、`productDegradation`、`requestRetries`。完整真实样本可以得到多样性结论，同时降级率或确定性质量门槛失败；多样性通过不能覆盖其他失败，更不代表尚未校准的模型内容评分已通过。
+The batch's first version recorded any request `error / timeout / bad-output` as `provider-degradation`, and also made all 200 games being `clean` a precondition for diversity, mixing request reliability, product degradation and sample validity. The original diagnosis is kept; later interpretation should be split into `measurementCompleteness`, `productDegradation` and `requestRetries`. A complete real sample can yield a diversity conclusion while the degradation rate or the deterministic quality threshold fails; passing diversity cannot cover other failures, and still less does it mean the not-yet-calibrated model content scoring has passed.
 
-### 停点后的测量字段（已实施，旧证据不回填）
+バッチの初版は、リクエストの `error / timeout / bad-output` をすべて `provider-degradation` として記録し、さらに 200 局すべてが `clean` であることを多様性の前提にしており、リクエストの信頼性、製品の劣化、サンプルの有効性を混同していた。元の診断は残す。以後の解釈は `measurementCompleteness`、`productDegradation`、`requestRetries` に分けるべき。完全な実サンプルから多様性の結論を得つつ、劣化率や決定論的な品質の閾値では不合格ということもありうる。多様性の合格で他の失敗を覆い隠すことはできず、まだキャリブレーションしていないモデルの内容の採点が合格したことを意味するものでもない。
 
-- 玩家侧从实际 `Played.steps/results` 统计说话尝试、安全暂停、应回答轮数、显式缺答标记、缺失标记未报告数，并验证步骤与结果条数一致。缺字段是未知，不能当作无缺答。`freshCalls / replayHits / bad` 与步骤数一起验证新鲜画像完整性。
-- 后端侧读取真实 `budget_tier`、`degraded_at / degraded_reason`、`turns_timed_out`、`ending_template` 等诊断，再由批次聚合；结局署名仍使用正式持久结果。原有 `sim_stats` 不保留逐轮 `characterTextMissing`，旧批次需查原始证据，不能补造为零。
-- 请求级失败率保留全部账本行；成功重试数必须有请求或轮次关联证据。现账本没有逻辑请求 ID，不能仅凭相邻的同种调用推定已恢复。无法关联时报告未知。`utterances.source=fallback` 在当前网关表示音频补转写，不等于固定角色台词退路，不能直接拿来数服务降级。
-- 本轮已发现 `eval_api` 返回的缺答标记未同步到 `turns.character_text_missing`；因此旧数据库字段为 false 不能证明该轮有回答。已在停点修正并补数据库回归；旧数据库字段不追溯补造，旧批次保持冻结。
+### Measurement fields after the stop point (implemented; old evidence is not backfilled) / 停止点の後の計測フィールド（実施済み、旧証拠は遡って埋めない）
 
-## 验证
+- On the player side, count speaking attempts, safety pauses, turns that should be answered, explicit missing-answer markers and unreported missing markers from the actual `Played.steps/results`, and verify that the number of steps matches the number of results. A missing field is unknown and cannot be treated as no missing answer. `freshCalls / replayHits / bad` are verified together with the step count for fresh-persona completeness.
+  プレイヤー側では、実際の `Played.steps/results` から発話の試行、安全のための一時停止、回答すべきターン数、明示的な無回答マーク、マークが欠けた未報告数を集計し、ステップ数と結果の件数が一致することを検証する。フィールドの欠落は不明であり、無回答がないとはみなせない。`freshCalls / replayHits / bad` はステップ数と合わせて、新鮮なペルソナの完全性を検証する。
+- On the backend side, read the real diagnostics such as `budget_tier`, `degraded_at / degraded_reason`, `turns_timed_out` and `ending_template`, then aggregate them per batch; ending signatures still use the production persisted results. The existing `sim_stats` does not keep per-turn `characterTextMissing`, so for old batches the raw evidence has to be checked, and it cannot be fabricated as zero.
+  バックエンド側では、実際の `budget_tier`、`degraded_at / degraded_reason`、`turns_timed_out`、`ending_template` などの診断を読み、バッチで集計する。エンディングの署名は引き続き本番の永続化された結果を使う。既存の `sim_stats` はターンごとの `characterTextMissing` を残さないので、旧バッチは元の証拠を調べる必要があり、ゼロとしてでっち上げてはならない。
+- The request-level failure rate keeps every ledger row; the number of successful retries must have evidence linking it to a request or turn. The current ledger has no logical request ID, so recovery cannot be inferred merely from adjacent calls of the same kind. When no link can be made, report unknown. `utterances.source=fallback` in the current gateway means audio transcription filled in afterwards, not the fixed character-line fallback, and cannot be used directly to count service degradation.
+  リクエスト単位の失敗率は台帳のすべての行を残す。成功したリトライの数には、リクエストやターンとの関連の証拠が必要。現在の台帳には論理的なリクエスト ID がないので、隣り合う同種の呼び出しだけから回復したと推定してはならない。関連づけられない場合は不明と報告する。現在のゲートウェイでの `utterances.source=fallback` は音声の文字起こしの補完を意味し、登場人物の固定セリフへのフォールバックとは別物なので、サービスの劣化を数えるのにそのまま使ってはならない。
+- This round found that the missing-answer marker returned by `eval_api` was not synced to `turns.character_text_missing`, so a false value in the old database field cannot prove that the turn had an answer. This was fixed at the stop point with a database regression added; the old database field is not retroactively fabricated, and old batches stay frozen.
+  今回、`eval_api` が返す無回答マークが `turns.character_text_missing` に同期されていないことがわかった。したがって旧データベースのフィールドが false でも、そのターンに回答があった証明にはならない。停止点で修正し、データベースの回帰テストを追加した。旧データベースのフィールドを遡ってでっち上げることはせず、旧バッチは凍結したまま。
 
-- 定向报告、玩家、检查及运行器：86 项通过；全评估离线测试：127 项通过、1 项数据库快照跳过。
-- 独立 PostgreSQL 回归中，B3 / B4 / B13 的 97 项通过，覆盖确认投影、公开记忆删除及跨局拒绝、演出台词投影。最初发现持久事件循环改动删除旧测试 `_run` 辅助函数，已由实现线程恢复兼容。
-- 新增递水按钮数据库回归单独通过：取公开按钮后直接提交 `actionId`，不补内部物品参数，得到正式的 `done / aid.melos.water / 15min`。
-- fake 报告原有 100 例 / 388 次的所有原始结果与原快照一致；更新汇总与计划覆盖元数据后，实际数据库快照回归也已单独通过。随后执行线程修正了后期 checkpoint 所属幕并重生题集，新快照由该线程另行验证，不沿用此前通过结论。
-- 相关 11 个文件的 Ruff 检查、格式检查及 17 个文件的 mypy 通过。审查线程没有发起实际模型调用、部署或改动凭证。
+## Verification / 検証
 
-真实四幕与 20–30 / 200 局的结果、模型调用账本和最终验收由有限批次执行记录提供；本文件不替代那些运行证据。
+- Targeted report, player, check and runner tests: 86 passed; full offline eval tests: 127 passed, 1 database snapshot skipped.
+  対象を絞ったレポート、プレイヤー、チェック、ランナーのテスト：86 件合格。評価全体のオフラインテスト：127 件合格、データベースのスナップショット 1 件スキップ。
+- In the independent PostgreSQL regression, 97 B3 / B4 / B13 tests passed, covering the confirmation projection, public memory deletion and cross-game refusal, and set-piece line projection. It was first found that a change to the persistent event loop had deleted the old test helper `_run`; the implementation thread has restored compatibility.
+  独立した PostgreSQL の回帰テストで、B3 / B4 / B13 の 97 件に合格し、確認の投影、公開記憶の削除と他の局からの拒否、演出のセリフの投影をカバーした。当初、永続的なイベントループの変更で古いテストのヘルパー関数 `_run` が削除されていたことがわかり、実装スレッドが互換性を復元した。
+- The new database regression for the water-handing button passed on its own: taking the public button and submitting `actionId` directly, without adding the internal item parameter, gives the production `done / aid.melos.water / 15min`.
+  新たに追加した水を渡すボタンのデータベース回帰テストは単独で合格した：公開ボタンを取ってそのまま `actionId` を送信し、内部のアイテムのパラメータを補わずに、本番どおりの `done / aid.melos.water / 15min` を得た。
+- All the original results of the fake report's existing 100 cases / 388 runs match the original snapshot; after updating the summary and the plan-coverage metadata, the actual database snapshot regression also passed on its own. The execution thread then fixed the act that late checkpoints belong to and regenerated the question set; the new snapshot was verified separately by that thread, and the earlier pass conclusion is not carried over.
+  fake レポートの既存の 100 ケース / 388 回の元の結果はすべて元のスナップショットと一致した。集計と計画のカバレッジのメタデータを更新した後、実際のデータベースのスナップショットの回帰テストも単独で合格した。その後、実行スレッドが後半の checkpoint が属する幕を修正して問題セットを再生成した。新しいスナップショットはそのスレッドが別途検証しており、以前の合格の結論は引き継がない。
+- Ruff checks and format checks on the related 11 files and mypy on 17 files passed. The review thread made no actual model calls, deployments or credential changes.
+  関連する 11 ファイルの Ruff チェックとフォーマットチェック、17 ファイルの mypy に合格した。レビューのスレッドは実際のモデル呼び出し、デプロイ、認証情報の変更を行っていない。
+
+The results of the real four acts and of the 20–30 / 200 games, the model call ledger and the final acceptance are provided by the limited batch execution records; this file does not replace that run evidence.
+
+実際の四幕と 20–30 / 200 局の結果、モデル呼び出しの台帳、最終的な受け入れ確認は、限定的なバッチの実行記録が提供する。このファイルはそれらの実行の証拠に代わるものではない。
 
 
-## 10 月 13 日第 1、2 项修复
+## October 13 fixes for items 1 and 2 / 10 月 13 日の第 1、2 項目の修正
 
-- 真正的模拟玩家观测缺陷已定位：正式固定演出台词使用 `line` / `narration`，运行器误读 `text`，因此把台词投影成空括号。现按契约读取实际已送达内容，并以完整世界模型的所有固定演出验证每句均进入玩家观察，不增加任何未来事件。已有的 `refused` 标志也补进真实模型观察；此前只是假玩家读到了它。公开观察版本升级为 `player-3`。
-- 原 12 个完成执行样本里，10 个结局都是 canon-reunion（2 个署名）；这只能说明旧样本结果集中，不能证明分支已经坏掉，也不能认证多样性。原人质替身画像多次尝试被正式 R7 拒绝的王城入口，叠加丢失固定拒绝台词的观测缺陷；修复不放开身份权限、不指定结局。
-- 两局未完成确认为评测 80 步上限：捣乱者 64 次说话，结束在第三幕 t=3825；删记忆者 41 次说话、34 次删除，结束在第二幕 t=1755。保留 max-steps 失败记录。运行器新增显式有限 `--max-steps` 且纳入批次指纹，较高上限的定向回归另建证据，不能冒充同上限重测。
-- 三次停止均为 Google reply 限流，旧客户端未保存配额细分类别，无法事后断言具体额度原因。S-079 的首次 429 / 529 停止保持不变：新增原子持久停点、显式仅恢复未启动单元，重启命令不会静默越过限流继续；不自动重开已付费失败局。仅记录供应商、HTTP 状态码和数字 Retry-After，不保存原始错误响应。
-- 新增评测专用 Pipeline 终态观察器，用每次实际逻辑调用收集 attempt 序列，成功重试与两次失败可明确区分，正式时限、重试次数和模型输入不变。缺答写入 turns.character_text_missing；逐轮统计分离说话、安全暂停、缺答、缺字段和结果条数不一致。预算档、结局模板、超时轮、记忆与安全失败读取持久指标。尚未覆盖所有输出清洗退路，因此零已知失败仍为 unknown，不声称零降级。
-- 原 20 局的 summary、report 和单位证据未改写；另存 summary-v2 / report-v2，保留原 issues 并拆分请求失败与产品退路。旧公共观察版本标为无效测量，10 个实际结局仍原样保留。成功重试缺逻辑关联证据时不反推。
-- 离线评测 / LLM 测试 145 通过、1 数据库快照跳过；新增完整世界固定演出契约覆盖另通过。数据库非回放定向 54 项通过，新增缺答持久化在其中；旧 b9 回放仅同步已修正的权威人物位置（两条 world 请求的 var.melos.location），定向回放测试通过。reply 提示更新后的 fixture 待提示稳定统一重生。
+- The real simulated-player observation defect has been located: production set-piece lines use `line` / `narration`, but the runner wrongly read `text`, so lines were projected as empty brackets. Now the content actually delivered is read according to the contract, and every set piece in the full world model is used to verify that each line enters the player's observation, without adding any future events. The existing `refused` flag has also been added to the real model's observation; previously only the fake player read it. The public observation version was bumped to `player-3`.
+  実際のシミュレーションのプレイヤーの観測の欠陥を特定した：本番の固定演出のセリフは `line` / `narration` を使うが、ランナーは誤って `text` を読んでいたため、セリフが空の括弧として投影されていた。現在は契約どおりに実際に届いた内容を読み、完全な世界モデルのすべての固定演出で、各セリフがプレイヤーの観測に入ることを検証している。未来のイベントは一切追加していない。既存の `refused` フラグも実モデルの観測に加えた。以前は偽プレイヤーだけがこれを読んでいた。公開の観測バージョンは `player-3` に上げた。
+- In the original 12 completed execution samples, 10 endings were all canon-reunion (2 signatures); this only shows that the old sample results were concentrated, and neither proves that branching is broken nor certifies diversity. The original hostage-substitute persona repeatedly tried the 王城 entrance that production R7 refuses, compounded by the observation defect that lost the fixed refusal line; the fix neither loosens identity permissions nor dictates the ending.
+  元の完了した実行サンプル 12 件のうち、10 件のエンディングはすべて canon-reunion（署名 2 種類）。これは旧サンプルの結果が偏っていたことを示すだけで、分岐が壊れていることの証明にも、多様性の認定にもならない。元の人質の身代わりのペルソナは本番の R7 が拒否する王城の入口を何度も試み、それに固定の拒否セリフが失われる観測の欠陥が重なっていた。修正では身元の権限を緩めず、エンディングも指定しない。
+- The two unfinished games were confirmed to have hit the eval's 80-step limit: the troublemaker spoke 64 times and ended in act 3 at t=3825; the memory deleter spoke 41 times and deleted 34 times, ending in act 2 at t=1755. The max-steps failure records are kept. The runner adds an explicit finite `--max-steps`, included in the batch fingerprint; targeted regressions with a higher limit get separate evidence and cannot pass for retests under the same limit.
+  未完了の 2 局は評価の 80 ステップの上限に当たったと確認した：かき回し役は 64 回発話し、第 3 幕の t=3825 で終了。記憶削除役は 41 回発話し 34 回削除して、第 2 幕の t=1755 で終了。max-steps の失敗記録は残す。ランナーには明示的で有限な `--max-steps` を追加し、バッチのフィンガープリントに含めた。より高い上限での対象を絞った回帰テストは別に証拠を作り、同じ上限での再テストとは偽らない。
+- All three stops were Google reply rate limits; the old client did not save the quota sub-category, so the specific quota cause cannot be asserted after the fact. S-079's stop on the first 429 / 529 stays unchanged: an atomic persistent stop point was added, explicitly resuming only units not yet started, and the restart command will not silently go past the rate limit and continue; already-paid failed games are not reopened automatically. Only the vendor, the HTTP status code and the numeric Retry-After are recorded; the raw error response is not saved.
+  3 回の停止はいずれも Google reply のレート制限だった。旧クライアントはクォータの細分類を保存しておらず、具体的な上限の原因を事後に断定できない。S-079 の最初の 429 / 529 での停止は変えない：アトミックで永続的な停止点を追加し、未開始の単位だけを明示的に再開するようにした。再起動コマンドがレート制限を黙って越えて続行することはない。費用を支払い済みの失敗した局は自動で再開しない。記録するのはベンダー、HTTP ステータスコード、数値の Retry-After だけで、元のエラーレスポンスは保存しない。
+- A new eval-only Pipeline final-state observer collects the attempt sequence for each actual logical call, so successful retries and two failures can be clearly told apart, while the production time limits, retry counts and model inputs are unchanged. Missing answers are written to turns.character_text_missing; per-turn statistics separate speaking, safety pauses, missing answers, missing fields and mismatched result counts. Budget tier, ending template, timed-out turns, memory and safety failures are read from persisted metrics. Not all output-sanitizing fallbacks are covered yet, so zero known failures is still unknown, and we do not claim zero degradation.
+  評価専用の Pipeline の終了状態のオブザーバーを新設し、実際の論理呼び出しごとに attempt の列を集めることで、成功したリトライと 2 回の失敗を明確に区別できるようにした。本番の制限時間、リトライ回数、モデルの入力は変えていない。無回答は turns.character_text_missing に書き込む。ターンごとの統計は、発話、安全のための一時停止、無回答、フィールドの欠落、結果の件数の不一致を分けて示す。予算の段階、エンディングのテンプレート、タイムアウトしたターン、記憶と安全の失敗は永続化された指標から読む。出力のサニタイズによるフォールバックはまだすべてをカバーしていないので、既知の失敗ゼロは依然として unknown であり、劣化ゼロとは主張しない。
+- The original 20 games' summary, report and unit evidence were not rewritten; summary-v2 / report-v2 were saved separately, keeping the original issues and splitting request failures from product fallbacks. The old public observation version is marked as an invalid measurement, and the 10 actual endings are still kept as they were. When a successful retry lacks logical-link evidence, it is not inferred backwards.
+  元の 20 局の summary、report、単位ごとの証拠は書き換えていない。summary-v2 / report-v2 を別に保存し、元の issues を残したうえでリクエストの失敗と製品のフォールバックを分けた。旧公開の観測バージョンは無効な計測とマークし、10 件の実際のエンディングは元のまま残す。成功したリトライに論理的な関連の証拠がない場合は逆算しない。
+- Offline eval / LLM tests: 145 passed, 1 database snapshot skipped; the new full-world set-piece contract coverage also passed. 54 targeted non-replay database tests passed, including the new missing-answer persistence; the old b9 replay only synced the corrected authoritative character location (var.melos.location in two world requests), and the targeted replay tests passed. The fixtures affected by the reply prompt update are waiting to be regenerated together once the prompt is stable.
+  オフラインの評価 / LLM テスト：145 件合格、データベースのスナップショット 1 件スキップ。新たな完全な世界の固定演出の契約カバレッジも合格した。データベースの非リプレイの対象テスト 54 件に合格し、新たな無回答の永続化もその中に含まれる。旧 b9 のリプレイは修正済みの正となる登場人物の位置（world リクエスト 2 件の var.melos.location）だけを同期し、対象を絞ったリプレイテストは合格した。reply プロンプトの更新後の fixture は、プロンプトが安定してからまとめて再生成する予定。
 
-定向真实模型回归的结果待写入；正式 200 局与四幕 980 次未在本轮启动。
+The results of the targeted real-model regressions are still to be written; the formal 200 games and the four-act 980 runs were not started this round.
 
-### 有限复核中的已知质量风险
+対象を絞った実モデルの回帰テストの結果はまだ記入していない。正式な 200 局と四幕の 980 回は今回開始していない。
 
-原 smoke20 的 10 个真实结局，经只读查询持久指标，5 个使用了模板。模板是确定的产品退路，不能因结局分类有效就略去；旧的 `character_text_missing=false` 则因上述持久化缺陷不能作为无缺答证据。补充指标另存私有证据，不覆盖旧报告、单位结果或费用账本。
+### Known quality risks from the limited re-check / 限定的な再確認で判明している品質リスク
 
-这些旧模型请求未开启文本回放，worker 的叙事者 trace 只留内存及未启用的 INFO 日志，数据库只保存最终结局与模板标记。因此具体内容拒绝规则不能事后恢复，必须写未知，不能从成功传输推定是某条过滤误判。第一个修后定向样本同样触发模板，并有 29 次应答中的 2 次真实缺答；另一次首次请求失败后重试成功已单列。新测量揭示了产品退路，未证明这些质量风险已消失。
+Of the 10 real endings in the original smoke20, read-only queries of the persisted metrics showed that 5 used templates. Templates are a definite product fallback and cannot be omitted just because the ending classification is valid; the old `character_text_missing=false` cannot serve as evidence of no missing answers because of the persistence defect above. The supplementary metrics are saved as separate private evidence and do not overwrite the old report, unit results or cost ledger.
 
-4 个原画像的定向回归不替换原 20 局、不计入新的固定 200 局。原人质替身及婚礼拖延画像保持 80 步；原捣乱者及删记忆画像显式用 160 步诊断原步数上限，另设 30 分钟局限，不把较高步数的结果称为同条件对比。所有失败、费用与原始玩家回放保留。正式 200 局多样性及 980 次四幕质量门槛仍未验证。
+元の smoke20 の実際のエンディング 10 件は、永続化された指標を読み取り専用で照会したところ、5 件がテンプレートを使っていた。テンプレートは確定した製品のフォールバックであり、エンディングの分類が有効だからといって省いてはならない。旧 `character_text_missing=false` は上記の永続化の欠陥のため、無回答がない証拠にはならない。補足の指標は非公開の証拠として別に保存し、旧レポート、単位ごとの結果、費用の台帳は上書きしない。
 
-### 按用户指示结束本轮真实调用
+These old model requests did not have text replay enabled; the worker's narrator trace stayed only in memory and in INFO logs that were not enabled, and the database saves only the final ending and the template marker. So the specific content-refusal rules cannot be recovered after the fact and must be recorded as unknown; we cannot infer from a successful transmission that a particular filter misfired. The first targeted sample after the fix also triggered a template, with 2 real missing answers out of 29 replies; one more case where the first request failed and the retry succeeded is listed separately. The new measurements reveal the product fallback; they do not prove these quality risks have gone away.
 
-用户随后明确跳过剩余真实对局和 CI。本轮立即写共享停点，让在途调用结算后阻止下一次调用；控制器及 worker 已退出，无新局或结局重现调用。实际只完成 1 局、主动中断 1 局，另 2 局未启动：
+これらの旧モデルのリクエストではテキストのリプレイが有効になっておらず、worker のナレーターの trace はメモリと有効化されていない INFO ログにしか残らず、データベースには最終的なエンディングとテンプレートのマークしか保存されていない。したがって具体的な内容の拒否ルールは事後に復元できず、不明と書かなければならない。送信が成功したことから、ある特定のフィルタの誤判定だと推定することはできない。修正後最初の対象サンプルも同様にテンプレートを発動し、29 回の応答のうち 2 回で実際に無回答があった。ほかに初回のリクエストが失敗しリトライで成功した 1 件を別に示した。新しい計測は製品のフォールバックを明らかにしたが、これらの品質リスクがなくなったことは証明していない。
 
-| 画像 | 本轮事实 | 质量边界 |
+The targeted regressions of the 4 original personas do not replace the original 20 games and do not count toward the new fixed 200 games. The original hostage-substitute and wedding-delay personas keep 80 steps; the original troublemaker and memory-deleter personas explicitly use 160 steps to diagnose the original step limit, with an extra 30-minute game limit, and results with a higher step count are not called a same-conditions comparison. All failures, costs and the original player replays are kept. The formal 200-game diversity threshold and the 980-run four-act quality threshold remain unverified.
+
+元の 4 ペルソナの対象を絞った回帰テストは、元の 20 局を置き換えず、新たな固定 200 局にも数えない。元の人質の身代わりと婚礼引き延ばしのペルソナは 80 ステップのまま。元のかき回し役と記憶削除役のペルソナは元のステップ上限を診断するために明示的に 160 ステップを使い、さらに 1 局 30 分の制限を設けた。ステップ数の多い結果を同条件での比較とは呼ばない。すべての失敗、費用、元のプレイヤーのリプレイは残す。正式な 200 局の多様性と 980 回の四幕の品質の閾値は依然として未検証。
+
+### Ending this round's real calls per the user's instruction / ユーザーの指示による今回の実呼び出しの終了
+
+The user then explicitly skipped the remaining real games and CI. This round immediately wrote a shared stop point, letting in-flight calls settle and then blocking the next call; the controller and workers have exited, with no new games or ending-reproduction calls. In practice only 1 game was completed, 1 game was deliberately interrupted, and the other 2 games were not started:
+
+ユーザーはその後、残りの実対局と CI のスキップを明示した。今回は直ちに共有の停止点を書き込み、実行中の呼び出しは精算させたうえで次の呼び出しを止めた。コントローラーと worker は終了しており、新しい局やエンディングの再現の呼び出しはない。実際に完了したのは 1 局だけで、1 局は意図的に中断し、残りの 2 局は未開始：
+
+| Persona / ペルソナ | Facts this round / 今回の事実 | Quality boundary / 品質の境界 |
 |---|---|---|
-| 人质替身 | 62 步自然结束；canon-reunion；全部新鲜玩家调用 | 29 次应回答中 2 次缺答，另 1 次重试恢复；结局为模板，1 次记忆失败。不能称质量通过 |
-| 捣乱者 | 用户停止时已记录 100 个玩家决定、启动 99 个执行步骤；持久状态已到第 4 幕 t=4935 | 72 轮 talk 中持久记录 6 次缺答；21 次请求超时全部保留。因用户中断，没有结局结果，既不算产品失败也不算通过 |
-| 婚礼拖延、删记忆 | 未启动 | 未验证 |
+| Hostage substitute / 人質の身代わり | Ended naturally after 62 steps; canon-reunion; all fresh player calls / 62 ステップで自然に終了。canon-reunion。プレイヤーの呼び出しはすべて新鮮 | 2 missing answers out of 29 that should have been answered, plus 1 recovered by retry; the ending was a template, with 1 memory failure. Cannot be called a quality pass / 回答すべき 29 回のうち 2 回が無回答、ほかに 1 回はリトライで回復。エンディングはテンプレートで、記憶の失敗が 1 回。品質の合格とは言えない |
+| Troublemaker / かき回し役 | When the user stopped it, 100 player decisions had been recorded and 99 execution steps started; persisted state had reached act 4 at t=4935 / ユーザーが停止した時点で、プレイヤーの決定 100 件を記録し、実行ステップ 99 件を開始済み。永続化された状態は第 4 幕の t=4935 に到達 | Of 72 talk turns, 6 missing answers were persisted; all 21 request timeouts are kept. Because the user interrupted it, there is no ending result; it counts neither as a product failure nor as a pass / talk の 72 ターンのうち、永続記録上の無回答は 6 回。リクエストのタイムアウト 21 回はすべて残す。ユーザーが中断したのでエンディングの結果はなく、製品の失敗にも合格にも数えない |
+| Wedding delay, memory deleter / 婚礼引き延ばし、記憶削除 | Not started / 未開始 | Not verified / 未検証 |
 
-两局估算费用分别约 $2.71、$4.72，完整私有账本保留。用户停点的部分状态和执行分类另存 `user-stop.json`，未改写已经完成的原始记录。此前已准备的有限结局重现仅做无付费输入预检，用户取消后未执行；原模板失败规则仍未知。
+The estimated costs of the two games are about $2.71 and $4.72 respectively, and the full private ledger is kept. The partial state and execution classification at the user's stop point are saved separately in `user-stop.json`, without rewriting the original records that were already complete. The limited ending reproduction prepared earlier only ran an unpaid input preflight and was not executed after the user cancelled; the original template-failure rule is still unknown.
 
-已补入两个确定的观测修复：来源指纹包含原始及分幕 persona JSON；评测 diagnostics 另存 ending / ending-check / ending.done 的规则名、尝试次数和状态，排除原话、提示及模型 ID。旧样本不倒填。最后必要短单测 15 项、相关 Ruff 与 3 个生产源码文件的 mypy 通过，没有派发新的完整 CI 或真实批次。
+2 局の推定費用はそれぞれ約 $2.71、$4.72 で、完全な非公開の台帳を残している。ユーザーの停止点での部分的な状態と実行の分類は `user-stop.json` に別に保存し、すでに完了していた元の記録は書き換えていない。以前に準備していた限定的なエンディングの再現は、費用のかからない入力のプリフライトだけを行い、ユーザーのキャンセル後は実行していない。元のテンプレート失敗のルールは依然として不明。
 
-因此第 1、2 项的运行器与可追踪性缺陷已修，旧样本原因与不足已明确保留；真实人物缺答、模板比例及固定 200 局分布仍是未通过或未验证的质量项，不能把用户取消测量写成已修完这些产品质量问题。
+Two definite observability fixes have been added: the source fingerprint includes the original and per-act persona JSON; the eval diagnostics separately save the rule name, attempt count and status for ending / ending-check / ending.done, excluding the original words, prompts and model IDs. Old samples are not backfilled. The final necessary 15 short unit tests, the related Ruff, and mypy on 3 production source files passed; no new full CI or real batch was dispatched.
+
+確定した観測の修正を 2 つ加えた：ソースのフィンガープリントに元の persona JSON と幕ごとの persona JSON を含めた。評価の diagnostics には ending / ending-check / ending.done のルール名、試行回数、状態を別に保存し、原文、プロンプト、モデル ID は除外した。旧サンプルを遡って埋めることはしない。最後に必要な短い単体テスト 15 件、関連する Ruff、本番のソースファイル 3 つの mypy に合格した。新たな完全な CI や実バッチは投入していない。
+
+So the runner and traceability defects of items 1 and 2 have been fixed, and the causes and shortcomings of the old samples are clearly kept; real character missing answers, the template ratio and the fixed 200-game distribution are still quality items that have failed or are unverified, and the user's cancelled measurement must not be written up as these product quality problems having been fixed.
+
+したがって第 1、2 項目のランナーとトレーサビリティの欠陥は修正済みで、旧サンプルの原因と不足は明確に残している。実際の登場人物の無回答、テンプレートの割合、固定 200 局の分布は、依然として不合格または未検証の品質項目であり、ユーザーがキャンセルした計測を、これらの製品の品質問題を直し終えたと書いてはならない。

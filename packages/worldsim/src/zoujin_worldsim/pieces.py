@@ -1,9 +1,20 @@
-"""固定演出选哪一条（契约 1.7，2.11）。
+"""Which set piece to play (contract 1.7, 2.11).
 
-pick_set_piece()：一个时机（节拍发生，或玩家的动作判定之后）上演哪一条固定演出。同一个时机按列表顺序取第一条
-条件全满足、`once` 的还没演过的；都不满足返回 None，照常由叙事者说。这一局演过哪些（`played`）由服务端记，
-它不是事件，不在 SimState 里。`knows` 条件用 primitives.knows()，和叙事者的 R4 同一份。
-带 `learns` 的那条（1.7，S-077 ⑪），服务端把这些 learn 和演出同一次提交写进事件（契约 2.11），这里只负责选。
+pick_set_piece(): which set piece plays at a given moment (a beat happens, or after the player's action is judged).
+For one moment, take the first in list order whose conditions all hold and, if `once`, that has not played yet; if none
+qualifies, return None and the narrator speaks as usual. Which ones have played in this run (`played`) is recorded by
+the server; it is not an event and is not in SimState. `knows` conditions use primitives.knows(), the same as the
+narrator's R4. For one with `learns` (1.7, S-077 ⑪), the server writes those learns into events in the same commit as
+the set piece (contract 2.11); this module only chooses.
+
+どの固定演出を上演するか（契約 1.7、2.11）。
+
+pick_set_piece()：あるタイミング（ビートが起きたとき、またはプレイヤーのアクションの判定後）にどの固定演出を上演
+するか。同じタイミングではリスト順に、条件がすべて満たされ、`once` ならまだ上演していない最初の 1 件を取る。
+どれも満たさなければ None を返し、通常どおりナレーターが語る。このプレイで何を上演したか（`played`）はサーバーが
+記録する。イベントではなく、SimState には入らない。`knows` 条件は primitives.knows() を使い、ナレーターの R4 と
+同じもの。`learns` を持つもの（1.7、S-077 ⑪）は、サーバーがそれらの learn を演出と同じコミットでイベントに書き込む
+（契約 2.11）。ここは選ぶだけ。
 """
 
 from __future__ import annotations
@@ -28,12 +39,21 @@ def _matches(on: Mapping[str, Any], hook: Mapping[str, Any]) -> bool:
 def pick_set_piece(
     world: World, state: SimState, hook: Mapping[str, Any], played: Collection[str]
 ) -> dict[str, Any] | None:
-    """这个时机演哪一条固定演出；没有就是 None。
+    """Which set piece plays at this moment; None if there is none.
 
-    hook 的写法同 `SetPiece.on`：`{"beat": 节拍}`，或 `{"act": kind, "target": 对象, "refused": 是否被拒}`
-    （target 按契约 2.11：人物、地点，go 是出口通往的地点，examine 是可调查物）。节拍的时机只在玩家看得到这个节拍时演
-    （`sees()`，契约 1.12 第 3 节：在节拍的地点，或者节拍没有参与人物、落在同一个场景），调用方在节拍那次提交之后、
-    把它应用到 state 以后再问（玩家的位置和节拍之前一样）。
+    hook is written like `SetPiece.on`: `{"beat": beat}`, or `{"act": kind, "target": target, "refused": refused?}`
+    (target per contract 2.11: a character or a place; for go it is the place the exit leads to, for examine it is the
+    examinable). A beat moment plays only when the player can see that beat (`sees()`, contract 1.12 section 3: at the
+    beat's place, or the beat has no participants and falls in the same scene); the caller asks after the beat's commit,
+    once it has been applied to state (the player's position is the same as before the beat).
+
+    このタイミングでどの固定演出を上演するか。なければ None。
+
+    hook の書き方は `SetPiece.on` と同じ：`{"beat": ビート}`、または `{"act": kind, "target": 対象, "refused": 拒否
+    されたか}`（target は契約 2.11 に従う：登場人物、場所。go なら出口の行き先の場所、examine なら調べられる物）。
+    ビートのタイミングは、プレイヤーがそのビートを見られるときだけ上演する（`sees()`、契約 1.12 第 3 節：ビートの
+    場所にいる、またはビートに参加人物がなく同じシーンに落ちる）。呼び出し側はビートのコミット後、それを state に
+    適用してから問い合わせる（プレイヤーの位置はビートの前と同じ）。
     """
     if "beat" in hook:
         beat = next((b for b in world["beats"] if b["id"] == hook["beat"]), None)

@@ -1,1 +1,4 @@
-"""网关（`zoujin-gateway`）：同源的 REST 和 WebSocket，前端只连它（B-0）。"""
+"""The gateway (`zoujin-gateway`): same-origin REST and WebSocket; the frontend connects only to it (B-0).
+
+ゲートウェイ（`zoujin-gateway`）：同一オリジンの REST と WebSocket。フロントエンドはこれにだけ接続する（B-0）。
+"""

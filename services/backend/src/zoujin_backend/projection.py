@@ -1,14 +1,33 @@
-"""世界状态 → 前端看到的东西：快照（api-contract 2.3）、玩家可见的事件（2.4）、commit 的 patch（3.4）。
+"""World state → what the frontend sees: the snapshot (api-contract 2.3), the events visible to the player (2.4), and
+the commit patch (3.4).
 
-快照和 commit 用同一个投影：patch = 提交前后两个快照的差。
+The snapshot and commit use the same projection: patch = the difference between the snapshots before and after commit.
 
-B-0 的投影只做骨架能给的：场景里的人物（位置点按契约 3.1：relocate 指定的站那里，`group` 的不占，其余按布局
-分配；activity 是世界模型给的那部分，W-1 的 `activity()`；此刻不在场的是 absent、不能搭话（B-2，S-077 ⑩）；
-还没有关系的省略关系）、地点能不能进、场景出口、期限和梅洛斯的预计到达。
+The B-0 projection only does what the skeleton can give: the characters in the scene (spots per contract 3.1: one named
+by relocate stands there, `group` ones take no spot, the rest are assigned by layout; activity is the part the world
+model gives, W-1's `activity()`; anyone not present right now is absent and can't be talked to (B-2, S-077 ⑩);
+relationships are omitted while there are none), whether places can be entered, scene exits, the deadline, and Melos's
+expected arrival.
 
-B-3 加了：情境动作（世界模型的 affordances 里此刻成立的）、可调查物（objects）、出口一律能点（拦不拦由判定说，
-S-077 ③）、玩家的位置点（局上记的，`Run.player_spot`）、期限一行按玩家知不知道约定（S-077 ⑫）、
-`pending.actEnd` 和 `pending.arrival`。关系、记忆、别的待处理的东西是 M2 各卡的。
+B-3 added: situational actions (the world model's affordances that hold right now), examinable objects (objects), exits
+that are always clickable (whether they are blocked is up to the check, S-077 ③), the player's spot (recorded on the
+run, `Run.player_spot`), the deadline line depending on whether the player knows about the promise (S-077 ⑫),
+`pending.actEnd` and `pending.arrival`. Relationships, memories and other pending things belong to the M2 cards.
+
+世界状態 → フロントエンドに見えるもの：スナップショット（api-contract 2.3）、プレイヤーに見えるイベント（2.4）、
+commit の patch（3.4）。
+
+スナップショットと commit は同じ投影を使う：patch = コミット前後の 2 つのスナップショットの差分。
+
+B-0 の投影は骨組みで出せるものだけ：場面にいる登場人物（立ち位置は契約 3.1 に従う。relocate で指定された者は
+そこに立ち、`group` の者は立ち位置を取らず、残りはレイアウトで割り当てる。activity は世界モデルが出す部分で
+W-1 の `activity()`。いまその場にいない者は absent で話しかけられない（B-2、S-077 ⑩）。関係がまだないものは
+関係を省く）、場所に入れるか、場面の出口、期限とメロスの到着予定。
+
+B-3 で追加：状況アクション（世界モデルの affordances のうちいま成り立つもの）、調べられる物（objects）、
+出口は常に押せる（止めるかどうかは判定が決める、S-077 ③）、プレイヤーの立ち位置（ゲームに記録したもの、
+`Run.player_spot`）、プレイヤーが約束を知っているかで変わる期限の行（S-077 ⑫）、`pending.actEnd` と
+`pending.arrival`。関係、記憶、その他の保留中のものは M2 の各カードの担当。
 """
 
 from __future__ import annotations
@@ -23,15 +42,19 @@ from zoujin_backend.world import Book
 
 Json = Any
 
-PROMISE_FACT = "fact.promise"  # 玩家知道约定以后才显示期限和预计到达（S-077 ⑫，api-contract 2.3）
-DEADLINE_TAIL = "遅れれば、身代わりが死ぬ"  # 期限那一行的后半（api-contract 2.3 的例子）；UX 定了文案再换
-VOICE = {"enabled": True, "degraded": False, "minutesLeftToday": 60}  # 预算是 M2 的卡
+# The deadline and expected arrival are shown only once the player knows about the promise (S-077 ⑫, api-contract 2.3).
+# 期限と到着予定は、プレイヤーが約束を知ってから表示する（S-077 ⑫、api-contract 2.3）。
+PROMISE_FACT = "fact.promise"
+# The second half of the deadline line (the example in api-contract 2.3); replace it once UX settles the copy.
+# 期限の行の後半（api-contract 2.3 の例）。UX が文言を決めたら差し替える。
+DEADLINE_TAIL = "遅れれば、身代わりが死ぬ"
+VOICE = {"enabled": True, "degraded": False, "minutesLeftToday": 60}  # the budget is an M2 card / 予算は M2 のカード
 PENDING = {"reveal": None, "confirm": None, "actEnd": None, "safetyPause": False, "approach": None}
 CLOSED = "いまは入れない"
 COMMITTED = ("passed", "rewritten", "downgraded")
 
 
-# —— 事件 ——
+# —— Events / イベント ——
 
 
 def committed(ev: Mapping[str, Any]) -> bool:
@@ -50,7 +73,10 @@ def _beat_label(book: Book, beat: str, change: str, variant: str | None = None) 
 
 
 def visible_effects(book: Book, effects: Sequence[Mapping[str, Any]]) -> list[Json]:
-    """2.4 的 visibleEffects：可见变量（只给标签）和节拍走向。"""
+    """2.4's visibleEffects: visible variables (label only) and beat changes.
+
+    2.4 の visibleEffects：見える変数（ラベルだけ）とビートの変化。
+    """
     svars = {v["id"]: v for v in book.world["stateVars"]}
     out: list[Json] = []
     for e in effects:
@@ -80,9 +106,18 @@ def promise_change(effects: Sequence[Mapping[str, Any]]) -> Json | None:
 
 
 class Away:
-    """幕切换第 3 步（契约 2.8.1）结算的事件，玩家一律算不在场，不推（留给「その頃」）。从事件本身判：第 2 步玩家的
-    `act-transition`（origin act）之后、第 4 步系统的 `act-transition` 之前，origin 不是 act 的那些（数据在 #149 定的，
-    不加字段）。按 seq 顺序每条都喂（推不推的范围以外的也喂）；返回 True 的不推。"""
+    """Events settled in step 3 of an act transition (contract 2.8.1) always count as the player not being present and
+    aren't pushed (they are left for 「その頃」). Judged from the events themselves: after the player's step-2
+    `act-transition` (origin act) and before the system's step-4 `act-transition`, the ones whose origin isn't act
+    (settled by the data side in #149, no field added). Feed every event in seq order (including ones outside the
+    range that gets pushed); those that return True aren't pushed.
+
+    幕切り替えの第 3 ステップ（契約 2.8.1）で精算するイベントは、プレイヤーは常にその場にいないとみなし、
+    プッシュしない（「その頃」に回す）。イベント自体から判断する：第 2 ステップのプレイヤーの `act-transition`
+    （origin act）の後、第 4 ステップのシステムの `act-transition` の前で、origin が act でないもの（データ側が #149 で
+    決めたもので、フィールドは追加しない）。seq 順にすべてのイベントを渡す（プッシュ対象の範囲外のものも渡す）。
+    True を返したものはプッシュしない。
+    """
 
     def __init__(self) -> None:
         self.on = False
@@ -95,9 +130,15 @@ class Away:
 
 
 def is_visible(book: Book, ev: Mapping[str, Any], player_place: str) -> bool:
-    """第 0 节：改的是可见变量或节拍走向（或约定），并且玩家看得到（数据契约 1.12 第 3 节的 `sees()`：玩家做的、
-    玩家在事件的地点，或者是没有参与人物的节拍、落在和玩家同一个场景）。player_place 是这个事件之前玩家的地点。
-    被否决的不推。"""
+    """Section 0: it changes a visible variable or a beat (or a promise), and the player can see it (`sees()` from data
+    contract 1.12 section 3: the player did it, the player is at the event's place, or it is a beat with no
+    participating characters that lands in the same scene as the player). player_place is the player's place before
+    this event. Rejected events aren't pushed.
+
+    第 0 節：見える変数かビート（または約束）を変え、しかもプレイヤーに見えるもの（データ契約 1.12 第 3 節の
+    `sees()`：プレイヤーがしたこと、プレイヤーがイベントの場所にいる、または参加する登場人物のいないビートで
+    プレイヤーと同じ場面で起きる）。player_place はこのイベントの前のプレイヤーの場所。却下されたものはプッシュしない。
+    """
     if not committed(ev):
         return False
     if not visible_effects(book, ev["effects"]) and promise_change(ev["effects"]) is None:
@@ -110,9 +151,19 @@ ENDS = ("。", "！", "？", "!", "?")
 
 
 def as_you(book: Book, role_id: str, text: str, *, period: bool = False) -> str:
-    """下发给前端的事件句里，玩家一律是「あなた」：把这一局的身份名换掉（存的 summary 照旧用身份名，模型、检查、
-    评测读那一份）。名字里含身份名的人物不换（兜底：契约 1.8 起数据的自检不让人物名含身份名）。
-    period：句末没有「。」就补上（recapLines、「その頃」；commit 的 summary 不补，前端放在括号里）。"""
+    """In event sentences sent to the frontend the player is always 「あなた」: replace this game's role name (the
+    stored summary keeps the role name; the model, the checks and evals read that one). Characters whose names contain
+    the role name are left alone (a fallback: since contract 1.8 the data self-check doesn't let character names
+    contain a role name).
+    period: add 「。」 if the sentence doesn't end with one (recapLines, 「その頃」; a commit summary gets none, since
+    the frontend puts it in brackets).
+
+    フロントエンドに送るイベント文では、プレイヤーは常に「あなた」：このゲームの役柄名を置き換える（保存する summary は
+    役柄名のままで、モデル・チェック・評価はそちらを読む）。名前に役柄名を含む登場人物は置き換えない（保険：契約 1.8
+    以降、データのセルフチェックで登場人物名に役柄名を含めないようにしている）。
+    period：文末に「。」がなければ補う（recapLines、「その頃」。commit の summary には補わず、
+    フロントエンドが括弧に入れる）。
+    """
     name = str(book.roles[role_id]["name"])
     keep = sorted(
         {str(c["name"]) for c in book.characters.values() if name in str(c["name"]) and c["name"] != name},
@@ -155,8 +206,14 @@ def visible_event(book: Book, ev: Mapping[str, Any], role_id: str) -> Json:
 def visible_events(
     book: Book, role_id: str, log: Sequence[Mapping[str, Any]], after_seq: int, limit: int | None = None
 ) -> list[Json]:
-    """2.4：一局事件里玩家可见的、seq 大于 after_seq 的，最多 limit 条（网关的 `GET …/events` 和评测的 `view()`
-    同一个）。在不在场按这一条之前的状态算；只改时间的、玩家不在场的、被否决的占 seq 但不在这里。"""
+    """2.4: the game's events visible to the player with seq greater than after_seq, at most limit of them (shared by
+    the gateway's `GET …/events` and the eval's `view()`). Presence is judged by the state before each event; events
+    that only change time, that the player wasn't present for, or that were rejected take a seq but aren't here.
+
+    2.4：ゲームのイベントのうち、プレイヤーに見えて seq が after_seq より大きいもの、最大 limit 件（ゲートウェイの
+    `GET …/events` と評価の `view()` で共通）。その場にいたかは各イベントの直前の状態で判断する。時間だけを変えたもの、
+    プレイヤーがいなかったもの、却下されたものは seq を使うがここには出ない。
+    """
     state = initial_state(book.world, role_id)
     away = Away()
     out: list[Json] = []
@@ -170,7 +227,7 @@ def visible_events(
     return out
 
 
-# —— 快照 ——
+# —— Snapshot / スナップショット ——
 
 
 def _holds(conds: Sequence[Mapping[str, Any]], values: Mapping[str, Any]) -> bool:
@@ -194,12 +251,22 @@ def place_open(book: Book, role_id: str, place: str, state: SimState) -> bool:
 
 
 def action_id(affordance: str) -> str:
-    """快照里情境动作的 ID：`act_` 加上 Affordance ID 去掉 `aff.` 的部分（B-3），前端原样回传。"""
+    """The ID of a situational action in the snapshot: `act_` plus the Affordance ID without `aff.` (B-3); the frontend
+    sends it back unchanged.
+
+    スナップショットの状況アクションの ID：`act_` に Affordance ID から `aff.` を除いた部分を付けたもの（B-3）。
+    フロントエンドはそのまま送り返す。
+    """
     return "act_" + affordance.removeprefix("aff.")
 
 
 def item_ready(book: Book, state: SimState, item: str | None) -> bool:
-    """情境动作要用的物品此刻拿得到（叙事者 R7 的同一个判法）：不能带走的在这个地点，能带走的在玩家手上。"""
+    """The item a situational action needs is available right now (the same test as narrator R7): a non-portable one is
+    at this place, a portable one is in the player's hands.
+
+    状況アクションに要る物がいま手に入る（ナレーターの R7 と同じ判定）：持ち運べない物はこの場所にあり、
+    持ち運べる物はプレイヤーが持っている。
+    """
     it = next((x for x in book.world.get("items", []) if x["id"] == item), None)
     if it is None:
         return True
@@ -209,8 +276,12 @@ def item_ready(book: Book, state: SimState, item: str | None) -> bool:
 
 
 def open_affordances(book: Book, state: SimState) -> list[Json]:
-    """此刻成立的情境动作（B-3 第 1 条）：玩家所在地点、这一幕、这个身份、when 成立、对象人物在这里而且不是
-    absent、要用的物品拿得到。"""
+    """Situational actions that hold right now (B-3 item 1): at the player's place, in this act, for this role, `when`
+    holds, the target character is here and not absent, and the needed item is available.
+
+    いま成り立つ状況アクション（B-3 第 1 項）：プレイヤーのいる場所、この幕、この役柄で、when が成り立ち、
+    対象の登場人物がここにいて absent でなく、要る物が手に入るもの。
+    """
     vars_ = state["vars"]
     place, act, values = vars_["var.player.location"], book.act_of(vars_), flat(state)
     out = []
@@ -235,7 +306,12 @@ def affordance_minutes(book: Book, a: Json) -> int:
 
 
 def situational(book: Book, state: SimState, a: Json) -> Json:
-    """快照的 SituationalAction。带 melos 的按本局此刻算梅洛斯会晚几分钟、还赶不赶得上（W-1 arrival_delta）。"""
+    """The snapshot's SituationalAction. For ones with melos, compute from this game's current state how many minutes
+    Melos would lose and whether he would still make it (W-1 arrival_delta).
+
+    スナップショットの SituationalAction。melos があるものは、このゲームの現在の状態から、メロスが何分遅れるか、
+    まだ間に合うかを計算する（W-1 arrival_delta）。
+    """
     out: Json = {"actionId": action_id(a["id"]), "kind": a["kind"]}
     if a.get("target"):
         out["target"] = a["target"]
@@ -252,14 +328,22 @@ def situational(book: Book, state: SimState, a: Json) -> Json:
         try:
             d = arrival_delta(book.world, state, effects, state["t"])
             out["melosMinutes"], out["melosInTime"] = int(d["minutes"]), bool(d["inTime"])
-        except ValueError:  # 和已登记的改动合不了：照世界模型写的分钟，赶不赶得上按现在的预计
+        # Can't be combined with the changes already registered: use the minutes written in the world model, and
+        # whether he makes it follows the current forecast.
+        # 登録済みの変更と合わせられない：世界モデルに書かれた分数を使い、間に合うかは現在の予測に従う。
+        except ValueError:
             out["melosMinutes"] = int(a.get("melosMinutes", 0))
             out["melosInTime"] = True
     return out
 
 
 def player_spot(book: Book, state: SimState, run: Run | None) -> str:
-    """玩家站的位置点：局上记的（属于玩家现在的地点时），不然是这个地点的起点（契约 3.1，B-3 第 1 条）。"""
+    """The spot the player stands on: the one recorded on the run (when it belongs to the player's current place),
+    otherwise the place's starting spot (contract 3.1, B-3 item 1).
+
+    プレイヤーの立ち位置：ゲームに記録したもの（プレイヤーの現在の場所に属するとき）、なければこの場所の起点
+    （契約 3.1、B-3 第 1 項）。
+    """
     place: str = state["vars"]["var.player.location"]
     scene = book.scenes.get(book.scene_of(place, book.act_of(state["vars"])))
     if scene is None:
@@ -270,8 +354,12 @@ def player_spot(book: Book, state: SimState, run: Run | None) -> str:
 
 
 def pending(run: Run | None, confirm: Json | None = None, *, safety_pause: bool = False) -> Json:
-    """welcome.pending（第 4 节）。confirm：还没答的意图确认（B-4，带 remainingSec），网关查草稿给；
-    safety_pause：出戏卡开着（B-12，`playthroughs.safety.paused`）。"""
+    """welcome.pending (section 4). confirm: an unanswered intent confirmation (B-4, with remainingSec), which the
+    gateway looks up from the draft; safety_pause: the out-of-story card is open (B-12, `playthroughs.safety.paused`).
+
+    welcome.pending（第 4 節）。confirm：まだ答えていない意図の確認（B-4、remainingSec 付き）で、ゲートウェイが
+    下書きから引いて渡す。safety_pause：物語の外に出るカードが開いている（B-12、`playthroughs.safety.paused`）。
+    """
     out: Json = dict(PENDING)
     out["confirm"] = confirm
     out["safetyPause"] = safety_pause
@@ -285,7 +373,12 @@ def pending(run: Run | None, confirm: Json | None = None, *, safety_pause: bool 
 def snapshot(
     book: Book, pid: str, role_id: str, status: str, state: SimState, last_seq: int, run: Run | None = None
 ) -> Json:
-    """2.3 的快照。state 是 last_seq 时的 SimState；run 是局上记的位置点和待处理的（没给 = 起点、没有待处理的）。"""
+    """The snapshot of 2.3. state is the SimState at last_seq; run holds the spot and pending items recorded on the run
+    (none given = the starting spot and nothing pending).
+
+    2.3 のスナップショット。state は last_seq 時点の SimState。run はゲームに記録した立ち位置と保留中のもの
+    （渡さなければ起点で、保留中のものなし）。
+    """
     vars_ = state["vars"]
     act = book.act_of(vars_)
     player_place: str = vars_["var.player.location"]
@@ -296,18 +389,26 @@ def snapshot(
     promised = knows(book.world, state, "player", PROMISE_FACT)
 
     present = [(c, state["locations"][c]) for c in book.characters if state["locations"].get(c) in scene_places]
-    doing = {c: activity(book.world, state, c) for c, _ in present}  # W-1：节拍给的 activity，absent = 不在场
+    # W-1: the activity the beats give; absent = not present / W-1：ビートが与える activity、absent = その場にいない
+    doing = {c: activity(book.world, state, c) for c, _ in present}
     away = {c for c, a in doing.items() if a == "absent"}
     me = player_spot(book, state, run)
-    # 契约 3.1 的站位规则：group 的人物不占位置点；relocate 写了 spot 的站那里（布局里这个地点得有这个点）；
-    # 其余的人按布局顺序站空着的点，玩家和指定的点算占着
+    # Contract 3.1's standing rules: group characters take no spot; one whose relocate names a spot stands there (the
+    # place must have that spot in the layout); everyone else takes free spots in layout order, with the player's spot
+    # and named spots counted as taken.
+    # 契約 3.1 の立ち位置の規則：group の登場人物は立ち位置を取らない。relocate に spot があればそこに立つ
+    # （レイアウトのその場所にその立ち位置が必要）。残りはレイアウト順に空いた立ち位置に立ち、
+    # プレイヤーと指定済みの立ち位置は埋まっているとみなす。
     group = {c for c, _ in present if book.characters[c].get("group")}
     named = state.get("spots", {})
     fixed = {
         c: named[c] for c, p in present if c not in group and c in named and scene and scene.spots.get(named[c]) == p
     }
     rest = [x for x in present if x[0] not in group and x[0] not in fixed]
-    # 看得见的人先排位置点，不在场的排在最后：前端不画他们，别让他们挤掉看得见的人的点
+    # Visible characters get spots first and absent ones last: the frontend doesn't draw them, so they mustn't push
+    # visible characters off their spots.
+    # 見える登場人物から立ち位置を割り当て、いない者は最後：フロントエンドは描かないので、
+    # 見える者の立ち位置を奪わせない。
     order = [x for x in rest if x[0] not in away] + [x for x in rest if x[0] in away]
     if scene:
         spots = {**scene.character_spots(order, {me, *fixed.values()}), **fixed}
@@ -330,7 +431,9 @@ def snapshot(
             entry["reason"] = CLOSED
         places.append(entry)
     interactables = []
-    for obj in book.world.get("objects", []):  # 調べる（契约 2.12）：这个场景里的、布局里有位置点的
+    # 調べる (contract 2.12): those in this scene that have a spot in the layout.
+    # 調べる（契約 2.12）：この場面にあり、レイアウトに立ち位置があるもの。
+    for obj in book.world.get("objects", []):
         if obj["place"] in scene_places and obj.get("spot"):
             interactables.append(
                 {
@@ -342,7 +445,9 @@ def snapshot(
                     "estimatedMinutes": 0,
                 }
             )
-    for ex in scene.exits if scene else ():  # 出口一律能点，拦不拦由判定说（S-077 ③）
+    # Exits are always clickable; whether they are blocked is up to the check (S-077 ③).
+    # 出口は常に押せる。止めるかどうかは判定が決める（S-077 ③）。
+    for ex in scene.exits if scene else ():
         interactables.append(
             {
                 "id": ex["spot"],
@@ -416,7 +521,10 @@ def _add_remove(before: Sequence[Json], after: Sequence[Json], key: str) -> Json
 
 
 def patch(before: Json, after: Json) -> Json:
-    """commit.patch：快照字段的增量，按 id 合并（3.4）。clock 每次都带。"""
+    """commit.patch: the delta of the snapshot fields, merged by id (3.4). clock is always included.
+
+    commit.patch：スナップショットのフィールドの差分で、id ごとにまとめる（3.4）。clock は毎回含める。
+    """
     out: Json = {"clock": {"t": after["clock"]["t"], "tLabel": after["clock"]["tLabel"]}}
     for k in ("deadline", "forecast"):
         if before[k] != after[k]:
@@ -449,5 +557,10 @@ def patch(before: Json, after: Json) -> Json:
 
 
 def with_locations(snap: Json, state: SimState) -> Json:
-    """patch 要知道离场的人物去了哪里；快照里不给不在场的人，所以另外挂在 `_locations` 上（不发出去）。"""
+    """patch needs to know where characters who left went; the snapshot leaves out those not present, so they hang on
+    `_locations` separately (never sent out).
+
+    patch は退場した登場人物の行き先を知る必要がある。スナップショットにはいない者を載せないので、
+    別に `_locations` に付ける（外には送らない）。
+    """
     return {**snap, "_locations": dict(state["locations"])}

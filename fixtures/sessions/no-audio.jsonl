@@ -1,4 +1,4 @@
-{"note": "人物没出声：turn_complete {audio: false}（首音指标 null），turn_settled no_response、0 分钟。先 focus 市の老爺。"}
+{"note": "The character made no sound: turn_complete {audio: false} (first-audio metric null), turn_settled no_response, 0 minutes. Focus 市の老爺 first. / 登場人物が声を出さなかった：turn_complete {audio: false}（最初の音声の指標は null）、turn_settled は no_response、0 分。先に 市の老爺 に focus する。"}
 {"on": ["activity_start", "text"]}
 {"when": "voice", "delayMs": 700, "send": {"type": "transcript", "turnId": "{{turnId}}", "speaker": "player", "text": "……あの、", "final": false}}
 {"on": "activity_end", "if": {"trigger.type": "activity_start"}}

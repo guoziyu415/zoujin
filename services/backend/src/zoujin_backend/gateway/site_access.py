@@ -1,7 +1,16 @@
-"""私密预览的最外层访问门禁。包住 HTTP/WS、前端代码、场景和音频，邀请码仍负责内层账号隔离。
+"""The outermost access gate for the private preview. It wraps HTTP/WS, the frontend code, scenes and audio; invite
+codes still handle account isolation inside it.
 
-生产没有密码时关闭访问，只有显式 dev 模式可不设。密码不进入响应、日志、URL 或数据库。
-通行 cookie 只包含随机 nonce、到期时间和 HMAC；换密码立即使全部旧票失效。
+In production, access is closed when no password is set; only an explicit dev mode may leave it unset. The password
+never goes into responses, logs, URLs or the database. The pass cookie holds only a random nonce, an expiry time and
+an HMAC; changing the password invalidates every old pass at once.
+
+非公開プレビューのいちばん外側のアクセスゲート。HTTP/WS、フロントエンドのコード、シーン、音声を包み、内側の
+アカウントの分離は引き続き招待コードが担う。
+
+本番でパスワードがなければアクセスを閉じ、明示的な dev モードのときだけ未設定でよい。パスワードはレスポンス、
+ログ、URL、データベースのどれにも入れない。通行 cookie はランダムな nonce、有効期限、HMAC だけを持ち、
+パスワードを変えると古い通行証はすべて即座に無効になる。
 """
 
 from __future__ import annotations
@@ -76,7 +85,10 @@ class SiteAccess:
         return time.time() < until <= time.time() + TTL and hmac.compare_digest(expected.encode(), signature.encode())
 
     def limited(self, scope: Scope) -> bool:
-        # 只信 ASGI 已验证的 client，不信随意伪造的 X-Forwarded-For。进程内有界；部署仍应限制最大实例数。
+        # Trust only the client ASGI has verified, never an easily forged X-Forwarded-For. Bounded per process; the
+        # deployment should still cap the maximum number of instances.
+        # ASGI が検証した client だけを信じ、簡単に偽造できる X-Forwarded-For は信じない。プロセス内で上限あり。
+        # デプロイ側でも最大インスタンス数を制限すべき。
         client = str((scope.get("client") or ("unknown",))[0])
         now = time.monotonic()
         start, count = self.attempts.get(client, (now, 0))
@@ -114,7 +126,8 @@ class SiteAccess:
             return HTMLResponse(page(True), status_code=401, headers=NO_STORE)
         response = RedirectResponse("/", status_code=303, headers=NO_STORE)
         response.set_cookie(COOKIE, self.issue(), max_age=TTL, httponly=True, secure=not self.dev, samesite="strict")
-        # 清掉以前公开版本可能留下的浏览器缓存/SW，原邀请码会话不清除。
+        # Clear the browser cache/SW an earlier public version may have left; the existing invite-code session stays.
+        # 以前の公開版が残したかもしれないブラウザのキャッシュ/SW を消す。既存の招待コードのセッションは消さない。
         response.headers["Clear-Site-Data"] = '"cache", "storage"'
         return response
 
