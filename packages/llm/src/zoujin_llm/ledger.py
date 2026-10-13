@@ -26,7 +26,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from zoujin_llm.errors import BudgetStop
+from zoujin_llm.errors import BudgetStop, check_batch_halt
 
 PROVIDERS = {"google": "Google", "claude": "Claude"}
 EVAL_KINDS = ("judge", "player")  # 老行没有 use 时，这几种算评测，其余算产品
@@ -97,6 +97,7 @@ class Ledger:
 
     def before(self, estimate_usd: float) -> None:
         """调用前：累计 + 这一次的预计超过上限就抛 BudgetStop（不发这次调用）。"""
+        check_batch_halt()
         so_far = self.spent_total()
         if so_far + estimate_usd > self.max_total_usd:
             raise BudgetStop(

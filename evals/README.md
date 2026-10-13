@@ -24,9 +24,13 @@ uv run --no-sync python -m zoujin_evals.batch --plan four-act --jobs 4 --keep-go
   --out "$EVAL_PRIVATE_DIR/four-act" --max-item-usd 10 --max-google-usd 500 --max-claude-usd 1000 --confirm
 ```
 
-这些是有限上限，按实际烟测用量调整，不使用无限重试。估价表仍是旧切片推算，账本金额是按 usage 和单价估计，不是供应商发票；取消的调用保守按估价记。总账派发前为并发 worker 预留整项额度。每局最多 80 个玩家步骤，超时不自动开第二局，最大并发 4。
+这些是有限上限，按实际烟测用量调整，不使用无限重试。估价表仍是旧切片推算，账本金额是按 usage 和单价估计，不是供应商发票；取消的调用保守按估价记。总账派发前为并发 worker 预留整项额度。每局默认最多 80 个玩家步骤，可用 `--max-steps` 显式指定有限上限并写进批次指纹；不同上限的定向回归不能混作同一批正式样本。超时不自动开第二局，最大并发 4。
 
 每局在独立子进程完成，原子保存 `result.json`，同时保存实际 case/persona/seed、代码与世界指纹、有效模型标签和配置、调用状态、玩家 fresh/replay/bad 计数、动作计数、真实 ending signature。相同命令可续跑已完成批次；源或配置变化必须新建目录。已开始却没有结果的局拒绝自动再次付费，先确认原进程及数据库。不能靠退出码 0、stub、回放命中、max-steps 或跳过检查证明真实完成。
+
+429 / 529 仍遵守 S-079：首次就停止派发，不自动重试。`halted.json` 持久保留停点；核对原因后可显式 `--resume-after-stop` 仅继续未启动样本，失败局与花费保留。停止标记使用独占临时文件原子替换，多个 worker 同时停止也不会覆盖临时文件。
+
+`measurementVersion: 2` 分开报告有效观测、真实产品退路、逻辑请求恢复与原始请求失败。人物缺答同时写入数据库和逐轮统计；成功重试保留首次失败成本，但不算成产品退路。尚未覆盖的退路保持 unknown。旧 20 局使用了错误的固定演出台词字段，原始记录不改写，新解释只保存为 `summary-v2.json` / `report-v2.*`，不把旧局标成修复后有效样本。`player-3` 按公开 `line` / `narration` 读取实际演出台词，并把已公开的拒绝结果交给模拟玩家；不提供未来事件或隐藏世界状态。
 
 `summary.json` 把基础设施退化与确定性检查失败单列。只有完整 200 个无上述退化的真实结局才计算 S-061 门槛：5 类、至少 8 个规范化署名、最大一类不超过 60%；部分样本显示未知。原来的额外 `melos-helper` 画像不进入这 200 局分母。总体发布门槛在 judge 尚未校准时保持未知。
 
@@ -301,7 +305,7 @@ uv run zoujin-eval --mode fake --deterministic-only --quiet --out evals/tests/sn
 - **能走的步骤由快照列出**：和此刻同一地点、能说话的人物说话；快照里的情境动作、調べる、出口；走到同场景里开着的地点；時を進める；上一步是对话时可以言い直す；幕末时只有选去处（带过场二选一的拆成两个）和说出打算。AI 玩家从编号列表里挑一个，要说话时写一两句日语。走到快照 `status` 不是 `active`（结局开始了）为止，最多 80 步。
 - **两种玩家**（`--player`）：
   - `scripted`：不调模型，按画像写死的走法，随机的部分按 `seed`；fake、replay 里用，CI 能跑；
-  - `claude`：Claude（data-design 7.1，Sonnet 5.5；模型 ID 运行时给）。规则和画像放在 system 里走缓存；输出用 JSON Schema 定死 `{"why", "move", "text"}`。账本记 `kind: "player"`、`use: "eval"`（不算进 S-5 的单局成本）。每一步的选择存成回放（`kind: "player"`，键 = `claude|档名加版本|player-1|请求的 sha256`），目录是 `--player-replays`（默认 `--out` 下的 `player-replays`）；replay 模式只读回放，查不到这一局记「回放缺失或过期」。拒答、截断、JSON 坏了不存，这一步当作等。
+  - `claude`：Claude（data-design 7.1，Sonnet 5.5；模型 ID 运行时给）。规则和画像放在 system 里走缓存；输出用 JSON Schema 定死 `{"why", "move", "text"}`。账本记 `kind: "player"`、`use: "eval"`（不算进 S-5 的单局成本）。每一步的选择存成回放（`kind: "player"`，键 = `claude|档名加版本|player-3|请求的 sha256`），目录是 `--player-replays`（默认 `--out` 下的 `player-replays`）；replay 模式只读回放，查不到这一局记「回放缺失或过期」。拒答、截断、JSON 坏了不存，这一步当作等。
   - 不给 `--player`：live 用 `claude`；fake、replay 里模拟局照旧记「要真模型」（CI 的快照就是这样）。
 - **报告**：每一局的 `results[]` 多 `playthroughId`（S-5 的报告脚本按它对账本）和 `sim`：画像、走了几步、怎么停的、关键时刻几次、世界结局和生成的结局、`beat.25` 的演法、`beat.20`、问句（人物发言以问句结尾的比例、请求的条数、同一人物重复同一问句的次数；只出数，不出原话）。`report.json` 的 `simulations` 和 `report.md` 的「模拟局」一节把这些按全部画像、`persona.melos-helper` 单列加总（data-design 9.1，观察项，不是门槛）。
 - **切片的 10 局**：`slice/E7.jsonl`（`gen_slice.py` 生成，E7-101〜110）：旅人能跑、不要记忆的 7 个画像各 1 局，守原著、帮梅洛斯、劝国王换 `seed` 再各 1 局（B-5 卡「S-5 怎么跑」的默认）。

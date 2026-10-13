@@ -194,6 +194,8 @@ class Observation:
         s = self.snapshot
         here = names.where(s["player"]["place"])
         lines = ["## いまの状況", f"時刻：{s['clock']['tLabel']}　場所：{here}"]
+        if self.refused:
+            lines.append("直前に試したことはできなかった。状況を確かめて次の行動を選ぶ。")
         if (s.get("deadline") or {}).get("line"):
             lines.append(s["deadline"]["line"])
         people = [
@@ -234,7 +236,13 @@ def heard(names: Names, move: Mapping[str, Json], result: StepResult) -> list[st
     pieces = r.get("setPieces") or ([r["setPiece"]] if isinstance(r.get("setPiece"), Mapping) else [])
     for piece in pieces:
         if isinstance(piece, Mapping):
-            out += [f"（{x.get('text', '')}）" for x in piece.get("lines", []) if isinstance(x, Mapping)]
+            for line in piece.get("lines", []):
+                if not isinstance(line, Mapping):
+                    continue
+                if line.get("narration"):
+                    out.append(f"（{line['narration']}）")
+                elif line.get("line"):
+                    out.append(f"{names.who(str(line.get('speaker', '')))}：{line['line']}")
     if r.get("alternatives"):
         out.append("（代わりの行き先：" + "、".join(str(a.get("label")) for a in r["alternatives"]) + "）")
     if r.get("confirm"):
@@ -335,7 +343,7 @@ def _wait(moves: Sequence[Move]) -> int:
 
 PROVIDER = "claude"
 KIND = "player"
-PROMPT_VERSION = "player-2"
+PROMPT_VERSION = "player-3"
 
 SYSTEM = """你在一款日语互动故事里扮演一位玩家，按给你的「玩家画像」玩完一局。故事改编自太宰治『走れメロス』，\
 你是故事里的一个人物（身份见下），用日语和故事里的人物说话、做动作，叙事者（括号里的文字）描述结果。
@@ -615,6 +623,7 @@ def play(
         progress(f"{persona.id} 第 {len(steps)} 步：{move.label}")
     diagnostics: Json = {k: int(getattr(player, k, 0)) for k in ("freshCalls", "replayHits", "bad")}
     diagnostics["actions"] = dict(counts)
+    diagnostics["observationVersion"] = 3
     return Played(
         persona.id, steps, results, snap.get("playthroughId"), str(snap.get("status")), stopped, transcript, diagnostics
     )
@@ -674,6 +683,34 @@ def beat_outcome(events: Sequence[Mapping[str, Json]], beat: str) -> str | None:
     return out
 
 
+def dialogue_stats(played: Played) -> Json:
+    """缺答以实际返回标记计数；安全暂停不属于应答轮，漏字段不补零。"""
+    counts: Counter[str] = Counter()
+    for step, result in zip(played.steps, played.results, strict=False):
+        if "say" not in step:
+            continue
+        counts["say"] += 1
+        if result.get("safetyCard", {}).get("paused"):
+            counts["safetyPaused"] += 1
+            continue
+        counts["expectedReplies"] += 1
+        if "characterTextMissing" not in result:
+            counts["unknown"] += 1
+        elif result["characterTextMissing"]:
+            counts["missing"] += 1
+        elif result.get("reply"):
+            counts["replies"] += 1
+        else:
+            counts["inconsistent"] += 1
+    return {
+        **{
+            k: counts[k]
+            for k in ("say", "safetyPaused", "expectedReplies", "unknown", "missing", "replies", "inconsistent")
+        },
+        "aligned": len(played.steps) == len(played.results),
+    }
+
+
 def sim_stats(played: Played, events: Sequence[Mapping[str, Json]] | None, ending: Mapping[str, Json] | None) -> Json:
     """一局的统计：走了几步、怎么停的、关键时刻几次、结局、刑场一幕（beat.25）的演法、beat.20、问句。"""
     out: Json = {
@@ -683,6 +720,7 @@ def sim_stats(played: Played, events: Sequence[Mapping[str, Json]] | None, endin
         "status": played.status,
         "questions": question_stats(played.transcript),
         "player": played.diagnostics,
+        "dialogue": dialogue_stats(played),
     }
     if played.stopped:
         out["stopped"] = played.stopped

@@ -101,7 +101,12 @@ class RestTransport:
         except httpx.HTTPError:
             raise ModelCallFailed("网络错误（消息不记）") from None
         if resp.status_code == 429:
-            raise RateLimited("模型回 429（配额或限流），停下")
+            raise RateLimited(
+                "模型回 429（配额或限流），停下",
+                provider="google",
+                status=429,
+                retry_after=resp.headers.get("retry-after"),
+            )
         if resp.status_code >= 400:
             raise ModelCallFailed(f"HTTP {resp.status_code}（消息不记）")
         data = resp.json()

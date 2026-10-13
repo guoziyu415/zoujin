@@ -12,6 +12,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
@@ -19,12 +20,14 @@ from pathlib import Path
 from typing import Any
 
 from zoujin_llm import Stop
+from zoujin_llm.errors import BatchHalted
 
 from . import live, report
 from .api import load_backend
 from .cases import load_cases
 from .checks import WorldIndex
 from .cli import PRICES, WORLD, players
+from .player import MAX_STEPS
 from .runner import Options, run_cases
 
 REPO = Path(__file__).resolve().parents[3]
@@ -60,6 +63,20 @@ def source_hash(repo: Path = REPO) -> str:
             if path.is_file() and path.suffix in {".py", ".json", ".jsonl", ".txt"}:
                 h.update(str(path.relative_to(repo)).encode())
                 h.update(path.read_bytes())
+    # Book.Scene.read uses this semantic projection for player movement/observations.
+    # Render-only bytes, bake hashes and lighting do not enter text evaluations.
+    for path in sorted((repo / "assets/scenes").glob("*/scene.json")):
+        doc = json.loads(path.read_text())
+        layout = {
+            "sceneId": doc["sceneId"],
+            "defaultPlace": doc["defaultPlace"],
+            "places": [p["id"] for p in doc.get("places", [])],
+            "spots": [(k, v["place"], v.get("auto") is False) for k, v in doc.get("spots", {}).items()],
+            "exits": [(e["place"], e["spot"]) for e in doc.get("exits", [])],
+            "startSpots": doc.get("startSpots", {}),
+        }
+        h.update(str(path.relative_to(repo)).encode())
+        h.update(json.dumps(layout, sort_keys=True).encode())
     return h.hexdigest()
 
 
@@ -81,9 +98,14 @@ def runtime_config() -> dict[str, Any]:
 
 def save(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(value, ensure_ascii=False, indent=1) + "\n")
-    tmp.replace(path)
+    # 各 worker 可同时触发 halt；临时文件独占，目标替换保持原子。
+    with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, prefix=f".{path.name}.", delete=False) as f:
+        tmp = Path(f.name)
+        f.write(json.dumps(value, ensure_ascii=False, indent=1) + "\n")
+    try:
+        tmp.replace(path)
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 def strict_result(case: Mapping[str, Any], result: Mapping[str, Any], ledger: list[dict[str, Any]]) -> list[str]:
@@ -101,19 +123,56 @@ def strict_result(case: Mapping[str, Any], result: Mapping[str, Any], ledger: li
         if sim.get("status") != "ended" or sim.get("stopped") or not sim.get("ending", {}).get("signature"):
             reasons.append("incomplete-ending")
         diagnostics = sim.get("player", {})
+        if diagnostics.get("observationVersion") != 3:
+            reasons.append("unverified-public-observation")
+        if diagnostics.get("freshCalls") != sim.get("steps"):
+            reasons.append("player-call-count-mismatch")
         if diagnostics.get("bad", 0) or diagnostics.get("replayHits", 0):
             reasons.append("player-fallback-or-replay")
         if not any(r.get("kind") == "player" and r.get("costUsd", 0) > 0 for r in ledger):
             reasons.append("no-real-player-call")
-    if any(r.get("status") in {"error", "timeout", "bad-output"} for r in ledger):
-        reasons.append("provider-degradation")
     return reasons
+
+
+def simulation_quality(sim: Mapping[str, Any]) -> dict[str, Any]:
+    """样本有效性、真实退路、请求重试分开；旧记录缺诊断时明确未知。"""
+    player = sim.get("player", {})
+    valid = (
+        sim.get("status") == "ended"
+        and not sim.get("stopped")
+        and bool(sim.get("ending", {}).get("signature"))
+        and player.get("freshCalls") == sim.get("steps")
+        and player.get("replayHits") == 0
+        and player.get("bad") == 0
+        and player.get("observationVersion") == 3
+    )
+    backend = sim.get("backend", {})
+    calls = backend.get("pipelineCalls", [])
+    recovered = sum(c.get("status") == "ok" and len(c.get("attempts", [])) > 1 for c in calls)
+    metrics = backend.get("metrics", {})
+    known_degraded = (
+        backend.get("budgetTier") == "degraded"
+        or backend.get("characterTextMissing", 0) > 0
+        or any(metrics.get(k) for k in ("turns_timed_out", "ending_template", "memories_failed", "safety_unscreened"))
+        or any(c.get("status") == "failed" for c in calls)
+    )
+    dialogue = sim.get("dialogue")
+    if dialogue:
+        valid = valid and dialogue.get("aligned", False) and not dialogue.get("inconsistent", 0)
+        known_degraded = known_degraded or dialogue.get("missing", 0) > 0
+    # 观察器没有覆盖输出内容清洗后的固定退路，零已知失败不能认证零降级。
+    return {
+        "valid": bool(valid),
+        "degradation": "known-degraded" if known_degraded else "unknown",
+        "recovered": recovered,
+    }
 
 
 def worker(path: Path) -> int:
     job = json.loads(path.read_text())
     case = job["case"]
     out = path.parent
+    os.environ["ZJ_EVAL_BATCH_HALT"] = str((out.parent.parent / "halted.json").resolve())
     if source_hash() != job["sourceHash"] or runtime_config() != job["runtimeConfig"]:
         save(
             out / "result.json",
@@ -141,6 +200,7 @@ def worker(path: Path) -> int:
         deterministic_only=True,
         timeout_s=job["timeout"],
         timeout_retries=0,
+        max_steps=job.get("maxSteps", MAX_STEPS),
         player=players(args),
         progress=lambda message: print(message, flush=True),
     )
@@ -150,7 +210,9 @@ def worker(path: Path) -> int:
         record["result"] = run_cases(load_backend(), [case], world, opts)[0]
         record["status"] = "completed"
     except Stop as exc:
-        record.update(status="stopped", stopType=type(exc).__name__)
+        record.update(status="stopped", stopType=type(exc).__name__, stopDiagnostics=getattr(exc, "diagnostics", {}))
+        if not isinstance(exc, BatchHalted):
+            save(out.parent.parent / "halted.json", {"caseId": case["id"], "stopType": type(exc).__name__})
     except BaseException as exc:
         record.update(status="interrupted", stopType=type(exc).__name__)
     ledger_path = out / "ledger.jsonl"
@@ -163,12 +225,21 @@ def worker(path: Path) -> int:
 
 
 def summarize(out: Path, jobs: list[dict[str, Any]], metadata: Mapping[str, Any]) -> dict[str, Any]:
-    records = [json.loads(p.read_text()) for p in sorted((out / "units").glob("*/result.json"))]
+    records = []
+    for path in sorted((out / "units").glob("*/result.json")):
+        record = json.loads(path.read_text())
+        if "result" in record and "case" in record:
+            ledger_path = path.parent / "ledger.jsonl"
+            rows = [json.loads(line) for line in ledger_path.read_text().splitlines()] if ledger_path.exists() else []
+            record["originalIssues"] = record.get("issues", [])
+            record["issues"] = strict_result(record["case"], record["result"], rows)
+        records.append(record)
     # 直接累计账本，包含正在运行、预算停止、被中断而没有 result 的半局。
     ledger = [json.loads(line) for p in (out / "units").glob("*/ledger.jsonl") for line in p.read_text().splitlines()]
     results = [r["result"] for r in records if "result" in r]
     summary = {
         **metadata,
+        "measurementVersion": 2,
         "planned": len(jobs),
         "recorded": len(records),
         "completed": sum(r["status"] == "completed" for r in records),
@@ -185,7 +256,25 @@ def summarize(out: Path, jobs: list[dict[str, Any]], metadata: Mapping[str, Any]
     ended = [s for s in simulations if s.get("status") == "ended" and s.get("ending", {}).get("signature")]
     outcomes = Counter(s["ending"]["outcome"] for s in ended)
     signatures = {digest(s["ending"]["signature"]) for s in ended}
-    complete = metadata.get("plan") == "simulations" and len(jobs) == len(ended) == summary["clean"] == 200
+    measurement = [simulation_quality(s) for s in simulations]
+    summary["measurementCompleteness"] = {
+        "measured": len(measurement),
+        "valid": sum(m["valid"] for m in measurement),
+        "invalid": sum(not m["valid"] for m in measurement),
+        "unmeasured": len(jobs) - len(measurement),
+    }
+    summary["productDegradation"] = dict(Counter(m["degradation"] for m in measurement))
+    summary["requestRetries"] = {
+        "scope": "observed pipeline logical calls; other provider retries unknown",
+        "observedGames": sum("backend" in s for s in simulations),
+        "recovered": sum(m["recovered"] for m in measurement),
+        "rawFailures": sum(r.get("status") in {"error", "timeout", "bad-output"} for r in ledger),
+    }
+    complete = (
+        metadata.get("plan") == "simulations"
+        and len(jobs) == len(ended) == 200
+        and all(m["valid"] for m in measurement)
+    )
     summary["diversity"] = {
         "denominator": len(jobs),
         "endedWithSignature": len(ended),
@@ -195,12 +284,13 @@ def summarize(out: Path, jobs: list[dict[str, Any]], metadata: Mapping[str, Any]
         "gateMet": (len(outcomes) == 5 and len(signatures) >= 8 and max(outcomes.values()) <= 120)
         if complete
         else None,
-        "gateReason": "complete-200" if complete else "requires-200-clean-completed-simulations",
+        "gateReason": "complete-200" if complete else "requires-200-valid-completed-simulations",
     }
-    save(out / "summary.json", summary)
+    save(out / ("summary.json" if metadata.get("measurementVersion") == 2 else "summary-v2.json"), summary)
     rep = report.build(results, {"mode": "live", "deterministicOnly": True, "cases": len(jobs)})
-    save(out / "report.json", rep)
-    (out / "report.md").write_text(report.markdown(rep))
+    suffix = "" if metadata.get("measurementVersion") == 2 else "-v2"
+    save(out / f"report{suffix}.json", rep)
+    (out / f"report{suffix}.md").write_text(report.markdown(rep))
     return summary
 
 
@@ -210,6 +300,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--worker", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--plan", choices=("simulations", "four-act"), default="simulations")
     parser.add_argument("--seeds", type=int, default=2)
+    parser.add_argument("--max-steps", type=int, default=MAX_STEPS)
+    parser.add_argument(
+        "--resume-after-stop", action="store_true", help="显式恢复限流停点；只启动未开始样本，不重跑失败局"
+    )
     parser.add_argument("--jobs", type=int, choices=range(1, 5), default=1)
     parser.add_argument("--out", type=Path)
     parser.add_argument("--world", type=Path, default=WORLD)
@@ -224,7 +318,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return worker(args.worker)
     if args.out is None:
         parser.error("必须显式给 --out（私有证据目录）")
-    if min(args.max_item_usd, args.max_google_usd, args.max_claude_usd, args.timeout) <= 0:
+    if min(args.max_item_usd, args.max_google_usd, args.max_claude_usd, args.timeout, args.max_steps) <= 0:
         parser.error("预算和时限必须为正数")
     cases = plan(args.plan, args.seeds)
     caps = {"google": args.max_google_usd, "claude": args.max_claude_usd}
@@ -246,6 +340,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return code
     metadata = {
         "plan": args.plan,
+        "measurementVersion": 2,
+        "maxSteps": args.max_steps,
         "sourceHash": source_hash(),
         "casesHash": digest(cases),
         "worldHash": hashlib.sha256(args.world.read_bytes()).hexdigest(),
@@ -254,6 +350,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     manifest = args.out / "manifest.json"
     if manifest.exists() and json.loads(manifest.read_text()) != metadata:
         raise SystemExit("源代码、世界或用例已变化：旧批次不能混入新结果，请使用新目录。")
+    halted = args.out / "halted.json"
+    if halted.exists() and not args.resume_after_stop:
+        raise SystemExit("上次限流或预算停止；先检查原因，再显式 --resume-after-stop。旧失败局不会重跑。")
+    if halted.exists():
+        history = args.out / "halt-history"
+        history.mkdir(exist_ok=True)
+        save(history / f"{len(list(history.glob('*.json'))) + 1:04}.json", json.loads(halted.read_text()))
+        halted.unlink()
     save(manifest, metadata)
     pending = []
     for case in cases:
@@ -272,6 +376,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "itemCap": args.max_item_usd,
                 "caps": caps,
                 "timeout": args.timeout,
+                "maxSteps": args.max_steps,
             },
         )
         pending.append(job_path)
@@ -292,6 +397,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         while pending or active:
             summary = summarize(args.out, cases, metadata)
             while pending and len(active) < args.jobs and not stopped:
+                if halted.exists():
+                    stopped = True
+                    break
                 # 给每个进行中的 worker 预留整项额度；不会因并发绕过两本总账。
                 reserved = args.max_item_usd * (len(active) + 1)
                 if any(summary["costUsd"][p] + reserved > caps[p] for p in caps):
@@ -308,7 +416,20 @@ def main(argv: Sequence[str] | None = None) -> int:
             done, _ = wait(active, return_when=FIRST_COMPLETED)
             for future in done:
                 path = active.pop(future)
-                rc = future.result()
+                try:
+                    rc = future.result()
+                except subprocess.TimeoutExpired:
+                    rc = 2
+                    save(
+                        path.parent / "result.json",
+                        {
+                            "case": json.loads(path.read_text())["case"],
+                            "status": "interrupted",
+                            "stopType": "WorkerTimeout",
+                            "issues": ["worker-timeout"],
+                        },
+                    )
+                    save(halted, {"caseId": path.parent.name, "stopType": "WorkerTimeout"})
                 result_path = path.parent / "result.json"
                 record = json.loads(result_path.read_text()) if result_path.exists() else {"status": "interrupted"}
                 if rc and (not args.keep_going or record["status"] != "completed"):

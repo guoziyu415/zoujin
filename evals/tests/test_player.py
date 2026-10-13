@@ -166,12 +166,17 @@ def test_heard_uses_delivered_pieces_and_never_internal_piece_ids() -> None:
         {"act": {"kind": "wait"}},
         {  # type: ignore[typeddict-unknown-key]
             "pieces": ["piece.FUTURE_SECRET"],
-            "setPieces": [{"pieceId": "piece.now", "lines": [{"text": "戻ったぞ。"}]}],
-            "setPiece": {"lines": [{"text": "duplicate legacy content"}]},
+            "setPieces": [
+                {
+                    "pieceId": "piece.now",
+                    "lines": [{"speaker": "char.melos", "line": "戻ったぞ。"}, {"narration": "門が開いた。"}],
+                }
+            ],
+            "setPiece": {"lines": [{"narration": "duplicate legacy content"}]},
             "events": [{"summary": "HIDDEN EVENT"}],
         },
     )
-    assert lines == ["（戻ったぞ。）"]
+    assert lines == [f"{NAMES.who('char.melos')}：戻ったぞ。", "（門が開いた。）"]
 
 
 def test_simulated_action_preserves_the_public_button_id() -> None:
@@ -531,3 +536,51 @@ def test_report_sums_up_simulations(world_ix: WorldIndex) -> None:
     assert sim["melosHelper"]["runs"] == 1
     assert "## 模拟局" in report.markdown(rep)
     assert "simulations" not in report.build([], {"mode": "fake"})
+
+
+def test_real_player_observation_includes_refusal() -> None:
+    text = Observation(snap(), [], legal_moves(snap(), NAMES, None), 5, refused=True).text(NAMES)
+    assert "直前に試したことはできなかった" in text
+
+
+def test_dialogue_missing_unknown_and_safety_pause_are_separate() -> None:
+    from zoujin_evals.player import Played, dialogue_stats
+
+    played = Played(
+        "test",
+        [{"say": "x"}] * 4,
+        [
+            {"reply": "ok", "characterTextMissing": False},
+            {"reply": None, "characterTextMissing": True},
+            {},
+            {"safetyCard": {"shown": True, "paused": True, "canReturn": True}},
+        ],
+        "p",
+        "ended",
+        None,
+        [],
+    )
+    assert dialogue_stats(played) == {
+        "say": 4,
+        "safetyPaused": 1,
+        "expectedReplies": 3,
+        "unknown": 1,
+        "missing": 1,
+        "replies": 1,
+        "inconsistent": 0,
+        "aligned": True,
+    }
+    played.results.pop()
+    assert not dialogue_stats(played)["aligned"]
+
+
+def test_real_world_set_piece_contract_is_fully_heard() -> None:
+    from zoujin_evals.cli import WORLD
+
+    world = json.loads(WORLD.read_text())
+    for piece in world["setPieces"]:
+        lines = heard(NAMES, {"act": {"kind": "wait"}}, {"setPieces": [piece]})  # type: ignore[typeddict-unknown-key]
+        assert len(lines) == len(piece["lines"]), piece["id"]
+        for source, rendered in zip(piece["lines"], lines, strict=True):
+            assert source.get("line", source.get("narration")) in rendered
+            assert rendered != "（）"

@@ -236,3 +236,39 @@ def test_replay_mode(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setitem(prompts.PROMPTS, "reply", changed)
     with pytest.raises(eval_api.ReplayMissing):
         eval_api.setup(MINIMAL, mode="text").say(OLD, PLAYER_LINE)  # 提示版本变了
+
+
+def test_missing_reply_is_persisted_and_terminal_failure_is_observed(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
+    import psycopg
+    from zoujin_backend.models.text import ModelCallFailed
+
+    class MissingReply(FakeText):
+        async def call(self, kind: str, request: Any) -> TextResult:
+            if kind == "reply":
+                raise ModelCallFailed("reply unavailable")
+            return await super().call(kind, request)
+
+    monkeypatch.setenv("DATABASE_URL", env.url)
+    monkeypatch.delenv("ZJ_MODEL", raising=False)
+    s = eval_api.setup(MINIMAL, mode="text")
+    s.text = MissingReply()
+    try:
+        result = s.say(OLD, "こんばんは。", hold=True)
+        assert result["reply"] is None and result["characterTextMissing"] is True
+        with psycopg.connect(env.url) as c:
+            assert c.execute(
+                "select character_text_missing from turns where turn_id = %s", (result["traceId"],)
+            ).fetchone() == (True,)
+        diagnostic = s.diagnostics()
+        assert diagnostic["characterTextMissing"] == 1
+        reply = [c for c in diagnostic["pipelineCalls"] if c["kind"] == "reply"]
+        assert len(reply) == 1 and reply[0]["status"] == "failed" and len(reply[0]["attempts"]) == 2
+        s.text = FakeText()
+        complete = s.say(OLD, "お元気ですか。")
+        assert complete["characterTextMissing"] is False
+        with psycopg.connect(env.url) as c:
+            assert c.execute(
+                "select character_text_missing from turns where turn_id = %s", (complete["traceId"],)
+            ).fetchone() == (False,)
+    finally:
+        s.close()

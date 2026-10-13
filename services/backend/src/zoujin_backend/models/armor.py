@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Any, Literal, Protocol
 
 import httpx
+from zoujin_llm.errors import check_batch_halt
 
 from zoujin_backend.config import REPO, ConfigError, ModelMode
 from zoujin_backend.models.text import ReplayMissing
@@ -255,6 +256,7 @@ class RealArmor:  # pragma: no cover - 只在 Mac 上跑
         self.latencies_ms: list[float] = []
 
     async def _post(self, verb: str, body: Json) -> ArmorResult:
+        check_batch_halt()
         headers = {"Authorization": f"Bearer {self._auth.token()}", "Content-Type": "application/json"}
         t0 = time.perf_counter()
         try:

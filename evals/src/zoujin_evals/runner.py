@@ -22,7 +22,7 @@ from zoujin_llm import Stop
 
 from .api import EvalApi, EvalNotImplemented, EvalSession, Event, Json, StepResult, not_implemented, replay_missing
 from .checks import CHECKS, RunContext, WorldIndex, step_kind
-from .player import Persona, Played, Player, load_personas, play, sim_stats
+from .player import MAX_STEPS, Persona, Played, Player, load_personas, play, sim_stats
 from .results import CaseResult, CheckResult, RunResult, Skip, SkipCheck, run_status
 
 TIMEOUT_TEXT_S = 600.0
@@ -49,6 +49,7 @@ class Options:
     # 模拟局的 AI 玩家：按用例造一个（player.py）。None = 模拟局记「要真模型」
     player: Callable[[Mapping[str, Json]], Player] | None = None
     personas: Mapping[str, Persona] = field(default_factory=load_personas)
+    max_steps: int = MAX_STEPS
     timeout_retries: int = 1  # 有限批次可设 0：超时的半局留证，不自动重开付费局
 
 
@@ -160,7 +161,7 @@ def _run_once(api: EvalApi, case: Mapping[str, Json], world: WorldIndex, opts: O
             if opts.player is None:
                 return {"run": i, "status": "skip", "checks": [], "skip": {"code": "needs-live-model"}, "traceIds": []}
             persona = opts.personas[case["setup"]["persona"]]
-            played = play(session, persona, opts.player(case), progress=opts.progress)
+            played = play(session, persona, opts.player(case), progress=opts.progress, max_steps=opts.max_steps)
             results = played.results
         else:
             for step in case.get("steps", []):
@@ -197,6 +198,9 @@ def _run_once(api: EvalApi, case: Mapping[str, Json], world: WorldIndex, opts: O
     if played is not None:
         out["playthroughId"] = played.playthrough_id
         out["sim"] = sim_stats(played, _query(ctx, "events"), _query(ctx, "ending"))
+        diagnostics = getattr(session, "diagnostics", None)
+        if diagnostics is not None:
+            out["sim"]["backend"] = diagnostics()
     return out
 
 

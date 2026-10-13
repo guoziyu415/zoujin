@@ -48,7 +48,7 @@ def test_incomplete_simulation_and_provider_failure_cannot_look_successful() -> 
     assert "incomplete-ending" in issues and "no-real-player-call" in issues
     run["sim"] = {"status": "ended", "ending": {"signature": "one"}, "player": {"bad": 1}}
     issues = batch.strict_result(case, {"results": [run]}, [{"kind": "player", "costUsd": 0.01, "status": "timeout"}])
-    assert "player-fallback-or-replay" in issues and "provider-degradation" in issues
+    assert "player-fallback-or-replay" in issues and "provider-degradation" not in issues
 
 
 def test_completed_units_resume_without_relaunching(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -90,3 +90,78 @@ def test_interrupted_unit_is_not_automatically_replayed(tmp_path: Path, monkeypa
     batch.save(tmp_path / "units/E7-001-seed-01/started.json", {"pid": -1})
     with pytest.raises(SystemExit, match="禁止自动重复付费"):
         batch.main(["--seeds", "1", "--out", str(tmp_path), "--confirm"])
+
+
+def test_retry_recovery_and_product_failure_are_separate() -> None:
+    sim: dict[str, Any] = {
+        "status": "ended",
+        "steps": 1,
+        "ending": {"signature": "s"},
+        "player": {"freshCalls": 1, "replayHits": 0, "bad": 0, "observationVersion": 3},
+        "backend": {"pipelineCalls": [{"status": "ok", "attempts": [{"status": "timeout"}, {"status": "ok"}]}]},
+    }
+    quality = batch.simulation_quality(sim)
+    assert quality == {"valid": True, "degradation": "unknown", "recovered": 1}
+    sim["backend"]["characterTextMissing"] = 1
+    assert batch.simulation_quality(sim) == {"valid": True, "degradation": "known-degraded", "recovered": 1}
+    sim["player"]["freshCalls"] = 0
+    assert not batch.simulation_quality(sim)["valid"]
+
+
+def test_halted_batch_requires_explicit_resume_without_replaying_failed_unit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("ZJ_EVAL_LIVE", "1")
+    monkeypatch.setenv("ZJ_PLAYER_MODEL", "not-called")
+    monkeypatch.setenv("ZJ_LEDGER", str(tmp_path / "unused.jsonl"))
+    monkeypatch.setattr(batch, "source_hash", lambda: "code")
+    monkeypatch.setattr(batch, "runtime_config", lambda: {})
+    calls = []
+
+    def run(argv: list[str], **kwargs: Any) -> Any:
+        path = Path(argv[-1])
+        calls.append(path)
+        batch.save(path.parent / "result.json", {"status": "stopped", "stopType": "RateLimited", "issues": ["stopped"]})
+        batch.save(tmp_path / "halted.json", {"stopType": "RateLimited"})
+        return type("Completed", (), {"returncode": 1})()
+
+    monkeypatch.setattr(subprocess, "run", run)
+    args = ["--seeds", "1", "--out", str(tmp_path), "--confirm", "--keep-going"]
+    assert batch.main(args) == 1 and len(calls) == 1
+    with pytest.raises(SystemExit, match="显式"):
+        batch.main(args)
+    assert len(calls) == 1
+    assert batch.main([*args, "--resume-after-stop"]) == 1
+    assert len(calls) == 2 and calls[0] != calls[1]
+    assert (tmp_path / "halt-history/0001.json").exists()
+
+
+def test_parallel_stop_writes_are_atomic(tmp_path: Path) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+
+    path = tmp_path / "halted.json"
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        list(pool.map(lambda n: batch.save(path, {"caseId": n, "stopType": "RateLimited"}), range(40)))
+    assert json.loads(path.read_text())["stopType"] == "RateLimited"
+    assert list(tmp_path.iterdir()) == [path]
+
+
+def test_source_fingerprint_includes_scene_semantics_but_not_render_bytes(tmp_path: Path) -> None:
+    scene = tmp_path / "assets/scenes/test/scene.json"
+    doc = {
+        "sceneId": "scene.test",
+        "defaultPlace": "place.a",
+        "bytes": 1,
+        "spots": {"a": {"place": "place.a"}, "b": {"place": "place.a"}},
+    }
+    batch.save(scene, doc)
+    original = batch.source_hash(tmp_path)
+    doc["bytes"] = 2
+    batch.save(scene, doc)
+    assert batch.source_hash(tmp_path) == original
+    doc["spots"] = {"b": {"place": "place.a"}, "a": {"place": "place.a"}}
+    batch.save(scene, doc)
+    assert batch.source_hash(tmp_path) != original  # insertion order affects automatic standing spots
+    doc["defaultPlace"] = "place.b"
+    batch.save(scene, doc)
+    assert batch.source_hash(tmp_path) != original

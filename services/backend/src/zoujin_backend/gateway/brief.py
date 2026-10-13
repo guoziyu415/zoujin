@@ -71,14 +71,27 @@ def situation_facts(book: Book, state: SimState, who: str, forgotten: frozenset[
     lines = [f"時：{s['time']}", f"場所：{names.get(s['place'], s['place'])}"]
     here = [names.get(c, c) for c in s["present"]]
     lines.append("近くにいる人：" + ("、".join(here) if here else "（いない）"))
+    visible_facts: set[str] = set()
     for k in s["knows"]:
         real = view.real(k)
         if real in forgotten and not _by_world(book, state, who, real):  # 世界模型让他知道的照给（数据复看）
             continue
         if real in statements:
             lines.append("知っていること：" + statements[real])
+            visible_facts.add(real)
         elif real in run:
             lines.append("知っていること：" + str(run[real]["statement"]))
+    # 亲历的时间只标在已经获准给人物的事实上。整段 beat.summary 是全知叙述，
+    # 可能含尚未发生的时长、他人内心或原作相对日期，不能当作人物亲历注入。
+    for recent in s["recent"]:
+        beat = book.beats[recent["beat"]]
+        variant = next((v for v in beat.get("variants", []) if v["id"] == recent.get("variant")), None)
+        if state["beats"].get(beat["id"]) == "altered" and variant is None:
+            # 自由改写的节拍没有原作摘要的权限，不能拿原作结果冒充本局亲历。
+            continue
+        for fact in book.world["facts"]:
+            if fact["id"] in visible_facts and fact["trueFrom"] == beat["id"]:
+                lines.append(f"これまでに見聞きしたこと：（{recent['day']}）{fact['statement']}")
     return tuple(lines)
 
 

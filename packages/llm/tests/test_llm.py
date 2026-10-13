@@ -215,3 +215,39 @@ def test_sdk_errors_lose_their_message() -> None:
         assert str(e) == f"Claude HTTP 400 invalid_request_error（{shown}消息不记）"  # 只带写死的类名
     e = translate(anthropic.APIConnectionError(message=f"down {secret}", request=req))
     assert isinstance(e, ModelCallFailed) and secret not in str(e)
+
+
+def test_batch_stop_keeps_inflight_cost_and_blocks_other_workers_next_call(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+
+    from zoujin_llm.errors import BatchHalted
+
+    marker = tmp_path / "halted.json"
+    monkeypatch.setenv("ZJ_EVAL_BATCH_HALT", str(marker))
+    ledger = Ledger(tmp_path / "ledger.jsonl", "google", 5)
+    started, stopped = Event(), Event()
+
+    def active_worker() -> None:
+        with ledger.timed(kind="reply", model="test", estimate=0.1) as bill:
+            started.set()
+            assert stopped.wait(5)
+            bill.done({"outputTokens": 1}, 0.02)
+        with pytest.raises(BatchHalted):
+            with ledger.timed(kind="reply", model="test", estimate=0.1):
+                pytest.fail("a new paid request must not start")
+
+    def limiting_worker() -> None:
+        assert started.wait(5)
+        marker.write_text('{"stopType":"RateLimited"}')
+        stopped.set()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(active_worker)
+        second = pool.submit(limiting_worker)
+        first.result()
+        second.result()
+    rows = read_lines(ledger.path)
+    assert len(rows) == 1 and rows[0]["status"] == "ok" and rows[0]["costUsd"] == 0.02

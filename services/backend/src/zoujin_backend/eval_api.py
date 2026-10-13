@@ -48,6 +48,7 @@ from sqlalchemy import func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
 from zoujin_llm import mark_playthrough, playthrough
+from zoujin_llm.errors import check_batch_halt
 from zoujin_worldsim import Opened, SimState, initial_state, opening, parse_checkpoint, world_state
 
 from zoujin_backend import budget, memory_delete
@@ -69,6 +70,7 @@ from zoujin_backend.db.tables import (
 from zoujin_backend.db.tables import events as events_t
 from zoujin_backend.db.tables import turns as turns_t
 from zoujin_backend.db.tables import world_state as world_state_t
+from zoujin_backend.eval_diagnostics import ObservedPipeline
 from zoujin_backend.gateway.monitor import Monitor
 from zoujin_backend.gateway.safety import context_of
 from zoujin_backend.ids import IdGen
@@ -126,6 +128,7 @@ def _timed(step: Callable[..., Json]) -> Callable[..., Json]:
 
     @wraps(step)
     def timed(*args: Any, **kwargs: Any) -> Json:
+        check_batch_halt()
         start = time.perf_counter()
         out = step(*args, **kwargs)
         out["elapsedMs"] = round((time.perf_counter() - start) * 1000)
@@ -194,6 +197,7 @@ class Session:
         self._manifest: Manifest | None = None
         # 真客户端的连接池跨步骤复用；整局必须共用一个事件循环。
         self._runner = asyncio.Runner()
+        self.call_observations: list[dict[str, Any]] = []
 
     def _run[T](self, coro: Coroutine[Any, Any, T]) -> T:
         """一局共用一个事件循环；这期间记的账带这一局的 playthroughId。"""
@@ -210,7 +214,7 @@ class Session:
         return create_async_engine(self.settings.database_url, poolclass=NullPool)
 
     def _narrator(self, engine: AsyncEngine) -> Narrator:
-        return Narrator(
+        narrator = Narrator(
             engine=engine,
             library=self.library,
             text=self.text,
@@ -220,6 +224,8 @@ class Session:
             deadlines=self.settings.deadlines,
             armor=self.armor,
         )
+        narrator.pipeline = self.pipeline
+        return narrator
 
     @property
     def screener(self) -> Screener:
@@ -229,7 +235,14 @@ class Session:
     @property
     def pipeline(self) -> Pipeline:
         """`text` 可能被测试换掉，每次按当前的建。"""
-        return Pipeline(self.text, self.schemas, self.ids, self.tracer, self.settings.deadlines)
+        return ObservedPipeline(
+            self.text,
+            self.schemas,
+            self.ids,
+            self.tracer,
+            self.settings.deadlines,
+            observations=self.call_observations,
+        )
 
     # —— 起点 ——
 
@@ -424,6 +437,9 @@ class Session:
                 await store.count(c, self.pid, **counts_of(screen, decision), **(watched.counts() if reply else {}))
                 turn_id = await store.enqueue(
                     c, self.ids, self.pid, kind="talk", input_mode="text", character=to, flags=screen.flags
+                )
+                await c.execute(
+                    update(turns_t).where(turns_t.c.turn_id == turn_id).values(character_text_missing=reply is None)
                 )
                 await store.add_utterance(
                     c, self.ids, self.pid, turn_id, speaker="player", text=screen.masked, t=st["t"]
@@ -765,6 +781,51 @@ class Session:
             await engine.dispose()
         assert st is not None
         return st
+
+    def diagnostics(self) -> Json:
+        """评测专用：只给统计器，不进 AI 玩家的公开观察。旧批次缺字段保持未知。"""
+        return self._run(self._diagnostics())
+
+    async def _diagnostics(self) -> Json:
+        engine = self._engine()
+        try:
+            async with engine.connect() as c:
+                row = await store.playthrough(c, self.pid)
+                metrics = (
+                    (
+                        await c.execute(
+                            select(playthrough_metrics).where(playthrough_metrics.c.playthrough_id == self.pid)
+                        )
+                    )
+                    .mappings()
+                    .one()
+                )
+                missing = (
+                    await c.execute(
+                        select(func.count())
+                        .select_from(turns_t)
+                        .where(turns_t.c.playthrough_id == self.pid, turns_t.c.character_text_missing.is_(True))
+                    )
+                ).scalar_one()
+        finally:
+            await engine.dispose()
+        return {
+            "version": 1,
+            "budgetTier": row["budget_tier"] if row else None,
+            "metrics": {
+                k: metrics[k]
+                for k in (
+                    "degraded_reason",
+                    "turns_timed_out",
+                    "ending_template",
+                    "memories_failed",
+                    "safety_unscreened",
+                )
+            },
+            "characterTextMissing": missing,
+            "pipelineCalls": copy.deepcopy(self.call_observations),
+            "scope": "text-eval; pipeline terminal states and persisted metrics; live transport not measured",
+        }
 
     def state(self) -> Json:
         """契约 3.1 的 WorldState（W-1 的 world_state()）。"""

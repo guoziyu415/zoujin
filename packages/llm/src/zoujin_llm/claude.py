@@ -188,7 +188,12 @@ def translate(e: BaseException) -> Exception:
 
     if isinstance(e, anthropic.APIStatusError):
         if e.status_code in LIMITS:
-            return RateLimited(f"Claude 回 {e.status_code}（限流或过载），停下")
+            return RateLimited(
+                f"Claude 回 {e.status_code}（限流或过载），停下",
+                provider="claude",
+                status=e.status_code,
+                retry_after=e.response.headers.get("retry-after"),
+            )
         return ModelCallFailed(f"Claude HTTP {e.status_code}{error_type(e)}（{hint(e)}消息不记）")
     if isinstance(e, anthropic.APIError):  # 连接断开、超时
         return ModelCallFailed(f"Claude 连不上：{type(e).__name__}（消息不记）")

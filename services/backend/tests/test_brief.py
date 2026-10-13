@@ -58,3 +58,64 @@ def test_monitor_notes_go_after_the_situation() -> None:
     assert f"- {NOTE_SPOILER}\n- {NOTE_QUESTIONS}" in after
     assert b.facts == brief.build(BOOK, st, "char.old-man").facts
     assert "# 気をつけること" not in brief.build(BOOK, st, "char.old-man").system
+
+
+def test_brief_includes_lived_event_with_relative_day_but_no_future() -> None:
+    st = initial_state(BOOK.world, "role.traveler")
+    beat = BOOK.beats["beat.11"]
+    st["beats"]["beat.11"] = "happened"
+    st["times"]["beat.11"] = beat["window"]["canonical"]
+    st["t"] = beat["window"]["canonical"] + 10
+    st["locations"]["char.melos"] = beat["place"]
+    out = brief.situation_facts(BOOK, st, "char.melos")
+    assert any("これまでに見聞きしたこと：" in s and "婚礼は真昼に行われた。" in s for s in out)
+    assert not any(beat["summary"] in s for s in out)
+    assert not any(BOOK.beats["beat.27"]["summary"] in s for s in out)
+
+
+def test_brief_never_presents_original_summary_for_freely_altered_beat() -> None:
+    st = initial_state(BOOK.world, "role.traveler")
+    beat = BOOK.beats["beat.01"]
+    st["beats"]["beat.01"] = "altered"
+    st["times"]["beat.01"] = beat["window"]["canonical"]
+    st["t"] = beat["window"]["canonical"] + 10
+    st["locations"]["char.melos"] = beat["place"]
+    assert not any(beat["summary"] in s for s in brief.situation_facts(BOOK, st, "char.melos"))
+
+
+def test_recent_rain_does_not_disclose_future_duration_or_another_mind() -> None:
+    st = initial_state(BOOK.world, "role.traveler")
+    for bid in ("beat.12", "beat.13"):
+        beat = BOOK.beats[bid]
+        st["beats"][bid] = "happened"
+        st["times"][bid] = beat["window"]["canonical"]
+        st["t"] = beat["window"]["canonical"]
+        st["locations"]["char.sister"] = beat["place"]
+        out = "\n".join(brief.situation_facts(BOOK, st, "char.sister"))
+        assert "大雨になった" in out  # 当前已亲历的雨仍然可以知道。
+        assert "雨は翌朝まで続く" not in out
+        assert "一生ここにいたい" not in out
+        assert BOOK.beats[bid]["summary"] not in out
+
+
+def test_forgotten_learned_fact_cannot_return_through_recent_facts() -> None:
+    import copy
+
+    from zoujin_backend.world import Book
+
+    world = copy.deepcopy(BOOK.world)
+    sister = next(c for c in world["characters"] if c["id"] == "char.sister")
+    sister["knows"] = [k for k in sister["knows"] if k["fact"] != "fact.storm"]
+    book = Book(world["book"]["id"], world)
+    st = initial_state(world, "role.traveler")
+    beat = book.beats["beat.12"]
+    st["beats"]["beat.12"] = "happened"
+    st["times"]["beat.12"] = beat["window"]["canonical"]
+    st["t"] = beat["window"]["canonical"]
+    st["locations"]["char.sister"] = beat["place"]
+    st["knowledge"]["char.sister"] = ["fact.storm"]
+    statement = next(f["statement"] for f in world["facts"] if f["id"] == "fact.storm")
+    before = brief.situation_facts(book, st, "char.sister")
+    assert any(s.startswith("これまでに見聞きしたこと：") and statement in s for s in before)
+    after = brief.situation_facts(book, st, "char.sister", frozenset({"fact.storm"}))
+    assert not any(statement in s for s in after)
