@@ -352,10 +352,16 @@ async function saveRun(
   shots: Shot[],
 ): Promise<{ id: string; pictures: boolean }> {
   const use = host()?.use;
-  if (!use) throw new Error("Not inside a claude.ai page / claude.ai のページ内ではありません");
+  if (!use)
+    throw new Error(
+      "Not inside a claude.ai page / claude.ai のページ内ではありません",
+    );
   const db = (await use("db")) as Db | null;
   const assets = (await use("assets")) as Assets | null;
-  if (!db) throw new Error("The page database is unavailable / ページのデータベースが使えません");
+  if (!db)
+    throw new Error(
+      "The page database is unavailable / ページのデータベースが使えません",
+    );
   if (assets)
     for (const s of shots) {
       const key = `${s.look}-${s.level}`;
@@ -392,7 +398,8 @@ export default function MeasureScreen() {
   const onStage = useCallback((s: LoadStage) => {
     setStage(s);
     if (s === "ready") setMsg("The plaza is ready. / 広場の準備ができました。");
-    if (s === "failed") setMsg(`Loading failed / 読み込み失敗: ${loadInfo.error}`);
+    if (s === "failed")
+      setMsg(`Loading failed / 読み込み失敗: ${loadInfo.error}`);
   }, []);
   const onDone = useCallback(
     (r: Row[], env: ReturnType<typeof envInfo>, pics: Shot[]) => {
@@ -400,7 +407,7 @@ export default function MeasureScreen() {
       setShots(pics);
       setMsg(
         canSave()
-          ? "Done. Tap \"Save results\" and the frontend can read them on this page. / 完了。「結果を保存」を押せば、フロントエンドがこのページで読めます。"
+          ? 'Done. Tap "Save results" and the frontend can read them on this page. / 完了。「結果を保存」を押せば、フロントエンドがこのページで読めます。'
           : "Done. Copy the results below and send them to the frontend. / 完了。下の結果をコピーしてフロントエンドに送ってください。",
       );
       const probe = quality.probe;
@@ -491,26 +498,36 @@ export default function MeasureScreen() {
             : "……"}
         </div>
         <div>{msg}</div>
-        {stage === "ready" && !hiReady && !go && <div>Loading high-tier textures… / 高品質テクスチャを取得中…</div>}
+        {stage === "ready" && !hiReady && !go && (
+          <div>Loading high-tier textures… / 高品質テクスチャを取得中…</div>
+        )}
         {stage === "ready" && hiReady && !go && (
           <button
             style={{ font: "inherit", margin: "6px 0" }}
             onClick={() => setGo(1)}
           >
-            Start measuring (about 1-2 minutes; keep the phone unlocked and stay on this page) / 計測開始（約 1〜2 分。スマホをロックせず、他のアプリに切り替えないでください）
+            Start measuring (about 1-2 minutes; keep the phone unlocked and stay
+            on this page) / 計測開始（約 1〜2
+            分。スマホをロックせず、他のアプリに切り替えないでください）
           </button>
         )}
         {rows.length > 0 && (
           <table style={{ borderCollapse: "collapse", margin: "6px 0" }}>
             <thead>
               <tr>
-                {["Level / 段階", "DPR", "p50", "p95", "Jank% / コマ落ち%", "draw", "GPU ms"].map(
-                  (h) => (
-                    <th key={h} style={{ textAlign: "right", paddingRight: 8 }}>
-                      {h}
-                    </th>
-                  ),
-                )}
+                {[
+                  "Level / 段階",
+                  "DPR",
+                  "p50",
+                  "p95",
+                  "Jank% / コマ落ち%",
+                  "draw",
+                  "GPU ms",
+                ].map((h) => (
+                  <th key={h} style={{ textAlign: "right", paddingRight: 8 }}>
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -563,7 +580,8 @@ export default function MeasureScreen() {
               disabled={saved !== "" && !saved.startsWith(NOT_SAVED)}
               onClick={onSave}
             >
-              Save results (numbers and 4 pictures go into this page) / 結果を保存（数値と画像 4 枚をこのページに保存）
+              Save results (numbers and 4 pictures go into this page) /
+              結果を保存（数値と画像 4 枚をこのページに保存）
             </button>
             {saved && <div>{saved}</div>}
           </div>

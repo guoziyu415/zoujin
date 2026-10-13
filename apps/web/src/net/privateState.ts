@@ -1,4 +1,5 @@
-// 邀请码账号边界：内存中的剧情、画面、待交接快照不能留给下一个账号。
+// Invite-code account boundary: the story, screen and pending handover snapshot held in memory must not be left for the next account.
+// 招待コードのアカウント境界：メモリ上のストーリー、画面、引き継ぎ待ちのスナップショットを次のアカウントに残してはならない。
 import { clearSnapshots } from "../app/queries";
 import { endingFrame, resetStory } from "../stores/story";
 import { setWorld } from "../stores/world";

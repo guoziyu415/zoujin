@@ -3,7 +3,7 @@
 // moved back under the runners, who run on the spot at the tile's run-* spots. The far land stays put. Set pieces
 // (set_* nodes: the field road's feast, brook, tombs, gate; the night road's spring and pass top) come in on the tile
 // ahead when the clock reaches them and go once they are behind; the city's far silhouette grows as the distance
-// left shrinks. playRun() plays a short segment between two stops, a tap skips it (homeward-road.md 走的规则 2, 10).
+// left shrinks. playRun() plays a short segment between two stops, a tap skips it (homeward-road.md, rules for walking 2, 10).
 // Lives in scene/extra.ts's lazy chunk.
 import { Group, type Object3D, type Scene } from "three";
 import { useWorld } from "../../stores/world";

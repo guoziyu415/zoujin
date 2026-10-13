@@ -82,7 +82,10 @@ const tags = ["blobs/shim.js", ...blobScripts]
   .map((s) => `<script src="${s}"></script>`)
   .join("\n");
 html = html
-  .replace(/<title>[^<]*<\/title>/, "<title>画质计测</title>")
+  .replace(
+    /<title>[^<]*<\/title>/,
+    "<title>Quality measurement / 画質計測</title>",
+  )
   .replace(/<script type="module"/, `${tags}\n<script type="module"`);
 fs.writeFileSync(path.join(out, "index.html"), html);
 const total = walk(out).reduce((n, f) => n + fs.statSync(f).size, 0);

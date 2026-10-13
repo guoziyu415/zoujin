@@ -39,38 +39,40 @@ engineering's runner, no HTTP, absent in production.
 - A playthrough shares one event loop, and the DB uses connections outside the connection pool; when the runner's
   timeout (SIGALRM) interrupts midway, the abandoned playthrough simply stays in the test DB.
 
-評価の入口（api-contract 第 7 節、B-0 第 9 項の最小版）：データエンジニアリングのランナーが Python パッケージ内で
-呼ぶもので、HTTP は開かず、本番環境にはない。
+評価の入口（api-contract 第 7 節、B-0 第 9 項の最小版）：データエンジニアリングのランナーが Python パッケージ内で呼ぶも
+ので、HTTP は開かず、本番環境にはない。
 
-- `setup` は毎回 `DATABASE_URL` と `ZJ_MODEL` を読む（fake / replay / real。real は Mac 上だけで、台帳と上限は
-  `models/vertex.py` を参照）。1 プレイはテスト DB の本物のプレイ：新しいアカウント、プレイ、開始時点のイベントと
-  world_state を作り、以後のステップはゲートウェイと同じナレーター（`Narrator.run`）を通る。
-- 実装済み：setup の `role`、`place`、`budgetTier`（記録だけ）、`scenario`、`checkpoint`、`events`。ステップ `say`
-  （登場人物がテキストで答え、ナレーターのパイプライン全体を通す、B-2）、`advance`。`act`、`propose`、`choose`
-  （B-3：WebSocket と同じ経路で、タスクを書いてナレーターを呼ぶ）。`check`（第 3 段階 + `model_checks` に従って第 4
-  段階、書き換えもコミットもしない）。クエリ `state()`、`events()`。B-9：`ending()`（エンディングに入っていなければ
-  None）。シナリオで幕を閉じるところまで進む setup では開始時点でエンディングに入り、エンディングのタスクは setup の中で
-  同期的に最後まで実行する。チェックポイントがこの幕の閉幕のビート（例 `sc.canon@beat.07`）で止まっているときは、
-  setup の後は幕末の選択待ちになる。
-- B-4：`say(hold=True)` はこのターンを書いて登場人物の回答を得るだけで、`held: true` を返し、イベントはない（取り消し
-  可能な時間はまだ開いている）。次の呼び出し（どのステップやクエリでも）の最初にナレーターがそれをコミットし、イベントは
-  その呼び出しに数える。`retract(n)` はまだ hold 中の n ステップ目を取り消し（`retracted`）、コミット済みなら
-  `too_late`。`utterance_cleared(n)`。このステップが意図確認の草稿を残したときは `StepResult.confirm` に値があり、
-  草稿は最大 1 ステップ待つ：次のステップの `confirm(answer)` がそれに答え、`say` なら回答かどうかをナレーターが判定し、
+- `setup` は毎回 `DATABASE_URL` と `ZJ_MODEL` を読む（fake / replay / real。real は Mac 上だけで、
+  台帳と上限は `models/vertex.py` を参照）。1 プレイはテスト DB の本物のプレイ：新しいアカウント、プレイ、
+  開始時点のイベントと world_state を作り、以後のステップはゲートウェイと同じナレーター（`Narrator.run`）を通る。
+- 実装済み：setup の `role`、`place`、`budgetTier`（記録だけ）、`scenario`、`checkpoint`、`events`。
+  ステップ `say` （登場人物がテキストで答え、ナレーターのパイプライン全体を通す、
+  B-2）、`advance`。`act`、`propose`、`choose` （B-3：WebSocket と同じ経路で、
+  タスクを書いてナレーターを呼ぶ）。`check`（第 3 段階 + `model_checks` に従って第 4 段階、
+  書き換えもコミットもしない）。クエリ `state()`、`events()`。B-9：`ending()`（エンディングに入っていなければ None）。
+  シナリオで幕を閉じるところまで進む setup では開始時点でエンディングに入り、
+  エンディングのタスクは setup の中で同期的に最後まで実行する。チェックポイントがこの幕の閉幕のビート
+  （例 `sc.canon@beat.07`）で止まっているときは、setup の後は幕末の選択待ちになる。
+- B-4：`say(hold=True)` はこのターンを書いて登場人物の回答を得るだけで、`held: true` を返し、
+  イベントはない（取り消し可能な時間はまだ開いている）。次の呼び出し（どのステップやクエリでも）
+  の最初にナレーターがそれをコミットし、イベントはその呼び出しに数える。`retract(n)` はまだ hold 中の n ステップ目を取り
+  消し（`retracted`）、コミット済みなら `too_late`。`utterance_cleared(n)`。
+  このステップが意図確認の草稿を残したときは `StepResult.confirm` に値があり、草稿は最大 1 ステップ待つ：
+  次のステップの `confirm(answer)` がそれに答え、`say` なら回答かどうかをナレーターが判定し、
   ほかのステップ（または回答ではない `say`）ではタイムアウトとして閉じる。評価のコミット待ち時間は 0。
-- B-5 のシミュレーションのプレイ：`setup({"role": …, "persona": …, "seed": …})`
-  は本番どおりにプレイを開始し（ゲートウェイの `POST /v1/playthroughs` と同じ経路：プレイと `open` タスクを書き、
+- B-5 のシミュレーションのプレイ：`setup({"role": …, "persona": …, "seed": …})` は本番どおりにプレイを開始し（ゲートウェ
+  イの `POST /v1/playthroughs` と同じ経路：プレイと `open` タスクを書き、
   ナレーターが処理する）、`opening()` のシミュレーションは使わない。`persona`、`seed` は Trace（`eval.setup`）
-  に記録するだけで、`seed` は偽モデルに渡す。AI プレイヤーが見るのは `view()`（2.3 のスナップショットと 2.4
-  のプレイヤーに見えるイベント。ゲートウェイと同じ射影）、`manifest()`（B-7 のジェネレーター）、
-  各ステップの結果のうちプレイヤーが聞こえる・見えるフィールドだけ。各ステップの結果には `elapsedMs`
-  （入ってから返るまで）が付く。このプレイで記録した台帳には `playthroughId`（`zoujin_llm.playthrough`）が付く。
-- 未実装のステップとクエリ、`memory` 付きの配置イベント、レイアウトのないシーンでの `move` は
-  `EvalNotImplemented("<name>")` を投げる。
-  リプレイが見つからなければ `ReplayMissing`。台帳が上限に達したら `BudgetStop`、モデルが 429 を返したら
-  `RateLimited`：この 2 つは実行全体を止めるもので、このケースをスキップするのではない。ランナーはクラス名で判別する。
-- 1 プレイで 1 つのイベントループを共有し、DB はコネクションプールに入らない接続を使う。ランナーのタイムアウト
-  （SIGALRM）で途中で中断されたとき、残されたプレイはテスト DB に残るだけ。
+  に記録するだけで、`seed` は偽モデルに渡す。AI プレイヤーが見るのは `view()`（2.3 のスナップショットと 2.4 のプレイヤー
+  に見えるイベント。ゲートウェイと同じ射影）、`manifest()`（B-7 のジェネレーター）、
+  各ステップの結果のうちプレイヤーが聞こえる・見えるフィールドだけ。各ステップの結果には `elapsedMs` （入ってから返るま
+  で）が付く。このプレイで記録した台帳には `playthroughId`（`zoujin_llm.playthrough`）が付く。
+- 未実装のステップとクエリ、`memory` 付きの配置イベント、レイアウトのないシーンで
+  の `move` は `EvalNotImplemented("<name>")` を投げる。リプレイが見つからなければ `ReplayMissing`。
+  台帳が上限に達したら `BudgetStop`、モデルが 429 を返したら `RateLimited`：この 2 つは実行全体を止めるもので、
+  このケースをスキップするのではない。ランナーはクラス名で判別する。
+- 1 プレイで 1 つのイベントループを共有し、DB はコネクションプールに入らない接続を使う。
+  ランナーのタイムアウト（SIGALRM）で途中で中断されたとき、残されたプレイはテスト DB に残るだけ。
 """
 
 from __future__ import annotations
@@ -203,8 +205,8 @@ def setup(setup: Mapping[str, Json], *, mode: str = "text") -> Session:
     """Start a playthrough. setup is the case's setup as is; mode is text / voice (in B-0 both go through the text
     narrator flow).
 
-    プレイを開始する。setup はケースの setup そのまま、mode は text / voice（B-0
-    ではどちらもテキストのナレーターの流れを通る）。
+    プレイを開始する。setup はケースの setup そのまま、mode は text / voice（B-0 ではどちらもテキストのナレーターの流れ
+    を通る）。
     """
     if "persona" in setup:
         mixed = [k for k in NOT_WITH_PERSONA if k in setup]
@@ -268,8 +270,8 @@ class Session:
         self.draft: tuple[int, str] | None = None
         # B-12: safety screening of every player line and monitoring of character output, the same as the gateway
         # (Model Armor per ZJ_MODEL; a replay not found still raises)
-        # B-12：プレイヤーの発言ごとの安全スクリーニングと登場人物の出力の監視。ゲートウェイと同じ仕組み
-        # （Model Armor は ZJ_MODEL に従う。リプレイが見つからなければそのまま投げる）
+        # B-12：プレイヤーの発言ごとの安全スクリーニングと登場人物の出力の監視。
+        # ゲートウェイと同じ仕組み（Model Armor は ZJ_MODEL に従う。リプレイが見つからなければそのまま投げる）
         self.armor: Armor = armor(settings.model, replays=settings.replays)
         self.safety = SafetyState()
         # B-15: each character's previous line (context for safety screening)
@@ -279,8 +281,8 @@ class Session:
         self.monitor.attach(book)
         self._manifest: Manifest | None = None
         # The real clients' connection pools are reused across steps; the whole playthrough must share one event loop.
-        # 本物のクライアントのコネクションプールはステップをまたいで再利用する。プレイ全体で 1
-        # つのイベントループを共有する。
+        # 本物のクライアントのコネクションプールはステップをまたいで再利用する。
+        # プレイ全体で 1 つのイベントループを共有する。
         self._runner = asyncio.Runner()
         self.call_observations: list[dict[str, Any]] = []
 
@@ -324,8 +326,8 @@ class Session:
         """`text` may be swapped by tests, so build from the current one each time. In evals, the ledger cap and 429
         still stop the whole run.
 
-        `text` はテストで差し替えられることがあるので、毎回その時点のもので作る。評価でも台帳の上限と 429
-        では実行全体を止める。
+        `text` はテストで差し替えられることがあるので、毎回その時点のもので作る。
+        評価でも台帳の上限と 429 では実行全体を止める。
         """
         return Screener(self.text, self.armor, self.tracer, raise_stops=True)
 
@@ -380,9 +382,9 @@ class Session:
                 # The scenario pushed straight to the close of the act (B-9 item 11): enter the ending at the start, as
                 # when the narrator commits. Only whether the last act closed counts; a checkpoint stopped after
                 # beat.24 but still in an earlier act does not enter (data review #124)
-                # シナリオが一気に幕を閉じるところまで進んだ（B-9 第 11 項）：ナレーターのコミット時と同じく開始時点で
-                # エンディングに入る。最後の幕が閉じたかだけを見て、beat.24 以降で止まっていてもまだ前の幕にいる
-                # チェックポイントは入らない（データレビュー #124）
+                # シナリオが一気に幕を閉じるところまで進んだ（B-9 第 11 項）：ナレーターのコミット時と同じく開始時点でエ
+                # ンディングに入る。最後の幕が閉じたかだけを見て、beat.24 以降で止まっていてもまだ前の幕にいるチェックポ
+                # イントは入らない（データレビュー #124）
                 trigger = ending.closed(self.book, w.state) if ending.curtain_fell(self.book, w.state) else None
                 if trigger is not None:
                     w.ending = ending.enter(w, self.book, trigger)
@@ -459,8 +461,8 @@ class Session:
         """A setup event with `memory: {character, kind, text}`: seed a memory directly (no model call, through the same
         three filters).
 
-        `memory: {character, kind, text}` 付きの setup のイベント：記憶を直接 1 件植える（モデルは呼ばず、同じ 3 段の
-        フィルターを通す）。
+        `memory: {character, kind, text}` 付きの setup のイベント：記憶を直接 1 件植える（モデルは呼ばず、
+        同じ 3 段のフィルターを通す）。
         """
         todo = [
             (ev, d["memory"]) for ev, d in zip(laid, self.setup_doc.get("events", []), strict=True) if "memory" in d
@@ -495,8 +497,8 @@ class Session:
         """Text instead of voice: the character answers in text (`reply`), the original words and this turn are
         written, and the narrator's whole pipeline runs. hold: do not commit yet (B-4).
 
-        音声の代わりにテキスト：登場人物がテキストで答え（`reply`）、発話の原文とこのターンを書き込み、ナレーターの
-        パイプライン全体を通す。hold：まだコミットしない（B-4）。
+        音声の代わりにテキスト：登場人物がテキストで答え（`reply`）、発話の原文とこのターンを書き込み、
+        ナレーターのパイプライン全体を通す。hold：まだコミットしない（B-4）。
         """
         self.steps += 1
         return self._run(self._say(to, text, hold))
@@ -508,8 +510,8 @@ class Session:
         has waited one step, when this step is neither confirm nor say, is closed as a timeout. Returns what the
         narrator committed meanwhile.
 
-        各呼び出しの最初に：hold 中のターンを先にコミットする（retract の対象がそれならコミットしない）。草稿が 1
-        ステップ待ったうえで、このステップが confirm でも say でもなければタイムアウトとして閉じる。
+        各呼び出しの最初に：hold 中のターンを先にコミットする（retract の対象がそれならコミットしない）。
+        草稿が 1 ステップ待ったうえで、このステップが confirm でも say でもなければタイムアウトとして閉じる。
         その間にナレーターがコミットしたものを返す。
         """
         done: list[Result] = []
@@ -743,11 +745,11 @@ class Session:
         cross the river, E5-008) is an eval-only parameter: contract 3.8's `move` has no params and the production
         client never sends it; when it is impossible, a vetoed move is recorded (R2-precondition).
 
-        アクション（api-contract 3.8）：`action` メッセージと同じくタスクの行を書き、ナレーターが判定する。まだ 3D
-        レイアウトのないシーン（帰り道、村：道のりと川渡りは S-081 の停留地点と一緒に作る、M3）での `move` は
-        `EvalNotImplemented` を投げ、ケースはスキップとして記録される。`move` の `params.crossing`（川の渡り方、E5-008）
-        は評価専用のパラメーター：契約 3.8 の `move` には params がなく、本番のクライアントは送らない。通れないときは
-        却下された move を 1 件記録する（R2-precondition）。
+        アクション（api-contract 3.8）：`action` メッセージと同じくタスクの行を書き、ナレーターが判定する。
+        まだ 3D レイアウトのないシーン（帰り道、村：道のりと川渡りは S-081 の停留地点と一緒に作る、M3）
+        での `move` は `EvalNotImplemented` を投げ、ケースはスキップとして記録される。`move` の `params.crossing`（川の
+        渡り方、E5-008）は評価専用のパラメーター：契約 3.8 の `move` には params がなく、本番のクライアントは送らない。
+        通れないときは却下された move を 1 件記録する（R2-precondition）。
         """
         if kind == "move":
             here = self._run(self._state())["vars"]["var.player.location"]
@@ -797,9 +799,9 @@ class Session:
         plan judges whether it can go ahead. Before the act closes, or after 2 tries, returns
         `error: "invalid_request"` with no events (the gateway answers invalid_request then, without writing a task).
 
-        幕末にテキストでプランを話す（3.11）：発話の原文は utterances に保存し、ナレーターの plan
-        が実行できるかを判定する。幕を閉じる前、または 2 回試した後は `error: "invalid_request"` を返し、
-        イベントはない（ゲートウェイはこのとき invalid_request を返し、タスクを書かない）。
+        幕末にテキストでプランを話す（3.11）：発話の原文は utterances に保存し、
+        ナレーターの plan が実行できるかを判定する。幕を閉じる前、または 2 回試した後は `error: "invalid_request"`
+        を返し、イベントはない（ゲートウェイはこのとき invalid_request を返し、タスクを書かない）。
         """
         self.steps += 1
         # End-of-act plans are screened too (UX's review in #112)
@@ -882,9 +884,9 @@ class Session:
         step's result and the story time before it. The held turn is committed first and a draft awaiting an answer is
         closed as a timeout; their events are placed before this step's (B-4).
 
-        タスクの行を書き（プランは発話の原文も保存する）、ナレーターに最後まで処理させる。このステップの結果と、その前の
-        物語の時刻を返す。hold 中のターンを先にコミットし、回答待ちの草稿はタイムアウトとして閉じ、それらのイベントは
-        このステップの前に置く（B-4）。
+        タスクの行を書き（プランは発話の原文も保存する）、ナレーターに最後まで処理させる。このステップの結果と、
+        その前の物語の時刻を返す。hold 中のターンを先にコミットし、回答待ちの草稿はタイムアウトとして閉じ、
+        それらのイベントはこのステップの前に置く（B-4）。
         """
         engine = self._engine()
         try:
@@ -917,8 +919,8 @@ class Session:
         """Merge the events committed before this step (the held turn, drafts closed as a timeout) into this step's
         result.
 
-        このステップの前にコミットしたもの（hold 中のターン、タイムアウトで閉じた草稿）のイベントをこのステップの結果に
-        まとめる。
+        このステップの前にコミットしたもの（hold 中のターン、タイムアウトで閉じた草稿）
+        のイベントをこのステップの結果にまとめる。
         """
         if not pre:
             return r
@@ -961,8 +963,8 @@ class Session:
         """All events written by this step; vetoed ones get the candidate's original effects (in the log that event's
         effects is empty, contract section 3).
 
-        このステップが書いたすべてのイベント。却下されたものには候補の元の effects を付ける（ログ上のそのイベントの
-        effects は空、契約第 3 節）。
+        このステップが書いたすべてのイベント。却下されたものには候補の元の effects を付ける（ログ上のそのイベント
+        の effects は空、契約第 3 節）。
         """
         original = {c.candidate.get("eventId"): c.effects for c in result.checked if not c.passed}
         out = []
@@ -978,9 +980,9 @@ class Session:
         scope: those that passed step 3 with non-empty `effects`; `all` = run them all), without rewriting or
         committing. R5 and the rest of R6 are recorded as skipped when step 4 did not run.
 
-        S-2：候補イベントを第 3 段階に渡し、`model_checks` に従って第 4 段階を実行する（`scoped` = 本番の範囲：第 3
-        段階を通り、`effects` が空でないもの。`all` = すべて実行）。書き換えもコミットもしない。第 4
-        段階を実行しなかった R5 と R6 の残りは skipped と記録する。
+        S-2：候補イベントを第 3 段階に渡し、`model_checks` に従って第 4 段階を実行する（`scoped` = 本番の範囲：
+        第 3 段階を通り、`effects` が空でないもの。`all` = すべて実行）。書き換えもコミットもしない。
+        第 4 段階を実行しなかった R5 と R6 の残りは skipped と記録する。
         """
         if model_checks not in ("scoped", "all"):
             raise ValueError(
@@ -1015,8 +1017,8 @@ class Session:
         """Eval only: for the statistics only, never part of the AI player's public observations. Fields missing in old
         batches stay unknown.
 
-        評価専用：統計にだけ渡し、AI プレイヤーが公に観察できるものには入れない。古いバッチで欠けているフィールドは
-        不明のままにする。
+        評価専用：統計にだけ渡し、AI プレイヤーが公に観察できるものには入れない。
+        古いバッチで欠けているフィールドは不明のままにする。
         """
         return self._run(self._diagnostics())
 
@@ -1083,9 +1085,9 @@ class Session:
         the same projection as the gateway's `GET …/snapshot` and `GET …/events`. No variables, beat results or
         invisible events.
 
-        AI プレイヤーが見るもの（B-5）：2.3 のスナップショットと 2.4 のプレイヤーに見えるイベント（seq が after_seq より
-        大きいもの）。ゲートウェイの `GET …/snapshot`、`GET …/events` と同じ射影。変数、ビートの結果、見えないイベントは
-        含まない。
+        AI プレイヤーが見るもの（B-5）：2.3 のスナップショットと 2.4 のプレイヤーに見えるイベント（seq が after_seq
+        より大きいもの）。ゲートウェイの `GET …/snapshot`、`GET …/events` と同じ射影。変数、ビートの結果、
+        見えないイベントは含まない。
         """
         self._run(self._flush())
         return self._run(self._view(after_seq))
@@ -1209,8 +1211,8 @@ class Session:
         """The player deletes by the ID the 記憶帳 gave; shares the deletion transaction with the production REST and
         cannot delete across playthroughs.
 
-        プレイヤーは記憶帳が渡した ID で削除する。本番の REST と削除のトランザクションを共有し、プレイをまたいで削除する
-        ことはできない。
+        プレイヤーは記憶帳が渡した ID で削除する。本番の REST と削除のトランザクションを共有し、
+        プレイをまたいで削除することはできない。
         """
         self._run(self._flush())
         self.steps += 1
@@ -1237,9 +1239,9 @@ class Session:
         REST; a character has at most one per turn, so it is unique). No such memory → ValueError (the eval reports an
         error rather than silently succeeding).
 
-        この登場人物の、from_step ステップ目でコミットしたイベントから生まれた記憶を削除する（REST と同じ関数。登場人物
-        1 人につき 1 ターンに多くても 1 件なので一意）。そのような記憶がなければ → ValueError（評価はエラーを報告し、
-        黙って成功したことにはしない）。
+        この登場人物の、from_step ステップ目でコミットしたイベントから生まれた記憶を削除する（REST と同じ関数。
+        登場人物 1 人につき 1 ターンに多くても 1 件なので一意）。そのような記憶がなければ → ValueError（評価はエラーを報
+        告し、黙って成功したことにはしない）。
         """
         self._run(self._flush())
         self.steps += 1
@@ -1308,8 +1310,8 @@ class Session:
         """Start another playthrough with the same account and the same starting point; this one is abandoned
         (`abandoned`). Later steps and queries all apply to the new playthrough.
 
-        同じアカウント、同じ開始時点でもう 1 つプレイを始める。このプレイは放棄（`abandoned`）する。以後のステップと
-        クエリはすべて新しいプレイに対して行う。
+        同じアカウント、同じ開始時点でもう 1 つプレイを始める。このプレイは放棄（`abandoned`）する。
+        以後のステップとクエリはすべて新しいプレイに対して行う。
         """
         self._run(self._flush())
         self.steps += 1
@@ -1375,8 +1377,8 @@ class Session:
         0; unknown table names outside the list get no answer (the eval reports "the backend did not answer for this
         table", data review).
 
-        各テーブルにこのプレイ（削除したプレイ。削除していなければ現在のプレイ）の行が何行残っているか。data-design 5.3
-        のうちまだ作っていないテーブル（`NOT_BUILT`。状況説明は DB に保存しない）は 0 を返し、
+        各テーブルにこのプレイ（削除したプレイ。削除していなければ現在のプレイ）の行が何行残っているか。
+        data-design 5.3 のうちまだ作っていないテーブル（`NOT_BUILT`。状況説明は DB に保存しない）は 0 を返し、
         一覧にない不明なテーブル名には答えない（評価は「バックエンドがこのテーブルに答えなかった」と報告する、
         データレビュー）。
         """
@@ -1413,9 +1415,9 @@ class Session:
         ending has not started (or the ending task has not finished). Like other tasks, the ending task runs to
         completion synchronously in the step that triggered it.
 
-        B-9：保存された Ending（データ契約第 5 節の完全な形、`signature` を含む）。エンディングに入っていない（または
-        エンディングのタスクが終わっていない）ときは None を返す。エンディングのタスクもほかのタスクと同じく、それを
-        引き起こしたステップの中で同期的に最後まで実行する。
+        B-9：保存された Ending（データ契約第 5 節の完全な形、`signature` を含む）。
+        エンディングに入っていない（またはエンディングのタスクが終わっていない）ときは None を返す。
+        エンディングのタスクもほかのタスクと同じく、それを引き起こしたステップの中で同期的に最後まで実行する。
         """
         self._run(self._flush())
         return self._run(self._ending())
@@ -1441,9 +1443,9 @@ def play_setup(w: Writer, scenarios: Mapping[str, Json], setup: Mapping[str, Jso
     開始時点：W-1 の `opening()` でシミュレーションし（評価のランナーと同じ仕組み）、
     結果をこのプレイの初期イベントとして書く（B-0 第 9 項）。
 
-    `place`、シナリオによるビートの変更、シナリオのイベント、時刻が来たビートと期限、時計を進めるだけのイベントはすべて
-    `opening()` が出す。ここでは完全なイベント（eventId、summary、check）に補って seq 順に適用するだけ。その後、
-    開始時刻に `events` を追加する（評価による配置、api-contract 第 7 節）。
+    `place`、シナリオによるビートの変更、シナリオのイベント、時刻が来たビートと期限、
+    時計を進めるだけのイベントはすべて `opening()` が出す。ここでは完全なイベント（eventId、summary、check）
+    に補って seq 順に適用するだけ。その後、開始時刻に `events` を追加する（評価による配置、api-contract 第 7 節）。
     """
     if "scenario" in setup:
         sc_id, until = str(setup["scenario"]), None
@@ -1472,9 +1474,9 @@ def setup_act_end(book: Book, w: Writer, setup: Mapping[str, Json]) -> Json | No
     is pending (B-3 item 5), and the end-of-act destinations are recorded on the playthrough. Only the closing beat
     itself counts: old cases stopped on a later beat (`opening()` does not change acts) can still talk as before.
 
-    チェックポイントがこの幕の閉幕のビート（例 `sc.canon@beat.07`）で止まっている：setup の後は幕末の選択待ちになり
-    （B-3 第 5 項）、幕末の行き先はプレイに記録する。閉幕のビートそのものだけを認める：それより後のビートで止まる古い
-    ケース（`opening()` は幕を切り替えない）はこれまでどおり会話できる。
+    チェックポイントがこの幕の閉幕のビート（例 `sc.canon@beat.07`）で止まっている：
+    setup の後は幕末の選択待ちになり（B-3 第 5 項）、幕末の行き先はプレイに記録する。閉幕のビートそのものだけを認める：
+    それより後のビートで止まる古いケース（`opening()` は幕を切り替えない）はこれまでどおり会話できる。
     """
     if "checkpoint" not in setup:
         return None

@@ -1,4 +1,5 @@
-// 私密预览不保留离线页面或场景。清理旧版本已安装的缓存，所有请求回到服务器密码门禁。
+// The private preview keeps no offline pages or scenes. Clear caches installed by old versions so every request goes back through the server's password gate.
+// 非公開プレビューはオフラインのページやシーンを保持しない。旧バージョンがインストールしたキャッシュを消し、すべてのリクエストをサーバーのパスワードゲートに戻す。
 export function registerWorker(): void {
   if ("caches" in window) {
     void caches

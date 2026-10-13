@@ -118,7 +118,7 @@ export const sitting = (p: string) => p.startsWith("sit");
 // his clothes (selinuntius.md 「柱廊の三日」): level 2 from day three
 export const hostageWear = (t: number): 1 | 2 => (t >= 3 * DAY ? 2 : 1);
 
-export const DOUBT_S = 1.5; // the flash of doubt on his face (selinuntius.md 验收 3) before the head goes down
+export const DOUBT_S = 1.5; // the flash of doubt on his face (selinuntius.md acceptance check 3) before the head goes down
 export const CROUCH_M = 1.5;
 
 // the conversation's shot (3.2): under the king, a little below the eyes, looking up, tighter from far off; level and

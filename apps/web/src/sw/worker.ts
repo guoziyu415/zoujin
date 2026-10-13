@@ -1,5 +1,7 @@
-// 旧客户端的撤销 worker：删除旧私密缓存、不拦截请求、不提供离线页面。
-// 保留 /sw.js 地址，旧安装可更新到这个版本；新页面不再注册 service worker。
+// Retirement worker for old clients: deletes the old private caches, intercepts no requests, serves no offline pages.
+// 旧クライアント向けの撤去用 worker：古い非公開キャッシュを削除し、リクエストを横取りせず、オフラインページも提供しない。
+// The /sw.js address is kept so old installs can update to this version; new pages no longer register a service worker.
+// /sw.js のアドレスは残し、旧インストールがこのバージョンに更新できるようにする。新しいページはもう service worker を登録しない。
 type LifeEvent = Event & { waitUntil(promise: Promise<unknown>): void };
 const sw = self as unknown as {
   addEventListener(

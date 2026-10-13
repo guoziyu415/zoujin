@@ -4,7 +4,7 @@
 // - the baked lamp light (lightmaps.<mesh>.full) goes on the scene's materials as ZJ_LAMP (shaderPatches.ts): inside
 //   the hall it replaces the sky's light, outside it is scaled by lampsOutside (braziers lit from sunset);
 // - people and anything else without the bake get a warm fill inside the hall (HALL.fill);
-// - the live sun and its shadows stay: the patch of sun through the door is the real one (castle.md 3 「大门」);
+// - the live sun and its shadows stay: the patch of sun through the door is the real one (castle.md 3, the gate / 大門);
 // - the camera inside the hall eases the exposure to the lamps' (the night's) over about a second, and the player
 //   inside it brings the follow camera in (rig.follow).
 import { useFrame, useThree } from "@react-three/fiber";

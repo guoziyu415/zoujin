@@ -27,7 +27,7 @@ def ok(msg: str) -> None:
 
 
 def fail(msg: str) -> None:
-    print(f"  [失败] {msg}", flush=True)
+    print(f"  [FAIL / 失敗] {msg}", flush=True)
 
 
 async def check_live(s: common.Settings, model: str, transcribe_lang: str | None = None) -> dict:
@@ -51,27 +51,35 @@ async def live_step(s: common.Settings) -> dict:
     """Try the configured model; on failure, rule out the transcription hint, then try the GA fallback."""
     try:
         live = await check_live(s, s.live_model)
-        ok(f"建会话 {live['setup_ms']} ms，发出到首个音频 {live['first_audio_ms']} ms，回复「{live['reply_transcript']}」")
-        ok(f"用量消息 {live['usage_msgs']} 条；本次约 ${live['cost_usd']:.4f}（音频存到 out/s0/live_hello.wav）")
+        ok(f"session setup / セッション確立 {live['setup_ms']} ms, send to first audio / 送信から最初の音声まで "
+           f"{live['first_audio_ms']} ms, reply / 返答「{live['reply_transcript']}」")
+        ok(f"usage messages / 使用量メッセージ {live['usage_msgs']}; this run about / 今回の概算 ${live['cost_usd']:.4f} "
+           "(audio saved to / 音声の保存先 out/s0/live_hello.wav)")
         return live
     except Exception as exc:
         common.stop_on_quota(exc)
         primary_error = str(exc)[:500]
         fail(f"{s.live_model}: {primary_error}")
 
-    print("  → 先排除配置问题：同一个模型，去掉玩家转写的 ja-JP 语言提示再试一次")
+    print("  → First rule out a config problem: same model, retry without the ja-JP language hint for player transcription / "
+          "まず設定の問題を切り分ける：同じモデルで、プレイヤー文字起こしの ja-JP 言語ヒントを外して再試行")
     try:
         live = await check_live(s, s.live_model, transcribe_lang="")
-        ok("去掉语言提示后可用。之后每条命令前加 ZJ_TRANSCRIBE_LANG= （等号后留空），并把上面的错误转给后端")
+        ok("Works without the language hint. From now on prefix every command with ZJ_TRANSCRIBE_LANG= (empty after the "
+           "equals sign) and forward the error above to the backend / 言語ヒントを外すと動作します。以降は各コマンドの前に "
+           "ZJ_TRANSCRIBE_LANG= （等号の後は空）を付け、上のエラーをバックエンドに伝えてください")
         return {"primary_error": primary_error, "needs": "ZJ_TRANSCRIBE_LANG=", **live}
     except Exception as exc:
         common.stop_on_quota(exc)
         fail(str(exc)[:300])
 
-    print(f"  → 改试 GA 备选模型 {FALLBACK_LIVE_MODEL}")
+    print(f"  → Trying the GA fallback model / GA の代替モデルで再試行 {FALLBACK_LIVE_MODEL}")
     try:
         live = await check_live(s, FALLBACK_LIVE_MODEL)
-        ok(f"备选模型可用（建会话 {live['setup_ms']} ms）。请把上面的错误转给后端；之后可设 ZJ_LIVE_MODEL={FALLBACK_LIVE_MODEL} 先跑")
+        ok(f"The fallback model works (session setup {live['setup_ms']} ms). Forward the error above to the backend; "
+           f"meanwhile you can set ZJ_LIVE_MODEL={FALLBACK_LIVE_MODEL} and run / 代替モデルは動作します"
+           f"（セッション確立 {live['setup_ms']} ms）。上のエラーをバックエンドに伝えてください。"
+           f"当面は ZJ_LIVE_MODEL={FALLBACK_LIVE_MODEL} を設定して実行できます")
         return {"primary_error": primary_error, "fallback_model": FALLBACK_LIVE_MODEL, **live}
     except Exception as exc:
         common.stop_on_quota(exc)
@@ -81,19 +89,21 @@ async def live_step(s: common.Settings) -> dict:
 
 async def main() -> None:
     s = common.settings()
-    common.banner(f"s0 检查项目 {s.project}")
+    common.banner(f"s0 checking project / プロジェクトを確認 {s.project}")
     result: dict = {"project_set": True}
 
-    print("1. 读取本机登录凭证（application-default）")
+    print("1. Read the local login credentials (application-default) / ローカルのログイン認証情報を読む")
     try:
         creds = common.credentials()
-        ok(f"凭证可用；配额项目已在代码里固定为 ZJ_PROJECT（{type(creds).__name__}）")
+        ok(f"Credentials work; the quota project is pinned to ZJ_PROJECT in code / 認証情報は有効。"
+           f"クォータプロジェクトはコード内で ZJ_PROJECT に固定済み ({type(creds).__name__})")
     except Exception as exc:
         fail(f"{exc}")
-        print("  → 先运行：gcloud auth application-default login（只需一次，会打开浏览器）")
+        print("  → First run: gcloud auth application-default login (once only; it opens a browser) / "
+              "先に gcloud auth application-default login を実行してください（一度だけ。ブラウザが開きます）")
         raise SystemExit(1)
 
-    print(f"2. 文本模型 {s.text_model}（{s.text_location}）")
+    print(f"2. Text model / テキストモデル {s.text_model} ({s.text_location})")
     common.check_budget()
     try:
         client = common.genai_client(s.text_location)
@@ -109,19 +119,21 @@ async def main() -> None:
         )
         ms = round((time.perf_counter() - t0) * 1000)
         common.charge(common.flash_usage_cost(resp.usage_metadata), "s0 flash")
-        ok(f"回复「{(resp.text or '').strip()}」，{ms} ms")
+        ok(f"reply / 返答「{(resp.text or '').strip()}」, {ms} ms")
         result["flash"] = {"ok": True, "ms": ms}
     except Exception as exc:
         common.stop_on_quota(exc)
         fail(str(exc)[:500])
-        print("  → 多半是 aiplatform.googleapis.com 还没开通，或计费账号没绑定。见 README 第 1〜3 步。")
+        print("  → Most likely aiplatform.googleapis.com is not enabled yet, or no billing account is linked. "
+              "See README steps 1–3. / おそらく aiplatform.googleapis.com が未有効化か、請求先アカウントが未リンクです。"
+              "README の手順 1〜3 を参照。")
         raise SystemExit(1)
 
-    print(f"3. 语音模型 {s.live_model}（{s.live_location}）")
+    print(f"3. Voice model / 音声モデル {s.live_model} ({s.live_location})")
     common.check_budget()
     result["live"] = await live_step(s)
 
-    print(f"4. Model Armor（{s.armor_location}，只列出模板，不创建）")
+    print(f"4. Model Armor ({s.armor_location}; only lists templates, creates none / テンプレートの一覧のみ、作成はしない)")
     try:
         from google.cloud import modelarmor_v1
 
@@ -130,16 +142,18 @@ async def main() -> None:
             client_options={"api_endpoint": f"modelarmor.{s.armor_location}.rep.googleapis.com"},
         )
         names = [t.name.rsplit("/", 1)[-1] for t in armor.list_templates(parent=f"projects/{s.project}/locations/{s.armor_location}")]
-        ok(f"可以调用；现有模板 {len(names)} 个" + (f"：{', '.join(names)}" if names else ""))
+        ok(f"Callable; existing templates / 呼び出し可能。既存テンプレート: {len(names)}" + (f" ({', '.join(names)})" if names else ""))
         result["model_armor"] = {"ok": True, "templates": names}
     except Exception as exc:
         common.stop_on_quota(exc)
         fail(str(exc)[:500])
-        print("  → 多半是 modelarmor.googleapis.com 还没开通。见 README 第 3 步。")
+        print("  → Most likely modelarmor.googleapis.com is not enabled yet. See README step 3. / "
+              "おそらく modelarmor.googleapis.com が未有効化です。README の手順 3 を参照。")
         raise SystemExit(1)
 
     common.write_json(s.out_dir / "s0" / "result.json", result)
-    print(f"\n全部通过。累计花费约 ${common.spent():.4f}。可以开始跑 s1。")
+    print(f"\nAll passed. Spend so far about ${common.spent():.4f}. You can start running s1. / "
+          f"すべて合格。累計費用は約 ${common.spent():.4f}。s1 を実行できます。")
 
 
 if __name__ == "__main__":

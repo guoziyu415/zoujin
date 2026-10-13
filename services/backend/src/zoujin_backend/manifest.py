@@ -80,7 +80,8 @@ class Pack:
 @dataclass(frozen=True)
 class Manifest:
     doc: Json
-    # Recording file name → local file; only those referenced in doc / 録音のファイル名 → ローカルのファイル。doc が参照するものだけ
+    # Recording file name → local file; only those referenced in doc
+    # 録音のファイル名 → ローカルのファイル。doc が参照するものだけ
     files: dict[str, Path]
     # Scene packs: (assetVersion, dir) → local dir. When deployed the gateway serves `/scenes/<assetVersion>/<dir>/…`
     # itself (B-23), only what is listed here
@@ -230,7 +231,8 @@ def read_voices(voice_dir: Path, book_id: str) -> tuple[Json | None, Path]:
         return json.loads(path.read_text(encoding="utf-8")), path
     except json.JSONDecodeError as e:
         raise ManifestError(
-            f"Voice manifest {path} is not JSON (line {e.lineno}) / 音声マニフェスト {path} が JSON ではない（{e.lineno} 行目）"
+            f"Voice manifest {path} is not JSON (line {e.lineno}) / "
+            f"音声マニフェスト {path} が JSON ではない（{e.lineno} 行目）"
         ) from None
 
 

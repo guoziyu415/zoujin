@@ -1,4 +1,5 @@
-// 独立于任何书中世界的原创玩家书房。米制建模、分材质合批，无远程素材和网络调用。
+// The player's original study, independent of any book's world. Modeled in meters, batched per material, no remote assets or network calls.
+// どの本の世界からも独立した、プレイヤーのオリジナルの書斎。メートル単位でモデリングし、素材ごとにまとめて描画する。リモート素材もネットワーク呼び出しもない。
 import {
   BoxGeometry,
   BufferGeometry,
