@@ -53,6 +53,42 @@ export const copy = {
   "nearby.talk": "話しかける",
   "nearby.examine": "調べる",
   "nearby.empty": "近くに話せる人がいません。人の近くへ歩いてください。",
+  "action.button": "行動・移動",
+  "action.title": "ここで、何をする？",
+  "action.guide":
+    "話すだけでなく、人を手伝ったり、別の場所へ向かったりできます。行動の結果は、この世界の状況によって変わります。",
+  "action.here": "今ここでできること",
+  "action.none": "この場所には、今できる手助けの行動はありません。",
+  "action.destinations": "向かう場所",
+  "action.choose": "選ぶ",
+  "action.headTo": "向かう",
+  "action.do": "実行する",
+  "action.back": "行動の一覧に戻る",
+  "action.minutes": "物語の中で約{n}分",
+  "action.elapsed": "{n}分経過",
+  "action.checkNote":
+    "この行動を試します。人物や場所の状況によっては、断られたり、一部だけできたりします。",
+  "action.changed":
+    "状況が変わりました。行動の一覧に戻って選び直してください。",
+  "action.busy":
+    "会話や行動の結果が届いてから、次の行動を選べます。通信状態も確認してください。",
+  "action.notSent":
+    "まだ行動を送っていません。会話が終わるか、通信が戻ってからもう一度お試しください。",
+  "action.waitTitle": "この場所で待つ",
+  "action.wait": "時間を進めて待つ",
+  "action.waitConfirm": "ここで待つ",
+  "action.timeGuide":
+    "物語の時間は、会話・行動・場所の移動で進みます。同じ場面を歩いたり、現実の時間を待ったりするだけでは進みません。",
+  "action.waitNote":
+    "この場所で次の出来事が起きるまで待ちます。何も起きなければ、この幕の区切りまで時間が進みます。今できる手助けの機会を逃すこともあります。",
+  "action.status.pending": "行動を確かめています",
+  "action.status.done": "行動しました",
+  "action.status.partial": "一部だけできました",
+  "action.status.refused": "できませんでした",
+  "action.status.unknown": "結果の確認が必要です",
+  "action.unknownNote":
+    "通信が途切れたため、結果が確認できていません。同じ行動は自動でやり直しません。地図や記憶帳で最新の記録を確認してください。",
+  "action.acknowledge": "記録を確認しました",
   "talk.hold": "押して話す",
   "talk.tap": "タップで話す",
   "talk.listening": "聞いています",

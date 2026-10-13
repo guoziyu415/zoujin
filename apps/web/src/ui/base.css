@@ -380,6 +380,59 @@ button {
   background: transparent;
   padding: 0 14px;
 }
+.action-sheet-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.action-sheet-heading h2 {
+  margin: 0;
+}
+.action-sheet h3 {
+  font-size: 16px;
+  margin: 20px 0 8px;
+}
+.action-sheet li > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.action-target,
+.action-sheet small {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.action-sheet-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.world-action-status {
+  align-self: center;
+  max-width: min(100%, 680px);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 10px 12px;
+  font-size: 14px;
+  text-align: left;
+}
+.world-action-status summary {
+  cursor: pointer;
+}
+.world-action-status p {
+  margin: 10px 0;
+}
+.world-action-status button {
+  min-height: 40px;
+  border: 1px solid var(--ink-2);
+  border-radius: 20px;
+  padding: 0 12px;
+  background: transparent;
+}
 .gate {
   position: absolute;
   inset: 0;

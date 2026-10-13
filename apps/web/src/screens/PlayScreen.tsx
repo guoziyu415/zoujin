@@ -32,6 +32,8 @@ import { SunBand } from "../ui/hud/SunBand";
 import { TalkKey } from "../ui/hud/TalkKey";
 import { TextInput } from "../ui/hud/TextInput";
 import { WorldReactionToast } from "../ui/hud/WorldReactionToast";
+import { ActionsSheet } from "../ui/hud/ActionsSheet";
+import { WorldActionStatus } from "../ui/hud/WorldActionStatus";
 import { SafetyCard } from "../ui/safety/SafetyCard";
 import { HelplinePanel, SafetyHint } from "../ui/safety/SafetyHint";
 import { selectCovered, useStory } from "../stores/story";
@@ -184,9 +186,11 @@ export default function PlayScreen({ pid }: { pid: string }) {
       <div className="hud-bottom" inert={paused || covered} hidden={staging}>
         <SafetyHint where="portrait" />
         <Subtitles names={names} />
+        <WorldActionStatus />
         <Controls names={names} />
       </div>
       {!staging && <NearbyList names={names} />}
+      {!staging && <ActionsSheet names={names} />}
       <StoryLayer pid={pid} names={names} />
       <MicSheet />
       <HelplinePanel />
@@ -200,6 +204,7 @@ export default function PlayScreen({ pid }: { pid: string }) {
 // the microphone is refused or doesn't work, the server said degraded) the text field takes the key's place; while
 // the text field is open the talk key steps aside (「声に戻す」 brings it back).
 function Controls({ names }: { names: Record<string, string> }) {
+  const actionPending = useUi((s) => s.worldAction?.status === "pending");
   const focus = usePlayer((s) => s.focusCharacter);
   const mic = useVoice((s) => s.mic);
   const degraded = useVoice((s) => s.degraded);
@@ -207,9 +212,12 @@ function Controls({ names }: { names: Record<string, string> }) {
   const textFirst =
     degraded || mic === "text" || mic === "denied" || mic === "unavailable";
   return (
-    <div className="controls">
+    <div className="controls" inert={actionPending}>
       <button onClick={() => useUi.setState({ overlay: "nearby" })}>
         {copy["nearby.button"]}
+      </button>
+      <button onClick={() => useUi.setState({ overlay: "actions" })}>
+        {copy["action.button"]}
       </button>
       {textFirst ? (
         <>

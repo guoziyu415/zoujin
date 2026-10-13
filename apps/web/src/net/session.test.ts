@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Api } from "@zoujin/contracts";
 import { useStory } from "../stores/story";
 import { useUi } from "../stores/ui";
 import { useVoice } from "../stores/voice";
@@ -11,12 +12,12 @@ import { commit, event, FakeSocket, PID, snapshot, welcome } from "./testkit";
 import { openPropose } from "./story";
 import { setUnauthenticatedHandler } from "./rest";
 
-function open(lastSeq = 0) {
+function open(lastSeq = 0, over: Partial<Api.Snapshot> = {}) {
   const onEnded = vi.fn();
   const audio = new FakeAudio();
   const s = new Session(PID, { onEnded }, "ws://test/live", FakeSocket, audio);
   s.setNames({ "char.melos": "メロス", "char.old-man": "市の老爺" });
-  s.start(snapshot({ lastSeq }));
+  s.start(snapshot({ lastSeq, ...over }));
   const sock = FakeSocket.last();
   sock.open();
   sock.receive(welcome(lastSeq));
@@ -24,6 +25,182 @@ function open(lastSeq = 0) {
 }
 
 const texts = (sock: FakeSocket) => sock.sent.filter((m) => m.type === "text");
+
+const offeredAction: Api.SituationalAction = {
+  actionId: "act.water",
+  kind: "give",
+  target: "char.melos",
+  label: "水を渡す",
+  estimatedMinutes: 15,
+  melos: null,
+  melosMinutes: null,
+  melosInTime: null,
+  enabled: true,
+};
+const exit: Api.Interactable = {
+  id: "way.castle",
+  kind: "go",
+  spot: "way.castle",
+  label: "王城へ",
+  estimatedMinutes: 20,
+  enabled: true,
+};
+
+describe("world action requests", () => {
+  it("sends the offered template and parameters exactly once while pending", () => {
+    const { s, sock } = open(0, { actions: [offeredAction] });
+    const request = {
+      kind: offeredAction.kind,
+      actionId: offeredAction.actionId,
+      target: "char.melos",
+      params: { item: "item.water" },
+    };
+    expect(s.act(request, offeredAction.label)).toBe(true);
+    expect(s.act(request, offeredAction.label)).toBe(false);
+    expect(sock.sent.filter((m) => m.type === "action")).toEqual([
+      { ...request, type: "action", clientMsgId: expect.any(String) },
+    ]);
+    expect(useUi.getState().worldAction).toMatchObject({
+      label: offeredAction.label,
+      status: "pending",
+    });
+    s.stop();
+  });
+
+  it("uses current exits, rejects stale templates, and sends targetless wait", () => {
+    const { s, sock } = open(0, { interactables: [exit] });
+    expect(
+      s.act(
+        {
+          kind: "give",
+          actionId: offeredAction.actionId,
+          target: "char.melos",
+        },
+        "水を渡す",
+      ),
+    ).toBe(false);
+    expect(s.act({ kind: "go", target: "place.unknown" }, "出る")).toBe(false);
+    expect(s.act({ kind: "go", target: exit.id }, exit.label)).toBe(true);
+    const id = useUi.getState().worldAction!.clientMsgId;
+    sock.receive({
+      type: "action_result",
+      clientMsgId: id,
+      status: "refused",
+      eventIds: [],
+      minutes: 0,
+      narration: "門は閉ざされている。",
+    });
+    expect(s.act({ kind: "wait" }, "待つ")).toBe(true);
+    expect(sock.sent.at(-1)).toEqual({
+      type: "action",
+      clientMsgId: expect.any(String),
+      kind: "wait",
+    });
+    s.stop();
+  });
+
+  it("keeps refusals and narration truthful and ignores unrelated results and errors", () => {
+    const { s, sock } = open();
+    s.act({ kind: "wait" }, "待つ");
+    const clientMsgId = useUi.getState().worldAction!.clientMsgId;
+    sock.receive({
+      type: "error",
+      error: {
+        code: "invalid_request",
+        message: "送れませんでした。",
+        retryable: false,
+        retryAfterSeconds: null,
+      },
+    });
+    sock.receive({
+      type: "action_result",
+      clientMsgId: "another-action",
+      status: "done",
+      eventIds: [],
+      minutes: 0,
+      narration: "別の動作。",
+    });
+    expect(useUi.getState().worldAction?.status).toBe("pending");
+    sock.receive({
+      type: "action_result",
+      clientMsgId,
+      status: "refused",
+      eventIds: [],
+      minutes: 0,
+      narration: "いまは待てない。",
+    });
+    expect(useUi.getState().worldAction).toEqual({
+      clientMsgId,
+      label: "待つ",
+      status: "refused",
+      minutes: 0,
+      narration: "いまは待てない。",
+    });
+    expect(useVoice.getState().narration).toContain("いまは待てない。");
+    s.stop();
+  });
+
+  it("marks a lost result unknown, never resends, and accepts its late result", () => {
+    const { s, sock } = open();
+    s.act({ kind: "wait" }, "待つ");
+    const clientMsgId = useUi.getState().worldAction!.clientMsgId;
+    sock.drop(1012);
+    expect(useUi.getState().worldAction?.status).toBe("unknown");
+    expect(s.act({ kind: "wait" }, "待つ")).toBe(false);
+    vi.advanceTimersByTime(0);
+    const again = FakeSocket.last();
+    again.open();
+    again.receive(welcome(0));
+    expect(again.types()).not.toContain("action");
+    expect(useUi.getState().worldAction?.status).toBe("unknown");
+    again.receive({
+      type: "action_result",
+      clientMsgId,
+      status: "partial",
+      eventIds: [],
+      minutes: 10,
+      narration: "しばらく時が過ぎた。",
+    });
+    expect(useUi.getState().worldAction).toMatchObject({
+      status: "partial",
+      minutes: 10,
+    });
+    s.stop();
+  });
+
+  it("does not discard an unsettled conversation or act through a covered story", () => {
+    const { s, sock } = open();
+    s.focus("char.melos");
+    s.say("こんにちは");
+    expect(s.act({ kind: "wait" }, "待つ")).toBe(false);
+    useVoice.setState({
+      turn: { ...useVoice.getState().turn!, phase: "done" },
+    });
+    expect(s.act({ kind: "wait" }, "待つ")).toBe(false);
+    expect(sock.types()).not.toContain("unfocus");
+    useVoice.setState({ turn: null, paused: true });
+    expect(s.act({ kind: "wait" }, "待つ")).toBe(false);
+    useVoice.setState({ paused: false });
+    useStory.setState({ overlay: { kind: "memory" } });
+    expect(s.act({ kind: "wait" }, "待つ")).toBe(false);
+    useStory.setState({ overlay: null });
+    useVoice.setState({
+      turn: { turnId: "scripted", turnSeq: 0, kind: "server", phase: "done" },
+    });
+    expect(s.act({ kind: "wait" }, "待つ")).toBe(true);
+    expect(sock.types()).toContain("unfocus");
+    s.stop();
+  });
+
+  it("marks suspension unknown and clears the record when leaving the playthrough", () => {
+    const { s } = open();
+    s.act({ kind: "wait" }, "待つ");
+    s.suspend();
+    expect(useUi.getState().worldAction?.status).toBe("unknown");
+    s.stop();
+    expect(useUi.getState().worldAction).toBeNull();
+  });
+});
 
 beforeEach(() => {
   vi.useFakeTimers();

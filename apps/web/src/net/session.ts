@@ -121,7 +121,11 @@ export class Session {
     resetStory();
     this.actChange = [];
     this.planLanded = false;
-    useUi.setState({ connection: "connecting", downSince: null });
+    useUi.setState({
+      connection: "connecting",
+      downSince: null,
+      worldAction: null,
+    });
     setTelemetryContext({
       playthroughId: snapshot.playthroughId,
       t: snapshot.clock.t,
@@ -133,11 +137,13 @@ export class Session {
     this.voice.stop();
     this.live.close();
     this.welcomed = false;
+    useUi.setState({ worldAction: null });
     setTelemetryContext({});
   }
 
   // pagehide (9.5): close without the banner; coming back calls reconnect()
   suspend(): void {
+    this.unknownAction();
     this.voice.suspend();
     this.live.close();
     this.welcomed = false;
@@ -220,6 +226,78 @@ export class Session {
     });
   }
 
+  // These choices come from the latest server projection. Sending a request is not a successful action;
+  // only its matching action_result can say that. In particular, never resend after a lost connection:
+  // clientMsgId correlates the result but is not the backend task's idempotency key.
+  act(
+    request: Pick<Api.ActionMessage, "kind" | "actionId" | "target" | "params">,
+    label: string,
+  ): boolean {
+    const ui = useUi.getState();
+    const world = useWorld.getState().world;
+    const voice = useVoice.getState();
+    const st = useStory.getState();
+    if (
+      !this.welcomed ||
+      !this.live.open ||
+      ui.connection !== "open" ||
+      ui.worldAction?.status === "pending" ||
+      !world ||
+      world.status !== "active" ||
+      voice.paused ||
+      voice.hold ||
+      this.audio.playing() ||
+      (voice.turn &&
+        voice.turn.phase !== "settled" &&
+        !(voice.turn.kind === "server" && voice.turn.phase === "done")) ||
+      st.actEnd ||
+      st.transition ||
+      st.ending ||
+      st.overlay ||
+      world.pending.confirm ||
+      world.pending.reveal ||
+      world.pending.safetyPause
+    )
+      return false;
+
+    if (request.actionId) {
+      const action = world.actions.find((a) => a.actionId === request.actionId);
+      if (
+        !action?.enabled ||
+        action.kind !== request.kind ||
+        action.target !== request.target
+      )
+        return false;
+    } else if (request.kind === "go" || request.kind === "examine") {
+      if (
+        !world.interactables.some(
+          (i) =>
+            i.enabled && i.kind === request.kind && i.id === request.target,
+        )
+      )
+        return false;
+    } else if (
+      request.kind !== "wait" ||
+      request.target !== undefined ||
+      request.params !== undefined
+    ) {
+      return false;
+    }
+
+    const clientMsgId = uuid();
+    if (!this.live.send({ ...request, type: "action", clientMsgId }))
+      return false;
+    useUi.setState({ worldAction: { clientMsgId, label, status: "pending" } });
+    if (usePlayer.getState().focusCharacter) this.unfocus("menu");
+    return true;
+  }
+
+  private unknownAction(): void {
+    const action = useUi.getState().worldAction;
+    if (action?.status === "pending")
+      useUi.setState({ worldAction: { ...action, status: "unknown" } });
+  }
+
   // —— the act end (ux-design 4.4, api-contract 3.11) ——
 
   actChoose(optionId: string, enRouteChoice?: number): void {
@@ -281,6 +359,7 @@ export class Session {
   // —— the socket's side ——
 
   private down(reason: string): void {
+    this.unknownAction();
     // A password gate rejects WS before accept, which browsers expose as 1006.
     // REST can distinguish that from a lost network and route to /site-access.
     // Single flight + cooldown keeps a normal reconnect loop from flooding /me.
@@ -318,6 +397,7 @@ export class Session {
   }
 
   private ended(why: Ended): void {
+    this.unknownAction();
     this.welcomed = false;
     useUi.setState({
       connection: why === "taken" ? "taken" : why === "gone" ? "gone" : "idle",
@@ -413,6 +493,8 @@ export class Session {
         );
         return;
       case "error":
+        // ErrorMessage has no clientMsgId. It could belong to near/focus/text or another request, so it
+        // cannot settle the tracked action. Its result (or a lost connection) remains authoritative.
         // invalid_request: what we sent didn't fit the schema; the turn didn't happen (api-contract 5)
         if (msg.error.code === "invalid_request") {
           this.voice.undelivered();
@@ -640,6 +722,17 @@ export class Session {
   }
 
   private actionResult(m: Api.ActionResultMessage): void {
+    const action = useUi.getState().worldAction;
+    if (action && action.clientMsgId === m.clientMsgId)
+      useUi.setState({
+        worldAction: {
+          clientMsgId: action.clientMsgId,
+          label: action.label,
+          status: m.status,
+          minutes: m.minutes,
+          ...(m.narration ? { narration: m.narration } : {}),
+        },
+      });
     if (m.narration) {
       // the action that ended the story (3.13: its result comes after the closing set piece): into the staging
       if (useStory.getState().ending)

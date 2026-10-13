@@ -58,6 +58,10 @@ export const play = {
   say: (text: string, via: Api.TextMessage["via"] = "typed") =>
     current?.say(text, via),
   examine: (target: string) => current?.examine(target),
+  act: (
+    request: Pick<Api.ActionMessage, "kind" | "actionId" | "target" | "params">,
+    label: string,
+  ): boolean => current?.act(request, label) ?? false,
   // the act end (ux-design 4.4)
   actChoose: (optionId: string, enRouteChoice?: number) =>
     current?.actChoose(optionId, enRouteChoice),
