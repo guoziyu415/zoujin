@@ -15,6 +15,9 @@ export const copy = {
   "cover.resume": "続きから",
   "cover.resumeMeta": "{role}として・{day}の{band}",
   "cover.new": "新しく始める",
+  "cover.firstReader": "原作を読んでいない方へ",
+  "cover.firstReaderGuide":
+    "あなたは原作の主人公ではなく、本の世界に入り込むもう一人の登場人物です。原作を覚えている必要はありません。出会った人に事情を聞きながら、自分の行動を選んでください。",
   "inapp.notice": "LINEの中のブラウザでは、声で話せないことがあります。",
   "inapp.textOnly": "このまま文字で遊ぶ",
   "inapp.howto": "Safariで開く方法",
@@ -84,6 +87,8 @@ export const copy = {
   "sub.transcribed": "書き起こし",
   "sub.pending": "……",
   "sub.failed": "（字幕を出せませんでした）",
+  "sub.collapse": "字幕をたたむ",
+  "sub.expand": "字幕をひらく",
   "reconnect.lostTurn": "もう一度、話しかけてください。",
   "toast.memory": "{name}は覚えた",
   "toast.promise": "{name}と約束した",

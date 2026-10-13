@@ -4,6 +4,7 @@
 // words, the failed-transcript note, the grey narration, and the suggestion chips (7.8) or the no-response chips
 // (7.5). All server text is rendered as text, never HTML, and broken only between phrases (phrases.ts; UX on #146:
 // never 人を殺しているそ / うです).
+import { useId, useState } from "react";
 import { play } from "../../net/play";
 import { retractKind, useVoice, type Line } from "../../stores/voice";
 import { voiceSettings } from "../../voice/settings";
@@ -24,6 +25,8 @@ function Phrased({ text }: { text: string }) {
 }
 
 export function Subtitles({ names }: { names: Record<string, string> }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const contentId = useId();
   const player = useVoice((s) => s.player);
   const character = useVoice((s) => s.character);
   const turn = useVoice((s) => s.turn);
@@ -31,6 +34,8 @@ export function Subtitles({ names }: { names: Record<string, string> }) {
   const speaker = useVoice((s) => s.session.character);
   // a typed turn's answer is done and still no words: grey 「……」, not the thinking dots
   const pending = !character && turn?.phase === "done";
+  const hasContent =
+    !!player || !!character || narration.length > 0 || (pending && !!speaker);
   // the player's words can be corrected once final, for a turn spoken (not typed) and not cancelled
   const editable =
     !!player &&
@@ -41,32 +46,45 @@ export function Subtitles({ names }: { names: Record<string, string> }) {
     turn.kind === "voice" &&
     turn.phase !== "listening";
   return (
-    <>
-      <div className="subs" data-testid="subtitles" aria-live="polite">
-        {narration.map((n, i) => (
-          <p key={`${i}:${n}`} className="narration" data-testid="narration">
-            <Phrased text={n} />
-          </p>
-        ))}
-        {player && <PlayerLine line={player} editable={editable} />}
-        {character ? (
-          <CharacterLine
-            line={character}
-            name={names[character.speaker] ?? character.speaker}
-            ended={!!turn?.ended && turn.turnId === character.turnId}
-          />
-        ) : (
-          pending &&
-          speaker && (
-            <div className="line">
-              <div className="who">{names[speaker] ?? speaker}</div>
-              <div className="grey">{copy["sub.pending"]}</div>
-            </div>
-          )
-        )}
+    <div className="dialogue-panel">
+      <div id={contentId} className="dialogue-content" hidden={collapsed}>
+        <div className="subs" data-testid="subtitles" aria-live="polite">
+          {narration.map((n, i) => (
+            <p key={`${i}:${n}`} className="narration" data-testid="narration">
+              <Phrased text={n} />
+            </p>
+          ))}
+          {player && <PlayerLine line={player} editable={editable} />}
+          {character ? (
+            <CharacterLine
+              line={character}
+              name={names[character.speaker] ?? character.speaker}
+              ended={!!turn?.ended && turn.turnId === character.turnId}
+            />
+          ) : (
+            pending &&
+            speaker && (
+              <div className="line">
+                <div className="who">{names[speaker] ?? speaker}</div>
+                <div className="grey">{copy["sub.pending"]}</div>
+              </div>
+            )
+          )}
+        </div>
+        <TurnActions />
       </div>
-      <TurnActions />
-    </>
+      {hasContent && (
+        <button
+          type="button"
+          className="subs-toggle"
+          aria-expanded={!collapsed}
+          aria-controls={contentId}
+          onClick={() => setCollapsed((value) => !value)}
+        >
+          {collapsed ? copy["sub.expand"] : copy["sub.collapse"]}
+        </button>
+      )}
+    </div>
   );
 }
 

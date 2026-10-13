@@ -5,6 +5,7 @@ import { navigate, rolePath } from "../app/router";
 import { booksQuery, libraryQuery, manifestFor } from "../app/queries";
 import { track } from "../telemetry/telemetry";
 import { copy, fill } from "../ui/copy";
+import { bookIntroductions } from "../ui/bookIntroductions";
 import { InAppNotice } from "../ui/InAppNotice";
 import { ReadFailed, readFailed } from "../ui/ReadFailed";
 
@@ -23,6 +24,7 @@ export default function CoverScreen({ bookId }: { bookId: string }) {
   const library = useQuery(libraryQuery);
   const active = library.data?.activePlaythrough;
   const sameBook = active?.bookId === bookId;
+  const introduction = bookIntroductions[bookId];
   return (
     <main className="screen book-cover">
       <button className="quiet home-back" onClick={() => navigate("/")}>
@@ -32,6 +34,22 @@ export default function CoverScreen({ bookId }: { bookId: string }) {
       <p className="book-author">{book?.author}</p>
       <h1>{book?.title ?? "本をひらいています…"}</h1>
       <p className="note">{book?.description}</p>
+      {book?.availability === "available" && (
+        <details className="book-introduction">
+          <summary>{copy["cover.firstReader"]}</summary>
+          {introduction && (
+            <>
+              <p>{introduction.background}</p>
+              <ul>
+                {introduction.people.map((person) => (
+                  <li key={person}>{person}</li>
+                ))}
+              </ul>
+            </>
+          )}
+          <p>{copy["cover.firstReaderGuide"]}</p>
+        </details>
+      )}
       {book?.availability === "available" && (
         <p className="note">
           {copy["cover.note.violence"]}
