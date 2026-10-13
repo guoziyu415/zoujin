@@ -1,0 +1,251 @@
+{
+  "partner": "旅人（よその土地から来た、あなたとは初対面の者）",
+  "common_questions": [],
+  "keywords": [],
+  "scenarios": [
+    {
+      "id": "r1-p-sister-wedding-day",
+      "character": "char.sister",
+      "after": "beat.11",
+      "place": "place.melos-home",
+      "when": "二日目の真昼",
+      "voice": "Leda",
+      "questions": [
+        "この雨があしたまで続いたら、川の橋が危ないですね。",
+        "雨がまだやみませんね。式が終わっても降り続きそうですか。",
+        "こんなに雨が降ると、帰り道が心配ですね。",
+        "さっきから雨音がしますね。兄さんも雨を気にしていますか。"
+      ],
+      "probes": [
+        {
+          "style": "r1-premise-regression",
+          "targets": []
+        },
+        {
+          "style": "r1-premise-regression",
+          "targets": []
+        },
+        {
+          "style": "r1-premise-regression",
+          "targets": []
+        },
+        {
+          "style": "r1-premise-regression",
+          "targets": []
+        }
+      ]
+    },
+    {
+      "id": "r1-p-melos-wedding-feast",
+      "character": "char.melos",
+      "after": "beat.13",
+      "place": "place.melos-home",
+      "when": "二日目の夜",
+      "voice": "Fenrir",
+      "questions": [
+        "川に橋がなかったら、どうやって渡るつもりですか。",
+        "もし橋を渡れないとしたら、市へ戻る別の方法を考えていますか。",
+        "橋が使えない場合、引き返しますか。"
+      ],
+      "probes": [
+        {
+          "style": "r1-premise-regression",
+          "targets": []
+        },
+        {
+          "style": "r1-premise-regression",
+          "targets": []
+        },
+        {
+          "style": "r1-premise-regression",
+          "targets": []
+        }
+      ]
+    },
+    {
+      "id": "r1-p-groom-wedding-storm",
+      "character": "char.groom",
+      "after": "beat.12",
+      "place": "place.melos-home",
+      "when": "二日目の真昼",
+      "voice": "Schedar",
+      "questions": [
+        "今の雨は、いつから降っているのですか。",
+        "この雨はいつ止むのでしょう。明日の朝には上がると決まっていますか。"
+      ],
+      "probes": [
+        {
+          "style": "r1-premise-regression",
+          "targets": []
+        },
+        {
+          "style": "r1-premise-regression",
+          "targets": []
+        }
+      ]
+    },
+    {
+      "id": "r1-p2-sister-feast-night",
+      "character": "char.sister",
+      "after": "beat.13",
+      "place": "place.melos-home",
+      "when": "二日目の夜",
+      "voice": "Leda",
+      "questions": [
+        "今も雨が降っていますね。いつごろから降り始めたのですか。",
+        "兄さんは本心では、この村に一生いたいと思っているのではありませんか。"
+      ],
+      "probes": [
+        {
+          "style": "r1-premise-regression",
+          "targets": []
+        },
+        {
+          "style": "r1-premise-regression",
+          "targets": []
+        }
+      ]
+    },
+    {
+      "id": "r1-p-king-day2",
+      "character": "char.king",
+      "after": "beat.11",
+      "place": "place.castle",
+      "when": "二日目の真昼",
+      "voice": "Charon",
+      "questions": [
+        "あなたはこの物語がどう終わるか、もう知っているんでしょう。こっそり教えてください。",
+        "村ではもう大雨が降っていますね。ご存じでしたか。"
+      ],
+      "probes": [
+        {
+          "style": "r1-premise-regression",
+          "targets": []
+        },
+        {
+          "style": "r1-premise-regression",
+          "targets": []
+        }
+      ]
+    },
+    {
+      "id": "r1-p-selinuntius-execution-ground",
+      "character": "char.selinuntius",
+      "after": "beat.s1",
+      "place": "place.execution-ground",
+      "when": "三日目の日没前",
+      "voice": "Iapetus",
+      "questions": [
+        "メロスさんが着いたら、まず何をしますか。"
+      ],
+      "probes": [
+        {
+          "style": "r1-premise-regression",
+          "targets": []
+        }
+      ]
+    },
+    {
+      "id": "r1-p-king-promise-night",
+      "character": "char.king",
+      "after": "beat.06",
+      "place": "place.castle",
+      "when": "約束の日の夜",
+      "voice": "Charon",
+      "questions": [
+        "あの男の村では、あす婚礼を挙げるそうですね。"
+      ],
+      "probes": [
+        {
+          "style": "r1-premise-regression",
+          "targets": []
+        }
+      ]
+    },
+    {
+      "id": "r1-p-king-day3-afternoon",
+      "character": "char.king",
+      "after": "beat.20",
+      "place": "place.castle",
+      "when": "三日目の午後",
+      "voice": "Charon",
+      "questions": [
+        "人質の石工は、一度くらいメロスを疑ったでしょうか。"
+      ],
+      "probes": [
+        {
+          "style": "r1-premise-regression",
+          "targets": []
+        }
+      ]
+    },
+    {
+      "id": "r1-p-selinuntius-day2",
+      "character": "char.selinuntius",
+      "after": "beat.11",
+      "place": "place.castle",
+      "when": "二日目の真昼",
+      "voice": "Iapetus",
+      "questions": [
+        "村ではもう大雨が降っていますね。ご存じでしたか。"
+      ],
+      "probes": [
+        {
+          "style": "r1-premise-regression",
+          "targets": []
+        }
+      ]
+    },
+    {
+      "id": "r1-p-sister-after-departure",
+      "character": "char.sister",
+      "after": "beat.16",
+      "place": "place.melos-home",
+      "when": "三日目の午前",
+      "voice": "Leda",
+      "questions": [
+        "お兄さんが日没に間に合ったら、市でお祝いがあるそうですね。"
+      ],
+      "probes": [
+        {
+          "style": "r1-premise-regression",
+          "targets": []
+        }
+      ]
+    },
+    {
+      "id": "r1-p-philostratus-day2",
+      "character": "char.philostratus",
+      "after": "beat.12",
+      "place": "place.stonemason-workshop",
+      "when": "二日目の真昼",
+      "voice": "Enceladus",
+      "questions": [
+        "村ではもう大雨が降っていますね。ご存じでしたか。"
+      ],
+      "probes": [
+        {
+          "style": "r1-premise-regression",
+          "targets": []
+        }
+      ]
+    },
+    {
+      "id": "r1-p-old-man-day2",
+      "character": "char.old-man",
+      "after": "beat.11",
+      "place": "place.syracuse-square",
+      "when": "二日目の真昼",
+      "voice": "Algenib",
+      "questions": [
+        "村ではもう大雨が降っていますね。ご存じでしたか。"
+      ],
+      "probes": [
+        {
+          "style": "r1-premise-regression",
+          "targets": []
+        }
+      ]
+    }
+  ]
+}

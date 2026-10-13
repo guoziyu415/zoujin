@@ -63,9 +63,12 @@ import shlex
 import sys
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-from . import claude_judge, common, live_util
-from .live_util import JA_RULE, Probe, Turn, close_session, live_config, open_session, send_text_turn
+from . import claude_judge, common
+
+if TYPE_CHECKING:
+    from .live_util import Turn
 
 DATA = Path(__file__).parent / "data"
 CONDITIONS = ("naive", "base", "guard")
@@ -455,6 +458,9 @@ class World:
 
 async def ask(client, model: str, cfg, question: str, what: str) -> tuple[Turn, int]:
     """One fresh session, one text question; returns (turn, setup_ms). A setup that hangs is retried once."""
+    from . import live_util
+    from .live_util import Probe, Turn, close_session, open_session, send_text_turn
+
     for attempt in (1, 2):
         try:
             cm, session, setup_ms = await open_session(client, model, cfg)
@@ -499,6 +505,8 @@ def cut(world: World, sc: dict, condition: str) -> dict:
 
 
 def persona(world: World, sc: dict, partner: str, condition: str) -> str:
+    from .live_util import JA_RULE
+
     c = world.chars[sc["character"]]
     name = c["name"]
     speech = c.get("speech", {})
@@ -662,6 +670,8 @@ async def main_async(args, argv: list[str]) -> None:
         scenarios = keep_flagged(scenarios, flagged_questions(Path(args.only_flagged)))
     if not gate(args, world, scenarios, conditions, argv):
         return
+    from .live_util import live_config
+
     s = common.settings()
     live = common.genai_client(s.live_location)
     cj = claude_judge.ClaudeJudge(max_total_usd=args.max_claude_usd, max_item_usd=args.max_item_usd)

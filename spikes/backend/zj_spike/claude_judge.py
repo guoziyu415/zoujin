@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import time
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
@@ -77,7 +78,9 @@ class ClaudeJudge:
         self.ledger = Ledger(Path(e["ZJ_CLAUDE_LEDGER"]).expanduser(), "claude", max_total_usd, max_item_usd, ITEM, "eval")
         self.transport = AsyncTransport()
 
-    async def __call__(self, kind: str, system: str, user: str, schema: Any) -> dict:
+    async def __call__(
+        self, kind: str, system: str, user: str, schema: Any, *, attempts: list[dict] | None = None
+    ) -> dict:
         api = api_schema(schema)
         params = {
             "model": self.model_id,
@@ -89,25 +92,43 @@ class ClaudeJudge:
         }
         upper = upper_usd(len(system), len(user), api)
         for attempt in (1, 2):
+            began = time.perf_counter()
+            diagnostic = {"stage": kind, "attempt": attempt}
             try:
-                self.ledger.before(upper)
+                with self.ledger.timed(kind=kind, model=TAG, estimate=upper) as bill:
+                    reply = await asyncio.wait_for(self.transport.create(params), timeout=TIMEOUT_S)
+                    usable = reply.stop_reason == "end_turn" and reply.text is not None
+                    try:
+                        result = json.loads(reply.text) if usable else None
+                    except (ValueError, TypeError):
+                        bill.done(reply.usage, claude_prices().cost(TAG, reply.usage), ok=False)
+                        raise
+                    bill.done(reply.usage, claude_prices().cost(TAG, reply.usage), ok=usable)
+                    if not usable:
+                        raise common.Stopped(f"Claude 的判定没有正常结束（{reply.stop_reason}）")
             except BudgetStop as exc:
+                diagnostic.update(status="budget-stop", errorType=type(exc).__name__)
                 raise common.BudgetExceeded(str(exc)) from None
-            try:
-                reply = await asyncio.wait_for(self.transport.create(params), timeout=TIMEOUT_S)
-            except TimeoutError:
-                # 取消了的可能已经计费：按偏高的预计记，宁多记
-                self.ledger.add(kind=kind, model=TAG, usage={}, cost=upper)
+            except TimeoutError as exc:
+                diagnostic.update(status="timeout", errorType=type(exc).__name__)
                 if attempt == 2:
                     raise common.Stopped(f"Claude 的判定两次超过 {TIMEOUT_S:.0f} 秒") from None
                 print(f"  （判定超过 {TIMEOUT_S:.0f} 秒，重试一次）")
                 continue
             except RateLimited as exc:
+                diagnostic.update(status="error", errorType=type(exc).__name__)
                 raise common.QuotaHit(str(exc)) from None
             except ModelCallFailed as exc:
+                diagnostic.update(status="error", errorType=type(exc).__name__)
                 raise common.Stopped(str(exc)) from None
-            self.ledger.add(kind=kind, model=TAG, usage=reply.usage, cost=claude_prices().cost(TAG, reply.usage))
-            if reply.stop_reason != "end_turn" or reply.text is None:
-                raise common.Stopped(f"Claude 的判定没有正常结束（{reply.stop_reason}）")
-            return json.loads(reply.text)
+            except Exception as exc:
+                diagnostic.update(status="bad-output", errorType=type(exc).__name__)
+                raise
+            else:
+                diagnostic["status"] = "ok"
+                return result
+            finally:
+                diagnostic["ms"] = round((time.perf_counter() - began) * 1000)
+                if attempts is not None:
+                    attempts.append(diagnostic)
         raise AssertionError("unreachable")
