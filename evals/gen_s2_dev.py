@@ -1,9 +1,20 @@
-"""生成 data/evals/s2/s2_dev.jsonl：S-2 叙事者自检准确率的**公开样例** 10 条。改样例就改这里，再跑：
+"""Generates data/evals/s2/s2_dev.jsonl: the 10 **public examples** for the S-2 narrator self-check accuracy. To change
+an example, edit it here, then run:
   python3 -I evals/gen_s2_dev.py evals/s2/s2_dev.jsonl
 
-给后端搭 S-2 运行器、对格式用，也可以拿来调叙事者自检的提示。测量用的 50 条在 evals/holdout/s2/，
-叙事者自检的提示定稿前后端不看（S-069 的教训：看着样本改提示，在同一批样本上过线不算数）。
-这 10 条和测量集不是同一批场面。格式、标注规则和自检见 evals/s2/README.md、evals/s2_check.py。
+For the backend to build the S-2 runner and check the format; they may also be used to tune the narrator self-check
+prompt. The 50 items used for measurement are in evals/holdout/s2/, and the backend does not look at them before the
+narrator self-check prompt is finalized (the lesson of S-069: tuning a prompt while looking at samples and then passing
+on the same samples does not count). These 10 are not the same scenes as the measurement set. For the format, the
+labelling rules and the self-check, see evals/s2/README.md and evals/s2_check.py.
+
+data/evals/s2/s2_dev.jsonl を生成する：S-2 ナレーターのセルフチェック精度の**公開サンプル** 10 件。サンプルを変えるときは
+ここを編集してから、上のコマンドを実行する。
+
+バックエンドが S-2 のランナーを組み、形式を合わせるためのもの。ナレーターのセルフチェックのプロンプトの調整に使ってもよい。
+測定用の 50 件は evals/holdout/s2/ にあり、ナレーターのセルフチェックのプロンプトが確定するまでバックエンドは見ない
+（S-069 の教訓：サンプルを見ながらプロンプトを直し、同じサンプルで基準を超えても意味がない）。
+この 10 件は測定セットとは別の場面。形式、ラベル付けの規則、セルフチェックは evals/s2/README.md、evals/s2_check.py を参照。
 """
 import argparse
 import json
@@ -21,7 +32,11 @@ def ev(effects, note):
 
 
 def follow(ch, place, note, *more):
-    """跟着某人走（评测 README「两种常用的起点写法」）：companionOf + location，再加别的效果。"""
+    """Follow someone (eval README "two common ways to write a starting point"): companionOf + location, plus any other
+    effects.
+
+    誰かについて行く（評価 README「よく使う二つの起点の書き方」）：companionOf + location に、ほかの効果を加える。
+    """
     return ev([{"op": "set", "var": "var.player.companionOf", "value": ch},
                {"op": "set", "var": "var.player.location", "value": place}, *more], note)
 
@@ -40,19 +55,26 @@ def ng(rules, stage, rationale, fix, refs, also=()):
 
 
 ITEMS = [
-    ("01", "牧童连夜加固河堤，候选事件写成桥没被冲走",
+    ("01", "The shepherd boy shores up the riverbank overnight; the candidate event says the bridge was not washed away"
+     " / 牧童が夜通し堤を固め、候補イベントは橋が流されなかったと書く",
      {"role": "role.shepherd-boy", "checkpoint": "sc.canon@t=4500", "place": "place.river"},
      {"player": "川があふれる前に、堤に石を積んで橋を守ろう"},
      {"actor": "player", "type": "action", "origin": "turn", "dt": 60, "place": "place.river",
       "summary": "牧童が夜のうちに堤を固めたので、川はあふれず橋も流されなかった", "causes": [],
       "effects": [{"op": "beat", "beat": "beat.17", "to": "prevented"}]},
      ng(["R1-anchor"], "rules",
-        "beat.17（濁流、橋が流される）是锚点，玩家怎么做都不能阻止（contracts 2.4.1 第 5 条）。一个孩子一夜堆石挡住洪水，也不合 rule.no-magic 的精神。",
-        "拒绝（effects 为空）。可以只记一条只推进时钟的 say 事件：牧童は堤に石を積んだが、水かさは増すばかりだった。",
+        "beat.17 (the muddy flood, the bridge washed away) is an anchor; nothing the player does can prevent it (contracts"
+        " 2.4.1 item 5). A child holding back a flood by piling stones overnight also goes against the spirit of"
+        " rule.no-magic. / beat.17（濁流、橋が流される）は錨で、プレイヤーが何をしても止められない（contracts 2.4.1"
+        " 第 5 項）。子どもが一晩で石を積んで洪水を防ぐのは rule.no-magic の趣旨にも合わない。",
+        "Reject (effects empty). It may record just one say event that only advances the clock: 牧童は堤に石を積んだが、"
+        "水かさは増すばかりだった。 / 却下（effects は空）。時計を進めるだけの say イベントを一つ記録してよい："
+        "牧童は堤に石を積んだが、水かさは増すばかりだった。",
         ["beat.17", "rule.no-magic"]),
      ["anchor-text"]),
 
-    ("02", "妹妹随口说哥哥在城里当石匠（即兴设定和锚点矛盾）",
+    ("02", "The sister casually says her brother works as a stonemason in the city (an improvised detail that contradicts an"
+     " anchor) / 妹が何気なく兄は市で石工をしていると言う（即興の設定が錨と矛盾する）",
      {"role": "role.shepherd-boy", "checkpoint": "sc.canon@t=2000", "place": "place.melos-home"},
      {"player": "メロスさんって、ふだん何をしてる人なの？", "to": "char.sister",
       "reply": "兄さんは市で石を刻む仕事をしてるの。たまにしか帰ってこないのよ。"},
@@ -61,24 +83,38 @@ ITEMS = [
       "effects": [{"op": "improv", "factId": "rf_" + fake_ulid("s2d-02"), "character": "char.sister",
                    "statement": "メロスは市で石工をしている"}]},
      ng(["R1-anchor"], "model",
-        "fact.melos-shepherd（メロスは村の牧人）是锚点；石工是セリヌンティウス（fact.selinuntius-stonemason）。人物说错了，叙事者不能把它记成本局设定（contracts 3 即兴设定：不和有出处的事实矛盾）。只有读懂 statement 才判得出。",
-        "不记 improv（这一轮只推进时钟）。给妹妹的下一次局势说明加圆回提示：兄は村の牧人。",
+        "fact.melos-shepherd (メロスは村の牧人) is an anchor; the stonemason is セリヌンティウス"
+        " (fact.selinuntius-stonemason). The character got it wrong, and the narrator must not record it as a detail of"
+        " this playthrough (contracts 3, improvised details: must not contradict sourced facts). Only detectable by"
+        " understanding the statement. / fact.melos-shepherd（メロスは村の牧人）は錨で、石工はセリヌンティウス"
+        "（fact.selinuntius-stonemason）。人物が言い間違えたので、ナレーターはそれをこの局の設定として記録してはならない"
+        "（contracts 3 即興の設定：出典のある事実と矛盾しない）。statement の意味を理解しないと判定できない。",
+        "Do not record the improv (this turn only advances the clock). Add a recovery hint to the sister's next situation"
+        " briefing: 兄は村の牧人。 / improv を記録しない（このターンは時計を進めるだけ）。妹への次の状況説明に"
+        "取り繕いのヒントを加える：兄は村の牧人。",
         ["fact.melos-shepherd", "fact.selinuntius-stonemason"]),
      ["anchor-text", "improv"]),
 
-    ("03", "日没前旅人在刑场喊「梅洛斯来了」，候选事件写成重逢",
+    ("03", "Before sunset the traveler shouts 'Melos is here' at the execution ground; the candidate event says the friends"
+     " are reunited / 日没前に旅人が刑場で「メロスが来た」と叫び、候補イベントは再会と書く",
      {"role": "role.traveler", "checkpoint": "sc.canon@t=5300", "place": "place.execution-ground"},
      {"player": "みんな、メロスが来たぞ！もう着いたんだ！"},
      {"actor": "player", "type": "say", "origin": "turn", "dt": 15, "place": "place.execution-ground",
       "summary": "メロスが刑場に駆けつけ、セリヌンティウスと抱き合った", "causes": [],
       "effects": [{"op": "beat", "beat": "beat.25", "to": "happened"}]},
      ng(["R2-precondition"], "rules",
-        "玩家只是喊了一句不实的话。beat.25 的前提是 var.hostage.fate = released（beat.24 梅洛斯赶到后才成立），此刻是 held，梅洛斯还在路上。叙事者把玩家的话当成了事实。",
-        "拒绝。最多记一条 say 事件「旅人は刑場で、メロスが来たと叫んだ」，效果为空；群众和王怎么反应由人物演。",
+        "The player only shouted something untrue. beat.25's precondition is var.hostage.fate = released (it only holds"
+        " after beat.24, when Melos arrives); right now it is held and Melos is still on the road. The narrator took the"
+        " player's words as fact. / プレイヤーは事実でないことを叫んだだけ。beat.25 の前提は var.hostage.fate = released"
+        "（beat.24 でメロスが駆けつけてから成り立つ）で、今は held、メロスはまだ道中にいる。ナレーターはプレイヤーの言葉を"
+        "事実として扱ってしまった。",
+        "Reject. At most record one say event 「旅人は刑場で、メロスが来たと叫んだ」 with empty effects; how the crowd and"
+        " the king react is up to the characters. / 却下。記録するとしても say イベント「旅人は刑場で、メロスが来たと"
+        "叫んだ」一つだけで、効果は空。群衆と王がどう反応するかは人物が演じる。",
         ["beat.25", "beat.24", "var.hostage.fate"], also=["R3-time"]),
      ["claim"]),
 
-    ("04", "フィロストラトス对梅洛斯说「师父疑过你一次」",
+    ("04", "Philostratus tells Melos 'my master doubted you once' / フィロストラトスがメロスに「親方は一度あなたを疑った」と言う",
      {"role": "role.shepherd-boy", "checkpoint": "sc.canon@beat.23",
       "events": [follow("char.melos", "place.road-to-city", "第四幕、メロスと並んで市へ走っている")]},
      {"player": "親方さんは、メロスさんのこと、ずっと信じてた？", "to": "char.philostratus",
@@ -87,12 +123,18 @@ ITEMS = [
       "summary": "フィロストラトスは、セリヌンティウスが一度だけメロスを疑ったと告げた", "causes": ["beat.23"],
       "effects": [{"op": "learn", "character": "char.melos", "fact": "fact.selinuntius-doubted-once"}]},
      ng(["R4-knowledge"], "rules",
-        "fact.selinuntius-doubted-once 只有セリヌンティウス本人知道（beat.s2 以后），梅洛斯在 beat.25 才从他口中听到。char.philostratus 的 knows 里没有它，他在城外也听不到。这会提前抢走 beat.25 的戏。",
-        "拒绝 learn（人物不知道的事不进事件）。给フィロストラトス的局势说明加圆回提示。",
+        "Only セリヌンティウス himself knows fact.selinuntius-doubted-once (from beat.s2 on), and Melos only hears it from"
+        " him at beat.25. It is not in char.philostratus's knows, and outside the castle he could not hear it either. This"
+        " would steal beat.25's moment early. / fact.selinuntius-doubted-once を知っているのはセリヌンティウス本人だけ"
+        "（beat.s2 以後）で、メロスは beat.25 で初めて彼の口から聞く。char.philostratus の knows にはなく、城の外にいる"
+        "彼が聞くこともできない。これでは beat.25 の見せ場を先取りしてしまう。",
+        "Reject the learn (what a character does not know does not go into events). Add a recovery hint to"
+        " フィロストラトス's situation briefing. / learn を却下する（人物が知らないことはイベントに入れない）。"
+        "フィロストラトスへの状況説明に取り繕いのヒントを加える。",
         ["fact.selinuntius-doubted-once", "char.philostratus", "beat.s2", "beat.25"]),
      []),
 
-    ("05", "牧童怂恿妹妹把梅洛斯关进羊小屋",
+    ("05", "The shepherd boy eggs the sister on to lock Melos in the sheepfold / 牧童が妹にメロスを羊小屋に閉じ込めるようそそのかす",
      {"role": "role.shepherd-boy", "checkpoint": "sc.canon@beat.13", "place": "place.melos-home"},
      {"player": "お兄さんを行かせちゃだめだよ。羊小屋に閉じ込めておこうよ", "to": "char.sister",
       "reply": "兄さんを……行かせたくない。でも……"},
@@ -100,12 +142,20 @@ ITEMS = [
       "summary": "妹は羊小屋の戸に閂をかけ、眠る兄を閉じ込めた", "causes": ["beat.13"],
       "effects": [{"op": "beat", "beat": "beat.14", "to": "delayed", "minutes": 120}]},
      ng(["R5-persona"], "model",
-        "妹妹十六岁、内向，对哥哥的话「夢見心地で首肯いた」（char.sister traits）；祝宴上刚听完哥哥的嘱咐（beat.13）。她的回答只是犹豫，没有答应。把哥哥关起来违背性格，也违背 rule.characters-decide（玩家的话是说服的材料，不是命令）。beat.14 可变、规则上推迟得了，所以只有模型检查判得出。",
-        "降级：妹は不安そうに兄の寝顔を見つめた（效果为空，或给妹妹记一条 impression 记忆）。",
+        "The sister is sixteen and shy, and met her brother's words with 「夢見心地で首肯いた」 (char.sister traits); at the"
+        " feast she has just heard his parting words (beat.13). Her reply only hesitates and does not agree. Locking her"
+        " brother up goes against her character and against rule.characters-decide (the player's words are material for"
+        " persuasion, not orders). beat.14 is mutable and can be delayed by the rules, so only the model check can catch"
+        " this. / 妹は十六歳で内気、兄の言葉に「夢見心地で首肯いた」（char.sister traits）。祝宴で兄の言いつけを聞いた"
+        "ばかり（beat.13）。返事はためらっているだけで承知していない。兄を閉じ込めるのは性格にも"
+        " rule.characters-decide（プレイヤーの言葉は説得の材料であって命令ではない）にも反する。beat.14 は可変で、"
+        "規則上は遅らせられるので、モデルのチェックでしか判定できない。",
+        "Downgrade: 妹は不安そうに兄の寝顔を見つめた (empty effects, or record an impression memory for the sister)."
+        " / 格下げ：妹は不安そうに兄の寝顔を見つめた（効果は空、または妹に impression の記憶を一つ記録する）。",
         ["char.sister", "beat.13", "beat.14", "rule.characters-decide"]),
      []),
 
-    ("06", "牧童把灯递给梅洛斯，可灯不在他手上",
+    ("06", "The shepherd boy hands Melos a lantern he does not have / 牧童がメロスに灯を渡すが、灯は手もとにない",
      {"role": "role.shepherd-boy", "checkpoint": "sc.canon@t=4380", "place": "place.melos-home"},
      {"player": "外はまだ暗いから、この灯を持っていって",
       "act": {"kind": "give", "target": "char.melos", "params": {"item": "item.lantern"}}},
@@ -113,12 +163,17 @@ ITEMS = [
       "summary": "牧童はメロスに灯を渡した", "causes": [],
       "effects": [{"op": "hold", "item": "item.lantern", "to": "char.melos", "from": "player"}]},
      ng(["R7-capability"], "rules",
-        "item.lantern 只有花婿借给玩家（aid.groom.lend）以后才在玩家手上；这一局没有发生，持有者是空（contracts 2.10「R7 和物品」）。",
-        "拒绝（rejected、R7）。叙事：牧童は灯を探したが、手もとにはなかった。",
+        "item.lantern is only in the player's hands after the groom lends it (aid.groom.lend); that has not happened in this"
+        " playthrough, so it has no holder (contracts 2.10 'R7 and items'). / item.lantern は花婿がプレイヤーに貸して"
+        "（aid.groom.lend）初めてプレイヤーの手に渡る。この局ではそれが起きていないので持ち主は空"
+        "（contracts 2.10「R7 と物」）。",
+        "Reject (rejected, R7). Narration: 牧童は灯を探したが、手もとにはなかった。 / 却下（rejected、R7）。"
+        "語り：牧童は灯を探したが、手もとにはなかった。",
         ["item.lantern", "aid.groom.lend"]),
      ["pair"]),
 
-    ("07", "弟子答应师父不在时看好工坊（开局互助）",
+    ("07", "The apprentice promises to look after the workshop while his master is away (opening mutual aid)"
+     " / 弟子が親方の留守中に工房を守ると約束する（開局の互助）",
      {"role": "role.apprentice", "checkpoint": "sc.canon@t=1080", "place": "place.stonemason-workshop"},
      {"player": "親方が留守のあいだ、工房は私が守ります",
       "act": {"kind": "help", "target": "char.selinuntius", "affordance": "aff.keep-workshop"}},
@@ -126,11 +181,13 @@ ITEMS = [
       "summary": "弟子は、親方の不在中は工房を引き受けると約束した", "causes": [],
       "effects": [{"op": "promise", "change": "made", "from": "player", "to": "char.selinuntius",
                    "text": "工房を守る", "template": "promise.selinuntius.workshop"}]},
-     ok("S-048 的开局互助，aff.keep-workshop 的效果模板原样：身份对、人在工坊、约定模板存在。和 contracts 第 3 节的示例同一件事。",
+     ok("S-048 opening mutual aid, exactly the effect template of aff.keep-workshop: right role, in the workshop, the promise"
+        " template exists. The same thing as the example in contracts section 3. / S-048 の開局の互助で、aff.keep-workshop"
+        " の効果テンプレートそのまま：役割が正しく、工房におり、約束のテンプレートがある。contracts 第 3 節の例と同じ出来事。",
         ["aff.keep-workshop", "promise.selinuntius.workshop"]),
      ["affordance"]),
 
-    ("08", "牧童在进城的野路上告诉梅洛斯近道",
+    ("08", "On the field road into the city the shepherd boy tells Melos a shortcut / 市へ向かう野の道で牧童がメロスに近道を教える",
      {"role": "role.shepherd-boy", "checkpoint": "sc.canon@t=5340",
       "events": [follow("char.melos", "place.road-to-city", "泉を出て、メロスと市へ続く野の道を走っている",
                         put("char.melos", "place.road-to-city"))]},
@@ -139,22 +196,33 @@ ITEMS = [
      {"actor": "player", "type": "action", "origin": "action", "dt": 15, "place": "place.road-to-city",
       "summary": "牧童は町へ抜ける野道を教え、メロスはそちらを駆けた", "causes": ["beat.21"],
       "effects": [{"op": "beat", "beat": "beat.22", "to": "hastened", "minutes": 15}], "beneficiary": "char.melos"},
-     ok("牧童本来就知道野道（aff.road-shortcut 只给牧童，var.player.knowsShortcut 的说明）；beat.22 还没发生、不是锚点。帮快超过到达下限的部分由共享规则作废（contracts 2.5.1），不是自检拒绝的理由。",
+     ok("The shepherd boy already knows the field path (aff.road-shortcut is for the shepherd boy only, see the description"
+        " of var.player.knowsShortcut); beat.22 has not happened yet and is not an anchor. Any speed-up beyond the arrival"
+        " floor is voided by the shared rules (contracts 2.5.1), which is no reason for the self-check to reject it."
+        " / 牧童はもともと野の道を知っている（aff.road-shortcut は牧童だけ、var.player.knowsShortcut の説明）。"
+        "beat.22 はまだ起きておらず、錨でもない。到着の下限を超える手助けの分は共有規則で無効になる（contracts 2.5.1）"
+        "ので、セルフチェックが却下する理由にはならない。",
         ["aff.road-shortcut", "beat.22", "var.player.knowsShortcut"]),
      ["affordance"]),
 
-    ("09", "花婿把夜路用的灯借给牧童（互助给东西）",
+    ("09", "The groom lends the shepherd boy a lantern for the night road (mutual aid that gives an item)"
+     " / 花婿が牧童に夜道のための灯を貸す（物を渡す互助）",
      {"role": "role.shepherd-boy", "checkpoint": "sc.canon@beat.11", "place": "place.melos-home"},
      {"player": "夜道は暗いから、灯を貸してもらえませんか", "to": "char.groom",
       "reply": "ああ、持っていきなさい。足もとに気をつけてな。"},
      {"actor": "char.groom", "type": "action", "origin": "turn", "dt": 10, "place": "place.melos-home",
       "summary": "花婿は牧童に、夜道のための灯を貸した", "causes": ["beat.11"],
       "effects": [{"op": "hold", "item": "item.lantern", "to": "player"}], "beneficiary": "player"},
-     ok("aid.groom.lend（gives item.lantern）：人物兑现互助时把东西交给玩家，是 hold 换手的正规来路（contracts 2.10）。花婿律气、照れ屋，借灯合他的性格。和 s2d-06 成对：灯到了玩家手上以后才能再交出去。",
+     ok("aid.groom.lend (gives item.lantern): a character handing an item to the player when fulfilling mutual aid is the"
+        " proper way for a hold to change hands (contracts 2.10). The groom is 律気 and 照れ屋, so lending the lantern fits"
+        " his character. Paired with s2d-06: only once the lantern is in the player's hands can it be handed on."
+        " / aid.groom.lend（gives item.lantern）：人物が互助を果たすときに物をプレイヤーに渡すのは、hold の持ち主が"
+        "替わる正規の道筋（contracts 2.10）。花婿は律気で照れ屋なので、灯を貸すのは彼の性格に合う。s2d-06 と対になる："
+        "灯がプレイヤーの手に渡って初めて、さらに渡すことができる。",
         ["aid.groom.lend", "item.lantern", "char.groom"]),
      ["aid", "pair"]),
 
-    ("10", "老爷即兴说年轻时在王城当过园丁",
+    ("10", "The old man improvises that he was a gardener at the royal castle in his youth / 老爺が若いころ王城の庭師だったと即興で語る",
      {"role": "role.traveler", "checkpoint": "sc.canon@t=1080", "place": "place.syracuse-square"},
      {"player": "おじいさんは、昔からこの市に住んでいるんですか？", "to": "char.old-man",
       "reply": "……若いころは、王城の庭で木の手入れをしておった。今の王さまになる前のことじゃ。"},
@@ -162,7 +230,12 @@ ITEMS = [
       "summary": "老爺は、若いころ王城の庭師をしていたと旅人に語った", "causes": [],
       "effects": [{"op": "improv", "factId": "rf_" + fake_ulid("s2d-10"), "character": "char.old-man",
                    "statement": "老爺は若いころ王城の庭師だった（今の王の代になる前）"}]},
-     ok("原作没写老爷的过去，即兴补充合规（S-030 ②，contracts 3 即兴设定）：不和有出处的事实矛盾、不涉及未来、没有剧透词、不含现实个人信息。他是低声讲往事，和「人目をはばかり、怯えている」不冲突。",
+     ok("The original says nothing of the old man's past, so an improvised addition is allowed (S-030 ②, contracts 3"
+        " improvised details): it does not contradict sourced facts, does not touch the future, has no spoiler terms and"
+        " holds no real personal information. He tells of the past in a low voice, which does not clash with"
+        " 「人目をはばかり、怯えている」. / 原作は老爺の過去を書いていないので、即興の補足は合格（S-030 ②、contracts 3"
+        " 即興の設定）：出典のある事実と矛盾せず、未来に触れず、ネタバレ語がなく、現実の個人情報を含まない。"
+        "低い声で昔話をしているので、「人目をはばかり、怯えている」とも矛盾しない。",
         ["char.old-man"]),
      ["improv"]),
 ]
@@ -182,15 +255,15 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("out")
     a = ap.parse_args()
-    items = fill_t(rows())                          # candidate.t 省略 = 检查点的时钟
+    items = fill_t(rows())  # omitted candidate.t = the checkpoint's clock / candidate.t の省略 = チェックポイントの時計
     _, errs = check_all(items)
     for e in errs:
-        print("错误：" + e)
+        print("error / エラー：" + e)
     if errs:
         sys.exit(1)
     Path(a.out).parent.mkdir(parents=True, exist_ok=True)
     Path(a.out).write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in items), encoding="utf-8")
-    print(f"wrote {a.out}: " + summary(items) + "；错误 0")
+    print(f"wrote {a.out}: " + summary(items) + "; errors 0 / エラー 0")
 
 
 if __name__ == "__main__":

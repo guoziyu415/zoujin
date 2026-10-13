@@ -36,19 +36,17 @@ goes back on the queue and the exception is raised.
 単一トランザクションでコミット → NOTIFY。
 
 タスクは turns テーブルの 1 行（backend-design 3.4）：
-- open：ゲーム開始。W-1 の initial_state から役柄の startT まで settle し、
-  開始前に時刻が来たビートはシステムイベントとして
-  書く。
+- open：ゲーム開始。W-1 の initial_state から役柄の startT まで settle し、開始前に時刻が来たビートは
+  システムイベントとして書く。
 - talk：対話 1 ターン。パイプライン（`narrator/pipeline.py`：振り分け → 抽出 → 第 3 ステップの規則 → 第 4 ステップの
   モデルの検査 → 書き換え、格下げ、または却下）→ 候補イベント（却下されたものも effects を空にして書く）、このターンの
   時間（時計を進めるだけの say イベント 1 つ）、その間に時刻が来たビートをコミットする。抽出か検査が 2 回とも
   タイムアウトしたら、時計のイベントだけをコミットし、候補は捨て、`playthrough_metrics` に 1 回記録する。
 - advance：早送り（テストと評価専用）。
 - B-3：action（アクション、`narrator/actions.py`）、choose（幕末の行き先の選択）、plan（幕末のプランの表明、
-  `narrator/plans.py`）。コミットのたびにこの幕が閉じたかを見る（`Writer.closed`）：
-  閉じたら幕末の行き先をゲームに記録し、
-  `act_ended` をプッシュする。幕を閉じたあと、選ぶ前に順番が来た対話とアクションは 0 分で、イベントを書かず、モデルも
-  呼ばない。コミット後にプッシュするメッセージ（演出、turn_settled、action_result、act_plan_result、act_transition、
+  `narrator/plans.py`）。コミットのたびにこの幕が閉じたかを見る（`Writer.closed`）：閉じたら幕末の行き先を
+  ゲームに記録し、`act_ended` をプッシュする。幕を閉じたあと、選ぶ前に順番が来た対話とアクションは 0 分で、
+  イベントを書かず、モデルも呼ばない。コミット後にプッシュするメッセージ（演出、turn_settled、action_result、act_plan_result、act_transition、
   act_ended）は順に `turns.result` に記録し、ゲートウェイは commit をプッシュしたあとその順にプッシュする。
 - B-4：confirm（意図の確認への返答、`narrator/confirm.py`）。対話で確認が要る候補は下書きとして保存する。対話と音声で
   言ったプランにはコミットの猶予（`turns.commit_after`）がある：判定が済んでも時間前なら待ち（トランザクションは
@@ -109,7 +107,8 @@ log = logging.getLogger("zoujin.narrator")
 
 Json = Any
 
-CHANNEL = "zoujin_commit"  # NOTIFY after commit; the gateway LISTENs / コミット後に NOTIFY し、ゲートウェイが LISTEN する
+# NOTIFY after commit; the gateway LISTENs / コミット後に NOTIFY し、ゲートウェイが LISTEN する
+CHANNEL = "zoujin_commit"
 LEASE = timedelta(seconds=30)
 MAX_ATTEMPTS = 3
 MAX_STALE = 5
@@ -150,10 +149,9 @@ class Task:
     # Money already spent on this task (B-8 item 7): the passes redone from the check (Stale) added together; when
     # committed it goes into playthrough_metrics with the commit, and when not (retracted, failed, stopped)
     # `Narrator.charge` records it, so each game's spend matches the ledger.
-    # この処理ですでに使ったお金（B-8 第 7 項）：検査からやり直した（Stale）分をまとめたもの。コミットしたらコミットと
-    # 一緒に playthrough_metrics に書き、コミットしなかった（取り消し、エラー、停止）
-    # ら `Narrator.charge` が補って記録する。
-    # こうしてゲームごとの支出が台帳と一致する。
+    # この処理ですでに使ったお金（B-8 第 7 項）：検査からやり直した（Stale）分をまとめたもの。コミットしたら
+    # コミットと一緒に playthrough_metrics に書き、コミットしなかった（取り消し、エラー、停止）ら
+    # `Narrator.charge` が補って記録する。こうしてゲームごとの支出が台帳と一致する。
     spend: Spend = field(default_factory=Spend, compare=False)
 
 
@@ -335,7 +333,9 @@ class Narrator:
         """
         async with self.engine.begin() as c:
             for draft_id in await store.expire_drafts(c, self.ids, pid):
-                log.info("Draft %s expired; writing a timeout task / 下書きの期限切れ、タイムアウトのタスクを書く", draft_id)
+                log.info(
+                    "Draft %s expired; writing a timeout task / 下書きの期限切れ、タイムアウトのタスクを書く", draft_id
+                )
 
     async def claim(self, pid: str) -> Task | None:
         async with self.engine.begin() as c:
@@ -549,9 +549,8 @@ class Narrator:
         """This turn's words from the player and the character. For the character take the first line: the intent
         confirmation's counter-question (B-4) is also attached to the original turn, after the reply.
 
-        このターンのプレイヤーと登場人物の発話。登場人物は最初の一言を取る：意図の確認の聞き返し（B-4）
-        も元のターンの下に
-        ぶら下がり、返答のあとに並ぶ。
+        このターンのプレイヤーと登場人物の発話。登場人物は最初の一言を取る：意図の確認の聞き返し（B-4）も
+        元のターンの下にぶら下がり、返答のあとに並ぶ。
         """
         async with self.engine.connect() as c:
             rows = (
@@ -936,7 +935,8 @@ class Narrator:
     async def _schedule_world(self, c: AsyncConnection, task: Task, pt: Mapping[str, Any], w: Writer) -> None:
         """B-16: queue world advancement after dialogue, action and confirmation commits (after this commit's events
         are written, in the same transaction): an event with keyMoment → `key`; the act's judged dialogue turns reach a
-        multiple of 8 → `mid`. Nothing is queued if the act has closed, the ending has started, or the game isn't active.
+        multiple of 8 → `mid`. Nothing is queued if the act has closed, the ending has started, or the game isn't
+        active.
 
         B-16：対話、アクション、確認のコミットのあとに世界の進行を積む（今回のイベントを書き込んだあと、同じ
         トランザクションの中で）：keyMoment のイベントがある → `key`。この幕で判定済みの対話ターンが 8 の倍数に達した →
@@ -990,7 +990,8 @@ class Narrator:
             stop = e
         except Exception:
             log.exception(
-                "Writing memories failed (%s); pushing the turn as usual / 記憶の書き込みに失敗、ターンは通常どおりプッシュする",
+                "Writing memories failed (%s); pushing the turn as usual"
+                " / 記憶の書き込みに失敗、ターンは通常どおりプッシュする",
                 task.turn_id,
             )
         async with self.engine.begin() as c:
@@ -1008,8 +1009,7 @@ class Narrator:
 
         記憶を保存し、件数と費用を記録する。今回の記憶の変化（文章なし）は turns.result.memories に書き、ゲートウェイが
         commit を組み立てるときに文章を取る。その間にゲームが削除されていたら 1 行も書かず（外部キー）、
-        このターンの件数を
-        記録する先がないだけ。
+        このターンの件数を記録する先がないだけ。
         """
         exists = await c.scalar(
             select(playthroughs.c.playthrough_id).where(playthroughs.c.playthrough_id == task.pid).with_for_update()
@@ -1069,7 +1069,8 @@ COST_COLUMNS = {
     "narrate": "cost_narrate_usd",
     "plan": "cost_plan_usd",
     "ending": "cost_ending_usd",
-    "ending-check": "cost_ending_usd",  # B-17: ending model check counts as ending / エンディングの検査はエンディングの列
+    # B-17: the ending model check counts in the ending column / エンディングのモデルの検査はエンディングの列に入れる
+    "ending-check": "cost_ending_usd",
     "world": "cost_world_usd",  # B-16
 }
 COUNT_COLUMNS = {

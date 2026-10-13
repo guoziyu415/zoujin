@@ -446,8 +446,10 @@ def test_sdk_errors_and_the_key_never_leave(
         errors.append(e2.value)
     assert len(seen) == 6  # the SDK does not retry on its own / SDK は自分では再試行しない
     assert [str(e) for e in errors] == [
-        "Claude returned 429 (rate limited or overloaded); stopping / Claude が 429 を返した（レート制限または過負荷）。停止する",
-        "Claude returned 529 (rate limited or overloaded); stopping / Claude が 529 を返した（レート制限または過負荷）。停止する",
+        "Claude returned 429 (rate limited or overloaded); stopping / "
+        "Claude が 429 を返した（レート制限または過負荷）。停止する",
+        "Claude returned 529 (rate limited or overloaded); stopping / "
+        "Claude が 529 を返した（レート制限または過負荷）。停止する",
         "Claude HTTP 500 api_error (message not logged / メッセージは記録しない)",
         "Claude HTTP 400 invalid_request_error (message not logged / メッセージは記録しない)",
     ]
@@ -547,7 +549,8 @@ def test_tier_override_moves_keys_and_ids(monkeypatch: pytest.MonkeyPatch) -> No
     monkeypatch.setenv("ZJ_TEXT_MODELS", "check=haiku-5.6")
     _, problems = claude_ids(ENV)
     assert problems == [
-        "two versions configured for the same tier / 同じティアに 2 つのバージョンが設定されている: haiku-5.5, haiku-5.6"
+        "two versions configured for the same tier / 同じティアに 2 つのバージョンが設定されている: "
+        "haiku-5.5, haiku-5.6"
     ]
 
 

@@ -83,22 +83,22 @@ class StepResult(TypedDict):
     （StepResult.フィールド）」と記録する。
     """
 
-    reply: NotRequired[
-        str | None
-    ]  # the character's reply text; None when the character did not speak / 人物の返答の文字。話さなかったら None
+    # the character's reply text; None when the character did not speak / 人物の返答の文字。話さなかったら None
+    reply: NotRequired[str | None]
     # the character spoke but there is no text (backend-design 3.1); recorded as "no character text"
     # 人物が話したが文字がない（backend-design 3.1）。「原文なし」と記録する
     characterTextMissing: NotRequired[bool]
     # All events this step wrote to the log, in seq order, each with eventId and seq: the candidate events (committed
     # and vetoed) and the system events settled when due within this step (origin = schedule). For a vetoed one, check
     # is added to the candidate's original effects (in the log its effects are empty, contract section 3).
-    # このステップでログに書かれた全イベント。seq 順で、どれも eventId と seq を持つ：候補イベント（コミットされたものと
-    # 拒否されたもの）と、このステップ内で時刻が来て決着したシステムイベント（origin = schedule）。拒否されたものは候補の
-    # 元の effects に check を加える（ログ上の effects は空、契約第 3 節）。
+    # このステップでログに書かれた全イベント。seq 順で、どれも eventId と seq を持つ：候補イベント（コミットされた
+    # ものと拒否されたもの）と、このステップ内で時刻が来て決着したシステムイベント（origin = schedule）。拒否された
+    # ものは候補の元の effects に check を加える（ログ上の effects は空、契約第 3 節）。
     events: NotRequired[list[Event]]
     clockMinutes: NotRequired[int]  # how many minutes the clock advanced / 時計が何分進んだか
     safetyCard: NotRequired[SafetyCard]
-    # the plan when an end-of-act plan goes ahead (contract Event.plan) / 幕末のプランが成立したときの plan（契約 Event.plan）
+    # the plan when an end-of-act plan goes ahead (contract Event.plan)
+    # 幕末のプランが成立したときの plan（契約 Event.plan）
     plan: NotRequired[dict[str, Json] | None]
     # alternative destinations the backend returns when an end-of-act plan does not go ahead
     # 幕末のプランが成立しないときにバックエンドが返す代わりの行き先

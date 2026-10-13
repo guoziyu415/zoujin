@@ -8,8 +8,8 @@ deterministic checks, and writes the report.
 - live: the live mode's switch, caps and estimated cost (the real-model client is wired in at M2);
 - cli: uv run zoujin-eval.
 
-評価ランナー（E-0）：E1〜E8 のケースを読み、バックエンドの zoujin_backend.eval_api で各ステップを実行し、決定的チェックを
-行い、レポートを出す。
+評価ランナー（E-0）：E1〜E8 のケースを読み、バックエンドの zoujin_backend.eval_api で各ステップを実行し、決定的
+チェックを行い、レポートを出す。
 
 - api：ランナーがバックエンドをどう呼ぶか（形、2 種類の例外）。
 - checks：28 種類の決定的チェック。
