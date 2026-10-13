@@ -17,7 +17,7 @@
    "assets/pipeline/common/roadside.mjs": "5f847f5f67e51ff3ec7745e6986f73f516712b2507c6a135ae6065dcb0cb679f",
    "assets/pipeline/common/small_tex.mjs": "2510e7083721b8d59d94651bf0ea91e7e2df07407c9e092471146b966be34b2c",
    "assets/pipeline/village/zones.mjs": "c404c53522678dc9a1cadcb4947100153dbbe6dc035d9c6fecd7406305088dff",
-   "assets/pipeline/village/relight.py": "c58d6bd456fdb033b41bf8e59a8c0d78f89d3d173527da5d4b09e7643ea92d93",
+   "assets/pipeline/village/relight.py": "82e95ca89b4a10dd0d0a3351585dc2a64f1773a3fa9360ee3834ee282f5036b9",
    "assets/pipeline/village/pack_sub.mjs": "902e9b8031b91a40c206132b0a6f65cc633628fb7a15cbc5775d50106712e704",
    "assets/pipeline/village/ktx2.mjs": "aebd47632e6e222d7f9ba09db9c2e929291d4bae421aeaaa9f410d848a170aef",
    "assets/pipeline/plaza/requirements.txt": "0a234e44f52fb462c7e8694ecd82b99aca8e534ac610dde2dd749bb1e2cbe0e3",
@@ -401,7 +401,7 @@
   "bark_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "805f6b553356ff94f9ae08491c8569e4a606ada79c5895644b61cc15138e956a",
+   "sourceSha256": "8e4395bf36d542b8bbcab9edd2254a5b8c0cdbf9949e5a96f638231632e80d1e",
    "std": {
     "file": "tex/std/bark_base.ktx2",
     "size": 1024,
@@ -416,7 +416,7 @@
   "earth_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "9a9a419301b550623519fee51d7a4abf47b311ccca951883ee6be42035755099",
+   "sourceSha256": "89ff3af82c138110788105077099917eef92dac618f14c9ca7c92fe3902a12a6",
    "std": {
     "file": "tex/std/earth_base.ktx2",
     "size": 1024,
@@ -439,7 +439,7 @@
   "earth_mr": {
    "slot": "mr",
    "from": "placeholder",
-   "sourceSha256": "54510b8311e9517727062defc77f7d486c23d30b9eb19a44bc51d602e9a7af42",
+   "sourceSha256": "356b9149894af04e156e3ff3f17d55126f6ae42ba0d72e363f3541554dc59555",
    "std": {
     "file": "tex/std/earth_mr.ktx2",
     "size": 512,
@@ -453,7 +453,7 @@
   "earth_nrm": {
    "slot": "nrm",
    "from": "placeholder",
-   "sourceSha256": "fbdb0dca5c21038724cd66caea7b6252eea39319693ba163d4e7df7a79084209",
+   "sourceSha256": "094305f7fae0dcb5c579832064f5460a7b5a768cd61f2dd84b5737c61a39268c",
    "std": {
     "file": "tex/std/earth_nrm.ktx2",
     "size": 512,
@@ -476,7 +476,7 @@
   "fig_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "08cc09ef95cae42d54888e36331b1d4d9e96fc1675f1c4ab87fa1cc3aecd3a46",
+   "sourceSha256": "780a9327091c5305426afabf722bb0a65c19f5cd620d0816c76d4a4eaecea734",
    "std": {
     "file": "tex/std/fig_base.ktx2",
     "size": 512,
@@ -490,7 +490,7 @@
   "grass_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "b8f0cfd99dbb0e01b0ef53b442b9fec97695bb3ba863159e2a02a176466bb2d0",
+   "sourceSha256": "aafe217034078f1d618cec3a696c16cb37b54c9eb60c47c38a61d7e5c7de4285",
    "std": {
     "file": "tex/std/grass_base.ktx2",
     "size": 1024,
@@ -514,7 +514,7 @@
   "grass_mr": {
    "slot": "mr",
    "from": "placeholder",
-   "sourceSha256": "c7eeae2de5241afd36aebe7ffbd80a436c692caf19467cc40a6bf3a6c8d71ad2",
+   "sourceSha256": "701a9c279067851fd6126c834c0b92e76407bc985081d2920f9c2e768d4f8627",
    "std": {
     "file": "tex/std/grass_mr.ktx2",
     "size": 512,
@@ -529,7 +529,7 @@
   "grass_nrm": {
    "slot": "nrm",
    "from": "placeholder",
-   "sourceSha256": "4236f6dfb61e8a5897864c8972763ed65d3b8f4375435115b289011f1ffa1814",
+   "sourceSha256": "d7c5891ad202c506edf9e6b4e08627963212ed5479f60c4e408788770154229e",
    "std": {
     "file": "tex/std/grass_nrm.ktx2",
     "size": 512,
@@ -553,7 +553,7 @@
   "hill_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "cec354f72b515220a4a11f87b2dc42c9fb826dbd81f8b49d685c4d1a3e2d6ccc",
+   "sourceSha256": "57426235799710d4c654f934e44a3a21179a88146defe1d12cc616cfc59d2c3c",
    "std": {
     "file": "tex/std/hill_base.ktx2",
     "size": 1024,
@@ -568,7 +568,7 @@
   "holmoak_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "36df9a0dd3f088611cefee536053a9377482412b061e178aca35e3927c03a877",
+   "sourceSha256": "4ebcd2282f4d7703e28c65c58fa25324a0eb7a1b260fe15790977057e2cfdfc2",
    "std": {
     "file": "tex/std/holmoak_base.ktx2",
     "size": 512,
@@ -583,7 +583,7 @@
   "mudplaster_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "8a3f8dd944a1e477506a05fb86a49c102190167a67ba5e055cdd009866639500",
+   "sourceSha256": "1f2e6647233bde3ebaa27f3c3544f943c20b3803726e16d1a43863f5761b8c30",
    "std": {
     "file": "tex/std/mudplaster_base.ktx2",
     "size": 1024,
@@ -597,7 +597,7 @@
   "mudplaster_mr": {
    "slot": "mr",
    "from": "placeholder",
-   "sourceSha256": "6898f8343acf92feddba090f7de9091f44c28b8bc9859daa2f8ff60399cf8782",
+   "sourceSha256": "c6f9417b0efedbd010aebaed8f97d89c077598085ee26015f7b888ab8ea6eee9",
    "std": {
     "file": "tex/std/mudplaster_mr.ktx2",
     "size": 512,
@@ -611,7 +611,7 @@
   "mudplaster_nrm": {
    "slot": "nrm",
    "from": "placeholder",
-   "sourceSha256": "95e857da54005a502b4baa5d9a8f6f43e0a6644bb9d9963d2718f3d0020d03d3",
+   "sourceSha256": "36603c8532dfbd8a1bfcbac5098b79f8d2043b4b885d9114e9f85445098e3e92",
    "std": {
     "file": "tex/std/mudplaster_nrm.ktx2",
     "size": 512,
@@ -625,7 +625,7 @@
   "outcrop_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "0c67eb4be4c13311ad0164d4d2816e8ef82e7d02375e65808f5ba0e9f1bd198a",
+   "sourceSha256": "7b9aa276ded53b50c6fe6f3954db21bc5d2bcfeaf0c26bde21ee9166b52ebefe",
    "std": {
     "file": "tex/std/outcrop_base.ktx2",
     "size": 1024,
@@ -649,7 +649,7 @@
   "outcrop_mr": {
    "slot": "mr",
    "from": "placeholder",
-   "sourceSha256": "eba85cf0d85fa6b6d9f0141236d95b53c432c2bcaa17a6a05c858b165b840f0b",
+   "sourceSha256": "dead190e8107d25916a938792fcd551966b262985d76d1fe18547ba1e7668acf",
    "std": {
     "file": "tex/std/outcrop_mr.ktx2",
     "size": 512,
@@ -664,7 +664,7 @@
   "outcrop_nrm": {
    "slot": "nrm",
    "from": "placeholder",
-   "sourceSha256": "435cd8ad4d3f478bd05d9420517cb42ea406f2fffa47230c8c4f78c8ee776043",
+   "sourceSha256": "503be1d1f2c66743cae686f990f3fceb1f4c3b95cdb9828c8b86e1b3863081a9",
    "std": {
     "file": "tex/std/outcrop_nrm.ktx2",
     "size": 512,
@@ -688,7 +688,7 @@
   "poplar_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "8231defa6ddd3f9bc1bc74cf4e08627cbe36ed23f5500b09ec4a54507dd2a8ad",
+   "sourceSha256": "2af66bfc7c5ec5d7c240b641f0473d3007e3466115fc9eba26a741a898307bc1",
    "std": {
     "file": "tex/std/poplar_base.ktx2",
     "size": 512,
@@ -703,7 +703,7 @@
   "road_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "c2b1f60c8c91f8ad21911e7388b1b7f050797b4baedb43ba9869a7d9ddec9ed5",
+   "sourceSha256": "3433ad0cda4a644ea50b0724392f850a3c7385b762f0f39569c3a30faa2d31e0",
    "std": {
     "file": "tex/std/road_base.ktx2",
     "size": 1024,
@@ -727,7 +727,7 @@
   "road_mr": {
    "slot": "mr",
    "from": "placeholder",
-   "sourceSha256": "187a685e6019e16e8e8260e8e6f6cfb69d2cba9c50e04e734a01f3157ffb87dc",
+   "sourceSha256": "40eade6f8970568b962fc428cff25d5c77da9eac8484b55acca6600a3d4d6363",
    "std": {
     "file": "tex/std/road_mr.ktx2",
     "size": 512,
@@ -742,7 +742,7 @@
   "road_nrm": {
    "slot": "nrm",
    "from": "placeholder",
-   "sourceSha256": "4bfc6d511a791f43bd878350aaee024b686a9f87f89b95e8d1b4401ba7670cc9",
+   "sourceSha256": "551a30592d946f8684a4fce4113affe3c37f0df833c690135362e5a638931ed2",
    "std": {
     "file": "tex/std/road_nrm.ktx2",
     "size": 512,
@@ -766,7 +766,7 @@
   "roofwarm_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "2ad4a4cc6b10e37be4cc6edf53caf8cefd6da2937e3c339a4f023d2f8b565b6f",
+   "sourceSha256": "4b6f5512bf98fda4f723b603bf65ea08f46d28c62d050f6e27acb0f73be814a8",
    "std": {
     "file": "tex/std/roofwarm_base.ktx2",
     "size": 1024,
@@ -780,7 +780,7 @@
   "stubble_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "684b4a493642149c738bd54a32cdb76f64d8427a28761a96343c9206243dd714",
+   "sourceSha256": "bdcd610f4304a37010841fc75d8248540565d7681a652a0c0b2b3b26e0439960",
    "std": {
     "file": "tex/std/stubble_base.ktx2",
     "size": 1024,
@@ -794,7 +794,7 @@
   "stubble_mr": {
    "slot": "mr",
    "from": "placeholder",
-   "sourceSha256": "ca8b77f96e3321e289361c63a1a234c481373652735916886d11079173b2968d",
+   "sourceSha256": "fd42c24b180cb479164faaf2ce585839c6f83ec7afad7a7eb1c85d27cfa7406f",
    "std": {
     "file": "tex/std/stubble_mr.ktx2",
     "size": 512,
@@ -808,7 +808,7 @@
   "thatch_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "6bd71d106a49a149fcbe02443bacc49f0d6afbe505472424a72e85f4b0016442",
+   "sourceSha256": "9142184d4966f20432d4d9fd0f72df9de7f0b6e9bc57d13caeb2e147dea32d2a",
    "std": {
     "file": "tex/std/thatch_base.ktx2",
     "size": 1024,
@@ -822,7 +822,7 @@
   "vine_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "742061141cd5ed1088b15e62e9ce4ea6f1aa4b215e3f34d5cc0a399c6e64e2bb",
+   "sourceSha256": "745af7eb75f563577511e5437190b8b7f45746b46146dcfceed8703a6ec6eff5",
    "std": {
     "file": "tex/std/vine_base.ktx2",
     "size": 512,
@@ -836,7 +836,7 @@
   "wheat_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "3f259df555e1db7b97491e154c3a9fc6c71b45e9ca657e5b7a980f290f41423e",
+   "sourceSha256": "9635bffb1a9fb16e1bf9b371d9806f640509434e578d22659a35a009e833b68e",
    "std": {
     "file": "tex/std/wheat_base.ktx2",
     "size": 1024,
@@ -851,7 +851,7 @@
   "wood_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "01af29ed7ca54266d0dda4eaf837b3e3d6369c920ef767bd00ffd5d236d4942d",
+   "sourceSha256": "373b939dcd7cfe75c897266dab239341e8e5bf503e5d2d39c67cda32a73d2f78",
    "std": {
     "file": "tex/std/wood_base.ktx2",
     "size": 1024,
@@ -865,7 +865,7 @@
   "wood_mr": {
    "slot": "mr",
    "from": "placeholder",
-   "sourceSha256": "2b5c1d9141887f4d54ba29cd8855e9d08e6bcceaa2fd4812e7edf831fd091b84",
+   "sourceSha256": "b790a5556c20cc4fbb218402ac54a4bc85fd2d1955848a4472b681f5aafa76c5",
    "std": {
     "file": "tex/std/wood_mr.ktx2",
     "size": 512,
@@ -879,7 +879,7 @@
   "wood_nrm": {
    "slot": "nrm",
    "from": "placeholder",
-   "sourceSha256": "9ee767d698cb65196e08387b6b64ba9745adc2bae70ef3718a7a91fc3601b9bd",
+   "sourceSha256": "d40f60dc25e58ef0bbce304ca1b87a0b12b065872e3de57823f2977d1d558ced",
    "std": {
     "file": "tex/std/wood_nrm.ktx2",
     "size": 512,
@@ -897,7 +897,7 @@
   "ground": {
    "indirect": {
     "file": "lm/ground_indirect.ktx2",
-    "K": 0.69421526525429
+    "K": 0.6942021417912176
    },
    "ao": {
     "file": "lm/ground_ao.ktx2"
@@ -907,7 +907,7 @@
   "arch": {
    "indirect": {
     "file": "lm/arch_indirect.ktx2",
-    "K": 0.8644040520435571
+    "K": 0.8814534058203923
    },
    "ao": {
     "file": "lm/arch_ao.ktx2"
@@ -1254,8 +1254,8 @@
  "files": [
   {
    "path": "geo.glb",
-   "bytes": 1329228,
-   "sha256": "29a4b95ce2804bb6c3ddc6b4606555c4a22b59b247d1118e72ac5a812d11bc46",
+   "bytes": 1327840,
+   "sha256": "a2e56d8c296496ed39cb1c5897c6ac2f8fceec6c0e5f4b2d8f3e2f467c0d1feb",
    "pack": "entry"
   },
   {
@@ -1412,15 +1412,15 @@
   },
   {
    "path": "tex/std/road_base.ktx2",
-   "bytes": 126606,
-   "sha256": "228aeb0007b5ed762968a35a6720d53483fe60bba176d9925f4b21f1ffe45aa4",
+   "bytes": 126614,
+   "sha256": "be620087fb041164c044084b7d78ce4f36351bab59b69310dee030d17f0b1a06",
    "pack": "entry",
    "shared": "road-common"
   },
   {
    "path": "tex/hi/road_base.ktx2",
-   "bytes": 329848,
-   "sha256": "52e76f49e69ca8df8cffe2f48d29241f1e10abc8425376ff5f6bd263547596a8",
+   "bytes": 329902,
+   "sha256": "a5748a567681645b69172145a677e94800a4b8de50b41223909e89b677b18565",
    "pack": "hi",
    "shared": "road-common"
   },
@@ -1502,26 +1502,26 @@
   },
   {
    "path": "lm/ground_indirect.ktx2",
-   "bytes": 181144,
-   "sha256": "9f859fa1a6e16ae8959b5b5a0a68becba242e310d24f030b085fdadfed485c13",
+   "bytes": 181407,
+   "sha256": "62e23a7ea1a2ef8a387093308bdebe00874388baf5635f60bcaeaa6690dafb67",
    "pack": "entry"
   },
   {
    "path": "lm/ground_ao.ktx2",
-   "bytes": 145797,
-   "sha256": "248dba0563cd36d5e56478b47968f6751166f48d870bd718b66a585a1fe980ad",
+   "bytes": 145745,
+   "sha256": "407a712166a77dafe1a046632921e0ae640da24ab1693f35ae5d8b9ede8765ea",
    "pack": "entry"
   },
   {
    "path": "lm/arch_indirect.ktx2",
-   "bytes": 227616,
-   "sha256": "7d373c4ee1c181aa9a03b12c1c6e3d204b52e8b31721c4d8fcc8650a88698575",
+   "bytes": 226079,
+   "sha256": "adb3aa39dfbca6fbfc4df1bce5fcc50ce18ce75048d91e9f5cae5005e5a03a23",
    "pack": "entry"
   },
   {
    "path": "lm/arch_ao.ktx2",
-   "bytes": 198234,
-   "sha256": "9e0afad621b6a1be01e58cb621ab01aadc0bd3b9b8a95f51938b4844df29d2f2",
+   "bytes": 198165,
+   "sha256": "054e60ebc39d4d9163ce053986928fdced5a937055325ec4241aabc7140e8b7e",
    "pack": "entry"
   },
   {
@@ -1532,14 +1532,14 @@
   }
  ],
  "bytes": {
-  "entry": 3400191,
+  "entry": 3397408,
   "hiExtra": 804959,
   "shared": {
-   "entry": 2063714,
-   "hiExtra": 4585771
+   "entry": 2063722,
+   "hiExtra": 4585825
   },
-  "envStd": 5463905,
-  "envHi": 10854635
+  "envStd": 5461130,
+  "envHi": 10851914
  },
  "cameraZones": [
   {
@@ -1583,21 +1583,21 @@
    "kind": "light",
    "light": "sunset",
    "manifest": "../village-light-sunset/pack.json",
-   "bytes": 390949
+   "bytes": 390510
   },
   {
    "pack": "village-light-night",
    "kind": "light",
    "light": "night",
    "manifest": "../village-light-night/pack.json",
-   "bytes": 301444
+   "bytes": 302544
   },
   {
    "pack": "village-light-rain",
    "kind": "light",
    "light": "rain",
    "manifest": "../village-light-rain/pack.json",
-   "bytes": 355559
+   "bytes": 355788
   },
   {
    "pack": "village-interior",
@@ -1684,5 +1684,5 @@
    "dimAtNight": true
   }
  },
- "subPackBytes": 1547666
+ "subPackBytes": 1548556
 }

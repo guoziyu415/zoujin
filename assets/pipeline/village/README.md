@@ -33,6 +33,7 @@ assets/pipeline/village/build.sh [final|draft] [out_dir]
 | `village-light-rain`   | 暴雨的阴天（CIE 阴天的天光分布，没有太阳）；雨夜、三日目薄明由页面调暗 | 2 MB |
 
 - 只带间接光（全光减去太阳的直射，灯的直射留在里面），AO 用村子包的，太阳照样实时画。天空、太阳、灯的位置写进清单，页面照着放动态光。
+- 重烘固定用一个 CPU 线程；Cycles 多线程在日没建筑的少量间接光采样上会产生运行间差异，进而改变压缩后的文件和清单。分辨率、采样数、灯光与预算保持原标准，双构建仍要求逐字节一致。
 - 屋里的子包 `village-interior` 是自己的流水线（`interior/build.sh`）。
 - `village/scene.json` 多出 `subPacks`（全部子包，屋里的按它进仓库的 `pack.json`）、`subPackBytes`，以及布局里抄过来的 `lightSets`（每个时段屋外、屋里用哪套光，两套之间按时刻插值；变天以后用雨和宴席）。
 - `check_village.mjs` 查：子包的文件和 sha256、各自的上限、光照图尺寸和村子一致、`lightSets` 引用的光都存在、加上屋里以后的 draw call、整个村子（标准档、用到的共用文件、全部子包）≤ 11 MB，强机档另算。

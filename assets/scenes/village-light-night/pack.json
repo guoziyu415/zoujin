@@ -38,14 +38,14 @@
   "ground": {
    "indirect": {
     "file": "lm/ground_indirect.ktx2",
-    "K": 0.006326943084869481
+    "K": 0.006326908195082882
    },
    "bakedRes": 1024
   },
   "arch": {
    "indirect": {
     "file": "lm/arch_indirect.ktx2",
-    "K": 0.007190094830940109
+    "K": 0.006835693261578645
    },
    "bakedRes": 1024
   }
@@ -53,18 +53,18 @@
  "files": [
   {
    "path": "lm/ground_indirect.ktx2",
-   "bytes": 106920,
-   "sha256": "6819bed518eae002c3e8e68382179a09267cbe674023b3f2dccfa281a332f484",
+   "bytes": 106992,
+   "sha256": "a14b8c7d4867423fb1898d0198b943fa57c0d6f267738b929a315561e43106eb",
    "pack": "sub"
   },
   {
    "path": "lm/arch_indirect.ktx2",
-   "bytes": 194524,
-   "sha256": "32b2f41f46bbdad561a28764d252594a03c7a9478d9924d4967dd5de485addf3",
+   "bytes": 195552,
+   "sha256": "b814c3a0b4d0e5eed997bc0f67a60d848a23aa4ac3dba70a3bb5a1520c583731",
    "pack": "sub"
   }
  ],
  "bytes": {
-  "entry": 301444
+  "entry": 302544
  }
 }

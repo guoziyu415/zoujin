@@ -40,6 +40,10 @@ scene = bpy.context.scene
 vl = bpy.context.view_layer
 ROT = Matrix.Rotation(math.radians(float(os.environ.get('SCENE_ROT_DEG', '0'))), 4, 'Z')
 scene.render.engine = 'CYCLES'; scene.cycles.device = 'CPU'
+# Cycles' parallel CPU light bake can change a few indirect-light samples between
+# runs of the same saved scene (sunset's arch exposed this in CI). One worker makes
+# the float bake deterministic; keep the resolution, samples and lighting intact.
+scene.render.threads_mode = 'FIXED'; scene.render.threads = 1
 for o in [o for o in scene.objects if o.type == 'LIGHT']:
     bpy.data.objects.remove(o)
 world = bpy.data.worlds.new('World'); scene.world = world; world.use_nodes = True

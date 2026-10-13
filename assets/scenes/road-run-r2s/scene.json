@@ -242,7 +242,7 @@
   "bark_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "805f6b553356ff94f9ae08491c8569e4a606ada79c5895644b61cc15138e956a",
+   "sourceSha256": "8e4395bf36d542b8bbcab9edd2254a5b8c0cdbf9949e5a96f638231632e80d1e",
    "std": {
     "file": "tex/std/bark_base.ktx2",
     "size": 1024,
@@ -257,7 +257,7 @@
   "grass_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "b8f0cfd99dbb0e01b0ef53b442b9fec97695bb3ba863159e2a02a176466bb2d0",
+   "sourceSha256": "aafe217034078f1d618cec3a696c16cb37b54c9eb60c47c38a61d7e5c7de4285",
    "std": {
     "file": "tex/std/grass_base.ktx2",
     "size": 1024,
@@ -281,7 +281,7 @@
   "grass_mr": {
    "slot": "mr",
    "from": "placeholder",
-   "sourceSha256": "c7eeae2de5241afd36aebe7ffbd80a436c692caf19467cc40a6bf3a6c8d71ad2",
+   "sourceSha256": "701a9c279067851fd6126c834c0b92e76407bc985081d2920f9c2e768d4f8627",
    "std": {
     "file": "tex/std/grass_mr.ktx2",
     "size": 512,
@@ -296,7 +296,7 @@
   "grass_nrm": {
    "slot": "nrm",
    "from": "placeholder",
-   "sourceSha256": "4236f6dfb61e8a5897864c8972763ed65d3b8f4375435115b289011f1ffa1814",
+   "sourceSha256": "d7c5891ad202c506edf9e6b4e08627963212ed5479f60c4e408788770154229e",
    "std": {
     "file": "tex/std/grass_nrm.ktx2",
     "size": 512,
@@ -320,7 +320,7 @@
   "gravel_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "ef7e63048692f6f7500f5e728a3c7a74c6965e71e7b06f32fd8744d377731afa",
+   "sourceSha256": "102443db592839130451ee6936874c9e13b9f7e1222b8a23a7e5c06ee9ed177d",
    "std": {
     "file": "tex/std/gravel_base.ktx2",
     "size": 1024,
@@ -335,7 +335,7 @@
   "hill_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "cec354f72b515220a4a11f87b2dc42c9fb826dbd81f8b49d685c4d1a3e2d6ccc",
+   "sourceSha256": "57426235799710d4c654f934e44a3a21179a88146defe1d12cc616cfc59d2c3c",
    "std": {
     "file": "tex/std/hill_base.ktx2",
     "size": 1024,
@@ -350,7 +350,7 @@
   "holmoak_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "36df9a0dd3f088611cefee536053a9377482412b061e178aca35e3927c03a877",
+   "sourceSha256": "4ebcd2282f4d7703e28c65c58fa25324a0eb7a1b260fe15790977057e2cfdfc2",
    "std": {
     "file": "tex/std/holmoak_base.ktx2",
     "size": 512,
@@ -365,7 +365,7 @@
   "outcrop_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "0c67eb4be4c13311ad0164d4d2816e8ef82e7d02375e65808f5ba0e9f1bd198a",
+   "sourceSha256": "7b9aa276ded53b50c6fe6f3954db21bc5d2bcfeaf0c26bde21ee9166b52ebefe",
    "std": {
     "file": "tex/std/outcrop_base.ktx2",
     "size": 1024,
@@ -389,7 +389,7 @@
   "outcrop_mr": {
    "slot": "mr",
    "from": "placeholder",
-   "sourceSha256": "eba85cf0d85fa6b6d9f0141236d95b53c432c2bcaa17a6a05c858b165b840f0b",
+   "sourceSha256": "dead190e8107d25916a938792fcd551966b262985d76d1fe18547ba1e7668acf",
    "std": {
     "file": "tex/std/outcrop_mr.ktx2",
     "size": 512,
@@ -404,7 +404,7 @@
   "outcrop_nrm": {
    "slot": "nrm",
    "from": "placeholder",
-   "sourceSha256": "435cd8ad4d3f478bd05d9420517cb42ea406f2fffa47230c8c4f78c8ee776043",
+   "sourceSha256": "503be1d1f2c66743cae686f990f3fceb1f4c3b95cdb9828c8b86e1b3863081a9",
    "std": {
     "file": "tex/std/outcrop_nrm.ktx2",
     "size": 512,
@@ -442,7 +442,7 @@
   "road_base": {
    "slot": "base",
    "from": "placeholder",
-   "sourceSha256": "c2b1f60c8c91f8ad21911e7388b1b7f050797b4baedb43ba9869a7d9ddec9ed5",
+   "sourceSha256": "3433ad0cda4a644ea50b0724392f850a3c7385b762f0f39569c3a30faa2d31e0",
    "std": {
     "file": "tex/std/road_base.ktx2",
     "size": 1024,
@@ -466,7 +466,7 @@
   "road_mr": {
    "slot": "mr",
    "from": "placeholder",
-   "sourceSha256": "187a685e6019e16e8e8260e8e6f6cfb69d2cba9c50e04e734a01f3157ffb87dc",
+   "sourceSha256": "40eade6f8970568b962fc428cff25d5c77da9eac8484b55acca6600a3d4d6363",
    "std": {
     "file": "tex/std/road_mr.ktx2",
     "size": 512,
@@ -481,7 +481,7 @@
   "road_nrm": {
    "slot": "nrm",
    "from": "placeholder",
-   "sourceSha256": "4bfc6d511a791f43bd878350aaee024b686a9f87f89b95e8d1b4401ba7670cc9",
+   "sourceSha256": "551a30592d946f8684a4fce4113affe3c37f0df833c690135362e5a638931ed2",
    "std": {
     "file": "tex/std/road_nrm.ktx2",
     "size": 512,
@@ -703,15 +703,15 @@
   },
   {
    "path": "tex/std/road_base.ktx2",
-   "bytes": 126606,
-   "sha256": "228aeb0007b5ed762968a35a6720d53483fe60bba176d9925f4b21f1ffe45aa4",
+   "bytes": 126614,
+   "sha256": "be620087fb041164c044084b7d78ce4f36351bab59b69310dee030d17f0b1a06",
    "pack": "entry",
    "shared": "road-common"
   },
   {
    "path": "tex/hi/road_base.ktx2",
-   "bytes": 329848,
-   "sha256": "52e76f49e69ca8df8cffe2f48d29241f1e10abc8425376ff5f6bd263547596a8",
+   "bytes": 329902,
+   "sha256": "a5748a567681645b69172145a677e94800a4b8de50b41223909e89b677b18565",
    "pack": "hi",
    "shared": "road-common"
   },
@@ -777,11 +777,11 @@
   "entry": 1418772,
   "hiExtra": 0,
   "shared": {
-   "entry": 1868307,
-   "hiExtra": 4585771
+   "entry": 1868315,
+   "hiExtra": 4585825
   },
-  "envStd": 3287079,
-  "envHi": 7872850
+  "envStd": 3287087,
+  "envHi": 7872912
  },
  "runway": {
   "tileLengthM": 36,

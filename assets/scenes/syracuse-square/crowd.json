@@ -553,11 +553,11 @@
    ]
   },
   "veil": {
-   "vertices": 1806,
+   "vertices": 1808,
    "offset": 80028,
-   "indices": 9246,
-   "indexOffset": 132404,
-   "triangles": 3082,
+   "indices": 9258,
+   "indexOffset": 132460,
+   "triangles": 3086,
    "min": [
     -0.2285,
     0.0003,
@@ -925,9 +925,9 @@
   },
   "worker": {
    "vertices": 1922,
-   "offset": 150896,
+   "offset": 150976,
    "indices": 9942,
-   "indexOffset": 206636,
+   "indexOffset": 206716,
    "triangles": 3314,
    "min": [
     -0.2451,
@@ -1295,6 +1295,6 @@
    ]
   }
  },
- "bytes": 226520,
- "sha256": "72440c919f744cc52a5a30d7ec3caf8d6f2c06cef653e6eaac6245792054fd96"
+ "bytes": 226600,
+ "sha256": "de118062a6470d9dd2c8e79fec114e7b49e589975780b931e5946871f053a1c1"
 }
